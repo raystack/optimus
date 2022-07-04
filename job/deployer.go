@@ -57,7 +57,7 @@ func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeploymen
 	d.l.Debug("job priority resolved", "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
 
 	// Compile & Deploy
-	deployError := d.deployNamespaces(ctx, &jobDeployment, jobSpecs)
+	deployError := d.deployJobs(ctx, &jobDeployment, jobSpecs)
 
 	if err := d.completeJobDeployment(ctx, jobDeployment); err != nil {
 		return err
@@ -67,35 +67,33 @@ func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeploymen
 	return deployError
 }
 
-func (d *deployer) deployNamespaces(ctx context.Context, jobDeployment *models.JobDeployment, jobSpecs []models.JobSpec) error {
+func (d *deployer) deployJobs(ctx context.Context, jobDeployment *models.JobDeployment, jobSpecs []models.JobSpec) error {
 	var deployError error
 	jobSpecGroup := models.JobSpecs(jobSpecs).GroupJobsPerNamespace()
 	for namespaceName, jobs := range jobSpecGroup {
-		// fetch the namespace spec with secrets
-		namespaceSpec, err := d.namespaceService.Get(ctx, jobDeployment.Project.Name, namespaceName)
-		if err != nil {
-			deployError = multierror.Append(deployError, err)
-			continue
-		}
-
-		// deploy per namespace
-		deployNamespaceDetail, err := d.batchScheduler.DeployJobsVerbose(ctx, namespaceSpec, jobs)
-		if err != nil {
-			deployError = multierror.Append(deployError, err)
-			continue
-		}
-		jobDeployment.Details.Failures = append(jobDeployment.Details.Failures, deployNamespaceDetail.Failures...)
-		jobDeployment.Details.FailureCount += deployNamespaceDetail.FailureCount
-		jobDeployment.Details.SuccessCount += deployNamespaceDetail.SuccessCount
-
-		// clean scheduler storage
-		if err := d.cleanPerNamespace(ctx, namespaceSpec, jobs); err != nil {
+		if err := d.deployJobsPerNamespace(ctx, jobDeployment, namespaceName, jobs); err != nil {
 			deployError = multierror.Append(deployError, err)
 		}
-
 		d.l.Debug(fmt.Sprintf("namespace %s deployed", namespaceName), "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
 	}
 	return deployError
+}
+
+func (d *deployer) deployJobsPerNamespace(ctx context.Context, jobDeployment *models.JobDeployment, namespaceName string, jobSpecs []models.JobSpec) error {
+	namespaceSpec, err := d.namespaceService.Get(ctx, jobDeployment.Project.Name, namespaceName)
+	if err != nil {
+		return err
+	}
+
+	deployNamespaceDetail, err := d.batchScheduler.DeployJobsVerbose(ctx, namespaceSpec, jobSpecs)
+	if err != nil {
+		return err
+	}
+	jobDeployment.Details.Failures = append(jobDeployment.Details.Failures, deployNamespaceDetail.Failures...)
+	jobDeployment.Details.FailureCount += deployNamespaceDetail.FailureCount
+	jobDeployment.Details.SuccessCount += deployNamespaceDetail.SuccessCount
+
+	return d.cleanPerNamespace(ctx, namespaceSpec, jobSpecs)
 }
 
 func (d *deployer) completeJobDeployment(ctx context.Context, jobDeployment models.JobDeployment) error {
