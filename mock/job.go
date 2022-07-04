@@ -214,10 +214,8 @@ func (_m *JobSpecRepository) GetAllByProjectID(_a0 context.Context, _a1 models.P
 	var r0 []models.JobSpec
 	if rf, ok := ret.Get(0).(func(context.Context, models.ProjectID) []models.JobSpec); ok {
 		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]models.JobSpec)
-		}
+	} else if ret.Get(0) != nil {
+		r0 = ret.Get(0).([]models.JobSpec)
 	}
 
 	var r1 error
@@ -237,10 +235,8 @@ func (_m *JobSpecRepository) GetDependentJobs(_a0 context.Context, _a1 *models.J
 	var r0 []models.JobSpec
 	if rf, ok := ret.Get(0).(func(context.Context, *models.JobSpec) []models.JobSpec); ok {
 		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]models.JobSpec)
-		}
+	} else if ret.Get(0) != nil {
+		r0 = ret.Get(0).([]models.JobSpec)
 	}
 
 	var r1 error
@@ -260,10 +256,8 @@ func (_m *JobSpecRepository) GetInferredDependenciesPerJob(_a0 context.Context, 
 	var r0 map[uuid.UUID][]models.JobSpec
 	if rf, ok := ret.Get(0).(func(context.Context, models.ProjectID) map[uuid.UUID][]models.JobSpec); ok {
 		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[uuid.UUID][]models.JobSpec)
-		}
+	} else if ret.Get(0) != nil {
+		r0 = ret.Get(0).(map[uuid.UUID][]models.JobSpec)
 	}
 
 	var r1 error
@@ -283,10 +277,8 @@ func (_m *JobSpecRepository) GetJobByName(_a0 context.Context, _a1 string) ([]mo
 	var r0 []models.JobSpec
 	if rf, ok := ret.Get(0).(func(context.Context, string) []models.JobSpec); ok {
 		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]models.JobSpec)
-		}
+	} else if ret.Get(0) != nil {
+		r0 = ret.Get(0).([]models.JobSpec)
 	}
 
 	var r1 error
@@ -327,10 +319,8 @@ func (_m *JobSpecRepository) GetStaticDependenciesPerJob(_a0 context.Context, _a
 	var r0 map[uuid.UUID][]models.JobSpec
 	if rf, ok := ret.Get(0).(func(context.Context, models.ProjectID) map[uuid.UUID][]models.JobSpec); ok {
 		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[uuid.UUID][]models.JobSpec)
-		}
+	} else if ret.Get(0) != nil {
+		r0 = ret.Get(0).(map[uuid.UUID][]models.JobSpec)
 	}
 
 	var r1 error
@@ -513,10 +503,8 @@ func (_m *DependencyResolver) FetchHookWithDependencies(jobSpec models.JobSpec) 
 	var r0 []models.JobSpecHook
 	if rf, ok := ret.Get(0).(func(models.JobSpec) []models.JobSpecHook); ok {
 		r0 = rf(jobSpec)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]models.JobSpecHook)
-		}
+	} else if ret.Get(0) != nil {
+		r0 = ret.Get(0).([]models.JobSpecHook)
 	}
 
 	return r0
@@ -529,10 +517,8 @@ func (_m *DependencyResolver) GetJobSpecsWithDependencies(ctx context.Context, p
 	var r0 []models.JobSpec
 	if rf, ok := ret.Get(0).(func(context.Context, models.ProjectID) []models.JobSpec); ok {
 		r0 = rf(ctx, projectID)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]models.JobSpec)
-		}
+	} else if ret.Get(0) != nil {
+		r0 = ret.Get(0).([]models.JobSpec)
 	}
 
 	var r1 error
@@ -573,10 +559,8 @@ func (_m *DependencyResolver) ResolveStaticDependencies(ctx context.Context, job
 	var r0 map[string]models.JobSpecDependency
 	if rf, ok := ret.Get(0).(func(context.Context, models.JobSpec, models.ProjectSpec, store.ProjectJobSpecRepository) map[string]models.JobSpecDependency); ok {
 		r0 = rf(ctx, jobSpec, projectSpec, projectJobSpecRepo)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[string]models.JobSpecDependency)
-		}
+	} else if ret.Get(0) != nil {
+		r0 = ret.Get(0).(map[string]models.JobSpecDependency)
 	}
 
 	var r1 error

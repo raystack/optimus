@@ -50,27 +50,27 @@ func NewDependencyResolver(
 
 // Resolve resolves all kind of dependencies (inter/intra project, static deps) of a given JobSpec
 // TODO: this method will be deprecated
-func (r *dependencyResolver) Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec,
+func (d *dependencyResolver) Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec,
 	observer progress.Observer) (models.JobSpec, error) {
 	if ctx.Err() != nil {
 		return models.JobSpec{}, ctx.Err()
 	}
 
-	projectJobSpecRepo := r.projectJobSpecRepoFactory.New(projectSpec)
+	projectJobSpecRepo := d.projectJobSpecRepoFactory.New(projectSpec)
 	// resolve inter/intra dependencies inferred by optimus
-	jobSpec, err := r.resolveInferredDependencies(ctx, jobSpec, projectSpec, projectJobSpecRepo, observer)
+	jobSpec, err := d.resolveInferredDependencies(ctx, jobSpec, projectSpec, projectJobSpecRepo, observer)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
 
 	// resolve statically defined dependencies
-	jobSpec, err = r.resolveStaticDependencies(ctx, jobSpec, projectSpec, projectJobSpecRepo)
+	jobSpec, err = d.resolveStaticDependencies(ctx, jobSpec, projectSpec, projectJobSpecRepo)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
 
 	// resolve inter hook dependencies
-	jobSpec = r.resolveHookDependencies(jobSpec)
+	jobSpec = d.resolveHookDependencies(jobSpec)
 
 	return jobSpec, nil
 }
@@ -130,12 +130,12 @@ func (*dependencyResolver) ResolveStaticDependencies(ctx context.Context, jobSpe
 }
 
 // TODO: this method will be deprecated (should be refactored to separate responsibility)
-func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
+func (d *dependencyResolver) resolveInferredDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
 	projectJobSpecRepo store.ProjectJobSpecRepository, observer progress.Observer) (models.JobSpec, error) {
 	// get destinations of dependencies, assets should be dependent on
 	namespace := jobSpec.NamespaceSpec
 	namespace.ProjectSpec = projectSpec // TODO: Temp fix to to get secrets from project
-	resp, err := r.pluginService.GenerateDependencies(ctx, jobSpec, namespace, false)
+	resp, err := d.pluginService.GenerateDependencies(ctx, jobSpec, namespace, false)
 	if err != nil {
 		if !errors.Is(err, service.ErrDependencyModNotFound) {
 			return models.JobSpec{}, err
@@ -146,7 +146,7 @@ func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 	}
 
 	jobDependencies := resp.Dependencies
-	if err := r.jobSourceRepo.Save(ctx, projectSpec.ID, jobSpec.ID, jobDependencies); err != nil {
+	if err := d.jobSourceRepo.Save(ctx, projectSpec.ID, jobSpec.ID, jobDependencies); err != nil {
 		return models.JobSpec{}, fmt.Errorf("error persisting job sources for job %s: %w", jobSpec.Name, err)
 	}
 
@@ -157,7 +157,7 @@ func (r *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 			if errors.Is(err, store.ErrResourceNotFound) {
 				// should not fail for unknown dependency, its okay to not have a upstream job
 				// registered in optimus project and still refer to them in our job
-				r.notifyProgress(observer, &models.ProgressJobSpecUnknownDependencyUsed{Job: jobSpec.Name, Dependency: depDestination})
+				d.notifyProgress(observer, &models.ProgressJobSpecUnknownDependencyUsed{Job: jobSpec.Name, Dependency: depDestination})
 				continue
 			}
 			return jobSpec, fmt.Errorf("runtime dependency evaluation failed: %w", err)

@@ -1066,7 +1066,7 @@ func TestDependencyResolver(t *testing.T) {
 			var ctx context.Context
 			projectID := models.ProjectID(uuid.New())
 
-			actualJobSpecs, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, models.ProjectID(projectID))
+			actualJobSpecs, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, projectID)
 
 			assert.Nil(t, actualJobSpecs)
 			assert.Error(t, actualError)
@@ -1081,7 +1081,7 @@ func TestDependencyResolver(t *testing.T) {
 
 			jobSpecRepo.On("GetAllByProjectID", ctx, projectID).Return(nil, errors.New("random error"))
 
-			actualJobSpecs, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, models.ProjectID(projectID))
+			actualJobSpecs, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, projectID)
 
 			assert.Nil(t, actualJobSpecs)
 			assert.Error(t, actualError)
@@ -1097,7 +1097,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSpecRepo.On("GetAllByProjectID", ctx, projectID).Return([]models.JobSpec{}, nil)
 			jobSpecRepo.On("GetStaticDependenciesPerJob", ctx, projectID).Return(nil, errors.New("random error"))
 
-			actualJobSpecs, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, models.ProjectID(projectID))
+			actualJobSpecs, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, projectID)
 
 			assert.Nil(t, actualJobSpecs)
 			assert.Error(t, actualError)
@@ -1114,7 +1114,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSpecRepo.On("GetStaticDependenciesPerJob", ctx, projectID).Return(map[uuid.UUID][]models.JobSpec{}, nil)
 			jobSpecRepo.On("GetInferredDependenciesPerJob", ctx, projectID).Return(nil, errors.New("random error"))
 
-			actualJobSpecs, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, models.ProjectID(projectID))
+			actualJobSpecs, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, projectID)
 
 			assert.Nil(t, actualJobSpecs)
 			assert.Error(t, actualError)
@@ -1211,7 +1211,7 @@ func TestDependencyResolver(t *testing.T) {
 				},
 			}
 
-			actualJobSpecs, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, models.ProjectID(projectID))
+			actualJobSpecs, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, projectID)
 
 			assert.EqualValues(t, expectedJobSpecs, actualJobSpecs)
 			assert.NoError(t, actualError)
