@@ -43,8 +43,8 @@ func NewJobCommand() *cobra.Command {
 
 func (j *jobCommand) PersistentPreRunE(cmd *cobra.Command, _ []string) error {
 	// TODO: refactor initialize client deps
-	cleanFn, err := plugin.TriggerClientPluginsInit(config.LogLevelInfo)
-	j.pluginCleanFn = cleanFn
+	var err error
+	j.pluginCleanFn, err = plugin.TriggerClientPluginsInit(config.LogLevelInfo)
 	return err
 }
 
