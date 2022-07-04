@@ -243,6 +243,9 @@ func (*dependencyResolver) resolveHookDependencies(jobSpec models.JobSpec) model
 }
 
 func (d *dependencyResolver) GetJobSpecsWithDependencies(ctx context.Context, projectID models.ProjectID) ([]models.JobSpec, error) {
+	if ctx == nil {
+		return nil, errors.New("context is nil")
+	}
 	jobSpecs, err := d.jobSpecRepo.GetAllByProjectID(ctx, projectID)
 	if err != nil {
 		return nil, err

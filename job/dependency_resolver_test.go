@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/odpf/optimus/job"
@@ -1053,6 +1054,139 @@ func TestDependencyResolver(t *testing.T) {
 			actualDependencies, actualError := dependencyResolver.ResolveStaticDependencies(ctx, job, project, projectJobSpecRepo)
 
 			assert.NotNil(t, actualDependencies)
+			assert.NoError(t, actualError)
+		})
+	})
+
+	t.Run("GetJobSpecsWithDependencies", func(t *testing.T) {
+		t.Run("return nil and error if context is nil", func(t *testing.T) {
+			jobSpecRepo := mock.NewJobSpecRepository(t)
+			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, nil, nil, nil)
+
+			var ctx context.Context
+			projectID := models.ProjectID(uuid.New())
+
+			actualJobSpecs, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, models.ProjectID(projectID))
+
+			assert.Nil(t, actualJobSpecs)
+			assert.Error(t, actualError)
+		})
+
+		t.Run("return nil and error if error encountered when getting all job specs within the project", func(t *testing.T) {
+			jobSpecRepo := mock.NewJobSpecRepository(t)
+			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, nil, nil, nil)
+
+			ctx := context.Background()
+			projectID := models.ProjectID(uuid.New())
+
+			jobSpecRepo.On("GetAllByProjectID", ctx, projectID).Return(nil, errors.New("random error"))
+
+			actualJobSpecs, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, models.ProjectID(projectID))
+
+			assert.Nil(t, actualJobSpecs)
+			assert.Error(t, actualError)
+		})
+
+		t.Run("return nil and error if error encountered when getting static dependencies per job", func(t *testing.T) {
+			jobSpecRepo := mock.NewJobSpecRepository(t)
+			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, nil, nil, nil)
+
+			ctx := context.Background()
+			projectID := models.ProjectID(uuid.New())
+
+			jobSpecRepo.On("GetAllByProjectID", ctx, projectID).Return([]models.JobSpec{}, nil)
+			jobSpecRepo.On("GetStaticDependenciesPerJob", ctx, projectID).Return(nil, errors.New("random error"))
+
+			actualJobSpecs, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, models.ProjectID(projectID))
+
+			assert.Nil(t, actualJobSpecs)
+			assert.Error(t, actualError)
+		})
+
+		t.Run("return nil and error if error encountered when getting inferred dependencies per job", func(t *testing.T) {
+			jobSpecRepo := mock.NewJobSpecRepository(t)
+			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, nil, nil, nil)
+
+			ctx := context.Background()
+			projectID := models.ProjectID(uuid.New())
+
+			jobSpecRepo.On("GetAllByProjectID", ctx, projectID).Return([]models.JobSpec{}, nil)
+			jobSpecRepo.On("GetStaticDependenciesPerJob", ctx, projectID).Return(map[uuid.UUID][]models.JobSpec{}, nil)
+			jobSpecRepo.On("GetInferredDependenciesPerJob", ctx, projectID).Return(nil, errors.New("random error"))
+
+			actualJobSpecs, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, models.ProjectID(projectID))
+
+			assert.Nil(t, actualJobSpecs)
+			assert.Error(t, actualError)
+		})
+
+		t.Run("return job specs with their dependencies and nil if no error is encountered", func(t *testing.T) {
+			jobSpecRepo := mock.NewJobSpecRepository(t)
+			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, nil, nil, nil)
+
+			ctx := context.Background()
+			projectID := models.ProjectID(uuid.New())
+
+			projectSpec := models.ProjectSpec{
+				ID:   models.ProjectID(uuid.New()),
+				Name: "project",
+			}
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.New(),
+				Name:        "namespace",
+				ProjectSpec: projectSpec,
+			}
+			jobSpec := models.JobSpec{
+				ID:   uuid.New(),
+				Name: "job",
+			}
+			staticDependencies := map[uuid.UUID][]models.JobSpec{
+				jobSpec.ID: {
+					{
+						Name:          "job-a",
+						NamespaceSpec: namespaceSpec,
+					},
+				},
+			}
+			inferredDependencies := map[uuid.UUID][]models.JobSpec{
+				jobSpec.ID: {
+					{
+						Name:          "job-b",
+						NamespaceSpec: namespaceSpec,
+					},
+				},
+			}
+
+			jobSpecRepo.On("GetAllByProjectID", ctx, projectID).Return([]models.JobSpec{jobSpec}, nil)
+			jobSpecRepo.On("GetStaticDependenciesPerJob", ctx, projectID).Return(staticDependencies, nil)
+			jobSpecRepo.On("GetInferredDependenciesPerJob", ctx, projectID).Return(inferredDependencies, nil)
+
+			expectedJobSpecs := []models.JobSpec{
+				{
+					ID:   jobSpec.ID,
+					Name: "job",
+					Dependencies: map[string]models.JobSpecDependency{
+						"project/job-a": {
+							Project: &projectSpec,
+							Job: &models.JobSpec{
+								Name:          "job-a",
+								NamespaceSpec: namespaceSpec,
+							},
+						},
+						"project/job-b": {
+							Project: &projectSpec,
+							Job: &models.JobSpec{
+								Name:          "job-b",
+								NamespaceSpec: namespaceSpec,
+							},
+						},
+					},
+				},
+			}
+
+			actualJobSpecs, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, models.ProjectID(projectID))
+
+			assert.EqualValues(t, expectedJobSpecs, actualJobSpecs)
 			assert.NoError(t, actualError)
 		})
 	})
