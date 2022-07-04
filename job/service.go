@@ -50,11 +50,12 @@ var (
 )
 
 // DependencyResolver compiles static and runtime dependencies
+// TODO: when refactoring, we need to rethink about renaming it
 type DependencyResolver interface {
 	Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error)
 	ResolveStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository) (map[string]models.JobSpecDependency, error)
 
-	FetchHookWithDependencies(jobSpec models.JobSpec) []models.JobSpecHook
+	GetJobSpecsWithDependencies(ctx context.Context, projectID models.ProjectID) ([]models.JobSpec, error)
 }
 
 type Deployer interface {

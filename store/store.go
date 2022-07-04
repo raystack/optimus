@@ -45,6 +45,7 @@ type ProjectJobSpecRepository interface {
 
 // JobSpecRepository represents a storage interface for Job specification
 type JobSpecRepository interface {
+	GetAllByProjectID(context.Context, models.ProjectID) ([]models.JobSpec, error)
 	// TODO: change to GetJobsByName as it returns multiple jobs
 	GetJobByName(context.Context, string) ([]models.JobSpec, error)
 	GetJobByResourceDestination(context.Context, string) (models.JobSpec, error)

@@ -220,6 +220,7 @@ func (s *OptimusServer) setupHandlers() error {
 	jobRunRepo := postgres.NewJobRunRepository(s.dbConn, dbAdapter)
 	instanceRepo := postgres.NewInstanceRepository(s.dbConn, dbAdapter)
 	jobSpecRepo := postgres.NewJobSpecRepository(s.dbConn, dbAdapter)
+	jobSourceRepository := postgres.NewJobSourceRepository(s.dbConn)
 
 	projectJobSpecRepoFac := &projectJobSpecRepoFactory{
 		db: s.dbConn,
@@ -244,8 +245,7 @@ func (s *OptimusServer) setupHandlers() error {
 		projectJobSpecRepoFac: *projectJobSpecRepoFac,
 	}
 
-	jobSourceRepository := postgres.NewJobSourceRepository(s.dbConn)
-	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac, pluginService, jobSourceRepository)
+	dependencyResolver := job.NewDependencyResolver(jobSpecRepo, jobSourceRepository, pluginService, projectJobSpecRepoFac)
 	priorityResolver := job.NewPriorityResolver()
 
 	replayWorkerFactory := &replayWorkerFact{
@@ -296,8 +296,6 @@ func (s *OptimusServer) setupHandlers() error {
 		priorityResolver,
 		namespaceService,
 		jobDeploymentRepository,
-		projectJobSpecRepoFac,
-		jobSourceRepository,
 		scheduler,
 	)
 	assignerScheduler := cron.New(cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)))

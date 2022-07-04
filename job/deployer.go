@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"github.com/odpf/salt/log"
 
@@ -23,9 +22,7 @@ type deployer struct {
 	// scheduler for managing batch scheduled jobs
 	batchScheduler models.SchedulerUnit
 
-	deployRepository          store.JobDeploymentRepository
-	jobSourceRepository       store.JobSourceRepository
-	projectJobSpecRepoFactory ProjectJobSpecRepoFactory
+	deployRepository store.JobDeploymentRepository
 }
 
 func NewDeployer(
@@ -34,34 +31,24 @@ func NewDeployer(
 	priorityResolver PriorityResolver,
 	namespaceService service.NamespaceService,
 	deployRepository store.JobDeploymentRepository,
-	projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
-	jobSourceRepository store.JobSourceRepository,
 	batchScheduler models.SchedulerUnit,
 ) Deployer {
 	return &deployer{
-		l:                         l,
-		dependencyResolver:        dependencyResolver,
-		priorityResolver:          priorityResolver,
-		batchScheduler:            batchScheduler,
-		deployRepository:          deployRepository,
-		namespaceService:          namespaceService,
-		jobSourceRepository:       jobSourceRepository,
-		projectJobSpecRepoFactory: projectJobSpecRepoFactory,
+		l:                  l,
+		dependencyResolver: dependencyResolver,
+		priorityResolver:   priorityResolver,
+		batchScheduler:     batchScheduler,
+		deployRepository:   deployRepository,
+		namespaceService:   namespaceService,
 	}
 }
 
 func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeployment) error {
-	projectJobSpecRepo := d.projectJobSpecRepoFactory.New(jobDeployment.Project)
-	jobSpecs, err := projectJobSpecRepo.GetAll(ctx)
+	jobSpecs, err := d.dependencyResolver.GetJobSpecsWithDependencies(ctx, jobDeployment.Project.ID)
 	if err != nil {
 		return err
 	}
 	d.l.Debug("job specs fetched", "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
-
-	if err := d.enrichJobSpecs(ctx, jobSpecs, jobDeployment.Project); err != nil {
-		return err
-	}
-	d.l.Debug("job specs enriched", "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
 
 	jobSpecs, err = d.priorityResolver.Resolve(ctx, jobSpecs, nil)
 	if err != nil {
@@ -144,119 +131,4 @@ func (d *deployer) cleanPerNamespace(ctx context.Context, namespaceSpec models.N
 		}
 	}
 	return nil
-}
-
-func (d *deployer) enrichJobSpecs(ctx context.Context, jobSpecs []models.JobSpec, deploymentProjectSpec models.ProjectSpec) error {
-	jobIDInferredDependenciesMap, err := d.getJobIDInferredDependenciesMap(ctx, deploymentProjectSpec, jobSpecs)
-	if err != nil {
-		return err
-	}
-
-	for i, job := range jobSpecs {
-		targetJobSpec := job
-		if err := d.enrichWithStaticDependencies(ctx, &targetJobSpec, deploymentProjectSpec); err != nil {
-			return fmt.Errorf("error while enriching jobspec %d with static dependencies: %w", targetJobSpec.ID, err)
-		}
-
-		inferredDependencies := jobIDInferredDependenciesMap[job.ID]
-		d.enrichWithInferredDependencies(&targetJobSpec, deploymentProjectSpec, inferredDependencies)
-
-		d.enrichWithHookDependencies(&targetJobSpec)
-
-		jobSpecs[i] = targetJobSpec
-	}
-	return nil
-}
-
-func (d *deployer) enrichWithStaticDependencies(
-	ctx context.Context,
-	jobSpec *models.JobSpec,
-	deploymentProjectSpec models.ProjectSpec,
-) error {
-	projectJobSpecRepo := d.projectJobSpecRepoFactory.New(deploymentProjectSpec)
-	staticDependencies, err := d.dependencyResolver.ResolveStaticDependencies(ctx, *jobSpec, deploymentProjectSpec, projectJobSpecRepo)
-	jobSpec.Dependencies = staticDependencies
-	return err
-}
-
-func (*deployer) enrichWithInferredDependencies(
-	jobSpec *models.JobSpec,
-	deploymentProjectSpec models.ProjectSpec,
-	resourceDependencies []models.JobSpec,
-) {
-	if jobSpec.Dependencies == nil {
-		jobSpec.Dependencies = make(map[string]models.JobSpecDependency)
-	}
-	for _, dependency := range resourceDependencies {
-		dependencyType := models.JobSpecDependencyTypeIntra
-		if dependency.NamespaceSpec.ProjectSpec.ID.UUID() != deploymentProjectSpec.ID.UUID() {
-			dependencyType = models.JobSpecDependencyTypeInter
-		}
-		jobDependencySpec := dependency
-		jobSpec.Dependencies[dependency.Name] = models.JobSpecDependency{
-			Project: &jobDependencySpec.NamespaceSpec.ProjectSpec,
-			Job:     &jobDependencySpec,
-			Type:    dependencyType,
-		}
-	}
-}
-
-func (d *deployer) enrichWithHookDependencies(jobSpec *models.JobSpec) {
-	hooks := d.dependencyResolver.FetchHookWithDependencies(*jobSpec)
-	jobSpec.Hooks = hooks
-}
-
-func (d *deployer) getJobIDInferredDependenciesMap(ctx context.Context, deploymentProjectSpec models.ProjectSpec,
-	jobSpecs []models.JobSpec) (map[uuid.UUID][]models.JobSpec, error) {
-	jobSources, err := d.jobSourceRepository.GetAll(ctx, deploymentProjectSpec.ID)
-	if err != nil {
-		return nil, fmt.Errorf("error getting job sources for project id %s: %w", deploymentProjectSpec.ID.UUID(), err)
-	}
-
-	resourceURNJobMap := models.JobSpecs(jobSpecs).GroupJobsByDestination()
-	externalSources := d.getExternalSources(jobSources, resourceURNJobMap)
-	if len(externalSources) > 0 {
-		externalJobSpecs, err := d.getExternalJobSpecs(ctx, deploymentProjectSpec, externalSources)
-		if err != nil {
-			return nil, err
-		}
-		d.enrichResourceURNJobMap(resourceURNJobMap, externalJobSpecs)
-	}
-
-	// preparing the job dependency by using the resource URN job map
-	jobIDDependenciesMap := make(map[uuid.UUID][]models.JobSpec)
-	for _, source := range jobSources {
-		if _, ok := resourceURNJobMap[source.ResourceURN]; !ok {
-			continue
-		}
-		jobIDDependenciesMap[source.JobID] = append(jobIDDependenciesMap[source.JobID], *resourceURNJobMap[source.ResourceURN])
-	}
-	return jobIDDependenciesMap, nil
-}
-
-func (*deployer) enrichResourceURNJobMap(resourceURNJobMap map[string]*models.JobSpec, externalJobSpecs []models.JobSpec) {
-	for _, externalJob := range externalJobSpecs {
-		job := externalJob
-		resourceURNJobMap[externalJob.ResourceDestination] = &job
-	}
-}
-
-func (*deployer) getExternalSources(jobSources []models.JobSource, resourceURNJobMap map[string]*models.JobSpec) []string {
-	var externalSources []string
-	for _, source := range jobSources {
-		if _, ok := resourceURNJobMap[source.ResourceURN]; ok {
-			continue
-		}
-		externalSources = append(externalSources, source.ResourceURN)
-	}
-	return externalSources
-}
-
-func (d *deployer) getExternalJobSpecs(ctx context.Context, deploymentProjectSpec models.ProjectSpec, externalSources []string) ([]models.JobSpec, error) {
-	projectRepository := d.projectJobSpecRepoFactory.New(deploymentProjectSpec)
-	externalJobSpecs, err := projectRepository.GetByDestinations(ctx, externalSources)
-	if err != nil {
-		return nil, fmt.Errorf("error getting job specs of external project sources: %w", err)
-	}
-	return externalJobSpecs, nil
 }

@@ -99,7 +99,7 @@ func TestDeployer(t *testing.T) {
 
 			projectJobSpecRepo.On("GetAll", ctx).Return(nil, errors.New(errorMsg))
 
-			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, projJobSpecRepoFac, jobSourceRepo, batchScheduler)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, batchScheduler)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -136,7 +136,7 @@ func TestDeployer(t *testing.T) {
 
 			jobSourceRepo.On("GetAll", ctx, projectSpec.ID).Return([]models.JobSource{}, errors.New(errorMsg))
 
-			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, projJobSpecRepoFac, jobSourceRepo, batchScheduler)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, batchScheduler)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.Error(t, err)
@@ -204,7 +204,7 @@ func TestDeployer(t *testing.T) {
 
 			jobSourceRepo.On("GetAll", ctx, projectSpec.ID).Return(jobSources, nil)
 
-			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, projJobSpecRepoFac, jobSourceRepo, batchScheduler)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, batchScheduler)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.Contains(t, err.Error(), errorMsg)
@@ -274,7 +274,7 @@ func TestDeployer(t *testing.T) {
 
 			dependencyResolver.On("ResolveStaticDependencies", ctx, jobSpecsBase[0], projectSpec, projectJobSpecRepo).Return(nil, errors.New(errorMsg)).Once()
 
-			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, projJobSpecRepoFac, jobSourceRepo, batchScheduler)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, batchScheduler)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.Contains(t, err.Error(), errorMsg)
@@ -316,7 +316,7 @@ func TestDeployer(t *testing.T) {
 
 			priorityResolver.On("Resolve", ctx, jobSpecs, nil).Return(jobSpecs, errors.New(errorMsg))
 
-			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, projJobSpecRepoFac, jobSourceRepo, batchScheduler)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, batchScheduler)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.EqualError(t, err, errorMsg)
@@ -378,7 +378,7 @@ func TestDeployer(t *testing.T) {
 
 			jobDeploymentRepo.On("Update", ctx, tMock.Anything).Return(nil)
 
-			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, projJobSpecRepoFac, jobSourceRepo, batchScheduler)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, batchScheduler)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.Error(t, err)
@@ -442,7 +442,7 @@ func TestDeployer(t *testing.T) {
 
 			jobDeploymentRepo.On("Update", ctx, tMock.Anything).Return(nil)
 
-			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, projJobSpecRepoFac, jobSourceRepo, batchScheduler)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, batchScheduler)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.Error(t, err)
@@ -511,7 +511,7 @@ func TestDeployer(t *testing.T) {
 
 			jobDeploymentRepo.On("Update", ctx, tMock.Anything).Return(errors.New(errorMsg))
 
-			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, projJobSpecRepoFac, jobSourceRepo, batchScheduler)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, batchScheduler)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.Error(t, err)
@@ -674,7 +674,7 @@ func TestDeployer(t *testing.T) {
 
 			jobDeploymentRepo.On("Update", ctx, jobDeploymentSucceed).Return(nil).Once()
 
-			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, projJobSpecRepoFac, jobSourceRepo, batchScheduler)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, batchScheduler)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.Nil(t, err)
@@ -876,7 +876,7 @@ func TestDeployer(t *testing.T) {
 
 			jobDeploymentRepo.On("Update", ctx, jobDeploymentSucceed).Return(nil).Once()
 
-			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, projJobSpecRepoFac, jobSourceRepo, batchScheduler)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, batchScheduler)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.Nil(t, err)
@@ -1016,7 +1016,7 @@ func TestDeployer(t *testing.T) {
 
 			jobDeploymentRepo.On("Update", ctx, jobDeploymentSucceed).Return(nil).Once()
 
-			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, projJobSpecRepoFac, jobSourceRepo, batchScheduler)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, batchScheduler)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.Nil(t, err)
@@ -1182,7 +1182,7 @@ func TestDeployer(t *testing.T) {
 
 			jobDeploymentRepo.On("Update", ctx, jobDeploymentSucceed).Return(nil).Once()
 
-			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, projJobSpecRepoFac, jobSourceRepo, batchScheduler)
+			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, batchScheduler)
 			err := deployer.Deploy(ctx, jobDeployment)
 
 			assert.Nil(t, err)
