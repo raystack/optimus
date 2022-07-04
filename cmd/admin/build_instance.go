@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	saltConfig "github.com/odpf/salt/config"
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -28,9 +30,11 @@ const (
 )
 
 type buildInstanceCommand struct {
-	logger       log.Logger
-	clientConfig *config.ClientConfig
+	logger         log.Logger
+	configFilePath string
+	clientConfig   *config.ClientConfig
 
+	// Required
 	assetOutputDir string
 	runType        string
 	runName        string
@@ -42,9 +46,9 @@ type buildInstanceCommand struct {
 }
 
 // NewBuildInstanceCommand initializes command to build instance for admin
-func NewBuildInstanceCommand(clientConfig *config.ClientConfig) *cobra.Command {
+func NewBuildInstanceCommand() *cobra.Command {
 	buildInstance := &buildInstanceCommand{
-		clientConfig:   clientConfig,
+		clientConfig:   &config.ClientConfig{},
 		assetOutputDir: "/tmp/",
 		runType:        "task",
 	}
@@ -59,31 +63,66 @@ func NewBuildInstanceCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		RunE:    buildInstance.RunE,
 		PreRunE: buildInstance.PreRunE,
 	}
-	cmd.Flags().StringVar(&buildInstance.assetOutputDir, "output-dir", buildInstance.assetOutputDir, "Output directory for assets")
-	cmd.MarkFlagRequired("output-dir")
-	cmd.Flags().StringVar(&buildInstance.scheduledAt, "scheduled-at", "", "Time at which the job was scheduled for execution")
-	cmd.MarkFlagRequired("scheduled-at")
-	cmd.Flags().StringVar(&buildInstance.runType, "type", "task", "Type of instance, could be task/hook")
-	cmd.MarkFlagRequired("type")
-	cmd.Flags().StringVar(&buildInstance.runName, "name", "", "Name of running instance, e.g., bq2bq/transporter/predator")
-	cmd.MarkFlagRequired("name")
 
-	cmd.Flags().StringVarP(&buildInstance.projectName, "project-name", "p", "", "Name of the optimus project")
-	cmd.Flags().StringVar(&buildInstance.host, "host", "", "Optimus service endpoint url")
+	buildInstance.injectFlags(cmd)
+
 	return cmd
 }
 
-func (b *buildInstanceCommand) PreRunE(_ *cobra.Command, _ []string) error {
-	b.logger = logger.NewClientLogger(b.clientConfig.Log)
+func (b *buildInstanceCommand) injectFlags(cmd *cobra.Command) {
+	// Config filepath flag
+	cmd.Flags().StringVarP(&b.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
 
+	// Mandatory flags
+	cmd.Flags().StringVar(&b.assetOutputDir, "output-dir", b.assetOutputDir, "Output directory for assets")
+	cmd.Flags().StringVar(&b.scheduledAt, "scheduled-at", "", "Time at which the job was scheduled for execution")
+	cmd.Flags().StringVar(&b.runType, "type", "task", "Type of instance, could be task/hook")
+	cmd.Flags().StringVar(&b.runName, "name", "", "Name of running instance, e.g., bq2bq/transporter/predator")
+	cmd.MarkFlagRequired("output-dir")
+	cmd.MarkFlagRequired("scheduled-at")
+	cmd.MarkFlagRequired("type")
+	cmd.MarkFlagRequired("name")
+
+	// Mandatory flags if config is not set
+	cmd.Flags().StringVarP(&b.projectName, "project-name", "p", "", "Name of the optimus project")
+	cmd.Flags().StringVar(&b.host, "host", "", "Optimus service endpoint url")
+}
+
+func (b *buildInstanceCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+	// Load config
+	if err := b.loadConfig(); err != nil {
+		return err
+	}
+
+	if b.clientConfig == nil {
+		b.logger = logger.NewDefaultLogger()
+		cmd.MarkFlagRequired("project-name")
+		cmd.MarkFlagRequired("host")
+		return nil
+	}
+
+	b.logger = logger.NewClientLogger(b.clientConfig.Log)
 	if b.projectName == "" {
 		b.projectName = b.clientConfig.Project.Name
 	}
-
 	if b.host == "" {
 		b.host = b.clientConfig.Host
 	}
 
+	return nil
+}
+
+func (b *buildInstanceCommand) loadConfig() error {
+	// TODO: find a way to load the config in one place
+	c, err := config.LoadClientConfig(b.configFilePath)
+	if err != nil {
+		if errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
+			b.clientConfig = nil
+			return nil
+		}
+		return err
+	}
+	*b.clientConfig = *c
 	return nil
 }
 
