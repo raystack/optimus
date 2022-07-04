@@ -12,6 +12,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/config"
 )
 
@@ -26,9 +27,9 @@ type listCommand struct {
 }
 
 // NewListCommand initializes command for listing namespace
-func NewListCommand(logger log.Logger) *cobra.Command {
+func NewListCommand() *cobra.Command {
 	list := &listCommand{
-		logger: logger,
+		logger: logger.NewDefaultLogger(),
 	}
 	cmd := &cobra.Command{
 		Use:     "list",

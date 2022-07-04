@@ -10,6 +10,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/config"
 )
 
@@ -25,9 +26,9 @@ type describeCommand struct {
 }
 
 // NewDescribeCommand initializes command to describe namespace
-func NewDescribeCommand(logger log.Logger) *cobra.Command {
+func NewDescribeCommand() *cobra.Command {
 	describe := &describeCommand{
-		logger: logger,
+		logger: logger.NewDefaultLogger(),
 	}
 
 	cmd := &cobra.Command{
