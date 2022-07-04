@@ -65,18 +65,22 @@ func New() *cli.Command {
 
 	cmdx.SetHelp(cmd)
 
-	cmd.AddCommand(admin.NewAdminCommand())
-	cmd.AddCommand(backup.NewBackupCommand())
-	cmd.AddCommand(deploy.NewDeployCommand())
-	cmd.AddCommand(initialize.NewInitializeCommand())
-	cmd.AddCommand(job.NewJobCommand())
-	cmd.AddCommand(namespace.NewNamespaceCommand())
-	cmd.AddCommand(project.NewProjectCommand())
-	cmd.AddCommand(replay.NewReplayCommand())
-	cmd.AddCommand(resource.NewResourceCommand())
-	cmd.AddCommand(secret.NewSecretCommand())
-	cmd.AddCommand(version.NewVersionCommand())
+	// Client related commands
+	cmd.AddCommand(
+		admin.NewAdminCommand(),
+		backup.NewBackupCommand(),
+		deploy.NewDeployCommand(),
+		initialize.NewInitializeCommand(),
+		job.NewJobCommand(),
+		namespace.NewNamespaceCommand(),
+		project.NewProjectCommand(),
+		replay.NewReplayCommand(),
+		resource.NewResourceCommand(),
+		secret.NewSecretCommand(),
+		version.NewVersionCommand(),
+	)
 
+	// Server related commands
 	cmd.AddCommand(serve.NewServeCommand())
 
 	extension.UpdateWithExtension(cmd)
