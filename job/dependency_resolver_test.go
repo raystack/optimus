@@ -1121,6 +1121,7 @@ func TestDependencyResolver(t *testing.T) {
 		})
 
 		t.Run("return job specs with their dependencies and nil if no error is encountered", func(t *testing.T) {
+			basePlugin := &mock.BasePlugin{}
 			jobSpecRepo := mock.NewJobSpecRepository(t)
 			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, nil, nil, nil)
 
@@ -1139,6 +1140,13 @@ func TestDependencyResolver(t *testing.T) {
 			jobSpec := models.JobSpec{
 				ID:   uuid.New(),
 				Name: "job",
+				Hooks: []models.JobSpecHook{
+					{
+						Unit: &models.Plugin{
+							Base: basePlugin,
+						},
+					},
+				},
 			}
 			staticDependencies := map[uuid.UUID][]models.JobSpec{
 				jobSpec.ID: {
@@ -1156,6 +1164,11 @@ func TestDependencyResolver(t *testing.T) {
 					},
 				},
 			}
+
+			basePlugin.On("PluginInfo").Return(&models.PluginInfoResponse{
+				Name:      "plugin-c",
+				DependsOn: []string{"plugin-c"},
+			}, nil)
 
 			jobSpecRepo.On("GetAllByProjectID", ctx, projectID).Return([]models.JobSpec{jobSpec}, nil)
 			jobSpecRepo.On("GetStaticDependenciesPerJob", ctx, projectID).Return(staticDependencies, nil)
@@ -1178,6 +1191,20 @@ func TestDependencyResolver(t *testing.T) {
 							Job: &models.JobSpec{
 								Name:          "job-b",
 								NamespaceSpec: namespaceSpec,
+							},
+						},
+					},
+					Hooks: []models.JobSpecHook{
+						{
+							Unit: &models.Plugin{
+								Base: basePlugin,
+							},
+							DependsOn: []*models.JobSpecHook{
+								{
+									Unit: &models.Plugin{
+										Base: basePlugin,
+									},
+								},
 							},
 						},
 					},
