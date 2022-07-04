@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	saltConfig "github.com/odpf/salt/config"
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 
@@ -24,12 +25,16 @@ const (
 )
 
 type refreshCommand struct {
-	logger       log.Logger
-	clientConfig *config.ClientConfig
+	logger         log.Logger
+	configFilePath string
+	clientConfig   *config.ClientConfig
 
 	verbose                bool
 	selectedNamespaceNames []string
 	selectedJobNames       []string
+
+	projectName string
+	host        string
 
 	refreshCounter        int
 	refreshSuccessCounter int
@@ -40,9 +45,9 @@ type refreshCommand struct {
 }
 
 // NewRefreshCommand initializes command for refreshing job specification
-func NewRefreshCommand(clientConfig *config.ClientConfig) *cobra.Command {
-	render := &refreshCommand{
-		clientConfig: clientConfig,
+func NewRefreshCommand() *cobra.Command {
+	refresh := &refreshCommand{
+		clientConfig: &config.ClientConfig{},
 	}
 
 	cmd := &cobra.Command{
@@ -50,29 +55,57 @@ func NewRefreshCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		Short:   "Refresh job deployments",
 		Long:    "Redeploy jobs based on current server state",
 		Example: "optimus job refresh",
-		RunE:    render.RunE,
-		PreRunE: render.PreRunE,
+		RunE:    refresh.RunE,
+		PreRunE: refresh.PreRunE,
 	}
-	cmd.Flags().BoolVarP(&render.verbose, "verbose", "v", false, "Print details related to operation")
-	cmd.Flags().StringSliceVarP(&render.selectedNamespaceNames, "namespaces", "N", nil, "Namespaces of Optimus project")
-	cmd.Flags().StringSliceVarP(&render.selectedJobNames, "jobs", "J", nil, "Job names")
+
+	refresh.injectFlags(cmd)
+
 	return cmd
 }
 
-func (r *refreshCommand) PreRunE(_ *cobra.Command, _ []string) error {
+func (r *refreshCommand) injectFlags(cmd *cobra.Command) {
+	// Config filepath flag
+	cmd.Flags().StringVarP(&r.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+
+	cmd.Flags().BoolVarP(&r.verbose, "verbose", "v", false, "Print details related to operation")
+	cmd.Flags().StringSliceVarP(&r.selectedNamespaceNames, "namespaces", "N", nil, "Namespaces of Optimus project")
+	cmd.Flags().StringSliceVarP(&r.selectedJobNames, "jobs", "J", nil, "Job names")
+
+	// Mandatory flags if config is not set
+	cmd.Flags().StringVarP(&r.projectName, "project-name", "p", "", "Name of the optimus project")
+	cmd.Flags().StringVar(&r.host, "host", "", "Optimus service endpoint url")
+}
+
+func (r *refreshCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+	// Load config
+	if err := r.loadConfig(); err != nil {
+		return err
+	}
+
+	if r.clientConfig == nil {
+		r.logger = logger.NewDefaultLogger()
+		cmd.MarkFlagRequired("project-name")
+		cmd.MarkFlagRequired("host")
+		return nil
+	}
+
 	r.logger = logger.NewClientLogger(r.clientConfig.Log)
+	if r.projectName == "" {
+		r.projectName = r.clientConfig.Project.Name
+	}
+	if r.host == "" {
+		r.host = r.clientConfig.Host
+	}
+
 	return nil
 }
 
 func (r *refreshCommand) RunE(_ *cobra.Command, _ []string) error {
-	projectName := r.clientConfig.Project.Name
-	if projectName == "" {
-		return fmt.Errorf("project configuration is required")
-	}
 	if len(r.selectedNamespaceNames) > 0 || len(r.selectedJobNames) > 0 {
 		r.logger.Info("Refreshing job dependencies of selected jobs/namespaces")
 	} else {
-		r.logger.Info(fmt.Sprintf("Refreshing job dependencies of all jobs in %s", projectName))
+		r.logger.Info(fmt.Sprintf("Refreshing job dependencies of all jobs in %s", r.projectName))
 	}
 
 	start := time.Now()
@@ -84,7 +117,7 @@ func (r *refreshCommand) RunE(_ *cobra.Command, _ []string) error {
 }
 
 func (r *refreshCommand) refreshJobSpecificationRequest() error {
-	conn, err := connectivity.NewConnectivity(r.clientConfig.Host, refreshTimeout)
+	conn, err := connectivity.NewConnectivity(r.host, refreshTimeout)
 	if err != nil {
 		return err
 	}
@@ -92,7 +125,7 @@ func (r *refreshCommand) refreshJobSpecificationRequest() error {
 
 	jobSpecService := pb.NewJobSpecificationServiceClient(conn.GetConnection())
 	respStream, err := jobSpecService.RefreshJobs(conn.GetContext(), &pb.RefreshJobsRequest{
-		ProjectName:    r.clientConfig.Project.Name,
+		ProjectName:    r.projectName,
 		NamespaceNames: r.selectedNamespaceNames,
 		JobNames:       r.selectedJobNames,
 	})
@@ -169,4 +202,18 @@ func (r *refreshCommand) resetCounters() {
 	r.deployCounter = 0
 	r.deploySuccessCounter = 0
 	r.deployFailedCounter = 0
+}
+
+func (r *refreshCommand) loadConfig() error {
+	// TODO: find a way to load the config in one place
+	c, err := config.LoadClientConfig(r.configFilePath)
+	if err != nil {
+		if errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
+			r.clientConfig = nil
+			return nil
+		}
+		return err
+	}
+	*r.clientConfig = *c
+	return nil
 }

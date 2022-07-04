@@ -21,15 +21,16 @@ import (
 
 type renderCommand struct {
 	logger          log.Logger
+	configFilePath  string
 	clientConfig    *config.ClientConfig
 	jobSurvey       *survey.JobSurvey
 	namespaceSurvey *survey.NamespaceSurvey
 }
 
 // NewRenderCommand initializes command for rendering job specification
-func NewRenderCommand(clientConfig *config.ClientConfig) *cobra.Command {
+func NewRenderCommand() *cobra.Command {
 	render := &renderCommand{
-		clientConfig: clientConfig,
+		clientConfig: &config.ClientConfig{},
 	}
 	cmd := &cobra.Command{
 		Use:     "render",
@@ -39,10 +40,19 @@ func NewRenderCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		RunE:    render.RunE,
 		PreRunE: render.PreRunE,
 	}
+
+	// Config filepath flag
+	cmd.Flags().StringVarP(&render.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+
 	return cmd
 }
 
 func (r *renderCommand) PreRunE(_ *cobra.Command, _ []string) error {
+	// Load mandatory config
+	if err := r.loadConfig(); err != nil {
+		return err
+	}
+
 	r.logger = logger.NewClientLogger(r.clientConfig.Log)
 	r.jobSurvey = survey.NewJobSurvey()
 	r.namespaceSurvey = survey.NewNamespaceSurvey(r.logger)
@@ -50,7 +60,7 @@ func (r *renderCommand) PreRunE(_ *cobra.Command, _ []string) error {
 }
 
 func (r *renderCommand) RunE(_ *cobra.Command, args []string) error {
-	namespace, err := r.namespaceSurvey.AskToSelectNamespace(r.clientConfig) 
+	namespace, err := r.namespaceSurvey.AskToSelectNamespace(r.clientConfig)
 	if err != nil {
 		return err
 	}
@@ -103,4 +113,14 @@ func (r *renderCommand) getJobSpecByName(args []string, namespaceJobPath string)
 		jobName = args[0]
 	}
 	return jobSpecRepo.GetByName(jobName)
+}
+
+func (r *renderCommand) loadConfig() error {
+	// TODO: find a way to load the config in one place
+	conf, err := config.LoadClientConfig(r.configFilePath)
+	if err != nil {
+		return err
+	}
+	*r.clientConfig = *conf
+	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	saltConfig "github.com/odpf/salt/config"
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -19,17 +20,20 @@ import (
 const jobStatusTimeout = time.Second * 30
 
 type runListCommand struct {
-	logger       log.Logger
-	clientConfig *config.ClientConfig
+	logger         log.Logger
+	configFilePath string
+	clientConfig   *config.ClientConfig
 
-	startDate string
-	endDate   string
+	startDate   string
+	endDate     string
+	projectName string
+	host        string
 }
 
 // NewRunListCommand initializes run list command
-func NewRunListCommand(clientConfig *config.ClientConfig) *cobra.Command {
+func NewRunListCommand() *cobra.Command {
 	run := &runListCommand{
-		clientConfig: clientConfig,
+		clientConfig: &config.ClientConfig{},
 	}
 
 	cmd := &cobra.Command{
@@ -40,22 +44,52 @@ func NewRunListCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		RunE:    run.RunE,
 		PreRunE: run.PreRunE,
 	}
-	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
-	cmd.Flags().String("host", defaultHost, "Optimus service endpoint url")
-	cmd.Flags().StringVar(&run.startDate, "start_date", "", "start date of job run")
-	cmd.Flags().StringVar(&run.endDate, "end_date", "", "end date of job run")
+
+	run.injectFlags(cmd)
+
 	return cmd
 }
 
-func (r *runListCommand) PreRunE(_ *cobra.Command, _ []string) error {
+func (r *runListCommand) injectFlags(cmd *cobra.Command) {
+	// Config filepath flag
+	cmd.Flags().StringVarP(&r.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+
+	cmd.Flags().StringVar(&r.startDate, "start_date", "", "start date of job run")
+	cmd.Flags().StringVar(&r.endDate, "end_date", "", "end date of job run")
+
+	// Mandatory flags if config is not set
+	cmd.Flags().StringVarP(&r.projectName, "project-name", "p", "", "Name of the optimus project")
+	cmd.Flags().StringVar(&r.host, "host", "", "Optimus service endpoint url")
+}
+
+func (r *runListCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+	// Load config
+	if err := r.loadConfig(); err != nil {
+		return err
+	}
+
+	if r.clientConfig == nil {
+		r.logger = logger.NewDefaultLogger()
+		cmd.MarkFlagRequired("project-name")
+		cmd.MarkFlagRequired("host")
+		return nil
+	}
+
 	r.logger = logger.NewClientLogger(r.clientConfig.Log)
+	if r.projectName == "" {
+		r.projectName = r.clientConfig.Project.Name
+	}
+	if r.host == "" {
+		r.host = r.clientConfig.Host
+	}
+
 	return nil
 }
 
 func (r *runListCommand) RunE(_ *cobra.Command, args []string) error {
 	jobName := args[0]
 	r.logger.Info(fmt.Sprintf("Requesting status for project %s, job %s from %s",
-		r.clientConfig.Project.Name, jobName, r.clientConfig.Host))
+		r.projectName, jobName, r.host))
 
 	if err := r.validateDateArgs(r.startDate, r.endDate); err != nil {
 		return err
@@ -70,7 +104,7 @@ func (r *runListCommand) RunE(_ *cobra.Command, args []string) error {
 }
 
 func (r *runListCommand) callJobRun(jobRunRequest *pb.JobRunRequest) error {
-	conn, err := connectivity.NewConnectivity(r.clientConfig.Host, jobStatusTimeout)
+	conn, err := connectivity.NewConnectivity(r.host, jobStatusTimeout)
 	if err != nil {
 		return err
 	}
@@ -97,7 +131,7 @@ func (r *runListCommand) createJobRunRequest(jobName, startDate, endDate string)
 	var req *pb.JobRunRequest
 	if startDate == "" && endDate == "" {
 		req = &pb.JobRunRequest{
-			ProjectName: r.clientConfig.Project.Name,
+			ProjectName: r.projectName,
 			JobName:     jobName,
 		}
 		return req, nil
@@ -113,7 +147,7 @@ func (r *runListCommand) createJobRunRequest(jobName, startDate, endDate string)
 	}
 	eDate := timestamppb.New(end)
 	req = &pb.JobRunRequest{
-		ProjectName: r.clientConfig.Project.Name,
+		ProjectName: r.projectName,
 		JobName:     jobName,
 		StartDate:   sDate,
 		EndDate:     eDate,
@@ -128,5 +162,19 @@ func (*runListCommand) validateDateArgs(startDate, endDate string) error {
 	if startDate != "" && endDate == "" {
 		return errors.New("please provide the end date")
 	}
+	return nil
+}
+
+func (r *runListCommand) loadConfig() error {
+	// TODO: find a way to load the config in one place
+	c, err := config.LoadClientConfig(r.configFilePath)
+	if err != nil {
+		if errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
+			r.clientConfig = nil
+			return nil
+		}
+		return err
+	}
+	*r.clientConfig = *c
 	return nil
 }
