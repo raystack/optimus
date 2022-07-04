@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	saltConfig "github.com/odpf/salt/config"
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 	"github.com/xlab/treeprint"
@@ -19,14 +20,18 @@ import (
 )
 
 type statusCommand struct {
-	logger       log.Logger
-	clientConfig *config.ClientConfig
+	logger         log.Logger
+	configFilePath string
+	clientConfig   *config.ClientConfig
+
+	projectName string
+	host        string
 }
 
 // NewStatusCommand initializes command for replay status
-func NewStatusCommand(clientConfig *config.ClientConfig) *cobra.Command {
+func NewStatusCommand() *cobra.Command {
 	status := &statusCommand{
-		clientConfig: clientConfig,
+		clientConfig: &config.ClientConfig{},
 	}
 
 	cmd := &cobra.Command{
@@ -46,16 +51,47 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 		RunE:    status.RunE,
 		PreRunE: status.PreRunE,
 	}
+
+	status.injectFlags(cmd)
+
 	return cmd
 }
 
-func (s *statusCommand) PreRunE(_ *cobra.Command, _ []string) error {
+func (s *statusCommand) injectFlags(cmd *cobra.Command) {
+	// Config filepath flag
+	cmd.Flags().StringVarP(&s.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+
+	// Mandatory flags if config is not set
+	cmd.Flags().StringVarP(&s.projectName, "project-name", "p", "", "Name of the optimus project")
+	cmd.Flags().StringVar(&s.host, "host", "", "Optimus service endpoint url")
+}
+
+func (s *statusCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+	// Load config
+	if err := s.loadConfig(); err != nil {
+		return err
+	}
+
+	if s.clientConfig == nil {
+		s.logger = logger.NewDefaultLogger()
+		cmd.MarkFlagRequired("project-name")
+		cmd.MarkFlagRequired("host")
+		return nil
+	}
+
 	s.logger = logger.NewClientLogger(s.clientConfig.Log)
+	if s.projectName == "" {
+		s.projectName = s.clientConfig.Project.Name
+	}
+	if s.host == "" {
+		s.host = s.clientConfig.Host
+	}
+
 	return nil
 }
 
 func (s *statusCommand) RunE(_ *cobra.Command, args []string) error {
-	conn, err := connectivity.NewConnectivity(s.clientConfig.Host, replayTimeout)
+	conn, err := connectivity.NewConnectivity(s.host, replayTimeout)
 	if err != nil {
 		return err
 	}
@@ -64,7 +100,7 @@ func (s *statusCommand) RunE(_ *cobra.Command, args []string) error {
 	replay := pb.NewReplayServiceClient(conn.GetConnection())
 	replayStatusRequest := &pb.GetReplayStatusRequest{
 		Id:          args[0],
-		ProjectName: s.clientConfig.Project.Name,
+		ProjectName: s.projectName,
 	}
 	spinner := progressbar.NewProgressBar()
 	spinner.Start("please wait...")
@@ -103,4 +139,18 @@ func (s *statusCommand) printStatusTree(instance *pb.ReplayStatusTreeNode, tree 
 		s.printStatusTree(childInstance, subtree)
 	}
 	return tree
+}
+
+func (s *statusCommand) loadConfig() error {
+	// TODO: find a way to load the config in one place
+	c, err := config.LoadClientConfig(s.configFilePath)
+	if err != nil {
+		if errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
+			s.clientConfig = nil
+			return nil
+		}
+		return err
+	}
+	*s.clientConfig = *c
+	return nil
 }
