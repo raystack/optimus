@@ -98,29 +98,18 @@ func (repo jobSpecRepository) getDependentJobsStatic(ctx context.Context, jobSpe
 }
 
 func (repo jobSpecRepository) GetInferredDependenciesPerJob(ctx context.Context, projectID models.ProjectID) (map[uuid.UUID][]models.JobSpec, error) {
-	var jobDependencies []JobDependency
-
+	var jobDependencies []jobDependency
 	if err := repo.db.WithContext(ctx).Preload("DependencyNamespace").Preload("DependencyProject").
 		Select("js.job_id, j.id as dependency_id, j.name as dependency_name, j.namespace_id as dependency_namespace_id, j.project_id as dependency_project_id").
 		Joins("join job j on js.resource_urn = j.destination").Table("job_source js").
 		Where("js.project_id = ?", projectID.UUID()).Find(&jobDependencies).Error; err != nil {
 		return nil, err
 	}
-
-	jobIDDependenciesMap := make(map[uuid.UUID][]models.JobSpec)
-	for _, dependency := range jobDependencies {
-		dependencyJobSpec, err := DependencyToJobSpec(dependency)
-		if err != nil {
-			return nil, err
-		}
-		jobIDDependenciesMap[dependency.JobID] = append(jobIDDependenciesMap[dependency.JobID], dependencyJobSpec)
-	}
-
-	return jobIDDependenciesMap, nil
+	return groupToDependenciesPerJob(jobDependencies)
 }
 
 func (repo jobSpecRepository) GetStaticDependenciesPerJob(ctx context.Context, projectID models.ProjectID) (map[uuid.UUID][]models.JobSpec, error) {
-	var jobDependencies []JobDependency
+	var jobDependencies []jobDependency
 
 	requestedJobsQuery := repo.db.Select("id, name, jsonb_object_keys(dependencies) as dependency_name").Table("job").Where("project_id = ?", projectID.UUID())
 	dependenciesQuery := repo.db.Select("j.id, j.name, j.namespace_id, j.project_id, p.name as project_name").Table("job j").Joins("join project p on j.project_id = p.id")
@@ -131,17 +120,7 @@ func (repo jobSpecRepository) GetStaticDependenciesPerJob(ctx context.Context, p
 		Find(&jobDependencies).Error; err != nil {
 		return nil, err
 	}
-
-	jobIDDependenciesMap := make(map[uuid.UUID][]models.JobSpec)
-	for _, dependency := range jobDependencies {
-		dependencyJobSpec, err := DependencyToJobSpec(dependency)
-		if err != nil {
-			return nil, err
-		}
-		jobIDDependenciesMap[dependency.JobID] = append(jobIDDependenciesMap[dependency.JobID], dependencyJobSpec)
-	}
-
-	return jobIDDependenciesMap, nil
+	return groupToDependenciesPerJob(jobDependencies)
 }
 
 func NewJobSpecRepository(db *gorm.DB, adapter *JobSpecAdapter) *jobSpecRepository {

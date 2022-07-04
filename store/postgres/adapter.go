@@ -523,7 +523,7 @@ func (adapt JobSpecAdapter) ToJobRun(jr JobRun) (models.JobRun, models.Namespace
 	}, adaptNamespace, nil
 }
 
-type JobDependency struct {
+type jobDependency struct {
 	JobID uuid.UUID `json:"job_id"`
 
 	DependencyID   uuid.UUID `json:"dependency_id"`
@@ -536,8 +536,20 @@ type JobDependency struct {
 	DependencyNamespace   Namespace `gorm:"foreignKey:DependencyNamespaceID"`
 }
 
-// DependencyToJobSpec converts the postgres' JobDependency representation to the optimus' JobSpec
-func DependencyToJobSpec(conf JobDependency) (models.JobSpec, error) {
+func groupToDependenciesPerJob(jobDependencies []jobDependency) (map[uuid.UUID][]models.JobSpec, error) {
+	jobIDDependenciesMap := make(map[uuid.UUID][]models.JobSpec)
+	for _, dependency := range jobDependencies {
+		dependencyJobSpec, err := dependencyToJobSpec(dependency)
+		if err != nil {
+			return nil, err
+		}
+		jobIDDependenciesMap[dependency.JobID] = append(jobIDDependenciesMap[dependency.JobID], dependencyJobSpec)
+	}
+	return jobIDDependenciesMap, nil
+}
+
+// dependencyToJobSpec converts the postgres' JobDependency representation to the optimus' JobSpec
+func dependencyToJobSpec(conf jobDependency) (models.JobSpec, error) {
 	namespaceSpec, err := conf.DependencyNamespace.ToSpec(conf.DependencyProject.ToSpec())
 	if err != nil {
 		return models.JobSpec{}, fmt.Errorf("getting namespace spec of a job error: %w", err)
