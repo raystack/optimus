@@ -230,6 +230,22 @@ func (repo *JobSpecRepository) GetDependentJobs(ctx context.Context, jobSpec *mo
 	return []models.JobSpec{}, args.Error(1)
 }
 
+func (repo *JobSpecRepository) GetInferredDependenciesPerJob(ctx context.Context, projectID models.ProjectID) (map[uuid.UUID][]models.JobSpec, error) {
+	args := repo.Called(ctx, projectID)
+	if args.Get(0) != nil {
+		return args.Get(0).(map[uuid.UUID][]models.JobSpec), args.Error(1)
+	}
+	return map[uuid.UUID][]models.JobSpec{}, args.Error(1)
+}
+
+func (repo *JobSpecRepository) GetStaticDependenciesPerJob(ctx context.Context, projectID models.ProjectID) (map[uuid.UUID][]models.JobSpec, error) {
+	args := repo.Called(ctx, projectID)
+	if args.Get(0) != nil {
+		return args.Get(0).(map[uuid.UUID][]models.JobSpec), args.Error(1)
+	}
+	return map[uuid.UUID][]models.JobSpec{}, args.Error(1)
+}
+
 // NamespaceJobSpecRepoFactory to store raw specs at namespace level
 type NamespaceJobSpecRepoFactory struct {
 	mock.Mock

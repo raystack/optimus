@@ -522,3 +522,31 @@ func (adapt JobSpecAdapter) ToJobRun(jr JobRun) (models.JobRun, models.Namespace
 		ExecutedAt:  adaptedData.ExecutedAt,
 	}, adaptNamespace, nil
 }
+
+type JobDependency struct {
+	JobID uuid.UUID `json:"job_id"`
+
+	DependencyID   uuid.UUID `json:"dependency_id"`
+	DependencyName string    `json:"dependency_name"`
+
+	DependencyProjectID uuid.UUID `json:"dependency_project_id"`
+	DependencyProject   Project   `gorm:"foreignKey:DependencyProjectID"`
+
+	DependencyNamespaceID uuid.UUID `json:"dependency_namespace_id"`
+	DependencyNamespace   Namespace `gorm:"foreignKey:DependencyNamespaceID"`
+}
+
+// DependencyToJobSpec converts the postgres' JobDependency representation to the optimus' JobSpec
+func DependencyToJobSpec(conf JobDependency) (models.JobSpec, error) {
+	namespaceSpec, err := conf.DependencyNamespace.ToSpec(conf.DependencyProject.ToSpec())
+	if err != nil {
+		return models.JobSpec{}, fmt.Errorf("getting namespace spec of a job error: %w", err)
+	}
+
+	job := models.JobSpec{
+		ID:            conf.DependencyID,
+		Name:          conf.DependencyName,
+		NamespaceSpec: namespaceSpec,
+	}
+	return job, nil
+}
