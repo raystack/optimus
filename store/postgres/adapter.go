@@ -526,8 +526,9 @@ func (adapt JobSpecAdapter) ToJobRun(jr JobRun) (models.JobRun, models.Namespace
 type jobDependency struct {
 	JobID uuid.UUID `json:"job_id"`
 
-	DependencyID   uuid.UUID `json:"dependency_id"`
-	DependencyName string    `json:"dependency_name"`
+	DependencyID       uuid.UUID `json:"dependency_id"`
+	DependencyName     string    `json:"dependency_name"`
+	DependencyTaskName string    `json:"dependency_task_name"`
 
 	DependencyProjectID uuid.UUID `json:"dependency_project_id"`
 	DependencyProject   Project   `gorm:"foreignKey:DependencyProjectID"`
@@ -536,10 +537,10 @@ type jobDependency struct {
 	DependencyNamespace   Namespace `gorm:"foreignKey:DependencyNamespaceID"`
 }
 
-func groupToDependenciesPerJob(jobDependencies []jobDependency) (map[uuid.UUID][]models.JobSpec, error) {
+func (adapt JobSpecAdapter) groupToDependenciesPerJob(jobDependencies []jobDependency) (map[uuid.UUID][]models.JobSpec, error) {
 	jobIDDependenciesMap := make(map[uuid.UUID][]models.JobSpec)
 	for _, dependency := range jobDependencies {
-		dependencyJobSpec, err := dependencyToJobSpec(dependency)
+		dependencyJobSpec, err := adapt.dependencyToJobSpec(dependency)
 		if err != nil {
 			return nil, err
 		}
@@ -549,15 +550,21 @@ func groupToDependenciesPerJob(jobDependencies []jobDependency) (map[uuid.UUID][
 }
 
 // dependencyToJobSpec converts the postgres' JobDependency representation to the optimus' JobSpec
-func dependencyToJobSpec(conf jobDependency) (models.JobSpec, error) {
+func (adapt JobSpecAdapter) dependencyToJobSpec(conf jobDependency) (models.JobSpec, error) {
 	namespaceSpec, err := conf.DependencyNamespace.ToSpec(conf.DependencyProject.ToSpec())
 	if err != nil {
 		return models.JobSpec{}, fmt.Errorf("getting namespace spec of a job error: %w", err)
 	}
 
+	execUnit, err := adapt.pluginRepo.GetByName(conf.DependencyTaskName)
+	if err != nil {
+		return models.JobSpec{}, fmt.Errorf("spec reading error: %w", err)
+	}
+
 	job := models.JobSpec{
 		ID:            conf.DependencyID,
 		Name:          conf.DependencyName,
+		Task:          models.JobSpecTask{Unit: execUnit},
 		NamespaceSpec: namespaceSpec,
 	}
 	return job, nil

@@ -186,22 +186,6 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
 {{ $baseWindow := $.Job.Task.Window }}
 {{- range $_, $dependency := $.Job.Dependencies}}
 {{- $dependencySchema := $dependency.Job.Task.Unit.Info }}
-
-{{- if eq $dependency.Type $.JobSpecDependencyTypeIntra }}
-wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
-    optimus_hostname="{{$.Hostname}}",
-    upstream_optimus_project="{{$.Namespace.ProjectSpec.Name}}",
-    upstream_optimus_namespace="{{$.Namespace.Name}}",
-    upstream_optimus_job="{{$dependency.Job.Name}}",
-    window_size="{{ $baseWindow.Size.String }}",
-    poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
-    timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
-    task_id="wait_{{$dependency.Job.Name | trunc 200}}-{{$dependencySchema.Name}}",
-    dag=dag
-)
-{{- end -}}
-
-{{- if eq $dependency.Type $.JobSpecDependencyTypeInter }}
 wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
     optimus_hostname="{{$.Hostname}}",
     upstream_optimus_project="{{$dependency.Project.Name}}",
@@ -213,7 +197,6 @@ wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} =
     task_id="wait_{{$dependency.Job.Name | trunc 200}}-{{$dependencySchema.Name}}",
     dag=dag
 )
-{{- end -}}
 {{- end}}
 
 {{- range $_, $httpDependency := $.Job.ExternalDependencies.HTTPDependencies}}
