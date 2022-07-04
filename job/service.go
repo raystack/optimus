@@ -482,8 +482,7 @@ func (srv *Service) isDependency(ctx context.Context, jobSpec models.JobSpec) (b
 
 func (srv *Service) GetByDestination(ctx context.Context, projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
 	// generate job spec using datastore destination. if a destination can be owned by multiple jobs, need to change to list
-	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
-	jobSpec, err := projectJobSpecRepo.GetByDestination(ctx, destination)
+	jobSpec, err := srv.jobSpecRepository.GetJobByResourceDestination(ctx, destination)
 	if err != nil {
 		return models.JobSpec{}, err
 	}

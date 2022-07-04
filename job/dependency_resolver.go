@@ -58,7 +58,7 @@ func (d *dependencyResolver) Resolve(ctx context.Context, projectSpec models.Pro
 
 	projectJobSpecRepo := d.projectJobSpecRepoFactory.New(projectSpec)
 	// resolve inter/intra dependencies inferred by optimus
-	jobSpec, err := d.resolveInferredDependencies(ctx, jobSpec, projectSpec, projectJobSpecRepo, observer)
+	jobSpec, err := d.resolveInferredDependencies(ctx, jobSpec, projectSpec, observer)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
@@ -131,7 +131,7 @@ func (*dependencyResolver) ResolveStaticDependencies(ctx context.Context, jobSpe
 
 // TODO: this method will be deprecated (should be refactored to separate responsibility)
 func (d *dependencyResolver) resolveInferredDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
-	projectJobSpecRepo store.ProjectJobSpecRepository, observer progress.Observer) (models.JobSpec, error) {
+	observer progress.Observer) (models.JobSpec, error) {
 	// get destinations of dependencies, assets should be dependent on
 	namespace := jobSpec.NamespaceSpec
 	namespace.ProjectSpec = projectSpec // TODO: Temp fix to to get secrets from project
@@ -152,7 +152,7 @@ func (d *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 
 	// get job spec of these destinations and append to current jobSpec
 	for _, depDestination := range jobDependencies {
-		dependencyJobSpec, err := projectJobSpecRepo.GetByDestination(ctx, depDestination)
+		dependencyJobSpec, err := d.jobSpecRepo.GetJobByResourceDestination(ctx, depDestination)
 		if err != nil {
 			if errors.Is(err, store.ErrResourceNotFound) {
 				// should not fail for unknown dependency, its okay to not have a upstream job

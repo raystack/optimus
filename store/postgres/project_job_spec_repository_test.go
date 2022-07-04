@@ -33,13 +33,6 @@ func TestIntegrationProjectJobSpecRepository(t *testing.T) {
 			"bucket": "gs://some_folder",
 		},
 	}
-	externalProjectSpec := models.ProjectSpec{
-		ID:   models.ProjectID(uuid.New()),
-		Name: "t2-optimus-id",
-		Config: map[string]string{
-			"bucket": "gs://some_folder",
-		},
-	}
 
 	gTask := "g-task"
 	tTask := "t-task"
@@ -201,26 +194,6 @@ func TestIntegrationProjectJobSpecRepository(t *testing.T) {
 		assert.Equal(t, 2, len(checkModels))
 	})
 
-	t.Run("GetByDestination", func(t *testing.T) {
-		db := DBSetup()
-
-		defer execUnit1.AssertExpectations(t)
-		defer execUnit2.AssertExpectations(t)
-
-		testModels := []models.JobSpec{}
-		testModels = append(testModels, testConfigs...)
-
-		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-		jobRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-		err := jobRepo.Insert(ctx, testModels[0], jobDestination)
-		assert.Nil(t, err)
-
-		spec, err := projectJobSpecRepo.GetByDestination(ctx, jobDestination)
-		assert.Nil(t, err)
-		assert.Equal(t, testConfigs[0].Name, spec.Name)
-		assert.Equal(t, projectSpec.Name, spec.NamespaceSpec.ProjectSpec.Name)
-	})
-
 	t.Run("GetByNameForProject", func(t *testing.T) {
 		db := DBSetup()
 
@@ -298,37 +271,5 @@ func TestIntegrationProjectJobSpecRepository(t *testing.T) {
 		checkModels, err := projectJobSpecRepo.GetByIDs(ctx, []uuid.UUID{testModels[0].ID, testModels[2].ID})
 		assert.Nil(t, err)
 		assert.Equal(t, 2, len(checkModels))
-	})
-
-	t.Run("GetByDestinations", func(t *testing.T) {
-		db := DBSetup()
-
-		defer execUnit1.AssertExpectations(t)
-
-		execUnit2.On("PluginInfo").Return(&models.PluginInfoResponse{Name: tTask}, nil)
-		defer execUnit2.AssertExpectations(t)
-
-		testModels := []models.JobSpec{}
-		testModels = append(testModels, testConfigs...)
-
-		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-		jobRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-
-		externalProjectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, externalProjectSpec, adapter)
-		externalJobRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, externalProjectJobSpecRepo, adapter)
-
-		jobDestinations := []string{
-			"resource-a",
-			"resource-b",
-		}
-		err := jobRepo.Insert(ctx, testModels[0], jobDestinations[0])
-		assert.Nil(t, err)
-
-		err = externalJobRepo.Insert(ctx, testModels[2], jobDestinations[1])
-		assert.Nil(t, err)
-
-		specs, err := projectJobSpecRepo.GetByDestinations(ctx, jobDestinations)
-		assert.Nil(t, err)
-		assert.EqualValues(t, []string{testConfigs[0].Name, testConfigs[2].Name}, []string{specs[0].Name, specs[1].Name})
 	})
 }

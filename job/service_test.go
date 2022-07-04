@@ -1520,15 +1520,11 @@ func TestService(t *testing.T) {
 			destination := "resource-urn"
 			jobSpec1 := models.JobSpec{Name: "dag1-no-deps", Dependencies: map[string]models.JobSpecDependency{}, NamespaceSpec: namespaceSpec}
 
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-			projectJobSpecRepo.On("GetByDestination", ctx, destination).Return(jobSpec1, nil)
+			jobSpecRepository := new(mock.JobSpecRepository)
+			jobSpecRepository.On("GetJobByResourceDestination", ctx, destination).Return(jobSpec1, nil)
+			defer jobSpecRepository.AssertExpectations(t)
 
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
-
-			svc := job.NewService(nil, nil, nil, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil, nil, nil)
+			svc := job.NewService(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, jobSpecRepository, nil)
 			jobSpecsResult, err := svc.GetByDestination(ctx, projSpec, destination)
 			assert.Nil(t, err)
 			assert.Equal(t, jobSpec1, jobSpecsResult)
@@ -1539,16 +1535,12 @@ func TestService(t *testing.T) {
 			}
 			destination := "resource-urn"
 
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
+			jobSpecRepository := new(mock.JobSpecRepository)
+			defer jobSpecRepository.AssertExpectations(t)
 			errorMsg := "unable to fetch jobspec"
-			projectJobSpecRepo.On("GetByDestination", ctx, destination).Return(models.JobSpec{}, errors.New(errorMsg))
+			jobSpecRepository.On("GetJobByResourceDestination", ctx, destination).Return(models.JobSpec{}, errors.New(errorMsg))
 
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
-
-			svc := job.NewService(nil, nil, nil, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil, nil, nil)
+			svc := job.NewService(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, jobSpecRepository, nil)
 			jobSpecsResult, err := svc.GetByDestination(ctx, projSpec, destination)
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Equal(t, models.JobSpec{}, jobSpecsResult)

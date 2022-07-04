@@ -128,39 +128,6 @@ func (repo *ProjectJobSpecRepository) GetByNameForProject(ctx context.Context, p
 	return jSpec, pSpec, err
 }
 
-func (repo *ProjectJobSpecRepository) GetByDestination(ctx context.Context, destination string) (models.JobSpec, error) {
-	var res Job
-	if err := repo.db.WithContext(ctx).Preload("Project").Preload("Namespace").Where("destination = ?", destination).First(&res).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return models.JobSpec{}, store.ErrResourceNotFound
-		}
-		return models.JobSpec{}, err
-	}
-
-	return repo.adapter.ToSpec(res)
-}
-
-func (repo *ProjectJobSpecRepository) GetByDestinations(ctx context.Context, destinations []string) ([]models.JobSpec, error) {
-	var jobs []Job
-	if err := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project").Where("destination in ?", destinations).Find(&jobs).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, store.ErrResourceNotFound
-		}
-		return nil, err
-	}
-
-	var jobSpecs []models.JobSpec
-	for _, job := range jobs {
-		jobSpec, err := repo.adapter.ToSpec(job)
-		if err != nil {
-			return nil, err
-		}
-		jobSpecs = append(jobSpecs, jobSpec)
-	}
-
-	return jobSpecs, nil
-}
-
 func (repo *ProjectJobSpecRepository) GetJobNamespaces(ctx context.Context) (map[string][]string, error) {
 	repo.mu.Lock()
 	defer repo.mu.Unlock()

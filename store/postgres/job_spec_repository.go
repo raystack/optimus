@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -59,13 +60,11 @@ func (repo jobSpecRepository) GetJobByName(ctx context.Context, jobName string) 
 func (repo jobSpecRepository) GetJobByResourceDestination(ctx context.Context, resourceDestination string) (models.JobSpec, error) {
 	var job Job
 	if err := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project").Where("destination = ?", resourceDestination).First(&job).Error; err != nil {
-		return models.JobSpec{}, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.JobSpec{}, store.ErrResourceNotFound
+		}
 	}
-	jobSpec, err := repo.adapter.ToSpec(job)
-	if err != nil {
-		return models.JobSpec{}, err
-	}
-	return jobSpec, nil
+	return repo.adapter.ToSpec(job)
 }
 
 func (repo jobSpecRepository) GetDependentJobs(ctx context.Context, jobSpec *models.JobSpec) ([]models.JobSpec, error) {

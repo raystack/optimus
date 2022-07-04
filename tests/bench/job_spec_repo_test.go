@@ -209,32 +209,6 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 		}
 	})
 
-	b.Run("GetByDestination", func(b *testing.B) {
-		db := dbSetup()
-
-		var repo store.ProjectJobSpecRepository = postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var namespaceJobSpecRepo = postgres.NewNamespaceJobSpecRepository(db, namespace, repo, adapter)
-
-		for i := 0; i < 1000; i++ {
-			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
-			err := namespaceJobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
-			if err != nil {
-				panic(err)
-			}
-		}
-		b.ResetTimer()
-
-		for i := 0; i < b.N; i++ {
-			num := i % 1000
-			dest := fmt.Sprintf("bigquery://integration:playground.table%d", num)
-
-			_, err := repo.GetByDestination(ctx, dest)
-			if err != nil {
-				panic(err)
-			}
-		}
-	})
-
 	b.Run("GetByNameForProject", func(b *testing.B) {
 		db := dbSetup()
 
