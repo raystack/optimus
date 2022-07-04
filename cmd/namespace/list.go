@@ -84,7 +84,7 @@ func (l *listCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func (l *listCommand) RunE(cmd *cobra.Command, _ []string) error {
+func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 	l.logger.Info(fmt.Sprintf("Getting all namespaces for project [%s] from [%s]", l.projectName, l.host))
 	namespacesFromServer, err := l.listNamespacesFromServer(l.host, l.projectName)
 	if err != nil {

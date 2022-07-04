@@ -88,7 +88,7 @@ func (d *describeCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func (d *describeCommand) RunE(cmd *cobra.Command, _ []string) error {
+func (d *describeCommand) RunE(_ *cobra.Command, _ []string) error {
 	d.logger.Info(
 		fmt.Sprintf("Getting namespace [%s] in project [%s] from [%s]",
 			d.namespaceName, d.projectName, d.host,

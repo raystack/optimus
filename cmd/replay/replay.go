@@ -7,8 +7,7 @@ import (
 )
 
 const (
-	replayTimeout      = time.Minute * 15
-	defaultProjectName = "sample_project"
+	replayTimeout = time.Minute * 15
 )
 
 // NewReplayCommand initializes replay command

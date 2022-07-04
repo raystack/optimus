@@ -86,7 +86,7 @@ func (v *versionCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	return err
 }
 
-func (v *versionCommand) RunE(cmd *cobra.Command, _ []string) error {
+func (v *versionCommand) RunE(_ *cobra.Command, _ []string) error {
 	// Print client version
 	v.logger.Info(fmt.Sprintf("Client: %s-%s", logger.ColoredNotice(config.BuildVersion), logger.ColoredNotice(config.BuildCommit)))
 

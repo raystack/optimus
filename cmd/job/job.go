@@ -7,11 +7,6 @@ import (
 	"github.com/odpf/optimus/config"
 )
 
-const (
-	defaultProjectName = "sample_project"
-	defaultHost        = "localhost:9100"
-)
-
 type jobCommand struct {
 	pluginCleanFn func()
 }
@@ -41,7 +36,7 @@ func NewJobCommand() *cobra.Command {
 	return cmd
 }
 
-func (j *jobCommand) PersistentPreRunE(cmd *cobra.Command, _ []string) error {
+func (j *jobCommand) PersistentPreRunE(_ *cobra.Command, _ []string) error {
 	// TODO: refactor initialize client deps
 	var err error
 	j.pluginCleanFn, err = plugin.TriggerClientPluginsInit(config.LogLevelInfo)

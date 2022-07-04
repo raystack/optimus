@@ -45,6 +45,8 @@ func NewStatusCommand() *cobra.Command {
 		PreRunE: status.PreRunE,
 	}
 
+	status.injectFlags(cmd)
+
 	return cmd
 }
 

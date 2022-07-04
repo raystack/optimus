@@ -14,8 +14,7 @@ import (
 )
 
 const (
-	secretTimeout      = time.Minute * 2
-	defaultProjectName = "sample_project"
+	secretTimeout = time.Minute * 2
 )
 
 // NewSecretCommand initializes command for secret
