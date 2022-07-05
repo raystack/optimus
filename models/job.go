@@ -370,7 +370,7 @@ type ExternalDependency struct {
 
 type NeighborDependency struct {
 	Name    string
-	URL     string
+	Host    string
 	Headers map[string]string
 
 	ProjectName   string

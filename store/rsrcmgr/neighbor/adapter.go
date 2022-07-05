@@ -1,4 +1,8 @@
-package http
+package neighbor
+
+import (
+	"github.com/odpf/optimus/models"
+)
 
 type getJobSpecificationsResponse struct {
 	Jobs []jobSpecificationResponse `json:"jobs"`
@@ -93,4 +97,24 @@ type httpDependency struct {
 type jobConfigItem struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
+}
+
+func toJobSpecs(responses []jobSpecificationResponse) []models.JobSpec {
+	output := make([]models.JobSpec, len(responses))
+	for i, r := range responses {
+		output[i] = toJobSpec(r)
+	}
+	return output
+}
+
+func toJobSpec(response jobSpecificationResponse) models.JobSpec {
+	return models.JobSpec{
+		Name: response.Job.Name,
+		NamespaceSpec: models.NamespaceSpec{
+			Name: response.NamespaceName,
+			ProjectSpec: models.ProjectSpec{
+				Name: response.ProjectName,
+			},
+		},
+	}
 }

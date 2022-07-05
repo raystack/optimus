@@ -61,3 +61,8 @@ type ResourceManager struct {
 	Description string      `mapstructure:"description"`
 	Config      interface{} `mapstructure:"config"`
 }
+
+type ResourceManagerConfigOptimus struct {
+	Host    string            `mapstructure:"host"`
+	Headers map[string]string `mapstructure:"headers"`
+}

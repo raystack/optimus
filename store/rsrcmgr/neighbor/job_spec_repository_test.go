@@ -1,7 +1,7 @@
 //go:build !unit_test
 // +build !unit_test
 
-package http_test
+package neighbor_test
 
 import (
 	"testing"
