@@ -1,4 +1,4 @@
-package playGround
+package survey
 
 import (
 	"fmt"
@@ -9,17 +9,17 @@ import (
 )
 
 type WindowSurvey struct {
-	logger log.Logger
+	Logger log.Logger
 }
 
 // NewInitializeSurvey initializes init survey
 func NewwindowSurvey(logger log.Logger) *WindowSurvey {
 	return &WindowSurvey{
-		logger: logger,
+		Logger: logger,
 	}
 }
 
-func (w *WindowSurvey) getWindowSize() int {
+func (w *WindowSurvey) GetWindowSize() int {
 	var windowSize int
 	for {
 		err := survey.AskOne(&survey.Input{Message: "enter the window size in hours int the range [1,720]"},
@@ -34,7 +34,22 @@ func (w *WindowSurvey) getWindowSize() int {
 		}
 	}
 }
-func (w *WindowSurvey) getOffsetSize() int {
+func (w *WindowSurvey) GetStateInput() string {
+	for {
+		var state string
+		err := survey.AskOne(&survey.Input{Message: "continue Y/n"},
+			&state,
+		)
+		if err != nil {
+			fmt.Println(err)
+		} else if (state == "Y") || (state == "n") {
+			return state
+		} else {
+			fmt.Println("please enter in the valid format [Y for yes and n for no]")
+		}
+	}
+}
+func (w *WindowSurvey) GetOffsetSize() int {
 	var windowSize int
 	for {
 		err := survey.AskOne(&survey.Input{Message: "enter the OffSet in hours int the range [1,720]"},
@@ -49,7 +64,7 @@ func (w *WindowSurvey) getOffsetSize() int {
 		}
 	}
 }
-func (w *WindowSurvey) getTrucatedTo() string {
+func (w *WindowSurvey) GetTrucatedTo() string {
 	prompt := &survey.Select{
 		Message: "Select the trucation paramterer",
 		Options: []string{
@@ -66,7 +81,7 @@ func (w *WindowSurvey) getTrucatedTo() string {
 	}
 	return dataStoreType
 }
-func (w *WindowSurvey) getSechduleDate() time.Time {
+func (w *WindowSurvey) GetSechduleDate() time.Time {
 	var sechduledDate string
 	for {
 		prompt := &survey.Input{
