@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	saltConfig "github.com/odpf/salt/config"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/suite"
 
@@ -120,8 +121,9 @@ func (s *ConfigTestSuite) TestLoadClientConfig() {
 			defer s.a.WriteFile(currFilePath, []byte(clientConfig), fs.ModeTemporary)
 
 			conf, err := config.LoadClientConfig(config.EmptyPath)
-			s.Assert().Nil(err)
-			s.Assert().NotNil(conf)
+			s.Assert().NotNil(err)
+			s.Assert().ErrorAs(err, &saltConfig.ConfigFileNotFoundError{})
+			s.Assert().Nil(conf)
 		})
 	})
 
@@ -147,7 +149,7 @@ func (s *ConfigTestSuite) TestLoadClientConfig() {
 		s.Run("WhenFilePathIsNotValid", func() {
 			conf, err := config.LoadClientConfig("/path/not/exist")
 
-			s.Assert().Error(err)
+			s.Assert().NotNil(err)
 			s.Assert().Nil(conf)
 		})
 	})
@@ -186,9 +188,9 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 			defer s.a.WriteFile(execFilePath, []byte(serverConfig), fs.ModeTemporary)
 
 			conf, err := config.LoadServerConfig(config.EmptyPath)
-
-			s.Assert().Nil(err)
-			s.Assert().NotNil(conf)
+			s.Assert().NotNil(err)
+			s.Assert().ErrorAs(err, &saltConfig.ConfigFileNotFoundError{})
+			s.Assert().Nil(conf)
 		})
 	})
 
@@ -208,7 +210,7 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 		s.Run("WhenFilePathIsNotValid", func() {
 			s.a.MkdirAll("/path/dir/", os.ModeTemporary)
 			conf, err := config.LoadServerConfig("/path/dir/")
-			s.Assert().Error(err)
+			s.Assert().NotNil(err)
 			s.Assert().Nil(conf)
 		})
 	})
