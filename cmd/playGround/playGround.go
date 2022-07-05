@@ -16,7 +16,7 @@ func NewPlayGroundCommand() *cobra.Command {
 		clientConfig: &config.ClientConfig{},
 	}
 	cmd := &cobra.Command{
-		Use:   "playGround",
+		Use:   "playground",
 		Short: "play around with certain functions",
 	}
 	cmd.AddCommand(NewPlayGroundWindowCommand(playGround.clientConfig))
