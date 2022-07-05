@@ -145,16 +145,12 @@ class OptimusAPIClient:
         self._raise_error_if_request_failed(response)
         return response.json()
 
-    def get_job_metadata(self, execution_date, project, job) -> dict:
-        url = '{optimus_host}/api/v1beta1/project/{project_name}/job/{job_name}/instance'.format(optimus_host=self.host,
-                                                                                                 project_name=project,
-                                                                                                 job_name=job)
-        request_data = {
-            "scheduled_at": execution_date,
-            "instance_type": "TYPE_TASK",
-            "instance_name": "none"
-        }
-        response = requests.post(url, data=json.dumps(request_data))
+    def get_job_metadata(self, execution_date, namespace, project, job) -> dict:
+        url = '{optimus_host}/api/v1beta1/project/{project_name}/namespace/{namespace_name}/job/{job_name}'.format(optimus_host=self.host,
+                                                                                                                   namespace_name=namespace,
+                                                                                                                   project_name=project,
+                                                                                                                   job_name=job)
+        response = requests.get(url)
         self._raise_error_if_request_failed(response)
         return response.json()
 
@@ -224,6 +220,7 @@ class SuperExternalTaskSensor(BaseSensorOperator):
             self,
             optimus_hostname: str,
             upstream_optimus_project: str,
+            upstream_optimus_namespace: str,
             upstream_optimus_job: str,
             window_size: str,
             *args,
@@ -231,6 +228,7 @@ class SuperExternalTaskSensor(BaseSensorOperator):
         kwargs['mode'] = kwargs.get('mode', 'reschedule')
         super().__init__(**kwargs)
         self.optimus_project = upstream_optimus_project
+        self.optimus_namespace =upstream_optimus_namespace
         self.optimus_job = upstream_optimus_job
         self.window_size = window_size
         self._optimus_client = OptimusAPIClient(optimus_hostname)
@@ -271,8 +269,8 @@ class SuperExternalTaskSensor(BaseSensorOperator):
 
     def get_schedule_interval(self, schedule_time):
         schedule_time_str = schedule_time.strftime(TIMESTAMP_FORMAT)
-        job_metadata = self._optimus_client.get_job_metadata(schedule_time_str, self.optimus_project, self.optimus_job)
-        upstream_schedule = lookup_non_standard_cron_expression(job_metadata['job']['interval'])
+        job_metadata = self._optimus_client.get_job_metadata(schedule_time_str, self.optimus_namespace, self.optimus_project, self.optimus_job)
+        upstream_schedule = lookup_non_standard_cron_expression(job_metadata['spec']['interval'])
         return upstream_schedule
 
     # TODO the api will be updated with getJobRuns even though the field here refers to scheduledAt
