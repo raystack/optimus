@@ -47,6 +47,9 @@ func (j *window) RunE(_ *cobra.Command, _ []string) error {
 	j.printWindow()
 	return nil
 }
+
+// logic:- we trucate hour its its hour but we trucate both hour,day for day and we then trucate based on week and month
+//depending on the input
 func (j *window) trucate() {
 	if j.currentFinishingDate.Minute() != 0 {
 		k := (60 - j.currentFinishingDate.Minute())
@@ -84,6 +87,8 @@ func (j *window) trucate() {
 	j.currentFinishingDate = j.currentFinishingDate.AddDate(0, 0, -j.currentFinishingDate.Day()+1)
 	fmt.Println(j.currentFinishingDate)
 }
+
+// using add date for offset and calculating the original window
 func (j *window) applyoffset() {
 	j.currentFinishingDate = j.currentFinishingDate.Add(time.Duration(-1*j.offset) * time.Hour)
 }
