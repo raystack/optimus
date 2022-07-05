@@ -32,7 +32,7 @@ func NewServeCommand() *cobra.Command {
 		},
 		RunE: serve.RunE,
 	}
-	cmd.Flags().BoolVar(&serve.withPlugins, "with-plugins", serve.withPlugins, "install plugins")
+	cmd.Flags().BoolVar(&serve.withPlugins, "install-plugins", serve.withPlugins, "install plugins")
 	cmd.Flags().StringVarP(&serve.configFilePath, "config", "c", serve.configFilePath, "File path for server configuration")
 	return cmd
 }
