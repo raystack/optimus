@@ -1,8 +1,7 @@
-package playGround
+package playground
 
 import (
 	"github.com/spf13/cobra"
-
 	"github.com/odpf/optimus/config"
 )
 
