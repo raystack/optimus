@@ -12,7 +12,7 @@ import (
 type IPluginManager interface {
 	Install(src, dst string) error
 	InstallMany(srcList []string, dst string) error
-	preCleanUp(dst string) error
+	// preCleanUp(dst string) error
 }
 
 func NewPluginManager(logger log.Logger) IPluginManager {
@@ -38,10 +38,10 @@ type PluginManager struct {
 	client *getter.Client
 }
 
-func (p *PluginManager) preCleanUp(dst string) error {
-	os.RemoveAll(dst)
-	return nil
-}
+// func (p *PluginManager) preCleanUp(dst string) error {
+// 	os.RemoveAll(dst)
+// 	return nil
+// }
 
 func (p *PluginManager) Install(src, dst string) error {
 	p.client.Src = src
@@ -63,6 +63,6 @@ func (p *PluginManager) InstallMany(srcList []string, dst string) error {
 			return err
 		}
 	}
-	p.logger.Info(fmt.Sprintf("Sucess installing plugin in dir=%s", dst))
+	p.logger.Info(fmt.Sprintf("Success installing plugin in dir=%s", dst))
 	return nil
 }

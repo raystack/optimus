@@ -16,7 +16,7 @@ import (
 
 type serveCommand struct {
 	configFilePath string
-	withPlugins    bool
+	installPlugins bool
 }
 
 // NewServeCommand initializes command to start server
@@ -32,7 +32,7 @@ func NewServeCommand() *cobra.Command {
 		},
 		RunE: serve.RunE,
 	}
-	cmd.Flags().BoolVar(&serve.withPlugins, "install-plugins", serve.withPlugins, "install plugins")
+	cmd.Flags().BoolVar(&serve.installPlugins, "install-plugins", serve.installPlugins, "install plugins")
 	cmd.Flags().StringVarP(&serve.configFilePath, "config", "c", serve.configFilePath, "File path for server configuration")
 	return cmd
 }
@@ -44,7 +44,7 @@ func (s *serveCommand) RunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	if s.withPlugins {
+	if s.installPlugins {
 		if err := plugin.InstallPlugins(conf, logger.NewClientLogger(conf.Log)); err != nil {
 			return fmt.Errorf("unable to install plugins at server: %w", err)
 		}
