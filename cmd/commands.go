@@ -12,7 +12,7 @@ import (
 	"github.com/odpf/optimus/cmd/job"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/namespace"
-	playGround "github.com/odpf/optimus/cmd/playGround"
+	playground "github.com/odpf/optimus/cmd/playGround"
 	"github.com/odpf/optimus/cmd/project"
 	"github.com/odpf/optimus/cmd/replay"
 	"github.com/odpf/optimus/cmd/resource"
@@ -76,7 +76,7 @@ func New() *cli.Command {
 	cmd.AddCommand(resource.NewResourceCommand())
 	cmd.AddCommand(secret.NewSecretCommand())
 	cmd.AddCommand(version.NewVersionCommand())
-	cmd.AddCommand(playGround.NewPlayGroundCommand())
+	cmd.AddCommand(playground.NewPlayGroundCommand())
 	cmd.AddCommand(serve.NewServeCommand())
 
 	extension.UpdateWithExtension(cmd)

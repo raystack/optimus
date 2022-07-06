@@ -5,19 +5,12 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/odpf/salt/log"
 )
 
 type WindowSurvey struct {
-	Logger log.Logger
 }
 
 // NewInitializeSurvey initializes init survey
-func NewwindowSurvey(logger log.Logger) *WindowSurvey {
-	return &WindowSurvey{
-		Logger: logger,
-	}
-}
 
 func (w *WindowSurvey) GetWindowSize() int {
 	var windowSize int
@@ -52,7 +45,7 @@ func (w *WindowSurvey) GetStateInput() string {
 func (w *WindowSurvey) GetOffsetSize() int {
 	var windowSize int
 	for {
-		err := survey.AskOne(&survey.Input{Message: "enter the OffSet in hours int the range [1,720]"},
+		err := survey.AskOne(&survey.Input{Message: "enter the OffSet in hours int the range [-720,720]"},
 			&windowSize,
 		)
 		if err != nil {
