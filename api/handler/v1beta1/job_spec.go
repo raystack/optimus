@@ -250,6 +250,9 @@ func (sv *JobSpecServiceServer) GetJobSpecification(ctx context.Context, req *pb
 		}
 
 		compiledSpec, err = sv.getCompiledJobSpec(ctx, namespaceSpec, jobSpec, req.JobrunId, instanceType, instanceName, scheduledAt)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	jobSpecAdapt := ToJobProto(jobSpec)

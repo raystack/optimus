@@ -45,10 +45,10 @@ type jobSpecCommand struct {
 func NewJobSpecCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	jobSpec := &jobSpecCommand{
 		clientConfig:   clientConfig,
-		compiledSpec:   false,
 		namespaceName:  "",
 		assetOutputDir: "/tmp/",
 		runType:        "task",
+		compiledSpec:   false,
 	}
 	cmd := &cobra.Command{
 		Use:     "spec",
@@ -61,19 +61,17 @@ func NewJobSpecCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		RunE:    jobSpec.RunE,
 		PreRunE: jobSpec.PreRunE,
 	}
-	cmd.Flags().BoolVar(&jobSpec.compiledSpec, "compiled-spec", jobSpec.compiledSpec, "Fetch compiled assets")
+	cmd.Flags().BoolVarP(&jobSpec.compiledSpec, "compiled-spec", "l", jobSpec.compiledSpec, "Fetch compiled assets")
 	cmd.MarkFlagRequired("compiled-spec")
-	if jobSpec.compiledSpec {
-		cmd.Flags().StringVar(&jobSpec.assetOutputDir, "output-dir", jobSpec.assetOutputDir, "Output directory for assets")
-		cmd.MarkFlagRequired("output-dir")
-		cmd.Flags().StringVar(&jobSpec.scheduledAt, "scheduled-at", "", "Time at which the job was scheduled for execution")
-		cmd.MarkFlagRequired("scheduled-at")
-		cmd.Flags().StringVar(&jobSpec.runType, "type", "task", "Type of instance, could be task/hook")
-		cmd.MarkFlagRequired("type")
-		cmd.Flags().StringVar(&jobSpec.runName, "name", "", "Name of namespace")
-		cmd.MarkFlagRequired("name")
-		cmd.Flags().String("host", defaultHost, "Optimus service endpoint url")
-	}
+	cmd.Flags().StringVar(&jobSpec.assetOutputDir, "output-dir", jobSpec.assetOutputDir, "Output directory for assets")
+	cmd.MarkFlagRequired("output-dir")
+	cmd.Flags().StringVar(&jobSpec.scheduledAt, "scheduled-at", "", "Time at which the job was scheduled for execution")
+	cmd.MarkFlagRequired("scheduled-at")
+	cmd.Flags().StringVar(&jobSpec.runType, "type", "task", "Type of instance, could be task/hook")
+	cmd.MarkFlagRequired("type")
+	cmd.Flags().StringVar(&jobSpec.runName, "name", "", "Name of namespace")
+	cmd.MarkFlagRequired("name")
+	cmd.Flags().String("host", defaultHost, "Optimus service endpoint url")
 	cmd.Flags().StringVar(&jobSpec.namespaceName, "namespace", "", "nameSpace fot the job")
 	cmd.MarkFlagRequired("namespace")
 

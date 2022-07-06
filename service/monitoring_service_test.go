@@ -65,9 +65,12 @@ func TestMonitoringService(t *testing.T) {
 	sensorRunRepository := new(mock.SensorRunRepository)
 
 	hookRunRepository := new(mock.HookRunRepository)
-
+	jobDestination := "p.d.t"
 	pluginService := new(mock.DependencyResolverPluginService)
-
+	destination := &models.GenerateDestinationResponse{
+		Destination: jobDestination,
+		Type:        models.DestinationTypeBigquery,
+	}
 	monitoringService := service.NewMonitoringService(
 		pluginService,
 		jobRunMetricsRepository,
@@ -91,8 +94,12 @@ func TestMonitoringService(t *testing.T) {
 				namespaceSpec,
 				jobSpec,
 				slaMissDurationInSec,
+				jobDestination,
 			).Return(nil)
 			defer jobRunMetricsRepository.AssertExpectations(t)
+
+			pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(destination, nil)
+			defer pluginService.AssertExpectations(t)
 			err = monitoringService.ProcessEvent(ctx, jobStartEvent, namespaceSpec, jobSpec)
 			assert.Nil(t, err)
 		})
