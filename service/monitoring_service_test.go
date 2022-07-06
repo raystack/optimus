@@ -65,7 +65,11 @@ func TestMonitoringService(t *testing.T) {
 	sensorRunRepository := new(mock.SensorRunRepository)
 
 	hookRunRepository := new(mock.HookRunRepository)
+
+	pluginService := new(mock.DependencyResolverPluginService)
+
 	monitoringService := service.NewMonitoringService(
+		pluginService,
 		jobRunMetricsRepository,
 		sensorRunRepository,
 		hookRunRepository,

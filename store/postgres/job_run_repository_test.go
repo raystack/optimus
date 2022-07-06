@@ -130,7 +130,7 @@ func TestIntegrationJobRunMetricsRepository(t *testing.T) {
 		db := DBSetup()
 
 		repo := postgres.NewJobRunMetricsRepository(db)
-		err := repo.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
+		err := repo.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs, jobDestination)
 		assert.Nil(t, err)
 
 		jobRunSpec, err := repo.Get(ctx, jobEvent, namespaceSpec, jobConfigs[0])
@@ -145,7 +145,7 @@ func TestIntegrationJobRunMetricsRepository(t *testing.T) {
 			db := DBSetup()
 
 			repo := postgres.NewJobRunMetricsRepository(db)
-			err := repo.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
+			err := repo.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs, jobDestination)
 			assert.Nil(t, err)
 
 			updateEventValues, _ := structpb.NewStruct(
@@ -196,10 +196,10 @@ func TestIntegrationJobRunMetricsRepository(t *testing.T) {
 
 			repo := postgres.NewJobRunMetricsRepository(db)
 			// adding for attempt number 2
-			err := repo.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
+			err := repo.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs, jobDestination)
 			assert.Nil(t, err)
 			// adding for attempt number 3
-			err = repo.Save(ctx, jobUpdateEventAttempt3, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
+			err = repo.Save(ctx, jobUpdateEventAttempt3, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs, jobDestination)
 			assert.Nil(t, err)
 
 			eventValuesAttemptFinish, _ := structpb.NewStruct(

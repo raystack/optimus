@@ -410,6 +410,29 @@
         }
       }
     },
+    "corev1beta1InstanceContext": {
+      "type": "object",
+      "properties": {
+        "envs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "secrets": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -477,29 +500,6 @@
           }
         },
         "params": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "v1beta1InstanceContext": {
-      "type": "object",
-      "properties": {
-        "envs": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "files": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "secrets": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
@@ -770,6 +770,32 @@
         },
         "metadata": {
           "$ref": "#/definitions/v1beta1JobMetadata"
+        },
+        "context": {
+          "$ref": "#/definitions/v1beta1JobSpecificationInstanceContext"
+        }
+      }
+    },
+    "v1beta1JobSpecificationInstanceContext": {
+      "type": "object",
+      "properties": {
+        "envs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "secrets": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
@@ -870,7 +896,7 @@
           "$ref": "#/definitions/v1beta1InstanceSpec"
         },
         "context": {
-          "$ref": "#/definitions/v1beta1InstanceContext"
+          "$ref": "#/definitions/corev1beta1InstanceContext"
         }
       }
     },

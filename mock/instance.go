@@ -117,3 +117,8 @@ func (s *JobInputCompiler) Compile(ctx context.Context, namespaceSpec models.Nam
 	args := s.Called(ctx, namespaceSpec, secrets, jobRun, instanceSpec)
 	return args.Get(0).(*models.JobRunInput), args.Error(1)
 }
+
+func (s *JobInputCompiler) CompileNewJobSpec(ctx context.Context, namespaceSpec models.NamespaceSpec, projSecrets models.ProjectSecrets, jobSpec models.JobSpec, scheduledAt time.Time, jobRunSpec models.JobRunSpec, instanceType models.InstanceType, instanceName string) (*models.JobRunInput, error) {
+	args := s.Called(ctx, namespaceSpec, projSecrets, jobSpec, scheduledAt, jobRunSpec, instanceType, instanceName)
+	return args.Get(0).(*models.JobRunInput), args.Error(1)
+}

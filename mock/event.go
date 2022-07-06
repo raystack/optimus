@@ -2,7 +2,9 @@ package mock
 
 import (
 	"context"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/models"
@@ -14,6 +16,12 @@ type MonitoringService struct {
 
 func (srv *MonitoringService) ProcessEvent(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) error {
 	return srv.Called(ctx, event, namespaceSpec, jobSpec).Error(0)
+}
+func (srv *MonitoringService) GetJobRunByScheduledAt(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec, scheduledAt time.Time) (models.JobRunSpec, error) {
+	return models.JobRunSpec{}, srv.Called(ctx, namespaceSpec, jobSpec, scheduledAt).Error(1)
+}
+func (srv *MonitoringService) GetJobRunByRunID(ctx context.Context, jobRunID uuid.UUID) (models.JobRunSpec, error) {
+	return models.JobRunSpec{}, srv.Called(ctx, jobRunID).Error(1)
 }
 
 type JobRunMetricsRepository struct {
@@ -32,8 +40,12 @@ func (repo *JobRunMetricsRepository) Get(ctx context.Context, event models.JobEv
 	return models.JobRunSpec{}, repo.Called(ctx, event, namespaceSpec, jobSpec).Error(1)
 }
 
-func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec, slaMissDurationInSec int64) error {
-	return repo.Called(ctx, event, namespaceSpec, jobSpec, slaMissDurationInSec).Error(0)
+func (repo *JobRunMetricsRepository) GetByID(ctx context.Context, jobRunID uuid.UUID) (models.JobRunSpec, error) {
+	return models.JobRunSpec{}, repo.Called(ctx, jobRunID).Error(1)
+}
+
+func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec, slaMissDurationInSec int64, jobDestination string) error {
+	return repo.Called(ctx, event, namespaceSpec, jobSpec, slaMissDurationInSec, jobDestination).Error(0)
 }
 
 type SensorRunRepository struct {

@@ -558,6 +558,8 @@ type JobRunSpec struct {
 	SLAMissDelay  int
 	Duration      int64
 	SLADefinition int64
+
+	Data []InstanceSpecData
 }
 
 type TaskRunSpec struct {

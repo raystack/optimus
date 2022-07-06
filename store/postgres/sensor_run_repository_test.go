@@ -149,7 +149,7 @@ func TestIntegrationSensorRunRepository(t *testing.T) {
 	t.Run("Save", func(t *testing.T) {
 		db := DBSetup()
 		jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db)
-		err := jobRunMetricsRepository.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
+		err := jobRunMetricsRepository.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs, jobDestination)
 		assert.Nil(t, err)
 		jobRunSpec, err := jobRunMetricsRepository.Get(ctx, jobEvent, namespaceSpec, jobConfigs[0])
 		assert.Nil(t, err)
@@ -168,7 +168,7 @@ func TestIntegrationSensorRunRepository(t *testing.T) {
 		t.Run("should update sensor runs correctly", func(t *testing.T) {
 			db := DBSetup()
 			jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db)
-			err := jobRunMetricsRepository.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
+			err := jobRunMetricsRepository.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs, jobDestination)
 			assert.Nil(t, err)
 			jobRunSpec, err := jobRunMetricsRepository.Get(ctx, jobEvent, namespaceSpec, jobConfigs[0])
 			assert.Nil(t, err)
@@ -224,7 +224,7 @@ func TestIntegrationSensorRunRepository(t *testing.T) {
 
 			jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db)
 			// adding for attempt number 2
-			err := jobRunMetricsRepository.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
+			err := jobRunMetricsRepository.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs, jobDestination)
 			assert.Nil(t, err)
 
 			jobRunSpec, err := jobRunMetricsRepository.GetActiveJobRun(ctx, jobUpdateEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
@@ -236,7 +236,7 @@ func TestIntegrationSensorRunRepository(t *testing.T) {
 			assert.Nil(t, err)
 
 			// adding for attempt number 3
-			err = jobRunMetricsRepository.Save(ctx, jobUpdateEventAttempt3, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
+			err = jobRunMetricsRepository.Save(ctx, jobUpdateEventAttempt3, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs, jobDestination)
 			assert.Nil(t, err)
 
 			eventValuesAttemptFinish, _ := structpb.NewStruct(
