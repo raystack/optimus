@@ -223,12 +223,15 @@ func (sv *JobSpecServiceServer) GetJobSpecifications(ctx context.Context, req *p
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to retrieve job: %s", err.Error())
 	}
-	jobProtos := []*pb.JobSpecification{}
+	jobsProto := []*pb.JobSpecificationResponse{}
 	for _, jobSpec := range jobSpecs {
-		jobProto := ToJobProto(jobSpec)
-		jobProtos = append(jobProtos, jobProto)
+		jobsProto = append(jobsProto, &pb.JobSpecificationResponse{
+			ProjectName:   jobSpec.NamespaceSpec.ProjectSpec.Name,
+			NamespaceName: jobSpec.NamespaceSpec.Name,
+			Job:           ToJobProto(jobSpec),
+		})
 	}
-	return &pb.GetJobSpecificationsResponse{Jobs: jobProtos}, nil
+	return &pb.GetJobSpecificationsResponse{Jobs: jobsProto}, nil
 }
 
 func (sv *JobSpecServiceServer) DeleteJobSpecification(ctx context.Context, req *pb.DeleteJobSpecificationRequest) (*pb.DeleteJobSpecificationResponse, error) {

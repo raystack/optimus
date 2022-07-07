@@ -468,7 +468,7 @@
         "jobs": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/v1beta1JobSpecification"
+            "$ref": "#/definitions/v1beta1JobSpecificationResponse"
           }
         }
       }
@@ -527,7 +527,19 @@
         "TYPE_UNSPECIFIED",
         "TYPE_SLA_MISS",
         "TYPE_FAILURE",
-        "TYPE_SUCCESS"
+        "TYPE_SUCCESS",
+        "TYPE_RETRY",
+        "TYPE_JOB_START",
+        "TYPE_JOB_SUCCESS",
+        "TYPE_JOB_FAIL",
+        "TYPE_TASK_RETRY",
+        "TYPE_TASK_SUCCESS",
+        "TYPE_TASK_START",
+        "TYPE_TASK_FAIL",
+        "TYPE_SENSOR_POKE",
+        "TYPE_SENSOR_SUCCESS",
+        "TYPE_SENSOR_START",
+        "TYPE_SENSOR_FAIL"
       ],
       "default": "TYPE_UNSPECIFIED"
     },
@@ -667,6 +679,20 @@
         },
         "metadata": {
           "$ref": "#/definitions/v1beta1JobMetadata"
+        }
+      }
+    },
+    "v1beta1JobSpecificationResponse": {
+      "type": "object",
+      "properties": {
+        "projectName": {
+          "type": "string"
+        },
+        "namespaceName": {
+          "type": "string"
+        },
+        "job": {
+          "$ref": "#/definitions/v1beta1JobSpecification"
         }
       }
     },
