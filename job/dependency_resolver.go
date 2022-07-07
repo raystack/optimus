@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
@@ -254,101 +255,71 @@ func (d *dependencyResolver) GetJobSpecsWithDependencies(ctx context.Context, pr
 	if err != nil {
 		return nil, nil, err
 	}
-	staticDependenciesPerJobID, err := d.jobSpecRepo.GetStaticDependenciesPerJobID(ctx, projectID)
+
+	internalDependenciesByJobID, err := d.getInternalDependenciesByJobID(ctx, projectID)
 	if err != nil {
 		return nil, nil, err
 	}
-	inferredDependenciesPerJobID, err := d.jobSpecRepo.GetInferredDependenciesPerJobID(ctx, projectID)
-	if err != nil {
-		return nil, nil, err
-	}
-	staticExternalDependencyPerJobName, unknownDependencies, err := d.externalDependencyResolver.FetchExternalStaticDependenciesPerJobName(ctx, projectID)
-	if err != nil {
-		return nil, nil, err
-	}
-	inferredExternalDependencyPerJobName, err := d.externalDependencyResolver.FetchExternalInferredDependenciesPerJobName(ctx, projectID)
+	externalDependenciesByJobName, unknownDependencies, err := d.getExternalDependenciesByJobID(ctx, projectID)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	for i := 0; i < len(jobSpecs); i++ {
-		staticDependencies := staticDependenciesPerJobID[jobSpecs[i].ID]
-		inferredDependencies := inferredDependenciesPerJobID[jobSpecs[i].ID]
+		internalDependencies := internalDependenciesByJobID[jobSpecs[i].ID]
+		externalDependency := externalDependenciesByJobName[jobSpecs[i].Name]
 
-		var dependencies []models.JobSpec
-		dependencies = append(dependencies, staticDependencies...)
-		dependencies = append(dependencies, inferredDependencies...)
-
-		staticExternalDependencies := staticExternalDependencyPerJobName[jobSpecs[i].Name]
-		inferredExternalDependencies := inferredExternalDependencyPerJobName[jobSpecs[i].Name]
-
-		var optimusDependencies []models.OptimusDependency
-		optimusDependencies = append(optimusDependencies, staticExternalDependencies.OptimusDependencies...)
-		optimusDependencies = append(optimusDependencies, inferredExternalDependencies.OptimusDependencies...)
-
-		jobSpecs[i].Dependencies = d.groupDependencies(dependencies)
+		jobSpecs[i].Dependencies = d.groupDependencies(internalDependencies)
+		jobSpecs[i].ExternalDependencies.OptimusDependencies = append(jobSpecs[i].ExternalDependencies.OptimusDependencies, externalDependency.OptimusDependencies...)
 		jobSpecs[i].Hooks = d.fetchHookWithDependencies(jobSpecs[i])
-		jobSpecs[i].ExternalDependencies.OptimusDependencies = append(jobSpecs[i].ExternalDependencies.OptimusDependencies, optimusDependencies...)
 	}
 	return jobSpecs, unknownDependencies, nil
+}
 
-	/*
-		Deployer:
-			- DependencyResolver.GetJobSpecsWithDependency() ([]JobSpec, []UnknownDependency, error)
-					- GetJobs(ProjectID)
-					- FetchInferredDependencies(ProjectID) (map[jobName]JobSpecs)
-					- FetchStaticDependencies(ProjectID) (map[jobName]JobSpecs)
-					- ExternalDependencyResolver.FetchExternalInferredDependencies(ProjectID) (map[jobName]ExternalDependency)
-						- Query to get the Unknown inferred dependencies
-						- Try to fetch from API
-					- ExternalDependencyResolver.FetchExternalStaticDependencies(ProjectID) (map[jobName]ExternalDependency)
-						- Query to get the Unknown inferred dependencies
-						- Try to fetch from API
-						- If not found at all, will put it in the unknownDependency
-					- Iterate JobSpecs
-						- Enrich with internal dependencies
-						- Enrich with external dependencies
-						- Enrich with hook dependencies
-			- Check the UnknownDependency
-				- Issue in Static	-> Not skip the jobspec (for now)
-				- Update the JobDeployment.Detail
-			- PriorityResolver.Resolve
-			- Deploy
+func (d *dependencyResolver) getExternalDependenciesByJobID(ctx context.Context, projectID models.ProjectID) (map[string]models.ExternalDependency, []models.UnknownDependency, error) {
+	output := make(map[string]models.ExternalDependency)
+	addToOutput := func(dependencies map[string]models.ExternalDependency) {
+		for jobName, externalDependency := range dependencies {
+			output[jobName] = externalDependency
+		}
+	}
 
-			100 jobs
-			- 95 can be deployed
-			- 5 having issues
+	staticExternalDependencyPerJobName, unknownDependencies, err := d.externalDependencyResolver.FetchStaticExternalDependenciesPerJobName(ctx, projectID)
+	if err != nil {
+		return nil, nil, err
+	}
+	addToOutput(staticExternalDependencyPerJobName)
 
-			If there is a single job dependency or job deployment failed, will mark the status as failed, but complete the deployment.
+	inferredExternalDependencyPerJobName, err := d.externalDependencyResolver.FetchInferredExternalDependenciesPerJobName(ctx, projectID)
+	if err != nil {
+		return nil, nil, err
+	}
+	addToOutput(inferredExternalDependencyPerJobName)
 
-				[]UnknownDependency {	-> only static
-					JobName
-					Value		-> Name or ResourceURN
-					Type		-> [Job/ResourceURN]
-				}
+	return output, unknownDependencies, nil
+}
 
+func (d *dependencyResolver) getInternalDependenciesByJobID(ctx context.Context, projectID models.ProjectID) (map[uuid.UUID][]models.JobSpec, error) {
+	output := make(map[uuid.UUID][]models.JobSpec)
+	addToOutput := func(dependencies map[uuid.UUID][]models.JobSpec) {
+		for jobID, jobSpecs := range dependencies {
+			output[jobID] = append(output[jobID], jobSpecs...)
+		}
+	}
 
+	staticDependenciesPerJobID, err := d.jobSpecRepo.GetStaticDependenciesPerJobID(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	addToOutput(staticDependenciesPerJobID)
 
+	inferredDependenciesPerJobID, err := d.jobSpecRepo.GetInferredDependenciesPerJobID(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	addToOutput(inferredDependenciesPerJobID)
 
-
-			ExternalDependencyResolver.Getting inferred dependencies []ExternalDependencies
-				- Iteration of each of resource managers
-				- Init resolver based on Type
-					- OptimusDependencyResolver []OptimusDependency
-						Responsibility:
-						- GetExternalInferredDependencies
-							- Get the unknown inferred dependencies from DB (ProjectID) (map[JobName]DependencyResourceURN)
-							- Create the filter
-							- Get the job specs from the client
-								Warning: Some inferred dependencies might not be found.
-										 Job deployment should not be skipped, but users need to be informed.
-							- Convert the job specs to the OptimusDependency
-							- Return the OptimusDependency
-
-					- Other resource manager Resolver
-		- api interactions abstraction
-	*/
-
+	return output, nil
 }
 
 func (*dependencyResolver) groupDependencies(dependencyJobSpecs []models.JobSpec) map[string]models.JobSpecDependency {

@@ -11,7 +11,7 @@ import (
 )
 
 type OptimusDependencyResolver interface {
-	FetchExternalDependencies(context.Context, models.JobSpecFilter) ([]models.OptimusDependency, error)
+	FetchOptimusDependencies(context.Context, models.JobSpecFilter) ([]models.OptimusDependency, error)
 }
 
 type optimusDependencyResolver struct {
@@ -23,12 +23,11 @@ type optimusDependencyResolver struct {
 
 // NewOptimusDependencyResolver creates a new instance of optimusDependencyResolver
 func NewOptimusDependencyResolver(resourceManagerConfig config.ResourceManager) (OptimusDependencyResolver, error) {
-	// TODO: check if config is nil or not
 	var resourceManagerOptimusConfig config.ResourceManagerConfigOptimus
 	if err := mapstructure.Decode(resourceManagerConfig.Config, &resourceManagerOptimusConfig); err != nil {
 		return nil, err
 	}
-	resourceManager, err := resourcemgr.Registry.Get(resourcemgr.OptimusType, resourceManagerOptimusConfig)
+	resourceManager, err := resourcemgr.Registry.Get(resourcemgr.OptimusType, resourceManagerConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +38,7 @@ func NewOptimusDependencyResolver(resourceManagerConfig config.ResourceManager) 
 	}, nil
 }
 
-func (o *optimusDependencyResolver) FetchExternalDependencies(ctx context.Context, filter models.JobSpecFilter) ([]models.OptimusDependency, error) {
+func (o *optimusDependencyResolver) FetchOptimusDependencies(ctx context.Context, filter models.JobSpecFilter) ([]models.OptimusDependency, error) {
 	jobSpecs, err := o.resourceManager.GetJobSpecifications(ctx, filter)
 	if err != nil {
 		return nil, err

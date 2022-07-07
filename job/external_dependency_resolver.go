@@ -13,8 +13,8 @@ import (
 )
 
 type ExternalDependencyResolver interface {
-	FetchExternalInferredDependenciesPerJobName(context.Context, models.ProjectID) (map[string]models.ExternalDependency, error)
-	FetchExternalStaticDependenciesPerJobName(context.Context, models.ProjectID) (map[string]models.ExternalDependency, []models.UnknownDependency, error)
+	FetchInferredExternalDependenciesPerJobName(context.Context, models.ProjectID) (map[string]models.ExternalDependency, error)
+	FetchStaticExternalDependenciesPerJobName(context.Context, models.ProjectID) (map[string]models.ExternalDependency, []models.UnknownDependency, error)
 }
 
 type externalDependencyResolver struct {
@@ -35,7 +35,7 @@ func NewExternalDependencyResolver(resourceManagerConfigs []config.ResourceManag
 			}
 			resolvers[i] = resolver
 		default:
-			return nil, nil
+			return nil, fmt.Errorf("resource manager [%s] is not recognized", conf.Type)
 		}
 	}
 	return &externalDependencyResolver{
@@ -44,26 +44,33 @@ func NewExternalDependencyResolver(resourceManagerConfigs []config.ResourceManag
 	}, nil
 }
 
-func (e *externalDependencyResolver) FetchExternalInferredDependenciesPerJobName(ctx context.Context, projectID models.ProjectID) (map[string]models.ExternalDependency, error) {
+func (e *externalDependencyResolver) FetchInferredExternalDependenciesPerJobName(ctx context.Context, projectID models.ProjectID) (map[string]models.ExternalDependency, error) {
 	unknownInferredDependenciesByJobName, err := e.unknownJobDependencyRepository.GetUnknownInferredDependencyURNsByJobName(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
 	jobSpecFiltersByJobName := e.toJobSpecFiltersByJobNameForResourceNames(unknownInferredDependenciesByJobName)
+	return e.fetchInferredExternalDependencyPerJobName(ctx, jobSpecFiltersByJobName)
+}
 
+func (e *externalDependencyResolver) FetchStaticExternalDependenciesPerJobName(ctx context.Context, projectID models.ProjectID) (map[string]models.ExternalDependency, []models.UnknownDependency, error) {
+	unknownStaticDependenciesByJobName, err := e.unknownJobDependencyRepository.GetUnknownStaticDependencyNamesByJobName(ctx, projectID)
+	if err != nil {
+		return nil, nil, err
+	}
+	jobSpecFiltersPerJobName, err := e.toJobSpecFiltersByJobNameForDependencyNames(unknownStaticDependenciesByJobName)
+	if err != nil {
+		return nil, nil, err
+	}
+	return e.fetchStaticExternalDependencyPerJobName(ctx, jobSpecFiltersPerJobName)
+}
+
+func (e *externalDependencyResolver) fetchInferredExternalDependencyPerJobName(ctx context.Context, jobSpecFiltersPerJobName map[string][]models.JobSpecFilter) (map[string]models.ExternalDependency, error) {
 	externalDependencyPerJobName := make(map[string]models.ExternalDependency)
-	for jobName, filters := range jobSpecFiltersByJobName {
-		var optimusDependencies []models.OptimusDependency
-		for _, filter := range filters {
-			var dependencies []models.OptimusDependency
-			for _, resolver := range e.resolvers {
-				deps, err := resolver.FetchExternalDependencies(ctx, filter)
-				if err != nil {
-					return nil, err
-				}
-				dependencies = append(dependencies, deps...)
-			}
-			optimusDependencies = append(optimusDependencies, dependencies...)
+	for jobName, filters := range jobSpecFiltersPerJobName {
+		optimusDependencies, err := e.fetchInferredOptimusDependenciesForFilters(ctx, filters)
+		if err != nil {
+			return nil, err
 		}
 		externalDependencyPerJobName[jobName] = models.ExternalDependency{
 			OptimusDependencies: optimusDependencies,
@@ -72,45 +79,65 @@ func (e *externalDependencyResolver) FetchExternalInferredDependenciesPerJobName
 	return externalDependencyPerJobName, nil
 }
 
-func (e *externalDependencyResolver) FetchExternalStaticDependenciesPerJobName(ctx context.Context, projectID models.ProjectID) (map[string]models.ExternalDependency, []models.UnknownDependency, error) {
-	unknownStaticDependenciesByJobName, err := e.unknownJobDependencyRepository.GetUnknownStaticDependencyNamesByJobName(ctx, projectID)
-	if err != nil {
-		return nil, nil, err
+func (e *externalDependencyResolver) fetchInferredOptimusDependenciesForFilters(ctx context.Context, filters []models.JobSpecFilter) ([]models.OptimusDependency, error) {
+	var optimusDependencies []models.OptimusDependency
+	for _, filter := range filters {
+		dependencies, err := e.fetchOptimusDependenciesPerFilter(ctx, filter)
+		if err != nil {
+			return nil, err
+		}
+		optimusDependencies = append(optimusDependencies, dependencies...)
 	}
-	jobSpecFiltersByJobName, err := e.toJobSpecFiltersByJobNameForDependencyNames(unknownStaticDependenciesByJobName)
-	if err != nil {
-		return nil, nil, err
-	}
+	return optimusDependencies, nil
+}
 
-	var unknownDependencies []models.UnknownDependency
+func (e *externalDependencyResolver) fetchStaticExternalDependencyPerJobName(ctx context.Context, jobSpecFiltersPerJobName map[string][]models.JobSpecFilter) (map[string]models.ExternalDependency, []models.UnknownDependency, error) {
+	var allUnknownDependencies []models.UnknownDependency
 	externalDependencyPerJobName := make(map[string]models.ExternalDependency)
-	for jobName, filters := range jobSpecFiltersByJobName {
-		var optimusDependencies []models.OptimusDependency
-		for _, filter := range filters {
-			var dependencies []models.OptimusDependency
-			for _, resolver := range e.resolvers {
-				deps, err := resolver.FetchExternalDependencies(ctx, filter)
-				if err != nil {
-					return nil, nil, err
-				}
-				dependencies = append(dependencies, deps...)
-			}
-			if len(dependencies) == 0 {
-				unknownDependencies = append(unknownDependencies, models.UnknownDependency{
-					JobName:               jobName,
-					DependencyProjectName: filter.ProjectName,
-					DependencyJobName:     filter.JobName,
-				})
-				continue
-			}
-			optimusDependencies = append(optimusDependencies, dependencies...)
+	for jobName, filters := range jobSpecFiltersPerJobName {
+		optimusDependencies, unknownDependencies, err := e.fetchStaticOptimusDependenciesForFilters(ctx, jobName, filters)
+		if err != nil {
+			return nil, nil, err
 		}
 		externalDependencyPerJobName[jobName] = models.ExternalDependency{
 			OptimusDependencies: optimusDependencies,
 		}
+		allUnknownDependencies = append(allUnknownDependencies, unknownDependencies...)
 	}
+	return externalDependencyPerJobName, allUnknownDependencies, nil
+}
 
-	return externalDependencyPerJobName, unknownDependencies, nil
+func (e *externalDependencyResolver) fetchStaticOptimusDependenciesForFilters(ctx context.Context, jobName string, filters []models.JobSpecFilter) ([]models.OptimusDependency, []models.UnknownDependency, error) {
+	var optimusDependencies []models.OptimusDependency
+	var unknownDependencies []models.UnknownDependency
+	for _, filter := range filters {
+		dependencies, err := e.fetchOptimusDependenciesPerFilter(ctx, filter)
+		if err != nil {
+			return nil, nil, err
+		}
+		if len(dependencies) == 0 {
+			unknownDependencies = append(unknownDependencies, models.UnknownDependency{
+				JobName:               jobName,
+				DependencyProjectName: filter.ProjectName,
+				DependencyJobName:     filter.JobName,
+			})
+			continue
+		}
+		optimusDependencies = append(optimusDependencies, dependencies...)
+	}
+	return optimusDependencies, unknownDependencies, nil
+}
+
+func (e *externalDependencyResolver) fetchOptimusDependenciesPerFilter(ctx context.Context, filter models.JobSpecFilter) ([]models.OptimusDependency, error) {
+	var dependencies []models.OptimusDependency
+	for _, resolver := range e.resolvers {
+		deps, err := resolver.FetchOptimusDependencies(ctx, filter)
+		if err != nil {
+			return nil, err
+		}
+		dependencies = append(dependencies, deps...)
+	}
+	return dependencies, nil
 }
 
 func (e *externalDependencyResolver) toJobSpecFiltersByJobNameForResourceNames(resourceNamesByJobName map[string][]string) map[string][]models.JobSpecFilter {
@@ -130,26 +157,30 @@ func (e *externalDependencyResolver) toJobSpecFiltersByJobNameForDependencyNames
 	output := make(map[string][]models.JobSpecFilter)
 	var err error
 	for jobName, dependencyNames := range dependencyNamesByJobName {
-		var jobFilters []models.JobSpecFilter
-		var invalidDependencyNames []string
-		for _, name := range dependencyNames {
-			splitName := strings.Split(name, "/")
-			expectedSplintLen := 2
-			if len(splitName) != expectedSplintLen {
-				invalidDependencyNames = append(invalidDependencyNames, name)
-				continue
-			}
-			filter := models.JobSpecFilter{
-				ProjectName: splitName[0],
-				JobName:     splitName[1],
-			}
-			jobFilters = append(jobFilters, filter)
-		}
+		jobFilters, invalidDependencyNames := e.convertDependencyNamesToFilters(dependencyNames)
 		if len(invalidDependencyNames) > 0 {
+			// TODO: should consider what treatment to be done, currently we are "error"-ing it
 			err = multierror.Append(err, fmt.Errorf("invalid static dependency names for [%s]: %s", jobName, strings.Join(invalidDependencyNames, ", ")))
 		} else {
 			output[jobName] = jobFilters
 		}
 	}
 	return output, err
+}
+
+func (e *externalDependencyResolver) convertDependencyNamesToFilters(dependencyNames []string) (jobFilters []models.JobSpecFilter, invalidDependencyNames []string) {
+	for _, name := range dependencyNames {
+		splitName := strings.Split(name, "/")
+		expectedSplintLen := 2
+		if len(splitName) != expectedSplintLen {
+			invalidDependencyNames = append(invalidDependencyNames, name)
+			continue
+		}
+		filter := models.JobSpecFilter{
+			ProjectName: splitName[0],
+			JobName:     splitName[1],
+		}
+		jobFilters = append(jobFilters, filter)
+	}
+	return
 }
