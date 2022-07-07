@@ -226,7 +226,7 @@ wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} =
 )
 {{- end}}
 
-{{- range $_, $httpDependency := $.Job.ExternalDependencies.HTTPDependencies}}
+{{- range $_, $httpDependency := $.Job.ExternalDependencies.HTTPDependencies}}  # merged from http and optimus?
 headers_dict_{{$httpDependency.Name}} = { {{- range $k, $v := $httpDependency.Headers}} '{{$k}}': '{{$v}}', {{- end}} }
 request_params_dict_{{$httpDependency.Name}} = { {{- range $key, $value := $httpDependency.RequestParams}} '{{$key}}': '{{$value}}', {{- end}} }
 

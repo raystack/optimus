@@ -181,11 +181,6 @@ type JobSourceRepository interface {
 	DeleteByJobID(context.Context, uuid.UUID) error
 }
 
-// ExternalJobSpecRepository is repository for external job spec
-type ExternalJobSpecRepository interface {
-	GetJobSpecifications(context.Context, models.JobSpecFilter) ([]models.JobSpec, error)
-}
-
 // UnknownJobDependencyRepository is a repository to fetch unknown dependencies
 type UnknownJobDependencyRepository interface {
 	GetUnknownResourceDependencyNamesByJobName(context.Context, models.ProjectID) (map[string][]string, error)

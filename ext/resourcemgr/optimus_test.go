@@ -1,7 +1,7 @@
 //go:build !unit_test
 // +build !unit_test
 
-package neighbor_test
+package resourcemgr_test
 
 import (
 	"testing"

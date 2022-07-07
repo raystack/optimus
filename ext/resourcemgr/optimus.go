@@ -1,4 +1,4 @@
-package neighbor
+package resourcemgr
 
 import (
 	"context"
@@ -10,26 +10,30 @@ import (
 
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 )
 
-type jobSpecRepository struct {
-	neighborConfig *config.ResourceManagerConfigOptimus
-	httpClient     *http.Client
+// ResourceManager is repository for external job spec
+type ResourceManager interface {
+	GetJobSpecifications(context.Context, models.JobSpecFilter) ([]models.JobSpec, error)
 }
 
-// NewJobSpecRepository initializes job spec repository for Optimus neighbor
-func NewJobSpecRepository(neighborConfig *config.ResourceManagerConfigOptimus) (store.ExternalJobSpecRepository, error) {
-	if neighborConfig == nil {
-		return nil, errors.New("neighbor config is nil")
+type optimusResourceManager struct {
+	optimusConfig *config.ResourceManagerConfigOptimus
+	httpClient    *http.Client
+}
+
+// NewOptimusResourceManager initializes job spec repository for Optimus neighbor
+func NewOptimusResourceManager(config *config.ResourceManagerConfigOptimus) (ResourceManager, error) {
+	if config == nil {
+		return nil, errors.New("optimus resource manager config is nil")
 	}
-	return &jobSpecRepository{
-		neighborConfig: neighborConfig,
-		httpClient:     http.DefaultClient,
+	return &optimusResourceManager{
+		optimusConfig: config,
+		httpClient:    http.DefaultClient,
 	}, nil
 }
 
-func (e *jobSpecRepository) GetJobSpecifications(ctx context.Context, filter models.JobSpecFilter) ([]models.JobSpec, error) {
+func (e *optimusResourceManager) GetJobSpecifications(ctx context.Context, filter models.JobSpecFilter) ([]models.JobSpec, error) {
 	request, err := e.constructGetJobSpecificationsRequest(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("error encountered when constructing request: %w", err)
@@ -54,7 +58,7 @@ func (e *jobSpecRepository) GetJobSpecifications(ctx context.Context, filter mod
 	return toJobSpecs(jobSpecResponse.Jobs), nil
 }
 
-func (e *jobSpecRepository) constructGetJobSpecificationsRequest(ctx context.Context, filter models.JobSpecFilter) (*http.Request, error) {
+func (e *optimusResourceManager) constructGetJobSpecificationsRequest(ctx context.Context, filter models.JobSpecFilter) (*http.Request, error) {
 	var filters []string
 	if filter.JobName != "" {
 		filters = append(filters, fmt.Sprintf("job_name=%s", filter.JobName))
@@ -67,7 +71,7 @@ func (e *jobSpecRepository) constructGetJobSpecificationsRequest(ctx context.Con
 	}
 
 	path := "/api/v1beta1/jobs"
-	url := e.neighborConfig.Host + path + strings.Join(filters, "&")
+	url := e.optimusConfig.Host + path + strings.Join(filters, "&")
 
 	request, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {

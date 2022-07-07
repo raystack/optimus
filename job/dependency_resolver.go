@@ -258,6 +258,73 @@ func (d *dependencyResolver) GetJobSpecsWithDependencies(ctx context.Context, pr
 	if err != nil {
 		return nil, err
 	}
+
+	externalInferredDependenciesPerJob, err := externalDependencyResolver{}.FetchExternalInferredDependenciesPerJobName(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+
+	externalStaticDependenciesPerJob, unknownDependencies, err := externalDependencyResolver{}.FetchExternalStaticDependenciesPerJobName(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	/*
+		Deployer:
+			- DependencyResolver.GetJobSpecsWithDependency() ([]JobSpec, []UnknownDependency, error)
+					- GetJobs(ProjectID)
+					- FetchInferredDependencies(ProjectID) (map[jobName]JobSpecs)
+					- FetchStaticDependencies(ProjectID) (map[jobName]JobSpecs)
+					- ExternalDependencyResolver.FetchExternalInferredDependencies(ProjectID) (map[jobName]ExternalDependency)
+						- Query to get the Unknown inferred dependencies
+						- Try to fetch from API
+					- ExternalDependencyResolver.FetchExternalStaticDependencies(ProjectID) (map[jobName]ExternalDependency)
+						- Query to get the Unknown inferred dependencies
+						- Try to fetch from API
+						- If not found at all, will put it in the unknownDependency
+					- Iterate JobSpecs
+						- Enrich with internal dependencies
+						- Enrich with external dependencies
+						- Enrich with hook dependencies
+			- Check the UnknownDependency
+				- Issue in Static	-> Not skip the jobspec (for now)
+				- Update the JobDeployment.Detail
+			- PriorityResolver.Resolve
+			- Deploy
+
+			100 jobs
+			- 95 can be deployed
+			- 5 having issues
+
+			If there is a single job dependency or job deployment failed, will mark the status as failed, but complete the deployment.
+
+				[]UnknownDependency {	-> only static
+					JobName
+					Value		-> Name or ResourceURN
+					Type		-> [Job/ResourceURN]
+				}
+
+
+
+
+
+			ExternalDependencyResolver.Getting inferred dependencies []ExternalDependencies
+				- Iteration of each of resource managers
+				- Init resolver based on Type
+					- OptimusDependencyResolver []OptimusDependency
+						Responsibility:
+						- GetExternalInferredDependencies
+							- Get the unknown inferred dependencies from DB (ProjectID) (map[JobName]DependencyResourceURN)
+							- Create the filter
+							- Get the job specs from the client
+								Warning: Some inferred dependencies might not be found.
+										 Job deployment should not be skipped, but users need to be informed.
+							- Convert the job specs to the OptimusDependency
+							- Return the OptimusDependency
+
+					- Other resource manager Resolver
+		- api interactions abstraction
+	*/
+
 	for i := 0; i < len(jobSpecs); i++ {
 		staticDependencies := staticDependenciesPerJob[jobSpecs[i].ID]
 		inferredDependencies := inferredDependenciesPerJob[jobSpecs[i].ID]

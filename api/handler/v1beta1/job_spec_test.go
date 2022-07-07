@@ -748,12 +748,12 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				Project: projectSpec,
 				Status:  models.JobDeploymentStatusSucceed,
 				Details: models.JobDeploymentDetail{
-					SuccessCount: 5,
+					DeploymentSuccessCount: 5,
 				},
 			}
 			getDeployJobsStatusResponse := &pb.GetDeployJobsStatusResponse{
 				Status:       jobDeployment.Status.String(),
-				SuccessCount: int32(jobDeployment.Details.SuccessCount),
+				SuccessCount: int32(jobDeployment.Details.DeploymentSuccessCount),
 			}
 
 			jobService.On("GetDeployment", ctx, models.DeploymentID(deployID)).Return(jobDeployment, nil)
@@ -782,8 +782,8 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				Project: projectSpec,
 				Status:  models.JobDeploymentStatusFailed,
 				Details: models.JobDeploymentDetail{
-					SuccessCount: 4,
-					Failures: []models.JobDeploymentFailure{
+					DeploymentSuccessCount: 4,
+					DeploymentFailures: []models.JobDeploymentFailure{
 						{
 							JobName: "job-a",
 							Message: "internal error",
@@ -793,11 +793,11 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			}
 			getDeployJobsStatusResponse := &pb.GetDeployJobsStatusResponse{
 				Status:       jobDeployment.Status.String(),
-				SuccessCount: int32(jobDeployment.Details.SuccessCount),
+				SuccessCount: int32(jobDeployment.Details.DeploymentSuccessCount),
 				Failures: []*pb.DeployJobFailure{
 					{
-						JobName: jobDeployment.Details.Failures[0].JobName,
-						Message: jobDeployment.Details.Failures[0].Message,
+						JobName: jobDeployment.Details.DeploymentFailures[0].JobName,
+						Message: jobDeployment.Details.DeploymentFailures[0].Message,
 					},
 				},
 			}

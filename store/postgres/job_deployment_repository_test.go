@@ -66,7 +66,7 @@ func TestIntegrationJobDeploymentRepository(t *testing.T) {
 				Project: projectSpec2,
 				Status:  models.JobDeploymentStatusFailed,
 				Details: models.JobDeploymentDetail{
-					Failures: []models.JobDeploymentFailure{
+					DeploymentFailures: []models.JobDeploymentFailure{
 						{
 							JobName: "job-1",
 							Message: "internal error",
@@ -104,7 +104,7 @@ func TestIntegrationJobDeploymentRepository(t *testing.T) {
 				Project: projectSpec2,
 				Status:  models.JobDeploymentStatusFailed,
 				Details: models.JobDeploymentDetail{
-					Failures: []models.JobDeploymentFailure{
+					DeploymentFailures: []models.JobDeploymentFailure{
 						{
 							JobName: "job-1",
 							Message: "internal error",
@@ -153,7 +153,7 @@ func TestIntegrationJobDeploymentRepository(t *testing.T) {
 				Project: projectSpec2,
 				Status:  models.JobDeploymentStatusFailed,
 				Details: models.JobDeploymentDetail{
-					Failures: []models.JobDeploymentFailure{
+					DeploymentFailures: []models.JobDeploymentFailure{
 						{
 							JobName: "job-1",
 							Message: "internal error",

@@ -15,8 +15,14 @@ import (
 	"github.com/odpf/optimus/store/rsrcmgr/neighbor"
 )
 
+/*
+	Optimus Dependency Resolver
+*/
+
 // ExternalJobSpecService is service to handle job
 type ExternalJobSpecService interface {
+	GetExternalDependenciesByDependentJobName()
+
 	GetExternalJobSpecsByDependentJobName(context.Context, models.ProjectID) (map[string][]models.JobSpec, error)
 }
 
@@ -97,10 +103,10 @@ func (e *externalJobSpecService) GetExternalJobSpecsByDependentJobName(ctx conte
 	return nil, nil
 }
 
-func (e *externalJobSpecService) getInferredNeighborDependenciesPerJobName(ctx context.Context, filtersPerJobName map[string][]models.JobSpecFilter) (map[string][]models.NeighborDependency, error) {
-	output := make(map[string][]models.NeighborDependency)
+func (e *externalJobSpecService) getInferredNeighborDependenciesPerJobName(ctx context.Context, filtersPerJobName map[string][]models.JobSpecFilter) (map[string][]models.OptimusDependency, error) {
+	output := make(map[string][]models.OptimusDependency)
 	for jobName, filters := range filtersPerJobName {
-		var neighborDependencies []models.NeighborDependency
+		var neighborDependencies []models.OptimusDependency
 		for _, filter := range filters {
 			for managerName, repository := range e.repositories {
 				specs, err := repository.GetJobSpecifications(ctx, filter)
@@ -108,7 +114,7 @@ func (e *externalJobSpecService) getInferredNeighborDependenciesPerJobName(ctx c
 					return nil, fmt.Errorf("error fetching job specifications from [%s] for job [%s]: %w", managerName, jobName, err)
 				}
 				for _, s := range specs {
-					neighborDependencies = append(neighborDependencies, models.NeighborDependency{
+					neighborDependencies = append(neighborDependencies, models.OptimusDependency{
 						Name:          managerName,
 						Host:          e.configs[managerName].Host,
 						Headers:       e.configs[managerName].Headers,

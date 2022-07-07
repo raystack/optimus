@@ -89,15 +89,15 @@ func (d *deployer) deployJobsPerNamespace(ctx context.Context, jobDeployment *mo
 	if err != nil {
 		return err
 	}
-	jobDeployment.Details.Failures = append(jobDeployment.Details.Failures, deployNamespaceDetail.Failures...)
-	jobDeployment.Details.FailureCount += deployNamespaceDetail.FailureCount
-	jobDeployment.Details.SuccessCount += deployNamespaceDetail.SuccessCount
+	jobDeployment.Details.DeploymentFailures = append(jobDeployment.Details.DeploymentFailures, deployNamespaceDetail.DeploymentFailures...)
+	jobDeployment.Details.DeploymentFailureCount += deployNamespaceDetail.DeploymentFailureCount
+	jobDeployment.Details.DeploymentSuccessCount += deployNamespaceDetail.DeploymentSuccessCount
 
 	return d.cleanPerNamespace(ctx, namespaceSpec, jobSpecs)
 }
 
 func (d *deployer) completeJobDeployment(ctx context.Context, jobDeployment models.JobDeployment) error {
-	if len(jobDeployment.Details.Failures) > 0 {
+	if len(jobDeployment.Details.DeploymentFailures) > 0 {
 		jobDeployment.Status = models.JobDeploymentStatusFailed
 	} else {
 		jobDeployment.Status = models.JobDeploymentStatusSucceed

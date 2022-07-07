@@ -1,4 +1,4 @@
-package neighbor
+package resourcemgr
 
 import (
 	"github.com/odpf/optimus/models"

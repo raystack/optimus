@@ -364,11 +364,11 @@ type JobSpecDependency struct {
 }
 
 type ExternalDependency struct {
-	HTTPDependencies     []HTTPDependency
-	NeighborDependencies []NeighborDependency
+	HTTPDependencies    []HTTPDependency
+	OptimusDependencies []OptimusDependency
 }
 
-type NeighborDependency struct {
+type OptimusDependency struct {
 	Name    string
 	Host    string
 	Headers map[string]string
@@ -554,9 +554,10 @@ type JobDeployment struct {
 }
 
 type JobDeploymentDetail struct {
-	SuccessCount int
-	FailureCount int
-	Failures     []JobDeploymentFailure
+	DeploymentSuccessCount int
+	DeploymentFailureCount int
+	DeploymentFailures     []JobDeploymentFailure
+	UnknownDependencies    map[string][]string
 }
 
 type JobDeploymentFailure struct {
@@ -616,4 +617,9 @@ type HookRunSpec struct {
 	Attempt       int
 	JobRunAttempt int
 	Duration      int64
+}
+
+type UnknownDependency struct {
+	JobName           string
+	DependencyJobName string
 }
