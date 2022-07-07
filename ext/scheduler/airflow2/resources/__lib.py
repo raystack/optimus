@@ -7,6 +7,7 @@ import os
 from datetime import datetime, timedelta
 from time import sleep
 from typing import Any, Dict, List, Optional
+from kubernetes.client import models as k8s
 
 import json
 
@@ -25,6 +26,7 @@ from airflow.sensors.base_sensor_operator import BaseSensorOperator
 from airflow.utils.db import provide_session
 from airflow.utils.decorators import apply_defaults
 from airflow.utils.state import State
+from airflow.utils import yaml
 from croniter import croniter
 
 log = logging.getLogger(__name__)
@@ -70,24 +72,95 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
     .. note: keep this up to date if there is any change in KubernetesPodOperator execute method
     """
     template_fields = ('image', 'cmds', 'arguments', 'env_vars', 'config_file', 'pod_template_file')
-
+    
     @apply_defaults
     def __init__(self,
+                 optimus_hostname,
+                 optimus_projectname,
+                 optimus_jobname,
                  *args,
                  **kwargs):
         super(SuperKubernetesPodOperator, self).__init__(*args, **kwargs)
-
         self.do_xcom_push = kwargs.get('do_xcom_push')
         self.namespace = kwargs.get('namespace')
         self.in_cluster = kwargs.get('in_cluster')
         self.cluster_context = kwargs.get('cluster_context')
         self.reattach_on_restart = kwargs.get('reattach_on_restart')
         self.config_file = kwargs.get('config_file')
+        
+        # used to fetch job env from optimus for adding to k8s pod
+        self.optimus_hostname = optimus_hostname
+        self.optimus_jobname  = optimus_jobname
+        self.optimus_projectname = optimus_projectname
+        self._optimus_client = OptimusAPIClient(optimus_hostname)
+
+    def render_init_containers(self, context):
+        for ic in self.init_containers:
+            env = getattr(ic, 'env')
+            if env:
+                self.render_template(env, context)
+
+    def fetch_env_from_optimus(self, context):
+        scheduled_at = context["next_execution_date"].strftime(TIMESTAMP_FORMAT)
+        job_meta = self._optimus_client.get_job_metadata(scheduled_at, self.optimus_projectname, self.optimus_jobname)
+        return [ 
+            k8s.V1EnvVar(name=key,value=val) for key, val in job_meta["context"]["envs"].items()
+        ] + [
+            k8s.V1EnvVar(name=key,value=val) for key, val in job_meta["context"]["secrets"].items()
+        ]
+
+    def _dry_run(self, pod):
+        def prune_dict(val: Any, mode='strict'):
+            """
+            Given dict ``val``, returns new dict based on ``val`` with all
+            empty elements removed.
+            What constitutes "empty" is controlled by the ``mode`` parameter.  If mode is 'strict'
+            then only ``None`` elements will be removed.  If mode is ``truthy``, then element ``x``
+            will be removed if ``bool(x) is False``.
+            """
+
+            def is_empty(x):
+                if mode == 'strict':
+                    return x is None
+                elif mode == 'truthy':
+                    return bool(x) is False
+                raise ValueError("allowable values for `mode` include 'truthy' and 'strict'")
+
+            if isinstance(val, dict):
+                new_dict = {}
+                for k, v in val.items():
+                    if is_empty(v):
+                        continue
+                    elif isinstance(v, (list, dict)):
+                        new_val = prune_dict(v, mode=mode)
+                        if new_val:
+                            new_dict[k] = new_val
+                    else:
+                        new_dict[k] = v
+                return new_dict
+            elif isinstance(val, list):
+                new_list = []
+                for v in val:
+                    if is_empty(v):
+                        continue
+                    elif isinstance(v, (list, dict)):
+                        new_val = prune_dict(v, mode=mode)
+                        if new_val:
+                            new_list.append(new_val)
+                    else:
+                        new_list.append(v)
+                return new_list
+            else:
+                return val
+        log.info(prune_dict(pod.to_dict(), mode='strict'))
+        log.info(yaml.dump(prune_dict(pod.to_dict(), mode='strict')))
 
     def execute(self, context):
-
         log_start_event(context, EVENT_NAMES.get("TASK_START_EVENT"))
         # to be done async
+        self.env_vars += self.fetch_env_from_optimus(context)
+        # init-container is not considered for rendering in airflow
+        self.render_init_containers(context)
 
         log.info('Task image version: %s', self.image)
         try:
@@ -100,6 +173,8 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
                                                      config_file=self.config_file)
 
             self.pod = self.create_pod_request_obj()
+            # self._dry_run(self.pod) # logs the yaml file for the pod [not compatible for future verison of implementation]
+
             self.namespace = self.pod.metadata.namespace
             self.client = client
 
