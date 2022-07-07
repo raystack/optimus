@@ -2,7 +2,7 @@ package playground
 
 import (
 	"time"
-
+    tea "github.com/charmbracelet/bubbletea"
 	"github.com/odpf/optimus/config"
 	"github.com/spf13/cobra"
 )
@@ -30,17 +30,19 @@ func NewPlayGroundWindowCommand(clientConfig *config.ClientConfig) *cobra.Comman
 	return cmd
 }
 func (j *windowComand) RunE(_ *cobra.Command, _ []string) error {
-	var state string = "Y"
-	for state == "Y" {
-		j.size = j.window.survey.GetWindowSize()
-		j.offset = j.window.survey.GetOffsetSize()
-		j.truncated = j.window.survey.GetTrucatedTo()
-		j.sehduledDate = j.window.survey.GetSechduleDate()
-		j.currentFinishingDate = j.sehduledDate
-		j.currentFinishingDate = j.window.truncate(j.currentFinishingDate, j.truncated)
-		j.currentFinishingDate = j.window.applyoffset(j.currentFinishingDate, j.offset)
-		j.window.printWindow(j.currentFinishingDate, j.size)
-		state = j.window.survey.GetStateInput()
-	}
+	// var state string = "Y"
+	// for state == "Y" {
+	// 	j.size = j.window.survey.GetWindowSize()
+	// 	j.offset = j.window.survey.GetOffsetSize()
+	// 	j.truncated = j.window.survey.GetTrucatedTo()
+	// 	j.sehduledDate = j.window.survey.GetSechduleDate()
+	// 	j.currentFinishingDate = j.sehduledDate
+	// 	j.currentFinishingDate = j.window.truncate(j.currentFinishingDate, j.truncated)
+	// 	j.currentFinishingDate = j.window.applyoffset(j.currentFinishingDate, j.offset)
+	// 	j.window.printWindow(j.currentFinishingDate, j.size)
+	// 	state = j.window.survey.GetStateInput()
+	// }
+	p := tea.NewProgram(initialModel())
+	p.Start()
 	return nil
 }
