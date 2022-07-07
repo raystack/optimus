@@ -58,6 +58,7 @@ func TestUnknownJobDependencyRepository(t *testing.T) {
 		Name:        "dev-team-2",
 		ProjectSpec: externalProjectSpec,
 	}
+	unknownDependencyName := "external-project/external-job"
 	testConfigs := []models.JobSpec{
 		{
 			ID:   uuid.New(),
@@ -107,8 +108,10 @@ func TestUnknownJobDependencyRepository(t *testing.T) {
 				},
 			},
 			ResourceDestination: jobDestination1,
-			Dependencies:        map[string]models.JobSpecDependency{},
-			NamespaceSpec:       namespaceSpec,
+			Dependencies: map[string]models.JobSpecDependency{
+				unknownDependencyName: {Type: models.JobSpecDependencyTypeInter},
+			},
+			NamespaceSpec: namespaceSpec,
 		},
 		{
 			ID:   uuid.New(),
@@ -207,6 +210,38 @@ func TestUnknownJobDependencyRepository(t *testing.T) {
 			checkModel, err := repo.GetUnknownInferredDependencyURNsByJobName(ctx, projectSpec.ID)
 
 			assert.Equal(t, map[string][]string{testModels[0].Name: {jobDestinationUnknown}}, checkModel)
+			assert.Nil(t, err)
+		})
+	})
+
+	t.Run("GetUnknownStaticDependencyNamesByJobName", func(t *testing.T) {
+		t.Run("GetUnknownStaticDependencyNamesByJobName should return all unknown static dependency urns", func(t *testing.T) {
+			db := DBSetup()
+
+			defer execUnit1.AssertExpectations(t)
+			var testModels []models.JobSpec
+			testModels = append(testModels, testConfigs...)
+
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			namespaceRepo := postgres.NewNamespaceRepository(db, hash)
+			err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
+			assert.Nil(t, err)
+
+			err = namespaceRepo.Insert(ctx, externalProjectSpec, externalProjectNamespaceSpec)
+			assert.Nil(t, err)
+
+			jobSpecRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			err = jobSpecRepo.Insert(ctx, testModels[0], jobDestination1)
+			assert.Nil(t, err)
+			err = jobSpecRepo.Insert(ctx, testModels[1], jobDestination2)
+			assert.Nil(t, err)
+
+			repo := postgres.NewUnknownJobDependencyRepository(db)
+			checkModel, err := repo.GetUnknownStaticDependencyNamesByJobName(ctx, projectSpec.ID)
+
+			assert.Equal(t, map[string][]string{testModels[0].Name: {unknownDependencyName}}, checkModel)
 			assert.Nil(t, err)
 		})
 	})

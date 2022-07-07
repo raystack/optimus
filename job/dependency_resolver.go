@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
@@ -280,7 +281,12 @@ func (d *dependencyResolver) getExternalDependenciesByJobID(ctx context.Context,
 	output := make(map[string]models.ExternalDependency)
 	addToOutput := func(dependencies map[string]models.ExternalDependency) {
 		for jobName, externalDependency := range dependencies {
-			output[jobName] = externalDependency
+			outputOptimusDependencies := output[jobName].OptimusDependencies
+			outputOptimusDependencies = append(outputOptimusDependencies, externalDependency.OptimusDependencies...)
+			output[jobName] = models.ExternalDependency{
+				HTTPDependencies:    output[jobName].HTTPDependencies,
+				OptimusDependencies: outputOptimusDependencies,
+			}
 		}
 	}
 

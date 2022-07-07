@@ -140,7 +140,7 @@ func (e *externalDependencyResolver) fetchOptimusDependenciesPerFilter(ctx conte
 	return dependencies, nil
 }
 
-func (e *externalDependencyResolver) toJobSpecFiltersByJobNameForResourceNames(resourceNamesByJobName map[string][]string) map[string][]models.JobSpecFilter {
+func (*externalDependencyResolver) toJobSpecFiltersByJobNameForResourceNames(resourceNamesByJobName map[string][]string) map[string][]models.JobSpecFilter {
 	output := make(map[string][]models.JobSpecFilter)
 	for jobName, resourceNames := range resourceNamesByJobName {
 		for _, name := range resourceNames {
@@ -168,7 +168,7 @@ func (e *externalDependencyResolver) toJobSpecFiltersByJobNameForDependencyNames
 	return output, err
 }
 
-func (e *externalDependencyResolver) convertDependencyNamesToFilters(dependencyNames []string) (jobFilters []models.JobSpecFilter, invalidDependencyNames []string) {
+func (*externalDependencyResolver) convertDependencyNamesToFilters(dependencyNames []string) (jobFilters []models.JobSpecFilter, invalidDependencyNames []string) {
 	for _, name := range dependencyNames {
 		splitName := strings.Split(name, "/")
 		expectedSplintLen := 2

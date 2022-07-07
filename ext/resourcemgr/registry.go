@@ -9,7 +9,9 @@ import (
 
 const OptimusType = "optimus"
 
-var Registry = &ManagerFactory{}
+var Registry = &ManagerFactory{
+	registry: make(map[string]NewResourceManager),
+}
 
 type NewResourceManager func(conf interface{}) (ResourceManager, error)
 

@@ -172,18 +172,16 @@ func (_m *JobSpecRepository) GetAllByProjectID(_a0 context.Context, _a1 models.P
 	var r0 []models.JobSpec
 	if rf, ok := ret.Get(0).(func(context.Context, models.ProjectID) []models.JobSpec); ok {
 		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]models.JobSpec)
-		}
+	}
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).([]models.JobSpec)
 	}
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, models.ProjectID) error); ok {
 		r1 = rf(_a0, _a1)
-	} else {
-		r1 = ret.Error(1)
 	}
+	r1 = ret.Error(1)
 
 	return r0, r1
 }
@@ -195,10 +193,9 @@ func (_m *JobSpecRepository) GetDependentJobs(_a0 context.Context, _a1 *models.J
 	var r0 []models.JobSpec
 	if rf, ok := ret.Get(0).(func(context.Context, *models.JobSpec) []models.JobSpec); ok {
 		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]models.JobSpec)
-		}
+	}
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).([]models.JobSpec)
 	}
 
 	var r1 error
@@ -218,10 +215,9 @@ func (_m *JobSpecRepository) GetInferredDependenciesPerJobID(_a0 context.Context
 	var r0 map[uuid.UUID][]models.JobSpec
 	if rf, ok := ret.Get(0).(func(context.Context, models.ProjectID) map[uuid.UUID][]models.JobSpec); ok {
 		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[uuid.UUID][]models.JobSpec)
-		}
+	}
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(map[uuid.UUID][]models.JobSpec)
 	}
 
 	var r1 error
@@ -241,10 +237,9 @@ func (_m *JobSpecRepository) GetJobByName(_a0 context.Context, _a1 string) ([]mo
 	var r0 []models.JobSpec
 	if rf, ok := ret.Get(0).(func(context.Context, string) []models.JobSpec); ok {
 		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]models.JobSpec)
-		}
+	}
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).([]models.JobSpec)
 	}
 
 	var r1 error
@@ -285,10 +280,9 @@ func (_m *JobSpecRepository) GetStaticDependenciesPerJobID(_a0 context.Context, 
 	var r0 map[uuid.UUID][]models.JobSpec
 	if rf, ok := ret.Get(0).(func(context.Context, models.ProjectID) map[uuid.UUID][]models.JobSpec); ok {
 		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[uuid.UUID][]models.JobSpec)
-		}
+	}
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(map[uuid.UUID][]models.JobSpec)
 	}
 
 	var r1 error
@@ -464,17 +458,16 @@ type ExternalDependencyResolver struct {
 	mock.Mock
 }
 
-// FetchExternalInferredDependenciesPerJobName provides a mock function with given fields: _a0, _a1
-func (_m *ExternalDependencyResolver) FetchExternalInferredDependenciesPerJobName(_a0 context.Context, _a1 models.ProjectID) (map[string]models.ExternalDependency, error) {
+// FetchInferredExternalDependenciesPerJobName provides a mock function with given fields: _a0, _a1
+func (_m *ExternalDependencyResolver) FetchInferredExternalDependenciesPerJobName(_a0 context.Context, _a1 models.ProjectID) (map[string]models.ExternalDependency, error) {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 map[string]models.ExternalDependency
 	if rf, ok := ret.Get(0).(func(context.Context, models.ProjectID) map[string]models.ExternalDependency); ok {
 		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[string]models.ExternalDependency)
-		}
+	}
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(map[string]models.ExternalDependency)
 	}
 
 	var r1 error
@@ -488,25 +481,23 @@ func (_m *ExternalDependencyResolver) FetchExternalInferredDependenciesPerJobNam
 }
 
 // FetchExternalStaticDependenciesPerJobName provides a mock function with given fields: _a0, _a1
-func (_m *ExternalDependencyResolver) FetchExternalStaticDependenciesPerJobName(_a0 context.Context, _a1 models.ProjectID) (map[string]models.ExternalDependency, []models.UnknownDependency, error) {
+func (_m *ExternalDependencyResolver) FetchStaticExternalDependenciesPerJobName(_a0 context.Context, _a1 models.ProjectID) (map[string]models.ExternalDependency, []models.UnknownDependency, error) {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 map[string]models.ExternalDependency
 	if rf, ok := ret.Get(0).(func(context.Context, models.ProjectID) map[string]models.ExternalDependency); ok {
 		r0 = rf(_a0, _a1)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[string]models.ExternalDependency)
-		}
+	}
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(map[string]models.ExternalDependency)
 	}
 
 	var r1 []models.UnknownDependency
 	if rf, ok := ret.Get(1).(func(context.Context, models.ProjectID) []models.UnknownDependency); ok {
 		r1 = rf(_a0, _a1)
-	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).([]models.UnknownDependency)
-		}
+	}
+	if ret.Get(1) != nil {
+		r1 = ret.Get(1).([]models.UnknownDependency)
 	}
 
 	var r2 error
@@ -546,19 +537,17 @@ func (_m *DependencyResolver) GetJobSpecsWithDependencies(ctx context.Context, p
 	var r0 []models.JobSpec
 	if rf, ok := ret.Get(0).(func(context.Context, models.ProjectID) []models.JobSpec); ok {
 		r0 = rf(ctx, projectID)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]models.JobSpec)
-		}
+	}
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).([]models.JobSpec)
 	}
 
 	var r1 []models.UnknownDependency
 	if rf, ok := ret.Get(1).(func(context.Context, models.ProjectID) []models.UnknownDependency); ok {
 		r1 = rf(ctx, projectID)
-	} else {
-		if ret.Get(1) != nil {
-			r1 = ret.Get(1).([]models.UnknownDependency)
-		}
+	}
+	if ret.Get(1) != nil {
+		r1 = ret.Get(1).([]models.UnknownDependency)
 	}
 
 	var r2 error
@@ -599,10 +588,9 @@ func (_m *DependencyResolver) ResolveStaticDependencies(ctx context.Context, job
 	var r0 map[string]models.JobSpecDependency
 	if rf, ok := ret.Get(0).(func(context.Context, models.JobSpec, models.ProjectSpec, store.ProjectJobSpecRepository) map[string]models.JobSpecDependency); ok {
 		r0 = rf(ctx, jobSpec, projectSpec, projectJobSpecRepo)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[string]models.JobSpecDependency)
-		}
+	}
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(map[string]models.JobSpecDependency)
 	}
 
 	var r1 error
@@ -825,6 +813,70 @@ type mockConstructorTestingTNewJobSourceRepository interface {
 // NewJobSourceRepository creates a new instance of JobSourceRepository. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 func NewJobSourceRepository(t mockConstructorTestingTNewJobSourceRepository) *JobSourceRepository {
 	mock := &JobSourceRepository{}
+	mock.Mock.Test(t)
+
+	t.Cleanup(func() { mock.AssertExpectations(t) })
+
+	return mock
+}
+
+// UnknownJobDependencyRepository is an autogenerated mock type for the UnknownJobDependencyRepository type
+type UnknownJobDependencyRepository struct {
+	mock.Mock
+}
+
+// GetUnknownInferredDependencyURNsByJobName provides a mock function with given fields: _a0, _a1
+func (_m *UnknownJobDependencyRepository) GetUnknownInferredDependencyURNsByJobName(_a0 context.Context, _a1 models.ProjectID) (map[string][]string, error) {
+	ret := _m.Called(_a0, _a1)
+
+	var r0 map[string][]string
+	if rf, ok := ret.Get(0).(func(context.Context, models.ProjectID) map[string][]string); ok {
+		r0 = rf(_a0, _a1)
+	}
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(map[string][]string)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, models.ProjectID) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetUnknownStaticDependencyNamesByJobName provides a mock function with given fields: _a0, _a1
+func (_m *UnknownJobDependencyRepository) GetUnknownStaticDependencyNamesByJobName(_a0 context.Context, _a1 models.ProjectID) (map[string][]string, error) {
+	ret := _m.Called(_a0, _a1)
+
+	var r0 map[string][]string
+	if rf, ok := ret.Get(0).(func(context.Context, models.ProjectID) map[string][]string); ok {
+		r0 = rf(_a0, _a1)
+	}
+	if ret.Get(0) != nil {
+		r0 = ret.Get(0).(map[string][]string)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, models.ProjectID) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+type mockConstructorTestingTNewUnknownJobDependencyRepository interface {
+	mock.TestingT
+	Cleanup(func())
+}
+
+// NewUnknownJobDependencyRepository creates a new instance of UnknownJobDependencyRepository. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewUnknownJobDependencyRepository(t mockConstructorTestingTNewUnknownJobDependencyRepository) *UnknownJobDependencyRepository {
+	mock := &UnknownJobDependencyRepository{}
 	mock.Mock.Test(t)
 
 	t.Cleanup(func() { mock.AssertExpectations(t) })

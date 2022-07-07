@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/models"
@@ -48,13 +49,13 @@ func (repo unknownJobDependencyRepository) GetUnknownStaticDependencyNamesByJobN
 	jobNameList := repo.db.Select("name").Table("job")
 
 	projectAndJobNameList := repo.db.Select("concat(p.name || '/' || j.name) as dependency_job_name").
-		Table("job j").Joins("project p on j.project_id = j.project_id")
+		Table("job j").Joins("join project p on j.project_id = j.project_id")
 
-	jobNameAndDependencyNameList := repo.db.Select("name, jsonb_object_keys(dependencies) as job_dependency_name").Table("job")
+	jobNameAndDependencyNameList := repo.db.Select("name, project_id, jsonb_object_keys(dependencies) as dependency_job_name").Table("job")
 
-	if err := repo.db.WithContext(ctx).Select("job_name, job_dependency_name").
+	if err := repo.db.WithContext(ctx).Select("j.name as job_name, dependency_job_name").
 		Table("(?) j", jobNameAndDependencyNameList).
-		Where("job_dependency_name not in (?) and job_dependency_name not in (?) and project_id = ?", jobNameList, projectAndJobNameList, projectID.UUID()).Find(&jobNameDependencyPairs).Error; err != nil {
+		Where("dependency_job_name not in (?) and dependency_job_name not in (?) and project_id = ?", jobNameList, projectAndJobNameList, projectID.UUID()).Find(&jobNameDependencyPairs).Error; err != nil {
 		return nil, err
 	}
 
