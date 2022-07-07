@@ -4,7 +4,6 @@ from typing import Any, Callable, Dict, Optional
 from datetime import datetime, timedelta, timezone
 
 from airflow.models import DAG, Variable, DagRun, DagModel, TaskInstance, BaseOperator, XCom, XCOM_RETURN_KEY
-from airflow.kubernetes.secret import Secret
 from airflow.configuration import conf
 from airflow.operators.python_operator import PythonOperator
 from airflow.utils.weight_rule import WeightRule
@@ -77,15 +76,51 @@ publish_job_end_event = PythonOperator(
         dag=dag
     )
 
-transformation_secret = Secret(
-    "volume",
-    "/opt/optimus/secrets",
-    "optimus-task-bq",
-    "auth.json"
+
+JOB_DIR = "/data"
+IMAGE_PULL_POLICY="Always"
+INIT_CONTAINER_IMAGE="odpf/optimus:dev"
+INIT_CONTAINER_ENTRYPOINT = "/opt/entrypoint_init_container.sh"
+
+volume = k8s.V1Volume(
+    name='asset-volume',
+    empty_dir=k8s.V1EmptyDirVolumeSource()
+)
+asset_volume_mounts = [
+    k8s.V1VolumeMount(mount_path=JOB_DIR, name='asset-volume', sub_path=None, read_only=False)
+]
+executor_env_vars = [
+    k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
+    k8s.V1EnvVar(name="JOB_DIR",value=JOB_DIR),
+]
+
+init_env_vars = [
+    k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
+    k8s.V1EnvVar(name="JOB_DIR",value=JOB_DIR),
+    k8s.V1EnvVar(name="JOB_NAME",value='foo'),
+    k8s.V1EnvVar(name="OPTIMUS_HOST",value='http://airflow.example.io'),
+    k8s.V1EnvVar(name="PROJECT",value='foo-project'),
+    k8s.V1EnvVar(name="NAMESPACE",value='bar-namespace'),
+    k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ next_execution_date }}'),
+]
+
+init_container = k8s.V1Container(
+    name="init-container",
+    image=INIT_CONTAINER_IMAGE,
+    image_pull_policy=IMAGE_PULL_POLICY,
+    env=init_env_vars + [
+        k8s.V1EnvVar(name="INSTANCE_TYPE",value='task'),
+        k8s.V1EnvVar(name="INSTANCE_NAME",value='bq'),
+    ],
+    volume_mounts=asset_volume_mounts,
+    command=["/bin/sh", INIT_CONTAINER_ENTRYPOINT],
 )
 
 transformation_bq = SuperKubernetesPodOperator(
-    image_pull_policy="Always",
+    optimus_hostname="http://airflow.example.io",
+    optimus_projectname="foo-project",
+    optimus_jobname="foo",
+    image_pull_policy=IMAGE_PULL_POLICY,
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "example.io/namespace/image:latest",
     cmds=[],
@@ -97,33 +132,33 @@ transformation_bq = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    secrets=[transformation_secret],
-    env_vars = [
-        k8s.V1EnvVar(name="JOB_NAME",value='foo'),
-        k8s.V1EnvVar(name="OPTIMUS_HOST",value='http://airflow.example.io'),
-        k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
-        k8s.V1EnvVar(name="JOB_DIR",value='/data'),
-        k8s.V1EnvVar(name="PROJECT",value='foo-project'),
-        k8s.V1EnvVar(name="NAMESPACE",value='bar-namespace'),
-        k8s.V1EnvVar(name="INSTANCE_TYPE",value='task'),
-        k8s.V1EnvVar(name="INSTANCE_NAME",value='bq'),
-        k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ next_execution_date }}'),
-    ],
+    env_vars=executor_env_vars,
     sla=timedelta(seconds=7200),
-    reattach_on_restart=True
+    reattach_on_restart=True,
+    volume_mounts=asset_volume_mounts,
+    volumes=[volume],
+    init_containers=[init_container],
 )
 
 # hooks loop start
 
-hook_transporter_secret = Secret(
-    "volume",
-    "/opt/optimus/secrets",
-    "optimus-hook-transporter",
-    "auth.json"
+init_container_transporter = k8s.V1Container(
+    name="init-container",
+    image=INIT_CONTAINER_IMAGE,
+    image_pull_policy=IMAGE_PULL_POLICY,
+    env= init_env_vars + [
+        k8s.V1EnvVar(name="INSTANCE_TYPE",value='hook'),
+        k8s.V1EnvVar(name="INSTANCE_NAME",value='transporter'),
+    ],
+    volume_mounts=asset_volume_mounts,
+    command=["/bin/sh", INIT_CONTAINER_ENTRYPOINT],
 )
 
 hook_transporter = SuperKubernetesPodOperator(
-    image_pull_policy="Always",
+    optimus_hostname="http://airflow.example.io",
+    optimus_projectname="foo-project",
+    optimus_jobname="foo",
+    image_pull_policy=IMAGE_PULL_POLICY,
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "example.io/namespace/hook-image:latest",
     cmds=[],
@@ -134,25 +169,29 @@ hook_transporter = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    secrets=[hook_transporter_secret],
-    env_vars = [
-        k8s.V1EnvVar(name="JOB_NAME",value='foo'),
-        k8s.V1EnvVar(name="OPTIMUS_HOST",value='http://airflow.example.io'),
-        k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
-        k8s.V1EnvVar(name="JOB_DIR",value='/data'),
-        k8s.V1EnvVar(name="PROJECT",value='foo-project'),
-        k8s.V1EnvVar(name="NAMESPACE",value='bar-namespace'),
+    env_vars=executor_env_vars,
+    reattach_on_restart=True,
+    volume_mounts=asset_volume_mounts,
+    volumes=[volume],
+    init_containers=[init_container_transporter],
+)
+init_container_predator = k8s.V1Container(
+    name="init-container",
+    image=INIT_CONTAINER_IMAGE,
+    image_pull_policy=IMAGE_PULL_POLICY,
+    env= init_env_vars + [
         k8s.V1EnvVar(name="INSTANCE_TYPE",value='hook'),
-        k8s.V1EnvVar(name="INSTANCE_NAME",value='transporter'),
-        k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ next_execution_date }}'),
-        # rest of the env vars are pulled from the container by making a GRPC call to optimus
+        k8s.V1EnvVar(name="INSTANCE_NAME",value='predator'),
     ],
-    reattach_on_restart=True
+    volume_mounts=asset_volume_mounts,
+    command=["/bin/sh", INIT_CONTAINER_ENTRYPOINT],
 )
 
-
 hook_predator = SuperKubernetesPodOperator(
-    image_pull_policy="Always",
+    optimus_hostname="http://airflow.example.io",
+    optimus_projectname="foo-project",
+    optimus_jobname="foo",
+    image_pull_policy=IMAGE_PULL_POLICY,
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "example.io/namespace/predator-image:latest",
     cmds=[],
@@ -163,25 +202,29 @@ hook_predator = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    secrets=[],
-    env_vars = [
-        k8s.V1EnvVar(name="JOB_NAME",value='foo'),
-        k8s.V1EnvVar(name="OPTIMUS_HOST",value='http://airflow.example.io'),
-        k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
-        k8s.V1EnvVar(name="JOB_DIR",value='/data'),
-        k8s.V1EnvVar(name="PROJECT",value='foo-project'),
-        k8s.V1EnvVar(name="NAMESPACE",value='bar-namespace'),
+    env_vars=executor_env_vars,
+    reattach_on_restart=True,
+    volume_mounts=asset_volume_mounts,
+    volumes=[volume],
+    init_containers=[init_container_predator],
+)
+init_container_hook__dash__for__dash__fail = k8s.V1Container(
+    name="init-container",
+    image=INIT_CONTAINER_IMAGE,
+    image_pull_policy=IMAGE_PULL_POLICY,
+    env= init_env_vars + [
         k8s.V1EnvVar(name="INSTANCE_TYPE",value='hook'),
-        k8s.V1EnvVar(name="INSTANCE_NAME",value='predator'),
-        k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ next_execution_date }}'),
-        # rest of the env vars are pulled from the container by making a GRPC call to optimus
+        k8s.V1EnvVar(name="INSTANCE_NAME",value='hook-for-fail'),
     ],
-    reattach_on_restart=True
+    volume_mounts=asset_volume_mounts,
+    command=["/bin/sh", INIT_CONTAINER_ENTRYPOINT],
 )
 
-
 hook_hook__dash__for__dash__fail = SuperKubernetesPodOperator(
-    image_pull_policy="Always",
+    optimus_hostname="http://airflow.example.io",
+    optimus_projectname="foo-project",
+    optimus_jobname="foo",
+    image_pull_policy=IMAGE_PULL_POLICY,
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "example.io/namespace/fail-image:latest",
     cmds=[],
@@ -192,21 +235,12 @@ hook_hook__dash__for__dash__fail = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    secrets=[],
-    env_vars = [
-        k8s.V1EnvVar(name="JOB_NAME",value='foo'),
-        k8s.V1EnvVar(name="OPTIMUS_HOST",value='http://airflow.example.io'),
-        k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
-        k8s.V1EnvVar(name="JOB_DIR",value='/data'),
-        k8s.V1EnvVar(name="PROJECT",value='foo-project'),
-        k8s.V1EnvVar(name="NAMESPACE",value='bar-namespace'),
-        k8s.V1EnvVar(name="INSTANCE_TYPE",value='hook'),
-        k8s.V1EnvVar(name="INSTANCE_NAME",value='hook-for-fail'),
-        k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ next_execution_date }}'),
-        # rest of the env vars are pulled from the container by making a GRPC call to optimus
-    ],
+    env_vars=executor_env_vars,
     trigger_rule="one_failed",
-    reattach_on_restart=True
+    reattach_on_restart=True,
+    volume_mounts=asset_volume_mounts,
+    volumes=[volume],
+    init_containers=[init_container_hook__dash__for__dash__fail],
 )
 # hooks loop ends
 
