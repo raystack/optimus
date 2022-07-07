@@ -142,7 +142,7 @@ func TestDependencyResolver(t *testing.T) {
 				DependsOn: []string{"hook1"},
 			}, nil)
 
-			resolver := job.NewDependencyResolver(jobSpecRepository, jobSourceRepo, pluginService, projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(jobSpecRepository, jobSourceRepo, pluginService, projectJobSpecRepoFactory, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 			assert.Nil(t, err)
 			resolvedJobSpec2, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
@@ -241,7 +241,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			jobSourceRepo.On("Save", ctx, projectSpec.ID, jobSpec1.ID, jobSpec1Sources).Return(nil)
 
-			resolver := job.NewDependencyResolver(jobSpecRepository, jobSourceRepo, pluginService, projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(jobSpecRepository, jobSourceRepo, pluginService, projectJobSpecRepoFactory, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 			assert.Nil(t, err)
 			resolvedJobSpec2, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
@@ -319,7 +319,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			jobSourceRepo.On("Save", ctx, projectSpec.ID, jobSpec1.ID, jobSpec1Sources).Return(nil)
 
-			resolver := job.NewDependencyResolver(jobSpecRepository, jobSourceRepo, pluginService, projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(jobSpecRepository, jobSourceRepo, pluginService, projectJobSpecRepoFactory, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 
 			assert.Error(t, fmt.Errorf(job.UnknownRuntimeDependencyMessage,
@@ -363,7 +363,7 @@ func TestDependencyResolver(t *testing.T) {
 			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{}, errors.New("random error"))
 			defer pluginService.AssertExpectations(t)
 
-			resolver := job.NewDependencyResolver(nil, nil, pluginService, projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(nil, nil, pluginService, projectJobSpecRepoFactory, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 
 			assert.Equal(t, "random error", err.Error())
@@ -413,7 +413,7 @@ func TestDependencyResolver(t *testing.T) {
 			errorMsg := "internal error"
 			jobSourceRepo.On("Save", ctx, projectSpec.ID, jobSpec1.ID, jobSpec1Sources).Return(errors.New(errorMsg))
 
-			resolver := job.NewDependencyResolver(nil, jobSourceRepo, pluginService, projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(nil, jobSourceRepo, pluginService, projectJobSpecRepoFactory, nil)
 			_, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 			assert.Contains(t, err.Error(), errorMsg)
 		})
@@ -464,7 +464,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			jobSourceRepo.On("Save", ctx, projectSpec.ID, jobSpec1.ID, jobSpec1Sources).Return(nil)
 
-			resolver := job.NewDependencyResolver(jobSpecRepository, jobSourceRepo, pluginService, projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(jobSpecRepository, jobSourceRepo, pluginService, projectJobSpecRepoFactory, nil)
 			_, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 			assert.Error(t, fmt.Errorf(job.UnknownRuntimeDependencyMessage,
 				jobSpec1Sources[0], jobSpec1.Name),
@@ -538,7 +538,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			jobSourceRepo.On("Save", ctx, projectSpec.ID, jobSpec1.ID, jobSpec1Sources).Return(nil)
 
-			resolver := job.NewDependencyResolver(jobSpecRepository, jobSourceRepo, pluginService, projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(jobSpecRepository, jobSourceRepo, pluginService, projectJobSpecRepoFactory, nil)
 			_, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
 			assert.Equal(t, "unknown local dependency for job static_dep: spec not found", err.Error())
 		})
@@ -609,7 +609,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			jobSourceRepo.On("Save", ctx, projectSpec.ID, jobSpec1.ID, jobSpec1Sources).Return(nil)
 
-			resolver := job.NewDependencyResolver(jobSpecRepository, jobSourceRepo, pluginService, projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(jobSpecRepository, jobSourceRepo, pluginService, projectJobSpecRepoFactory, nil)
 			_, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
 			assert.Equal(t, "unsupported dependency type: bad", err.Error())
 		})
@@ -703,7 +703,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			jobSourceRepo.On("Save", ctx, projectSpec.ID, jobSpec1.ID, jobSpec1Sources).Return(nil)
 
-			resolver := job.NewDependencyResolver(jobSpecRepository, jobSourceRepo, pluginService, projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(jobSpecRepository, jobSourceRepo, pluginService, projectJobSpecRepoFactory, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 			assert.Nil(t, err)
 			resolvedJobSpec2, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
@@ -835,7 +835,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			jobSourceRepo.On("Save", ctx, projectSpec.ID, jobSpec1.ID, jobSpec1Sources).Return(nil)
 
-			resolver := job.NewDependencyResolver(jobSpecRepository, jobSourceRepo, pluginService, projectJobSpecRepoFactory)
+			resolver := job.NewDependencyResolver(jobSpecRepository, jobSourceRepo, pluginService, projectJobSpecRepoFactory, nil)
 			resolvedJobSpec1, err := resolver.Resolve(ctx, projectSpec, jobSpec1, nil)
 			assert.Nil(t, err)
 			resolvedJobSpec2, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
@@ -854,7 +854,7 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobFactory := &mock.ProjectJobSpecRepoFactory{}
 			pluginService := &mock.DependencyResolverPluginService{}
 			jobSourceRepo := &mock.JobSourceRepository{}
-			dependencyResolver := job.NewDependencyResolver(nil, jobSourceRepo, pluginService, projectJobFactory)
+			dependencyResolver := job.NewDependencyResolver(nil, jobSourceRepo, pluginService, projectJobFactory, nil)
 
 			var ctx context.Context
 			job := models.JobSpec{
@@ -875,7 +875,7 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobFactory := &mock.ProjectJobSpecRepoFactory{}
 			pluginService := &mock.DependencyResolverPluginService{}
 			jobSourceRepo := &mock.JobSourceRepository{}
-			dependencyResolver := job.NewDependencyResolver(nil, jobSourceRepo, pluginService, projectJobFactory)
+			dependencyResolver := job.NewDependencyResolver(nil, jobSourceRepo, pluginService, projectJobFactory, nil)
 
 			ctx := context.Background()
 			job := models.JobSpec{}
@@ -894,7 +894,7 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobFactory := &mock.ProjectJobSpecRepoFactory{}
 			pluginService := &mock.DependencyResolverPluginService{}
 			jobSourceRepo := &mock.JobSourceRepository{}
-			dependencyResolver := job.NewDependencyResolver(nil, jobSourceRepo, pluginService, projectJobFactory)
+			dependencyResolver := job.NewDependencyResolver(nil, jobSourceRepo, pluginService, projectJobFactory, nil)
 
 			ctx := context.Background()
 			job := models.JobSpec{
@@ -913,7 +913,7 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobFactory := &mock.ProjectJobSpecRepoFactory{}
 			pluginService := &mock.DependencyResolverPluginService{}
 			jobSourceRepo := &mock.JobSourceRepository{}
-			dependencyResolver := job.NewDependencyResolver(nil, jobSourceRepo, pluginService, projectJobFactory)
+			dependencyResolver := job.NewDependencyResolver(nil, jobSourceRepo, pluginService, projectJobFactory, nil)
 
 			ctx := context.Background()
 			job := models.JobSpec{
@@ -934,7 +934,7 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobFactory := &mock.ProjectJobSpecRepoFactory{}
 			pluginService := &mock.DependencyResolverPluginService{}
 			jobSourceRepo := &mock.JobSourceRepository{}
-			dependencyResolver := job.NewDependencyResolver(nil, jobSourceRepo, pluginService, projectJobFactory)
+			dependencyResolver := job.NewDependencyResolver(nil, jobSourceRepo, pluginService, projectJobFactory, nil)
 
 			ctx := context.Background()
 			jobDependency := models.JobSpec{
@@ -965,7 +965,7 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobFactory := &mock.ProjectJobSpecRepoFactory{}
 			pluginService := &mock.DependencyResolverPluginService{}
 			jobSourceRepo := &mock.JobSourceRepository{}
-			dependencyResolver := job.NewDependencyResolver(nil, jobSourceRepo, pluginService, projectJobFactory)
+			dependencyResolver := job.NewDependencyResolver(nil, jobSourceRepo, pluginService, projectJobFactory, nil)
 
 			ctx := context.Background()
 			job := models.JobSpec{
@@ -991,7 +991,7 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobFactory := &mock.ProjectJobSpecRepoFactory{}
 			pluginService := &mock.DependencyResolverPluginService{}
 			jobSourceRepo := &mock.JobSourceRepository{}
-			dependencyResolver := job.NewDependencyResolver(nil, jobSourceRepo, pluginService, projectJobFactory)
+			dependencyResolver := job.NewDependencyResolver(nil, jobSourceRepo, pluginService, projectJobFactory, nil)
 
 			ctx := context.Background()
 			jobDependency := models.JobSpec{
@@ -1022,7 +1022,7 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobFactory := &mock.ProjectJobSpecRepoFactory{}
 			pluginService := &mock.DependencyResolverPluginService{}
 			jobSourceRepo := &mock.JobSourceRepository{}
-			dependencyResolver := job.NewDependencyResolver(nil, jobSourceRepo, pluginService, projectJobFactory)
+			dependencyResolver := job.NewDependencyResolver(nil, jobSourceRepo, pluginService, projectJobFactory, nil)
 
 			ctx := context.Background()
 			job := models.JobSpec{
@@ -1048,7 +1048,7 @@ func TestDependencyResolver(t *testing.T) {
 			projectJobFactory := &mock.ProjectJobSpecRepoFactory{}
 			pluginService := &mock.DependencyResolverPluginService{}
 			jobSourceRepo := &mock.JobSourceRepository{}
-			dependencyResolver := job.NewDependencyResolver(nil, jobSourceRepo, pluginService, projectJobFactory)
+			dependencyResolver := job.NewDependencyResolver(nil, jobSourceRepo, pluginService, projectJobFactory, nil)
 
 			ctx := context.Background()
 			jobDependency1 := models.JobSpec{
@@ -1086,12 +1086,12 @@ func TestDependencyResolver(t *testing.T) {
 	t.Run("GetJobSpecsWithDependencies", func(t *testing.T) {
 		t.Run("return nil and error if context is nil", func(t *testing.T) {
 			jobSpecRepo := mock.NewJobSpecRepository(t)
-			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, nil, nil, nil)
+			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, nil, nil, nil, nil)
 
 			var ctx context.Context
 			projectID := models.ProjectID(uuid.New())
 
-			actualJobSpecs, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, projectID)
+			actualJobSpecs, _, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, projectID)
 
 			assert.Nil(t, actualJobSpecs)
 			assert.Error(t, actualError)
@@ -1099,14 +1099,14 @@ func TestDependencyResolver(t *testing.T) {
 
 		t.Run("return nil and error if error encountered when getting all job specs within the project", func(t *testing.T) {
 			jobSpecRepo := mock.NewJobSpecRepository(t)
-			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, nil, nil, nil)
+			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, nil, nil, nil, nil)
 
 			ctx := context.Background()
 			projectID := models.ProjectID(uuid.New())
 
 			jobSpecRepo.On("GetAllByProjectID", ctx, projectID).Return(nil, errors.New("random error"))
 
-			actualJobSpecs, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, projectID)
+			actualJobSpecs, _, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, projectID)
 
 			assert.Nil(t, actualJobSpecs)
 			assert.Error(t, actualError)
@@ -1114,15 +1114,15 @@ func TestDependencyResolver(t *testing.T) {
 
 		t.Run("return nil and error if error encountered when getting static dependencies per job", func(t *testing.T) {
 			jobSpecRepo := mock.NewJobSpecRepository(t)
-			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, nil, nil, nil)
+			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, nil, nil, nil, nil)
 
 			ctx := context.Background()
 			projectID := models.ProjectID(uuid.New())
 
 			jobSpecRepo.On("GetAllByProjectID", ctx, projectID).Return([]models.JobSpec{}, nil)
-			jobSpecRepo.On("GetStaticDependenciesPerJob", ctx, projectID).Return(nil, errors.New("random error"))
+			jobSpecRepo.On("GetStaticDependenciesPerJobID", ctx, projectID).Return(nil, errors.New("random error"))
 
-			actualJobSpecs, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, projectID)
+			actualJobSpecs, _, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, projectID)
 
 			assert.Nil(t, actualJobSpecs)
 			assert.Error(t, actualError)
@@ -1130,16 +1130,16 @@ func TestDependencyResolver(t *testing.T) {
 
 		t.Run("return nil and error if error encountered when getting inferred dependencies per job", func(t *testing.T) {
 			jobSpecRepo := mock.NewJobSpecRepository(t)
-			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, nil, nil, nil)
+			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, nil, nil, nil, nil)
 
 			ctx := context.Background()
 			projectID := models.ProjectID(uuid.New())
 
 			jobSpecRepo.On("GetAllByProjectID", ctx, projectID).Return([]models.JobSpec{}, nil)
-			jobSpecRepo.On("GetStaticDependenciesPerJob", ctx, projectID).Return(map[uuid.UUID][]models.JobSpec{}, nil)
-			jobSpecRepo.On("GetInferredDependenciesPerJob", ctx, projectID).Return(nil, errors.New("random error"))
+			jobSpecRepo.On("GetStaticDependenciesPerJobID", ctx, projectID).Return(map[uuid.UUID][]models.JobSpec{}, nil)
+			jobSpecRepo.On("GetInferredDependenciesPerJobID", ctx, projectID).Return(nil, errors.New("random error"))
 
-			actualJobSpecs, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, projectID)
+			actualJobSpecs, _, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, projectID)
 
 			assert.Nil(t, actualJobSpecs)
 			assert.Error(t, actualError)
@@ -1148,7 +1148,7 @@ func TestDependencyResolver(t *testing.T) {
 		t.Run("return job specs with their dependencies and nil if no error is encountered", func(t *testing.T) {
 			basePlugin := &mock.BasePlugin{}
 			jobSpecRepo := mock.NewJobSpecRepository(t)
-			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, nil, nil, nil)
+			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, nil, nil, nil, nil)
 
 			ctx := context.Background()
 			projectID := models.ProjectID(uuid.New())
@@ -1196,8 +1196,8 @@ func TestDependencyResolver(t *testing.T) {
 			}, nil)
 
 			jobSpecRepo.On("GetAllByProjectID", ctx, projectID).Return([]models.JobSpec{jobSpec}, nil)
-			jobSpecRepo.On("GetStaticDependenciesPerJob", ctx, projectID).Return(staticDependencies, nil)
-			jobSpecRepo.On("GetInferredDependenciesPerJob", ctx, projectID).Return(inferredDependencies, nil)
+			jobSpecRepo.On("GetStaticDependenciesPerJobID", ctx, projectID).Return(staticDependencies, nil)
+			jobSpecRepo.On("GetInferredDependenciesPerJobID", ctx, projectID).Return(inferredDependencies, nil)
 
 			expectedJobSpecs := []models.JobSpec{
 				{
@@ -1236,7 +1236,7 @@ func TestDependencyResolver(t *testing.T) {
 				},
 			}
 
-			actualJobSpecs, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, projectID)
+			actualJobSpecs, _, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, projectID)
 
 			assert.EqualValues(t, expectedJobSpecs, actualJobSpecs)
 			assert.NoError(t, actualError)

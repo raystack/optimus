@@ -3,7 +3,6 @@ package resourcemgr
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -18,17 +17,14 @@ type ResourceManager interface {
 }
 
 type optimusResourceManager struct {
-	optimusConfig *config.ResourceManagerConfigOptimus
+	optimusConfig config.ResourceManagerConfigOptimus
 	httpClient    *http.Client
 }
 
 // NewOptimusResourceManager initializes job spec repository for Optimus neighbor
-func NewOptimusResourceManager(config *config.ResourceManagerConfigOptimus) (ResourceManager, error) {
-	if config == nil {
-		return nil, errors.New("optimus resource manager config is nil")
-	}
+func NewOptimusResourceManager(conf config.ResourceManagerConfigOptimus) (ResourceManager, error) {
 	return &optimusResourceManager{
-		optimusConfig: config,
+		optimusConfig: conf,
 		httpClient:    http.DefaultClient,
 	}, nil
 }

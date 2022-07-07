@@ -289,18 +289,18 @@ func (sv *JobSpecServiceServer) GetDeployJobsStatus(ctx context.Context, req *pb
 	case models.JobDeploymentStatusSucceed:
 		return &pb.GetDeployJobsStatusResponse{
 			Status:       jobDeployment.Status.String(),
-			SuccessCount: int32(jobDeployment.Details.SuccessCount),
+			SuccessCount: int32(jobDeployment.Details.DeploymentSuccessCount),
 		}, nil
 	case models.JobDeploymentStatusFailed:
 		var deployJobFailures []*pb.DeployJobFailure
-		for _, failure := range jobDeployment.Details.Failures {
+		for _, failure := range jobDeployment.Details.DeploymentFailures {
 			deployJobFailures = append(deployJobFailures, &pb.DeployJobFailure{JobName: failure.JobName, Message: failure.Message})
 		}
 
 		return &pb.GetDeployJobsStatusResponse{
 			Status:       jobDeployment.Status.String(),
-			SuccessCount: int32(jobDeployment.Details.SuccessCount),
-			FailureCount: int32(jobDeployment.Details.FailureCount),
+			SuccessCount: int32(jobDeployment.Details.DeploymentSuccessCount),
+			FailureCount: int32(jobDeployment.Details.DeploymentFailureCount),
 			Failures:     deployJobFailures,
 		}, nil
 	default:

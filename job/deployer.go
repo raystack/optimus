@@ -44,7 +44,7 @@ func NewDeployer(
 }
 
 func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeployment) error {
-	jobSpecs, err := d.dependencyResolver.GetJobSpecsWithDependencies(ctx, jobDeployment.Project.ID)
+	jobSpecs, unknownDependencies, err := d.dependencyResolver.GetJobSpecsWithDependencies(ctx, jobDeployment.Project.ID)
 	if err != nil {
 		return err
 	}
@@ -59,10 +59,9 @@ func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeploymen
 	// Compile & Deploy
 	deployError := d.deployJobs(ctx, &jobDeployment, jobSpecs)
 
-	if err := d.completeJobDeployment(ctx, jobDeployment); err != nil {
+	if err := d.completeJobDeployment(ctx, jobDeployment, unknownDependencies); err != nil {
 		return err
 	}
-
 	d.l.Info("job deployment finished", "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
 	return deployError
 }
@@ -96,11 +95,20 @@ func (d *deployer) deployJobsPerNamespace(ctx context.Context, jobDeployment *mo
 	return d.cleanPerNamespace(ctx, namespaceSpec, jobSpecs)
 }
 
-func (d *deployer) completeJobDeployment(ctx context.Context, jobDeployment models.JobDeployment) error {
+func (d *deployer) completeJobDeployment(ctx context.Context, jobDeployment models.JobDeployment, unknownDependencies []models.UnknownDependency) error {
 	if len(jobDeployment.Details.DeploymentFailures) > 0 {
 		jobDeployment.Status = models.JobDeploymentStatusFailed
 	} else {
 		jobDeployment.Status = models.JobDeploymentStatusSucceed
+	}
+	if len(unknownDependencies) > 0 {
+		if jobDeployment.Details.UnknownDependenciesPerJobName == nil {
+			jobDeployment.Details.UnknownDependenciesPerJobName = make(map[string][]string)
+		}
+		for _, ud := range unknownDependencies {
+			dependencyName := ud.DependencyProjectName + "/" + ud.DependencyJobName
+			jobDeployment.Details.UnknownDependenciesPerJobName[ud.JobName] = append(jobDeployment.Details.UnknownDependenciesPerJobName[ud.JobName], dependencyName)
+		}
 	}
 	return d.deployRepository.Update(ctx, jobDeployment)
 }

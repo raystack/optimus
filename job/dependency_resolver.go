@@ -31,6 +31,8 @@ type dependencyResolver struct {
 
 	// TODO: will be deprecated along with Resolve method deprecation
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory
+
+	externalDependencyResolver ExternalDependencyResolver
 }
 
 // NewDependencyResolver creates a new instance of Resolver
@@ -39,12 +41,14 @@ func NewDependencyResolver(
 	jobSourceRepo store.JobSourceRepository,
 	pluginService service.PluginService,
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
+	externalDependencyResolver ExternalDependencyResolver,
 ) DependencyResolver {
 	return &dependencyResolver{
-		jobSpecRepo:               jobSpecRepo,
-		jobSourceRepo:             jobSourceRepo,
-		pluginService:             pluginService,
-		projectJobSpecRepoFactory: projectJobSpecRepoFactory,
+		jobSpecRepo:                jobSpecRepo,
+		jobSourceRepo:              jobSourceRepo,
+		pluginService:              pluginService,
+		projectJobSpecRepoFactory:  projectJobSpecRepoFactory,
+		externalDependencyResolver: externalDependencyResolver,
 	}
 }
 
@@ -242,32 +246,52 @@ func (*dependencyResolver) resolveHookDependencies(jobSpec models.JobSpec) model
 	return jobSpec
 }
 
-func (d *dependencyResolver) GetJobSpecsWithDependencies(ctx context.Context, projectID models.ProjectID) ([]models.JobSpec, error) {
+func (d *dependencyResolver) GetJobSpecsWithDependencies(ctx context.Context, projectID models.ProjectID) ([]models.JobSpec, []models.UnknownDependency, error) {
 	if ctx == nil {
-		return nil, errors.New("context is nil")
+		return nil, nil, errors.New("context is nil")
 	}
 	jobSpecs, err := d.jobSpecRepo.GetAllByProjectID(ctx, projectID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	staticDependenciesPerJob, err := d.jobSpecRepo.GetStaticDependenciesPerJob(ctx, projectID)
+	staticDependenciesPerJobID, err := d.jobSpecRepo.GetStaticDependenciesPerJobID(ctx, projectID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	inferredDependenciesPerJob, err := d.jobSpecRepo.GetInferredDependenciesPerJob(ctx, projectID)
+	inferredDependenciesPerJobID, err := d.jobSpecRepo.GetInferredDependenciesPerJobID(ctx, projectID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+	staticExternalDependencyPerJobName, unknownDependencies, err := d.externalDependencyResolver.FetchExternalStaticDependenciesPerJobName(ctx, projectID)
+	if err != nil {
+		return nil, nil, err
+	}
+	inferredExternalDependencyPerJobName, err := d.externalDependencyResolver.FetchExternalInferredDependenciesPerJobName(ctx, projectID)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	//externalInferredDependenciesPerJob, err := externalDependencyResolver{}.FetchExternalInferredDependenciesPerJobName(ctx, projectID)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//externalStaticDependenciesPerJob, unknownDependencies, err := externalDependencyResolver{}.FetchExternalStaticDependenciesPerJobName(ctx, projectID)
-	//if err != nil {
-	//	return nil, err
-	//}
+	for i := 0; i < len(jobSpecs); i++ {
+		staticDependencies := staticDependenciesPerJobID[jobSpecs[i].ID]
+		inferredDependencies := inferredDependenciesPerJobID[jobSpecs[i].ID]
+
+		var dependencies []models.JobSpec
+		dependencies = append(dependencies, staticDependencies...)
+		dependencies = append(dependencies, inferredDependencies...)
+
+		staticExternalDependencies := staticExternalDependencyPerJobName[jobSpecs[i].Name]
+		inferredExternalDependencies := inferredExternalDependencyPerJobName[jobSpecs[i].Name]
+
+		var optimusDependencies []models.OptimusDependency
+		optimusDependencies = append(optimusDependencies, staticExternalDependencies.OptimusDependencies...)
+		optimusDependencies = append(optimusDependencies, inferredExternalDependencies.OptimusDependencies...)
+
+		jobSpecs[i].Dependencies = d.groupDependencies(dependencies)
+		jobSpecs[i].Hooks = d.fetchHookWithDependencies(jobSpecs[i])
+		jobSpecs[i].ExternalDependencies.OptimusDependencies = append(jobSpecs[i].ExternalDependencies.OptimusDependencies, optimusDependencies...)
+	}
+	return jobSpecs, unknownDependencies, nil
+
 	/*
 		Deployer:
 			- DependencyResolver.GetJobSpecsWithDependency() ([]JobSpec, []UnknownDependency, error)
@@ -325,18 +349,6 @@ func (d *dependencyResolver) GetJobSpecsWithDependencies(ctx context.Context, pr
 		- api interactions abstraction
 	*/
 
-	for i := 0; i < len(jobSpecs); i++ {
-		staticDependencies := staticDependenciesPerJob[jobSpecs[i].ID]
-		inferredDependencies := inferredDependenciesPerJob[jobSpecs[i].ID]
-
-		var dependencies []models.JobSpec
-		dependencies = append(dependencies, staticDependencies...)
-		dependencies = append(dependencies, inferredDependencies...)
-
-		jobSpecs[i].Dependencies = d.groupDependencies(dependencies)
-		jobSpecs[i].Hooks = d.fetchHookWithDependencies(jobSpecs[i])
-	}
-	return jobSpecs, nil
 }
 
 func (*dependencyResolver) groupDependencies(dependencyJobSpecs []models.JobSpec) map[string]models.JobSpecDependency {

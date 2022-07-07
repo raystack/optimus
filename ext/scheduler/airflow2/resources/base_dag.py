@@ -226,6 +226,21 @@ wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} =
 )
 {{- end}}
 
+{{- range $_, $dependency := $.Job.ExternalDependencies.OptimusDependencies}}
+{{ $identity := print $dependency.Name "-" $dependency.ProjectName "-" $dependency.JobName }}
+wait_{{$identity | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
+    optimus_hostname="{{$dependency.Host}}",
+    upstream_optimus_project="{{$dependency.ProjectName}}",
+    upstream_optimus_namespace="{{$dependency.NamespaceName}}",
+    upstream_optimus_job="{{$dependency.JobName}}",
+    window_size="{{ $baseWindow.Size.String }}",
+    poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
+    timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
+    task_id="wait_{{$identity | trunc 200}}",
+    dag=dag
+)
+{{- end}}
+
 {{- range $_, $httpDependency := $.Job.ExternalDependencies.HTTPDependencies}}  # merged from http and optimus?
 headers_dict_{{$httpDependency.Name}} = { {{- range $k, $v := $httpDependency.Headers}} '{{$k}}': '{{$v}}', {{- end}} }
 request_params_dict_{{$httpDependency.Name}} = { {{- range $key, $value := $httpDependency.RequestParams}} '{{$key}}': '{{$value}}', {{- end}} }

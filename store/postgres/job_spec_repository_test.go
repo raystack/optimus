@@ -347,8 +347,8 @@ func TestJobSpecRepository(t *testing.T) {
 		})
 	})
 
-	t.Run("GetInferredDependenciesPerJob", func(t *testing.T) {
-		t.Run("GetInferredDependenciesPerJob should return all intra and inter project inferred dependencies", func(t *testing.T) {
+	t.Run("GetInferredDependenciesPerJobID", func(t *testing.T) {
+		t.Run("GetInferredDependenciesPerJobID should return all intra and inter project inferred dependencies", func(t *testing.T) {
 			db := DBSetup()
 
 			defer execUnit1.AssertExpectations(t)
@@ -382,7 +382,7 @@ func TestJobSpecRepository(t *testing.T) {
 
 			// check getting inferred dependent jobs
 			repo := postgres.NewJobSpecRepository(db, adapter)
-			checkModel, err := repo.GetInferredDependenciesPerJob(ctx, projectSpec.ID)
+			checkModel, err := repo.GetInferredDependenciesPerJobID(ctx, projectSpec.ID)
 
 			jobWithDependency := testModels[0]
 			intraDependency := testModels[1]
@@ -395,8 +395,8 @@ func TestJobSpecRepository(t *testing.T) {
 		})
 	})
 
-	t.Run("GetStaticDependenciesPerJob", func(t *testing.T) {
-		t.Run("GetStaticDependenciesPerJob should return all intra and inter project static dependencies", func(t *testing.T) {
+	t.Run("GetStaticDependenciesPerJobID", func(t *testing.T) {
+		t.Run("GetStaticDependenciesPerJobID should return all intra and inter project static dependencies", func(t *testing.T) {
 			db := DBSetup()
 
 			defer execUnit1.AssertExpectations(t)
@@ -430,7 +430,7 @@ func TestJobSpecRepository(t *testing.T) {
 
 			// check getting inferred dependent jobs
 			repo := postgres.NewJobSpecRepository(db, adapter)
-			checkModel, err := repo.GetStaticDependenciesPerJob(ctx, projectSpec.ID)
+			checkModel, err := repo.GetStaticDependenciesPerJobID(ctx, projectSpec.ID)
 
 			jobWithDependency := testModels[0]
 			intraDependency := testModels[1]

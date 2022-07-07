@@ -554,10 +554,10 @@ type JobDeployment struct {
 }
 
 type JobDeploymentDetail struct {
-	DeploymentSuccessCount int
-	DeploymentFailureCount int
-	DeploymentFailures     []JobDeploymentFailure
-	UnknownDependencies    map[string][]string
+	DeploymentSuccessCount        int
+	DeploymentFailureCount        int
+	DeploymentFailures            []JobDeploymentFailure
+	UnknownDependenciesPerJobName map[string][]string
 }
 
 type JobDeploymentFailure struct {
@@ -620,6 +620,7 @@ type HookRunSpec struct {
 }
 
 type UnknownDependency struct {
-	JobName           string
-	DependencyJobName string
+	JobName               string
+	DependencyProjectName string
+	DependencyJobName     string
 }
