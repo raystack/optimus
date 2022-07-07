@@ -18,7 +18,7 @@ func NewUnknownJobDependencyRepository(db *gorm.DB) store.UnknownJobDependencyRe
 	}
 }
 
-func (repo unknownJobDependencyRepository) GetUnknownResourceDependencyNamesByJobName(ctx context.Context, projectID models.ProjectID) (map[string][]string, error) {
+func (repo unknownJobDependencyRepository) GetUnknownInferredDependencyURNsByJobName(ctx context.Context, projectID models.ProjectID) (map[string][]string, error) {
 	type jobNameDependencyPair struct {
 		JobName               string
 		DependencyResourceURN string
@@ -28,7 +28,7 @@ func (repo unknownJobDependencyRepository) GetUnknownResourceDependencyNamesByJo
 
 	if err := repo.db.WithContext(ctx).Select("j.name as job_name, js.resource_urn as dependency_resource_urn").
 		Table("job_source js").Joins("join job j on js.job_id = j.id").
-		Where("js.resource_urn not in (?) and project_id = ?", resourceDestinationList, projectID.UUID()).Find(&jobNameDependencyPairs).Error; err != nil {
+		Where("js.resource_urn not in (?) and js.project_id = ?", resourceDestinationList, projectID.UUID()).Find(&jobNameDependencyPairs).Error; err != nil {
 		return nil, err
 	}
 

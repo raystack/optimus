@@ -259,15 +259,15 @@ func (d *dependencyResolver) GetJobSpecsWithDependencies(ctx context.Context, pr
 		return nil, err
 	}
 
-	externalInferredDependenciesPerJob, err := externalDependencyResolver{}.FetchExternalInferredDependenciesPerJobName(ctx, projectID)
-	if err != nil {
-		return nil, err
-	}
-
-	externalStaticDependenciesPerJob, unknownDependencies, err := externalDependencyResolver{}.FetchExternalStaticDependenciesPerJobName(ctx, projectID)
-	if err != nil {
-		return nil, err
-	}
+	//externalInferredDependenciesPerJob, err := externalDependencyResolver{}.FetchExternalInferredDependenciesPerJobName(ctx, projectID)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//externalStaticDependenciesPerJob, unknownDependencies, err := externalDependencyResolver{}.FetchExternalStaticDependenciesPerJobName(ctx, projectID)
+	//if err != nil {
+	//	return nil, err
+	//}
 	/*
 		Deployer:
 			- DependencyResolver.GetJobSpecsWithDependency() ([]JobSpec, []UnknownDependency, error)

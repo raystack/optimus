@@ -34,12 +34,12 @@ func NewExternalDependencyResolver(unknownJobDependencyRepository store.UnknownJ
 }
 
 func (e *externalDependencyResolver) FetchExternalInferredDependenciesPerJobName(ctx context.Context, projectID models.ProjectID) (map[string]models.ExternalDependency, error) {
-	unknownDependenciesByJob, err := e.unknownJobDependencyRepository.GetUnknownResourceDependencyNamesByJobName(ctx, projectID)
-	if err != nil {
-		return nil, err
-	}
+	//unknownDependenciesByJob, err := e.unknownJobDependencyRepository.GetUnknownInferredDependencyURNsByJobName(ctx, projectID)
+	//if err != nil {
+	//	return nil, err
+	//}
 
-	jobSpecFiltersByJobName := e.toJobSpecFiltersByJobNameForResourceNames(unknownDependenciesByJob)
+	//jobSpecFiltersByJobName := e.toJobSpecFiltersByJobNameForResourceNames(unknownDependenciesByJob)
 
 	// point to respective resolvers
 
@@ -47,14 +47,14 @@ func (e *externalDependencyResolver) FetchExternalInferredDependenciesPerJobName
 }
 
 func (e *externalDependencyResolver) FetchExternalStaticDependenciesPerJobName(ctx context.Context, projectID models.ProjectID) (map[string]models.ExternalDependency, []models.UnknownDependency, error) {
-	staticDependencyNamesByJobID, err := e.unknownJobDependencyRepository.GetUnknownResourceDependencyNamesByJobName(ctx, projectID)
-	if err != nil {
-		return nil, nil, err
-	}
-	jobSpecFiltersByJobName, err := e.toJobSpecFiltersByJobNameForDependencyNames(staticDependencyNamesByJobID)
-	if err != nil {
-		return nil, nil, err
-	}
+	//staticDependencyNamesByJobID, err := e.unknownJobDependencyRepository.GetUnknownInferredDependencyURNsByJobName(ctx, projectID)
+	//if err != nil {
+	//	return nil, nil, err
+	//}
+	//jobSpecFiltersByJobName, err := e.toJobSpecFiltersByJobNameForDependencyNames(staticDependencyNamesByJobID)
+	//if err != nil {
+	//	return nil, nil, err
+	//}
 
 	// point to respective resolvers
 
