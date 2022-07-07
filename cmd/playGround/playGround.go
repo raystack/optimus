@@ -1,14 +1,15 @@
 package playground
 
 import (
-	"github.com/spf13/cobra"
 	"github.com/odpf/optimus/config"
+	"github.com/spf13/cobra"
 )
 
 type playGroundCommand struct {
 	clientConfig *config.ClientConfig
 }
 
+// acts a folder for other playground commands
 // NewJobCommand initializes command for job
 func NewPlayGroundCommand() *cobra.Command {
 	playGround := playGroundCommand{

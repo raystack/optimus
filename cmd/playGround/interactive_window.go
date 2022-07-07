@@ -18,7 +18,7 @@ type model struct {
 	cursor        string
 	window        Window
 }
-
+// model contains a window for using the function defined for the window struct
 func initialModel() model {
 	surveyForInitilization := survey.WindowSurvey{}
 	window := Window{surveyForInitilization}
@@ -34,17 +34,24 @@ func initialModel() model {
         window:        window,
 	}
 }
+// no input is required since we operate using key strokes
 func (m model) Init() tea.Cmd {
 	// Just return `nil`, which means "no I/O right now, please."
 	return nil
 }
+/*
+key controls
+up, down move the cursor 
+left decrease
+right increase
+*/
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	// Is it a key press?
 	case tea.KeyMsg:
 
-		// Cool, what was the actual key pressed?
+		// what was the actual key pressed?
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
@@ -130,15 +137,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	return m, nil
 }
+// view takes the model and genarates a new string for every key stroke
+// this gives us the illusion of some elements being static while others are moving 
+// but they are all being replaced continuosly in run time
 func (m model) View() string {
 	s := ""
     s = "dStart : " + m.dStart.Format("01-02-2006 15:04")+"     "+ "dEnd : " +m.dEnd.Format("01-02-2006 15:04");
 	s += "\n"
+	// the below part of repitatice code is to ensure that if the cursor is currently present here we print it 
 	if m.cursor == "windowSize"{
 		s += ">"
 	} else{
 		s += " "
 	}
+	// this acts as a menu list
 	s += "windowSize     "
 	s += strconv.Itoa(m.windowSize)
 	s += "\n"
@@ -174,6 +186,7 @@ func (m model) View() string {
 	s += "increase by    "
 	s += strconv.Itoa(m.increaseBy)
 	s += "\n"
+	// returnning the genarated string
 	return s
 }
 
