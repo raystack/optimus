@@ -4,7 +4,6 @@ from typing import Any, Callable, Dict, Optional
 from datetime import datetime, timedelta, timezone
 
 from airflow.models import DAG, Variable, DagRun, DagModel, TaskInstance, BaseOperator, XCom, XCOM_RETURN_KEY
-from airflow.kubernetes.secret import Secret
 from airflow.configuration import conf
 from airflow.utils.weight_rule import WeightRule
 from kubernetes.client import models as k8s
@@ -50,12 +49,7 @@ dag = DAG(
            ]
 )
 
-# transformation_secret = Secret(
-#     "volume",
-#     "/opt/optimus/secrets",
-#     "optimus-task-bq",
-#     "auth.json"
-# )
+
 
 JOB_DIR = "/data"
 IMAGE_PULL_POLICY="Always"
@@ -111,7 +105,6 @@ transformation_bq = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    # secrets=[transformation_secret],
     env_vars=executor_env_vars,
     sla=timedelta(seconds=7200),
     reattach_on_restart=True,
@@ -121,13 +114,6 @@ transformation_bq = SuperKubernetesPodOperator(
 )
 
 # hooks loop start
-
-# hook_transporter_secret = Secret(
-#     "volume",
-#     "/opt/optimus/secrets",
-#     "optimus-hook-transporter",
-#     "auth.json"
-# )
 
 init_container_transporter = k8s.V1Container(
     name="init-container",
@@ -156,15 +142,12 @@ hook_transporter = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    # secrets=[hook_transporter_secret],
     env_vars=executor_env_vars,
     reattach_on_restart=True,
     volume_mounts=asset_volume_mounts,
     volumes=[volume],
     init_containers=[init_container_transporter],
 )
-
-
 init_container_predator = k8s.V1Container(
     name="init-container",
     image=INIT_CONTAINER_IMAGE,
@@ -192,15 +175,12 @@ hook_predator = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    # secrets=[],
     env_vars=executor_env_vars,
     reattach_on_restart=True,
     volume_mounts=asset_volume_mounts,
     volumes=[volume],
     init_containers=[init_container_predator],
 )
-
-
 init_container_hook__dash__for__dash__fail = k8s.V1Container(
     name="init-container",
     image=INIT_CONTAINER_IMAGE,
@@ -228,7 +208,6 @@ hook_hook__dash__for__dash__fail = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    # secrets=[],
     env_vars=executor_env_vars,
     trigger_rule="one_failed",
     reattach_on_restart=True,

@@ -4,7 +4,6 @@ from typing import Any, Callable, Dict, Optional
 from datetime import datetime, timedelta, timezone
 
 from airflow.models import DAG, Variable, DagRun, DagModel, TaskInstance, BaseOperator, XCom, XCOM_RETURN_KEY
-from airflow.kubernetes.secret import Secret
 from airflow.configuration import conf
 from airflow.utils.weight_rule import WeightRule
 from kubernetes.client import models as k8s
@@ -59,15 +58,6 @@ dag = DAG(
 )
 
 {{$baseTaskSchema := .Job.Task.Unit.Info -}}
-{{ if ne $baseTaskSchema.SecretPath "" -}}
-# transformation_secret = Secret(
-#     "volume",
-#     {{ dir $baseTaskSchema.SecretPath | quote }},
-#     "optimus-task-{{ $baseTaskSchema.Name }}",
-#     {{ base $baseTaskSchema.SecretPath | quote }}
-# )
-{{- end }}
-
 {{- $setCPURequest := not (empty .Metadata.Resource.Request.CPU) -}}
 {{- $setMemoryRequest := not (empty .Metadata.Resource.Request.Memory) -}}
 {{- $setCPULimit := not (empty .Metadata.Resource.Limit.CPU) -}}
@@ -153,7 +143,6 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    # secrets=[{{ if ne $baseTaskSchema.SecretPath "" -}} transformation_secret {{- end }}],
     env_vars=executor_env_vars,
 {{- if gt .SLAMissDurationInSec 0 }}
     sla=timedelta(seconds={{ .SLAMissDurationInSec }}),
@@ -170,15 +159,6 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
 # hooks loop start
 {{ range $_, $t := .Job.Hooks }}
 {{ $hookSchema := $t.Unit.Info -}}
-
-{{ if ne $hookSchema.SecretPath "" -}}
-# hook_{{$hookSchema.Name | replace "-" "_"}}_secret = Secret(
-#     "volume",
-#     {{ dir $hookSchema.SecretPath | quote }},
-#     "optimus-hook-{{ $hookSchema.Name }}",
-#     {{ base $hookSchema.SecretPath | quote }}
-# )
-{{- end }}
 
 init_container_{{$hookSchema.Name | replace "-" "__dash__"}} = k8s.V1Container(
     name="init-container",
@@ -207,7 +187,6 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    # secrets=[{{ if ne $hookSchema.SecretPath "" -}} hook_{{$hookSchema.Name | replace "-" "_"}}_secret {{- end }}],
     env_vars=executor_env_vars,
 {{- if eq $hookSchema.HookType $.HookTypeFail }}
     trigger_rule="one_failed",
