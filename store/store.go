@@ -40,6 +40,7 @@ type JobSpecRepository interface {
 	GetAllByProjectID(context.Context, models.ProjectID) ([]models.JobSpec, error)
 	// TODO: change to GetJobsByName as it returns multiple jobs
 	GetJobByName(context.Context, string) ([]models.JobSpec, error)
+	// TODO: allow to also GetJobByResourceDestination for a specific project
 	GetJobByResourceDestination(context.Context, string) (models.JobSpec, error)
 	GetDependentJobs(context.Context, *models.JobSpec) ([]models.JobSpec, error)
 	GetInferredDependenciesPerJob(context.Context, models.ProjectID) (map[uuid.UUID][]models.JobSpec, error)
