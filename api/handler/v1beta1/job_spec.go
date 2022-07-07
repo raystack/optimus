@@ -16,11 +16,9 @@ import (
 	"google.golang.org/grpc/status"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
-	"github.com/odpf/optimus/utils"
 )
 
 var runtimeDeployJobSpecificationCounter = promauto.NewCounter(prometheus.CounterOpts{
@@ -29,16 +27,12 @@ var runtimeDeployJobSpecificationCounter = promauto.NewCounter(prometheus.Counte
 })
 
 type JobSpecServiceServer struct {
-	l                   log.Logger
-	jobSvc              models.JobService
-	pluginRepo          models.PluginRepository
-	projectService      service.ProjectService
-	namespaceService    service.NamespaceService
-	secretService       service.SecretService
-	monitoringService   service.MonitoringService
-	jobRunInputCompiler compiler.JobRunInputCompiler
-	jobRunService       service.JobRunService
-	progressObserver    progress.Observer
+	l                log.Logger
+	jobSvc           models.JobService
+	pluginRepo       models.PluginRepository
+	projectService   service.ProjectService
+	namespaceService service.NamespaceService
+	progressObserver progress.Observer
 	pb.UnimplementedJobSpecificationServiceServer
 }
 
@@ -201,65 +195,21 @@ func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req 
 	}, nil
 }
 
-func (sv *JobSpecServiceServer) getCompiledJobSpec(ctx context.Context,
-	namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec, jobRunID string,
-	instanceType models.InstanceType, instanceName string, scheduledAt time.Time) (*pb.InstanceContext, error) {
-	secrets, err := sv.secretService.GetSecrets(ctx, namespaceSpec)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: failed to get secrets %s:%s", err.Error(), namespaceSpec, jobRunID)
-	}
-
-	jobRunSpec, err := sv.monitoringService.GetJobRunByScheduledAt(ctx, namespaceSpec, jobSpec, scheduledAt)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: failed to get JobRun by ScheduledAt for job %s", err.Error(), jobSpec.Name)
-	}
-
-	jobRunInput, err := sv.jobRunInputCompiler.CompileNewJobSpec(ctx,
-		namespaceSpec,
-		secrets,
-		jobSpec,
-		scheduledAt,
-		jobRunSpec, instanceType, instanceName)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: failed to compile instance of job %s", err.Error(), jobSpec.Name)
-	}
-
-	return &pb.InstanceContext{
-		Envs:    jobRunInput.ConfigMap,
-		Secrets: jobRunInput.SecretsMap,
-		Files:   jobRunInput.FileMap,
-	}, nil
-}
-
 func (sv *JobSpecServiceServer) GetJobSpecification(ctx context.Context, req *pb.GetJobSpecificationRequest) (*pb.GetJobSpecificationResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
-	instanceName := req.GetInstanceName()
+
 	jobSpec, err := sv.jobSvc.GetByName(ctx, req.GetJobName(), namespaceSpec)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "%s: error while finding the job %s", err.Error(), req.GetJobName())
-	}
-	var compiledSpec *pb.InstanceContext
-	if req.GetCompiledSpec() {
-		scheduledAt := req.GetScheduledAt().AsTime()
-		instanceType, err := models.ToInstanceType(utils.FromEnumProto(req.InstanceType.String(), "TYPE"))
-		if err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "%s: instance type %s not found", err.Error(), req.InstanceType.String())
-		}
-
-		compiledSpec, err = sv.getCompiledJobSpec(ctx, namespaceSpec, jobSpec, req.JobrunId, instanceType, instanceName, scheduledAt)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	jobSpecAdapt := ToJobProto(jobSpec)
 
 	return &pb.GetJobSpecificationResponse{
-		Spec:    jobSpecAdapt,
-		Context: compiledSpec,
+		Spec: jobSpecAdapt,
 	}, nil
 }
 
@@ -365,21 +315,14 @@ func (sv *JobSpecServiceServer) newObserverChain() *progress.ObserverChain {
 	return observers
 }
 
-func NewJobSpecServiceServer(l log.Logger, jobService models.JobService,
-	pluginRepo models.PluginRepository, projectService service.ProjectService,
-	jobRunInputCompiler compiler.JobRunInputCompiler, jobRunService service.JobRunService,
-	secretService service.SecretService, monitoringService service.MonitoringService, namespaceService service.NamespaceService,
-	progressObserver progress.Observer) *JobSpecServiceServer {
+func NewJobSpecServiceServer(l log.Logger, jobService models.JobService, pluginRepo models.PluginRepository,
+	projectService service.ProjectService, namespaceService service.NamespaceService, progressObserver progress.Observer) *JobSpecServiceServer {
 	return &JobSpecServiceServer{
-		l:                   l,
-		jobSvc:              jobService,
-		pluginRepo:          pluginRepo,
-		projectService:      projectService,
-		namespaceService:    namespaceService,
-		jobRunService:       jobRunService,
-		monitoringService:   monitoringService,
-		jobRunInputCompiler: jobRunInputCompiler,
-		secretService:       secretService,
-		progressObserver:    progressObserver,
+		l:                l,
+		jobSvc:           jobService,
+		pluginRepo:       pluginRepo,
+		projectService:   projectService,
+		namespaceService: namespaceService,
+		progressObserver: progressObserver,
 	}
 }

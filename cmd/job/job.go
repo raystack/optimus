@@ -43,7 +43,7 @@ func NewJobCommand() *cobra.Command {
 	cmd.AddCommand(NewRunCommand(job.clientConfig))
 	cmd.AddCommand(NewRunListCommand(job.clientConfig))
 	cmd.AddCommand(NewValidateCommand(job.clientConfig))
-	cmd.AddCommand(NewJobSpecCommand(job.clientConfig))
+	cmd.AddCommand(NewJobRunInputCommand(job.clientConfig))
 	return cmd
 }
 

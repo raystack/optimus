@@ -25,6 +25,7 @@ type JobRunServiceServer struct {
 	secretService       service.SecretService
 	runSvc              service.JobRunService
 	jobRunInputCompiler compiler.JobRunInputCompiler
+	monitoringService   service.MonitoringService
 	scheduler           models.SchedulerUnit
 	l                   log.Logger
 	pb.UnimplementedJobRunServiceServer
@@ -140,11 +141,70 @@ func (sv *JobRunServiceServer) RegisterInstance(ctx context.Context, req *pb.Reg
 		Job:       jobProto,
 		Instance:  instanceProto,
 		Namespace: ToNamespaceProto(namespaceSpec),
-		Context: &pb.InstanceContext{
+		Context: &pb.JobRunInputResponse{
 			Envs:    jobRunInput.ConfigMap,
 			Secrets: jobRunInput.SecretsMap,
 			Files:   jobRunInput.FileMap,
 		},
+	}, nil
+}
+
+func (sv *JobRunServiceServer) GetJobRunInput(ctx context.Context, req *pb.RegisterInstanceRequest) (*pb.JobRunInputResponse, error) {
+	projSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
+	if err != nil {
+		return nil, mapToGRPCErr(sv.l, err, "not able to find project")
+	}
+
+	jobSpec, namespaceSpec, err := sv.jobSvc.GetByNameForProject(ctx, req.GetJobName(), projSpec)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "%s: job %s not found", err.Error(), req.GetJobName())
+	}
+
+	instanceType, err := models.ToInstanceType(utils.FromEnumProto(req.InstanceType.String(), "TYPE"))
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: instance type %s not found", err.Error(), req.InstanceType.String())
+	}
+
+	instanceName := req.GetInstanceName()
+
+	scheduledAt := req.GetScheduledAt().AsTime()
+
+	var jobRunSpec models.JobRunSpec
+	if req.JobrunId == "" {
+		jobRunSpec, err = sv.monitoringService.GetJobRunByScheduledAt(ctx, namespaceSpec, jobSpec, scheduledAt)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "%s: failed to get JobRun by ScheduledAt for job %s", err.Error(), jobSpec.Name)
+		}
+	} else {
+		jobRunID, err := uuid.Parse(req.JobrunId)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "%s: failed to parse uuid of job %s", err.Error(), req.JobrunId)
+		}
+		jobRunSpec, err = sv.monitoringService.GetJobRunByRunID(ctx, jobRunID)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "%s: failed to get JobRun by jobRunId::%s for job %s ", err.Error(), req.JobrunId, jobSpec.Name)
+		}
+	}
+	secrets, err := sv.secretService.GetSecrets(ctx, namespaceSpec)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "%s: failed to get secrets %s:%s", err.Error(), jobSpec.Name, namespaceSpec.Name)
+	}
+
+	jobRunInput, err := sv.jobRunInputCompiler.CompileNewJobSpec(ctx,
+		namespaceSpec,
+		secrets,
+		jobSpec,
+		scheduledAt,
+		jobRunSpec, instanceType, instanceName)
+
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "%s: failed to compile instance of job %s", err.Error(), jobSpec.Name)
+	}
+
+	return &pb.JobRunInputResponse{
+		Envs:    jobRunInput.ConfigMap,
+		Secrets: jobRunInput.SecretsMap,
+		Files:   jobRunInput.FileMap,
 	}, nil
 }
 
@@ -263,7 +323,7 @@ func (sv *JobRunServiceServer) RunJob(ctx context.Context, req *pb.RunJobRequest
 	return &pb.RunJobResponse{}, nil
 }
 
-func NewJobRunServiceServer(l log.Logger, jobSvc models.JobService, projectService service.ProjectService, namespaceService service.NamespaceService, secretService service.SecretService, pluginRepo models.PluginRepository, instSvc service.JobRunService, jobRunInputCompiler compiler.JobRunInputCompiler, scheduler models.SchedulerUnit) *JobRunServiceServer {
+func NewJobRunServiceServer(l log.Logger, jobSvc models.JobService, projectService service.ProjectService, namespaceService service.NamespaceService, secretService service.SecretService, pluginRepo models.PluginRepository, instSvc service.JobRunService, jobRunInputCompiler compiler.JobRunInputCompiler, monitoringService service.MonitoringService, scheduler models.SchedulerUnit) *JobRunServiceServer {
 	return &JobRunServiceServer{
 		l:                   l,
 		jobSvc:              jobSvc,
@@ -271,6 +331,7 @@ func NewJobRunServiceServer(l log.Logger, jobSvc models.JobService, projectServi
 		runSvc:              instSvc,
 		jobRunInputCompiler: jobRunInputCompiler,
 		scheduler:           scheduler,
+		monitoringService:   monitoringService,
 		namespaceService:    namespaceService,
 		projectService:      projectService,
 		secretService:       secretService,

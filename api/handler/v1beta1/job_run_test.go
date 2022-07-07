@@ -27,6 +27,7 @@ const (
 func TestJobRunServiceServer(t *testing.T) {
 	log := log.NewNoop()
 	ctx := context.Background()
+	monitoringService := new(mock.MonitoringService)
 	t.Run("RegisterInstance", func(t *testing.T) {
 		projectName := "a-data-project"
 		jobName := "a-data-job"
@@ -165,6 +166,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				nil,
 				jobRunService,
 				jobRunInputCompiler,
+				monitoringService,
 				nil,
 			)
 
@@ -184,7 +186,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			expectedResponse := &pb.RegisterInstanceResponse{
 				Job: jobSpecProto, Instance: instanceSpecProto,
 				Project: projectSpecProto,
-				Context: &pb.InstanceContext{
+				Context: &pb.JobRunInputResponse{
 					Envs: map[string]string{
 						models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
 						models.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
@@ -236,6 +238,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				nil,
 				instanceService,
 				jobRunInputCompiler,
+				monitoringService,
 				nil,
 			)
 
@@ -254,7 +257,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			expectedResponse := &pb.RegisterInstanceResponse{
 				Job: jobSpecProto, Instance: instanceSpecProto,
 				Project: projectSpecProto,
-				Context: &pb.InstanceContext{
+				Context: &pb.JobRunInputResponse{
 					Envs: map[string]string{
 						models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
 						models.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
@@ -353,6 +356,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				allTasksRepo,
 				nil,
 				nil,
+				monitoringService,
 				nil,
 			)
 
@@ -451,6 +455,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				allTasksRepo,
 				nil,
 				nil,
+				monitoringService,
 				nil,
 			)
 
@@ -513,6 +518,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				monitoringService,
 				scheduler,
 			)
 
@@ -547,6 +553,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				monitoringService,
 				nil,
 			)
 
@@ -572,6 +579,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				nil, nil, nil,
 				nil,
 				nil,
+				monitoringService,
 				nil,
 			)
 			scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
@@ -636,6 +644,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				jobService, projectService, nil, nil, nil,
 				instsvc,
 				nil,
+				monitoringService,
 				nil,
 			)
 
@@ -678,6 +687,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				nil, projectService, nil, nil, nil,
 				nil,
 				nil,
+				monitoringService,
 				nil,
 			)
 			req := &pb.JobRunRequest{
@@ -714,6 +724,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				jobService, projectService, nil, nil, nil,
 				nil,
 				nil,
+				monitoringService,
 				nil,
 			)
 
@@ -757,6 +768,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				jobService, projectService, nil, nil, nil,
 				nil,
 				nil,
+				monitoringService,
 				nil,
 			)
 
@@ -798,6 +810,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				jobService, projectService, nil, nil, nil,
 				nil,
 				nil,
+				monitoringService,
 				nil,
 			)
 
@@ -852,6 +865,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				jobService, projectService, nil, nil, nil,
 				instsvc,
 				nil,
+				monitoringService,
 				nil,
 			)
 
@@ -906,6 +920,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				jobService, projectService, nil, nil, nil,
 				instsvc,
 				nil,
+				monitoringService,
 				nil,
 			)
 
@@ -967,6 +982,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				jobService, projectService, nil, nil, nil,
 				instsvc,
 				nil,
+				monitoringService,
 				nil,
 			)
 			req := &pb.JobRunRequest{

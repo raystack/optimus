@@ -30,11 +30,6 @@ type JobSpecServiceServerTestSuite struct {
 	log              log.Logger
 	progressObserver progress.Observer
 
-	runInputCompiler  *mock.JobInputCompiler
-	jobRunService     *mock.JobRunService
-	secretService     *mock.SecretService
-	monitoringService *mock.MonitoringService
-
 	jobReq        *pb.DeployJobSpecificationRequest
 	resourceReq   *pb.DeployResourceSpecificationRequest
 	projectSpec   models.ProjectSpec
@@ -72,10 +67,6 @@ func (s *JobSpecServiceServerTestSuite) newJobSpecServiceServer() *v1.JobSpecSer
 		s.jobService,
 		s.pluginRepo,
 		s.projectService,
-		s.runInputCompiler,
-		s.jobRunService,
-		s.secretService,
-		s.monitoringService,
 		s.namespaceService,
 		s.progressObserver,
 	)
@@ -401,10 +392,6 @@ func (s *JobSpecServiceServerTestSuite) TestGetJob_Fail_JobSvcGetWithFiltersErro
 func TestJobSpecificationOnServer(t *testing.T) {
 	log := log.NewNoop()
 	ctx := context.Background()
-	runInputCompiler := new(mock.JobInputCompiler)
-	jobRunService := new(mock.JobRunService)
-	secretService := new(mock.SecretService)
-	monitoringService := new(mock.MonitoringService)
 
 	t.Run("RegisterJobSpecification", func(t *testing.T) {
 		t.Run("should save a job specification", func(t *testing.T) {
@@ -479,10 +466,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				jobSvc,
 				pluginRepo,
 				nil,
-				runInputCompiler,
-				jobRunService,
-				secretService,
-				monitoringService,
 				namespaceService,
 				nil,
 			)
@@ -573,10 +556,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				jobService,
 				pluginRepo,
 				nil,
-				runInputCompiler,
-				jobRunService,
-				secretService,
-				monitoringService,
 				namespaceService,
 				nil,
 			)
@@ -642,10 +621,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				jobService,
 				pluginRepo,
 				projectService,
-				runInputCompiler,
-				jobRunService,
-				secretService,
-				monitoringService,
 				nsService,
 				nil,
 			)
@@ -707,10 +682,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				jobService,
 				pluginRepo,
 				projectService,
-				runInputCompiler,
-				jobRunService,
-				secretService,
-				monitoringService,
 				nsService,
 				nil,
 			)
@@ -738,10 +709,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				jobService,
 				nil,
 				nil,
-				runInputCompiler,
-				jobRunService,
-				secretService,
-				monitoringService,
 				nil,
 				nil,
 			)
@@ -773,10 +740,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				jobService,
 				nil,
 				nil,
-				runInputCompiler,
-				jobRunService,
-				secretService,
-				monitoringService,
 				nil,
 				nil,
 			)
@@ -811,10 +774,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				jobService,
 				nil,
 				nil,
-				runInputCompiler,
-				jobRunService,
-				secretService,
-				monitoringService,
 				nil,
 				nil,
 			)
@@ -861,10 +820,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				jobService,
 				nil,
 				nil,
-				runInputCompiler,
-				jobRunService,
-				secretService,
-				monitoringService,
 				nil,
 				nil,
 			)
