@@ -122,7 +122,7 @@ func (repo jobSpecRepository) GetStaticDependenciesPerJobID(ctx context.Context,
 			"d.namespace_id as dependency_namespace_id, "+
 			"d.project_id as dependency_project_id").
 		Table("(?) rj", requestedJobsQuery).
-		Joins("left join (?) d on ("+
+		Joins("join (?) d on ("+
 			"rj.dependency_name=d.name or "+
 			"rj.dependency_name=d.project_name || '/' ||d.name)", dependenciesQuery).
 		Find(&jobDependencies).Error; err != nil {
