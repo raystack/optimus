@@ -4,17 +4,17 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-type getJobSpecificationsResponse struct {
-	Jobs []jobSpecificationResponse `json:"jobs"`
+type GetJobSpecificationsResponse struct {
+	Jobs []JobSpecificationResponse `json:"jobs"`
 }
 
-type jobSpecificationResponse struct {
+type JobSpecificationResponse struct {
 	ProjectName   string           `json:"projectName"`
 	NamespaceName string           `json:"namespaceName"`
-	Job           jobSpecification `json:"job"`
+	Job           JobSpecification `json:"job"`
 }
 
-type jobSpecification struct {
+type JobSpecification struct {
 	Version          int                      `json:"version"`
 	Name             string                   `json:"name"`
 	Owner            string                   `json:"owner"`
@@ -99,7 +99,7 @@ type jobConfigItem struct {
 	Value string `json:"value"`
 }
 
-func toJobSpecs(responses []jobSpecificationResponse) []models.JobSpec {
+func toJobSpecs(responses []JobSpecificationResponse) []models.JobSpec {
 	output := make([]models.JobSpec, len(responses))
 	for i, r := range responses {
 		output[i] = toJobSpec(r)
@@ -107,7 +107,7 @@ func toJobSpecs(responses []jobSpecificationResponse) []models.JobSpec {
 	return output
 }
 
-func toJobSpec(response jobSpecificationResponse) models.JobSpec {
+func toJobSpec(response JobSpecificationResponse) models.JobSpec {
 	return models.JobSpec{
 		Name: response.Job.Name,
 		NamespaceSpec: models.NamespaceSpec{
