@@ -26,6 +26,9 @@ func (m *ManagerFactory) Register(_type string, newResourceManager NewResourceMa
 	if newResourceManager == nil {
 		return errors.New("new resource manager function is nil")
 	}
+	if m.registry == nil {
+		m.registry = make(map[string]NewResourceManager)
+	}
 	if m.registry[_type] != nil {
 		return fmt.Errorf("type [%s] is already registered", _type)
 	}
@@ -34,6 +37,9 @@ func (m *ManagerFactory) Register(_type string, newResourceManager NewResourceMa
 }
 
 func (m *ManagerFactory) Get(_type string, conf interface{}) (ResourceManager, error) {
+	if m.registry == nil {
+		m.registry = make(map[string]NewResourceManager)
+	}
 	newResourceManager := m.registry[_type]
 	if newResourceManager == nil {
 		return nil, fmt.Errorf("type [%s] is not registered", _type)
@@ -41,7 +47,7 @@ func (m *ManagerFactory) Get(_type string, conf interface{}) (ResourceManager, e
 	return newResourceManager(conf)
 }
 
-func init() {
+func init() { //nolint:gochecknoinits
 	err := Registry.Register(OptimusType, func(conf interface{}) (ResourceManager, error) {
 		if conf == nil {
 			return nil, errors.New("manager config is nil")

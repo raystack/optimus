@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"errors"
 
 	"github.com/mitchellh/mapstructure"
 
@@ -39,6 +40,9 @@ func NewOptimusDependencyResolver(resourceManagerConfig config.ResourceManager) 
 }
 
 func (o *optimusDependencyResolver) FetchOptimusDependencies(ctx context.Context, filter models.JobSpecFilter) ([]models.OptimusDependency, error) {
+	if ctx == nil {
+		return nil, errors.New("context is nil")
+	}
 	jobSpecs, err := o.resourceManager.GetJobSpecifications(ctx, filter)
 	if err != nil {
 		return nil, err
