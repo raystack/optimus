@@ -49,7 +49,6 @@ require (
 	go.opentelemetry.io/otel/exporters/jaeger v1.0.1
 	go.opentelemetry.io/otel/sdk v1.0.1
 	go.opentelemetry.io/otel/trace v1.7.0
-	go.uber.org/multierr v1.7.0
 	gocloud.dev v0.24.0
 	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2
 	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f
@@ -65,6 +64,8 @@ require (
 	gorm.io/driver/postgres v1.0.5
 	gorm.io/gorm v1.21.16
 )
+
+require go.uber.org/multierr v1.7.0
 
 require (
 	cloud.google.com/go v0.94.0 // indirect

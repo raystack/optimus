@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -296,12 +297,16 @@ func (sv *JobSpecServiceServer) GetDeployJobsStatus(ctx context.Context, req *pb
 		for _, failure := range jobDeployment.Details.DeploymentFailures {
 			deployJobFailures = append(deployJobFailures, &pb.DeployJobFailure{JobName: failure.JobName, Message: failure.Message})
 		}
-
+		unknownDependencies := make(map[string]string)
+		for jobName, dependencies := range jobDeployment.Details.UnknownDependenciesPerJobName {
+			unknownDependencies[jobName] = strings.Join(dependencies, ", ")
+		}
 		return &pb.GetDeployJobsStatusResponse{
-			Status:       jobDeployment.Status.String(),
-			SuccessCount: int32(jobDeployment.Details.DeploymentSuccessCount),
-			FailureCount: int32(jobDeployment.Details.DeploymentFailureCount),
-			Failures:     deployJobFailures,
+			Status:              jobDeployment.Status.String(),
+			SuccessCount:        int32(jobDeployment.Details.DeploymentSuccessCount),
+			FailureCount:        int32(jobDeployment.Details.DeploymentFailureCount),
+			Failures:            deployJobFailures,
+			UnknownDependencies: unknownDependencies,
 		}, nil
 	default:
 		return &pb.GetDeployJobsStatusResponse{

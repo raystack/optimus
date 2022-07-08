@@ -451,6 +451,12 @@
         "failureCount": {
           "type": "integer",
           "format": "int32"
+        },
+        "unknownDependencies": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },

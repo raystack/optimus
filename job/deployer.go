@@ -96,7 +96,7 @@ func (d *deployer) deployJobsPerNamespace(ctx context.Context, jobDeployment *mo
 }
 
 func (d *deployer) completeJobDeployment(ctx context.Context, jobDeployment models.JobDeployment, unknownDependencies []models.UnknownDependency) error {
-	if len(jobDeployment.Details.DeploymentFailures) > 0 {
+	if len(jobDeployment.Details.DeploymentFailures) > 0 || len(unknownDependencies) > 0 {
 		jobDeployment.Status = models.JobDeploymentStatusFailed
 	} else {
 		jobDeployment.Status = models.JobDeploymentStatusSucceed

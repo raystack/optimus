@@ -800,6 +800,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 						Message: jobDeployment.Details.DeploymentFailures[0].Message,
 					},
 				},
+				UnknownDependencies: map[string]string{},
 			}
 
 			jobService.On("GetDeployment", ctx, models.DeploymentID(deployID)).Return(jobDeployment, nil)

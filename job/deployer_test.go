@@ -1029,7 +1029,7 @@ func TestDeployer(t *testing.T) {
 			jobDeploymentSucceed := models.JobDeployment{
 				ID:      jobDeployment.ID,
 				Project: jobDeployment.Project,
-				Status:  models.JobDeploymentStatusSucceed,
+				Status:  models.JobDeploymentStatusFailed,
 				Details: models.JobDeploymentDetail{
 					DeploymentSuccessCount: 2,
 					UnknownDependenciesPerJobName: map[string][]string{
