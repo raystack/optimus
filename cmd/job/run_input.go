@@ -32,7 +32,6 @@ type jobRunInputCommand struct {
 	clientConfig *config.ClientConfig
 
 	assetOutputDir string
-	namespaceName  string
 	runType        string
 	runName        string
 	scheduledAt    string
