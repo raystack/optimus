@@ -55,9 +55,9 @@ func (e *eventService) Register(ctx context.Context, namespace models.NamespaceS
 			}
 		}
 	}
-	if evt.Type == models.JobEventTypeFailure {
+	if evt.Type == models.JobFailureEvent {
 		jobFailureCounter.Inc()
-	} else if evt.Type == models.JobEventTypeSLAMiss {
+	} else if evt.Type == models.SLAMissEvent {
 		jobSLAMissCounter.Inc()
 	}
 	return err

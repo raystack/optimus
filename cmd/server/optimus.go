@@ -214,6 +214,10 @@ func (s *OptimusServer) setupHandlers() error {
 	projectRepo := postgres.NewProjectRepository(s.dbConn, s.appKey)
 	namespaceRepository := postgres.NewNamespaceRepository(s.dbConn, s.appKey)
 	projectSecretRepo := postgres.NewSecretRepository(s.dbConn, s.appKey)
+	jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(s.dbConn)
+	taskRunRepository := postgres.NewTaskRunRepository(s.dbConn)
+	sensorRunRepository := postgres.NewSensorRunRepository(s.dbConn)
+	hookRunRepository := postgres.NewHookRunRepository(s.dbConn)
 
 	dbAdapter := postgres.NewAdapter(models.PluginRegistry)
 	replaySpecRepo := postgres.NewReplayRepository(s.dbConn, dbAdapter)
@@ -344,6 +348,12 @@ func (s *OptimusServer) setupHandlers() error {
 	assetCompiler := jobRunCompiler.NewJobAssetsCompiler(engine, pluginRepo)
 	runInputCompiler := jobRunCompiler.NewJobRunInputCompiler(jobConfigCompiler, assetCompiler)
 
+	monitoringService := service.NewMonitoringService(
+		jobRunMetricsRepository,
+		sensorRunRepository,
+		hookRunRepository,
+		taskRunRepository)
+
 	// secret service
 	pb.RegisterSecretServiceServer(s.grpcServer, v1handler.NewSecretServiceServer(s.logger, secretService))
 	// resource service
@@ -395,6 +405,7 @@ func (s *OptimusServer) setupHandlers() error {
 		jobService,
 		eventService,
 		namespaceService,
+		monitoringService,
 	))
 
 	cleanupCluster, err := initPrimeCluster(s.logger, s.conf, jobRunRepo, instanceRepo)

@@ -35,7 +35,7 @@ func (com *Compiler) Compile(schedulerTemplate []byte, namespaceSpec models.Name
 
 	var slaMissDurationInSec int64
 	for _, notify := range jobSpec.Behavior.Notify {
-		if notify.On == models.JobEventTypeSLAMiss {
+		if notify.On == models.SLAMissEvent {
 			if _, ok := notify.Config["duration"]; !ok {
 				continue
 			}

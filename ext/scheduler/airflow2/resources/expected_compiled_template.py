@@ -6,12 +6,22 @@ from datetime import datetime, timedelta, timezone
 from airflow.models import DAG, Variable, DagRun, DagModel, TaskInstance, BaseOperator, XCom, XCOM_RETURN_KEY
 from airflow.kubernetes.secret import Secret
 from airflow.configuration import conf
+from airflow.operators.python_operator import PythonOperator
 from airflow.utils.weight_rule import WeightRule
 from kubernetes.client import models as k8s
 
 
 from __lib import optimus_failure_notify, optimus_sla_miss_notify, SuperKubernetesPodOperator, \
     SuperExternalTaskSensor, ExternalHttpSensor
+
+from __lib import JOB_START_EVENT_NAME, \
+    JOB_END_EVENT_NAME, \
+    log_start_event, \
+    log_success_event, \
+    log_retry_event, \
+    log_failure_event, \
+    EVENT_NAMES, \
+    log_job_end, log_job_start
 
 SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS = int(Variable.get("sensor_poke_interval_in_secs", default_var=15 * 60))
 SENSOR_DEFAULT_TIMEOUT_IN_SECS = int(Variable.get("sensor_timeout_in_secs", default_var=15 * 60 * 60))
@@ -34,7 +44,9 @@ default_args = {
     "priority_weight": 2000,
     "start_date": datetime.strptime("2000-11-11T00:00:00", "%Y-%m-%dT%H:%M:%S"),
     "end_date": datetime.strptime("2020-11-11T00:00:00","%Y-%m-%dT%H:%M:%S"),
-    "on_failure_callback": optimus_failure_notify,
+    "on_failure_callback": log_failure_event,
+    "on_retry_callback": log_retry_event,
+    "on_success_callback": log_success_event,
     "weight_rule": WeightRule.ABSOLUTE
 }
 
@@ -49,6 +61,21 @@ dag = DAG(
             "optimus",
            ]
 )
+
+publish_job_start_event = PythonOperator(
+        task_id = JOB_START_EVENT_NAME,
+        python_callable = log_job_start,
+        provide_context=True,
+        dag=dag
+    )
+
+publish_job_end_event = PythonOperator(
+        task_id = JOB_END_EVENT_NAME,
+        python_callable = log_job_end,
+        provide_context=True,
+        trigger_rule= 'all_done',
+        dag=dag
+    )
 
 transformation_secret = Secret(
     "volume",
@@ -212,17 +239,20 @@ wait_foo__dash__inter__dash__dep__dash__job = SuperExternalTaskSensor(
 ####################################
 
 # upstream sensors -> base transformation task
-wait_foo__dash__intra__dash__dep__dash__job >> transformation_bq
-wait_foo__dash__inter__dash__dep__dash__job >> transformation_bq
+publish_job_start_event >> wait_foo__dash__intra__dash__dep__dash__job >> transformation_bq
+publish_job_start_event >> wait_foo__dash__inter__dash__dep__dash__job >> transformation_bq
+
+# post completion hook
+transformation_bq >> publish_job_end_event
 
 # set inter-dependencies between task and hooks
-hook_transporter >> transformation_bq
-transformation_bq >> hook_predator
-transformation_bq >> hook_hook__dash__for__dash__fail
+publish_job_start_event >> hook_transporter >> transformation_bq
+transformation_bq >> hook_predator >> publish_job_end_event
+transformation_bq >> hook_hook__dash__for__dash__fail >> publish_job_end_event
 
 # set inter-dependencies between hooks and hooks
-hook_transporter >> hook_predator
+hook_transporter >> hook_predator >> publish_job_end_event
 
 # arrange failure hook after post hooks
 
-hook_predator >> [ hook_hook__dash__for__dash__fail,]
+hook_predator >> [ hook_hook__dash__for__dash__fail,] >> publish_job_end_event

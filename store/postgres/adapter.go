@@ -416,6 +416,11 @@ type JobRun struct {
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
 }
 
+// TableName overrides the table name used by JobRun to `job_run_old`
+func (JobRun) TableName() string {
+	return "job_run_old"
+}
+
 type JobRunData struct {
 	ExecutedAt time.Time
 }
