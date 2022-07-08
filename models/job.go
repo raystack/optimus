@@ -37,8 +37,29 @@ const (
 	// JobSpecDependencyTypeExtra represents dependency outside optimus
 	JobSpecDependencyTypeExtra JobSpecDependencyType = "extra"
 
-	JobEventTypeSLAMiss JobEventType = "sla_miss"
-	JobEventTypeFailure JobEventType = "failure"
+	SLAMissEvent    JobEventType = "sla_miss"
+	JobFailureEvent JobEventType = "failure"
+
+	JobStartEvent   JobEventType = "job_start"
+	JobFailEvent    JobEventType = "job_fail"
+	JobSuccessEvent JobEventType = "job_success"
+
+	TaskStartEvent   JobEventType = "task_start"
+	TaskRetryEvent   JobEventType = "task_retry"
+	TaskFailEvent    JobEventType = "task_fail"
+	TaskSuccessEvent JobEventType = "task_success"
+
+	HookStartEvent   JobEventType = "hook_start"
+	HookRetryEvent   JobEventType = "hook_retry"
+	HookFailEvent    JobEventType = "hook_fail"
+	HookSuccessEvent JobEventType = "hook_success"
+
+	SensorStartEvent   JobEventType = "sensor_start"
+	SensorRetryEvent   JobEventType = "sensor_retry"
+	SensorFailEvent    JobEventType = "sensor_fail"
+	SensorSuccessEvent JobEventType = "sensor_success"
+
+	JobRetryEvent JobEventType = "retry"
 )
 
 // JobSpec represents a job
@@ -64,6 +85,23 @@ type JobSpec struct {
 
 func (js JobSpec) GetName() string {
 	return js.Name
+}
+
+func (js JobSpec) SLADuration() (int64, error) {
+	for _, notify := range js.Behavior.Notify {
+		if notify.On == SLAMissEvent {
+			if _, ok := notify.Config["duration"]; !ok {
+				continue
+			}
+
+			dur, err := time.ParseDuration(notify.Config["duration"])
+			if err != nil {
+				return 0, fmt.Errorf("failed to parse sla_miss duration %s: %w", notify.Config["duration"], err)
+			}
+			return int64(dur.Seconds()), nil
+		}
+	}
+	return 0, nil
 }
 
 func (js JobSpec) GetHookByName(name string) (JobSpecHook, error) {
@@ -519,4 +557,52 @@ type JobSource struct {
 	JobID       uuid.UUID
 	ProjectID   ProjectID
 	ResourceURN string
+}
+
+type JobRunSpec struct {
+	JobRunID      uuid.UUID
+	JobID         uuid.UUID
+	NamespaceID   uuid.UUID
+	ProjectID     uuid.UUID
+	ScheduledAt   time.Time
+	StartTime     time.Time
+	EndTime       time.Time
+	Status        string
+	Attempt       int
+	SLAMissDelay  int
+	Duration      int64
+	SLADefinition int64
+}
+
+type TaskRunSpec struct {
+	TaskRunID     uuid.UUID
+	JobRunID      uuid.UUID
+	StartTime     time.Time
+	EndTime       time.Time
+	Status        string
+	Attempt       int
+	JobRunAttempt int
+	Duration      int64
+}
+
+type SensorRunSpec struct {
+	SensorRunID   uuid.UUID
+	JobRunID      uuid.UUID
+	StartTime     time.Time
+	EndTime       time.Time
+	Status        string
+	Attempt       int
+	JobRunAttempt int
+	Duration      int64
+}
+
+type HookRunSpec struct {
+	HookRunID     uuid.UUID
+	JobRunID      uuid.UUID
+	StartTime     time.Time
+	EndTime       time.Time
+	Status        string
+	Attempt       int
+	JobRunAttempt int
+	Duration      int64
 }

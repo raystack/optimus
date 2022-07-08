@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS task_run;
+DROP TABLE IF EXISTS hook_run;
+DROP TABLE IF EXISTS sensor_run;

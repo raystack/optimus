@@ -13,6 +13,8 @@ import (
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/store"
+	"github.com/odpf/optimus/utils"
 )
 
 func TestRuntimeServiceServer(t *testing.T) {
@@ -26,8 +28,7 @@ func TestRuntimeServiceServer(t *testing.T) {
 			runtimeServiceServer := v1.NewRuntimeServiceServer(
 				log,
 				Version,
-				nil, nil, nil,
-			)
+				nil, nil, nil, nil)
 			versionRequest := pb.VersionRequest{Client: Version}
 			resp, err := runtimeServiceServer.Version(ctx, &versionRequest)
 			assert.Nil(t, err)
@@ -72,16 +73,11 @@ func TestRuntimeServiceServer(t *testing.T) {
 			)
 			eventSvc := new(mock.EventService)
 			eventSvc.On("Register", ctx, namespaceSpec, jobSpecs[0], models.JobEvent{
-				Type:  models.JobEventTypeFailure,
+				Type:  models.JobFailureEvent,
 				Value: eventValues.GetFields(),
 			}).Return(nil)
 			defer eventSvc.AssertExpectations(t)
 
-			runtimeServiceServer := v1.NewRuntimeServiceServer(
-				log,
-				Version,
-				jobService, eventSvc, namespaceService,
-			)
 			req := &pb.RegisterJobEventRequest{
 				ProjectName:   projectSpec.Name,
 				JobName:       jobSpecs[0].Name,
@@ -91,6 +87,21 @@ func TestRuntimeServiceServer(t *testing.T) {
 					Value: eventValues,
 				},
 			}
+
+			jobEvent := models.JobEvent{
+				Type:  models.JobEventType(utils.FromEnumProto(req.GetEvent().Type.String(), "TYPE")),
+				Value: req.GetEvent().Value.GetFields(),
+			}
+
+			monitoringService := new(mock.MonitoringService)
+			monitoringService.On("ProcessEvent", ctx, jobEvent, namespaceSpec, jobSpecs[0]).Return(store.ErrResourceNotFound)
+			defer monitoringService.AssertExpectations(t)
+
+			runtimeServiceServer := v1.NewRuntimeServiceServer(
+				log,
+				Version,
+				jobService, eventSvc, namespaceService, monitoringService,
+			)
 			_, err := runtimeServiceServer.RegisterJobEvent(ctx, req)
 			assert.Nil(t, err)
 		})

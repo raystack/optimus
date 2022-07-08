@@ -1,8 +1,14 @@
+from ast import excepthandler
+from gc import callbacks
 import json
 import logging
+from multiprocessing import context
 import os
 from datetime import datetime, timedelta
+from time import sleep
 from typing import Any, Dict, List, Optional
+
+import json
 
 import pendulum
 import requests
@@ -30,6 +36,13 @@ utc = pendulum.timezone('UTC')
 TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 TIMESTAMP_MS_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
+JOB_START_EVENT_NAME =  "job_start_event"
+JOB_END_EVENT_NAME =  "job_end_event"
+
+EVENT_NAMES = {
+    "SENSOR_START_EVENT" : "TYPE_SENSOR_START",
+    "TASK_START_EVENT" : "TYPE_TASK_START"
+}
 
 def lookup_non_standard_cron_expression(expr: str) -> str:
     expr_mapping = {
@@ -70,6 +83,10 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
         self.config_file = kwargs.get('config_file')
 
     def execute(self, context):
+        
+        log_start_event(context, EVENT_NAMES.get("TASK_START_EVENT"))
+        # to be done async
+
         log.info('Task image version: %s', self.image)
         try:
             if self.in_cluster is not None:
@@ -234,31 +251,38 @@ class SuperExternalTaskSensor(BaseSensorOperator):
         self._optimus_client = OptimusAPIClient(optimus_hostname)
 
     def poke(self, context):
-        schedule_time = context['next_execution_date']
+        try:
+            log_start_event(context, EVENT_NAMES.get("SENSOR_START_EVENT"))
+            schedule_time = context['next_execution_date']
 
-        # parse relevant metadata from the job metadata to build the task window
-        # TODO this needs to be updated to use optimus get job spec
-        upstream_schedule = self.get_schedule_interval(schedule_time)
+            # parse relevant metadata from the job metadata to build the task window
+            # TODO this needs to be updated to use optimus get job spec
+            upstream_schedule = self.get_schedule_interval(schedule_time)
 
-        last_upstream_schedule_time, _ = self.get_last_upstream_times(
-            schedule_time, upstream_schedule)
+            last_upstream_schedule_time, _ = self.get_last_upstream_times(
+                schedule_time, upstream_schedule)
 
-        # get schedule window
-        task_window = JobSpecTaskWindow(self.window_size, 0, "m", self._optimus_client)
-        schedule_time_window_start, schedule_time_window_end = task_window.get_schedule_window(
-            last_upstream_schedule_time.strftime(TIMESTAMP_FORMAT),upstream_schedule)
-        
+            # get schedule window
+            task_window = JobSpecTaskWindow(self.window_size, 0, "m", self._optimus_client)
+            schedule_time_window_start, schedule_time_window_end = task_window.get_schedule_window(
+                last_upstream_schedule_time.strftime(TIMESTAMP_FORMAT),upstream_schedule)
+            
 
-        self.log.info("waiting for upstream runs between: {} - {} schedule times of airflow dag run".format(
-            schedule_time_window_start, schedule_time_window_end))
+            self.log.info("waiting for upstream runs between: {} - {} schedule times of airflow dag run".format(
+                schedule_time_window_start, schedule_time_window_end))
 
-        if not self._are_all_job_runs_successful(schedule_time_window_start, schedule_time_window_end):
-            self.log.warning("unable to find enough successful executions for upstream '{}' in "
-                             "'{}' dated between {} and {}(inclusive), rescheduling sensor".
-                             format(self.optimus_job, self.optimus_project, schedule_time_window_start,
-                                    schedule_time_window_end))
-            return False
-        return True
+            # a = 0/0
+            if not self._are_all_job_runs_successful(schedule_time_window_start, schedule_time_window_end):
+                self.log.warning("unable to find enough successful executions for upstream '{}' in "
+                                "'{}' dated between {} and {}(inclusive), rescheduling sensor".
+                                format(self.optimus_job, self.optimus_project, schedule_time_window_start,
+                                        schedule_time_window_end))
+                log_failure_event(context)
+                return False
+            return True
+        except Exception as e :
+            # write error msg in context to be supplied in the failure notification 
+            log_failure_event(context)
 
     def get_last_upstream_times(self, schedule_time_of_current_job, upstream_schedule_interval):
         second_ahead_of_schedule_time = schedule_time_of_current_job + timedelta(seconds=1)
@@ -295,7 +319,7 @@ class SuperExternalTaskSensor(BaseSensorOperator):
             return datetime.strptime(timestamp, TIMESTAMP_MS_FORMAT)
 
 
-def optimus_failure_notify(context):
+def optimus_failure_notify(context, event_meta):
     params = context.get("params")
     optimus_client = OptimusAPIClient(params["optimus_hostname"])
 
@@ -333,17 +357,138 @@ def optimus_failure_notify(context):
         "run_id": context.get('run_id'),
         "duration": str(context.get('task_instance').duration),
         "message": failure_message,
-        "exception": str(context.get('exception')),
-        "scheduled_at": current_execution_date.strftime(TIMESTAMP_FORMAT)
+        "exception": str(context.get('exception')) or "",
+
+        "scheduled_at"          : current_execution_date.strftime(TIMESTAMP_FORMAT),
+        "scheduled_at_ts"       : datetime.timestamp(context.get('execution_date')),
+        "task_start_timestamp"   : datetime.timestamp(context.get('task_instance').start_date),
+        
+        "attempt"   :context['task_instance'].try_number,
     }
+    if event_meta.get("status") != None :
+        message.status = event_meta.status
+    
     event = {
-        "type": "TYPE_FAILURE",
+        "type": event_meta["event_type"],
         "value": message,
     }
-    # post event
     resp = optimus_client.notify_event(params["project_name"], params["namespace"], params["job_name"], event)
     print("posted event ", params, event, resp)
     return
+
+def optimus_notify(context, event_meta):
+    params = context.get("params")
+    optimus_client = OptimusAPIClient(params["optimus_hostname"])
+
+    current_dag_id = context.get('task_instance').dag_id
+    current_dag_run_id = context.get('dag_run').run_id
+    current_execution_date = context.get('execution_date')
+
+    message = {
+        "job_run_id": current_dag_run_id,
+        "task_id": context.get('task_instance').task_id,
+        "log_url": context.get('task_instance').log_url,
+        "task_run_id": context.get('run_id'),
+        
+        "duration": str(context.get('task_instance').duration),
+        "job_duration"  :get_job_run_duration(context),
+        
+        "exception": str(context.get('exception')) or "",
+
+        "scheduled_at"          : current_execution_date.strftime(TIMESTAMP_FORMAT),
+        "scheduled_at_ts"       : datetime.timestamp(context.get('execution_date')),
+        "task_start_timestamp"   : datetime.timestamp(context.get('task_instance').start_date),
+        
+        "attempt"       :context['task_instance'].try_number,
+        "event_time"    :datetime.now().timestamp(),
+    }
+    message.update(event_meta)
+    
+    event = {
+        "type": event_meta["event_type"],
+        "value": message,
+    }
+    # post event
+    log.info(event)
+    resp = optimus_client.notify_event(params["project_name"], params["namespace"], params["job_name"], event)
+    print("posted event ", params, event, resp)
+    return
+
+## utils
+def should_relay_airflow_callbacks(context):
+    if context.get('task_instance').task_id in [JOB_START_EVENT_NAME, JOB_END_EVENT_NAME]:
+        return False
+    else:
+        return True
+
+# time elapsed since job run started
+def get_job_run_duration(context):
+    dag_start_time = datetime.timestamp(context.get('dag_run').get_task_instance(JOB_START_EVENT_NAME).start_date)
+    current_time = datetime.now().timestamp()
+    return current_time - dag_start_time 
+
+def get_run_type(context):
+    task_identifier = context.get('task_instance_key_str')
+    job_name = context.get('params')['job_name']
+    if task_identifier.split(job_name)[1].startswith("__wait_") :
+        return "SENSOR"
+    elif task_identifier.split(job_name)[1].startswith("__hook_") :
+        return "HOOK"
+    else:
+        return "TASK"
+
+# job level events 
+def log_job_end(ds=None, **kwargs):
+    context = kwargs
+    meta = {
+        "event_type": "TYPE_JOB_SUCCESS", # later determine the status based on task statuses 
+        "status": "FINISHED",
+    }
+    optimus_notify(context, meta)
+
+def log_job_start(ds=None, **kwargs):
+    context = kwargs
+    meta = {
+        "event_type": "TYPE_JOB_START"
+    }
+    optimus_notify(context, meta)
+
+# task level events 
+def log_start_event(context, EVENT_NAME):
+    meta = {
+        "event_type": EVENT_NAME,
+        "status": "STARTED"
+    }
+    optimus_notify(context, meta)
+
+def log_success_event(context):
+    if not should_relay_airflow_callbacks(context):
+        return 
+    run_type = get_run_type(context)
+    meta = {
+        "event_type": "TYPE_{}_SUCCESS".format(run_type)
+    }
+    optimus_notify(context, meta)
+    return
+
+def log_retry_event(context):
+    if not should_relay_airflow_callbacks(context):
+        return 
+    run_type = get_run_type(context)
+    meta = {
+        "event_type": "TYPE_{}_RETRY".format(run_type)
+    }
+    optimus_failure_notify(context, meta)
+    return
+
+def log_failure_event(context):
+    if not should_relay_airflow_callbacks(context):
+        return 
+    run_type = get_run_type(context)
+    meta = {
+        "event_type": "TYPE_{}_FAIL".format(run_type)
+    }
+    optimus_notify(context, meta)
 
 
 def optimus_sla_miss_notify(dag, task_list, blocking_task_list, slas, blocking_tis):
