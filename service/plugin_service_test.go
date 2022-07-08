@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/odpf/salt/log"
@@ -16,6 +17,10 @@ import (
 )
 
 func TestPluginService(t *testing.T) {
+	var dumpAssets service.AssetCompiler = func(jobSpec models.JobSpec, _ time.Time) (models.JobAssets, error) {
+		return jobSpec.Assets, nil
+	}
+
 	ctx := context.Background()
 	depMod := new(mock.DependencyResolverMod)
 	baseUnit := new(mock.BasePlugin)
@@ -77,7 +82,7 @@ func TestPluginService(t *testing.T) {
 				},
 			}
 
-			pluginService := service.NewPluginService(nil, pluginRepo, nil, l)
+			pluginService := service.NewPluginService(nil, pluginRepo, nil, l, dumpAssets)
 			resp, err := pluginService.GenerateDestination(ctx, jobSpec, namespaceSpec)
 			assert.Nil(t, resp)
 			assert.EqualError(t, err, "plugin not found")
@@ -101,7 +106,7 @@ func TestPluginService(t *testing.T) {
 				},
 			}
 
-			pluginService := service.NewPluginService(nil, pluginRepo, nil, l)
+			pluginService := service.NewPluginService(nil, pluginRepo, nil, l, dumpAssets)
 			resp, err := pluginService.GenerateDestination(ctx, jobSpec, namespaceSpec)
 			assert.Nil(t, resp)
 			assert.EqualError(t, err, "dependency mod not found for plugin")
@@ -129,7 +134,7 @@ func TestPluginService(t *testing.T) {
 				},
 			}
 
-			pluginService := service.NewPluginService(secretService, pluginRepo, engine, l)
+			pluginService := service.NewPluginService(secretService, pluginRepo, engine, l, dumpAssets)
 			resp, err := pluginService.GenerateDestination(ctx, jobSpec, namespaceSpec)
 			assert.Nil(t, resp)
 			assert.EqualError(t, err, "error")
@@ -180,7 +185,7 @@ func TestPluginService(t *testing.T) {
 				Type:        models.DestinationTypeBigquery,
 			}, nil)
 
-			pluginService := service.NewPluginService(secretService, pluginRepo, engine, l)
+			pluginService := service.NewPluginService(secretService, pluginRepo, engine, l, dumpAssets)
 			resp, err := pluginService.GenerateDestination(ctx, jobSpec, namespaceSpec)
 			assert.Nil(t, err)
 			assert.NotNil(t, resp)
@@ -209,7 +214,7 @@ func TestPluginService(t *testing.T) {
 				},
 			}
 
-			pluginService := service.NewPluginService(nil, pluginRepo, nil, l)
+			pluginService := service.NewPluginService(nil, pluginRepo, nil, l, dumpAssets)
 			resp, err := pluginService.GenerateDependencies(ctx, jobSpec, namespaceSpec, false)
 			assert.Nil(t, resp)
 			assert.EqualError(t, err, "plugin not found")
@@ -233,7 +238,7 @@ func TestPluginService(t *testing.T) {
 				},
 			}
 
-			pluginService := service.NewPluginService(nil, pluginRepo, nil, l)
+			pluginService := service.NewPluginService(nil, pluginRepo, nil, l, dumpAssets)
 			resp, err := pluginService.GenerateDependencies(ctx, jobSpec, namespaceSpec, false)
 			assert.Nil(t, resp)
 			assert.EqualError(t, err, "dependency mod not found for plugin")
@@ -261,7 +266,7 @@ func TestPluginService(t *testing.T) {
 				},
 			}
 
-			pluginService := service.NewPluginService(secretService, pluginRepo, engine, l)
+			pluginService := service.NewPluginService(secretService, pluginRepo, engine, l, dumpAssets)
 			resp, err := pluginService.GenerateDependencies(ctx, jobSpec, namespaceSpec, false)
 			assert.Nil(t, resp)
 			assert.EqualError(t, err, "error")
@@ -303,7 +308,7 @@ func TestPluginService(t *testing.T) {
 				Dependencies: []string{"project.dataset.table2_destination"}},
 				nil)
 
-			pluginService := service.NewPluginService(secretService, pluginRepo, engine, l)
+			pluginService := service.NewPluginService(secretService, pluginRepo, engine, l, dumpAssets)
 			resp, err := pluginService.GenerateDependencies(ctx, jobSpec, namespaceSpec, false)
 			assert.Nil(t, err)
 			assert.NotNil(t, resp)

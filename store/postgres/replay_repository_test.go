@@ -170,7 +170,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 		assert.Nil(t, err)
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-		jobRepo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		jobRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 		err = jobRepo.Insert(ctx, jobConfigs[0], jobDestination)
 		assert.Nil(t, err)
@@ -212,7 +212,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 		assert.Nil(t, err)
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-		jobRepo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		jobRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 		err = jobRepo.Insert(ctx, jobConfigs[0], jobDestination)
 		assert.Nil(t, err)
 
@@ -263,7 +263,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			assert.Nil(t, err)
 
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-			jobRepo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			jobRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			err = jobRepo.Insert(ctx, testModels[0].Job, jobDestination)
 			assert.Nil(t, err)
@@ -316,7 +316,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			assert.Nil(t, err)
 
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-			jobRepo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			jobRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 			err = jobRepo.Insert(ctx, testModels[0].Job, jobDestination)
 			assert.Nil(t, err)
 			err = jobRepo.Insert(ctx, testModels[1].Job, jobDestination)
@@ -371,7 +371,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			assert.Nil(t, err)
 
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-			jobRepo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			jobRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			err = jobRepo.Insert(ctx, testModels[0].Job, jobDestination)
 			assert.Nil(t, err)
@@ -427,7 +427,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			assert.Nil(t, err)
 
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-			jobRepo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			jobRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			err = jobRepo.Insert(ctx, testModels[0].Job, jobDestination)
 			assert.Nil(t, err)
@@ -478,7 +478,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			assert.Nil(t, err)
 
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-			jobRepo := postgres.NewJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			jobRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
 
 			err = jobRepo.Insert(ctx, testModels[0].Job, jobDestination)
 			assert.Nil(t, err)

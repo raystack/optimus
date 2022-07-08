@@ -22,15 +22,11 @@ type ProjectJobPair struct {
 }
 
 // ProjectJobSpecRepository represents a storage interface for Job specifications at a project level
+// This will be deprecated and avoid having multiple job spec repositories
 type ProjectJobSpecRepository interface {
 	GetByName(context.Context, string) (models.JobSpec, models.NamespaceSpec, error)
 	GetByNameForProject(ctx context.Context, projectName, jobName string) (models.JobSpec, models.ProjectSpec, error)
 	GetAll(context.Context) ([]models.JobSpec, error)
-
-	// GetByDestination returns all the jobs matches with this destination
-	// it can be from current project or from different projects
-	// note: be warned to handle this carefully in multi tenant situations
-	GetByDestination(context.Context, string) ([]ProjectJobPair, error)
 
 	// GetByIDs returns all the jobs as requested by its ID
 	GetByIDs(context.Context, []uuid.UUID) ([]models.JobSpec, error)
@@ -39,10 +35,25 @@ type ProjectJobSpecRepository interface {
 	GetJobNamespaces(ctx context.Context) (map[string][]string, error)
 }
 
-// InterProjectJobSpecRepository represents a storage interface for Job specification
-type InterProjectJobSpecRepository interface {
+// JobSpecRepository represents a storage interface for Job specification
+type JobSpecRepository interface {
+	GetAllByProjectID(context.Context, models.ProjectID) ([]models.JobSpec, error)
+	// TODO: change to GetJobsByName as it returns multiple jobs
 	GetJobByName(context.Context, string) ([]models.JobSpec, error)
+	// TODO: allow to also GetJobByResourceDestination for a specific project
 	GetJobByResourceDestination(context.Context, string) (models.JobSpec, error)
+	GetDependentJobs(context.Context, *models.JobSpec) ([]models.JobSpec, error)
+	GetInferredDependenciesPerJob(context.Context, models.ProjectID) (map[uuid.UUID][]models.JobSpec, error)
+	GetStaticDependenciesPerJob(context.Context, models.ProjectID) (map[uuid.UUID][]models.JobSpec, error)
+}
+
+// NamespaceJobSpecRepository represents a storage interface for Job specifications at a namespace level
+// This will be deprecated and avoid having multiple job spec repositories
+type NamespaceJobSpecRepository interface {
+	Save(context.Context, models.JobSpec, string) error
+	GetByName(context.Context, string) (models.JobSpec, error)
+	GetAll(context.Context) ([]models.JobSpec, error)
+	Delete(context.Context, uuid.UUID) error
 }
 
 // ProjectRepository represents a storage interface for registered projects
@@ -50,6 +61,14 @@ type ProjectRepository interface {
 	Save(context.Context, models.ProjectSpec) error
 	GetByName(context.Context, string) (models.ProjectSpec, error)
 	GetAll(context.Context) ([]models.ProjectSpec, error)
+}
+
+// NamespaceRepository represents a storage interface for registered namespaces
+type NamespaceRepository interface {
+	Save(context.Context, models.ProjectSpec, models.NamespaceSpec) error
+	GetByName(context.Context, models.ProjectSpec, string) (models.NamespaceSpec, error)
+	GetAll(context.Context, models.ProjectSpec) ([]models.NamespaceSpec, error)
+	Get(ctx context.Context, projectName, namespaceName string) (models.NamespaceSpec, error)
 }
 
 // SecretRepository stores secrets attached to projects
@@ -61,15 +80,7 @@ type SecretRepository interface {
 	Delete(context.Context, models.ProjectSpec, models.NamespaceSpec, string) error
 }
 
-// NamespaceRepository represents a storage interface for registered namespaces
-type NamespaceRepository interface {
-	Save(context.Context, models.ProjectSpec, models.NamespaceSpec) error
-	GetByName(context.Context, models.ProjectSpec, string) (models.NamespaceSpec, error)
-	GetAll(context.Context, models.ProjectSpec) ([]models.NamespaceSpec, error)
-	Get(ctx context.Context, projectName, namespaceName string) (models.NamespaceSpec, error)
-}
-
-// JobRunSpecRepository represents a storage interface for Job runs generated to
+// JobRunRepository represents a storage interface for Job runs generated to
 // represent a job in running state
 type JobRunRepository interface {
 	// Save updates the run in place if it can else insert new
@@ -152,13 +163,6 @@ type BackupRepository interface {
 	GetByID(context.Context, uuid.UUID, models.Datastorer) (models.BackupSpec, error)
 }
 
-// JobDependencyRepository represents a storage interface for job dependencies
-type JobDependencyRepository interface {
-	Save(ctx context.Context, projectID models.ProjectID, jobID uuid.UUID, dependency models.JobSpecDependency) error
-	GetAll(ctx context.Context, projectID models.ProjectID) ([]models.JobIDDependenciesPair, error)
-	DeleteByJobID(context.Context, uuid.UUID) error
-}
-
 type JobDeploymentRepository interface {
 	Save(ctx context.Context, deployment models.JobDeployment) error
 	GetByID(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error)
@@ -166,4 +170,13 @@ type JobDeploymentRepository interface {
 	Update(ctx context.Context, deploymentSpec models.JobDeployment) error
 	GetByStatus(ctx context.Context, status models.JobDeploymentStatus) ([]models.JobDeployment, error)
 	GetFirstExecutableRequest(ctx context.Context) (models.JobDeployment, error)
+}
+
+// JobSourceRepository represents a storage interface for job sources
+type JobSourceRepository interface {
+	// Save replaces old job sources records for the particular project id and job id with newer ones
+	Save(ctx context.Context, projectID models.ProjectID, jobID uuid.UUID, jobSourceURNs []string) error
+	GetAll(context.Context, models.ProjectID) ([]models.JobSource, error)
+	GetByResourceURN(context.Context, string) ([]models.JobSource, error)
+	DeleteByJobID(context.Context, uuid.UUID) error
 }
