@@ -29,7 +29,7 @@ Discover why users choose Optimus as their main data transformation tool.
 Optimus has two components, Optimus service that is the core orchestrator installed on server side, and a CLI binary used to interact with this service. You can install Optimus CLI using homebrew on macOS:
 
 ```shell
-$ brew install odpf/taps/optimus
+$ brew install odpf/tap/optimus
 $ optimus --help
 
 Optimus is an easy-to-use, reliable, and performant workflow orchestrator for
