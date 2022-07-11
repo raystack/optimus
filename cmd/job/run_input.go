@@ -185,14 +185,14 @@ func (b *jobRunInputCommand) sendJobRunInputRequest(jobName string, jobScheduled
 
 	// fetch Instance by calling the optimus API
 	jobRunInputService := pb.NewJobRunServiceClient(conn.GetConnection())
-	request := &pb.RegisterInstanceRequest{
+	request := &pb.JobRunInputRequest{
 		ProjectName:  b.clientConfig.Project.Name,
 		JobName:      jobName,
 		ScheduledAt:  jobScheduledTimeProto,
 		InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[utils.ToEnumProto(b.runType, "type")]),
 		InstanceName: b.runName,
 	}
-	return jobRunInputService.GetJobRunInput(conn.GetContext(), request)
+	return jobRunInputService.JobRunInput(conn.GetContext(), request)
 }
 
 func (b *jobRunInputCommand) getJobScheduledTimeProto() (*timestamppb.Timestamp, error) {
