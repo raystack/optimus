@@ -5,7 +5,7 @@ NAME = "github.com/odpf/optimus"
 LAST_COMMIT := $(shell git rev-parse --short HEAD)
 LAST_TAG := "$(shell git rev-list --tags --max-count=1)"
 OPMS_VERSION := "$(shell git describe --tags ${LAST_TAG})-next"
-PROTON_COMMIT := "adca6d6820ba5f96c9d14467483a580c2c252d15"
+PROTON_COMMIT := "9eaca223dfd5ca0297abdb593fa73e8522d8ef62"
 
 .PHONY: build test test-ci generate-proto unit-test-ci smoke-test integration-test vet coverage clean install lint
 
@@ -57,13 +57,10 @@ lint:
 
 install: ## install required dependencies
 	@echo "> installing dependencies"
-	go get google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1
-	go get github.com/golang/protobuf/proto@v1.5.2
-	go get github.com/golang/protobuf/protoc-gen-go@v1.5.2
-	go get google.golang.org/grpc@v1.40.0
-	go get google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0
-	go get github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.5.0
-	go get github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.5.0
-	go get github.com/bufbuild/buf/cmd/buf@v0.54.1
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.44.1
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.0
+	go install github.com/bufbuild/buf/cmd/buf@v1.5.0
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2.0
+	go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.5.0
+	go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.5.0
 	go mod tidy

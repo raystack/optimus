@@ -37,8 +37,29 @@ const (
 	// JobSpecDependencyTypeExtra represents dependency outside optimus
 	JobSpecDependencyTypeExtra JobSpecDependencyType = "extra"
 
-	JobEventTypeSLAMiss JobEventType = "sla_miss"
-	JobEventTypeFailure JobEventType = "failure"
+	SLAMissEvent    JobEventType = "sla_miss"
+	JobFailureEvent JobEventType = "failure"
+
+	JobStartEvent   JobEventType = "job_start"
+	JobFailEvent    JobEventType = "job_fail"
+	JobSuccessEvent JobEventType = "job_success"
+
+	TaskStartEvent   JobEventType = "task_start"
+	TaskRetryEvent   JobEventType = "task_retry"
+	TaskFailEvent    JobEventType = "task_fail"
+	TaskSuccessEvent JobEventType = "task_success"
+
+	HookStartEvent   JobEventType = "hook_start"
+	HookRetryEvent   JobEventType = "hook_retry"
+	HookFailEvent    JobEventType = "hook_fail"
+	HookSuccessEvent JobEventType = "hook_success"
+
+	SensorStartEvent   JobEventType = "sensor_start"
+	SensorRetryEvent   JobEventType = "sensor_retry"
+	SensorFailEvent    JobEventType = "sensor_fail"
+	SensorSuccessEvent JobEventType = "sensor_success"
+
+	JobRetryEvent JobEventType = "retry"
 )
 
 // JobSpec represents a job
@@ -50,6 +71,7 @@ type JobSpec struct {
 	Description          string
 	Labels               map[string]string
 	Owner                string
+	ResourceDestination  string
 	Schedule             JobSpecSchedule
 	Behavior             JobSpecBehavior
 	Task                 JobSpecTask
@@ -63,6 +85,23 @@ type JobSpec struct {
 
 func (js JobSpec) GetName() string {
 	return js.Name
+}
+
+func (js JobSpec) SLADuration() (int64, error) {
+	for _, notify := range js.Behavior.Notify {
+		if notify.On == SLAMissEvent {
+			if _, ok := notify.Config["duration"]; !ok {
+				continue
+			}
+
+			dur, err := time.ParseDuration(notify.Config["duration"])
+			if err != nil {
+				return 0, fmt.Errorf("failed to parse sla_miss duration %s: %w", notify.Config["duration"], err)
+			}
+			return int64(dur.Seconds()), nil
+		}
+	}
+	return 0, nil
 }
 
 func (js JobSpec) GetHookByName(name string) (JobSpecHook, error) {
@@ -94,6 +133,15 @@ func (js JobSpecs) GroupJobsPerNamespace() map[string][]JobSpec {
 		jobsGroup[jobSpec.NamespaceSpec.Name] = append(jobsGroup[jobSpec.NamespaceSpec.Name], jobSpec)
 	}
 	return jobsGroup
+}
+
+func (js JobSpecs) GroupJobsByDestination() map[string]*JobSpec {
+	output := make(map[string]*JobSpec)
+	for _, jobSpec := range js {
+		spec := jobSpec
+		output[spec.ResourceDestination] = &spec
+	}
+	return output
 }
 
 type JobSpecSchedule struct {
@@ -332,8 +380,6 @@ type JobService interface {
 	Create(context.Context, NamespaceSpec, JobSpec) (JobSpec, error)
 	// GetByName fetches a Job by name for a specific namespace
 	GetByName(context.Context, string, NamespaceSpec) (JobSpec, error)
-	// KeepOnly deletes all jobs except the ones provided for a namespace
-	KeepOnly(context.Context, NamespaceSpec, []JobSpec, progress.Observer) error
 	// GetAll reads all job specifications of the given namespace
 	GetAll(context.Context, NamespaceSpec) ([]JobSpec, error)
 	// Delete deletes a job spec from all repos
@@ -348,7 +394,7 @@ type JobService interface {
 
 	// GetByNameForProject fetches a Job by name for a specific project
 	GetByNameForProject(context.Context, string, ProjectSpec) (JobSpec, NamespaceSpec, error)
-	// Will DELETED
+	// TODO: to be deprecated
 	Sync(context.Context, NamespaceSpec, progress.Observer) error
 	Check(context.Context, NamespaceSpec, []JobSpec, progress.Observer) error
 	// GetByDestination fetches a Job by destination for a specific project
@@ -361,7 +407,7 @@ type JobService interface {
 	Deploy(context.Context, string, string, []JobSpec, progress.Observer) (DeploymentID, error)
 	// GetDeployment getting status and result of job deployment
 	GetDeployment(ctx context.Context, deployID DeploymentID) (JobDeployment, error)
-	// GetWithFilts gets the jobspec based on projectName, jobName, resourceDestination filters.
+	// GetByFilter gets the jobspec based on projectName, jobName, resourceDestination filters.
 	GetByFilter(ctx context.Context, filter JobSpecFilter) ([]JobSpec, error)
 }
 
@@ -505,4 +551,58 @@ type JobDeploymentDetail struct {
 type JobDeploymentFailure struct {
 	JobName string
 	Message string
+}
+
+type JobSource struct {
+	JobID       uuid.UUID
+	ProjectID   ProjectID
+	ResourceURN string
+}
+
+type JobRunSpec struct {
+	JobRunID      uuid.UUID
+	JobID         uuid.UUID
+	NamespaceID   uuid.UUID
+	ProjectID     uuid.UUID
+	ScheduledAt   time.Time
+	StartTime     time.Time
+	EndTime       time.Time
+	Status        string
+	Attempt       int
+	SLAMissDelay  int
+	Duration      int64
+	SLADefinition int64
+}
+
+type TaskRunSpec struct {
+	TaskRunID     uuid.UUID
+	JobRunID      uuid.UUID
+	StartTime     time.Time
+	EndTime       time.Time
+	Status        string
+	Attempt       int
+	JobRunAttempt int
+	Duration      int64
+}
+
+type SensorRunSpec struct {
+	SensorRunID   uuid.UUID
+	JobRunID      uuid.UUID
+	StartTime     time.Time
+	EndTime       time.Time
+	Status        string
+	Attempt       int
+	JobRunAttempt int
+	Duration      int64
+}
+
+type HookRunSpec struct {
+	HookRunID     uuid.UUID
+	JobRunID      uuid.UUID
+	StartTime     time.Time
+	EndTime       time.Time
+	Status        string
+	Attempt       int
+	JobRunAttempt int
+	Duration      int64
 }

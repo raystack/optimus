@@ -219,12 +219,13 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 	}
 
 	job := models.JobSpec{
-		ID:          conf.ID,
-		Version:     conf.Version,
-		Name:        conf.Name,
-		Owner:       conf.Owner,
-		Description: conf.Description,
-		Labels:      labels,
+		ID:                  conf.ID,
+		Version:             conf.Version,
+		Name:                conf.Name,
+		Owner:               conf.Owner,
+		ResourceDestination: conf.Destination,
+		Description:         conf.Description,
+		Labels:              labels,
 		Schedule: models.JobSpecSchedule{
 			StartDate: conf.StartDate,
 			EndDate:   conf.EndDate,
@@ -260,7 +261,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 }
 
 // FromJobSpec converts the optimus representation of JobSpec to postgres' Job
-func (JobSpecAdapter) FromJobSpec(spec models.JobSpec, jobDestination string) (Job, error) {
+func (JobSpecAdapter) FromJobSpec(spec models.JobSpec, resourceDestination string) (Job, error) {
 	if spec.Task.Unit == nil {
 		return Job{}, errors.New("task unit cannot be empty")
 	}
@@ -358,7 +359,7 @@ func (JobSpecAdapter) FromJobSpec(spec models.JobSpec, jobDestination string) (J
 		EndDate:              spec.Schedule.EndDate,
 		Interval:             &spec.Schedule.Interval,
 		Behavior:             behaviorJSON,
-		Destination:          jobDestination,
+		Destination:          resourceDestination,
 		Dependencies:         dependenciesJSON,
 		TaskName:             spec.Task.Unit.Info().Name,
 		TaskConfig:           taskConfigJSON,
@@ -414,6 +415,11 @@ type JobRun struct {
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
+}
+
+// TableName overrides the table name used by JobRun to `job_run_old`
+func (JobRun) TableName() string {
+	return "job_run_old"
 }
 
 type JobRunData struct {
@@ -520,4 +526,51 @@ func (adapt JobSpecAdapter) ToJobRun(jr JobRun) (models.JobRun, models.Namespace
 		Instances:   instanceSpecs,
 		ExecutedAt:  adaptedData.ExecutedAt,
 	}, adaptNamespace, nil
+}
+
+type jobDependency struct {
+	JobID uuid.UUID `json:"job_id"`
+
+	DependencyID       uuid.UUID `json:"dependency_id"`
+	DependencyName     string    `json:"dependency_name"`
+	DependencyTaskName string    `json:"dependency_task_name"`
+
+	DependencyProjectID uuid.UUID `json:"dependency_project_id"`
+	DependencyProject   Project   `gorm:"foreignKey:DependencyProjectID"`
+
+	DependencyNamespaceID uuid.UUID `json:"dependency_namespace_id"`
+	DependencyNamespace   Namespace `gorm:"foreignKey:DependencyNamespaceID"`
+}
+
+func (adapt JobSpecAdapter) groupToDependenciesPerJob(jobDependencies []jobDependency) (map[uuid.UUID][]models.JobSpec, error) {
+	jobIDDependenciesMap := make(map[uuid.UUID][]models.JobSpec)
+	for _, dependency := range jobDependencies {
+		dependencyJobSpec, err := adapt.dependencyToJobSpec(dependency)
+		if err != nil {
+			return nil, err
+		}
+		jobIDDependenciesMap[dependency.JobID] = append(jobIDDependenciesMap[dependency.JobID], dependencyJobSpec)
+	}
+	return jobIDDependenciesMap, nil
+}
+
+// dependencyToJobSpec converts the postgres' JobDependency representation to the optimus' JobSpec
+func (adapt JobSpecAdapter) dependencyToJobSpec(conf jobDependency) (models.JobSpec, error) {
+	namespaceSpec, err := conf.DependencyNamespace.ToSpec(conf.DependencyProject.ToSpec())
+	if err != nil {
+		return models.JobSpec{}, fmt.Errorf("getting namespace spec of a job error: %w", err)
+	}
+
+	execUnit, err := adapt.pluginRepo.GetByName(conf.DependencyTaskName)
+	if err != nil {
+		return models.JobSpec{}, fmt.Errorf("spec reading error: %w", err)
+	}
+
+	job := models.JobSpec{
+		ID:            conf.DependencyID,
+		Name:          conf.DependencyName,
+		Task:          models.JobSpecTask{Unit: execUnit},
+		NamespaceSpec: namespaceSpec,
+	}
+	return job, nil
 }

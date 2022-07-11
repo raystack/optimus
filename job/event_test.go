@@ -38,7 +38,7 @@ func TestEventService(t *testing.T) {
 			Behavior: models.JobSpecBehavior{
 				Notify: []models.JobSpecNotifier{
 					{
-						On: models.JobEventTypeFailure,
+						On: models.JobFailureEvent,
 						Channels: []string{
 							"slacker://@devs",
 						},
@@ -47,7 +47,7 @@ func TestEventService(t *testing.T) {
 			},
 		}
 		je := models.JobEvent{
-			Type:  models.JobEventTypeFailure,
+			Type:  models.JobFailureEvent,
 			Value: eventValues.Fields,
 		}
 
@@ -82,7 +82,7 @@ func TestEventService(t *testing.T) {
 			Behavior: models.JobSpecBehavior{
 				Notify: []models.JobSpecNotifier{
 					{
-						On: models.JobEventTypeFailure,
+						On: models.JobFailureEvent,
 						Channels: []string{
 							"blocker://@devs",
 						},
@@ -91,7 +91,7 @@ func TestEventService(t *testing.T) {
 			},
 		}
 		je := models.JobEvent{
-			Type:  models.JobEventTypeFailure,
+			Type:  models.JobFailureEvent,
 			Value: eventValues.GetFields(),
 		}
 
@@ -120,7 +120,7 @@ func TestEventService(t *testing.T) {
 			Behavior: models.JobSpecBehavior{
 				Notify: []models.JobSpecNotifier{
 					{
-						On: models.JobEventTypeFailure,
+						On: models.JobFailureEvent,
 						Channels: []string{
 							"slacker://@devs",
 						},
@@ -129,7 +129,7 @@ func TestEventService(t *testing.T) {
 			},
 		}
 		je := models.JobEvent{
-			Type:  models.JobEventTypeFailure,
+			Type:  models.JobFailureEvent,
 			Value: eventValues.GetFields(),
 		}
 

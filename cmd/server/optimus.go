@@ -214,12 +214,17 @@ func (s *OptimusServer) setupHandlers() error {
 	projectRepo := postgres.NewProjectRepository(s.dbConn, s.appKey)
 	namespaceRepository := postgres.NewNamespaceRepository(s.dbConn, s.appKey)
 	projectSecretRepo := postgres.NewSecretRepository(s.dbConn, s.appKey)
+	jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(s.dbConn)
+	taskRunRepository := postgres.NewTaskRunRepository(s.dbConn)
+	sensorRunRepository := postgres.NewSensorRunRepository(s.dbConn)
+	hookRunRepository := postgres.NewHookRunRepository(s.dbConn)
 
 	dbAdapter := postgres.NewAdapter(models.PluginRegistry)
 	replaySpecRepo := postgres.NewReplayRepository(s.dbConn, dbAdapter)
 	jobRunRepo := postgres.NewJobRunRepository(s.dbConn, dbAdapter)
 	instanceRepo := postgres.NewInstanceRepository(s.dbConn, dbAdapter)
-	interProjectJobSpecRepo := postgres.NewInterProjectJobSpecRepository(s.dbConn, dbAdapter)
+	jobSpecRepo := postgres.NewJobSpecRepository(s.dbConn, dbAdapter)
+	jobSourceRepository := postgres.NewJobSourceRepository(s.dbConn)
 
 	projectJobSpecRepoFac := &projectJobSpecRepoFactory{
 		db: s.dbConn,
@@ -236,16 +241,15 @@ func (s *OptimusServer) setupHandlers() error {
 	projectService := service.NewProjectService(projectRepo)
 	namespaceService := service.NewNamespaceService(projectService, namespaceRepository)
 	secretService := service.NewSecretService(projectService, namespaceService, projectSecretRepo)
-	pluginService := service.NewPluginService(secretService, models.PluginRegistry, engine, s.logger)
+	pluginService := service.NewPluginService(secretService, models.PluginRegistry, engine, s.logger, jobSpecAssetDump(engine))
 
 	// registered job store repository factory
-	jobSpecRepoFac := jobSpecRepoFactory{
+	namespaceJobSpecRepoFac := namespaceJobSpecRepoFactory{
 		db:                    s.dbConn,
 		projectJobSpecRepoFac: *projectJobSpecRepoFac,
 	}
 
-	jobDependencyRepo := postgres.NewJobDependencyRepository(s.dbConn)
-	dependencyResolver := job.NewDependencyResolver(projectJobSpecRepoFac, jobDependencyRepo, pluginService)
+	dependencyResolver := job.NewDependencyResolver(jobSpecRepo, jobSourceRepository, pluginService, projectJobSpecRepoFac)
 	priorityResolver := job.NewPriorityResolver()
 
 	replayWorkerFactory := &replayWorkerFact{
@@ -290,17 +294,23 @@ func (s *OptimusServer) setupHandlers() error {
 	})
 
 	jobDeploymentRepository := postgres.NewJobDeploymentRepository(s.dbConn)
-	deployer := job.NewDeployer(s.logger, dependencyResolver, priorityResolver, scheduler, jobDeploymentRepository, namespaceService)
+	deployer := job.NewDeployer(
+		s.logger,
+		dependencyResolver,
+		priorityResolver,
+		namespaceService,
+		jobDeploymentRepository,
+		scheduler,
+	)
 	assignerScheduler := cron.New(cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)))
 	deployManager := job.NewDeployManager(s.logger, s.conf.Serve.Deployer, deployer, utils.NewUUIDProvider(), jobDeploymentRepository, assignerScheduler)
 
 	// runtime service instance over grpc
 	manualScheduler := models.ManualScheduler
 	jobService := job.NewService(
-		&jobSpecRepoFac,
+		&namespaceJobSpecRepoFac,
 		scheduler,
 		manualScheduler,
-		jobSpecAssetDump(engine),
 		dependencyResolver,
 		priorityResolver,
 		projectJobSpecRepoFac,
@@ -309,7 +319,8 @@ func (s *OptimusServer) setupHandlers() error {
 		projectService,
 		deployManager,
 		pluginService,
-		interProjectJobSpecRepo,
+		jobSpecRepo,
+		jobSourceRepository,
 	)
 
 	// job run service
@@ -343,6 +354,12 @@ func (s *OptimusServer) setupHandlers() error {
 	jobConfigCompiler := jobRunCompiler.NewJobConfigCompiler(engine)
 	assetCompiler := jobRunCompiler.NewJobAssetsCompiler(engine, pluginRepo)
 	runInputCompiler := jobRunCompiler.NewJobRunInputCompiler(jobConfigCompiler, assetCompiler)
+
+	monitoringService := service.NewMonitoringService(
+		jobRunMetricsRepository,
+		sensorRunRepository,
+		hookRunRepository,
+		taskRunRepository)
 
 	// secret service
 	pb.RegisterSecretServiceServer(s.grpcServer, v1handler.NewSecretServiceServer(s.logger, secretService))
@@ -395,6 +412,7 @@ func (s *OptimusServer) setupHandlers() error {
 		jobService,
 		eventService,
 		namespaceService,
+		monitoringService,
 	))
 
 	cleanupCluster, err := initPrimeCluster(s.logger, s.conf, jobRunRepo, instanceRepo)

@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
-	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/postgres"
@@ -54,7 +53,7 @@ func BenchmarkJobRepository(b *testing.B) {
 		db := dbSetup()
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var repo job.SpecRepository = postgres.NewJobSpecRepository(db, namespace, projectJobSpecRepo, adapter)
+		var repo store.NamespaceJobSpecRepository = postgres.NewNamespaceJobSpecRepository(db, namespace, projectJobSpecRepo, adapter)
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
@@ -71,7 +70,7 @@ func BenchmarkJobRepository(b *testing.B) {
 		db := dbSetup()
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var repo job.SpecRepository = postgres.NewJobSpecRepository(db, namespace, projectJobSpecRepo, adapter)
+		var repo store.NamespaceJobSpecRepository = postgres.NewNamespaceJobSpecRepository(db, namespace, projectJobSpecRepo, adapter)
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
@@ -100,7 +99,7 @@ func BenchmarkJobRepository(b *testing.B) {
 		db := dbSetup()
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var repo job.SpecRepository = postgres.NewJobSpecRepository(db, namespace, projectJobSpecRepo, adapter)
+		var repo store.NamespaceJobSpecRepository = postgres.NewNamespaceJobSpecRepository(db, namespace, projectJobSpecRepo, adapter)
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
@@ -159,11 +158,11 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 		db := dbSetup()
 
 		var repo store.ProjectJobSpecRepository = postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var jobSpecRepo = postgres.NewJobSpecRepository(db, namespace, repo, adapter)
+		var namespaceJobSpecRepo = postgres.NewNamespaceJobSpecRepository(db, namespace, repo, adapter)
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
-			err := jobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
+			err := namespaceJobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
 			if err != nil {
 				panic(err)
 			}
@@ -188,11 +187,11 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 		db := dbSetup()
 
 		var repo store.ProjectJobSpecRepository = postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var jobSpecRepo = postgres.NewJobSpecRepository(db, namespace, repo, adapter)
+		var namespaceJobSpecRepo = postgres.NewNamespaceJobSpecRepository(db, namespace, repo, adapter)
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
-			err := jobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
+			err := namespaceJobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
 			if err != nil {
 				panic(err)
 			}
@@ -210,44 +209,15 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 		}
 	})
 
-	b.Run("GetByDestination", func(b *testing.B) {
-		db := dbSetup()
-
-		var repo store.ProjectJobSpecRepository = postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var jobSpecRepo = postgres.NewJobSpecRepository(db, namespace, repo, adapter)
-
-		for i := 0; i < 1000; i++ {
-			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
-			err := jobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
-			if err != nil {
-				panic(err)
-			}
-		}
-		b.ResetTimer()
-
-		for i := 0; i < b.N; i++ {
-			num := i % 1000
-			dest := fmt.Sprintf("bigquery://integration:playground.table%d", num)
-
-			pairs, err := repo.GetByDestination(ctx, dest)
-			if err != nil {
-				panic(err)
-			}
-			if len(pairs) < 1 {
-				panic("Job pair not found")
-			}
-		}
-	})
-
 	b.Run("GetByNameForProject", func(b *testing.B) {
 		db := dbSetup()
 
 		var repo store.ProjectJobSpecRepository = postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var jobSpecRepo = postgres.NewJobSpecRepository(db, namespace, repo, adapter)
+		var namespaceJobSpecRepo = postgres.NewNamespaceJobSpecRepository(db, namespace, repo, adapter)
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
-			err := jobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
+			err := namespaceJobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
 			if err != nil {
 				panic(err)
 			}
@@ -272,11 +242,11 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 		db := dbSetup()
 
 		var repo store.ProjectJobSpecRepository = postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var jobSpecRepo = postgres.NewJobSpecRepository(db, namespace, repo, adapter)
+		var namespaceJobSpecRepo = postgres.NewNamespaceJobSpecRepository(db, namespace, repo, adapter)
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
-			err := jobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
+			err := namespaceJobSpecRepo.Save(ctx, getJob(i, namespace, bq2bq, nil), dest)
 			if err != nil {
 				panic(err)
 			}
@@ -295,7 +265,7 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 		db := dbSetup()
 
 		var repo store.ProjectJobSpecRepository = postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var jobSpecRepo = postgres.NewJobSpecRepository(db, namespace, repo, adapter)
+		var namespaceJobSpecRepo = postgres.NewNamespaceJobSpecRepository(db, namespace, repo, adapter)
 
 		var ids []uuid.UUID
 		for i := 0; i < 1000; i++ {
@@ -304,7 +274,7 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 			spec := getJob(i, namespace, bq2bq, nil)
 			spec.ID = id
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
-			err := jobSpecRepo.Save(ctx, spec, dest)
+			err := namespaceJobSpecRepo.Save(ctx, spec, dest)
 			if err != nil {
 				panic(err)
 			}

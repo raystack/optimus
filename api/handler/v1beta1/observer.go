@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/odpf/salt/log"
@@ -242,8 +243,12 @@ func (obs *jobDeploymentObserver) Notify(e progress.Event) {
 			resp.Success = false
 			resp.Value = evt.Err.Error()
 		}
+	case *models.ProgressJobDependencyResolutionFinished:
+		resp.Success = true
+		resp.Value = evt.String()
+		resp.Type = evt.Type()
 	default:
-		obs.log.Error("event type is invalid")
+		obs.log.Warn(fmt.Sprintf("unknown event type: %+v", e))
 		return
 	}
 

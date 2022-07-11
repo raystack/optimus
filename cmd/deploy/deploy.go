@@ -521,7 +521,11 @@ func (d *deployCommand) processJobDeploymentResponses(namespaceName string, stre
 		default:
 			if d.verbose {
 				// ordinary progress event
-				d.logger.Info(fmt.Sprintf("[%s] info '%s': %s", namespaceName, resp.GetJobName(), resp.GetValue()))
+				if resp.GetJobName() != "" {
+					d.logger.Info(fmt.Sprintf("[%s] info '%s': %s", namespaceName, resp.GetJobName(), resp.GetValue()))
+				} else {
+					d.logger.Info(fmt.Sprintf("[%s] info: %s", namespaceName, resp.GetValue()))
+				}
 			}
 		}
 	}

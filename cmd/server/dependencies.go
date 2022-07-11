@@ -45,14 +45,14 @@ func (fac *replayWorkerFact) New() job.ReplayWorker {
 	return job.NewReplayWorker(fac.logger, fac.replaySpecRepoFac, fac.scheduler)
 }
 
-// jobSpecRepoFactory stores raw specifications
-type jobSpecRepoFactory struct {
+// namespaceJobSpecRepoFactory stores raw specifications
+type namespaceJobSpecRepoFactory struct {
 	db                    *gorm.DB
 	projectJobSpecRepoFac projectJobSpecRepoFactory
 }
 
-func (fac *jobSpecRepoFactory) New(namespace models.NamespaceSpec) job.SpecRepository {
-	return postgres.NewJobSpecRepository(
+func (fac *namespaceJobSpecRepoFactory) New(namespace models.NamespaceSpec) store.NamespaceJobSpecRepository {
+	return postgres.NewNamespaceJobSpecRepository(
 		fac.db,
 		namespace,
 		fac.projectJobSpecRepoFac.New(namespace.ProjectSpec),
