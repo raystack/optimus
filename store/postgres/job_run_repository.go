@@ -223,7 +223,6 @@ func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobE
 	}
 
 	bigEndTime := time.Date(3000, 9, 16, 19, 17, 23, 0, time.UTC)
-
 	resource := JobRunMetrics{
 		JobID:       jobSpec.ID,
 		NamespaceID: namespaceSpec.ID,

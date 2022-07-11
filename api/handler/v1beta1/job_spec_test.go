@@ -587,11 +587,11 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			}
 			namespaceNames := []string{namespaceSpec.Name}
 
-			jobSpecRepository := new(mock.JobSpecRepository)
-			defer jobSpecRepository.AssertExpectations(t)
+			namespaceJobSpecRepository := new(mock.NamespaceJobSpecRepository)
+			defer namespaceJobSpecRepository.AssertExpectations(t)
 
-			jobSpecRepoFactory := new(mock.JobSpecRepoFactory)
-			defer jobSpecRepoFactory.AssertExpectations(t)
+			namespaceJobSpecRepoFactory := new(mock.NamespaceJobSpecRepoFactory)
+			defer namespaceJobSpecRepoFactory.AssertExpectations(t)
 
 			pluginRepo := new(mock.SupportedPluginRepo)
 
@@ -647,11 +647,11 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			}
 			namespaceNames := []string{namespaceSpec.Name}
 
-			jobSpecRepository := new(mock.JobSpecRepository)
-			defer jobSpecRepository.AssertExpectations(t)
+			namespaceJobSpecRepository := new(mock.NamespaceJobSpecRepository)
+			defer namespaceJobSpecRepository.AssertExpectations(t)
 
-			jobSpecRepoFactory := new(mock.JobSpecRepoFactory)
-			defer jobSpecRepoFactory.AssertExpectations(t)
+			namespaceJobSpecRepoFactory := new(mock.NamespaceJobSpecRepoFactory)
+			defer namespaceJobSpecRepoFactory.AssertExpectations(t)
 
 			pluginRepo := new(mock.SupportedPluginRepo)
 

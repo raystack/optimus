@@ -105,7 +105,7 @@ func TestIntegrationHookRunRepository(t *testing.T) {
 		assert.Nil(t, prepo.Save(ctx, projectSpec))
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(dbConn, projectSpec, adapter)
-		jrepo := postgres.NewJobSpecRepository(dbConn, namespaceSpec, projectJobSpecRepo, adapter)
+		jrepo := postgres.NewNamespaceJobSpecRepository(dbConn, namespaceSpec, projectJobSpecRepo, adapter)
 		assert.Nil(t, jrepo.Save(ctx, jobConfigs[0], jobDestination))
 		assert.Equal(t, "task unit cannot be empty", jrepo.Save(ctx, jobConfigs[1], jobDestination).Error())
 		return dbConn

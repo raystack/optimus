@@ -27,7 +27,6 @@ type JobRunServiceClient interface {
 	// RegisterInstance is an internal admin command used during task/hook execution
 	// to pull task/hook compiled configuration and assets.
 	RegisterInstance(ctx context.Context, in *RegisterInstanceRequest, opts ...grpc.CallOption) (*RegisterInstanceResponse, error)
-	GetJobRunInput(ctx context.Context, in *RegisterInstanceRequest, opts ...grpc.CallOption) (*JobRunInputResponse, error)
 	// JobStatus returns the current and past run status of jobs
 	JobStatus(ctx context.Context, in *JobStatusRequest, opts ...grpc.CallOption) (*JobStatusResponse, error)
 	// JobRun returns the current and past run status of jobs on a given range
@@ -60,15 +59,6 @@ func (c *jobRunServiceClient) GetJobTask(ctx context.Context, in *GetJobTaskRequ
 func (c *jobRunServiceClient) RegisterInstance(ctx context.Context, in *RegisterInstanceRequest, opts ...grpc.CallOption) (*RegisterInstanceResponse, error) {
 	out := new(RegisterInstanceResponse)
 	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobRunService/RegisterInstance", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *jobRunServiceClient) GetJobRunInput(ctx context.Context, in *RegisterInstanceRequest, opts ...grpc.CallOption) (*JobRunInputResponse, error) {
-	out := new(JobRunInputResponse)
-	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobRunService/GetJobRunInput", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +110,6 @@ type JobRunServiceServer interface {
 	// RegisterInstance is an internal admin command used during task/hook execution
 	// to pull task/hook compiled configuration and assets.
 	RegisterInstance(context.Context, *RegisterInstanceRequest) (*RegisterInstanceResponse, error)
-	GetJobRunInput(context.Context, *RegisterInstanceRequest) (*JobRunInputResponse, error)
 	// JobStatus returns the current and past run status of jobs
 	JobStatus(context.Context, *JobStatusRequest) (*JobStatusResponse, error)
 	// JobRun returns the current and past run status of jobs on a given range
@@ -143,9 +132,6 @@ func (UnimplementedJobRunServiceServer) GetJobTask(context.Context, *GetJobTaskR
 }
 func (UnimplementedJobRunServiceServer) RegisterInstance(context.Context, *RegisterInstanceRequest) (*RegisterInstanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterInstance not implemented")
-}
-func (UnimplementedJobRunServiceServer) GetJobRunInput(context.Context, *RegisterInstanceRequest) (*JobRunInputResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetJobRunInput not implemented")
 }
 func (UnimplementedJobRunServiceServer) JobStatus(context.Context, *JobStatusRequest) (*JobStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method JobStatus not implemented")
@@ -204,24 +190,6 @@ func _JobRunService_RegisterInstance_Handler(srv interface{}, ctx context.Contex
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(JobRunServiceServer).RegisterInstance(ctx, req.(*RegisterInstanceRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _JobRunService_GetJobRunInput_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RegisterInstanceRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(JobRunServiceServer).GetJobRunInput(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/odpf.optimus.core.v1beta1.JobRunService/GetJobRunInput",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(JobRunServiceServer).GetJobRunInput(ctx, req.(*RegisterInstanceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -312,10 +280,6 @@ var JobRunService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RegisterInstance",
 			Handler:    _JobRunService_RegisterInstance_Handler,
-		},
-		{
-			MethodName: "GetJobRunInput",
-			Handler:    _JobRunService_GetJobRunInput_Handler,
 		},
 		{
 			MethodName: "JobStatus",

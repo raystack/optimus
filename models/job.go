@@ -71,6 +71,7 @@ type JobSpec struct {
 	Description          string
 	Labels               map[string]string
 	Owner                string
+	ResourceDestination  string
 	Schedule             JobSpecSchedule
 	Behavior             JobSpecBehavior
 	Task                 JobSpecTask
@@ -132,6 +133,15 @@ func (js JobSpecs) GroupJobsPerNamespace() map[string][]JobSpec {
 		jobsGroup[jobSpec.NamespaceSpec.Name] = append(jobsGroup[jobSpec.NamespaceSpec.Name], jobSpec)
 	}
 	return jobsGroup
+}
+
+func (js JobSpecs) GroupJobsByDestination() map[string]*JobSpec {
+	output := make(map[string]*JobSpec)
+	for _, jobSpec := range js {
+		spec := jobSpec
+		output[spec.ResourceDestination] = &spec
+	}
+	return output
 }
 
 type JobSpecSchedule struct {
@@ -370,8 +380,6 @@ type JobService interface {
 	Create(context.Context, NamespaceSpec, JobSpec) (JobSpec, error)
 	// GetByName fetches a Job by name for a specific namespace
 	GetByName(context.Context, string, NamespaceSpec) (JobSpec, error)
-	// KeepOnly deletes all jobs except the ones provided for a namespace
-	KeepOnly(context.Context, NamespaceSpec, []JobSpec, progress.Observer) error
 	// GetAll reads all job specifications of the given namespace
 	GetAll(context.Context, NamespaceSpec) ([]JobSpec, error)
 	// Delete deletes a job spec from all repos
@@ -386,7 +394,7 @@ type JobService interface {
 
 	// GetByNameForProject fetches a Job by name for a specific project
 	GetByNameForProject(context.Context, string, ProjectSpec) (JobSpec, NamespaceSpec, error)
-	// Will DELETED
+	// TODO: to be deprecated
 	Sync(context.Context, NamespaceSpec, progress.Observer) error
 	Check(context.Context, NamespaceSpec, []JobSpec, progress.Observer) error
 	// GetByDestination fetches a Job by destination for a specific project
@@ -399,7 +407,7 @@ type JobService interface {
 	Deploy(context.Context, string, string, []JobSpec, progress.Observer) (DeploymentID, error)
 	// GetDeployment getting status and result of job deployment
 	GetDeployment(ctx context.Context, deployID DeploymentID) (JobDeployment, error)
-	// GetWithFilts gets the jobspec based on projectName, jobName, resourceDestination filters.
+	// GetByFilter gets the jobspec based on projectName, jobName, resourceDestination filters.
 	GetByFilter(ctx context.Context, filter JobSpecFilter) ([]JobSpec, error)
 }
 
@@ -543,6 +551,12 @@ type JobDeploymentDetail struct {
 type JobDeploymentFailure struct {
 	JobName string
 	Message string
+}
+
+type JobSource struct {
+	JobID       uuid.UUID
+	ProjectID   ProjectID
+	ResourceURN string
 }
 
 type JobRunSpec struct {

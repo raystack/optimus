@@ -10,6 +10,7 @@ const (
 	ProgressTypeJobDelete                    = "job delete"
 	ProgressTypeJobCreate                    = "job create"
 	ProgressTypeJobModify                    = "job modify"
+	ProgressTypeDependencyResolutionFinished = "dependency resolution finished"
 )
 
 type (
@@ -151,6 +152,10 @@ func (e *ProgressJobPriorityWeightAssignmentFailed) String() string {
 
 func (*ProgressJobDependencyResolutionFinished) String() string {
 	return "dependencies resolved"
+}
+
+func (*ProgressJobDependencyResolutionFinished) Type() string {
+	return ProgressTypeDependencyResolutionFinished
 }
 
 func (e *ProgressJobSpecUnknownDependencyUsed) String() string {
