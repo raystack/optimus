@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/mitchellh/mapstructure"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 )
@@ -87,20 +86,4 @@ func (e *optimusResourceManager) constructGetJobSpecificationsRequest(ctx contex
 		request.Header.Set(key, value)
 	}
 	return request, nil
-}
-
-func init() { //nolint:gochecknoinits
-	err := Registry.Register("optimus", func(conf interface{}) (ResourceManager, error) {
-		if conf == nil {
-			return nil, errors.New("manager config is nil")
-		}
-		var optimusConfig config.ResourceManagerConfigOptimus
-		if err := mapstructure.Decode(conf, &optimusConfig); err != nil {
-			return nil, fmt.Errorf("error decoding optimus resource manager config: %w", err)
-		}
-		return NewOptimusResourceManager(optimusConfig)
-	})
-	if err != nil {
-		panic(err)
-	}
 }
