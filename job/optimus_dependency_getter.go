@@ -28,7 +28,7 @@ func NewOptimusDependencyGetter(resourceManagerConfig config.ResourceManager) (O
 	if err := mapstructure.Decode(resourceManagerConfig.Config, &resourceManagerOptimusConfig); err != nil {
 		return nil, err
 	}
-	resourceManager, err := resourcemgr.Registry.Get("optimus", resourceManagerConfig)
+	resourceManager, err := resourcemgr.NewOptimusResourceManager(resourceManagerOptimusConfig)
 	if err != nil {
 		return nil, err
 	}
