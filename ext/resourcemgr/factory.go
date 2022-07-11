@@ -3,11 +3,7 @@ package resourcemgr
 import (
 	"errors"
 	"fmt"
-
-	"github.com/odpf/optimus/config"
 )
-
-const OptimusType = "optimus"
 
 var Registry = &ManagerFactory{
 	registry: make(map[string]NewResourceManager),
@@ -45,20 +41,4 @@ func (m *ManagerFactory) Get(_type string, conf interface{}) (ResourceManager, e
 		return nil, fmt.Errorf("type [%s] is not registered", _type)
 	}
 	return newResourceManager(conf)
-}
-
-func init() { //nolint:gochecknoinits
-	err := Registry.Register(OptimusType, func(conf interface{}) (ResourceManager, error) {
-		if conf == nil {
-			return nil, errors.New("manager config is nil")
-		}
-		optimusConf, ok := conf.(config.ResourceManagerConfigOptimus)
-		if !ok {
-			return nil, errors.New("manager config does not follow optimus config structure")
-		}
-		return NewOptimusResourceManager(optimusConf)
-	})
-	if err != nil {
-		panic(err)
-	}
 }

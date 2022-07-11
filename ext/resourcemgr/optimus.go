@@ -87,3 +87,19 @@ func (e *optimusResourceManager) constructGetJobSpecificationsRequest(ctx contex
 	}
 	return request, nil
 }
+
+func init() { //nolint:gochecknoinits
+	err := Registry.Register("optimus", func(conf interface{}) (ResourceManager, error) {
+		if conf == nil {
+			return nil, errors.New("manager config is nil")
+		}
+		optimusConf, ok := conf.(config.ResourceManagerConfigOptimus)
+		if !ok {
+			return nil, errors.New("manager config does not follow optimus config structure")
+		}
+		return NewOptimusResourceManager(optimusConf)
+	})
+	if err != nil {
+		panic(err)
+	}
+}
