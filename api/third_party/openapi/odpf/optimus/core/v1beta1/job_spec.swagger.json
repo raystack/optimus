@@ -468,7 +468,7 @@
         "jobs": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/v1beta1JobSpecification"
+            "$ref": "#/definitions/v1beta1JobSpecificationResponse"
           }
         }
       }
@@ -679,6 +679,20 @@
         },
         "metadata": {
           "$ref": "#/definitions/v1beta1JobMetadata"
+        }
+      }
+    },
+    "v1beta1JobSpecificationResponse": {
+      "type": "object",
+      "properties": {
+        "projectName": {
+          "type": "string"
+        },
+        "namespaceName": {
+          "type": "string"
+        },
+        "job": {
+          "$ref": "#/definitions/v1beta1JobSpecification"
         }
       }
     },
