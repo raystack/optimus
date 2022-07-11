@@ -19,7 +19,7 @@ func NewUnknownJobDependencyRepository(db *gorm.DB) store.UnknownJobDependencyRe
 	}
 }
 
-func (repo unknownJobDependencyRepository) GetUnknownInferredDependencyURNsByJobName(ctx context.Context, projectID models.ProjectID) (map[string][]string, error) {
+func (repo unknownJobDependencyRepository) GetUnknownInferredDependencyURNsPerJobName(ctx context.Context, projectID models.ProjectID) (map[string][]string, error) {
 	type jobNameDependencyPair struct {
 		JobName               string
 		DependencyResourceURN string
@@ -40,7 +40,7 @@ func (repo unknownJobDependencyRepository) GetUnknownInferredDependencyURNsByJob
 	return dependencyNamesByJobName, nil
 }
 
-func (repo unknownJobDependencyRepository) GetUnknownStaticDependencyNamesByJobName(ctx context.Context, projectID models.ProjectID) (map[string][]string, error) {
+func (repo unknownJobDependencyRepository) GetUnknownStaticDependencyNamesPerJobName(ctx context.Context, projectID models.ProjectID) (map[string][]string, error) {
 	type jobNameDependencyPair struct {
 		JobName           string
 		DependencyJobName string

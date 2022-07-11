@@ -183,6 +183,6 @@ type JobSourceRepository interface {
 
 // UnknownJobDependencyRepository is a repository to fetch unknown dependencies
 type UnknownJobDependencyRepository interface {
-	GetUnknownInferredDependencyURNsByJobName(context.Context, models.ProjectID) (map[string][]string, error)
-	GetUnknownStaticDependencyNamesByJobName(context.Context, models.ProjectID) (map[string][]string, error)
+	GetUnknownInferredDependencyURNsPerJobName(context.Context, models.ProjectID) (map[string][]string, error)
+	GetUnknownStaticDependencyNamesPerJobName(context.Context, models.ProjectID) (map[string][]string, error)
 }

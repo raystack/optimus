@@ -207,7 +207,7 @@ func TestUnknownJobDependencyRepository(t *testing.T) {
 
 			// check getting unknown inferred dependent jobs
 			repo := postgres.NewUnknownJobDependencyRepository(db)
-			checkModel, err := repo.GetUnknownInferredDependencyURNsByJobName(ctx, projectSpec.ID)
+			checkModel, err := repo.GetUnknownInferredDependencyURNsPerJobName(ctx, projectSpec.ID)
 
 			assert.Equal(t, map[string][]string{testModels[0].Name: {jobDestinationUnknown}}, checkModel)
 			assert.Nil(t, err)
@@ -239,7 +239,7 @@ func TestUnknownJobDependencyRepository(t *testing.T) {
 			assert.Nil(t, err)
 
 			repo := postgres.NewUnknownJobDependencyRepository(db)
-			checkModel, err := repo.GetUnknownStaticDependencyNamesByJobName(ctx, projectSpec.ID)
+			checkModel, err := repo.GetUnknownStaticDependencyNamesPerJobName(ctx, projectSpec.ID)
 
 			assert.Equal(t, map[string][]string{testModels[0].Name: {unknownDependencyName}}, checkModel)
 			assert.Nil(t, err)
