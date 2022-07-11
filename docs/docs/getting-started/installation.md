@@ -8,7 +8,7 @@ Docker Images and support package managers.
 You can install Optimus using homebrew on macOS:
 
 ```shell
-brew install odpf/taps/optimus
+brew install odpf/tap/optimus
 optimus version
 ```
 
