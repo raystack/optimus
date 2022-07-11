@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 )
@@ -93,11 +94,11 @@ func init() { //nolint:gochecknoinits
 		if conf == nil {
 			return nil, errors.New("manager config is nil")
 		}
-		optimusConf, ok := conf.(config.ResourceManagerConfigOptimus)
-		if !ok {
-			return nil, errors.New("manager config does not follow optimus config structure")
+		var optimusConfig config.ResourceManagerConfigOptimus
+		if err := mapstructure.Decode(conf, &optimusConfig); err != nil {
+			return nil, fmt.Errorf("error decoding optimus resource manager config: %w", err)
 		}
-		return NewOptimusResourceManager(optimusConf)
+		return NewOptimusResourceManager(optimusConfig)
 	})
 	if err != nil {
 		panic(err)
