@@ -11,35 +11,35 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-type OptimusDependencyResolver interface {
-	FetchOptimusDependencies(context.Context, models.JobSpecFilter) ([]models.OptimusDependency, error)
+type OptimusDependencyGetter interface {
+	GetOptimusDependencies(context.Context, models.JobSpecFilter) ([]models.OptimusDependency, error)
 }
 
-type optimusDependencyResolver struct {
+type optimusDependencyGetter struct {
 	resourceManagerName   string
 	resourceManagerConfig config.ResourceManagerConfigOptimus
 
 	resourceManager resourcemgr.ResourceManager
 }
 
-// NewOptimusDependencyResolver creates a new instance of optimusDependencyResolver
-func NewOptimusDependencyResolver(resourceManagerConfig config.ResourceManager) (OptimusDependencyResolver, error) {
+// NewOptimusDependencyGetter creates a new instance of optimusDependencyGetter
+func NewOptimusDependencyGetter(resourceManagerConfig config.ResourceManager) (OptimusDependencyGetter, error) {
 	var resourceManagerOptimusConfig config.ResourceManagerConfigOptimus
 	if err := mapstructure.Decode(resourceManagerConfig.Config, &resourceManagerOptimusConfig); err != nil {
 		return nil, err
 	}
-	resourceManager, err := resourcemgr.Registry.Get(resourcemgr.OptimusType, resourceManagerConfig)
+	resourceManager, err := resourcemgr.Registry.Get("optimus", resourceManagerConfig)
 	if err != nil {
 		return nil, err
 	}
-	return &optimusDependencyResolver{
+	return &optimusDependencyGetter{
 		resourceManagerName:   resourceManagerConfig.Name,
 		resourceManagerConfig: resourceManagerOptimusConfig,
 		resourceManager:       resourceManager,
 	}, nil
 }
 
-func (o *optimusDependencyResolver) FetchOptimusDependencies(ctx context.Context, filter models.JobSpecFilter) ([]models.OptimusDependency, error) {
+func (o *optimusDependencyGetter) GetOptimusDependencies(ctx context.Context, filter models.JobSpecFilter) ([]models.OptimusDependency, error) {
 	if ctx == nil {
 		return nil, errors.New("context is nil")
 	}

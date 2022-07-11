@@ -15,26 +15,26 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-type OptimusDependencyResolverTestSuite struct {
+type OptimusDependencyGetterTestSuite struct {
 	suite.Suite
 }
 
-func (o *OptimusDependencyResolverTestSuite) TestFetchOptimusDependencies() {
+func (o *OptimusDependencyGetterTestSuite) TestGetOptimusDependencies() {
 	o.Run("should return nil and error if context is nil", func() {
-		resolver, _, tearDown := o.getSetup()
+		getter, _, tearDown := o.getSetup()
 		defer tearDown()
 
 		var ctx context.Context
 		filter := models.JobSpecFilter{}
 
-		actualDependencies, actualError := resolver.FetchOptimusDependencies(ctx, filter)
+		actualDependencies, actualError := getter.GetOptimusDependencies(ctx, filter)
 
 		o.Nil(actualDependencies)
 		o.Error(actualError)
 	})
 
 	o.Run("should return nil and error if error when getting job specifications from resource manager", func() {
-		resolver, manager, tearDown := o.getSetup()
+		getter, manager, tearDown := o.getSetup()
 		defer tearDown()
 
 		ctx := context.Background()
@@ -42,14 +42,14 @@ func (o *OptimusDependencyResolverTestSuite) TestFetchOptimusDependencies() {
 
 		manager.On("GetJobSpecifications", ctx, filter).Return(nil, errors.New("random error"))
 
-		actualDependencies, actualError := resolver.FetchOptimusDependencies(ctx, filter)
+		actualDependencies, actualError := getter.GetOptimusDependencies(ctx, filter)
 
 		o.Nil(actualDependencies)
 		o.Error(actualError)
 	})
 
 	o.Run("should return optimus dependencies and nil if no error is encountered", func() {
-		resolver, manager, tearDown := o.getSetup()
+		getter, manager, tearDown := o.getSetup()
 		defer tearDown()
 
 		ctx := context.Background()
@@ -79,14 +79,14 @@ func (o *OptimusDependencyResolverTestSuite) TestFetchOptimusDependencies() {
 			},
 		}
 
-		actualDependencies, actualError := resolver.FetchOptimusDependencies(ctx, filter)
+		actualDependencies, actualError := getter.GetOptimusDependencies(ctx, filter)
 
 		o.EqualValues(expectedDependencies, actualDependencies)
 		o.NoError(actualError)
 	})
 }
 
-func (o *OptimusDependencyResolverTestSuite) getSetup() (resolver job.OptimusDependencyResolver, manager *mock.ResourceManager, tearDown func()) {
+func (o *OptimusDependencyGetterTestSuite) getSetup() (getter job.OptimusDependencyGetter, manager *mock.ResourceManager, tearDown func()) {
 	originalRegistry := resourcemgr.Registry
 	tearDown = func() {
 		resourcemgr.Registry = originalRegistry
@@ -95,13 +95,13 @@ func (o *OptimusDependencyResolverTestSuite) getSetup() (resolver job.OptimusDep
 	manager = mock.NewResourceManager(o.T())
 
 	resourcemgr.Registry = &resourcemgr.ManagerFactory{}
-	resourcemgr.Registry.Register(resourcemgr.OptimusType, func(conf interface{}) (resourcemgr.ResourceManager, error) {
+	resourcemgr.Registry.Register("optimus", func(conf interface{}) (resourcemgr.ResourceManager, error) {
 		return manager, nil
 	})
 
 	conf := config.ResourceManager{
 		Name:        "test",
-		Type:        resourcemgr.OptimusType,
+		Type:        "optimus",
 		Description: "config for testing",
 		Config: config.ResourceManagerConfigOptimus{
 			Host:    "localhost",
@@ -109,18 +109,18 @@ func (o *OptimusDependencyResolverTestSuite) getSetup() (resolver job.OptimusDep
 		},
 	}
 	var err error
-	resolver, err = job.NewOptimusDependencyResolver(conf)
+	getter, err = job.NewOptimusDependencyGetter(conf)
 	if err != nil {
 		panic(err)
 	}
-	return resolver, manager, tearDown
+	return getter, manager, tearDown
 }
 
-func TestNewOptimusDependencyResolver(t *testing.T) {
+func NewOptimusDependencyGetter(t *testing.T) {
 	t.Run("should return nil and error if config does not follow optimus resource manager config", func(t *testing.T) {
 		var conf config.ResourceManager
 
-		actualOptimusDependencyResolver, actualError := job.NewOptimusDependencyResolver(conf)
+		actualOptimusDependencyResolver, actualError := job.NewOptimusDependencyGetter(conf)
 
 		assert.Nil(t, actualOptimusDependencyResolver)
 		assert.Error(t, actualError)
@@ -131,7 +131,7 @@ func TestNewOptimusDependencyResolver(t *testing.T) {
 		defer func() { resourcemgr.Registry = originalRegistry }()
 
 		resourcemgr.Registry = &resourcemgr.ManagerFactory{}
-		resourcemgr.Registry.Register(resourcemgr.OptimusType, func(conf interface{}) (resourcemgr.ResourceManager, error) {
+		resourcemgr.Registry.Register("optimus", func(conf interface{}) (resourcemgr.ResourceManager, error) {
 			return nil, errors.New("random error")
 		})
 
@@ -141,7 +141,7 @@ func TestNewOptimusDependencyResolver(t *testing.T) {
 			},
 		}
 
-		actualOptimusDependencyResolver, actualError := job.NewOptimusDependencyResolver(conf)
+		actualOptimusDependencyResolver, actualError := job.NewOptimusDependencyGetter(conf)
 
 		assert.Nil(t, actualOptimusDependencyResolver)
 		assert.Error(t, actualError)
@@ -152,7 +152,7 @@ func TestNewOptimusDependencyResolver(t *testing.T) {
 		defer func() { resourcemgr.Registry = originalRegistry }()
 
 		resourcemgr.Registry = &resourcemgr.ManagerFactory{}
-		resourcemgr.Registry.Register(resourcemgr.OptimusType, func(conf interface{}) (resourcemgr.ResourceManager, error) {
+		resourcemgr.Registry.Register("optimus", func(conf interface{}) (resourcemgr.ResourceManager, error) {
 			return mock.NewResourceManager(t), nil
 		})
 
@@ -162,7 +162,7 @@ func TestNewOptimusDependencyResolver(t *testing.T) {
 			},
 		}
 
-		actualOptimusDependencyResolver, actualError := job.NewOptimusDependencyResolver(conf)
+		actualOptimusDependencyResolver, actualError := job.NewOptimusDependencyGetter(conf)
 
 		assert.NotNil(t, actualOptimusDependencyResolver)
 		assert.NoError(t, actualError)
@@ -170,5 +170,5 @@ func TestNewOptimusDependencyResolver(t *testing.T) {
 }
 
 func TestOptimusDependencyResolver(t *testing.T) {
-	suite.Run(t, &OptimusDependencyResolverTestSuite{})
+	suite.Run(t, &OptimusDependencyGetterTestSuite{})
 }
