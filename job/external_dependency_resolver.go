@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -20,45 +21,51 @@ type ExternalDependencyResolver interface {
 type externalDependencyResolver struct {
 	unknownJobDependencyRepository store.UnknownJobDependencyRepository
 
-	resolvers []OptimusDependencyResolver
+	optimusDependencyGetters []OptimusDependencyGetter
 }
 
 // NewExternalDependencyResolver creates a new instance of externalDependencyResolver
 func NewExternalDependencyResolver(resourceManagerConfigs []config.ResourceManager, unknownJobDependencyRepository store.UnknownJobDependencyRepository) (ExternalDependencyResolver, error) {
-	resolvers := make([]OptimusDependencyResolver, len(resourceManagerConfigs))
-	for i, conf := range resourceManagerConfigs {
+	var optimusDependencyGetters []OptimusDependencyGetter
+	for _, conf := range resourceManagerConfigs {
 		switch conf.Type {
 		case "optimus":
-			resolver, err := NewOptimusDependencyResolver(conf)
+			getter, err := NewOptimusDependencyGetter(conf)
 			if err != nil {
 				return nil, err
 			}
-			resolvers[i] = resolver
+			optimusDependencyGetters = append(optimusDependencyGetters, getter)
 		default:
 			return nil, fmt.Errorf("resource manager [%s] is not recognized", conf.Type)
 		}
 	}
 	return &externalDependencyResolver{
 		unknownJobDependencyRepository: unknownJobDependencyRepository,
-		resolvers:                      resolvers,
+		optimusDependencyGetters:       optimusDependencyGetters,
 	}, nil
 }
 
 func (e *externalDependencyResolver) FetchInferredExternalDependenciesPerJobName(ctx context.Context, projectID models.ProjectID) (map[string]models.ExternalDependency, error) {
-	unknownInferredDependenciesByJobName, err := e.unknownJobDependencyRepository.GetUnknownInferredDependencyURNsByJobName(ctx, projectID)
+	if ctx == nil {
+		return nil, errors.New("context is nil")
+	}
+	unknownInferredDependenciesPerJobName, err := e.unknownJobDependencyRepository.GetUnknownInferredDependencyURNsPerJobName(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
-	jobSpecFiltersByJobName := e.toJobSpecFiltersByJobNameForResourceNames(unknownInferredDependenciesByJobName)
-	return e.fetchInferredExternalDependencyPerJobName(ctx, jobSpecFiltersByJobName)
+	jobSpecFiltersPerJobName := e.toJobSpecFiltersPerJobNameForResourceNames(unknownInferredDependenciesPerJobName)
+	return e.fetchInferredExternalDependencyPerJobName(ctx, jobSpecFiltersPerJobName)
 }
 
 func (e *externalDependencyResolver) FetchStaticExternalDependenciesPerJobName(ctx context.Context, projectID models.ProjectID) (map[string]models.ExternalDependency, []models.UnknownDependency, error) {
-	unknownStaticDependenciesByJobName, err := e.unknownJobDependencyRepository.GetUnknownStaticDependencyNamesByJobName(ctx, projectID)
+	if ctx == nil {
+		return nil, nil, errors.New("context is nil")
+	}
+	unknownStaticDependenciesPerJobName, err := e.unknownJobDependencyRepository.GetUnknownStaticDependencyNamesPerJobName(ctx, projectID)
 	if err != nil {
 		return nil, nil, err
 	}
-	jobSpecFiltersPerJobName, err := e.toJobSpecFiltersByJobNameForDependencyNames(unknownStaticDependenciesByJobName)
+	jobSpecFiltersPerJobName, err := e.toJobSpecFiltersPerJobNameForDependencyNames(unknownStaticDependenciesPerJobName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -72,6 +79,7 @@ func (e *externalDependencyResolver) fetchInferredExternalDependencyPerJobName(c
 		if err != nil {
 			return nil, err
 		}
+		// external dependency types other than optimus will be called in this line, and used in the line below
 		externalDependencyPerJobName[jobName] = models.ExternalDependency{
 			OptimusDependencies: optimusDependencies,
 		}
@@ -99,6 +107,7 @@ func (e *externalDependencyResolver) fetchStaticExternalDependencyPerJobName(ctx
 		if err != nil {
 			return nil, nil, err
 		}
+		// external dependency types other than optimus will be called in this line, and used in the line below
 		externalDependencyPerJobName[jobName] = models.ExternalDependency{
 			OptimusDependencies: optimusDependencies,
 		}
@@ -130,8 +139,8 @@ func (e *externalDependencyResolver) fetchStaticOptimusDependenciesForFilters(ct
 
 func (e *externalDependencyResolver) fetchOptimusDependenciesPerFilter(ctx context.Context, filter models.JobSpecFilter) ([]models.OptimusDependency, error) {
 	var dependencies []models.OptimusDependency
-	for _, resolver := range e.resolvers {
-		deps, err := resolver.FetchOptimusDependencies(ctx, filter)
+	for _, getter := range e.optimusDependencyGetters {
+		deps, err := getter.GetOptimusDependencies(ctx, filter)
 		if err != nil {
 			return nil, err
 		}
@@ -140,9 +149,9 @@ func (e *externalDependencyResolver) fetchOptimusDependenciesPerFilter(ctx conte
 	return dependencies, nil
 }
 
-func (*externalDependencyResolver) toJobSpecFiltersByJobNameForResourceNames(resourceNamesByJobName map[string][]string) map[string][]models.JobSpecFilter {
+func (*externalDependencyResolver) toJobSpecFiltersPerJobNameForResourceNames(resourceNamesPerJobName map[string][]string) map[string][]models.JobSpecFilter {
 	output := make(map[string][]models.JobSpecFilter)
-	for jobName, resourceNames := range resourceNamesByJobName {
+	for jobName, resourceNames := range resourceNamesPerJobName {
 		for _, name := range resourceNames {
 			filter := models.JobSpecFilter{
 				ResourceDestination: name,
@@ -153,10 +162,10 @@ func (*externalDependencyResolver) toJobSpecFiltersByJobNameForResourceNames(res
 	return output
 }
 
-func (e *externalDependencyResolver) toJobSpecFiltersByJobNameForDependencyNames(dependencyNamesByJobName map[string][]string) (map[string][]models.JobSpecFilter, error) {
+func (e *externalDependencyResolver) toJobSpecFiltersPerJobNameForDependencyNames(dependencyNamesPerJobName map[string][]string) (map[string][]models.JobSpecFilter, error) {
 	output := make(map[string][]models.JobSpecFilter)
 	var err error
-	for jobName, dependencyNames := range dependencyNamesByJobName {
+	for jobName, dependencyNames := range dependencyNamesPerJobName {
 		jobFilters, invalidDependencyNames := e.convertDependencyNamesToFilters(dependencyNames)
 		if len(invalidDependencyNames) > 0 {
 			// TODO: should consider what treatment to be done, currently we are "error"-ing it
