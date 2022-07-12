@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -99,7 +100,7 @@ func TestMonitoringService(t *testing.T) {
 			).Return(nil)
 			defer jobRunMetricsRepository.AssertExpectations(t)
 
-			pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(destination, nil)
+			pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(destination, nil).Once()
 			defer pluginService.AssertExpectations(t)
 			err = monitoringService.ProcessEvent(ctx, jobStartEvent, namespaceSpec, jobSpec)
 			assert.Nil(t, err)
@@ -329,9 +330,10 @@ func TestMonitoringService(t *testing.T) {
 			}
 
 			generateDestinationErr := "generateDestinationErr"
-			pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(&models.GenerateDestinationResponse{}, errors.New(generateDestinationErr))
+			pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(&models.GenerateDestinationResponse{}, errors.New(generateDestinationErr)).Once()
 			defer pluginService.AssertExpectations(t)
 			err := monitoringService.ProcessEvent(ctx, jobStartEvent, namespaceSpec, jobSpec)
+			fmt.Println(err.Error())
 			assert.ErrorContains(t, err, generateDestinationErr)
 		})
 	})

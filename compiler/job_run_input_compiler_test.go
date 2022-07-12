@@ -597,5 +597,4 @@ func TestJobRunInputCompiler(t *testing.T) {
 			jobRunInput.FileMap["query.sql"],
 		)
 	})
-
 }

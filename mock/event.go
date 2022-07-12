@@ -47,7 +47,6 @@ func (repo *JobRunMetricsRepository) Get(ctx context.Context, event models.JobEv
 func (repo *JobRunMetricsRepository) GetByID(ctx context.Context, jobRunID uuid.UUID) (models.JobRunSpec, error) {
 	args := repo.Called(ctx, jobRunID)
 	return args.Get(0).(models.JobRunSpec), args.Error(1)
-
 }
 
 func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec, slaMissDurationInSec int64, jobDestination string) error {
