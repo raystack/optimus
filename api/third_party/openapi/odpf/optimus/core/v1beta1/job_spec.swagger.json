@@ -468,6 +468,12 @@
         "jobs": {
           "type": "array",
           "items": {
+            "$ref": "#/definitions/v1beta1JobSpecification"
+          }
+        },
+        "jobSpecificationResponses": {
+          "type": "array",
+          "items": {
             "$ref": "#/definitions/v1beta1JobSpecificationResponse"
           }
         }

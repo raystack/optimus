@@ -231,7 +231,7 @@ func (sv *JobSpecServiceServer) GetJobSpecifications(ctx context.Context, req *p
 			Job:           ToJobProto(jobSpec),
 		})
 	}
-	return &pb.GetJobSpecificationsResponse{Jobs: jobsProto}, nil
+	return &pb.GetJobSpecificationsResponse{JobSpecificationResponses: jobsProto}, nil
 }
 
 func (sv *JobSpecServiceServer) DeleteJobSpecification(ctx context.Context, req *pb.DeleteJobSpecificationRequest) (*pb.DeleteJobSpecificationResponse, error) {
