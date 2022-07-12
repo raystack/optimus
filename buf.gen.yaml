@@ -7,7 +7,7 @@ plugins:
     # proto file should be.
     # This is necessary while importing a proto file foo/a.proto from another
     # directory, e.g. bar/b.proto
-    opt: paths=source_relative,Modpf/optimus/core/v1beta1/runtime.proto=github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/project.proto=github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/namespace.proto=github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/job_spec.proto=github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/job_run.proto=github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1
+    opt: paths=source_relative,Modpf/optimus/core/v1beta1/log_status.proto=github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/runtime.proto=github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/project.proto=github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/namespace.proto=github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/job_spec.proto=github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/job_run.proto=github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1
   - name: go-grpc
     out: api/proto
     opt: paths=source_relative,require_unimplemented_servers=true

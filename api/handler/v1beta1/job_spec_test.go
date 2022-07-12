@@ -68,7 +68,6 @@ func (s *JobSpecServiceServerTestSuite) newJobSpecServiceServer() *v1.JobSpecSer
 		s.pluginRepo,
 		s.projectService,
 		s.namespaceService,
-		s.progressObserver,
 	)
 }
 
@@ -466,7 +465,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				pluginRepo,
 				nil,
 				namespaceService,
-				nil,
 			)
 
 			jobProto := v1.ToJobProto(jobSpec)
@@ -556,7 +554,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				pluginRepo,
 				nil,
 				namespaceService,
-				nil,
 			)
 
 			deployRequest := pb.DeleteJobSpecificationRequest{ProjectName: projectName, JobName: jobSpec.Name, NamespaceName: namespaceSpec.Name}
@@ -621,7 +618,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				pluginRepo,
 				projectService,
 				nsService,
-				nil,
 			)
 			refreshRequest := pb.RefreshJobsRequest{ProjectName: projectName, NamespaceNames: namespaceNames}
 			err := jobSpecServiceServer.RefreshJobs(&refreshRequest, grpcRespStream)
@@ -682,7 +678,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				pluginRepo,
 				projectService,
 				nsService,
-				nil,
 			)
 			refreshRequest := pb.RefreshJobsRequest{ProjectName: projectName, NamespaceNames: namespaceNames}
 			err := jobSpecServiceServer.RefreshJobs(&refreshRequest, grpcRespStream)
@@ -706,7 +701,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobService,
-				nil,
 				nil,
 				nil,
 				nil,
@@ -740,7 +734,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
-				nil,
 			)
 			deployID := uuid.New()
 			jobDeployment := models.JobDeployment{
@@ -771,7 +764,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobService,
-				nil,
 				nil,
 				nil,
 				nil,
@@ -817,7 +809,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobService,
-				nil,
 				nil,
 				nil,
 				nil,

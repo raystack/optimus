@@ -175,11 +175,17 @@ func (x *DeployJobSpecificationRequest) GetNamespaceName() string {
 	return ""
 }
 
+// DeployJobSpecificationResponse hold the value of DeploymentID
+// and the log messages
 type DeployJobSpecificationResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// success or not is not the part of the response anymore
+	// any message that been sent is marked as successfully delivered
+	//
+	// Deprecated: Do not use.
 	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
 	// non ack responses are more of a progress/info response
 	// and not really success or failure statuses
@@ -191,10 +197,23 @@ type DeployJobSpecificationResponse struct {
 	//
 	// Deprecated: Do not use.
 	Message string `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	// job_name is deprecated since client / receiver
+	// doesn't need to know the job_name anymore
+	//
+	// Deprecated: Do not use.
 	JobName string `protobuf:"bytes,4,opt,name=job_name,json=jobName,proto3" json:"job_name,omitempty"`
 	// response type differentiate events
-	Type  string `protobuf:"bytes,5,opt,name=type,proto3" json:"type,omitempty"`
-	Value string `protobuf:"bytes,6,opt,name=value,proto3" json:"value,omitempty"`
+	// this is deprecated
+	//
+	// Deprecated: Do not use.
+	Type string `protobuf:"bytes,5,opt,name=type,proto3" json:"type,omitempty"`
+	// this is deprecated and being replaced with deploymentID
+	// and log status message
+	//
+	// Deprecated: Do not use.
+	Value        string `protobuf:"bytes,6,opt,name=value,proto3" json:"value,omitempty"`
+	DeploymentId string `protobuf:"bytes,7,opt,name=deployment_id,json=deploymentId,proto3" json:"deployment_id,omitempty"`
+	LogStatus    *Log   `protobuf:"bytes,8,opt,name=log_status,json=logStatus,proto3" json:"log_status,omitempty"`
 }
 
 func (x *DeployJobSpecificationResponse) Reset() {
@@ -229,6 +248,7 @@ func (*DeployJobSpecificationResponse) Descriptor() ([]byte, []int) {
 	return file_odpf_optimus_core_v1beta1_job_spec_proto_rawDescGZIP(), []int{1}
 }
 
+// Deprecated: Do not use.
 func (x *DeployJobSpecificationResponse) GetSuccess() bool {
 	if x != nil {
 		return x.Success
@@ -252,6 +272,7 @@ func (x *DeployJobSpecificationResponse) GetMessage() string {
 	return ""
 }
 
+// Deprecated: Do not use.
 func (x *DeployJobSpecificationResponse) GetJobName() string {
 	if x != nil {
 		return x.JobName
@@ -259,6 +280,7 @@ func (x *DeployJobSpecificationResponse) GetJobName() string {
 	return ""
 }
 
+// Deprecated: Do not use.
 func (x *DeployJobSpecificationResponse) GetType() string {
 	if x != nil {
 		return x.Type
@@ -266,11 +288,26 @@ func (x *DeployJobSpecificationResponse) GetType() string {
 	return ""
 }
 
+// Deprecated: Do not use.
 func (x *DeployJobSpecificationResponse) GetValue() string {
 	if x != nil {
 		return x.Value
 	}
 	return ""
+}
+
+func (x *DeployJobSpecificationResponse) GetDeploymentId() string {
+	if x != nil {
+		return x.DeploymentId
+	}
+	return ""
+}
+
+func (x *DeployJobSpecificationResponse) GetLogStatus() *Log {
+	if x != nil {
+		return x.LogStatus
+	}
+	return nil
 }
 
 type CreateJobSpecificationRequest struct {
@@ -2302,29 +2339,39 @@ var file_odpf_optimus_core_v1beta1_job_spec_proto_rawDesc = []byte{
 	0x6f, 0x62, 0x75, 0x66, 0x2f, 0x73, 0x74, 0x72, 0x75, 0x63, 0x74, 0x2e, 0x70, 0x72, 0x6f, 0x74,
 	0x6f, 0x1a, 0x1e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62,
 	0x75, 0x66, 0x2f, 0x64, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x22, 0xaa, 0x01, 0x0a, 0x1d, 0x44, 0x65, 0x70, 0x6c, 0x6f, 0x79, 0x4a, 0x6f, 0x62, 0x53,
-	0x70, 0x65, 0x63, 0x69, 0x66, 0x69, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63, 0x74, 0x5f, 0x6e,
-	0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x70, 0x72, 0x6f, 0x6a, 0x65,
-	0x63, 0x74, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x3f, 0x0a, 0x04, 0x6a, 0x6f, 0x62, 0x73, 0x18, 0x02,
-	0x20, 0x03, 0x28, 0x0b, 0x32, 0x2b, 0x2e, 0x6f, 0x64, 0x70, 0x66, 0x2e, 0x6f, 0x70, 0x74, 0x69,
-	0x6d, 0x75, 0x73, 0x2e, 0x63, 0x6f, 0x72, 0x65, 0x2e, 0x76, 0x31, 0x62, 0x65, 0x74, 0x61, 0x31,
-	0x2e, 0x4a, 0x6f, 0x62, 0x53, 0x70, 0x65, 0x63, 0x69, 0x66, 0x69, 0x63, 0x61, 0x74, 0x69, 0x6f,
-	0x6e, 0x52, 0x04, 0x6a, 0x6f, 0x62, 0x73, 0x12, 0x25, 0x0a, 0x0e, 0x6e, 0x61, 0x6d, 0x65, 0x73,
-	0x70, 0x61, 0x63, 0x65, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x0d, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x22, 0xb3,
-	0x01, 0x0a, 0x1e, 0x44, 0x65, 0x70, 0x6c, 0x6f, 0x79, 0x4a, 0x6f, 0x62, 0x53, 0x70, 0x65, 0x63,
-	0x69, 0x66, 0x69, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x12, 0x18, 0x0a, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x08, 0x52, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x12, 0x14, 0x0a, 0x03, 0x61,
+	0x6f, 0x1a, 0x2a, 0x6f, 0x64, 0x70, 0x66, 0x2f, 0x6f, 0x70, 0x74, 0x69, 0x6d, 0x75, 0x73, 0x2f,
+	0x63, 0x6f, 0x72, 0x65, 0x2f, 0x76, 0x31, 0x62, 0x65, 0x74, 0x61, 0x31, 0x2f, 0x6c, 0x6f, 0x67,
+	0x5f, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0xaa, 0x01,
+	0x0a, 0x1d, 0x44, 0x65, 0x70, 0x6c, 0x6f, 0x79, 0x4a, 0x6f, 0x62, 0x53, 0x70, 0x65, 0x63, 0x69,
+	0x66, 0x69, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12,
+	0x21, 0x0a, 0x0c, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63, 0x74, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63, 0x74, 0x4e, 0x61,
+	0x6d, 0x65, 0x12, 0x3f, 0x0a, 0x04, 0x6a, 0x6f, 0x62, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b,
+	0x32, 0x2b, 0x2e, 0x6f, 0x64, 0x70, 0x66, 0x2e, 0x6f, 0x70, 0x74, 0x69, 0x6d, 0x75, 0x73, 0x2e,
+	0x63, 0x6f, 0x72, 0x65, 0x2e, 0x76, 0x31, 0x62, 0x65, 0x74, 0x61, 0x31, 0x2e, 0x4a, 0x6f, 0x62,
+	0x53, 0x70, 0x65, 0x63, 0x69, 0x66, 0x69, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x04, 0x6a,
+	0x6f, 0x62, 0x73, 0x12, 0x25, 0x0a, 0x0e, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65,
+	0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x6e, 0x61, 0x6d,
+	0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x22, 0xa7, 0x02, 0x0a, 0x1e, 0x44,
+	0x65, 0x70, 0x6c, 0x6f, 0x79, 0x4a, 0x6f, 0x62, 0x53, 0x70, 0x65, 0x63, 0x69, 0x66, 0x69, 0x63,
+	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1c, 0x0a,
+	0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x08, 0x42, 0x02,
+	0x18, 0x01, 0x52, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x12, 0x14, 0x0a, 0x03, 0x61,
 	0x63, 0x6b, 0x18, 0x02, 0x20, 0x01, 0x28, 0x08, 0x42, 0x02, 0x18, 0x01, 0x52, 0x03, 0x61, 0x63,
 	0x6b, 0x12, 0x1c, 0x0a, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x03, 0x20, 0x01,
 	0x28, 0x09, 0x42, 0x02, 0x18, 0x01, 0x52, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12,
-	0x19, 0x0a, 0x08, 0x6a, 0x6f, 0x62, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x07, 0x6a, 0x6f, 0x62, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x79,
-	0x70, 0x65, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x12, 0x14,
-	0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x06, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76,
-	0x61, 0x6c, 0x75, 0x65, 0x22, 0xaa, 0x01, 0x0a, 0x1d, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x4a,
+	0x1d, 0x0a, 0x08, 0x6a, 0x6f, 0x62, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28,
+	0x09, 0x42, 0x02, 0x18, 0x01, 0x52, 0x07, 0x6a, 0x6f, 0x62, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x16,
+	0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x42, 0x02, 0x18, 0x01,
+	0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x12, 0x18, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18,
+	0x06, 0x20, 0x01, 0x28, 0x09, 0x42, 0x02, 0x18, 0x01, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65,
+	0x12, 0x23, 0x0a, 0x0d, 0x64, 0x65, 0x70, 0x6c, 0x6f, 0x79, 0x6d, 0x65, 0x6e, 0x74, 0x5f, 0x69,
+	0x64, 0x18, 0x07, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x64, 0x65, 0x70, 0x6c, 0x6f, 0x79, 0x6d,
+	0x65, 0x6e, 0x74, 0x49, 0x64, 0x12, 0x3d, 0x0a, 0x0a, 0x6c, 0x6f, 0x67, 0x5f, 0x73, 0x74, 0x61,
+	0x74, 0x75, 0x73, 0x18, 0x08, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1e, 0x2e, 0x6f, 0x64, 0x70, 0x66,
+	0x2e, 0x6f, 0x70, 0x74, 0x69, 0x6d, 0x75, 0x73, 0x2e, 0x63, 0x6f, 0x72, 0x65, 0x2e, 0x76, 0x31,
+	0x62, 0x65, 0x74, 0x61, 0x31, 0x2e, 0x4c, 0x6f, 0x67, 0x52, 0x09, 0x6c, 0x6f, 0x67, 0x53, 0x74,
+	0x61, 0x74, 0x75, 0x73, 0x22, 0xaa, 0x01, 0x0a, 0x1d, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x4a,
 	0x6f, 0x62, 0x53, 0x70, 0x65, 0x63, 0x69, 0x66, 0x69, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52,
 	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x21, 0x0a, 0x0c, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63,
 	0x74, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x70, 0x72,
@@ -2849,65 +2896,67 @@ var file_odpf_optimus_core_v1beta1_job_spec_proto_goTypes = []interface{}{
 	nil,                         // 37: odpf.optimus.core.v1beta1.JobSpecification.Behavior.Notifiers.ConfigEntry
 	nil,                         // 38: odpf.optimus.core.v1beta1.HttpDependency.HeadersEntry
 	nil,                         // 39: odpf.optimus.core.v1beta1.HttpDependency.ParamsEntry
-	(*structpb.Struct)(nil),     // 40: google.protobuf.Struct
-	(*durationpb.Duration)(nil), // 41: google.protobuf.Duration
+	(*Log)(nil),                 // 40: odpf.optimus.core.v1beta1.Log
+	(*structpb.Struct)(nil),     // 41: google.protobuf.Struct
+	(*durationpb.Duration)(nil), // 42: google.protobuf.Duration
 }
 var file_odpf_optimus_core_v1beta1_job_spec_proto_depIdxs = []int32{
 	15, // 0: odpf.optimus.core.v1beta1.DeployJobSpecificationRequest.jobs:type_name -> odpf.optimus.core.v1beta1.JobSpecification
-	15, // 1: odpf.optimus.core.v1beta1.CreateJobSpecificationRequest.spec:type_name -> odpf.optimus.core.v1beta1.JobSpecification
-	15, // 2: odpf.optimus.core.v1beta1.GetJobSpecificationResponse.spec:type_name -> odpf.optimus.core.v1beta1.JobSpecification
-	15, // 3: odpf.optimus.core.v1beta1.ListJobSpecificationResponse.jobs:type_name -> odpf.optimus.core.v1beta1.JobSpecification
-	15, // 4: odpf.optimus.core.v1beta1.CheckJobSpecificationRequest.job:type_name -> odpf.optimus.core.v1beta1.JobSpecification
-	15, // 5: odpf.optimus.core.v1beta1.CheckJobSpecificationsRequest.jobs:type_name -> odpf.optimus.core.v1beta1.JobSpecification
-	19, // 6: odpf.optimus.core.v1beta1.JobSpecification.config:type_name -> odpf.optimus.core.v1beta1.JobConfigItem
-	16, // 7: odpf.optimus.core.v1beta1.JobSpecification.dependencies:type_name -> odpf.optimus.core.v1beta1.JobDependency
-	32, // 8: odpf.optimus.core.v1beta1.JobSpecification.assets:type_name -> odpf.optimus.core.v1beta1.JobSpecification.AssetsEntry
-	18, // 9: odpf.optimus.core.v1beta1.JobSpecification.hooks:type_name -> odpf.optimus.core.v1beta1.JobSpecHook
-	33, // 10: odpf.optimus.core.v1beta1.JobSpecification.labels:type_name -> odpf.optimus.core.v1beta1.JobSpecification.LabelsEntry
-	34, // 11: odpf.optimus.core.v1beta1.JobSpecification.behavior:type_name -> odpf.optimus.core.v1beta1.JobSpecification.Behavior
-	21, // 12: odpf.optimus.core.v1beta1.JobSpecification.metadata:type_name -> odpf.optimus.core.v1beta1.JobMetadata
-	17, // 13: odpf.optimus.core.v1beta1.JobDependency.http_dependency:type_name -> odpf.optimus.core.v1beta1.HttpDependency
-	38, // 14: odpf.optimus.core.v1beta1.HttpDependency.headers:type_name -> odpf.optimus.core.v1beta1.HttpDependency.HeadersEntry
-	39, // 15: odpf.optimus.core.v1beta1.HttpDependency.params:type_name -> odpf.optimus.core.v1beta1.HttpDependency.ParamsEntry
-	19, // 16: odpf.optimus.core.v1beta1.JobSpecHook.config:type_name -> odpf.optimus.core.v1beta1.JobConfigItem
-	0,  // 17: odpf.optimus.core.v1beta1.JobEvent.type:type_name -> odpf.optimus.core.v1beta1.JobEvent.Type
-	40, // 18: odpf.optimus.core.v1beta1.JobEvent.value:type_name -> google.protobuf.Struct
-	22, // 19: odpf.optimus.core.v1beta1.JobMetadata.resource:type_name -> odpf.optimus.core.v1beta1.JobSpecMetadataResource
-	24, // 20: odpf.optimus.core.v1beta1.JobMetadata.airflow:type_name -> odpf.optimus.core.v1beta1.JobSpecMetadataAirflow
-	23, // 21: odpf.optimus.core.v1beta1.JobSpecMetadataResource.request:type_name -> odpf.optimus.core.v1beta1.JobSpecMetadataResourceConfig
-	23, // 22: odpf.optimus.core.v1beta1.JobSpecMetadataResource.limit:type_name -> odpf.optimus.core.v1beta1.JobSpecMetadataResourceConfig
-	29, // 23: odpf.optimus.core.v1beta1.GetDeployJobsStatusResponse.failures:type_name -> odpf.optimus.core.v1beta1.DeployJobFailure
-	15, // 24: odpf.optimus.core.v1beta1.GetJobSpecificationsResponse.jobs:type_name -> odpf.optimus.core.v1beta1.JobSpecification
-	35, // 25: odpf.optimus.core.v1beta1.JobSpecification.Behavior.retry:type_name -> odpf.optimus.core.v1beta1.JobSpecification.Behavior.Retry
-	36, // 26: odpf.optimus.core.v1beta1.JobSpecification.Behavior.notify:type_name -> odpf.optimus.core.v1beta1.JobSpecification.Behavior.Notifiers
-	41, // 27: odpf.optimus.core.v1beta1.JobSpecification.Behavior.Retry.delay:type_name -> google.protobuf.Duration
-	0,  // 28: odpf.optimus.core.v1beta1.JobSpecification.Behavior.Notifiers.on:type_name -> odpf.optimus.core.v1beta1.JobEvent.Type
-	37, // 29: odpf.optimus.core.v1beta1.JobSpecification.Behavior.Notifiers.config:type_name -> odpf.optimus.core.v1beta1.JobSpecification.Behavior.Notifiers.ConfigEntry
-	1,  // 30: odpf.optimus.core.v1beta1.JobSpecificationService.DeployJobSpecification:input_type -> odpf.optimus.core.v1beta1.DeployJobSpecificationRequest
-	3,  // 31: odpf.optimus.core.v1beta1.JobSpecificationService.CreateJobSpecification:input_type -> odpf.optimus.core.v1beta1.CreateJobSpecificationRequest
-	5,  // 32: odpf.optimus.core.v1beta1.JobSpecificationService.GetJobSpecification:input_type -> odpf.optimus.core.v1beta1.GetJobSpecificationRequest
-	30, // 33: odpf.optimus.core.v1beta1.JobSpecificationService.GetJobSpecifications:input_type -> odpf.optimus.core.v1beta1.GetJobSpecificationsRequest
-	7,  // 34: odpf.optimus.core.v1beta1.JobSpecificationService.DeleteJobSpecification:input_type -> odpf.optimus.core.v1beta1.DeleteJobSpecificationRequest
-	9,  // 35: odpf.optimus.core.v1beta1.JobSpecificationService.ListJobSpecification:input_type -> odpf.optimus.core.v1beta1.ListJobSpecificationRequest
-	11, // 36: odpf.optimus.core.v1beta1.JobSpecificationService.CheckJobSpecification:input_type -> odpf.optimus.core.v1beta1.CheckJobSpecificationRequest
-	13, // 37: odpf.optimus.core.v1beta1.JobSpecificationService.CheckJobSpecifications:input_type -> odpf.optimus.core.v1beta1.CheckJobSpecificationsRequest
-	25, // 38: odpf.optimus.core.v1beta1.JobSpecificationService.RefreshJobs:input_type -> odpf.optimus.core.v1beta1.RefreshJobsRequest
-	27, // 39: odpf.optimus.core.v1beta1.JobSpecificationService.GetDeployJobsStatus:input_type -> odpf.optimus.core.v1beta1.GetDeployJobsStatusRequest
-	2,  // 40: odpf.optimus.core.v1beta1.JobSpecificationService.DeployJobSpecification:output_type -> odpf.optimus.core.v1beta1.DeployJobSpecificationResponse
-	4,  // 41: odpf.optimus.core.v1beta1.JobSpecificationService.CreateJobSpecification:output_type -> odpf.optimus.core.v1beta1.CreateJobSpecificationResponse
-	6,  // 42: odpf.optimus.core.v1beta1.JobSpecificationService.GetJobSpecification:output_type -> odpf.optimus.core.v1beta1.GetJobSpecificationResponse
-	31, // 43: odpf.optimus.core.v1beta1.JobSpecificationService.GetJobSpecifications:output_type -> odpf.optimus.core.v1beta1.GetJobSpecificationsResponse
-	8,  // 44: odpf.optimus.core.v1beta1.JobSpecificationService.DeleteJobSpecification:output_type -> odpf.optimus.core.v1beta1.DeleteJobSpecificationResponse
-	10, // 45: odpf.optimus.core.v1beta1.JobSpecificationService.ListJobSpecification:output_type -> odpf.optimus.core.v1beta1.ListJobSpecificationResponse
-	12, // 46: odpf.optimus.core.v1beta1.JobSpecificationService.CheckJobSpecification:output_type -> odpf.optimus.core.v1beta1.CheckJobSpecificationResponse
-	14, // 47: odpf.optimus.core.v1beta1.JobSpecificationService.CheckJobSpecifications:output_type -> odpf.optimus.core.v1beta1.CheckJobSpecificationsResponse
-	26, // 48: odpf.optimus.core.v1beta1.JobSpecificationService.RefreshJobs:output_type -> odpf.optimus.core.v1beta1.RefreshJobsResponse
-	28, // 49: odpf.optimus.core.v1beta1.JobSpecificationService.GetDeployJobsStatus:output_type -> odpf.optimus.core.v1beta1.GetDeployJobsStatusResponse
-	40, // [40:50] is the sub-list for method output_type
-	30, // [30:40] is the sub-list for method input_type
-	30, // [30:30] is the sub-list for extension type_name
-	30, // [30:30] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	40, // 1: odpf.optimus.core.v1beta1.DeployJobSpecificationResponse.log_status:type_name -> odpf.optimus.core.v1beta1.Log
+	15, // 2: odpf.optimus.core.v1beta1.CreateJobSpecificationRequest.spec:type_name -> odpf.optimus.core.v1beta1.JobSpecification
+	15, // 3: odpf.optimus.core.v1beta1.GetJobSpecificationResponse.spec:type_name -> odpf.optimus.core.v1beta1.JobSpecification
+	15, // 4: odpf.optimus.core.v1beta1.ListJobSpecificationResponse.jobs:type_name -> odpf.optimus.core.v1beta1.JobSpecification
+	15, // 5: odpf.optimus.core.v1beta1.CheckJobSpecificationRequest.job:type_name -> odpf.optimus.core.v1beta1.JobSpecification
+	15, // 6: odpf.optimus.core.v1beta1.CheckJobSpecificationsRequest.jobs:type_name -> odpf.optimus.core.v1beta1.JobSpecification
+	19, // 7: odpf.optimus.core.v1beta1.JobSpecification.config:type_name -> odpf.optimus.core.v1beta1.JobConfigItem
+	16, // 8: odpf.optimus.core.v1beta1.JobSpecification.dependencies:type_name -> odpf.optimus.core.v1beta1.JobDependency
+	32, // 9: odpf.optimus.core.v1beta1.JobSpecification.assets:type_name -> odpf.optimus.core.v1beta1.JobSpecification.AssetsEntry
+	18, // 10: odpf.optimus.core.v1beta1.JobSpecification.hooks:type_name -> odpf.optimus.core.v1beta1.JobSpecHook
+	33, // 11: odpf.optimus.core.v1beta1.JobSpecification.labels:type_name -> odpf.optimus.core.v1beta1.JobSpecification.LabelsEntry
+	34, // 12: odpf.optimus.core.v1beta1.JobSpecification.behavior:type_name -> odpf.optimus.core.v1beta1.JobSpecification.Behavior
+	21, // 13: odpf.optimus.core.v1beta1.JobSpecification.metadata:type_name -> odpf.optimus.core.v1beta1.JobMetadata
+	17, // 14: odpf.optimus.core.v1beta1.JobDependency.http_dependency:type_name -> odpf.optimus.core.v1beta1.HttpDependency
+	38, // 15: odpf.optimus.core.v1beta1.HttpDependency.headers:type_name -> odpf.optimus.core.v1beta1.HttpDependency.HeadersEntry
+	39, // 16: odpf.optimus.core.v1beta1.HttpDependency.params:type_name -> odpf.optimus.core.v1beta1.HttpDependency.ParamsEntry
+	19, // 17: odpf.optimus.core.v1beta1.JobSpecHook.config:type_name -> odpf.optimus.core.v1beta1.JobConfigItem
+	0,  // 18: odpf.optimus.core.v1beta1.JobEvent.type:type_name -> odpf.optimus.core.v1beta1.JobEvent.Type
+	41, // 19: odpf.optimus.core.v1beta1.JobEvent.value:type_name -> google.protobuf.Struct
+	22, // 20: odpf.optimus.core.v1beta1.JobMetadata.resource:type_name -> odpf.optimus.core.v1beta1.JobSpecMetadataResource
+	24, // 21: odpf.optimus.core.v1beta1.JobMetadata.airflow:type_name -> odpf.optimus.core.v1beta1.JobSpecMetadataAirflow
+	23, // 22: odpf.optimus.core.v1beta1.JobSpecMetadataResource.request:type_name -> odpf.optimus.core.v1beta1.JobSpecMetadataResourceConfig
+	23, // 23: odpf.optimus.core.v1beta1.JobSpecMetadataResource.limit:type_name -> odpf.optimus.core.v1beta1.JobSpecMetadataResourceConfig
+	29, // 24: odpf.optimus.core.v1beta1.GetDeployJobsStatusResponse.failures:type_name -> odpf.optimus.core.v1beta1.DeployJobFailure
+	15, // 25: odpf.optimus.core.v1beta1.GetJobSpecificationsResponse.jobs:type_name -> odpf.optimus.core.v1beta1.JobSpecification
+	35, // 26: odpf.optimus.core.v1beta1.JobSpecification.Behavior.retry:type_name -> odpf.optimus.core.v1beta1.JobSpecification.Behavior.Retry
+	36, // 27: odpf.optimus.core.v1beta1.JobSpecification.Behavior.notify:type_name -> odpf.optimus.core.v1beta1.JobSpecification.Behavior.Notifiers
+	42, // 28: odpf.optimus.core.v1beta1.JobSpecification.Behavior.Retry.delay:type_name -> google.protobuf.Duration
+	0,  // 29: odpf.optimus.core.v1beta1.JobSpecification.Behavior.Notifiers.on:type_name -> odpf.optimus.core.v1beta1.JobEvent.Type
+	37, // 30: odpf.optimus.core.v1beta1.JobSpecification.Behavior.Notifiers.config:type_name -> odpf.optimus.core.v1beta1.JobSpecification.Behavior.Notifiers.ConfigEntry
+	1,  // 31: odpf.optimus.core.v1beta1.JobSpecificationService.DeployJobSpecification:input_type -> odpf.optimus.core.v1beta1.DeployJobSpecificationRequest
+	3,  // 32: odpf.optimus.core.v1beta1.JobSpecificationService.CreateJobSpecification:input_type -> odpf.optimus.core.v1beta1.CreateJobSpecificationRequest
+	5,  // 33: odpf.optimus.core.v1beta1.JobSpecificationService.GetJobSpecification:input_type -> odpf.optimus.core.v1beta1.GetJobSpecificationRequest
+	30, // 34: odpf.optimus.core.v1beta1.JobSpecificationService.GetJobSpecifications:input_type -> odpf.optimus.core.v1beta1.GetJobSpecificationsRequest
+	7,  // 35: odpf.optimus.core.v1beta1.JobSpecificationService.DeleteJobSpecification:input_type -> odpf.optimus.core.v1beta1.DeleteJobSpecificationRequest
+	9,  // 36: odpf.optimus.core.v1beta1.JobSpecificationService.ListJobSpecification:input_type -> odpf.optimus.core.v1beta1.ListJobSpecificationRequest
+	11, // 37: odpf.optimus.core.v1beta1.JobSpecificationService.CheckJobSpecification:input_type -> odpf.optimus.core.v1beta1.CheckJobSpecificationRequest
+	13, // 38: odpf.optimus.core.v1beta1.JobSpecificationService.CheckJobSpecifications:input_type -> odpf.optimus.core.v1beta1.CheckJobSpecificationsRequest
+	25, // 39: odpf.optimus.core.v1beta1.JobSpecificationService.RefreshJobs:input_type -> odpf.optimus.core.v1beta1.RefreshJobsRequest
+	27, // 40: odpf.optimus.core.v1beta1.JobSpecificationService.GetDeployJobsStatus:input_type -> odpf.optimus.core.v1beta1.GetDeployJobsStatusRequest
+	2,  // 41: odpf.optimus.core.v1beta1.JobSpecificationService.DeployJobSpecification:output_type -> odpf.optimus.core.v1beta1.DeployJobSpecificationResponse
+	4,  // 42: odpf.optimus.core.v1beta1.JobSpecificationService.CreateJobSpecification:output_type -> odpf.optimus.core.v1beta1.CreateJobSpecificationResponse
+	6,  // 43: odpf.optimus.core.v1beta1.JobSpecificationService.GetJobSpecification:output_type -> odpf.optimus.core.v1beta1.GetJobSpecificationResponse
+	31, // 44: odpf.optimus.core.v1beta1.JobSpecificationService.GetJobSpecifications:output_type -> odpf.optimus.core.v1beta1.GetJobSpecificationsResponse
+	8,  // 45: odpf.optimus.core.v1beta1.JobSpecificationService.DeleteJobSpecification:output_type -> odpf.optimus.core.v1beta1.DeleteJobSpecificationResponse
+	10, // 46: odpf.optimus.core.v1beta1.JobSpecificationService.ListJobSpecification:output_type -> odpf.optimus.core.v1beta1.ListJobSpecificationResponse
+	12, // 47: odpf.optimus.core.v1beta1.JobSpecificationService.CheckJobSpecification:output_type -> odpf.optimus.core.v1beta1.CheckJobSpecificationResponse
+	14, // 48: odpf.optimus.core.v1beta1.JobSpecificationService.CheckJobSpecifications:output_type -> odpf.optimus.core.v1beta1.CheckJobSpecificationsResponse
+	26, // 49: odpf.optimus.core.v1beta1.JobSpecificationService.RefreshJobs:output_type -> odpf.optimus.core.v1beta1.RefreshJobsResponse
+	28, // 50: odpf.optimus.core.v1beta1.JobSpecificationService.GetDeployJobsStatus:output_type -> odpf.optimus.core.v1beta1.GetDeployJobsStatusResponse
+	41, // [41:51] is the sub-list for method output_type
+	31, // [31:41] is the sub-list for method input_type
+	31, // [31:31] is the sub-list for extension type_name
+	31, // [31:31] is the sub-list for extension extendee
+	0,  // [0:31] is the sub-list for field type_name
 }
 
 func init() { file_odpf_optimus_core_v1beta1_job_spec_proto_init() }
@@ -2915,6 +2964,7 @@ func file_odpf_optimus_core_v1beta1_job_spec_proto_init() {
 	if File_odpf_optimus_core_v1beta1_job_spec_proto != nil {
 		return
 	}
+	file_odpf_optimus_core_v1beta1_log_status_proto_init()
 	if !protoimpl.UnsafeEnabled {
 		file_odpf_optimus_core_v1beta1_job_spec_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*DeployJobSpecificationRequest); i {

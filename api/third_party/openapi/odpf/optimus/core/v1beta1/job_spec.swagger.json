@@ -410,7 +410,8 @@
       "type": "object",
       "properties": {
         "success": {
-          "type": "boolean"
+          "type": "boolean",
+          "title": "success or not is not the part of the response anymore\nany message that been sent is marked as successfully delivered"
         },
         "ack": {
           "type": "boolean",
@@ -421,16 +422,25 @@
           "title": "message is deprecated and being replaced with value field"
         },
         "jobName": {
-          "type": "string"
+          "type": "string",
+          "title": "job_name is deprecated since client / receiver\ndoesn't need to know the job_name anymore"
         },
         "type": {
           "type": "string",
-          "title": "response type differentiate events"
+          "title": "response type differentiate events\nthis is deprecated"
         },
         "value": {
+          "type": "string",
+          "title": "this is deprecated and being replaced with deploymentID\nand log status message"
+        },
+        "deploymentId": {
           "type": "string"
+        },
+        "logStatus": {
+          "$ref": "#/definitions/v1beta1Log"
         }
-      }
+      },
+      "title": "DeployJobSpecificationResponse hold the value of DeploymentID\nand the log messages"
     },
     "v1beta1GetDeployJobsStatusResponse": {
       "type": "object",
@@ -682,6 +692,18 @@
         }
       }
     },
+    "v1beta1Level": {
+      "type": "string",
+      "enum": [
+        "Trace",
+        "Debug",
+        "Info",
+        "Warning",
+        "Error",
+        "Fatal"
+      ],
+      "default": "Trace"
+    },
     "v1beta1ListJobSpecificationResponse": {
       "type": "object",
       "properties": {
@@ -690,6 +712,17 @@
           "items": {
             "$ref": "#/definitions/v1beta1JobSpecification"
           }
+        }
+      }
+    },
+    "v1beta1Log": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "$ref": "#/definitions/v1beta1Level"
+        },
+        "message": {
+          "type": "string"
         }
       }
     },

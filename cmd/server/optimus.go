@@ -386,8 +386,7 @@ func (s *OptimusServer) setupHandlers() error {
 		jobService,
 		pluginRepo,
 		projectService,
-		namespaceService,
-		progressObs))
+		namespaceService))
 	// job run service
 	pb.RegisterJobRunServiceServer(s.grpcServer, v1handler.NewJobRunServiceServer(s.logger,
 		jobService,
