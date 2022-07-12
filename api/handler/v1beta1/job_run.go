@@ -149,7 +149,7 @@ func (sv *JobRunServiceServer) RegisterInstance(ctx context.Context, req *pb.Reg
 	}, nil
 }
 
-func (sv *JobRunServiceServer) GetJobRunInput(ctx context.Context, req *pb.RegisterInstanceRequest) (*pb.JobRunInputResponse, error) {
+func (sv *JobRunServiceServer) GetJobRunInput(ctx context.Context, req *pb.JobRunInputRequest) (*pb.JobRunInputResponse, error) {
 	projSpec, err := sv.projectService.Get(ctx, req.GetProjectName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "not able to find project")

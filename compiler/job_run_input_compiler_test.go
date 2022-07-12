@@ -508,4 +508,94 @@ func TestJobRunInputCompiler(t *testing.T) {
 			)
 		})
 	})
+	t.Run("CompileNewJobSpec returns compiled task config for task", func(t *testing.T) {
+		jobSpec := models.JobSpec{
+			Name:     "foo",
+			Owner:    "mee@mee",
+			Behavior: behavior,
+			Schedule: schedule,
+			Task: models.JobSpecTask{
+				Unit:     plugin,
+				Priority: 2000,
+				Window:   window,
+				Config: models.JobSpecConfigs{
+					{
+						Name:  "BQ_VAL",
+						Value: "22",
+					},
+					{
+						Name:  "EXECT",
+						Value: "{{.EXECUTION_TIME}}",
+					},
+					{
+						Name:  "BUCKET",
+						Value: "{{.GLOBAL__bucket}}",
+					},
+					{
+						Name:  "BUCKETX",
+						Value: "{{.proj.bucket}}",
+					},
+					{
+						Name:  "LOAD_METHOD",
+						Value: "MERGE",
+					},
+				},
+			},
+			Dependencies: map[string]models.JobSpecDependency{},
+			Assets: *models.JobAssets{}.New(
+				[]models.JobSpecAsset{
+					{
+						Name:  "query.sql",
+						Value: "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}'",
+					},
+				},
+			),
+		}
+		jobRunSpec := models.JobRunSpec{
+			NamespaceID: namespaceSpec.ID,
+			ProjectID:   projectSpec.ID.UUID(),
+			ScheduledAt: scheduledAt,
+			StartTime:   mockedTimeNow,
+			Data:        instanceSpecData,
+		}
+
+		instanceName := "bq"
+		instanceType := models.InstanceTypeTask
+
+		cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
+			Window:           window,
+			Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+			Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
+			InstanceSchedule: scheduledAt,
+			InstanceData:     instanceSpecData,
+		}).Return(&models.CompileAssetsResponse{Assets: models.PluginAssets{
+			models.PluginAsset{
+				Name:  "query.sql",
+				Value: "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}'",
+			},
+		}}, nil)
+		defer cliMod.AssertExpectations(t)
+
+		pluginRepo.On("GetByName", "bq").Return(plugin, nil)
+		defer pluginRepo.AssertExpectations(t)
+
+		jobRunInputCompiler := createJobRunInputCompiler()
+		jobRunInput, err := jobRunInputCompiler.CompileNewJobSpec(ctx, namespaceSpec, secrets, jobSpec, scheduledAt, jobRunSpec, instanceType, instanceName)
+		assert.Nil(t, err)
+
+		assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])
+		assert.Equal(t, "2020-11-10T23:00:00Z", jobRunInput.ConfigMap["DSTART"])
+		assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), jobRunInput.ConfigMap["EXECUTION_TIME"])
+
+		assert.Equal(t, "22", jobRunInput.ConfigMap["BQ_VAL"])
+		assert.Equal(t, mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout), jobRunInput.ConfigMap["EXECT"])
+		assert.Equal(t, projectSpec.Config["bucket"], jobRunInput.ConfigMap["BUCKET"])
+		assert.Equal(t, projectSpec.Config["bucket"], jobRunInput.ConfigMap["BUCKETX"])
+
+		assert.Equal(t,
+			fmt.Sprintf("select * from table WHERE event_timestamp > '%s'", mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout)),
+			jobRunInput.FileMap["query.sql"],
+		)
+	})
+
 }

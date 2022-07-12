@@ -1010,4 +1010,159 @@ func TestJobRunServiceServer(t *testing.T) {
 			}
 		})
 	})
+
+	t.Run("GetJobRunInput", func(t *testing.T) {
+		projectName := "a-data-project"
+		jobName := "a-data-job"
+
+		mockedTimeNow := time.Now()
+		scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
+		scheduledAtTimestamp := timestamppb.New(scheduledAt)
+
+		projectSpec := models.ProjectSpec{
+			ID:   models.ProjectID(uuid.New()),
+			Name: projectName,
+			Config: map[string]string{
+				"bucket": "gs://some_folder",
+			},
+		}
+
+		namespaceSpec := models.NamespaceSpec{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: "namespace-124",
+			Config: map[string]string{
+				"bucket": "gs://some_folder",
+			},
+			ProjectSpec: projectSpec,
+		}
+
+		basePlugin1 := new(mock.BasePlugin)
+
+		jobSpec := models.JobSpec{
+			ID:   uuid.Must(uuid.NewRandom()),
+			Name: jobName,
+			Task: models.JobSpecTask{
+				Unit: &models.Plugin{
+					Base: basePlugin1,
+				},
+				Config: models.JobSpecConfigs{
+					{
+						Name:  "do",
+						Value: "this",
+					},
+				},
+			},
+			Assets: *models.JobAssets{}.New(
+				[]models.JobSpecAsset{
+					{
+						Name:  "query.sql",
+						Value: "select * from 1",
+					},
+				}),
+		}
+
+		instanceName := "do-this"
+		instanceType := models.InstanceTypeTask
+		secrets := []models.ProjectSecretItem{
+			{
+				ID:    uuid.New(),
+				Name:  "table_name",
+				Value: "secret_table",
+				Type:  models.SecretTypeUserDefined,
+			},
+			{
+				ID:    uuid.New(),
+				Name:  "bucket",
+				Value: "gs://some_secret_bucket",
+				Type:  models.SecretTypeUserDefined,
+			},
+		}
+		jobRunSpec := models.JobRunSpec{
+			NamespaceID: namespaceSpec.ID,
+			ProjectID:   projectSpec.ID.UUID(),
+			ScheduledAt: scheduledAt,
+			StartTime:   mockedTimeNow,
+			Data: []models.InstanceSpecData{
+				{
+					Name:  models.ConfigKeyExecutionTime,
+					Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+					Type:  models.InstanceDataTypeEnv,
+				},
+				{
+					Name:  models.ConfigKeyDstart,
+					Value: jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+					Type:  models.InstanceDataTypeEnv,
+				},
+				{
+					Name:  models.ConfigKeyDend,
+					Value: jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+					Type:  models.InstanceDataTypeEnv,
+				},
+			},
+		}
+
+		projectService := new(mock.ProjectService)
+		projectService.On("Get", ctx, projectName).Return(projectSpec, nil)
+		defer projectService.AssertExpectations(t)
+
+		jobService := new(mock.JobService)
+		jobService.On("GetByNameForProject", ctx, jobName, projectSpec).Return(jobSpec, namespaceSpec, nil)
+		defer jobService.AssertExpectations(t)
+
+		secretService := new(mock.SecretService)
+		secretService.On("GetSecrets", ctx, namespaceSpec).Return(secrets, nil)
+		defer secretService.AssertExpectations(t)
+
+		monitoringService.On("GetJobRunByScheduledAt", ctx, namespaceSpec, jobSpec, scheduledAt).Return(jobRunSpec, nil)
+		defer monitoringService.AssertExpectations(t)
+
+		jobRunService := new(mock.JobRunService)
+
+		jobRunInputCompiler := new(mock.JobInputCompiler)
+		jobRunInputCompiler.On("CompileNewJobSpec", ctx, namespaceSpec, models.ProjectSecrets(secrets), jobSpec, scheduledAt, jobRunSpec, instanceType, instanceName).Return(
+			&models.JobRunInput{
+				ConfigMap: map[string]string{
+					models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+					models.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+					models.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+				},
+				FileMap: map[string]string{
+					"query.sql": "select * from 1",
+				},
+			}, nil)
+		defer jobRunInputCompiler.AssertExpectations(t)
+
+		JobRunServiceServer := v1.NewJobRunServiceServer(
+			log,
+			jobService,
+			projectService, nil, secretService,
+			nil,
+			jobRunService,
+			jobRunInputCompiler,
+			monitoringService,
+			nil,
+		)
+
+		jobRunInputRequest := pb.JobRunInputRequest{
+			ProjectName:  projectName,
+			JobName:      jobName,
+			InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[utils.ToEnumProto(string(models.InstanceTypeTask), "TYPE")]),
+			ScheduledAt:  scheduledAtTimestamp,
+			InstanceName: instanceName,
+		}
+		resp, err := JobRunServiceServer.GetJobRunInput(ctx, &jobRunInputRequest)
+		assert.Nil(t, err)
+
+		expectedResponse := &pb.JobRunInputResponse{
+			Envs: map[string]string{
+				models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+				models.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+				models.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+			},
+			Files: map[string]string{
+				"query.sql": "select * from 1",
+			},
+		}
+		assert.Equal(t, expectedResponse, resp)
+	})
 }
