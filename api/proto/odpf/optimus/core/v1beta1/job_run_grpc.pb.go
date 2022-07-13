@@ -27,6 +27,7 @@ type JobRunServiceClient interface {
 	// RegisterInstance is an internal admin command used during task/hook execution
 	// to pull task/hook compiled configuration and assets.
 	RegisterInstance(ctx context.Context, in *RegisterInstanceRequest, opts ...grpc.CallOption) (*RegisterInstanceResponse, error)
+	// JobRunInput is used to fetch task/hook compiled configuration and assets.
 	JobRunInput(ctx context.Context, in *JobRunInputRequest, opts ...grpc.CallOption) (*JobRunInputResponse, error)
 	// JobStatus returns the current and past run status of jobs
 	JobStatus(ctx context.Context, in *JobStatusRequest, opts ...grpc.CallOption) (*JobStatusResponse, error)
@@ -120,6 +121,7 @@ type JobRunServiceServer interface {
 	// RegisterInstance is an internal admin command used during task/hook execution
 	// to pull task/hook compiled configuration and assets.
 	RegisterInstance(context.Context, *RegisterInstanceRequest) (*RegisterInstanceResponse, error)
+	// JobRunInput is used to fetch task/hook compiled configuration and assets.
 	JobRunInput(context.Context, *JobRunInputRequest) (*JobRunInputResponse, error)
 	// JobStatus returns the current and past run status of jobs
 	JobStatus(context.Context, *JobStatusRequest) (*JobStatusResponse, error)

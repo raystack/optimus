@@ -1011,7 +1011,7 @@ func TestJobRunServiceServer(t *testing.T) {
 		})
 	})
 
-	t.Run("GetJobRunInput", func(t *testing.T) {
+	t.Run("JobRunInput", func(t *testing.T) {
 		projectName := "a-data-project"
 		jobName := "a-data-job"
 
@@ -1150,7 +1150,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			ScheduledAt:  scheduledAtTimestamp,
 			InstanceName: instanceName,
 		}
-		resp, err := JobRunServiceServer.GetJobRunInput(ctx, &jobRunInputRequest)
+		resp, err := JobRunServiceServer.JobRunInput(ctx, &jobRunInputRequest)
 		assert.Nil(t, err)
 
 		expectedResponse := &pb.JobRunInputResponse{

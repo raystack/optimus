@@ -145,6 +145,7 @@
     },
     "/v1beta1/project/{projectName}/job/{jobName}/run_input": {
       "post": {
+        "summary": "JobRunInput is used to fetch task/hook compiled configuration and assets.",
         "operationId": "JobRunService_JobRunInput",
         "responses": {
           "200": {
