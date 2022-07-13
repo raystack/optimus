@@ -86,6 +86,21 @@ func (b *buildInstanceCommand) injectFlags(cmd *cobra.Command) {
 	// Mandatory flags if config is not set
 	cmd.Flags().StringVarP(&b.projectName, "project-name", "p", "", "Name of the optimus project")
 	cmd.Flags().StringVar(&b.host, "host", "", "Optimus service endpoint url")
+	cmd.PreRunE = b.markAsRequired(cmd.PreRunE, "project-name", "host")
+}
+
+func (b *buildInstanceCommand) markAsRequired(f func(*cobra.Command, []string) error, flagNames ...string) func(*cobra.Command, []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		if err := f(cmd, args); err != nil {
+			return err
+		}
+		if b.clientConfig == nil {
+			for _, n := range flagNames {
+				cmd.MarkFlagRequired(n)
+			}
+		}
+		return nil
+	}
 }
 
 func (b *buildInstanceCommand) PreRunE(cmd *cobra.Command, _ []string) error {
@@ -96,8 +111,6 @@ func (b *buildInstanceCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 
 	if b.clientConfig == nil {
 		b.logger = logger.NewDefaultLogger()
-		cmd.MarkFlagRequired("project-name")
-		cmd.MarkFlagRequired("host")
 		return nil
 	}
 
