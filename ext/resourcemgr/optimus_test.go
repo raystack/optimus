@@ -142,7 +142,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 			o.EqualValues(expectedRawQuery, actualRawQuery)
 
 			getJobSpecificationsResonse := resourcemgr.GetJobSpecificationsResponse{
-				Jobs: []resourcemgr.JobSpecificationResponse{
+				JobSpecificationResponses: []resourcemgr.JobSpecificationResponse{
 					{
 						ProjectName:   "project",
 						NamespaceName: "namespace",

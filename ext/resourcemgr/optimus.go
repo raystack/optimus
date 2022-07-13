@@ -58,7 +58,7 @@ func (e *optimusResourceManager) GetJobSpecifications(ctx context.Context, filte
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
 
-	return toJobSpecs(jobSpecResponse.Jobs), nil
+	return toJobSpecs(jobSpecResponse.JobSpecificationResponses), nil
 }
 
 func (e *optimusResourceManager) constructGetJobSpecificationsRequest(ctx context.Context, filter models.JobSpecFilter) (*http.Request, error) {

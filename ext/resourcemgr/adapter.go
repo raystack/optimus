@@ -5,7 +5,7 @@ import (
 )
 
 type GetJobSpecificationsResponse struct {
-	Jobs []JobSpecificationResponse `json:"jobs"`
+	JobSpecificationResponses []JobSpecificationResponse `json:"jobSpecificationResponses"`
 }
 
 type JobSpecificationResponse struct {
@@ -21,8 +21,8 @@ type JobSpecification struct {
 	StartDate        string                   `json:"startDate"`
 	EndDate          string                   `json:"endDate"`
 	Interval         string                   `json:"interval"`
-	DependsOnPast    string                   `json:"dependsOnPast"`
-	CatchUp          string                   `json:"catchUp"`
+	DependsOnPast    bool                     `json:"dependsOnPast"`
+	CatchUp          bool                     `json:"catchUp"`
 	TaskName         string                   `json:"taskName"`
 	Config           []jobConfigItem          `json:"config"`
 	WindowSize       string                   `json:"windowSize"`
