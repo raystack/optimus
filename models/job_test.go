@@ -11,7 +11,6 @@ import (
 )
 
 func TestJob(t *testing.T) {
-
 	t.Run("GetName", func(t *testing.T) {
 		jobSpec := models.JobSpec{
 			Name: "job-name",
@@ -95,11 +94,11 @@ func TestJob(t *testing.T) {
 				},
 				{
 					Today:              time.Date(2021, 2, 25, 6, 33, 22, 0, time.UTC),
-					WindowSize:         24 * 30 * time.Hour,
+					WindowSize:         24  * time.Hour,
 					WindowOffset:       0,
 					WindowTruncateUpto: "M",
-					ExpectedStart:      time.Date(2021, 2, 1, 0, 0, 0, 0, time.UTC),
-					ExpectedEnd:        time.Date(2021, 2, 28, 0, 0, 0, 0, time.UTC),
+					ExpectedStart:      time.Date(2021, 3, 1, 0, 0, 0, 0, time.UTC),
+					ExpectedEnd:        time.Date(2021, 3, 1, 0, 0, 0, 0, time.UTC),
 				},
 				{
 					Today:              time.Date(2021, 2, 25, 6, 33, 22, 0, time.UTC),

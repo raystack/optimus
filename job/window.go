@@ -2,10 +2,12 @@ package job
 
 import (
 	"fmt"
-	"github.com/odpf/optimus/utils"
+	"github.com/odpf/optimus/models"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/odpf/optimus/utils"
 )
 
 type Window interface {
@@ -46,7 +48,7 @@ func (w WindowV1) Validate() error {
 		}
 	}
 	if w.TruncateTo != "" {
-		validTruncateOptions := []string{"h", "d", "w", "m", "H", "D", "W", "M"}
+		validTruncateOptions := []string{"h", "d", "w", "m", "M"}
 		if utils.ContainsString(validTruncateOptions, w.TruncateTo) == false {
 			return fmt.Errorf("invalid option provided, provide one of : %v", validTruncateOptions)
 		}
@@ -54,72 +56,46 @@ func (w WindowV1) Validate() error {
 	return nil
 }
 
+const HoursInDay = time.Hour * 24
+
+func prepareWindow(windowSize, windowOffset, truncateTo string) (models.JobSpecTaskWindow, error) {
+	var err error
+	window := models.JobSpecTaskWindow{}
+	window.Size = HoursInDay
+	window.Offset = 0
+	window.TruncateTo = "d"
+
+	if truncateTo != "" {
+		window.TruncateTo = truncateTo
+	}
+	if windowSize != "" {
+		window.Size, err = time.ParseDuration(windowSize)
+		if err != nil {
+			return window, fmt.Errorf("failed to parse task window with size %v: %w", windowSize, err)
+		}
+	}
+	if windowOffset != "" {
+		window.Offset, err = time.ParseDuration(windowOffset)
+		if err != nil {
+			return window, fmt.Errorf("failed to parse task window with offset %v: %w", windowOffset, err)
+		}
+	}
+	return window, nil
+}
+
 func (w WindowV1) GetTimeRange(scheduleTime time.Time) (time.Time, time.Time, error) {
-	err := w.Validate()
+	var err error
+	err = w.Validate()
 	if err != nil {
 		return time.Time{}, time.Time{}, err
 	}
-	truncatedTime := w.truncateTime(scheduleTime)
-	endTime := w.adjustOffset(truncatedTime)
-	return w.getStartTime(endTime), endTime, nil
-}
-
-func (w WindowV1) truncateTime(scheduleTime time.Time) time.Time {
-	if w.TruncateTo == "h" {
-		// remove time upto hours
-		return scheduleTime.Truncate(time.Hour)
-	}
-	if w.TruncateTo == "d" || w.TruncateTo == "" {
-		// remove time upto day
-		return scheduleTime.Truncate(24 * time.Hour)
-	}
-	if w.TruncateTo == "w" {
-		// should truncate to the end of current week
-		// weekday with start of the week as Sunday
-		daysToAdd := time.Saturday + 1 - scheduleTime.Weekday()
-
-		durationToAdd := time.Duration(daysToAdd) * 24 * time.Hour
-		truncatedToDay := scheduleTime.Truncate(24 * time.Hour)
-		return truncatedToDay.Add(durationToAdd)
-	}
-	if w.TruncateTo == "m" || w.TruncateTo == "M" {
-		// should truncate to the end of the month.
-		startOfCurrentMonth := time.Date(scheduleTime.Year(), scheduleTime.Month(), 1, 0, 0, 0, 0, time.UTC)
-		return startOfCurrentMonth.AddDate(0, 1, 0)
-	}
-	return scheduleTime
-}
-
-func (w WindowV1) adjustOffset(truncatedTime time.Time) time.Time {
-	if w.Offset == "" {
-		return truncatedTime
-	}
-	duration, err := time.ParseDuration(w.Offset)
+	jobWindow, err := prepareWindow(w.Size, w.Offset, w.TruncateTo)
 	if err != nil {
-		return truncatedTime
+		return time.Time{}, time.Time{}, err
 	}
-	return truncatedTime.Add(duration)
-}
-
-func (w WindowV1) getStartTime(endTime time.Time) time.Time {
-	size := w.Size
-	// default truncate to day
-	if w.Size == "" {
-		size = "24h"
-	}
-
-	// if monthly truncate measure the number of months based on hours(30 hours is one month)
-	if w.TruncateTo == "m" || w.TruncateTo == "M" {
-		hours, _ := strconv.Atoi(strings.Split(size, "h")[0])
-		months := hours / 30
-		return endTime.AddDate(0, -months, 0)
-	}
-
-	duration, err := time.ParseDuration(size)
-	if err != nil {
-		return endTime
-	}
-	return endTime.Add(-duration)
+	startTime := jobWindow.GetStart(scheduleTime)
+	endTime := jobWindow.GetEnd(scheduleTime)
+	return startTime, endTime, nil
 }
 
 type WindowV2 struct {
@@ -182,11 +158,11 @@ func (w WindowV2) getMonthsAndDuration(timeDuration string) (int, string, error)
 	if err != nil {
 		return 0, "0", err
 	}
-	//duration contains only month
+	// duration contains only month
 	if len(splits) == 1 || splits[1] == "" {
 		return months, "0", nil
 	}
-	//if duration is negative then use the negative duration for both the splits.
+	// if duration is negative then use the negative duration for both the splits.
 	if months < 0 {
 		return months, "-" + splits[1], nil
 	}
@@ -265,7 +241,7 @@ func (w WindowV2) getStartTime(endTime time.Time) (time.Time, error) {
 		return time.Time{}, err
 	}
 	nonMonthDuration, err := time.ParseDuration(nonMonthDurationString)
-	if err != nil { //not expecting this, if this happens due to bad code just return inputTime
+	if err != nil { // not expecting this, if this happens due to bad code just return inputTime
 		return time.Time{}, err
 	}
 	return endTime.Add(-nonMonthDuration).AddDate(0, -months, 0), nil
