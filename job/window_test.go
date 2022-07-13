@@ -2,14 +2,15 @@ package job_test
 
 import (
 	"fmt"
-	"github.com/odpf/optimus/job"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/odpf/optimus/job"
 )
 
 func TestWindowV2(t *testing.T) {
-
 	t.Run("Validate", func(t *testing.T) {
 		t.Run("should not throw error for window size which is not a positive or an instant time duration", func(t *testing.T) {
 			validWindowConfigs := []string{"24h", "2h45m", "60s", "45m24h", "", "0", "2M", "45M24h", "45M24h30m"}
@@ -353,6 +354,15 @@ func TestWindowV1(t *testing.T) {
 					TruncateTo:        "m",
 					ExpectedStartTime: time.Date(2022, 8, 1, 0, 0, 0, 0, time.UTC),
 					ExpectedEndTime:   time.Date(2022, 8, 1, 0, 0, 0, 0, time.UTC),
+				},
+				{
+					Scenario:          "should be able to get a single month window if size is greater than 30h",
+					ScheduleTime:      time.Date(2022, 07, 05, 02, 10, 10, 10, time.UTC),
+					Size:              "32h",
+					Offset:            "0",
+					TruncateTo:        "m",
+					ExpectedStartTime: time.Date(2022, 7, 1, 0, 0, 0, 0, time.UTC),
+					ExpectedEndTime:   time.Date(2022, 7, 31, 0, 0, 0, 0, time.UTC),
 				},
 				{
 					Scenario:          "should not truncate to the previous hour if time is already truncated",

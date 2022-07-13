@@ -259,7 +259,7 @@ func (*JobSpecTaskWindow) getWindowDate(today time.Time, windowSize, windowOffse
 	windowStart := windowEnd.Add(-windowSize)
 
 	// handle monthly windows separately as every month is not of same size
-	if windowTruncateTo == "M" {
+	if windowTruncateTo == "M" || windowTruncateTo == "m" {
 		floatingEnd = today
 		// shift current window to nearest month start and end
 
