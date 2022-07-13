@@ -172,6 +172,9 @@ func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter
 	if filter.ResourceDestination != "" {
 		jobSpec, err := srv.jobSpecRepository.GetJobByResourceDestination(ctx, filter.ResourceDestination)
 		if err != nil {
+			if errors.Is(err, store.ErrResourceNotFound) {
+				return []models.JobSpec{}, nil
+			}
 			return nil, err
 		}
 		return []models.JobSpec{jobSpec}, nil
@@ -185,13 +188,16 @@ func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter
 		if filter.JobName != "" {
 			jobSpec, _, err := projectJobSpecRepo.GetByName(ctx, filter.JobName)
 			if err != nil {
+				if errors.Is(err, store.ErrResourceNotFound) {
+					return []models.JobSpec{}, nil
+				}
 				return nil, err
 			}
 			return []models.JobSpec{jobSpec}, nil
 		}
 		jobSpecs, err := projectJobSpecRepo.GetAll(ctx)
 		if err != nil {
-			return []models.JobSpec{}, err
+			return nil, err
 		}
 		return jobSpecs, nil
 	}

@@ -9,7 +9,6 @@ import (
 
 	"github.com/odpf/optimus/cmd"
 	_ "github.com/odpf/optimus/ext/datastore"
-	_ "github.com/odpf/optimus/ext/resourcemgr"
 	_ "github.com/odpf/optimus/extension/provider"
 )
 
