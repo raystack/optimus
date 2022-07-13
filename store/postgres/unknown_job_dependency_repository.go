@@ -51,7 +51,7 @@ func (repo unknownJobDependencyRepository) GetUnknownStaticDependencyNamesPerJob
 	projectAndJobNameList := repo.db.Select("concat(p.name || '/' || j.name) as dependency_job_name").
 		Table("job j").Joins("join project p on j.project_id = j.project_id")
 
-	jobNameAndDependencyNameList := repo.db.Select("name, project_id, jsonb_object_keys(dependencies) as dependency_job_name").Table("job")
+	jobNameAndDependencyNameList := repo.db.Select("name, project_id, jsonb_object_keys(dependencies) as dependency_job_name").Table("job").Where("deleted_at is null")
 
 	if err := repo.db.WithContext(ctx).Select("j.name as job_name, dependency_job_name").
 		Table("(?) j", jobNameAndDependencyNameList).

@@ -58,7 +58,8 @@ func TestUnknownJobDependencyRepository(t *testing.T) {
 		Name:        "dev-team-2",
 		ProjectSpec: externalProjectSpec,
 	}
-	unknownDependencyName := "external-project/external-job"
+	unknownDependencyName1 := "external-project/external-job-1"
+	unknownDependencyName2 := "external-project/external-job-2"
 	testConfigs := []models.JobSpec{
 		{
 			ID:   uuid.New(),
@@ -109,7 +110,7 @@ func TestUnknownJobDependencyRepository(t *testing.T) {
 			},
 			ResourceDestination: jobDestination1,
 			Dependencies: map[string]models.JobSpecDependency{
-				unknownDependencyName: {Type: models.JobSpecDependencyTypeInter},
+				unknownDependencyName1: {Type: models.JobSpecDependencyTypeInter},
 			},
 			NamespaceSpec: namespaceSpec,
 		},
@@ -164,6 +165,44 @@ func TestUnknownJobDependencyRepository(t *testing.T) {
 			ResourceDestination: jobDestination2,
 			NamespaceSpec:       namespaceSpec,
 		},
+		{
+			ID:   uuid.New(),
+			Name: "job-3",
+			Behavior: models.JobSpecBehavior{
+				DependsOnPast: false,
+				CatchUp:       true,
+				Retry: models.JobSpecBehaviorRetry{
+					Count:              2,
+					Delay:              0,
+					ExponentialBackoff: true,
+				},
+			},
+			Task: models.JobSpecTask{
+				Unit: &models.Plugin{Base: execUnit1},
+				Config: []models.JobSpecConfigItem{
+					{
+						Name: "do", Value: "this",
+					},
+				},
+				Window: models.JobSpecTaskWindow{
+					Size:       time.Hour * 24,
+					Offset:     0,
+					TruncateTo: "h",
+				},
+			},
+			Assets: *models.JobAssets{}.New(
+				[]models.JobSpecAsset{
+					{
+						Name:  "query.sql",
+						Value: "select * from 1",
+					},
+				},
+			),
+			Dependencies: map[string]models.JobSpecDependency{
+				unknownDependencyName2: {Type: models.JobSpecDependencyTypeInter},
+			},
+			NamespaceSpec: namespaceSpec,
+		},
 	}
 	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 	DBSetup := func() *gorm.DB {
@@ -215,7 +254,7 @@ func TestUnknownJobDependencyRepository(t *testing.T) {
 	})
 
 	t.Run("GetUnknownStaticDependencyNamesByJobName", func(t *testing.T) {
-		t.Run("GetUnknownStaticDependencyNamesByJobName should return all unknown static dependency urns", func(t *testing.T) {
+		t.Run("GetUnknownStaticDependencyNamesByJobName should return unknown static dependency urns", func(t *testing.T) {
 			db := DBSetup()
 
 			defer execUnit1.AssertExpectations(t)
@@ -241,7 +280,47 @@ func TestUnknownJobDependencyRepository(t *testing.T) {
 			repo := postgres.NewUnknownJobDependencyRepository(db)
 			checkModel, err := repo.GetUnknownStaticDependencyNamesPerJobName(ctx, projectSpec.ID)
 
-			assert.Equal(t, map[string][]string{testModels[0].Name: {unknownDependencyName}}, checkModel)
+			assert.Equal(t, map[string][]string{testModels[0].Name: {unknownDependencyName1}}, checkModel)
+			assert.Nil(t, err)
+		})
+		t.Run("GetUnknownStaticDependencyNamesByJobName should return unknown static dependency urns for only the existing jobs", func(t *testing.T) {
+			db := DBSetup()
+
+			defer execUnit1.AssertExpectations(t)
+			var testModels []models.JobSpec
+			testModels = append(testModels, testConfigs...)
+
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			namespaceRepo := postgres.NewNamespaceRepository(db, hash)
+			err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
+			assert.Nil(t, err)
+
+			err = namespaceRepo.Insert(ctx, externalProjectSpec, externalProjectNamespaceSpec)
+			assert.Nil(t, err)
+
+			jobSpecRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			err = jobSpecRepo.Insert(ctx, testModels[0], jobDestination1)
+			assert.Nil(t, err)
+			err = jobSpecRepo.Insert(ctx, testModels[1], jobDestination2)
+			assert.Nil(t, err)
+			err = jobSpecRepo.Insert(ctx, testModels[2], "")
+			assert.Nil(t, err)
+
+			repo := postgres.NewUnknownJobDependencyRepository(db)
+			checkModel, err := repo.GetUnknownStaticDependencyNamesPerJobName(ctx, projectSpec.ID)
+			assert.Equal(t, map[string][]string{
+				testModels[0].Name: {unknownDependencyName1},
+				testModels[2].Name: {unknownDependencyName2},
+			}, checkModel)
+			assert.Nil(t, err)
+
+			err = jobSpecRepo.Delete(ctx, testModels[2].ID)
+			assert.Nil(t, err)
+
+			checkModel, err = repo.GetUnknownStaticDependencyNamesPerJobName(ctx, projectSpec.ID)
+			assert.Equal(t, map[string][]string{testModels[0].Name: {unknownDependencyName1}}, checkModel)
 			assert.Nil(t, err)
 		})
 	})
