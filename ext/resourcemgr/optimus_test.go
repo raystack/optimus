@@ -24,8 +24,10 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 	apiPath := "/api/v1beta1/jobs"
 
 	o.Run("should return nil and error if context is nil", func() {
-		conf := config.ResourceManagerConfigOptimus{
-			Host: "localhost",
+		conf := config.ResourceManager{
+			Config: config.ResourceManagerConfigOptimus{
+				Host: "localhost",
+			},
 		}
 		manager, err := resourcemgr.NewOptimusResourceManager(conf)
 		if err != nil {
@@ -35,15 +37,17 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		var ctx context.Context
 		var filter models.JobSpecFilter
 
-		actualJobSpecifications, actualError := manager.GetJobSpecifications(ctx, filter)
+		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, filter)
 
-		o.Nil(actualJobSpecifications)
+		o.Nil(actualOptimusDependencies)
 		o.Error(actualError)
 	})
 
 	o.Run("should return nil and error if error is encountered when creating request", func() {
-		conf := config.ResourceManagerConfigOptimus{
-			Host: ":invalid-url",
+		conf := config.ResourceManager{
+			Config: config.ResourceManagerConfigOptimus{
+				Host: ":invalid-url",
+			},
 		}
 		manager, err := resourcemgr.NewOptimusResourceManager(conf)
 		if err != nil {
@@ -53,9 +57,9 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		ctx := context.Background()
 		var filter models.JobSpecFilter
 
-		actualJobSpecifications, actualError := manager.GetJobSpecifications(ctx, filter)
+		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, filter)
 
-		o.Nil(actualJobSpecifications)
+		o.Nil(actualOptimusDependencies)
 		o.Error(actualError)
 	})
 
@@ -64,8 +68,10 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		server := httptest.NewServer(router)
 		defer server.Close()
 
-		conf := config.ResourceManagerConfigOptimus{
-			Host: server.URL,
+		conf := config.ResourceManager{
+			Config: config.ResourceManagerConfigOptimus{
+				Host: server.URL,
+			},
 		}
 		manager, err := resourcemgr.NewOptimusResourceManager(conf)
 		if err != nil {
@@ -80,9 +86,9 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		ctx := context.Background()
 		var filter models.JobSpecFilter
 
-		actualJobSpecifications, actualError := manager.GetJobSpecifications(ctx, filter)
+		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, filter)
 
-		o.Nil(actualJobSpecifications)
+		o.Nil(actualOptimusDependencies)
 		o.Error(actualError)
 	})
 
@@ -91,8 +97,10 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		server := httptest.NewServer(router)
 		defer server.Close()
 
-		conf := config.ResourceManagerConfigOptimus{
-			Host: server.URL,
+		conf := config.ResourceManager{
+			Config: config.ResourceManagerConfigOptimus{
+				Host: server.URL,
+			},
 		}
 		manager, err := resourcemgr.NewOptimusResourceManager(conf)
 		if err != nil {
@@ -110,9 +118,9 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		ctx := context.Background()
 		var filter models.JobSpecFilter
 
-		actualJobSpecifications, actualError := manager.GetJobSpecifications(ctx, filter)
+		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, filter)
 
-		o.Nil(actualJobSpecifications)
+		o.Nil(actualOptimusDependencies)
 		o.Error(actualError)
 	})
 
@@ -121,10 +129,13 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		server := httptest.NewServer(router)
 		defer server.Close()
 
-		conf := config.ResourceManagerConfigOptimus{
-			Host: server.URL,
-			Headers: map[string]string{
-				"key": "value",
+		conf := config.ResourceManager{
+			Name: "other-optimus",
+			Config: config.ResourceManagerConfigOptimus{
+				Host: server.URL,
+				Headers: map[string]string{
+					"key": "value",
+				},
 			},
 		}
 		manager, err := resourcemgr.NewOptimusResourceManager(conf)
@@ -166,28 +177,40 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 			ResourceDestination: "resource",
 		}
 
-		expectedJobSpecifications := []models.JobSpec{
+		expectedJobSpecifications := []models.OptimusDependency{
 			{
-				Name: "job",
-				NamespaceSpec: models.NamespaceSpec{
-					Name: "namespace",
-					ProjectSpec: models.ProjectSpec{
-						Name: "project",
-					},
+				Name: "other-optimus",
+				Host: server.URL,
+				Headers: map[string]string{
+					"key": "value",
 				},
+				ProjectName:   "project",
+				NamespaceName: "namespace",
+				JobName:       "job",
 			},
 		}
 
-		actualJobSpecifications, actualError := manager.GetJobSpecifications(ctx, filter)
+		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, filter)
 
-		o.EqualValues(expectedJobSpecifications, actualJobSpecifications)
+		o.EqualValues(expectedJobSpecifications, actualOptimusDependencies)
 		o.NoError(actualError)
 	})
 }
 
 func TestNewOptimusResourceManager(t *testing.T) {
+	t.Run("should return nil and error if config cannot be decoded", func(t *testing.T) {
+		var conf config.ResourceManager
+
+		actualResourceManager, actualError := resourcemgr.NewOptimusResourceManager(conf)
+
+		assert.Nil(t, actualResourceManager)
+		assert.Error(t, actualError)
+	})
+
 	t.Run("should return nil and error if host is empty", func(t *testing.T) {
-		var conf config.ResourceManagerConfigOptimus
+		conf := config.ResourceManager{
+			Config: config.ResourceManagerConfigOptimus{},
+		}
 
 		actualResourceManager, actualError := resourcemgr.NewOptimusResourceManager(conf)
 
@@ -196,8 +219,10 @@ func TestNewOptimusResourceManager(t *testing.T) {
 	})
 
 	t.Run("should return resource manager and nil if no error is encountered", func(t *testing.T) {
-		conf := config.ResourceManagerConfigOptimus{
-			Host: "localhost",
+		conf := config.ResourceManager{
+			Config: config.ResourceManagerConfigOptimus{
+				Host: "localhost",
+			},
 		}
 
 		actualResourceManager, actualError := resourcemgr.NewOptimusResourceManager(conf)

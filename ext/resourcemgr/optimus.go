@@ -8,41 +8,50 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/mitchellh/mapstructure"
+
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 )
 
 // ResourceManager is repository for external job spec
 type ResourceManager interface {
-	GetJobSpecifications(context.Context, models.JobSpecFilter) ([]models.JobSpec, error)
+	GetOptimusDependencies(context.Context, models.JobSpecFilter) ([]models.OptimusDependency, error)
 }
 
 type optimusResourceManager struct {
-	optimusConfig config.ResourceManagerConfigOptimus
-	httpClient    *http.Client
+	name   string
+	config config.ResourceManagerConfigOptimus
+
+	httpClient *http.Client
 }
 
 // NewOptimusResourceManager initializes job spec repository for Optimus neighbor
-func NewOptimusResourceManager(conf config.ResourceManagerConfigOptimus) (ResourceManager, error) {
+func NewOptimusResourceManager(resourceManagerConfig config.ResourceManager) (ResourceManager, error) {
+	var conf config.ResourceManagerConfigOptimus
+	if err := mapstructure.Decode(resourceManagerConfig.Config, &conf); err != nil {
+		return nil, fmt.Errorf("error decoding resource manger config: %w", err)
+	}
 	if conf.Host == "" {
 		return nil, errors.New("optimus resource manager host is empty")
 	}
 	return &optimusResourceManager{
-		optimusConfig: conf,
-		httpClient:    http.DefaultClient,
+		name:       resourceManagerConfig.Name,
+		config:     conf,
+		httpClient: http.DefaultClient,
 	}, nil
 }
 
-func (e *optimusResourceManager) GetJobSpecifications(ctx context.Context, filter models.JobSpecFilter) ([]models.JobSpec, error) {
+func (o *optimusResourceManager) GetOptimusDependencies(ctx context.Context, filter models.JobSpecFilter) ([]models.OptimusDependency, error) {
 	if ctx == nil {
 		return nil, errors.New("context is nil")
 	}
-	request, err := e.constructGetJobSpecificationsRequest(ctx, filter)
+	request, err := o.constructGetJobSpecificationsRequest(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("error encountered when constructing request: %w", err)
 	}
 
-	response, err := e.httpClient.Do(request)
+	response, err := o.httpClient.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("error encountered when sending request: %w", err)
 	}
@@ -58,10 +67,10 @@ func (e *optimusResourceManager) GetJobSpecifications(ctx context.Context, filte
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
 
-	return toJobSpecs(jobSpecResponse.JobSpecificationResponses), nil
+	return o.toOptimusDependencies(jobSpecResponse.JobSpecificationResponses), nil
 }
 
-func (e *optimusResourceManager) constructGetJobSpecificationsRequest(ctx context.Context, filter models.JobSpecFilter) (*http.Request, error) {
+func (o *optimusResourceManager) constructGetJobSpecificationsRequest(ctx context.Context, filter models.JobSpecFilter) (*http.Request, error) {
 	var filters []string
 	if filter.JobName != "" {
 		filters = append(filters, fmt.Sprintf("job_name=%s", filter.JobName))
@@ -74,7 +83,7 @@ func (e *optimusResourceManager) constructGetJobSpecificationsRequest(ctx contex
 	}
 
 	path := "/api/v1beta1/jobs"
-	url := e.optimusConfig.Host + path + "?" + strings.Join(filters, "&")
+	url := o.config.Host + path + "?" + strings.Join(filters, "&")
 
 	request, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
@@ -82,8 +91,27 @@ func (e *optimusResourceManager) constructGetJobSpecificationsRequest(ctx contex
 	}
 
 	request.Header.Set("Accept", "application/json")
-	for key, value := range e.optimusConfig.Headers {
+	for key, value := range o.config.Headers {
 		request.Header.Set(key, value)
 	}
 	return request, nil
+}
+
+func (o *optimusResourceManager) toOptimusDependencies(responses []JobSpecificationResponse) []models.OptimusDependency {
+	output := make([]models.OptimusDependency, len(responses))
+	for i, r := range responses {
+		output[i] = o.toOptimusDependency(r)
+	}
+	return output
+}
+
+func (o *optimusResourceManager) toOptimusDependency(response JobSpecificationResponse) models.OptimusDependency {
+	return models.OptimusDependency{
+		Name:          o.name,
+		Host:          o.config.Host,
+		Headers:       o.config.Headers,
+		ProjectName:   response.ProjectName,
+		NamespaceName: response.NamespaceName,
+		JobName:       response.Job.Name,
+	}
 }

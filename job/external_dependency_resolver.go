@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/ext/resourcemgr"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 )
@@ -19,29 +20,28 @@ type ExternalDependencyResolver interface {
 }
 
 type externalDependencyResolver struct {
+	optimusResourceManagers        []resourcemgr.ResourceManager
 	unknownJobDependencyRepository store.UnknownJobDependencyRepository
-
-	optimusDependencyGetters []OptimusDependencyGetter
 }
 
 // NewExternalDependencyResolver creates a new instance of externalDependencyResolver
 func NewExternalDependencyResolver(resourceManagerConfigs []config.ResourceManager, unknownJobDependencyRepository store.UnknownJobDependencyRepository) (ExternalDependencyResolver, error) {
-	var optimusDependencyGetters []OptimusDependencyGetter
+	var optimusResourceManagers []resourcemgr.ResourceManager
 	for _, conf := range resourceManagerConfigs {
 		switch conf.Type {
 		case "optimus":
-			getter, err := NewOptimusDependencyGetter(conf)
+			getter, err := resourcemgr.NewOptimusResourceManager(conf)
 			if err != nil {
 				return nil, err
 			}
-			optimusDependencyGetters = append(optimusDependencyGetters, getter)
+			optimusResourceManagers = append(optimusResourceManagers, getter)
 		default:
 			return nil, fmt.Errorf("resource manager [%s] is not recognized", conf.Type)
 		}
 	}
 	return &externalDependencyResolver{
 		unknownJobDependencyRepository: unknownJobDependencyRepository,
-		optimusDependencyGetters:       optimusDependencyGetters,
+		optimusResourceManagers:        optimusResourceManagers,
 	}, nil
 }
 
@@ -139,7 +139,7 @@ func (e *externalDependencyResolver) fetchStaticOptimusDependenciesForFilters(ct
 
 func (e *externalDependencyResolver) fetchOptimusDependenciesPerFilter(ctx context.Context, filter models.JobSpecFilter) ([]models.OptimusDependency, error) {
 	var dependencies []models.OptimusDependency
-	for _, getter := range e.optimusDependencyGetters {
+	for _, getter := range e.optimusResourceManagers {
 		deps, err := getter.GetOptimusDependencies(ctx, filter)
 		if err != nil {
 			return nil, err

@@ -1,9 +1,5 @@
 package resourcemgr
 
-import (
-	"github.com/odpf/optimus/models"
-)
-
 type GetJobSpecificationsResponse struct {
 	JobSpecificationResponses []JobSpecificationResponse `json:"jobSpecificationResponses"`
 }
@@ -97,24 +93,4 @@ type httpDependency struct {
 type jobConfigItem struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
-}
-
-func toJobSpecs(responses []JobSpecificationResponse) []models.JobSpec {
-	output := make([]models.JobSpec, len(responses))
-	for i, r := range responses {
-		output[i] = toJobSpec(r)
-	}
-	return output
-}
-
-func toJobSpec(response JobSpecificationResponse) models.JobSpec {
-	return models.JobSpec{
-		Name: response.Job.Name,
-		NamespaceSpec: models.NamespaceSpec{
-			Name: response.NamespaceName,
-			ProjectSpec: models.ProjectSpec{
-				Name: response.ProjectName,
-			},
-		},
-	}
 }
