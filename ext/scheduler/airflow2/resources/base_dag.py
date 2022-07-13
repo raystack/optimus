@@ -216,7 +216,7 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
 wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
     optimus_hostname="{{$.Hostname}}",
     upstream_optimus_project="{{$dependency.Project.Name}}",
-    upstream_optimus_namespace="{{$.Namespace.Name}}",
+    upstream_optimus_namespace="{{$dependency.Job.NamespaceSpec.Name}}",
     upstream_optimus_job="{{$dependency.Job.Name}}",
     window_size="{{ $baseWindow.Size.String }}",
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
@@ -266,7 +266,11 @@ publish_job_start_event >> wait_{{ $t.Job.Name | replace "-" "__dash__" | replac
 {{- range $_, $t := $.Job.ExternalDependencies.HTTPDependencies }}
 publish_job_start_event >>  wait_{{ $t.Name }} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
 {{- end}}
-{{if and (not $.Job.Dependencies) (not $.Job.ExternalDependencies.HTTPDependencies)}}
+{{- range $_, $dependency := $.Job.ExternalDependencies.OptimusDependencies}}
+{{ $identity := print $dependency.Name "-" $dependency.ProjectName "-" $dependency.JobName }}
+publish_job_start_event >> wait_{{$identity | replace "-" "__dash__" | replace "." "__dot__"}} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
+{{- end}}
+{{if and (not $.Job.Dependencies) (not $.Job.ExternalDependencies.HTTPDependencies) (not $.Job.ExternalDependencies.OptimusDependencies)}}
 # if no sensor and dependency is configured
 publish_job_start_event >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
 {{end}}
