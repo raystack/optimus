@@ -15,6 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/core/progress/sender"
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
@@ -136,23 +137,28 @@ func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, 
 	return result, nil
 }
 
-func (srv *Service) bulkCreate(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, observers progress.Observer) []models.JobSpec {
+func (srv *Service) bulkCreate(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, logSender sender.LogStatus) []models.JobSpec {
 	result := []models.JobSpec{}
 	for _, jobSpec := range jobSpecs {
 		jobSpecCreated, err := srv.Create(ctx, namespace, jobSpec)
 		if err != nil {
+			op := "modify"
 			if jobSpec.ID == uuid.Nil {
-				srv.notifyProgress(observers, &models.JobCreateEvent{Name: jobSpec.Name, Err: err})
-			} else {
-				srv.notifyProgress(observers, &models.JobModifyEvent{Name: jobSpec.Name, Err: err})
+				op = "create"
 			}
+			warnMsg := fmt.Sprintf("[%s] error '%s': failed to %s job, %s", namespace.Name, jobSpec.Name, op, err.Error())
+			sender.SendWarningMessage(logSender, warnMsg)
+
 			continue
 		}
+
+		op := "modified"
 		if jobSpec.ID == uuid.Nil {
-			srv.notifyProgress(observers, &models.JobCreateEvent{Name: jobSpec.Name})
-		} else {
-			srv.notifyProgress(observers, &models.JobModifyEvent{Name: jobSpec.Name})
+			op = "created"
 		}
+		successMsg := fmt.Sprintf("[%s] info '%s': job %s", namespace.Name, jobSpec.Name, op)
+		sender.SendSuccessMessage(logSender, successMsg)
+
 		result = append(result, jobSpecCreated)
 	}
 
@@ -316,25 +322,30 @@ func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, 
 }
 
 func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSpec, jobSpecsToDelete []models.JobSpec,
-	progressObserver progress.Observer) {
+	logSender sender.LogStatus) {
 	namespaceJobSpecRepo := srv.namespaceJobSpecRepoFactory.New(namespace)
 	for _, jobSpec := range jobSpecsToDelete {
 		isDependency, err := srv.isDependency(ctx, jobSpec)
 		if err != nil {
-			srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name, Err: err})
+			warnMsg := fmt.Sprintf("[%s] error '%s': failed to delete job, %s", namespace.Name, jobSpec.Name, err.Error())
+			sender.SendWarningMessage(logSender, warnMsg)
 			continue
 		}
 		if isDependency {
 			// TODO: Ideally should include list of jobs that are using the requested job in the error message
 			err = fmt.Errorf("cannot delete job %s since it's dependency of other job", jobSpec.Name)
-			srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name, Err: err})
+			warnMsg := fmt.Sprintf("[%s] error '%s': failed to delete job, %s", namespace.Name, jobSpec.Name, err.Error())
+			sender.SendWarningMessage(logSender, warnMsg)
 			continue
 		}
 		if err := namespaceJobSpecRepo.Delete(ctx, jobSpec.ID); err != nil {
-			srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name, Err: err})
+			warnMsg := fmt.Sprintf("[%s] error '%s': failed to delete job, %s", namespace.Name, jobSpec.Name, err.Error())
+			sender.SendWarningMessage(logSender, warnMsg)
 			continue
 		}
-		srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name})
+
+		successMsg := fmt.Sprintf("[%s] info '%s': job deleted", namespace.Name, jobSpec.Name)
+		sender.SendSuccessMessage(logSender, successMsg)
 	}
 }
 
@@ -805,7 +816,7 @@ func (srv *Service) fetchSpecsForGivenJobNames(ctx context.Context, projectSpec 
 }
 
 func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpec models.ProjectSpec,
-	jobSpecs []models.JobSpec, progressObserver progress.Observer) {
+	namespaceName string, jobSpecs []models.JobSpec, logSender sender.LogStatus) {
 	start := time.Now()
 	defer resolveDependencyHistogram.Observe(time.Since(start).Seconds())
 
@@ -831,10 +842,12 @@ func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpe
 	for _, state := range runner.Run() {
 		if state.Err != nil {
 			failure++
-			srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolution{Job: fmt.Sprintf("%v", state.Val), Err: state.Err})
+			warnMsg := fmt.Sprintf("[%s] error '%s': failed to resolve dependency, %s", namespaceName, state.Val, state.Err.Error())
+			sender.SendWarningMessage(logSender, warnMsg)
 		} else {
 			success++
-			srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolution{Job: fmt.Sprintf("%v", state.Val)})
+			successMsg := fmt.Sprintf("[%s] info '%s': dependency is successfully resolved", namespaceName, state.Val)
+			sender.SendSuccessMessage(logSender, successMsg)
 		}
 	}
 
@@ -855,7 +868,7 @@ func (srv *Service) identify(ctx context.Context, currentSpec models.JobSpec, pr
 }
 
 // Deploy only the modified jobs (created or updated)
-func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceName string, jobSpecs []models.JobSpec, observers progress.Observer) (models.DeploymentID, error) {
+func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceName string, jobSpecs []models.JobSpec, logSender sender.LogStatus) (models.DeploymentID, error) {
 	// Get namespace spec
 	namespaceSpec, err := srv.namespaceService.Get(ctx, projectName, namespaceName)
 	if err != nil {
@@ -869,14 +882,13 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 
 	createdAndModifiedJobs := createdJobs
 	createdAndModifiedJobs = append(createdAndModifiedJobs, modifiedJobs...)
-	savedJobs := srv.bulkCreate(ctx, namespaceSpec, createdAndModifiedJobs, observers)
+	savedJobs := srv.bulkCreate(ctx, namespaceSpec, createdAndModifiedJobs, logSender)
 
-	srv.bulkDelete(ctx, namespaceSpec, deletedJobs, observers)
+	srv.bulkDelete(ctx, namespaceSpec, deletedJobs, logSender)
 
 	// Resolve inferred dependency
 	if len(savedJobs) > 0 {
-		srv.identifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, savedJobs, observers)
-		srv.notifyProgress(observers, &models.ProgressJobDependencyResolutionFinished{})
+		srv.identifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, namespaceName, savedJobs, logSender)
 	}
 
 	// Deploy through deploy manager

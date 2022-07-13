@@ -9,15 +9,20 @@ type LogStatus interface {
 }
 
 func SendErrorMessage(logSender LogStatus, msg string) {
-	logSender.Send(pb.Log{
-		Level:   pb.Level_Error,
-		Message: msg,
-	})
+	sendMsg(logSender, pb.Level_Error, msg)
+}
+
+func SendWarningMessage(logSender LogStatus, msg string) {
+	sendMsg(logSender, pb.Level_Warning, msg)
 }
 
 func SendSuccessMessage(logSender LogStatus, msg string) {
+	sendMsg(logSender, pb.Level_Info, msg)
+}
+
+func sendMsg(logSender LogStatus, level pb.Level, msg string) {
 	logSender.Send(pb.Log{
-		Level:   pb.Level_Info,
+		Level:   level,
 		Message: msg,
 	})
 }
