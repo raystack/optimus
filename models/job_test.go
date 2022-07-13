@@ -11,6 +11,7 @@ import (
 )
 
 func TestJob(t *testing.T) {
+
 	t.Run("GetName", func(t *testing.T) {
 		jobSpec := models.JobSpec{
 			Name: "job-name",
@@ -85,11 +86,35 @@ func TestJob(t *testing.T) {
 					ExpectedEnd:        time.Date(2020, 7, 12, 0, 0, 0, 0, time.UTC),
 				},
 				{
+					Today:              time.Date(2020, 7, 12, 0, 0, 0, 0, time.UTC),
+					WindowSize:         24 * 7 * time.Hour,
+					WindowOffset:       0,
+					WindowTruncateUpto: "w",
+					ExpectedStart:      time.Date(2020, 7, 12, 0, 0, 0, 0, time.UTC),
+					ExpectedEnd:        time.Date(2020, 7, 19, 0, 0, 0, 0, time.UTC),
+				},
+				{
 					Today:              time.Date(2021, 2, 25, 6, 33, 22, 0, time.UTC),
 					WindowSize:         24 * 30 * time.Hour,
 					WindowOffset:       0,
 					WindowTruncateUpto: "M",
 					ExpectedStart:      time.Date(2021, 2, 1, 0, 0, 0, 0, time.UTC),
+					ExpectedEnd:        time.Date(2021, 2, 28, 0, 0, 0, 0, time.UTC),
+				},
+				{
+					Today:              time.Date(2021, 2, 25, 6, 33, 22, 0, time.UTC),
+					WindowSize:         24 * 30 * time.Hour,
+					WindowOffset:       24 * 32 * time.Hour,
+					WindowTruncateUpto: "M",
+					ExpectedStart:      time.Date(2021, 3, 1, 0, 0, 0, 0, time.UTC),
+					ExpectedEnd:        time.Date(2021, 3, 31, 0, 0, 0, 0, time.UTC),
+				},
+				{
+					Today:              time.Date(2021, 2, 01, 6, 33, 22, 0, time.UTC),
+					WindowSize:         24 * 62 * time.Hour,
+					WindowOffset:       0,
+					WindowTruncateUpto: "M",
+					ExpectedStart:      time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC),
 					ExpectedEnd:        time.Date(2021, 2, 28, 0, 0, 0, 0, time.UTC),
 				},
 				{
@@ -142,8 +167,8 @@ func TestJob(t *testing.T) {
 				}
 				windowStart := win.GetStart(tcase.Today)
 				windowEnd := win.GetEnd(tcase.Today)
-				assert.Equal(t, tcase.ExpectedStart, windowStart)
-				assert.Equal(t, tcase.ExpectedEnd, windowEnd)
+				assert.Equal(t, tcase.ExpectedStart.String(), windowStart.String())
+				assert.Equal(t, tcase.ExpectedEnd.String(), windowEnd.String())
 			}
 		})
 	})
