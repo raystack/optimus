@@ -1,14 +1,11 @@
 package backup
 
 import (
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/models"
 )
 
@@ -45,24 +42,9 @@ func getAvailableDatastorers() []string {
 	return availableStorers
 }
 
-func prepareDatastoreName(datastoreName string) error {
-	availableStorers := getAvailableDatastorers()
-	if datastoreName == "" {
-		storerName, err := survey.AskToSelectDatastorer(availableStorers)
-		if err != nil {
-			return err
-		}
-		datastoreName = storerName
+// TODO: move it to another common package, eg. internal
+func markFlagsRequired(cmd *cobra.Command, flagNames []string) {
+	for _, n := range flagNames {
+		cmd.MarkFlagRequired(n)
 	}
-	datastoreName = strings.ToLower(datastoreName)
-	validStore := false
-	for _, s := range availableStorers {
-		if s == datastoreName {
-			validStore = true
-		}
-	}
-	if !validStore {
-		return fmt.Errorf("invalid datastore type, available values are: %v", availableStorers)
-	}
-	return nil
 }

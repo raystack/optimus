@@ -57,6 +57,13 @@ func (d *describeCommand) injectFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&d.projectName, "project-name", d.projectName, "Targeted project name, by default taking from client config")
 }
 
+// TODO: move it to another common package, eg. internal
+func markFlagsRequired(cmd *cobra.Command, flagNames []string) {
+	for _, n := range flagNames {
+		cmd.MarkFlagRequired(n)
+	}
+}
+
 func (d *describeCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	if d.dirPath != "" {
 		d.configFilePath = path.Join(d.dirPath, config.DefaultFilename)
@@ -68,8 +75,7 @@ func (d *describeCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 
 	if d.clientConfig == nil {
 		d.logger = logger.NewDefaultLogger()
-		cmd.MarkFlagRequired("project-name")
-		cmd.MarkFlagRequired("host")
+		markFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 

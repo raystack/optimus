@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	saltConfig "github.com/odpf/salt/config"
 	"github.com/odpf/salt/log"
@@ -92,9 +93,7 @@ func (c *createCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 		c.namespaceSurvey = survey.NewNamespaceSurvey(c.logger)
 		c.backupCreateSurvey = survey.NewBackupCreateSurvey(c.logger)
 
-		cmd.MarkFlagRequired("project-name")
-		cmd.MarkFlagRequired("host")
-		cmd.MarkFlagRequired("namespace")
+		markFlagsRequired(cmd, []string{"project-name", "host", "namespace"})
 
 		return nil
 	}
@@ -299,6 +298,28 @@ func (c *createCommand) prepareResourceName() error {
 			return err
 		}
 		c.resourceName = resourceName
+	}
+	return nil
+}
+
+func prepareDatastoreName(datastoreName string) error {
+	availableStorers := getAvailableDatastorers()
+	if datastoreName == "" {
+		storerName, err := survey.AskToSelectDatastorer(availableStorers)
+		if err != nil {
+			return err
+		}
+		datastoreName = storerName
+	}
+	datastoreName = strings.ToLower(datastoreName)
+	validStore := false
+	for _, s := range availableStorers {
+		if s == datastoreName {
+			validStore = true
+		}
+	}
+	if !validStore {
+		return fmt.Errorf("invalid datastore type, available values are: %v", availableStorers)
 	}
 	return nil
 }

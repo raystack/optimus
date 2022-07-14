@@ -72,8 +72,7 @@ func (d *describeCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 
 	if d.clientConfig == nil {
 		d.logger = logger.NewDefaultLogger()
-		cmd.MarkFlagRequired("project-name")
-		cmd.MarkFlagRequired("host")
+		markFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 

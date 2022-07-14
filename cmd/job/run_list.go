@@ -70,8 +70,7 @@ func (r *runListCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 
 	if r.clientConfig == nil {
 		r.logger = logger.NewDefaultLogger()
-		cmd.MarkFlagRequired("project-name")
-		cmd.MarkFlagRequired("host")
+		markFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 

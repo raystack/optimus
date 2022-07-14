@@ -32,7 +32,6 @@ const (
 type buildInstanceCommand struct {
 	logger         log.Logger
 	configFilePath string
-	clientConfig   *config.ClientConfig
 
 	// Required
 	assetOutputDir string
@@ -48,7 +47,6 @@ type buildInstanceCommand struct {
 // NewBuildInstanceCommand initializes command to build instance for admin
 func NewBuildInstanceCommand() *cobra.Command {
 	buildInstance := &buildInstanceCommand{
-		clientConfig:   &config.ClientConfig{},
 		assetOutputDir: "/tmp/",
 		runType:        "task",
 	}
@@ -65,6 +63,7 @@ func NewBuildInstanceCommand() *cobra.Command {
 	}
 
 	buildInstance.injectFlags(cmd)
+	markFlagsRequired(cmd, []string{"output-dir", "scheduled-at", "type", "name"})
 
 	return cmd
 }
@@ -78,65 +77,53 @@ func (b *buildInstanceCommand) injectFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&b.scheduledAt, "scheduled-at", "", "Time at which the job was scheduled for execution")
 	cmd.Flags().StringVar(&b.runType, "type", "task", "Type of instance, could be task/hook")
 	cmd.Flags().StringVar(&b.runName, "name", "", "Name of running instance, e.g., bq2bq/transporter/predator")
-	cmd.MarkFlagRequired("output-dir")
-	cmd.MarkFlagRequired("scheduled-at")
-	cmd.MarkFlagRequired("type")
-	cmd.MarkFlagRequired("name")
 
 	// Mandatory flags if config is not set
 	cmd.Flags().StringVarP(&b.projectName, "project-name", "p", "", "Name of the optimus project")
 	cmd.Flags().StringVar(&b.host, "host", "", "Optimus service endpoint url")
-	cmd.PreRunE = b.markAsRequired(cmd.PreRunE, "project-name", "host")
 }
 
-func (b *buildInstanceCommand) markAsRequired(f func(*cobra.Command, []string) error, flagNames ...string) func(*cobra.Command, []string) error {
-	return func(cmd *cobra.Command, args []string) error {
-		if err := f(cmd, args); err != nil {
-			return err
-		}
-		if b.clientConfig == nil {
-			for _, n := range flagNames {
-				cmd.MarkFlagRequired(n)
-			}
-		}
-		return nil
+// TODO: move it to another common package, eg. internal
+func markFlagsRequired(cmd *cobra.Command, flagNames []string) {
+	for _, n := range flagNames {
+		cmd.MarkFlagRequired(n)
 	}
 }
 
 func (b *buildInstanceCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	// Load config
-	if err := b.loadConfig(); err != nil {
+	conf, err := loadConfig(b.configFilePath)
+	if err != nil {
 		return err
 	}
 
-	if b.clientConfig == nil {
+	if conf == nil {
 		b.logger = logger.NewDefaultLogger()
+		markFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	b.logger = logger.NewClientLogger(b.clientConfig.Log)
+	b.logger = logger.NewClientLogger(conf.Log)
 	if b.projectName == "" {
-		b.projectName = b.clientConfig.Project.Name
+		b.projectName = conf.Project.Name
 	}
 	if b.host == "" {
-		b.host = b.clientConfig.Host
+		b.host = conf.Host
 	}
 
 	return nil
 }
 
-func (b *buildInstanceCommand) loadConfig() error {
+func loadConfig(configFilePath string) (*config.ClientConfig, error) {
 	// TODO: find a way to load the config in one place
-	c, err := config.LoadClientConfig(b.configFilePath)
+	c, err := config.LoadClientConfig(configFilePath)
 	if err != nil {
 		if errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
-			b.clientConfig = nil
-			return nil
+			return nil, nil
 		}
-		return err
+		return nil, err
 	}
-	*b.clientConfig = *c
-	return nil
+	return c, nil
 }
 
 func (b *buildInstanceCommand) RunE(_ *cobra.Command, args []string) error {
