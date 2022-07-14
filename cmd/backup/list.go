@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"time"
 
-	saltConfig "github.com/odpf/salt/config"
 	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/cmd/survey"
@@ -24,7 +24,6 @@ import (
 type listCommand struct {
 	logger         log.Logger
 	configFilePath string
-	clientConfig   *config.ClientConfig
 
 	projectName string
 	host        string
@@ -32,9 +31,7 @@ type listCommand struct {
 
 // NewListCommand initialize command to list backup
 func NewListCommand() *cobra.Command {
-	list := &listCommand{
-		clientConfig: &config.ClientConfig{},
-	}
+	list := &listCommand{}
 
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -60,22 +57,23 @@ func (l *listCommand) injectFlags(cmd *cobra.Command) {
 
 func (l *listCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	// Load config
-	if err := l.loadConfig(); err != nil {
+	conf, err := internal.LoadOptionalConfig(l.configFilePath)
+	if err != nil {
 		return err
 	}
 
-	if l.clientConfig == nil {
+	if conf == nil {
 		l.logger = logger.NewDefaultLogger()
 		markFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	l.logger = logger.NewClientLogger(l.clientConfig.Log)
+	l.logger = logger.NewClientLogger(conf.Log)
 	if l.projectName == "" {
-		l.projectName = l.clientConfig.Project.Name
+		l.projectName = conf.Project.Name
 	}
 	if l.host == "" {
-		l.host = l.clientConfig.Host
+		l.host = conf.Host
 	}
 
 	return nil
@@ -149,18 +147,4 @@ func (*listCommand) stringifyBackupListResponse(listBackupsResponse *pb.ListBack
 	}
 	table.Render()
 	return buff.String()
-}
-
-func (l *listCommand) loadConfig() error {
-	// TODO: find a way to load the config in one place
-	c, err := config.LoadClientConfig(l.configFilePath)
-	if err != nil {
-		if errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
-			l.clientConfig = nil
-			return nil
-		}
-		return err
-	}
-	*l.clientConfig = *c
-	return nil
 }

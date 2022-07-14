@@ -13,6 +13,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/logger"
 	nameSpcCmd "github.com/odpf/optimus/cmd/namespace"
 	"github.com/odpf/optimus/cmd/progressbar"
@@ -87,6 +88,12 @@ func (c *createCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	if err := c.loadConfig(); err != nil {
 		return err
 	}
+
+	conf, err := internal.LoadOptionalConfig(c.configFilePath)
+	if err != nil {
+		return err
+	}
+	c.clientConfig = conf
 
 	if c.clientConfig == nil {
 		c.logger = logger.NewDefaultLogger()

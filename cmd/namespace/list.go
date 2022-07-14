@@ -14,6 +14,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/config"
 )
@@ -62,9 +63,11 @@ func (l *listCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 		l.configFilePath = path.Join(l.dirPath, config.DefaultFilename)
 	}
 	// Load config
-	if err := l.loadConfig(); err != nil {
+	conf, err := internal.LoadOptionalConfig(l.configFilePath)
+	if err != nil {
 		return err
 	}
+	l.clientConfig = conf
 
 	if l.clientConfig == nil {
 		l.logger = logger.NewDefaultLogger()

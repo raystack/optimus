@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	saltConfig "github.com/odpf/salt/config"
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/config"
@@ -22,7 +22,6 @@ const jobStatusTimeout = time.Second * 30
 type runListCommand struct {
 	logger         log.Logger
 	configFilePath string
-	clientConfig   *config.ClientConfig
 
 	startDate   string
 	endDate     string
@@ -32,9 +31,7 @@ type runListCommand struct {
 
 // NewRunListCommand initializes run list command
 func NewRunListCommand() *cobra.Command {
-	run := &runListCommand{
-		clientConfig: &config.ClientConfig{},
-	}
+	run := &runListCommand{}
 
 	cmd := &cobra.Command{
 		Use:     "list-runs",
@@ -64,22 +61,23 @@ func (r *runListCommand) injectFlags(cmd *cobra.Command) {
 
 func (r *runListCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	// Load config
-	if err := r.loadConfig(); err != nil {
+	conf, err := internal.LoadOptionalConfig(r.configFilePath)
+	if err != nil {
 		return err
 	}
 
-	if r.clientConfig == nil {
+	if conf == nil {
 		r.logger = logger.NewDefaultLogger()
 		markFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	r.logger = logger.NewClientLogger(r.clientConfig.Log)
+	r.logger = logger.NewClientLogger(conf.Log)
 	if r.projectName == "" {
-		r.projectName = r.clientConfig.Project.Name
+		r.projectName = conf.Project.Name
 	}
 	if r.host == "" {
-		r.host = r.clientConfig.Host
+		r.host = conf.Host
 	}
 
 	return nil
@@ -161,19 +159,5 @@ func (*runListCommand) validateDateArgs(startDate, endDate string) error {
 	if startDate != "" && endDate == "" {
 		return errors.New("please provide the end date")
 	}
-	return nil
-}
-
-func (r *runListCommand) loadConfig() error {
-	// TODO: find a way to load the config in one place
-	c, err := config.LoadClientConfig(r.configFilePath)
-	if err != nil {
-		if errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
-			r.clientConfig = nil
-			return nil
-		}
-		return err
-	}
-	*r.clientConfig = *c
 	return nil
 }

@@ -1,7 +1,6 @@
 package admin
 
 import (
-	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -9,13 +8,13 @@ import (
 	"strings"
 	"time"
 
-	saltConfig "github.com/odpf/salt/config"
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
@@ -92,7 +91,7 @@ func markFlagsRequired(cmd *cobra.Command, flagNames []string) {
 
 func (b *buildInstanceCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	// Load config
-	conf, err := loadConfig(b.configFilePath)
+	conf, err := internal.LoadOptionalConfig(b.configFilePath)
 	if err != nil {
 		return err
 	}
@@ -112,18 +111,6 @@ func (b *buildInstanceCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	}
 
 	return nil
-}
-
-func loadConfig(configFilePath string) (*config.ClientConfig, error) {
-	// TODO: find a way to load the config in one place
-	c, err := config.LoadClientConfig(configFilePath)
-	if err != nil {
-		if errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return c, nil
 }
 
 func (b *buildInstanceCommand) RunE(_ *cobra.Command, args []string) error {

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	saltConfig "github.com/odpf/salt/config"
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
@@ -13,6 +12,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/cmd/survey"
@@ -22,7 +22,6 @@ import (
 type setCommand struct {
 	logger         log.Logger
 	configFilePath string
-	clientConfig   *config.ClientConfig
 
 	survey *survey.SecretSetSurvey
 
@@ -37,9 +36,7 @@ type setCommand struct {
 
 // NewSetCommand initializes command for setting secret
 func NewSetCommand() *cobra.Command {
-	set := &setCommand{
-		clientConfig: &config.ClientConfig{},
-	}
+	set := &setCommand{}
 
 	cmd := &cobra.Command{
 		Use:     "set",
@@ -76,24 +73,25 @@ func (s *setCommand) injectFlags(cmd *cobra.Command) {
 
 func (s *setCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	// Load config
-	if err := s.loadConfig(); err != nil {
+	conf, err := internal.LoadOptionalConfig(s.configFilePath)
+	if err != nil {
 		return err
 	}
 
-	if s.clientConfig == nil {
+	if conf == nil {
 		s.logger = logger.NewDefaultLogger()
 		s.survey = survey.NewSecretSetSurvey()
 		markFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	s.logger = logger.NewClientLogger(s.clientConfig.Log)
+	s.logger = logger.NewClientLogger(conf.Log)
 	s.survey = survey.NewSecretSetSurvey()
 	if s.projectName == "" {
-		s.projectName = s.clientConfig.Project.Name
+		s.projectName = conf.Project.Name
 	}
 	if s.host == "" {
-		s.host = s.clientConfig.Host
+		s.host = conf.Host
 	}
 
 	return nil
@@ -192,19 +190,5 @@ func (s *setCommand) updateSecret(req *pb.UpdateSecretRequest) error {
 		return fmt.Errorf("%w: request failed for updating secret %s", err, req.SecretName)
 	}
 	s.logger.Info(logger.ColoredSuccess("Secret updated"))
-	return nil
-}
-
-func (s *setCommand) loadConfig() error {
-	// TODO: find a way to load the config in one place
-	c, err := config.LoadClientConfig(s.configFilePath)
-	if err != nil {
-		if errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
-			s.clientConfig = nil
-			return nil
-		}
-		return err
-	}
-	*s.clientConfig = *c
 	return nil
 }

@@ -1,17 +1,16 @@
 package version
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
-	saltConfig "github.com/odpf/salt/config"
 	"github.com/odpf/salt/log"
 	"github.com/odpf/salt/version"
 	"github.com/spf13/cobra"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/plugin"
 	"github.com/odpf/optimus/cmd/progressbar"
@@ -24,7 +23,6 @@ const versionTimeout = time.Second * 2
 type versionCommand struct {
 	logger         log.Logger
 	configFilePath string
-	clientConfig   *config.ClientConfig
 
 	isWithServer bool
 	host         string
@@ -34,9 +32,7 @@ type versionCommand struct {
 
 // NewVersionCommand initializes command to get version
 func NewVersionCommand() *cobra.Command {
-	v := &versionCommand{
-		clientConfig: &config.ClientConfig{},
-	}
+	v := &versionCommand{}
 
 	cmd := &cobra.Command{
 		Use:      "version",
@@ -66,17 +62,17 @@ func (v *versionCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	v.logger = logger.NewDefaultLogger()
 
 	if v.isWithServer {
-		// Load config
-		if err := v.loadConfig(); err != nil {
+		conf, err := internal.LoadOptionalConfig(v.configFilePath)
+		if err != nil {
 			return err
 		}
 
-		if v.clientConfig == nil {
+		if conf == nil {
 			cmd.MarkFlagRequired("host")
 		} else {
-			v.logger = logger.NewClientLogger(v.clientConfig.Log)
+			v.logger = logger.NewClientLogger(conf.Log)
 			if v.host == "" {
-				v.host = v.clientConfig.Host
+				v.host = conf.Host
 			}
 		}
 	}
@@ -154,18 +150,4 @@ func (*versionCommand) getVersionRequest(clientVer, host string) (ver string, er
 	time.Sleep(versionTimeout)
 	spinner.Stop()
 	return versionResponse.Server, nil
-}
-
-func (v *versionCommand) loadConfig() error {
-	// TODO: find a way to load the config in one place
-	c, err := config.LoadClientConfig(v.configFilePath)
-	if err != nil {
-		if errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
-			v.clientConfig = nil
-			return nil
-		}
-		return err
-	}
-	*v.clientConfig = *c
-	return nil
 }

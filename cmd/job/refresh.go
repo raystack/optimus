@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"time"
 
-	saltConfig "github.com/odpf/salt/config"
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
 	"github.com/odpf/optimus/cmd/deploy"
+	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
@@ -27,7 +27,6 @@ const (
 type refreshCommand struct {
 	logger         log.Logger
 	configFilePath string
-	clientConfig   *config.ClientConfig
 
 	verbose                bool
 	selectedNamespaceNames []string
@@ -46,9 +45,7 @@ type refreshCommand struct {
 
 // NewRefreshCommand initializes command for refreshing job specification
 func NewRefreshCommand() *cobra.Command {
-	refresh := &refreshCommand{
-		clientConfig: &config.ClientConfig{},
-	}
+	refresh := &refreshCommand{}
 
 	cmd := &cobra.Command{
 		Use:     "refresh",
@@ -79,22 +76,23 @@ func (r *refreshCommand) injectFlags(cmd *cobra.Command) {
 
 func (r *refreshCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	// Load config
-	if err := r.loadConfig(); err != nil {
+	conf, err := internal.LoadOptionalConfig(r.configFilePath)
+	if err != nil {
 		return err
 	}
 
-	if r.clientConfig == nil {
+	if conf == nil {
 		r.logger = logger.NewDefaultLogger()
 		markFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	r.logger = logger.NewClientLogger(r.clientConfig.Log)
+	r.logger = logger.NewClientLogger(conf.Log)
 	if r.projectName == "" {
-		r.projectName = r.clientConfig.Project.Name
+		r.projectName = conf.Project.Name
 	}
 	if r.host == "" {
-		r.host = r.clientConfig.Host
+		r.host = conf.Host
 	}
 
 	return nil
@@ -201,18 +199,4 @@ func (r *refreshCommand) resetCounters() {
 	r.deployCounter = 0
 	r.deploySuccessCounter = 0
 	r.deployFailedCounter = 0
-}
-
-func (r *refreshCommand) loadConfig() error {
-	// TODO: find a way to load the config in one place
-	c, err := config.LoadClientConfig(r.configFilePath)
-	if err != nil {
-		if errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
-			r.clientConfig = nil
-			return nil
-		}
-		return err
-	}
-	*r.clientConfig = *c
-	return nil
 }

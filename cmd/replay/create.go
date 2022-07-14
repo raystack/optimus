@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	saltConfig "github.com/odpf/salt/config"
 	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
@@ -15,6 +14,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/namespace"
 	"github.com/odpf/optimus/cmd/progressbar"
@@ -32,7 +32,6 @@ type taskRunBlock struct {
 type createCommand struct {
 	logger         log.Logger
 	configFilePath string
-	clientConfig   *config.ClientConfig
 
 	survey *survey.ReplayCreateSurvey
 
@@ -48,9 +47,7 @@ type createCommand struct {
 
 // NewCreateCommand initializes command for replay create
 func NewCreateCommand() *cobra.Command {
-	create := &createCommand{
-		clientConfig: &config.ClientConfig{},
-	}
+	create := &createCommand{}
 
 	cmd := &cobra.Command{
 		Use:     "create",
@@ -76,6 +73,7 @@ Date ranges are inclusive.
 	}
 
 	create.injectFlags(cmd)
+	markFlagsRequired(cmd, []string{"namespace"})
 
 	return cmd
 }
@@ -85,7 +83,6 @@ func (c *createCommand) injectFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&c.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
 
 	cmd.Flags().StringVarP(&c.namespaceName, "namespace", "n", c.namespaceName, "Namespace of job that needs to be replayed")
-	cmd.MarkFlagRequired("namespace")
 	cmd.Flags().BoolVarP(&c.dryRun, "dry-run", "d", c.dryRun, "Only do a trial run with no permanent changes")
 	cmd.Flags().BoolVarP(&c.forceRun, "force", "f", c.forceRun, "Run replay even if a previous run is in progress")
 	cmd.Flags().BoolVar(&c.skipConfirm, "confirm", c.skipConfirm, "Skip asking for confirmation")
@@ -99,24 +96,25 @@ func (c *createCommand) injectFlags(cmd *cobra.Command) {
 
 func (c *createCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	// Load config
-	if err := c.loadConfig(); err != nil {
+	conf, err := internal.LoadOptionalConfig(c.configFilePath)
+	if err != nil {
 		return err
 	}
 
-	if c.clientConfig == nil {
+	if conf == nil {
 		c.logger = logger.NewDefaultLogger()
 		c.survey = survey.NewReplayCreateSurvey(c.logger)
 		markFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	c.logger = logger.NewClientLogger(c.clientConfig.Log)
+	c.logger = logger.NewClientLogger(conf.Log)
 	c.survey = survey.NewReplayCreateSurvey(c.logger)
 	if c.projectName == "" {
-		c.projectName = c.clientConfig.Project.Name
+		c.projectName = conf.Project.Name
 	}
 	if c.host == "" {
-		c.host = c.clientConfig.Host
+		c.host = conf.Host
 	}
 
 	return nil
@@ -323,18 +321,4 @@ func (c *createCommand) formatRunsPerJobInstance(instance *pb.ReplayExecutionTre
 	for _, child := range instance.Dependents {
 		c.formatRunsPerJobInstance(child, taskReruns, height+1)
 	}
-}
-
-func (c *createCommand) loadConfig() error {
-	// TODO: find a way to load the config in one place
-	conf, err := config.LoadClientConfig(c.configFilePath)
-	if err != nil {
-		if errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
-			c.clientConfig = nil
-			return nil
-		}
-		return err
-	}
-	*c.clientConfig = *conf
-	return nil
 }

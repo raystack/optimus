@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 
-	saltConfig "github.com/odpf/salt/config"
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/config"
@@ -19,7 +19,6 @@ import (
 type deleteCommand struct {
 	logger         log.Logger
 	configFilePath string
-	clientConfig   *config.ClientConfig
 
 	projectName   string
 	host          string
@@ -28,9 +27,7 @@ type deleteCommand struct {
 
 // NewDeleteCommand initializes command to delete secret
 func NewDeleteCommand() *cobra.Command {
-	dlt := &deleteCommand{
-		clientConfig: &config.ClientConfig{},
-	}
+	dlt := &deleteCommand{}
 
 	cmd := &cobra.Command{
 		Use:     "delete",
@@ -59,22 +56,23 @@ func (d *deleteCommand) injectFlags(cmd *cobra.Command) {
 
 func (d *deleteCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	// Load config
-	if err := d.loadConfig(); err != nil {
+	conf, err := internal.LoadOptionalConfig(d.configFilePath)
+	if err != nil {
 		return err
 	}
 
-	if d.clientConfig == nil {
+	if conf == nil {
 		d.logger = logger.NewDefaultLogger()
 		markFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	d.logger = logger.NewClientLogger(d.clientConfig.Log)
+	d.logger = logger.NewClientLogger(conf.Log)
 	if d.projectName == "" {
-		d.projectName = d.clientConfig.Project.Name
+		d.projectName = conf.Project.Name
 	}
 	if d.host == "" {
-		d.host = d.clientConfig.Host
+		d.host = conf.Host
 	}
 
 	return nil
@@ -114,19 +112,5 @@ func (d *deleteCommand) deleteSecret(req *pb.DeleteSecretRequest) error {
 		return fmt.Errorf("%w: request failed for deleting secret %s", err, req.SecretName)
 	}
 	d.logger.Info(logger.ColoredSuccess("Secret deleted"))
-	return nil
-}
-
-func (d *deleteCommand) loadConfig() error {
-	// TODO: find a way to load the config in one place
-	c, err := config.LoadClientConfig(d.configFilePath)
-	if err != nil {
-		if errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
-			d.clientConfig = nil
-			return nil
-		}
-		return err
-	}
-	*d.clientConfig = *c
 	return nil
 }
