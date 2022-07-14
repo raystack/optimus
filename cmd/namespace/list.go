@@ -2,12 +2,10 @@ package namespace
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"path"
 	"time"
 
-	saltConfig "github.com/odpf/salt/config"
 	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
@@ -153,18 +151,4 @@ func (*listCommand) stringifyNamespaces(namespacesFromLocal, namespacesFromServe
 	}
 	table.Render()
 	return buff.String()
-}
-
-func (l *listCommand) loadConfig() error {
-	// TODO: find a way to load the config in one place
-	c, err := config.LoadClientConfig(l.configFilePath)
-	if err != nil {
-		if errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
-			l.clientConfig = nil
-			return nil
-		}
-		return err
-	}
-	*l.clientConfig = *c
-	return nil
 }

@@ -3,18 +3,16 @@ package internal
 import (
 	"errors"
 
-	"github.com/odpf/optimus/config"
 	saltConfig "github.com/odpf/salt/config"
+
+	"github.com/odpf/optimus/config"
 )
 
-func LoadOptionalConfig(configFilePath string) (*config.ClientConfig, error) {
+func LoadOptionalConfig(configFilePath string) (conf *config.ClientConfig, err error) {
 	// TODO: find a way to load the config in one place
-	c, err := config.LoadClientConfig(configFilePath)
-	if err != nil {
-		if errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
-			return nil, nil
-		}
-		return nil, err
+	conf, err = config.LoadClientConfig(configFilePath)
+	if err != nil && errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
+		err = nil
 	}
-	return c, nil
+	return
 }
