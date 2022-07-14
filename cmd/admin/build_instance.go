@@ -62,7 +62,7 @@ func NewBuildInstanceCommand() *cobra.Command {
 	}
 
 	buildInstance.injectFlags(cmd)
-	markFlagsRequired(cmd, []string{"output-dir", "scheduled-at", "type", "name"})
+	internal.MarkFlagsRequired(cmd, []string{"output-dir", "scheduled-at", "type", "name"})
 
 	return cmd
 }
@@ -82,13 +82,6 @@ func (b *buildInstanceCommand) injectFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&b.host, "host", "", "Optimus service endpoint url")
 }
 
-// TODO: move it to another common package, eg. internal
-func markFlagsRequired(cmd *cobra.Command, flagNames []string) {
-	for _, n := range flagNames {
-		cmd.MarkFlagRequired(n)
-	}
-}
-
 func (b *buildInstanceCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	// Load config
 	conf, err := internal.LoadOptionalConfig(b.configFilePath)
@@ -98,7 +91,7 @@ func (b *buildInstanceCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 
 	if conf == nil {
 		b.logger = logger.NewDefaultLogger()
-		markFlagsRequired(cmd, []string{"project-name", "host"})
+		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 

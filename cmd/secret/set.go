@@ -81,7 +81,7 @@ func (s *setCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	if conf == nil {
 		s.logger = logger.NewDefaultLogger()
 		s.survey = survey.NewSecretSetSurvey()
-		markFlagsRequired(cmd, []string{"project-name", "host"})
+		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 

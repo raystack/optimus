@@ -47,10 +47,3 @@ func (j *jobCommand) PersistentPostRunE(_ *cobra.Command, _ []string) error {
 	j.pluginCleanFn()
 	return nil
 }
-
-// TODO: move it to another common package, eg. internal
-func markFlagsRequired(cmd *cobra.Command, flagNames []string) {
-	for _, n := range flagNames {
-		cmd.MarkFlagRequired(n)
-	}
-}

@@ -26,10 +26,3 @@ func GetAllowedDownstreamNamespaces(namespaceName string, allDownstream bool) []
 	}
 	return []string{namespaceName}
 }
-
-// TODO: move it to another common package, eg. internal
-func markFlagsRequired(cmd *cobra.Command, flagNames []string) {
-	for _, n := range flagNames {
-		cmd.MarkFlagRequired(n)
-	}
-}

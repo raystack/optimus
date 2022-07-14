@@ -73,7 +73,7 @@ Date ranges are inclusive.
 	}
 
 	create.injectFlags(cmd)
-	markFlagsRequired(cmd, []string{"namespace"})
+	internal.MarkFlagsRequired(cmd, []string{"namespace"})
 
 	return cmd
 }
@@ -104,7 +104,7 @@ func (c *createCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	if conf == nil {
 		c.logger = logger.NewDefaultLogger()
 		c.survey = survey.NewReplayCreateSurvey(c.logger)
-		markFlagsRequired(cmd, []string{"project-name", "host"})
+		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 

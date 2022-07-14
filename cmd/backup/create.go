@@ -100,7 +100,7 @@ func (c *createCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 		c.namespaceSurvey = survey.NewNamespaceSurvey(c.logger)
 		c.backupCreateSurvey = survey.NewBackupCreateSurvey(c.logger)
 
-		markFlagsRequired(cmd, []string{"project-name", "host", "namespace"})
+		internal.MarkFlagsRequired(cmd, []string{"project-name", "host", "namespace"})
 
 		return nil
 	}

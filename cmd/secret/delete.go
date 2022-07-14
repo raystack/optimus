@@ -63,7 +63,7 @@ func (d *deleteCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 
 	if conf == nil {
 		d.logger = logger.NewDefaultLogger()
-		markFlagsRequired(cmd, []string{"project-name", "host"})
+		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
