@@ -1,11 +1,12 @@
 package playground
 
 import (
+	"fmt"
 	"time"
-    tea "github.com/charmbracelet/bubbletea"
+
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/odpf/optimus/config"
 	"github.com/spf13/cobra"
-	"fmt"
 )
 
 type windowComand struct {
@@ -30,6 +31,7 @@ func NewPlayGroundWindowCommand(clientConfig *config.ClientConfig) *cobra.Comman
 	}
 	return cmd
 }
+
 // this will run when we give the command in cli
 func (j *windowComand) RunE(_ *cobra.Command, _ []string) error {
 	// the commented code below is for the default window which we can use it for a quick lookup
@@ -46,10 +48,11 @@ func (j *windowComand) RunE(_ *cobra.Command, _ []string) error {
 		state = j.window.survey.GetStateInput()
 	}*/
 	// starts the interactive session (this is usful when we are learning the windowing for the first time)
-	fmt.Println("hello folks! this is an interactive cli")
-	fmt.Println("controls use up,down arrows to move the pointer, left and right to increase and decrease the values")
-	fmt.Println("the base unit of change is 1hour increment increaseBy to change that")
-	fmt.Println("press control + c or q to quit")
+	fmt.Println(">  hello folks! this is an interactive cli")
+	fmt.Println(">  controls use up,down arrows to move the pointer, left and right to increase and decrease the values")
+	fmt.Println(">  press control + c or q to quit")
+	fmt.Println("")
+	fmt.Println("")
 	p := tea.NewProgram(initialModel())
 	p.Start()
 	return nil
