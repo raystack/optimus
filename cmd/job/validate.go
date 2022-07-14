@@ -47,7 +47,7 @@ func NewValidateCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	}
 	cmd.Flags().BoolVarP(&validate.verbose, "verbose", "v", false, "Print details related to operation")
 	cmd.Flags().StringVarP(&validate.namespaceName, "namespace", "n", validate.namespaceName, "Namespace of the resource within project")
-	//cmd.MarkFlagRequired("namespace")
+	cmd.MarkFlagRequired("namespace")
 	return cmd
 }
 
@@ -57,19 +57,6 @@ func (v *validateCommand) PreRunE(_ *cobra.Command, _ []string) error {
 }
 
 func (v *validateCommand) RunE(_ *cobra.Command, _ []string) error {
-	// find a way to find the name of the job from namespace
-	/*
-		1, search all the name spaces to get the required job name
-		2, if found multiple or none throw an error
-		3, but since the job name is not mentioned this approach seems futile
-	*/
-	/*
-		1, since we do not intend to give the name space input sometimes we may have to take all the name spaces in to the considerations
-		2, instead of identifying one job we get all the name spaces use it as input a for loop for the rest of the code
-	*/
-	if v.namespaceName == "" {
-		return v.validateAllNameSpaces()
-	}
 	namespace, err := v.clientConfig.GetNamespaceByName(v.namespaceName)
 	if err != nil {
 		return err
@@ -90,34 +77,6 @@ func (v *validateCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 	if err := v.validateJobSpecificationRequest(jobSpecs); err != nil {
 		return err
-	}
-	v.logger.Info(logger.ColoredSuccess("Jobs validated successfully, took %s", time.Since(start).Round(time.Second)))
-	return nil
-}
-func (v *validateCommand) validateAllNameSpaces() error {
-	start := time.Now()
-	AllNameSpaces := v.clientConfig.GetAllNamespaceNames()
-	for _, namespaces := range AllNameSpaces {
-		namespace, err := v.clientConfig.GetNamespaceByName(namespaces)
-		if err != nil {
-			return err
-		}
-		// create a name space job here
-		pluginRepo := models.PluginRegistry
-		jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
-		jobSpecRepo := local.NewJobSpecRepository(
-			jobSpecFs,
-			local.NewJobSpecAdapter(pluginRepo),
-		)
-		projectName := v.clientConfig.Project.Name
-		v.logger.Info(fmt.Sprintf("Validating job specifications for project: %s, namespace: %s", projectName, namespace.Name))
-		jobSpecs, err := jobSpecRepo.GetAll()
-		if err != nil {
-			return fmt.Errorf("directory '%s': %w", namespace.Job.Path, err)
-		}
-		if err := v.validateJobSpecificationRequest(jobSpecs); err != nil {
-			return err
-		}
 	}
 	v.logger.Info(logger.ColoredSuccess("Jobs validated successfully, took %s", time.Since(start).Round(time.Second)))
 	return nil
