@@ -157,7 +157,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.dEnd = m.window.truncate(m.sechduledDate, m.truncate)
 			m.dEnd = m.window.applyoffset(m.dEnd, m.offset)
-			m.dStart = m.dEnd.Add(time.Duration(-1*m.windowSize.hour)*time.Hour).AddDate(0, m.windowSize.month, 0)
+			m.dStart = m.dEnd.Add(time.Duration(-1*m.windowSize.hour)*time.Hour).AddDate(0, 1*m.windowSize.month, 0)
 		case "right":
 			switch m.cursor {
 			case "windowSize":
@@ -216,7 +216,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.dEnd = m.window.truncate(m.sechduledDate, m.truncate)
 			m.dEnd = m.window.applyoffset(m.dEnd, m.offset)
-			m.dStart = m.dEnd.Add(time.Duration(-1*m.windowSize.hour)*time.Hour).AddDate(0, m.windowSize.month, 0)
+			m.dStart = m.dEnd.Add(time.Duration(-1*m.windowSize.hour)*time.Hour).AddDate(0, -1*m.windowSize.month, 0)
 		}
 	}
 	return m, nil
