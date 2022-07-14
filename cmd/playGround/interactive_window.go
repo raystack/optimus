@@ -92,8 +92,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor = "increaseBy"
 			case "increaseBy":
 				m.cursor = "increaseDateBy"
-			case "increseDateBy":
-				m.cursor = "increaseDateBy"
+			case "increaseDateBy":
+				m.cursor = "windowSize"
 			}
 		case "left":
 			switch m.cursor {
@@ -127,12 +127,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case "sechduledDate":
 				switch m.increaseDateBy {
+				case "minute":
+					m.sechduledDate = m.sechduledDate.Add(-1 * time.Minute)
 				case "hour":
 					m.sechduledDate = m.sechduledDate.Add(-1 * time.Hour)
 				case "day":
 					m.sechduledDate = m.sechduledDate.AddDate(0, 0, -1)
 				case "month":
 					m.sechduledDate = m.sechduledDate.AddDate(0, -1, 0)
+				case "year":
+					m.sechduledDate = m.sechduledDate.AddDate(-1, 0, 0)
 				}
 			case "increaseBy":
 				switch m.increaseBy {
@@ -141,10 +145,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case "increaseDateBy":
 				switch m.increaseDateBy {
+				case "hour":
+					m.increaseDateBy = "minute"
 				case "day":
 					m.increaseDateBy = "hour"
 				case "month":
 					m.increaseDateBy = "day"
+				case "year":
+					m.increaseDateBy = "month"
 				}
 			}
 			m.dEnd = m.window.truncate(m.sechduledDate, m.truncate)
@@ -178,12 +186,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case "sechduledDate":
 				switch m.increaseDateBy {
+				case "minute":
+					m.sechduledDate = m.sechduledDate.Add(time.Minute)
 				case "hour":
 					m.sechduledDate = m.sechduledDate.Add(time.Hour)
 				case "day":
 					m.sechduledDate = m.sechduledDate.AddDate(0, 0, 1)
 				case "month":
 					m.sechduledDate = m.sechduledDate.AddDate(0, 1, 0)
+				case "year":
+					m.sechduledDate = m.sechduledDate.AddDate(1, 0, 0)
 				}
 			case "increaseBy":
 				switch m.increaseBy {
@@ -192,10 +204,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case "increaseDateBy":
 				switch m.increaseDateBy {
+				case "month":
+					m.increaseDateBy = "year"
 				case "day":
 					m.increaseDateBy = "month"
 				case "hour":
 					m.increaseDateBy = "day"
+				case "minute":
+					m.increaseDateBy = "hour"
 				}
 			}
 			m.dEnd = m.window.truncate(m.sechduledDate, m.truncate)
@@ -211,7 +227,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // but they are all being replaced continuosly in run time
 func (m model) View() string {
 	s := ""
-	s = "dStart : " + m.dStart.Format("01-02-2006 15:04") + "     " + "dEnd : " + m.dEnd.Format("01-02-2006 15:04")
+	s = "          dStart : " + m.dStart.Format("01-02-2006 15:04") + "     " + "dEnd : " + m.dEnd.Format("01-02-2006 15:04")
+	s += "\n"
+	s += "\n"
 	s += "\n"
 	// the below part of repitatice code is to ensure that if the cursor is currently present here we print it
 	if m.cursor == "windowSize" {
@@ -269,7 +287,7 @@ func (m model) View() string {
 	} else {
 		s += " "
 	}
-	s += "increase by         "
+	s += "increase size by    "
 	s += m.increaseBy
 	s += "\n"
 	if m.cursor == "increaseDateBy" {
