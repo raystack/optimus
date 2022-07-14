@@ -329,6 +329,7 @@ def optimus_failure_notify(context, event_meta):
 
     current_dag_id = context.get('task_instance').dag_id
     current_execution_date = context.get('execution_date')
+    schedule_time = context.get('next_execution_date')
 
     # failure message pushed by failed tasks
     failure_messages = []
@@ -359,8 +360,8 @@ def optimus_failure_notify(context, event_meta):
         "message": failure_message,
         "exception": str(context.get('exception')) or "",
 
-        "scheduled_at"          : current_execution_date.strftime(TIMESTAMP_FORMAT),
-        "scheduled_at_ts"       : datetime.timestamp(context.get('execution_date')),
+        "scheduled_at"          : schedule_time.strftime(TIMESTAMP_FORMAT),
+        "scheduled_at_ts"       : datetime.timestamp(schedule_time),
         "task_start_timestamp"   : datetime.timestamp(context.get('task_instance').start_date),
         
         "attempt"   :context['task_instance'].try_number,
@@ -382,7 +383,7 @@ def optimus_notify(context, event_meta):
 
     current_dag_id = context.get('task_instance').dag_id
     current_dag_run_id = context.get('dag_run').run_id
-    current_execution_date = context.get('execution_date')
+    schedule_time = context.get('next_execution_date')
 
     message = {
         "job_run_id": current_dag_run_id,
@@ -395,8 +396,8 @@ def optimus_notify(context, event_meta):
         
         "exception": str(context.get('exception')) or "",
 
-        "scheduled_at"          : current_execution_date.strftime(TIMESTAMP_FORMAT),
-        "scheduled_at_ts"       : datetime.timestamp(context.get('execution_date')),
+        "scheduled_at"          : schedule_time.strftime(TIMESTAMP_FORMAT),
+        "scheduled_at_ts"       : datetime.timestamp(schedule_time),
         "task_start_timestamp"   : datetime.timestamp(context.get('task_instance').start_date),
         
         "attempt"       :context['task_instance'].try_number,
