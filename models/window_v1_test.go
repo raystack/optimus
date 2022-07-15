@@ -1,4 +1,4 @@
-package job_test
+package models_test
 
 import (
 	"fmt"
@@ -7,55 +7,55 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/job"
+	"github.com/odpf/optimus/models"
 )
 
-func TestWindowV2(t *testing.T) {
+func TestWindowV1(t *testing.T) {
 	t.Run("Validate", func(t *testing.T) {
 		t.Run("should not throw error for window size which is not a positive or an instant time duration", func(t *testing.T) {
-			validWindowConfigs := []string{"24h", "2h45m", "60s", "45m24h", "", "0", "2M", "45M24h", "45M24h30m"}
+			validWindowConfigs := []string{"24h", "2h45m", "60s", "45m24h", "", "0"}
 			for _, config := range validWindowConfigs {
-				window := job.WindowV2{Size: config}
+				window := models.WindowV1{Size: config}
 				err := window.Validate()
 				assert.Nil(t, err, fmt.Sprintf("failed for : %s", config))
 			}
 		})
 		t.Run("should throw error for window size which is not a valid time duration", func(t *testing.T) {
-			inValidWindowConfigs := []string{"60S", "60", "2d", "-24h", "-45M24h30m"}
+			inValidWindowConfigs := []string{"1M", "45M24h", "60S", "60", "2d", "-24h"}
 			for _, config := range inValidWindowConfigs {
-				window := job.WindowV2{Size: config}
+				window := models.WindowV1{Size: config}
 				err := window.Validate()
 				assert.NotNil(t, err, fmt.Sprintf("failed for %s", config))
 			}
 		})
-		t.Run("should not throw error for window offset which is not a time duration", func(t *testing.T) {
-			validOffsetConfigs := []string{"24h", "2h45m", "60s", "45m24h", "0", "", "2M", "45M24h", "45M24h30m", "-45M24h30m"}
+		t.Run("should not throw error for window offset which is a valid time duration", func(t *testing.T) {
+			validOffsetConfigs := []string{"24h", "2h45m", "60s", "45m24h", "0", ""}
 			for _, config := range validOffsetConfigs {
-				window := job.WindowV2{Offset: config}
+				window := models.WindowV1{Offset: config}
 				err := window.Validate()
 				assert.Nil(t, err, fmt.Sprintf("failed for : %s", config))
 			}
 		})
 		t.Run("should throw error for window offset which is not a valid time duration", func(t *testing.T) {
-			inValidOffsetConfigs := []string{"60S", "60"}
+			inValidOffsetConfigs := []string{"1M", "45M24h", "60S", "60"}
 			for _, config := range inValidOffsetConfigs {
-				window := job.WindowV2{Offset: config}
+				window := models.WindowV1{Offset: config}
 				err := window.Validate()
 				assert.NotNil(t, err, fmt.Sprintf("failed for %s", config))
 			}
 		})
 		t.Run("should not throw error for valid window truncate configs", func(t *testing.T) {
-			validTruncateConfigs := []string{"h", "d", "w", "M", ""}
+			validTruncateConfigs := []string{"h", "d", "w", "m", "M", ""}
 			for _, config := range validTruncateConfigs {
-				window := job.WindowV2{TruncateTo: config}
+				window := models.WindowV1{TruncateTo: config}
 				err := window.Validate()
 				assert.Nil(t, err, fmt.Sprintf("failed for : %s", config))
 			}
 		})
-		t.Run("should throw error for window truncate when it is not a truncate option", func(t *testing.T) {
-			inValidTruncateConfigs := []string{"s", "a", "ms", "m", "H", "D", "W"}
+		t.Run("should throw error for window truncate when it is not a valid time duration", func(t *testing.T) {
+			inValidTruncateConfigs := []string{"s", "a", "ms"}
 			for _, config := range inValidTruncateConfigs {
-				window := job.WindowV2{TruncateTo: config}
+				window := models.WindowV1{TruncateTo: config}
 				err := window.Validate()
 				assert.NotNil(t, err, fmt.Sprintf("failed for %s", config))
 			}
@@ -91,22 +91,31 @@ func TestWindowV2(t *testing.T) {
 					ExpectedEndTime:   time.Date(2022, 07, 05, 0, 0, 0, 0, time.UTC),
 				},
 				{
-					Scenario:          "should truncate to the start of week starting on monday on truncate to week",
-					ScheduleTime:      time.Date(2022, 07, 05, 02, 10, 10, 10, time.UTC),
+					Scenario:          "should truncate to the coming sunday on truncate to week",
+					ScheduleTime:      time.Date(2020, 07, 10, 02, 10, 10, 10, time.UTC),
 					Size:              "24h",
 					Offset:            "0",
 					TruncateTo:        "w",
-					ExpectedStartTime: time.Date(2022, 07, 03, 0, 0, 0, 0, time.UTC),
-					ExpectedEndTime:   time.Date(2022, 07, 04, 0, 0, 0, 0, time.UTC),
+					ExpectedStartTime: time.Date(2020, 07, 11, 0, 0, 0, 0, time.UTC),
+					ExpectedEndTime:   time.Date(2020, 07, 12, 0, 0, 0, 0, time.UTC),
 				},
 				{
-					Scenario:          "should truncate to the start of the month on truncate to month",
+					Scenario:          "should truncate to the start of the next month on truncate to month",
 					ScheduleTime:      time.Date(2022, 07, 05, 02, 10, 10, 10, time.UTC),
 					Size:              "24h",
 					Offset:            "0",
-					TruncateTo:        "M",
-					ExpectedStartTime: time.Date(2022, 06, 30, 0, 0, 0, 0, time.UTC),
-					ExpectedEndTime:   time.Date(2022, 07, 01, 0, 0, 0, 0, time.UTC),
+					TruncateTo:        "m",
+					ExpectedStartTime: time.Date(2022, 8, 1, 0, 0, 0, 0, time.UTC),
+					ExpectedEndTime:   time.Date(2022, 8, 1, 0, 0, 0, 0, time.UTC),
+				},
+				{
+					Scenario:          "should be able to get a single month window if size is greater than 30h",
+					ScheduleTime:      time.Date(2022, 07, 05, 02, 10, 10, 10, time.UTC),
+					Size:              "32h",
+					Offset:            "0",
+					TruncateTo:        "m",
+					ExpectedStartTime: time.Date(2022, 7, 1, 0, 0, 0, 0, time.UTC),
+					ExpectedEndTime:   time.Date(2022, 7, 31, 0, 0, 0, 0, time.UTC),
 				},
 				{
 					Scenario:          "should not truncate to the previous hour if time is already truncated",
@@ -127,31 +136,31 @@ func TestWindowV2(t *testing.T) {
 					ExpectedEndTime:   time.Date(2022, 07, 05, 0, 0, 0, 0, time.UTC),
 				},
 				{
-					Scenario:          "should not truncate to the start of last week if the time is already on monday on truncate to week",
-					ScheduleTime:      time.Date(2022, 07, 04, 00, 0, 0, 0, time.UTC),
+					Scenario:          "should truncate to next week sunday if the time is already on exact sunday on truncate to week",
+					ScheduleTime:      time.Date(2020, 07, 12, 00, 0, 0, 0, time.UTC),
 					Size:              "24h",
 					Offset:            "0",
 					TruncateTo:        "w",
-					ExpectedStartTime: time.Date(2022, 07, 03, 0, 0, 0, 0, time.UTC),
-					ExpectedEndTime:   time.Date(2022, 07, 04, 0, 0, 0, 0, time.UTC),
+					ExpectedStartTime: time.Date(2020, 07, 18, 0, 0, 0, 0, time.UTC),
+					ExpectedEndTime:   time.Date(2020, 07, 19, 0, 0, 0, 0, time.UTC),
 				},
 				{
-					Scenario:          "should not truncate to the start of month if time is already on beginning of month on truncate to month",
+					Scenario:          "should truncate to the end of month if time is already on beginning of month on truncate to month",
 					ScheduleTime:      time.Date(2022, 07, 01, 0, 0, 0, 0, time.UTC),
 					Size:              "24h",
 					Offset:            "0",
-					TruncateTo:        "M",
-					ExpectedStartTime: time.Date(2022, 06, 30, 0, 0, 0, 0, time.UTC),
-					ExpectedEndTime:   time.Date(2022, 07, 01, 0, 0, 0, 0, time.UTC),
+					TruncateTo:        "m",
+					ExpectedStartTime: time.Date(2022, 8, 1, 0, 0, 0, 0, time.UTC),
+					ExpectedEndTime:   time.Date(2022, 8, 1, 0, 0, 0, 0, time.UTC),
 				},
 				{
-					Scenario:          "should not truncate if truncate is empty",
+					Scenario:          "should truncate to daily if truncate is empty",
 					ScheduleTime:      time.Date(2022, 07, 05, 02, 10, 10, 10, time.UTC),
 					Size:              "24h",
 					Offset:            "0",
 					TruncateTo:        "",
-					ExpectedStartTime: time.Date(2022, 07, 04, 02, 10, 10, 10, time.UTC),
-					ExpectedEndTime:   time.Date(2022, 07, 05, 02, 10, 10, 10, time.UTC),
+					ExpectedStartTime: time.Date(2022, 07, 04, 0, 0, 0, 0, time.UTC),
+					ExpectedEndTime:   time.Date(2022, 07, 05, 0, 0, 0, 0, time.UTC),
 				},
 				{
 					Scenario:          "should provide window for the configured size in hours and minutes",
@@ -163,24 +172,6 @@ func TestWindowV2(t *testing.T) {
 					ExpectedEndTime:   time.Date(2022, 07, 05, 0, 0, 0, 0, time.UTC),
 				},
 				{
-					Scenario:          "should provide window for the configured size in months",
-					ScheduleTime:      time.Date(2022, 07, 05, 02, 10, 10, 10, time.UTC),
-					Size:              "2M",
-					Offset:            "0",
-					TruncateTo:        "M",
-					ExpectedStartTime: time.Date(2022, 5, 01, 0, 0, 0, 0, time.UTC),
-					ExpectedEndTime:   time.Date(2022, 7, 01, 0, 0, 0, 0, time.UTC),
-				},
-				{
-					Scenario:          "should provide window for the configured size in months, hours",
-					ScheduleTime:      time.Date(2022, 07, 05, 02, 10, 10, 10, time.UTC),
-					Size:              "1M24h",
-					Offset:            "0",
-					TruncateTo:        "M",
-					ExpectedStartTime: time.Date(2022, 05, 30, 0, 0, 0, 0, time.UTC),
-					ExpectedEndTime:   time.Date(2022, 07, 01, 0, 0, 0, 0, time.UTC),
-				},
-				{
 					Scenario:          "should provide window for the configured size in minutes",
 					ScheduleTime:      time.Date(2022, 07, 05, 02, 10, 10, 10, time.UTC),
 					Size:              "60m",
@@ -190,13 +181,22 @@ func TestWindowV2(t *testing.T) {
 					ExpectedEndTime:   time.Date(2022, 07, 05, 0, 0, 0, 0, time.UTC),
 				},
 				{
-					Scenario:          "should not provide any window is size is not configured",
+					Scenario:          "should provide 24 hour window if size is not configured",
 					ScheduleTime:      time.Date(2022, 07, 05, 02, 10, 10, 10, time.UTC),
 					Size:              "",
 					Offset:            "0",
 					TruncateTo:        "d",
-					ExpectedStartTime: time.Date(2022, 07, 05, 0, 0, 0, 0, time.UTC),
+					ExpectedStartTime: time.Date(2022, 07, 04, 0, 0, 0, 0, time.UTC),
 					ExpectedEndTime:   time.Date(2022, 07, 05, 0, 0, 0, 0, time.UTC),
+				},
+				{
+					Scenario:          "should provide monthly window, with monthly truncation and 30h size is one month",
+					ScheduleTime:      time.Date(2022, 07, 05, 02, 10, 10, 10, time.UTC),
+					Size:              "62h",
+					Offset:            "0",
+					TruncateTo:        "m",
+					ExpectedStartTime: time.Date(2022, 6, 01, 0, 0, 0, 0, time.UTC),
+					ExpectedEndTime:   time.Date(2022, 8, 01, 0, 0, 0, 0, time.UTC),
 				},
 				{
 					Scenario:          "should shift window forward on positive offset",
@@ -206,24 +206,6 @@ func TestWindowV2(t *testing.T) {
 					TruncateTo:        "d",
 					ExpectedStartTime: time.Date(2022, 07, 05, 0, 0, 0, 0, time.UTC),
 					ExpectedEndTime:   time.Date(2022, 07, 06, 0, 0, 0, 0, time.UTC),
-				},
-				{
-					Scenario:          "should shift window backward on negative monthly offset",
-					ScheduleTime:      time.Date(2022, 07, 05, 02, 10, 10, 10, time.UTC),
-					Size:              "1M",
-					Offset:            "-1M",
-					TruncateTo:        "M",
-					ExpectedStartTime: time.Date(2022, 05, 01, 0, 0, 0, 0, time.UTC),
-					ExpectedEndTime:   time.Date(2022, 06, 01, 0, 0, 0, 0, time.UTC),
-				},
-				{
-					Scenario:          "should shift window backward on negative monthly offset with hours",
-					ScheduleTime:      time.Date(2022, 07, 05, 02, 10, 10, 10, time.UTC),
-					Size:              "1M",
-					Offset:            "-1M24h",
-					TruncateTo:        "M",
-					ExpectedStartTime: time.Date(2022, 04, 30, 0, 0, 0, 0, time.UTC),
-					ExpectedEndTime:   time.Date(2022, 05, 30, 0, 0, 0, 0, time.UTC),
 				},
 				{
 					Scenario:          "should shift window backward on negative offset",
@@ -245,7 +227,7 @@ func TestWindowV2(t *testing.T) {
 				},
 			}
 			for _, sc := range cases {
-				w := job.WindowV2{Size: sc.Size, Offset: sc.Offset, TruncateTo: sc.TruncateTo}
+				w := models.WindowV1{Size: sc.Size, Offset: sc.Offset, TruncateTo: sc.TruncateTo}
 				err := w.Validate()
 				assert.Nil(t, err, sc.Scenario)
 				actualStartTime, actualEndTime, err := w.GetTimeRange(sc.ScheduleTime)

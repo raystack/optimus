@@ -1,4 +1,4 @@
-package job
+package models
 
 import (
 	"errors"
@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/utils"
 )
 
@@ -69,9 +68,9 @@ func (w WindowV1) GetTimeRange(scheduleTime time.Time) (time.Time, time.Time, er
 	return startTime, endTime, nil
 }
 
-func (w WindowV1) prepareWindow() (models.JobSpecTaskWindow, error) {
+func (w WindowV1) prepareWindow() (JobSpecTaskWindow, error) {
 	var err error
-	window := models.JobSpecTaskWindow{}
+	window := JobSpecTaskWindow{}
 	window.Size = HoursInDay
 	window.Offset = 0
 	window.TruncateTo = "d"

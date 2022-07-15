@@ -26,10 +26,6 @@ var (
 const (
 	JobDatetimeLayout = "2006-01-02"
 
-	// assuming all month are 30 days long for simplicity
-	HoursInMonth = time.Duration(30) * 24 * time.Hour
-	HoursInDay   = 24 * time.Hour
-
 	// JobSpecDependencyTypeIntra represents dependency within a project
 	JobSpecDependencyTypeIntra JobSpecDependencyType = "intra"
 	// JobSpecDependencyTypeInter represents dependency within optimus but cross project
