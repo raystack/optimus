@@ -6,8 +6,12 @@ import (
 )
 
 type Window interface {
-	GetTimeRange(scheduleTime time.Time) (time.Time, time.Time, error)
 	Validate() error
+	GetTimeRange(scheduleTime time.Time) (time.Time, time.Time, error)
+
+	GetTruncateTo() string
+	GetOffset() string
+	GetSize() string
 }
 
 func NewWindow(version int, truncateTo, offset, size string) (Window, error) {

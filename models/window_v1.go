@@ -68,6 +68,18 @@ func (w windowV1) GetTimeRange(scheduleTime time.Time) (time.Time, time.Time, er
 	return startTime, endTime, nil
 }
 
+func (w windowV1) GetTruncateTo() string {
+	return w.truncateTo
+}
+
+func (w windowV1) GetOffset() string {
+	return w.offset
+}
+
+func (w windowV1) GetSize() string {
+	return w.size
+}
+
 func (w windowV1) prepareWindow() (JobSpecTaskWindow, error) {
 	var err error
 	window := JobSpecTaskWindow{}
