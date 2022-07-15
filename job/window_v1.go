@@ -40,6 +40,21 @@ func (w WindowV1) Validate() error {
 	return nil
 }
 
+func (w WindowV1) GetTimeRange(scheduleTime time.Time) (time.Time, time.Time, error) {
+	var err error
+	err = w.Validate()
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	jobWindow, err := prepareWindow(w.Size, w.Offset, w.TruncateTo)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	startTime := jobWindow.GetStart(scheduleTime)
+	endTime := jobWindow.GetEnd(scheduleTime)
+	return startTime, endTime, nil
+}
+
 const HoursInDay = time.Hour * 24
 
 func prepareWindow(windowSize, windowOffset, truncateTo string) (models.JobSpecTaskWindow, error) {
@@ -65,19 +80,4 @@ func prepareWindow(windowSize, windowOffset, truncateTo string) (models.JobSpecT
 		}
 	}
 	return window, nil
-}
-
-func (w WindowV1) GetTimeRange(scheduleTime time.Time) (time.Time, time.Time, error) {
-	var err error
-	err = w.Validate()
-	if err != nil {
-		return time.Time{}, time.Time{}, err
-	}
-	jobWindow, err := prepareWindow(w.Size, w.Offset, w.TruncateTo)
-	if err != nil {
-		return time.Time{}, time.Time{}, err
-	}
-	startTime := jobWindow.GetStart(scheduleTime)
-	endTime := jobWindow.GetEnd(scheduleTime)
-	return startTime, endTime, nil
 }
