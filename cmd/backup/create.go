@@ -109,6 +109,10 @@ func (c *createCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	c.namespaceSurvey = survey.NewNamespaceSurvey(c.logger)
 	c.backupCreateSurvey = survey.NewBackupCreateSurvey(c.logger)
 
+	return c.fillAttributes()
+}
+
+func (c *createCommand) fillAttributes() error {
 	if c.projectName == "" {
 		c.projectName = c.clientConfig.Project.Name
 	}
