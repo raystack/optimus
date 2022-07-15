@@ -12,10 +12,10 @@ type Window interface {
 
 func NewWindow(version int, truncateTo, offset, size string) (Window, error) {
 	if version == 1 {
-		return WindowV1{size, offset, truncateTo}, nil
+		return windowV1{size, offset, truncateTo}, nil
 	}
 	if version == 2 {
-		return WindowV2{size, offset, truncateTo}, nil
+		return windowV2{size, offset, truncateTo}, nil
 	}
 	return nil, fmt.Errorf("window version [%d] is not recognized", version)
 }
