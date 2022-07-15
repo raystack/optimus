@@ -177,7 +177,7 @@ func (s *scheduler) compileAndUpload(ctx context.Context, namespace models.Names
 		return deployFailure
 	}
 
-	blobKey := PathFromJobName(JobsDir, namespace.ID.String(), compiledJob.Name, JobsExtension)
+	blobKey := PathFromJobName(JobsDir, namespace.Name, compiledJob.Name, JobsExtension)
 	if err := bucket.WriteAll(ctx, blobKey, compiledJob.Contents, nil); err != nil {
 		deployFailure := models.JobDeploymentFailure{
 			JobName: currentJobSpec.Name,

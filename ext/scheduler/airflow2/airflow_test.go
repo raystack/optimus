@@ -162,7 +162,7 @@ func TestAirflow2(t *testing.T) {
 				Contents: []byte("job-1-compiled"),
 			}, nil)
 
-			mockBucket.On("WriteAll", ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name), []byte("job-1-compiled"), (*blob.WriterOptions)(nil)).Return(nil)
+			mockBucket.On("WriteAll", ctx, fmt.Sprintf("dags/%s/%s.py", ns.Name, jobSpecs[0].Name), []byte("job-1-compiled"), (*blob.WriterOptions)(nil)).Return(nil)
 
 			expectedDeployDetail := models.JobDeploymentDetail{
 				SuccessCount: 1,
@@ -172,7 +172,7 @@ func TestAirflow2(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, expectedDeployDetail, actualDeployDetail)
 
-			storedBytes, err := inMemBlob.ReadAll(ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name))
+			storedBytes, err := inMemBlob.ReadAll(ctx, fmt.Sprintf("dags/%s/%s.py", ns.Name, jobSpecs[0].Name))
 			assert.Nil(t, err)
 			assert.Equal(t, []byte("job-1-compiled"), storedBytes)
 		})
