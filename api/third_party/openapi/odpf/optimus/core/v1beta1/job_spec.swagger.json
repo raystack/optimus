@@ -741,6 +741,12 @@
         },
         "jobName": {
           "type": "string"
+        },
+        "deploymentId": {
+          "type": "string"
+        },
+        "logStatus": {
+          "$ref": "#/definitions/v1beta1Log"
         }
       }
     }

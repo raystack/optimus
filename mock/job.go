@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/core/progress/sender"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/local"
@@ -431,8 +432,8 @@ func (srv *JobService) Refresh(ctx context.Context, projectName string, namespac
 	return args.Error(0)
 }
 
-func (srv *JobService) Deploy(ctx context.Context, projectName, namespaceName string, jobSpecs []models.JobSpec, observers progress.Observer) (models.DeploymentID, error) {
-	args := srv.Called(ctx, projectName, namespaceName, jobSpecs, observers)
+func (srv *JobService) Deploy(ctx context.Context, projectName, namespaceName string, jobSpecs []models.JobSpec, logSender sender.LogStatus) (models.DeploymentID, error) {
+	args := srv.Called(ctx, projectName, namespaceName, jobSpecs, logSender)
 	return args.Get(0).(models.DeploymentID), args.Error(1)
 }
 
