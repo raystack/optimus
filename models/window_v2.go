@@ -1,4 +1,4 @@
-package job
+package models
 
 import (
 	"fmt"
