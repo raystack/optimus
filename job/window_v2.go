@@ -10,9 +10,9 @@ import (
 )
 
 type WindowV2 struct {
-	Size       string
-	Offset     string
 	TruncateTo string
+	Offset     string
+	Size       string
 }
 
 func (w WindowV2) Validate() error {
@@ -38,6 +38,23 @@ func (w WindowV2) Validate() error {
 		}
 	}
 	return nil
+}
+
+func (w WindowV2) GetTimeRange(scheduleTime time.Time) (time.Time, time.Time, error) {
+	err := w.Validate()
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	truncatedTime := w.truncateTime(scheduleTime)
+	endTime, err := w.adjustOffset(truncatedTime)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	startTime, err := w.getStartTime(endTime)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	return startTime, endTime, nil
 }
 
 func (w WindowV2) validateSize() error {
@@ -78,23 +95,6 @@ func (w WindowV2) getMonthsAndDuration(timeDuration string) (int, string, error)
 		return months, "-" + splits[1], nil
 	}
 	return months, splits[1], nil
-}
-
-func (w WindowV2) GetTimeRange(scheduleTime time.Time) (time.Time, time.Time, error) {
-	err := w.Validate()
-	if err != nil {
-		return time.Time{}, time.Time{}, err
-	}
-	truncatedTime := w.truncateTime(scheduleTime)
-	endTime, err := w.adjustOffset(truncatedTime)
-	if err != nil {
-		return time.Time{}, time.Time{}, err
-	}
-	startTime, err := w.getStartTime(endTime)
-	if err != nil {
-		return time.Time{}, time.Time{}, err
-	}
-	return startTime, endTime, nil
 }
 
 func (w WindowV2) truncateTime(scheduleTime time.Time) time.Time {
