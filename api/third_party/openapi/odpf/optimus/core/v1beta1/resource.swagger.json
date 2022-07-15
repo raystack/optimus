@@ -287,8 +287,26 @@
         },
         "resourceName": {
           "type": "string"
+        },
+        "logStatus": {
+          "$ref": "#/definitions/v1beta1Log"
+        },
+        "progress": {
+          "$ref": "#/definitions/v1beta1Progress"
         }
       }
+    },
+    "v1beta1Level": {
+      "type": "string",
+      "enum": [
+        "Trace",
+        "Debug",
+        "Info",
+        "Warning",
+        "Error",
+        "Fatal"
+      ],
+      "default": "Trace"
     },
     "v1beta1ListResourceSpecificationResponse": {
       "type": "object",
@@ -298,6 +316,26 @@
           "items": {
             "$ref": "#/definitions/v1beta1ResourceSpecification"
           }
+        }
+      }
+    },
+    "v1beta1Log": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "$ref": "#/definitions/v1beta1Level"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1Progress": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "format": "int32"
         }
       }
     },

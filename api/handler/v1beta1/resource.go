@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
-	"sync"
 	"time"
 
 	"github.com/odpf/salt/log"
@@ -17,6 +15,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/core/progress/sender"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
 )
@@ -99,7 +98,8 @@ func (sv *ResourceServiceServer) ReadResource(ctx context.Context, req *pb.ReadR
 
 func (sv *ResourceServiceServer) DeployResourceSpecification(stream pb.ResourceService_DeployResourceSpecificationServer) error {
 	startTime := time.Now()
-	errNamespaces := []string{}
+	logSender := sender.NewDeployResourceLogStatus(stream)
+	progressSender := sender.NewDeployResourceProgressCount(stream)
 
 	for {
 		request, err := stream.Recv()
@@ -107,71 +107,44 @@ func (sv *ResourceServiceServer) DeployResourceSpecification(stream pb.ResourceS
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			stream.Send(&pb.DeployResourceSpecificationResponse{
-				Success: false,
-				Ack:     true,
-				Message: err.Error(),
-			})
 			return err // immediate error returned (grpc error level)
 		}
 		namespaceSpec, err := sv.namespaceService.Get(stream.Context(), request.GetProjectName(), request.GetNamespaceName())
 		if err != nil {
-			stream.Send(&pb.DeployResourceSpecificationResponse{
-				Success: false,
-				Ack:     true,
-				Message: err.Error(),
-			})
-			errNamespaces = append(errNamespaces, request.NamespaceName)
+			errMsg := fmt.Sprintf("error when fetch namespace %s: %s", request.GetNamespaceName(), err.Error())
+			sv.l.Error(errMsg)
+			sender.SendErrorMessage(logSender, errMsg)
+			progressSender.Add(len(request.GetResources()))
 			continue
 		}
+
 		var resourceSpecs []models.ResourceSpec
-		var errMsgs string
 		for _, resourceProto := range request.GetResources() {
 			adapted, err := FromResourceProto(resourceProto, request.DatastoreName, sv.datastoreRepo)
 			if err != nil {
-				currentMsg := fmt.Sprintf("%s: cannot adapt resource %s", err.Error(), resourceProto.GetName())
-				sv.l.Error(currentMsg)
-				errMsgs += currentMsg + "\n"
+				errMsg := fmt.Sprintf("%s: cannot adapt resource %s", err.Error(), resourceProto.GetName())
+				sv.l.Error(errMsg)
+				sender.SendErrorMessage(logSender, errMsg)
+				progressSender.Inc()
 				continue
 			}
 			resourceSpecs = append(resourceSpecs, adapted)
 		}
 
-		if errMsgs != "" {
-			stream.Send(&pb.DeployResourceSpecificationResponse{
-				Success: false,
-				Ack:     true,
-				Message: errMsgs,
-			})
-			errNamespaces = append(errNamespaces, request.NamespaceName)
+		if err := sv.resourceSvc.UpdateResource(stream.Context(), namespaceSpec, resourceSpecs, nil); err != nil {
+			errMsg := fmt.Sprintf("failed to update resources: %s", err.Error())
+			sender.SendErrorMessage(logSender, errMsg)
+			progressSender.Add(len(request.GetResources()))
 			continue
 		}
 
-		observers := new(progress.ObserverChain)
-		observers.Join(sv.progressObserver)
-		observers.Join(NewResourceObserver(stream, sv.l, new(sync.Mutex)))
-
-		if err := sv.resourceSvc.UpdateResource(stream.Context(), namespaceSpec, resourceSpecs, observers); err != nil {
-			stream.Send(&pb.DeployResourceSpecificationResponse{
-				Success: false,
-				Ack:     true,
-				Message: fmt.Sprintf("failed to update resources: \n%s", err.Error()),
-			})
-			errNamespaces = append(errNamespaces, request.NamespaceName)
-			continue
-		}
 		runtimeDeployResourceSpecificationCounter.Add(float64(len(request.Resources)))
-		stream.Send(&pb.DeployResourceSpecificationResponse{
-			Success: true,
-			Ack:     true,
-			Message: fmt.Sprintf("resources with namespace [%s] are deployed successfully", request.NamespaceName),
-		})
+		successMsg := fmt.Sprintf("resources with namespace [%s] are deployed successfully", request.NamespaceName)
+		sender.SendSuccessMessage(logSender, successMsg)
+		progressSender.Add(len(request.GetResources()))
 	}
+
 	sv.l.Info("finished resource deployment in", "time", time.Since(startTime))
-	if len(errNamespaces) > 0 {
-		sv.l.Warn(fmt.Sprintf("there's error while deploying namespaces: [%s]", strings.Join(errNamespaces, ", ")))
-		return fmt.Errorf("error when deploying: [%s]", strings.Join(errNamespaces, ", "))
-	}
 	return nil
 }
 
