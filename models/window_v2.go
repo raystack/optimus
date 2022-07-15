@@ -57,6 +57,18 @@ func (w windowV2) GetTimeRange(scheduleTime time.Time) (time.Time, time.Time, er
 	return startTime, endTime, nil
 }
 
+func (w windowV2) GetTruncateTo() string {
+	return w.truncateTo
+}
+
+func (w windowV2) GetOffset() string {
+	return w.offset
+}
+
+func (w windowV2) GetSize() string {
+	return w.size
+}
+
 func (w windowV2) validateSize() error {
 	months, nonMonthDuration, err := w.getMonthsAndDuration(w.size)
 	if err != nil {
