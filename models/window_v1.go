@@ -18,42 +18,42 @@ const (
 
 var monthExp = regexp.MustCompile("(\\+|-)?([0-9]+)(M)") //nolint:gosimple
 
-type WindowV1 struct {
-	Size       string
-	Offset     string
-	TruncateTo string
+type windowV1 struct {
+	size       string
+	offset     string
+	truncateTo string
 }
 
-func (w WindowV1) Validate() error {
+func (w windowV1) Validate() error {
 	_, err := w.prepareWindow()
 	if err != nil {
 		return err
 	}
-	if w.Size != "" {
-		_, err := time.ParseDuration(w.Size)
+	if w.size != "" {
+		_, err := time.ParseDuration(w.size)
 		if err != nil {
-			return fmt.Errorf("failed to parse task window with size %v: %w", w.Size, err)
+			return fmt.Errorf("failed to parse task window with size %v: %w", w.size, err)
 		}
-		if strings.HasPrefix(w.Size, "-") {
-			return fmt.Errorf("size cannot be negative, %s", w.Size)
+		if strings.HasPrefix(w.size, "-") {
+			return fmt.Errorf("size cannot be negative, %s", w.size)
 		}
 	}
-	if w.Offset != "" {
-		_, err := time.ParseDuration(w.Offset)
+	if w.offset != "" {
+		_, err := time.ParseDuration(w.offset)
 		if err != nil {
-			return fmt.Errorf("failed to parse task window with size %v: %w", w.Offset, err)
+			return fmt.Errorf("failed to parse task window with size %v: %w", w.offset, err)
 		}
 	}
-	if w.TruncateTo != "" {
+	if w.truncateTo != "" {
 		validTruncateOptions := []string{"h", "d", "w", "m", "M"}
-		if utils.ContainsString(validTruncateOptions, w.TruncateTo) == false {
+		if utils.ContainsString(validTruncateOptions, w.truncateTo) == false {
 			return fmt.Errorf("invalid option provided, provide one of : %v", validTruncateOptions)
 		}
 	}
 	return nil
 }
 
-func (w WindowV1) GetTimeRange(scheduleTime time.Time) (time.Time, time.Time, error) {
+func (w windowV1) GetTimeRange(scheduleTime time.Time) (time.Time, time.Time, error) {
 	var err error
 	err = w.Validate()
 	if err != nil {
@@ -68,37 +68,37 @@ func (w WindowV1) GetTimeRange(scheduleTime time.Time) (time.Time, time.Time, er
 	return startTime, endTime, nil
 }
 
-func (w WindowV1) prepareWindow() (JobSpecTaskWindow, error) {
+func (w windowV1) prepareWindow() (JobSpecTaskWindow, error) {
 	var err error
 	window := JobSpecTaskWindow{}
 	window.Size = HoursInDay
 	window.Offset = 0
 	window.TruncateTo = "d"
 
-	if w.TruncateTo != "" {
-		window.TruncateTo = w.TruncateTo
+	if w.truncateTo != "" {
+		window.TruncateTo = w.truncateTo
 	}
 
 	// check if string contains monthly notation
-	if w.Size != "" {
-		window.Size, err = w.tryParsingInMonths(w.Size)
+	if w.size != "" {
+		window.Size, err = w.tryParsingInMonths(w.size)
 		if err != nil {
 			// treat as normal duration
-			window.Size, err = time.ParseDuration(w.Size)
+			window.Size, err = time.ParseDuration(w.size)
 			if err != nil {
-				return window, fmt.Errorf("failed to parse task window with size %v: %w", w.Size, err)
+				return window, fmt.Errorf("failed to parse task window with size %v: %w", w.size, err)
 			}
 		}
 	}
 
 	// check if string contains monthly notation
-	if w.Offset != "" {
-		window.Offset, err = w.tryParsingInMonths(w.Offset)
+	if w.offset != "" {
+		window.Offset, err = w.tryParsingInMonths(w.offset)
 		if err != nil {
 			// treat as normal duration
-			window.Offset, err = time.ParseDuration(w.Offset)
+			window.Offset, err = time.ParseDuration(w.offset)
 			if err != nil {
-				return window, fmt.Errorf("failed to parse task window with offset %v: %w", w.Offset, err)
+				return window, fmt.Errorf("failed to parse task window with offset %v: %w", w.offset, err)
 			}
 		}
 	}
@@ -107,7 +107,7 @@ func (w WindowV1) prepareWindow() (JobSpecTaskWindow, error) {
 }
 
 // check if string contains monthly notation
-func (w WindowV1) tryParsingInMonths(str string) (time.Duration, error) {
+func (w windowV1) tryParsingInMonths(str string) (time.Duration, error) {
 	sz := time.Duration(0)
 	monthMatches := monthExp.FindAllStringSubmatch(str, -1)
 	if len(monthMatches) > 0 && len(monthMatches[0]) == 4 {
