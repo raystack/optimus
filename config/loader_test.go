@@ -293,7 +293,6 @@ func (s *ConfigTestSuite) initExpectedServerConfig() {
 	}
 	s.expectedServerConfig.Plugin = config.PluginConfig{}
 	s.expectedServerConfig.Plugin.Dir = "."
-
 }
 
 func (*ConfigTestSuite) initServerConfigEnv() {

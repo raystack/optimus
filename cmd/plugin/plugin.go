@@ -22,8 +22,9 @@ func NewPluginCommand() *cobra.Command {
 		serverConfig: &config.ServerConfig{},
 	}
 	cmd := &cobra.Command{
-		Use:   "plugin",
-		Short: "Manage plugins",
+		Use:    "plugin",
+		Short:  "Manage plugins",
+		Hidden: true,
 		Annotations: map[string]string{
 			"group:dev": "true",
 		},

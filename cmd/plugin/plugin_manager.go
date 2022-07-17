@@ -4,14 +4,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/odpf/salt/log"
-
 	getter "github.com/hashicorp/go-getter"
+	"github.com/odpf/salt/log"
 )
 
 type IPluginManager interface {
-	Install(src, dst string) error
-	InstallMany(srcList []string, dst string) error
+	Install(dst string, sources ...string) error
 }
 
 func NewPluginManager(logger log.Logger) IPluginManager {
@@ -37,7 +35,7 @@ type PluginManager struct {
 	client *getter.Client
 }
 
-func (p *PluginManager) Install(src, dst string) error {
+func (p *PluginManager) installOne(dst, src string) error {
 	p.client.Src = src
 	p.client.Dst = dst
 
@@ -45,14 +43,14 @@ func (p *PluginManager) Install(src, dst string) error {
 		p.logger.Error(fmt.Sprintf("Error installing plugin from [%s]", src))
 		return err
 	}
-	p.logger.Debug(fmt.Sprintf("Success installing plugin from [%s]", src))
+	p.logger.Info(fmt.Sprintf("Success installing plugin from [%s]", src))
 	return nil
 }
 
-func (p *PluginManager) InstallMany(srcList []string, dst string) error {
+func (p *PluginManager) Install(dst string, sources ...string) error {
 	// p.preCleanUp(dst) -- TODO: after making plugin discovery static
-	for _, src := range srcList {
-		if err := p.Install(src, dst); err != nil {
+	for _, src := range sources {
+		if err := p.installOne(dst, src); err != nil {
 			p.logger.Error("*** Plugin Installation Aborted !!. Please check if plugin.artifacts are correct")
 			return err
 		}

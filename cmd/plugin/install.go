@@ -36,9 +36,9 @@ func (i *installCommand) PreRunE(_ *cobra.Command, _ []string) error {
 // also used during server start
 func InstallPlugins(conf *config.ServerConfig, logger log.Logger) error {
 	dst := conf.Plugin.Dir
-	srcList := conf.Plugin.Artifacts
+	sources := conf.Plugin.Artifacts
 	pluginManger := NewPluginManager(logger)
-	return pluginManger.InstallMany(srcList, dst)
+	return pluginManger.Install(dst, sources...)
 }
 
 func (i *installCommand) RunE(_ *cobra.Command, _ []string) error {
