@@ -278,54 +278,50 @@ func (d *dependencyResolver) GetJobSpecsWithDependencies(ctx context.Context, pr
 }
 
 func (d *dependencyResolver) getExternalDependenciesByJobID(ctx context.Context, projectID models.ProjectID) (map[string]models.ExternalDependency, []models.UnknownDependency, error) {
-	output := make(map[string]models.ExternalDependency)
-	addToOutput := func(dependencies map[string]models.ExternalDependency) {
-		for jobName, externalDependency := range dependencies {
-			outputOptimusDependencies := output[jobName].OptimusDependencies
-			outputOptimusDependencies = append(outputOptimusDependencies, externalDependency.OptimusDependencies...)
-			output[jobName] = models.ExternalDependency{
-				HTTPDependencies:    output[jobName].HTTPDependencies,
-				OptimusDependencies: outputOptimusDependencies,
-			}
-		}
-	}
-
 	staticExternalDependencyPerJobName, unknownDependencies, err := d.externalDependencyResolver.FetchStaticExternalDependenciesPerJobName(ctx, projectID)
 	if err != nil {
 		return nil, nil, err
 	}
-	addToOutput(staticExternalDependencyPerJobName)
 
 	inferredExternalDependencyPerJobName, err := d.externalDependencyResolver.FetchInferredExternalDependenciesPerJobName(ctx, projectID)
 	if err != nil {
 		return nil, nil, err
 	}
-	addToOutput(inferredExternalDependencyPerJobName)
 
-	return output, unknownDependencies, nil
+	return mergeExternalDependencyByJobName(staticExternalDependencyPerJobName, inferredExternalDependencyPerJobName), unknownDependencies, nil
+}
+
+func mergeExternalDependencyByJobName(input1, input2 map[string]models.ExternalDependency) map[string]models.ExternalDependency {
+	for jobName, externalDependency := range input2 {
+		externalOptimusDependencies := input1[jobName].OptimusDependencies
+		externalOptimusDependencies = append(externalOptimusDependencies, externalDependency.OptimusDependencies...)
+		input1[jobName] = models.ExternalDependency{
+			HTTPDependencies:    input1[jobName].HTTPDependencies,
+			OptimusDependencies: externalOptimusDependencies,
+		}
+	}
+	return input1
 }
 
 func (d *dependencyResolver) getInternalDependenciesByJobID(ctx context.Context, projectID models.ProjectID) (map[uuid.UUID][]models.JobSpec, error) {
-	output := make(map[uuid.UUID][]models.JobSpec)
-	addToOutput := func(dependencies map[uuid.UUID][]models.JobSpec) {
-		for jobID, jobSpecs := range dependencies {
-			output[jobID] = append(output[jobID], jobSpecs...)
-		}
-	}
-
 	staticDependenciesPerJobID, err := d.jobSpecRepo.GetStaticDependenciesPerJobID(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
-	addToOutput(staticDependenciesPerJobID)
 
 	inferredDependenciesPerJobID, err := d.jobSpecRepo.GetInferredDependenciesPerJobID(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
-	addToOutput(inferredDependenciesPerJobID)
 
-	return output, nil
+	return mergeInternalDependenciesByJobID(staticDependenciesPerJobID, inferredDependenciesPerJobID), nil
+}
+
+func mergeInternalDependenciesByJobID(input1, input2 map[uuid.UUID][]models.JobSpec) map[uuid.UUID][]models.JobSpec {
+	for jobID, jobSpecs := range input2 {
+		input1[jobID] = append(input1[jobID], jobSpecs...)
+	}
+	return input1
 }
 
 func (*dependencyResolver) groupDependencies(dependencyJobSpecs []models.JobSpec) map[string]models.JobSpecDependency {
