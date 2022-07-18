@@ -286,11 +286,11 @@ func (sv *JobSpecServiceServer) GetDeployJobsStatus(ctx context.Context, req *pb
 	case models.JobDeploymentStatusSucceed:
 		return &pb.GetDeployJobsStatusResponse{
 			Status:       jobDeployment.Status.String(),
-			SuccessCount: int32(jobDeployment.Details.DeploymentSuccessCount),
+			SuccessCount: int32(jobDeployment.Details.SuccessCount),
 		}, nil
 	case models.JobDeploymentStatusFailed:
 		var deployJobFailures []*pb.DeployJobFailure
-		for _, failure := range jobDeployment.Details.DeploymentFailures {
+		for _, failure := range jobDeployment.Details.Failures {
 			deployJobFailures = append(deployJobFailures, &pb.DeployJobFailure{JobName: failure.JobName, Message: failure.Message})
 		}
 		unknownDependencies := make(map[string]string)
@@ -299,8 +299,8 @@ func (sv *JobSpecServiceServer) GetDeployJobsStatus(ctx context.Context, req *pb
 		}
 		return &pb.GetDeployJobsStatusResponse{
 			Status:              jobDeployment.Status.String(),
-			SuccessCount:        int32(jobDeployment.Details.DeploymentSuccessCount),
-			FailureCount:        int32(jobDeployment.Details.DeploymentFailureCount),
+			SuccessCount:        int32(jobDeployment.Details.SuccessCount),
+			FailureCount:        int32(len(jobDeployment.Details.Failures)),
 			Failures:            deployJobFailures,
 			UnknownDependencies: unknownDependencies,
 		}, nil

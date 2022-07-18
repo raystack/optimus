@@ -158,12 +158,11 @@ func (s *scheduler) DeployJobsVerbose(ctx context.Context, namespace models.Name
 	var jobDeploymentDetail models.JobDeploymentDetail
 	for _, result := range runner.Run() {
 		if result.Val != nil {
-			jobDeploymentDetail.DeploymentFailures = append(jobDeploymentDetail.DeploymentFailures, result.Val.(models.JobDeploymentFailure))
+			jobDeploymentDetail.Failures = append(jobDeploymentDetail.Failures, result.Val.(models.JobDeploymentFailure))
 		}
 	}
 
-	jobDeploymentDetail.DeploymentFailureCount = len(jobDeploymentDetail.DeploymentFailures)
-	jobDeploymentDetail.DeploymentSuccessCount = len(jobs) - jobDeploymentDetail.DeploymentFailureCount
+	jobDeploymentDetail.SuccessCount = len(jobs) - len(jobDeploymentDetail.Failures)
 	return jobDeploymentDetail, nil
 }
 

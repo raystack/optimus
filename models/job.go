@@ -554,9 +554,8 @@ type JobDeployment struct {
 }
 
 type JobDeploymentDetail struct {
-	DeploymentSuccessCount        int
-	DeploymentFailureCount        int
-	DeploymentFailures            []JobDeploymentFailure
+	SuccessCount                  int
+	Failures                      []JobDeploymentFailure
 	UnknownDependenciesPerJobName map[string][]string
 }
 
