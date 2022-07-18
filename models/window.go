@@ -7,7 +7,9 @@ import (
 
 type Window interface {
 	Validate() error
-	GetTimeRange(scheduleTime time.Time) (time.Time, time.Time, error)
+
+	GetStartTime(scheduleTime time.Time) (time.Time, error)
+	GetEndTime(scheduleTime time.Time) (time.Time, error)
 
 	GetTruncateTo() string
 	GetOffset() string

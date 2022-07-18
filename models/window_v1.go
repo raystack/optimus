@@ -53,19 +53,26 @@ func (w windowV1) Validate() error {
 	return nil
 }
 
-func (w windowV1) GetTimeRange(scheduleTime time.Time) (time.Time, time.Time, error) {
-	var err error
-	err = w.Validate()
-	if err != nil {
-		return time.Time{}, time.Time{}, err
+func (w windowV1) GetStartTime(scheduleTime time.Time) (time.Time, error) {
+	if err := w.Validate(); err != nil {
+		return time.Time{}, err
 	}
 	jobWindow, err := w.prepareWindow()
 	if err != nil {
-		return time.Time{}, time.Time{}, err
+		return time.Time{}, err
 	}
-	startTime := jobWindow.GetStart(scheduleTime)
-	endTime := jobWindow.GetEnd(scheduleTime)
-	return startTime, endTime, nil
+	return jobWindow.GetStart(scheduleTime), nil
+}
+
+func (w windowV1) GetEndTime(scheduleTime time.Time) (time.Time, error) {
+	if err := w.Validate(); err != nil {
+		return time.Time{}, err
+	}
+	jobWindow, err := w.prepareWindow()
+	if err != nil {
+		return time.Time{}, err
+	}
+	return jobWindow.GetEnd(scheduleTime), nil
 }
 
 func (w windowV1) GetTruncateTo() string {

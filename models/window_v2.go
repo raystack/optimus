@@ -40,21 +40,20 @@ func (w windowV2) Validate() error {
 	return nil
 }
 
-func (w windowV2) GetTimeRange(scheduleTime time.Time) (time.Time, time.Time, error) {
+func (w windowV2) GetStartTime(scheduleTime time.Time) (time.Time, error) {
+	endTime, err := w.GetEndTime(scheduleTime)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return w.getStartTime(endTime)
+}
+func (w windowV2) GetEndTime(scheduleTime time.Time) (time.Time, error) {
 	err := w.Validate()
 	if err != nil {
-		return time.Time{}, time.Time{}, err
+		return time.Time{}, err
 	}
 	truncatedTime := w.truncateTime(scheduleTime)
-	endTime, err := w.adjustOffset(truncatedTime)
-	if err != nil {
-		return time.Time{}, time.Time{}, err
-	}
-	startTime, err := w.getStartTime(endTime)
-	if err != nil {
-		return time.Time{}, time.Time{}, err
-	}
-	return startTime, endTime, nil
+	return w.adjustOffset(truncatedTime)
 }
 
 func (w windowV2) GetTruncateTo() string {

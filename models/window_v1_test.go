@@ -228,12 +228,16 @@ func TestWindowV1(t *testing.T) {
 			}
 			for _, sc := range cases {
 				w := models.NewTestWindowV1(sc.TruncateTo, sc.Offset, sc.Size)
-				err := w.Validate()
-				assert.Nil(t, err, sc.Scenario)
-				actualStartTime, actualEndTime, err := w.GetTimeRange(sc.ScheduleTime)
-				assert.Nil(t, err, sc.Scenario)
+
+				actualValidateError := w.Validate()
+				actualStartTime, actualStartTimeError := w.GetStartTime(sc.ScheduleTime)
+				actualEndTime, actualEndTimeError := w.GetEndTime(sc.ScheduleTime)
+
+				assert.NoError(t, actualValidateError, sc.Scenario)
 				assert.Equal(t, sc.ExpectedStartTime.String(), actualStartTime.String(), sc.Scenario)
+				assert.NoError(t, actualStartTimeError, sc.Scenario)
 				assert.Equal(t, sc.ExpectedEndTime.String(), actualEndTime.String(), sc.Scenario)
+				assert.NoError(t, actualEndTimeError, sc.Scenario)
 			}
 		})
 	})
