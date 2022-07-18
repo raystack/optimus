@@ -1,4 +1,4 @@
-- Feature Name: Simplify Plugin Releases
+- Feature Name: Simplify Plugins
 - Status: Draft
 - Start Date: 2022-05-07
 - Author: Saikumar
@@ -7,39 +7,34 @@
 
 The scope of this rfc is to simplify the release and deployment operations w.r.t the optimus plugin ecosystem.
 
-The proposal here is to remove :
-1. **Executor and Task Dependency** :   
-Decouple the *executor_boot_process* and the executor as separate containers where the airflow worker launches a pod with *init-container* (for boot process) adjacent to executor container.
-2. **Plugin and Server Dependency** :   
-Install plugins on-demand declaratively instead of manually baking them into the optimus server image (in kubernetes setup).
-3. **Plugin and Executor Dependency** :   
-Extract out executor related variables from plugin code (Executor version , Image etc..) as *plugin config*.
-
+The proposal here is to :
+1. **Avoid Wrapping Executor Images** :   
+Decouple the executor_boot_process and the executor as separate containers where the airflow worker launches a pod with init-container (for boot process) adjacent to executor container.
+2. **Simplfy Plugin Installation** :
+    - `Server end` : Install plugins on-demand declaratively instead of manually baking them into the optimus server image (in kubernetes setup).
+    - `Client end` : Plugin interface for client-end is limited to support  Version, Survey Questions and Answers etc. that can be extracted out from the current plugin interface and maintained as yaml file which simplifies platform dependent plugin distribution for cli.
 # Technical Design
-
 ## Background :
+### Changes that trigger a new release in Optimus setup:
+* Executor Image changes
+* Executor Image Wrapper changes
+* Plugin binary changes
+* Optimus binary changes
 
-### Optimus components that trigger a new release:
-* Executor Image 
-* Task Image
-* Plugin binary
-* Optimus server/cli binary
-
-### Non-trivial release dependencies as per current design
-* `Executor Image release` -> `Task Image release` -> `Plugin binary release` -> `Server release`
+### Release dependencies as per current design
+* `Executor Image release` -> `Executor Wrapper Image release` -> `Plugin binary release` -> `Server release`
 * `Plugin binary release` -> `Server release`
 
-### 1. <u>Dependency between `Executor and Task`</u>  : 
+### 1. <u>Avoid Wrapping Executor Images</u>  : 
 * The `executor_boot_process` and `executor` are coupled:
 ```
 -- Plugin repo structure
-
 /task/
 /task/Dockerfile           -- task_image
 /task/executor/Dockerfile  -- executor_image
 ```
 
-Task Image :
+Executor Wrapper Image (Task Image) :
 - It's a wrapper around the executor_image to facilitate boot mechanism for executor.
 - The optimus binary is downloaded during buildtime of this image.
 - During runtime, it does as follow :
@@ -55,120 +50,98 @@ task_image
 
 The `optimus-bin` and `entrypoint.sh` are baked into the `task_image` and is being maintained by task/plugin developers.
 
-### 2. <u>Dependency between `Plugin and Server`, also  `Plugin and Executor`</u> : 
-* Plugin binaries are manually installed (baked into optimus image in kubernetes setup).
-* The executor_image and version are hard-coded into plugin binary. So, any change in executor version triggers additional release. (plugin-executor dependency)
+### 2. <u>Simplify Plugin Installation</u> : 
+* Plugin binaries are manually installed (baked into optimus image in kubernetes setup). 
 * Any change in plugin code demands re-creation of optimus image with new plugin binary, inturn demanding redeployment of optimus server. (in kubernetes setup)
+* At client side, plugin binaries require support for different platforms.
 
 ## Approach :
-### 1. <u>Removing dependency between `Executor and Task Image` releases</u> :
+### 1. <u>Avoid Wrapping Executor Images </u> :
 * Decouple the lifecycle of the executor and the boot process as seperate containers/images.
 
 <!-- ![Architecture](images/simplify_plugins.png) -->
 <img src="images/simplify_plugins_executor.png" alt="Simplify Plugins Executor" width="800" />
 
 **Task Boot Sequence**:
-1. KubernetesPodOperator spawns init-container and executor-container, mounted with shared volume (type emptyDir) for assets.
-2. `init-container` fetches assets, config, env files and writes onto the shared volume.
-3. `postStart` lifecycle hook in the `executor-container` loads env from files on the shared volume.
+1. Airflow worker fetches env and secrets for the job and adds them to the executor pod as environment variables.
+2. KubernetesPodOperator spawns init-container and executor-container, mounted with shared volume (type emptyDir) for assets.
+3. `init-container` fetches assets, config, env files and writes onto the shared volume.
 4. the default entrypoint in the executor-image starts the actual job.
 
-```yaml
-# sample task definition
-apiVersion: v1
-kind: Pod
-metadata:
-  name: {{.task}}
-spec:
-  # init container
-  initContainers:
-  - name: init-executor
-    image: {{.default-init-docker-image}}
-    volumeMounts:
-    - mountPath: /usr/share/asserts
-      name: assets-dir
-  containers:
-    # executor container
-    - image: {{.executor-image-repo-link}}
-      name : {{.executor-name}}
-      volumeMounts:
-        - name: assets-dir
-          mountPath: /var/assets
-      # entrypoint.sh
-      lifecycle:
-        postStart:
-          exec:
-            command:
-                - "sh"
-                - "-c"
-                - >
-                source ~/.env
-                # more...
 
-  # shared volume
-  volumes:
-    - name: assets-dir
-      emptyDir: {}
-```
+### 2. <u>Simplify Plugin Installations</u> :
+<img src="images/plugin_manager.png" alt="Plugins Manager" width="800" />
 
-### 2. <u>Removing dependency between `Plugin and Server` releases</u> :
-* Install plugin binaries on-demand with a declarative config (instead of baking them with optimus docker image - in kubernetes context).
-* A plugin manager that consumes a declarative config to install the plugins on-demand is warrented.
-* Optimus support for plugin management as below.
-    *  `optimus plugin install -c plugin_config.yaml --mode server/client`
-    *  `optimus plugin clean`
+#### A) Plugin Manager: (at server end)
++ Currently the plugins are maintained as mono repo and internally versioned i.e., version of plugin are mainatined within each plugin.
++ A plugin manager is required to support declarative installation of plugins.
++ This plugin manager consumes a config (plugin_manager_config) and downloads artifacts from a plugin repository.
+* Optimus support for plugin manager as below.
+    *  `optimus plugin install -c optimus.yaml` -- server
+    *  `optimus plugin sync -c optimus.yaml` -- cli
     *  `optimus plugin list`
-* This plugin manager can be taken advantage to sync plugins at client side as well, where in client mode the plugin manger pulls plugin_config from server and installs the plugins.
 * Support for different kinds of plugin repositories (like s3, gcs, url, local file system etc..) gives the added flexibility and options to distribute and install the plugin binaries in different ways.
+* Plugins are installed at container runtime and this decouples the building of optimus docker image from plugins installations. The plugin_manager_config can be maintained as `ConfigMap` so as to reflect any updates in plugins all one needs to do is change in the config map and restart the pod. 
 * Example for the plugin config: 
 ```yaml
     plugins :
-      install_location : ""
-
-      # list the providers (plugin repository kind)
+      plugin_dir : ""
       providers :
-      - type : url
+      - type : http
         name : internal_url_xyz_org
         url: http://<internal_url>
         auth: 
-      
       - type : gcs
         name : private_gcs_backend_team
         bucket: <bucket>
         service_account : <base64_encoded_service_account>
-      
-      
-      # list the plugins and their config
       plugins :
       - provider : internal_url_xyz_org
-        output: <plugin-name>
         path : <plugin_name>.tar.gz
-        config: {}  # plguin variables (eg: executor image etc..)
-      
       - provider : private_gcs_backend_team
-        output: <plugin-name>
         path : <plugin_name>.zip
-        config: {}
+        .
+        .
       
  ```
- * This feature demands that the current implementation of plugin discovery is revisited.
- * Plugin config can be mounted as configmap in the kubernetes setup.
+#### B) Plugin Yaml Interface: (for client side simplification)
++ Currently plugins are implemented and distributed as binaries and as clients needs to install them, it demands support for different host  architectures.
++ Since CLI (client side) plugins just require details about plugin such as Version, Suevery Questions etc. the proposal here is to maintain CLI plugins as yaml files.
++ Implementation wise, the proposal here is to split the current plugin interface (which only supports interaction with binary plugins) to also accommodate yaml based plugins.
++ The above mentioned pluign manager, at server end, would be agnostic about the contents of plugin artifacts from the repository.
++ At client side, the CLI could sync the yaml files from the server itself to stay up-to-date with the server wrt plugins.
+* Example representation of the yaml plugin : 
+```yaml
+  Name: bq2bq
+  Version: latest
+  Image: docker.io/odpf/optimus-task-bq2bq
+  Description: "BigQuery to BigQuery transformation task"
+  Questions:
+    - Name:    "Project"
+      Prompt:  "Project ID"
+      Help:    "Destination bigquery project ID"
+    - Name:
+      .
+      .
+      .
+  DefaultConfig:
+    - name: PROJECT
+      value: ''
+    - name: TABLE
+      value: ''
 
-### 3. <u>Removing dependency between `Plugin and Executor` releases</u> : 
-* As per the above mentioned sample plugin config, the values for the executor dependent variables in plugin binary can be infered from the plugin config itself.
-* This decouples the release dependency between plugin binary and executor.
-
+  DefaultAssets:
+    - name: query.sql
+      value: |
+        -- SQL query goes here
+        -- Select * from "project.dataset.table"
+      
+ ```
 ## Result:
 <img src="images/simplify_plugins.png" alt="Simplify Plugins" width="800" />
 
-* Below are the implications of the proposed design, assuming the setup is in kubernetes :
-  * **On Executor Release** : Change plugin config in the configmap and restart the optimus pod.
-  * **On Plugin Release** : Change the plugin repository link in the plugin conf and restart the optimus pod.
-  * **On Optimus Server release** : Update the init-container for the *executor_boot_process*. (not always)
+* Executor boot process is standardised and extracted away from plugin developers. Now any arbitrary image can be used for executors.
+* At server side, for changes in plugin (dur to plugin release), update the plugin_manager_config and restart the optimus server pod. The plugin manager is expected to reinstall the plugins.
+* Client side dependency on plugins is simplified with yaml based plugins.
 
-## Other Considerations:
-* An assumption here is that the *executor_boot_process* to remain same for all  executors.
-* One possible way to deal with the need for customised init process is to let plugins devs also provide `custom-init-image`
-along with `executor-image` which will fallback to a `default-init-image` if not provided.
-* Supporting the `custom-init-image` would require changes in plugin interfaces and rendering airflow dag.
-* Declarative plugin installation would affect the current implementation of plugin discovery.
+

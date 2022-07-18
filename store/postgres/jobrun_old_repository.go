@@ -13,13 +13,13 @@ import (
 	"github.com/odpf/optimus/store"
 )
 
-type JobRunRepository struct {
+type JobRunOldRepository struct {
 	db           *gorm.DB
 	adapter      *JobSpecAdapter
 	instanceRepo *InstanceRepository
 }
 
-func (repo *JobRunRepository) Insert(ctx context.Context, namespace models.NamespaceSpec, spec models.JobRun, jobDestination string) error {
+func (repo *JobRunOldRepository) Insert(ctx context.Context, namespace models.NamespaceSpec, spec models.JobRun, jobDestination string) error {
 	resource, err := repo.adapter.FromJobRun(spec, namespace, jobDestination)
 	if err != nil {
 		return err
@@ -27,7 +27,7 @@ func (repo *JobRunRepository) Insert(ctx context.Context, namespace models.Names
 	return repo.db.WithContext(ctx).Omit("Namespace", "Instances").Create(&resource).Error
 }
 
-func (repo *JobRunRepository) Save(ctx context.Context, namespace models.NamespaceSpec, spec models.JobRun, jobDestination string) error {
+func (repo *JobRunOldRepository) Save(ctx context.Context, namespace models.NamespaceSpec, spec models.JobRun, jobDestination string) error {
 	if spec.Status == "" {
 		// mark default state pending
 		spec.Status = models.RunStatePending
@@ -48,7 +48,7 @@ func (repo *JobRunRepository) Save(ctx context.Context, namespace models.Namespa
 	return repo.db.WithContext(ctx).Omit("Namespace", "Instances").Model(&resource).Updates(&resource).Error
 }
 
-func (repo *JobRunRepository) GetByID(ctx context.Context, id uuid.UUID) (models.JobRun, models.NamespaceSpec, error) { //nolint:unparam
+func (repo *JobRunOldRepository) GetByID(ctx context.Context, id uuid.UUID) (models.JobRun, models.NamespaceSpec, error) { //nolint:unparam
 	var r JobRun
 	if err := repo.db.WithContext(ctx).Preload("Namespace").Where("id = ?", id).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -62,7 +62,7 @@ func (repo *JobRunRepository) GetByID(ctx context.Context, id uuid.UUID) (models
 	return repo.adapter.ToJobRun(r)
 }
 
-func (repo *JobRunRepository) GetByScheduledAt(ctx context.Context, jobID uuid.UUID, scheduledAt time.Time) (models.JobRun, models.NamespaceSpec, error) {
+func (repo *JobRunOldRepository) GetByScheduledAt(ctx context.Context, jobID uuid.UUID, scheduledAt time.Time) (models.JobRun, models.NamespaceSpec, error) {
 	var r JobRun
 	if err := repo.db.WithContext(ctx).Preload("Namespace").Where("job_id = ? AND scheduled_at = ?", jobID, scheduledAt).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -77,7 +77,7 @@ func (repo *JobRunRepository) GetByScheduledAt(ctx context.Context, jobID uuid.U
 }
 
 // AddInstance associate instance details
-func (repo *JobRunRepository) AddInstance(ctx context.Context, _ models.NamespaceSpec, run models.JobRun, spec models.InstanceSpec) error {
+func (repo *JobRunOldRepository) AddInstance(ctx context.Context, _ models.NamespaceSpec, run models.JobRun, spec models.InstanceSpec) error {
 	instance, err := repo.instanceRepo.GetByName(ctx, run.ID, spec.Name, spec.Type.String())
 	if err != nil && !errors.Is(err, store.ErrResourceNotFound) {
 		return err
@@ -92,7 +92,7 @@ func (repo *JobRunRepository) AddInstance(ctx context.Context, _ models.Namespac
 }
 
 // ClearInstance deletes associated instance details
-func (repo *JobRunRepository) ClearInstance(ctx context.Context, runID uuid.UUID, instanceType models.InstanceType, instanceName string) error {
+func (repo *JobRunOldRepository) ClearInstance(ctx context.Context, runID uuid.UUID, instanceType models.InstanceType, instanceName string) error {
 	r, _, err := repo.GetByID(ctx, runID)
 	if err != nil {
 		return err
@@ -109,14 +109,14 @@ func (repo *JobRunRepository) ClearInstance(ctx context.Context, runID uuid.UUID
 }
 
 // Clear prepares job run for fresh start
-func (repo *JobRunRepository) Clear(ctx context.Context, runID uuid.UUID) error {
+func (repo *JobRunOldRepository) Clear(ctx context.Context, runID uuid.UUID) error {
 	if err := repo.instanceRepo.DeleteByJobRun(ctx, runID); err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return err
 	}
 	return repo.db.WithContext(ctx).Model(&JobRun{ID: runID}).Updates(JobRun{Status: models.RunStatePending.String()}).Error
 }
 
-func (repo *JobRunRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status models.JobRunState) error {
+func (repo *JobRunOldRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status models.JobRunState) error {
 	var jr JobRun
 	if err := repo.db.WithContext(ctx).Where("id = ?", id).Find(&jr).Error; err != nil {
 		return err
@@ -125,7 +125,7 @@ func (repo *JobRunRepository) UpdateStatus(ctx context.Context, id uuid.UUID, st
 	return repo.db.Omit("Namespace").Save(jr).Error
 }
 
-func (repo *JobRunRepository) GetByTrigger(ctx context.Context, trigger models.JobRunTrigger, statuses ...models.JobRunState) ([]models.JobRun, error) {
+func (repo *JobRunOldRepository) GetByTrigger(ctx context.Context, trigger models.JobRunTrigger, statuses ...models.JobRunState) ([]models.JobRun, error) {
 	var specs []models.JobRun
 	var runs []JobRun
 	if len(statuses) > 0 {
@@ -151,8 +151,8 @@ func (repo *JobRunRepository) GetByTrigger(ctx context.Context, trigger models.J
 	return specs, nil
 }
 
-func NewJobRunRepository(db *gorm.DB, adapter *JobSpecAdapter) *JobRunRepository {
-	return &JobRunRepository{
+func NewJobRunRepository(db *gorm.DB, adapter *JobSpecAdapter) *JobRunOldRepository {
+	return &JobRunOldRepository{
 		db:           db,
 		adapter:      adapter,
 		instanceRepo: NewInstanceRepository(db, adapter),

@@ -70,7 +70,7 @@ func TestPagerDuty(t *testing.T) {
 				Name: "foo-job-spec",
 			},
 			JobEvent: models.JobEvent{
-				Type: models.JobEventTypeFailure,
+				Type: models.JobFailureEvent,
 			},
 			Route: "optimus@test.com",
 		})
@@ -128,7 +128,7 @@ func TestPagerDuty(t *testing.T) {
 				Name: "foo-job-spec",
 			},
 			JobEvent: models.JobEvent{
-				Type: models.JobEventTypeFailure,
+				Type: models.JobFailureEvent,
 			},
 			Route: "optimus@test.com",
 		})

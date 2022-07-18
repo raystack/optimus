@@ -6,12 +6,22 @@ from datetime import datetime, timedelta, timezone
 from airflow.models import DAG, Variable, DagRun, DagModel, TaskInstance, BaseOperator, XCom, XCOM_RETURN_KEY
 from airflow.kubernetes.secret import Secret
 from airflow.configuration import conf
+from airflow.operators.python_operator import PythonOperator
 from airflow.utils.weight_rule import WeightRule
 from kubernetes.client import models as k8s
 
 
 from __lib import optimus_failure_notify, optimus_sla_miss_notify, SuperKubernetesPodOperator, \
     SuperExternalTaskSensor, ExternalHttpSensor
+
+from __lib import JOB_START_EVENT_NAME, \
+    JOB_END_EVENT_NAME, \
+    log_start_event, \
+    log_success_event, \
+    log_retry_event, \
+    log_failure_event, \
+    EVENT_NAMES, \
+    log_job_end, log_job_start
 
 SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS = int(Variable.get("sensor_poke_interval_in_secs", default_var=15 * 60))
 SENSOR_DEFAULT_TIMEOUT_IN_SECS = int(Variable.get("sensor_timeout_in_secs", default_var=15 * 60 * 60))
@@ -40,7 +50,9 @@ default_args = {
     "priority_weight": {{.Job.Task.Priority}},
     "start_date": datetime.strptime({{ .Job.Schedule.StartDate.Format "2006-01-02T15:04:05" | quote }}, "%Y-%m-%dT%H:%M:%S"),
     {{if .Job.Schedule.EndDate -}}"end_date": datetime.strptime({{ .Job.Schedule.EndDate.Format "2006-01-02T15:04:05" | quote}},"%Y-%m-%dT%H:%M:%S"),{{- else -}}{{- end}}
-    "on_failure_callback": optimus_failure_notify,
+    "on_failure_callback": log_failure_event,
+    "on_retry_callback": log_retry_event,
+    "on_success_callback": log_success_event,
     "weight_rule": WeightRule.ABSOLUTE
 }
 
@@ -57,6 +69,21 @@ dag = DAG(
             {{- end}}
            ]
 )
+
+publish_job_start_event = PythonOperator(
+        task_id = JOB_START_EVENT_NAME,
+        python_callable = log_job_start,
+        provide_context=True,
+        dag=dag
+    )
+
+publish_job_end_event = PythonOperator(
+        task_id = JOB_END_EVENT_NAME,
+        python_callable = log_job_end,
+        provide_context=True,
+        trigger_rule= 'all_done',
+        dag=dag
+    )
 
 {{$baseTaskSchema := .Job.Task.Unit.Info -}}
 {{ if ne $baseTaskSchema.SecretPath "" -}}
@@ -186,24 +213,10 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
 {{ $baseWindow := $.Job.Task.Window }}
 {{- range $_, $dependency := $.Job.Dependencies}}
 {{- $dependencySchema := $dependency.Job.Task.Unit.Info }}
-
-{{- if eq $dependency.Type $.JobSpecDependencyTypeIntra }}
-wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
-    optimus_hostname="{{$.Hostname}}",
-    upstream_optimus_project="{{$.Namespace.ProjectSpec.Name}}",
-    upstream_optimus_job="{{$dependency.Job.Name}}",
-    window_size="{{ $baseWindow.Size.String }}",
-    poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
-    timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
-    task_id="wait_{{$dependency.Job.Name | trunc 200}}-{{$dependencySchema.Name}}",
-    dag=dag
-)
-{{- end -}}
-
-{{- if eq $dependency.Type $.JobSpecDependencyTypeInter }}
 wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
     optimus_hostname="{{$.Hostname}}",
     upstream_optimus_project="{{$dependency.Project.Name}}",
+    upstream_optimus_namespace="{{$.Namespace.Name}}",
     upstream_optimus_job="{{$dependency.Job.Name}}",
     window_size="{{ $baseWindow.Size.String }}",
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
@@ -211,7 +224,6 @@ wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} =
     task_id="wait_{{$dependency.Job.Name | trunc 200}}-{{$dependencySchema.Name}}",
     dag=dag
 )
-{{- end -}}
 {{- end}}
 
 {{- range $_, $httpDependency := $.Job.ExternalDependencies.HTTPDependencies}}
@@ -234,24 +246,29 @@ wait_{{$httpDependency.Name}} = ExternalHttpSensor(
 
 # upstream sensors -> base transformation task
 {{- range $i, $t := $.Job.Dependencies }}
-wait_{{ $t.Job.Name | replace "-" "__dash__" | replace "." "__dot__" }} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
+publish_job_start_event >> wait_{{ $t.Job.Name | replace "-" "__dash__" | replace "." "__dot__" }} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
 {{- end}}
-
 {{- range $_, $t := $.Job.ExternalDependencies.HTTPDependencies }}
-wait_{{ $t.Name }} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
+publish_job_start_event >>  wait_{{ $t.Name }} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
 {{- end}}
+{{if and (not $.Job.Dependencies) (not $.Job.ExternalDependencies.HTTPDependencies)}}
+# if no sensor and dependency is configured
+publish_job_start_event >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
+{{end}}
+# post completion hook
+transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}} >> publish_job_end_event
 
 # set inter-dependencies between task and hooks
 {{- range $_, $task := .Job.Hooks }}
 {{- $hookSchema := $task.Unit.Info }}
 {{- if eq $hookSchema.HookType $.HookTypePre }}
-hook_{{$hookSchema.Name | replace "-" "__dash__"}} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
+publish_job_start_event >> hook_{{$hookSchema.Name | replace "-" "__dash__"}} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
 {{- end -}}
 {{- if eq $hookSchema.HookType $.HookTypePost }}
-transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}} >> hook_{{$hookSchema.Name | replace "-" "__dash__"}}
+transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}} >> hook_{{$hookSchema.Name | replace "-" "__dash__"}} >> publish_job_end_event
 {{- end -}}
 {{- if eq $hookSchema.HookType $.HookTypeFail }}
-transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}} >> hook_{{$hookSchema.Name | replace "-" "__dash__"}}
+transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}} >> hook_{{$hookSchema.Name | replace "-" "__dash__"}} >> publish_job_end_event
 {{- end -}}
 {{- end }}
 
@@ -260,7 +277,7 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
 {{- $hookSchema := $t.Unit.Info }}
 {{- range $_, $depend := $t.DependsOn }}
 {{- $dependHookSchema := $depend.Unit.Info }}
-hook_{{$dependHookSchema.Name | replace "-" "__dash__"}} >> hook_{{$hookSchema.Name | replace "-" "__dash__"}}
+hook_{{$dependHookSchema.Name | replace "-" "__dash__"}} >> hook_{{$hookSchema.Name | replace "-" "__dash__"}} >> publish_job_end_event
 {{- end }}
 {{- end }}
 
@@ -275,7 +292,7 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} >> [
 {{- $fhookSchema := $ftask.Unit.Info }}
 {{- if eq $fhookSchema.HookType $.HookTypeFail }} hook_{{$fhookSchema.Name | replace "-" "__dash__"}}, {{- end -}}
 {{- end -}}
-]
+] >> publish_job_end_event
 
 {{- end -}}
 

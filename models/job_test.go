@@ -291,4 +291,37 @@ func TestJob(t *testing.T) {
 			assert.Equal(t, expected, actual)
 		})
 	})
+	t.Run("SLADuration", func(t *testing.T) {
+		t.Run("should able to get defined SLA duration", func(t *testing.T) {
+			jobSpecs := models.JobSpec{
+				Name:  "foo",
+				Owner: "mee@mee",
+				Behavior: models.JobSpecBehavior{
+					Notify: []models.JobSpecNotifier{
+						{
+							On: models.SLAMissEvent,
+							Config: map[string]string{
+								"duration": "2s",
+							},
+							Channels: []string{"scheme://route"},
+						},
+					},
+				},
+				Task: models.JobSpecTask{
+					Unit:     &models.Plugin{},
+					Priority: 2000,
+					Window: models.JobSpecTaskWindow{
+						Size:       time.Hour,
+						Offset:     0,
+						TruncateTo: "d",
+					},
+				},
+			}
+
+			slaDefinitionInSec, err := jobSpecs.SLADuration()
+			assert.Nil(t, err)
+
+			assert.Equal(t, int64(2), slaDefinitionInSec)
+		})
+	})
 }

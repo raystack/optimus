@@ -32,7 +32,7 @@ func TestCompiler(t *testing.T) {
 			},
 			Notify: []models.JobSpecNotifier{
 				{
-					On: models.JobEventTypeSLAMiss,
+					On: models.SLAMissEvent,
 					Config: map[string]string{
 						"duration": "2s",
 					},
