@@ -2,7 +2,6 @@ package playground
 
 import (
 	"fmt"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/odpf/optimus/config"
@@ -10,13 +9,7 @@ import (
 )
 
 type windowComand struct {
-	clientConfig         *config.ClientConfig
-	window               Window
-	size                 int
-	offset               int
-	truncated            string
-	sehduledDate         time.Time
-	currentFinishingDate time.Time
+	clientConfig *config.ClientConfig
 }
 
 // NewPlayGroundWindowCommand initializes command for window
@@ -34,19 +27,6 @@ func NewPlayGroundWindowCommand(clientConfig *config.ClientConfig) *cobra.Comman
 
 // this will run when we give the command in cli
 func (j *windowComand) RunE(_ *cobra.Command, _ []string) error {
-	// the commented code below is for the default window which we can use it for a quick lookup
-	/*var state string = "Y"
-	for state == "Y" {
-		j.size = j.window.survey.GetWindowSize()
-		j.offset = j.window.survey.GetOffsetSize()
-		j.truncated = j.window.survey.GetTrucatedTo()
-		j.sehduledDate = j.window.survey.GetSechduleDate()
-		j.currentFinishingDate = j.sehduledDate
-		j.currentFinishingDate = j.window.truncate(j.currentFinishingDate, j.truncated)
-		j.currentFinishingDate = j.window.applyoffset(j.currentFinishingDate, j.offset)
-		j.window.printWindow(j.currentFinishingDate, j.size)
-		state = j.window.survey.GetStateInput()
-	}*/
 	// starts the interactive session (this is usful when we are learning the windowing for the first time)
 	fmt.Println(">  hello folks! this is an interactive cli")
 	fmt.Println(">  controls use up,down arrows to move the pointer, left and right to increase and decrease the values")

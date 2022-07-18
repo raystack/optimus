@@ -12,7 +12,7 @@ import (
 	"github.com/odpf/optimus/cmd/job"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/namespace"
-	playground "github.com/odpf/optimus/cmd/playGround"
+	playground "github.com/odpf/optimus/cmd/playground"
 	"github.com/odpf/optimus/cmd/project"
 	"github.com/odpf/optimus/cmd/replay"
 	"github.com/odpf/optimus/cmd/resource"

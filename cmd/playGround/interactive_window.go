@@ -5,299 +5,185 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/odpf/optimus/cmd/survey"
+	"github.com/odpf/optimus/job"
 )
 
-type MonthHour struct {
-	month int
-	hour  int
-}
 type model struct {
-	dStart         time.Time
-	dEnd           time.Time
-	windowSize     MonthHour
-	offset         MonthHour
-	truncate       string
-	sechduledDate  time.Time
-	increaseBy     string
-	increaseDateBy string
-	cursor         string
-	window         Window
+	cursor string
+	state  state
 }
 
-// model contains a window for using the function defined for the window struct
 func initialModel() model {
-	surveyForInitilization := survey.WindowSurvey{}
-	window := Window{surveyForInitilization}
+	windowv1 := job.WindowV1{Size: "0M0h", Offset: "0M0h", TruncateTo: ""}
+	windowv2 := job.WindowV2{Size: "0M0h", Offset: "0M0h", TruncateTo: ""}
 	return model{
-		dStart:         time.Now(),
-		dEnd:           time.Now(),
-		windowSize:     MonthHour{0, 0},
-		offset:         MonthHour{0, 0},
-		truncate:       "hour",
-		sechduledDate:  time.Now(),
-		increaseBy:     "hour",
-		increaseDateBy: "hour",
-		cursor:         "windowSize",
-		window:         window,
+		cursor: "window-hour",
+		state:  state{windowv1: windowv1, windowv2: windowv2, sechduledDate: time.Now()},
 	}
 }
 
-// no input is required since we operate using key strokes
 func (m model) Init() tea.Cmd {
-	// Just return `nil`, which means "no I/O right now, please."
 	return nil
 }
-
-/*
-key controls
-up, down move the cursor
-left decrease
-right increase
-*/
+func (m model) handleUp(cursor string) string {
+	switch cursor {
+	case "year", "month", "day", "hour", "minute":
+		return "truncate"
+	case "truncate":
+		return "offset-month"
+	case "offset-month":
+		return "window-month"
+	case "offset-hour":
+		return "window-hour"
+	}
+	return cursor
+}
+func (m model) handleDown(cursor string) string {
+	switch cursor {
+	case "truncate":
+		return "hour"
+	case "offset-month":
+		return "truncate"
+	case "offset-hour":
+		return "truncate"
+	case "window-month":
+		return "offset-month"
+	case "window-hour":
+		return "offset-hour"
+	}
+	return cursor
+}
+func (m model) handleRight(cursor string) string {
+	switch cursor {
+	case "offset-month":
+		return "offset-hour"
+	case "window-month":
+		return "window-hour"
+	case "month":
+		return "year"
+	case "day":
+		return "month"
+	case "minute":
+		return "day"
+	case "hour":
+		return "minute"
+	}
+	return cursor
+}
+func (m model) handleLeft(cursor string) string {
+	switch cursor {
+	case "offset-hour":
+		return "offset-month"
+	case "window-hour":
+		return "window-month"
+	case "year":
+		return "month"
+	case "month":
+		return "day"
+	case "day":
+		return "minute"
+	case "minute":
+		return "hour"
+	}
+	return cursor
+}
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
-	// Is it a key press?
 	case tea.KeyMsg:
-
-		// what was the actual key pressed?
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		case "up":
-			switch m.cursor {
-			case "windowSize":
-				m.cursor = "increaseDateBy"
-			case "offset":
-				m.cursor = "windowSize"
-			case "truncate":
-				m.cursor = "offset"
-			case "sechduledDate":
-				m.cursor = "truncate"
-			case "increaseBy":
-				m.cursor = "sechduledDate"
-			case "increaseDateBy":
-				m.cursor = "increaseBy"
-			}
+			m.cursor = m.handleUp(m.cursor)
 		case "down":
-			switch m.cursor {
-			case "windowSize":
-				m.cursor = "offset"
-			case "offset":
-				m.cursor = "truncate"
-			case "truncate":
-				m.cursor = "sechduledDate"
-			case "sechduledDate":
-				m.cursor = "increaseBy"
-			case "increaseBy":
-				m.cursor = "increaseDateBy"
-			case "increaseDateBy":
-				m.cursor = "windowSize"
-			}
+			m.cursor = m.handleDown(m.cursor)
 		case "left":
-			switch m.cursor {
-			case "windowSize":
-				switch m.increaseBy {
-				case "hour":
-					if m.windowSize.hour > 0 {
-						m.windowSize.hour--
-					}
-				case "month":
-					if m.windowSize.month > 0 {
-						m.windowSize.month--
-					}
-				}
-			case "offset":
-				switch m.increaseBy {
-				case "hour":
-					m.offset.hour--
-				case "month":
-					m.offset.month--
-				}
-			case "truncate":
-				temporary_truncate := m.truncate
-				switch temporary_truncate {
-				case "day":
-					m.truncate = "hour"
-				case "week":
-					m.truncate = "day"
-				case "month":
-					m.truncate = "week"
-				}
-			case "sechduledDate":
-				switch m.increaseDateBy {
-				case "minute":
-					m.sechduledDate = m.sechduledDate.Add(-1 * time.Minute)
-				case "hour":
-					m.sechduledDate = m.sechduledDate.Add(-1 * time.Hour)
-				case "day":
-					m.sechduledDate = m.sechduledDate.AddDate(0, 0, -1)
-				case "month":
-					m.sechduledDate = m.sechduledDate.AddDate(0, -1, 0)
-				case "year":
-					m.sechduledDate = m.sechduledDate.AddDate(-1, 0, 0)
-				}
-			case "increaseBy":
-				switch m.increaseBy {
-				case "month":
-					m.increaseBy = "hour"
-				}
-			case "increaseDateBy":
-				switch m.increaseDateBy {
-				case "hour":
-					m.increaseDateBy = "minute"
-				case "day":
-					m.increaseDateBy = "hour"
-				case "month":
-					m.increaseDateBy = "day"
-				case "year":
-					m.increaseDateBy = "month"
-				}
-			}
-			m.dEnd = m.window.truncate(m.sechduledDate, m.truncate)
-			m.dEnd = m.window.applyoffset(m.dEnd, m.offset)
-			m.dStart = m.dEnd.Add(time.Duration(-1*m.windowSize.hour)*time.Hour).AddDate(0, m.windowSize.month, 0)
+			m.cursor = m.handleLeft(m.cursor)
 		case "right":
+			m.cursor = m.handleRight(m.cursor)
+		case "shift+up", "shift+right":
 			switch m.cursor {
-			case "windowSize":
-				switch m.increaseBy {
-				case "hour":
-					m.windowSize.hour++
-				case "month":
-					m.windowSize.month++
-				}
-			case "offset":
-				switch m.increaseBy {
-				case "hour":
-					m.offset.hour++
-				case "month":
-					m.offset.month++
-				}
+			case "window-hour":
+				m.state.windowv2.Size = m.state.IncrementHour(m.state.windowv2.Size)
+			case "window-month":
+				m.state.windowv2.Size = m.state.IncrementMonth(m.state.windowv2.Size)
+			case "offset-hour":
+				m.state.windowv2.Offset = m.state.IncrementHour(m.state.windowv2.Offset)
+			case "offset-month":
+				m.state.windowv2.Offset = m.state.IncrementMonth(m.state.windowv2.Offset)
 			case "truncate":
-				temporary_truncate := m.truncate
-				switch temporary_truncate {
-				case "hour":
-					m.truncate = "day"
-				case "day":
-					m.truncate = "week"
-				case "week":
-					m.truncate = "month"
-				}
-			case "sechduledDate":
-				switch m.increaseDateBy {
-				case "minute":
-					m.sechduledDate = m.sechduledDate.Add(time.Minute)
-				case "hour":
-					m.sechduledDate = m.sechduledDate.Add(time.Hour)
-				case "day":
-					m.sechduledDate = m.sechduledDate.AddDate(0, 0, 1)
-				case "month":
-					m.sechduledDate = m.sechduledDate.AddDate(0, 1, 0)
-				case "year":
-					m.sechduledDate = m.sechduledDate.AddDate(1, 0, 0)
-				}
-			case "increaseBy":
-				switch m.increaseBy {
-				case "hour":
-					m.increaseBy = "month"
-				}
-			case "increaseDateBy":
-				switch m.increaseDateBy {
-				case "month":
-					m.increaseDateBy = "year"
-				case "day":
-					m.increaseDateBy = "month"
-				case "hour":
-					m.increaseDateBy = "day"
-				case "minute":
-					m.increaseDateBy = "hour"
-				}
+				m.state.windowv2.TruncateTo = m.state.IncrementTruncate()
+			case "year", "month", "day", "hour", "minute":
+				m.state.sechduledDate = m.state.IncrementDate(m.cursor)
 			}
-			m.dEnd = m.window.truncate(m.sechduledDate, m.truncate)
-			m.dEnd = m.window.applyoffset(m.dEnd, m.offset)
-			m.dStart = m.dEnd.Add(time.Duration(-1*m.windowSize.hour)*time.Hour).AddDate(0, m.windowSize.month, 0)
+		case "shift+down", "shift+left":
+			switch m.cursor {
+			case "window-hour":
+				m.state.windowv2.Size = m.state.DecrementHour(m.state.windowv2.Size)
+			case "window-month":
+				m.state.windowv2.Size = m.state.DecrementMonth(m.state.windowv2.Size)
+			case "offset-hour":
+				m.state.windowv2.Offset = m.state.DecrementHour(m.state.windowv2.Offset)
+			case "offset-month":
+				m.state.windowv2.Offset = m.state.DecrementMonth(m.state.windowv2.Offset)
+			case "truncate":
+				m.state.windowv2.TruncateTo = m.state.DecrementTruncate()
+			case "year", "month", "day", "hour", "minute":
+				m.state.sechduledDate = m.state.DecrementDate(m.cursor)
+			}
 		}
 	}
 	return m, nil
 }
-
-// view takes the model and genarates a new string for every key stroke
-// this gives us the illusion of some elements being static while others are moving
-// but they are all being replaced continuosly in run time
+func (m model) genarateCursor(current string) string {
+	if m.cursor == current {
+		return ">"
+	}
+	return " "
+}
+func (m model) genarateSechduledDateView() string {
+	s := ""
+	s += m.genarateCursor("hour")
+	s += strconv.Itoa(m.state.sechduledDate.Hour())
+	s += m.genarateCursor("minute")
+	s += strconv.Itoa(m.state.sechduledDate.Minute())
+	s += m.genarateCursor("day")
+	s += strconv.Itoa(m.state.sechduledDate.Day())
+	s += m.genarateCursor("month")
+	s += m.state.sechduledDate.Month().String()
+	s += m.genarateCursor("year")
+	s += strconv.Itoa(m.state.sechduledDate.Year())
+	date_format := "DATE FORMAT :  HH mm DD MM YYYY"
+	s += " " + date_format
+	s += "\n"
+	return s
+}
 func (m model) View() string {
 	s := ""
-	s = "          dStart : " + m.dStart.Format("01-02-2006 15:04") + "     " + "dEnd : " + m.dEnd.Format("01-02-2006 15:04")
+	s += "Size               "
+	months, hours := m.state.getMonthsAndHours(m.state.windowv2.Size)
+	s += m.genarateCursor("window-month")
+	s += months + "M" + " "
+	s += m.genarateCursor("window-hour")
+	s += hours + "h"
 	s += "\n"
+	s += "Offset             "
+	months, hours = m.state.getMonthsAndHours(m.state.windowv2.Offset)
+	s += m.genarateCursor("offset-month")
+	s += months + "M" + " "
+	s += m.genarateCursor("offset-hour")
+	s += hours + "h"
 	s += "\n"
+	s += "TruncateTo         "
+	s += m.genarateCursor("truncate")
+	s += m.state.windowv2.TruncateTo
 	s += "\n"
-	// the below part of repitatice code is to ensure that if the cursor is currently present here we print it
-	if m.cursor == "windowSize" {
-		s += ">"
-	} else {
-		s += " "
-	}
-	// this acts as a menu list
-	s += "windowSize          "
-	s += strconv.Itoa(m.windowSize.month) + "M    " + strconv.Itoa(m.windowSize.hour) + "H"
-	if m.windowSize.hour == 0 && m.windowSize.month == 0 {
-		s += "        warning windowSize is 0"
-	}
-	s += "\n"
-	if m.cursor == "offset" {
-		s += ">"
-	} else {
-		s += " "
-	}
-	s += "offset              "
-	s += strconv.Itoa(m.offset.month) + "M    " + strconv.Itoa(m.offset.hour) + "H"
-	s += "\n"
-	if m.cursor == "truncate" {
-		s += ">"
-	} else {
-		s += " "
-	}
-	s += "truncate            "
-	if m.truncate == "hour" {
-		s += "h"
-	}
-	if m.truncate == "day" {
-		s += "d"
-	}
-	if m.truncate == "week" {
-		s += "w"
-	}
-	if m.truncate == "month" {
-		s += "M"
-	}
-	s += "("
-	s += m.truncate
-	s += ")"
-	s += "\n"
-	if m.cursor == "sechduledDate" {
-		s += ">"
-	} else {
-		s += " "
-	}
-	s += "sechduled date      "
-	s += m.sechduledDate.Format("01-02-2006 15:04")
-	s += "\n"
-	if m.cursor == "increaseBy" {
-		s += ">"
-	} else {
-		s += " "
-	}
-	s += "increase size by    "
-	s += m.increaseBy
-	s += "\n"
-	if m.cursor == "increaseDateBy" {
-		s += ">"
-	} else {
-		s += " "
-	}
-	s += "increase Date by    "
-	s += m.increaseDateBy
-	s += "\n"
-	// returnning the genarated string
+	s += "sechduled-date     "
+	s += m.genarateSechduledDateView()
+	s += "\n\n"
+
+	s += "     " + m.state.genarateV1TimeRange()
+	s += "     " + m.state.genarateV2TimeRange()
 	return s
 }
