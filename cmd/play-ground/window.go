@@ -14,6 +14,7 @@ type state struct {
 	sechduledDate time.Time
 }
 
+// increment the hour
 func (w *state) IncrementHour(duration string) string {
 	splits := strings.SplitN(duration, "M", 2)
 	hours, _ := time.ParseDuration(splits[1])
