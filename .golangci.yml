@@ -139,5 +139,10 @@ issues:
     - path: _test\.go
       linters:
         - gocritic
+    - path: tests
+      linters:
+        - gocritic
+        - gomnd
+        - unparam
 severity:
   default-severity: error

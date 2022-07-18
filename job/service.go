@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"strings"
@@ -34,7 +35,6 @@ const (
 
 var (
 	errDependencyResolution = fmt.Errorf("dependency resolution")
-	errAssetCompilation     = fmt.Errorf("asset compilation")
 
 	resolveDependencyGauge = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "runtime_job_dependency",
@@ -49,24 +49,22 @@ var (
 	})
 )
 
-type AssetCompiler func(ctx context.Context, jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error)
-
 // DependencyResolver compiles static and runtime dependencies
+// TODO: when refactoring, we need to rethink about renaming it
 type DependencyResolver interface {
 	Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error)
-	Persist(ctx context.Context, jobSpec models.JobSpec) error
+	ResolveStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository) (map[string]models.JobSpecDependency, error)
 
-	FetchJobSpecsWithJobDependencies(ctx context.Context, projectSpec models.ProjectSpec) ([]models.JobSpec, error)
-	FetchHookWithDependencies(jobSpec models.JobSpec) []models.JobSpecHook
+	GetJobSpecsWithDependencies(ctx context.Context, projectID models.ProjectID) ([]models.JobSpec, error)
 }
 
 type Deployer interface {
 	Deploy(context.Context, models.JobDeployment) error
 }
 
-// SpecRepoFactory is used to manage job specs at namespace level
-type SpecRepoFactory interface {
-	New(spec models.NamespaceSpec) SpecRepository
+// NamespaceJobSpecRepoFactory is used to manage job specs at namespace level
+type NamespaceJobSpecRepoFactory interface {
+	New(spec models.NamespaceSpec) store.NamespaceJobSpecRepository
 }
 
 // ProjectJobSpecRepoFactory is used to manage job specs at project level
@@ -88,18 +86,19 @@ type ReplayManager interface {
 		jobName string) ([]models.JobStatus, error)
 }
 
-// Service compiles all jobs with its dependencies, priority and
+// Service compiles all jobs with its dependencies, priority
 // and other properties. Finally, it syncs the jobs with corresponding
 // store
 type Service struct {
-	jobSpecRepoFactory        SpecRepoFactory
-	dependencyResolver        DependencyResolver
-	priorityResolver          PriorityResolver
-	projectJobSpecRepoFactory ProjectJobSpecRepoFactory
-	replayManager             ReplayManager
-	projectService            service.ProjectService
-	namespaceService          service.NamespaceService
-	deployManager             DeployManager
+	namespaceJobSpecRepoFactory NamespaceJobSpecRepoFactory
+	dependencyResolver          DependencyResolver
+	priorityResolver            PriorityResolver
+	projectJobSpecRepoFactory   ProjectJobSpecRepoFactory
+	replayManager               ReplayManager
+	projectService              service.ProjectService
+	namespaceService            service.NamespaceService
+	jobSpecRepository           store.JobSpecRepository
+	deployManager               DeployManager
 
 	// scheduler for managing batch scheduled jobs
 	batchScheduler models.SchedulerUnit
@@ -107,18 +106,18 @@ type Service struct {
 	// scheduler for managing one time executable jobs
 	manualScheduler models.SchedulerUnit
 
-	Now           func() time.Time
-	assetCompiler AssetCompiler
 	pluginService service.PluginService
+
+	jobSourceRepo store.JobSourceRepository
 }
 
 // Create constructs a Job for a namespace and commits it to the store
-func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, spec models.JobSpec) error {
-	jobRepo := srv.jobSpecRepoFactory.New(namespace)
+func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, spec models.JobSpec) (models.JobSpec, error) {
+	jobRepo := srv.namespaceJobSpecRepoFactory.New(namespace)
 	jobDestinationResponse, err := srv.pluginService.GenerateDestination(ctx, spec, namespace)
 	if err != nil {
 		if !errors.Is(err, service.ErrDependencyModNotFound) {
-			return fmt.Errorf("failed to GenerateDestination for job: %s: %w", spec.Name, err)
+			return models.JobSpec{}, fmt.Errorf("failed to GenerateDestination for job: %s: %w", spec.Name, err)
 		}
 	}
 	var jobDestination string
@@ -126,18 +125,84 @@ func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, 
 		jobDestination = jobDestinationResponse.URN()
 	}
 	if err := jobRepo.Save(ctx, spec, jobDestination); err != nil {
-		return fmt.Errorf("failed to save job: %s: %w", spec.Name, err)
+		return models.JobSpec{}, fmt.Errorf("failed to save job: %s: %w", spec.Name, err)
 	}
-	return nil
+
+	result, err := jobRepo.GetByName(ctx, spec.Name)
+	if err != nil {
+		return models.JobSpec{}, fmt.Errorf("failed to fetch job on create: %s: %w", spec.Name, err)
+	}
+
+	return result, nil
+}
+
+func (srv *Service) bulkCreate(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, observers progress.Observer) []models.JobSpec {
+	result := []models.JobSpec{}
+	for _, jobSpec := range jobSpecs {
+		jobSpecCreated, err := srv.Create(ctx, namespace, jobSpec)
+		if err != nil {
+			if jobSpec.ID == uuid.Nil {
+				srv.notifyProgress(observers, &models.JobCreateEvent{Name: jobSpec.Name, Err: err})
+			} else {
+				srv.notifyProgress(observers, &models.JobModifyEvent{Name: jobSpec.Name, Err: err})
+			}
+			continue
+		}
+		if jobSpec.ID == uuid.Nil {
+			srv.notifyProgress(observers, &models.JobCreateEvent{Name: jobSpec.Name})
+		} else {
+			srv.notifyProgress(observers, &models.JobModifyEvent{Name: jobSpec.Name})
+		}
+		result = append(result, jobSpecCreated)
+	}
+
+	return result
 }
 
 // GetByName fetches a Job by name for a specific namespace
 func (srv *Service) GetByName(ctx context.Context, name string, namespace models.NamespaceSpec) (models.JobSpec, error) {
-	jobSpec, err := srv.jobSpecRepoFactory.New(namespace).GetByName(ctx, name)
+	jobSpec, err := srv.namespaceJobSpecRepoFactory.New(namespace).GetByName(ctx, name)
 	if err != nil {
 		return models.JobSpec{}, fmt.Errorf("failed to retrieve job: %w", err)
 	}
 	return jobSpec, nil
+}
+
+func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter) ([]models.JobSpec, error) {
+	if filter.ResourceDestination != "" {
+		jobSpec, err := srv.jobSpecRepository.GetJobByResourceDestination(ctx, filter.ResourceDestination)
+		if err != nil {
+			return nil, err
+		}
+		return []models.JobSpec{jobSpec}, nil
+	}
+	if filter.ProjectName != "" {
+		projSpec, err := srv.projectService.Get(ctx, filter.ProjectName)
+		if err != nil {
+			return nil, fmt.Errorf("not able to find project: %w", err)
+		}
+		projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projSpec)
+		if filter.JobName != "" {
+			jobSpec, _, err := projectJobSpecRepo.GetByName(ctx, filter.JobName)
+			if err != nil {
+				return nil, err
+			}
+			return []models.JobSpec{jobSpec}, nil
+		}
+		jobSpecs, err := projectJobSpecRepo.GetAll(ctx)
+		if err != nil {
+			return []models.JobSpec{}, err
+		}
+		return jobSpecs, nil
+	}
+	if filter.JobName != "" {
+		jobSpecs, err := srv.jobSpecRepository.GetJobByName(ctx, filter.JobName)
+		if err != nil {
+			return nil, err
+		}
+		return jobSpecs, nil
+	}
+	return nil, fmt.Errorf("filters not specified")
 }
 
 // GetByNameForProject fetches a Job by name for a specific project
@@ -150,7 +215,7 @@ func (srv *Service) GetByNameForProject(ctx context.Context, name string, proj m
 }
 
 func (srv *Service) GetAll(ctx context.Context, namespace models.NamespaceSpec) ([]models.JobSpec, error) {
-	jobSpecs, err := srv.jobSpecRepoFactory.New(namespace).GetAll(ctx)
+	jobSpecs, err := srv.namespaceJobSpecRepoFactory.New(namespace).GetAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve jobs: %w", err)
 	}
@@ -159,12 +224,7 @@ func (srv *Service) GetAll(ctx context.Context, namespace models.NamespaceSpec) 
 
 // Check if job specifications are valid
 func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, obs progress.Observer) (err error) {
-	for i, jSpec := range jobSpecs {
-		// compile assets
-		if jobSpecs[i].Assets, err = srv.assetCompiler(ctx, jSpec, srv.Now()); err != nil {
-			return fmt.Errorf("asset compilation: %w", err)
-		}
-
+	for i := range jobSpecs {
 		// remove manual dependencies as they needs to be resolved
 		jobSpecs[i].Dependencies = map[string]models.JobSpecDependency{}
 	}
@@ -222,11 +282,6 @@ func (srv *Service) GetTaskDependencies(ctx context.Context, namespace models.Na
 		destination.Type = dest.Type
 	}
 
-	// compile assets before generating dependencies
-	if jobSpec.Assets, err = srv.assetCompiler(ctx, jobSpec, srv.Now()); err != nil {
-		return destination, dependencies, fmt.Errorf("asset compilation: %w", err)
-	}
-
 	deps, err := srv.pluginService.GenerateDependencies(ctx, jobSpec, namespace, false)
 	if err != nil {
 		return destination, dependencies, fmt.Errorf("failed to generate dependencies: %w", err)
@@ -240,18 +295,47 @@ func (srv *Service) GetTaskDependencies(ctx context.Context, namespace models.Na
 
 // Delete deletes a job spec from all spec repos
 func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec) error {
-	if err := srv.isJobDeletable(ctx, namespace.ProjectSpec, jobSpec); err != nil {
+	isDependency, err := srv.isDependency(ctx, jobSpec)
+	if err != nil {
 		return err
 	}
-	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
 
-	// delete from internal store
-	if err := jobSpecRepo.Delete(ctx, jobSpec.Name); err != nil {
+	if isDependency {
+		// TODO: Ideally should include list of jobs that are using the requested job in the error message
+		return fmt.Errorf("cannot delete job %s since it's dependency of other job", jobSpec.Name)
+	}
+
+	// delete jobs from internal store
+	namespaceJobSpecRepo := srv.namespaceJobSpecRepoFactory.New(namespace)
+	if err := namespaceJobSpecRepo.Delete(ctx, jobSpec.ID); err != nil {
 		return fmt.Errorf("failed to delete spec: %s: %w", jobSpec.Name, err)
 	}
 
 	// delete from batch scheduler
 	return srv.batchScheduler.DeleteJobs(ctx, namespace, []string{jobSpec.Name}, nil)
+}
+
+func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSpec, jobSpecsToDelete []models.JobSpec,
+	progressObserver progress.Observer) {
+	namespaceJobSpecRepo := srv.namespaceJobSpecRepoFactory.New(namespace)
+	for _, jobSpec := range jobSpecsToDelete {
+		isDependency, err := srv.isDependency(ctx, jobSpec)
+		if err != nil {
+			srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name, Err: err})
+			continue
+		}
+		if isDependency {
+			// TODO: Ideally should include list of jobs that are using the requested job in the error message
+			err = fmt.Errorf("cannot delete job %s since it's dependency of other job", jobSpec.Name)
+			srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name, Err: err})
+			continue
+		}
+		if err := namespaceJobSpecRepo.Delete(ctx, jobSpec.ID); err != nil {
+			srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name, Err: err})
+			continue
+		}
+		srv.notifyProgress(progressObserver, &models.JobDeleteEvent{Name: jobSpec.Name})
+	}
 }
 
 // Sync fetches all the jobs that belong to a project, resolves its dependencies
@@ -325,37 +409,6 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 	return nil
 }
 
-// KeepOnly only keeps the provided jobSpecs in argument and deletes rest from spec repository
-func (srv *Service) KeepOnly(ctx context.Context, namespace models.NamespaceSpec, specsToKeep []models.JobSpec, progressObserver progress.Observer) error {
-	jobSpecRepo := srv.jobSpecRepoFactory.New(namespace)
-	jobSpecs, err := jobSpecRepo.GetAll(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to fetch specs for namespace %s: %w", namespace.Name, err)
-	}
-	var specsPresentNames []string
-	for _, jobSpec := range jobSpecs {
-		specsPresentNames = append(specsPresentNames, jobSpec.Name)
-	}
-
-	var specsToKeepNames []string
-	for _, jobSpec := range specsToKeep {
-		specsToKeepNames = append(specsToKeepNames, jobSpec.Name)
-	}
-
-	// filter what we need to keep/delete
-	jobsToDelete := setSubtract(specsPresentNames, specsToKeepNames)
-	jobsToDelete = jobDeletionFilter(jobsToDelete)
-
-	for _, jobName := range jobsToDelete {
-		// delete raw spec
-		if err := jobSpecRepo.Delete(ctx, jobName); err != nil {
-			return fmt.Errorf("failed to delete spec: %s: %w", jobName, err)
-		}
-		srv.notifyProgress(progressObserver, &models.ProgressSavedJobDelete{Name: jobName})
-	}
-	return nil
-}
-
 // filterJobSpecForNamespace returns only job specs of a given namespace
 func (srv *Service) filterJobSpecForNamespace(ctx context.Context, projectJobSpecRepo store.ProjectJobSpecRepository,
 	jobSpecs []models.JobSpec, namespace models.NamespaceSpec) ([]models.JobSpec, error) {
@@ -381,13 +434,6 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 		return nil, fmt.Errorf("failed to retrieve jobs: %w", err)
 	}
 	srv.notifyProgress(progressObserver, &models.ProgressJobSpecFetch{})
-
-	// compile assets first
-	for i, jSpec := range jobSpecs {
-		if jobSpecs[i].Assets, err = srv.assetCompiler(ctx, jSpec, srv.Now()); err != nil {
-			return nil, fmt.Errorf("asset compilation: %w", err)
-		}
-	}
 
 	namespaceToJobs, err := projectJobSpecRepo.GetJobNamespaces(ctx)
 	if err != nil {
@@ -425,37 +471,23 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 	return resolvedSpecs, resolvedErrors
 }
 
-// isJobDeletable determines if a given job is deletable or not
-func (srv *Service) isJobDeletable(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec) error {
-	// check if this job spec is dependency of any other job spec
-	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
-	depsResolvedJobSpecs, err := srv.GetDependencyResolvedSpecs(ctx, projectSpec, projectJobSpecRepo, nil)
+func (srv *Service) isDependency(ctx context.Context, jobSpec models.JobSpec) (bool, error) {
+	// inferred and static dependents
+	dependentJobs, err := srv.jobSpecRepository.GetDependentJobs(ctx, &jobSpec)
 	if err != nil {
-		return err
+		return false, fmt.Errorf("unable to check dependents of job %s", jobSpec.Name)
 	}
-	for _, resolvedJobSpec := range depsResolvedJobSpecs {
-		for depJobSpecName := range resolvedJobSpec.Dependencies {
-			if depJobSpecName == jobSpec.Name {
-				return fmt.Errorf("cannot delete job %s since it's dependency of job %s", jobSpec.Name,
-					resolvedJobSpec.Name)
-			}
-		}
-	}
-
-	return nil
+	return len(dependentJobs) > 0, nil
 }
 
 func (srv *Service) GetByDestination(ctx context.Context, projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
 	// generate job spec using datastore destination. if a destination can be owned by multiple jobs, need to change to list
-	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projectSpec)
-	projectJobPairs, err := projectJobSpecRepo.GetByDestination(ctx, destination)
+	jobSpec, err := srv.jobSpecRepository.GetJobByResourceDestination(ctx, destination)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
-	for _, p := range projectJobPairs {
-		if p.Project.Name == projectSpec.Name {
-			return p.Job, nil
-		}
+	if jobSpec.NamespaceSpec.ProjectSpec.Name == projectSpec.Name {
+		return jobSpec, nil
 	}
 	return models.JobSpec{}, store.ErrResourceNotFound
 }
@@ -627,28 +659,28 @@ func (srv *Service) Run(ctx context.Context, nsSpec models.NamespaceSpec,
 
 // NewService creates a new instance of JobService, requiring
 // the necessary dependencies as arguments
-func NewService(jobSpecRepoFactory SpecRepoFactory, batchScheduler models.SchedulerUnit,
-	manualScheduler models.SchedulerUnit, assetCompiler AssetCompiler,
-	dependencyResolver DependencyResolver, priorityResolver PriorityResolver,
+func NewService(namespaceJobSpecRepoFactory NamespaceJobSpecRepoFactory, batchScheduler models.SchedulerUnit,
+	manualScheduler models.SchedulerUnit, dependencyResolver DependencyResolver, priorityResolver PriorityResolver,
 	projectJobSpecRepoFactory ProjectJobSpecRepoFactory,
 	replayManager ReplayManager, namespaceService service.NamespaceService,
 	projectService service.ProjectService, deployManager DeployManager, pluginService service.PluginService,
+	jobSpecRepository store.JobSpecRepository,
+	jobSourceRepository store.JobSourceRepository,
 ) *Service {
 	return &Service{
-		jobSpecRepoFactory:        jobSpecRepoFactory,
-		batchScheduler:            batchScheduler,
-		manualScheduler:           manualScheduler,
-		dependencyResolver:        dependencyResolver,
-		priorityResolver:          priorityResolver,
-		projectJobSpecRepoFactory: projectJobSpecRepoFactory,
-		replayManager:             replayManager,
-		namespaceService:          namespaceService,
-		projectService:            projectService,
-		deployManager:             deployManager,
-
-		assetCompiler: assetCompiler,
-		pluginService: pluginService,
-		Now:           time.Now,
+		namespaceJobSpecRepoFactory: namespaceJobSpecRepoFactory,
+		batchScheduler:              batchScheduler,
+		manualScheduler:             manualScheduler,
+		dependencyResolver:          dependencyResolver,
+		priorityResolver:            priorityResolver,
+		projectJobSpecRepoFactory:   projectJobSpecRepoFactory,
+		replayManager:               replayManager,
+		namespaceService:            namespaceService,
+		projectService:              projectService,
+		deployManager:               deployManager,
+		jobSpecRepository:           jobSpecRepository,
+		jobSourceRepo:               jobSourceRepository,
+		pluginService:               pluginService,
 	}
 }
 
@@ -710,7 +742,8 @@ func (srv *Service) Refresh(ctx context.Context, projectName string, namespaceNa
 	}
 
 	// resolve dependency and persist
-	srv.resolveDependency(ctx, projectSpec, jobSpecs, progressObserver)
+	srv.identifyAndPersistJobSources(ctx, projectSpec, jobSpecs, progressObserver)
+	srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolutionFinished{})
 
 	deployID, err := srv.deployManager.Deploy(ctx, projectSpec)
 	if err != nil {
@@ -771,7 +804,7 @@ func (srv *Service) fetchSpecsForGivenJobNames(ctx context.Context, projectSpec 
 	return jobSpecs, nil
 }
 
-func (srv *Service) resolveDependency(ctx context.Context, projectSpec models.ProjectSpec,
+func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpec models.ProjectSpec,
 	jobSpecs []models.JobSpec, progressObserver progress.Observer) {
 	start := time.Now()
 	defer resolveDependencyHistogram.Observe(time.Since(start).Seconds())
@@ -781,7 +814,15 @@ func (srv *Service) resolveDependency(ctx context.Context, projectSpec models.Pr
 	for _, jobSpec := range jobSpecs {
 		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				return srv.resolveAndPersist(ctx, currentSpec, projectSpec, progressObserver)
+				jobSourceURNs, err := srv.identify(ctx, currentSpec, projectSpec)
+				if err != nil {
+					return currentSpec.Name, err
+				}
+				err = srv.jobSourceRepo.Save(ctx, projectSpec.ID, currentSpec.ID, jobSourceURNs)
+				if err != nil {
+					err = fmt.Errorf("error persisting job sources for job %s: %w", currentSpec.Name, err)
+				}
+				return currentSpec.Name, err
 			}
 		}(jobSpec))
 	}
@@ -799,22 +840,120 @@ func (srv *Service) resolveDependency(ctx context.Context, projectSpec models.Pr
 
 	resolveDependencyGauge.With(prometheus.Labels{MetricDependencyResolutionStatus: MetricDependencyResolutionSucceed}).Set(float64(success))
 	resolveDependencyGauge.With(prometheus.Labels{MetricDependencyResolutionStatus: MetricDependencyResolutionFailed}).Set(float64(failure))
-	srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolutionFinished{})
 }
 
-func (srv *Service) resolveAndPersist(ctx context.Context, currentSpec models.JobSpec, projectSpec models.ProjectSpec, progressObserver progress.Observer) (interface{}, error) {
-	var err error
-	if currentSpec.Assets, err = srv.assetCompiler(ctx, currentSpec, srv.Now()); err != nil {
-		return currentSpec.Name, fmt.Errorf("%w: %s", errAssetCompilation, err.Error())
-	}
-	resolvedSpec, err := srv.dependencyResolver.Resolve(ctx, projectSpec, currentSpec, progressObserver)
+func (srv *Service) identify(ctx context.Context, currentSpec models.JobSpec, projectSpec models.ProjectSpec) ([]string, error) {
+	namespace := currentSpec.NamespaceSpec
+	namespace.ProjectSpec = projectSpec // TODO: Temp fix to to get secrets from project
+	resp, err := srv.pluginService.GenerateDependencies(ctx, currentSpec, namespace, false)
 	if err != nil {
-		return currentSpec.Name, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
+		if !errors.Is(err, service.ErrDependencyModNotFound) {
+			return nil, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
+		}
 	}
-	if err := srv.dependencyResolver.Persist(ctx, resolvedSpec); err != nil {
-		return currentSpec.Name, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
+	return resp.Dependencies, nil
+}
+
+// Deploy only the modified jobs (created or updated)
+func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceName string, jobSpecs []models.JobSpec, observers progress.Observer) (models.DeploymentID, error) {
+	// Get namespace spec
+	namespaceSpec, err := srv.namespaceService.Get(ctx, projectName, namespaceName)
+	if err != nil {
+		return models.DeploymentID(uuid.Nil), err
 	}
-	return currentSpec.Name, nil
+
+	createdJobs, modifiedJobs, deletedJobs, err := srv.getJobsDiff(ctx, namespaceSpec, jobSpecs)
+	if err != nil {
+		return models.DeploymentID(uuid.Nil), err
+	}
+
+	createdAndModifiedJobs := createdJobs
+	createdAndModifiedJobs = append(createdAndModifiedJobs, modifiedJobs...)
+	savedJobs := srv.bulkCreate(ctx, namespaceSpec, createdAndModifiedJobs, observers)
+
+	srv.bulkDelete(ctx, namespaceSpec, deletedJobs, observers)
+
+	// Resolve inferred dependency
+	if len(savedJobs) > 0 {
+		srv.identifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, savedJobs, observers)
+		srv.notifyProgress(observers, &models.ProgressJobDependencyResolutionFinished{})
+	}
+
+	// Deploy through deploy manager
+	deployID, err := srv.deployManager.Deploy(ctx, namespaceSpec.ProjectSpec)
+	if err != nil {
+		return models.DeploymentID(uuid.Nil), err
+	}
+
+	return deployID, nil
+}
+
+func (srv *Service) getJobsDiff(ctx context.Context, namespace models.NamespaceSpec, requestedJobSpecs []models.JobSpec) ([]models.JobSpec, []models.JobSpec, []models.JobSpec, error) {
+	namespaceJobSpecRepo := srv.namespaceJobSpecRepoFactory.New(namespace)
+	existingJobSpecs, err := namespaceJobSpecRepo.GetAll(ctx)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	existingJobSpecMap := map[string]models.JobSpec{}
+	for _, jobSpec := range existingJobSpecs {
+		existingJobSpecMap[jobSpec.Name] = jobSpec
+	}
+
+	requestedJobSpecMap := map[string]models.JobSpec{}
+	for _, jobSpec := range requestedJobSpecs {
+		requestedJobSpecMap[jobSpec.Name] = jobSpec
+	}
+
+	createdJobSpecs, modifiedJobSpecs := srv.getModifiedJobs(existingJobSpecMap, requestedJobSpecMap)
+	deletedJobSpecs := srv.getDeletedJobs(existingJobSpecMap, requestedJobSpecMap)
+
+	return createdJobSpecs, modifiedJobSpecs, deletedJobSpecs, nil
+}
+
+func (srv *Service) getModifiedJobs(existingJobSpecs, requestedJobSpecs map[string]models.JobSpec) ([]models.JobSpec, []models.JobSpec) {
+	createdJobSpecs := []models.JobSpec{}
+	modifiedJobSpecs := []models.JobSpec{}
+
+	for jobName, requestedJobSpec := range requestedJobSpecs {
+		if existingJobSpec, ok := existingJobSpecs[jobName]; !ok {
+			createdJobSpecs = append(createdJobSpecs, requestedJobSpec)
+		} else if !srv.jobSpecEqual(requestedJobSpec, existingJobSpec) {
+			requestedJobSpec.ID = existingJobSpec.ID
+			modifiedJobSpecs = append(modifiedJobSpecs, requestedJobSpec)
+		}
+	}
+
+	return createdJobSpecs, modifiedJobSpecs
+}
+
+func (*Service) getDeletedJobs(existingJobSpecs, requestedJobSpecs map[string]models.JobSpec) []models.JobSpec {
+	deletedJobSpecs := []models.JobSpec{}
+
+	for jobName, existingJobSpec := range existingJobSpecs {
+		if _, ok := requestedJobSpecs[jobName]; !ok {
+			deletedJobSpecs = append(deletedJobSpecs, existingJobSpec)
+		}
+	}
+
+	return deletedJobSpecs
+}
+
+func (*Service) jobSpecEqual(js1, js2 models.JobSpec) bool {
+	js2.ID = js1.ID
+	js2.NamespaceSpec = js1.NamespaceSpec
+	js2.ResourceDestination = js1.ResourceDestination
+
+	jobSpecHash1 := getHash(fmt.Sprintf("%v", js1))
+	jobSpecHash2 := getHash(fmt.Sprintf("%v", js2))
+
+	return jobSpecHash1 == jobSpecHash2
+}
+
+func getHash(val string) string {
+	h := sha256.New()
+	h.Write([]byte(val))
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func (srv *Service) GetDeployment(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error) {

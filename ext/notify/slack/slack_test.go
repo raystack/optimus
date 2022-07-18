@@ -102,7 +102,7 @@ func TestSlack(t *testing.T) {
 				Name: "foo-job-spec",
 			},
 			JobEvent: models.JobEvent{
-				Type: models.JobEventTypeSLAMiss,
+				Type: models.SLAMissEvent,
 			},
 			Route: "optimus@test.com",
 		})
@@ -185,7 +185,7 @@ func TestSlack(t *testing.T) {
 				Name: "foo-job-spec",
 			},
 			JobEvent: models.JobEvent{
-				Type:  models.JobEventTypeFailure,
+				Type:  models.JobFailureEvent,
 				Value: eventValues.GetFields(),
 			},
 			Route: "@optimus-devs",
@@ -233,7 +233,7 @@ func TestBuildMessages(t *testing.T) {
 					jobName:       "cc",
 					owner:         "rr",
 					meta: models.JobEvent{
-						Type:  models.JobEventTypeSLAMiss,
+						Type:  models.SLAMissEvent,
 						Value: eventValues.GetFields(),
 					},
 				},

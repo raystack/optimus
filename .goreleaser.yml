@@ -61,7 +61,7 @@ brews:
   - name: optimus
     tap:
       owner: odpf
-      name: homebrew-taps
+      name: homebrew-tap
     license: "Apache 2.0"
     description: "Optimus helps your organization to build & manage data pipelines with ease."
     homepage: https://odpf.github.io/optimus

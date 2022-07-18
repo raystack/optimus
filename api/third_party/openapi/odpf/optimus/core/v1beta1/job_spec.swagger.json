@@ -21,6 +21,49 @@
     "application/json"
   ],
   "paths": {
+    "/v1beta1/jobs": {
+      "get": {
+        "summary": "GetJobSpecifications read a job spec for provided filters",
+        "operationId": "JobSpecificationService_GetJobSpecifications",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1GetJobSpecificationsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "resourceDestination",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "jobName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "JobSpecificationService"
+        ]
+      }
+    },
     "/v1beta1/project/{projectName}/job/check": {
       "post": {
         "summary": "CheckJobSpecification checks if a job specification is valid",
@@ -371,12 +414,20 @@
         },
         "ack": {
           "type": "boolean",
-          "title": "non ack responses are more of a progress/info response\nand not really success or failure statuses"
+          "title": "non ack responses are more of a progress/info response\nand not really success or failure statuses\nthis is deprecated and being replaced with type field"
         },
         "message": {
-          "type": "string"
+          "type": "string",
+          "title": "message is deprecated and being replaced with value field"
         },
         "jobName": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "title": "response type differentiate events"
+        },
+        "value": {
           "type": "string"
         }
       }
@@ -408,6 +459,23 @@
       "properties": {
         "spec": {
           "$ref": "#/definitions/v1beta1JobSpecification"
+        }
+      }
+    },
+    "v1beta1GetJobSpecificationsResponse": {
+      "type": "object",
+      "properties": {
+        "jobs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1JobSpecification"
+          }
+        },
+        "jobSpecificationResponses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1JobSpecificationResponse"
+          }
         }
       }
     },
@@ -465,7 +533,19 @@
         "TYPE_UNSPECIFIED",
         "TYPE_SLA_MISS",
         "TYPE_FAILURE",
-        "TYPE_SUCCESS"
+        "TYPE_SUCCESS",
+        "TYPE_RETRY",
+        "TYPE_JOB_START",
+        "TYPE_JOB_SUCCESS",
+        "TYPE_JOB_FAIL",
+        "TYPE_TASK_RETRY",
+        "TYPE_TASK_SUCCESS",
+        "TYPE_TASK_START",
+        "TYPE_TASK_FAIL",
+        "TYPE_SENSOR_POKE",
+        "TYPE_SENSOR_SUCCESS",
+        "TYPE_SENSOR_START",
+        "TYPE_SENSOR_FAIL"
       ],
       "default": "TYPE_UNSPECIFIED"
     },
@@ -605,6 +685,20 @@
         },
         "metadata": {
           "$ref": "#/definitions/v1beta1JobMetadata"
+        }
+      }
+    },
+    "v1beta1JobSpecificationResponse": {
+      "type": "object",
+      "properties": {
+        "projectName": {
+          "type": "string"
+        },
+        "namespaceName": {
+          "type": "string"
+        },
+        "job": {
+          "$ref": "#/definitions/v1beta1JobSpecification"
         }
       }
     },

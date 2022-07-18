@@ -38,9 +38,6 @@ func getRuns(node *tree.TreeNode, parentNodeName string, runMap map[string][]tim
 func TestReplay(t *testing.T) {
 	ctx := context.Background()
 	noDependency := map[string]models.JobSpecDependency{}
-	var dumpAssets job.AssetCompiler = func(_ context.Context, jobSpec models.JobSpec, _ time.Time) (models.JobAssets, error) {
-		return jobSpec.Assets, nil
-	}
 	var (
 		specs        = make(map[string]models.JobSpec)
 		jobSpecs     = make([]models.JobSpec, 0)
@@ -107,7 +104,7 @@ func TestReplay(t *testing.T) {
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
+			jobSvc := job.NewService(nil, nil, nil, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil, nil, nil)
 			replayRequest := models.ReplayRequest{
 				Job:                         specs[spec1],
 				Start:                       replayStart,
@@ -152,7 +149,7 @@ func TestReplay(t *testing.T) {
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
+			jobSvc := job.NewService(nil, nil, nil, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil, nil, nil)
 			replayRequest := models.ReplayRequest{
 				Job:                         specs[spec1],
 				Start:                       replayStart,
@@ -209,7 +206,7 @@ func TestReplay(t *testing.T) {
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
+			jobSvc := job.NewService(nil, nil, nil, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil, nil, nil)
 			replayRequest := models.ReplayRequest{
 				Job:                         cyclicDagSpec[0],
 				Start:                       replayStart,
@@ -252,7 +249,7 @@ func TestReplay(t *testing.T) {
 			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
 			defer depenResolver.AssertExpectations(t)
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
+			jobSvc := job.NewService(nil, nil, nil, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil, nil, nil)
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 			replayRequest := models.ReplayRequest{
@@ -319,7 +316,7 @@ func TestReplay(t *testing.T) {
 			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
 			defer depenResolver.AssertExpectations(t)
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
+			jobSvc := job.NewService(nil, nil, nil, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil, nil, nil)
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayRequest := models.ReplayRequest{
@@ -396,8 +393,8 @@ func TestReplay(t *testing.T) {
 			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
 			defer depenResolver.AssertExpectations(t)
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets,
-				depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
+			jobSvc := job.NewService(nil, nil, nil,
+				depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil, nil, nil)
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayRequest := models.ReplayRequest{
@@ -460,7 +457,7 @@ func TestReplay(t *testing.T) {
 			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
 			defer depenResolver.AssertExpectations(t)
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
+			jobSvc := job.NewService(nil, nil, nil, depenResolver, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil, nil, nil)
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayRequest := models.ReplayRequest{
@@ -501,7 +498,7 @@ func TestReplay(t *testing.T) {
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil)
+			jobSvc := job.NewService(nil, nil, nil, nil, nil, projJobSpecRepoFac, nil, nil, nil, nil, nil, nil, nil)
 			replayRequest := models.ReplayRequest{
 				Job:                         specs[spec1],
 				Start:                       replayStart,
@@ -563,7 +560,7 @@ func TestReplay(t *testing.T) {
 			replayManager.On("Replay", ctx, replayRequest).Return(models.ReplayResult{}, errors.New(errMessage))
 			defer replayManager.AssertExpectations(t)
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, replayManager, nil, nil, nil, nil)
+			jobSvc := job.NewService(nil, nil, nil, depenResolver, nil, projJobSpecRepoFac, replayManager, nil, nil, nil, nil, nil, nil)
 
 			_, err := jobSvc.Replay(ctx, replayRequest)
 			assert.NotNil(t, err)
@@ -619,7 +616,7 @@ func TestReplay(t *testing.T) {
 			replayManager.On("Replay", ctx, replayRequest).Return(models.ReplayResult{ID: objUUID}, nil)
 			defer replayManager.AssertExpectations(t)
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, depenResolver, nil, projJobSpecRepoFac, replayManager, nil, nil, nil, nil)
+			jobSvc := job.NewService(nil, nil, nil, depenResolver, nil, projJobSpecRepoFac, replayManager, nil, nil, nil, nil, nil, nil)
 
 			replayResult, err := jobSvc.Replay(ctx, replayRequest)
 			assert.Nil(t, err)
@@ -665,7 +662,7 @@ func TestReplay(t *testing.T) {
 				Project: projSpec,
 			}
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, replayManager, nil, nil, nil, nil)
+			jobSvc := job.NewService(nil, nil, nil, nil, nil, nil, replayManager, nil, nil, nil, nil, nil, nil)
 			_, err := jobSvc.GetReplayStatus(ctx, replayRequest)
 
 			assert.NotNil(t, err)
@@ -700,7 +697,7 @@ func TestReplay(t *testing.T) {
 				Job:     jobSpec1,
 			}
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, replayManager, nil, nil, nil, nil)
+			jobSvc := job.NewService(nil, nil, nil, nil, nil, nil, replayManager, nil, nil, nil, nil, nil, nil)
 			_, err := jobSvc.GetReplayStatus(ctx, replayRequest)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -769,7 +766,7 @@ func TestReplay(t *testing.T) {
 				Job:     jobSpec0,
 			}
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, replayManager, nil, nil, nil, nil)
+			jobSvc := job.NewService(nil, nil, nil, nil, nil, nil, replayManager, nil, nil, nil, nil, nil, nil)
 			_, err := jobSvc.GetReplayStatus(ctx, replayRequest)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -836,7 +833,7 @@ func TestReplay(t *testing.T) {
 				Job:     jobSpec0,
 			}
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, replayManager, nil, nil, nil, nil)
+			jobSvc := job.NewService(nil, nil, nil, nil, nil, nil, replayManager, nil, nil, nil, nil, nil, nil)
 			_, err := jobSvc.GetReplayStatus(ctx, replayRequest)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -862,7 +859,7 @@ func TestReplay(t *testing.T) {
 			defer replayManager.AssertExpectations(t)
 			replayManager.On("GetReplayList", ctx, projSpec.ID).Return(replaySpecs, nil)
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, replayManager, nil, nil, nil, nil)
+			jobSvc := job.NewService(nil, nil, nil, nil, nil, nil, replayManager, nil, nil, nil, nil, nil, nil)
 			replayList, err := jobSvc.GetReplayList(ctx, projSpec.ID)
 
 			assert.Nil(t, err)
@@ -874,7 +871,7 @@ func TestReplay(t *testing.T) {
 			errorMsg := "unable to get replay list"
 			replayManager.On("GetReplayList", ctx, projSpec.ID).Return([]models.ReplaySpec{}, errors.New(errorMsg))
 
-			jobSvc := job.NewService(nil, nil, nil, dumpAssets, nil, nil, nil, replayManager, nil, nil, nil, nil)
+			jobSvc := job.NewService(nil, nil, nil, nil, nil, nil, replayManager, nil, nil, nil, nil, nil, nil)
 			replayList, err := jobSvc.GetReplayList(ctx, projSpec.ID)
 
 			assert.Equal(t, errorMsg, err.Error())

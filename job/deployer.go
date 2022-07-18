@@ -25,24 +25,31 @@ type deployer struct {
 	deployRepository store.JobDeploymentRepository
 }
 
-func NewDeployer(l log.Logger, dependencyResolver DependencyResolver, priorityResolver PriorityResolver, batchScheduler models.SchedulerUnit,
-	deployRepository store.JobDeploymentRepository, namespaceService service.NamespaceService) *deployer {
-	return &deployer{l: l, dependencyResolver: dependencyResolver, priorityResolver: priorityResolver, batchScheduler: batchScheduler,
-		deployRepository: deployRepository, namespaceService: namespaceService}
+func NewDeployer(
+	l log.Logger,
+	dependencyResolver DependencyResolver,
+	priorityResolver PriorityResolver,
+	namespaceService service.NamespaceService,
+	deployRepository store.JobDeploymentRepository,
+	batchScheduler models.SchedulerUnit,
+) Deployer {
+	return &deployer{
+		l:                  l,
+		dependencyResolver: dependencyResolver,
+		priorityResolver:   priorityResolver,
+		batchScheduler:     batchScheduler,
+		deployRepository:   deployRepository,
+		namespaceService:   namespaceService,
+	}
 }
 
-func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeployment) (deployError error) {
-	// fetch job specs and enrich with its dependencies
-	jobSpecs, err := d.dependencyResolver.FetchJobSpecsWithJobDependencies(ctx, jobDeployment.Project)
+func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeployment) error {
+	jobSpecs, err := d.dependencyResolver.GetJobSpecsWithDependencies(ctx, jobDeployment.Project.ID)
 	if err != nil {
 		return err
 	}
-	d.l.Debug("job dependency fetched", "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
+	d.l.Debug("job specs fetched", "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
 
-	// Get all job specs and enrich with hook dependencies
-	jobSpecs = d.enrichJobSpecWithHookDependencies(jobSpecs)
-
-	// Resolve priority
 	jobSpecs, err = d.priorityResolver.Resolve(ctx, jobSpecs, nil)
 	if err != nil {
 		return err
@@ -50,17 +57,7 @@ func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeploymen
 	d.l.Debug("job priority resolved", "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
 
 	// Compile & Deploy
-	jobSpecGroup := models.JobSpecs(jobSpecs).GroupJobsPerNamespace()
-	for namespaceName, jobs := range jobSpecGroup {
-		deployNamespaceDetail, err := d.deployPerNamespace(ctx, jobDeployment.Project.Name, namespaceName, jobs)
-		if err != nil {
-			deployError = multierror.Append(deployError, err)
-		}
-		jobDeployment.Details.Failures = append(jobDeployment.Details.Failures, deployNamespaceDetail.Failures...)
-		jobDeployment.Details.FailureCount += deployNamespaceDetail.FailureCount
-		jobDeployment.Details.SuccessCount += deployNamespaceDetail.SuccessCount
-		d.l.Debug(fmt.Sprintf("namespace %s deployed", namespaceName), "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
-	}
+	deployError := d.deployJobs(ctx, &jobDeployment, jobSpecs)
 
 	if err := d.completeJobDeployment(ctx, jobDeployment); err != nil {
 		return err
@@ -68,6 +65,35 @@ func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeploymen
 
 	d.l.Info("job deployment finished", "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
 	return deployError
+}
+
+func (d *deployer) deployJobs(ctx context.Context, jobDeployment *models.JobDeployment, jobSpecs []models.JobSpec) error {
+	var deployError error
+	jobSpecGroup := models.JobSpecs(jobSpecs).GroupJobsPerNamespace()
+	for namespaceName, jobs := range jobSpecGroup {
+		if err := d.deployJobsPerNamespace(ctx, jobDeployment, namespaceName, jobs); err != nil {
+			deployError = multierror.Append(deployError, err)
+		}
+		d.l.Debug(fmt.Sprintf("namespace %s deployed", namespaceName), "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
+	}
+	return deployError
+}
+
+func (d *deployer) deployJobsPerNamespace(ctx context.Context, jobDeployment *models.JobDeployment, namespaceName string, jobSpecs []models.JobSpec) error {
+	namespaceSpec, err := d.namespaceService.Get(ctx, jobDeployment.Project.Name, namespaceName)
+	if err != nil {
+		return err
+	}
+
+	deployNamespaceDetail, err := d.batchScheduler.DeployJobsVerbose(ctx, namespaceSpec, jobSpecs)
+	if err != nil {
+		return err
+	}
+	jobDeployment.Details.Failures = append(jobDeployment.Details.Failures, deployNamespaceDetail.Failures...)
+	jobDeployment.Details.FailureCount += deployNamespaceDetail.FailureCount
+	jobDeployment.Details.SuccessCount += deployNamespaceDetail.SuccessCount
+
+	return d.cleanPerNamespace(ctx, namespaceSpec, jobSpecs)
 }
 
 func (d *deployer) completeJobDeployment(ctx context.Context, jobDeployment models.JobDeployment) error {
@@ -79,23 +105,28 @@ func (d *deployer) completeJobDeployment(ctx context.Context, jobDeployment mode
 	return d.deployRepository.Update(ctx, jobDeployment)
 }
 
-func (d *deployer) deployPerNamespace(ctx context.Context, projectName, namespaceName string, jobs []models.JobSpec) (models.JobDeploymentDetail, error) {
-	// fetch the namespace spec with secrets
-	namespaceSpec, err := d.namespaceService.Get(ctx, projectName, namespaceName)
+func (d *deployer) cleanPerNamespace(ctx context.Context, namespaceSpec models.NamespaceSpec, jobs []models.JobSpec) error {
+	// get all stored job names
+	schedulerJobs, err := d.batchScheduler.ListJobs(ctx, namespaceSpec, models.SchedulerListOptions{OnlyName: true})
 	if err != nil {
-		return models.JobDeploymentDetail{}, err
+		return err
 	}
-	return d.batchScheduler.DeployJobsVerbose(ctx, namespaceSpec, jobs)
-}
+	var destJobNames []string
+	for _, j := range schedulerJobs {
+		destJobNames = append(destJobNames, j.Name)
+	}
 
-func (d *deployer) enrichJobSpecWithHookDependencies(jobSpecs []models.JobSpec) []models.JobSpec {
-	var enrichedJobSpecs []models.JobSpec
-	for _, jobSpec := range jobSpecs {
-		hooks := d.dependencyResolver.FetchHookWithDependencies(jobSpec)
-		if len(hooks) > 0 {
-			jobSpec.Hooks = hooks
-		}
-		enrichedJobSpecs = append(enrichedJobSpecs, jobSpec)
+	// filter what we need to keep/delete
+	var sourceJobNames []string
+	for _, jobSpec := range jobs {
+		sourceJobNames = append(sourceJobNames, jobSpec.Name)
 	}
-	return enrichedJobSpecs
+	jobsToDelete := setSubtract(destJobNames, sourceJobNames)
+	jobsToDelete = jobDeletionFilter(jobsToDelete)
+	if len(jobsToDelete) > 0 {
+		if err := d.batchScheduler.DeleteJobs(ctx, namespaceSpec, jobsToDelete, nil); err != nil {
+			return err
+		}
+	}
+	return nil
 }
