@@ -1,6 +1,7 @@
 package job
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -70,7 +71,7 @@ func (r *renderCommand) RunE(_ *cobra.Command, args []string) error {
 	r.logger.Info(fmt.Sprintf("Assuming execution time as current time of %s\n", now.Format(models.InstanceScheduledAtTimeLayout)))
 
 	templateEngine := compiler.NewGoEngine()
-	templates, err := compiler.DumpAssets(jobSpec, now, templateEngine, true)
+	templates, err := compiler.DumpAssets(context.Background(), jobSpec, now, templateEngine, true)
 	if err != nil {
 		return err
 	}

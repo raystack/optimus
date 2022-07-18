@@ -17,7 +17,7 @@ import (
 )
 
 func TestPluginService(t *testing.T) {
-	var dumpAssets service.AssetCompiler = func(jobSpec models.JobSpec, _ time.Time) (models.JobAssets, error) {
+	var dumpAssets service.AssetCompiler = func(ctx context.Context, jobSpec models.JobSpec, _ time.Time) (models.JobAssets, error) {
 		return jobSpec.Assets, nil
 	}
 
