@@ -14,6 +14,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/namespace"
 	"github.com/odpf/optimus/cmd/progressbar"
@@ -29,8 +30,8 @@ type taskRunBlock struct {
 }
 
 type createCommand struct {
-	logger       log.Logger
-	clientConfig *config.ClientConfig
+	logger         log.Logger
+	configFilePath string
 
 	survey *survey.ReplayCreateSurvey
 
@@ -40,13 +41,13 @@ type createCommand struct {
 	allDownstream    bool
 	skipConfirm      bool
 	namespaceName    string
+	projectName      string
+	host             string
 }
 
 // NewCreateCommand initializes command for replay create
-func NewCreateCommand(clientConfig *config.ClientConfig) *cobra.Command {
-	create := &createCommand{
-		clientConfig: clientConfig,
-	}
+func NewCreateCommand() *cobra.Command {
+	create := &createCommand{}
 
 	cmd := &cobra.Command{
 		Use:     "create",
@@ -70,21 +71,52 @@ Date ranges are inclusive.
 		RunE:    create.RunE,
 		PreRunE: create.PreRunE,
 	}
-	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
-	cmd.Flags().StringVarP(&create.namespaceName, "namespace", "n", create.namespaceName, "Namespace of job that needs to be replayed")
-	cmd.MarkFlagRequired("namespace")
 
-	cmd.Flags().BoolVarP(&create.dryRun, "dry-run", "d", create.dryRun, "Only do a trial run with no permanent changes")
-	cmd.Flags().BoolVarP(&create.forceRun, "force", "f", create.forceRun, "Run replay even if a previous run is in progress")
-	cmd.Flags().BoolVar(&create.skipConfirm, "confirm", create.skipConfirm, "Skip asking for confirmation")
-	cmd.Flags().BoolVar(&create.ignoreDownstream, "ignore-downstream", create.ignoreDownstream, "Run without replaying downstream jobs")
-	cmd.Flags().BoolVar(&create.allDownstream, "all-downstream", create.allDownstream, "Run replay for all downstream across namespaces")
+	create.injectFlags(cmd)
+	internal.MarkFlagsRequired(cmd, []string{"namespace"})
+
 	return cmd
 }
 
-func (c *createCommand) PreRunE(_ *cobra.Command, _ []string) error {
-	c.logger = logger.NewClientLogger(c.clientConfig.Log)
+func (c *createCommand) injectFlags(cmd *cobra.Command) {
+	// Config filepath flag
+	cmd.Flags().StringVarP(&c.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+
+	cmd.Flags().StringVarP(&c.namespaceName, "namespace", "n", c.namespaceName, "Namespace of job that needs to be replayed")
+	cmd.Flags().BoolVarP(&c.dryRun, "dry-run", "d", c.dryRun, "Only do a trial run with no permanent changes")
+	cmd.Flags().BoolVarP(&c.forceRun, "force", "f", c.forceRun, "Run replay even if a previous run is in progress")
+	cmd.Flags().BoolVar(&c.skipConfirm, "confirm", c.skipConfirm, "Skip asking for confirmation")
+	cmd.Flags().BoolVar(&c.ignoreDownstream, "ignore-downstream", c.ignoreDownstream, "Run without replaying downstream jobs")
+	cmd.Flags().BoolVar(&c.allDownstream, "all-downstream", c.allDownstream, "Run replay for all downstream across namespaces")
+
+	// Mandatory flags if config is not set
+	cmd.Flags().StringVarP(&c.projectName, "project-name", "p", "", "Name of the optimus project")
+	cmd.Flags().StringVar(&c.host, "host", "", "Optimus service endpoint url")
+}
+
+func (c *createCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+	// Load config
+	conf, err := internal.LoadOptionalConfig(c.configFilePath)
+	if err != nil {
+		return err
+	}
+
+	if conf == nil {
+		c.logger = logger.NewDefaultLogger()
+		c.survey = survey.NewReplayCreateSurvey(c.logger)
+		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
+		return nil
+	}
+
+	c.logger = logger.NewClientLogger(conf.Log)
 	c.survey = survey.NewReplayCreateSurvey(c.logger)
+	if c.projectName == "" {
+		c.projectName = conf.Project.Name
+	}
+	if c.host == "" {
+		c.host = conf.Host
+	}
+
 	return nil
 }
 
@@ -131,7 +163,7 @@ func (c *createCommand) getAllowedDownstreamNamespaces() []string {
 }
 
 func (c *createCommand) runReplayRequest(jobName, startDate, endDate string) (string, error) {
-	conn, err := connectivity.NewConnectivity(c.clientConfig.Host, replayTimeout)
+	conn, err := connectivity.NewConnectivity(c.host, replayTimeout)
 	if err != nil {
 		return "", err
 	}
@@ -144,7 +176,7 @@ func (c *createCommand) runReplayRequest(jobName, startDate, endDate string) (st
 
 	replay := pb.NewReplayServiceClient(conn.GetConnection())
 	replayRequest := &pb.ReplayRequest{
-		ProjectName:                 c.clientConfig.Project.Name,
+		ProjectName:                 c.projectName,
 		JobName:                     jobName,
 		NamespaceName:               c.namespaceName,
 		StartDate:                   startDate,
@@ -167,7 +199,7 @@ func (c *createCommand) runReplayRequest(jobName, startDate, endDate string) (st
 }
 
 func (c *createCommand) printReplayExecutionTree(jobName, startDate, endDate string) error {
-	conn, err := connectivity.NewConnectivity(c.clientConfig.Host, replayTimeout)
+	conn, err := connectivity.NewConnectivity(c.host, replayTimeout)
 	if err != nil {
 		return err
 	}
@@ -175,7 +207,7 @@ func (c *createCommand) printReplayExecutionTree(jobName, startDate, endDate str
 
 	replay := pb.NewReplayServiceClient(conn.GetConnection())
 	replayRequest := &pb.ReplayDryRunRequest{
-		ProjectName:                 c.clientConfig.Project.Name,
+		ProjectName:                 c.projectName,
 		JobName:                     jobName,
 		NamespaceName:               c.namespaceName,
 		StartDate:                   startDate,

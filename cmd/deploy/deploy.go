@@ -73,9 +73,9 @@ func NewDeployCommand() *cobra.Command {
 	return cmd
 }
 
-func (d *deployCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+func (d *deployCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	var err error
-	d.clientConfig, err = config.LoadClientConfig(d.configFilePath, cmd.Flags())
+	d.clientConfig, err = config.LoadClientConfig(d.configFilePath)
 	if err != nil {
 		return err
 	}

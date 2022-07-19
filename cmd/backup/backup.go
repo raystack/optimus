@@ -6,26 +6,15 @@ import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 )
 
 const (
-	backupTimeout      = time.Minute * 15
-	defaultProjectName = "sample_project"
+	backupTimeout = time.Minute * 15
 )
-
-type backCommand struct {
-	configFilePath string
-	clientConfig   *config.ClientConfig
-}
 
 // NewBackupCommand initializes
 func NewBackupCommand() *cobra.Command {
-	backup := &backCommand{
-		clientConfig: &config.ClientConfig{},
-	}
-
 	cmd := &cobra.Command{
 		Use:   "backup",
 		Short: "Backup a resource and its downstream",
@@ -36,24 +25,12 @@ func NewBackupCommand() *cobra.Command {
 		Annotations: map[string]string{
 			"group:core": "true",
 		},
-		PersistentPreRunE: backup.PersistentPreRunE,
 	}
-	cmd.PersistentFlags().StringVarP(&backup.configFilePath, "config", "c", backup.configFilePath, "File path for client configuration")
 
-	cmd.AddCommand(NewCreateCommand(backup.clientConfig))
-	cmd.AddCommand(NewListCommand(backup.clientConfig))
-	cmd.AddCommand(NewStatusCommand(backup.clientConfig))
+	cmd.AddCommand(NewCreateCommand())
+	cmd.AddCommand(NewListCommand())
+	cmd.AddCommand(NewStatusCommand())
 	return cmd
-}
-
-func (b *backCommand) PersistentPreRunE(cmd *cobra.Command, _ []string) error {
-	// TODO: find a way to load the config in one place
-	c, err := config.LoadClientConfig(b.configFilePath, cmd.Flags())
-	if err != nil {
-		return err
-	}
-	*b.clientConfig = *c
-	return nil
 }
 
 func getAvailableDatastorers() []string {

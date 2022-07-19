@@ -13,6 +13,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/config"
 )
 
@@ -26,9 +27,9 @@ type registerCommand struct {
 }
 
 // NewRegisterCommand initializes command for registering namespace
-func NewRegisterCommand(logger log.Logger) *cobra.Command {
+func NewRegisterCommand() *cobra.Command {
 	register := &registerCommand{
-		logger: logger,
+		logger: logger.NewDefaultLogger(),
 	}
 
 	cmd := &cobra.Command{
@@ -42,9 +43,9 @@ func NewRegisterCommand(logger log.Logger) *cobra.Command {
 	return cmd
 }
 
-func (r *registerCommand) RunE(cmd *cobra.Command, _ []string) error {
-	filePath := path.Join(r.dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
-	clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
+func (r *registerCommand) RunE(_ *cobra.Command, _ []string) error {
+	filePath := path.Join(r.dirPath, config.DefaultFilename)
+	clientConfig, err := config.LoadClientConfig(filePath)
 	if err != nil {
 		return err
 	}
