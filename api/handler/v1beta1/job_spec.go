@@ -19,6 +19,7 @@ import (
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/core/sender"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
 )
@@ -39,12 +40,7 @@ type JobSpecServiceServer struct {
 }
 
 func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificationService_DeployJobSpecificationServer) error {
-	observers := sv.newObserverChain()
-	observers.Join(&jobDeploymentObserver{
-		stream: stream,
-		log:    sv.l,
-		mu:     new(sync.Mutex),
-	})
+	logSender := sender.NewDeployJobLogStatus(stream)
 
 	for {
 		req, err := stream.Recv()
@@ -52,26 +48,30 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			stream.Send(&pb.DeployJobSpecificationResponse{
-				Success: false,
-				Ack:     true,
-			})
 			return err // immediate error returned (grpc error level)
 		}
 
 		jobSpecs := sv.convertProtoToJobSpec(req.GetJobs())
 
 		// Deploying only the modified jobs
-		deployID, err := sv.jobSvc.Deploy(stream.Context(), req.GetProjectName(), req.GetNamespaceName(), jobSpecs, observers)
+		deployID, err := sv.jobSvc.Deploy(stream.Context(), req.GetProjectName(), req.GetNamespaceName(), jobSpecs, logSender)
 		if err != nil {
-			err = fmt.Errorf("error while deploying namespace %s: %w", req.NamespaceName, err)
-			observers.Notify(&models.ProgressJobDeploymentRequestCreated{Err: err})
-			sv.l.Warn(fmt.Sprintf("there's error while deploying namespaces: [%s]", req.NamespaceName))
+			errMsg := fmt.Sprintf("error while deploying namespace %s: %s", req.NamespaceName, err.Error())
+			sv.l.Error(errMsg)
+			sender.SendErrorMessage(logSender, errMsg)
+
+			// deployment per namespace failed
+			resp := pb.DeployJobSpecificationResponse{DeploymentId: ""}
+			stream.Send(&resp)
 			continue
 		}
 
-		sv.l.Info(fmt.Sprintf("deployID %s holds deployment for namespace %s\n", deployID.UUID().String(), req.NamespaceName))
-		observers.Notify(&models.ProgressJobDeploymentRequestCreated{DeployID: deployID})
+		successMsg := fmt.Sprintf("deployID %s holds deployment for namespace %s\n", deployID.UUID().String(), req.NamespaceName)
+		sv.l.Info(successMsg)
+		sender.SendSuccessMessage(logSender, successMsg)
+
+		resp := pb.DeployJobSpecificationResponse{DeploymentId: deployID.UUID().String()}
+		stream.Send(&resp)
 	}
 
 	sv.l.Info("job deployment is successfully submitted")
