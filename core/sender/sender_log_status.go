@@ -5,7 +5,7 @@ import (
 )
 
 type LogStatus interface {
-	Send(pb.Log) error
+	Send(*pb.Log) error
 }
 
 func SendErrorMessage(logSender LogStatus, msg string) {
@@ -24,7 +24,7 @@ func sendMsg(logSender LogStatus, level pb.Level, msg string) {
 	if logSender == nil {
 		return
 	}
-	logSender.Send(pb.Log{
+	logSender.Send(&pb.Log{
 		Level:   level,
 		Message: msg,
 	})
