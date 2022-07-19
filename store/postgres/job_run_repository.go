@@ -53,11 +53,11 @@ func (JobRunMetrics) TableName() string {
 	return "job_run"
 }
 
-func jsonToInstanceSpec(j datatypes.JSON) []models.InstanceSpecData {
-	var data []models.InstanceSpecData
+func jsonToJobRunSpecData(j datatypes.JSON) []models.JobRunSpecData {
+	var data []models.JobRunSpecData
 	if j != nil {
 		if err := json.Unmarshal(j, &data); err != nil {
-			return []models.InstanceSpecData{}
+			return []models.JobRunSpecData{}
 		}
 	}
 	return data
@@ -88,8 +88,8 @@ func (repo *JobRunMetricsRepository) Update(ctx context.Context, event models.Jo
 	return repo.db.WithContext(ctx).Save(&jobRunMetrics).Error
 }
 
-// GetActiveJobRun get the latest jobRun instance for a given schedule time
-func (repo *JobRunMetricsRepository) GetActiveJobRun(ctx context.Context, scheduledAt string, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (models.JobRunSpec, error) {
+// GetLatestJobRunByScheduledTime get the latest jobRun instance for a given schedule time
+func (repo *JobRunMetricsRepository) GetLatestJobRunByScheduledTime(ctx context.Context, scheduledAt string, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (models.JobRunSpec, error) {
 	scheduledAtTimeStamp, err := time.Parse(store.ISODateFormat, scheduledAt)
 	if err != nil {
 		return models.JobRunSpec{}, err
@@ -116,7 +116,7 @@ func (repo *JobRunMetricsRepository) GetActiveJobRun(ctx context.Context, schedu
 		Attempt:       jobRunMetrics.Attempt,
 		SLAMissDelay:  jobRunMetrics.SLAMissDelay,
 		Duration:      jobRunMetrics.Duration,
-		Data:          jsonToInstanceSpec(jobRunMetrics.Data),
+		Data:          jsonToJobRunSpecData(jobRunMetrics.Data),
 		SLADefinition: jobRunMetrics.SLADefinition,
 	}
 	return jobRunSpec, err
@@ -142,7 +142,7 @@ func (repo *JobRunMetricsRepository) GetByID(ctx context.Context, jobRunID uuid.
 		Status:        jobRunMetrics.Status,
 		Attempt:       jobRunMetrics.Attempt,
 		SLAMissDelay:  jobRunMetrics.SLAMissDelay,
-		Data:          jsonToInstanceSpec(jobRunMetrics.Data),
+		Data:          jsonToJobRunSpecData(jobRunMetrics.Data),
 		Duration:      jobRunMetrics.Duration,
 		SLADefinition: jobRunMetrics.SLADefinition,
 	}
@@ -176,7 +176,7 @@ func (repo *JobRunMetricsRepository) Get(ctx context.Context, event models.JobEv
 		EndTime:      jobRunMetrics.EndTime,
 		Status:       jobRunMetrics.Status,
 		Attempt:      jobRunMetrics.Attempt,
-		Data:         jsonToInstanceSpec(jobRunMetrics.Data),
+		Data:         jsonToJobRunSpecData(jobRunMetrics.Data),
 		SLAMissDelay: jobRunMetrics.SLAMissDelay,
 		Duration:     jobRunMetrics.Duration,
 	}
@@ -188,13 +188,15 @@ func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobE
 	eventPayload := event.Value
 
 	scheduledAtTimeStamp, err := time.Parse(store.ISODateFormat, eventPayload["scheduled_at"].GetStringValue())
+	// TODO: this need fix, needs to from from jov scpec schedule time
+
 	if err != nil {
 		return err
 	}
 	executedAt := time.Unix(int64(eventPayload["task_start_timestamp"].GetNumberValue()), 0)
 
 	instanceSpec := models.InstanceSpec{
-		Data: []models.InstanceSpecData{
+		Data: []models.JobRunSpecData{
 			{
 				Name:  models.ConfigKeyExecutionTime,
 				Value: executedAt.Format(models.InstanceScheduledAtTimeLayout),

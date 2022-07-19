@@ -107,7 +107,7 @@ type JobRunMetricsRepository interface {
 	Save(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec, int64, string) error
 	Update(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec) error
 	Get(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec) (models.JobRunSpec, error)
-	GetActiveJobRun(context.Context, string, models.NamespaceSpec, models.JobSpec) (models.JobRunSpec, error)
+	GetLatestJobRunByScheduledTime(context.Context, string, models.NamespaceSpec, models.JobSpec) (models.JobRunSpec, error)
 	GetByID(context.Context, uuid.UUID) (models.JobRunSpec, error)
 }
 

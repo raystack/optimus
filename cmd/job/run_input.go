@@ -14,6 +14,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
@@ -28,21 +29,22 @@ const (
 )
 
 type jobRunInputCommand struct {
-	logger       log.Logger
-	clientConfig *config.ClientConfig
+	logger         log.Logger
+	configFilePath string
 
 	assetOutputDir string
 	runType        string
 	runName        string
 	scheduledAt    string
+	projectName    string
+	host           string
 
 	keysWithUnsubstitutedValue []string
 }
 
 // NewJobRunInputCommand gets compiled assets required for a job run
-func NewJobRunInputCommand(clientConfig *config.ClientConfig) *cobra.Command {
+func NewJobRunInputCommand() *cobra.Command {
 	jobRunInput := &jobRunInputCommand{
-		clientConfig:   clientConfig,
 		assetOutputDir: "/tmp/",
 		runType:        "task",
 	}
@@ -57,108 +59,130 @@ func NewJobRunInputCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		RunE:    jobRunInput.RunE,
 		PreRunE: jobRunInput.PreRunE,
 	}
-	cmd.Flags().StringVar(&jobRunInput.assetOutputDir, "output-dir", jobRunInput.assetOutputDir, "Output directory for assets")
-	cmd.MarkFlagRequired("output-dir")
-	cmd.Flags().StringVar(&jobRunInput.scheduledAt, "scheduled-at", "", "Time at which the job was scheduled for execution")
-	cmd.MarkFlagRequired("scheduled-at")
-	cmd.Flags().StringVar(&jobRunInput.runType, "type", "task", "Type of instance, could be task/hook")
-	cmd.MarkFlagRequired("type")
-	cmd.Flags().StringVar(&jobRunInput.runName, "name", "", "Name of instancetype")
-	cmd.MarkFlagRequired("name")
-
-	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Name of the optimus project")
-	cmd.MarkFlagRequired("project-name")
-	cmd.Flags().String("host", defaultHost, "Optimus service endpoint url")
+	jobRunInput.injectFlags(cmd)
+	internal.MarkFlagsRequired(cmd, []string{"output-dir", "scheduled-at", "type", "name"})
 
 	return cmd
 }
 
-func (b *jobRunInputCommand) PreRunE(_ *cobra.Command, _ []string) error {
-	b.logger = logger.NewClientLogger(b.clientConfig.Log)
+func (j *jobRunInputCommand) injectFlags(cmd *cobra.Command) {
+	// Config filepath flag
+	cmd.Flags().StringVarP(&j.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+
+	// Mandatory flags
+	cmd.Flags().StringVar(&j.assetOutputDir, "output-dir", j.assetOutputDir, "Output directory for assets")
+	cmd.Flags().StringVar(&j.scheduledAt, "scheduled-at", "", "Time at which the job was scheduled for execution")
+	cmd.Flags().StringVar(&j.runType, "type", "task", "Type of instance, could be task/hook")
+	cmd.Flags().StringVar(&j.runName, "name", "", "Name of running instance, e.g., bq2bq/transporter/predator")
+
+	// Mandatory flags if config is not set
+	cmd.Flags().StringVarP(&j.projectName, "project-name", "p", "", "Name of the optimus project")
+	cmd.Flags().StringVar(&j.host, "host", "", "Optimus service endpoint url")
+}
+
+func (j *jobRunInputCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+	// Load config
+	conf, err := internal.LoadOptionalConfig(j.configFilePath)
+	if err != nil {
+		return err
+	}
+
+	if conf == nil {
+		j.logger = logger.NewDefaultLogger()
+		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
+		return nil
+	}
+
+	j.logger = logger.NewClientLogger(conf.Log)
+	if j.projectName == "" {
+		j.projectName = conf.Project.Name
+	}
+	if j.host == "" {
+		j.host = conf.Host
+	}
+
 	return nil
 }
 
-func (b *jobRunInputCommand) RunE(_ *cobra.Command, args []string) error {
+func (j *jobRunInputCommand) RunE(_ *cobra.Command, args []string) error {
 	jobName := args[0]
-	b.logger.Info(fmt.Sprintf("Requesting resources for project %s, job %s at %s", b.clientConfig.Project.Name, jobName, b.clientConfig.Host))
-	b.logger.Info(fmt.Sprintf("Run name %s, run type %s, scheduled at %s\n", b.runName, b.runType, b.scheduledAt))
-	b.logger.Info("please wait...")
+	j.logger.Info(fmt.Sprintf("Requesting resources for project %s, job %s at %s", j.projectName, jobName, j.host))
+	j.logger.Info(fmt.Sprintf("Run name %s, run type %s, scheduled at %s\n", j.runName, j.runType, j.scheduledAt))
+	j.logger.Info("please wait...")
 
-	jobScheduledTimeProto, err := b.getJobScheduledTimeProto()
+	jobScheduledTimeProto, err := j.getJobScheduledTimeProto()
 	if err != nil {
 		return fmt.Errorf("invalid time format, please use %s: %w", models.InstanceScheduledAtTimeLayout, err)
 	}
 
-	jobResponse, err := b.sendJobRunInputRequest(jobName, jobScheduledTimeProto)
+	jobResponse, err := j.sendJobRunInputRequest(jobName, jobScheduledTimeProto)
 	if err != nil {
 		return fmt.Errorf("request failed for job %s: %w", jobName, err)
 	}
-	return b.writeInstanceResponse(jobResponse)
+	return j.writeInstanceResponse(jobResponse)
 }
 
 // writeInstanceResponse fetches a JobRun from the store (eg, postgres)
 // Based on the response, it builds assets like query, env and config
 // for the Job Run which is saved into output files.
-func (b *jobRunInputCommand) writeInstanceResponse(jobResponse *pb.JobRunInputResponse) (err error) {
-	dirPath := filepath.Join(b.assetOutputDir, taskInputDirectory)
-	if err := b.writeJobAssetsToFiles(jobResponse, dirPath); err != nil {
+func (j *jobRunInputCommand) writeInstanceResponse(jobResponse *pb.JobRunInputResponse) (err error) {
+	dirPath := filepath.Join(j.assetOutputDir, taskInputDirectory)
+	if err := j.writeJobAssetsToFiles(jobResponse, dirPath); err != nil {
 		return fmt.Errorf("error writing response map to file: %w", err)
 	}
 
-	if err := b.writeJobResponseEnvToFile(jobResponse, dirPath); err != nil {
+	if err := j.writeJobResponseEnvToFile(jobResponse, dirPath); err != nil {
 		return fmt.Errorf("error writing response env to file: %w", err)
 	}
 
-	if err := b.writeJobResponseSecretToFile(jobResponse, dirPath); err != nil {
+	if err := j.writeJobResponseSecretToFile(jobResponse, dirPath); err != nil {
 		return fmt.Errorf("error writing response env to file: %w", err)
 	}
 
-	if len(b.keysWithUnsubstitutedValue) > 0 {
-		b.logger.Warn(logger.ColoredNotice("Value not substituted for keys:\n%s", strings.Join(b.keysWithUnsubstitutedValue, "\n")))
+	if len(j.keysWithUnsubstitutedValue) > 0 {
+		j.logger.Warn(logger.ColoredNotice("Value not substituted for keys:\n%s", strings.Join(j.keysWithUnsubstitutedValue, "\n")))
 	}
 	return nil
 }
 
-func (b *jobRunInputCommand) writeJobResponseSecretToFile(
+func (j *jobRunInputCommand) writeJobResponseSecretToFile(
 	jobResponse *pb.JobRunInputResponse, dirPath string,
 ) error {
 	// write all secrets into a file
 	secretsFileContent := ""
 	for key, val := range jobResponse.Secrets {
 		if strings.Contains(val, unsubstitutedValue) {
-			b.keysWithUnsubstitutedValue = append(b.keysWithUnsubstitutedValue, key)
+			j.keysWithUnsubstitutedValue = append(j.keysWithUnsubstitutedValue, key)
 		}
 		secretsFileContent += fmt.Sprintf("%s='%s'\n", key, val)
 	}
 
 	filePath := filepath.Join(dirPath, models.InstanceDataTypeSecretFileName)
 	writeToFileFn := utils.WriteStringToFileIndexed()
-	if err := writeToFileFn(filePath, secretsFileContent, b.logger.Writer()); err != nil {
+	if err := writeToFileFn(filePath, secretsFileContent, j.logger.Writer()); err != nil {
 		return fmt.Errorf("failed to write asset file at %s: %w", filePath, err)
 	}
 	return nil
 }
 
-func (b *jobRunInputCommand) writeJobResponseEnvToFile(
-	jobResponse *pb.JobRunInputResponse, dirPath string,
-) error {
+func (j *jobRunInputCommand) writeJobResponseEnvToFile(jobResponse *pb.JobRunInputResponse, dirPath string) error {
 	envFileBlob := ""
 	for key, val := range jobResponse.Envs {
 		if strings.Contains(val, unsubstitutedValue) {
-			b.keysWithUnsubstitutedValue = append(b.keysWithUnsubstitutedValue, key)
+			j.keysWithUnsubstitutedValue = append(j.keysWithUnsubstitutedValue, key)
 		}
 		envFileBlob += fmt.Sprintf("%s='%s'\n", key, val)
 	}
 
 	filePath := filepath.Join(dirPath, models.InstanceDataTypeEnvFileName)
 	writeToFileFn := utils.WriteStringToFileIndexed()
-	if err := writeToFileFn(filePath, envFileBlob, b.logger.Writer()); err != nil {
+	if err := writeToFileFn(filePath, envFileBlob, j.logger.Writer()); err != nil {
 		return fmt.Errorf("failed to write asset file at %s: %w", filePath, err)
 	}
 	return nil
 }
 
-func (b *jobRunInputCommand) writeJobAssetsToFiles(
+func (j *jobRunInputCommand) writeJobAssetsToFiles(
 	jobResponse *pb.JobRunInputResponse, dirPath string,
 ) error {
 	permission := 600
@@ -169,15 +193,15 @@ func (b *jobRunInputCommand) writeJobAssetsToFiles(
 	writeToFileFn := utils.WriteStringToFileIndexed()
 	for fileName, fileContent := range jobResponse.Files {
 		filePath := filepath.Join(dirPath, fileName)
-		if err := writeToFileFn(filePath, fileContent, b.logger.Writer()); err != nil {
+		if err := writeToFileFn(filePath, fileContent, j.logger.Writer()); err != nil {
 			return fmt.Errorf("failed to write asset file at %s: %w", filePath, err)
 		}
 	}
 	return nil
 }
 
-func (b *jobRunInputCommand) sendJobRunInputRequest(jobName string, jobScheduledTimeProto *timestamppb.Timestamp) (*pb.JobRunInputResponse, error) {
-	conn, err := connectivity.NewConnectivity(b.clientConfig.Host, jobRunInputCompileAssetsTimeout)
+func (j *jobRunInputCommand) sendJobRunInputRequest(jobName string, jobScheduledTimeProto *timestamppb.Timestamp) (*pb.JobRunInputResponse, error) {
+	conn, err := connectivity.NewConnectivity(j.host, jobRunInputCompileAssetsTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -186,18 +210,18 @@ func (b *jobRunInputCommand) sendJobRunInputRequest(jobName string, jobScheduled
 	// fetch Instance by calling the optimus API
 	jobRunServiceClient := pb.NewJobRunServiceClient(conn.GetConnection())
 	request := &pb.JobRunInputRequest{
-		ProjectName:  b.clientConfig.Project.Name,
+		ProjectName:  j.projectName,
 		JobName:      jobName,
 		ScheduledAt:  jobScheduledTimeProto,
-		InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[utils.ToEnumProto(b.runType, "type")]),
-		InstanceName: b.runName,
+		InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[utils.ToEnumProto(j.runType, "type")]),
+		InstanceName: j.runName,
 	}
 
 	return jobRunServiceClient.JobRunInput(conn.GetContext(), request)
 }
 
-func (b *jobRunInputCommand) getJobScheduledTimeProto() (*timestamppb.Timestamp, error) {
-	jobScheduledTime, err := time.Parse(models.InstanceScheduledAtTimeLayout, b.scheduledAt)
+func (j *jobRunInputCommand) getJobScheduledTimeProto() (*timestamppb.Timestamp, error) {
+	jobScheduledTime, err := time.Parse(models.InstanceScheduledAtTimeLayout, j.scheduledAt)
 	if err != nil {
 		return nil, err
 	}

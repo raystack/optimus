@@ -111,13 +111,13 @@ type InstanceSpec struct {
 	Type InstanceType
 
 	Status JobRunState
-	Data   []InstanceSpecData
+	Data   []JobRunSpecData
 
 	ExecutedAt time.Time
 	UpdatedAt  time.Time
 }
 
-type InstanceSpecData struct {
+type JobRunSpecData struct {
 	Name  string
 	Value string
 	Type  string

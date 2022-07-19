@@ -573,7 +573,7 @@ type JobRunSpec struct {
 	Duration      int64
 	SLADefinition int64
 
-	Data []InstanceSpecData
+	Data []JobRunSpecData
 }
 
 type TaskRunSpec struct {

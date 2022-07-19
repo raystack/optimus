@@ -34,7 +34,7 @@ func (repo *JobRunMetricsRepository) Update(ctx context.Context, event models.Jo
 	return repo.Called(ctx, event, namespaceSpec, jobSpec).Error(0)
 }
 
-func (repo *JobRunMetricsRepository) GetActiveJobRun(ctx context.Context, scheduledAt string, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (models.JobRunSpec, error) {
+func (repo *JobRunMetricsRepository) GetLatestJobRunByScheduledTime(ctx context.Context, scheduledAt string, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (models.JobRunSpec, error) {
 	args := repo.Called(ctx, scheduledAt, namespaceSpec, jobSpec)
 	return args.Get(0).(models.JobRunSpec), args.Error(1)
 }

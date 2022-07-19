@@ -61,7 +61,7 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 			Name:   "bq",
 			Type:   models.InstanceTypeTask,
 			Status: models.RunStateRunning,
-			Data: []models.InstanceSpecData{
+			Data: []models.JobRunSpecData{
 				{
 					Name:  models.ConfigKeyExecutionTime,
 					Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),

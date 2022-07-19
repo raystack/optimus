@@ -267,7 +267,7 @@ func TestAdapter_FromInstanceProto(t *testing.T) {
 				Name:   "hello",
 				Type:   "task",
 				Status: "running",
-				Data: []models.InstanceSpecData{
+				Data: []models.JobRunSpecData{
 					{
 						Name:  "hello",
 						Value: "world",
@@ -305,7 +305,7 @@ func TestAdapter_ToInstanceProto(t *testing.T) {
 					Name:   "hello",
 					Type:   "task",
 					Status: "running",
-					Data: []models.InstanceSpecData{
+					Data: []models.JobRunSpecData{
 						{
 							Name:  "hello",
 							Value: "world",

@@ -144,7 +144,7 @@ func TestMonitoringService(t *testing.T) {
 				defer taskRunRepository.AssertExpectations(t)
 
 				jobRunMetricsRepository.On(
-					"GetActiveJobRun",
+					"GetLatestJobRunByScheduledTime",
 					ctx,
 					event.Value["scheduled_at"].GetStringValue(),
 					namespaceSpec,
@@ -176,7 +176,7 @@ func TestMonitoringService(t *testing.T) {
 				defer taskRunRepository.AssertExpectations(t)
 
 				jobRunMetricsRepository.On(
-					"GetActiveJobRun",
+					"GetLatestJobRunByScheduledTime",
 					ctx,
 					event.Value["scheduled_at"].GetStringValue(),
 					namespaceSpec,
@@ -211,7 +211,7 @@ func TestMonitoringService(t *testing.T) {
 				defer sensorRunRepository.AssertExpectations(t)
 
 				jobRunMetricsRepository.On(
-					"GetActiveJobRun",
+					"GetLatestJobRunByScheduledTime",
 					ctx,
 					event.Value["scheduled_at"].GetStringValue(),
 					namespaceSpec,
@@ -243,7 +243,7 @@ func TestMonitoringService(t *testing.T) {
 				defer sensorRunRepository.AssertExpectations(t)
 
 				jobRunMetricsRepository.On(
-					"GetActiveJobRun",
+					"GetLatestJobRunByScheduledTime",
 					ctx,
 					event.Value["scheduled_at"].GetStringValue(),
 					namespaceSpec,
@@ -278,7 +278,7 @@ func TestMonitoringService(t *testing.T) {
 				defer hookRunRepository.AssertExpectations(t)
 
 				jobRunMetricsRepository.On(
-					"GetActiveJobRun",
+					"GetLatestJobRunByScheduledTime",
 					ctx,
 					event.Value["scheduled_at"].GetStringValue(),
 					namespaceSpec,
@@ -310,7 +310,7 @@ func TestMonitoringService(t *testing.T) {
 				defer hookRunRepository.AssertExpectations(t)
 
 				jobRunMetricsRepository.On(
-					"GetActiveJobRun",
+					"GetLatestJobRunByScheduledTime",
 					ctx,
 					event.Value["scheduled_at"].GetStringValue(),
 					namespaceSpec,

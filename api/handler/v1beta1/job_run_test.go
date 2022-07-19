@@ -86,7 +86,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			Name:   "do-this",
 			Type:   models.InstanceTypeTask,
 			Status: models.RunStateRunning,
-			Data: []models.InstanceSpecData{
+			Data: []models.JobRunSpecData{
 				{
 					Name:  models.ConfigKeyExecutionTime,
 					Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
@@ -1082,7 +1082,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			ProjectID:   projectSpec.ID.UUID(),
 			ScheduledAt: scheduledAt,
 			StartTime:   mockedTimeNow,
-			Data: []models.InstanceSpecData{
+			Data: []models.JobRunSpecData{
 				{
 					Name:  models.ConfigKeyExecutionTime,
 					Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),

@@ -55,7 +55,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 
 	mockedTimeNow := time.Now()
 	scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
-	instanceSpecData := []models.InstanceSpecData{
+	instanceSpecData := []models.JobRunSpecData{
 		{
 			Name:  models.ConfigKeyExecutionTime,
 			Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
