@@ -16,6 +16,10 @@ func SendWarningMessage(logSender LogStatus, msg string) {
 	sendMsg(logSender, pb.Level_Warning, msg)
 }
 
+func SendDebugMessage(logSender LogStatus, msg string) {
+	sendMsg(logSender, pb.Level_Debug, msg)
+}
+
 func SendSuccessMessage(logSender LogStatus, msg string) {
 	sendMsg(logSender, pb.Level_Info, msg)
 }
