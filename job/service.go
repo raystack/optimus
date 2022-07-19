@@ -959,7 +959,7 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 		return models.DeploymentID(uuid.Nil), err
 	}
 
-	successMsg := fmt.Sprintf("[%s] Deployment request created with ID: %s", namespaceName, deployID)
+	successMsg := fmt.Sprintf("[%s] Deployment request created with ID: %s", namespaceName, deployID.UUID().String())
 	sender.SendSuccessMessage(logSender, successMsg)
 
 	return deployID, nil
