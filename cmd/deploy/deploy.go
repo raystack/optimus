@@ -177,7 +177,7 @@ func (d *deployCommand) deployJobs(conn *connectivity.Connectivity, selectedName
 		return nil
 	}
 
-	deployIDs, err := d.processJobDeploymentResponses(namespaceNames, stream)
+	deployIDs, err := d.processJobDeploymentResponses(stream)
 	if err != nil {
 		return err
 	}
@@ -412,7 +412,7 @@ func (d *deployCommand) getResourceStreamClient(
 	return stream, nil
 }
 
-func (d *deployCommand) processJobDeploymentResponses(namespaceNames []string, stream pb.JobSpecificationService_DeployJobSpecificationClient) ([]string, error) {
+func (d *deployCommand) processJobDeploymentResponses(stream pb.JobSpecificationService_DeployJobSpecificationClient) ([]string, error) {
 	deployIDMaps := map[string]bool{}
 	d.logger.Info("> Receiving responses:")
 

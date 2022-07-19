@@ -12,9 +12,9 @@ func NewDeployJobLogStatus(stream pb.JobSpecificationService_DeployJobSpecificat
 	return &deployJobLogStatus{stream: stream}
 }
 
-func (l *deployJobLogStatus) Send(logStatus pb.Log) error {
+func (l *deployJobLogStatus) Send(logStatus *pb.Log) error {
 	resp := pb.DeployJobSpecificationResponse{
-		LogStatus: &logStatus,
+		LogStatus: logStatus,
 	}
 	return l.stream.Send(&resp)
 }

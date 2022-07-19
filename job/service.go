@@ -140,7 +140,8 @@ func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, 
 
 func (srv *Service) bulkCreate(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, logSender sender.LogStatus) []models.JobSpec {
 	result := []models.JobSpec{}
-	op := ""
+	var op string
+
 	successCreate, successModify, failureCreate, failureModify := 0, 0, 0, 0
 	for _, jobSpec := range jobSpecs {
 		jobSpecCreated, err := srv.Create(ctx, namespace, jobSpec)
