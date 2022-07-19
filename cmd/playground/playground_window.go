@@ -27,12 +27,11 @@ func NewPlayGroundWindowCommand(clientConfig *config.ClientConfig) *cobra.Comman
 
 // this will run when we give the command in cli
 func (j *windowComand) RunE(_ *cobra.Command, _ []string) error {
-	// starts the interactive session (this is usful when we are learning the windowing for the first time)
+	// starts the interactive session
 	fmt.Println(">  hello folks! this is an interactive cli")
-	fmt.Println(">  controls use up,down arrows to move the pointer, left and right to increase and decrease the values")
+	fmt.Println(">  controls use arrow keys to navigate , shift + arrow keys to increment or decrement values")
 	fmt.Println(">  press control + c or q to quit")
-	fmt.Println("")
-	fmt.Println("")
+	fmt.Println("") // to maintain space for asthetic reasons
 	p := tea.NewProgram(initialModel())
 	p.Start()
 	return nil
