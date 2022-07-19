@@ -242,15 +242,17 @@ func (sv *JobSpecServiceServer) DeleteJobSpecification(ctx context.Context, req 
 	}, nil
 }
 
-func (sv *JobSpecServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, respStream pb.JobSpecificationService_RefreshJobsServer) error {
+func (sv *JobSpecServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, stream pb.JobSpecificationService_RefreshJobsServer) error {
 	startTime := time.Now()
+	logSender := sender.NewRefreshJobLogStatus(stream)
 
-	err := sv.jobSvc.Refresh(respStream.Context(), req.ProjectName, req.NamespaceNames, req.JobNames, nil)
+	deployID, err := sv.jobSvc.Refresh(stream.Context(), req.ProjectName, req.NamespaceNames, req.JobNames, logSender)
 	if err != nil {
 		return status.Errorf(codes.Internal, "failed to refresh jobs: \n%s", err.Error())
 	}
 
 	sv.l.Info("finished job refresh", "time", time.Since(startTime))
+	stream.Send(&pb.RefreshJobsResponse{DeploymentId: deployID.UUID().String()})
 	return nil
 }
 

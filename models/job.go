@@ -403,7 +403,7 @@ type JobService interface {
 	// GetDownstream fetches downstream jobspecs
 	GetDownstream(ctx context.Context, projectSpec ProjectSpec, jobName string) ([]JobSpec, error)
 	// Refresh Redeploy current persisted state of jobs
-	Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string, observer progress.Observer) error
+	Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string, logSender sender.LogStatus) (DeploymentID, error)
 	// Deploy the requested jobs per namespace
 	Deploy(context.Context, string, string, []JobSpec, sender.LogStatus) (DeploymentID, error)
 	// GetDeployment getting status and result of job deployment

@@ -777,34 +777,37 @@ func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec,
 // Refresh fetches all the requested jobs, resolves its dependencies, assign proper priority weights,
 // compile all jobs in the project and upload them to the destination store.
 func (srv *Service) Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string,
-	progressObserver progress.Observer) error {
+	logSender sender.LogStatus) (models.DeploymentID, error) {
 	projectSpec, err := srv.projectService.Get(ctx, projectName)
 	if err != nil {
-		return err
+		return models.DeploymentID(uuid.Nil), err
 	}
 
 	// get job specs as requested
-	jobSpecs, err := srv.fetchJobSpecs(ctx, projectSpec, namespaceNames, jobNames, progressObserver)
+	jobSpecs, err := srv.fetchJobSpecs(ctx, projectSpec, namespaceNames, jobNames, logSender)
 	if err != nil {
-		return err
+		return models.DeploymentID(uuid.Nil), err
 	}
 
 	// resolve dependency and persist
-	srv.identifyAndPersistJobSources(ctx, projectSpec, jobSpecs, progressObserver)
-	srv.notifyProgress(progressObserver, &models.ProgressJobDependencyResolutionFinished{})
+	srv.identifyAndPersistJobSources(ctx, projectSpec, jobSpecs, logSender)
+	successMsg := fmt.Sprintf("info: dependencies resolved")
+	sender.SendSuccessMessage(logSender, successMsg)
 
 	deployID, err := srv.deployManager.Deploy(ctx, projectSpec)
 	if err != nil {
-		return err
+		return models.DeploymentID(uuid.Nil), err
 	}
 
-	srv.notifyProgress(progressObserver, &models.ProgressJobDeploymentRequestCreated{DeployID: deployID})
-	return nil
+	successMsg = fmt.Sprintf("Deployment request created with ID: %s", deployID)
+	sender.SendSuccessMessage(logSender, successMsg)
+
+	return deployID, nil
 }
 
 func (srv *Service) fetchJobSpecs(ctx context.Context, projectSpec models.ProjectSpec,
-	namespaceNames []string, jobNames []string, progressObserver progress.Observer) (jobSpecs []models.JobSpec, err error) {
-	defer srv.notifyProgress(progressObserver, &models.ProgressJobSpecFetch{})
+	namespaceNames []string, jobNames []string, logSender sender.LogStatus) (jobSpecs []models.JobSpec, err error) {
+	defer sender.SendSuccessMessage(logSender, "fetching job specs")
 
 	if len(jobNames) > 0 {
 		return srv.fetchSpecsForGivenJobNames(ctx, projectSpec, jobNames)
@@ -853,7 +856,7 @@ func (srv *Service) fetchSpecsForGivenJobNames(ctx context.Context, projectSpec 
 }
 
 func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpec models.ProjectSpec,
-	namespaceName string, jobSpecs []models.JobSpec, logSender sender.LogStatus) {
+	jobSpecs []models.JobSpec, logSender sender.LogStatus) {
 	start := time.Now()
 	defer resolveDependencyHistogram.Observe(time.Since(start).Seconds())
 
@@ -879,20 +882,20 @@ func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpe
 	for _, state := range runner.Run() {
 		if state.Err != nil {
 			failure++
-			warnMsg := fmt.Sprintf("[%s] error '%s': failed to resolve dependency, %s", namespaceName, state.Val, state.Err.Error())
+			warnMsg := fmt.Sprintf("error '%s': failed to resolve dependency, %s", state.Val, state.Err.Error())
 			sender.SendWarningMessage(logSender, warnMsg)
 		} else {
 			success++
-			successMsg := fmt.Sprintf("[%s] info '%s': dependency is successfully resolved", namespaceName, state.Val)
+			successMsg := fmt.Sprintf("info '%s': dependency is successfully resolved", state.Val)
 			sender.SendSuccessMessage(logSender, successMsg)
 		}
 	}
 
 	if failure > 0 {
-		errMsg := fmt.Sprintf("[%s] Resolved dependencies of %d/%d modified jobs.", namespaceName, success, success+failure)
-		sender.SendErrorMessage(logSender, errMsg)
+		warnMsg := fmt.Sprintf("Resolved dependencies of %d/%d jobs.", success, success+failure)
+		sender.SendWarningMessage(logSender, warnMsg)
 	} else {
-		successMsg := fmt.Sprintf("[%s] Resolved dependency of %d modified jobs.", namespaceName, success)
+		successMsg := fmt.Sprintf("Resolved dependency of %d jobs.", success)
 		sender.SendSuccessMessage(logSender, successMsg)
 	}
 
@@ -933,7 +936,7 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 
 	// Resolve inferred dependency
 	if len(savedJobs) > 0 {
-		srv.identifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, namespaceName, savedJobs, logSender)
+		srv.identifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, savedJobs, logSender)
 	}
 
 	// Deploy through deploy manager

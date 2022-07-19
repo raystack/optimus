@@ -434,9 +434,7 @@ func (d *deployCommand) processJobDeploymentResponses(namespaceNames []string, s
 			case pb.Level_Info:
 				d.logger.Info(logStatus.GetMessage())
 			case pb.Level_Warning:
-				if d.verbose {
-					d.logger.Warn(logStatus.GetMessage())
-				}
+				d.logger.Warn(logStatus.GetMessage())
 			case pb.Level_Error:
 				d.logger.Error(logStatus.GetMessage())
 			}

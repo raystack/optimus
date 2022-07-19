@@ -1757,7 +1757,7 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
-			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
+			_, err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Nil(t, err)
 		})
@@ -1816,7 +1816,7 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(namespaceJobSpecRepoFac, nil, nil, dependencyResolver,
 				nil, nil, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
-			err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
+			_, err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
 
 			assert.Nil(t, err)
 		})
@@ -1879,7 +1879,7 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, batchScheduler, nil, dependencyResolver,
 				priorityResolver, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
-			err := svc.Refresh(ctx, projSpec.Name, nil, jobNames, nil)
+			_, err := svc.Refresh(ctx, projSpec.Name, nil, jobNames, nil)
 
 			assert.Nil(t, err)
 		})
@@ -1909,7 +1909,7 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil, nil, nil)
-			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
+			_, err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Equal(t, errorMsg, err.Error())
 		})
@@ -1942,7 +1942,7 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil, nil, nil)
-			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
+			_, err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve jobs: %s", errorMsg), err.Error())
 		})
@@ -1976,7 +1976,7 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(namespaceJobSpecRepoFac, nil, nil, dependencyResolver,
 				nil, nil, nil, namespaceService, projectService, deployManager, nil, nil, nil)
-			err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
+			_, err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
 
 			assert.Equal(t, errorMsg, err.Error())
 		})
@@ -2013,7 +2013,7 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(namespaceJobSpecRepoFac, nil, nil, dependencyResolver,
 				nil, nil, nil, namespaceService, projectService, deployManager, nil, nil, nil)
-			err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
+			_, err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve jobs: %s", errorMsg), err.Error())
 		})
@@ -2060,7 +2060,7 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projectJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil, nil, nil)
-			err := svc.Refresh(ctx, projSpec.Name, nil, jobNames, nil)
+			_, err := svc.Refresh(ctx, projSpec.Name, nil, jobNames, nil)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve job: %s", errorMsg), err.Error())
 		})
@@ -2130,7 +2130,7 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
-			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
+			_, err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Nil(t, err)
 		})
@@ -2202,7 +2202,7 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
-			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
+			_, err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Nil(t, err)
 		})
@@ -2258,7 +2258,7 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
-			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
+			_, err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Contains(t, err.Error(), errorMsg)
 		})
