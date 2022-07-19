@@ -14,6 +14,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/cmd/survey"
@@ -22,15 +23,16 @@ import (
 )
 
 type statusCommand struct {
-	logger       log.Logger
-	clientConfig *config.ClientConfig
+	logger         log.Logger
+	configFilePath string
+
+	projectName string
+	host        string
 }
 
 // NewStatusCommand initialize command for backup status
-func NewStatusCommand(clientConfig *config.ClientConfig) *cobra.Command {
-	status := &statusCommand{
-		clientConfig: clientConfig,
-	}
+func NewStatusCommand() *cobra.Command {
+	status := &statusCommand{}
 	cmd := &cobra.Command{
 		Use:     "status",
 		Short:   "Get backup info using uuid and datastore",
@@ -39,12 +41,42 @@ func NewStatusCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		RunE:    status.RunE,
 		PreRunE: status.PreRunE,
 	}
-	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
+
+	status.injectFlags(cmd)
+
 	return cmd
 }
 
-func (s *statusCommand) PreRunE(_ *cobra.Command, _ []string) error {
-	s.logger = logger.NewClientLogger(s.clientConfig.Log)
+func (s *statusCommand) injectFlags(cmd *cobra.Command) {
+	// Config filepath flag
+	cmd.PersistentFlags().StringVarP(&s.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+
+	// Mandatory flags if config is not set
+	cmd.Flags().StringVarP(&s.projectName, "project-name", "p", "", "project name of optimus managed repository")
+	cmd.Flags().StringVar(&s.host, "host", "", "Optimus service endpoint url")
+}
+
+func (s *statusCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+	// Load config
+	conf, err := internal.LoadOptionalConfig(s.configFilePath)
+	if err != nil {
+		return err
+	}
+
+	if conf == nil {
+		s.logger = logger.NewDefaultLogger()
+		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
+		return nil
+	}
+
+	s.logger = logger.NewClientLogger(conf.Log)
+	if s.projectName == "" {
+		s.projectName = conf.Project.Name
+	}
+	if s.host == "" {
+		s.host = conf.Host
+	}
+
 	return nil
 }
 
@@ -56,12 +88,12 @@ func (s *statusCommand) RunE(_ *cobra.Command, args []string) error {
 	}
 
 	getBackupRequest := &pb.GetBackupRequest{
-		ProjectName:   s.clientConfig.Project.Name,
+		ProjectName:   s.projectName,
 		DatastoreName: storerName,
 		Id:            args[0],
 	}
 
-	conn, err := connectivity.NewConnectivity(s.clientConfig.Host, backupTimeout)
+	conn, err := connectivity.NewConnectivity(s.host, backupTimeout)
 	if err != nil {
 		return err
 	}

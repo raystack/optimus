@@ -9,10 +9,10 @@ import (
 )
 
 // DumpAssets used for dry run and does not effect actual execution of a job
-func DumpAssets(jobSpec models.JobSpec, scheduledAt time.Time, engine models.TemplateEngine, allowOverride bool) (map[string]string, error) {
+func DumpAssets(ctx context.Context, jobSpec models.JobSpec, scheduledAt time.Time, engine models.TemplateEngine, allowOverride bool) (map[string]string, error) {
 	var jobDestination string
 	if jobSpec.Task.Unit.DependencyMod != nil {
-		jobDestinationResponse, err := jobSpec.Task.Unit.DependencyMod.GenerateDestination(context.TODO(), models.GenerateDestinationRequest{
+		jobDestinationResponse, err := jobSpec.Task.Unit.DependencyMod.GenerateDestination(ctx, models.GenerateDestinationRequest{
 			Config: models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 			Assets: models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 			PluginOptions: models.PluginOptions{
@@ -29,7 +29,7 @@ func DumpAssets(jobSpec models.JobSpec, scheduledAt time.Time, engine models.Tem
 
 	if allowOverride {
 		// check if task needs to override the compilation behaviour
-		compiledAssetResponse, err := jobSpec.Task.Unit.CLIMod.CompileAssets(context.TODO(), models.CompileAssetsRequest{
+		compiledAssetResponse, err := jobSpec.Task.Unit.CLIMod.CompileAssets(ctx, models.CompileAssetsRequest{
 			Window:           jobSpec.Task.Window,
 			Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 			Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),

@@ -15,18 +15,19 @@ import (
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/postgres"
+	"github.com/odpf/optimus/tests/setup"
 )
 
 func BenchmarkNamespaceRepository(b *testing.B) {
 	ctx := context.Background()
 	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 
-	proj := getProject(1)
+	proj := setup.Project(1)
 	proj.ID = models.ProjectID(uuid.New())
 
 	dbSetup := func() *gorm.DB {
-		dbConn := setupDB()
-		truncateTables(dbConn)
+		dbConn := setup.TestDB()
+		setup.TruncateTables(dbConn)
 
 		projRepo := postgres.NewProjectRepository(dbConn, hash)
 		err := projRepo.Save(ctx, proj)
@@ -34,7 +35,7 @@ func BenchmarkNamespaceRepository(b *testing.B) {
 
 		secretRepo := postgres.NewSecretRepository(dbConn, hash)
 		for s := 0; s < 5; s++ {
-			secret := getSecret(s)
+			secret := setup.Secret(s)
 			err = secretRepo.Save(ctx, proj, models.NamespaceSpec{}, secret)
 			assert.Nil(b, err)
 		}
@@ -49,7 +50,7 @@ func BenchmarkNamespaceRepository(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			namespace := getNamespace(i, proj)
+			namespace := setup.Namespace(i, proj)
 			err := nsRepo.Save(ctx, proj, namespace)
 			if err != nil {
 				panic(err)
@@ -61,7 +62,7 @@ func BenchmarkNamespaceRepository(b *testing.B) {
 
 		var nsRepo store.NamespaceRepository = postgres.NewNamespaceRepository(db, hash)
 		for i := 0; i < 20; i++ {
-			namespace := getNamespace(i, proj)
+			namespace := setup.Namespace(i, proj)
 			err := nsRepo.Save(ctx, proj, namespace)
 			assert.Nil(b, err)
 		}
@@ -83,7 +84,7 @@ func BenchmarkNamespaceRepository(b *testing.B) {
 		db := dbSetup()
 		var repo store.NamespaceRepository = postgres.NewNamespaceRepository(db, hash)
 		for i := 0; i < 10; i++ {
-			namespace := getNamespace(i, proj)
+			namespace := setup.Namespace(i, proj)
 			err := repo.Save(ctx, proj, namespace)
 			assert.Nil(b, err)
 		}
@@ -103,7 +104,7 @@ func BenchmarkNamespaceRepository(b *testing.B) {
 		db := dbSetup()
 		var repo store.NamespaceRepository = postgres.NewNamespaceRepository(db, hash)
 		for i := 0; i < 20; i++ {
-			namespace := getNamespace(i, proj)
+			namespace := setup.Namespace(i, proj)
 			err := repo.Save(ctx, proj, namespace)
 			assert.Nil(b, err)
 		}
@@ -121,24 +122,4 @@ func BenchmarkNamespaceRepository(b *testing.B) {
 			}
 		}
 	})
-}
-
-func getNamespace(i int, project models.ProjectSpec) models.NamespaceSpec {
-	return models.NamespaceSpec{
-		Name: fmt.Sprintf("ns-optimus-%d", i),
-		Config: map[string]string{
-			"environment":                   "production",
-			"bucket":                        "gs://some_folder-2",
-			"storage_path":                  "gs://storage_bucket",
-			"predator_host":                 "https://predator.example.com",
-			"scheduler_host":                "https://optimus.example.com/",
-			"transporter_kafka_brokers":     "10.5.5.5:6666",
-			"transporter_stencil_namespace": "optimus",
-			"bq2email_smtp_address":         "smtp.example.com",
-			"bridge_host":                   "1.1.1.1",
-			"bridge_port":                   "80",
-			"ocean_gcs_tmp_bucket":          "bq2-plugins",
-		},
-		ProjectSpec: project,
-	}
 }
