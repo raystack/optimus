@@ -84,7 +84,7 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_NoJob
 	stream.On("Recv").Return(nil, io.EOF).Once()
 
 	s.jobService.On("Deploy", s.ctx, s.projectSpec.Name, s.namespaceSpec.Name, []models.JobSpec{}, mock2.Anything).Return(models.DeploymentID(uuid.New()), nil).Once()
-	stream.On("Send", mock2.Anything).Return(nil).Once()
+	stream.On("Send", mock2.AnythingOfType("*optimus.DeployJobSpecificationResponse")).Return(nil).Twice()
 
 	runtimeServiceServer := s.newJobSpecServiceServer()
 	err := runtimeServiceServer.DeployJobSpecification(stream)
@@ -152,7 +152,7 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJo
 	s.jobReq.Jobs = jobsInProto
 
 	s.jobService.On("Deploy", s.ctx, s.projectSpec.Name, s.namespaceSpec.Name, adaptedJobs, mock2.Anything).Return(models.DeploymentID(uuid.New()), nil).Once()
-	stream.On("Send", mock2.Anything).Return(nil).Once()
+	stream.On("Send", mock2.Anything).Return(nil).Twice()
 
 	runtimeServiceServer := s.newJobSpecServiceServer()
 	err := runtimeServiceServer.DeployJobSpecification(stream)
@@ -165,7 +165,6 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJo
 func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Fail_StreamRecvError() {
 	stream := new(mock.DeployJobSpecificationServer)
 	stream.On("Recv").Return(nil, errors.New("any error")).Once()
-	stream.On("Send", mock2.Anything).Return(nil).Once()
 
 	runtimeServiceServer := s.newJobSpecServiceServer()
 	err := runtimeServiceServer.DeployJobSpecification(stream)
@@ -231,7 +230,7 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_Adapt
 	s.jobReq.Jobs = jobsInProto
 
 	s.jobService.On("Deploy", s.ctx, s.projectSpec.Name, s.namespaceSpec.Name, adaptedJobs, mock2.Anything).Return(models.DeploymentID(uuid.New()), nil).Once()
-	stream.On("Send", mock2.Anything).Return(nil).Once()
+	stream.On("Send", mock2.AnythingOfType("*optimus.DeployJobSpecificationResponse")).Return(nil).Twice()
 
 	jobSpecServiceServer := s.newJobSpecServiceServer()
 	err := jobSpecServiceServer.DeployJobSpecification(stream)
@@ -299,7 +298,7 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Continue_Depl
 
 	deployErrorMsg := "internal error"
 	s.jobService.On("Deploy", s.ctx, s.projectSpec.Name, s.namespaceSpec.Name, adaptedJobs, mock2.Anything).Return(models.DeploymentID(uuid.Nil), errors.New(deployErrorMsg)).Once()
-	stream.On("Send", mock2.Anything).Return(nil).Once()
+	stream.On("Send", mock2.AnythingOfType("*optimus.DeployJobSpecificationResponse")).Return(nil).Twice()
 
 	runtimeServiceServer := s.newJobSpecServiceServer()
 	err := runtimeServiceServer.DeployJobSpecification(stream)
