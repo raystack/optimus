@@ -110,10 +110,10 @@ func (*JobCreateSurvey) getTaskConfig(cliMod models.CommandLineMod, answers mode
 }
 
 func (*JobCreateSurvey) getAvailableTaskNames() []string {
-	pluginRepo := models.PluginRegistry
+	pluginRepo := models.YamlPluginRegistry
 	var output []string
 	for _, task := range pluginRepo.GetTasks() {
-		output = append(output, task.Info().Name)
+		output = append(output, task.Info.Name)
 	}
 	return output
 }
@@ -214,12 +214,12 @@ func (j *JobCreateSurvey) askCreateQuestions(questions []*survey.Question) (loca
 }
 
 func (*JobCreateSurvey) getPluginCLIMod(taskName string) (models.CommandLineMod, error) {
-	pluginRepo := models.PluginRegistry
-	executionTask, err := pluginRepo.GetByName(taskName)
+	pluginRepo := models.YamlPluginRegistry
+	cliMod, err := pluginRepo.GetByName(taskName)
 	if err != nil {
 		return nil, err
 	}
-	return executionTask.CLIMod, nil
+	return cliMod, nil
 }
 
 func (j *JobCreateSurvey) askPluginQuestions(cliMod models.CommandLineMod, jobName string) (models.PluginAnswers, error) {
