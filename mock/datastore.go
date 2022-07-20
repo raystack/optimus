@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/core/sender"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 )
@@ -109,8 +110,8 @@ func (d *DatastoreService) CreateResource(ctx context.Context, namespace models.
 	return d.Called(ctx, namespace, resourceSpecs, obs).Error(0)
 }
 
-func (d *DatastoreService) UpdateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
-	return d.Called(ctx, namespace, resourceSpecs, obs).Error(0)
+func (d *DatastoreService) UpdateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, logSender sender.LogStatus, progressSender sender.ProgressCount) error {
+	return d.Called(ctx, namespace, resourceSpecs, logSender, progressSender).Error(0)
 }
 
 func (d *DatastoreService) ReadResource(ctx context.Context, namespace models.NamespaceSpec, datastoreName, name string) (models.ResourceSpec, error) {

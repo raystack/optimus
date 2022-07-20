@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/core/sender"
 )
 
 const (
@@ -204,6 +205,6 @@ type DatastoreService interface {
 	// does not really fetch resource metadata, just the user provided spec
 	GetAll(ctx context.Context, namespace NamespaceSpec, datastoreName string) ([]ResourceSpec, error)
 	CreateResource(ctx context.Context, namespace NamespaceSpec, resourceSpecs []ResourceSpec, obs progress.Observer) error
-	UpdateResource(ctx context.Context, namespace NamespaceSpec, resourceSpecs []ResourceSpec, obs progress.Observer) error
+	UpdateResource(ctx context.Context, namespace NamespaceSpec, resourceSpecs []ResourceSpec, logSender sender.LogStatus, progressSender sender.ProgressCount) error
 	ReadResource(ctx context.Context, namespace NamespaceSpec, datastoreName, name string) (ResourceSpec, error)
 }

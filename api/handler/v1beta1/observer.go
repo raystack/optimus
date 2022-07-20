@@ -48,16 +48,6 @@ func (obs *resourceObserver) Notify(e progress.Event) {
 		} else {
 			message = evt.String()
 		}
-	case *datastore.EventResourceUpdated:
-		resourceName = evt.Spec.Name
-		if evt.Err != nil {
-			success = false
-			message = evt.Err.Error()
-		} else {
-			message = evt.String()
-		}
-	case *datastore.EventResourceSkipped:
-		message = evt.String()
 	default:
 		return
 	}

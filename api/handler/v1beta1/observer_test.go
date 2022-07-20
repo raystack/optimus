@@ -32,7 +32,6 @@ func (r *ResourceObserverTestSuite) TestNotify() {
 		Name: "resource",
 	}
 	err := errors.New("random error")
-	reason := "random reason"
 	events := []progress.Event{
 		&datastore.EventResourceCreated{
 			Spec: spec,
@@ -40,17 +39,6 @@ func (r *ResourceObserverTestSuite) TestNotify() {
 		&datastore.EventResourceCreated{
 			Spec: spec,
 			Err:  err,
-		},
-		&datastore.EventResourceUpdated{
-			Spec: spec,
-		},
-		&datastore.EventResourceUpdated{
-			Spec: spec,
-			Err:  err,
-		},
-		&datastore.EventResourceSkipped{
-			Spec:   spec,
-			Reason: reason,
 		},
 	}
 

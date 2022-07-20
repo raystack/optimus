@@ -313,13 +313,11 @@ func (d *deployCommand) processResourceDeploymentResponse(
 	totalSpecsCount int,
 ) error {
 	d.logger.Info("> Receiving responses:")
-	var counter int
 	spinner := progressbar.NewProgressBar()
 	defer spinner.Stop()
 
-	if !d.verbose {
-		spinner.StartProgress(totalSpecsCount, "please wait")
-	}
+	spinner.StartProgress(totalSpecsCount, "please wait")
+	defer spinner.SetProgress(totalSpecsCount)
 	for {
 		resp, err := stream.Recv()
 		if err != nil {
@@ -328,19 +326,27 @@ func (d *deployCommand) processResourceDeploymentResponse(
 			}
 			return err
 		}
-		if resp.GetAck() {
-			if !resp.GetSuccess() {
-				d.logger.Error(resp.GetMessage())
+
+		if logStatus := resp.GetLogStatus(); logStatus != nil {
+			if !d.verbose {
+				continue
 			}
-			if resp.GetResourceName() != "" {
-				counter++
-				spinner.SetProgress(counter)
-				if d.verbose {
-					d.logger.Info(fmt.Sprintf("[%d/%d] %s successfully deployed", counter, totalSpecsCount, resp.GetResourceName()))
-				}
-			} else if d.verbose {
-				d.logger.Info(resp.Message)
+
+			switch logStatus.GetLevel() {
+			case pb.Level_Info:
+				d.logger.Info(logStatus.GetMessage())
+			case pb.Level_Warning:
+				d.logger.Warn(logStatus.GetMessage())
+			case pb.Level_Error:
+				d.logger.Error(logStatus.GetMessage())
 			}
+			continue
+		}
+
+		// TODO: fix progress bar when almost reach finished, the bar is not rendered
+		if progressCount := resp.GetProgress(); progressCount != nil {
+			spinner.SetProgress(int(progressCount.GetCount()))
+			continue
 		}
 	}
 	return nil
