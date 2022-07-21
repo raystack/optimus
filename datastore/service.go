@@ -119,26 +119,28 @@ func (srv Service) saveResource(
 ) error {
 	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
 	for _, incomingSpec := range resourceSpecs {
-		repo := srv.resourceRepoFactory.New(namespace, incomingSpec.Datastore)
-		runner.Add(func() (interface{}, error) {
-			existingSpec, err := repo.GetByName(ctx, incomingSpec.Name)
-			if err != nil && !errors.Is(err, store.ErrResourceNotFound) {
-				return nil, err
-			}
+		runner.Add(func(spec models.ResourceSpec) func() (interface{}, error) {
+			return func() (interface{}, error) {
+				repo := srv.resourceRepoFactory.New(namespace, spec.Datastore)
+				existingSpec, err := repo.GetByName(ctx, spec.Name)
+				if err != nil && !errors.Is(err, store.ErrResourceNotFound) {
+					return nil, err
+				}
 
-			if existingSpec.Equal(incomingSpec) {
-				srv.notifyProgress(obs, &EventResourceSkipped{
-					Spec:   incomingSpec,
-					Reason: "incoming resource is the same as existing",
-				})
-				return nil, nil // nolint:nilnil
-			}
+				if existingSpec.Equal(spec) {
+					srv.notifyProgress(obs, &EventResourceSkipped{
+						Spec:   spec,
+						Reason: "incoming resource is the same as existing",
+					})
+					return nil, nil // nolint:nilnil
+				}
 
-			if err := repo.Save(ctx, incomingSpec); err != nil {
-				return nil, err
+				if err := repo.Save(ctx, spec); err != nil {
+					return nil, err
+				}
+				return nil, storeDatastore(spec)
 			}
-			return nil, storeDatastore(incomingSpec)
-		})
+		}(incomingSpec))
 	}
 
 	var errorSet error

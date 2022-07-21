@@ -162,6 +162,8 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 
 	s.Run("WhenFilepathIsEmpty", func() {
 		s.Run("WhenEnvExist", func() {
+			s.a.Remove(execFilePath)
+			defer s.a.WriteFile(execFilePath, []byte(serverConfig), fs.ModeTemporary)
 			conf, err := config.LoadServerConfig(config.EmptyPath)
 
 			s.Assert().NoError(err)
@@ -188,9 +190,8 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 			defer s.a.WriteFile(execFilePath, []byte(serverConfig), fs.ModeTemporary)
 
 			conf, err := config.LoadServerConfig(config.EmptyPath)
-			s.Assert().NotNil(err)
-			s.Assert().ErrorAs(err, &saltConfig.ConfigFileNotFoundError{})
-			s.Assert().Nil(conf)
+			s.Assert().Nil(err)
+			s.Assert().NotNil(conf)
 		})
 	})
 
@@ -210,7 +211,7 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 		s.Run("WhenFilePathIsNotValid", func() {
 			s.a.MkdirAll("/path/dir/", os.ModeTemporary)
 			conf, err := config.LoadServerConfig("/path/dir/")
-			s.Assert().NotNil(err)
+			s.Assert().Error(err)
 			s.Assert().Nil(conf)
 		})
 	})

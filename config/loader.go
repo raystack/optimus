@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -114,7 +115,7 @@ func LoadServerConfig(filePath string) (*ServerConfig, error) {
 
 	// load the config
 	l := config.NewLoader(opts...)
-	if err := l.Load(cfg); err != nil {
+	if err := l.Load(cfg); err != nil && !errors.As(err, &config.ConfigFileNotFoundError{}) {
 		return nil, err
 	}
 
