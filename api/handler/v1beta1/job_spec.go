@@ -266,7 +266,7 @@ func (sv *JobSpecServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, stream p
 	}
 
 	sv.l.Info("finished job refresh", "time", time.Since(startTime))
-	successMsg := fmt.Sprintf("Deployment request created with ID: %s", deployID)
+	successMsg := fmt.Sprintf("Deployment request created with ID: %s", deployID.UUID().String())
 	sender.SendSuccessMessage(logSender, successMsg)
 
 	stream.Send(&pb.RefreshJobsResponse{DeploymentId: deployID.UUID().String()})
