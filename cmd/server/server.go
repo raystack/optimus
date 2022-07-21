@@ -34,8 +34,8 @@ import (
 
 const (
 	shutdownWait       = 30 * time.Second
-	GRPCMaxRecvMsgSize = 64 << 20 // 64MB
-	GRPCMaxSendMsgSize = 64 << 20 // 64MB
+	GRPCMaxRecvMsgSize = 128 << 20 // 128MB
+	GRPCMaxSendMsgSize = 128 << 20 // 128MB
 
 	DialTimeout      = time.Second * 5
 	BootstrapTimeout = time.Second * 10

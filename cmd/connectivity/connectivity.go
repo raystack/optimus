@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	grpcMaxClientSendSize      = 64 << 20 // 64MB
-	grpcMaxClientRecvSize      = 64 << 20 // 64MB
+	grpcMaxClientSendSize      = 128 << 20 // 128MB
+	grpcMaxClientRecvSize      = 128 << 20 // 128MB
 	grpcMaxRetry          uint = 3
 
 	optimusDialTimeout = time.Second * 2
