@@ -188,7 +188,6 @@ func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobE
 	eventPayload := event.Value
 
 	scheduledAtTimeStamp, err := time.Parse(store.ISODateFormat, eventPayload["scheduled_at"].GetStringValue())
-	// TODO: this need fix, needs to from from jov scpec schedule time
 
 	if err != nil {
 		return err
