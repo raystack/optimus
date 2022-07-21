@@ -182,7 +182,7 @@ func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter
 	if filter.ProjectName != "" {
 		projSpec, err := srv.projectService.Get(ctx, filter.ProjectName)
 		if err != nil {
-			return nil, fmt.Errorf("not able to find project: %w", err)
+			return []models.JobSpec{}, nil
 		}
 		projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projSpec)
 		if filter.JobName != "" {

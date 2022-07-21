@@ -179,10 +179,5 @@ type JobSourceRepository interface {
 	GetAll(context.Context, models.ProjectID) ([]models.JobSource, error)
 	GetByResourceURN(context.Context, string) ([]models.JobSource, error)
 	DeleteByJobID(context.Context, uuid.UUID) error
-}
-
-// UnknownJobDependencyRepository is a repository to fetch unknown dependencies
-type UnknownJobDependencyRepository interface {
-	GetUnknownInferredDependencyURNsPerJobName(context.Context, models.ProjectID) (map[string][]string, error)
-	GetUnknownStaticDependencyNamesPerJobName(context.Context, models.ProjectID) (map[string][]string, error)
+	GetResourceURNsPerJobID(context.Context, models.ProjectID) (map[uuid.UUID][]string, error)
 }

@@ -87,6 +87,10 @@ func (js JobSpec) GetName() string {
 	return js.Name
 }
 
+func (js JobSpec) GetFullName() string {
+	return js.GetProjectSpec().Name + "/" + js.Name
+}
+
 func (js JobSpec) SLADuration() (int64, error) {
 	for _, notify := range js.Behavior.Notify {
 		if notify.On == SLAMissEvent {
@@ -361,6 +365,12 @@ type JobSpecDependency struct {
 	Project *ProjectSpec
 	Job     *JobSpec
 	Type    JobSpecDependencyType
+}
+
+type UnresolvedJobDependency struct {
+	ProjectName         string
+	JobName             string
+	ResourceDestination string
 }
 
 type ExternalDependency struct {

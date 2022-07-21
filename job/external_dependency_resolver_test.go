@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/odpf/optimus/ext/resourcemgr"
@@ -22,30 +21,15 @@ func (e *ExternalDependencyResolverTestSuite) TestFetchInferredExternalDependenc
 	e.Run("should return nil and error if context is nil", func() {
 		optimusResourceManager := mock.NewResourceManager(e.T())
 		optimusResourceManagers := []resourcemgr.ResourceManager{optimusResourceManager}
-		unknownJobDependencyRepository := mock.NewUnknownJobDependencyRepository(e.T())
-		externalDependencyResolver := job.NewTestExternalDependencyResolver(optimusResourceManagers, unknownJobDependencyRepository)
+		externalDependencyResolver := job.NewTestExternalDependencyResolver(optimusResourceManagers)
 
 		var ctx context.Context
-		projectID := models.ProjectID(uuid.New())
+		unresolvedDependencies := []models.UnresolvedJobDependency{
+			{ProjectName: "project2", JobName: "job2"},
+		}
+		unresolvedDependenciesPerJobName := map[string][]models.UnresolvedJobDependency{"job1": {unresolvedDependencies[0]}}
 
-		actualDependencies, actualError := externalDependencyResolver.FetchInferredExternalDependenciesPerJobName(ctx, projectID)
-
-		e.Nil(actualDependencies)
-		e.Error(actualError)
-	})
-
-	e.Run("should return nil and error if error is encountered when getting inferred dependency urns per job name", func() {
-		optimusResourceManager := mock.NewResourceManager(e.T())
-		optimusResourceManagers := []resourcemgr.ResourceManager{optimusResourceManager}
-		unknownJobDependencyRepository := mock.NewUnknownJobDependencyRepository(e.T())
-		externalDependencyResolver := job.NewTestExternalDependencyResolver(optimusResourceManagers, unknownJobDependencyRepository)
-
-		ctx := context.Background()
-		projectID := models.ProjectID(uuid.New())
-
-		unknownJobDependencyRepository.On("GetUnknownInferredDependencyURNsPerJobName", ctx, projectID).Return(nil, errors.New("random error"))
-
-		actualDependencies, actualError := externalDependencyResolver.FetchInferredExternalDependenciesPerJobName(ctx, projectID)
+		actualDependencies, actualError := externalDependencyResolver.FetchInferredExternalDependenciesPerJobName(ctx, unresolvedDependenciesPerJobName)
 
 		e.Nil(actualDependencies)
 		e.Error(actualError)
@@ -55,19 +39,17 @@ func (e *ExternalDependencyResolverTestSuite) TestFetchInferredExternalDependenc
 	e.Run("should return nil and error if error when fetching optimus dependencies from optimus dependency getter", func() {
 		optimusResourceManager := mock.NewResourceManager(e.T())
 		optimusResourceManagers := []resourcemgr.ResourceManager{optimusResourceManager}
-		unknownJobDependencyRepository := mock.NewUnknownJobDependencyRepository(e.T())
-		externalDependencyResolver := job.NewTestExternalDependencyResolver(optimusResourceManagers, unknownJobDependencyRepository)
+		externalDependencyResolver := job.NewTestExternalDependencyResolver(optimusResourceManagers)
 
 		ctx := context.Background()
-		projectID := models.ProjectID(uuid.New())
+		unresolvedDependencies := []models.UnresolvedJobDependency{
+			{ResourceDestination: "urn1"},
+		}
+		unresolvedDependenciesPerJobName := map[string][]models.UnresolvedJobDependency{"job1": {unresolvedDependencies[0]}}
 
-		unknownInferredDependenciesPerJobName := map[string][]string{"job1": {"urn1"}}
-		unknownJobDependencyRepository.On("GetUnknownInferredDependencyURNsPerJobName", ctx, projectID).Return(unknownInferredDependenciesPerJobName, nil)
+		optimusResourceManager.On("GetOptimusDependencies", ctx, unresolvedDependencies[0]).Return(nil, errors.New("random error"))
 
-		filter1 := models.JobSpecFilter{ResourceDestination: "urn1"}
-		optimusResourceManager.On("GetOptimusDependencies", ctx, filter1).Return(nil, errors.New("random error"))
-
-		actualDependencies, actualError := externalDependencyResolver.FetchInferredExternalDependenciesPerJobName(ctx, projectID)
+		actualDependencies, actualError := externalDependencyResolver.FetchInferredExternalDependenciesPerJobName(ctx, unresolvedDependenciesPerJobName)
 
 		e.Nil(actualDependencies)
 		e.Error(actualError)
@@ -76,16 +58,14 @@ func (e *ExternalDependencyResolverTestSuite) TestFetchInferredExternalDependenc
 	e.Run("should return external dependency and nil if no error is encountered", func() {
 		optimusResourceManager := mock.NewResourceManager(e.T())
 		optimusResourceManagers := []resourcemgr.ResourceManager{optimusResourceManager}
-		unknownJobDependencyRepository := mock.NewUnknownJobDependencyRepository(e.T())
-		externalDependencyResolver := job.NewTestExternalDependencyResolver(optimusResourceManagers, unknownJobDependencyRepository)
+		externalDependencyResolver := job.NewTestExternalDependencyResolver(optimusResourceManagers)
 
 		ctx := context.Background()
-		projectID := models.ProjectID(uuid.New())
+		unresolvedDependencies := []models.UnresolvedJobDependency{
+			{ResourceDestination: "urn1"},
+		}
+		unresolvedDependenciesPerJobName := map[string][]models.UnresolvedJobDependency{"job1": {unresolvedDependencies[0]}}
 
-		unknownInferredDependenciesPerJobName := map[string][]string{"job1": {"urn1"}}
-		unknownJobDependencyRepository.On("GetUnknownInferredDependencyURNsPerJobName", ctx, projectID).Return(unknownInferredDependenciesPerJobName, nil)
-
-		filter1 := models.JobSpecFilter{ResourceDestination: "urn1"}
 		optimusDependencies := []models.OptimusDependency{
 			{
 				Name:          "optimus",
@@ -96,7 +76,7 @@ func (e *ExternalDependencyResolverTestSuite) TestFetchInferredExternalDependenc
 				JobName:       "job",
 			},
 		}
-		optimusResourceManager.On("GetOptimusDependencies", ctx, filter1).Return(optimusDependencies, nil)
+		optimusResourceManager.On("GetOptimusDependencies", ctx, unresolvedDependencies[0]).Return(optimusDependencies, nil)
 
 		expectedDependencies := map[string]models.ExternalDependency{
 			"job1": {
@@ -104,7 +84,7 @@ func (e *ExternalDependencyResolverTestSuite) TestFetchInferredExternalDependenc
 			},
 		}
 
-		actualDependencies, actualError := externalDependencyResolver.FetchInferredExternalDependenciesPerJobName(ctx, projectID)
+		actualDependencies, actualError := externalDependencyResolver.FetchInferredExternalDependenciesPerJobName(ctx, unresolvedDependenciesPerJobName)
 
 		e.EqualValues(expectedDependencies, actualDependencies)
 		e.NoError(actualError)
@@ -115,50 +95,15 @@ func (e *ExternalDependencyResolverTestSuite) TestFetchStaticExternalDependencie
 	e.Run("should return nil, nil and error if context is nil", func() {
 		optimusResourceManager := mock.NewResourceManager(e.T())
 		optimusResourceManagers := []resourcemgr.ResourceManager{optimusResourceManager}
-		unknownJobDependencyRepository := mock.NewUnknownJobDependencyRepository(e.T())
-		externalDependencyResolver := job.NewTestExternalDependencyResolver(optimusResourceManagers, unknownJobDependencyRepository)
+		externalDependencyResolver := job.NewTestExternalDependencyResolver(optimusResourceManagers)
 
 		var ctx context.Context
-		projectID := models.ProjectID(uuid.New())
+		unresolvedDependencies := []models.UnresolvedJobDependency{
+			{ProjectName: "project2", JobName: "job2"},
+		}
+		unresolvedDependenciesPerJobName := map[string][]models.UnresolvedJobDependency{"job1": {unresolvedDependencies[0]}}
 
-		actualExternalDependencies, actualUnknownDependencies, actualError := externalDependencyResolver.FetchStaticExternalDependenciesPerJobName(ctx, projectID)
-
-		e.Nil(actualExternalDependencies)
-		e.Nil(actualUnknownDependencies)
-		e.Error(actualError)
-	})
-
-	e.Run("should return nil, nil and error if error is encountered when getting static dependency names per job name", func() {
-		optimusResourceManager := mock.NewResourceManager(e.T())
-		optimusResourceManagers := []resourcemgr.ResourceManager{optimusResourceManager}
-		unknownJobDependencyRepository := mock.NewUnknownJobDependencyRepository(e.T())
-		externalDependencyResolver := job.NewTestExternalDependencyResolver(optimusResourceManagers, unknownJobDependencyRepository)
-
-		ctx := context.Background()
-		projectID := models.ProjectID(uuid.New())
-
-		unknownJobDependencyRepository.On("GetUnknownStaticDependencyNamesPerJobName", ctx, projectID).Return(nil, errors.New("random error"))
-
-		actualExternalDependencies, actualUnknownDependencies, actualError := externalDependencyResolver.FetchStaticExternalDependenciesPerJobName(ctx, projectID)
-
-		e.Nil(actualExternalDependencies)
-		e.Nil(actualUnknownDependencies)
-		e.Error(actualError)
-	})
-
-	e.Run("should return nil, nil and error if one or more static dependencies are invalid", func() {
-		optimusResourceManager := mock.NewResourceManager(e.T())
-		optimusResourceManagers := []resourcemgr.ResourceManager{optimusResourceManager}
-		unknownJobDependencyRepository := mock.NewUnknownJobDependencyRepository(e.T())
-		externalDependencyResolver := job.NewTestExternalDependencyResolver(optimusResourceManagers, unknownJobDependencyRepository)
-
-		ctx := context.Background()
-		projectID := models.ProjectID(uuid.New())
-
-		unknownStaticDependenciesPerJobName := map[string][]string{"job1": {"job2"}}
-		unknownJobDependencyRepository.On("GetUnknownStaticDependencyNamesPerJobName", ctx, projectID).Return(unknownStaticDependenciesPerJobName, nil)
-
-		actualExternalDependencies, actualUnknownDependencies, actualError := externalDependencyResolver.FetchStaticExternalDependenciesPerJobName(ctx, projectID)
+		actualExternalDependencies, actualUnknownDependencies, actualError := externalDependencyResolver.FetchStaticExternalDependenciesPerJobName(ctx, unresolvedDependenciesPerJobName)
 
 		e.Nil(actualExternalDependencies)
 		e.Nil(actualUnknownDependencies)
@@ -169,19 +114,18 @@ func (e *ExternalDependencyResolverTestSuite) TestFetchStaticExternalDependencie
 	e.Run("should return nil, nil and error if error when fetching optimus dependencies from optimus dependency getter", func() {
 		optimusResourceManager := mock.NewResourceManager(e.T())
 		optimusResourceManagers := []resourcemgr.ResourceManager{optimusResourceManager}
-		unknownJobDependencyRepository := mock.NewUnknownJobDependencyRepository(e.T())
-		externalDependencyResolver := job.NewTestExternalDependencyResolver(optimusResourceManagers, unknownJobDependencyRepository)
+		externalDependencyResolver := job.NewTestExternalDependencyResolver(optimusResourceManagers)
 
 		ctx := context.Background()
-		projectID := models.ProjectID(uuid.New())
 
-		unknownStaticDependenciesPerJobName := map[string][]string{"job1": {"project2/job2"}}
-		unknownJobDependencyRepository.On("GetUnknownStaticDependencyNamesPerJobName", ctx, projectID).Return(unknownStaticDependenciesPerJobName, nil)
+		unresolvedDependencies := []models.UnresolvedJobDependency{
+			{ProjectName: "project2", JobName: "job2"},
+		}
+		unresolvedDependenciesPerJobName := map[string][]models.UnresolvedJobDependency{"job1": {unresolvedDependencies[0]}}
 
-		filter1 := models.JobSpecFilter{ProjectName: "project2", JobName: "job2"}
-		optimusResourceManager.On("GetOptimusDependencies", ctx, filter1).Return(nil, errors.New("random error"))
+		optimusResourceManager.On("GetOptimusDependencies", ctx, unresolvedDependencies[0]).Return(nil, errors.New("random error"))
 
-		actualExternalDependencies, actualUnknownDependencies, actualError := externalDependencyResolver.FetchStaticExternalDependenciesPerJobName(ctx, projectID)
+		actualExternalDependencies, actualUnknownDependencies, actualError := externalDependencyResolver.FetchStaticExternalDependenciesPerJobName(ctx, unresolvedDependenciesPerJobName)
 
 		e.Nil(actualExternalDependencies)
 		e.Nil(actualUnknownDependencies)
@@ -191,16 +135,15 @@ func (e *ExternalDependencyResolverTestSuite) TestFetchStaticExternalDependencie
 	e.Run("should return external dependency and nil if no error is encountered", func() {
 		optimusResourceManager := mock.NewResourceManager(e.T())
 		optimusResourceManagers := []resourcemgr.ResourceManager{optimusResourceManager}
-		unknownJobDependencyRepository := mock.NewUnknownJobDependencyRepository(e.T())
-		externalDependencyResolver := job.NewTestExternalDependencyResolver(optimusResourceManagers, unknownJobDependencyRepository)
+		externalDependencyResolver := job.NewTestExternalDependencyResolver(optimusResourceManagers)
 
 		ctx := context.Background()
-		projectID := models.ProjectID(uuid.New())
 
-		unknownStaticDependenciesPerJobName := map[string][]string{"job1": {"project2/job2", "project3/job3"}}
-		unknownJobDependencyRepository.On("GetUnknownStaticDependencyNamesPerJobName", ctx, projectID).Return(unknownStaticDependenciesPerJobName, nil)
-
-		filter1 := models.JobSpecFilter{ProjectName: "project2", JobName: "job2"}
+		unresolvedDependencies := []models.UnresolvedJobDependency{
+			{ProjectName: "project2", JobName: "job2"},
+			{ProjectName: "project3", JobName: "job3"},
+		}
+		unresolvedDependenciesPerJobName := map[string][]models.UnresolvedJobDependency{"job1": {unresolvedDependencies[0], unresolvedDependencies[1]}}
 		optimusDependencies := []models.OptimusDependency{
 			{
 				Name:          "optimus",
@@ -211,9 +154,9 @@ func (e *ExternalDependencyResolverTestSuite) TestFetchStaticExternalDependencie
 				JobName:       "job",
 			},
 		}
-		optimusResourceManager.On("GetOptimusDependencies", ctx, filter1).Return(optimusDependencies, nil)
-		filter2 := models.JobSpecFilter{ProjectName: "project3", JobName: "job3"}
-		optimusResourceManager.On("GetOptimusDependencies", ctx, filter2).Return([]models.OptimusDependency{}, nil)
+
+		optimusResourceManager.On("GetOptimusDependencies", ctx, unresolvedDependencies[0]).Return(optimusDependencies, nil)
+		optimusResourceManager.On("GetOptimusDependencies", ctx, unresolvedDependencies[1]).Return([]models.OptimusDependency{}, nil)
 
 		expectedDependencies := map[string]models.ExternalDependency{
 			"job1": {
@@ -222,7 +165,7 @@ func (e *ExternalDependencyResolverTestSuite) TestFetchStaticExternalDependencie
 		}
 		expectedUnknownDependencies := []models.UnknownDependency{{JobName: "job1", DependencyProjectName: "project3", DependencyJobName: "job3"}}
 
-		actualExternalDependencies, actualUnknownDependencies, actualError := externalDependencyResolver.FetchStaticExternalDependenciesPerJobName(ctx, projectID)
+		actualExternalDependencies, actualUnknownDependencies, actualError := externalDependencyResolver.FetchStaticExternalDependenciesPerJobName(ctx, unresolvedDependenciesPerJobName)
 
 		e.EqualValues(expectedDependencies, actualExternalDependencies)
 		e.EqualValues(expectedUnknownDependencies, actualUnknownDependencies)

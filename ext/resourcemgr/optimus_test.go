@@ -35,9 +35,9 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		}
 
 		var ctx context.Context
-		var filter models.JobSpecFilter
+		var unresolvedDependency models.UnresolvedJobDependency
 
-		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, filter)
+		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
 
 		o.Nil(actualOptimusDependencies)
 		o.Error(actualError)
@@ -55,9 +55,9 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		}
 
 		ctx := context.Background()
-		var filter models.JobSpecFilter
+		var unresolvedDependency models.UnresolvedJobDependency
 
-		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, filter)
+		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
 
 		o.Nil(actualOptimusDependencies)
 		o.Error(actualError)
@@ -84,9 +84,9 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		})
 
 		ctx := context.Background()
-		var filter models.JobSpecFilter
+		var unresolvedDependency models.UnresolvedJobDependency
 
-		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, filter)
+		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
 
 		o.Nil(actualOptimusDependencies)
 		o.Error(actualError)
@@ -116,9 +116,9 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		})
 
 		ctx := context.Background()
-		var filter models.JobSpecFilter
+		var unresolvedDependency models.UnresolvedJobDependency
 
-		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, filter)
+		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
 
 		o.Nil(actualOptimusDependencies)
 		o.Error(actualError)
@@ -171,7 +171,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		})
 
 		ctx := context.Background()
-		filter := models.JobSpecFilter{
+		unresolvedDependency := models.UnresolvedJobDependency{
 			ProjectName:         "project",
 			JobName:             "job",
 			ResourceDestination: "resource",
@@ -190,7 +190,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 			},
 		}
 
-		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, filter)
+		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
 
 		o.EqualValues(expectedJobSpecifications, actualOptimusDependencies)
 		o.NoError(actualError)

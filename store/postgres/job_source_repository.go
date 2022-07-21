@@ -85,6 +85,23 @@ func (repo *jobSourceRepository) GetByResourceURN(ctx context.Context, resourceU
 	return jobSources(sources).ToSpec(), nil
 }
 
+func (repo *jobSourceRepository) GetResourceURNsPerJobID(ctx context.Context, projectID models.ProjectID) (map[uuid.UUID][]string, error) {
+	if ctx == nil {
+		return nil, errors.New("context is nil")
+	}
+	var sources []JobSource
+	if err := repo.db.WithContext(ctx).Where("project_id = ?", projectID.UUID()).Find(&sources).Error; err != nil {
+		return nil, err
+	}
+
+	resourceURNsPerJobID := make(map[uuid.UUID][]string)
+	for _, source := range sources {
+		resourceURNsPerJobID[source.JobID] = append(resourceURNsPerJobID[source.JobID], source.ResourceURN)
+	}
+
+	return resourceURNsPerJobID, nil
+}
+
 func (repo *jobSourceRepository) DeleteByJobID(ctx context.Context, jobID uuid.UUID) error {
 	if ctx == nil {
 		return errors.New("context is nil")

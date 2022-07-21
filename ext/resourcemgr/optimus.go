@@ -16,7 +16,7 @@ import (
 
 // ResourceManager is repository for external job spec
 type ResourceManager interface {
-	GetOptimusDependencies(context.Context, models.JobSpecFilter) ([]models.OptimusDependency, error)
+	GetOptimusDependencies(context.Context, models.UnresolvedJobDependency) ([]models.OptimusDependency, error)
 }
 
 type optimusResourceManager struct {
@@ -42,11 +42,11 @@ func NewOptimusResourceManager(resourceManagerConfig config.ResourceManager) (Re
 	}, nil
 }
 
-func (o *optimusResourceManager) GetOptimusDependencies(ctx context.Context, filter models.JobSpecFilter) ([]models.OptimusDependency, error) {
+func (o *optimusResourceManager) GetOptimusDependencies(ctx context.Context, unresolvedDependency models.UnresolvedJobDependency) ([]models.OptimusDependency, error) {
 	if ctx == nil {
 		return nil, errors.New("context is nil")
 	}
-	request, err := o.constructGetJobSpecificationsRequest(ctx, filter)
+	request, err := o.constructGetJobSpecificationsRequest(ctx, unresolvedDependency)
 	if err != nil {
 		return nil, fmt.Errorf("error encountered when constructing request: %w", err)
 	}
@@ -70,16 +70,16 @@ func (o *optimusResourceManager) GetOptimusDependencies(ctx context.Context, fil
 	return o.toOptimusDependencies(jobSpecResponse.JobSpecificationResponses), nil
 }
 
-func (o *optimusResourceManager) constructGetJobSpecificationsRequest(ctx context.Context, filter models.JobSpecFilter) (*http.Request, error) {
+func (o *optimusResourceManager) constructGetJobSpecificationsRequest(ctx context.Context, unresolvedDependency models.UnresolvedJobDependency) (*http.Request, error) {
 	var filters []string
-	if filter.JobName != "" {
-		filters = append(filters, fmt.Sprintf("job_name=%s", filter.JobName))
+	if unresolvedDependency.JobName != "" {
+		filters = append(filters, fmt.Sprintf("job_name=%s", unresolvedDependency.JobName))
 	}
-	if filter.ProjectName != "" {
-		filters = append(filters, fmt.Sprintf("project_name=%s", filter.ProjectName))
+	if unresolvedDependency.ProjectName != "" {
+		filters = append(filters, fmt.Sprintf("project_name=%s", unresolvedDependency.ProjectName))
 	}
-	if filter.ResourceDestination != "" {
-		filters = append(filters, fmt.Sprintf("resource_destination=%s", filter.ResourceDestination))
+	if unresolvedDependency.ResourceDestination != "" {
+		filters = append(filters, fmt.Sprintf("resource_destination=%s", unresolvedDependency.ResourceDestination))
 	}
 
 	path := "/api/v1beta1/jobs"
