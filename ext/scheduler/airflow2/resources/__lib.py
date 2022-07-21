@@ -256,7 +256,6 @@ class SuperExternalTaskSensor(BaseSensorOperator):
             schedule_time = context['next_execution_date']
 
             # parse relevant metadata from the job metadata to build the task window
-            # TODO this needs to be updated to use optimus get job spec
             upstream_schedule = self.get_schedule_interval(schedule_time)
 
             last_upstream_schedule_time, _ = self.get_last_upstream_times(
