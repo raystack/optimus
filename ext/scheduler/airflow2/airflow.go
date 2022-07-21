@@ -146,6 +146,8 @@ func (s *scheduler) DeployJobsVerbose(ctx context.Context, namespace models.Name
 	}
 	defer bucket.Close()
 
+	bucket.WriteAll(spanCtx, filepath.Join(JobsDir, baseLibFileName), SharedLib, nil)
+
 	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
 	for _, j := range jobs {
 		runner.Add(func(currentJobSpec models.JobSpec) func() (interface{}, error) {

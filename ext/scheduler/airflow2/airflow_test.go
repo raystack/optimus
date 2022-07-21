@@ -162,6 +162,7 @@ func TestAirflow2(t *testing.T) {
 				Contents: []byte("job-1-compiled"),
 			}, nil)
 
+			mockBucket.On("WriteAll", mock.Anything, "dags/__lib.py", airflow2.SharedLib, (*blob.WriterOptions)(nil)).Return(nil)
 			mockBucket.On("WriteAll", ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name), []byte("job-1-compiled"), (*blob.WriterOptions)(nil)).Return(nil)
 
 			expectedDeployDetail := models.JobDeploymentDetail{
@@ -212,6 +213,8 @@ func TestAirflow2(t *testing.T) {
 			defer compiler.AssertExpectations(t)
 
 			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, nil)
+
+			mockBucket.On("WriteAll", mock.Anything, "dags/__lib.py", airflow2.SharedLib, (*blob.WriterOptions)(nil)).Return(nil)
 
 			errorMsg := "internal error"
 			air := airflow2.NewScheduler(mockBucketFac, nil, compiler)
