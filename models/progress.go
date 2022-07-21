@@ -18,10 +18,6 @@ type (
 	// read from the storage
 	ProgressJobSpecFetch struct{}
 
-	// ProgressJobDependencyResolutionFinished represents dependencies are being
-	// successfully resolved
-	ProgressJobDependencyResolutionFinished struct{}
-
 	// ProgressJobSpecUnknownDependencyUsed represents a job spec has used
 	// dependencies which are unknown/unresolved
 	ProgressJobSpecUnknownDependencyUsed struct {
@@ -148,14 +144,6 @@ func (*ProgressJobPriorityWeightAssign) String() string {
 
 func (e *ProgressJobPriorityWeightAssignmentFailed) String() string {
 	return fmt.Sprintf("failed priority weight assignment: %v", e.Err)
-}
-
-func (*ProgressJobDependencyResolutionFinished) String() string {
-	return "dependencies resolved"
-}
-
-func (*ProgressJobDependencyResolutionFinished) Type() string {
-	return ProgressTypeDependencyResolutionFinished
 }
 
 func (e *ProgressJobSpecUnknownDependencyUsed) String() string {

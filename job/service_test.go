@@ -1884,9 +1884,10 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
-			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Nil(t, err)
+			assert.NotEqual(t, models.DeploymentID(uuid.Nil), deployID)
 		})
 		t.Run("should successfully refresh job specs for a namespace", func(t *testing.T) {
 			namespaceJobSpecRepo := new(mock.NamespaceJobSpecRepository)
@@ -1943,9 +1944,10 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(namespaceJobSpecRepoFac, nil, nil, dependencyResolver,
 				nil, nil, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
-			err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
 
 			assert.Nil(t, err)
+			assert.NotEqual(t, models.DeploymentID(uuid.Nil), deployID)
 		})
 		t.Run("should successfully refresh job specs for the selected jobs", func(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
@@ -2006,9 +2008,10 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, batchScheduler, nil, dependencyResolver,
 				priorityResolver, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
-			err := svc.Refresh(ctx, projSpec.Name, nil, jobNames, nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, jobNames, nil)
 
 			assert.Nil(t, err)
+			assert.NotEqual(t, models.DeploymentID(uuid.Nil), deployID)
 		})
 		t.Run("should failed when unable to get project spec", func(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
@@ -2036,9 +2039,10 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil, nil, nil)
-			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Equal(t, errorMsg, err.Error())
+			assert.Equal(t, models.DeploymentID(uuid.Nil), deployID)
 		})
 		t.Run("should failed when unable to fetch job specs when refreshing whole project", func(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
@@ -2069,9 +2073,10 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil, nil, nil)
-			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve jobs: %s", errorMsg), err.Error())
+			assert.Equal(t, models.DeploymentID(uuid.Nil), deployID)
 		})
 		t.Run("should failed when unable to get namespaceSpec when refreshing a namespace", func(t *testing.T) {
 			namespaceJobSpecRepo := new(mock.NamespaceJobSpecRepository)
@@ -2103,9 +2108,10 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(namespaceJobSpecRepoFac, nil, nil, dependencyResolver,
 				nil, nil, nil, namespaceService, projectService, deployManager, nil, nil, nil)
-			err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
 
 			assert.Equal(t, errorMsg, err.Error())
+			assert.Equal(t, models.DeploymentID(uuid.Nil), deployID)
 		})
 		t.Run("should failed when unable to fetch job specs when refreshing a namespace", func(t *testing.T) {
 			namespaceJobSpecRepo := new(mock.NamespaceJobSpecRepository)
@@ -2140,9 +2146,10 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(namespaceJobSpecRepoFac, nil, nil, dependencyResolver,
 				nil, nil, nil, namespaceService, projectService, deployManager, nil, nil, nil)
-			err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve jobs: %s", errorMsg), err.Error())
+			assert.Equal(t, models.DeploymentID(uuid.Nil), deployID)
 		})
 		t.Run("should failed when unable to fetch job specs when refreshing selected jobs", func(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
@@ -2187,9 +2194,10 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projectJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil, nil, nil)
-			err := svc.Refresh(ctx, projSpec.Name, nil, jobNames, nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, jobNames, nil)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve job: %s", errorMsg), err.Error())
+			assert.Equal(t, models.DeploymentID(uuid.Nil), deployID)
 		})
 		t.Run("should not failed refresh when one of the generating dependency call failed", func(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
@@ -2257,9 +2265,10 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
-			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Nil(t, err)
+			assert.NotEqual(t, models.DeploymentID(uuid.Nil), deployID)
 		})
 		t.Run("should not failed refresh when one of persisting dependency process failed", func(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
@@ -2329,9 +2338,10 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
-			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Nil(t, err)
+			assert.NotEqual(t, models.DeploymentID(uuid.Nil), deployID)
 		})
 		t.Run("should failed when unable to create deployment request to deploy manager", func(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
@@ -2385,9 +2395,10 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
-			err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
 
 			assert.Contains(t, err.Error(), errorMsg)
+			assert.Equal(t, models.DeploymentID(uuid.Nil), deployID)
 		})
 	})
 

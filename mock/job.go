@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/core/sender"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/local"
@@ -431,9 +432,9 @@ func (srv *JobService) GetDownstream(ctx context.Context, projectSpec models.Pro
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
-func (srv *JobService) Refresh(ctx context.Context, projectName string, namespaceNames, jobNames []string, observer progress.Observer) error {
-	args := srv.Called(ctx, projectName, namespaceNames, jobNames, observer)
-	return args.Error(0)
+func (srv *JobService) Refresh(ctx context.Context, projectName string, namespaceNames, jobNames []string, logSender sender.LogStatus) (models.DeploymentID, error) {
+	args := srv.Called(ctx, projectName, namespaceNames, jobNames, logSender)
+	return args.Get(0).(models.DeploymentID), args.Error(1)
 }
 
 func (srv *JobService) Deploy(ctx context.Context, projectName, namespaceName string, jobSpecs []models.JobSpec, observers progress.Observer) (models.DeploymentID, error) {

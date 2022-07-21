@@ -612,8 +612,9 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			grpcRespStream := new(mock.RefreshJobsServer)
 			defer grpcRespStream.AssertExpectations(t)
 
-			jobService.On("Refresh", mock2.Anything, projectSpec.Name, namespaceNames, []string(nil), mock2.Anything).Return(nil)
+			jobService.On("Refresh", mock2.Anything, projectSpec.Name, namespaceNames, []string(nil), mock2.Anything).Return(models.DeploymentID(uuid.Must(uuid.NewRandom())), nil)
 			grpcRespStream.On("Context").Return(context.Background())
+			grpcRespStream.On("Send", mock2.Anything).Return(nil).Twice()
 
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
@@ -673,8 +674,9 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			defer grpcRespStream.AssertExpectations(t)
 
 			errorMsg := "internal error"
-			jobService.On("Refresh", mock2.Anything, projectSpec.Name, namespaceNames, []string(nil), mock2.Anything).Return(errors.New(errorMsg))
+			jobService.On("Refresh", mock2.Anything, projectSpec.Name, namespaceNames, []string(nil), mock2.Anything).Return(models.DeploymentID(uuid.Nil), errors.New(errorMsg))
 			grpcRespStream.On("Context").Return(context.Background())
+			grpcRespStream.On("Send", mock2.Anything).Return(nil).Once()
 
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
