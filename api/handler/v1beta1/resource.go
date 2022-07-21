@@ -46,7 +46,7 @@ func (sv *ResourceServiceServer) CreateResource(ctx context.Context, req *pb.Cre
 		return nil, status.Errorf(codes.Internal, "%s: failed to parse resource %s", err.Error(), req.Resource.GetName())
 	}
 
-	if err := sv.resourceSvc.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{optResource}, sv.progressObserver); err != nil {
+	if err := sv.resourceSvc.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{optResource}); err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to create resource %s", err.Error(), req.Resource.GetName())
 	}
 	runtimeDeployResourceSpecificationCounter.Inc()

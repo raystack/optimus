@@ -288,7 +288,7 @@ func TestResourcesOnServer(t *testing.T) {
 			}
 
 			resourceSvc := new(mock.DatastoreService)
-			resourceSvc.On("CreateResource", ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, nil).Return(nil)
+			resourceSvc.On("CreateResource", ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}).Return(nil)
 			defer resourceSvc.AssertExpectations(t)
 
 			namespaceService := new(mock.NamespaceService)

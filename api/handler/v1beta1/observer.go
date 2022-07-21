@@ -8,60 +8,8 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/core/progress"
-	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/models"
 )
-
-type resourceObserver struct {
-	stream pb.ResourceService_DeployResourceSpecificationServer
-	log    log.Logger
-	mu     *sync.Mutex
-}
-
-func NewResourceObserver(
-	stream pb.ResourceService_DeployResourceSpecificationServer,
-	log log.Logger,
-	mu *sync.Mutex,
-) progress.Observer {
-	return &resourceObserver{
-		stream: stream,
-		log:    log,
-		mu:     mu,
-	}
-}
-
-func (obs *resourceObserver) Notify(e progress.Event) {
-	obs.mu.Lock()
-	defer obs.mu.Unlock()
-
-	var (
-		success               = true
-		resourceName, message string
-	)
-
-	switch evt := e.(type) {
-	case *datastore.EventResourceCreated:
-		resourceName = evt.Spec.Name
-		if evt.Err != nil {
-			success = false
-			message = evt.Err.Error()
-		} else {
-			message = evt.String()
-		}
-	default:
-		return
-	}
-
-	resp := &pb.DeployResourceSpecificationResponse{
-		Success:      success,
-		Ack:          true,
-		ResourceName: resourceName,
-		Message:      message,
-	}
-	if err := obs.stream.Send(resp); err != nil {
-		obs.log.Error("failed to send deploy spec ack", "spec name", resourceName, "error", err)
-	}
-}
 
 type jobCheckObserver struct {
 	stream pb.JobSpecificationService_CheckJobSpecificationsServer
