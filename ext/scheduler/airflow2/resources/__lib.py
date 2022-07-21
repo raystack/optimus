@@ -205,8 +205,8 @@ class JobSpecTaskWindow:
             self._parse_datetime(api_response['start']),
             self._parse_datetime(api_response['end']),
         )
-    
-    # window start is inclusive 
+
+    # window start is inclusive
     def get_schedule_window(self, scheduled_at: str , upstream_schedule: str) -> (str, str):
         api_response = self._fetch_task_window(scheduled_at)
 
