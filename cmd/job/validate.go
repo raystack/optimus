@@ -61,13 +61,14 @@ func (v *validateCommand) RunE(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	// create a name space job here
+
 	pluginRepo := models.PluginRegistry
 	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
 	jobSpecRepo := local.NewJobSpecRepository(
 		jobSpecFs,
 		local.NewJobSpecAdapter(pluginRepo),
 	)
+
 	start := time.Now()
 	projectName := v.clientConfig.Project.Name
 	v.logger.Info(fmt.Sprintf("Validating job specifications for project: %s, namespace: %s", projectName, namespace.Name))
@@ -81,6 +82,7 @@ func (v *validateCommand) RunE(_ *cobra.Command, _ []string) error {
 	v.logger.Info(logger.ColoredSuccess("Jobs validated successfully, took %s", time.Since(start).Round(time.Second)))
 	return nil
 }
+
 func (v *validateCommand) validateJobSpecificationRequest(jobSpecs []models.JobSpec) error {
 	conn, err := connectivity.NewConnectivity(v.clientConfig.Host, validateTimeout)
 	if err != nil {

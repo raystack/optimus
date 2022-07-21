@@ -1,72 +1,33 @@
 package playground
 
 import (
-	"time"
+	"fmt"
 
-	"github.com/odpf/optimus/job"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/cobra"
 )
 
-type state struct {
-	windowv1      job.WindowV1
-	windowv2      job.WindowV2
-	sechduledTime time.Time
+type windowCommand struct {
 }
 
-// increment the component of the time which the cursor is pointed at
-func (s *state) IncrementTime(increaseBy string) {
-	switch increaseBy {
-	case "minute":
-		s.sechduledTime = s.sechduledTime.Add(time.Minute)
-	case "hour":
-		s.sechduledTime = s.sechduledTime.Add(time.Hour)
-	case "day":
-		s.sechduledTime = s.sechduledTime.AddDate(0, 0, 1)
-	case "month":
-		s.sechduledTime = s.sechduledTime.AddDate(0, 1, 0)
-	case "year":
-		s.sechduledTime = s.sechduledTime.AddDate(1, 0, 0)
+// NewPlaygroundWindowCommand initializes command for window
+func NewPlaygroundWindowCommand() *cobra.Command {
+	window := windowCommand{}
+	cmd := &cobra.Command{
+		Use:   "window",
+		Short: "get dStart,dEnd by giving the window params",
+		RunE:  window.RunE,
 	}
+	return cmd
 }
 
-// decrement the component of the time which the cursor is pointed at
-func (s *state) DecrementTime(decreaseBy string) {
-	switch decreaseBy {
-	case "minute":
-		s.sechduledTime = s.sechduledTime.Add(-1 * time.Minute)
-	case "hour":
-		s.sechduledTime = s.sechduledTime.Add(-1 * time.Hour)
-	case "day":
-		s.sechduledTime = s.sechduledTime.AddDate(0, 0, -1)
-	case "month":
-		s.sechduledTime = s.sechduledTime.AddDate(0, -1, 0)
-	case "year":
-		s.sechduledTime = s.sechduledTime.AddDate(-1, 0, 0)
-	}
-}
-
-// change the value of truncate
-func (s *state) IncrementTruncate() string {
-	switch s.windowv2.TruncateTo {
-	case "h":
-		return "d"
-	case "d":
-		return "w"
-	case "w":
-		return "M"
-	}
-	return "h"
-}
-
-func (s *state) DecrementTruncate() string {
-	switch s.windowv2.TruncateTo {
-	case "M":
-		return "w"
-	case "w":
-		return "d"
-	case "d":
-		return "h"
-	case "h":
-		return ""
-	}
-	return "h"
+func (j *windowCommand) RunE(_ *cobra.Command, _ []string) error {
+	// starts the interactive session
+	fmt.Println("Hello folks! This is an interactive cli")
+	fmt.Println("controls:- use arrow keys to navigate , shift + arrow keys to increment or decrement values")
+	fmt.Println("Size and Offset can be given as input in the form of text")
+	fmt.Println("press control + c or q to quit")
+	fmt.Println("")
+	p := tea.NewProgram(initialModel())
+	return p.Start()
 }

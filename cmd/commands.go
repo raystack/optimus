@@ -4,6 +4,10 @@ import (
 	"os"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/odpf/salt/cmdx"
+	"github.com/odpf/salt/term"
+	cli "github.com/spf13/cobra"
+
 	"github.com/odpf/optimus/cmd/admin"
 	"github.com/odpf/optimus/cmd/backup"
 	"github.com/odpf/optimus/cmd/deploy"
@@ -12,7 +16,7 @@ import (
 	"github.com/odpf/optimus/cmd/job"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/namespace"
-	playground "github.com/odpf/optimus/cmd/playground"
+	"github.com/odpf/optimus/cmd/playground"
 	"github.com/odpf/optimus/cmd/project"
 	"github.com/odpf/optimus/cmd/replay"
 	"github.com/odpf/optimus/cmd/resource"
@@ -20,9 +24,6 @@ import (
 	"github.com/odpf/optimus/cmd/serve"
 	"github.com/odpf/optimus/cmd/version"
 	"github.com/odpf/optimus/utils"
-	"github.com/odpf/salt/cmdx"
-	"github.com/odpf/salt/term"
-	cli "github.com/spf13/cobra"
 )
 
 // New constructs the 'root' command. It houses all other sub commands
@@ -76,7 +77,7 @@ func New() *cli.Command {
 	cmd.AddCommand(resource.NewResourceCommand())
 	cmd.AddCommand(secret.NewSecretCommand())
 	cmd.AddCommand(version.NewVersionCommand())
-	cmd.AddCommand(playground.NewPlayGroundCommand())
+	cmd.AddCommand(playground.NewPlaygroundCommand())
 	cmd.AddCommand(serve.NewServeCommand())
 
 	extension.UpdateWithExtension(cmd)
