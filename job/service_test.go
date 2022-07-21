@@ -14,6 +14,7 @@ import (
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
+	"github.com/odpf/optimus/store"
 )
 
 func TestService(t *testing.T) {
@@ -1589,10 +1590,56 @@ func TestService(t *testing.T) {
 			jobSpecsResult1, err := svc.GetByFilter(ctx, models.JobSpecFilter{ResourceDestination: destination})
 			assert.Nil(t, err)
 			assert.Equal(t, jobSpecs, jobSpecsResult1)
-			//
+
 			jobSpecsResult2, err := svc.GetByFilter(ctx, models.JobSpecFilter{ProjectName: jobSpec1.NamespaceSpec.ProjectSpec.Name})
 			assert.Nil(t, err)
 			assert.Equal(t, jobSpecs, jobSpecsResult2)
+		})
+		t.Run("should return empty job specs and no error when jobs are not found", func(t *testing.T) {
+			projSpec := models.ProjectSpec{
+				Name: "proj",
+			}
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.Must(uuid.NewRandom()),
+				Name:        "dev-team-1",
+				ProjectSpec: projSpec,
+			}
+			jobSpec1 := models.JobSpec{Name: "dag1-no-deps", Dependencies: map[string]models.JobSpecDependency{}, NamespaceSpec: namespaceSpec}
+			destination := "resource-urn"
+
+			projectService := new(mock.ProjectService)
+			defer projectService.AssertExpectations(t)
+
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
+			jobSpecRepo := new(mock.JobSpecRepository)
+			defer jobSpecRepo.AssertExpectations(t)
+
+			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
+
+			projectJobSpecRepo.On("GetAll", ctx).Return([]models.JobSpec{}, nil)
+
+			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
+
+			jobSpecRepo.On("GetJobByName", ctx, jobSpec1.GetName()).Return([]models.JobSpec{}, nil)
+			jobSpecRepo.On("GetJobByResourceDestination", ctx, destination).Return(models.JobSpec{}, store.ErrResourceNotFound)
+
+			svc := job.NewService(nil, nil, nil, nil, nil, projJobSpecRepoFac, nil, nil, projectService, nil, nil, jobSpecRepo, nil)
+			jobSpecsResult, err := svc.GetByFilter(ctx, models.JobSpecFilter{JobName: jobSpec1.Name})
+			assert.NoError(t, err)
+			assert.Empty(t, jobSpecsResult)
+
+			jobSpecsResult1, err := svc.GetByFilter(ctx, models.JobSpecFilter{ResourceDestination: destination})
+			assert.NoError(t, err)
+			assert.Empty(t, jobSpecsResult1)
+
+			jobSpecsResult2, err := svc.GetByFilter(ctx, models.JobSpecFilter{ProjectName: jobSpec1.NamespaceSpec.ProjectSpec.Name})
+			assert.NoError(t, err)
+			assert.Empty(t, jobSpecsResult2)
 		})
 	})
 

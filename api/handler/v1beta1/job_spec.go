@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -108,7 +109,7 @@ func (sv *JobSpecServiceServer) ListJobSpecification(ctx context.Context, req *p
 
 	jobProtos := []*pb.JobSpecification{}
 	for _, jobSpec := range jobSpecs {
-		jobProto := ToJobProto(jobSpec)
+		jobProto := ToJobSpecificationProto(jobSpec)
 
 		jobProtos = append(jobProtos, jobProto)
 	}
@@ -206,7 +207,7 @@ func (sv *JobSpecServiceServer) GetJobSpecification(ctx context.Context, req *pb
 		return nil, status.Errorf(codes.NotFound, "%s: error while finding the job %s", err.Error(), req.GetJobName())
 	}
 
-	jobSpecAdapt := ToJobProto(jobSpec)
+	jobSpecAdapt := ToJobSpecificationProto(jobSpec)
 
 	return &pb.GetJobSpecificationResponse{
 		Spec: jobSpecAdapt,
@@ -223,15 +224,11 @@ func (sv *JobSpecServiceServer) GetJobSpecifications(ctx context.Context, req *p
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to retrieve job: %s", err.Error())
 	}
-	jobsProto := []*pb.JobSpecificationResponse{}
-	for _, jobSpec := range jobSpecs {
-		jobsProto = append(jobsProto, &pb.JobSpecificationResponse{
-			ProjectName:   jobSpec.NamespaceSpec.ProjectSpec.Name,
-			NamespaceName: jobSpec.NamespaceSpec.Name,
-			Job:           ToJobProto(jobSpec),
-		})
+	jobSpecProtos := make([]*pb.JobSpecificationResponse, len(jobSpecs))
+	for i, jobSpec := range jobSpecs {
+		jobSpecProtos[i] = ToJobSpecificationResponseProto(jobSpec)
 	}
-	return &pb.GetJobSpecificationsResponse{JobSpecificationResponses: jobsProto}, nil
+	return &pb.GetJobSpecificationsResponse{JobSpecificationResponses: jobSpecProtos}, nil
 }
 
 func (sv *JobSpecServiceServer) DeleteJobSpecification(ctx context.Context, req *pb.DeleteJobSpecificationRequest) (*pb.DeleteJobSpecificationResponse, error) {
@@ -296,12 +293,16 @@ func (sv *JobSpecServiceServer) GetDeployJobsStatus(ctx context.Context, req *pb
 		for _, failure := range jobDeployment.Details.Failures {
 			deployJobFailures = append(deployJobFailures, &pb.DeployJobFailure{JobName: failure.JobName, Message: failure.Message})
 		}
-
+		unknownDependencies := make(map[string]string)
+		for jobName, dependencies := range jobDeployment.Details.UnknownDependenciesPerJobName {
+			unknownDependencies[jobName] = strings.Join(dependencies, ", ")
+		}
 		return &pb.GetDeployJobsStatusResponse{
-			Status:       jobDeployment.Status.String(),
-			SuccessCount: int32(jobDeployment.Details.SuccessCount),
-			FailureCount: int32(jobDeployment.Details.FailureCount),
-			Failures:     deployJobFailures,
+			Status:              jobDeployment.Status.String(),
+			SuccessCount:        int32(jobDeployment.Details.SuccessCount),
+			FailureCount:        int32(len(jobDeployment.Details.Failures)),
+			Failures:            deployJobFailures,
+			UnknownDependencies: unknownDependencies,
 		}, nil
 	default:
 		return &pb.GetDeployJobsStatusResponse{

@@ -263,4 +263,57 @@ func TestIntegrationJobSourceRepository(t *testing.T) {
 			assert.NoError(t, actualError)
 		})
 	})
+
+	t.Run("GetResourceURNsPerJobID", func(t *testing.T) {
+		t.Run("should return nil and error if context is nil", func(t *testing.T) {
+			db := DBSetup()
+			repo := postgres.NewJobSourceRepository(db)
+
+			var ctx context.Context
+
+			actualJobSources, actualError := repo.GetResourceURNsPerJobID(ctx, projectSpec.ID)
+
+			assert.Nil(t, actualJobSources)
+			assert.Error(t, actualError)
+		})
+
+		t.Run("should return nil and error if encountered any error when reading from database", func(t *testing.T) {
+			db := DBSetup()
+			repo := postgres.NewJobSourceRepository(db)
+
+			ctx, cancelFn := context.WithCancel(context.Background())
+			cancelFn()
+
+			actualJobSources, actualError := repo.GetResourceURNsPerJobID(ctx, projectSpec.ID)
+
+			assert.Nil(t, actualJobSources)
+			assert.Error(t, actualError)
+		})
+
+		t.Run("should return resource URNs per job ID and nil if no error is encountered", func(t *testing.T) {
+			jobID1 := uuid.New()
+			jobID2 := uuid.New()
+			resourceURNsPerJobID := map[uuid.UUID][]string{
+				jobID1: {"resource-a", "resource-b"},
+				jobID2: {"resource-b"},
+			}
+
+			db := DBSetup()
+			projRepo := postgres.NewProjectRepository(db, hash)
+			assert.Nil(t, projRepo.Save(ctx, projectSpec))
+
+			repo := postgres.NewJobSourceRepository(db)
+
+			err := repo.Save(ctx, projectSpec.ID, jobID1, resourceURNsPerJobID[jobID1])
+			assert.NoError(t, err)
+
+			err = repo.Save(ctx, projectSpec.ID, jobID2, resourceURNsPerJobID[jobID2])
+			assert.NoError(t, err)
+
+			actualResourceURNsPerJobID, actualError := repo.GetResourceURNsPerJobID(ctx, projectSpec.ID)
+
+			assert.EqualValues(t, resourceURNsPerJobID, actualResourceURNsPerJobID)
+			assert.NoError(t, actualError)
+		})
+	})
 }

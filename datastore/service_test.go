@@ -115,10 +115,6 @@ func TestService(t *testing.T) {
 				Type:      models.ResourceTypeDataset,
 				Datastore: datastorer,
 			}
-			datastorer.AssertNotCalled(t, "CreateResource", ctx, models.CreateResourceRequest{
-				Resource: resourceSpec,
-				Project:  namespaceSpec.ProjectSpec,
-			})
 
 			resourceRepo := new(mock.ResourceSpecRepository)
 			resourceRepo.On("GetByName", ctx, resourceSpec.Name).Return(resourceSpec, nil)
@@ -157,10 +153,6 @@ func TestService(t *testing.T) {
 				},
 				Datastore: datastorer,
 			}
-			datastorer.AssertNotCalled(t, "CreateResource", ctx, models.CreateResourceRequest{
-				Resource: incomingSpec,
-				Project:  namespaceSpec.ProjectSpec,
-			})
 
 			resourceRepo := new(mock.ResourceSpecRepository)
 			resourceRepo.On("GetByName", ctx, incomingSpec.Name).Return(existingSpec, nil)
@@ -292,10 +284,6 @@ func TestService(t *testing.T) {
 				Type:      models.ResourceTypeDataset,
 				Datastore: datastorer,
 			}
-			datastorer.AssertNotCalled(t, "UpdateResource", ctx, models.UpdateResourceRequest{
-				Resource: resourceSpec,
-				Project:  namespaceSpec.ProjectSpec,
-			})
 
 			resourceRepo := new(mock.ResourceSpecRepository)
 			resourceRepo.On("GetByName", ctx, resourceSpec.Name).Return(resourceSpec, nil)
@@ -334,10 +322,6 @@ func TestService(t *testing.T) {
 				},
 				Datastore: datastorer,
 			}
-			datastorer.AssertNotCalled(t, "UpdateResource", ctx, models.UpdateResourceRequest{
-				Resource: incomingSpec,
-				Project:  namespaceSpec.ProjectSpec,
-			})
 
 			resourceRepo := new(mock.ResourceSpecRepository)
 			resourceRepo.On("GetByName", ctx, incomingSpec.Name).Return(existingSpec, nil)
