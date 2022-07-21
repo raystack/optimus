@@ -184,6 +184,30 @@ func (s *scheduler) compileAndUpload(ctx context.Context, namespace models.Names
 			Message: err.Error(),
 		}
 		return deployFailure
+	} else {
+		// if directory exists with namespace id as name, then remove it
+		spanCtx, span := startChildSpan(ctx, "DeleteJobFolder")
+		span.End()
+
+		it := bucket.List(&blob.ListOptions{
+			Prefix: PathForJobDirectory(JobsDir, namespace.ID.String()),
+		})
+		for {
+			obj, err := it.Next(spanCtx)
+			if err != nil {
+				_ = bucket.Delete(ctx, PathForJobDirectory(JobsDir, namespace.ID.String()))
+				break
+			}
+			fmt.Println("currentJobSpec.Name:: ", currentJobSpec.Name, " file :: ", obj.Key)
+			err = bucket.Delete(ctx, obj.Key)
+			if err != nil {
+				deployFailure := models.JobDeploymentFailure{
+					JobName: currentJobSpec.Name,
+					Message: "failed to cleanup old dags folder " + err.Error(),
+				}
+				return deployFailure
+			}
+		}
 	}
 	return nil
 }
