@@ -31,9 +31,9 @@ func NewResourceCommand() *cobra.Command {
 	return cmd
 }
 
-func (r *resourceCommand) PersistentPreRunE(cmd *cobra.Command, _ []string) error {
+func (r *resourceCommand) PersistentPreRunE(_ *cobra.Command, _ []string) error {
 	// TODO: find a way to load the config in one place
-	c, err := config.LoadClientConfig(r.configFilePath, cmd.Flags())
+	c, err := config.LoadClientConfig(r.configFilePath)
 	if err != nil {
 		return err
 	}

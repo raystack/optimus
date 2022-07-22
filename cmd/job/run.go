@@ -29,6 +29,7 @@ type runCommand struct {
 }
 
 // NewRunCommand initializes run command
+// [DEPRECATED]
 func NewRunCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	run := &runCommand{
 		clientConfig: clientConfig,
@@ -80,7 +81,7 @@ func (r *runCommand) runJobSpecificationRequest(jobSpec models.JobSpec) error {
 	}
 	defer conn.Close()
 
-	adaptedSpec := v1handler.ToJobProto(jobSpec)
+	adaptedSpec := v1handler.ToJobSpecificationProto(jobSpec)
 
 	r.logger.Info("please wait...")
 	jobRun := pb.NewJobRunServiceClient(conn.GetConnection())

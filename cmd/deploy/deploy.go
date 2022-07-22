@@ -73,9 +73,9 @@ func NewDeployCommand() *cobra.Command {
 	return cmd
 }
 
-func (d *deployCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+func (d *deployCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	var err error
-	d.clientConfig, err = config.LoadClientConfig(d.configFilePath, cmd.Flags())
+	d.clientConfig, err = config.LoadClientConfig(d.configFilePath)
 	if err != nil {
 		return err
 	}
@@ -246,7 +246,7 @@ func (*deployCommand) getJobDeploymentRequest(projectName string, namespace *con
 
 	adaptedJobSpecs := make([]*pb.JobSpecification, len(jobSpecs))
 	for i, spec := range jobSpecs {
-		adaptedJobSpecs[i] = v1handler.ToJobProto(spec)
+		adaptedJobSpecs[i] = v1handler.ToJobSpecificationProto(spec)
 	}
 	return &pb.DeployJobSpecificationRequest{
 		Jobs:          adaptedJobSpecs,
@@ -566,16 +566,25 @@ func PollJobDeployment(ctx context.Context, l log.Logger, jobSpecService pb.JobS
 		case models.JobDeploymentStatusInQueue.String():
 			l.Info(fmt.Sprintf("Deployment request for deployID %s is in queue...", deployID))
 		case models.JobDeploymentStatusCancelled.String():
-			l.Error(fmt.Sprintf("Deployment request for deployID %s  is cancelled.", deployID))
+			l.Error(fmt.Sprintf("Deployment request for deployID %s is cancelled.", deployID))
 			return nil
 		case models.JobDeploymentStatusSucceed.String():
 			l.Info(logger.ColoredSuccess("Success deploying %d jobs for deployID %s", resp.SuccessCount, deployID))
 			return nil
 		case models.JobDeploymentStatusFailed.String():
-			if resp.FailureCount > 0 {
-				l.Error(logger.ColoredError("Unable to deploy below jobs:"))
-				for i, failedJob := range resp.Failures {
-					l.Error(logger.ColoredError("%d. %s: %s", i+1, failedJob.GetJobName(), failedJob.GetMessage()))
+			if len(resp.Failures) > 0 {
+				for _, failedJob := range resp.Failures {
+					if failedJob.GetJobName() != "" {
+						l.Error(logger.ColoredError("Unable to deploy job %s: %s", failedJob.GetJobName(), failedJob.GetMessage()))
+					} else {
+						l.Error(logger.ColoredError("Job deployment failed: %s", failedJob.GetMessage()))
+					}
+				}
+			}
+			if len(resp.UnknownDependencies) > 0 {
+				l.Error(logger.ColoredError("Unable to create sensors for below jobs:"))
+				for jobName, dependencies := range resp.UnknownDependencies {
+					l.Error(logger.ColoredError("- %s: invalid dependency name(s): %s.", jobName, dependencies))
 				}
 			}
 			l.Error(logger.ColoredError("Deployed %d/%d jobs.", resp.SuccessCount, resp.SuccessCount+resp.FailureCount))

@@ -542,16 +542,16 @@ type jobDependency struct {
 	DependencyNamespace   Namespace `gorm:"foreignKey:DependencyNamespaceID"`
 }
 
-func (adapt JobSpecAdapter) groupToDependenciesPerJob(jobDependencies []jobDependency) (map[uuid.UUID][]models.JobSpec, error) {
-	jobIDDependenciesMap := make(map[uuid.UUID][]models.JobSpec)
+func (adapt JobSpecAdapter) groupToDependenciesPerJobID(jobDependencies []jobDependency) (map[uuid.UUID][]models.JobSpec, error) {
+	jobDependenciesByJobID := make(map[uuid.UUID][]models.JobSpec)
 	for _, dependency := range jobDependencies {
 		dependencyJobSpec, err := adapt.dependencyToJobSpec(dependency)
 		if err != nil {
 			return nil, err
 		}
-		jobIDDependenciesMap[dependency.JobID] = append(jobIDDependenciesMap[dependency.JobID], dependencyJobSpec)
+		jobDependenciesByJobID[dependency.JobID] = append(jobDependenciesByJobID[dependency.JobID], dependencyJobSpec)
 	}
-	return jobIDDependenciesMap, nil
+	return jobDependenciesByJobID, nil
 }
 
 // dependencyToJobSpec converts the postgres' JobDependency representation to the optimus' JobSpec

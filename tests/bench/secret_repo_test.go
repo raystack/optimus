@@ -15,21 +15,24 @@ import (
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/postgres"
+	"github.com/odpf/optimus/tests/setup"
 )
 
 func BenchmarkSecretRepo(b *testing.B) {
 	ctx := context.Background()
-	project := getProject(1)
+	project := setup.Project(1)
 	project.ID = models.ProjectID(uuid.New())
 
-	namespace := getNamespace(1, project)
-	otherNamespace := getNamespace(2, project)
+	namespace := setup.Namespace(1, project)
+	namespace.ID = uuid.New()
+	otherNamespace := setup.Namespace(2, project)
+	otherNamespace.ID = uuid.New()
 
 	key, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 
 	dbSetup := func() *gorm.DB {
-		dbConn := setupDB()
-		truncateTables(dbConn)
+		dbConn := setup.TestDB()
+		setup.TruncateTables(dbConn)
 
 		projRepo := postgres.NewProjectRepository(dbConn, key)
 		assert.Nil(b, projRepo.Save(ctx, project))
@@ -46,7 +49,7 @@ func BenchmarkSecretRepo(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			secret := getSecret(i)
+			secret := setup.Secret(i)
 
 			err := repo.Save(ctx, project, namespace, secret)
 			if err != nil {
@@ -59,7 +62,7 @@ func BenchmarkSecretRepo(b *testing.B) {
 		dbConn := dbSetup()
 		var repo store.SecretRepository = postgres.NewSecretRepository(dbConn, key)
 		for i := 0; i < 50; i++ {
-			secret := getSecret(i)
+			secret := setup.Secret(i)
 			err := repo.Save(ctx, project, namespace, secret)
 			assert.Nil(b, err)
 		}
@@ -67,7 +70,7 @@ func BenchmarkSecretRepo(b *testing.B) {
 
 		for i := 0; i < b.N; i++ {
 			num := i % 50
-			secret := getSecret(num)
+			secret := setup.Secret(num)
 			err := repo.Update(ctx, project, namespace, secret)
 			if err != nil {
 				panic(err)
@@ -164,7 +167,7 @@ func BenchmarkSecretRepo(b *testing.B) {
 
 		for i := 0; i < b.N; i++ {
 			secretName := fmt.Sprintf("Secret%d", i)
-			secret := getSecret(i)
+			secret := setup.Secret(i)
 
 			err := repo.Save(ctx, project, namespace, secret)
 			if err != nil {
@@ -177,12 +180,4 @@ func BenchmarkSecretRepo(b *testing.B) {
 			}
 		}
 	})
-}
-
-func getSecret(i int) models.ProjectSecretItem {
-	return models.ProjectSecretItem{
-		Name:  fmt.Sprintf("Secret%d", i),
-		Value: "secret",
-		Type:  models.SecretTypeUserDefined,
-	}
 }

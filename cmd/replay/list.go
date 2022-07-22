@@ -12,6 +12,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/config"
@@ -19,15 +20,16 @@ import (
 )
 
 type listCommand struct {
-	logger       log.Logger
-	clientConfig *config.ClientConfig
+	logger         log.Logger
+	configFilePath string
+
+	projectName string
+	host        string
 }
 
 // NewListCommand initializes list command for replay
-func NewListCommand(clientConfig *config.ClientConfig) *cobra.Command {
-	list := &listCommand{
-		clientConfig: clientConfig,
-	}
+func NewListCommand() *cobra.Command {
+	list := &listCommand{}
 
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -39,17 +41,47 @@ The list command is used to fetch the recent replay in one project.
 		RunE:    list.RunE,
 		PreRunE: list.PreRunE,
 	}
-	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
+
+	list.injectFlags(cmd)
+
 	return cmd
 }
 
-func (l *listCommand) PreRunE(_ *cobra.Command, _ []string) error {
-	l.logger = logger.NewClientLogger(l.clientConfig.Log)
+func (l *listCommand) injectFlags(cmd *cobra.Command) {
+	// Config filepath flag
+	cmd.Flags().StringVarP(&l.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+
+	// Mandatory flags if config is not set
+	cmd.Flags().StringVarP(&l.projectName, "project-name", "p", "", "Name of the optimus project")
+	cmd.Flags().StringVar(&l.host, "host", "", "Optimus service endpoint url")
+}
+
+func (l *listCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+	// Load config
+	conf, err := internal.LoadOptionalConfig(l.configFilePath)
+	if err != nil {
+		return err
+	}
+
+	if conf == nil {
+		l.logger = logger.NewDefaultLogger()
+		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
+		return nil
+	}
+
+	l.logger = logger.NewClientLogger(conf.Log)
+	if l.projectName == "" {
+		l.projectName = conf.Project.Name
+	}
+	if l.host == "" {
+		l.host = conf.Host
+	}
+
 	return nil
 }
 
 func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
-	conn, err := connectivity.NewConnectivity(l.clientConfig.Host, replayTimeout)
+	conn, err := connectivity.NewConnectivity(l.host, replayTimeout)
 	if err != nil {
 		return err
 	}
@@ -57,7 +89,7 @@ func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 
 	replay := pb.NewReplayServiceClient(conn.GetConnection())
 	replayStatusRequest := &pb.ListReplaysRequest{
-		ProjectName: l.clientConfig.Project.Name,
+		ProjectName: l.projectName,
 	}
 	spinner := progressbar.NewProgressBar()
 	spinner.Start("please wait...")
@@ -70,7 +102,7 @@ func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to get replay requests: %w", err)
 	}
 	if len(replayResponse.ReplayList) == 0 {
-		l.logger.Info(fmt.Sprintf("No replays were found in %s project.", l.clientConfig.Project.Name))
+		l.logger.Info(fmt.Sprintf("No replays were found in %s project.", l.projectName))
 	} else {
 		l.printReplayListResponse(replayResponse)
 	}

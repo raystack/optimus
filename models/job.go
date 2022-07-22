@@ -83,6 +83,10 @@ func (js JobSpec) GetName() string {
 	return js.Name
 }
 
+func (js JobSpec) GetFullName() string {
+	return js.GetProjectSpec().Name + "/" + js.Name
+}
+
 func (js JobSpec) SLADuration() (int64, error) {
 	for _, notify := range js.Behavior.Notify {
 		if notify.On == SLAMissEvent {
@@ -359,8 +363,25 @@ type JobSpecDependency struct {
 	Type    JobSpecDependencyType
 }
 
+type UnresolvedJobDependency struct {
+	ProjectName         string
+	JobName             string
+	ResourceDestination string
+}
+
 type ExternalDependency struct {
-	HTTPDependencies []HTTPDependency
+	HTTPDependencies    []HTTPDependency
+	OptimusDependencies []OptimusDependency
+}
+
+type OptimusDependency struct {
+	Name    string
+	Host    string
+	Headers map[string]string
+
+	ProjectName   string
+	NamespaceName string
+	JobName       string
 }
 
 type HTTPDependency struct {
@@ -539,9 +560,9 @@ type JobDeployment struct {
 }
 
 type JobDeploymentDetail struct {
-	SuccessCount int
-	FailureCount int
-	Failures     []JobDeploymentFailure
+	SuccessCount                  int
+	Failures                      []JobDeploymentFailure
+	UnknownDependenciesPerJobName map[string][]string
 }
 
 type JobDeploymentFailure struct {
@@ -601,4 +622,10 @@ type HookRunSpec struct {
 	Attempt       int
 	JobRunAttempt int
 	Duration      int64
+}
+
+type UnknownDependency struct {
+	JobName               string
+	DependencyProjectName string
+	DependencyJobName     string
 }

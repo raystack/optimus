@@ -15,13 +15,14 @@ import (
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/postgres"
+	"github.com/odpf/optimus/tests/setup"
 )
 
 func BenchmarkProjectRepository(b *testing.B) {
 	ctx := context.Background()
 	dbSetup := func() *gorm.DB {
-		dbConn := setupDB()
-		truncateTables(dbConn)
+		dbConn := setup.TestDB()
+		setup.TruncateTables(dbConn)
 
 		return dbConn
 	}
@@ -34,7 +35,7 @@ func BenchmarkProjectRepository(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			project := getProject(i)
+			project := setup.Project(i)
 			err := repo.Save(ctx, project)
 			if err != nil {
 				panic(err)
@@ -47,13 +48,13 @@ func BenchmarkProjectRepository(b *testing.B) {
 		var repo store.ProjectRepository = postgres.NewProjectRepository(db, hash)
 		secretRepo := postgres.NewSecretRepository(db, hash)
 		for i := 0; i < 10; i++ {
-			project := getProject(i)
+			project := setup.Project(i)
 			project.ID = models.ProjectID(uuid.New())
 			err := repo.Save(ctx, project)
 			assert.Nil(b, err)
 
 			for s := 0; s < 5; s++ {
-				secret := getSecret(s)
+				secret := setup.Secret(s)
 				err = secretRepo.Save(ctx, project, models.NamespaceSpec{}, secret)
 				assert.Nil(b, err)
 			}
@@ -78,13 +79,13 @@ func BenchmarkProjectRepository(b *testing.B) {
 		var repo store.ProjectRepository = postgres.NewProjectRepository(db, hash)
 		secretRepo := postgres.NewSecretRepository(db, hash)
 		for i := 0; i < 10; i++ {
-			project := getProject(i)
+			project := setup.Project(i)
 			project.ID = models.ProjectID(uuid.New())
 			err := repo.Save(ctx, project)
 			assert.Nil(b, err)
 
 			for s := 0; s < 5; s++ {
-				secret := getSecret(s)
+				secret := setup.Secret(s)
 				err = secretRepo.Save(ctx, project, models.NamespaceSpec{}, secret)
 				assert.Nil(b, err)
 			}
@@ -101,45 +102,4 @@ func BenchmarkProjectRepository(b *testing.B) {
 			}
 		}
 	})
-}
-
-func getProject(i int) models.ProjectSpec {
-	return models.ProjectSpec{
-		Name: fmt.Sprintf("t-optimus-%d", i),
-		Config: map[string]string{
-			"environment":                         "production",
-			"bucket":                              "gs://some_folder-2",
-			"storage_path":                        "gs://storage_bucket",
-			"transporterKafka":                    "10.12.12.12:6668,10.12.12.13:6668",
-			"predator_host":                       "https://predator.example.com",
-			"scheduler_host":                      "https://optimus.example.com/",
-			"transporter_kafka_brokers":           "10.5.5.5:6666",
-			"transporter_stencil_host":            "https://artifactory.example.com/artifactory/proto-descriptors/ocean-proton/latest",
-			"transporter_stencil_broker_host":     "https://artifactory.example.com/artifactory/proto-descriptors/latest",
-			"transporter_stencil_server_url":      "https://stencil.example.com",
-			"transporter_stencil_namespace":       "optimus",
-			"transporter_stencil_descriptor_name": "transporter-log-entities",
-			"bq2email_smtp_address":               "smtp.example.com",
-			"bridge_host":                         "1.1.1.1",
-			"bridge_port":                         "80",
-			"ocean_gcs_tmp_bucket":                "bq2-plugins",
-		},
-		Secret: models.ProjectSecrets{
-			{
-				Name:  "secret1",
-				Value: "secret1",
-				Type:  models.SecretTypeUserDefined,
-			},
-			{
-				Name:  "secret2",
-				Value: "secret2",
-				Type:  models.SecretTypeUserDefined,
-			},
-			{
-				Name:  "secret3",
-				Value: "secret3",
-				Type:  models.SecretTypeUserDefined,
-			},
-		},
-	}
 }

@@ -12,6 +12,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/cmd/survey"
@@ -19,11 +20,13 @@ import (
 )
 
 type setCommand struct {
-	logger       log.Logger
-	clientConfig *config.ClientConfig
+	logger         log.Logger
+	configFilePath string
 
 	survey *survey.SecretSetSurvey
 
+	projectName   string
+	host          string
 	namespaceName string
 	filePath      string
 	encoded       bool
@@ -32,10 +35,8 @@ type setCommand struct {
 }
 
 // NewSetCommand initializes command for setting secret
-func NewSetCommand(clientConfig *config.ClientConfig) *cobra.Command {
-	set := &setCommand{
-		clientConfig: clientConfig,
-	}
+func NewSetCommand() *cobra.Command {
+	set := &setCommand{}
 
 	cmd := &cobra.Command{
 		Use:     "set",
@@ -49,19 +50,50 @@ Use base64 flag if the value has been encoded.
 		RunE:    set.RunE,
 		PreRunE: set.PreRunE,
 	}
-	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
-	cmd.Flags().StringVarP(&set.namespaceName, "namespace", "n", set.namespaceName, "Namespace of deployee")
-	cmd.Flags().BoolVar(&set.encoded, "base64", false, "Create secret with value that has been encoded")
-	cmd.Flags().BoolVar(&set.updateOnly, "update-only", false, "Only update existing secret, do not create new")
-	cmd.Flags().StringVarP(&set.filePath, "file", "f", set.filePath, "Provide file path to create secret from file instead")
-	cmd.Flags().BoolVar(&set.skipConfirm, "confirm", false, "Skip asking for confirmation")
+
+	set.injectFlags(cmd)
 
 	return cmd
 }
 
-func (s *setCommand) PreRunE(_ *cobra.Command, _ []string) error {
-	s.logger = logger.NewClientLogger(s.clientConfig.Log)
+func (s *setCommand) injectFlags(cmd *cobra.Command) {
+	// Config filepath flag
+	cmd.Flags().StringVarP(&s.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+
+	cmd.Flags().StringVarP(&s.namespaceName, "namespace", "n", s.namespaceName, "Namespace of deployee")
+	cmd.Flags().BoolVar(&s.encoded, "base64", false, "Create secret with value that has been encoded")
+	cmd.Flags().BoolVar(&s.updateOnly, "update-only", false, "Only update existing secret, do not create new")
+	cmd.Flags().StringVarP(&s.filePath, "file", "f", s.filePath, "Provide file path to create secret from file instead")
+	cmd.Flags().BoolVar(&s.skipConfirm, "confirm", false, "Skip asking for confirmation")
+
+	// Mandatory flags if config is not set
+	cmd.Flags().StringVarP(&s.projectName, "project-name", "p", "", "Name of the optimus project")
+	cmd.Flags().StringVar(&s.host, "host", "", "Optimus service endpoint url")
+}
+
+func (s *setCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+	// Load config
+	conf, err := internal.LoadOptionalConfig(s.configFilePath)
+	if err != nil {
+		return err
+	}
+
+	if conf == nil {
+		s.logger = logger.NewDefaultLogger()
+		s.survey = survey.NewSecretSetSurvey()
+		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
+		return nil
+	}
+
+	s.logger = logger.NewClientLogger(conf.Log)
 	s.survey = survey.NewSecretSetSurvey()
+	if s.projectName == "" {
+		s.projectName = conf.Project.Name
+	}
+	if s.host == "" {
+		s.host = conf.Host
+	}
+
 	return nil
 }
 
@@ -77,7 +109,7 @@ func (s *setCommand) RunE(_ *cobra.Command, args []string) error {
 
 	if s.updateOnly {
 		updateSecretRequest := &pb.UpdateSecretRequest{
-			ProjectName:   s.clientConfig.Project.Name,
+			ProjectName:   s.projectName,
 			SecretName:    secretName,
 			Value:         secretValue,
 			NamespaceName: s.namespaceName,
@@ -86,7 +118,7 @@ func (s *setCommand) RunE(_ *cobra.Command, args []string) error {
 	}
 
 	registerSecretReq := &pb.RegisterSecretRequest{
-		ProjectName:   s.clientConfig.Project.Name,
+		ProjectName:   s.projectName,
 		SecretName:    secretName,
 		Value:         secretValue,
 		NamespaceName: s.namespaceName,
@@ -100,7 +132,7 @@ func (s *setCommand) RunE(_ *cobra.Command, args []string) error {
 			}
 			if proceedWithUpdate {
 				updateSecretRequest := &pb.UpdateSecretRequest{
-					ProjectName:   s.clientConfig.Project.Name,
+					ProjectName:   s.projectName,
 					SecretName:    secretName,
 					Value:         secretValue,
 					NamespaceName: s.namespaceName,
@@ -116,7 +148,7 @@ func (s *setCommand) RunE(_ *cobra.Command, args []string) error {
 }
 
 func (s *setCommand) registerSecret(req *pb.RegisterSecretRequest) error {
-	conn, err := connectivity.NewConnectivity(s.clientConfig.Host, secretTimeout)
+	conn, err := connectivity.NewConnectivity(s.host, secretTimeout)
 	if err != nil {
 		return err
 	}
@@ -139,7 +171,7 @@ func (s *setCommand) registerSecret(req *pb.RegisterSecretRequest) error {
 }
 
 func (s *setCommand) updateSecret(req *pb.UpdateSecretRequest) error {
-	conn, err := connectivity.NewConnectivity(s.clientConfig.Host, secretTimeout)
+	conn, err := connectivity.NewConnectivity(s.host, secretTimeout)
 	if err != nil {
 		return err
 	}
