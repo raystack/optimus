@@ -7,19 +7,12 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/odpf/optimus/job"
 )
 
-var (
-	defaultSize     = "0M0h"
-	defaultTruncate = "h"
-	size            = "size"
-	offset          = "offset"
-	truncateTo      = "truncateTo"
-)
-
 type cursorType struct {
-	pointedAt string
+	PointedAt cursorPointer
 }
 
 // model contains a cursor to keep track of the pointer, two input fields for taking Size and Offset as input
@@ -32,13 +25,13 @@ type model struct {
 }
 
 func initialModel() model {
-	windowV1 := job.WindowV1{Size: defaultSize, Offset: defaultSize, TruncateTo: defaultTruncate}
-	windowV2 := job.WindowV2{Size: defaultSize, Offset: defaultSize, TruncateTo: defaultTruncate}
+	windowV1 := job.WindowV1{Size: defaultSize.getStringValue(), Offset: defaultSize.getStringValue(), TruncateTo: defaultTruncate.getStringValue()}
+	windowV2 := job.WindowV2{Size: defaultSize.getStringValue(), Offset: defaultSize.getStringValue(), TruncateTo: defaultTruncate.getStringValue()}
 	sizeInput := textinput.New()
-	sizeInput.Placeholder = defaultSize
+	sizeInput.Placeholder = defaultSize.getStringValue()
 	sizeInput.Focus()
 	offsetInput := textinput.New()
-	offsetInput.Placeholder = defaultSize
+	offsetInput.Placeholder = defaultSize.getStringValue()
 	return model{
 		cursor:      cursorType{size},
 		state:       state{windowV1: windowV1, windowV2: windowV2, scheduledTime: time.Now()},
@@ -49,80 +42,81 @@ func initialModel() model {
 
 // since we don not intend to keep any input after the process is killed we return nil
 func (m model) Init() tea.Cmd {
+	m.state.scheduledTime = time.Now()
 	return nil
 }
 
 // this handles motion of the pointer when we hit arrow-up key
 func (m *model) handleUp() {
-	switch m.cursor.pointedAt {
+	switch m.cursor.PointedAt {
 	case offset:
-		//here we are shifting from Offsetinput to Sizeinput so we have to stop updating the Offsetinput(hence Offset.Blur())
+		// here we are shifting from Offsetinput to Sizeinput so we have to stop updating the Offsetinput(hence Offset.Blur())
 		// and start updating Sizeinput(hence Sizeinput.Focus())
 		m.offsetInput.Blur()
 		m.sizeInput.Focus()
-		m.cursor.pointedAt = size
+		m.cursor.PointedAt = size
 	case truncateTo:
 		m.offsetInput.Focus()
-		m.cursor.pointedAt = offset
-	case "year", "month", "day", "hour", "minute":
-		m.cursor.pointedAt = truncateTo
+		m.cursor.PointedAt = offset
+	case year, month, day, hour, minute:
+		m.cursor.PointedAt = truncateTo
 	}
 }
 
 func (m *model) handleDown() {
-	switch m.cursor.pointedAt {
+	switch m.cursor.PointedAt {
 	case truncateTo:
-		m.cursor.pointedAt = "hour"
+		m.cursor.PointedAt = hour
 	case offset:
 		m.offsetInput.Blur()
-		m.cursor.pointedAt = truncateTo
+		m.cursor.PointedAt = truncateTo
 	case size:
 		m.offsetInput.Focus()
 		m.sizeInput.Blur()
-		m.cursor.pointedAt = offset
+		m.cursor.PointedAt = offset
 	}
 }
 
 // handles left and right arrow key movements
 func (m *model) handleRight() {
-	switch m.cursor.pointedAt {
-	case "month":
-		m.cursor.pointedAt = "year"
-	case "day":
-		m.cursor.pointedAt = "month"
-	case "minute":
-		m.cursor.pointedAt = "day"
-	case "hour":
-		m.cursor.pointedAt = "minute"
+	switch m.cursor.PointedAt {
+	case month:
+		m.cursor.PointedAt = year
+	case day:
+		m.cursor.PointedAt = month
+	case minute:
+		m.cursor.PointedAt = day
+	case hour:
+		m.cursor.PointedAt = minute
 	}
 }
 
 func (m *model) handleLeft() {
-	switch m.cursor.pointedAt {
-	case "minute":
-		m.cursor.pointedAt = "hour"
-	case "day":
-		m.cursor.pointedAt = "minute"
-	case "month":
-		m.cursor.pointedAt = "day"
-	case "year":
-		m.cursor.pointedAt = "month"
+	switch m.cursor.PointedAt {
+	case minute:
+		m.cursor.PointedAt = hour
+	case day:
+		m.cursor.PointedAt = minute
+	case month:
+		m.cursor.PointedAt = day
+	case year:
+		m.cursor.PointedAt = month
 	}
 }
 func (m *model) handleIncrease() {
-	switch m.cursor.pointedAt {
+	switch m.cursor.PointedAt {
 	case truncateTo:
 		m.state.IncrementTruncate()
-	case "year", "month", "day", "hour", "minute":
-		m.state.IncrementTime(m.cursor.pointedAt)
+	case year, month, day, hour, minute:
+		m.state.IncrementTime(m.cursor.PointedAt.getStringValue())
 	}
 }
 func (m *model) handleDecrease() {
-	switch m.cursor.pointedAt {
+	switch m.cursor.PointedAt {
 	case truncateTo:
 		m.state.DecrementTruncate()
-	case "year", "month", "day", "hour", "minute":
-		m.state.DecrementTime(m.cursor.pointedAt)
+	case year, month, day, hour, minute:
+		m.state.DecrementTime(m.cursor.PointedAt.getStringValue())
 	}
 }
 
@@ -148,15 +142,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// to get updated the input fields must be focussed since we handle the Focus and Blur we can directly update them here
 			m.sizeInput, _ = m.sizeInput.Update(msg)
 			m.offsetInput, _ = m.offsetInput.Update(msg)
+			m.state.updateWindowparameters(m.sizeInput.Value(), m.offsetInput.Value())
 		}
 	}
-	// update the values of the window versions in state for every modification from input
-	m.state.updateWindowparameters(m.sizeInput.Value(), m.offsetInput.Value())
 	return m, nil
 }
 
-func (m model) genarateFields(position string, value string) string {
-	if m.cursor.pointedAt == position {
+func (m model) genarateCursorIfPointed(position string, value string) string {
+	if m.cursor.PointedAt.getStringValue() == position {
 		var s strings.Builder
 		s.WriteString("[")
 		s.WriteString(value)
@@ -169,12 +162,12 @@ func (m model) genarateFields(position string, value string) string {
 // we genare a string representing the sechduled time , which also adds a cursor if it is pointing to the any of the fields in sechdueld date
 func (m model) genarateSechduledDateView() string {
 	var s strings.Builder
-	s.WriteString(m.genarateFields("hour", strconv.Itoa(m.state.scheduledTime.Hour())))
+	s.WriteString(m.genarateCursorIfPointed(hour.getStringValue(), strconv.Itoa(m.state.scheduledTime.Hour())))
 	s.WriteString(":")
-	s.WriteString(m.genarateFields("minute", strconv.Itoa(m.state.scheduledTime.Minute())))
-	s.WriteString(m.genarateFields("day", strconv.Itoa(m.state.scheduledTime.Day())))
-	s.WriteString(m.genarateFields("month", m.state.scheduledTime.Month().String()))
-	s.WriteString(m.genarateFields("year", strconv.Itoa(m.state.scheduledTime.Year())))
+	s.WriteString(m.genarateCursorIfPointed(minute.getStringValue(), strconv.Itoa(m.state.scheduledTime.Minute())))
+	s.WriteString(m.genarateCursorIfPointed(day.getStringValue(), strconv.Itoa(m.state.scheduledTime.Day())))
+	s.WriteString(m.genarateCursorIfPointed(month.getStringValue(), m.state.scheduledTime.Month().String()))
+	s.WriteString(m.genarateCursorIfPointed(year.getStringValue(), strconv.Itoa(m.state.scheduledTime.Year())))
 	return s.String()
 }
 
@@ -190,7 +183,7 @@ func (m model) View() string {
 	s.WriteString(m.offsetInput.View())
 	s.WriteString("\n")
 	s.WriteString("TruncateTo       ")
-	s.WriteString(m.genarateFields(truncateTo, m.state.windowV2.TruncateTo))
+	s.WriteString(m.genarateCursorIfPointed(truncateTo.getStringValue(), m.state.windowV2.TruncateTo))
 	s.WriteString("\n")
 	s.WriteString("sechduled date   ")
 	s.WriteString(m.genarateSechduledDateView())

@@ -2,11 +2,11 @@ package job
 
 import (
 	"fmt"
-	"github.com/odpf/optimus/models"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/utils"
 )
 
