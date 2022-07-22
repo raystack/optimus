@@ -17,6 +17,7 @@ import (
 	"github.com/kushsharma/parallel"
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
+	"google.golang.org/api/googleapi"
 
 	"github.com/odpf/optimus/core/cron"
 	"github.com/odpf/optimus/core/progress"
@@ -167,32 +168,21 @@ func (s *scheduler) DeployJobsVerbose(ctx context.Context, namespace models.Name
 	return jobDeploymentDetail, nil
 }
 
-// deleteDirectoryRecursive remove jobs Folder if it exists
-func deleteDirectoryRecursive(ctx context.Context, jobsDir string, bucket Bucket) error {
-	spanCtx, span := startChildSpan(ctx, "deleteDirectoryRecursive")
+// deleteDirectoryIfEmpty remove jobs Folder if it exists
+func deleteDirectoryIfEmpty(ctx context.Context, jobsDir string, bucket Bucket) error {
+	spanCtx, span := startChildSpan(ctx, "deleteDirectoryIfEmpty")
 	span.End()
 
 	it := bucket.List(&blob.ListOptions{
 		Prefix: jobsDir,
 	})
-	var err error
-	for {
-		obj, err := it.Next(spanCtx)
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return bucket.Delete(ctx, jobsDir)
-			}
-			break
-		}
-		if obj.IsDir {
-			return deleteDirectoryRecursive(ctx, obj.Key, bucket)
-		}
-		err = bucket.Delete(ctx, obj.Key)
-		if err != nil {
-			return err
+	_, err := it.Next(spanCtx)
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return bucket.Delete(ctx, jobsDir)
 		}
 	}
-	return err
+	return nil
 }
 
 func (s *scheduler) compileAndUpload(ctx context.Context, namespace models.NamespaceSpec, currentJobSpec models.JobSpec, bucket Bucket) interface{} {
@@ -214,13 +204,30 @@ func (s *scheduler) compileAndUpload(ctx context.Context, namespace models.Names
 		return deployFailure
 	}
 
-	err = deleteDirectoryRecursive(ctx, PathForJobDirectory(JobsDir, namespace.ID.String()), bucket)
-	if err != nil {
-		deployFailure := models.JobDeploymentFailure{
-			JobName: currentJobSpec.Name,
-			Message: "failed to cleanup old dags folder " + err.Error(),
+	blobKeyNamespaceId := PathFromJobName(JobsDir, namespace.ID.String(), compiledJob.Name, JobsExtension)
+	if err := bucket.Delete(ctx, blobKeyNamespaceId); err != nil {
+		if err.Error() != "NotFound" {
+			deployFailure := models.JobDeploymentFailure{
+				JobName: currentJobSpec.Name,
+				Message: "failed to cleanup old DAG::" + blobKeyNamespaceId + ", err::" + err.Error(),
+			}
+			return deployFailure
 		}
-		return deployFailure
+	}
+	err = deleteDirectoryIfEmpty(ctx, PathForJobDirectory(JobsDir, namespace.ID.String()), bucket)
+	if err != nil {
+		if e, ok := err.(*googleapi.Error); ok {
+			if e.Code == googleapi.ErrorItem. {
+
+			}
+		}
+		if err.() != "NotFound" {
+			deployFailure := models.JobDeploymentFailure{
+				JobName: currentJobSpec.Name,
+				Message: "failed to cleanup old dags folder " + err.Error(),
+			}
+			return deployFailure
+		}
 	}
 
 	return nil
