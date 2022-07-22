@@ -827,6 +827,9 @@ func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpe
 				if err != nil {
 					return currentSpec.Name, err
 				}
+				if len(jobSourceURNs) == 0 {
+					return currentSpec.Name, nil
+				}
 				err = srv.jobSourceRepo.Save(ctx, projectSpec.ID, currentSpec.ID, jobSourceURNs)
 				if err != nil {
 					err = fmt.Errorf("error persisting job sources for job %s: %w", currentSpec.Name, err)
@@ -859,6 +862,7 @@ func (srv *Service) identify(ctx context.Context, currentSpec models.JobSpec, pr
 		if !errors.Is(err, service.ErrDependencyModNotFound) {
 			return nil, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
 		}
+		return nil, nil
 	}
 	return resp.Dependencies, nil
 }

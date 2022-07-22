@@ -1432,6 +1432,86 @@ func TestService(t *testing.T) {
 			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, nil)
 			assert.Equal(t, err.Error(), errorMsg)
 		})
+		t.Run("should deploy jobs without DependencyMod successfully", func(t *testing.T) {
+			existingJobSpecs := createJobSpecDummy(10)
+			requestedJobSpecs := createJobSpecDummy(15)[9:]
+			requestedJobSpecs[0].Owner = "optimus-edited"
+			modifiedJobs := requestedJobSpecs
+			deletedJobs := existingJobSpecs[:9]
+
+			destination := &models.GenerateDestinationResponse{
+				Destination: "project.dataset.table",
+				Type:        models.DestinationTypeBigquery,
+			}
+			deployID := models.DeploymentID(uuid.New())
+
+			namespaceService := new(mock.NamespaceService)
+			defer namespaceService.AssertExpectations(t)
+
+			namespaceJobSpecRepo := new(mock.NamespaceJobSpecRepository)
+			defer namespaceJobSpecRepo.AssertExpectations(t)
+
+			namespaceJobSpecRepoFac := new(mock.NamespaceJobSpecRepoFactory)
+			defer namespaceJobSpecRepoFac.AssertExpectations(t)
+
+			pluginService := new(mock.DependencyResolverPluginService)
+			defer pluginService.AssertExpectations(t)
+
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			jobSpecRepo := new(mock.JobSpecRepository)
+			defer jobSpecRepo.AssertExpectations(t)
+
+			jobSourceRepo := new(mock.JobSourceRepository)
+			defer jobSourceRepo.AssertExpectations(t)
+
+			depenResolver := new(mock.DependencyResolver)
+			defer depenResolver.AssertExpectations(t)
+
+			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
+			defer projJobSpecRepoFac.AssertExpectations(t)
+
+			deployManager := new(mock.DeployManager)
+			defer deployManager.AssertExpectations(t)
+
+			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+
+			namespaceJobSpecRepo.On("GetAll", ctx).Return(existingJobSpecs, nil)
+			for _, jobSpec := range modifiedJobs {
+				namespaceJobSpecRepo.On("Save", ctx, jobSpec, destination.URN()).Return(nil)
+				namespaceJobSpecRepo.On("GetByName", ctx, jobSpec.Name).Return(jobSpec, nil)
+			}
+
+			for _, jobSpec := range deletedJobs {
+				spec := jobSpec
+				jobSpecRepo.On("GetDependentJobs", ctx, &spec).Return([]models.JobSpec{}, nil).Once()
+				namespaceJobSpecRepo.On("Delete", ctx, jobSpec.ID).Return(nil)
+			}
+
+			namespaceJobSpecRepoFac.On("New", namespaceSpec).Return(namespaceJobSpecRepo)
+
+			for _, modifiedJob := range modifiedJobs {
+				pluginService.On("GenerateDestination", ctx, modifiedJob, namespaceSpec).Return(destination, nil)
+			}
+
+			// jobs without dependency mod
+			var res models.GenerateDependenciesResponse
+			pluginService.On("GenerateDependencies", ctx, modifiedJobs[0], namespaceSpec, false).Return(&res, service.ErrDependencyModNotFound)
+
+			// jobs with dependency mod
+			resourceURNs := []string{"source-a"}
+			for i := 1; i < len(modifiedJobs); i++ {
+				pluginService.On("GenerateDependencies", ctx, modifiedJobs[i], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
+				jobSourceRepo.On("Save", ctx, projSpec.ID, modifiedJobs[i].ID, resourceURNs).Return(nil)
+			}
+
+			deployManager.On("Deploy", ctx, namespaceSpec.ProjectSpec).Return(deployID, nil)
+
+			svc := job.NewService(namespaceJobSpecRepoFac, nil, nil, depenResolver, nil, projJobSpecRepoFac, nil, namespaceService, nil, deployManager, pluginService, jobSpecRepo, jobSourceRepo)
+			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, nil)
+			assert.Nil(t, err)
+		})
 		t.Run("should deploy successfully", func(t *testing.T) {
 			existingJobSpecs := createJobSpecDummy(10)
 			requestedJobSpecs := createJobSpecDummy(15)[9:]
