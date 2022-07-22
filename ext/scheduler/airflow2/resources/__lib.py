@@ -358,6 +358,9 @@ def optimus_notify(context, event_meta):
         if _xcom_value_has_error(xcom):
             failure_messages.append(xcom.value['error'])
     failure_message = ", ".join(failure_messages)
+
+    if SCHEDULER_ERR_MSG in event_meta.keys():
+        failure_message = failure_message + ", " + event_meta[SCHEDULER_ERR_MSG]
     print("failures: {}".format(failure_message))
 
     message = {

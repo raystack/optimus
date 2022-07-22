@@ -62,6 +62,10 @@ const (
 	JobRetryEvent JobEventType = "retry"
 )
 
+var faiulreEvents = []JobEventType{
+	JobFailureEvent, JobFailEvent, TaskFailEvent, HookFailEvent, SensorFailEvent,
+}
+
 // JobSpec represents a job
 // internal representation of the job
 type JobSpec struct {
@@ -171,6 +175,22 @@ type JobSpecNotifier struct {
 	On       JobEventType
 	Config   map[string]string
 	Channels []string
+}
+
+func (n *JobSpecNotifier) ShouldNotify(eventType JobEventType) bool {
+	switch n.On {
+	case JobFailureEvent:
+		for _, event := range faiulreEvents {
+			if eventType == event {
+				return true
+			}
+		}
+	case SLAMissEvent:
+		if eventType == SLAMissEvent {
+			return true
+		}
+	}
+	return false
 }
 
 type JobSpecTask struct {
