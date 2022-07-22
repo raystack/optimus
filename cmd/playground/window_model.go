@@ -1,6 +1,8 @@
 package playground
 
 import (
+	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -24,7 +26,7 @@ type model struct {
 	offsetInput textinput.Model
 }
 
-func initialModel() model {
+func initModel() *model {
 	windowV1 := job.WindowV1{Size: defaultSize.getStringValue(), Offset: defaultSize.getStringValue(), TruncateTo: defaultTruncate.getStringValue()}
 	windowV2 := job.WindowV2{Size: defaultSize.getStringValue(), Offset: defaultSize.getStringValue(), TruncateTo: defaultTruncate.getStringValue()}
 	sizeInput := textinput.New()
@@ -32,7 +34,7 @@ func initialModel() model {
 	sizeInput.Focus()
 	offsetInput := textinput.New()
 	offsetInput.Placeholder = defaultSize.getStringValue()
-	return model{
+	return &model{
 		cursor:      cursorType{size},
 		state:       state{windowV1: windowV1, windowV2: windowV2, scheduledTime: time.Now()},
 		sizeInput:   sizeInput,
@@ -41,8 +43,7 @@ func initialModel() model {
 }
 
 // since we don not intend to keep any input after the process is killed we return nil
-func (m model) Init() tea.Cmd {
-	m.state.scheduledTime = time.Now()
+func (*model) Init() tea.Cmd {
 	return nil
 }
 
@@ -120,10 +121,12 @@ func (m *model) handleDecrease() {
 	}
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
+func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// switch currMsg := msg.(type) {
+	// case tea.KeyMsg:
+	currMsg := reflect.TypeOf(msg)
+	if currMsg.String() == "tea.KeyMsg" {
+		switch fmt.Sprintf("%s", msg) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		case "up":
@@ -148,7 +151,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) genarateCursorIfPointed(position string, value string) string {
+func (m *model) genarateCursorIfPointed(position string, value string) string {
 	if m.cursor.PointedAt.getStringValue() == position {
 		var s strings.Builder
 		s.WriteString("[")
@@ -160,7 +163,7 @@ func (m model) genarateCursorIfPointed(position string, value string) string {
 }
 
 // we genare a string representing the sechduled time , which also adds a cursor if it is pointing to the any of the fields in sechdueld date
-func (m model) genarateSechduledDateView() string {
+func (m *model) genarateSechduledDateView() string {
 	var s strings.Builder
 	s.WriteString(m.genarateCursorIfPointed(hour.getStringValue(), strconv.Itoa(m.state.scheduledTime.Hour())))
 	s.WriteString(":")
@@ -174,15 +177,15 @@ func (m model) genarateSechduledDateView() string {
 // this will update the values of Size and offset of the window versions present in state to the new values taken from the input
 
 // this will  be invoked for every update
-func (m model) View() string {
+func (m *model) View() string {
 	var s strings.Builder
-	s.WriteString("Size            ")
+	s.WriteString("Size\t\t")
 	s.WriteString(m.sizeInput.View())
 	s.WriteString("\n")
-	s.WriteString("Offset          ")
+	s.WriteString("Offset\t\t")
 	s.WriteString(m.offsetInput.View())
 	s.WriteString("\n")
-	s.WriteString("TruncateTo       ")
+	s.WriteString("TruncateTo\t ")
 	s.WriteString(m.genarateCursorIfPointed(truncateTo.getStringValue(), m.state.windowV2.TruncateTo))
 	s.WriteString("\n")
 	s.WriteString("sechduled date   ")

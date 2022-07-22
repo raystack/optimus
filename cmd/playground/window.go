@@ -3,9 +3,8 @@ package playground
 import (
 	"log"
 
-	"github.com/spf13/cobra"
-
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/cobra"
 )
 
 type windowCommand struct {
@@ -31,6 +30,6 @@ func (j *windowCommand) RunE(_ *cobra.Command, _ []string) error {
 	log.Println("Size and Offset can be given as input in the form of text")
 	log.Println("press control + c or q to quit")
 	log.Println("")
-	p := tea.NewProgram(initialModel())
+	p := tea.NewProgram(initModel())
 	return p.Start()
 }
