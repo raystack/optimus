@@ -290,7 +290,6 @@ func (*JobRunServiceServer) GetWindow(_ context.Context, req *pb.GetWindowReques
 	switch req.GetVersion() {
 	case 1:
 		window = &models.WindowV1{
-			Scope:      models.ScopeServer,
 			TruncateTo: req.GetTruncateTo(),
 			Offset:     req.GetOffset(),
 			Size:       req.GetSize(),
