@@ -156,6 +156,15 @@ func (s *jobRunService) prepInstance(ctx context.Context, jobRun models.JobRun, 
 		jobDestination = dest.Destination
 	}
 
+	startTime, err := jobRun.Spec.Task.Window.GetStartTime(jobRun.ScheduledAt)
+	if err != nil {
+		return models.InstanceSpec{}, fmt.Errorf("error getting start time: %w", err)
+	}
+	endTime, err := jobRun.Spec.Task.Window.GetEndTime(jobRun.ScheduledAt)
+	if err != nil {
+		return models.InstanceSpec{}, fmt.Errorf("error getting end time: %w", err)
+	}
+
 	return models.InstanceSpec{
 		Name:       instanceName,
 		Type:       instanceType,
@@ -170,12 +179,12 @@ func (s *jobRunService) prepInstance(ctx context.Context, jobRun models.JobRun, 
 			},
 			{
 				Name:  models.ConfigKeyDstart,
-				Value: jobRun.Spec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+				Value: startTime.Format(models.InstanceScheduledAtTimeLayout),
 				Type:  models.InstanceDataTypeEnv,
 			},
 			{
 				Name:  models.ConfigKeyDend,
-				Value: jobRun.Spec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+				Value: endTime.Format(models.InstanceScheduledAtTimeLayout),
 				Type:  models.InstanceDataTypeEnv,
 			},
 			{

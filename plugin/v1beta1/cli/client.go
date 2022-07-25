@@ -5,7 +5,6 @@ import (
 	"time"
 
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
-	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
@@ -106,10 +105,6 @@ func (m *GRPCClient) DefaultAssets(ctx context.Context, request models.DefaultAs
 }
 
 func (m *GRPCClient) CompileAssets(ctx context.Context, request models.CompileAssetsRequest) (*models.CompileAssetsResponse, error) {
-	_, span := base.Tracer.Start(ctx, "CompileAssets")
-	defer span.End()
-
-	schdAt := timestamppb.New(request.InstanceSchedule)
 	var instanceData []*pb.InstanceSpecData
 	for _, inst := range request.InstanceData {
 		instanceData = append(instanceData, &pb.InstanceSpecData{
@@ -120,16 +115,12 @@ func (m *GRPCClient) CompileAssets(ctx context.Context, request models.CompileAs
 	}
 
 	resp, err := m.client.CompileAssets(ctx, &pbp.CompileAssetsRequest{
-		Configs: AdaptConfigsToProto(request.Config),
-		Assets:  AdaptAssetsToProto(request.Assets),
-		Window: &pb.TaskWindow{
-			Size:       durationpb.New(request.Window.Size),
-			Offset:     durationpb.New(request.Window.Offset),
-			TruncateTo: request.Window.TruncateTo,
-		},
-		InstanceSchedule: schdAt,
-		InstanceData:     instanceData,
-		Options:          &pbp.PluginOptions{DryRun: request.DryRun},
+		Configs:      AdaptConfigsToProto(request.Config),
+		Assets:       AdaptAssetsToProto(request.Assets),
+		InstanceData: instanceData,
+		Options:      &pbp.PluginOptions{DryRun: request.DryRun},
+		StartTime:    timestamppb.New(request.StartTime),
+		EndTime:      timestamppb.New(request.EndTime),
 	}, grpc_retry.WithBackoff(grpc_retry.BackoffExponential(BackoffDuration)),
 		grpc_retry.WithMax(PluginGRPCMaxRetry))
 	if err != nil {

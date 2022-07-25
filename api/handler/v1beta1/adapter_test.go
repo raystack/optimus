@@ -62,8 +62,18 @@ func TestAdapter(t *testing.T) {
 			Base: execUnit1,
 		}, nil)
 
+		windowV1 := &models.WindowV1{
+			Scope:            models.ScopeServer,
+			SizeAsDuration:   time.Hour * 48,
+			OffsetAsDuration: time.Hour,
+			TruncateTo:       "h",
+		}
+		if err := windowV1.Enrich(); err != nil {
+			panic(err)
+		}
 		jobSpec := models.JobSpec{
-			Name: "test-job",
+			Version: 1,
+			Name:    "test-job",
 			Schedule: models.JobSpecSchedule{
 				StartDate: time.Date(2021, 10, 6, 0, 0, 0, 0, time.UTC),
 				Interval:  "@daily",
@@ -94,11 +104,7 @@ func TestAdapter(t *testing.T) {
 						Value: "this",
 					},
 				},
-				Window: models.JobSpecTaskWindow{
-					Size:       time.Hour * 48,
-					Offset:     time.Hour,
-					TruncateTo: "h",
-				},
+				Window: windowV1,
 			},
 			Assets: *models.JobAssets{}.New(
 				[]models.JobSpecAsset{

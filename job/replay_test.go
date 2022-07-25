@@ -65,13 +65,13 @@ func TestReplay(t *testing.T) {
 		Interval:  "@daily",
 	}
 	oneDayTaskWindow := models.JobSpecTask{
-		Window: models.JobSpecTaskWindow{
-			Size: time.Hour * 24,
+		Window: &&models.WindowV1{
+			SizeAsDuration: time.Hour * 24,
 		},
 	}
 	threeDayTaskWindow := models.JobSpecTask{
-		Window: models.JobSpecTaskWindow{
-			Size: time.Hour * 24 * 3,
+		Window: &&models.WindowV1{
+			SizeAsDuration: time.Hour * 24 * 3,
 		},
 	}
 	projSpec := models.ProjectSpec{

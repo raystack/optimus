@@ -107,10 +107,10 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJo
 			Value: "THIS",
 		},
 	}
-	jobWindow := models.JobSpecTaskWindow{
-		Size:       time.Hour,
-		Offset:     0,
-		TruncateTo: "d",
+	jobWindow := &models.WindowV1{
+		SizeAsDuration:   time.Hour,
+		OffsetAsDuration: 0,
+		TruncateTo:       "d",
 	}
 	jobAsset := *models.JobAssets{}.New(
 		[]models.JobSpecAsset{
@@ -186,10 +186,10 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_Adapt
 			Value: "THIS",
 		},
 	}
-	jobWindow := models.JobSpecTaskWindow{
-		Size:       time.Hour,
-		Offset:     0,
-		TruncateTo: "d",
+	jobWindow := &models.WindowV1{
+		SizeAsDuration:   time.Hour,
+		OffsetAsDuration: 0,
+		TruncateTo:       "d",
 	}
 	jobAsset := *models.JobAssets{}.New(
 		[]models.JobSpecAsset{
@@ -252,10 +252,14 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Continue_Depl
 			Value: "THIS",
 		},
 	}
-	jobWindow := models.JobSpecTaskWindow{
-		Size:       time.Hour,
-		Offset:     0,
-		TruncateTo: "d",
+	jobWindow := &models.WindowV1{
+		Scope:            models.ScopeServer,
+		SizeAsDuration:   time.Hour,
+		OffsetAsDuration: 0,
+		TruncateTo:       "d",
+	}
+	if err := jobWindow.Enrich(); err != nil {
+		panic(err)
 	}
 	jobAsset := *models.JobAssets{}.New(
 		[]models.JobSpecAsset{
@@ -434,10 +438,10 @@ func TestJobSpecificationOnServer(t *testing.T) {
 							Value: "THIS",
 						},
 					},
-					Window: models.JobSpecTaskWindow{
-						Size:       time.Hour,
-						Offset:     0,
-						TruncateTo: "d",
+					Window: &models.WindowV1{
+						SizeAsDuration:   time.Hour,
+						OffsetAsDuration: 0,
+						TruncateTo:       "d",
 					},
 				},
 				Assets: *models.JobAssets{}.New(

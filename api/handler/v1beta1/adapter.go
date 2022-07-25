@@ -52,8 +52,29 @@ func FromJobProto(spec *pb.JobSpecification, pluginRepo models.PluginRepository)
 		}
 	}
 
-	window, err := prepareWindow(spec.WindowSize, spec.WindowOffset, spec.WindowTruncateTo)
-	if err != nil {
+	var window models.Window
+	switch spec.Version {
+	case 1:
+		windowV1 := &models.WindowV1{
+			Scope:      models.ScopeServer,
+			TruncateTo: spec.GetWindowTruncateTo(),
+			Offset:     spec.GetWindowOffset(),
+			Size:       spec.GetWindowSize(),
+		}
+		if err := windowV1.Enrich(); err != nil {
+			return models.JobSpec{}, err
+		}
+		window = windowV1
+	case 2:
+		window = models.WindowV2{
+			TruncateTo: spec.GetWindowTruncateTo(),
+			Offset:     spec.GetWindowOffset(),
+			Size:       spec.GetWindowSize(),
+		}
+	default:
+		return models.JobSpec{}, fmt.Errorf("spec version [%d] is not recognized", spec.Version)
+	}
+	if err := window.Validate(); err != nil {
 		return models.JobSpec{}, err
 	}
 
@@ -137,31 +158,6 @@ func FromJobProto(spec *pb.JobSpecification, pluginRepo models.PluginRepository)
 	}, nil
 }
 
-func prepareWindow(windowSize, windowOffset, truncateTo string) (models.JobSpecTaskWindow, error) {
-	var err error
-	window := models.JobSpecTaskWindow{}
-	window.Size = HoursInDay
-	window.Offset = 0
-	window.TruncateTo = "d"
-
-	if truncateTo != "" {
-		window.TruncateTo = truncateTo
-	}
-	if windowSize != "" {
-		window.Size, err = time.ParseDuration(windowSize)
-		if err != nil {
-			return window, fmt.Errorf("failed to parse task window with size %v: %w", windowSize, err)
-		}
-	}
-	if windowOffset != "" {
-		window.Offset, err = time.ParseDuration(windowOffset)
-		if err != nil {
-			return window, fmt.Errorf("failed to parse task window with offset %v: %w", windowOffset, err)
-		}
-	}
-	return window, nil
-}
-
 func ToJobSpecificationResponseProto(jobSpec models.JobSpec) *pb.JobSpecificationResponse {
 	return &pb.JobSpecificationResponse{
 		ProjectName:   jobSpec.GetProjectSpec().Name,
@@ -191,9 +187,9 @@ func ToJobSpecificationProto(spec models.JobSpec) *pb.JobSpecification {
 		DependsOnPast:    spec.Behavior.DependsOnPast,
 		CatchUp:          spec.Behavior.CatchUp,
 		TaskName:         spec.Task.Unit.Info().Name,
-		WindowSize:       spec.Task.Window.SizeString(),
-		WindowOffset:     spec.Task.Window.OffsetString(),
-		WindowTruncateTo: spec.Task.Window.TruncateTo,
+		WindowSize:       spec.Task.Window.GetSize(),
+		WindowOffset:     spec.Task.Window.GetOffset(),
+		WindowTruncateTo: spec.Task.Window.GetTruncateTo(),
 		Assets:           spec.Assets.ToMap(),
 		Dependencies:     []*pb.JobDependency{},
 		Hooks:            adaptedHook,

@@ -47,14 +47,22 @@ func TestJobRunInputCompiler(t *testing.T) {
 		StartDate: time.Date(2000, 11, 11, 0, 0, 0, 0, time.UTC),
 		Interval:  "* * * * *",
 	}
-	window := models.JobSpecTaskWindow{
-		Size:       time.Hour,
-		Offset:     0,
-		TruncateTo: "d",
+	window := &models.WindowV1{
+		SizeAsDuration:   time.Hour,
+		OffsetAsDuration: 0,
+		TruncateTo:       "d",
+	}
+	scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
+	startTime, err := window.GetStartTime(scheduledAt)
+	if err != nil {
+		panic(err)
+	}
+	endTime, err := window.GetEndTime(scheduledAt)
+	if err != nil {
+		panic(err)
 	}
 
 	mockedTimeNow := time.Now()
-	scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
 	instanceSpecData := []models.JobRunSpecData{
 		{
 			Name:  models.ConfigKeyExecutionTime,
@@ -63,12 +71,12 @@ func TestJobRunInputCompiler(t *testing.T) {
 		},
 		{
 			Name:  models.ConfigKeyDstart,
-			Value: window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+			Value: startTime.Format(models.InstanceScheduledAtTimeLayout),
 			Type:  models.InstanceDataTypeEnv,
 		},
 		{
 			Name:  models.ConfigKeyDend,
-			Value: window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+			Value: endTime.Format(models.InstanceScheduledAtTimeLayout),
 			Type:  models.InstanceDataTypeEnv,
 		},
 	}
@@ -150,11 +158,11 @@ func TestJobRunInputCompiler(t *testing.T) {
 			}
 
 			cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
-				Window:           window,
-				Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-				Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-				InstanceSchedule: scheduledAt,
-				InstanceData:     instanceSpecData,
+				Config:       models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+				Assets:       models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
+				InstanceData: instanceSpecData,
+				StartTime:    startTime,
+				EndTime:      endTime,
 			}).Return(&models.CompileAssetsResponse{Assets: models.PluginAssets{
 				models.PluginAsset{
 					Name:  "query.sql",
@@ -258,11 +266,11 @@ func TestJobRunInputCompiler(t *testing.T) {
 				Data:   instanceSpecData,
 			}
 			cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
-				Window:           window,
-				Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-				Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-				InstanceSchedule: scheduledAt,
-				InstanceData:     instanceSpecData,
+				Config:       models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+				Assets:       models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
+				InstanceData: instanceSpecData,
+				StartTime:    startTime,
+				EndTime:      endTime,
 			}).Return(&models.CompileAssetsResponse{Assets: models.PluginAssets{
 				models.PluginAsset{
 					Name:  "query.sql",
@@ -365,11 +373,11 @@ func TestJobRunInputCompiler(t *testing.T) {
 			}
 
 			cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
-				Window:           window,
-				Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-				Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-				InstanceSchedule: scheduledAt,
-				InstanceData:     instanceSpecData,
+				Config:       models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+				Assets:       models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
+				InstanceData: instanceSpecData,
+				StartTime:    startTime,
+				EndTime:      endTime,
 			}).Return(&models.CompileAssetsResponse{Assets: models.PluginAssets{
 				models.PluginAsset{
 					Name:  "query.sql",
@@ -449,11 +457,11 @@ func TestJobRunInputCompiler(t *testing.T) {
 			}
 
 			cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
-				Window:           window,
-				Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-				Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-				InstanceSchedule: scheduledAt,
-				InstanceData:     instanceSpecData,
+				Config:       models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+				Assets:       models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
+				InstanceData: instanceSpecData,
+				StartTime:    startTime,
+				EndTime:      endTime,
 			}).Return(&models.CompileAssetsResponse{Assets: models.PluginAssets{
 				models.PluginAsset{
 					Name:  "query.sql",
@@ -541,10 +549,10 @@ func TestJobRunInputCompiler(t *testing.T) {
 		instanceType := models.InstanceTypeTask
 
 		cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
-			Window:           window,
+			StartTime: startTime,
+			EndTime: endTime,
 			Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 			Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-			InstanceSchedule: scheduledAt,
 			InstanceData:     instanceSpecData,
 		}).Return(&models.CompileAssetsResponse{Assets: models.PluginAssets{
 			models.PluginAsset{
@@ -657,10 +665,10 @@ func TestJobRunInputCompiler(t *testing.T) {
 		// 	Data:   instanceSpecData,
 		// }
 		cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
-			Window:           window,
+			StartTime: startTime,
+			EndTime: endTime,
 			Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 			Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-			InstanceSchedule: scheduledAt,
 			InstanceData:     instanceSpecData,
 		}).Return(&models.CompileAssetsResponse{Assets: models.PluginAssets{
 			models.PluginAsset{
