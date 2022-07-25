@@ -13,6 +13,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/cmd/survey"
@@ -21,15 +22,16 @@ import (
 )
 
 type listCommand struct {
-	logger       log.Logger
-	clientConfig *config.ClientConfig
+	logger         log.Logger
+	configFilePath string
+
+	projectName string
+	host        string
 }
 
 // NewListCommand initialize command to list backup
-func NewListCommand(clientConfig *config.ClientConfig) *cobra.Command {
-	list := &listCommand{
-		clientConfig: clientConfig,
-	}
+func NewListCommand() *cobra.Command {
+	list := &listCommand{}
 
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -38,12 +40,42 @@ func NewListCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		RunE:    list.RunE,
 		PreRunE: list.PreRunE,
 	}
-	cmd.Flags().StringP("project-name", "p", defaultProjectName, "project name of optimus managed repository")
+
+	list.injectFlags(cmd)
+
 	return cmd
 }
 
-func (l *listCommand) PreRunE(_ *cobra.Command, _ []string) error {
-	l.logger = logger.NewClientLogger(l.clientConfig.Log)
+func (l *listCommand) injectFlags(cmd *cobra.Command) {
+	// Config filepath flag
+	cmd.PersistentFlags().StringVarP(&l.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+
+	// Mandatory flags if config is not set
+	cmd.Flags().StringVarP(&l.projectName, "project-name", "p", "", "project name of optimus managed repository")
+	cmd.Flags().StringVar(&l.host, "host", "", "Optimus service endpoint url")
+}
+
+func (l *listCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+	// Load config
+	conf, err := internal.LoadOptionalConfig(l.configFilePath)
+	if err != nil {
+		return err
+	}
+
+	if conf == nil {
+		l.logger = logger.NewDefaultLogger()
+		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
+		return nil
+	}
+
+	l.logger = logger.NewClientLogger(conf.Log)
+	if l.projectName == "" {
+		l.projectName = conf.Project.Name
+	}
+	if l.host == "" {
+		l.host = conf.Host
+	}
+
 	return nil
 }
 
@@ -55,11 +87,11 @@ func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 
 	listBackupsRequest := &pb.ListBackupsRequest{
-		ProjectName:   l.clientConfig.Project.Name,
+		ProjectName:   l.projectName,
 		DatastoreName: storerName,
 	}
 
-	conn, err := connectivity.NewConnectivity(l.clientConfig.Host, backupTimeout)
+	conn, err := connectivity.NewConnectivity(l.host, backupTimeout)
 	if err != nil {
 		return err
 	}
@@ -79,7 +111,7 @@ func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 
 	if len(listBackupsResponse.Backups) == 0 {
-		l.logger.Info(logger.ColoredNotice("No backups were found in %s project.", l.clientConfig.Project.Name))
+		l.logger.Info(logger.ColoredNotice("No backups were found in %s project.", l.projectName))
 	} else {
 		l.logger.Info(logger.ColoredNotice("Recent backups"))
 		result := l.stringifyBackupListResponse(listBackupsResponse)

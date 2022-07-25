@@ -10,23 +10,24 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/config"
 )
 
 type deleteCommand struct {
-	logger       log.Logger
-	clientConfig *config.ClientConfig
+	logger         log.Logger
+	configFilePath string
 
+	projectName   string
+	host          string
 	namespaceName string
 }
 
 // NewDeleteCommand initializes command to delete secret
-func NewDeleteCommand(clientConfig *config.ClientConfig) *cobra.Command {
-	dlt := &deleteCommand{
-		clientConfig: clientConfig,
-	}
+func NewDeleteCommand() *cobra.Command {
+	dlt := &deleteCommand{}
 
 	cmd := &cobra.Command{
 		Use:     "delete",
@@ -36,13 +37,44 @@ func NewDeleteCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		RunE:    dlt.RunE,
 		PreRunE: dlt.PreRunE,
 	}
-	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Project name of optimus managed repository")
-	cmd.Flags().StringVarP(&dlt.namespaceName, "namespace", "n", dlt.namespaceName, "Namespace name of optimus managed repository")
+
+	dlt.injectFlags(cmd)
+
 	return cmd
 }
 
-func (d *deleteCommand) PreRunE(_ *cobra.Command, _ []string) error {
-	d.logger = logger.NewClientLogger(d.clientConfig.Log)
+func (d *deleteCommand) injectFlags(cmd *cobra.Command) {
+	// Config filepath flag
+	cmd.Flags().StringVarP(&d.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+
+	cmd.Flags().StringVarP(&d.namespaceName, "namespace", "n", d.namespaceName, "Namespace name of optimus managed repository")
+
+	// Mandatory flags if config is not set
+	cmd.Flags().StringVarP(&d.projectName, "project-name", "p", "", "Name of the optimus project")
+	cmd.Flags().StringVar(&d.host, "host", "", "Optimus service endpoint url")
+}
+
+func (d *deleteCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+	// Load config
+	conf, err := internal.LoadOptionalConfig(d.configFilePath)
+	if err != nil {
+		return err
+	}
+
+	if conf == nil {
+		d.logger = logger.NewDefaultLogger()
+		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
+		return nil
+	}
+
+	d.logger = logger.NewClientLogger(conf.Log)
+	if d.projectName == "" {
+		d.projectName = conf.Project.Name
+	}
+	if d.host == "" {
+		d.host = conf.Host
+	}
+
 	return nil
 }
 
@@ -53,7 +85,7 @@ func (d *deleteCommand) RunE(_ *cobra.Command, args []string) error {
 	}
 
 	deleteSecretRequest := &pb.DeleteSecretRequest{
-		ProjectName:   d.clientConfig.Project.Name,
+		ProjectName:   d.projectName,
 		SecretName:    secretName,
 		NamespaceName: d.namespaceName,
 	}
@@ -61,7 +93,7 @@ func (d *deleteCommand) RunE(_ *cobra.Command, args []string) error {
 }
 
 func (d *deleteCommand) deleteSecret(req *pb.DeleteSecretRequest) error {
-	conn, err := connectivity.NewConnectivity(d.clientConfig.Host, secretTimeout)
+	conn, err := connectivity.NewConnectivity(d.host, secretTimeout)
 	if err != nil {
 		return err
 	}

@@ -16,26 +16,27 @@ import (
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/postgres"
+	"github.com/odpf/optimus/tests/setup"
 )
 
 func BenchmarkDatastoreBackupRepository(b *testing.B) {
 	ctx := context.Background()
 	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
 
-	bigqueryStore := getBigQueryDataStore()
+	bigqueryStore := setup.MockBigQueryDataStore()
 
-	project := getProject(1)
+	project := setup.Project(1)
 	project.ID = models.ProjectID(uuid.New())
 
-	namespace := getNamespace(1, project)
+	namespace := setup.Namespace(1, project)
 	namespace.ID = uuid.New()
 
 	resource := getResourceSpec(1, bigqueryStore)
 	resource.ID = uuid.New()
 
 	DBSetup := func() *gorm.DB {
-		dbConn := setupDB()
-		truncateTables(dbConn)
+		dbConn := setup.TestDB()
+		setup.TruncateTables(dbConn)
 
 		projRepo := postgres.NewProjectRepository(dbConn, hash)
 		assert.Nil(b, projRepo.Save(ctx, project))
@@ -45,7 +46,7 @@ func BenchmarkDatastoreBackupRepository(b *testing.B) {
 
 		secretRepo := postgres.NewSecretRepository(dbConn, hash)
 		for i := 0; i < 5; i++ {
-			assert.Nil(b, secretRepo.Save(ctx, project, namespace, getSecret(i)))
+			assert.Nil(b, secretRepo.Save(ctx, project, namespace, setup.Secret(i)))
 		}
 
 		projectResourceSpecRepo := postgres.NewProjectResourceSpecRepository(dbConn, project, bigqueryStore)

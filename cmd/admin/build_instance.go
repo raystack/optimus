@@ -14,6 +14,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
@@ -25,27 +26,26 @@ const (
 
 	taskInputDirectory = "in"
 	unsubstitutedValue = "<no value>"
-
-	defaultProjectName = "sample_project"
-	defaultHost        = "localhost:9100"
 )
 
 type buildInstanceCommand struct {
-	logger       log.Logger
-	clientConfig *config.ClientConfig
+	logger         log.Logger
+	configFilePath string
 
+	// Required
 	assetOutputDir string
 	runType        string
 	runName        string
 	scheduledAt    string
+	projectName    string
+	host           string
 
 	keysWithUnsubstitutedValue []string
 }
 
 // NewBuildInstanceCommand initializes command to build instance for admin
-func NewBuildInstanceCommand(clientConfig *config.ClientConfig) *cobra.Command {
+func NewBuildInstanceCommand() *cobra.Command {
 	buildInstance := &buildInstanceCommand{
-		clientConfig:   clientConfig,
 		assetOutputDir: "/tmp/",
 		runType:        "task",
 	}
@@ -60,28 +60,55 @@ func NewBuildInstanceCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		RunE:    buildInstance.RunE,
 		PreRunE: buildInstance.PreRunE,
 	}
-	cmd.Flags().StringVar(&buildInstance.assetOutputDir, "output-dir", buildInstance.assetOutputDir, "Output directory for assets")
-	cmd.MarkFlagRequired("output-dir")
-	cmd.Flags().StringVar(&buildInstance.scheduledAt, "scheduled-at", "", "Time at which the job was scheduled for execution")
-	cmd.MarkFlagRequired("scheduled-at")
-	cmd.Flags().StringVar(&buildInstance.runType, "type", "task", "Type of instance, could be task/hook")
-	cmd.MarkFlagRequired("type")
-	cmd.Flags().StringVar(&buildInstance.runName, "name", "", "Name of running instance, e.g., bq2bq/transporter/predator")
-	cmd.MarkFlagRequired("name")
 
-	cmd.Flags().StringP("project-name", "p", defaultProjectName, "Name of the optimus project")
-	cmd.Flags().String("host", defaultHost, "Optimus service endpoint url")
+	buildInstance.injectFlags(cmd)
+	internal.MarkFlagsRequired(cmd, []string{"output-dir", "scheduled-at", "type", "name"})
+
 	return cmd
 }
 
-func (b *buildInstanceCommand) PreRunE(_ *cobra.Command, _ []string) error {
-	b.logger = logger.NewClientLogger(b.clientConfig.Log)
+func (b *buildInstanceCommand) injectFlags(cmd *cobra.Command) {
+	// Config filepath flag
+	cmd.Flags().StringVarP(&b.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+
+	// Mandatory flags
+	cmd.Flags().StringVar(&b.assetOutputDir, "output-dir", b.assetOutputDir, "Output directory for assets")
+	cmd.Flags().StringVar(&b.scheduledAt, "scheduled-at", "", "Time at which the job was scheduled for execution")
+	cmd.Flags().StringVar(&b.runType, "type", "task", "Type of instance, could be task/hook")
+	cmd.Flags().StringVar(&b.runName, "name", "", "Name of running instance, e.g., bq2bq/transporter/predator")
+
+	// Mandatory flags if config is not set
+	cmd.Flags().StringVarP(&b.projectName, "project-name", "p", "", "Name of the optimus project")
+	cmd.Flags().StringVar(&b.host, "host", "", "Optimus service endpoint url")
+}
+
+func (b *buildInstanceCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+	// Load config
+	conf, err := internal.LoadOptionalConfig(b.configFilePath)
+	if err != nil {
+		return err
+	}
+
+	if conf == nil {
+		b.logger = logger.NewDefaultLogger()
+		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
+		return nil
+	}
+
+	b.logger = logger.NewClientLogger(conf.Log)
+	if b.projectName == "" {
+		b.projectName = conf.Project.Name
+	}
+	if b.host == "" {
+		b.host = conf.Host
+	}
+
 	return nil
 }
 
 func (b *buildInstanceCommand) RunE(_ *cobra.Command, args []string) error {
 	jobName := args[0]
-	b.logger.Info(fmt.Sprintf("Requesting resources for project %s, job %s at %s", b.clientConfig.Project.Name, jobName, b.clientConfig.Host))
+	b.logger.Info(fmt.Sprintf("Requesting resources for project %s, job %s at %s", b.projectName, jobName, b.host))
 	b.logger.Info(fmt.Sprintf("Run name %s, run type %s, scheduled at %s\n", b.runName, b.runType, b.scheduledAt))
 	b.logger.Info("please wait...")
 
@@ -178,7 +205,7 @@ func (b *buildInstanceCommand) writeJobAssetsToFiles(
 }
 
 func (b *buildInstanceCommand) sendInstanceRequest(jobName string, jobScheduledTimeProto *timestamppb.Timestamp) (*pb.RegisterInstanceResponse, error) {
-	conn, err := connectivity.NewConnectivity(b.clientConfig.Host, adminBuildInstanceTimeout)
+	conn, err := connectivity.NewConnectivity(b.host, adminBuildInstanceTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +214,7 @@ func (b *buildInstanceCommand) sendInstanceRequest(jobName string, jobScheduledT
 	// fetch Instance by calling the optimus API
 	jobRun := pb.NewJobRunServiceClient(conn.GetConnection())
 	request := &pb.RegisterInstanceRequest{
-		ProjectName:  b.clientConfig.Project.Name,
+		ProjectName:  b.projectName,
 		JobName:      jobName,
 		ScheduledAt:  jobScheduledTimeProto,
 		InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[utils.ToEnumProto(b.runType, "type")]),

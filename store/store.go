@@ -43,8 +43,8 @@ type JobSpecRepository interface {
 	// TODO: allow to also GetJobByResourceDestination for a specific project
 	GetJobByResourceDestination(context.Context, string) (models.JobSpec, error)
 	GetDependentJobs(context.Context, *models.JobSpec) ([]models.JobSpec, error)
-	GetInferredDependenciesPerJob(context.Context, models.ProjectID) (map[uuid.UUID][]models.JobSpec, error)
-	GetStaticDependenciesPerJob(context.Context, models.ProjectID) (map[uuid.UUID][]models.JobSpec, error)
+	GetInferredDependenciesPerJobID(context.Context, models.ProjectID) (map[uuid.UUID][]models.JobSpec, error)
+	GetStaticDependenciesPerJobID(context.Context, models.ProjectID) (map[uuid.UUID][]models.JobSpec, error)
 }
 
 // NamespaceJobSpecRepository represents a storage interface for Job specifications at a namespace level
@@ -179,4 +179,5 @@ type JobSourceRepository interface {
 	GetAll(context.Context, models.ProjectID) ([]models.JobSource, error)
 	GetByResourceURN(context.Context, string) ([]models.JobSource, error)
 	DeleteByJobID(context.Context, uuid.UUID) error
+	GetResourceURNsPerJobID(context.Context, models.ProjectID) (map[uuid.UUID][]string, error)
 }

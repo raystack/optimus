@@ -49,3 +49,13 @@ log:
 #
 #  # jaeger collector address to send application traces
 #  jaeger_addr: "http://localhost:14268/api/traces"
+
+# resource managers for job dependency enrichment
+#resource_managers:
+#- name: other_optimus_server
+#  type: optimus # currently, only support optimus type
+#  description: neighbor optimus server
+#  config:
+#    host: # host of other optimus server
+#    headers: # might necessary for authorization
+#

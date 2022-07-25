@@ -12,13 +12,17 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/internal"
+	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/config"
 )
 
 const listTimeout = time.Minute * 15
 
 type listCommand struct {
-	logger log.Logger
+	logger         log.Logger
+	configFilePath string
+	clientConfig   *config.ClientConfig
 
 	dirPath     string
 	host        string
@@ -26,37 +30,69 @@ type listCommand struct {
 }
 
 // NewListCommand initializes command for listing namespace
-func NewListCommand(logger log.Logger) *cobra.Command {
+func NewListCommand() *cobra.Command {
 	list := &listCommand{
-		logger: logger,
+		clientConfig: &config.ClientConfig{},
 	}
 	cmd := &cobra.Command{
 		Use:     "list",
 		Short:   "Lists namespaces from the selected server and project",
 		Example: "optimus namespace list [--flag]",
 		RunE:    list.RunE,
+		PreRunE: list.PreRunE,
 	}
-	cmd.Flags().StringVar(&list.dirPath, "dir", list.dirPath, "Directory where the Optimus client config resides")
-	cmd.Flags().StringVar(&list.host, "host", list.host, "Targeted server host, by default taking from client config")
-	cmd.Flags().StringVar(&list.projectName, "project-name", list.projectName, "Targeted project name, by default taking from client config")
+
+	list.injectFlags(cmd)
 	return cmd
 }
 
-func (l *listCommand) RunE(cmd *cobra.Command, _ []string) error {
-	filePath := path.Join(l.dirPath, config.DefaultFilename+"."+config.DefaultFileExtension)
-	clientConfig, err := config.LoadClientConfig(filePath, cmd.Flags())
+func (l *listCommand) injectFlags(cmd *cobra.Command) {
+	// Config filepath flag
+	cmd.Flags().StringVarP(&l.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+	cmd.Flags().StringVar(&l.dirPath, "dir", l.dirPath, "Directory where the Optimus client config resides")
+
+	// Mandatory flags if config is not set
+	cmd.Flags().StringVarP(&l.projectName, "project-name", "p", "", "Name of the optimus project")
+	cmd.Flags().StringVar(&l.host, "host", "", "Optimus service endpoint url")
+}
+
+func (l *listCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+	if l.dirPath != "" {
+		l.configFilePath = path.Join(l.dirPath, config.DefaultFilename)
+	}
+	// Load config
+	conf, err := internal.LoadOptionalConfig(l.configFilePath)
 	if err != nil {
 		return err
 	}
+	l.clientConfig = conf
 
-	l.logger.Info(fmt.Sprintf("Getting all namespaces for project [%s] from [%s]", clientConfig.Project.Name, clientConfig.Host))
-	namespacesFromServer, err := l.listNamespacesFromServer(clientConfig.Host, clientConfig.Project.Name)
+	if l.clientConfig == nil {
+		l.logger = logger.NewDefaultLogger()
+		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
+		return nil
+	}
+
+	l.logger = logger.NewClientLogger(l.clientConfig.Log)
+	if l.projectName == "" {
+		l.projectName = l.clientConfig.Project.Name
+	}
+	if l.host == "" {
+		l.host = l.clientConfig.Host
+	}
+
+	return nil
+}
+
+func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
+	l.logger.Info(fmt.Sprintf("Getting all namespaces for project [%s] from [%s]", l.projectName, l.host))
+	namespacesFromServer, err := l.listNamespacesFromServer(l.host, l.projectName)
 	if err != nil {
 		return err
 	}
 	var namespacesFromLocal []*config.Namespace
-	if l.projectName != "" {
-		namespacesFromLocal = clientConfig.Namespaces
+	if l.projectName != "" && l.clientConfig != nil {
+		namespacesFromLocal = l.clientConfig.Namespaces
 	}
 	result := l.stringifyNamespaces(namespacesFromLocal, namespacesFromServer)
 	l.logger.Info("Successfully getting namespace!")

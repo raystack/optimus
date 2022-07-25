@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	saltConfig "github.com/odpf/salt/config"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/suite"
 
@@ -61,6 +62,12 @@ scheduler:
 telemetry:
   profile_addr: ":9110"
   jaeger_addr: "http://localhost:14268/api/traces"
+resource_managers:
+- name: external_optimus
+  type: optimus
+  description: neighbor optimus
+  config:
+    host: external.optimus.io
 `
 
 type ConfigTestSuite struct {
@@ -103,12 +110,12 @@ func TestConfig(t *testing.T) {
 }
 
 func (s *ConfigTestSuite) TestLoadClientConfig() {
-	currFilePath := path.Join(s.currPath, config.DefaultFilename+"."+config.DefaultFileExtension)
+	currFilePath := path.Join(s.currPath, config.DefaultFilename)
 	s.a.WriteFile(currFilePath, []byte(clientConfig), fs.ModeTemporary)
 
 	s.Run("WhenFilepathIsEmpty", func() {
 		s.Run("WhenConfigInCurrentPathIsExist", func() {
-			conf, err := config.LoadClientConfig(config.EmptyPath, config.EmptyFlags)
+			conf, err := config.LoadClientConfig(config.EmptyPath)
 
 			s.Assert().NoError(err)
 			s.Assert().NotNil(conf)
@@ -119,9 +126,10 @@ func (s *ConfigTestSuite) TestLoadClientConfig() {
 			s.a.Remove(currFilePath)
 			defer s.a.WriteFile(currFilePath, []byte(clientConfig), fs.ModeTemporary)
 
-			conf, err := config.LoadClientConfig(config.EmptyPath, config.EmptyFlags)
-			s.Assert().Nil(err)
-			s.Assert().NotNil(conf)
+			conf, err := config.LoadClientConfig(config.EmptyPath)
+			s.Assert().NotNil(err)
+			s.Assert().ErrorAs(err, &saltConfig.ConfigFileNotFoundError{})
+			s.Assert().Nil(conf)
 		})
 	})
 
@@ -137,7 +145,7 @@ func (s *ConfigTestSuite) TestLoadClientConfig() {
 			s.a.WriteFile(samplePath, []byte(b.String()), fs.ModeTemporary)
 			defer s.a.Fs.RemoveAll(samplePath)
 
-			conf, err := config.LoadClientConfig(samplePath, config.EmptyFlags)
+			conf, err := config.LoadClientConfig(samplePath)
 
 			s.Assert().NoError(err)
 			s.Assert().NotNil(conf)
@@ -145,22 +153,24 @@ func (s *ConfigTestSuite) TestLoadClientConfig() {
 		})
 
 		s.Run("WhenFilePathIsNotValid", func() {
-			conf, err := config.LoadClientConfig("/path/not/exist", config.EmptyFlags)
+			conf, err := config.LoadClientConfig("/path/not/exist")
 
-			s.Assert().Error(err)
+			s.Assert().NotNil(err)
 			s.Assert().Nil(conf)
 		})
 	})
 }
 
 func (s *ConfigTestSuite) TestLoadServerConfig() {
-	execFilePath := path.Join(s.execPath, config.DefaultConfigFilename+"."+config.DefaultFileExtension)
+	execFilePath := path.Join(s.execPath, config.DefaultConfigFilename)
 	s.a.WriteFile(execFilePath, []byte(serverConfig), fs.ModeTemporary)
 	s.initServerConfigEnv()
 
 	s.Run("WhenFilepathIsEmpty", func() {
 		s.Run("WhenEnvExist", func() {
-			conf, err := config.LoadServerConfig(config.EmptyPath, config.EmptyFlags)
+			s.a.Remove(execFilePath)
+			defer s.a.WriteFile(execFilePath, []byte(serverConfig), fs.ModeTemporary)
+			conf, err := config.LoadServerConfig(config.EmptyPath)
 
 			s.Assert().NoError(err)
 			s.Assert().NotNil(conf)
@@ -172,7 +182,7 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 			s.unsetServerConfigEnv()
 			defer s.initServerConfigEnv()
 
-			conf, err := config.LoadServerConfig(config.EmptyPath, config.EmptyFlags)
+			conf, err := config.LoadServerConfig(config.EmptyPath)
 
 			s.Assert().NoError(err)
 			s.Assert().NotNil(conf)
@@ -185,8 +195,7 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 			defer s.initServerConfigEnv()
 			defer s.a.WriteFile(execFilePath, []byte(serverConfig), fs.ModeTemporary)
 
-			conf, err := config.LoadServerConfig(config.EmptyPath, config.EmptyFlags)
-
+			conf, err := config.LoadServerConfig(config.EmptyPath)
 			s.Assert().Nil(err)
 			s.Assert().NotNil(conf)
 		})
@@ -197,7 +206,7 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 			samplePath := "./sample/path/config.yaml"
 			s.a.WriteFile(samplePath, []byte("version: 2"), os.ModeTemporary)
 
-			conf, err := config.LoadServerConfig(samplePath, config.EmptyFlags)
+			conf, err := config.LoadServerConfig(samplePath)
 
 			s.Assert().NoError(err)
 			s.Assert().NotNil(conf)
@@ -207,7 +216,7 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 
 		s.Run("WhenFilePathIsNotValid", func() {
 			s.a.MkdirAll("/path/dir/", os.ModeTemporary)
-			conf, err := config.LoadServerConfig("/path/dir/", config.EmptyFlags)
+			conf, err := config.LoadServerConfig("/path/dir/")
 			s.Assert().Error(err)
 			s.Assert().Nil(conf)
 		})
@@ -271,6 +280,17 @@ func (s *ConfigTestSuite) initExpectedServerConfig() {
 	s.expectedServerConfig.Telemetry = config.TelemetryConfig{}
 	s.expectedServerConfig.Telemetry.ProfileAddr = ":9110"
 	s.expectedServerConfig.Telemetry.JaegerAddr = "http://localhost:14268/api/traces"
+
+	s.expectedServerConfig.ResourceManagers = []config.ResourceManager{
+		{
+			Name:        "external_optimus",
+			Type:        "optimus",
+			Description: "neighbor optimus",
+			Config: map[interface{}]interface{}{
+				"host": "external.optimus.io",
+			},
+		},
+	}
 }
 
 func (*ConfigTestSuite) initServerConfigEnv() {

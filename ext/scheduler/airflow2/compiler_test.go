@@ -61,6 +61,11 @@ func TestCompilerIntegration(t *testing.T) {
 		Name: "foo-external-project",
 	}
 
+	externalProjNamespaceSpec := models.NamespaceSpec{
+		Name:        "bar-namespace",
+		ProjectSpec: externalProjSpec,
+	}
+
 	depSpecIntra := models.JobSpec{
 		Name:  "foo-intra-dep-job",
 		Owner: "mee@mee",
@@ -81,6 +86,7 @@ func TestCompilerIntegration(t *testing.T) {
 				TruncateTo: "d",
 			},
 		},
+		NamespaceSpec: namespaceSpec,
 	}
 
 	depSpecInter := models.JobSpec{
@@ -103,6 +109,7 @@ func TestCompilerIntegration(t *testing.T) {
 				TruncateTo: "d",
 			},
 		},
+		NamespaceSpec: externalProjNamespaceSpec,
 	}
 
 	scheduleEndDate := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)

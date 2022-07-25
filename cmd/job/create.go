@@ -17,15 +17,16 @@ import (
 
 type createCommand struct {
 	logger          log.Logger
+	configFilePath  string
 	clientConfig    *config.ClientConfig
 	namespaceSurvey *survey.NamespaceSurvey
 	jobCreateSurvey *survey.JobCreateSurvey
 }
 
 // NewCreateCommand initializes job create command
-func NewCreateCommand(clientConfig *config.ClientConfig) *cobra.Command {
+func NewCreateCommand() *cobra.Command {
 	create := &createCommand{
-		clientConfig: clientConfig,
+		clientConfig: &config.ClientConfig{},
 	}
 	cmd := &cobra.Command{
 		Use:     "create",
@@ -34,10 +35,18 @@ func NewCreateCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		RunE:    create.RunE,
 		PreRunE: create.PreRunE,
 	}
+	// Config filepath flag
+	cmd.Flags().StringVarP(&create.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+
 	return cmd
 }
 
 func (c *createCommand) PreRunE(_ *cobra.Command, _ []string) error {
+	// Load mandatory config
+	if err := c.loadConfig(); err != nil {
+		return err
+	}
+
 	c.logger = logger.NewClientLogger(c.clientConfig.Log)
 	c.namespaceSurvey = survey.NewNamespaceSurvey(c.logger)
 	c.jobCreateSurvey = survey.NewJobCreateSurvey()
@@ -81,5 +90,15 @@ func (c *createCommand) RunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	c.logger.Info(logger.ColoredSuccess("Job successfully created at %s", jobDirectory))
+	return nil
+}
+
+func (c *createCommand) loadConfig() error {
+	// TODO: find a way to load the config in one place
+	conf, err := config.LoadClientConfig(c.configFilePath)
+	if err != nil {
+		return err
+	}
+	*c.clientConfig = *conf
 	return nil
 }

@@ -5,7 +5,7 @@ NAME = "github.com/odpf/optimus"
 LAST_COMMIT := $(shell git rev-parse --short HEAD)
 LAST_TAG := "$(shell git rev-list --tags --max-count=1)"
 OPMS_VERSION := "$(shell git describe --tags ${LAST_TAG})-next"
-PROTON_COMMIT := "23765066adf5704d2df026cbc65a98e45f415cf7"
+PROTON_COMMIT := "b433ee1d64cc4a3c33cf58121744b3e89810cfc4"
 
 .PHONY: build test test-ci generate-proto unit-test-ci smoke-test integration-test vet coverage clean install lint
 
@@ -44,7 +44,7 @@ test:
 	go test -race -cover -timeout 1m -tags=unit_test ./...
 
 bench:
-	@go test -bench=. ./tests/bench -benchmem
+	@go test -bench=. ./tests/bench -benchmem -timeout 20m
 
 coverage: ## print code coverage
 	go test -race -coverprofile coverage.txt -covermode=atomic ./... -tags=unit_test && go tool cover -html=coverage.txt
