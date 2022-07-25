@@ -25,8 +25,9 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 		execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "bq"}, nil)
 
 		jobSpec := models.JobSpec{
-			Name:  "foo",
-			Owner: "optimus",
+			Version: 1,
+			Name:    "foo",
+			Owner:   "optimus",
 			Task: models.JobSpecTask{
 				Unit:     plugin,
 				Priority: 2000,
@@ -36,7 +37,7 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 						Value: "22",
 					},
 				},
-				Window: &&models.WindowV1{},
+				Window: &models.WindowV1{},
 			},
 			Dependencies: map[string]models.JobSpecDependency{},
 			Assets: *models.JobAssets{}.New(

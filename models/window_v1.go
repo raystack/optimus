@@ -22,12 +22,12 @@ type WindowV1 struct {
 	Size       string
 }
 
-func (w *WindowV1) Validate() error {
+func (w WindowV1) Validate() error {
 	_, _, _, err := w.getFieldValues()
 	return err
 }
 
-func (w *WindowV1) GetEndTime(scheduleTime time.Time) (endTime time.Time, err error) {
+func (w WindowV1) GetEndTime(scheduleTime time.Time) (endTime time.Time, err error) {
 	truncateTo, offset, size, getErr := w.getFieldValues()
 	if getErr != nil {
 		err = getErr
@@ -37,7 +37,7 @@ func (w *WindowV1) GetEndTime(scheduleTime time.Time) (endTime time.Time, err er
 	return
 }
 
-func (w *WindowV1) GetStartTime(scheduleTime time.Time) (startTime time.Time, err error) {
+func (w WindowV1) GetStartTime(scheduleTime time.Time) (startTime time.Time, err error) {
 	truncateTo, offset, size, getErr := w.getFieldValues()
 	if getErr != nil {
 		err = getErr
@@ -47,43 +47,43 @@ func (w *WindowV1) GetStartTime(scheduleTime time.Time) (startTime time.Time, er
 	return
 }
 
-func (w *WindowV1) GetTruncateTo() string {
+func (w WindowV1) GetTruncateTo() string {
 	truncateTo, _, _, _ := w.getFieldValues()
 	return truncateTo
 }
 
-func (w *WindowV1) GetOffsetAsDuration() time.Duration {
+func (w WindowV1) GetOffsetAsDuration() time.Duration {
 	_, offset, _, _ := w.getFieldValues()
 	return offset
 }
 
-func (w *WindowV1) GetOffset() string {
+func (w WindowV1) GetOffset() string {
 	if w.Offset != "" {
 		return w.Offset
 	}
 	return w.inHrs(int(w.GetOffsetAsDuration().Hours()))
 }
 
-func (w *WindowV1) GetSizeAsDuration() time.Duration {
+func (w WindowV1) GetSizeAsDuration() time.Duration {
 	_, _, size, _ := w.getFieldValues()
 	return size
 }
 
-func (w *WindowV1) GetSize() string {
+func (w WindowV1) GetSize() string {
 	if w.Size != "" {
 		return w.Size
 	}
 	return w.inHrs(int(w.GetSizeAsDuration().Hours()))
 }
 
-func (w *WindowV1) inHrs(hrs int) string {
+func (w WindowV1) inHrs(hrs int) string {
 	if hrs == 0 {
 		return "0"
 	}
 	return fmt.Sprintf("%dh", hrs)
 }
 
-func (w *WindowV1) getTimeRange(scheduleTime time.Time, truncateTo string, offset, size time.Duration) (time.Time, time.Time) {
+func (w WindowV1) getTimeRange(scheduleTime time.Time, truncateTo string, offset, size time.Duration) (time.Time, time.Time) {
 	floatingEnd := scheduleTime
 
 	// apply truncation to end
@@ -138,7 +138,7 @@ func (w *WindowV1) getTimeRange(scheduleTime time.Time, truncateTo string, offse
 	return windowStart, windowEnd
 }
 
-func (w *WindowV1) getFieldValues() (truncateTo string, offsetAsDuration, sizeAsDuration time.Duration, err error) {
+func (w WindowV1) getFieldValues() (truncateTo string, offsetAsDuration, sizeAsDuration time.Duration, err error) {
 	truncateTo = "d"
 	if w.TruncateTo != "" {
 		truncateTo = w.TruncateTo
@@ -165,7 +165,7 @@ func (w *WindowV1) getFieldValues() (truncateTo string, offsetAsDuration, sizeAs
 	return
 }
 
-func (w *WindowV1) tryParsing(str string) (time.Duration, error) {
+func (w WindowV1) tryParsing(str string) (time.Duration, error) {
 	var output time.Duration
 	rst, err := w.tryParsingInMonths(str)
 	if err != nil {
@@ -176,7 +176,7 @@ func (w *WindowV1) tryParsing(str string) (time.Duration, error) {
 	return output, nil
 }
 
-func (w *WindowV1) tryParsingInMonths(str string) (time.Duration, error) {
+func (w WindowV1) tryParsingInMonths(str string) (time.Duration, error) {
 	sz := time.Duration(0)
 	monthMatches := monthExp.FindAllStringSubmatch(str, -1)
 	if len(monthMatches) > 0 && len(monthMatches[0]) == 4 {

@@ -48,9 +48,9 @@ func TestJobRunInputCompiler(t *testing.T) {
 		Interval:  "* * * * *",
 	}
 	window := &models.WindowV1{
-		SizeAsDuration:   time.Hour,
-		OffsetAsDuration: 0,
-		TruncateTo:       "d",
+		Size:       "1h",
+		Offset:     "0",
+		TruncateTo: "d",
 	}
 	scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
 	startTime, err := window.GetStartTime(scheduledAt)
