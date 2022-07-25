@@ -119,7 +119,7 @@ func populateDownstreamRuns(parentNode *tree.TreeNode) (*tree.TreeNode, error) {
 			parentRunDate := parentRunDateRaw.(time.Time)
 
 			// subtract 1 day to make end inclusive
-			parentEndDate := parentRunDate.Add(time.Hour * -24).Add(childDag.Task.Window.Size)
+			parentEndDate := parentRunDate.Add(time.Hour * -24).Add(childDag.Task.Window.GetSizeAsDuration())
 
 			// subtracting 1 sec to accommodate next call of cron
 			// where parent task and current task has same scheduled interval

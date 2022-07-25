@@ -106,7 +106,7 @@ func TestJob(t *testing.T) {
 				},
 				{
 					Today:              time.Date(2021, 2, 25, 6, 33, 22, 0, time.UTC),
-					WindowSize:         24  * time.Hour,
+					WindowSize:         24 * time.Hour,
 					WindowOffset:       0,
 					WindowTruncateUpto: "M",
 					ExpectedStart:      time.Date(2021, 3, 1, 0, 0, 0, 0, time.UTC),
@@ -171,15 +171,19 @@ func TestJob(t *testing.T) {
 			}
 
 			for _, tcase := range cases {
-				win := &models.JobSpecTaskWindow{
-					Size:       tcase.WindowSize,
-					Offset:     tcase.WindowOffset,
-					TruncateTo: tcase.WindowTruncateUpto,
+				win := &&models.WindowV1{
+					SizeAsDuration:   tcase.WindowSize,
+					OffsetAsDuration: tcase.WindowOffset,
+					TruncateTo:       tcase.WindowTruncateUpto,
 				}
-				windowStart := win.GetStart(tcase.Today)
-				windowEnd := win.GetEnd(tcase.Today)
-				assert.Equal(t, tcase.ExpectedStart.String(), windowStart.String())
-				assert.Equal(t, tcase.ExpectedEnd.String(), windowEnd.String())
+
+				actualStartTime, actualStartError := win.GetStartTime(tcase.Today)
+				actualEndTime, actualEndError := win.GetEndTime(tcase.Today)
+
+				assert.Equal(t, tcase.ExpectedStart.String(), actualStartTime.String())
+				assert.NoError(t, actualStartError)
+				assert.Equal(t, tcase.ExpectedEnd.String(), actualEndTime.String())
+				assert.NoError(t, actualEndError)
 			}
 		})
 	})
@@ -346,10 +350,10 @@ func TestJob(t *testing.T) {
 				Task: models.JobSpecTask{
 					Unit:     &models.Plugin{},
 					Priority: 2000,
-					Window: models.JobSpecTaskWindow{
-						Size:       time.Hour,
-						Offset:     0,
-						TruncateTo: "d",
+					Window: &&models.WindowV1{
+						SizeAsDuration:   time.Hour,
+						OffsetAsDuration: 0,
+						TruncateTo:       "d",
 					},
 				},
 			}

@@ -45,10 +45,10 @@ func TestJobRunService(t *testing.T) {
 		Task: models.JobSpecTask{
 			Unit:     &models.Plugin{Base: execUnit},
 			Priority: 2000,
-			Window: models.JobSpecTaskWindow{
-				Size:       time.Hour,
-				Offset:     0,
-				TruncateTo: "d",
+			Window: &&models.WindowV1{
+				SizeAsDuration:   time.Hour,
+				OffsetAsDuration: 0,
+				TruncateTo:       "d",
 			},
 		},
 		Dependencies:  map[string]models.JobSpecDependency{},
@@ -69,6 +69,15 @@ func TestJobRunService(t *testing.T) {
 	pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(
 		&models.GenerateDestinationResponse{Destination: jobDestination}, nil)
 
+	startTime, err := jobSpec.Task.Window.GetStartTime(jobRun.ScheduledAt)
+	if err != nil {
+		panic(err)
+	}
+	endTime, err := jobSpec.Task.Window.GetEndTime(jobRun.ScheduledAt)
+	if err != nil {
+		panic(err)
+	}
+
 	t.Run("Register", func(t *testing.T) {
 		t.Run("for transformation, save specs and return data", func(t *testing.T) {
 			instanceSpec := models.InstanceSpec{
@@ -84,12 +93,12 @@ func TestJobRunService(t *testing.T) {
 					},
 					{
 						Name:  models.ConfigKeyDstart,
-						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Value: startTime.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
 						Name:  models.ConfigKeyDend,
-						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Value: endTime.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
@@ -127,12 +136,12 @@ func TestJobRunService(t *testing.T) {
 					},
 					{
 						Name:  models.ConfigKeyDstart,
-						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Value: startTime.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
 						Name:  models.ConfigKeyDend,
-						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Value: endTime.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
@@ -178,12 +187,12 @@ func TestJobRunService(t *testing.T) {
 					},
 					{
 						Name:  models.ConfigKeyDstart,
-						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Value: startTime.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
 						Name:  models.ConfigKeyDend,
-						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Value: endTime.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
@@ -221,12 +230,12 @@ func TestJobRunService(t *testing.T) {
 					},
 					{
 						Name:  models.ConfigKeyDstart,
-						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Value: startTime.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
 						Name:  models.ConfigKeyDend,
-						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Value: endTime.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
@@ -271,12 +280,12 @@ func TestJobRunService(t *testing.T) {
 					},
 					{
 						Name:  models.ConfigKeyDstart,
-						Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Value: startTime.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{
 						Name:  models.ConfigKeyDend,
-						Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						Value: endTime.Format(models.InstanceScheduledAtTimeLayout),
 						Type:  models.InstanceDataTypeEnv,
 					},
 					{

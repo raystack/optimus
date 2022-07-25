@@ -18,3 +18,10 @@ type Window interface {
 	GetSizeAsDuration() time.Duration
 	GetSize() string
 }
+
+/*
+approach 1
+	one struct for version 1
+approach 2
+	two structs for version 1
+*/

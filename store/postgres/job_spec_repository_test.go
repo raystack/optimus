@@ -78,10 +78,10 @@ func TestJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: models.JobSpecTaskWindow{
-					Size:       time.Hour * 24,
-					Offset:     0,
-					TruncateTo: "h",
+				Window: &&models.WindowV1{
+					SizeAsDuration:   time.Hour * 24,
+					OffsetAsDuration: 0,
+					TruncateTo:       "h",
 				},
 			},
 			Assets: *models.JobAssets{}.New(
@@ -129,10 +129,10 @@ func TestJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: models.JobSpecTaskWindow{
-					Size:       time.Hour * 24,
-					Offset:     0,
-					TruncateTo: "h",
+				Window: &&models.WindowV1{
+					SizeAsDuration:   time.Hour * 24,
+					OffsetAsDuration: 0,
+					TruncateTo:       "h",
 				},
 			},
 			Assets: *models.JobAssets{}.New(
@@ -180,10 +180,10 @@ func TestJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: models.JobSpecTaskWindow{
-					Size:       time.Hour * 24,
-					Offset:     0,
-					TruncateTo: "h",
+				Window: &&models.WindowV1{
+					SizeAsDuration:   time.Hour * 24,
+					OffsetAsDuration: 0,
+					TruncateTo:       "h",
 				},
 			},
 			Assets: *models.JobAssets{}.New(
@@ -215,10 +215,10 @@ func TestJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: models.JobSpecTaskWindow{
-					Size:       time.Hour * 24,
-					Offset:     0,
-					TruncateTo: "h",
+				Window: &&models.WindowV1{
+					SizeAsDuration:   time.Hour * 24,
+					OffsetAsDuration: 0,
+					TruncateTo:       "h",
 				},
 			},
 			Assets: *models.JobAssets{}.New(
