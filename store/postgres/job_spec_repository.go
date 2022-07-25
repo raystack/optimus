@@ -92,6 +92,7 @@ func (repo jobSpecRepository) GetInferredDependenciesPerJobID(ctx context.Contex
 			"j.id as dependency_id, "+
 			"j.name as dependency_name, "+
 			"j.task_name as dependency_task_name, "+
+			"j.destination as dependency_destination, "+
 			"j.namespace_id as dependency_namespace_id, "+
 			"j.project_id as dependency_project_id").
 		Joins("join job j on js.resource_urn = j.destination").

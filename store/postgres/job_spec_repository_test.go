@@ -389,6 +389,7 @@ func TestJobSpecRepository(t *testing.T) {
 			assert.EqualValues(t, []string{intraDependency.Name, interDependency.Name}, []string{checkModel[jobWithDependency.ID][0].Name, checkModel[jobWithDependency.ID][1].Name})
 			assert.EqualValues(t, []string{intraDependency.NamespaceSpec.Name, interDependency.NamespaceSpec.Name}, []string{checkModel[jobWithDependency.ID][0].NamespaceSpec.Name, checkModel[jobWithDependency.ID][1].NamespaceSpec.Name})
 			assert.EqualValues(t, []string{intraDependency.GetProjectSpec().Name, interDependency.GetProjectSpec().Name}, []string{checkModel[jobWithDependency.ID][0].GetProjectSpec().Name, checkModel[jobWithDependency.ID][1].GetProjectSpec().Name})
+			assert.EqualValues(t, []string{jobDestination1, jobDestination2}, []string{checkModel[jobWithDependency.ID][0].ResourceDestination, checkModel[jobWithDependency.ID][1].ResourceDestination})
 			assert.EqualValues(t, []string{gTask, gTask}, []string{checkModel[jobWithDependency.ID][0].Task.Unit.Info().Name, checkModel[jobWithDependency.ID][1].Task.Unit.Info().Name})
 			assert.Nil(t, err)
 		})

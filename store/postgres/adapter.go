@@ -531,9 +531,10 @@ func (adapt JobSpecAdapter) ToJobRun(jr JobRun) (models.JobRun, models.Namespace
 type jobDependency struct {
 	JobID uuid.UUID `json:"job_id"`
 
-	DependencyID       uuid.UUID `json:"dependency_id"`
-	DependencyName     string    `json:"dependency_name"`
-	DependencyTaskName string    `json:"dependency_task_name"`
+	DependencyID          uuid.UUID `json:"dependency_id"`
+	DependencyName        string    `json:"dependency_name"`
+	DependencyTaskName    string    `json:"dependency_task_name"`
+	DependencyDestination string    `json:"dependency_destination"`
 
 	DependencyProjectID uuid.UUID `json:"dependency_project_id"`
 	DependencyProject   Project   `gorm:"foreignKey:DependencyProjectID"`
@@ -567,10 +568,11 @@ func (adapt JobSpecAdapter) dependencyToJobSpec(conf jobDependency) (models.JobS
 	}
 
 	job := models.JobSpec{
-		ID:            conf.DependencyID,
-		Name:          conf.DependencyName,
-		Task:          models.JobSpecTask{Unit: execUnit},
-		NamespaceSpec: namespaceSpec,
+		ID:                  conf.DependencyID,
+		Name:                conf.DependencyName,
+		ResourceDestination: conf.DependencyDestination,
+		Task:                models.JobSpecTask{Unit: execUnit},
+		NamespaceSpec:       namespaceSpec,
 	}
 	return job, nil
 }

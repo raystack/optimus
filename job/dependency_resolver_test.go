@@ -1504,6 +1504,7 @@ func TestDependencyResolver(t *testing.T) {
 			assert.Equal(t, unknownDependencies, actualUnknownDependencies)
 			assert.NoError(t, actualError)
 		})
+
 		t.Run("return job specs with their external dependencies info, unknown dependencies (external) and nil if no error is encountered", func(t *testing.T) {
 			externalDependencyResolver := new(mock.ExternalDependencyResolver)
 			externalDependencyResolver.AssertExpectations(t)
@@ -1616,6 +1617,110 @@ func TestDependencyResolver(t *testing.T) {
 
 			assert.EqualValues(t, expectedJobSpecs, actualJobSpecs)
 			assert.Equal(t, unknownDependencies, actualUnknownDependencies)
+			assert.NoError(t, actualError)
+		})
+
+		t.Run("return job specs with only internal dependencies, nil unknown dependencies and nil error all internal dependencies are already resolved", func(t *testing.T) {
+			externalDependencyResolver := new(mock.ExternalDependencyResolver)
+			externalDependencyResolver.AssertExpectations(t)
+
+			jobSourceRepo := new(mock.JobSourceRepository)
+			jobSourceRepo.AssertExpectations(t)
+
+			basePlugin := &mock.BasePlugin{}
+			jobSpecRepo := mock.NewJobSpecRepository(t)
+			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, jobSourceRepo, nil, nil, externalDependencyResolver)
+
+			ctx := context.Background()
+			projectID := models.ProjectID(uuid.New())
+
+			projectSpec := models.ProjectSpec{
+				ID:   models.ProjectID(uuid.New()),
+				Name: "project",
+			}
+			namespaceSpec := models.NamespaceSpec{
+				ID:          uuid.New(),
+				Name:        "namespace",
+				ProjectSpec: projectSpec,
+			}
+			jobSpec := models.JobSpec{
+				ID:   uuid.New(),
+				Name: "job",
+				Hooks: []models.JobSpecHook{
+					{
+						Unit: &models.Plugin{
+							Base: basePlugin,
+						},
+					},
+				},
+				NamespaceSpec: namespaceSpec,
+			}
+			basePlugin.On("PluginInfo").Return(&models.PluginInfoResponse{
+				Name:      "plugin-c",
+				DependsOn: []string{"plugin-c"},
+			}, nil)
+
+			destination := "inferred-dependency"
+			inferredDependenciesPerJobID := map[uuid.UUID][]models.JobSpec{
+				jobSpec.ID: {
+					models.JobSpec{
+						Name:                "dependency",
+						ResourceDestination: destination,
+						NamespaceSpec:       namespaceSpec,
+					},
+				},
+			}
+
+			jobSpecRepo.On("GetAllByProjectID", ctx, projectID).Return([]models.JobSpec{jobSpec}, nil)
+			jobSpecRepo.On("GetStaticDependenciesPerJobID", ctx, projectID).Return(make(map[uuid.UUID][]models.JobSpec), nil)
+			jobSpecRepo.On("GetInferredDependenciesPerJobID", ctx, projectID).Return(inferredDependenciesPerJobID, nil)
+
+			staticExternalDependencies := make(map[string]models.ExternalDependency)
+			resourceURNsPerJobID := map[uuid.UUID][]string{
+				jobSpec.ID: {destination},
+			}
+			inferredExternalDependencies := make(map[string]models.ExternalDependency)
+
+			unresolvedStaticJobDependencyPerJobName := make(map[string][]models.UnresolvedJobDependency)
+			externalDependencyResolver.On("FetchStaticExternalDependenciesPerJobName", ctx, unresolvedStaticJobDependencyPerJobName).Return(staticExternalDependencies, []models.UnknownDependency{}, nil)
+
+			jobSourceRepo.On("GetResourceURNsPerJobID", ctx, projectID).Return(resourceURNsPerJobID, nil)
+
+			unresolvedInferredJobDependencyPerJobName := make(map[string][]models.UnresolvedJobDependency)
+			externalDependencyResolver.On("FetchInferredExternalDependenciesPerJobName", ctx, unresolvedInferredJobDependencyPerJobName).Return(inferredExternalDependencies, nil)
+
+			expectedJobSpecs := []models.JobSpec{
+				{
+					ID:   jobSpec.ID,
+					Name: "job",
+					Hooks: []models.JobSpecHook{
+						{
+							Unit: &models.Plugin{
+								Base: basePlugin,
+							},
+							DependsOn: []*models.JobSpecHook{
+								{
+									Unit: &models.Plugin{
+										Base: basePlugin,
+									},
+								},
+							},
+						},
+					},
+					Dependencies: map[string]models.JobSpecDependency{
+						projectSpec.Name + "/" + inferredDependenciesPerJobID[jobSpec.ID][0].Name: {
+							Project: &projectSpec,
+							Job:     &inferredDependenciesPerJobID[jobSpec.ID][0],
+						},
+					},
+					NamespaceSpec: namespaceSpec,
+				},
+			}
+
+			actualJobSpecs, actualUnknownDependencies, actualError := dependencyResolver.GetJobSpecsWithDependencies(ctx, projectID)
+
+			assert.EqualValues(t, expectedJobSpecs, actualJobSpecs)
+			assert.Empty(t, actualUnknownDependencies)
 			assert.NoError(t, actualError)
 		})
 	})
