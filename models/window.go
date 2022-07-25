@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -12,16 +11,10 @@ type Window interface {
 	GetEndTime(scheduleTime time.Time) (time.Time, error)
 
 	GetTruncateTo() string
-	GetOffset() string
-	GetSize() string
-}
 
-func NewWindow(version int, truncateTo, offset, size string) (Window, error) {
-	if version == 1 {
-		return windowV1{size, offset, truncateTo}, nil
-	}
-	if version == 2 {
-		return windowV2{size, offset, truncateTo}, nil
-	}
-	return nil, fmt.Errorf("window version [%d] is not recognized", version)
+	GetOffsetAsDuration() time.Duration
+	GetOffset() string
+
+	GetSizeAsDuration() time.Duration
+	GetSize() string
 }
