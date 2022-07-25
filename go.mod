@@ -65,10 +65,7 @@ require (
 	gorm.io/gorm v1.21.16
 )
 
-require (
-	github.com/hashicorp/go-getter v1.6.2
-	go.uber.org/multierr v1.7.0
-)
+require github.com/hashicorp/go-getter v1.6.2
 
 require (
 	cloud.google.com/go v0.94.0 // indirect
