@@ -1,17 +1,17 @@
 package models
 
 func NewTestWindowV1(truncateTo, offset, size string) Window {
-	return windowV1{
-		truncateTo: truncateTo,
-		offset:     offset,
-		size:       size,
+	return &WindowV1{
+		TruncateTo: truncateTo,
+		Offset:     offset,
+		Size:       size,
 	}
 }
 
 func NewTestWindowV2(truncateTo, offset, size string) Window {
-	return windowV2{
-		truncateTo: truncateTo,
-		offset:     offset,
-		size:       size,
+	return WindowV2{
+		TruncateTo: truncateTo,
+		Offset:     offset,
+		Size:       size,
 	}
 }

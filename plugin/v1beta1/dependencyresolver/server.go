@@ -3,7 +3,6 @@ package dependencyresolver
 import (
 	"context"
 
-	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin/v1beta1/cli"
@@ -21,7 +20,6 @@ func (s *GRPCServer) GenerateDestination(ctx context.Context, req *pbp.GenerateD
 	resp, err := s.Impl.GenerateDestination(ctx, models.GenerateDestinationRequest{
 		Config:        cli.AdaptConfigsFromProto(req.Config),
 		Assets:        cli.AdaptAssetsFromProto(req.Assets),
-		Project:       v1.FromProjectProtoWithSecrets(req.Project), // nolint:staticcheck
 		PluginOptions: models.PluginOptions{DryRun: req.Options.DryRun},
 	})
 	if err != nil {
@@ -34,7 +32,6 @@ func (s *GRPCServer) GenerateDependencies(ctx context.Context, req *pbp.Generate
 	resp, err := s.Impl.GenerateDependencies(ctx, models.GenerateDependenciesRequest{
 		Config:        cli.AdaptConfigsFromProto(req.Config),
 		Assets:        cli.AdaptAssetsFromProto(req.Assets),
-		Project:       v1.FromProjectProtoWithSecrets(req.Project), // nolint:staticcheck
 		PluginOptions: models.PluginOptions{DryRun: req.Options.DryRun},
 	})
 	if err != nil {

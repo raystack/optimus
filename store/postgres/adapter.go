@@ -35,10 +35,11 @@ type Job struct {
 	NamespaceID uuid.UUID
 	Namespace   Namespace `gorm:"foreignKey:NamespaceID"`
 
-	TaskName         string
-	TaskConfig       datatypes.JSON
-	WindowSize       *int64 // duration in nanos
-	WindowOffset     *int64
+	TaskName   string
+	TaskConfig datatypes.JSON
+
+	WindowSize       *string
+	WindowOffset     *string
 	WindowTruncateTo *string
 
 	Assets               datatypes.JSON
@@ -49,6 +50,11 @@ type Job struct {
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
 	DeletedAt gorm.DeletedAt
+
+	// Deprecated: do not use it unless WindowSize is empty
+	OldWindowSize *int64 // duration in nanos
+	// Deprecated: do not use it unless WindowOffset is empty
+	OldWindowOffset *int64
 }
 
 type JobBehavior struct {
@@ -218,6 +224,48 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		return models.JobSpec{}, fmt.Errorf("getting namespace spec of a job error: %w", err)
 	}
 
+	var window models.Window
+	switch conf.Version {
+	case 1:
+		var truncateTo string
+		if conf.WindowTruncateTo != nil {
+			truncateTo = *conf.WindowTruncateTo
+		}
+		var offset time.Duration
+		if conf.OldWindowOffset != nil {
+			offset = time.Duration(*conf.OldWindowOffset)
+		}
+		var size time.Duration
+		if conf.OldWindowSize != nil {
+			size = time.Duration(*conf.OldWindowSize)
+		}
+		window = &&models.WindowV1{
+			TruncateTo:       truncateTo,
+			OffsetAsDuration: offset,
+			SizeAsDuration:   size,
+		}
+	case 2:
+		var truncateTo string
+		if conf.WindowTruncateTo != nil {
+			truncateTo = *conf.WindowTruncateTo
+		}
+		var offset string
+		if conf.WindowOffset != nil {
+			offset = *conf.WindowOffset
+		}
+		var size string
+		if conf.WindowSize != nil {
+			size = *conf.WindowSize
+		}
+		window = models.WindowV2{
+			TruncateTo: truncateTo,
+			Offset:     offset,
+			Size:       size,
+		}
+	default:
+		return models.JobSpec{}, fmt.Errorf("spec version [%d] is not recognized", conf.Version)
+	}
+
 	job := models.JobSpec{
 		ID:                  conf.ID,
 		Version:             conf.Version,
@@ -244,11 +292,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		Task: models.JobSpecTask{
 			Unit:   execUnit,
 			Config: taskConf,
-			Window: models.JobSpecTaskWindow{
-				Size:       time.Duration(*conf.WindowSize),
-				Offset:     time.Duration(*conf.WindowOffset),
-				TruncateTo: *conf.WindowTruncateTo,
-			},
+			Window: window,
 		},
 		Assets:               *(models.JobAssets{}).New(jobAssets),
 		Dependencies:         dependencies,
@@ -340,8 +384,19 @@ func (JobSpecAdapter) FromJobSpec(spec models.JobSpec, resourceDestination strin
 		return Job{}, err
 	}
 
-	wsize := spec.Task.Window.Size.Nanoseconds()
-	woffset := spec.Task.Window.Offset.Nanoseconds()
+	truncateTo := spec.Task.Window.GetTruncateTo()
+	windowSize := spec.Task.Window.GetSize()
+	var oldWindowSize *time.Duration
+	if spec.Task.Window.GetSizeAsDuration() > 0 {
+		tempSize := spec.Task.Window.GetSizeAsDuration()
+		oldWindowSize = &tempSize
+	}
+	windowOffset := spec.Task.Window.GetOffset()
+	var oldWindowOffset *time.Duration
+	if spec.Task.Window.GetOffsetAsDuration() > 0 {
+		tempOffset := spec.Task.Window.GetOffsetAsDuration()
+		oldWindowOffset = &tempOffset
+	}
 
 	metadata, err := json.Marshal(spec.Metadata)
 	if err != nil {
@@ -363,13 +418,15 @@ func (JobSpecAdapter) FromJobSpec(spec models.JobSpec, resourceDestination strin
 		Dependencies:         dependenciesJSON,
 		TaskName:             spec.Task.Unit.Info().Name,
 		TaskConfig:           taskConfigJSON,
-		WindowSize:           &wsize,
-		WindowOffset:         &woffset,
-		WindowTruncateTo:     &spec.Task.Window.TruncateTo,
+		WindowSize:           &windowSize,
+		WindowOffset:         &windowOffset,
+		WindowTruncateTo:     &truncateTo,
 		Assets:               assetsJSON,
 		Hooks:                hooksJSON,
 		Metadata:             metadata,
 		ExternalDependencies: externalDependenciesJSON,
+		OldWindowSize:        (*int64)(oldWindowSize),
+		OldWindowOffset:      (*int64)(oldWindowOffset),
 	}, nil
 }
 

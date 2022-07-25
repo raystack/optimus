@@ -47,10 +47,10 @@ func TestCompiler(t *testing.T) {
 		Task: models.JobSpecTask{
 			Unit:     &models.Plugin{},
 			Priority: 2000,
-			Window: models.JobSpecTaskWindow{
-				Size:       time.Hour,
-				Offset:     0,
-				TruncateTo: "d",
+			Window: &&models.WindowV1{
+				SizeAsDuration:   time.Hour,
+				OffsetAsDuration: 0,
+				TruncateTo:       "d",
 			},
 		},
 		Dependencies: map[string]models.JobSpecDependency{},

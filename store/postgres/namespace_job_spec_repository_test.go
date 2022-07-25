@@ -99,10 +99,10 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: models.JobSpecTaskWindow{
-					Size:       time.Hour * 24,
-					Offset:     0,
-					TruncateTo: "h",
+				Window: &&models.WindowV1{
+					SizeAsDuration:   time.Hour * 24,
+					OffsetAsDuration: 0,
+					TruncateTo:       "h",
 				},
 			},
 			Assets: *models.JobAssets{}.New(
@@ -298,8 +298,12 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 			taskSchema := checkModel.Task.Unit.Info()
 			assert.Equal(t, gTask, taskSchema.Name)
 
-			testModelA.Task.Window.Offset = time.Hour * 2
-			testModelA.Task.Window.Size = 0
+			window := &&models.WindowV1{
+				SizeAsDuration:   0,
+				OffsetAsDuration: time.Hour * 2,
+				TruncateTo:       "h",
+			}
+			testModelA.Task.Window = window
 
 			// try for update
 			testModelA.Task.Unit = &models.Plugin{Base: execUnit2, DependencyMod: depMod2}
@@ -310,8 +314,8 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 			assert.Nil(t, err)
 			taskSchema = checkModel.Task.Unit.Info()
 			assert.Equal(t, tTask, taskSchema.Name)
-			assert.Equal(t, time.Hour*2, checkModel.Task.Window.Offset)
-			assert.Equal(t, time.Duration(0), checkModel.Task.Window.Size)
+			assert.Equal(t, time.Hour*2, checkModel.Task.Window.GetOffsetAsDuration())
+			assert.Equal(t, time.Duration(0), checkModel.Task.Window.GetSizeAsDuration())
 		})
 		t.Run("upsert without ID should auto generate it", func(t *testing.T) {
 			db := DBSetup()
