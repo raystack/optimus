@@ -72,9 +72,7 @@ func TestJobRunServiceServer(t *testing.T) {
 						Value: "this",
 					},
 				},
-				Window: &models.WindowV1{
-					Scope: models.ScopeServer,
-				},
+				Window: &models.WindowV1{},
 			},
 			Assets: *models.JobAssets{}.New(
 				[]models.JobSpecAsset{
