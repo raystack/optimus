@@ -15,15 +15,15 @@ type state struct {
 // increment the component of the time which the cursor is pointed at
 func (s *state) IncrementTime(increaseBy string) {
 	switch increaseBy {
-	case minute.getStringValue():
+	case pointToMinute.getStringValue():
 		s.scheduledTime = s.scheduledTime.Add(time.Minute)
-	case hour.getStringValue():
+	case pointToHour.getStringValue():
 		s.scheduledTime = s.scheduledTime.Add(time.Hour)
-	case day.getStringValue():
+	case PointToDay.getStringValue():
 		s.scheduledTime = s.scheduledTime.AddDate(0, 0, 1)
-	case month.getStringValue():
+	case pointToMonth.getStringValue():
 		s.scheduledTime = s.scheduledTime.AddDate(0, 1, 0)
-	case year.getStringValue():
+	case pointToYear.getStringValue():
 		s.scheduledTime = s.scheduledTime.AddDate(1, 0, 0)
 	}
 }
@@ -31,15 +31,15 @@ func (s *state) IncrementTime(increaseBy string) {
 // decrement the component of the time which the cursor is pointed at
 func (s *state) DecrementTime(decreaseBy string) {
 	switch decreaseBy {
-	case minute.getStringValue():
+	case pointToMinute.getStringValue():
 		s.scheduledTime = s.scheduledTime.Add(-1 * time.Minute)
-	case hour.getStringValue():
+	case pointToHour.getStringValue():
 		s.scheduledTime = s.scheduledTime.Add(-1 * time.Hour)
-	case day.getStringValue():
+	case PointToDay.getStringValue():
 		s.scheduledTime = s.scheduledTime.AddDate(0, 0, -1)
-	case month.getStringValue():
+	case pointToMonth.getStringValue():
 		s.scheduledTime = s.scheduledTime.AddDate(0, -1, 0)
-	case year.getStringValue():
+	case pointToYear.getStringValue():
 		s.scheduledTime = s.scheduledTime.AddDate(-1, 0, 0)
 	}
 }
