@@ -111,9 +111,9 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJo
 		},
 	}
 	jobWindow := &models.WindowV1{
-		SizeAsDuration:   time.Hour,
-		OffsetAsDuration: 0,
-		TruncateTo:       "d",
+		Size:       "1h",
+		Offset:     "0",
+		TruncateTo: "d",
 	}
 	jobAsset := *models.JobAssets{}.New(
 		[]models.JobSpecAsset{
@@ -142,8 +142,8 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJo
 		Window: jobWindow,
 	}
 	adaptedJobs := []models.JobSpec{
-		{Name: "job-1", Schedule: models.JobSpecSchedule{StartDate: startTime}, Task: jobTask, Assets: jobAsset, Dependencies: map[string]models.JobSpecDependency{}},
-		{Name: "job-2", Schedule: models.JobSpecSchedule{StartDate: startTime}, Task: jobTask, Assets: jobAsset, Dependencies: map[string]models.JobSpecDependency{}},
+		{Version: 1, Name: "job-1", Schedule: models.JobSpecSchedule{StartDate: startTime}, Task: jobTask, Assets: jobAsset, Dependencies: map[string]models.JobSpecDependency{}},
+		{Version: 1, Name: "job-2", Schedule: models.JobSpecSchedule{StartDate: startTime}, Task: jobTask, Assets: jobAsset, Dependencies: map[string]models.JobSpecDependency{}},
 	}
 
 	var jobsInProto []*pb.JobSpecification
@@ -190,9 +190,9 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_Adapt
 		},
 	}
 	jobWindow := &models.WindowV1{
-		SizeAsDuration:   time.Hour,
-		OffsetAsDuration: 0,
-		TruncateTo:       "d",
+		Size:       "1h",
+		Offset:     "0",
+		TruncateTo: "d",
 	}
 	jobAsset := *models.JobAssets{}.New(
 		[]models.JobSpecAsset{
@@ -221,8 +221,8 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_Adapt
 		Window: jobWindow,
 	}
 	adaptedJobs := []models.JobSpec{
-		{Name: "job-1", Schedule: models.JobSpecSchedule{StartDate: startTime}, Task: jobTask, Assets: jobAsset, Dependencies: map[string]models.JobSpecDependency{}},
-		{Name: "job-2", Schedule: models.JobSpecSchedule{StartDate: startTime}, Task: jobTask, Assets: jobAsset, Dependencies: map[string]models.JobSpecDependency{}},
+		{Version: 1, Name: "job-1", Schedule: models.JobSpecSchedule{StartDate: startTime}, Task: jobTask, Assets: jobAsset, Dependencies: map[string]models.JobSpecDependency{}},
+		{Version: 1, Name: "job-2", Schedule: models.JobSpecSchedule{StartDate: startTime}, Task: jobTask, Assets: jobAsset, Dependencies: map[string]models.JobSpecDependency{}},
 	}
 
 	var jobsInProto []*pb.JobSpecification
@@ -256,13 +256,9 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Continue_Depl
 		},
 	}
 	jobWindow := &models.WindowV1{
-		Scope:            models.ScopeServer,
-		SizeAsDuration:   time.Hour,
-		OffsetAsDuration: 0,
-		TruncateTo:       "d",
-	}
-	if err := jobWindow.Enrich(); err != nil {
-		panic(err)
+		Size:       "1h",
+		Offset:     "0",
+		TruncateTo: "d",
 	}
 	jobAsset := *models.JobAssets{}.New(
 		[]models.JobSpecAsset{
@@ -291,8 +287,8 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Continue_Depl
 		Window: jobWindow,
 	}
 	adaptedJobs := []models.JobSpec{
-		{Name: "job-1", Schedule: models.JobSpecSchedule{StartDate: startTime}, Task: jobTask, Assets: jobAsset, Dependencies: map[string]models.JobSpecDependency{}},
-		{Name: "job-2", Schedule: models.JobSpecSchedule{StartDate: startTime}, Task: jobTask, Assets: jobAsset, Dependencies: map[string]models.JobSpecDependency{}},
+		{Version: 1, Name: "job-1", Schedule: models.JobSpecSchedule{StartDate: startTime}, Task: jobTask, Assets: jobAsset, Dependencies: map[string]models.JobSpecDependency{}},
+		{Version: 1, Name: "job-2", Schedule: models.JobSpecSchedule{StartDate: startTime}, Task: jobTask, Assets: jobAsset, Dependencies: map[string]models.JobSpecDependency{}},
 	}
 
 	var jobsInProto []*pb.JobSpecification
@@ -323,7 +319,7 @@ func (s *JobSpecServiceServerTestSuite) TestGetJobSpecification_Success() {
 
 	execUnit1 := new(mock.BasePlugin)
 	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "task"}, nil)
-	jobSpec := models.JobSpec{Name: req.JobName, Task: models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}}
+	jobSpec := models.JobSpec{Version: 1, Name: req.JobName, Task: models.JobSpecTask{Window: &models.WindowV1{}, Unit: &models.Plugin{Base: execUnit1}}}
 
 	s.namespaceService.On("Get", s.ctx, req.ProjectName, req.NamespaceName).Return(s.namespaceSpec, nil).Once()
 	s.jobService.On("GetByName", s.ctx, req.JobName, s.namespaceSpec).Return(jobSpec, nil).Once()
@@ -372,7 +368,7 @@ func (s *JobSpecServiceServerTestSuite) TestGetJobSpecifications_Success() {
 
 	execUnit1 := new(mock.BasePlugin)
 	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "task"}, nil)
-	jobSpec := models.JobSpec{Name: req.JobName, Task: models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}}
+	jobSpec := models.JobSpec{Version: 1, Name: req.JobName, Task: models.JobSpecTask{Window: &models.WindowV1{}, Unit: &models.Plugin{Base: execUnit1}}}
 	s.jobService.On("GetByFilter", s.ctx, jobSpecFilter).Return([]models.JobSpec{jobSpec}, nil).Once()
 
 	runtimeServiceServer := s.newJobSpecServiceServer()
@@ -431,7 +427,8 @@ func TestJobSpecificationOnServer(t *testing.T) {
 
 			deploymentID := models.DeploymentID(uuid.New())
 			jobSpec := models.JobSpec{
-				Name: jobName,
+				Version: 1,
+				Name:    jobName,
 				Task: models.JobSpecTask{
 					Unit: &models.Plugin{
 						Base: execUnit1,
@@ -443,9 +440,9 @@ func TestJobSpecificationOnServer(t *testing.T) {
 						},
 					},
 					Window: &models.WindowV1{
-						SizeAsDuration:   time.Hour,
-						OffsetAsDuration: 0,
-						TruncateTo:       "d",
+						Size:       "1h",
+						Offset:     "0",
+						TruncateTo: "d",
 					},
 				},
 				Assets: *models.JobAssets{}.New(

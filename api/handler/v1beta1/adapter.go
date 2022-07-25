@@ -55,16 +55,11 @@ func FromJobProto(spec *pb.JobSpecification, pluginRepo models.PluginRepository)
 	var window models.Window
 	switch spec.Version {
 	case 1:
-		windowV1 := &models.WindowV1{
-			Scope:      models.ScopeServer,
+		window = &models.WindowV1{
 			TruncateTo: spec.GetWindowTruncateTo(),
 			Offset:     spec.GetWindowOffset(),
 			Size:       spec.GetWindowSize(),
 		}
-		if err := windowV1.Enrich(); err != nil {
-			return models.JobSpec{}, err
-		}
-		window = windowV1
 	case 2:
 		window = models.WindowV2{
 			TruncateTo: spec.GetWindowTruncateTo(),
