@@ -263,7 +263,7 @@ class SuperExternalTaskSensor(BaseSensorOperator):
                 upstream_schedule = self.get_schedule_interval(schedule_time)
             except Exception as e:
                 self.log.warning("error while fetching upstream schedule :: {}".format(e))
-                context[SCHEDULER_ERR_MSG] = e
+                context[SCHEDULER_ERR_MSG] = "error while fetching upstream schedule :: {}".format(e)
                 log_failure_event(context)
                 return False
 
@@ -289,7 +289,7 @@ class SuperExternalTaskSensor(BaseSensorOperator):
                 return False
             return True
         except Exception as e :
-            context[SCHEDULER_ERR_MSG] = e
+            context[SCHEDULER_ERR_MSG] = "error while sensor poke :: {}".format(e)
             log_failure_event(context)
 
     def get_last_upstream_times(self, schedule_time_of_current_job, upstream_schedule_interval):
