@@ -330,11 +330,6 @@ def optimus_notify(context, event_meta):
     params = context.get("params")
     optimus_client = OptimusAPIClient(params["optimus_hostname"])
 
-    # # what to do of this ? 
-    # taskfail_alert = int(Variable.get("taskfail_alert", default_var=1))
-    # if taskfail_alert != 1:
-    #     return "suppressed failure alert"
-
     current_dag_id = context.get('task_instance').dag_id
     current_execution_date = context.get('execution_date')
     current_schedule_date = context.get('next_execution_date')
