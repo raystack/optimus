@@ -27,10 +27,10 @@ func Job(i int, namespace models.NamespaceSpec, bq2bq models.DependencyResolverM
 		},
 	}
 
-	window := &&models.WindowV1{
-		SizeAsDuration:   time.Hour * 24,
-		OffsetAsDuration: time.Second * 0,
-		TruncateTo:       "h",
+	window := models.WindowV1{
+		Size:       "24h",
+		Offset:     "0",
+		TruncateTo: "h",
 	}
 	var hooks []models.JobSpecHook
 	if hookUnit != nil {

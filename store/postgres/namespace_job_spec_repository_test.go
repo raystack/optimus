@@ -81,8 +81,9 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 	}
 	testConfigs := []models.JobSpec{
 		{
-			ID:   uuid.New(),
-			Name: "g-optimus-id",
+			Version: 1,
+			ID:      uuid.New(),
+			Name:    "g-optimus-id",
 			Behavior: models.JobSpecBehavior{
 				DependsOnPast: false,
 				CatchUp:       true,
@@ -99,10 +100,10 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: &&models.WindowV1{
-					SizeAsDuration:   time.Hour * 24,
-					OffsetAsDuration: 0,
-					TruncateTo:       "h",
+				Window: models.WindowV1{
+					Size:       "24h",
+					Offset:     "0",
+					TruncateTo: "h",
 				},
 			},
 			Assets: *models.JobAssets{}.New(
@@ -145,8 +146,9 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 			NamespaceSpec: namespaceSpec,
 		},
 		{
-			ID:   uuid.New(),
-			Name: "t-optimus-id",
+			Version: 1,
+			ID:      uuid.New(),
+			Name:    "t-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: &models.Plugin{Base: execUnit2, DependencyMod: depMod2},
 				Config: []models.JobSpecConfigItem{
@@ -154,6 +156,7 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
+				Window: models.WindowV1{},
 			},
 			NamespaceSpec: namespaceSpec,
 		},
@@ -298,10 +301,10 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 			taskSchema := checkModel.Task.Unit.Info()
 			assert.Equal(t, gTask, taskSchema.Name)
 
-			window := &&models.WindowV1{
-				SizeAsDuration:   0,
-				OffsetAsDuration: time.Hour * 2,
-				TruncateTo:       "h",
+			window := models.WindowV1{
+				Size:       "0",
+				Offset:     "2h",
+				TruncateTo: "h",
 			}
 			testModelA.Task.Window = window
 

@@ -6,7 +6,6 @@ package postgres_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -60,8 +59,9 @@ func TestJobSpecRepository(t *testing.T) {
 	}
 	testConfigs := []models.JobSpec{
 		{
-			ID:   uuid.New(),
-			Name: "job-1",
+			Version: 1,
+			ID:      uuid.New(),
+			Name:    "job-1",
 			Behavior: models.JobSpecBehavior{
 				DependsOnPast: false,
 				CatchUp:       true,
@@ -78,10 +78,10 @@ func TestJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: &&models.WindowV1{
-					SizeAsDuration:   time.Hour * 24,
-					OffsetAsDuration: 0,
-					TruncateTo:       "h",
+				Window: models.WindowV1{
+					Size:       "24h",
+					Offset:     "0",
+					TruncateTo: "h",
 				},
 			},
 			Assets: *models.JobAssets{}.New(
@@ -111,8 +111,9 @@ func TestJobSpecRepository(t *testing.T) {
 			NamespaceSpec:       namespaceSpec,
 		},
 		{
-			ID:   uuid.New(),
-			Name: "job-2",
+			Version: 1,
+			ID:      uuid.New(),
+			Name:    "job-2",
 			Behavior: models.JobSpecBehavior{
 				DependsOnPast: false,
 				CatchUp:       true,
@@ -129,10 +130,10 @@ func TestJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: &&models.WindowV1{
-					SizeAsDuration:   time.Hour * 24,
-					OffsetAsDuration: 0,
-					TruncateTo:       "h",
+				Window: models.WindowV1{
+					Size:       "24h",
+					Offset:     "0",
+					TruncateTo: "h",
 				},
 			},
 			Assets: *models.JobAssets{}.New(
@@ -162,8 +163,9 @@ func TestJobSpecRepository(t *testing.T) {
 			NamespaceSpec:       namespaceSpec,
 		},
 		{
-			ID:   uuid.New(),
-			Name: "job-3",
+			Version: 1,
+			ID:      uuid.New(),
+			Name:    "job-3",
 			Behavior: models.JobSpecBehavior{
 				DependsOnPast: false,
 				CatchUp:       true,
@@ -180,10 +182,10 @@ func TestJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: &&models.WindowV1{
-					SizeAsDuration:   time.Hour * 24,
-					OffsetAsDuration: 0,
-					TruncateTo:       "h",
+				Window: models.WindowV1{
+					Size:       "24h",
+					Offset:     "0",
+					TruncateTo: "h",
 				},
 			},
 			Assets: *models.JobAssets{}.New(
@@ -197,8 +199,9 @@ func TestJobSpecRepository(t *testing.T) {
 			NamespaceSpec: namespaceSpec,
 		},
 		{
-			ID:   uuid.New(),
-			Name: "job-4",
+			Version: 1,
+			ID:      uuid.New(),
+			Name:    "job-4",
 			Behavior: models.JobSpecBehavior{
 				DependsOnPast: false,
 				CatchUp:       true,
@@ -215,10 +218,10 @@ func TestJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: &&models.WindowV1{
-					SizeAsDuration:   time.Hour * 24,
-					OffsetAsDuration: 0,
-					TruncateTo:       "h",
+				Window: models.WindowV1{
+					Size:       "24h",
+					Offset:     "0",
+					TruncateTo: "h",
 				},
 			},
 			Assets: *models.JobAssets{}.New(
