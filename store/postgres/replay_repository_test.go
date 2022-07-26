@@ -62,16 +62,19 @@ func TestIntegrationReplayRepository(t *testing.T) {
 	gTask := "g-task"
 	jobConfigs := []models.JobSpec{
 		{
+			Version:       1,
 			ID:            uuid.New(),
 			Name:          "job-1",
 			NamespaceSpec: namespaceSpec,
 		},
 		{
+			Version:       1,
 			ID:            uuid.New(),
 			Name:          "job-2",
 			NamespaceSpec: namespaceSpec,
 		},
 		{
+			Version:       1,
 			ID:            uuid.New(),
 			Name:          "job-3",
 			NamespaceSpec: namespaceSpec,

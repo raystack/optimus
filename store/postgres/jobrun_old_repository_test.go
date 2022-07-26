@@ -50,8 +50,9 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 
 	jobConfigs := []models.JobSpec{
 		{
-			ID:   uuid.New(),
-			Name: "g-optimus-id",
+			Version: 1,
+			ID:      uuid.New(),
+			Name:    "g-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: &models.Plugin{Base: execUnit1},
 				Config: []models.JobSpecConfigItem{
@@ -59,6 +60,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
+				Window: models.WindowV1{},
 			},
 			Assets: *models.JobAssets{}.New(
 				[]models.JobSpecAsset{
@@ -69,11 +71,13 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 				}),
 		},
 		{
-			Name: "",
+			Version: 1,
+			Name:    "",
 		},
 		{
-			ID:   uuid.New(),
-			Name: "t-optimus-id",
+			Version: 1,
+			ID:      uuid.New(),
+			Name:    "t-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: &models.Plugin{Base: execUnit2},
 				Config: []models.JobSpecConfigItem{
@@ -81,6 +85,7 @@ func TestIntegrationJobRunRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
+				Window: models.WindowV1{},
 			},
 		},
 	}
