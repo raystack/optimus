@@ -106,8 +106,12 @@ func FromJobProto(spec *pb.JobSpecification, pluginRepo models.PluginRepository)
 		metadata.Resource = FromJobSpecMetadataResourceProto(spec.Metadata.Resource)
 		metadata.Airflow = FromJobSpecMetadataAirflowProto(spec.Metadata.Airflow)
 	}
+	version := int(spec.Version)
+	if version == 0 {
+		version = models.JobSpecDefaultVersion
+	}
 	return models.JobSpec{
-		Version:     int(spec.Version),
+		Version:     version,
 		Name:        spec.Name,
 		Owner:       spec.Owner,
 		Description: spec.Description,
@@ -167,8 +171,12 @@ func ToJobSpecificationProto(spec models.JobSpec) *pb.JobSpecification {
 		size = spec.Task.Window.GetSize()
 	}
 
+	version := int32(spec.Version)
+	if version == 0 {
+		version = models.JobSpecDefaultVersion
+	}
 	conf := &pb.JobSpecification{
-		Version:          int32(spec.Version),
+		Version:          version,
 		Name:             spec.Name,
 		Owner:            spec.Owner,
 		Interval:         spec.Schedule.Interval,
