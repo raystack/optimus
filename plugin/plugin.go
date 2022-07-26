@@ -20,11 +20,7 @@ import (
 
 func Initialize(pluginLogger hclog.Logger, arg ...string) error {
 	discoveredPlugins := DiscoverPlugins(pluginLogger)
-	discoveredYamlPlugins := DiscoverPluginsGivenFilePattern(pluginLogger, yaml.Prefix, yaml.Suffix)
 	pluginLogger.Debug(fmt.Sprintf("discovering binary plugins(%d)...", len(discoveredPlugins)))
-	pluginLogger.Debug(fmt.Sprintf("discovering yaml   plugins(%d)...", len(discoveredYamlPlugins)))
-
-	yaml.Init(discoveredYamlPlugins, &models.YamlPluginRegistry, pluginLogger) // initializing yaml plugin repo
 
 	// pluginMap is the map of plugins we can dispense.
 	pluginMap := map[string]plugin.Plugin{
@@ -87,11 +83,16 @@ func Initialize(pluginLogger hclog.Logger, arg ...string) error {
 			}
 		}
 
-		if err := models.PluginRegistry.Add(baseClient, cliClient, drClient); err != nil {
+		if err := models.PluginRegistry.Add(baseClient, cliClient, drClient, nil); err != nil {
 			return fmt.Errorf("PluginRegistry.Add: %s: %w", pluginPath, err)
 		}
 		pluginLogger.Debug("plugin ready: ", baseInfo.Name)
 	}
+
+	// first fetch binary plugins, then add yaml plugin for which binary is not added earlier
+	discoveredYamlPlugins := DiscoverPluginsGivenFilePattern(pluginLogger, yaml.Prefix, yaml.Suffix)
+	pluginLogger.Debug(fmt.Sprintf("discovering yaml   plugins(%d)...", len(discoveredYamlPlugins)))
+	yaml.Init(models.PluginRegistry, discoveredYamlPlugins, pluginLogger) // initializing yaml plugin repo
 
 	return nil
 }

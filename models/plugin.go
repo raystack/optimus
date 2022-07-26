@@ -337,7 +337,7 @@ var (
 )
 
 type PluginRepository interface {
-	Add(BasePlugin, CommandLineMod, DependencyResolverMod) error
+	Add(BasePlugin, CommandLineMod, DependencyResolverMod, CommandLineMod) error
 	GetByName(string) (*Plugin, error)
 	GetAll() []*Plugin
 	GetTasks() []*Plugin
@@ -355,10 +355,15 @@ type Plugin struct {
 	// can be used in different circumstances
 	CLIMod        CommandLineMod
 	DependencyMod DependencyResolverMod
+	YamlMod       CommandLineMod
 }
 
 func (p *Plugin) Info() *PluginInfoResponse {
-	resp, _ := p.Base.PluginInfo()
+	if p.Base != nil {
+		resp, _ := p.Base.PluginInfo()
+		return resp
+	}
+	resp, _ := p.YamlMod.PluginInfo()
 	return resp
 }
 
@@ -396,6 +401,8 @@ func (s *registeredPlugins) GetCommandLines() []CommandLineMod {
 	for _, unit := range s.data {
 		if unit.CLIMod != nil {
 			list = append(list, unit.CLIMod)
+		} else if unit.YamlMod != nil {
+			list = append(list, unit.YamlMod)
 		}
 	}
 	return list
@@ -421,11 +428,21 @@ func (s *registeredPlugins) GetHooks() []*Plugin {
 	return list
 }
 
-func (s *registeredPlugins) Add(baseMod BasePlugin, cliMod CommandLineMod, drMod DependencyResolverMod) error {
-	info, err := baseMod.PluginInfo()
-	if err != nil {
-		return err
+func (s *registeredPlugins) Add(baseMod BasePlugin, cliMod CommandLineMod, drMod DependencyResolverMod, yamlMod CommandLineMod) error {
+	var info *PluginInfoResponse
+	var err error
+	if yamlMod != nil {
+		info, err = yamlMod.PluginInfo()
+		if err != nil {
+			return err
+		}
+	} else {
+		info, err = baseMod.PluginInfo()
+		if err != nil {
+			return err
+		}
 	}
+
 	if info.Name == "" {
 		return errors.New("plugin name cannot be empty")
 	}
@@ -456,6 +473,7 @@ func (s *registeredPlugins) Add(baseMod BasePlugin, cliMod CommandLineMod, drMod
 		Base:          baseMod,
 		CLIMod:        cliMod,
 		DependencyMod: drMod,
+		YamlMod:       yamlMod,
 	}
 	return nil
 }

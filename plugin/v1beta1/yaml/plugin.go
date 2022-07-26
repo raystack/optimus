@@ -54,13 +54,22 @@ func FromYaml(plugin_path string) (*models.YamlPlugin, error) {
 	return &plugin, nil
 }
 
-func Init(discoveredPlugins []string, plugin_repo *models.IYamlPluginRepository, pluginLogger hclog.Logger) error {
-	for _, pluginPath := range discoveredPlugins {
-		plugin, _ := FromYaml(pluginPath)
-		if err := models.YamlPluginRegistry.Add(plugin); err != nil {
-			return fmt.Errorf("PluginRegistry.Add: %s: %w", pluginPath, err)
+func Init(plugins_repo models.PluginRepository, discoveredYamlPlugins []string, pluginLogger hclog.Logger) error {
+	for _, yamlPluginPath := range discoveredYamlPlugins {
+		yamlPlugin, _ := FromYaml(yamlPluginPath)
+
+		if binPlugin, _ := plugins_repo.GetByName(yamlPlugin.Info.Name); binPlugin != nil {
+			// if bin plugin exists
+			continue
 		}
-		pluginLogger.Debug("plugin ready: ", plugin.Info.Name)
+		if err := plugins_repo.Add(nil, nil, nil, yamlPlugin); err != nil {
+			return fmt.Errorf("PluginRegistry.Add: %s: %w", yamlPluginPath, err)
+		}
+
+		// if err := models.YamlPluginRegistry.Add(yamlPlugin); err != nil {
+		// 	return fmt.Errorf("PluginRegistry.Add: %s: %w", yamlPluginPath, err)
+		// }
+		pluginLogger.Debug("plugin ready: ", yamlPlugin.Info.Name)
 	}
 	return nil
 }
