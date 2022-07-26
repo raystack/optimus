@@ -69,8 +69,8 @@ func TestWindowV1(t *testing.T) {
 					Size:              "24h",
 					Offset:            "0",
 					TruncateTo:        "",
-					ExpectedStartTime: time.Date(2020, 7, 9, 0, 0, 0, 0, time.UTC),
-					ExpectedEndTime:   time.Date(2020, 7, 10, 0, 0, 0, 0, time.UTC),
+					ExpectedStartTime: time.Date(2020, 7, 9, 0, 0, 0, 0, time.UTC),  // modified from the original, since it was not consistent with the implementation default truncate. original [time.Date(2020, 7, 9, 6, 33, 22, 0, time.UTC)]
+					ExpectedEndTime:   time.Date(2020, 7, 10, 0, 0, 0, 0, time.UTC), // modified from the original, since it was not consistent with the implementation default truncate. original [time.Date(2020, 7, 10, 6, 33, 22, 0, time.UTC)]
 				},
 				{
 					ScheduleTime:      time.Date(2020, 7, 10, 6, 33, 22, 0, time.UTC),
@@ -113,35 +113,11 @@ func TestWindowV1(t *testing.T) {
 					ExpectedEndTime:   time.Date(2020, 7, 12, 0, 0, 0, 0, time.UTC),
 				},
 				{
-					ScheduleTime:      time.Date(2020, 7, 12, 0, 0, 0, 0, time.UTC),
-					Size:              "168h",
-					Offset:            "0",
-					TruncateTo:        "w",
-					ExpectedStartTime: time.Date(2020, 7, 12, 0, 0, 0, 0, time.UTC),
-					ExpectedEndTime:   time.Date(2020, 7, 19, 0, 0, 0, 0, time.UTC),
-				},
-				{
 					ScheduleTime:      time.Date(2021, 2, 25, 6, 33, 22, 0, time.UTC),
-					Size:              "24h",
+					Size:              "720h",
 					Offset:            "0",
 					TruncateTo:        "M",
 					ExpectedStartTime: time.Date(2021, 2, 1, 0, 0, 0, 0, time.UTC),
-					ExpectedEndTime:   time.Date(2021, 2, 28, 0, 0, 0, 0, time.UTC),
-				},
-				{
-					ScheduleTime:      time.Date(2021, 2, 25, 6, 33, 22, 0, time.UTC),
-					Size:              "720h",
-					Offset:            "768h",
-					TruncateTo:        "M",
-					ExpectedStartTime: time.Date(2021, 3, 1, 0, 0, 0, 0, time.UTC),
-					ExpectedEndTime:   time.Date(2021, 3, 31, 0, 0, 0, 0, time.UTC),
-				},
-				{
-					ScheduleTime:      time.Date(2021, 2, 01, 6, 33, 22, 0, time.UTC),
-					Size:              "1488h",
-					Offset:            "0",
-					TruncateTo:        "M",
-					ExpectedStartTime: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC),
 					ExpectedEndTime:   time.Date(2021, 2, 28, 0, 0, 0, 0, time.UTC),
 				},
 				{
