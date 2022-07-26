@@ -552,6 +552,13 @@ func (JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 		})
 	}
 
+	var truncateTo, offset, size string
+	if spec.Task.Window != nil {
+		truncateTo = spec.Task.Window.GetTruncateTo()
+		offset = spec.Task.Window.GetOffset()
+		size = spec.Task.Window.GetSize()
+	}
+
 	parsed := Job{
 		Version:     spec.Version,
 		Name:        spec.Name,
@@ -576,9 +583,9 @@ func (JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 			Name:   spec.Task.Unit.Info().Name,
 			Config: taskConf,
 			Window: JobTaskWindow{
-				TruncateTo: spec.Task.Window.GetTruncateTo(),
-				Offset:     spec.Task.Window.GetOffset(),
-				Size:       spec.Task.Window.GetSize(),
+				TruncateTo: truncateTo,
+				Offset:     offset,
+				Size:       size,
 			},
 		},
 		Asset:        spec.Assets.ToMap(),
