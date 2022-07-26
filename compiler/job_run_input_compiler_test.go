@@ -47,10 +47,9 @@ func TestJobRunInputCompiler(t *testing.T) {
 		StartDate: time.Date(2000, 11, 11, 0, 0, 0, 0, time.UTC),
 		Interval:  "* * * * *",
 	}
-	window := &models.WindowV1{
-		Size:       "1h",
-		Offset:     "0",
-		TruncateTo: "d",
+	window, err := models.NewWindow(1, "d", "0", "1h")
+	if err != nil {
+		panic(err)
 	}
 	scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
 	startTime, err := window.GetStartTime(scheduledAt)

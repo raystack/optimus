@@ -57,6 +57,10 @@ func TestJobSpecRepository(t *testing.T) {
 		Name:        "dev-team-2",
 		ProjectSpec: externalProjectSpec,
 	}
+	window, err := models.NewWindow(1, "h", "0", "24h")
+	if err != nil {
+		panic(err)
+	}
 	testConfigs := []models.JobSpec{
 		{
 			Version: 1,
@@ -78,11 +82,7 @@ func TestJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: models.WindowV1{
-					Size:       "24h",
-					Offset:     "0",
-					TruncateTo: "h",
-				},
+				Window: window,
 			},
 			Assets: *models.JobAssets{}.New(
 				[]models.JobSpecAsset{
@@ -130,11 +130,7 @@ func TestJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: models.WindowV1{
-					Size:       "24h",
-					Offset:     "0",
-					TruncateTo: "h",
-				},
+				Window: window,
 			},
 			Assets: *models.JobAssets{}.New(
 				[]models.JobSpecAsset{
@@ -182,11 +178,7 @@ func TestJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: models.WindowV1{
-					Size:       "24h",
-					Offset:     "0",
-					TruncateTo: "h",
-				},
+				Window: window,
 			},
 			Assets: *models.JobAssets{}.New(
 				[]models.JobSpecAsset{
@@ -218,11 +210,7 @@ func TestJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: models.WindowV1{
-					Size:       "24h",
-					Offset:     "0",
-					TruncateTo: "h",
-				},
+				Window: window,
 			},
 			Assets: *models.JobAssets{}.New(
 				[]models.JobSpecAsset{

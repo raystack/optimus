@@ -15,48 +15,66 @@ func TestWindowV1(t *testing.T) {
 		t.Run("should not throw error for window size which is not a positive or an instant time duration", func(t *testing.T) {
 			validWindowConfigs := []string{"24h", "2h45m", "60s", "45m24h", "", "0"}
 			for _, config := range validWindowConfigs {
-				window := models.NewTestWindowV1("", "", config)
-				err := window.Validate()
+				window, err := models.NewWindow(1, "", "", config)
+				if err != nil {
+					panic(err)
+				}
+				err = window.Validate()
 				assert.Nil(t, err, fmt.Sprintf("failed for : %s", config))
 			}
 		})
 		t.Run("should throw error for window size which is not a valid time duration", func(t *testing.T) {
 			inValidWindowConfigs := []string{"1M", "45M24h", "60S", "60", "2d", "-24h"}
 			for _, config := range inValidWindowConfigs {
-				window := models.NewTestWindowV1("", "", config)
-				err := window.Validate()
+				window, err := models.NewWindow(1, "", "", config)
+				if err != nil {
+					panic(err)
+				}
+				err = window.Validate()
 				assert.NotNil(t, err, fmt.Sprintf("failed for %s", config))
 			}
 		})
 		t.Run("should not throw error for window offset which is a valid time duration", func(t *testing.T) {
 			validOffsetConfigs := []string{"24h", "2h45m", "60s", "45m24h", "0", ""}
 			for _, config := range validOffsetConfigs {
-				window := models.NewTestWindowV1("", config, "")
-				err := window.Validate()
+				window, err := models.NewWindow(1, "", config, "")
+				if err != nil {
+					panic(err)
+				}
+				err = window.Validate()
 				assert.Nil(t, err, fmt.Sprintf("failed for : %s", config))
 			}
 		})
 		t.Run("should throw error for window offset which is not a valid time duration", func(t *testing.T) {
 			inValidOffsetConfigs := []string{"1M", "45M24h", "60S", "60"}
 			for _, config := range inValidOffsetConfigs {
-				window := models.NewTestWindowV1("", config, "")
-				err := window.Validate()
+				window, err := models.NewWindow(1, "", config, "")
+				if err != nil {
+					panic(err)
+				}
+				err = window.Validate()
 				assert.NotNil(t, err, fmt.Sprintf("failed for %s", config))
 			}
 		})
 		t.Run("should not throw error for valid window truncate configs", func(t *testing.T) {
 			validTruncateConfigs := []string{"h", "d", "w", "m", "M", ""}
 			for _, config := range validTruncateConfigs {
-				window := models.NewTestWindowV1(config, "", "")
-				err := window.Validate()
+				window, err := models.NewWindow(1, config, "", "")
+				if err != nil {
+					panic(err)
+				}
+				err = window.Validate()
 				assert.Nil(t, err, fmt.Sprintf("failed for : %s", config))
 			}
 		})
 		t.Run("should throw error for window truncate when it is not a valid time duration", func(t *testing.T) {
 			inValidTruncateConfigs := []string{"s", "a", "ms"}
 			for _, config := range inValidTruncateConfigs {
-				window := models.NewTestWindowV1(config, "", "")
-				err := window.Validate()
+				window, err := models.NewWindow(1, config, "", "")
+				if err != nil {
+					panic(err)
+				}
+				err = window.Validate()
 				assert.NotNil(t, err, fmt.Sprintf("failed for %s", config))
 			}
 		})
@@ -227,7 +245,10 @@ func TestWindowV1(t *testing.T) {
 				},
 			}
 			for _, sc := range cases {
-				w := models.NewTestWindowV1(sc.TruncateTo, sc.Offset, sc.Size)
+				w, err := models.NewWindow(1, sc.TruncateTo, sc.Offset, sc.Size)
+				if err != nil {
+					panic(err)
+				}
 
 				actualValidateError := w.Validate()
 				actualStartTime, actualStartTimeError := w.GetStartTime(sc.ScheduleTime)

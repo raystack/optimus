@@ -37,15 +37,19 @@ func TestReplaySyncer(t *testing.T) {
 		StartDate: dagStartTime,
 		Interval:  "0 2 * * *",
 	}
+	oneDayWindow, err := models.NewWindow(1, "", "", "24h")
+	if err != nil {
+		panic(err)
+	}
 	oneDayTaskWindow := models.JobSpecTask{
-		Window: models.WindowV1{
-			Size: "24h",
-		},
+		Window: oneDayWindow,
+	}
+	threeDaysWindow, err := models.NewWindow(1, "", "", "72h")
+	if err != nil {
+		panic(err)
 	}
 	threeDayTaskWindow := models.JobSpecTask{
-		Window: models.WindowV1{
-			Size: "72h",
-		},
+		Window: threeDaysWindow,
 	}
 	specs[spec1] = models.JobSpec{ID: uuid.New(), Name: spec1, Dependencies: noDependency, Schedule: twoAMSchedule, Task: oneDayTaskWindow}
 	specs[spec2] = models.JobSpec{ID: uuid.New(), Name: spec2, Dependencies: getDependencyObject(specs, spec1), Schedule: twoAMSchedule, Task: threeDayTaskWindow}

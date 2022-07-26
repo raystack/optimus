@@ -84,6 +84,10 @@ func TestJobSpecRepository(t *testing.T) {
 			},
 		},
 	}
+	window, err := models.NewWindow(1, "d", "0", "24h")
+	if err != nil {
+		panic(err)
+	}
 	spec := models.JobSpec{
 		Version: 1,
 		Name:    "test",
@@ -97,12 +101,8 @@ func TestJobSpecRepository(t *testing.T) {
 			DependsOnPast: false,
 		},
 		Task: models.JobSpecTask{
-			Unit: &models.Plugin{Base: execUnit},
-			Window: models.WindowV1{
-				Size:       "24h",
-				Offset:     "0",
-				TruncateTo: "d",
-			},
+			Unit:   &models.Plugin{Base: execUnit},
+			Window: window,
 			Config: models.JobSpecConfigs{
 				{
 					Name:  "table",
@@ -131,12 +131,8 @@ func TestJobSpecRepository(t *testing.T) {
 			DependsOnPast: false,
 		},
 		Task: models.JobSpecTask{
-			Unit: &models.Plugin{Base: execUnit},
-			Window: models.WindowV1{
-				Size:       "24h",
-				Offset:     "0",
-				TruncateTo: "d",
-			},
+			Unit:   &models.Plugin{Base: execUnit},
+			Window: window,
 			Config: models.JobSpecConfigs{
 				{
 					Name:  "table",
@@ -443,6 +439,10 @@ task:
 dependencies: []
 hooks: []`,
 		}
+		window, err := models.NewWindow(1, "d", "0", "24h")
+		if err != nil {
+			panic(err)
+		}
 		jobspecs := []models.JobSpec{
 			{
 				Version: 1,
@@ -459,11 +459,7 @@ hooks: []`,
 				Task: models.JobSpecTask{
 					Unit:   &models.Plugin{Base: execUnit},
 					Config: models.JobSpecConfigs{},
-					Window: models.WindowV1{
-						Size:       "24h",
-						Offset:     "0",
-						TruncateTo: "d",
-					},
+					Window: window,
 				},
 				Dependencies: map[string]models.JobSpecDependency{},
 				Assets:       models.JobAssets{},
@@ -484,11 +480,7 @@ hooks: []`,
 				Task: models.JobSpecTask{
 					Unit:   &models.Plugin{Base: execUnit},
 					Config: models.JobSpecConfigs{},
-					Window: models.WindowV1{
-						Size:       "24h",
-						Offset:     "0",
-						TruncateTo: "d",
-					},
+					Window: window,
 				},
 				Dependencies: map[string]models.JobSpecDependency{},
 				Assets:       models.JobAssets{},
