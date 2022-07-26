@@ -189,7 +189,7 @@ func (j *JobCreateSurvey) askCreateQuestions(questions []*survey.Question) (loca
 	}
 
 	return local.Job{
-		Version: local.DefaultVersion,
+		Version: models.JobSpecDefaultVersion,
 		Name:    baseInputs["name"],
 		Owner:   baseInputs["owner"],
 		Schedule: local.JobSchedule{
