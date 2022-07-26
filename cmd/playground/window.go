@@ -23,7 +23,6 @@ func NewPlaygroundWindowCommand() *cobra.Command {
 }
 
 func (j *windowCommand) RunE(_ *cobra.Command, _ []string) error {
-	// starts the interactive session
 	log.SetFlags(j.flags)
 	log.Print("Hello folks! This is an interactive cli")
 	log.Println("controls:- use arrow keys to navigate , shift + arrow keys to increment or decrement values")

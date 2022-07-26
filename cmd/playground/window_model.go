@@ -31,30 +31,28 @@ func initModel() *model {
 	offsetInput := textinput.New()
 	offsetInput.Placeholder = defaultSize
 	return &model{
-		cursor:      pointToSize,
+		cursor:      pointToSizeInput,
 		state:       state{windowV1: windowV1, windowV2: windowV2, scheduledTime: time.Now()},
 		sizeInput:   sizeInput,
 		offsetInput: offsetInput,
 	}
 }
 
-// since we don not intend to keep any input after the process is killed we return nil
 func (*model) Init() tea.Cmd {
 	return nil
 }
 
-// this handles motion of the pointer when we hit arrow-up key
 func (m *model) handleUp() {
 	switch m.cursor {
-	case pointToOffset:
+	case pointToOffsetInput:
 		// here we are shifting from Offsetinput to Sizeinput so we have to stop updating the Offsetinput(hence Offset.Blur())
 		// and start updating Sizeinput(hence Sizeinput.Focus())
 		m.offsetInput.Blur()
 		m.sizeInput.Focus()
-		m.cursor = pointToSize
+		m.cursor = pointToSizeInput
 	case pointToTruncate:
 		m.offsetInput.Focus()
-		m.cursor = pointToOffset
+		m.cursor = pointToOffsetInput
 	case pointToYear, pointToMonth, PointToDay, pointToHour, pointToMinute:
 		m.cursor = pointToTruncate
 	}
@@ -64,17 +62,16 @@ func (m *model) handleDown() {
 	switch m.cursor {
 	case pointToTruncate:
 		m.cursor = pointToHour
-	case pointToOffset:
+	case pointToOffsetInput:
 		m.offsetInput.Blur()
 		m.cursor = pointToTruncate
-	case pointToSize:
+	case pointToSizeInput:
 		m.offsetInput.Focus()
 		m.sizeInput.Blur()
-		m.cursor = pointToOffset
+		m.cursor = pointToOffsetInput
 	}
 }
 
-// handles left and right arrow key movements
 func (m *model) handleRight() {
 	switch m.cursor {
 	case pointToMonth:
@@ -103,46 +100,48 @@ func (m *model) handleLeft() {
 func (m *model) handleIncrease() {
 	switch m.cursor {
 	case pointToTruncate:
-		m.state.IncrementTruncate()
+		m.state.incrementTruncate()
 	case pointToYear, pointToMonth, PointToDay, pointToHour, pointToMinute:
-		m.state.IncrementTime(m.cursor.getStringValue())
+		m.state.incrementScheduleTimeOn(m.cursor)
 	}
 }
 func (m *model) handleDecrease() {
 	switch m.cursor {
 	case pointToTruncate:
-		m.state.DecrementTruncate()
+		m.state.decrementTruncate()
 	case pointToYear, pointToMonth, PointToDay, pointToHour, pointToMinute:
-		m.state.DecrementTime(m.cursor.getStringValue())
+		m.state.decrementScheduleTimeOn(m.cursor)
 	}
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// switch currMsg := msg.(type) {
-	// case tea.KeyMsg:
 	currMsg := reflect.TypeOf(msg)
-	if currMsg.String() == "tea.KeyMsg" {
-		switch fmt.Sprintf("%s", msg) {
-		case "ctrl+c", "q":
-			return m, tea.Quit
-		case "up":
-			m.handleUp()
-		case "down":
-			m.handleDown()
-		case "left":
-			m.handleLeft()
-		case "right":
-			m.handleRight()
-		case "shift+up", "shift+right":
-			m.handleIncrease()
-		case "shift+down", "shift+left":
-			m.handleDecrease()
-		case "M", "h", "-", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "backspace":
-			// to get updated the input fields must be focussed since we handle the Focus and Blur we can directly update them here
-			m.sizeInput, _ = m.sizeInput.Update(msg)
-			m.offsetInput, _ = m.offsetInput.Update(msg)
-			m.state.updateWindowparameters(m.sizeInput.Value(), m.offsetInput.Value())
-		}
+	if currMsg.String() != "tea.KeyMsg" {
+		return m, nil
+	}
+	switch fmt.Sprintf("%s", msg) {
+	case "ctrl+c", "q":
+		return m, tea.Quit
+	case "up":
+		m.handleUp()
+	case "down":
+		m.handleDown()
+	case "left":
+		m.handleLeft()
+	case "right":
+		m.handleRight()
+	case "shift+up", "shift+right":
+		m.handleIncrease()
+	case "shift+down", "shift+left":
+		m.handleDecrease()
+	case "M", "h", "-",
+		"1", "2", "3", "4", "5",
+		"6", "7", "8", "9", "0",
+		"backspace":
+		// to get updated the input fields must be focussed since we handle the Focus and Blur we can directly update them here
+		m.sizeInput, _ = m.sizeInput.Update(msg)
+		m.offsetInput, _ = m.offsetInput.Update(msg)
+		m.state.updateWindowparameters(m.sizeInput.Value(), m.offsetInput.Value())
 	}
 	return m, nil
 }
@@ -158,8 +157,8 @@ func (m *model) genarateCursorIfPointed(position string, value string) string {
 	return " " + value
 }
 
-// we genare a string representing the sechduled time , which also adds a cursor if it is pointing to the any of the fields in sechdueld date
-func (m *model) genarateSechduledDateView() string {
+// generateSechduledDateView generates a string representing the sechduled time , which also adds a cursor if it is pointing to the any of the fields in sechdueld date
+func (m *model) generateSechduledDateView() string {
 	var s strings.Builder
 	s.WriteString(m.genarateCursorIfPointed(pointToHour.getStringValue(), strconv.Itoa(m.state.scheduledTime.Hour())))
 	s.WriteString(":")
@@ -170,9 +169,8 @@ func (m *model) genarateSechduledDateView() string {
 	return s.String()
 }
 
-// this will update the values of Size and offset of the window versions present in state to the new values taken from the input
+// View() update the values of Size and offset of the window versions present in state to the new values taken from the input
 
-// this will  be invoked for every update
 func (m *model) View() string {
 	var s strings.Builder
 	s.WriteString("Size\t\t")
@@ -185,8 +183,8 @@ func (m *model) View() string {
 	s.WriteString(m.genarateCursorIfPointed(pointToTruncate.getStringValue(), m.state.windowV2.TruncateTo))
 	s.WriteString("\n")
 	s.WriteString("sechduled date   ")
-	s.WriteString(m.genarateSechduledDateView())
-	s.WriteString("\n\n\n             ")
+	s.WriteString(m.generateSechduledDateView())
+	s.WriteString("\n\n\n\t\t")
 	// calculate the value of dstart and dend from the imported window versions
 	dStartV1, dEndV1, err := m.state.windowV1.GetTimeRange(m.state.scheduledTime)
 	if err != nil {
@@ -195,7 +193,7 @@ func (m *model) View() string {
 	} else {
 		s.WriteString("dStartV1 :" + dStartV1.Format("15:04 2006-01-02") + "     dEndV1 :" + dEndV1.Format("15:04 2006-01-02"))
 	}
-	s.WriteString("\n             ") // extra space added for design reasons
+	s.WriteString("\n\t\t")
 	dStartV2, dEndV2, err := m.state.windowV2.GetTimeRange(m.state.scheduledTime)
 	if err != nil {
 		s.WriteString(err.Error())

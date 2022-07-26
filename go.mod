@@ -9,6 +9,8 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/PagerDuty/go-pagerduty v1.5.1
 	github.com/briandowns/spinner v1.18.0
+	github.com/charmbracelet/bubbles v0.13.0
+	github.com/charmbracelet/bubbletea v0.22.0
 	github.com/dustinkirkland/golang-petname v0.0.0-20191129215211-8e5a1ed0cff0
 	github.com/emirpasic/gods v1.12.0
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
@@ -29,6 +31,7 @@ require (
 	github.com/hashicorp/serf v0.8.2
 	github.com/kushsharma/parallel v0.2.1
 	github.com/mattn/go-isatty v0.0.14
+	github.com/mitchellh/mapstructure v1.4.1
 	github.com/odpf/salt v0.0.0-20220614042821-c5613a78b4d6
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -63,20 +66,6 @@ require (
 	gorm.io/datatypes v1.0.0
 	gorm.io/driver/postgres v1.0.8
 	gorm.io/gorm v1.21.16
-)
-
-require (
-	github.com/charmbracelet/bubbles v0.13.0
-	github.com/charmbracelet/bubbletea v0.22.0
-)
-
-require (
-	github.com/aymerick/douceur v0.2.0 // indirect
-	github.com/charmbracelet/glamour v0.3.0 // indirect
-	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 // indirect
-)
-
-require (
 	cloud.google.com/go v0.94.0 // indirect
 	cloud.google.com/go/storage v1.16.1 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
@@ -85,11 +74,14 @@ require (
 	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
 	github.com/armon/go-metrics v0.0.0-20190430140413-ec5e00d3c878 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
+	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
+	github.com/charmbracelet/glamour v0.3.0 // indirect
 	github.com/charmbracelet/lipgloss v0.5.0 // indirect
 	github.com/containerd/console v1.0.3 // indirect
+	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.2.0 // indirect
 	github.com/fatih/color v1.7.0 // indirect
@@ -147,7 +139,6 @@ require (
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.0.0 // indirect
-	github.com/mitchellh/mapstructure v1.4.1
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/muesli/ansi v0.0.0-20211018074035-2e021307bc4b // indirect
 	github.com/muesli/cancelreader v0.2.1 // indirect

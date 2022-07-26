@@ -8,14 +8,14 @@ const (
 type cursorPointer string
 
 const (
-	pointToYear     cursorPointer = "year"
-	pointToMonth    cursorPointer = "month"
-	pointToMinute   cursorPointer = "minute"
-	PointToDay      cursorPointer = "day"
-	pointToHour     cursorPointer = "hour"
-	pointToSize     cursorPointer = "size"
-	pointToOffset   cursorPointer = "offset"
-	pointToTruncate cursorPointer = "truncateTo"
+	pointToYear        cursorPointer = "year"
+	pointToMonth       cursorPointer = "month"
+	pointToMinute      cursorPointer = "minute"
+	PointToDay         cursorPointer = "day"
+	pointToHour        cursorPointer = "hour"
+	pointToSizeInput   cursorPointer = "size"
+	pointToOffsetInput cursorPointer = "offset"
+	pointToTruncate    cursorPointer = "truncateTo"
 )
 
 func (c cursorPointer) getStringValue() string {

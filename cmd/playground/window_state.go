@@ -12,40 +12,37 @@ type state struct {
 	scheduledTime time.Time
 }
 
-// increment the component of the time which the cursor is pointed at
-func (s *state) IncrementTime(increaseBy string) {
+func (s *state) incrementScheduleTimeOn(increaseBy cursorPointer) {
 	switch increaseBy {
-	case pointToMinute.getStringValue():
+	case pointToMinute:
 		s.scheduledTime = s.scheduledTime.Add(time.Minute)
-	case pointToHour.getStringValue():
+	case pointToHour:
 		s.scheduledTime = s.scheduledTime.Add(time.Hour)
-	case PointToDay.getStringValue():
+	case PointToDay:
 		s.scheduledTime = s.scheduledTime.AddDate(0, 0, 1)
-	case pointToMonth.getStringValue():
+	case pointToMonth:
 		s.scheduledTime = s.scheduledTime.AddDate(0, 1, 0)
-	case pointToYear.getStringValue():
+	case pointToYear:
 		s.scheduledTime = s.scheduledTime.AddDate(1, 0, 0)
 	}
 }
 
-// decrement the component of the time which the cursor is pointed at
-func (s *state) DecrementTime(decreaseBy string) {
+func (s *state) decrementScheduleTimeOn(decreaseBy cursorPointer) {
 	switch decreaseBy {
-	case pointToMinute.getStringValue():
+	case pointToMinute:
 		s.scheduledTime = s.scheduledTime.Add(-1 * time.Minute)
-	case pointToHour.getStringValue():
+	case pointToHour:
 		s.scheduledTime = s.scheduledTime.Add(-1 * time.Hour)
-	case PointToDay.getStringValue():
+	case PointToDay:
 		s.scheduledTime = s.scheduledTime.AddDate(0, 0, -1)
-	case pointToMonth.getStringValue():
+	case pointToMonth:
 		s.scheduledTime = s.scheduledTime.AddDate(0, -1, 0)
-	case pointToYear.getStringValue():
+	case pointToYear:
 		s.scheduledTime = s.scheduledTime.AddDate(-1, 0, 0)
 	}
 }
 
-// change the value of truncate
-func (s *state) IncrementTruncate() {
+func (s *state) incrementTruncate() {
 	switch s.windowV2.TruncateTo {
 	case "w":
 		s.windowV2.TruncateTo = "M"
@@ -56,7 +53,7 @@ func (s *state) IncrementTruncate() {
 	}
 }
 
-func (s *state) DecrementTruncate() {
+func (s *state) decrementTruncate() {
 	switch s.windowV2.TruncateTo {
 	case "d":
 		s.windowV2.TruncateTo = "h"
