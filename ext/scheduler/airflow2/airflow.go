@@ -17,7 +17,6 @@ import (
 	"github.com/kushsharma/parallel"
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
-	"google.golang.org/api/googleapi"
 
 	"github.com/odpf/optimus/core/cron"
 	"github.com/odpf/optimus/core/progress"
@@ -204,24 +203,19 @@ func (s *scheduler) compileAndUpload(ctx context.Context, namespace models.Names
 		return deployFailure
 	}
 
-	blobKeyNamespaceId := PathFromJobName(JobsDir, namespace.ID.String(), compiledJob.Name, JobsExtension)
-	if err := bucket.Delete(ctx, blobKeyNamespaceId); err != nil {
-		if err.Error() != "NotFound" {
+	blobKeyNamespaceID := PathFromJobName(JobsDir, namespace.ID.String(), compiledJob.Name, JobsExtension)
+	if err := bucket.Delete(ctx, blobKeyNamespaceID); err != nil {
+		if gcerrors.Code(err) != gcerrors.NotFound {
 			deployFailure := models.JobDeploymentFailure{
 				JobName: currentJobSpec.Name,
-				Message: "failed to cleanup old DAG::" + blobKeyNamespaceId + ", err::" + err.Error(),
+				Message: "failed to cleanup old DAG ::" + blobKeyNamespaceID + ", err::" + err.Error(),
 			}
 			return deployFailure
 		}
 	}
 	err = deleteDirectoryIfEmpty(ctx, PathForJobDirectory(JobsDir, namespace.ID.String()), bucket)
 	if err != nil {
-		if e, ok := err.(*googleapi.Error); ok {
-			if e.Code == googleapi.ErrorItem. {
-
-			}
-		}
-		if err.() != "NotFound" {
+		if gcerrors.Code(err) != gcerrors.NotFound {
 			deployFailure := models.JobDeploymentFailure{
 				JobName: currentJobSpec.Name,
 				Message: "failed to cleanup old dags folder " + err.Error(),
@@ -229,7 +223,6 @@ func (s *scheduler) compileAndUpload(ctx context.Context, namespace models.Names
 			return deployFailure
 		}
 	}
-
 	return nil
 }
 

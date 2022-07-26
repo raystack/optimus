@@ -163,6 +163,11 @@ func TestAirflow2(t *testing.T) {
 			}, nil)
 
 			mockBucket.On("WriteAll", ctx, fmt.Sprintf("dags/%s/%s.py", ns.Name, jobSpecs[0].Name), []byte("job-1-compiled"), (*blob.WriterOptions)(nil)).Return(nil)
+			mockBucket.On("Delete", ctx, fmt.Sprintf("dags/%s/%s.py", ns.ID.String(), jobSpecs[0].Name)).Return(nil)
+			mockBucket.On("Delete", ctx, fmt.Sprintf("dags/%s", ns.ID.String())).Return(nil)
+			mockBucket.On("List", &blob.ListOptions{
+				Prefix: fmt.Sprintf("dags/%s", ns.ID.String()),
+			}).Return(&blob.ListIterator{})
 
 			expectedDeployDetail := models.JobDeploymentDetail{
 				SuccessCount: 1,
