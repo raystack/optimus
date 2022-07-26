@@ -16,9 +16,8 @@ import (
 )
 
 const (
-	JobConfigVersion = 1
-	HoursInDay       = time.Hour * 24
-	HoursInMonth     = 30 * 24 * time.Hour
+	HoursInDay   = time.Hour * 24
+	HoursInMonth = 30 * 24 * time.Hour
 )
 
 var ErrNotAMonthDuration = errors.New("invalid month string")
@@ -453,8 +452,12 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		})
 	}
 
+	version := conf.Version
+	if version == 0 {
+		version = models.JobSpecDefaultVersion
+	}
 	job := models.JobSpec{
-		Version:     conf.Version,
+		Version:     version,
 		Name:        strings.TrimSpace(conf.Name),
 		Owner:       conf.Owner,
 		Description: conf.Description,
@@ -542,8 +545,12 @@ func (JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 		size = spec.Task.Window.GetSize()
 	}
 
+	version := spec.Version
+	if version == 0 {
+		version = models.JobSpecDefaultVersion
+	}
 	parsed := Job{
-		Version:     spec.Version,
+		Version:     version,
 		Name:        spec.Name,
 		Owner:       spec.Owner,
 		Description: spec.Description,

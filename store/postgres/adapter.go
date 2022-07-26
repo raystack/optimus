@@ -261,9 +261,13 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		return models.JobSpec{}, err
 	}
 
+	version := conf.Version
+	if version == 0 {
+		version = models.JobSpecDefaultVersion
+	}
 	job := models.JobSpec{
 		ID:                  conf.ID,
-		Version:             conf.Version,
+		Version:             version,
 		Name:                conf.Name,
 		Owner:               conf.Owner,
 		ResourceDestination: conf.Destination,
