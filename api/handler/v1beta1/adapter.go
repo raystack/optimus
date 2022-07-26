@@ -173,6 +173,13 @@ func ToJobSpecificationProto(spec models.JobSpec) *pb.JobSpecification {
 		})
 	}
 
+	var truncateTo, offset, size string
+	if spec.Task.Window != nil {
+		truncateTo = spec.Task.Window.GetTruncateTo()
+		offset = spec.Task.Window.GetOffset()
+		size = spec.Task.Window.GetSize()
+	}
+
 	conf := &pb.JobSpecification{
 		Version:          int32(spec.Version),
 		Name:             spec.Name,
@@ -182,9 +189,9 @@ func ToJobSpecificationProto(spec models.JobSpec) *pb.JobSpecification {
 		DependsOnPast:    spec.Behavior.DependsOnPast,
 		CatchUp:          spec.Behavior.CatchUp,
 		TaskName:         spec.Task.Unit.Info().Name,
-		WindowSize:       spec.Task.Window.GetSize(),
-		WindowOffset:     spec.Task.Window.GetOffset(),
-		WindowTruncateTo: spec.Task.Window.GetTruncateTo(),
+		WindowTruncateTo: truncateTo,
+		WindowOffset:     offset,
+		WindowSize:       size,
 		Assets:           spec.Assets.ToMap(),
 		Dependencies:     []*pb.JobDependency{},
 		Hooks:            adaptedHook,

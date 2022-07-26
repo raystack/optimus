@@ -61,6 +61,7 @@ func TestIntegrationInstanceRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
+				Window: models.WindowV1{},
 			},
 			Assets: *models.JobAssets{}.New(
 				[]models.JobSpecAsset{

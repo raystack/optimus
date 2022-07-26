@@ -231,18 +231,22 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		if conf.WindowTruncateTo != nil {
 			truncateTo = *conf.WindowTruncateTo
 		}
-		var offset time.Duration
-		if conf.OldWindowOffset != nil {
-			offset = time.Duration(*conf.OldWindowOffset)
+		var offset string
+		if conf.WindowOffset != nil {
+			offset = *conf.WindowOffset
+		} else if conf.OldWindowOffset != nil {
+			offset = fmt.Sprintf("%fh", time.Duration(*conf.OldWindowOffset).Hours())
 		}
-		var size time.Duration
-		if conf.OldWindowSize != nil {
-			size = time.Duration(*conf.OldWindowSize)
+		var size string
+		if conf.WindowSize != nil {
+			size = *conf.WindowSize
+		} else if conf.OldWindowSize != nil {
+			size = fmt.Sprintf("%fh", time.Duration(*conf.OldWindowSize).Hours())
 		}
-		window = &&models.WindowV1{
-			TruncateTo:       truncateTo,
-			OffsetAsDuration: offset,
-			SizeAsDuration:   size,
+		window = models.WindowV1{
+			TruncateTo: truncateTo,
+			Offset:     offset,
+			Size:       size,
 		}
 	case 2:
 		var truncateTo string
@@ -384,18 +388,29 @@ func (JobSpecAdapter) FromJobSpec(spec models.JobSpec, resourceDestination strin
 		return Job{}, err
 	}
 
-	truncateTo := spec.Task.Window.GetTruncateTo()
-	windowSize := spec.Task.Window.GetSize()
-	var oldWindowSize *time.Duration
-	if spec.Task.Window.GetSizeAsDuration() > 0 {
-		tempSize := spec.Task.Window.GetSizeAsDuration()
-		oldWindowSize = &tempSize
-	}
-	windowOffset := spec.Task.Window.GetOffset()
-	var oldWindowOffset *time.Duration
-	if spec.Task.Window.GetOffsetAsDuration() > 0 {
-		tempOffset := spec.Task.Window.GetOffsetAsDuration()
-		oldWindowOffset = &tempOffset
+	var truncateTo, offset, size *string
+	var oldSize, oldOffset *time.Duration
+	if spec.Task.Window != nil {
+		tempTruncateTo := spec.Task.Window.GetTruncateTo()
+		if tempTruncateTo != "" {
+			truncateTo = &tempTruncateTo
+		}
+		tempSize := spec.Task.Window.GetSize()
+		if tempSize != "" {
+			size = &tempSize
+		}
+		if spec.Task.Window.GetSizeAsDuration() > 0 {
+			tempSizeDuration := spec.Task.Window.GetSizeAsDuration()
+			oldSize = &tempSizeDuration
+		}
+		tempOffset := spec.Task.Window.GetOffset()
+		if tempOffset != "" {
+			offset = &tempOffset
+		}
+		if spec.Task.Window.GetOffsetAsDuration() > 0 {
+			tempOffsetDuration := spec.Task.Window.GetOffsetAsDuration()
+			oldOffset = &tempOffsetDuration
+		}
 	}
 
 	metadata, err := json.Marshal(spec.Metadata)
@@ -418,15 +433,15 @@ func (JobSpecAdapter) FromJobSpec(spec models.JobSpec, resourceDestination strin
 		Dependencies:         dependenciesJSON,
 		TaskName:             spec.Task.Unit.Info().Name,
 		TaskConfig:           taskConfigJSON,
-		WindowSize:           &windowSize,
-		WindowOffset:         &windowOffset,
-		WindowTruncateTo:     &truncateTo,
+		WindowSize:           size,
+		WindowOffset:         offset,
+		WindowTruncateTo:     truncateTo,
 		Assets:               assetsJSON,
 		Hooks:                hooksJSON,
 		Metadata:             metadata,
 		ExternalDependencies: externalDependenciesJSON,
-		OldWindowSize:        (*int64)(oldWindowSize),
-		OldWindowOffset:      (*int64)(oldWindowOffset),
+		OldWindowSize:        (*int64)(oldSize),
+		OldWindowOffset:      (*int64)(oldOffset),
 	}, nil
 }
 
