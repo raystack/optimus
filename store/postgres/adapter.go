@@ -231,18 +231,21 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		if conf.WindowTruncateTo != nil {
 			truncateTo = *conf.WindowTruncateTo
 		}
+
 		var offset string
 		if conf.WindowOffset != nil {
 			offset = *conf.WindowOffset
 		} else if conf.OldWindowOffset != nil {
 			offset = fmt.Sprintf("%fh", time.Duration(*conf.OldWindowOffset).Hours())
 		}
+
 		var size string
 		if conf.WindowSize != nil {
 			size = *conf.WindowSize
 		} else if conf.OldWindowSize != nil {
 			size = fmt.Sprintf("%fh", time.Duration(*conf.OldWindowSize).Hours())
 		}
+
 		window = models.WindowV1{
 			TruncateTo: truncateTo,
 			Offset:     offset,
@@ -253,14 +256,17 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		if conf.WindowTruncateTo != nil {
 			truncateTo = *conf.WindowTruncateTo
 		}
+
 		var offset string
 		if conf.WindowOffset != nil {
 			offset = *conf.WindowOffset
 		}
+
 		var size string
 		if conf.WindowSize != nil {
 			size = *conf.WindowSize
 		}
+
 		window = models.WindowV2{
 			TruncateTo: truncateTo,
 			Offset:     offset,
