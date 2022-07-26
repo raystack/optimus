@@ -219,7 +219,11 @@ func (*JobCreateSurvey) getPluginCLIMod(taskName string) (models.CommandLineMod,
 	if err != nil {
 		return nil, err
 	}
-	return plugin.YamlMod, nil
+	if plugin.Base != nil {
+		return plugin.CLIMod, nil
+	} else {
+		return plugin.YamlMod, nil
+	}
 }
 
 func (j *JobCreateSurvey) askPluginQuestions(cliMod models.CommandLineMod, jobName string) (models.PluginAnswers, error) {

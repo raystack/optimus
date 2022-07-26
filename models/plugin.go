@@ -431,13 +431,13 @@ func (s *registeredPlugins) GetHooks() []*Plugin {
 func (s *registeredPlugins) Add(baseMod BasePlugin, cliMod CommandLineMod, drMod DependencyResolverMod, yamlMod CommandLineMod) error {
 	var info *PluginInfoResponse
 	var err error
-	if yamlMod != nil {
-		info, err = yamlMod.PluginInfo()
+	if baseMod != nil {
+		info, err = baseMod.PluginInfo()
 		if err != nil {
 			return err
 		}
 	} else {
-		info, err = baseMod.PluginInfo()
+		info, err = yamlMod.PluginInfo()
 		if err != nil {
 			return err
 		}
