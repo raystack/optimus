@@ -11,7 +11,7 @@ from airflow.utils.weight_rule import WeightRule
 from kubernetes.client import models as k8s
 
 
-from __lib import optimus_failure_notify, optimus_sla_miss_notify, SuperKubernetesPodOperator, \
+from __lib import optimus_sla_miss_notify, SuperKubernetesPodOperator, \
     SuperExternalTaskSensor, ExternalHttpSensor
 
 from __lib import JOB_START_EVENT_NAME, \
