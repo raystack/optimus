@@ -137,11 +137,12 @@ func (s *jobRunService) Register(ctx context.Context, namespace models.Namespace
 	}
 
 	// get whatever is saved, querying again ensures it was saved correctly
-	if jobRun, _, err = s.jobRunRepo.GetByID(ctx, jobRun.ID); err != nil {
+	jobRunResult, _, err := s.jobRunRepo.GetByID(ctx, jobRun.ID)
+	if err != nil {
 		return models.InstanceSpec{}, fmt.Errorf("failed to save instance for %s of %s:%s: %w",
 			jobRun, instanceName, instanceType, err)
 	}
-	return jobRun.GetInstance(instanceName, instanceType)
+	return jobRunResult.GetInstance(instanceName, instanceType)
 }
 
 func (s *jobRunService) prepInstance(ctx context.Context, jobRun models.JobRun, instanceType models.InstanceType, instanceName string, executedAt time.Time, namespace models.NamespaceSpec) (models.InstanceSpec, error) {
