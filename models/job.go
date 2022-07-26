@@ -57,6 +57,8 @@ const (
 	SensorSuccessEvent JobEventType = "sensor_success"
 
 	JobRetryEvent JobEventType = "retry"
+
+	JobSpecDefaultVersion = 2
 )
 
 // JobSpec represents a job
