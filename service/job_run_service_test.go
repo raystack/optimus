@@ -671,6 +671,10 @@ func getCopy(original models.JobRun) models.JobRun {
 func getJobSpec(namespaceSpec models.NamespaceSpec) models.JobSpec {
 	execUnit := new(mock.BasePlugin)
 	execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "bq"}, nil)
+	window, err := models.NewWindow(1, "d", "0", "1h")
+	if err != nil {
+		panic(err)
+	}
 	return models.JobSpec{
 		Version: 1,
 		Name:    "foo",
@@ -686,11 +690,7 @@ func getJobSpec(namespaceSpec models.NamespaceSpec) models.JobSpec {
 		Task: models.JobSpecTask{
 			Unit:     &models.Plugin{Base: execUnit},
 			Priority: 2000,
-			Window: models.WindowV1{
-				Size:       "1h",
-				Offset:     "0",
-				TruncateTo: "d",
-			},
+			Window:   window,
 		},
 		Dependencies:  map[string]models.JobSpecDependency{},
 		NamespaceSpec: namespaceSpec,

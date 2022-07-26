@@ -52,22 +52,9 @@ func FromJobProto(spec *pb.JobSpecification, pluginRepo models.PluginRepository)
 		}
 	}
 
-	var window models.Window
-	switch spec.Version {
-	case 1:
-		window = &models.WindowV1{
-			TruncateTo: spec.GetWindowTruncateTo(),
-			Offset:     spec.GetWindowOffset(),
-			Size:       spec.GetWindowSize(),
-		}
-	case 2:
-		window = models.WindowV2{
-			TruncateTo: spec.GetWindowTruncateTo(),
-			Offset:     spec.GetWindowOffset(),
-			Size:       spec.GetWindowSize(),
-		}
-	default:
-		return models.JobSpec{}, fmt.Errorf("spec version [%d] is not recognized", spec.Version)
+	window, err := models.NewWindow(int(spec.Version), spec.GetWindowTruncateTo(), spec.GetWindowOffset(), spec.GetWindowSize())
+	if err != nil {
+		return models.JobSpec{}, err
 	}
 	if err := window.Validate(); err != nil {
 		return models.JobSpec{}, err

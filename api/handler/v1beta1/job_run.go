@@ -286,22 +286,9 @@ func (*JobRunServiceServer) GetWindow(_ context.Context, req *pb.GetWindowReques
 		return nil, status.Error(codes.InvalidArgument, "window size, offset and truncate_to must be provided")
 	}
 
-	var window models.Window
-	switch req.GetVersion() {
-	case 1:
-		window = &models.WindowV1{
-			TruncateTo: req.GetTruncateTo(),
-			Offset:     req.GetOffset(),
-			Size:       req.GetSize(),
-		}
-	case 2:
-		window = models.WindowV2{
-			TruncateTo: req.GetTruncateTo(),
-			Offset:     req.GetOffset(),
-			Size:       req.GetSize(),
-		}
-	default:
-		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("spec version [%d] is not recognized", req.GetVersion()))
+	window, err := models.NewWindow(int(req.Version), req.GetTruncateTo(), req.GetOffset(), req.GetSize())
+	if err != nil {
+		return nil, err
 	}
 	if err := window.Validate(); err != nil {
 		return nil, err

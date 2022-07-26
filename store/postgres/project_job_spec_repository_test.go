@@ -67,6 +67,10 @@ func TestIntegrationProjectJobSpecRepository(t *testing.T) {
 	pluginRepo.On("GetByName", tHook).Return(&models.Plugin{Base: hookUnit2}, nil)
 	adapter := postgres.NewAdapter(pluginRepo)
 
+	window, err := models.NewWindow(1, "h", "0", "24h")
+	if err != nil {
+		panic(err)
+	}
 	testConfigs := []models.JobSpec{
 		{
 			Version: 1,
@@ -80,11 +84,7 @@ func TestIntegrationProjectJobSpecRepository(t *testing.T) {
 						Value: "this",
 					},
 				},
-				Window: models.WindowV1{
-					Size:       "24h",
-					Offset:     "0",
-					TruncateTo: "h",
-				},
+				Window: window,
 			},
 			Assets: *models.JobAssets{}.New(
 				[]models.JobSpecAsset{
@@ -121,7 +121,6 @@ func TestIntegrationProjectJobSpecRepository(t *testing.T) {
 						Value: "this",
 					},
 				},
-				Window: models.WindowV1{},
 			},
 		},
 		{
@@ -135,7 +134,6 @@ func TestIntegrationProjectJobSpecRepository(t *testing.T) {
 						Value: "this",
 					},
 				},
-				Window: models.WindowV1{},
 			},
 		},
 	}

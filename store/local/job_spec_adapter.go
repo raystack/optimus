@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
-	"regexp"
 	"strings"
 	"time"
 
@@ -22,10 +21,7 @@ const (
 	HoursInMonth     = 30 * 24 * time.Hour
 )
 
-var (
-	monthExp             = regexp.MustCompile("(\\+|-)?([0-9]+)(M)") //nolint:gosimple
-	ErrNotAMonthDuration = errors.New("invalid month string")
-)
+var ErrNotAMonthDuration = errors.New("invalid month string")
 
 func init() { //nolint:gochecknoinits
 	_ = validator.SetValidationFunc("isCron", utils.CronIntervalValidator)
@@ -406,22 +402,9 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		hooks = append(hooks, adaptHook)
 	}
 
-	var window models.Window
-	switch conf.Version {
-	case 1:
-		window = models.WindowV1{
-			TruncateTo: conf.Task.Window.TruncateTo,
-			Offset:     conf.Task.Window.Offset,
-			Size:       conf.Task.Window.Size,
-		}
-	case 2:
-		window = models.WindowV2{
-			TruncateTo: conf.Task.Window.TruncateTo,
-			Offset:     conf.Task.Window.Offset,
-			Size:       conf.Task.Window.Size,
-		}
-	default:
-		return models.JobSpec{}, fmt.Errorf("spec version [%d] is not recognized", conf.Version)
+	window, err := models.NewWindow(conf.Version, conf.Task.Window.TruncateTo, conf.Task.Window.Offset, conf.Task.Window.Size)
+	if err != nil {
+		return models.JobSpec{}, err
 	}
 	if err := window.Validate(); err != nil {
 		return models.JobSpec{}, err

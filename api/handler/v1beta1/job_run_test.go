@@ -59,6 +59,10 @@ func TestJobRunServiceServer(t *testing.T) {
 		}, nil)
 		defer basePlugin1.AssertExpectations(t)
 
+		window, err := models.NewWindow(1, "", "", "")
+		if err != nil {
+			panic(err)
+		}
 		jobSpec := models.JobSpec{
 			ID:   uuid.Must(uuid.NewRandom()),
 			Name: jobName,
@@ -72,7 +76,7 @@ func TestJobRunServiceServer(t *testing.T) {
 						Value: "this",
 					},
 				},
-				Window: &models.WindowV1{},
+				Window: window,
 			},
 			Assets: *models.JobAssets{}.New(
 				[]models.JobSpecAsset{

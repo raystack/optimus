@@ -24,6 +24,10 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 
 		execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "bq"}, nil)
 
+		window, err := models.NewWindow(1, "", "", "")
+		if err != nil {
+			panic(err)
+		}
 		jobSpec := models.JobSpec{
 			Version: 1,
 			Name:    "foo",
@@ -37,7 +41,7 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 						Value: "22",
 					},
 				},
-				Window: &models.WindowV1{},
+				Window: window,
 			},
 			Dependencies: map[string]models.JobSpecDependency{},
 			Assets: *models.JobAssets{}.New(
