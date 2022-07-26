@@ -47,11 +47,16 @@ type YamlSubQuestion struct {
 	Questions []YamlQuestion
 }
 
+type YamlAsset struct {
+	DefaultAssets PluginAssets
+}
+
 // YamlPlugin: Implements CommandLineMod
 type YamlPlugin struct {
 	Info            *PluginInfoResponse
 	YamlQuestions   *YamlQuestions
 	PluginQuestions *GetQuestionsResponse
+	PluginAssets    *YamlAsset
 }
 
 func (p *YamlPlugin) PluginInfo() (*PluginInfoResponse, error) {
@@ -88,9 +93,8 @@ func (p *YamlPlugin) DefaultConfig(context.Context, DefaultConfigRequest) (*Defa
 }
 
 func (p *YamlPlugin) DefaultAssets(context.Context, DefaultAssetsRequest) (*DefaultAssetsResponse, error) {
-
 	return &DefaultAssetsResponse{
-		Assets: []PluginAsset{},
+		Assets: p.PluginAssets.DefaultAssets,
 	}, nil
 }
 

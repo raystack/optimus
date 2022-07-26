@@ -38,6 +38,7 @@ func FromYaml(plugin_path string) (*models.YamlPlugin, error) {
 	pluginInfo := models.PluginInfoResponse{}
 	pluginQuestions := models.GetQuestionsResponse{}
 	pluginYamlQuestions := models.YamlQuestions{}
+	pluginDefaultAssets := models.YamlAsset{}
 
 	if err := yaml.Unmarshal(plugin_bytes, &pluginInfo); err != nil {
 		return &plugin, err
@@ -51,8 +52,23 @@ func FromYaml(plugin_path string) (*models.YamlPlugin, error) {
 		return &plugin, err
 	}
 	plugin.YamlQuestions = &pluginYamlQuestions
+	if err := yaml.Unmarshal(plugin_bytes, &pluginDefaultAssets); err != nil {
+		return &plugin, err
+	}
+	plugin.PluginAssets = &pluginDefaultAssets
+
+	// printYaml(plugin)
 	return &plugin, nil
 }
+
+// func printYaml(s interface{}) {
+// 	yamlData, err := yaml.Marshal(&s)
+// 	if err != nil {
+// 		fmt.Printf("Error while Marshaling. %v", err)
+// 	}
+// 	fmt.Println(" --- YAML ---")
+// 	fmt.Println(string(yamlData))
+// }
 
 func Init(plugins_repo models.PluginRepository, discoveredYamlPlugins []string, pluginLogger hclog.Logger) error {
 	for _, yamlPluginPath := range discoveredYamlPlugins {
