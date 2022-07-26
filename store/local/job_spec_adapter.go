@@ -409,7 +409,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 	var window models.Window
 	switch conf.Version {
 	case 1:
-		window = &models.WindowV1{
+		window = models.WindowV1{
 			TruncateTo: conf.Task.Window.TruncateTo,
 			Offset:     conf.Task.Window.Offset,
 			Size:       conf.Task.Window.Size,

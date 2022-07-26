@@ -98,10 +98,10 @@ func TestJobSpecRepository(t *testing.T) {
 		},
 		Task: models.JobSpecTask{
 			Unit: &models.Plugin{Base: execUnit},
-			Window: &&models.WindowV1{
-				OffsetAsDuration: 0,
-				SizeAsDuration:   time.Hour * 24,
-				TruncateTo:       "d",
+			Window: models.WindowV1{
+				Size:       "24h",
+				Offset:     "0",
+				TruncateTo: "d",
 			},
 			Config: models.JobSpecConfigs{
 				{
@@ -132,10 +132,10 @@ func TestJobSpecRepository(t *testing.T) {
 		},
 		Task: models.JobSpecTask{
 			Unit: &models.Plugin{Base: execUnit},
-			Window: &&models.WindowV1{
-				OffsetAsDuration: 0,
-				SizeAsDuration:   time.Hour * 24,
-				TruncateTo:       "d",
+			Window: models.WindowV1{
+				Size:       "24h",
+				Offset:     "0",
+				TruncateTo: "d",
 			},
 			Config: models.JobSpecConfigs{
 				{
@@ -459,10 +459,10 @@ hooks: []`,
 				Task: models.JobSpecTask{
 					Unit:   &models.Plugin{Base: execUnit},
 					Config: models.JobSpecConfigs{},
-					Window: &&models.WindowV1{
-						OffsetAsDuration: 0,
-						SizeAsDuration:   time.Hour * 24,
-						TruncateTo:       "d",
+					Window: models.WindowV1{
+						Size:       "24h",
+						Offset:     "0",
+						TruncateTo: "d",
 					},
 				},
 				Dependencies: map[string]models.JobSpecDependency{},
@@ -484,10 +484,10 @@ hooks: []`,
 				Task: models.JobSpecTask{
 					Unit:   &models.Plugin{Base: execUnit},
 					Config: models.JobSpecConfigs{},
-					Window: &&models.WindowV1{
-						OffsetAsDuration: 0,
-						SizeAsDuration:   time.Hour * 24,
-						TruncateTo:       "d",
+					Window: models.WindowV1{
+						Size:       "24h",
+						Offset:     "0",
+						TruncateTo: "d",
 					},
 				},
 				Dependencies: map[string]models.JobSpecDependency{},
