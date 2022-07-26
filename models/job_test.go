@@ -17,6 +17,18 @@ func TestJob(t *testing.T) {
 		}
 		assert.Equal(t, "job-name", jobSpec.GetName())
 	})
+	t.Run("GetFullName", func(t *testing.T) {
+		jobSpec := models.JobSpec{
+			Name: "job-name",
+			NamespaceSpec: models.NamespaceSpec{
+				Name: "namespace-name",
+				ProjectSpec: models.ProjectSpec{
+					Name: "project-name",
+				},
+			},
+		}
+		assert.Equal(t, "project-name/job-name", jobSpec.GetFullName())
+	})
 	t.Run("JobSpecTaskWindow", func(t *testing.T) {
 		t.Run("should generate valid window start and end", func(t *testing.T) {
 			cases := []struct {

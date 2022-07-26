@@ -5,11 +5,12 @@ import (
 )
 
 type ServerConfig struct {
-	Version   Version         `mapstructure:"version"`
-	Log       LogConfig       `mapstructure:"log"`
-	Serve     Serve           `mapstructure:"serve"`
-	Scheduler SchedulerConfig `mapstructure:"scheduler"`
-	Telemetry TelemetryConfig `mapstructure:"telemetry"`
+	Version          Version           `mapstructure:"version"`
+	Log              LogConfig         `mapstructure:"log"`
+	Serve            Serve             `mapstructure:"serve"`
+	Scheduler        SchedulerConfig   `mapstructure:"scheduler"`
+	Telemetry        TelemetryConfig   `mapstructure:"telemetry"`
+	ResourceManagers []ResourceManager `mapstructure:"resource_managers"`
 }
 
 type Serve struct {
@@ -52,4 +53,16 @@ type SchedulerConfig struct {
 type TelemetryConfig struct {
 	ProfileAddr string `mapstructure:"profile_addr"`
 	JaegerAddr  string `mapstructure:"jaeger_addr"`
+}
+
+type ResourceManager struct {
+	Name        string      `mapstructure:"name"`
+	Type        string      `mapstructure:"type"`
+	Description string      `mapstructure:"description"`
+	Config      interface{} `mapstructure:"config"`
+}
+
+type ResourceManagerConfigOptimus struct {
+	Host    string            `mapstructure:"host"`
+	Headers map[string]string `mapstructure:"headers"`
 }

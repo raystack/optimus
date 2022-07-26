@@ -531,9 +531,10 @@ func (adapt JobSpecAdapter) ToJobRun(jr JobRun) (models.JobRun, models.Namespace
 type jobDependency struct {
 	JobID uuid.UUID `json:"job_id"`
 
-	DependencyID       uuid.UUID `json:"dependency_id"`
-	DependencyName     string    `json:"dependency_name"`
-	DependencyTaskName string    `json:"dependency_task_name"`
+	DependencyID          uuid.UUID `json:"dependency_id"`
+	DependencyName        string    `json:"dependency_name"`
+	DependencyTaskName    string    `json:"dependency_task_name"`
+	DependencyDestination string    `json:"dependency_destination"`
 
 	DependencyProjectID uuid.UUID `json:"dependency_project_id"`
 	DependencyProject   Project   `gorm:"foreignKey:DependencyProjectID"`
@@ -542,16 +543,16 @@ type jobDependency struct {
 	DependencyNamespace   Namespace `gorm:"foreignKey:DependencyNamespaceID"`
 }
 
-func (adapt JobSpecAdapter) groupToDependenciesPerJob(jobDependencies []jobDependency) (map[uuid.UUID][]models.JobSpec, error) {
-	jobIDDependenciesMap := make(map[uuid.UUID][]models.JobSpec)
+func (adapt JobSpecAdapter) groupToDependenciesPerJobID(jobDependencies []jobDependency) (map[uuid.UUID][]models.JobSpec, error) {
+	jobDependenciesByJobID := make(map[uuid.UUID][]models.JobSpec)
 	for _, dependency := range jobDependencies {
 		dependencyJobSpec, err := adapt.dependencyToJobSpec(dependency)
 		if err != nil {
 			return nil, err
 		}
-		jobIDDependenciesMap[dependency.JobID] = append(jobIDDependenciesMap[dependency.JobID], dependencyJobSpec)
+		jobDependenciesByJobID[dependency.JobID] = append(jobDependenciesByJobID[dependency.JobID], dependencyJobSpec)
 	}
-	return jobIDDependenciesMap, nil
+	return jobDependenciesByJobID, nil
 }
 
 // dependencyToJobSpec converts the postgres' JobDependency representation to the optimus' JobSpec
@@ -567,10 +568,11 @@ func (adapt JobSpecAdapter) dependencyToJobSpec(conf jobDependency) (models.JobS
 	}
 
 	job := models.JobSpec{
-		ID:            conf.DependencyID,
-		Name:          conf.DependencyName,
-		Task:          models.JobSpecTask{Unit: execUnit},
-		NamespaceSpec: namespaceSpec,
+		ID:                  conf.DependencyID,
+		Name:                conf.DependencyName,
+		ResourceDestination: conf.DependencyDestination,
+		Task:                models.JobSpecTask{Unit: execUnit},
+		NamespaceSpec:       namespaceSpec,
 	}
 	return job, nil
 }

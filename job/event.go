@@ -34,7 +34,7 @@ func (e *eventService) Register(ctx context.Context, namespace models.NamespaceS
 	evt models.JobEvent) error {
 	var err error
 	for _, notify := range jobSpec.Behavior.Notify {
-		if notify.On == evt.Type {
+		if notify.ShouldNotify(evt.Type) {
 			for _, channel := range notify.Channels {
 				chanParts := strings.Split(channel, "://")
 				scheme := chanParts[0]

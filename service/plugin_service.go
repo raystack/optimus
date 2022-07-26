@@ -21,7 +21,7 @@ type PluginService interface {
 	GenerateDependencies(context.Context, models.JobSpec, models.NamespaceSpec, bool) (*models.GenerateDependenciesResponse, error)
 }
 
-type AssetCompiler func(jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error)
+type AssetCompiler func(ctx context.Context, jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error)
 
 type DependencyPluginService struct {
 	logger        log.Logger
@@ -62,7 +62,7 @@ func (d DependencyPluginService) GenerateDestination(ctx context.Context, jobSpe
 
 func (d DependencyPluginService) GenerateDependencies(ctx context.Context, jobSpec models.JobSpec, ns models.NamespaceSpec, dryRun bool) (*models.GenerateDependenciesResponse, error) {
 	var err error
-	if jobSpec.Assets, err = d.assetCompiler(jobSpec, d.Now()); err != nil {
+	if jobSpec.Assets, err = d.assetCompiler(ctx, jobSpec, d.Now()); err != nil {
 		return nil, fmt.Errorf("asset compilation failure: %w", err)
 	}
 

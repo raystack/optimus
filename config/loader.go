@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -44,21 +45,14 @@ func init() { // TODO: move paths initialization outside init()
 }
 
 // LoadClientConfig load the project specific config from these locations:
-// 1. flags. eg ./optimus <client_command> --project-name project1
-// 2. filepath. ./optimus <client_command> -c "path/to/config/optimus.yaml"
-// 3. current dir. Optimus will look at current directory if there's optimus.yaml there, use it
-func LoadClientConfig(filePath string, flags *pflag.FlagSet) (*ClientConfig, error) {
+// 1. filepath. ./optimus <client_command> -c "path/to/config/optimus.yaml"
+// 2. current dir. Optimus will look at current directory if there's optimus.yaml there, use it
+func LoadClientConfig(filePath string) (*ClientConfig, error) {
 	cfg := &ClientConfig{}
 
 	// getViperWithDefault + SetFs
 	v := viper.New()
 	v.SetFs(FS)
-
-	// bind with flags
-	setPFlagsNormalizer(flags)
-	if err := v.BindPFlags(flags); err != nil {
-		return nil, err
-	}
 
 	opts := []config.LoaderOption{
 		config.WithViper(v),
@@ -89,22 +83,15 @@ func LoadClientConfig(filePath string, flags *pflag.FlagSet) (*ClientConfig, err
 }
 
 // LoadServerConfig load the server specific config from these locations:
-// 1. flags. eg ./optimus <server_command> --serve-port 8000
-// 2. filepath. ./optimus <server_command> -c "path/to/config.yaml"
-// 3. env var. eg. OPTIMUS_SERVE_PORT, etc
-// 4. executable binary location
-func LoadServerConfig(filePath string, flags *pflag.FlagSet) (*ServerConfig, error) {
+// 1. filepath. ./optimus <server_command> -c "path/to/config.yaml"
+// 2. env var. eg. OPTIMUS_SERVE_PORT, etc
+// 3. executable binary location
+func LoadServerConfig(filePath string) (*ServerConfig, error) {
 	cfg := &ServerConfig{}
 
 	// getViperWithDefault + SetFs
 	v := viper.New()
 	v.SetFs(FS)
-
-	// bind with flags
-	setPFlagsNormalizer(flags)
-	if err := v.BindPFlags(flags); err != nil {
-		return nil, err
-	}
 
 	opts := []config.LoaderOption{
 		config.WithViper(v),
@@ -128,7 +115,7 @@ func LoadServerConfig(filePath string, flags *pflag.FlagSet) (*ServerConfig, err
 
 	// load the config
 	l := config.NewLoader(opts...)
-	if err := l.Load(cfg); err != nil {
+	if err := l.Load(cfg); err != nil && !errors.As(err, &config.ConfigFileNotFoundError{}) {
 		return nil, err
 	}
 
@@ -146,14 +133,4 @@ func validateFilepath(fs afero.Fs, fpath string) error {
 		return fmt.Errorf("%s not a file", fpath)
 	}
 	return nil
-}
-
-func setPFlagsNormalizer(flags *pflag.FlagSet) {
-	// normalize with the pflag names with replacer
-	normalizeFunc := flags.GetNormalizeFunc()
-	flags.SetNormalizeFunc(func(fs *pflag.FlagSet, name string) pflag.NormalizedName {
-		result := normalizeFunc(fs, name)
-		name = strings.ReplaceAll(string(result), "-", ".")
-		return pflag.NormalizedName(name)
-	})
 }

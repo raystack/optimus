@@ -24,17 +24,18 @@ import (
 const validateTimeout = time.Minute * 5
 
 type validateCommand struct {
-	logger       log.Logger
-	clientConfig *config.ClientConfig
+	logger         log.Logger
+	configFilePath string
+	clientConfig   *config.ClientConfig
 
 	verbose       bool
 	namespaceName string
 }
 
 // NewValidateCommand initializes command for validating job specification
-func NewValidateCommand(clientConfig *config.ClientConfig) *cobra.Command {
+func NewValidateCommand() *cobra.Command {
 	validate := &validateCommand{
-		clientConfig: clientConfig,
+		clientConfig: &config.ClientConfig{},
 	}
 
 	cmd := &cobra.Command{
@@ -45,13 +46,19 @@ func NewValidateCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		RunE:    validate.RunE,
 		PreRunE: validate.PreRunE,
 	}
+	// Config filepath flag
+	cmd.Flags().StringVarP(&validate.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+
 	cmd.Flags().BoolVarP(&validate.verbose, "verbose", "v", false, "Print details related to operation")
 	cmd.Flags().StringVarP(&validate.namespaceName, "namespace", "n", validate.namespaceName, "Namespace of the resource within project")
 	cmd.MarkFlagRequired("namespace")
 	return cmd
 }
 
-func (v *validateCommand) PreRunE(_ *cobra.Command, _ []string) error {
+func (v *validateCommand) PreRunE(_ *cobra.Command, _ []string) error { // Load mandatory config
+	if err := v.loadConfig(); err != nil {
+		return err
+	}
 	v.logger = logger.NewClientLogger(v.clientConfig.Log)
 	return nil
 }
@@ -92,7 +99,7 @@ func (v *validateCommand) validateJobSpecificationRequest(jobSpecs []models.JobS
 
 	adaptedJobSpecs := []*pb.JobSpecification{}
 	for _, spec := range jobSpecs {
-		adaptedSpec := v1handler.ToJobProto(spec)
+		adaptedSpec := v1handler.ToJobSpecificationProto(spec)
 		adaptedJobSpecs = append(adaptedJobSpecs, adaptedSpec)
 	}
 
@@ -163,4 +170,14 @@ func (v *validateCommand) getCheckJobSpecificationsResponse(stream pb.JobSpecifi
 		return nil
 	}
 	return streamError
+}
+
+func (v *validateCommand) loadConfig() error {
+	// TODO: find a way to load the config in one place
+	conf, err := config.LoadClientConfig(v.configFilePath)
+	if err != nil {
+		return err
+	}
+	*v.clientConfig = *conf
+	return nil
 }

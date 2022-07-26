@@ -162,6 +162,7 @@ func TestAirflow2(t *testing.T) {
 				Contents: []byte("job-1-compiled"),
 			}, nil)
 
+			mockBucket.On("WriteAll", mock.Anything, "dags/__lib.py", airflow2.SharedLib, (*blob.WriterOptions)(nil)).Return(nil)
 			mockBucket.On("WriteAll", ctx, fmt.Sprintf("dags/%s/%s.py", ns.Name, jobSpecs[0].Name), []byte("job-1-compiled"), (*blob.WriterOptions)(nil)).Return(nil)
 			mockBucket.On("Delete", ctx, fmt.Sprintf("dags/%s/%s.py", ns.ID.String(), jobSpecs[0].Name)).Return(nil)
 			mockBucket.On("Delete", ctx, fmt.Sprintf("dags/%s", ns.ID.String())).Return(nil)
@@ -218,13 +219,14 @@ func TestAirflow2(t *testing.T) {
 
 			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, nil)
 
+			mockBucket.On("WriteAll", mock.Anything, "dags/__lib.py", airflow2.SharedLib, (*blob.WriterOptions)(nil)).Return(nil)
+
 			errorMsg := "internal error"
 			air := airflow2.NewScheduler(mockBucketFac, nil, compiler)
 			compiler.On("Compile", air.GetTemplate(), ns, jobSpecs[0]).Return(models.Job{}, errors.New(errorMsg))
 
 			expectedDeployDetail := models.JobDeploymentDetail{
 				SuccessCount: 0,
-				FailureCount: 1,
 				Failures: []models.JobDeploymentFailure{
 					{
 						JobName: jobSpecs[0].Name,

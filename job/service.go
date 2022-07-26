@@ -55,7 +55,7 @@ type DependencyResolver interface {
 	Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error)
 	ResolveStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository) (map[string]models.JobSpecDependency, error)
 
-	GetJobSpecsWithDependencies(ctx context.Context, projectID models.ProjectID) ([]models.JobSpec, error)
+	GetJobSpecsWithDependencies(ctx context.Context, projectID models.ProjectID) ([]models.JobSpec, []models.UnknownDependency, error)
 }
 
 type Deployer interface {
@@ -172,6 +172,9 @@ func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter
 	if filter.ResourceDestination != "" {
 		jobSpec, err := srv.jobSpecRepository.GetJobByResourceDestination(ctx, filter.ResourceDestination)
 		if err != nil {
+			if errors.Is(err, store.ErrResourceNotFound) {
+				return []models.JobSpec{}, nil
+			}
 			return nil, err
 		}
 		return []models.JobSpec{jobSpec}, nil
@@ -179,19 +182,25 @@ func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter
 	if filter.ProjectName != "" {
 		projSpec, err := srv.projectService.Get(ctx, filter.ProjectName)
 		if err != nil {
-			return nil, fmt.Errorf("not able to find project: %w", err)
+			if errors.Is(err, store.ErrResourceNotFound) {
+				return []models.JobSpec{}, nil
+			}
+			return nil, err
 		}
 		projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(projSpec)
 		if filter.JobName != "" {
 			jobSpec, _, err := projectJobSpecRepo.GetByName(ctx, filter.JobName)
 			if err != nil {
+				if errors.Is(err, store.ErrResourceNotFound) {
+					return []models.JobSpec{}, nil
+				}
 				return nil, err
 			}
 			return []models.JobSpec{jobSpec}, nil
 		}
 		jobSpecs, err := projectJobSpecRepo.GetAll(ctx)
 		if err != nil {
-			return []models.JobSpec{}, err
+			return nil, err
 		}
 		return jobSpecs, nil
 	}
@@ -818,6 +827,9 @@ func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpe
 				if err != nil {
 					return currentSpec.Name, err
 				}
+				if len(jobSourceURNs) == 0 {
+					return currentSpec.Name, nil
+				}
 				err = srv.jobSourceRepo.Save(ctx, projectSpec.ID, currentSpec.ID, jobSourceURNs)
 				if err != nil {
 					err = fmt.Errorf("error persisting job sources for job %s: %w", currentSpec.Name, err)
@@ -850,6 +862,7 @@ func (srv *Service) identify(ctx context.Context, currentSpec models.JobSpec, pr
 		if !errors.Is(err, service.ErrDependencyModNotFound) {
 			return nil, fmt.Errorf("%s: %s: %w", errDependencyResolution, currentSpec.Name, err)
 		}
+		return nil, nil
 	}
 	return resp.Dependencies, nil
 }

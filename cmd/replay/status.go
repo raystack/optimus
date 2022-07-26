@@ -12,6 +12,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/config"
@@ -19,15 +20,16 @@ import (
 )
 
 type statusCommand struct {
-	logger       log.Logger
-	clientConfig *config.ClientConfig
+	logger         log.Logger
+	configFilePath string
+
+	projectName string
+	host        string
 }
 
 // NewStatusCommand initializes command for replay status
-func NewStatusCommand(clientConfig *config.ClientConfig) *cobra.Command {
-	status := &statusCommand{
-		clientConfig: clientConfig,
-	}
+func NewStatusCommand() *cobra.Command {
+	status := &statusCommand{}
 
 	cmd := &cobra.Command{
 		Use:     "status",
@@ -46,16 +48,47 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 		RunE:    status.RunE,
 		PreRunE: status.PreRunE,
 	}
+
+	status.injectFlags(cmd)
+
 	return cmd
 }
 
-func (s *statusCommand) PreRunE(_ *cobra.Command, _ []string) error {
-	s.logger = logger.NewClientLogger(s.clientConfig.Log)
+func (s *statusCommand) injectFlags(cmd *cobra.Command) {
+	// Config filepath flag
+	cmd.Flags().StringVarP(&s.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+
+	// Mandatory flags if config is not set
+	cmd.Flags().StringVarP(&s.projectName, "project-name", "p", "", "Name of the optimus project")
+	cmd.Flags().StringVar(&s.host, "host", "", "Optimus service endpoint url")
+}
+
+func (s *statusCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+	// Load config
+	conf, err := internal.LoadOptionalConfig(s.configFilePath)
+	if err != nil {
+		return err
+	}
+
+	if conf == nil {
+		s.logger = logger.NewDefaultLogger()
+		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
+		return nil
+	}
+
+	s.logger = logger.NewClientLogger(conf.Log)
+	if s.projectName == "" {
+		s.projectName = conf.Project.Name
+	}
+	if s.host == "" {
+		s.host = conf.Host
+	}
+
 	return nil
 }
 
 func (s *statusCommand) RunE(_ *cobra.Command, args []string) error {
-	conn, err := connectivity.NewConnectivity(s.clientConfig.Host, replayTimeout)
+	conn, err := connectivity.NewConnectivity(s.host, replayTimeout)
 	if err != nil {
 		return err
 	}
@@ -64,7 +97,7 @@ func (s *statusCommand) RunE(_ *cobra.Command, args []string) error {
 	replay := pb.NewReplayServiceClient(conn.GetConnection())
 	replayStatusRequest := &pb.GetReplayStatusRequest{
 		Id:          args[0],
-		ProjectName: s.clientConfig.Project.Name,
+		ProjectName: s.projectName,
 	}
 	spinner := progressbar.NewProgressBar()
 	spinner.Start("please wait...")

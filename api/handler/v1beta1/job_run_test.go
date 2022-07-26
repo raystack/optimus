@@ -179,7 +179,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			assert.Nil(t, err)
 
 			projectSpecProto := v1.ToProjectProto(projectSpec)
-			jobSpecProto := v1.ToJobProto(jobSpec)
+			jobSpecProto := v1.ToJobSpecificationProto(jobSpec)
 			instanceSpecProto := v1.ToInstanceProto(instanceSpec)
 			expectedResponse := &pb.RegisterInstanceResponse{
 				Job: jobSpecProto, Instance: instanceSpecProto,
@@ -249,7 +249,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			assert.Nil(t, err)
 
 			projectSpecProto := v1.ToProjectProto(projectSpec)
-			jobSpecProto := v1.ToJobProto(jobSpec)
+			jobSpecProto := v1.ToJobSpecificationProto(jobSpec)
 			instanceSpecProto := v1.ToInstanceProto(instanceSpec)
 			expectedResponse := &pb.RegisterInstanceResponse{
 				Job: jobSpecProto, Instance: instanceSpecProto,

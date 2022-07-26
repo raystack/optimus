@@ -10,6 +10,7 @@ import (
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
+	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/plugin"
 	"github.com/odpf/optimus/cmd/progressbar"
@@ -20,57 +21,74 @@ import (
 const versionTimeout = time.Second * 2
 
 type versionCommand struct {
-	logger log.Logger
-
-	isWithServer   bool
+	logger         log.Logger
 	configFilePath string
+
+	isWithServer bool
+	host         string
 
 	pluginCleanFn func()
 }
 
 // NewVersionCommand initializes command to get version
 func NewVersionCommand() *cobra.Command {
-	version := &versionCommand{
-		logger: logger.NewDefaultLogger(),
-	}
+	v := &versionCommand{}
 
 	cmd := &cobra.Command{
 		Use:      "version",
 		Short:    "Print the client version information",
 		Example:  "optimus version [--with-server]",
-		RunE:     version.RunE,
-		PreRunE:  version.PreRunE,
-		PostRunE: version.PostRunE,
+		RunE:     v.RunE,
+		PreRunE:  v.PreRunE,
+		PostRunE: v.PostRunE,
 	}
 
-	cmd.Flags().BoolVar(&version.isWithServer, "with-server", version.isWithServer, "Check for server version")
-	cmd.Flags().StringVarP(&version.configFilePath, "config", "c", version.configFilePath, "File path for client configuration")
+	v.injectFlags(cmd)
+
 	return cmd
 }
 
-func (v *versionCommand) PreRunE(_ *cobra.Command, _ []string) error {
+func (v *versionCommand) injectFlags(cmd *cobra.Command) {
+	cmd.Flags().BoolVar(&v.isWithServer, "with-server", v.isWithServer, "Check for server version")
+
+	// Config filepath flag
+	cmd.Flags().StringVarP(&v.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+
+	// Mandatory flags if with-server is set but config is not set
+	cmd.Flags().StringVar(&v.host, "host", "", "Optimus service endpoint url")
+}
+
+func (v *versionCommand) PreRunE(cmd *cobra.Command, _ []string) error {
+	v.logger = logger.NewDefaultLogger()
+
+	if v.isWithServer {
+		conf, err := internal.LoadOptionalConfig(v.configFilePath)
+		if err != nil {
+			return err
+		}
+
+		if conf == nil {
+			cmd.MarkFlagRequired("host")
+		} else {
+			v.logger = logger.NewClientLogger(conf.Log)
+			if v.host == "" {
+				v.host = conf.Host
+			}
+		}
+	}
+
 	var err error
-	v.pluginCleanFn, err = plugin.TriggerClientPluginsInit(config.LogLevelInfo)
+	v.pluginCleanFn, err = plugin.TriggerClientPluginsInit(config.LogLevel(v.logger.Level()))
 	return err
 }
 
-func (v *versionCommand) RunE(cmd *cobra.Command, _ []string) error {
+func (v *versionCommand) RunE(_ *cobra.Command, _ []string) error {
 	// Print client version
 	v.logger.Info(fmt.Sprintf("Client: %s-%s", logger.ColoredNotice(config.BuildVersion), logger.ColoredNotice(config.BuildCommit)))
 
 	// Print server version
 	if v.isWithServer {
-		// TODO: find a way to load the config in one place
-		clientConfig, err := config.LoadClientConfig(v.configFilePath, cmd.Flags())
-		if err != nil {
-			return err
-		}
-		if err := config.ValidateClientConfig(clientConfig); err != nil { // experiment for client validation
-			return err
-		}
-
-		v.logger = logger.NewClientLogger(clientConfig.Log)
-		srvVer, err := v.getVersionRequest(config.BuildVersion, clientConfig.Host)
+		srvVer, err := v.getVersionRequest(config.BuildVersion, v.host)
 		if err != nil {
 			return err
 		}

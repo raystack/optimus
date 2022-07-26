@@ -14,6 +14,7 @@ import (
 
 type addHookCommand struct {
 	logger           log.Logger
+	configFilePath   string
 	clientConfig     *config.ClientConfig
 	jobSurvey        *survey.JobSurvey
 	jobAddHookSurvey *survey.JobAddHookSurvey
@@ -21,9 +22,9 @@ type addHookCommand struct {
 }
 
 // NewAddHookCommand initializes command for adding hook
-func NewAddHookCommand(cliengConfig *config.ClientConfig) *cobra.Command {
+func NewAddHookCommand() *cobra.Command {
 	addHook := &addHookCommand{
-		clientConfig: cliengConfig,
+		clientConfig: &config.ClientConfig{},
 	}
 	cmd := &cobra.Command{
 		Use:     "addhook",
@@ -34,10 +35,18 @@ func NewAddHookCommand(cliengConfig *config.ClientConfig) *cobra.Command {
 		RunE:    addHook.RunE,
 		PreRunE: addHook.PreRunE,
 	}
+	// Config filepath flag
+	cmd.Flags().StringVarP(&addHook.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+
 	return cmd
 }
 
 func (a *addHookCommand) PreRunE(_ *cobra.Command, _ []string) error {
+	// Load mandatory config
+	if err := a.loadConfig(); err != nil {
+		return err
+	}
+
 	a.logger = logger.NewClientLogger(a.clientConfig.Log)
 	a.jobSurvey = survey.NewJobSurvey()
 	a.jobAddHookSurvey = survey.NewJobAddHookSurvey()
@@ -74,5 +83,15 @@ func (a *addHookCommand) RunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	a.logger.Info(logger.ColoredSuccess("Hook successfully added to %s", selectedJobName))
+	return nil
+}
+
+func (a *addHookCommand) loadConfig() error {
+	// TODO: find a way to load the config in one place
+	conf, err := config.LoadClientConfig(a.configFilePath)
+	if err != nil {
+		return err
+	}
+	*a.clientConfig = *conf
 	return nil
 }

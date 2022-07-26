@@ -131,7 +131,7 @@ func (sv *JobRunServiceServer) RegisterInstance(ctx context.Context, req *pb.Reg
 		return nil, status.Errorf(codes.Internal, "%s: failed to compile instance of job %s", err.Error(), req.GetJobName())
 	}
 
-	jobProto := ToJobProto(jobRun.Spec)
+	jobProto := ToJobSpecificationProto(jobRun.Spec)
 
 	instanceProto := ToInstanceProto(instance)
 
