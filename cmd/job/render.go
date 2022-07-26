@@ -15,6 +15,7 @@ import (
 	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/core/cron"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
 	"github.com/odpf/optimus/utils"
@@ -71,6 +72,22 @@ func (r *renderCommand) RunE(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	scheduleTime := time.Now()
+	startTime := jobSpec.Task.Window.GetEnd(scheduleTime)
+	endTime := jobSpec.Task.Window.GetStart(scheduleTime)
+
+	for _, dependency := range jobSpec.Dependencies {
+		jobCron, err := cron.ParseCronSchedule(dependency.Job.Schedule.Interval)
+		scheduledTimes := jobCron.GetExpectedRuns(startTime, endTime)
+	}
+
+	//for _, dependency := range jobSpec.ExternalDependencies.OptimusDependencies {
+	//	jobCron, err := cron.ParseCronSchedule(dependency.Job.Schedule.Interval)
+	//	scheduledTimes := jobCron.GetExpectedRuns(startTime, endTime)
+	//}
+	fmt.Println(jobSpec.Dependencies)
+	fmt.Println(jobSpec.ExternalDependencies)
+
 	// create temporary directory
 	renderedPath := filepath.Join(".", "render", jobSpec.Name)
 	if err := os.MkdirAll(renderedPath, 0o770); err != nil {
@@ -78,11 +95,10 @@ func (r *renderCommand) RunE(_ *cobra.Command, args []string) error {
 	}
 	r.logger.Info(fmt.Sprintf("Rendering assets in %s", renderedPath))
 
-	now := time.Now()
-	r.logger.Info(fmt.Sprintf("Assuming execution time as current time of %s\n", now.Format(models.InstanceScheduledAtTimeLayout)))
+	r.logger.Info(fmt.Sprintf("Assuming execution time as current time of %s\n", scheduleTime.Format(models.InstanceScheduledAtTimeLayout)))
 
 	templateEngine := compiler.NewGoEngine()
-	templates, err := compiler.DumpAssets(context.Background(), jobSpec, now, templateEngine, true)
+	templates, err := compiler.DumpAssets(context.Background(), jobSpec, scheduleTime, templateEngine, true)
 	if err != nil {
 		return err
 	}
@@ -102,7 +118,6 @@ func (r *renderCommand) getJobSpecByName(args []string, namespaceJobPath string)
 	pluginRepo := models.PluginRegistry
 	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespaceJobPath)
 	jobSpecRepo := local.NewJobSpecRepository(jobSpecFs, local.NewJobSpecAdapter(pluginRepo))
-
 	var jobName string
 	var err error
 	if len(args) == 0 {

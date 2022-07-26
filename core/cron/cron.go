@@ -63,3 +63,15 @@ func (s *ScheduleSpec) getEarliestTimeToStartCron(currTime time.Time) time.Time 
 	}
 	return startTime
 }
+
+func (s *ScheduleSpec) GetExpectedRuns(startTime, endTime time.Time) []time.Time {
+	var scheduleTimes []time.Time
+	start := s.Next(startTime.Add(-time.Second * 1))
+	end := endTime
+	exit := s.Next(end)
+	for !start.Equal(exit) {
+		scheduleTimes = append(scheduleTimes, start)
+		start = s.Next(start)
+	}
+	return scheduleTimes
+}

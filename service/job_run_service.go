@@ -217,15 +217,12 @@ func validateJobQuery(jobQuery *models.JobQuery, jobSpec models.JobSpec) error {
 
 func getExpectedRuns(spec *cron.ScheduleSpec, startTime, endTime time.Time) []models.JobRun {
 	var jobRuns []models.JobRun
-	start := spec.Next(startTime.Add(-time.Second * 1))
-	end := endTime
-	exit := spec.Next(end)
-	for !start.Equal(exit) {
+	scheduleTimes := spec.GetExpectedRuns(startTime, endTime)
+	for _, scheduleTime := range scheduleTimes {
 		jobRuns = append(jobRuns, models.JobRun{
 			Status:      models.RunStatePending,
-			ScheduledAt: start,
+			ScheduledAt: scheduleTime,
 		})
-		start = spec.Next(start)
 	}
 	return jobRuns
 }
