@@ -16,18 +16,18 @@ const (
 
 var monthExp = regexp.MustCompile("(\\+|-)?([0-9]+)(M)") //nolint:gosimple
 
-type WindowV1 struct {
-	TruncateTo string
-	Offset     string
-	Size       string
+type windowV1 struct {
+	truncateTo string
+	offset     string
+	size       string
 }
 
-func (w WindowV1) Validate() error {
-	_, _, _, err := w.getFieldValues()
+func (w windowV1) Validate() error {
+	_, _, _, err := w.getFieldValues() // nolint:dogsled
 	return err
 }
 
-func (w WindowV1) GetEndTime(scheduleTime time.Time) (endTime time.Time, err error) {
+func (w windowV1) GetEndTime(scheduleTime time.Time) (endTime time.Time, err error) {
 	truncateTo, offset, size, getErr := w.getFieldValues()
 	if getErr != nil {
 		err = getErr
@@ -37,7 +37,7 @@ func (w WindowV1) GetEndTime(scheduleTime time.Time) (endTime time.Time, err err
 	return
 }
 
-func (w WindowV1) GetStartTime(scheduleTime time.Time) (startTime time.Time, err error) {
+func (w windowV1) GetStartTime(scheduleTime time.Time) (startTime time.Time, err error) {
 	truncateTo, offset, size, getErr := w.getFieldValues()
 	if getErr != nil {
 		err = getErr
@@ -47,43 +47,43 @@ func (w WindowV1) GetStartTime(scheduleTime time.Time) (startTime time.Time, err
 	return
 }
 
-func (w WindowV1) GetTruncateTo() string {
-	truncateTo, _, _, _ := w.getFieldValues()
+func (w windowV1) GetTruncateTo() string {
+	truncateTo, _, _, _ := w.getFieldValues() // nolint:dogsled
 	return truncateTo
 }
 
-func (w WindowV1) GetOffsetAsDuration() time.Duration {
-	_, offset, _, _ := w.getFieldValues()
+func (w windowV1) GetOffsetAsDuration() time.Duration {
+	_, offset, _, _ := w.getFieldValues() // nolint:dogsled
 	return offset
 }
 
-func (w WindowV1) GetOffset() string {
-	if w.Offset != "" {
-		return w.Offset
+func (w windowV1) GetOffset() string {
+	if w.offset != "" {
+		return w.offset
 	}
 	return w.inHrs(int(w.GetOffsetAsDuration().Hours()))
 }
 
-func (w WindowV1) GetSizeAsDuration() time.Duration {
-	_, _, size, _ := w.getFieldValues()
+func (w windowV1) GetSizeAsDuration() time.Duration {
+	_, _, size, _ := w.getFieldValues() // nolint:dogsled
 	return size
 }
 
-func (w WindowV1) GetSize() string {
-	if w.Size != "" {
-		return w.Size
+func (w windowV1) GetSize() string {
+	if w.size != "" {
+		return w.size
 	}
 	return w.inHrs(int(w.GetSizeAsDuration().Hours()))
 }
 
-func (w WindowV1) inHrs(hrs int) string {
+func (windowV1) inHrs(hrs int) string {
 	if hrs == 0 {
 		return "0"
 	}
 	return fmt.Sprintf("%dh", hrs)
 }
 
-func (w WindowV1) getTimeRange(scheduleTime time.Time, truncateTo string, offset, size time.Duration) (time.Time, time.Time) {
+func (windowV1) getTimeRange(scheduleTime time.Time, truncateTo string, offset, size time.Duration) (time.Time, time.Time) {
 	floatingEnd := scheduleTime
 
 	// apply truncation to end
@@ -138,15 +138,15 @@ func (w WindowV1) getTimeRange(scheduleTime time.Time, truncateTo string, offset
 	return windowStart, windowEnd
 }
 
-func (w WindowV1) getFieldValues() (truncateTo string, offsetAsDuration, sizeAsDuration time.Duration, err error) {
+func (w windowV1) getFieldValues() (truncateTo string, offsetAsDuration, sizeAsDuration time.Duration, err error) {
 	truncateTo = "d"
-	if w.TruncateTo != "" {
-		truncateTo = w.TruncateTo
+	if w.truncateTo != "" {
+		truncateTo = w.truncateTo
 	}
 
 	sizeAsDuration = HoursInDay
-	if w.Size != "" {
-		tempSize, sizeErr := w.tryParsing(w.Size)
+	if w.size != "" {
+		tempSize, sizeErr := w.tryParsing(w.size)
 		if sizeErr != nil {
 			err = sizeErr
 			return
@@ -154,8 +154,8 @@ func (w WindowV1) getFieldValues() (truncateTo string, offsetAsDuration, sizeAsD
 		sizeAsDuration = tempSize
 	}
 
-	if w.Offset != "" {
-		tempOffset, offsetErr := w.tryParsing(w.Offset)
+	if w.offset != "" {
+		tempOffset, offsetErr := w.tryParsing(w.offset)
 		if offsetErr != nil {
 			err = offsetErr
 			return
@@ -165,18 +165,17 @@ func (w WindowV1) getFieldValues() (truncateTo string, offsetAsDuration, sizeAsD
 	return
 }
 
-func (w WindowV1) tryParsing(str string) (time.Duration, error) {
+func (w windowV1) tryParsing(str string) (time.Duration, error) {
 	var output time.Duration
 	rst, err := w.tryParsingInMonths(str)
 	if err != nil {
 		return time.ParseDuration(str)
-	} else {
-		output = rst
 	}
+	output = rst
 	return output, nil
 }
 
-func (w WindowV1) tryParsingInMonths(str string) (time.Duration, error) {
+func (windowV1) tryParsingInMonths(str string) (time.Duration, error) {
 	sz := time.Duration(0)
 	monthMatches := monthExp.FindAllStringSubmatch(str, -1)
 	if len(monthMatches) > 0 && len(monthMatches[0]) == 4 {

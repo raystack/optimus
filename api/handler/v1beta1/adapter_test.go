@@ -62,10 +62,9 @@ func TestAdapter(t *testing.T) {
 			Base: execUnit1,
 		}, nil)
 
-		window := &models.WindowV1{
-			Size:       "48h",
-			Offset:     "1h",
-			TruncateTo: "h",
+		window, err := models.NewWindow(1, "h", "1h", "48h")
+		if err != nil {
+			panic(err)
 		}
 		jobSpec := models.JobSpec{
 			Version: 1,

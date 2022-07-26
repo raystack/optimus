@@ -19,6 +19,10 @@ func TestCompiler(t *testing.T) {
 		ProjectSpec: projSpec,
 	}
 
+	window, err := models.NewWindow(1, "d", "0", "1h")
+	if err != nil {
+		panic(err)
+	}
 	spec := models.JobSpec{
 		Name:  "foo",
 		Owner: "mee@mee",
@@ -47,11 +51,7 @@ func TestCompiler(t *testing.T) {
 		Task: models.JobSpecTask{
 			Unit:     &models.Plugin{},
 			Priority: 2000,
-			Window: models.WindowV1{
-				Size:       "1h",
-				Offset:     "0",
-				TruncateTo: "d",
-			},
+			Window:   window,
 		},
 		Dependencies: map[string]models.JobSpecDependency{},
 	}

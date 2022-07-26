@@ -79,6 +79,10 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 		Name:        "dev-team-2",
 		ProjectSpec: projectSpec,
 	}
+	window, err := models.NewWindow(1, "h", "0", "24h")
+	if err != nil {
+		panic(err)
+	}
 	testConfigs := []models.JobSpec{
 		{
 			Version: 1,
@@ -100,11 +104,7 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: models.WindowV1{
-					Size:       "24h",
-					Offset:     "0",
-					TruncateTo: "h",
-				},
+				Window: window,
 			},
 			Assets: *models.JobAssets{}.New(
 				[]models.JobSpecAsset{
@@ -156,7 +156,6 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: models.WindowV1{},
 			},
 			NamespaceSpec: namespaceSpec,
 		},
@@ -301,10 +300,9 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 			taskSchema := checkModel.Task.Unit.Info()
 			assert.Equal(t, gTask, taskSchema.Name)
 
-			window := models.WindowV1{
-				Size:       "0",
-				Offset:     "2h",
-				TruncateTo: "h",
+			window, err := models.NewWindow(1, "h", "2h", "0")
+			if err != nil {
+				panic(err)
 			}
 			testModelA.Task.Window = window
 

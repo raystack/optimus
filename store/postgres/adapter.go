@@ -224,56 +224,41 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		return models.JobSpec{}, fmt.Errorf("getting namespace spec of a job error: %w", err)
 	}
 
-	var window models.Window
+	var truncateTo, offset, size string
 	switch conf.Version {
 	case 1:
-		var truncateTo string
 		if conf.WindowTruncateTo != nil {
 			truncateTo = *conf.WindowTruncateTo
 		}
 
-		var offset string
 		if conf.WindowOffset != nil {
 			offset = *conf.WindowOffset
 		} else if conf.OldWindowOffset != nil {
 			offset = fmt.Sprintf("%fh", time.Duration(*conf.OldWindowOffset).Hours())
 		}
 
-		var size string
 		if conf.WindowSize != nil {
 			size = *conf.WindowSize
 		} else if conf.OldWindowSize != nil {
 			size = fmt.Sprintf("%fh", time.Duration(*conf.OldWindowSize).Hours())
 		}
-
-		window = models.WindowV1{
-			TruncateTo: truncateTo,
-			Offset:     offset,
-			Size:       size,
-		}
-	case 2:
-		var truncateTo string
+	case 2: // nolint:gomnd
 		if conf.WindowTruncateTo != nil {
 			truncateTo = *conf.WindowTruncateTo
 		}
 
-		var offset string
 		if conf.WindowOffset != nil {
 			offset = *conf.WindowOffset
 		}
 
-		var size string
 		if conf.WindowSize != nil {
 			size = *conf.WindowSize
 		}
+	}
 
-		window = models.WindowV2{
-			TruncateTo: truncateTo,
-			Offset:     offset,
-			Size:       size,
-		}
-	default:
-		return models.JobSpec{}, fmt.Errorf("spec version [%d] is not recognized", conf.Version)
+	window, err := models.NewWindow(conf.Version, truncateTo, offset, size)
+	if err != nil {
+		return models.JobSpec{}, err
 	}
 
 	job := models.JobSpec{

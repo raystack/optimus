@@ -107,10 +107,9 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJo
 			Value: "THIS",
 		},
 	}
-	jobWindow := &models.WindowV1{
-		Size:       "1h",
-		Offset:     "0",
-		TruncateTo: "d",
+	jobWindow, err := models.NewWindow(1, "d", "0", "1h")
+	if err != nil {
+		panic(err)
 	}
 	jobAsset := *models.JobAssets{}.New(
 		[]models.JobSpecAsset{
@@ -155,7 +154,7 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJo
 	stream.On("Send", mock2.Anything).Return(nil).Twice()
 
 	runtimeServiceServer := s.newJobSpecServiceServer()
-	err := runtimeServiceServer.DeployJobSpecification(stream)
+	err = runtimeServiceServer.DeployJobSpecification(stream)
 
 	s.Assert().NoError(err)
 	stream.AssertExpectations(s.T())
@@ -186,10 +185,9 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_Adapt
 			Value: "THIS",
 		},
 	}
-	jobWindow := &models.WindowV1{
-		Size:       "1h",
-		Offset:     "0",
-		TruncateTo: "d",
+	jobWindow, err := models.NewWindow(1, "d", "0", "1h")
+	if err != nil {
+		panic(err)
 	}
 	jobAsset := *models.JobAssets{}.New(
 		[]models.JobSpecAsset{
@@ -233,7 +231,7 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_Adapt
 	stream.On("Send", mock2.AnythingOfType("*optimus.DeployJobSpecificationResponse")).Return(nil).Twice()
 
 	jobSpecServiceServer := s.newJobSpecServiceServer()
-	err := jobSpecServiceServer.DeployJobSpecification(stream)
+	err = jobSpecServiceServer.DeployJobSpecification(stream)
 
 	s.Assert().NoError(err)
 	stream.AssertExpectations(s.T())
@@ -252,10 +250,9 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Continue_Depl
 			Value: "THIS",
 		},
 	}
-	jobWindow := &models.WindowV1{
-		Size:       "1h",
-		Offset:     "0",
-		TruncateTo: "d",
+	jobWindow, err := models.NewWindow(1, "d", "0", "1h")
+	if err != nil {
+		panic(err)
 	}
 	jobAsset := *models.JobAssets{}.New(
 		[]models.JobSpecAsset{
@@ -301,7 +298,7 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Continue_Depl
 	stream.On("Send", mock2.AnythingOfType("*optimus.DeployJobSpecificationResponse")).Return(nil).Twice()
 
 	runtimeServiceServer := s.newJobSpecServiceServer()
-	err := runtimeServiceServer.DeployJobSpecification(stream)
+	err = runtimeServiceServer.DeployJobSpecification(stream)
 
 	s.Assert().NoError(err)
 	stream.AssertExpectations(s.T())
@@ -316,7 +313,7 @@ func (s *JobSpecServiceServerTestSuite) TestGetJobSpecification_Success() {
 
 	execUnit1 := new(mock.BasePlugin)
 	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "task"}, nil)
-	jobSpec := models.JobSpec{Version: 1, Name: req.JobName, Task: models.JobSpecTask{Window: &models.WindowV1{}, Unit: &models.Plugin{Base: execUnit1}}}
+	jobSpec := models.JobSpec{Version: 1, Name: req.JobName, Task: models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}}
 
 	s.namespaceService.On("Get", s.ctx, req.ProjectName, req.NamespaceName).Return(s.namespaceSpec, nil).Once()
 	s.jobService.On("GetByName", s.ctx, req.JobName, s.namespaceSpec).Return(jobSpec, nil).Once()
@@ -365,7 +362,7 @@ func (s *JobSpecServiceServerTestSuite) TestGetJobSpecifications_Success() {
 
 	execUnit1 := new(mock.BasePlugin)
 	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "task"}, nil)
-	jobSpec := models.JobSpec{Version: 1, Name: req.JobName, Task: models.JobSpecTask{Window: &models.WindowV1{}, Unit: &models.Plugin{Base: execUnit1}}}
+	jobSpec := models.JobSpec{Version: 1, Name: req.JobName, Task: models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}}
 	s.jobService.On("GetByFilter", s.ctx, jobSpecFilter).Return([]models.JobSpec{jobSpec}, nil).Once()
 
 	runtimeServiceServer := s.newJobSpecServiceServer()
@@ -422,6 +419,10 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				Base: execUnit1,
 			}, nil)
 
+			window, err := models.NewWindow(1, "d", "0", "1h")
+			if err != nil {
+				panic(err)
+			}
 			jobSpec := models.JobSpec{
 				Version: 1,
 				Name:    jobName,
@@ -435,11 +436,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 							Value: "THIS",
 						},
 					},
-					Window: &models.WindowV1{
-						Size:       "1h",
-						Offset:     "0",
-						TruncateTo: "d",
-					},
+					Window: window,
 				},
 				Assets: *models.JobAssets{}.New(
 					[]models.JobSpecAsset{

@@ -66,6 +66,10 @@ func TestCompilerIntegration(t *testing.T) {
 		ProjectSpec: externalProjSpec,
 	}
 
+	window, err := models.NewWindow(1, "d", "0", "1h")
+	if err != nil {
+		panic(err)
+	}
 	depSpecIntra := models.JobSpec{
 		Name:  "foo-intra-dep-job",
 		Owner: "mee@mee",
@@ -80,11 +84,7 @@ func TestCompilerIntegration(t *testing.T) {
 		Task: models.JobSpecTask{
 			Unit:     &models.Plugin{Base: execUnit},
 			Priority: 2000,
-			Window: models.WindowV1{
-				Size:       "1h",
-				Offset:     "0",
-				TruncateTo: "d",
-			},
+			Window:   window,
 		},
 		NamespaceSpec: namespaceSpec,
 	}
@@ -103,11 +103,7 @@ func TestCompilerIntegration(t *testing.T) {
 		Task: models.JobSpecTask{
 			Unit:     &models.Plugin{Base: execUnit},
 			Priority: 2000,
-			Window: models.WindowV1{
-				Size:       "1h",
-				Offset:     "0",
-				TruncateTo: "d",
-			},
+			Window:   window,
 		},
 		NamespaceSpec: externalProjNamespaceSpec,
 	}
@@ -164,11 +160,7 @@ func TestCompilerIntegration(t *testing.T) {
 		Task: models.JobSpecTask{
 			Unit:     &models.Plugin{Base: execUnit},
 			Priority: 2000,
-			Window: models.WindowV1{
-				Size:       "1h",
-				Offset:     "0",
-				TruncateTo: "d",
-			},
+			Window:   window,
 		},
 		Dependencies: map[string]models.JobSpecDependency{
 			// we'll add resolved dependencies
