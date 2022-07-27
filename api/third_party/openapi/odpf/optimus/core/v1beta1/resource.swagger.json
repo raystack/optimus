@@ -290,9 +290,6 @@
         },
         "logStatus": {
           "$ref": "#/definitions/v1beta1Log"
-        },
-        "progress": {
-          "$ref": "#/definitions/v1beta1Progress"
         }
       }
     },
@@ -327,15 +324,6 @@
         },
         "message": {
           "type": "string"
-        }
-      }
-    },
-    "v1beta1Progress": {
-      "type": "object",
-      "properties": {
-        "count": {
-          "type": "integer",
-          "format": "int32"
         }
       }
     },
