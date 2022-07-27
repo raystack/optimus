@@ -63,7 +63,7 @@ telemetry:
   profile_addr: ":9110"
   jaeger_addr: "http://localhost:14268/api/traces"
 resource_managers:
-- name: external_optimus
+  name: external_optimus
   type: optimus
   description: neighbor optimus
   config:
@@ -281,15 +281,11 @@ func (s *ConfigTestSuite) initExpectedServerConfig() {
 	s.expectedServerConfig.Telemetry.ProfileAddr = ":9110"
 	s.expectedServerConfig.Telemetry.JaegerAddr = "http://localhost:14268/api/traces"
 
-	s.expectedServerConfig.ResourceManagers = []config.ResourceManager{
-		{
-			Name:        "external_optimus",
-			Type:        "optimus",
-			Description: "neighbor optimus",
-			Config: map[interface{}]interface{}{
-				"host": "external.optimus.io",
-			},
-		},
+	s.expectedServerConfig.ResourceManagers = config.ResourceManager{
+		Name:        "external_optimus",
+		Type:        "optimus",
+		Description: "neighbor optimus",
+		Config: config.ResourceManagerConfigOptimus{Host: "external.optimus.io"},
 	}
 }
 

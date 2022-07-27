@@ -20,20 +20,20 @@ type externalDependencyResolver struct {
 }
 
 // NewExternalDependencyResolver creates a new instance of externalDependencyResolver
-func NewExternalDependencyResolver(resourceManagerConfigs []config.ResourceManager) (ExternalDependencyResolver, error) {
+func NewExternalDependencyResolver(conf config.ResourceManager) (ExternalDependencyResolver, error) {
 	var optimusResourceManagers []resourcemgr.ResourceManager
-	for _, conf := range resourceManagerConfigs {
-		switch conf.Type {
-		case "optimus":
-			getter, err := resourcemgr.NewOptimusResourceManager(conf)
-			if err != nil {
-				return nil, err
-			}
-			optimusResourceManagers = append(optimusResourceManagers, getter)
-		default:
-			return nil, fmt.Errorf("resource manager [%s] is not recognized", conf.Type)
+	//for _, conf := range resourceManagerConfigs {
+	switch conf.Type {
+	case "optimus":
+		getter, err := resourcemgr.NewOptimusResourceManager(conf)
+		if err != nil {
+			return nil, err
 		}
+		optimusResourceManagers = append(optimusResourceManagers, getter)
+	default:
+		return nil, fmt.Errorf("resource manager [%s] is not recognized", conf.Type)
 	}
+	//}
 	return &externalDependencyResolver{
 		optimusResourceManagers: optimusResourceManagers,
 	}, nil
