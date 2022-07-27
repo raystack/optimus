@@ -93,6 +93,9 @@ type YamlQuestion struct {
 }
 
 func (yq *YamlQuestion) isValid(value string) error {
+	if yq.Required {
+		return survey.Required(value)
+	}
 	var validators []survey.Validator
 	if yq.Regexp != "" {
 		validators = append(validators, ValidatorFactory.NewFromRegex(yq.Regexp, yq.ValidationError))
@@ -156,11 +159,17 @@ func (p *YamlPlugin) ValidateQuestion(_ context.Context, req ValidateQuestionReq
 }
 
 // to be depricated,
-// Implement config infrerence from config hierarchy/inheritence
-func (p *YamlPlugin) DefaultConfig(context.Context, DefaultConfigRequest) (*DefaultConfigResponse, error) {
-
+// Implement config infrerence from config hierarchy/inheritance
+func (p *YamlPlugin) DefaultConfig(_ context.Context, req DefaultConfigRequest) (*DefaultConfigResponse, error) {
+	conf := []PluginConfig{}
+	for _, ans := range req.Answers {
+		conf = append(conf, PluginConfig{
+			Name:  ans.Question.Name,
+			Value: ans.Value,
+		})
+	}
 	return &DefaultConfigResponse{
-		Config: []PluginConfig{},
+		Config: conf,
 	}, nil
 }
 

@@ -6,9 +6,10 @@ import (
 	"os"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/odpf/optimus/models"
 	"github.com/spf13/afero"
 	"gopkg.in/yaml.v2"
+
+	"github.com/odpf/optimus/models"
 )
 
 const (
@@ -58,8 +59,6 @@ func FromYaml(plugin_path string) (*models.YamlPlugin, error) {
 	plugin.PluginAssets = &pluginDefaultAssets
 
 	plugin.YamlQuestions.ConstructIndex()
-	// printYaml(plugin)
-	// fmt.Println(plugin.YamlQuestions.Index)
 	return &plugin, nil
 }
 
