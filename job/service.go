@@ -14,8 +14,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
+	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/progress"
-	"github.com/odpf/optimus/core/sender"
 	"github.com/odpf/optimus/core/tree"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
@@ -377,8 +377,9 @@ func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, pr
 			return newErr
 		}
 	}
-	successMsg := "info: dependencies resolved"
-	sender.SendSuccessMessage(nil, successMsg)
+	// TODO: use it once logorus implementing logwriter
+	// successMsg := "info: dependencies resolved"
+	// sender.SendSuccessMessage(nil, successMsg)
 
 	jobSpecs, err = srv.priorityResolver.Resolve(ctx, jobSpecs, progressObserver)
 	if err != nil {
@@ -740,22 +741,22 @@ func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec,
 // Refresh fetches all the requested jobs, resolves its dependencies, assign proper priority weights,
 // compile all jobs in the project and upload them to the destination store.
 func (srv *Service) Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string,
-	logSender sender.LogStatus) (models.DeploymentID, error) {
+	logWriter writer.LogWriter) (models.DeploymentID, error) {
 	projectSpec, err := srv.projectService.Get(ctx, projectName)
 	if err != nil {
 		return models.DeploymentID(uuid.Nil), err
 	}
 
 	// get job specs as requested
-	jobSpecs, err := srv.fetchJobSpecs(ctx, projectSpec, namespaceNames, jobNames, logSender)
+	jobSpecs, err := srv.fetchJobSpecs(ctx, projectSpec, namespaceNames, jobNames, logWriter)
 	if err != nil {
 		return models.DeploymentID(uuid.Nil), err
 	}
 
 	// resolve dependency and persist
-	srv.identifyAndPersistJobSources(ctx, projectSpec, jobSpecs, logSender)
+	srv.identifyAndPersistJobSources(ctx, projectSpec, jobSpecs, logWriter)
 	successMsg := "info: dependencies resolved"
-	sender.SendSuccessMessage(logSender, successMsg)
+	logWriter.Write(writer.LogLevelInfo, successMsg)
 
 	deployID, err := srv.deployManager.Deploy(ctx, projectSpec)
 	if err != nil {
@@ -766,8 +767,8 @@ func (srv *Service) Refresh(ctx context.Context, projectName string, namespaceNa
 }
 
 func (srv *Service) fetchJobSpecs(ctx context.Context, projectSpec models.ProjectSpec,
-	namespaceNames []string, jobNames []string, logSender sender.LogStatus) (jobSpecs []models.JobSpec, err error) {
-	defer sender.SendSuccessMessage(logSender, "fetching job specs")
+	namespaceNames []string, jobNames []string, logWriter writer.LogWriter) (jobSpecs []models.JobSpec, err error) {
+	defer logWriter.Write(writer.LogLevelInfo, "fetching job specs")
 
 	if len(jobNames) > 0 {
 		return srv.fetchSpecsForGivenJobNames(ctx, projectSpec, jobNames)
@@ -816,7 +817,7 @@ func (srv *Service) fetchSpecsForGivenJobNames(ctx context.Context, projectSpec 
 }
 
 func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpec models.ProjectSpec,
-	jobSpecs []models.JobSpec, logSender sender.LogStatus) {
+	jobSpecs []models.JobSpec, logWriter writer.LogWriter) {
 	start := time.Now()
 	defer resolveDependencyHistogram.Observe(time.Since(start).Seconds())
 
@@ -846,20 +847,20 @@ func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpe
 		if state.Err != nil {
 			failure++
 			warnMsg := fmt.Sprintf("error '%s': failed to resolve dependency, %s", state.Val, state.Err.Error())
-			sender.SendWarningMessage(logSender, warnMsg)
+			logWriter.Write(writer.LogLevelWarning, warnMsg)
 		} else {
 			success++
 			successMsg := fmt.Sprintf("info '%s': dependency is successfully resolved", state.Val)
-			sender.SendSuccessMessage(logSender, successMsg)
+			logWriter.Write(writer.LogLevelInfo, successMsg)
 		}
 	}
 
 	if failure > 0 {
 		warnMsg := fmt.Sprintf("Resolved dependencies of %d/%d jobs.", success, success+failure)
-		sender.SendWarningMessage(logSender, warnMsg)
+		logWriter.Write(writer.LogLevelWarning, warnMsg)
 	} else {
 		successMsg := fmt.Sprintf("Resolved dependency of %d jobs.", success)
-		sender.SendSuccessMessage(logSender, successMsg)
+		logWriter.Write(writer.LogLevelInfo, successMsg)
 	}
 
 	resolveDependencyGauge.With(prometheus.Labels{MetricDependencyResolutionStatus: MetricDependencyResolutionSucceed}).Set(float64(success))

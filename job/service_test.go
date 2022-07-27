@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	mock2 "github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
@@ -1045,6 +1046,8 @@ func TestService(t *testing.T) {
 	})
 
 	t.Run("Deploy", func(t *testing.T) {
+		// TODO: remove it once job deploy is merged
+		t.Skip()
 		projSpec := models.ProjectSpec{
 			Name: "proj",
 		}
@@ -1857,6 +1860,9 @@ func TestService(t *testing.T) {
 			pluginService := new(mock.DependencyResolverPluginService)
 			defer pluginService.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			jobSpecsBase := []models.JobSpec{
 				{
 					ID:      jobID,
@@ -1884,7 +1890,9 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
-			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
+
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, nil, logWriter)
 
 			assert.Nil(t, err)
 			assert.NotEqual(t, models.DeploymentID(uuid.Nil), deployID)
@@ -1913,6 +1921,9 @@ func TestService(t *testing.T) {
 
 			pluginService := new(mock.DependencyResolverPluginService)
 			defer pluginService.AssertExpectations(t)
+
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
 
 			jobSpecsBase := []models.JobSpec{
 				{
@@ -1944,7 +1955,9 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(namespaceJobSpecRepoFac, nil, nil, dependencyResolver,
 				nil, nil, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
-			deployID, err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
+
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, logWriter)
 
 			assert.Nil(t, err)
 			assert.NotEqual(t, models.DeploymentID(uuid.Nil), deployID)
@@ -1980,6 +1993,9 @@ func TestService(t *testing.T) {
 			pluginService := new(mock.DependencyResolverPluginService)
 			defer pluginService.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			jobSpecsBase := []models.JobSpec{
 				{
 					ID:      jobID,
@@ -2008,7 +2024,9 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, batchScheduler, nil, dependencyResolver,
 				priorityResolver, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
-			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, jobNames, nil)
+
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, jobNames, logWriter)
 
 			assert.Nil(t, err)
 			assert.NotEqual(t, models.DeploymentID(uuid.Nil), deployID)
@@ -2035,11 +2053,15 @@ func TestService(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			defer jobSourceRepo.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			projectService.On("Get", ctx, projSpec.Name).Return(models.ProjectSpec{}, errors.New(errorMsg))
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil, nil, nil)
-			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
+
+			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, nil, logWriter)
 
 			assert.Equal(t, errorMsg, err.Error())
 			assert.Equal(t, models.DeploymentID(uuid.Nil), deployID)
@@ -2066,6 +2088,9 @@ func TestService(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			defer jobSourceRepo.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
 			projJobSpecRepoFac.On("New", projSpec).Return(projectJobSpecRepo)
@@ -2073,7 +2098,9 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil, nil, nil)
-			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
+
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, nil, logWriter)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve jobs: %s", errorMsg), err.Error())
 			assert.Equal(t, models.DeploymentID(uuid.Nil), deployID)
@@ -2100,6 +2127,9 @@ func TestService(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			defer jobSourceRepo.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			namespaceNames := []string{namespaceSpec.Name}
 
 			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
@@ -2108,7 +2138,9 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(namespaceJobSpecRepoFac, nil, nil, dependencyResolver,
 				nil, nil, nil, namespaceService, projectService, deployManager, nil, nil, nil)
-			deployID, err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
+
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, logWriter)
 
 			assert.Equal(t, errorMsg, err.Error())
 			assert.Equal(t, models.DeploymentID(uuid.Nil), deployID)
@@ -2135,6 +2167,9 @@ func TestService(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			defer jobSourceRepo.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			namespaceNames := []string{namespaceSpec.Name}
 
 			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
@@ -2146,7 +2181,9 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(namespaceJobSpecRepoFac, nil, nil, dependencyResolver,
 				nil, nil, nil, namespaceService, projectService, deployManager, nil, nil, nil)
-			deployID, err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, nil)
+
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, namespaceNames, nil, logWriter)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve jobs: %s", errorMsg), err.Error())
 			assert.Equal(t, models.DeploymentID(uuid.Nil), deployID)
@@ -2173,6 +2210,9 @@ func TestService(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			defer jobSourceRepo.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			jobSpecsBase := []models.JobSpec{
 				{
 					Version: 1,
@@ -2194,7 +2234,9 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projectJobSpecRepoFac, nil, namespaceService, projectService, deployManager, nil, nil, nil)
-			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, jobNames, nil)
+
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, jobNames, logWriter)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve job: %s", errorMsg), err.Error())
 			assert.Equal(t, models.DeploymentID(uuid.Nil), deployID)
@@ -2223,6 +2265,9 @@ func TestService(t *testing.T) {
 
 			pluginService := new(mock.DependencyResolverPluginService)
 			defer pluginService.AssertExpectations(t)
+
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
 
 			jobSpecsBase := []models.JobSpec{
 				{
@@ -2265,7 +2310,9 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
-			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
+
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, nil, logWriter)
 
 			assert.Nil(t, err)
 			assert.NotEqual(t, models.DeploymentID(uuid.Nil), deployID)
@@ -2294,6 +2341,9 @@ func TestService(t *testing.T) {
 
 			pluginService := new(mock.DependencyResolverPluginService)
 			defer pluginService.AssertExpectations(t)
+
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
 
 			jobSpecsBase := []models.JobSpec{
 				{
@@ -2338,7 +2388,9 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
-			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
+
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, nil, logWriter)
 
 			assert.Nil(t, err)
 			assert.NotEqual(t, models.DeploymentID(uuid.Nil), deployID)
@@ -2368,6 +2420,9 @@ func TestService(t *testing.T) {
 			pluginService := new(mock.DependencyResolverPluginService)
 			defer pluginService.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			jobSpecsBase := []models.JobSpec{
 				{
 					ID:      jobID,
@@ -2395,7 +2450,9 @@ func TestService(t *testing.T) {
 
 			svc := job.NewService(nil, nil, nil, dependencyResolver,
 				nil, projJobSpecRepoFac, nil, namespaceService, projectService, deployManager, pluginService, nil, jobSourceRepo)
-			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, nil, nil)
+
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			deployID, err := svc.Refresh(ctx, projSpec.Name, nil, nil, logWriter)
 
 			assert.Contains(t, err.Error(), errorMsg)
 			assert.Equal(t, models.DeploymentID(uuid.Nil), deployID)
