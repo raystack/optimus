@@ -19,7 +19,6 @@ import (
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/progress"
-	"github.com/odpf/optimus/core/sender"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
 )
@@ -40,7 +39,7 @@ type JobSpecServiceServer struct {
 }
 
 func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificationService_DeployJobSpecificationServer) error {
-	logSender := sender.NewDeployJobLogStatus(stream)
+	responseWriter := writer.NewDeployJobSpecificationResponseWriter(stream)
 
 	for {
 		req, err := stream.Recv()
@@ -54,21 +53,20 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 		jobSpecs := sv.convertProtoToJobSpec(req.GetJobs())
 
 		// Deploying only the modified jobs
-		deployID, err := sv.jobSvc.Deploy(stream.Context(), req.GetProjectName(), req.GetNamespaceName(), jobSpecs, logSender)
+		deployID, err := sv.jobSvc.Deploy(stream.Context(), req.GetProjectName(), req.GetNamespaceName(), jobSpecs, responseWriter)
 		if err != nil {
 			errMsg := fmt.Sprintf("error while deploying namespace %s: %s", req.NamespaceName, err.Error())
 			sv.l.Error(errMsg)
-			sender.SendErrorMessage(logSender, errMsg)
+			responseWriter.Write(writer.LogLevelError, errMsg)
 
 			// deployment per namespace failed
-			resp := pb.DeployJobSpecificationResponse{DeploymentId: ""}
-			stream.Send(&resp)
+			responseWriter.SendDeploymentID("")
 			continue
 		}
 
 		successMsg := fmt.Sprintf("deployID %s holds deployment for namespace %s\n", deployID.UUID().String(), req.NamespaceName)
 		sv.l.Info(successMsg)
-		sender.SendSuccessMessage(logSender, successMsg)
+		responseWriter.Write(writer.LogLevelInfo, successMsg)
 
 		resp := pb.DeployJobSpecificationResponse{DeploymentId: deployID.UUID().String()}
 		stream.Send(&resp)

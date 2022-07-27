@@ -8,7 +8,6 @@ import (
 
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/progress"
-	"github.com/odpf/optimus/core/sender"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/local"
@@ -438,8 +437,8 @@ func (srv *JobService) Refresh(ctx context.Context, projectName string, namespac
 	return args.Get(0).(models.DeploymentID), args.Error(1)
 }
 
-func (srv *JobService) Deploy(ctx context.Context, projectName, namespaceName string, jobSpecs []models.JobSpec, logSender sender.LogStatus) (models.DeploymentID, error) {
-	args := srv.Called(ctx, projectName, namespaceName, jobSpecs, logSender)
+func (srv *JobService) Deploy(ctx context.Context, projectName, namespaceName string, jobSpecs []models.JobSpec, logWriter writer.LogWriter) (models.DeploymentID, error) {
+	args := srv.Called(ctx, projectName, namespaceName, jobSpecs, logWriter)
 	return args.Get(0).(models.DeploymentID), args.Error(1)
 }
 

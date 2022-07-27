@@ -13,7 +13,6 @@ import (
 
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/progress"
-	"github.com/odpf/optimus/core/sender"
 )
 
 var (
@@ -445,7 +444,7 @@ type JobService interface {
 	// Refresh Redeploy current persisted state of jobs
 	Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string, logWriter writer.LogWriter) (DeploymentID, error)
 	// Deploy the requested jobs per namespace
-	Deploy(context.Context, string, string, []JobSpec, sender.LogStatus) (DeploymentID, error)
+	Deploy(context.Context, string, string, []JobSpec, writer.LogWriter) (DeploymentID, error)
 	// GetDeployment getting status and result of job deployment
 	GetDeployment(ctx context.Context, deployID DeploymentID) (JobDeployment, error)
 	// GetByFilter gets the jobspec based on projectName, jobName, resourceDestination filters.
