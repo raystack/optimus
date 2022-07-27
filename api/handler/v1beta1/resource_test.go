@@ -81,7 +81,7 @@ func (s *ResourceServiceServerTestSuite) TestDeployResourceSpecification_Success
 	stream.On("Recv").Return(nil, io.EOF).Once()
 
 	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
-	s.resourceService.On("UpdateResource", s.ctx, s.namespaceSpec, mock2.Anything, mock2.Anything, mock2.Anything).Return(nil).Once()
+	s.resourceService.On("UpdateResource", s.ctx, s.namespaceSpec, mock2.Anything, mock2.Anything).Return(nil).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
 	runtimeServiceServer := s.newResourceServiceServer()
@@ -127,7 +127,7 @@ func (s *ResourceServiceServerTestSuite) TestDeployResourceSpecification_Success
 
 	s.datastoreRepo.On("GetByName", "datastore-1").Return(datastorer, nil)
 	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
-	s.resourceService.On("UpdateResource", s.ctx, s.namespaceSpec, mock2.Anything, mock2.Anything, mock2.Anything).Return(nil).Once()
+	s.resourceService.On("UpdateResource", s.ctx, s.namespaceSpec, mock2.Anything, mock2.Anything).Return(nil).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
 	runtimeServiceServer := s.newResourceServiceServer()
@@ -157,7 +157,7 @@ func (s *ResourceServiceServerTestSuite) TestDeployResourceSpecification_Fail_Na
 	stream.On("Recv").Return(nil, io.EOF).Once()
 
 	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(models.NamespaceSpec{}, errors.New("any error")).Once()
-	stream.On("Send", mock2.Anything).Return(nil).Twice()
+	stream.On("Send", mock2.Anything).Return(nil).Once()
 
 	runtimeServiceServer := s.newResourceServiceServer()
 	err := runtimeServiceServer.DeployResourceSpecification(stream)
@@ -195,7 +195,7 @@ func (s *ResourceServiceServerTestSuite) TestDeployResourceSpecification_Fail_Ad
 
 	s.datastoreRepo.On("GetByName", "datastore-1").Return(datastorer, nil)
 	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
-	stream.On("Send", mock2.Anything).Return(nil).Twice()
+	stream.On("Send", mock2.Anything).Return(nil).Once()
 
 	runtimeServiceServer := s.newResourceServiceServer()
 	err := runtimeServiceServer.DeployResourceSpecification(stream)
@@ -212,7 +212,7 @@ func (s *ResourceServiceServerTestSuite) TestDeployResourceSpecification_Fail_Re
 	stream.On("Recv").Return(nil, io.EOF).Once()
 
 	s.namespaceService.On("Get", s.ctx, s.jobReq.GetProjectName(), s.jobReq.GetNamespaceName()).Return(s.namespaceSpec, nil).Once()
-	s.resourceService.On("UpdateResource", s.ctx, s.namespaceSpec, mock2.Anything, mock2.Anything, mock2.Anything).Return(errors.New("any error")).Once()
+	s.resourceService.On("UpdateResource", s.ctx, s.namespaceSpec, mock2.Anything, mock2.Anything).Return(errors.New("any error")).Once()
 	stream.On("Send", mock2.Anything).Return(nil).Once()
 
 	runtimeServiceServer := s.newResourceServiceServer()
@@ -288,7 +288,7 @@ func TestResourcesOnServer(t *testing.T) {
 			}
 
 			resourceSvc := new(mock.DatastoreService)
-			resourceSvc.On("CreateResource", ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}).Return(nil)
+			resourceSvc.On("CreateResource", ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, mock2.Anything).Return(nil)
 			defer resourceSvc.AssertExpectations(t)
 
 			namespaceService := new(mock.NamespaceService)
@@ -368,7 +368,7 @@ func TestResourcesOnServer(t *testing.T) {
 			}
 
 			resourceSvc := new(mock.DatastoreService)
-			resourceSvc.On("UpdateResource", ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, nil, nil).Return(nil)
+			resourceSvc.On("UpdateResource", ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, mock2.Anything).Return(nil)
 			defer resourceSvc.AssertExpectations(t)
 
 			namespaceService := new(mock.NamespaceService)

@@ -342,12 +342,6 @@ func (d *deployCommand) processResourceDeploymentResponse(
 			}
 			continue
 		}
-
-		// TODO: fix progress bar when almost reach finished, the bar is not rendered
-		if progressCount := resp.GetProgress(); progressCount != nil {
-			spinner.SetProgress(int(progressCount.GetCount()))
-			continue
-		}
 	}
 	return nil
 }

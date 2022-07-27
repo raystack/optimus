@@ -9,7 +9,7 @@ import (
 	"github.com/kushsharma/parallel"
 	"github.com/odpf/salt/log"
 
-	"github.com/odpf/optimus/core/sender"
+	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 )
@@ -37,7 +37,7 @@ func (srv Service) GetAll(ctx context.Context, namespace models.NamespaceSpec, d
 	return srv.resourceRepoFactory.New(namespace, ds).GetAll(ctx)
 }
 
-func (srv Service) CreateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec) error {
+func (srv Service) CreateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, logWriter writer.LogWriter) error {
 	createResource := func(rs models.ResourceSpec) error {
 		request := models.CreateResourceRequest{
 			Resource: rs,
@@ -46,16 +46,19 @@ func (srv Service) CreateResource(ctx context.Context, namespace models.Namespac
 		if err := rs.Datastore.CreateResource(ctx, request); err != nil {
 			errMsg := fmt.Sprintf("creating: %s, failed with error: %s", rs.Name, err.Error())
 			srv.l.Error(errMsg)
+			logWriter.Write(writer.LogLevelError, errMsg)
 			return err
 		}
 		successMsg := fmt.Sprintf("created: %s", rs.Name)
 		srv.l.Info(successMsg)
+		logWriter.Write(writer.LogLevelInfo, successMsg)
 		return nil
 	}
-	return srv.saveResource(ctx, namespace, resourceSpecs, nil, nil, createResource)
+
+	return srv.saveResource(ctx, namespace, resourceSpecs, logWriter, createResource)
 }
 
-func (srv Service) UpdateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, logSender sender.LogStatus, progressSender sender.ProgressCount) error {
+func (srv Service) UpdateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, logWriter writer.LogWriter) error {
 	updateDatastore := func(rs models.ResourceSpec) error {
 		request := models.UpdateResourceRequest{
 			Resource: rs,
@@ -65,16 +68,16 @@ func (srv Service) UpdateResource(ctx context.Context, namespace models.Namespac
 		if err != nil {
 			errMsg := fmt.Sprintf("updating: %s, failed with error: %s", rs.Name, err.Error())
 			srv.l.Error(errMsg)
-			sender.SendErrorMessage(logSender, errMsg)
+			logWriter.Write(writer.LogLevelError, errMsg)
 			return err
 		}
 
 		successMsg := fmt.Sprintf("updated: %s", rs.Name)
 		srv.l.Info(successMsg)
-		sender.SendSuccessMessage(logSender, successMsg)
+		logWriter.Write(writer.LogLevelInfo, successMsg)
 		return nil
 	}
-	return srv.saveResource(ctx, namespace, resourceSpecs, logSender, progressSender, updateDatastore)
+	return srv.saveResource(ctx, namespace, resourceSpecs, logWriter, updateDatastore)
 }
 
 func (srv Service) ReadResource(ctx context.Context, namespace models.NamespaceSpec, datastoreName, name string) (models.ResourceSpec, error) {
@@ -124,16 +127,13 @@ func (srv Service) saveResource(
 	ctx context.Context,
 	namespace models.NamespaceSpec,
 	resourceSpecs []models.ResourceSpec,
-	logSender sender.LogStatus,
-	progressSender sender.ProgressCount,
+	logWriter writer.LogWriter,
 	storeDatastore func(models.ResourceSpec) error,
 ) error {
 	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
 	for _, incomingSpec := range resourceSpecs {
-		runner.Add(func(spec models.ResourceSpec, ls sender.LogStatus, ps sender.ProgressCount) func() (interface{}, error) {
+		runner.Add(func(spec models.ResourceSpec, lw writer.LogWriter) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				defer sender.ProgressInc(ps)
-
 				repo := srv.resourceRepoFactory.New(namespace, spec.Datastore)
 				existingSpec, err := repo.GetByName(ctx, spec.Name)
 				if err != nil && !errors.Is(err, store.ErrResourceNotFound) {
@@ -142,7 +142,7 @@ func (srv Service) saveResource(
 
 				if existingSpec.Equal(spec) {
 					warnMsg := fmt.Sprintf("resource [%s] is skipped because %s", incomingSpec.Name, "incoming resource is the same as existing")
-					sender.SendWarningMessage(ls, warnMsg)
+					lw.Write(writer.LogLevelWarning, warnMsg)
 					return nil, nil // nolint:nilnil
 				}
 				if err := repo.Save(ctx, spec); err != nil {
@@ -150,7 +150,7 @@ func (srv Service) saveResource(
 				}
 				return nil, storeDatastore(spec)
 			}
-		}(incomingSpec, logSender, progressSender))
+		}(incomingSpec, logWriter))
 	}
 
 	var errorSet error

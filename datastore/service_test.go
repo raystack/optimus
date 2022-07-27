@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
+	mock2 "github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/mock"
@@ -101,8 +102,11 @@ func TestService(t *testing.T) {
 			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			service := datastore.NewService(logger, resourceRepoFac, nil)
-			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec})
+			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, logWriter)
 			assert.Error(t, err)
 		})
 
@@ -129,8 +133,12 @@ func TestService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepoFac.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			defer logWriter.AssertExpectations(t)
+
 			service := datastore.NewService(logger, resourceRepoFac, nil)
-			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec})
+			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, logWriter)
 			assert.NoError(t, err)
 		})
 
@@ -164,8 +172,11 @@ func TestService(t *testing.T) {
 			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			service := datastore.NewService(logger, resourceRepoFac, nil)
-			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec})
+			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, logWriter)
 			assert.Error(t, err)
 		})
 
@@ -199,8 +210,12 @@ func TestService(t *testing.T) {
 			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			defer logWriter.AssertExpectations(t)
+
 			service := datastore.NewService(logger, resourceRepoFac, dsRepo)
-			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec})
+			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, logWriter)
 			assert.NoError(t, err)
 		})
 
@@ -244,8 +259,12 @@ func TestService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepoFac.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			defer logWriter.AssertExpectations(t)
+
 			service := datastore.NewService(logger, resourceRepoFac, dsRepo)
-			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec})
+			err := service.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, logWriter)
 			assert.NoError(t, err)
 		})
 	})
@@ -270,8 +289,11 @@ func TestService(t *testing.T) {
 			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			service := datastore.NewService(logger, resourceRepoFac, nil)
-			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, nil, nil)
+			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, logWriter)
 			assert.Error(t, err)
 		})
 
@@ -298,8 +320,12 @@ func TestService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepoFac.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			defer logWriter.AssertExpectations(t)
+
 			service := datastore.NewService(logger, resourceRepoFac, nil)
-			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, nil, nil)
+			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, logWriter)
 			assert.NoError(t, err)
 		})
 
@@ -333,8 +359,11 @@ func TestService(t *testing.T) {
 			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			service := datastore.NewService(logger, resourceRepoFac, nil)
-			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, nil, nil)
+			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, logWriter)
 			assert.Error(t, err)
 		})
 
@@ -368,8 +397,12 @@ func TestService(t *testing.T) {
 			resourceRepoFac.On("New", namespaceSpec, datastorer).Return(resourceRepo)
 			defer resourceRepoFac.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			defer logWriter.AssertExpectations(t)
+
 			service := datastore.NewService(logger, resourceRepoFac, dsRepo)
-			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, nil, nil)
+			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, logWriter)
 			assert.NoError(t, err)
 		})
 
@@ -413,8 +446,12 @@ func TestService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepoFac.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			defer logWriter.AssertExpectations(t)
+
 			service := datastore.NewService(logger, resourceRepoFac, dsRepo)
-			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, nil, nil)
+			err := service.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{incomingSpec}, logWriter)
 			assert.NoError(t, err)
 		})
 	})

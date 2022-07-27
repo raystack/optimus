@@ -2,17 +2,17 @@ package writer
 
 import "github.com/odpf/salt/log"
 
-type logrus struct {
-	l log.Logrus
+type saltLogger struct {
+	l log.Logger
 }
 
-func NewLogrusWriter(l log.Logrus) LogWriter {
-	return &logrus{
+func NewLogWriter(l log.Logger) LogWriter {
+	return &saltLogger{
 		l: l,
 	}
 }
 
-func (l *logrus) Write(level LogLevel, message string) error {
+func (l *saltLogger) Write(level LogLevel, message string) error {
 	switch level {
 	case LogLevelTrace:
 		l.l.Debug(message)

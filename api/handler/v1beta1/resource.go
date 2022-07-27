@@ -15,8 +15,8 @@ import (
 	"google.golang.org/grpc/status"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/progress"
-	"github.com/odpf/optimus/core/sender"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
 )
@@ -36,6 +36,7 @@ type ResourceServiceServer struct {
 }
 
 func (sv *ResourceServiceServer) CreateResource(ctx context.Context, req *pb.CreateResourceRequest) (*pb.CreateResourceResponse, error) {
+	logWriter := writer.NewLogWriter(sv.l)
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
@@ -46,7 +47,7 @@ func (sv *ResourceServiceServer) CreateResource(ctx context.Context, req *pb.Cre
 		return nil, status.Errorf(codes.Internal, "%s: failed to parse resource %s", err.Error(), req.Resource.GetName())
 	}
 
-	if err := sv.resourceSvc.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{optResource}); err != nil {
+	if err := sv.resourceSvc.CreateResource(ctx, namespaceSpec, []models.ResourceSpec{optResource}, logWriter); err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to create resource %s", err.Error(), req.Resource.GetName())
 	}
 	runtimeDeployResourceSpecificationCounter.Inc()
@@ -56,6 +57,7 @@ func (sv *ResourceServiceServer) CreateResource(ctx context.Context, req *pb.Cre
 }
 
 func (sv *ResourceServiceServer) UpdateResource(ctx context.Context, req *pb.UpdateResourceRequest) (*pb.UpdateResourceResponse, error) {
+	logWriter := writer.NewLogWriter(sv.l)
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
@@ -66,7 +68,7 @@ func (sv *ResourceServiceServer) UpdateResource(ctx context.Context, req *pb.Upd
 		return nil, status.Errorf(codes.Internal, "%s: failed to parse resource %s", err.Error(), req.Resource.GetName())
 	}
 
-	if err := sv.resourceSvc.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{optResource}, nil, nil); err != nil {
+	if err := sv.resourceSvc.UpdateResource(ctx, namespaceSpec, []models.ResourceSpec{optResource}, logWriter); err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to create resource %s", err.Error(), req.Resource.GetName())
 	}
 	runtimeDeployResourceSpecificationCounter.Inc()
@@ -99,8 +101,7 @@ func (sv *ResourceServiceServer) ReadResource(ctx context.Context, req *pb.ReadR
 
 func (sv *ResourceServiceServer) DeployResourceSpecification(stream pb.ResourceService_DeployResourceSpecificationServer) error {
 	startTime := time.Now()
-	logSender := sender.NewDeployResourceLogStatus(stream)
-	progressSender := sender.NewDeployResourceProgressCount(stream)
+	responseWriter := writer.NewDeployResourceSpecificationResponseWriter(stream)
 	errNamespaces := []string{}
 
 	for {
@@ -115,8 +116,7 @@ func (sv *ResourceServiceServer) DeployResourceSpecification(stream pb.ResourceS
 		if err != nil {
 			errMsg := fmt.Sprintf("error when fetch namespace %s: %s", request.GetNamespaceName(), err.Error())
 			sv.l.Error(errMsg)
-			sender.SendErrorMessage(logSender, errMsg)
-			progressSender.Add(len(request.GetResources()))
+			responseWriter.Write(writer.LogLevelError, errMsg)
 			errNamespaces = append(errNamespaces, request.NamespaceName)
 			continue
 		}
@@ -126,8 +126,7 @@ func (sv *ResourceServiceServer) DeployResourceSpecification(stream pb.ResourceS
 			if err != nil {
 				errMsg := fmt.Sprintf("%s: cannot adapt resource %s", err.Error(), resourceProto.GetName())
 				sv.l.Error(errMsg)
-				sender.SendErrorMessage(logSender, errMsg)
-				progressSender.Inc()
+				responseWriter.Write(writer.LogLevelError, errMsg)
 				continue
 			}
 			resourceSpecs = append(resourceSpecs, adapted)
@@ -138,16 +137,16 @@ func (sv *ResourceServiceServer) DeployResourceSpecification(stream pb.ResourceS
 			continue
 		}
 
-		if err := sv.resourceSvc.UpdateResource(stream.Context(), namespaceSpec, resourceSpecs, logSender, progressSender); err != nil {
+		if err := sv.resourceSvc.UpdateResource(stream.Context(), namespaceSpec, resourceSpecs, responseWriter); err != nil {
 			errMsg := fmt.Sprintf("failed to update resources: %s", err.Error())
-			sender.SendErrorMessage(logSender, errMsg)
+			responseWriter.Write(writer.LogLevelError, errMsg)
 			errNamespaces = append(errNamespaces, request.NamespaceName)
 			continue
 		}
 
 		runtimeDeployResourceSpecificationCounter.Add(float64(len(resourceSpecs)))
 		successMsg := fmt.Sprintf("resources with namespace [%s] are deployed successfully", request.NamespaceName)
-		sender.SendSuccessMessage(logSender, successMsg)
+		responseWriter.Write(writer.LogLevelInfo, successMsg)
 	}
 	sv.l.Info("finished resource deployment in", "time", time.Since(startTime))
 	if len(errNamespaces) > 0 {
