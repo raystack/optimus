@@ -106,12 +106,11 @@ func LoadServerConfig(filePath string) (*ServerConfig, error) {
 		}
 		opts = append(opts, config.WithFile(filePath))
 	} else {
-		// load opt from env var
-		opts = append(opts, config.WithEnvPrefix(DefaultEnvPrefix), config.WithEnvKeyReplacer(".", "_"))
-
 		// load opt from exec
 		opts = append(opts, config.WithPath(execPath))
 	}
+	// load opt from env var
+	opts = append(opts, config.WithEnvPrefix(DefaultEnvPrefix), config.WithEnvKeyReplacer(".", "_"))
 
 	// load the config
 	l := config.NewLoader(opts...)
