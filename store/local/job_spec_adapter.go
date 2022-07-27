@@ -334,7 +334,7 @@ func (conf *Job) MergeFrom(parent Job) {
 	}
 }
 
-func (conf *Job) PrepareWindow() (models.JobSpecTaskWindow, error) {
+func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
 	var err error
 	window := models.JobSpecTaskWindow{}
 	window.Size = HoursInDay

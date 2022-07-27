@@ -76,16 +76,30 @@ func (r *renderCommand) RunE(_ *cobra.Command, args []string) error {
 	startTime := jobSpec.Task.Window.GetEnd(scheduleTime)
 	endTime := jobSpec.Task.Window.GetStart(scheduleTime)
 
-	for _, dependency := range jobSpec.Dependencies {
-		jobCron, err := cron.ParseCronSchedule(dependency.Job.Schedule.Interval)
+	fmt.Println(jobSpec.Dependencies)
+	for jobName := range jobSpec.Dependencies {
+		fmt.Println("jobName::", jobName)
+
+		jobSpec, err := r.getJobSpecByName([]string{jobName}, namespace.Job.Path)
+		// this could be a deployed or an undeployed job
+		//check that
+		// another concern, if a job is both , then which version to honor ask sravan
+		fmt.Println("jobName::", jobSpec)
+		fmt.Println(jobSpec.Schedule)
+		fmt.Println(jobSpec.Schedule.Interval)
+		jobCron, err := cron.ParseCronSchedule(jobSpec.Schedule.Interval)
+		if err != nil {
+			r.logger.Error(err.Error())
+		}
 		scheduledTimes := jobCron.GetExpectedRuns(startTime, endTime)
+		fmt.Println(jobSpec.Name, " -> ", scheduledTimes)
 	}
 
-	//for _, dependency := range jobSpec.ExternalDependencies.OptimusDependencies {
+	// for _, dependency := range jobSpec.ExternalDependencies.OptimusDependencies {
 	//	jobCron, err := cron.ParseCronSchedule(dependency.Job.Schedule.Interval)
 	//	scheduledTimes := jobCron.GetExpectedRuns(startTime, endTime)
 	//}
-	fmt.Println(jobSpec.Dependencies)
+
 	fmt.Println(jobSpec.ExternalDependencies)
 
 	// create temporary directory
