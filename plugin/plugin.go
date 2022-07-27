@@ -92,9 +92,8 @@ func Initialize(pluginLogger hclog.Logger, arg ...string) error {
 	// first fetch binary plugins, then add yaml plugin for which binary is not added earlier
 	discoveredYamlPlugins := DiscoverPluginsGivenFilePattern(pluginLogger, yaml.Prefix, yaml.Suffix)
 	pluginLogger.Debug(fmt.Sprintf("discovering yaml   plugins(%d)...", len(discoveredYamlPlugins)))
-	yaml.Init(models.PluginRegistry, discoveredYamlPlugins, pluginLogger) // initializing yaml plugin repo
-
-	return nil
+	err := yaml.Init(models.PluginRegistry, discoveredYamlPlugins, pluginLogger)
+	return err
 }
 
 func modSupported(mods []models.PluginMod, mod models.PluginMod) bool {

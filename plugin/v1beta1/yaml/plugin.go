@@ -57,7 +57,9 @@ func FromYaml(plugin_path string) (*models.YamlPlugin, error) {
 	}
 	plugin.PluginAssets = &pluginDefaultAssets
 
+	plugin.YamlQuestions.ConstructIndex()
 	// printYaml(plugin)
+	// fmt.Println(plugin.YamlQuestions.Index)
 	return &plugin, nil
 }
 
@@ -72,7 +74,10 @@ func FromYaml(plugin_path string) (*models.YamlPlugin, error) {
 
 func Init(plugins_repo models.PluginRepository, discoveredYamlPlugins []string, pluginLogger hclog.Logger) error {
 	for _, yamlPluginPath := range discoveredYamlPlugins {
-		yamlPlugin, _ := FromYaml(yamlPluginPath)
+		yamlPlugin, err := FromYaml(yamlPluginPath)
+		if err != nil {
+			return fmt.Errorf("PluginRegistry.Add: %s: %w", yamlPluginPath, err)
+		}
 
 		if binPlugin, _ := plugins_repo.GetByName(yamlPlugin.Info.Name); binPlugin != nil {
 			// if bin plugin exists
