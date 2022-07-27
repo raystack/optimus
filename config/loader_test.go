@@ -285,7 +285,7 @@ func (s *ConfigTestSuite) initExpectedServerConfig() {
 		Name:        "external_optimus",
 		Type:        "optimus",
 		Description: "neighbor optimus",
-		Config: config.ResourceManagerConfigOptimus{Host: "external.optimus.io"},
+		Config:      config.ResourceManagerConfigOptimus{Host: "external.optimus.io"},
 	}
 }
 

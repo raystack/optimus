@@ -22,7 +22,7 @@ type externalDependencyResolver struct {
 // NewExternalDependencyResolver creates a new instance of externalDependencyResolver
 func NewExternalDependencyResolver(conf config.ResourceManager) (ExternalDependencyResolver, error) {
 	var optimusResourceManagers []resourcemgr.ResourceManager
-	//for _, conf := range resourceManagerConfigs {
+	// for _, conf := range resourceManagerConfigs {
 	switch conf.Type {
 	case "optimus":
 		getter, err := resourcemgr.NewOptimusResourceManager(conf)
