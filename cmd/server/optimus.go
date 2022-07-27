@@ -179,6 +179,9 @@ func (s *OptimusServer) startListening() {
 }
 
 func (s *OptimusServer) Shutdown() {
+	if s.logger == nil {
+		return
+	}
 	s.logger.Info("Shutting down server")
 	if s.httpServer != nil {
 		// Create a deadline to wait for server
