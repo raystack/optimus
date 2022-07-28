@@ -68,8 +68,7 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 		sv.l.Info(successMsg)
 		responseWriter.Write(writer.LogLevelInfo, successMsg)
 
-		resp := pb.DeployJobSpecificationResponse{DeploymentId: deployID.UUID().String()}
-		stream.Send(&resp)
+		responseWriter.SendDeploymentID(deployID.UUID().String())
 	}
 
 	sv.l.Info("job deployment is successfully submitted")
