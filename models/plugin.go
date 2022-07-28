@@ -358,6 +358,18 @@ type Plugin struct {
 	YamlMod       CommandLineMod
 }
 
+type PluginList []*Plugin
+
+func (s PluginList) Len() int {
+	return len(s)
+}
+func (s PluginList) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+func (s PluginList) Less(i, j int) bool {
+	return s[i].Info().Name < s[j].Info().Name
+}
+
 func (p *Plugin) Info() *PluginInfoResponse {
 	if p.Base != nil {
 		resp, _ := p.Base.PluginInfo()

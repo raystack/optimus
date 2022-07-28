@@ -117,6 +117,7 @@ func DiscoverPluginsGivenFilePattern(pluginLogger hclog.Logger, prefix, suffix s
 		pluginLogger.Debug(fmt.Sprintf("Error discovering exe directory: %s", err))
 	} else {
 		dirs = append(dirs, filepath.Dir(exePath))
+		dirs = append(dirs, filepath.Join(filepath.Dir(exePath), ".plugins"))
 	}
 
 	// add user home directory

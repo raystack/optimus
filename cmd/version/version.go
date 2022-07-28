@@ -1,12 +1,16 @@
 package version
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"sort"
 	"time"
 
 	"github.com/odpf/salt/log"
 	"github.com/odpf/salt/version"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/internal"
@@ -101,6 +105,7 @@ func (v *versionCommand) RunE(_ *cobra.Command, _ []string) error {
 		v.logger.Info(updateNotice)
 	}
 	v.printAllPluginInfos()
+	// v.dumpAllPluginAsYaml()
 	return nil
 }
 
@@ -112,8 +117,10 @@ func (v *versionCommand) PostRunE(_ *cobra.Command, _ []string) error {
 func (v *versionCommand) printAllPluginInfos() {
 	pluginRepo := models.PluginRegistry
 	plugins := pluginRepo.GetAll()
-	v.logger.Info(fmt.Sprintf("\nDiscovered plugins: %d", len(plugins)))
-	for taskIdx, tasks := range plugins {
+	pluginsList := models.PluginList(plugins) // casting to sort plugins by name in asc
+	sort.Sort(pluginsList)
+	v.logger.Info(fmt.Sprintf("\nDiscovered plugins: %d", len(pluginsList)))
+	for taskIdx, tasks := range pluginsList {
 		schema := tasks.Info()
 		v.logger.Info(fmt.Sprintf("\n%d. %s", taskIdx+1, schema.Name))
 		v.logger.Info(fmt.Sprintf("Description: %s", schema.Description))
@@ -129,6 +136,52 @@ func (v *versionCommand) printAllPluginInfos() {
 		}
 	}
 	// models.YamlPluginRegistry.PrintAllPlugins(v.logger)
+}
+
+// TODO: remove
+func (v *versionCommand) dumpAllPluginAsYaml() {
+	pluginRepo := models.PluginRegistry
+	plugins := pluginRepo.GetAll()
+	pluginsList := models.PluginList(plugins)
+	sort.Sort(pluginsList)
+	v.logger.Info(fmt.Sprintf("\nDiscovered plugins: %d", len(pluginsList)))
+	for _, tasks := range pluginsList {
+		if tasks.CLIMod == nil {
+			continue
+		}
+		schema := tasks.Info()
+		ctx := context.Background()
+		questionRequest := models.GetQuestionsRequest{JobName: "test"}
+		questionResponse, _ := tasks.CLIMod.GetQuestions(ctx, questionRequest)
+
+		ctx = context.Background()
+		defaultAssetRequest := models.DefaultAssetsRequest{}
+		generatedAssetResponse, _ := tasks.CLIMod.DefaultAssets(ctx, defaultAssetRequest)
+		writeYamlPlugin(schema, questionResponse, generatedAssetResponse, schema.Name)
+	}
+}
+
+// TODO: remove
+func writeYamlPlugin(s1, s2, s3 interface{}, pluginName string) {
+	fmt.Println("---------YAML: ", pluginName, "--------------")
+	f, _ := os.OpenFile(".plugins-dev/optimus-plugin-"+pluginName+".yaml", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	list := [3]string{getYaml(s1), getYaml(s2), getYaml(s3)}
+	for _, item := range list {
+		f.WriteString(item)
+	}
+	if err := f.Close(); err != nil {
+		return
+	}
+}
+
+// TODO: remove
+func getYaml(s interface{}) string {
+	yamlData, err := yaml.Marshal(&s)
+	if err != nil {
+		fmt.Printf("Error while Marshaling. %v", err)
+		return ""
+	}
+	return string(yamlData)
 }
 
 // getVersionRequest send a version request to service
