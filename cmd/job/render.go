@@ -73,34 +73,43 @@ func (r *renderCommand) RunE(_ *cobra.Command, args []string) error {
 	}
 
 	scheduleTime := time.Now()
-	startTime := jobSpec.Task.Window.GetEnd(scheduleTime)
-	endTime := jobSpec.Task.Window.GetStart(scheduleTime)
+	startTime := jobSpec.Task.Window.GetStart(scheduleTime)
+	endTime := jobSpec.Task.Window.GetEnd(scheduleTime)
 
-	fmt.Println(jobSpec.Dependencies)
+	r.logger.Info("job dependencies")
 	for jobName := range jobSpec.Dependencies {
-		fmt.Println("jobName::", jobName)
-
-		jobSpec, err := r.getJobSpecByName([]string{jobName}, namespace.Job.Path)
+		r.logger.Info("jobName::" + logger.ColoredNotice(jobName))
+		jobSpec, _ := r.getJobSpecByName([]string{jobName}, namespace.Job.Path)
 		// this could be a deployed or an undeployed job
 		//check that
 		// another concern, if a job is both , then which version to honor ask sravan
-		fmt.Println("jobName::", jobSpec)
-		fmt.Println(jobSpec.Schedule)
-		fmt.Println(jobSpec.Schedule.Interval)
+		//fmt.Println("jobName::", jobSpec)
+		// fmt.Println(jobSpec.Schedule)
+		// fmt.Println(jobSpec.Schedule.Interval)
 		jobCron, err := cron.ParseCronSchedule(jobSpec.Schedule.Interval)
 		if err != nil {
 			r.logger.Error(err.Error())
 		}
 		scheduledTimes := jobCron.GetExpectedRuns(startTime, endTime)
-		fmt.Println(jobSpec.Name, " -> ", scheduledTimes)
+		scheduledTimesCombinedString := ""
+		for _, scheduledTime := range scheduledTimes {
+			scheduledTimesCombinedString += ("[" + scheduledTime.Format("2006-01-02 15:04:05") + "] ")
+		}
+		r.logger.Info("execution times -> " + scheduledTimesCombinedString)
 	}
-
 	// for _, dependency := range jobSpec.ExternalDependencies.OptimusDependencies {
 	//	jobCron, err := cron.ParseCronSchedule(dependency.Job.Schedule.Interval)
 	//	scheduledTimes := jobCron.GetExpectedRuns(startTime, endTime)
 	//}
 
-	fmt.Println(jobSpec.ExternalDependencies)
+	//fmt.Println(jobSpec.ExternalDependencies)
+	r.logger.Info("job external dependencies")
+	for _, externalDepency := range jobSpec.ExternalDependencies.HTTPDependencies {
+		r.logger.Info(externalDepency.Name)
+	}
+	for _, externalDepency := range jobSpec.ExternalDependencies.OptimusDependencies {
+		r.logger.Info(externalDepency.Name)
+	}
 
 	// create temporary directory
 	renderedPath := filepath.Join(".", "render", jobSpec.Name)
