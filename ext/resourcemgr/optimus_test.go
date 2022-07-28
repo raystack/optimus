@@ -195,6 +195,85 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		o.EqualValues(expectedJobSpecifications, actualOptimusDependencies)
 		o.NoError(actualError)
 	})
+
+	o.Run("should return job specifications with hook and nil if no error is encountered", func() {
+		router := mux.NewRouter()
+		server := httptest.NewServer(router)
+		defer server.Close()
+
+		conf := config.ResourceManager{
+			Name: "other-optimus",
+			Config: config.ResourceManagerConfigOptimus{
+				Host: server.URL,
+				Headers: map[string]string{
+					"key": "value",
+				},
+			},
+		}
+		manager, err := resourcemgr.NewOptimusResourceManager(conf)
+		if err != nil {
+			panic(err)
+		}
+
+		router.HandleFunc(apiPath, func(w http.ResponseWriter, r *http.Request) {
+			expectedHeaderValue := "value"
+			actualHeaderValue := r.Header.Get("key")
+			o.EqualValues(expectedHeaderValue, actualHeaderValue)
+
+			expectedRawQuery := "job_name=job&project_name=project&resource_destination=resource"
+			actualRawQuery := r.URL.RawQuery
+			o.EqualValues(expectedRawQuery, actualRawQuery)
+
+			getJobSpecificationResponse := `
+{
+    "jobSpecificationResponses": [
+        {
+            "projectName": "project",
+            "namespaceName": "namespace",
+            "job": {
+                "version": 0,
+                "name": "job",
+                "hooks": [{
+                    "name": "hook-1",
+                    "config": [{
+                        "name": "hook-1-config-1-key",
+                        "value": "hook-1-config-1-value"
+                    }]
+                }]
+            }
+        }
+    ]
+}`
+			w.Header().Add("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(getJobSpecificationResponse))
+		})
+
+		ctx := context.Background()
+		unresolvedDependency := models.UnresolvedJobDependency{
+			ProjectName:         "project",
+			JobName:             "job",
+			ResourceDestination: "resource",
+		}
+
+		expectedJobSpecifications := []models.OptimusDependency{
+			{
+				Name: "other-optimus",
+				Host: server.URL,
+				Headers: map[string]string{
+					"key": "value",
+				},
+				ProjectName:   "project",
+				NamespaceName: "namespace",
+				JobName:       "job",
+			},
+		}
+
+		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
+
+		o.EqualValues(expectedJobSpecifications, actualOptimusDependencies)
+		o.NoError(actualError)
+	})
 }
 
 func TestNewOptimusResourceManager(t *testing.T) {

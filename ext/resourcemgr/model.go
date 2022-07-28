@@ -73,8 +73,8 @@ type behaviorRetry struct {
 }
 
 type jobSpecHook struct {
-	Name   string        `json:"name"`
-	Config jobConfigItem `json:"config"`
+	Name   string          `json:"name"`
+	Config []jobConfigItem `json:"config"`
 }
 
 type jobDependency struct {
