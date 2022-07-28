@@ -21,7 +21,6 @@ import (
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/namespace"
 	"github.com/odpf/optimus/cmd/plugin"
-	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/cmd/project"
 	"github.com/odpf/optimus/cmd/resource"
 	"github.com/odpf/optimus/config"
@@ -313,11 +312,7 @@ func (d *deployCommand) processResourceDeploymentResponse(
 	totalSpecsCount int,
 ) error {
 	d.logger.Info("> Receiving responses:")
-	spinner := progressbar.NewProgressBar()
-	defer spinner.Stop()
 
-	spinner.StartProgress(totalSpecsCount, "please wait")
-	defer spinner.SetProgress(totalSpecsCount)
 	for {
 		resp, err := stream.Recv()
 		if err != nil {
