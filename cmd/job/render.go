@@ -99,15 +99,9 @@ func (r *renderCommand) RunE(_ *cobra.Command, args []string) error {
 	endTime := jobSpec.Task.Window.GetEnd(scheduleTime)
 
 	r.logger.Info("job dependencies")
-	for dependencyJobName := range jobSpec.Dependencies {
-		r.logger.Info("jobName::" + logger.ColoredNotice(dependencyJobName))
-		jobSpec, _ := r.getJobSpecByName([]string{dependencyJobName}, namespace.Job.Path)
-		// this could be a deployed or an undeployed job
-		//check that
-		// another concern, if a job is both , then which version to honor ask sravan
-		//fmt.Println("jobName::", jobSpec)
-		// fmt.Println(jobSpec.Schedule)
-		// fmt.Println(jobSpec.Schedule.Interval)
+	for jobName := range jobSpec.Dependencies {
+		r.logger.Info("jobName::" + logger.ColoredNotice(jobName))
+		jobSpec, _ := r.getJobSpecByName([]string{jobName}, namespace.Job.Path)
 		jobCron, err := cron.ParseCronSchedule(jobSpec.Schedule.Interval)
 		if err != nil {
 			r.logger.Error(err.Error())
