@@ -27,6 +27,7 @@ type renderCommand struct {
 	clientConfig    *config.ClientConfig
 	jobSurvey       *survey.JobSurvey
 	namespaceSurvey *survey.NamespaceSurvey
+	scheduledAt     string
 }
 
 // NewRenderCommand initializes command for rendering job specification
@@ -38,14 +39,14 @@ func NewRenderCommand() *cobra.Command {
 		Use:     "render",
 		Short:   "Apply template values in job specification to current 'render' directory",
 		Long:    "Process optimus job specification based on macros/functions used.",
-		Example: "optimus job render [<job_name>]",
+		Example: "optimus job render [<job_name>] [--scheduledAt <2006-01-02 15:04>]",
 		RunE:    render.RunE,
 		PreRunE: render.PreRunE,
 	}
 
 	// Config filepath flag
 	cmd.Flags().StringVarP(&render.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
-
+	cmd.Flags().StringVarP(&render.scheduledAt, "scheduledAt", "t", "", "Time at which the job is scheduled for execution")
 	return cmd
 }
 
@@ -54,10 +55,15 @@ func (r *renderCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	if err := r.loadConfig(); err != nil {
 		return err
 	}
-
 	r.logger = logger.NewClientLogger(r.clientConfig.Log)
 	r.jobSurvey = survey.NewJobSurvey()
 	r.namespaceSurvey = survey.NewNamespaceSurvey(r.logger)
+	if r.scheduledAt != "" {
+		_, err := time.Parse("2006-01-02 15:04", r.scheduledAt)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -71,15 +77,19 @@ func (r *renderCommand) RunE(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	scheduleTime := time.Now()
+	var scheduleTime time.Time
+	if r.scheduledAt != "" {
+		scheduleTime, _ = time.Parse("2006-01-02 15:04", r.scheduledAt)
+	} else {
+		scheduleTime = time.Now()
+	}
 	startTime := jobSpec.Task.Window.GetStart(scheduleTime)
 	endTime := jobSpec.Task.Window.GetEnd(scheduleTime)
 
 	r.logger.Info("job dependencies")
-	for jobName := range jobSpec.Dependencies {
-		r.logger.Info("jobName::" + logger.ColoredNotice(jobName))
-		jobSpec, _ := r.getJobSpecByName([]string{jobName}, namespace.Job.Path)
+	for dependencyJobName := range jobSpec.Dependencies {
+		r.logger.Info("jobName::" + logger.ColoredNotice(dependencyJobName))
+		jobSpec, _ := r.getJobSpecByName([]string{dependencyJobName}, namespace.Job.Path)
 		// this could be a deployed or an undeployed job
 		//check that
 		// another concern, if a job is both , then which version to honor ask sravan
