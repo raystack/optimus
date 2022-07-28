@@ -61,7 +61,7 @@ func (o *optimusResourceManager) GetOptimusDependencies(ctx context.Context, unr
 		return nil, fmt.Errorf("unexpected status response: %s", response.Status)
 	}
 
-	var jobSpecResponse GetJobSpecificationsResponse
+	var jobSpecResponse getJobSpecificationsResponse
 	decoder := json.NewDecoder(response.Body)
 	if err := decoder.Decode(&jobSpecResponse); err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
@@ -97,7 +97,7 @@ func (o *optimusResourceManager) constructGetJobSpecificationsRequest(ctx contex
 	return request, nil
 }
 
-func (o *optimusResourceManager) toOptimusDependencies(responses []JobSpecificationResponse) []models.OptimusDependency {
+func (o *optimusResourceManager) toOptimusDependencies(responses []jobSpecificationResponse) []models.OptimusDependency {
 	output := make([]models.OptimusDependency, len(responses))
 	for i, r := range responses {
 		output[i] = o.toOptimusDependency(r)
@@ -105,7 +105,7 @@ func (o *optimusResourceManager) toOptimusDependencies(responses []JobSpecificat
 	return output
 }
 
-func (o *optimusResourceManager) toOptimusDependency(response JobSpecificationResponse) models.OptimusDependency {
+func (o *optimusResourceManager) toOptimusDependency(response jobSpecificationResponse) models.OptimusDependency {
 	return models.OptimusDependency{
 		Name:          o.name,
 		Host:          o.config.Host,
