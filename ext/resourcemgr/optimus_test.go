@@ -2,7 +2,6 @@ package resourcemgr_test
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -152,22 +151,22 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 			actualRawQuery := r.URL.RawQuery
 			o.EqualValues(expectedRawQuery, actualRawQuery)
 
-			getJobSpecificationsResonse := resourcemgr.GetJobSpecificationsResponse{
-				JobSpecificationResponses: []resourcemgr.JobSpecificationResponse{
-					{
-						ProjectName:   "project",
-						NamespaceName: "namespace",
-						Job: resourcemgr.JobSpecification{
-							Name: "job",
-						},
-					},
-				},
-			}
-			content, _ := json.Marshal(getJobSpecificationsResonse)
-
+			getJobSpecificationResponse := `
+{
+    "jobSpecificationResponses": [
+        {
+            "projectName": "project",
+            "namespaceName": "namespace",
+            "job": {
+                "version": 0,
+                "name": "job"
+            }
+        }
+    ]
+}`
 			w.Header().Add("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write(content)
+			w.Write([]byte(getJobSpecificationResponse))
 		})
 
 		ctx := context.Background()
