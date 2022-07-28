@@ -45,8 +45,7 @@ func (*model) Init() tea.Cmd {
 func (m *model) handleUp() {
 	switch m.cursor {
 	case pointToOffsetInput:
-		// here we are shifting from offset input to Sizeinput so we have to stop updating the Offsetinput(hence Offset.Blur())
-		// and start updating Sizeinput(hence Sizeinput.Focus())
+		// from offset input to size input (enabling size input and disabling offset input)
 		m.offsetInput.Blur()
 		m.sizeInput.Focus()
 		m.cursor = pointToSizeInput
