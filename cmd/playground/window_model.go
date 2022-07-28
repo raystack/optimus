@@ -137,7 +137,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		"1", "2", "3", "4", "5",
 		"6", "7", "8", "9", "0",
 		"backspace":
-		// to get updated the input fields must be focussed since we handle the Focus and Blur we can directly update them here
+		// focus and blur handles the latest update, so no need to check
 		m.sizeInput, _ = m.sizeInput.Update(msg)
 		m.offsetInput, _ = m.offsetInput.Update(msg)
 		m.state.updateWindowParameters(m.sizeInput.Value(), m.offsetInput.Value())
