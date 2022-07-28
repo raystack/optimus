@@ -1506,6 +1506,9 @@ func TestService(t *testing.T) {
 			deployManager := new(mock.DeployManager)
 			defer deployManager.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			namespaceJobSpecRepo.On("GetAll", ctx).Return(existingJobSpecs, nil)
@@ -1539,8 +1542,10 @@ func TestService(t *testing.T) {
 
 			deployManager.On("Deploy", ctx, namespaceSpec.ProjectSpec).Return(deployID, nil)
 
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+
 			svc := job.NewService(namespaceJobSpecRepoFac, nil, nil, depenResolver, nil, projJobSpecRepoFac, nil, namespaceService, nil, deployManager, pluginService, jobSpecRepo, jobSourceRepo)
-			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, nil)
+			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, logWriter)
 			assert.Nil(t, err)
 		})
 		t.Run("should deploy successfully", func(t *testing.T) {
