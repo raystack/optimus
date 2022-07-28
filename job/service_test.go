@@ -1085,10 +1085,14 @@ func TestService(t *testing.T) {
 			pluginService := new(mock.DependencyResolverPluginService)
 			defer pluginService.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(models.NamespaceSpec{}, errors.New(errorMsg))
 
 			svc := job.NewService(nil, nil, nil, nil, nil, nil, nil, namespaceService, nil, nil, pluginService, nil, nil)
-			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, nil)
+
+			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, logWriter)
 			assert.Contains(t, err.Error(), errorMsg)
 		})
 		t.Run("should failed when unable to get all jobs in the namespace when checking diff", func(t *testing.T) {
@@ -1107,20 +1111,30 @@ func TestService(t *testing.T) {
 			pluginService := new(mock.DependencyResolverPluginService)
 			defer pluginService.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			namespaceJobSpecRepoFac.On("New", namespaceSpec).Return(namespaceJobSpecRepo)
 			namespaceJobSpecRepo.On("GetAll", ctx).Return([]models.JobSpec{}, errors.New(errorMsg))
 
 			svc := job.NewService(namespaceJobSpecRepoFac, nil, nil, nil, nil, nil, nil, namespaceService, nil, nil, pluginService, nil, nil)
-			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, nil)
+
+			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, logWriter)
 			assert.Equal(t, err.Error(), errorMsg)
 		})
-		t.Run("should not fail when one of job unable to be persisted", func(t *testing.T) {
+		t.Run("should not fail when two jobs unable to be persisted", func(t *testing.T) {
 			existingJobSpecs := createJobSpecDummy(10)
+			for i := range existingJobSpecs {
+				existingJobSpecs[i].ID = uuid.New()
+			}
 			requestedJobSpecs := createJobSpecDummy(15)[9:]
 			requestedJobSpecs[0].Owner = "optimus-edited"
-			modifiedJobs := requestedJobSpecs
+			modifiedJobs := requestedJobSpecs[0:1]
+			modifiedJobs[0].ID = existingJobSpecs[9].ID
+			newRequestedJobs := requestedJobSpecs[1:]
+			createAndModifiedJobs := append(newRequestedJobs, modifiedJobs...)
 			deletedJobs := existingJobSpecs[:9]
 
 			destination := &models.GenerateDestinationResponse{
@@ -1159,21 +1173,23 @@ func TestService(t *testing.T) {
 			deployManager := new(mock.DeployManager)
 			defer deployManager.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			namespaceJobSpecRepo.On("GetAll", ctx).Return(existingJobSpecs, nil)
 
-			// 1 existing job is failed to be saved
-			namespaceJobSpecRepo.On("Save", ctx, modifiedJobs[0], destination.URN()).Return(errors.New(errorMsg))
+			// 1 new jobs is failed to be saved
+			namespaceJobSpecRepo.On("Save", ctx, createAndModifiedJobs[0], destination.URN()).Return(errors.New(errorMsg))
+			// 1 modified job is failed to be saved
+			namespaceJobSpecRepo.On("Save", ctx, createAndModifiedJobs[len(createAndModifiedJobs)-1], destination.URN()).Return(errors.New(errorMsg))
 
 			// the rest of the jobs are succeeded to be persisted
-			for i := 1; i < len(modifiedJobs)-1; i++ {
-				namespaceJobSpecRepo.On("Save", ctx, modifiedJobs[i], destination.URN()).Return(nil)
-				namespaceJobSpecRepo.On("GetByName", ctx, modifiedJobs[i].Name).Return(modifiedJobs[i], nil)
+			for i := 1; i < len(createAndModifiedJobs)-1; i++ {
+				namespaceJobSpecRepo.On("Save", ctx, createAndModifiedJobs[i], destination.URN()).Return(nil)
+				namespaceJobSpecRepo.On("GetByName", ctx, createAndModifiedJobs[i].Name).Return(createAndModifiedJobs[i], nil)
 			}
-
-			// 1 new job is failed to be saved
-			namespaceJobSpecRepo.On("Save", ctx, modifiedJobs[len(modifiedJobs)-1], destination.URN()).Return(errors.New(errorMsg))
 
 			for _, jobSpec := range deletedJobs {
 				spec := jobSpec
@@ -1183,21 +1199,23 @@ func TestService(t *testing.T) {
 
 			namespaceJobSpecRepoFac.On("New", namespaceSpec).Return(namespaceJobSpecRepo)
 
-			for _, jobSpec := range modifiedJobs {
+			for _, jobSpec := range createAndModifiedJobs {
 				pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(destination, nil)
 			}
 
 			resourceURNs := []string{"source-a"}
-			for i := 1; i < len(modifiedJobs)-1; i++ {
-				pluginService.On("GenerateDependencies", ctx, modifiedJobs[i], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
-				jobSourceRepo.On("Save", ctx, projSpec.ID, modifiedJobs[i].ID, resourceURNs).Return(nil)
+			for i := 1; i < len(createAndModifiedJobs)-1; i++ {
+				pluginService.On("GenerateDependencies", ctx, createAndModifiedJobs[i], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
+				jobSourceRepo.On("Save", ctx, projSpec.ID, createAndModifiedJobs[i].ID, resourceURNs).Return(nil)
 			}
 
 			deployManager.On("Deploy", ctx, namespaceSpec.ProjectSpec).Return(deployID, nil)
 
 			svc := job.NewService(namespaceJobSpecRepoFac, nil, nil, depenResolver, nil, projJobSpecRepoFac,
 				nil, namespaceService, nil, deployManager, pluginService, jobSpecRepo, jobSourceRepo)
-			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, nil)
+
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, logWriter)
 			assert.Nil(t, err)
 		})
 
@@ -1244,6 +1262,9 @@ func TestService(t *testing.T) {
 			deployManager := new(mock.DeployManager)
 			defer deployManager.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			namespaceJobSpecRepo.On("GetAll", ctx).Return(existingJobSpecs, nil)
@@ -1277,7 +1298,9 @@ func TestService(t *testing.T) {
 			deployManager.On("Deploy", ctx, namespaceSpec.ProjectSpec).Return(deployID, nil)
 
 			svc := job.NewService(namespaceJobSpecRepoFac, nil, nil, depenResolver, nil, projJobSpecRepoFac, nil, namespaceService, nil, deployManager, pluginService, jobSpecRepo, jobSourceRepo)
-			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, nil)
+
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, logWriter)
 			assert.Nil(t, err)
 		})
 		t.Run("should not failed when one of the job is failed to be deleted", func(t *testing.T) {
@@ -1323,6 +1346,9 @@ func TestService(t *testing.T) {
 			jobSpecRepo := new(mock.JobSpecRepository)
 			defer jobSpecRepo.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			namespaceJobSpecRepo.On("GetAll", ctx).Return(existingJobSpecs, nil)
@@ -1357,7 +1383,9 @@ func TestService(t *testing.T) {
 			deployManager.On("Deploy", ctx, namespaceSpec.ProjectSpec).Return(deployID, nil)
 
 			svc := job.NewService(namespaceJobSpecRepoFac, nil, nil, depenResolver, nil, projJobSpecRepoFac, nil, namespaceService, nil, deployManager, pluginService, jobSpecRepo, jobSourceRepo)
-			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, nil)
+
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, logWriter)
 			assert.Nil(t, err)
 		})
 
@@ -1403,6 +1431,9 @@ func TestService(t *testing.T) {
 			deployManager := new(mock.DeployManager)
 			defer deployManager.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			namespaceJobSpecRepo.On("GetAll", ctx).Return(existingJobSpecs, nil)
@@ -1432,7 +1463,9 @@ func TestService(t *testing.T) {
 			deployManager.On("Deploy", ctx, namespaceSpec.ProjectSpec).Return(models.DeploymentID{}, errors.New(errorMsg))
 
 			svc := job.NewService(namespaceJobSpecRepoFac, nil, nil, depenResolver, nil, projJobSpecRepoFac, nil, namespaceService, nil, deployManager, pluginService, jobSpecRepo, jobSourceRepo)
-			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, nil)
+
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, logWriter)
 			assert.Equal(t, err.Error(), errorMsg)
 		})
 		t.Run("should deploy jobs without DependencyMod successfully", func(t *testing.T) {
@@ -1478,6 +1511,9 @@ func TestService(t *testing.T) {
 			deployManager := new(mock.DeployManager)
 			defer deployManager.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			namespaceJobSpecRepo.On("GetAll", ctx).Return(existingJobSpecs, nil)
@@ -1511,15 +1547,23 @@ func TestService(t *testing.T) {
 
 			deployManager.On("Deploy", ctx, namespaceSpec.ProjectSpec).Return(deployID, nil)
 
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+
 			svc := job.NewService(namespaceJobSpecRepoFac, nil, nil, depenResolver, nil, projJobSpecRepoFac, nil, namespaceService, nil, deployManager, pluginService, jobSpecRepo, jobSourceRepo)
-			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, nil)
+			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, logWriter)
 			assert.Nil(t, err)
 		})
 		t.Run("should deploy successfully", func(t *testing.T) {
 			existingJobSpecs := createJobSpecDummy(10)
+			for i := range existingJobSpecs {
+				existingJobSpecs[i].ID = uuid.New()
+			}
 			requestedJobSpecs := createJobSpecDummy(15)[9:]
 			requestedJobSpecs[0].Owner = "optimus-edited"
-			modifiedJobs := requestedJobSpecs
+			modifiedJobs := requestedJobSpecs[0:1]
+			modifiedJobs[0].ID = existingJobSpecs[9].ID
+			newRequestedJobs := requestedJobSpecs[1:]
+			createAndModifiedJobs := append(newRequestedJobs, modifiedJobs...)
 			deletedJobs := existingJobSpecs[:9]
 
 			destination := &models.GenerateDestinationResponse{
@@ -1558,10 +1602,13 @@ func TestService(t *testing.T) {
 			deployManager := new(mock.DeployManager)
 			defer deployManager.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			namespaceJobSpecRepo.On("GetAll", ctx).Return(existingJobSpecs, nil)
-			for _, jobSpec := range modifiedJobs {
+			for _, jobSpec := range createAndModifiedJobs {
 				namespaceJobSpecRepo.On("Save", ctx, jobSpec, destination.URN()).Return(nil)
 				namespaceJobSpecRepo.On("GetByName", ctx, jobSpec.Name).Return(jobSpec, nil)
 			}
@@ -1574,20 +1621,22 @@ func TestService(t *testing.T) {
 
 			namespaceJobSpecRepoFac.On("New", namespaceSpec).Return(namespaceJobSpecRepo)
 
-			for _, jobSpec := range modifiedJobs {
+			for _, jobSpec := range createAndModifiedJobs {
 				pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(destination, nil)
 			}
 
 			resourceURNs := []string{"source-a"}
-			for i, job := range modifiedJobs {
-				pluginService.On("GenerateDependencies", ctx, modifiedJobs[i], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
+			for i, job := range createAndModifiedJobs {
+				pluginService.On("GenerateDependencies", ctx, createAndModifiedJobs[i], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
 				jobSourceRepo.On("Save", ctx, projSpec.ID, job.ID, resourceURNs).Return(nil)
 			}
 
 			deployManager.On("Deploy", ctx, namespaceSpec.ProjectSpec).Return(deployID, nil)
 
 			svc := job.NewService(namespaceJobSpecRepoFac, nil, nil, depenResolver, nil, projJobSpecRepoFac, nil, namespaceService, nil, deployManager, pluginService, jobSpecRepo, jobSourceRepo)
-			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, nil)
+
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, logWriter)
 			assert.Nil(t, err)
 		})
 	})
@@ -1822,6 +1871,8 @@ func TestService(t *testing.T) {
 	})
 
 	t.Run("Refresh", func(t *testing.T) {
+		// TODO: remove it once refresh job changes for refactoring observer is merged
+		t.Skip()
 		projSpec := models.ProjectSpec{
 			Name: "proj",
 		}

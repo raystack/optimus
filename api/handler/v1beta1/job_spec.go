@@ -39,12 +39,7 @@ type JobSpecServiceServer struct {
 }
 
 func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificationService_DeployJobSpecificationServer) error {
-	observers := sv.newObserverChain()
-	observers.Join(&jobDeploymentObserver{
-		stream: stream,
-		log:    sv.l,
-		mu:     new(sync.Mutex),
-	})
+	responseWriter := writer.NewDeployJobSpecificationResponseWriter(stream)
 
 	for {
 		req, err := stream.Recv()
@@ -52,26 +47,28 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			stream.Send(&pb.DeployJobSpecificationResponse{
-				Success: false,
-				Ack:     true,
-			})
 			return err // immediate error returned (grpc error level)
 		}
 
 		jobSpecs := sv.convertProtoToJobSpec(req.GetJobs())
 
 		// Deploying only the modified jobs
-		deployID, err := sv.jobSvc.Deploy(stream.Context(), req.GetProjectName(), req.GetNamespaceName(), jobSpecs, observers)
+		deployID, err := sv.jobSvc.Deploy(stream.Context(), req.GetProjectName(), req.GetNamespaceName(), jobSpecs, responseWriter)
 		if err != nil {
-			err = fmt.Errorf("error while deploying namespace %s: %w", req.NamespaceName, err)
-			observers.Notify(&models.ProgressJobDeploymentRequestCreated{Err: err})
-			sv.l.Warn(fmt.Sprintf("there's error while deploying namespaces: [%s]", req.NamespaceName))
+			errMsg := fmt.Sprintf("error while deploying namespace %s: %s", req.NamespaceName, err.Error())
+			sv.l.Error(errMsg)
+			responseWriter.Write(writer.LogLevelError, errMsg)
+
+			// deployment per namespace failed
+			responseWriter.SendDeploymentID("")
 			continue
 		}
 
-		sv.l.Info(fmt.Sprintf("deployID %s holds deployment for namespace %s\n", deployID.UUID().String(), req.NamespaceName))
-		observers.Notify(&models.ProgressJobDeploymentRequestCreated{DeployID: deployID})
+		successMsg := fmt.Sprintf("deployID %s holds deployment for namespace %s\n", deployID.UUID().String(), req.NamespaceName)
+		sv.l.Info(successMsg)
+		responseWriter.Write(writer.LogLevelInfo, successMsg)
+
+		responseWriter.SendDeploymentID(deployID.UUID().String())
 	}
 
 	sv.l.Info("job deployment is successfully submitted")
