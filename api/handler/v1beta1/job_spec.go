@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
@@ -252,22 +253,23 @@ func (sv *JobSpecServiceServer) DeleteJobSpecification(ctx context.Context, req 
 	}, nil
 }
 
-func (sv *JobSpecServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, respStream pb.JobSpecificationService_RefreshJobsServer) error {
+func (sv *JobSpecServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, stream pb.JobSpecificationService_RefreshJobsServer) error {
 	startTime := time.Now()
+	responseWriter := writer.NewRefreshJobResponseWriter(stream)
 
-	observers := sv.newObserverChain()
-	observers.Join(&jobRefreshObserver{
-		stream: respStream,
-		log:    sv.l,
-		mu:     new(sync.Mutex),
-	})
-
-	err := sv.jobSvc.Refresh(respStream.Context(), req.ProjectName, req.NamespaceNames, req.JobNames, observers)
+	deployID, err := sv.jobSvc.Refresh(stream.Context(), req.ProjectName, req.NamespaceNames, req.JobNames, responseWriter)
 	if err != nil {
+		errMsg := "Unable to request job deployment"
+		sv.l.Error(errMsg)
+		responseWriter.Write(writer.LogLevelError, errMsg)
 		return status.Errorf(codes.Internal, "failed to refresh jobs: \n%s", err.Error())
 	}
 
 	sv.l.Info("finished job refresh", "time", time.Since(startTime))
+	successMsg := fmt.Sprintf("Deployment request created with ID: %s", deployID.UUID().String())
+	responseWriter.Write(writer.LogLevelInfo, successMsg)
+
+	responseWriter.SendDeploymentID(deployID.UUID().String())
 	return nil
 }
 

@@ -106,67 +106,6 @@ func (obs *jobCheckObserver) Notify(e progress.Event) {
 	}
 }
 
-type jobRefreshObserver struct {
-	stream pb.JobSpecificationService_RefreshJobsServer
-	log    log.Logger
-	mu     *sync.Mutex
-}
-
-func (obs *jobRefreshObserver) Notify(e progress.Event) {
-	obs.mu.Lock()
-	defer obs.mu.Unlock()
-
-	switch evt := e.(type) {
-	case *models.ProgressJobUpload:
-		resp := &pb.RefreshJobsResponse{
-			Success: true,
-			JobName: evt.Name,
-			Type:    evt.Type(),
-		}
-		if evt.Err != nil {
-			resp.Success = false
-			resp.Value = evt.Err.Error()
-		}
-
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send refresh ack", "evt", evt.String(), "error", err)
-		}
-	case *models.ProgressJobSpecUnknownDependencyUsed:
-		resp := &pb.RefreshJobsResponse{
-			JobName: evt.Job,
-			Value:   evt.String(),
-			Success: false,
-			Type:    evt.Type(),
-		}
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send unknown dependency notification", "evt", evt.String(), "error", err)
-		}
-	case *models.ProgressJobDependencyResolution:
-		resp := &pb.RefreshJobsResponse{
-			JobName: evt.Job,
-			Value:   evt.String(),
-			Success: true,
-			Type:    evt.Type(),
-		}
-		if evt.Err != nil {
-			resp.Success = false
-			resp.Value = evt.Err.Error()
-		}
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send failed dependency resolution notification", "evt", evt.String(), "error", err)
-		}
-	case *models.ProgressJobDeploymentRequestCreated:
-		resp := &pb.RefreshJobsResponse{
-			Value:   evt.ID().UUID().String(),
-			Success: true,
-			Type:    evt.Type(),
-		}
-		if err := obs.stream.Send(resp); err != nil {
-			obs.log.Error("failed to send job deployment request created", "evt", evt.String(), "error", err)
-		}
-	}
-}
-
 type jobDeploymentObserver struct {
 	stream pb.JobSpecificationService_DeployJobSpecificationServer
 	log    log.Logger
@@ -243,10 +182,6 @@ func (obs *jobDeploymentObserver) Notify(e progress.Event) {
 			resp.Success = false
 			resp.Value = evt.Err.Error()
 		}
-	case *models.ProgressJobDependencyResolutionFinished:
-		resp.Success = true
-		resp.Value = evt.String()
-		resp.Type = evt.Type()
 	default:
 		obs.log.Warn(fmt.Sprintf("unknown event type: %+v", e))
 		return
