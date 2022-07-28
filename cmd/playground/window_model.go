@@ -45,7 +45,7 @@ func (*model) Init() tea.Cmd {
 func (m *model) handleUp() {
 	switch m.cursor {
 	case pointToOffsetInput:
-		// here we are shifting from Offsetinput to Sizeinput so we have to stop updating the Offsetinput(hence Offset.Blur())
+		// here we are shifting from offset input to Sizeinput so we have to stop updating the Offsetinput(hence Offset.Blur())
 		// and start updating Sizeinput(hence Sizeinput.Focus())
 		m.offsetInput.Blur()
 		m.sizeInput.Focus()
@@ -100,7 +100,7 @@ func (m *model) handleLeft() {
 func (m *model) handleIncrease() {
 	switch m.cursor {
 	case pointToTruncate:
-		m.state.incrementTruncate()
+		m.state.incrementTruncateTo()
 	case pointToYear, pointToMonth, PointToDay, pointToHour, pointToMinute:
 		m.state.incrementScheduleTimeOn(m.cursor)
 	}
@@ -108,7 +108,7 @@ func (m *model) handleIncrease() {
 func (m *model) handleDecrease() {
 	switch m.cursor {
 	case pointToTruncate:
-		m.state.decrementTruncate()
+		m.state.decrementTruncateTo()
 	case pointToYear, pointToMonth, PointToDay, pointToHour, pointToMinute:
 		m.state.decrementScheduleTimeOn(m.cursor)
 	}
@@ -141,7 +141,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// to get updated the input fields must be focussed since we handle the Focus and Blur we can directly update them here
 		m.sizeInput, _ = m.sizeInput.Update(msg)
 		m.offsetInput, _ = m.offsetInput.Update(msg)
-		m.state.updateWindowparameters(m.sizeInput.Value(), m.offsetInput.Value())
+		m.state.updateWindowParameters(m.sizeInput.Value(), m.offsetInput.Value())
 	}
 	return m, nil
 }

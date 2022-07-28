@@ -12,8 +12,8 @@ type state struct {
 	scheduledTime time.Time
 }
 
-func (s *state) incrementScheduleTimeOn(increaseBy cursorPointer) {
-	switch increaseBy {
+func (s *state) incrementScheduleTimeOn(cursor cursorPointer) {
+	switch cursor {
 	case pointToMinute:
 		s.scheduledTime = s.scheduledTime.Add(time.Minute)
 	case pointToHour:
@@ -27,8 +27,8 @@ func (s *state) incrementScheduleTimeOn(increaseBy cursorPointer) {
 	}
 }
 
-func (s *state) decrementScheduleTimeOn(decreaseBy cursorPointer) {
-	switch decreaseBy {
+func (s *state) decrementScheduleTimeOn(cursor cursorPointer) {
+	switch cursor {
 	case pointToMinute:
 		s.scheduledTime = s.scheduledTime.Add(-1 * time.Minute)
 	case pointToHour:
@@ -42,7 +42,7 @@ func (s *state) decrementScheduleTimeOn(decreaseBy cursorPointer) {
 	}
 }
 
-func (s *state) incrementTruncate() {
+func (s *state) incrementTruncateTo() {
 	switch s.windowV2.TruncateTo {
 	case "w":
 		s.windowV2.TruncateTo = "M"
@@ -53,7 +53,7 @@ func (s *state) incrementTruncate() {
 	}
 }
 
-func (s *state) decrementTruncate() {
+func (s *state) decrementTruncateTo() {
 	switch s.windowV2.TruncateTo {
 	case "d":
 		s.windowV2.TruncateTo = "h"
@@ -63,7 +63,7 @@ func (s *state) decrementTruncate() {
 		s.windowV2.TruncateTo = "w"
 	}
 }
-func (s *state) updateWindowparameters(size string, offset string) {
+func (s *state) updateWindowParameters(size string, offset string) {
 	s.windowV1.Size = size
 	s.windowV2.Size = size
 	s.windowV1.Offset = offset
