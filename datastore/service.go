@@ -7,8 +7,9 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/kushsharma/parallel"
+	"github.com/odpf/salt/log"
 
-	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 )
@@ -23,6 +24,7 @@ type ResourceSpecRepoFactory interface {
 }
 
 type Service struct {
+	l                   log.Logger
 	resourceRepoFactory ResourceSpecRepoFactory
 	dsRepo              models.DatastoreRepo
 }
@@ -35,36 +37,47 @@ func (srv Service) GetAll(ctx context.Context, namespace models.NamespaceSpec, d
 	return srv.resourceRepoFactory.New(namespace, ds).GetAll(ctx)
 }
 
-func (srv Service) CreateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
+func (srv Service) CreateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, logWriter writer.LogWriter) error {
 	createResource := func(rs models.ResourceSpec) error {
 		request := models.CreateResourceRequest{
 			Resource: rs,
 			Project:  namespace.ProjectSpec,
 		}
-		err := rs.Datastore.CreateResource(ctx, request)
-		srv.notifyProgress(obs, &EventResourceCreated{
-			Spec: rs,
-			Err:  err,
-		})
-		return err
+		if err := rs.Datastore.CreateResource(ctx, request); err != nil {
+			errMsg := fmt.Sprintf("creating: %s, failed with error: %s", rs.Name, err.Error())
+			srv.l.Error(errMsg)
+			logWriter.Write(writer.LogLevelError, errMsg)
+			return err
+		}
+		successMsg := fmt.Sprintf("created: %s", rs.Name)
+		srv.l.Info(successMsg)
+		logWriter.Write(writer.LogLevelInfo, successMsg)
+		return nil
 	}
-	return srv.saveResource(ctx, namespace, resourceSpecs, obs, createResource)
+
+	return srv.saveResource(ctx, namespace, resourceSpecs, logWriter, createResource)
 }
 
-func (srv Service) UpdateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
+func (srv Service) UpdateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, logWriter writer.LogWriter) error {
 	updateDatastore := func(rs models.ResourceSpec) error {
 		request := models.UpdateResourceRequest{
 			Resource: rs,
 			Project:  namespace.ProjectSpec,
 		}
 		err := rs.Datastore.UpdateResource(ctx, request)
-		srv.notifyProgress(obs, &EventResourceUpdated{
-			Spec: rs,
-			Err:  err,
-		})
-		return err
+		if err != nil {
+			errMsg := fmt.Sprintf("updating: %s, failed with error: %s", rs.Name, err.Error())
+			srv.l.Error(errMsg)
+			logWriter.Write(writer.LogLevelError, errMsg)
+			return err
+		}
+
+		successMsg := fmt.Sprintf("updated: %s", rs.Name)
+		srv.l.Info(successMsg)
+		logWriter.Write(writer.LogLevelInfo, successMsg)
+		return nil
 	}
-	return srv.saveResource(ctx, namespace, resourceSpecs, obs, updateDatastore)
+	return srv.saveResource(ctx, namespace, resourceSpecs, logWriter, updateDatastore)
 }
 
 func (srv Service) ReadResource(ctx context.Context, namespace models.NamespaceSpec, datastoreName, name string) (models.ResourceSpec, error) {
@@ -114,12 +127,12 @@ func (srv Service) saveResource(
 	ctx context.Context,
 	namespace models.NamespaceSpec,
 	resourceSpecs []models.ResourceSpec,
-	obs progress.Observer,
+	logWriter writer.LogWriter,
 	storeDatastore func(models.ResourceSpec) error,
 ) error {
 	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
 	for _, incomingSpec := range resourceSpecs {
-		runner.Add(func(spec models.ResourceSpec) func() (interface{}, error) {
+		runner.Add(func(spec models.ResourceSpec, lw writer.LogWriter) func() (interface{}, error) {
 			return func() (interface{}, error) {
 				repo := srv.resourceRepoFactory.New(namespace, spec.Datastore)
 				existingSpec, err := repo.GetByName(ctx, spec.Name)
@@ -128,19 +141,16 @@ func (srv Service) saveResource(
 				}
 
 				if existingSpec.Equal(spec) {
-					srv.notifyProgress(obs, &EventResourceSkipped{
-						Spec:   spec,
-						Reason: "incoming resource is the same as existing",
-					})
+					warnMsg := fmt.Sprintf("resource [%s] is skipped because %s", incomingSpec.Name, "incoming resource is the same as existing")
+					lw.Write(writer.LogLevelWarning, warnMsg)
 					return nil, nil // nolint:nilnil
 				}
-
 				if err := repo.Save(ctx, spec); err != nil {
 					return nil, err
 				}
 				return nil, storeDatastore(spec)
 			}
-		}(incomingSpec))
+		}(incomingSpec, logWriter))
 	}
 
 	var errorSet error
@@ -152,54 +162,10 @@ func (srv Service) saveResource(
 	return errorSet
 }
 
-func (*Service) notifyProgress(po progress.Observer, event progress.Event) {
-	if po == nil {
-		return
-	}
-	po.Notify(event)
-}
-
-func NewService(resourceRepoFactory ResourceSpecRepoFactory, dsRepo models.DatastoreRepo) *Service {
+func NewService(logger log.Logger, resourceRepoFactory ResourceSpecRepoFactory, dsRepo models.DatastoreRepo) *Service {
 	return &Service{
+		l:                   logger,
 		resourceRepoFactory: resourceRepoFactory,
 		dsRepo:              dsRepo,
 	}
-}
-
-type (
-	// EventResourceCreated represents the resource being created in datastore
-	EventResourceCreated struct {
-		Spec models.ResourceSpec
-		Err  error
-	}
-
-	// EventResourceUpdated represents the resource being updated in datastore
-	EventResourceUpdated struct {
-		Spec models.ResourceSpec
-		Err  error
-	}
-
-	// EventResourceSkipped represents the resource being skipped in datastore
-	EventResourceSkipped struct {
-		Spec   models.ResourceSpec
-		Reason string
-	}
-)
-
-func (e *EventResourceSkipped) String() string {
-	return fmt.Sprintf("resource [%s] is skipped because %s", e.Spec.Name, e.Reason)
-}
-
-func (e *EventResourceUpdated) String() string {
-	if e.Err != nil {
-		return fmt.Sprintf("updating: %s, failed with error: %s", e.Spec.Name, e.Err.Error())
-	}
-	return fmt.Sprintf("updated: %s", e.Spec.Name)
-}
-
-func (e *EventResourceCreated) String() string {
-	if e.Err != nil {
-		return fmt.Sprintf("creating: %s, failed with error: %s", e.Spec.Name, e.Err.Error())
-	}
-	return fmt.Sprintf("created: %s", e.Spec.Name)
 }

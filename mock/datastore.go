@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 )
@@ -105,12 +105,12 @@ func (d *DatastoreService) GetAll(ctx context.Context, spec models.NamespaceSpec
 	return args.Get(0).([]models.ResourceSpec), args.Error(1)
 }
 
-func (d *DatastoreService) CreateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
-	return d.Called(ctx, namespace, resourceSpecs, obs).Error(0)
+func (d *DatastoreService) CreateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, logWriter writer.LogWriter) error {
+	return d.Called(ctx, namespace, resourceSpecs, logWriter).Error(0)
 }
 
-func (d *DatastoreService) UpdateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, obs progress.Observer) error {
-	return d.Called(ctx, namespace, resourceSpecs, obs).Error(0)
+func (d *DatastoreService) UpdateResource(ctx context.Context, namespace models.NamespaceSpec, resourceSpecs []models.ResourceSpec, logWriter writer.LogWriter) error {
+	return d.Called(ctx, namespace, resourceSpecs, logWriter).Error(0)
 }
 
 func (d *DatastoreService) ReadResource(ctx context.Context, namespace models.NamespaceSpec, datastoreName, name string) (models.ResourceSpec, error) {
