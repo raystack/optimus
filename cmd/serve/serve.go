@@ -8,12 +8,15 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/odpf/optimus/cmd/logger"
+	"github.com/odpf/optimus/cmd/plugin"
 	"github.com/odpf/optimus/cmd/server"
 	"github.com/odpf/optimus/config"
 )
 
 type serveCommand struct {
 	configFilePath string
+	installPlugins bool
 }
 
 // NewServeCommand initializes command to start server
@@ -29,6 +32,7 @@ func NewServeCommand() *cobra.Command {
 		},
 		RunE: serve.RunE,
 	}
+	cmd.Flags().BoolVar(&serve.installPlugins, "install-plugins", serve.installPlugins, "install plugins")
 	cmd.Flags().StringVarP(&serve.configFilePath, "config", "c", serve.configFilePath, "File path for server configuration")
 	return cmd
 }
@@ -38,6 +42,12 @@ func (s *serveCommand) RunE(_ *cobra.Command, _ []string) error {
 	conf, err := config.LoadServerConfig(s.configFilePath)
 	if err != nil {
 		return err
+	}
+
+	if s.installPlugins {
+		if err := plugin.InstallPlugins(conf, logger.NewClientLogger(conf.Log)); err != nil {
+			return fmt.Errorf("unable to install plugins at server: %w", err)
+		}
 	}
 
 	optimusServer, err := server.New(*conf)
