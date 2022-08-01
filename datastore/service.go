@@ -141,7 +141,7 @@ func (srv Service) saveResource(
 				}
 
 				if existingSpec.Equal(spec) {
-					warnMsg := fmt.Sprintf("resource [%s] is skipped because %s", incomingSpec.Name, "incoming resource is the same as existing")
+					warnMsg := fmt.Sprintf("resource [%s] is skipped because %s", spec.Name, "incoming resource is the same as existing")
 					lw.Write(writer.LogLevelWarning, warnMsg)
 					return nil, nil // nolint:nilnil
 				}

@@ -874,31 +874,35 @@ func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpe
 	for _, jobSpec := range jobSpecs {
 		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
 			return func() (interface{}, error) {
+				namespaceName := currentSpec.NamespaceSpec.Name
+				specVal := []string{currentSpec.Name, namespaceName}
 				jobSourceURNs, err := srv.identify(ctx, currentSpec, projectSpec)
 				if err != nil {
-					return currentSpec.Name, err
+					return specVal, err
 				}
 				if len(jobSourceURNs) == 0 {
-					return currentSpec.Name, nil
+					return specVal, nil
 				}
 				err = srv.jobSourceRepo.Save(ctx, projectSpec.ID, currentSpec.ID, jobSourceURNs)
 				if err != nil {
 					err = fmt.Errorf("error persisting job sources for job %s: %w", currentSpec.Name, err)
 				}
-				return currentSpec.Name, err
+				return specVal, err
 			}
 		}(jobSpec))
 	}
 
 	failure, success := 0, 0
 	for _, state := range runner.Run() {
+		specVal := state.Val.([]string)
+		jobName, namespaceName := specVal[0], specVal[1]
 		if state.Err != nil {
 			failure++
-			warnMsg := fmt.Sprintf("error '%s': failed to resolve dependency, %s", state.Val, state.Err.Error())
+			warnMsg := fmt.Sprintf("[%s] error '%s': failed to resolve dependency, %s", namespaceName, jobName, state.Err.Error())
 			logWriter.Write(writer.LogLevelWarning, warnMsg)
 		} else {
 			success++
-			successMsg := fmt.Sprintf("info '%s': dependency is successfully resolved", state.Val)
+			successMsg := fmt.Sprintf("[%s] info '%s': dependency is successfully resolved", namespaceName, jobName)
 			logWriter.Write(writer.LogLevelInfo, successMsg)
 		}
 	}

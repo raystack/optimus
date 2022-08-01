@@ -64,7 +64,7 @@ func (sv *JobSpecServiceServer) DeployJobSpecification(stream pb.JobSpecificatio
 			continue
 		}
 
-		successMsg := fmt.Sprintf("deployID %s holds deployment for namespace %s\n", deployID.UUID().String(), req.NamespaceName)
+		successMsg := fmt.Sprintf("deployment for namespace %s success", req.NamespaceName)
 		sv.l.Info(successMsg)
 		responseWriter.Write(writer.LogLevelInfo, successMsg)
 

@@ -317,19 +317,7 @@ func (d *deployCommand) processResourceDeploymentResponse(
 		}
 
 		if logStatus := resp.GetLogStatus(); logStatus != nil {
-			if !d.verbose {
-				continue
-			}
-
-			switch logStatus.GetLevel() {
-			case pb.Level_Info:
-				d.logger.Info(logStatus.GetMessage())
-			case pb.Level_Warning:
-				d.logger.Warn(logStatus.GetMessage())
-			case pb.Level_Error:
-				d.logger.Error(logStatus.GetMessage())
-			}
-			continue
+			d.processLogResponse(logStatus)
 		}
 	}
 	return nil
@@ -421,19 +409,13 @@ func (d *deployCommand) processJobDeploymentResponses(stream pb.JobSpecification
 		}
 
 		if logStatus := resp.GetLogStatus(); logStatus != nil {
-			switch logStatus.GetLevel() {
-			case pb.Level_Info:
-				d.logger.Info(logStatus.GetMessage())
-			case pb.Level_Warning:
-				d.logger.Warn(logStatus.GetMessage())
-			case pb.Level_Error:
-				d.logger.Error(logStatus.GetMessage())
-			}
+			d.processLogResponse(logStatus)
 			continue
 		}
 
 		deploymentID := resp.GetDeploymentId()
 		deployIDMaps[deploymentID] = true
+		d.logger.Info(logger.ColoredSuccess("deployID %s successfully submitted\n", deploymentID))
 	}
 
 	deployIDs := []string{}
@@ -496,4 +478,19 @@ func PollJobDeployment(ctx context.Context, l log.Logger, jobSpecService pb.JobS
 		}
 	}
 	return nil
+}
+
+func (d *deployCommand) processLogResponse(logStatus *pb.Log) {
+	if !d.verbose {
+		return
+	}
+
+	switch logStatus.GetLevel() {
+	case pb.Level_Info:
+		d.logger.Info(logStatus.GetMessage())
+	case pb.Level_Warning:
+		d.logger.Warn(logStatus.GetMessage())
+	case pb.Level_Error:
+		d.logger.Error(logStatus.GetMessage())
+	}
 }
