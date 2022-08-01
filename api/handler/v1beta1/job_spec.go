@@ -152,6 +152,7 @@ func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 	if err = sv.jobSvc.Check(stream.Context(), namespaceSpec, reqJobs, responseWriter); err != nil {
 		return status.Errorf(codes.Internal, "failed to compile jobs\n%s", err.Error())
 	}
+
 	return nil
 }
 
