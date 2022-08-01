@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/odpf/salt/log"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -68,6 +69,23 @@ func (r *renderCommand) PreRunE(_ *cobra.Command, _ []string) error {
 }
 
 func (r *renderCommand) RunE(_ *cobra.Command, args []string) error {
+	dateSurvey := survey.NewDateSurvey()
+	var scheduleTime time.Time
+	if r.scheduledAt != "" {
+		scheduleTime, _ = time.Parse("2006-01-02 15:04", r.scheduledAt)
+	} else {
+		time_model := survey.GetTimeSurvey()
+		fmt.Println("Please set the sechdule time")
+		tea.NewProgram(time_model).Start()
+		scheduleTime = time_model.CurrentTime
+		fmt.Println(scheduleTime.Format("2006-01-02 15:04"))
+	}
+	ans, err := dateSurvey.Get_month()
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	fmt.Println(ans)
 	namespace, err := r.namespaceSurvey.AskToSelectNamespace(r.clientConfig)
 	if err != nil {
 		return err
@@ -76,12 +94,6 @@ func (r *renderCommand) RunE(_ *cobra.Command, args []string) error {
 	jobSpec, err := r.getJobSpecByName(args, namespace.Job.Path)
 	if err != nil {
 		return err
-	}
-	var scheduleTime time.Time
-	if r.scheduledAt != "" {
-		scheduleTime, _ = time.Parse("2006-01-02 15:04", r.scheduledAt)
-	} else {
-		scheduleTime = time.Now()
 	}
 	startTime := jobSpec.Task.Window.GetStart(scheduleTime)
 	endTime := jobSpec.Task.Window.GetEnd(scheduleTime)
@@ -127,8 +139,6 @@ func (r *renderCommand) RunE(_ *cobra.Command, args []string) error {
 		return err
 	}
 	r.logger.Info(fmt.Sprintf("Rendering assets in %s", renderedPath))
-
-	r.logger.Info(fmt.Sprintf("Assuming execution time as current time of %s\n", scheduleTime.Format(models.InstanceScheduledAtTimeLayout)))
 
 	templateEngine := compiler.NewGoEngine()
 	templates, err := compiler.DumpAssets(context.Background(), jobSpec, scheduleTime, templateEngine, true)
