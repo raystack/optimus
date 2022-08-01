@@ -567,7 +567,7 @@ func PollJobDeployment(ctx context.Context, l log.Logger, jobSpecService pb.JobS
 			l.Info(fmt.Sprintf("Deployment request for deployID %s is in queue...", deployID))
 		case models.JobDeploymentStatusCancelled.String():
 			l.Error(fmt.Sprintf("Deployment request for deployID %s is cancelled.", deployID))
-			return nil
+			return errors.New("job deployment cancelled")
 		case models.JobDeploymentStatusSucceed.String():
 			l.Info(logger.ColoredSuccess("Success deploying %d jobs for deployID %s", resp.SuccessCount, deployID))
 			return nil
@@ -588,7 +588,7 @@ func PollJobDeployment(ctx context.Context, l log.Logger, jobSpecService pb.JobS
 				}
 			}
 			l.Error(logger.ColoredError("Deployed %d/%d jobs.", resp.SuccessCount, resp.SuccessCount+resp.FailureCount))
-			return nil
+			return errors.New("job deployment failed")
 		}
 
 		time.Sleep(pollInterval)
