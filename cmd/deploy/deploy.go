@@ -298,12 +298,11 @@ func (d *deployCommand) deployResources(
 		return nil
 	}
 
-	return d.processResourceDeploymentResponse(stream, totalSpecsCount)
+	return d.processResourceDeploymentResponse(stream)
 }
 
 func (d *deployCommand) processResourceDeploymentResponse(
 	stream pb.ResourceService_DeployResourceSpecificationClient,
-	totalSpecsCount int,
 ) error {
 	d.logger.Info("> Receiving responses:")
 
