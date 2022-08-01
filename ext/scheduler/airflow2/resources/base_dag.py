@@ -43,7 +43,7 @@ default_args = {
     "queue": "{{ .Metadata.Airflow.Queue }}",
     {{- end }}
     "owner": {{.Job.Owner | quote}},
-    "depends_on_past": {{ if .Job.Behavior.DependsOnPast }} True {{- else -}} False {{- end -}},
+    "depends_on_past": False,
     "retries": {{ if gt .Job.Behavior.Retry.Count 0 -}} {{.Job.Behavior.Retry.Count}} {{- else -}} DAG_RETRIES {{- end}},
     "retry_delay": {{ if gt .Job.Behavior.Retry.Delay.Nanoseconds 0 -}} timedelta(seconds={{.Job.Behavior.Retry.Delay.Seconds}}) {{- else -}} timedelta(seconds=DAG_RETRY_DELAY) {{- end}},
     "retry_exponential_backoff": {{if .Job.Behavior.Retry.ExponentialBackoff -}}True{{- else -}}False{{- end -}},
@@ -135,6 +135,7 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
     task_id={{$baseTaskSchema.Name | quote}},
     get_logs=True,
     dag=dag,
+    depends_on_past={{ if .Job.Behavior.DependsOnPast }}True{{- else -}}False{{- end -}},
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,

@@ -93,6 +93,7 @@ transformation_bq = SuperKubernetesPodOperator(
     task_id="bq",
     get_logs=True,
     dag=dag,
+    depends_on_past=True,
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
