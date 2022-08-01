@@ -1,16 +1,16 @@
 package resourcemgr
 
-type GetJobSpecificationsResponse struct {
-	JobSpecificationResponses []JobSpecificationResponse `json:"jobSpecificationResponses"`
+type getJobSpecificationsResponse struct {
+	JobSpecificationResponses []jobSpecificationResponse `json:"jobSpecificationResponses"`
 }
 
-type JobSpecificationResponse struct {
+type jobSpecificationResponse struct {
 	ProjectName   string           `json:"projectName"`
 	NamespaceName string           `json:"namespaceName"`
-	Job           JobSpecification `json:"job"`
+	Job           jobSpecification `json:"job"`
 }
 
-type JobSpecification struct {
+type jobSpecification struct {
 	Version          int                      `json:"version"`
 	Name             string                   `json:"name"`
 	Owner            string                   `json:"owner"`
@@ -73,8 +73,8 @@ type behaviorRetry struct {
 }
 
 type jobSpecHook struct {
-	Name   string        `json:"name"`
-	Config jobConfigItem `json:"config"`
+	Name   string          `json:"name"`
+	Config []jobConfigItem `json:"config"`
 }
 
 type jobDependency struct {

@@ -210,7 +210,7 @@ func (s *ConfigTestSuite) TestLoadServerConfig() {
 
 			s.Assert().NoError(err)
 			s.Assert().NotNil(conf)
-			s.Assert().Equal("2", conf.Version.String())
+			s.Assert().Equal("4", conf.Version.String())
 			s.Assert().Equal("INFO", conf.Log.Level.String())
 		})
 
@@ -291,6 +291,8 @@ func (s *ConfigTestSuite) initExpectedServerConfig() {
 			},
 		},
 	}
+	s.expectedServerConfig.Plugin = config.PluginConfig{}
+	s.expectedServerConfig.Plugin.Dir = "."
 }
 
 func (*ConfigTestSuite) initServerConfigEnv() {

@@ -11,6 +11,7 @@ type ServerConfig struct {
 	Scheduler        SchedulerConfig   `mapstructure:"scheduler"`
 	Telemetry        TelemetryConfig   `mapstructure:"telemetry"`
 	ResourceManagers []ResourceManager `mapstructure:"resource_managers"`
+	Plugin           PluginConfig      `mapstructure:"plugin"`
 }
 
 type Serve struct {
@@ -65,4 +66,9 @@ type ResourceManager struct {
 type ResourceManagerConfigOptimus struct {
 	Host    string            `mapstructure:"host"`
 	Headers map[string]string `mapstructure:"headers"`
+}
+
+type PluginConfig struct {
+	Dir       string   `mapstructure:"dir" default:"."`
+	Artifacts []string `mapstructure:"artifacts"`
 }
