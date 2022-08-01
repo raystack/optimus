@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -134,18 +133,12 @@ func (sv *JobSpecServiceServer) CheckJobSpecification(ctx context.Context, req *
 	return &pb.CheckJobSpecificationResponse{Success: true}, nil
 }
 
-func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecificationsRequest, respStream pb.JobSpecificationService_CheckJobSpecificationsServer) error {
-	namespaceSpec, err := sv.namespaceService.Get(respStream.Context(), req.GetProjectName(), req.GetNamespaceName())
+func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecificationsRequest, stream pb.JobSpecificationService_CheckJobSpecificationsServer) error {
+	responseWriter := writer.NewCheckJobSpecificationResponseWriter(stream)
+	namespaceSpec, err := sv.namespaceService.Get(stream.Context(), req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
-
-	observers := sv.newObserverChain()
-	observers.Join(&jobCheckObserver{
-		stream: respStream,
-		log:    sv.l,
-		mu:     new(sync.Mutex),
-	})
 
 	var reqJobs []models.JobSpec
 	for _, jobProto := range req.GetJobs() {
@@ -156,7 +149,7 @@ func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 		reqJobs = append(reqJobs, j)
 	}
 
-	if err = sv.jobSvc.Check(respStream.Context(), namespaceSpec, reqJobs, observers); err != nil {
+	if err = sv.jobSvc.Check(stream.Context(), namespaceSpec, reqJobs, responseWriter); err != nil {
 		return status.Errorf(codes.Internal, "failed to compile jobs\n%s", err.Error())
 	}
 	return nil
@@ -164,6 +157,7 @@ func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 
 func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req *pb.CreateJobSpecificationRequest) (*pb.CreateJobSpecificationResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
+	logWriter := writer.NewLogWriter(sv.l)
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
@@ -174,7 +168,7 @@ func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req 
 	}
 
 	// validate job spec
-	if err = sv.jobSvc.Check(ctx, namespaceSpec, []models.JobSpec{jobSpec}, sv.progressObserver); err != nil {
+	if err = sv.jobSvc.Check(ctx, namespaceSpec, []models.JobSpec{jobSpec}, logWriter); err != nil {
 		return nil, status.Errorf(codes.Internal, "spec validation failed\n%s", err.Error())
 	}
 
@@ -183,6 +177,7 @@ func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req 
 		return nil, status.Errorf(codes.Internal, "%s: failed to save job %s", err.Error(), jobSpec.Name)
 	}
 
+	// TODO: remove progressObserver injection here
 	if err := sv.jobSvc.Sync(ctx, namespaceSpec, sv.progressObserver); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to sync jobs: \n%s", err.Error())
 	}
@@ -308,14 +303,6 @@ func (sv *JobSpecServiceServer) GetDeployJobsStatus(ctx context.Context, req *pb
 			Status: jobDeployment.Status.String(),
 		}, nil
 	}
-}
-
-func (sv *JobSpecServiceServer) newObserverChain() *progress.ObserverChain {
-	observers := new(progress.ObserverChain)
-	if sv.progressObserver != nil {
-		observers.Join(sv.progressObserver)
-	}
-	return observers
 }
 
 func NewJobSpecServiceServer(l log.Logger, jobService models.JobService, pluginRepo models.PluginRepository,

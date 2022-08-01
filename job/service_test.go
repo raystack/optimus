@@ -304,8 +304,12 @@ func TestService(t *testing.T) {
 			batchScheduler.On("VerifyJob", ctx, namespaceSpec, currentSpec).Return(nil)
 			defer batchScheduler.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			defer logWriter.AssertExpectations(t)
+
 			jobService := job.NewService(nil, batchScheduler, nil, nil, nil, nil, nil, nil, nil, nil, pluginService, nil, nil)
-			err := jobService.Check(ctx, namespaceSpec, []models.JobSpec{currentSpec}, nil)
+			err := jobService.Check(ctx, namespaceSpec, []models.JobSpec{currentSpec}, logWriter)
 			assert.Nil(t, err)
 		})
 		t.Run("should check for successful dependency resolution for task that does support this mod", func(t *testing.T) {
@@ -334,8 +338,12 @@ func TestService(t *testing.T) {
 			batchScheduler.On("VerifyJob", ctx, namespaceSpec, currentSpec).Return(nil)
 			defer batchScheduler.AssertExpectations(t)
 
+			logWriter := new(mock.LogWriter)
+			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			defer logWriter.AssertExpectations(t)
+
 			jobService := job.NewService(nil, batchScheduler, nil, nil, nil, nil, nil, nil, nil, nil, pluginService, nil, nil)
-			err := jobService.Check(ctx, namespaceSpec, []models.JobSpec{currentSpec}, nil)
+			err := jobService.Check(ctx, namespaceSpec, []models.JobSpec{currentSpec}, logWriter)
 			assert.Nil(t, err)
 		})
 	})

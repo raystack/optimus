@@ -263,7 +263,7 @@ func (srv *Service) GetAll(ctx context.Context, namespace models.NamespaceSpec) 
 }
 
 // Check if job specifications are valid
-func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, obs progress.Observer) (err error) {
+func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, logWriter writer.LogWriter) (err error) {
 	for i := range jobSpecs {
 		// remove manual dependencies as they needs to be resolved
 		jobSpecs[i].Dependencies = map[string]models.JobSpecDependency{}
@@ -271,33 +271,30 @@ func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, j
 
 	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
 	for _, jSpec := range jobSpecs {
-		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
+		runner.Add(func(currentSpec models.JobSpec, lw writer.LogWriter) func() (interface{}, error) {
 			return func() (interface{}, error) {
 				// check dependencies
 				_, err := srv.pluginService.GenerateDependencies(ctx, currentSpec, namespace, true)
 				if err != nil {
 					if !errors.Is(err, service.ErrDependencyModNotFound) {
-						if obs != nil {
-							obs.Notify(&models.ProgressJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("dependency resolution: %s\n", err.Error())})
-						}
+						errMsg := fmt.Sprintf("check for job failed: %s, reason: %s", currentSpec.Name, fmt.Sprintf("dependency resolution: %s\n", err.Error()))
+						lw.Write(writer.LogLevelError, errMsg)
 						return nil, fmt.Errorf("%s %s: %w", errDependencyResolution.Error(), currentSpec.Name, err)
 					}
 				}
 
 				// check compilation
 				if err := srv.batchScheduler.VerifyJob(ctx, namespace, currentSpec); err != nil {
-					if obs != nil {
-						obs.Notify(&models.ProgressJobCheckFailed{Name: currentSpec.Name, Reason: fmt.Sprintf("compilation: %s\n", err.Error())})
-					}
+					errMsg := fmt.Sprintf("check for job failed: %s, reason: %s", currentSpec.Name, fmt.Sprintf("compilation: %s\n", err.Error()))
+					lw.Write(writer.LogLevelError, errMsg)
 					return nil, fmt.Errorf("failed to compile %s: %w", currentSpec.Name, err)
 				}
 
-				if obs != nil {
-					obs.Notify(&models.ProgressJobCheckSuccess{Name: currentSpec.Name})
-				}
+				successMsg := fmt.Sprintf("check for job passed: %s", currentSpec.Name)
+				lw.Write(writer.LogLevelInfo, successMsg)
 				return nil, nil
 			}
-		}(jSpec))
+		}(jSpec, logWriter))
 	}
 	for _, result := range runner.Run() {
 		if result.Err != nil {
