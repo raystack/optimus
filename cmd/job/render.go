@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/odpf/salt/log"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -27,6 +28,7 @@ type renderCommand struct {
 	clientConfig    *config.ClientConfig
 	jobSurvey       *survey.JobSurvey
 	namespaceSurvey *survey.NamespaceSurvey
+	scheduledAt     string
 }
 
 // NewRenderCommand initializes command for rendering job specification
@@ -38,14 +40,14 @@ func NewRenderCommand() *cobra.Command {
 		Use:     "render",
 		Short:   "Apply template values in job specification to current 'render' directory",
 		Long:    "Process optimus job specification based on macros/functions used.",
-		Example: "optimus job render [<job_name>]",
+		Example: "optimus job render [<job_name>] [--scheduledAt <2006-01-02 15:04>]",
 		RunE:    render.RunE,
 		PreRunE: render.PreRunE,
 	}
 
 	// Config filepath flag
 	cmd.Flags().StringVarP(&render.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
-
+	cmd.Flags().StringVarP(&render.scheduledAt, "scheduledAt", "t", "", "Time at which the job is scheduled for execution")
 	return cmd
 }
 
@@ -54,14 +56,36 @@ func (r *renderCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	if err := r.loadConfig(); err != nil {
 		return err
 	}
-
 	r.logger = logger.NewClientLogger(r.clientConfig.Log)
 	r.jobSurvey = survey.NewJobSurvey()
 	r.namespaceSurvey = survey.NewNamespaceSurvey(r.logger)
+	if r.scheduledAt != "" {
+		_, err := time.Parse("2006-01-02 15:04", r.scheduledAt)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func (r *renderCommand) RunE(_ *cobra.Command, args []string) error {
+	dateSurvey := survey.NewDateSurvey()
+	var scheduleTime time.Time
+	if r.scheduledAt != "" {
+		scheduleTime, _ = time.Parse("2006-01-02 15:04", r.scheduledAt)
+	} else {
+		time_model := survey.GetTimeSurvey()
+		fmt.Println("Please set the sechdule time")
+		tea.NewProgram(time_model).Start()
+		scheduleTime = time_model.CurrentTime
+		fmt.Println(scheduleTime.Format("2006-01-02 15:04"))
+	}
+	ans, err := dateSurvey.Get_month()
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	fmt.Println(ans)
 	namespace, err := r.namespaceSurvey.AskToSelectNamespace(r.clientConfig)
 	if err != nil {
 		return err
@@ -71,36 +95,43 @@ func (r *renderCommand) RunE(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	startTime := jobSpec.Task.Window.GetStart(scheduleTime)
+	endTime := jobSpec.Task.Window.GetEnd(scheduleTime)
 
-	scheduleTime := time.Now()
-	startTime := jobSpec.Task.Window.GetEnd(scheduleTime)
-	endTime := jobSpec.Task.Window.GetStart(scheduleTime)
-
-	fmt.Println(jobSpec.Dependencies)
-	for jobName := range jobSpec.Dependencies {
-		fmt.Println("jobName::", jobName)
-
-		jobSpec, err := r.getJobSpecByName([]string{jobName}, namespace.Job.Path)
+	r.logger.Info("job dependencies")
+	for dependencyJobName := range jobSpec.Dependencies {
+		r.logger.Info("jobName::" + logger.ColoredNotice(dependencyJobName))
+		jobSpec, _ := r.getJobSpecByName([]string{dependencyJobName}, namespace.Job.Path)
 		// this could be a deployed or an undeployed job
 		//check that
 		// another concern, if a job is both , then which version to honor ask sravan
-		fmt.Println("jobName::", jobSpec)
-		fmt.Println(jobSpec.Schedule)
-		fmt.Println(jobSpec.Schedule.Interval)
+		//fmt.Println("jobName::", jobSpec)
+		// fmt.Println(jobSpec.Schedule)
+		// fmt.Println(jobSpec.Schedule.Interval)
 		jobCron, err := cron.ParseCronSchedule(jobSpec.Schedule.Interval)
 		if err != nil {
 			r.logger.Error(err.Error())
 		}
 		scheduledTimes := jobCron.GetExpectedRuns(startTime, endTime)
-		fmt.Println(jobSpec.Name, " -> ", scheduledTimes)
+		scheduledTimesCombinedString := ""
+		for _, scheduledTime := range scheduledTimes {
+			scheduledTimesCombinedString += ("[" + scheduledTime.Format("2006-01-02 15:04:05") + "] ")
+		}
+		r.logger.Info("execution times -> " + scheduledTimesCombinedString)
 	}
-
 	// for _, dependency := range jobSpec.ExternalDependencies.OptimusDependencies {
 	//	jobCron, err := cron.ParseCronSchedule(dependency.Job.Schedule.Interval)
 	//	scheduledTimes := jobCron.GetExpectedRuns(startTime, endTime)
 	//}
 
-	fmt.Println(jobSpec.ExternalDependencies)
+	//fmt.Println(jobSpec.ExternalDependencies)
+	r.logger.Info("job external dependencies")
+	for _, externalDepency := range jobSpec.ExternalDependencies.HTTPDependencies {
+		r.logger.Info(externalDepency.Name)
+	}
+	for _, externalDepency := range jobSpec.ExternalDependencies.OptimusDependencies {
+		r.logger.Info(externalDepency.Name)
+	}
 
 	// create temporary directory
 	renderedPath := filepath.Join(".", "render", jobSpec.Name)
@@ -108,8 +139,6 @@ func (r *renderCommand) RunE(_ *cobra.Command, args []string) error {
 		return err
 	}
 	r.logger.Info(fmt.Sprintf("Rendering assets in %s", renderedPath))
-
-	r.logger.Info(fmt.Sprintf("Assuming execution time as current time of %s\n", scheduleTime.Format(models.InstanceScheduledAtTimeLayout)))
 
 	templateEngine := compiler.NewGoEngine()
 	templates, err := compiler.DumpAssets(context.Background(), jobSpec, scheduleTime, templateEngine, true)
