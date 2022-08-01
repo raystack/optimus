@@ -17,11 +17,11 @@ const (
 	Suffix = ".yaml"
 )
 
-func FromYaml(plugin_path string) (*models.YamlPlugin, error) {
+func NewYamlPlugin(pluginPath string) (*models.YamlPlugin, error) {
 	plugin := models.YamlPlugin{}
 
 	fs := afero.NewOsFs()
-	fd, err := fs.Open(plugin_path)
+	fd, err := fs.Open(pluginPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			err = models.ErrNoSuchSpec
@@ -30,7 +30,7 @@ func FromYaml(plugin_path string) (*models.YamlPlugin, error) {
 	}
 	defer fd.Close()
 
-	plugin_bytes, err := io.ReadAll(fd)
+	pluginBytes, err := io.ReadAll(fd)
 
 	if err != nil {
 		return &plugin, err
@@ -41,19 +41,19 @@ func FromYaml(plugin_path string) (*models.YamlPlugin, error) {
 	pluginYamlQuestions := models.YamlQuestions{}
 	pluginDefaultAssets := models.YamlAsset{}
 
-	if err := yaml.Unmarshal(plugin_bytes, &pluginInfo); err != nil {
+	if err := yaml.Unmarshal(pluginBytes, &pluginInfo); err != nil {
 		return &plugin, err
 	}
 	plugin.Info = &pluginInfo
-	if err := yaml.Unmarshal(plugin_bytes, &pluginQuestions); err != nil {
+	if err := yaml.Unmarshal(pluginBytes, &pluginQuestions); err != nil {
 		return &plugin, err
 	}
 	plugin.PluginQuestions = &pluginQuestions
-	if err := yaml.Unmarshal(plugin_bytes, &pluginYamlQuestions); err != nil {
+	if err := yaml.Unmarshal(pluginBytes, &pluginYamlQuestions); err != nil {
 		return &plugin, err
 	}
 	plugin.YamlQuestions = &pluginYamlQuestions
-	if err := yaml.Unmarshal(plugin_bytes, &pluginDefaultAssets); err != nil {
+	if err := yaml.Unmarshal(pluginBytes, &pluginDefaultAssets); err != nil {
 		return &plugin, err
 	}
 	plugin.PluginAssets = &pluginDefaultAssets
@@ -71,24 +71,21 @@ func FromYaml(plugin_path string) (*models.YamlPlugin, error) {
 // 	fmt.Println(string(yamlData))
 // }
 
-func Init(plugins_repo models.PluginRepository, discoveredYamlPlugins []string, pluginLogger hclog.Logger) error {
+func Init(pluginsRepo models.PluginRepository, discoveredYamlPlugins []string, pluginLogger hclog.Logger) error {
 	for _, yamlPluginPath := range discoveredYamlPlugins {
-		yamlPlugin, err := FromYaml(yamlPluginPath)
+		yamlPlugin, err := NewYamlPlugin(yamlPluginPath)
 		if err != nil {
 			return fmt.Errorf("PluginRegistry.Add: %s: %w", yamlPluginPath, err)
 		}
 
-		if binPlugin, _ := plugins_repo.GetByName(yamlPlugin.Info.Name); binPlugin != nil {
-			// if bin plugin exists
+		if binPlugin, _ := pluginsRepo.GetByName(yamlPlugin.Info.Name); binPlugin != nil {
+			// if bin plugin exists skip loading yaml plugin
 			continue
 		}
-		if err := plugins_repo.Add(nil, nil, nil, yamlPlugin); err != nil {
+		if err := pluginsRepo.Add(nil, nil, nil, yamlPlugin); err != nil {
 			return fmt.Errorf("PluginRegistry.Add: %s: %w", yamlPluginPath, err)
 		}
 
-		// if err := models.YamlPluginRegistry.Add(yamlPlugin); err != nil {
-		// 	return fmt.Errorf("PluginRegistry.Add: %s: %w", yamlPluginPath, err)
-		// }
 		pluginLogger.Debug("plugin ready: ", yamlPlugin.Info.Name)
 	}
 	return nil
