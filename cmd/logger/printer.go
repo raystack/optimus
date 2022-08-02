@@ -7,11 +7,13 @@ import (
 
 func PrintLogStatus(logger log.Logger, logStatus *pb.Log) {
 	switch logStatus.GetLevel() {
-	case pb.Level_Info:
+	case pb.Level_LEVEL_INFO:
 		logger.Info(logStatus.GetMessage())
-	case pb.Level_Warning:
+	case pb.Level_LEVEL_WARNING:
 		logger.Warn(logStatus.GetMessage())
-	case pb.Level_Error:
+	case pb.Level_LEVEL_ERROR:
 		logger.Error(logStatus.GetMessage())
+	default:
+		logger.Debug(logStatus.GetMessage())
 	}
 }

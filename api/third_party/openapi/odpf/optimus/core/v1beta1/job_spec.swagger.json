@@ -358,21 +358,9 @@
     "v1beta1CheckJobSpecificationsResponse": {
       "type": "object",
       "properties": {
-        "success": {
-          "type": "boolean"
-        },
-        "ack": {
-          "type": "boolean",
-          "title": "non ack responses are more of a progress/info response\nand not really success or failure statuses"
-        },
-        "message": {
-          "type": "string"
-        },
-        "jobName": {
-          "type": "string"
-        },
         "logStatus": {
-          "$ref": "#/definitions/v1beta1Log"
+          "$ref": "#/definitions/v1beta1Log",
+          "title": "bool success = 1 [deprecated=true];\nbool ack = 2 [deprecated=true];\nstring message = 3 [deprecated=true];\nstring job_name = 4 [deprecated=true];"
         }
       }
     },
@@ -412,32 +400,9 @@
     "v1beta1DeployJobSpecificationResponse": {
       "type": "object",
       "properties": {
-        "success": {
-          "type": "boolean",
-          "title": "success or not is not the part of the response anymore\nany message that been sent is marked as successfully delivered"
-        },
-        "ack": {
-          "type": "boolean",
-          "title": "non ack responses are more of a progress/info response\nand not really success or failure statuses\nthis is deprecated and being replaced with type field"
-        },
-        "message": {
-          "type": "string",
-          "title": "message is deprecated and being replaced with value field"
-        },
-        "jobName": {
-          "type": "string",
-          "title": "job_name is deprecated since client / receiver\ndoesn't need to know the job_name anymore"
-        },
-        "type": {
-          "type": "string",
-          "title": "response type differentiate events\nthis is deprecated"
-        },
-        "value": {
-          "type": "string",
-          "title": "this is deprecated and being replaced with deploymentID\nand log status message"
-        },
         "deploymentId": {
-          "type": "string"
+          "type": "string",
+          "title": "bool success = 1 [deprecated=true];\nbool ack = 2 [deprecated=true];\nstring message = 3 [deprecated=true];\nstring job_name = 4 [deprecated=true];\nstring type = 5 [deprecated=true];\nstring value = 6 [deprecated=true];"
         },
         "logStatus": {
           "$ref": "#/definitions/v1beta1Log"
@@ -724,14 +689,15 @@
     "v1beta1Level": {
       "type": "string",
       "enum": [
-        "Trace",
-        "Debug",
-        "Info",
-        "Warning",
-        "Error",
-        "Fatal"
+        "LEVEL_UNSPECIFIED",
+        "LEVEL_TRACE",
+        "LEVEL_DEBUG",
+        "LEVEL_INFO",
+        "LEVEL_WARNING",
+        "LEVEL_ERROR",
+        "LEVEL_FATAL"
       ],
-      "default": "Trace"
+      "default": "LEVEL_UNSPECIFIED"
     },
     "v1beta1ListJobSpecificationResponse": {
       "type": "object",
@@ -758,21 +724,9 @@
     "v1beta1RefreshJobsResponse": {
       "type": "object",
       "properties": {
-        "success": {
-          "type": "boolean"
-        },
-        "type": {
-          "type": "string",
-          "title": "response type differentiate events"
-        },
-        "value": {
-          "type": "string"
-        },
-        "jobName": {
-          "type": "string"
-        },
         "deploymentId": {
-          "type": "string"
+          "type": "string",
+          "title": "bool success = 1 [deprecated=true];\nstring type = 2 [deprecated=true];\nstring value = 3 [deprecated=true];\nstring job_name = 4 [deprecated=true];"
         },
         "logStatus": {
           "$ref": "#/definitions/v1beta1Log"

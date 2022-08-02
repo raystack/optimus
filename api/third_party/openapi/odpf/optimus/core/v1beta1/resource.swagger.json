@@ -275,35 +275,24 @@
     "v1beta1DeployResourceSpecificationResponse": {
       "type": "object",
       "properties": {
-        "success": {
-          "type": "boolean"
-        },
-        "ack": {
-          "type": "boolean",
-          "title": "non ack responses are more of a progress/info response\nand not success or failure statuses"
-        },
-        "message": {
-          "type": "string"
-        },
-        "resourceName": {
-          "type": "string"
-        },
         "logStatus": {
-          "$ref": "#/definitions/v1beta1Log"
+          "$ref": "#/definitions/v1beta1Log",
+          "title": "bool success = 1 [deprecated=true];\nbool ack = 2 [deprecated=true];\nstring message = 3 [deprecated=true];\nstring resource_name = 4 [deprecated=true];"
         }
       }
     },
     "v1beta1Level": {
       "type": "string",
       "enum": [
-        "Trace",
-        "Debug",
-        "Info",
-        "Warning",
-        "Error",
-        "Fatal"
+        "LEVEL_UNSPECIFIED",
+        "LEVEL_TRACE",
+        "LEVEL_DEBUG",
+        "LEVEL_INFO",
+        "LEVEL_WARNING",
+        "LEVEL_ERROR",
+        "LEVEL_FATAL"
       ],
-      "default": "Trace"
+      "default": "LEVEL_UNSPECIFIED"
     },
     "v1beta1ListResourceSpecificationResponse": {
       "type": "object",
