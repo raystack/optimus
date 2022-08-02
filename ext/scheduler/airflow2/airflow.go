@@ -168,6 +168,23 @@ func (s *scheduler) DeployJobsVerbose(ctx context.Context, namespace models.Name
 	return jobDeploymentDetail, nil
 }
 
+// deleteDirectoryIfEmpty remove jobs Folder if it exists
+func deleteDirectoryIfEmpty(ctx context.Context, jobsDir string, bucket Bucket) error {
+	spanCtx, span := startChildSpan(ctx, "deleteDirectoryIfEmpty")
+	span.End()
+
+	it := bucket.List(&blob.ListOptions{
+		Prefix: jobsDir,
+	})
+	_, err := it.Next(spanCtx)
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return bucket.Delete(ctx, jobsDir)
+		}
+	}
+	return nil
+}
+
 func (s *scheduler) compileAndUpload(ctx context.Context, namespace models.NamespaceSpec, currentJobSpec models.JobSpec, bucket Bucket) interface{} {
 	compiledJob, err := s.compiler.Compile(s.GetTemplate(), namespace, currentJobSpec)
 	if err != nil {
@@ -178,13 +195,34 @@ func (s *scheduler) compileAndUpload(ctx context.Context, namespace models.Names
 		return deployFailure
 	}
 
-	blobKey := PathFromJobName(JobsDir, namespace.ID.String(), compiledJob.Name, JobsExtension)
+	blobKey := PathFromJobName(JobsDir, namespace.Name, compiledJob.Name, JobsExtension)
 	if err := bucket.WriteAll(ctx, blobKey, compiledJob.Contents, nil); err != nil {
 		deployFailure := models.JobDeploymentFailure{
 			JobName: currentJobSpec.Name,
 			Message: err.Error(),
 		}
 		return deployFailure
+	}
+
+	blobKeyNamespaceID := PathFromJobName(JobsDir, namespace.ID.String(), compiledJob.Name, JobsExtension)
+	if err := bucket.Delete(ctx, blobKeyNamespaceID); err != nil {
+		if gcerrors.Code(err) != gcerrors.NotFound {
+			deployFailure := models.JobDeploymentFailure{
+				JobName: currentJobSpec.Name,
+				Message: "failed to cleanup old DAG ::" + blobKeyNamespaceID + ", err::" + err.Error(),
+			}
+			return deployFailure
+		}
+	}
+	err = deleteDirectoryIfEmpty(ctx, PathForJobDirectory(JobsDir, namespace.ID.String()), bucket)
+	if err != nil {
+		if gcerrors.Code(err) != gcerrors.NotFound {
+			deployFailure := models.JobDeploymentFailure{
+				JobName: currentJobSpec.Name,
+				Message: "failed to cleanup old dags folder " + err.Error(),
+			}
+			return deployFailure
+		}
 	}
 	return nil
 }
