@@ -227,7 +227,8 @@ wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} =
 {{- end}}
 
 {{- range $_, $dependency := $.Job.ExternalDependencies.OptimusDependencies}}
-wait_{{$dependency.JobName | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
+{{ $identity := print $dependency.Name "-" $dependency.ProjectName "-" $dependency.JobName }}
+wait_{{ $identity | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
     optimus_hostname="{{$dependency.Host}}",
     upstream_optimus_project="{{$dependency.ProjectName}}",
     upstream_optimus_namespace="{{$dependency.NamespaceName}}",
@@ -266,7 +267,8 @@ publish_job_start_event >> wait_{{ $t.Job.Name | replace "-" "__dash__" | replac
 publish_job_start_event >>  wait_{{ $t.Name }} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
 {{- end}}
 {{- range $_, $dependency := $.Job.ExternalDependencies.OptimusDependencies}}
-publish_job_start_event >> wait_{{ $dependency.JobName | replace "-" "__dash__" | replace "." "__dot__" }} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
+{{ $identity := print $dependency.Name "-" $dependency.ProjectName "-" $dependency.JobName }}
+publish_job_start_event >> wait_{{ $identity | replace "-" "__dash__" | replace "." "__dot__" }} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
 {{- end}}
 {{if and (not $.Job.Dependencies) (not $.Job.ExternalDependencies.HTTPDependencies) (not $.Job.ExternalDependencies.OptimusDependencies)}}
 # if no sensor and dependency is configured

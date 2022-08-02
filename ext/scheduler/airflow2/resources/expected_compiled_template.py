@@ -234,7 +234,8 @@ wait_foo__dash__inter__dash__dep__dash__job = SuperExternalTaskSensor(
     task_id="wait_foo-inter-dep-job-bq",
     dag=dag
 )
-wait_foo__dash__external__dash__optimus__dash__dep__dash__job = SuperExternalTaskSensor(
+
+wait_external__dash__optimus__dash__foo__dash__external__dash__optimus__dash__project__dash__foo__dash__external__dash__optimus__dash__dep__dash__job = SuperExternalTaskSensor(
     optimus_hostname="http://optimus.external.io",
     upstream_optimus_project="foo-external-optimus-project",
     upstream_optimus_namespace="bar-external-optimus-namespace",
@@ -252,7 +253,8 @@ wait_foo__dash__external__dash__optimus__dash__dep__dash__job = SuperExternalTas
 # upstream sensors -> base transformation task
 publish_job_start_event >> wait_foo__dash__intra__dash__dep__dash__job >> transformation_bq
 publish_job_start_event >> wait_foo__dash__inter__dash__dep__dash__job >> transformation_bq
-publish_job_start_event >> wait_foo__dash__external__dash__optimus__dash__dep__dash__job >> transformation_bq
+
+publish_job_start_event >> wait_external__dash__optimus__dash__foo__dash__external__dash__optimus__dash__project__dash__foo__dash__external__dash__optimus__dash__dep__dash__job >> transformation_bq
 
 # post completion hook
 transformation_bq >> publish_job_end_event
