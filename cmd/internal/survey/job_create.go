@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sort"
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -111,8 +112,11 @@ func (*JobCreateSurvey) getTaskConfig(cliMod models.CommandLineMod, answers mode
 
 func (*JobCreateSurvey) getAvailableTaskNames() []string {
 	pluginRepo := models.PluginRegistry
+	plugins := pluginRepo.GetTasks()
+	pluginsList := models.PluginList(plugins) // casting to sort plugins by name in asc
+	sort.Sort(pluginsList)
 	var output []string
-	for _, task := range pluginRepo.GetTasks() {
+	for _, task := range pluginsList {
 		output = append(output, task.Info().Name)
 	}
 	return output

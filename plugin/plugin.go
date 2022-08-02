@@ -15,7 +15,7 @@ import (
 	"github.com/odpf/optimus/plugin/v1beta1/base"
 	"github.com/odpf/optimus/plugin/v1beta1/cli"
 	"github.com/odpf/optimus/plugin/v1beta1/dependencyresolver"
-	"github.com/odpf/optimus/plugin/v1beta1/yaml"
+	"github.com/odpf/optimus/plugin/yaml"
 )
 
 func Initialize(pluginLogger hclog.Logger, arg ...string) error {

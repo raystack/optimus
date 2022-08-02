@@ -35,7 +35,8 @@ type YamlQuestions struct {
 	Index     map[string]YamlQuestion // lookup for validations
 }
 
-// Note: Hoping that names in questions don't clash
+// Note: Assuming that names in questions don't clash
+// Used for the fallback logic for binary plugins
 func (yq *YamlQuestions) ConstructIndex() {
 	yq.Index = make(map[string]YamlQuestion)
 	for _, quest := range yq.Questions {
@@ -100,15 +101,20 @@ type YamlAsset struct {
 	DefaultAssets PluginAssets
 }
 
+type YamlConfig struct {
+	DefaultConfig PluginConfigs
+}
+
 // YamlPlugin: Implements CommandLineMod
 type YamlPlugin struct {
 	Info            *PluginInfoResponse
 	YamlQuestions   *YamlQuestions
 	PluginQuestions *GetQuestionsResponse
 	PluginAssets    *YamlAsset
+	PluginConfigs   *YamlConfig
 }
 
-func (p *YamlPlugin) PluginInfo() (*PluginInfoResponse, error) {
+func (p *YamlPlugin) PluginInfo() (*PluginInfoResponse, error) { // nolint
 	return &PluginInfoResponse{
 		Name:          p.Info.Name,
 		Description:   p.Info.Description,
@@ -121,11 +127,11 @@ func (p *YamlPlugin) PluginInfo() (*PluginInfoResponse, error) {
 	}, nil
 }
 
-func (p *YamlPlugin) GetQuestions(context.Context, GetQuestionsRequest) (*GetQuestionsResponse, error) {
+func (p *YamlPlugin) GetQuestions(context.Context, GetQuestionsRequest) (*GetQuestionsResponse, error) { //nolint
 	return p.PluginQuestions, nil
 }
 
-func (p *YamlPlugin) ValidateQuestion(_ context.Context, req ValidateQuestionRequest) (*ValidateQuestionResponse, error) {
+func (p *YamlPlugin) ValidateQuestion(_ context.Context, req ValidateQuestionRequest) (*ValidateQuestionResponse, error) { //nolint
 	question := req.Answer.Question
 	value := req.Answer.Value
 	yamlQuestion := p.YamlQuestions.GetQuestionByName(question.Name)
@@ -140,11 +146,17 @@ func (p *YamlPlugin) ValidateQuestion(_ context.Context, req ValidateQuestionReq
 	}, nil
 }
 
-func (*YamlPlugin) DefaultConfig(_ context.Context, req DefaultConfigRequest) (*DefaultConfigResponse, error) {
+func (p *YamlPlugin) DefaultConfig(_ context.Context, req DefaultConfigRequest) (*DefaultConfigResponse, error) { //nolint
 	conf := []PluginConfig{}
 	for _, ans := range req.Answers {
 		conf = append(conf, PluginConfig{
 			Name:  ans.Question.Name,
+			Value: ans.Value,
+		})
+	}
+	for _, ans := range p.PluginConfigs.DefaultConfig {
+		conf = append(conf, PluginConfig{
+			Name:  ans.Name,
 			Value: ans.Value,
 		})
 	}
@@ -154,13 +166,13 @@ func (*YamlPlugin) DefaultConfig(_ context.Context, req DefaultConfigRequest) (*
 }
 
 // just to be compatible with CLIMOD Interface
-func (p *YamlPlugin) DefaultAssets(context.Context, DefaultAssetsRequest) (*DefaultAssetsResponse, error) {
+func (p *YamlPlugin) DefaultAssets(context.Context, DefaultAssetsRequest) (*DefaultAssetsResponse, error) { //nolint
 	return &DefaultAssetsResponse{
 		Assets: p.PluginAssets.DefaultAssets,
 	}, nil
 }
 
 // just to be compatible with CLIMOD Interface
-func (*YamlPlugin) CompileAssets(context.Context, CompileAssetsRequest) (*CompileAssetsResponse, error) {
+func (*YamlPlugin) CompileAssets(context.Context, CompileAssetsRequest) (*CompileAssetsResponse, error) { //nolint
 	return nil, nil // nolint:nilnil
 }

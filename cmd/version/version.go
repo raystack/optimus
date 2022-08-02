@@ -118,7 +118,11 @@ func (v *versionCommand) printAllPluginInfos() {
 	v.logger.Info(fmt.Sprintf("\nDiscovered plugins: %d", len(pluginsList)))
 	for taskIdx, tasks := range pluginsList {
 		schema := tasks.Info()
-		v.logger.Info(fmt.Sprintf("\n%d. %s", taskIdx+1, schema.Name))
+		if tasks.YamlMod != nil {
+			v.logger.Info(fmt.Sprintf("\n%d. %s (%s)", taskIdx+1, schema.Name, "yaml"))
+		} else {
+			v.logger.Info(fmt.Sprintf("\n%d. %s", taskIdx+1, schema.Name))
+		}
 		v.logger.Info(fmt.Sprintf("Description: %s", schema.Description))
 		v.logger.Info(fmt.Sprintf("Image: %s", schema.Image))
 		v.logger.Info(fmt.Sprintf("Type: %s", schema.PluginType))

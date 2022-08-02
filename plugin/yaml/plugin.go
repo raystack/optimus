@@ -40,6 +40,7 @@ func NewYamlPlugin(pluginPath string) (*models.YamlPlugin, error) {
 	pluginQuestions := models.GetQuestionsResponse{}
 	pluginYamlQuestions := models.YamlQuestions{}
 	pluginDefaultAssets := models.YamlAsset{}
+	pluginConfigs := models.YamlConfig{}
 
 	if err := yaml.Unmarshal(pluginBytes, &pluginInfo); err != nil {
 		return &plugin, err
@@ -57,7 +58,10 @@ func NewYamlPlugin(pluginPath string) (*models.YamlPlugin, error) {
 		return &plugin, err
 	}
 	plugin.PluginAssets = &pluginDefaultAssets
-
+	if err := yaml.Unmarshal(pluginBytes, &pluginConfigs); err != nil {
+		return &plugin, err
+	}
+	plugin.PluginConfigs = &pluginConfigs
 	plugin.YamlQuestions.ConstructIndex()
 	return &plugin, nil
 }
