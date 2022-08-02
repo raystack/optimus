@@ -63,7 +63,7 @@ dag = DAG(
     sla_miss_callback=optimus_sla_miss_notify,
     catchup={{ if .Job.Behavior.CatchUp -}}True{{- else -}}False{{- end }},
     dagrun_timeout=timedelta(seconds=DAGRUN_TIMEOUT_IN_SECS),
-    tags = [ 
+    tags = [
             {{- range $key, $value := $.Job.Labels}}
             "{{ $value }}",
             {{- end}}
@@ -228,7 +228,7 @@ wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} =
 
 {{- range $_, $dependency := $.Job.ExternalDependencies.OptimusDependencies}}
 {{ $identity := print $dependency.Name "-" $dependency.ProjectName "-" $dependency.JobName }}
-wait_{{$identity | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
+wait_{{ $identity | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
     optimus_hostname="{{$dependency.Host}}",
     upstream_optimus_project="{{$dependency.ProjectName}}",
     upstream_optimus_namespace="{{$dependency.NamespaceName}}",
@@ -236,7 +236,7 @@ wait_{{$identity | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExter
     window_size="{{ $baseWindow.Size.String }}",
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
-    task_id="wait_{{$identity | trunc 200}}",
+    task_id="wait_{{$dependency.JobName | trunc 200}}-{{$dependency.TaskName}}",
     dag=dag
 )
 {{- end}}
@@ -268,7 +268,7 @@ publish_job_start_event >>  wait_{{ $t.Name }} >> transformation_{{$baseTaskSche
 {{- end}}
 {{- range $_, $dependency := $.Job.ExternalDependencies.OptimusDependencies}}
 {{ $identity := print $dependency.Name "-" $dependency.ProjectName "-" $dependency.JobName }}
-publish_job_start_event >> wait_{{$identity | replace "-" "__dash__" | replace "." "__dot__"}} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
+publish_job_start_event >> wait_{{ $identity | replace "-" "__dash__" | replace "." "__dot__" }} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
 {{- end}}
 {{if and (not $.Job.Dependencies) (not $.Job.ExternalDependencies.HTTPDependencies) (not $.Job.ExternalDependencies.OptimusDependencies)}}
 # if no sensor and dependency is configured

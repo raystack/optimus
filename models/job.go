@@ -404,6 +404,7 @@ type OptimusDependency struct {
 	ProjectName   string
 	NamespaceName string
 	JobName       string
+	TaskName      string
 }
 
 type HTTPDependency struct {
