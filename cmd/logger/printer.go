@@ -10,9 +10,9 @@ func PrintLogStatus(logger log.Logger, logStatus *pb.Log) {
 	case pb.Level_LEVEL_INFO:
 		logger.Info(logStatus.GetMessage())
 	case pb.Level_LEVEL_WARNING:
-		logger.Warn(logStatus.GetMessage())
+		logger.Warn(ColoredNotice(logStatus.GetMessage()))
 	case pb.Level_LEVEL_ERROR:
-		logger.Error(logStatus.GetMessage())
+		logger.Error(ColoredError(logStatus.GetMessage()))
 	default:
 		logger.Debug(logStatus.GetMessage())
 	}
