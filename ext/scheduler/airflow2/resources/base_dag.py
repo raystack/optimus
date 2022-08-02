@@ -266,8 +266,7 @@ publish_job_start_event >> wait_{{ $t.Job.Name | replace "-" "__dash__" | replac
 publish_job_start_event >>  wait_{{ $t.Name }} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
 {{- end}}
 {{- range $_, $dependency := $.Job.ExternalDependencies.OptimusDependencies}}
-{{ $identity := print $dependency.Name "-" $dependency.ProjectName "-" $dependency.JobName }}
-publish_job_start_event >> wait_{{$identity | replace "-" "__dash__" | replace "." "__dot__"}} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
+publish_job_start_event >> wait_{{ $dependency.JobName | replace "-" "__dash__" | replace "." "__dot__" }} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
 {{- end}}
 {{if and (not $.Job.Dependencies) (not $.Job.ExternalDependencies.HTTPDependencies) (not $.Job.ExternalDependencies.OptimusDependencies)}}
 # if no sensor and dependency is configured

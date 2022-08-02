@@ -252,8 +252,7 @@ wait_foo__dash__external__dash__optimus__dash__dep__dash__job = SuperExternalTas
 # upstream sensors -> base transformation task
 publish_job_start_event >> wait_foo__dash__intra__dash__dep__dash__job >> transformation_bq
 publish_job_start_event >> wait_foo__dash__inter__dash__dep__dash__job >> transformation_bq
-
-publish_job_start_event >> wait_external__dash__optimus__dash__foo__dash__external__dash__optimus__dash__project__dash__foo__dash__external__dash__optimus__dash__dep__dash__job >> transformation_bq
+publish_job_start_event >> wait_foo__dash__external__dash__optimus__dash__dep__dash__job >> transformation_bq
 
 # post completion hook
 transformation_bq >> publish_job_end_event
