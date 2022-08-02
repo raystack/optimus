@@ -175,6 +175,18 @@ func TestCompilerIntegration(t *testing.T) {
 			"destination1": {Job: &depSpecIntra, Project: &projSpec, Type: models.JobSpecDependencyTypeIntra},
 			"destination2": {Job: &depSpecInter, Project: &externalProjSpec, Type: models.JobSpecDependencyTypeInter},
 		},
+		ExternalDependencies: models.ExternalDependency{
+			OptimusDependencies: []models.OptimusDependency{
+				{
+					Name:          "external-optimus",
+					Host:          "http://optimus.external.io",
+					ProjectName:   "foo-external-optimus-project",
+					NamespaceName: "bar-external-optimus-namespace",
+					JobName:       "foo-external-optimus-dep-job",
+					TaskName:      "bq",
+				},
+			},
+		},
 		Assets: *models.JobAssets{}.New(
 			[]models.JobSpecAsset{
 				{
