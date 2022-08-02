@@ -315,8 +315,8 @@ func (d *deployCommand) processResourceDeploymentResponse(
 			return err
 		}
 
-		if logStatus := resp.GetLogStatus(); logStatus != nil {
-			d.processLogResponse(logStatus)
+		if logStatus := resp.GetLogStatus(); logStatus != nil && d.verbose {
+			logger.PrintLogStatus(d.logger, logStatus)
 		}
 	}
 	return nil
@@ -407,8 +407,8 @@ func (d *deployCommand) processJobDeploymentResponses(stream pb.JobSpecification
 			return []string{}, err
 		}
 
-		if logStatus := resp.GetLogStatus(); logStatus != nil {
-			d.processLogResponse(logStatus)
+		if logStatus := resp.GetLogStatus(); logStatus != nil && d.verbose {
+			logger.PrintLogStatus(d.logger, logStatus)
 			continue
 		}
 
@@ -477,19 +477,4 @@ func PollJobDeployment(ctx context.Context, l log.Logger, jobSpecService pb.JobS
 		}
 	}
 	return nil
-}
-
-func (d *deployCommand) processLogResponse(logStatus *pb.Log) {
-	if !d.verbose {
-		return
-	}
-
-	switch logStatus.GetLevel() {
-	case pb.Level_Info:
-		d.logger.Info(logStatus.GetMessage())
-	case pb.Level_Warning:
-		d.logger.Warn(logStatus.GetMessage())
-	case pb.Level_Error:
-		d.logger.Error(logStatus.GetMessage())
-	}
 }

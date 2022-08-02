@@ -128,18 +128,8 @@ func (v *validateCommand) getCheckJobSpecificationsResponse(stream pb.JobSpecifi
 			return err
 		}
 
-		if logStatus := resp.GetLogStatus(); logStatus != nil {
-			if !v.verbose {
-				continue
-			}
-			switch logStatus.GetLevel() {
-			case pb.Level_Info:
-				v.logger.Info(logStatus.GetMessage())
-			case pb.Level_Warning:
-				v.logger.Warn(logStatus.GetMessage())
-			case pb.Level_Error:
-				v.logger.Error(logStatus.GetMessage())
-			}
+		if logStatus := resp.GetLogStatus(); logStatus != nil && v.verbose {
+			logger.PrintLogStatus(v.logger, logStatus)
 			continue
 		}
 	}

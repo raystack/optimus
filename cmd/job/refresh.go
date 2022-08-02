@@ -145,15 +145,8 @@ func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationServic
 			return deployID, err
 		}
 
-		if logStatus := resp.GetLogStatus(); logStatus != nil {
-			switch logStatus.GetLevel() {
-			case pb.Level_Info:
-				r.logger.Info(logStatus.GetMessage())
-			case pb.Level_Warning:
-				r.logger.Warn(logStatus.GetMessage())
-			case pb.Level_Error:
-				r.logger.Error(logStatus.GetMessage())
-			}
+		if logStatus := resp.GetLogStatus(); logStatus != nil && r.verbose {
+			logger.PrintLogStatus(r.logger, logStatus)
 			continue
 		}
 
