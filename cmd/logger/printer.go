@@ -1,8 +1,9 @@
 package logger
 
 import (
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/salt/log"
+
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 )
 
 func PrintLogStatus(logger log.Logger, logStatus *pb.Log) {
