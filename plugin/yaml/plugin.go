@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/afero"
+	"gopkg.in/validator.v2"
 	"gopkg.in/yaml.v2"
 
 	"github.com/odpf/optimus/models"
@@ -39,8 +40,8 @@ func NewYamlPlugin(pluginPath string) (*models.YamlPlugin, error) {
 	pluginInfo := models.PluginInfoResponse{}
 	pluginQuestions := models.GetQuestionsResponse{}
 	pluginYamlQuestions := models.YamlQuestions{}
-	pluginDefaultAssets := models.YamlAsset{}
-	pluginConfigs := models.YamlConfig{}
+	pluginDefaultAssets := models.DefaultAssetsResponse{}
+	// pluginConfigs := models.YamlConfig{}
 
 	if err := yaml.Unmarshal(pluginBytes, &pluginInfo); err != nil {
 		return &plugin, err
@@ -58,28 +59,24 @@ func NewYamlPlugin(pluginPath string) (*models.YamlPlugin, error) {
 		return &plugin, err
 	}
 	plugin.PluginAssets = &pluginDefaultAssets
-	if err := yaml.Unmarshal(pluginBytes, &pluginConfigs); err != nil {
-		return &plugin, err
-	}
-	plugin.PluginConfigs = &pluginConfigs
+
 	plugin.YamlQuestions.ConstructIndex()
 	return &plugin, nil
 }
 
-// func printYaml(s interface{}) {
-// 	yamlData, err := yaml.Marshal(&s)
-// 	if err != nil {
-// 		fmt.Printf("Error while Marshaling. %v", err)
-// 	}
-// 	fmt.Println(" --- YAML ---")
-// 	fmt.Println(string(yamlData))
-// }
-
-func Init(pluginsRepo models.PluginRepository, discoveredYamlPlugins []string, pluginLogger hclog.Logger) error {
+// if error in loading, initializing or adding to pluginsrepo , skipping that particular plugin
+func Init(pluginsRepo models.PluginRepository, discoveredYamlPlugins []string, pluginLogger hclog.Logger) {
 	for _, yamlPluginPath := range discoveredYamlPlugins {
 		yamlPlugin, err := NewYamlPlugin(yamlPluginPath)
 		if err != nil {
-			return fmt.Errorf("PluginRegistry.Add: %s: %w", yamlPluginPath, err)
+			pluginLogger.Error(fmt.Sprintf("plugin Init: %s", yamlPluginPath), err)
+			continue
+		}
+		if errs := validator.Validate(yamlPlugin); errs != nil {
+			// values not valid, deal with errors here
+			pluginLogger.Error(fmt.Sprintf("Error at plugin : %s", yamlPluginPath), errs)
+			continue
+
 		}
 
 		if binPlugin, _ := pluginsRepo.GetByName(yamlPlugin.Info.Name); binPlugin != nil {
@@ -87,10 +84,9 @@ func Init(pluginsRepo models.PluginRepository, discoveredYamlPlugins []string, p
 			continue
 		}
 		if err := pluginsRepo.Add(nil, nil, nil, yamlPlugin); err != nil {
-			return fmt.Errorf("PluginRegistry.Add: %s: %w", yamlPluginPath, err)
+			pluginLogger.Error(fmt.Sprintf("PluginRegistry.Add: %s", yamlPluginPath), err)
+			continue
 		}
-
 		pluginLogger.Debug("plugin ready: ", yamlPlugin.Info.Name)
 	}
-	return nil
 }

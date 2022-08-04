@@ -56,17 +56,17 @@ type PluginInfoRequest struct{}
 type PluginInfoResponse struct {
 	// Name should as simple as possible with no special characters
 	// should start with a character, better if all lowercase
-	Name        string
-	Description string
-	PluginType  PluginType
+	Name        string     `validate:"nonzero"`
+	Description string     `validate:"nonzero"`
+	PluginType  PluginType `validate:"nonzero"`
 	PluginMods  []PluginMod
 
-	PluginVersion string
+	PluginVersion string `validate:"nonzero"`
 	APIVersion    []string
 
 	// Image is the full path to docker container that will be
 	// scheduled for execution
-	Image string
+	Image string `validate:"nonzero"`
 
 	// SecretPath will be mounted inside the container as volume
 	// e.g. /opt/secret/auth.json
@@ -225,7 +225,7 @@ type DefaultConfigResponse struct {
 }
 
 type PluginAsset struct {
-	Name  string
+	Name  string `validate:"nonzero"`
 	Value string
 }
 
