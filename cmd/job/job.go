@@ -32,6 +32,7 @@ func NewJobCommand() *cobra.Command {
 		NewRenderCommand(),
 		NewRunListCommand(),
 		NewValidateCommand(),
+		NewExplainCommand(),
 	)
 	return cmd
 }

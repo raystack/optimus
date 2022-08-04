@@ -24,7 +24,9 @@ func DumpAssets(ctx context.Context, jobSpec models.JobSpec, scheduledAt time.Ti
 		}
 		jobDestination = jobDestinationResponse.Destination
 	}
+
 	assetsToDump := jobSpec.Assets.ToMap()
+
 	if allowOverride {
 		// check if task needs to override the compilation behaviour
 		compiledAssetResponse, err := jobSpec.Task.Unit.CLIMod.CompileAssets(ctx, models.CompileAssetsRequest{
