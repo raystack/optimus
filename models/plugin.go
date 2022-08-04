@@ -358,6 +358,13 @@ type Plugin struct {
 	YamlMod       CommandLineMod
 }
 
+func (p *Plugin) GetSurveyMod() CommandLineMod {
+	if p.Base == nil {
+		return p.YamlMod
+	}
+	return p.CLIMod
+}
+
 type PluginList []*Plugin
 
 func (s PluginList) Len() int {

@@ -41,7 +41,6 @@ func NewYamlPlugin(pluginPath string) (*models.YamlPlugin, error) {
 	pluginQuestions := models.GetQuestionsResponse{}
 	pluginYamlQuestions := models.YamlQuestions{}
 	pluginDefaultAssets := models.DefaultAssetsResponse{}
-	// pluginConfigs := models.YamlConfig{}
 
 	if err := yaml.Unmarshal(pluginBytes, &pluginInfo); err != nil {
 		return &plugin, err
@@ -61,6 +60,11 @@ func NewYamlPlugin(pluginPath string) (*models.YamlPlugin, error) {
 	plugin.PluginAssets = &pluginDefaultAssets
 
 	plugin.YamlQuestions.ConstructIndex()
+
+	if errs := validator.Validate(plugin); errs != nil {
+		// values not valid, deal with errors here
+		return &plugin, fmt.Errorf(fmt.Sprintf("Error at plugin %s", pluginPath), errs)
+	}
 	return &plugin, nil
 }
 
@@ -71,12 +75,6 @@ func Init(pluginsRepo models.PluginRepository, discoveredYamlPlugins []string, p
 		if err != nil {
 			pluginLogger.Error(fmt.Sprintf("plugin Init: %s", yamlPluginPath), err)
 			continue
-		}
-		if errs := validator.Validate(yamlPlugin); errs != nil {
-			// values not valid, deal with errors here
-			pluginLogger.Error(fmt.Sprintf("Error at plugin : %s", yamlPluginPath), errs)
-			continue
-
 		}
 
 		if binPlugin, _ := pluginsRepo.GetByName(yamlPlugin.Info.Name); binPlugin != nil {
