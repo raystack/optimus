@@ -19,7 +19,7 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           skip-go-installation: true
-          version: v1.44.1
+          version: v1.47.3
   unit-test:
     runs-on: ubuntu-latest
     steps:
