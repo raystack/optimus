@@ -16,7 +16,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v2
+        uses: golangci/golangci-lint-action@v3
         with:
           skip-go-installation: true
           version: v1.44.1
@@ -33,12 +33,12 @@ jobs:
           go-version: '1.18'
       - name: test binaries
         run: make test-ci
-      - name: Install goveralls and send coverage
+      - name: Install goveralls
+        run: go install github.com/mattn/goveralls@latest
+      - name: Send coverage
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          go get github.com/mattn/goveralls
-          goveralls -coverprofile=coverage.txt -service=github
+        run: goveralls -coverprofile=coverage.txt -service=github
   integration-test:
     runs-on: ubuntu-latest
     services:
