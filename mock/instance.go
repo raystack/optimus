@@ -113,12 +113,7 @@ type JobInputCompiler struct {
 	mock.Mock
 }
 
-func (s *JobInputCompiler) Compile(ctx context.Context, namespaceSpec models.NamespaceSpec, secrets models.ProjectSecrets, jobRun models.JobRun, instanceSpec models.InstanceSpec) (assets *models.JobRunInput, err error) {
-	args := s.Called(ctx, namespaceSpec, secrets, jobRun, instanceSpec)
-	return args.Get(0).(*models.JobRunInput), args.Error(1)
-}
-
-func (s *JobInputCompiler) CompileNewJobSpec(ctx context.Context, namespaceSpec models.NamespaceSpec, projSecrets models.ProjectSecrets, jobSpec models.JobSpec, scheduledAt time.Time, jobRunSpec models.JobRunSpec, instanceType models.InstanceType, instanceName string) (*models.JobRunInput, error) {
-	args := s.Called(ctx, namespaceSpec, projSecrets, jobSpec, scheduledAt, jobRunSpec, instanceType, instanceName)
+func (s *JobInputCompiler) Compile(ctx context.Context, namespaceSpec models.NamespaceSpec, secrets models.ProjectSecrets, jobSpec models.JobSpec, scheduledAt time.Time, jobRunSpecData []models.JobRunSpecData, instanceType models.InstanceType, instanceName string) (assets *models.JobRunInput, err error) {
+	args := s.Called(ctx, namespaceSpec, secrets, jobSpec, scheduledAt, jobRunSpecData, instanceType, instanceName)
 	return args.Get(0).(*models.JobRunInput), args.Error(1)
 }

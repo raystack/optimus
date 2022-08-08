@@ -104,11 +104,11 @@ type JobRunRepository interface {
 
 // JobRunMetricsRepository represents a storage interface for Job runs generated to
 type JobRunMetricsRepository interface {
-	Save(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec, int64, string) error
+	Save(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec, int64) error
 	Update(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec) error
 	Get(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec) (models.JobRunSpec, error)
 	GetLatestJobRunByScheduledTime(context.Context, string, models.NamespaceSpec, models.JobSpec) (models.JobRunSpec, error)
-	GetByID(context.Context, uuid.UUID) (models.JobRunSpec, error)
+	GetByID(context.Context, uuid.UUID, models.JobSpec) (models.JobRunSpec, error)
 }
 
 // TaskRunRepository represents a storage interface for Job runs generated to

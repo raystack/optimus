@@ -127,7 +127,9 @@ func (sv *JobRunServiceServer) RegisterInstance(ctx context.Context, req *pb.Reg
 		return nil, status.Errorf(codes.Internal, "%s: failed to get secrets %s", err.Error(), jobRun)
 	}
 
-	jobRunInput, err := sv.jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobRun, instance)
+	jobRunInput, err := sv.jobRunInputCompiler.Compile(ctx,
+		namespaceSpec, secrets, jobRun.Spec, jobRun.ScheduledAt,
+		instance.Data, instance.Type, instance.Name)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to compile instance of job %s", err.Error(), req.GetJobName())
 	}
@@ -181,7 +183,7 @@ func (sv *JobRunServiceServer) JobRunInput(ctx context.Context, req *pb.JobRunIn
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "%s: failed to parse uuid of job %s", err.Error(), req.JobrunId)
 		}
-		jobRunSpec, err = sv.monitoringService.GetJobRunByRunID(ctx, jobRunID)
+		jobRunSpec, err = sv.monitoringService.GetJobRunByRunID(ctx, jobRunID, jobSpec)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "%s: failed to get JobRun by jobRunId::%s for job %s ", err.Error(), req.JobrunId, jobSpec.Name)
 		}
@@ -191,12 +193,9 @@ func (sv *JobRunServiceServer) JobRunInput(ctx context.Context, req *pb.JobRunIn
 		return nil, status.Errorf(codes.Internal, "%s: failed to get secrets %s:%s", err.Error(), jobSpec.Name, namespaceSpec.Name)
 	}
 
-	jobRunInput, err := sv.jobRunInputCompiler.CompileNewJobSpec(ctx,
-		namespaceSpec,
-		secrets,
-		jobSpec,
-		scheduledAt,
-		jobRunSpec, instanceType, instanceName)
+	jobRunInput, err := sv.jobRunInputCompiler.Compile(ctx,
+		namespaceSpec, secrets, jobSpec, scheduledAt,
+		jobRunSpec.Data, instanceType, instanceName)
 
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to compile instance of job %s", err.Error(), jobSpec.Name)

@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,7 +12,6 @@ import (
 )
 
 type monitoringService struct {
-	PluginService           PluginService
 	JobRunMetricsRepository store.JobRunMetricsRepository
 	TaskRunRepository       store.TaskRunRepository
 	SensorRunRepository     store.SensorRunRepository
@@ -23,32 +21,22 @@ type monitoringService struct {
 type MonitoringService interface {
 	ProcessEvent(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec) error
 	GetJobRunByScheduledAt(context.Context, models.NamespaceSpec, models.JobSpec, time.Time) (models.JobRunSpec, error)
-	GetJobRunByRunID(context.Context, uuid.UUID) (models.JobRunSpec, error)
+	GetJobRunByRunID(context.Context, uuid.UUID, models.JobSpec) (models.JobRunSpec, error)
 }
 
 func (m monitoringService) GetJobRunByScheduledAt(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec, scheduledAt time.Time) (models.JobRunSpec, error) {
 	return m.JobRunMetricsRepository.GetLatestJobRunByScheduledTime(ctx, scheduledAt.Format(store.ISODateFormat), namespaceSpec, jobSpec)
 }
-func (m monitoringService) GetJobRunByRunID(ctx context.Context, jobRunID uuid.UUID) (models.JobRunSpec, error) {
-	return m.JobRunMetricsRepository.GetByID(ctx, jobRunID)
+func (m monitoringService) GetJobRunByRunID(ctx context.Context, jobRunID uuid.UUID, jobSpec models.JobSpec) (models.JobRunSpec, error) {
+	return m.JobRunMetricsRepository.GetByID(ctx, jobRunID, jobSpec)
 }
 
 func (m monitoringService) registerNewJobRun(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) error {
-	var jobDestination string
-	dest, err := m.PluginService.GenerateDestination(ctx, jobSpec, namespaceSpec)
-	if err != nil {
-		if !errors.Is(err, ErrDependencyModNotFound) {
-			return fmt.Errorf("failed to generate destination for job %s: %w", jobSpec.Name, err)
-		}
-	}
-	if dest != nil {
-		jobDestination = dest.Destination
-	}
 	slaDefinitionInSec, err := jobSpec.SLADuration()
 	if err != nil {
 		return err
 	}
-	return m.JobRunMetricsRepository.Save(ctx, event, namespaceSpec, jobSpec, slaDefinitionInSec, jobDestination)
+	return m.JobRunMetricsRepository.Save(ctx, event, namespaceSpec, jobSpec, slaDefinitionInSec)
 }
 
 func (m monitoringService) updateJobRun(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) error {
@@ -123,13 +111,11 @@ func (m monitoringService) ProcessEvent(ctx context.Context, event models.JobEve
 	return nil
 }
 
-func NewMonitoringService(pluginService PluginService,
-	jobRunMetricsRepository store.JobRunMetricsRepository,
+func NewMonitoringService(jobRunMetricsRepository store.JobRunMetricsRepository,
 	sensorRunRepository store.SensorRunRepository,
 	hookRunRepository store.HookRunRepository,
 	taskRunRepository store.TaskRunRepository) *monitoringService {
 	return &monitoringService{
-		PluginService:           pluginService,
 		TaskRunRepository:       taskRunRepository,
 		JobRunMetricsRepository: jobRunMetricsRepository,
 		SensorRunRepository:     sensorRunRepository,

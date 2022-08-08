@@ -11,8 +11,7 @@ const (
 	ConfigKeyDstart = "DSTART"
 	// ConfigKeyDend end of the execution window
 	ConfigKeyDend = "DEND"
-	// ConfigKeyExecutionTime time when the job started executing, this gets shared across all
-	// task and hooks of a job instance
+	// ConfigKeyExecutionTime time when the job run attempt started executing
 	ConfigKeyExecutionTime = "EXECUTION_TIME"
 	// ConfigKeyDestination is destination urn
 	ConfigKeyDestination = "JOB_DESTINATION"

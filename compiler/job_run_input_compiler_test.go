@@ -142,12 +142,6 @@ func TestJobRunInputCompiler(t *testing.T) {
 				),
 			}
 
-			jobRun := models.JobRun{
-				Spec:        jobSpec,
-				Trigger:     models.TriggerSchedule,
-				Status:      models.RunStateAccepted,
-				ScheduledAt: scheduledAt,
-			}
 			instanceSpec := models.InstanceSpec{
 				Name:   "bq",
 				Type:   models.InstanceTypeTask,
@@ -173,7 +167,8 @@ func TestJobRunInputCompiler(t *testing.T) {
 			defer pluginRepo.AssertExpectations(t)
 
 			jobRunInputCompiler := createJobRunInputCompiler()
-			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobRun, instanceSpec)
+			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobSpec, scheduledAt, instanceSpec.Data, instanceSpec.Type, instanceSpec.Name)
+
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])
@@ -255,12 +250,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 					},
 				},
 			}
-			jobRun := models.JobRun{
-				Spec:        jobSpec,
-				Trigger:     models.TriggerSchedule,
-				Status:      models.RunStateAccepted,
-				ScheduledAt: scheduledAt,
-			}
+
 			instanceSpec := models.InstanceSpec{
 				Name:   transporterHook,
 				Type:   models.InstanceTypeHook,
@@ -285,7 +275,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 			defer pluginRepo.AssertExpectations(t)
 
 			jobRunInputCompiler := createJobRunInputCompiler()
-			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobRun, instanceSpec)
+			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobSpec, scheduledAt, instanceSpec.Data, instanceSpec.Type, instanceSpec.Name)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])
@@ -367,12 +357,6 @@ func TestJobRunInputCompiler(t *testing.T) {
 				),
 			}
 
-			jobRun := models.JobRun{
-				Spec:        jobSpec,
-				Trigger:     models.TriggerSchedule,
-				Status:      models.RunStateAccepted,
-				ScheduledAt: scheduledAt,
-			}
 			instanceSpec := models.InstanceSpec{
 				Name:   "bq",
 				Type:   models.InstanceTypeTask,
@@ -398,7 +382,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 			defer pluginRepo.AssertExpectations(t)
 
 			jobRunInputCompiler := createJobRunInputCompiler()
-			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobRun, instanceSpec)
+			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobSpec, scheduledAt, instanceSpec.Data, instanceSpec.Type, instanceSpec.Name)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])
@@ -455,12 +439,6 @@ func TestJobRunInputCompiler(t *testing.T) {
 				),
 			}
 
-			jobRun := models.JobRun{
-				Spec:        jobSpec,
-				Trigger:     models.TriggerSchedule,
-				Status:      models.RunStateAccepted,
-				ScheduledAt: scheduledAt,
-			}
 			instanceSpec := models.InstanceSpec{
 				Name:       "bq",
 				Type:       models.InstanceTypeTask,
@@ -488,7 +466,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 			defer pluginRepo.AssertExpectations(t)
 
 			jobRunInputCompiler := createJobRunInputCompiler()
-			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobRun, instanceSpec)
+			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobSpec, scheduledAt, instanceSpec.Data, instanceSpec.Type, instanceSpec.Name)
 			assert.Nil(t, err)
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])
@@ -580,7 +558,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 		defer pluginRepo.AssertExpectations(t)
 
 		jobRunInputCompiler := createJobRunInputCompiler()
-		jobRunInput, err := jobRunInputCompiler.CompileNewJobSpec(ctx, namespaceSpec, secrets, jobSpec, scheduledAt, jobRunSpec, instanceType, instanceName)
+		jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobSpec, scheduledAt, jobRunSpec.Data, instanceType, instanceName)
 		assert.Nil(t, err)
 
 		assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])
@@ -696,7 +674,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 		defer pluginRepo.AssertExpectations(t)
 
 		jobRunInputCompiler := createJobRunInputCompiler()
-		jobRunInput, err := jobRunInputCompiler.CompileNewJobSpec(ctx, namespaceSpec, secrets, jobSpec, scheduledAt, jobRunSpec, instanceType, instanceName)
+		jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobSpec, scheduledAt, jobRunSpec.Data, instanceType, instanceName)
 		assert.Nil(t, err)
 
 		assert.Equal(t, "2020-11-11T00:00:00Z", jobRunInput.ConfigMap["DEND"])

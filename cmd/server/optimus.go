@@ -356,7 +356,6 @@ func (s *OptimusServer) setupHandlers() error {
 	runInputCompiler := jobRunCompiler.NewJobRunInputCompiler(jobConfigCompiler, assetCompiler)
 
 	monitoringService := service.NewMonitoringService(
-		pluginService,
 		jobRunMetricsRepository,
 		sensorRunRepository,
 		hookRunRepository,

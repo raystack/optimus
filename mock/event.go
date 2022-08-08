@@ -21,8 +21,8 @@ func (srv *MonitoringService) GetJobRunByScheduledAt(ctx context.Context, namesp
 	args := srv.Called(ctx, namespaceSpec, jobSpec, scheduledAt)
 	return args.Get(0).(models.JobRunSpec), args.Error(1)
 }
-func (srv *MonitoringService) GetJobRunByRunID(ctx context.Context, jobRunID uuid.UUID) (models.JobRunSpec, error) {
-	args := srv.Called(ctx, jobRunID)
+func (srv *MonitoringService) GetJobRunByRunID(ctx context.Context, jobRunID uuid.UUID, jobSpec models.JobSpec) (models.JobRunSpec, error) {
+	args := srv.Called(ctx, jobRunID, jobSpec)
 	return args.Get(0).(models.JobRunSpec), args.Error(1)
 }
 
@@ -44,13 +44,13 @@ func (repo *JobRunMetricsRepository) Get(ctx context.Context, event models.JobEv
 	return args.Get(0).(models.JobRunSpec), args.Error(1)
 }
 
-func (repo *JobRunMetricsRepository) GetByID(ctx context.Context, jobRunID uuid.UUID) (models.JobRunSpec, error) {
-	args := repo.Called(ctx, jobRunID)
+func (repo *JobRunMetricsRepository) GetByID(ctx context.Context, jobRunID uuid.UUID, jobSpec models.JobSpec) (models.JobRunSpec, error) {
+	args := repo.Called(ctx, jobRunID, jobSpec)
 	return args.Get(0).(models.JobRunSpec), args.Error(1)
 }
 
-func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec, slaMissDurationInSec int64, jobDestination string) error {
-	return repo.Called(ctx, event, namespaceSpec, jobSpec, slaMissDurationInSec, jobDestination).Error(0)
+func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec, slaMissDurationInSec int64) error {
+	return repo.Called(ctx, event, namespaceSpec, jobSpec, slaMissDurationInSec).Error(0)
 }
 
 type SensorRunRepository struct {

@@ -2,12 +2,10 @@ package postgres
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"time"
 
 	"github.com/google/uuid"
-	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/models"
@@ -34,8 +32,6 @@ type JobRunMetrics struct {
 	Duration      int64
 	SLADefinition int64
 
-	Data datatypes.JSON
-
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
 }
@@ -51,16 +47,6 @@ type JobRunMetricsRepository struct {
 // TableName overrides the table name used by User to `profiles`
 func (JobRunMetrics) TableName() string {
 	return "job_run"
-}
-
-func jsonToJobRunSpecData(j datatypes.JSON) []models.JobRunSpecData {
-	var data []models.JobRunSpecData
-	if j != nil {
-		if err := json.Unmarshal(j, &data); err != nil {
-			return []models.JobRunSpecData{}
-		}
-	}
-	return data
 }
 
 func (repo *JobRunMetricsRepository) Update(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) error {
@@ -116,13 +102,13 @@ func (repo *JobRunMetricsRepository) GetLatestJobRunByScheduledTime(ctx context.
 		Attempt:       jobRunMetrics.Attempt,
 		SLAMissDelay:  jobRunMetrics.SLAMissDelay,
 		Duration:      jobRunMetrics.Duration,
-		Data:          jsonToJobRunSpecData(jobRunMetrics.Data),
+		Data:          getJobRunSpecData(jobRunMetrics.StartTime, jobRunMetrics.ScheduledAt, jobSpec),
 		SLADefinition: jobRunMetrics.SLADefinition,
 	}
 	return jobRunSpec, err
 }
 
-func (repo *JobRunMetricsRepository) GetByID(ctx context.Context, jobRunID uuid.UUID) (models.JobRunSpec, error) {
+func (repo *JobRunMetricsRepository) GetByID(ctx context.Context, jobRunID uuid.UUID, jobSpec models.JobSpec) (models.JobRunSpec, error) {
 	var jobRunMetrics JobRunMetrics
 	err := repo.db.WithContext(ctx).Where("job_run_id = ? ", jobRunID).First(&jobRunMetrics).Error
 	if err != nil {
@@ -142,7 +128,7 @@ func (repo *JobRunMetricsRepository) GetByID(ctx context.Context, jobRunID uuid.
 		Status:        jobRunMetrics.Status,
 		Attempt:       jobRunMetrics.Attempt,
 		SLAMissDelay:  jobRunMetrics.SLAMissDelay,
-		Data:          jsonToJobRunSpecData(jobRunMetrics.Data),
+		Data:          getJobRunSpecData(jobRunMetrics.StartTime, jobRunMetrics.ScheduledAt, jobSpec),
 		Duration:      jobRunMetrics.Duration,
 		SLADefinition: jobRunMetrics.SLADefinition,
 	}
@@ -166,6 +152,7 @@ func (repo *JobRunMetricsRepository) Get(ctx context.Context, event models.JobEv
 		}
 		return models.JobRunSpec{}, err
 	}
+
 	jobRunSpec := models.JobRunSpec{
 		JobRunID:     jobRunMetrics.JobRunID,
 		JobID:        jobRunMetrics.JobID,
@@ -176,7 +163,7 @@ func (repo *JobRunMetricsRepository) Get(ctx context.Context, event models.JobEv
 		EndTime:      jobRunMetrics.EndTime,
 		Status:       jobRunMetrics.Status,
 		Attempt:      jobRunMetrics.Attempt,
-		Data:         jsonToJobRunSpecData(jobRunMetrics.Data),
+		Data:         getJobRunSpecData(jobRunMetrics.StartTime, scheduledAtTimeStamp, jobSpec),
 		SLAMissDelay: jobRunMetrics.SLAMissDelay,
 		Duration:     jobRunMetrics.Duration,
 	}
@@ -184,7 +171,7 @@ func (repo *JobRunMetricsRepository) Get(ctx context.Context, event models.JobEv
 	return jobRunSpec, err
 }
 
-func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec, slaMissDurationInSec int64, jobDestination string) error {
+func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobEvent, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec, slaMissDurationInSec int64) error {
 	eventPayload := event.Value
 
 	scheduledAtTimeStamp, err := time.Parse(store.ISODateFormat, eventPayload["scheduled_at"].GetStringValue())
@@ -192,36 +179,8 @@ func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobE
 	if err != nil {
 		return err
 	}
+	// start time of "job_start_event" (scheduler task)
 	executedAt := time.Unix(int64(eventPayload["task_start_timestamp"].GetNumberValue()), 0)
-
-	instanceSpec := models.InstanceSpec{
-		Data: []models.JobRunSpecData{
-			{
-				Name:  models.ConfigKeyExecutionTime,
-				Value: executedAt.Format(models.InstanceScheduledAtTimeLayout),
-				Type:  models.InstanceDataTypeEnv,
-			},
-			{
-				Name:  models.ConfigKeyDstart,
-				Value: jobSpec.Task.Window.GetStart(scheduledAtTimeStamp).Format(models.InstanceScheduledAtTimeLayout),
-				Type:  models.InstanceDataTypeEnv,
-			},
-			{
-				Name:  models.ConfigKeyDend,
-				Value: jobSpec.Task.Window.GetEnd(scheduledAtTimeStamp).Format(models.InstanceScheduledAtTimeLayout),
-				Type:  models.InstanceDataTypeEnv,
-			},
-			{
-				Name:  models.ConfigKeyDestination,
-				Value: jobDestination,
-				Type:  models.InstanceDataTypeEnv,
-			},
-		},
-	}
-	dataJSON, err := instanceSpec.DataToJSON()
-	if err != nil {
-		return err
-	}
 
 	bigEndTime := time.Date(3000, 9, 16, 19, 17, 23, 0, time.UTC)
 	resource := JobRunMetrics{
@@ -233,7 +192,6 @@ func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobE
 		StartTime:     executedAt,
 		EndTime:       bigEndTime,
 		SLADefinition: slaMissDurationInSec,
-		Data:          dataJSON,
 
 		Status:  jobRunStatusRunning,
 		Attempt: int(eventPayload["attempt"].GetNumberValue()),
@@ -244,5 +202,30 @@ func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobE
 func NewJobRunMetricsRepository(db *gorm.DB) *JobRunMetricsRepository {
 	return &JobRunMetricsRepository{
 		db: db,
+	}
+}
+
+func getJobRunSpecData(executedAt time.Time, scheduledAt time.Time, jobSpec models.JobSpec) []models.JobRunSpecData {
+	return []models.JobRunSpecData{
+		{
+			Name:  models.ConfigKeyExecutionTime,
+			Value: executedAt.Format(models.InstanceScheduledAtTimeLayout),
+			Type:  models.InstanceDataTypeEnv,
+		},
+		{
+			Name:  models.ConfigKeyDstart,
+			Value: jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+			Type:  models.InstanceDataTypeEnv,
+		},
+		{
+			Name:  models.ConfigKeyDend,
+			Value: jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+			Type:  models.InstanceDataTypeEnv,
+		},
+		{
+			Name:  models.ConfigKeyDestination,
+			Value: jobSpec.ResourceDestination,
+			Type:  models.InstanceDataTypeEnv,
+		},
 	}
 }

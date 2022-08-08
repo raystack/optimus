@@ -471,6 +471,7 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 	return resolvedSpecs, resolvedErrors
 }
 
+// do other jobs depend on this jobSpec
 func (srv *Service) isDependency(ctx context.Context, jobSpec models.JobSpec) (bool, error) {
 	// inferred and static dependents
 	dependentJobs, err := srv.jobSpecRepository.GetDependentJobs(ctx, &jobSpec)

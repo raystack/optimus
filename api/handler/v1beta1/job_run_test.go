@@ -146,7 +146,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			defer jobRunService.AssertExpectations(t)
 
 			jobRunInputCompiler := new(mock.JobInputCompiler)
-			jobRunInputCompiler.On("Compile", ctx, namespaceSpec, models.ProjectSecrets(secrets), jobRun, instanceSpec).Return(
+			jobRunInputCompiler.On("Compile", ctx, namespaceSpec, models.ProjectSecrets(secrets), jobRun.Spec, jobRun.ScheduledAt, instanceSpec.Data, instanceSpec.Type, instanceSpec.Name).Return(
 				&models.JobRunInput{
 					ConfigMap: map[string]string{
 						models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
@@ -216,7 +216,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			defer secretService.AssertExpectations(t)
 
 			jobRunInputCompiler := new(mock.JobInputCompiler)
-			jobRunInputCompiler.On("Compile", ctx, namespaceSpec, models.ProjectSecrets(secrets), jobRun, instanceSpec).Return(
+			jobRunInputCompiler.On("Compile", ctx, namespaceSpec, models.ProjectSecrets(secrets), jobRun.Spec, jobRun.ScheduledAt, instanceSpec.Data, instanceSpec.Type, instanceSpec.Name).Return(
 				&models.JobRunInput{
 					ConfigMap: map[string]string{
 						models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
@@ -1119,7 +1119,7 @@ func TestJobRunServiceServer(t *testing.T) {
 		jobRunService := new(mock.JobRunService)
 
 		jobRunInputCompiler := new(mock.JobInputCompiler)
-		jobRunInputCompiler.On("CompileNewJobSpec", ctx, namespaceSpec, models.ProjectSecrets(secrets), jobSpec, scheduledAt, jobRunSpec, instanceType, instanceName).Return(
+		jobRunInputCompiler.On("Compile", ctx, namespaceSpec, models.ProjectSecrets(secrets), jobSpec, scheduledAt, jobRunSpec.Data, instanceType, instanceName).Return(
 			&models.JobRunInput{
 				ConfigMap: map[string]string{
 					models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
