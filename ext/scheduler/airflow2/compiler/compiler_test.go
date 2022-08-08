@@ -24,7 +24,7 @@ func TestCompiler(t *testing.T) {
 		Owner: "mee@mee",
 		Behavior: models.JobSpecBehavior{
 			CatchUp:       true,
-			DependsOnPast: false,
+			DependsOnPast: true,
 			Retry: models.JobSpecBehaviorRetry{
 				Count:              2,
 				Delay:              time.Second * 2,
