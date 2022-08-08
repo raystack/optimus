@@ -183,7 +183,7 @@ type ValidateQuestionResponse struct {
 }
 
 type PluginConfig struct {
-	Name  string
+	Name  string `validate:"nonzero"`
 	Value string
 }
 
@@ -221,7 +221,7 @@ type DefaultConfigRequest struct {
 }
 
 type DefaultConfigResponse struct {
-	Config PluginConfigs
+	Config PluginConfigs `yaml:"defaultconfig"`
 }
 
 type PluginAsset struct {
@@ -263,7 +263,7 @@ type DefaultAssetsRequest struct {
 }
 
 type DefaultAssetsResponse struct {
-	Assets PluginAssets
+	Assets PluginAssets `yaml:"defaultassets"`
 }
 
 type CompileAssetsRequest struct {

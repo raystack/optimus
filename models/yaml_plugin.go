@@ -96,18 +96,19 @@ type YamlSubQuestion struct {
 }
 
 type YamlPlugin struct {
-	Info            *PluginInfoResponse `validate:"nonzero"`
-	YamlQuestions   *YamlQuestions      // has more attr than  GetQuestionsResponse
-	PluginQuestions *GetQuestionsResponse
-	PluginAssets    *DefaultAssetsResponse
+	Info          PluginInfoResponse `validate:"nonzero"`
+	YamlQuestions YamlQuestions      // has more attr than  GetQuestionsResponse
+	Questions     GetQuestionsResponse
+	Assets        DefaultAssetsResponse
+	Config        DefaultConfigResponse
 }
 
 func (p *YamlPlugin) PluginInfo() (*PluginInfoResponse, error) { // nolint
-	return p.Info, nil
+	return &p.Info, nil
 }
 
 func (p *YamlPlugin) GetQuestions(context.Context, GetQuestionsRequest) (*GetQuestionsResponse, error) { //nolint
-	return p.PluginQuestions, nil
+	return &p.Questions, nil
 }
 
 func (p *YamlPlugin) ValidateQuestion(_ context.Context, req ValidateQuestionRequest) (*ValidateQuestionResponse, error) { //nolint
@@ -127,19 +128,30 @@ func (p *YamlPlugin) ValidateQuestion(_ context.Context, req ValidateQuestionReq
 
 func (p *YamlPlugin) DefaultConfig(_ context.Context, req DefaultConfigRequest) (*DefaultConfigResponse, error) { //nolint
 	conf := []PluginConfig{}
+
+	// config from survey answers
 	for _, ans := range req.Answers {
 		conf = append(conf, PluginConfig{
 			Name:  ans.Question.Name,
 			Value: ans.Value,
 		})
 	}
+
+	// adding defaultconfigs from yaml
+	for _, ans := range p.Config.Config {
+		conf = append(conf, PluginConfig{
+			Name:  ans.Name,
+			Value: ans.Value,
+		})
+	}
+
 	return &DefaultConfigResponse{
 		Config: conf,
 	}, nil
 }
 
 func (p *YamlPlugin) DefaultAssets(context.Context, DefaultAssetsRequest) (*DefaultAssetsResponse, error) { //nolint
-	return p.PluginAssets, nil
+	return &p.Assets, nil
 }
 
 func (*YamlPlugin) CompileAssets(_ context.Context, req CompileAssetsRequest) (*CompileAssetsResponse, error) { //nolint

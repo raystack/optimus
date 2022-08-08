@@ -37,27 +37,37 @@ func NewYamlPlugin(pluginPath string) (*models.YamlPlugin, error) {
 		return &plugin, err
 	}
 
+	// need to use existing models to support CLIMOD Interface
 	pluginInfo := models.PluginInfoResponse{}
 	pluginQuestions := models.GetQuestionsResponse{}
 	pluginYamlQuestions := models.YamlQuestions{}
 	pluginDefaultAssets := models.DefaultAssetsResponse{}
+	pluginDefaultConfig := models.DefaultConfigResponse{}
 
 	if err := yaml.Unmarshal(pluginBytes, &pluginInfo); err != nil {
 		return &plugin, err
 	}
-	plugin.Info = &pluginInfo
+	plugin.Info = pluginInfo
+
 	if err := yaml.Unmarshal(pluginBytes, &pluginQuestions); err != nil {
 		return &plugin, err
 	}
-	plugin.PluginQuestions = &pluginQuestions
+	plugin.Questions = pluginQuestions
+
 	if err := yaml.Unmarshal(pluginBytes, &pluginYamlQuestions); err != nil {
 		return &plugin, err
 	}
-	plugin.YamlQuestions = &pluginYamlQuestions
+	plugin.YamlQuestions = pluginYamlQuestions
+
 	if err := yaml.Unmarshal(pluginBytes, &pluginDefaultAssets); err != nil {
 		return &plugin, err
 	}
-	plugin.PluginAssets = &pluginDefaultAssets
+	plugin.Assets = pluginDefaultAssets
+
+	if err := yaml.Unmarshal(pluginBytes, &pluginDefaultConfig); err != nil {
+		return &plugin, err
+	}
+	plugin.Config = pluginDefaultConfig
 
 	plugin.YamlQuestions.ConstructIndex()
 
