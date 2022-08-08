@@ -182,12 +182,6 @@ type DeployJobSpecificationResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// bool success = 1 [deprecated=true];
-	// bool ack = 2 [deprecated=true];
-	// string message = 3 [deprecated=true];
-	// string job_name = 4 [deprecated=true];
-	// string type = 5 [deprecated=true];
-	// string value = 6 [deprecated=true];
 	DeploymentId string `protobuf:"bytes,7,opt,name=deployment_id,json=deploymentId,proto3" json:"deployment_id,omitempty"`
 	LogStatus    *Log   `protobuf:"bytes,8,opt,name=log_status,json=logStatus,proto3" json:"log_status,omitempty"`
 }
@@ -864,10 +858,6 @@ type CheckJobSpecificationsResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// bool success = 1 [deprecated=true];
-	// bool ack = 2 [deprecated=true];
-	// string message = 3 [deprecated=true];
-	// string job_name = 4 [deprecated=true];
 	LogStatus *Log `protobuf:"bytes,5,opt,name=log_status,json=logStatus,proto3" json:"log_status,omitempty"`
 }
 
@@ -1696,10 +1686,6 @@ type RefreshJobsResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// bool success = 1 [deprecated=true];
-	// string type = 2 [deprecated=true];
-	// string value = 3 [deprecated=true];
-	// string job_name = 4 [deprecated=true];
 	DeploymentId string `protobuf:"bytes,5,opt,name=deployment_id,json=deploymentId,proto3" json:"deployment_id,omitempty"`
 	LogStatus    *Log   `protobuf:"bytes,6,opt,name=log_status,json=logStatus,proto3" json:"log_status,omitempty"`
 }

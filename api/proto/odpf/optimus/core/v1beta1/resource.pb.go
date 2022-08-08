@@ -99,10 +99,6 @@ type DeployResourceSpecificationResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// bool success = 1 [deprecated=true];
-	// bool ack = 2 [deprecated=true];
-	// string message = 3 [deprecated=true];
-	// string resource_name = 4 [deprecated=true];
 	LogStatus *Log `protobuf:"bytes,5,opt,name=log_status,json=logStatus,proto3" json:"log_status,omitempty"`
 }
 

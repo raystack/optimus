@@ -359,8 +359,7 @@
       "type": "object",
       "properties": {
         "logStatus": {
-          "$ref": "#/definitions/v1beta1Log",
-          "title": "bool success = 1 [deprecated=true];\nbool ack = 2 [deprecated=true];\nstring message = 3 [deprecated=true];\nstring job_name = 4 [deprecated=true];"
+          "$ref": "#/definitions/v1beta1Log"
         }
       }
     },
@@ -401,8 +400,7 @@
       "type": "object",
       "properties": {
         "deploymentId": {
-          "type": "string",
-          "title": "bool success = 1 [deprecated=true];\nbool ack = 2 [deprecated=true];\nstring message = 3 [deprecated=true];\nstring job_name = 4 [deprecated=true];\nstring type = 5 [deprecated=true];\nstring value = 6 [deprecated=true];"
+          "type": "string"
         },
         "logStatus": {
           "$ref": "#/definitions/v1beta1Log"
@@ -725,8 +723,7 @@
       "type": "object",
       "properties": {
         "deploymentId": {
-          "type": "string",
-          "title": "bool success = 1 [deprecated=true];\nstring type = 2 [deprecated=true];\nstring value = 3 [deprecated=true];\nstring job_name = 4 [deprecated=true];"
+          "type": "string"
         },
         "logStatus": {
           "$ref": "#/definitions/v1beta1Log"
