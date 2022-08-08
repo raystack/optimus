@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
@@ -406,8 +407,8 @@ func (srv *JobService) GetTaskDependencies(ctx context.Context, namespaceSpec mo
 	return args.Get(0).(models.JobSpecTaskDestination), args.Get(1).(models.JobSpecTaskDependencies), args.Error(2)
 }
 
-func (srv *JobService) Check(ctx context.Context, namespaceSpec models.NamespaceSpec, specs []models.JobSpec, observer progress.Observer) error {
-	args := srv.Called(ctx, namespaceSpec, specs, observer)
+func (srv *JobService) Check(ctx context.Context, namespaceSpec models.NamespaceSpec, specs []models.JobSpec, logWriter writer.LogWriter) error {
+	args := srv.Called(ctx, namespaceSpec, specs, logWriter)
 	return args.Error(0)
 }
 
@@ -431,13 +432,13 @@ func (srv *JobService) GetDownstream(ctx context.Context, projectSpec models.Pro
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
-func (srv *JobService) Refresh(ctx context.Context, projectName string, namespaceNames, jobNames []string, observer progress.Observer) error {
-	args := srv.Called(ctx, projectName, namespaceNames, jobNames, observer)
-	return args.Error(0)
+func (srv *JobService) Refresh(ctx context.Context, projectName string, namespaceNames, jobNames []string, logWriter writer.LogWriter) (models.DeploymentID, error) {
+	args := srv.Called(ctx, projectName, namespaceNames, jobNames, logWriter)
+	return args.Get(0).(models.DeploymentID), args.Error(1)
 }
 
-func (srv *JobService) Deploy(ctx context.Context, projectName, namespaceName string, jobSpecs []models.JobSpec, observers progress.Observer) (models.DeploymentID, error) {
-	args := srv.Called(ctx, projectName, namespaceName, jobSpecs, observers)
+func (srv *JobService) Deploy(ctx context.Context, projectName, namespaceName string, jobSpecs []models.JobSpec, logWriter writer.LogWriter) (models.DeploymentID, error) {
+	args := srv.Called(ctx, projectName, namespaceName, jobSpecs, logWriter)
 	return args.Get(0).(models.DeploymentID), args.Error(1)
 }
 
