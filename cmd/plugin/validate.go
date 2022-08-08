@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -44,13 +45,10 @@ func (i *validateCommand) PreRunE(_ *cobra.Command, _ []string) error {
 func validateFile(pluginPath string, logger log.Logger) error {
 	logger.Info("validatig " + pluginPath)
 	if filepath.Ext(pluginPath) != ".yaml" {
-		return fmt.Errorf("expecting .yaml file at " + pluginPath)
+		return errors.New("expecting .yaml file at " + pluginPath)
 	}
 	_, err := yaml.NewYamlPlugin(pluginPath)
-	if err != nil {
-		return fmt.Errorf(err.Error())
-	}
-	return nil
+	return err
 }
 
 func validateDir(pluginPath string, logger log.Logger) error {
@@ -81,7 +79,9 @@ func (i *validateCommand) RunE(_ *cobra.Command, _ []string) error {
 	fm := fileInfo.Mode()
 	if fm.IsRegular() {
 		err := validateFile(i.path, i.logger)
-		i.logger.Info("validation complete !")
+		if err == nil {
+			i.logger.Info("validation complete !")
+		}
 		return err
 	} else if fm.IsDir() {
 		return validateDir(i.path, i.logger)
