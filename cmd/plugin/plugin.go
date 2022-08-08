@@ -32,6 +32,7 @@ func NewPluginCommand() *cobra.Command {
 	}
 	cmd.PersistentFlags().StringVarP(&plugin.configFilePath, "config", "c", plugin.configFilePath, "File path for server configuration")
 	cmd.AddCommand(NewInstallCommand(plugin.serverConfig))
+	cmd.AddCommand(NewValidateCommand(plugin.serverConfig))
 	return cmd
 }
 
