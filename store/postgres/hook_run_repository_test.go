@@ -131,6 +131,7 @@ func TestIntegrationHookRunRepository(t *testing.T) {
 		map[string]interface{}{
 			"url":          "https://example.io",
 			"scheduled_at": "2022-01-02T15:04:05Z",
+			"event_time":   hookStartTime.Unix(),
 			"attempt":      "2",
 		},
 	)
@@ -198,7 +199,7 @@ func TestIntegrationHookRunRepository(t *testing.T) {
 			assert.Nil(t, err)
 
 			assert.Equal(t, hookRunSpec.JobRunID, jobRunSpec.JobRunID)
-			assert.Equal(t, hookRunSpec.Duration, hookEndTime.Unix()-hookStartTime.Unix())
+			assert.Equal(t, hookEndTime.Unix()-hookStartTime.Unix(), hookRunSpec.Duration)
 			assert.Equal(t, "SUCCESS", hookRunSpec.Status)
 		})
 	})

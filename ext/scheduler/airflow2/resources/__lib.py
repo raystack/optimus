@@ -368,7 +368,6 @@ def optimus_notify(context, event_meta):
 
         "scheduled_at"      : current_schedule_date.strftime(TIMESTAMP_FORMAT),
 
-
         "job_run_id"    : context.get('dag_run').run_id,
         "task_run_id"   : context.get('run_id'),
         
