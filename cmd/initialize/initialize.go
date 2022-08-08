@@ -110,6 +110,6 @@ func (i *initializeCommand) setupDirPathForClientConfig(clientConfig *config.Cli
 }
 
 func (i *initializeCommand) getClientConfigPath() string {
-	fileName := fmt.Sprintf("%s.%s", config.DefaultFilename, config.DefaultFileExtension)
+	fileName := config.DefaultFilename
 	return path.Join(i.dirPath, fileName)
 }
