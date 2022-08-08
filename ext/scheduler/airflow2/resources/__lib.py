@@ -36,6 +36,8 @@ utc = pendulum.timezone('UTC')
 TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 TIMESTAMP_MS_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
+SCHEDULER_ERR_MSG = "scheduler_error"
+
 JOB_START_EVENT_NAME =  "job_start_event"
 JOB_END_EVENT_NAME =  "job_end_event"
 
@@ -83,7 +85,7 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
         self.config_file = kwargs.get('config_file')
 
     def execute(self, context):
-        
+
         log_start_event(context, EVENT_NAMES.get("TASK_START_EVENT"))
         # to be done async
 
@@ -205,8 +207,8 @@ class JobSpecTaskWindow:
             self._parse_datetime(api_response['start']),
             self._parse_datetime(api_response['end']),
         )
-    
-    # window start is inclusive 
+
+    # window start is inclusive
     def get_schedule_window(self, scheduled_at: str , upstream_schedule: str) -> (str, str):
         api_response = self._fetch_task_window(scheduled_at)
 
@@ -256,7 +258,18 @@ class SuperExternalTaskSensor(BaseSensorOperator):
             schedule_time = context['next_execution_date']
 
             # parse relevant metadata from the job metadata to build the task window
+<<<<<<< HEAD
             upstream_schedule = self.get_schedule_interval(schedule_time)
+=======
+            # TODO this needs to be updated to use optimus get job spec
+            try:
+                upstream_schedule = self.get_schedule_interval(schedule_time)
+            except Exception as e:
+                self.log.warning("error while fetching upstream schedule :: {}".format(e))
+                context[SCHEDULER_ERR_MSG] = "error while fetching upstream schedule :: {}".format(e)
+                log_failure_event(context)
+                return False
+>>>>>>> 4e23e7628ddeb1cc952e104a34959ebaf8a19451
 
             last_upstream_schedule_time, _ = self.get_last_upstream_times(
                 schedule_time, upstream_schedule)
@@ -265,7 +278,7 @@ class SuperExternalTaskSensor(BaseSensorOperator):
             task_window = JobSpecTaskWindow(self.window_size, 0, "m", self._optimus_client)
             schedule_time_window_start, schedule_time_window_end = task_window.get_schedule_window(
                 last_upstream_schedule_time.strftime(TIMESTAMP_FORMAT),upstream_schedule)
-            
+
 
             self.log.info("waiting for upstream runs between: {} - {} schedule times of airflow dag run".format(
                 schedule_time_window_start, schedule_time_window_end))
@@ -280,7 +293,7 @@ class SuperExternalTaskSensor(BaseSensorOperator):
                 return False
             return True
         except Exception as e :
-            # write error msg in context to be supplied in the failure notification 
+            context[SCHEDULER_ERR_MSG] = "error while sensor poke :: {}".format(e)
             log_failure_event(context)
 
     def get_last_upstream_times(self, schedule_time_of_current_job, upstream_schedule_interval):
@@ -317,18 +330,17 @@ class SuperExternalTaskSensor(BaseSensorOperator):
         except ValueError:
             return datetime.strptime(timestamp, TIMESTAMP_MS_FORMAT)
 
-
-def optimus_failure_notify(context, event_meta):
+def optimus_notify(context, event_meta):
     params = context.get("params")
     optimus_client = OptimusAPIClient(params["optimus_hostname"])
 
-    taskfail_alert = int(Variable.get("taskfail_alert", default_var=1))
-    if taskfail_alert != 1:
-        return "suppressed failure alert"
-
     current_dag_id = context.get('task_instance').dag_id
     current_execution_date = context.get('execution_date')
+<<<<<<< HEAD
     schedule_time = context.get('next_execution_date')
+=======
+    current_schedule_date = context.get('next_execution_date')
+>>>>>>> 4e23e7628ddeb1cc952e104a34959ebaf8a19451
 
     # failure message pushed by failed tasks
     failure_messages = []
@@ -349,9 +361,13 @@ def optimus_failure_notify(context, event_meta):
         if _xcom_value_has_error(xcom):
             failure_messages.append(xcom.value['error'])
     failure_message = ", ".join(failure_messages)
+
+    if SCHEDULER_ERR_MSG in event_meta.keys():
+        failure_message = failure_message + ", " + event_meta[SCHEDULER_ERR_MSG]
     print("failures: {}".format(failure_message))
 
     message = {
+<<<<<<< HEAD
         "log_url": context.get('task_instance').log_url,
         "task_id": context.get('task_instance').task_id,
         "run_id": context.get('run_id'),
@@ -375,35 +391,44 @@ def optimus_failure_notify(context, event_meta):
     resp = optimus_client.notify_event(params["project_name"], params["namespace"], params["job_name"], event)
     print("posted event ", params, event, resp)
     return
+=======
+        "log_url"   : context.get('task_instance').log_url,
+        "task_id"   : context.get('task_instance').task_id,
+        "run_id"    : context.get('run_id'),
+        "duration"  : str(context.get('task_instance').duration),
+        "exception" : str(context.get('exception')) or "",
+        "message"   : failure_message,
+>>>>>>> 4e23e7628ddeb1cc952e104a34959ebaf8a19451
 
-def optimus_notify(context, event_meta):
-    params = context.get("params")
-    optimus_client = OptimusAPIClient(params["optimus_hostname"])
+        "scheduled_at"      : current_schedule_date.strftime(TIMESTAMP_FORMAT),
+        "scheduled_at_ts"   : datetime.timestamp(current_schedule_date),
 
+<<<<<<< HEAD
     current_dag_id = context.get('task_instance').dag_id
     current_dag_run_id = context.get('dag_run').run_id
     schedule_time = context.get('next_execution_date')
+=======
+        "task_start_timestamp"   : datetime.timestamp(context.get('task_instance').start_date),
+>>>>>>> 4e23e7628ddeb1cc952e104a34959ebaf8a19451
 
-    message = {
-        "job_run_id": current_dag_run_id,
-        "task_id": context.get('task_instance').task_id,
-        "log_url": context.get('task_instance').log_url,
-        "task_run_id": context.get('run_id'),
-        
-        "duration": str(context.get('task_instance').duration),
+        "job_run_id"    : context.get('dag_run').run_id,
+        "task_run_id"   : context.get('run_id'),
         "job_duration"  :get_job_run_duration(context),
         
+<<<<<<< HEAD
         "exception": str(context.get('exception')) or "",
 
         "scheduled_at"          : schedule_time.strftime(TIMESTAMP_FORMAT),
         "scheduled_at_ts"       : datetime.timestamp(schedule_time),
         "task_start_timestamp"   : datetime.timestamp(context.get('task_instance').start_date),
         
+=======
+>>>>>>> 4e23e7628ddeb1cc952e104a34959ebaf8a19451
         "attempt"       :context['task_instance'].try_number,
         "event_time"    :datetime.now().timestamp(),
     }
     message.update(event_meta)
-    
+
     event = {
         "type": event_meta["event_type"],
         "value": message,
@@ -425,7 +450,7 @@ def should_relay_airflow_callbacks(context):
 def get_job_run_duration(context):
     dag_start_time = datetime.timestamp(context.get('dag_run').get_task_instance(JOB_START_EVENT_NAME).start_date)
     current_time = datetime.now().timestamp()
-    return current_time - dag_start_time 
+    return current_time - dag_start_time
 
 def get_run_type(context):
     task_identifier = context.get('task_instance_key_str')
@@ -437,11 +462,11 @@ def get_run_type(context):
     else:
         return "TASK"
 
-# job level events 
+# job level events
 def log_job_end(ds=None, **kwargs):
     context = kwargs
     meta = {
-        "event_type": "TYPE_JOB_SUCCESS", # later determine the status based on task statuses 
+        "event_type": "TYPE_JOB_SUCCESS", # later determine the status based on task statuses
         "status": "FINISHED",
     }
     optimus_notify(context, meta)
@@ -453,7 +478,7 @@ def log_job_start(ds=None, **kwargs):
     }
     optimus_notify(context, meta)
 
-# task level events 
+# task level events
 def log_start_event(context, EVENT_NAME):
     meta = {
         "event_type": EVENT_NAME,
@@ -463,7 +488,7 @@ def log_start_event(context, EVENT_NAME):
 
 def log_success_event(context):
     if not should_relay_airflow_callbacks(context):
-        return 
+        return
     run_type = get_run_type(context)
     meta = {
         "event_type": "TYPE_{}_SUCCESS".format(run_type)
@@ -473,21 +498,25 @@ def log_success_event(context):
 
 def log_retry_event(context):
     if not should_relay_airflow_callbacks(context):
-        return 
+        return
     run_type = get_run_type(context)
     meta = {
         "event_type": "TYPE_{}_RETRY".format(run_type)
     }
-    optimus_failure_notify(context, meta)
+    optimus_notify(context, meta)
     return
 
 def log_failure_event(context):
     if not should_relay_airflow_callbacks(context):
-        return 
+        return
     run_type = get_run_type(context)
+        
     meta = {
         "event_type": "TYPE_{}_FAIL".format(run_type)
     }
+    if SCHEDULER_ERR_MSG in context.keys():
+        meta[SCHEDULER_ERR_MSG] = context[SCHEDULER_ERR_MSG]
+
     optimus_notify(context, meta)
 
 

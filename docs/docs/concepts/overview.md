@@ -410,9 +410,9 @@ TODO: Docs for supporting custom scheduler
 
 ## Dependency Resolver
 
-A job can have a source, and a destination to start with. This source could be internal
-to optimus like another job or external like a S3 bucket. If the dependency is internal
-to optimus, it is obvious that in an ETL pipeline, it is required for the dependency to
+A job can have a source and a destination to start with. This source could be a resource 
+managed by optimus or non-managed like a S3 bucket. If the dependency is managed
+by optimus, it is obvious that in an ETL pipeline, it is required for the dependency to
 finish successfully first before the dependent job can start. This direct or indirect
 dependency can be automatically inferred in job specifications based on task inputs.
 For example, in BQ2BQ task, it parses the SQL transformation and look for tables that
@@ -420,11 +420,11 @@ are used as source using FROM, JOIN, etc keywords and mark them as the dependenc
 current job. Optimus call this automatic dependency resolution which happens automatically.
 There are options to manually specify a dependency using the job name within the same
 project if needed to.
-Overall dependencies can be divided into three types
 
-- Intra: Jobs depending on other jobs within same tenant repository
-- Inter: Jobs depending on other jobs over other tenant repository
-- Extra: Jobs depending on an external dependency outside Optimus [TODO]
+Optimus also supports job dependency to cross optimus servers. These optimus servers are 
+considered as external resource managers, where optimus will look for the job sources that 
+have not been resolved internally and create the dependency. These resource managers should
+be configured in the server configuration.
 
 ## Priority Resolver
 

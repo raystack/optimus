@@ -102,6 +102,12 @@ func (m *deployManager) spawnDeployer(deployer Deployer, deployRequest models.Jo
 	defer cancelCtx()
 	if err := deployer.Deploy(ctx, deployRequest); err != nil {
 		m.l.Error("deployer failed to process", deployRequest.ID.UUID(), "project name", deployRequest.Project.Name, "error", err.Error())
+		deployRequest.Status = models.JobDeploymentStatusFailed
+		deployRequest.Details.Failures = []models.JobDeploymentFailure{{Message: err.Error()}}
+		err := m.deployRepository.Update(ctx, deployRequest)
+		if err != nil {
+			m.l.Error("unable to mark deployment request as cancelled", deployRequest.ID.UUID(), "project name", deployRequest.Project.Name, "error", err.Error())
+		}
 	}
 }
 

@@ -162,7 +162,15 @@ func prepareWindow(windowSize, windowOffset, truncateTo string) (models.JobSpecT
 	return window, nil
 }
 
-func ToJobProto(spec models.JobSpec) *pb.JobSpecification {
+func ToJobSpecificationResponseProto(jobSpec models.JobSpec) *pb.JobSpecificationResponse {
+	return &pb.JobSpecificationResponse{
+		ProjectName:   jobSpec.GetProjectSpec().Name,
+		NamespaceName: jobSpec.NamespaceSpec.Name,
+		Job:           ToJobSpecificationProto(jobSpec),
+	}
+}
+
+func ToJobSpecificationProto(spec models.JobSpec) *pb.JobSpecification {
 	adaptedHook := ToHookProto(spec.Hooks)
 
 	var notifyProto []*pb.JobSpecification_Behavior_Notifiers

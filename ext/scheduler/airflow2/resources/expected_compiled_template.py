@@ -11,7 +11,7 @@ from airflow.utils.weight_rule import WeightRule
 from kubernetes.client import models as k8s
 
 
-from __lib import optimus_failure_notify, optimus_sla_miss_notify, SuperKubernetesPodOperator, \
+from __lib import optimus_sla_miss_notify, SuperKubernetesPodOperator, \
     SuperExternalTaskSensor, ExternalHttpSensor
 
 from __lib import JOB_START_EVENT_NAME, \
@@ -235,12 +235,26 @@ wait_foo__dash__inter__dash__dep__dash__job = SuperExternalTaskSensor(
     dag=dag
 )
 
+wait_external__dash__optimus__dash__foo__dash__external__dash__optimus__dash__project__dash__foo__dash__external__dash__optimus__dash__dep__dash__job = SuperExternalTaskSensor(
+    optimus_hostname="http://optimus.external.io",
+    upstream_optimus_project="foo-external-optimus-project",
+    upstream_optimus_namespace="bar-external-optimus-namespace",
+    upstream_optimus_job="foo-external-optimus-dep-job",
+    window_size="1h0m0s",
+    poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
+    timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
+    task_id="wait_foo-external-optimus-dep-job-bq",
+    dag=dag
+)
+
 # arrange inter task dependencies
 ####################################
 
 # upstream sensors -> base transformation task
 publish_job_start_event >> wait_foo__dash__intra__dash__dep__dash__job >> transformation_bq
 publish_job_start_event >> wait_foo__dash__inter__dash__dep__dash__job >> transformation_bq
+
+publish_job_start_event >> wait_external__dash__optimus__dash__foo__dash__external__dash__optimus__dash__project__dash__foo__dash__external__dash__optimus__dash__dep__dash__job >> transformation_bq
 
 # post completion hook
 transformation_bq >> publish_job_end_event

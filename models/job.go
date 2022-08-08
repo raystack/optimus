@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/progress"
 )
 
@@ -85,6 +86,10 @@ type JobSpec struct {
 
 func (js JobSpec) GetName() string {
 	return js.Name
+}
+
+func (js JobSpec) GetFullName() string {
+	return js.GetProjectSpec().Name + "/" + js.Name
 }
 
 func (js JobSpec) SLADuration() (int64, error) {
@@ -167,6 +172,24 @@ type JobSpecNotifier struct {
 	On       JobEventType
 	Config   map[string]string
 	Channels []string
+}
+
+func (n *JobSpecNotifier) ShouldNotify(eventType JobEventType) bool {
+	var faiulreEvents = []JobEventType{JobFailureEvent, JobFailEvent, TaskFailEvent, HookFailEvent, SensorFailEvent}
+
+	switch n.On {
+	case JobFailureEvent:
+		for _, event := range faiulreEvents {
+			if eventType == event {
+				return true
+			}
+		}
+	case SLAMissEvent:
+		if eventType == SLAMissEvent {
+			return true
+		}
+	}
+	return false
 }
 
 type JobSpecTask struct {
@@ -363,8 +386,26 @@ type JobSpecDependency struct {
 	Type    JobSpecDependencyType
 }
 
+type UnresolvedJobDependency struct {
+	ProjectName         string
+	JobName             string
+	ResourceDestination string
+}
+
 type ExternalDependency struct {
-	HTTPDependencies []HTTPDependency
+	HTTPDependencies    []HTTPDependency
+	OptimusDependencies []OptimusDependency
+}
+
+type OptimusDependency struct {
+	Name    string
+	Host    string
+	Headers map[string]string
+
+	ProjectName   string
+	NamespaceName string
+	JobName       string
+	TaskName      string
 }
 
 type HTTPDependency struct {
@@ -396,15 +437,15 @@ type JobService interface {
 	GetByNameForProject(context.Context, string, ProjectSpec) (JobSpec, NamespaceSpec, error)
 	// TODO: to be deprecated
 	Sync(context.Context, NamespaceSpec, progress.Observer) error
-	Check(context.Context, NamespaceSpec, []JobSpec, progress.Observer) error
+	Check(context.Context, NamespaceSpec, []JobSpec, writer.LogWriter) error
 	// GetByDestination fetches a Job by destination for a specific project
 	GetByDestination(ctx context.Context, projectSpec ProjectSpec, destination string) (JobSpec, error)
 	// GetDownstream fetches downstream jobspecs
 	GetDownstream(ctx context.Context, projectSpec ProjectSpec, jobName string) ([]JobSpec, error)
 	// Refresh Redeploy current persisted state of jobs
-	Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string, observer progress.Observer) error
+	Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string, logWriter writer.LogWriter) (DeploymentID, error)
 	// Deploy the requested jobs per namespace
-	Deploy(context.Context, string, string, []JobSpec, progress.Observer) (DeploymentID, error)
+	Deploy(context.Context, string, string, []JobSpec, writer.LogWriter) (DeploymentID, error)
 	// GetDeployment getting status and result of job deployment
 	GetDeployment(ctx context.Context, deployID DeploymentID) (JobDeployment, error)
 	// GetByFilter gets the jobspec based on projectName, jobName, resourceDestination filters.
@@ -543,9 +584,9 @@ type JobDeployment struct {
 }
 
 type JobDeploymentDetail struct {
-	SuccessCount int
-	FailureCount int
-	Failures     []JobDeploymentFailure
+	SuccessCount                  int
+	Failures                      []JobDeploymentFailure
+	UnknownDependenciesPerJobName map[string][]string
 }
 
 type JobDeploymentFailure struct {
@@ -607,4 +648,10 @@ type HookRunSpec struct {
 	Attempt       int
 	JobRunAttempt int
 	Duration      int64
+}
+
+type UnknownDependency struct {
+	JobName               string
+	DependencyProjectName string
+	DependencyJobName     string
 }

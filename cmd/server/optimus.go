@@ -249,7 +249,11 @@ func (s *OptimusServer) setupHandlers() error {
 		projectJobSpecRepoFac: *projectJobSpecRepoFac,
 	}
 
-	dependencyResolver := job.NewDependencyResolver(jobSpecRepo, jobSourceRepository, pluginService, projectJobSpecRepoFac)
+	externalDependencyResolver, err := job.NewExternalDependencyResolver(s.conf.ResourceManagers)
+	if err != nil {
+		return err
+	}
+	dependencyResolver := job.NewDependencyResolver(jobSpecRepo, jobSourceRepository, pluginService, projectJobSpecRepoFac, externalDependencyResolver)
 	priorityResolver := job.NewPriorityResolver()
 
 	replayWorkerFactory := &replayWorkerFact{
@@ -345,7 +349,7 @@ func (s *OptimusServer) setupHandlers() error {
 		projectResourceSpecRepoFac: projectResourceSpecRepoFac,
 	}
 	backupRepo := postgres.NewBackupRepository(s.dbConn)
-	dataStoreService := datastore.NewService(&resourceSpecRepoFac, models.DatastoreRegistry)
+	dataStoreService := datastore.NewService(s.logger, &resourceSpecRepoFac, models.DatastoreRegistry)
 	backupService := datastore.NewBackupService(&projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), backupRepo, pluginService)
 	// adapter service
 	// adapterService := v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry)

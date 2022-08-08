@@ -84,7 +84,7 @@ func (repo jobSpecRepository) GetDependentJobs(ctx context.Context, jobSpec *mod
 	return allDependentJobs, nil
 }
 
-func (repo jobSpecRepository) GetInferredDependenciesPerJob(ctx context.Context, projectID models.ProjectID) (map[uuid.UUID][]models.JobSpec, error) {
+func (repo jobSpecRepository) GetInferredDependenciesPerJobID(ctx context.Context, projectID models.ProjectID) (map[uuid.UUID][]models.JobSpec, error) {
 	var jobDependencies []jobDependency
 	if err := repo.db.WithContext(ctx).
 		Preload("DependencyNamespace").Preload("DependencyProject").
@@ -92,6 +92,7 @@ func (repo jobSpecRepository) GetInferredDependenciesPerJob(ctx context.Context,
 			"j.id as dependency_id, "+
 			"j.name as dependency_name, "+
 			"j.task_name as dependency_task_name, "+
+			"j.destination as dependency_destination, "+
 			"j.namespace_id as dependency_namespace_id, "+
 			"j.project_id as dependency_project_id").
 		Joins("join job j on js.resource_urn = j.destination").
@@ -100,10 +101,10 @@ func (repo jobSpecRepository) GetInferredDependenciesPerJob(ctx context.Context,
 		Find(&jobDependencies).Error; err != nil {
 		return nil, err
 	}
-	return repo.adapter.groupToDependenciesPerJob(jobDependencies)
+	return repo.adapter.groupToDependenciesPerJobID(jobDependencies)
 }
 
-func (repo jobSpecRepository) GetStaticDependenciesPerJob(ctx context.Context, projectID models.ProjectID) (map[uuid.UUID][]models.JobSpec, error) {
+func (repo jobSpecRepository) GetStaticDependenciesPerJobID(ctx context.Context, projectID models.ProjectID) (map[uuid.UUID][]models.JobSpec, error) {
 	var jobDependencies []jobDependency
 	requestedJobsQuery := repo.db.
 		Select("id, name, jsonb_object_keys(dependencies) as dependency_name").
@@ -122,13 +123,13 @@ func (repo jobSpecRepository) GetStaticDependenciesPerJob(ctx context.Context, p
 			"d.namespace_id as dependency_namespace_id, "+
 			"d.project_id as dependency_project_id").
 		Table("(?) rj", requestedJobsQuery).
-		Joins("left join (?) d on ("+
+		Joins("join (?) d on ("+
 			"rj.dependency_name=d.name or "+
 			"rj.dependency_name=d.project_name || '/' ||d.name)", dependenciesQuery).
 		Find(&jobDependencies).Error; err != nil {
 		return nil, err
 	}
-	return repo.adapter.groupToDependenciesPerJob(jobDependencies)
+	return repo.adapter.groupToDependenciesPerJobID(jobDependencies)
 }
 
 func (repo jobSpecRepository) getDependentJobsInferred(ctx context.Context, jobSpec *models.JobSpec) ([]models.JobSpec, error) {

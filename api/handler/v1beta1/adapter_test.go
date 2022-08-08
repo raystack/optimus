@@ -136,7 +136,7 @@ func TestAdapter(t *testing.T) {
 			},
 		}
 
-		inProto := v1.ToJobProto(jobSpec)
+		inProto := v1.ToJobSpecificationProto(jobSpec)
 		original, err := v1.FromJobProto(inProto, pluginRepo)
 		assert.Equal(t, jobSpec, original)
 		assert.Nil(t, err)

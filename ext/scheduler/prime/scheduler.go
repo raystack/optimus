@@ -46,6 +46,8 @@ func (s *Scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSp
 	return nil
 }
 
+// what is the reason for this
+// where more should we romove the namespace id to namespace name, to get this reflected in gcs
 func (s *Scheduler) DeployJobsVerbose(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec) (models.JobDeploymentDetail, error) {
 	var jobRuns []models.JobRun
 	for _, j := range jobs {

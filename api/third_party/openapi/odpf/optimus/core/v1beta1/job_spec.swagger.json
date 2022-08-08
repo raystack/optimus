@@ -358,18 +358,8 @@
     "v1beta1CheckJobSpecificationsResponse": {
       "type": "object",
       "properties": {
-        "success": {
-          "type": "boolean"
-        },
-        "ack": {
-          "type": "boolean",
-          "title": "non ack responses are more of a progress/info response\nand not really success or failure statuses"
-        },
-        "message": {
-          "type": "string"
-        },
-        "jobName": {
-          "type": "string"
+        "logStatus": {
+          "$ref": "#/definitions/v1beta1Log"
         }
       }
     },
@@ -409,28 +399,14 @@
     "v1beta1DeployJobSpecificationResponse": {
       "type": "object",
       "properties": {
-        "success": {
-          "type": "boolean"
-        },
-        "ack": {
-          "type": "boolean",
-          "title": "non ack responses are more of a progress/info response\nand not really success or failure statuses\nthis is deprecated and being replaced with type field"
-        },
-        "message": {
-          "type": "string",
-          "title": "message is deprecated and being replaced with value field"
-        },
-        "jobName": {
+        "deploymentId": {
           "type": "string"
         },
-        "type": {
-          "type": "string",
-          "title": "response type differentiate events"
-        },
-        "value": {
-          "type": "string"
+        "logStatus": {
+          "$ref": "#/definitions/v1beta1Log"
         }
-      }
+      },
+      "title": "DeployJobSpecificationResponse hold the value of DeploymentID\nand the log messages"
     },
     "v1beta1GetDeployJobsStatusResponse": {
       "type": "object",
@@ -451,6 +427,12 @@
         "failureCount": {
           "type": "integer",
           "format": "int32"
+        },
+        "unknownDependencies": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
@@ -702,6 +684,19 @@
         }
       }
     },
+    "v1beta1Level": {
+      "type": "string",
+      "enum": [
+        "LEVEL_UNSPECIFIED",
+        "LEVEL_TRACE",
+        "LEVEL_DEBUG",
+        "LEVEL_INFO",
+        "LEVEL_WARNING",
+        "LEVEL_ERROR",
+        "LEVEL_FATAL"
+      ],
+      "default": "LEVEL_UNSPECIFIED"
+    },
     "v1beta1ListJobSpecificationResponse": {
       "type": "object",
       "properties": {
@@ -713,21 +708,25 @@
         }
       }
     },
+    "v1beta1Log": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "$ref": "#/definitions/v1beta1Level"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
     "v1beta1RefreshJobsResponse": {
       "type": "object",
       "properties": {
-        "success": {
-          "type": "boolean"
-        },
-        "type": {
-          "type": "string",
-          "title": "response type differentiate events"
-        },
-        "value": {
+        "deploymentId": {
           "type": "string"
         },
-        "jobName": {
-          "type": "string"
+        "logStatus": {
+          "$ref": "#/definitions/v1beta1Log"
         }
       }
     }

@@ -162,7 +162,13 @@ func TestAirflow2(t *testing.T) {
 				Contents: []byte("job-1-compiled"),
 			}, nil)
 
-			mockBucket.On("WriteAll", ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name), []byte("job-1-compiled"), (*blob.WriterOptions)(nil)).Return(nil)
+			mockBucket.On("WriteAll", mock.Anything, "dags/__lib.py", airflow2.SharedLib, (*blob.WriterOptions)(nil)).Return(nil)
+			mockBucket.On("WriteAll", ctx, fmt.Sprintf("dags/%s/%s.py", ns.Name, jobSpecs[0].Name), []byte("job-1-compiled"), (*blob.WriterOptions)(nil)).Return(nil)
+			mockBucket.On("Delete", ctx, fmt.Sprintf("dags/%s/%s.py", ns.ID.String(), jobSpecs[0].Name)).Return(nil)
+			mockBucket.On("Delete", ctx, fmt.Sprintf("dags/%s", ns.ID.String())).Return(nil)
+			mockBucket.On("List", &blob.ListOptions{
+				Prefix: fmt.Sprintf("dags/%s", ns.ID.String()),
+			}).Return(&blob.ListIterator{})
 
 			expectedDeployDetail := models.JobDeploymentDetail{
 				SuccessCount: 1,
@@ -172,7 +178,7 @@ func TestAirflow2(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, expectedDeployDetail, actualDeployDetail)
 
-			storedBytes, err := inMemBlob.ReadAll(ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name))
+			storedBytes, err := inMemBlob.ReadAll(ctx, fmt.Sprintf("dags/%s/%s.py", ns.Name, jobSpecs[0].Name))
 			assert.Nil(t, err)
 			assert.Equal(t, []byte("job-1-compiled"), storedBytes)
 		})
@@ -213,13 +219,14 @@ func TestAirflow2(t *testing.T) {
 
 			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, nil)
 
+			mockBucket.On("WriteAll", mock.Anything, "dags/__lib.py", airflow2.SharedLib, (*blob.WriterOptions)(nil)).Return(nil)
+
 			errorMsg := "internal error"
 			air := airflow2.NewScheduler(mockBucketFac, nil, compiler)
 			compiler.On("Compile", air.GetTemplate(), ns, jobSpecs[0]).Return(models.Job{}, errors.New(errorMsg))
 
 			expectedDeployDetail := models.JobDeploymentDetail{
 				SuccessCount: 0,
-				FailureCount: 1,
 				Failures: []models.JobDeploymentFailure{
 					{
 						JobName: jobSpecs[0].Name,

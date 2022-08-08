@@ -11,7 +11,7 @@ from airflow.utils.weight_rule import WeightRule
 from kubernetes.client import models as k8s
 
 
-from __lib import optimus_failure_notify, optimus_sla_miss_notify, SuperKubernetesPodOperator, \
+from __lib import optimus_sla_miss_notify, SuperKubernetesPodOperator, \
     SuperExternalTaskSensor, ExternalHttpSensor
 
 from __lib import JOB_START_EVENT_NAME, \
@@ -63,7 +63,7 @@ dag = DAG(
     sla_miss_callback=optimus_sla_miss_notify,
     catchup={{ if .Job.Behavior.CatchUp -}}True{{- else -}}False{{- end }},
     dagrun_timeout=timedelta(seconds=DAGRUN_TIMEOUT_IN_SECS),
-    tags = [ 
+    tags = [
             {{- range $key, $value := $.Job.Labels}}
             "{{ $value }}",
             {{- end}}
@@ -216,7 +216,7 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
 wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
     optimus_hostname="{{$.Hostname}}",
     upstream_optimus_project="{{$dependency.Project.Name}}",
-    upstream_optimus_namespace="{{$.Namespace.Name}}",
+    upstream_optimus_namespace="{{$dependency.Job.NamespaceSpec.Name}}",
     upstream_optimus_job="{{$dependency.Job.Name}}",
     window_size="{{ $baseWindow.Size.String }}",
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
@@ -226,7 +226,22 @@ wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} =
 )
 {{- end}}
 
-{{- range $_, $httpDependency := $.Job.ExternalDependencies.HTTPDependencies}}
+{{- range $_, $dependency := $.Job.ExternalDependencies.OptimusDependencies}}
+{{ $identity := print $dependency.Name "-" $dependency.ProjectName "-" $dependency.JobName }}
+wait_{{ $identity | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
+    optimus_hostname="{{$dependency.Host}}",
+    upstream_optimus_project="{{$dependency.ProjectName}}",
+    upstream_optimus_namespace="{{$dependency.NamespaceName}}",
+    upstream_optimus_job="{{$dependency.JobName}}",
+    window_size="{{ $baseWindow.Size.String }}",
+    poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
+    timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
+    task_id="wait_{{$dependency.JobName | trunc 200}}-{{$dependency.TaskName}}",
+    dag=dag
+)
+{{- end}}
+
+{{- range $_, $httpDependency := $.Job.ExternalDependencies.HTTPDependencies}}  # merged from http and optimus?
 headers_dict_{{$httpDependency.Name}} = { {{- range $k, $v := $httpDependency.Headers}} '{{$k}}': '{{$v}}', {{- end}} }
 request_params_dict_{{$httpDependency.Name}} = { {{- range $key, $value := $httpDependency.RequestParams}} '{{$key}}': '{{$value}}', {{- end}} }
 
@@ -251,7 +266,11 @@ publish_job_start_event >> wait_{{ $t.Job.Name | replace "-" "__dash__" | replac
 {{- range $_, $t := $.Job.ExternalDependencies.HTTPDependencies }}
 publish_job_start_event >>  wait_{{ $t.Name }} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
 {{- end}}
-{{if and (not $.Job.Dependencies) (not $.Job.ExternalDependencies.HTTPDependencies)}}
+{{- range $_, $dependency := $.Job.ExternalDependencies.OptimusDependencies}}
+{{ $identity := print $dependency.Name "-" $dependency.ProjectName "-" $dependency.JobName }}
+publish_job_start_event >> wait_{{ $identity | replace "-" "__dash__" | replace "." "__dot__" }} >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
+{{- end}}
+{{if and (not $.Job.Dependencies) (not $.Job.ExternalDependencies.HTTPDependencies) (not $.Job.ExternalDependencies.OptimusDependencies)}}
 # if no sensor and dependency is configured
 publish_job_start_event >> transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}}
 {{end}}
