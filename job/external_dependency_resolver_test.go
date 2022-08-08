@@ -2,7 +2,6 @@ package job_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -28,26 +27,6 @@ func (e *ExternalDependencyResolverTestSuite) TestFetchInferredExternalDependenc
 			{ProjectName: "project2", JobName: "job2"},
 		}
 		unresolvedDependenciesPerJobName := map[string][]models.UnresolvedJobDependency{"job1": {unresolvedDependencies[0]}}
-
-		actualDependencies, actualError := externalDependencyResolver.FetchInferredExternalDependenciesPerJobName(ctx, unresolvedDependenciesPerJobName)
-
-		e.Nil(actualDependencies)
-		e.Error(actualError)
-	})
-
-	// TODO: this unit test need to be changed if the dependency is not from Optimus only, but currently it is
-	e.Run("should return nil and error if error when fetching optimus dependencies from optimus dependency getter", func() {
-		optimusResourceManager := mock.NewResourceManager(e.T())
-		optimusResourceManagers := []resourcemgr.ResourceManager{optimusResourceManager}
-		externalDependencyResolver := job.NewTestExternalDependencyResolver(optimusResourceManagers)
-
-		ctx := context.Background()
-		unresolvedDependencies := []models.UnresolvedJobDependency{
-			{ResourceDestination: "urn1"},
-		}
-		unresolvedDependenciesPerJobName := map[string][]models.UnresolvedJobDependency{"job1": {unresolvedDependencies[0]}}
-
-		optimusResourceManager.On("GetOptimusDependencies", ctx, unresolvedDependencies[0]).Return(nil, errors.New("random error"))
 
 		actualDependencies, actualError := externalDependencyResolver.FetchInferredExternalDependenciesPerJobName(ctx, unresolvedDependenciesPerJobName)
 
@@ -102,28 +81,6 @@ func (e *ExternalDependencyResolverTestSuite) TestFetchStaticExternalDependencie
 			{ProjectName: "project2", JobName: "job2"},
 		}
 		unresolvedDependenciesPerJobName := map[string][]models.UnresolvedJobDependency{"job1": {unresolvedDependencies[0]}}
-
-		actualExternalDependencies, actualUnknownDependencies, actualError := externalDependencyResolver.FetchStaticExternalDependenciesPerJobName(ctx, unresolvedDependenciesPerJobName)
-
-		e.Nil(actualExternalDependencies)
-		e.Nil(actualUnknownDependencies)
-		e.Error(actualError)
-	})
-
-	// TODO: this unit test need to be changed if the dependency is not from Optimus only, but currently it is
-	e.Run("should return nil, nil and error if error when fetching optimus dependencies from optimus dependency getter", func() {
-		optimusResourceManager := mock.NewResourceManager(e.T())
-		optimusResourceManagers := []resourcemgr.ResourceManager{optimusResourceManager}
-		externalDependencyResolver := job.NewTestExternalDependencyResolver(optimusResourceManagers)
-
-		ctx := context.Background()
-
-		unresolvedDependencies := []models.UnresolvedJobDependency{
-			{ProjectName: "project2", JobName: "job2"},
-		}
-		unresolvedDependenciesPerJobName := map[string][]models.UnresolvedJobDependency{"job1": {unresolvedDependencies[0]}}
-
-		optimusResourceManager.On("GetOptimusDependencies", ctx, unresolvedDependencies[0]).Return(nil, errors.New("random error"))
 
 		actualExternalDependencies, actualUnknownDependencies, actualError := externalDependencyResolver.FetchStaticExternalDependenciesPerJobName(ctx, unresolvedDependenciesPerJobName)
 
