@@ -53,6 +53,7 @@ func New(conf config.ServerConfig) (*OptimusServer, error) {
 	server := &OptimusServer{
 		conf:       conf,
 		serverAddr: addr,
+		logger:     createLogger(conf),
 	}
 
 	if err := checkRequiredConfigs(conf.Serve); err != nil {
@@ -60,7 +61,6 @@ func New(conf config.ServerConfig) (*OptimusServer, error) {
 	}
 
 	setupFns := []setupFn{
-		server.setupLogger,
 		server.setupPlugins,
 		server.setupTelemetry,
 		server.setupAppKey,
@@ -83,12 +83,11 @@ func New(conf config.ServerConfig) (*OptimusServer, error) {
 	return server, nil
 }
 
-func (s *OptimusServer) setupLogger() error {
-	s.logger = log.NewLogrus(
-		log.LogrusWithLevel(s.conf.Log.Level.String()),
+func createLogger(conf config.ServerConfig) *log.Logrus {
+	return log.NewLogrus(
+		log.LogrusWithLevel(conf.Log.Level.String()),
 		log.LogrusWithWriter(os.Stderr),
 	)
-	return nil
 }
 
 func (s *OptimusServer) setupPlugins() error {
