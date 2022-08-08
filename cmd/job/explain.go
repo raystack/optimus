@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/odpf/salt/log"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -26,6 +27,7 @@ type explainCommand struct {
 	clientConfig    *config.ClientConfig
 	jobSurvey       *survey.JobSurvey
 	namespaceSurvey *survey.NamespaceSurvey
+	scheduleTime    string // see if time is possible directly
 }
 
 // NewexplainCommand initializes command for explaining job specification
@@ -44,7 +46,7 @@ func NewExplainCommand() *cobra.Command {
 
 	// Config filepath flag
 	cmd.Flags().StringVarP(&explain.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
-
+	cmd.Flags().StringVarP(&explain.scheduleTime, "time", "t", "", "schedule time for the job deployment")
 	return cmd
 }
 
@@ -53,10 +55,16 @@ func (r *explainCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	if err := r.loadConfig(); err != nil {
 		return err
 	}
-
 	r.logger = logger.NewClientLogger(r.clientConfig.Log)
 	r.jobSurvey = survey.NewJobSurvey()
 	r.namespaceSurvey = survey.NewNamespaceSurvey(r.logger)
+	// check if time flag is set and see if schedule time could be parsed
+	if r.scheduleTime != "" {
+		_, err := time.Parse("2006-01-02 15:04", r.scheduleTime)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -76,13 +84,22 @@ func (r *explainCommand) RunE(_ *cobra.Command, args []string) error {
 	if err := os.MkdirAll(explainedPath, 0o770); err != nil {
 		return err
 	}
+	var scheduleTime time.Time
+	if r.scheduleTime == "" {
+		r.logger.Info("did not give the time input go with the current time? y/N")
+		var needSurvey string
+		fmt.Scanln(&needSurvey)
+		timeSurvey := survey.GetTimeSurvey()
+		if needSurvey == "N" {
+			tea.NewProgram(timeSurvey).Start()
+		}
+		scheduleTime = timeSurvey.CurrentTime
+	}
+	r.logger.Info(fmt.Sprintf("Assuming execution time as current time of %s\n", scheduleTime.Format(models.InstanceScheduledAtTimeLayout)))
 	r.logger.Info(fmt.Sprintf("Downloading assets in %s", explainedPath))
 
-	now := time.Now()
-	r.logger.Info(fmt.Sprintf("Assuming execution time as current time of %s\n", now.Format(models.InstanceScheduledAtTimeLayout)))
-
 	templateEngine := compiler.NewGoEngine()
-	templates, err := compiler.DumpAssets(context.Background(), jobSpec, now, templateEngine, true)
+	templates, err := compiler.DumpAssets(context.Background(), jobSpec, scheduleTime, templateEngine, true)
 	if err != nil {
 		return err
 	}

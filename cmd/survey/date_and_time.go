@@ -16,18 +16,19 @@ var (
 	hour   = "hour"
 )
 
+func GetTimeSurvey() *TimeSurvey {
+	return &TimeSurvey{time.Now(), day}
+}
+
 type TimeSurvey struct {
 	CurrentTime time.Time
 	cursor      string
 }
 
-func GetTimeSurvey() *TimeSurvey {
-	return &TimeSurvey{time.Now(), day}
-}
-func (m *TimeSurvey) Init() tea.Cmd {
+func (TimeSurvey) Init() tea.Cmd {
 	return nil
 }
-func (m *TimeSurvey) handle_up() {
+func (m *TimeSurvey) handleUp() {
 	switch m.cursor {
 	case day:
 		m.CurrentTime = m.CurrentTime.AddDate(0, 0, 1)
@@ -41,7 +42,7 @@ func (m *TimeSurvey) handle_up() {
 		m.CurrentTime = m.CurrentTime.Add(time.Minute)
 	}
 }
-func (m *TimeSurvey) handle_down() {
+func (m *TimeSurvey) handleDown() {
 	switch m.cursor {
 	case day:
 		m.CurrentTime = m.CurrentTime.AddDate(0, 0, -1)
@@ -55,7 +56,7 @@ func (m *TimeSurvey) handle_down() {
 		m.CurrentTime = m.CurrentTime.Add(-1 * time.Minute)
 	}
 }
-func (m *TimeSurvey) handle_left() {
+func (m *TimeSurvey) handleLeft() {
 	switch m.cursor {
 	case month:
 		m.cursor = day
@@ -67,7 +68,7 @@ func (m *TimeSurvey) handle_left() {
 		m.cursor = hour
 	}
 }
-func (m *TimeSurvey) handle_right() {
+func (m *TimeSurvey) handleRight() {
 	switch m.cursor {
 	case hour:
 		m.cursor = minute
@@ -85,16 +86,16 @@ func (m *TimeSurvey) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	switch fmt.Sprintf("%s", msg) {
-	case "ctrl+c", "q":
+	case "ctrl+c", "enter":
 		return m, tea.Quit
 	case "up":
-		m.handle_up()
+		m.handleUp()
 	case "down":
-		m.handle_down()
+		m.handleDown()
 	case "right":
-		m.handle_right()
+		m.handleRight()
 	case "left":
-		m.handle_left()
+		m.handleLeft()
 	}
 	return m, nil
 }
