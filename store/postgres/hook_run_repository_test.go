@@ -129,10 +129,9 @@ func TestIntegrationHookRunRepository(t *testing.T) {
 	hookStartTime, _ := time.Parse(time.RFC3339, hookEventTimeString)
 	hookEventValues, _ := structpb.NewStruct(
 		map[string]interface{}{
-			"url":                  "https://example.io",
-			"scheduled_at":         "2022-01-02T15:04:05Z",
-			"attempt":              "2",
-			"task_start_timestamp": hookStartTime.Unix(),
+			"url":          "https://example.io",
+			"scheduled_at": "2022-01-02T15:04:05Z",
+			"attempt":      "2",
 		},
 	)
 
@@ -241,7 +240,6 @@ func TestIntegrationHookRunRepository(t *testing.T) {
 					"url":          "https://example.io",
 					"scheduled_at": "2022-01-02T15:04:05Z",
 					"attempt":      "3",
-					"job_duration": "120",
 					"event_time":   "2022-01-02T28:04:05Z",
 				},
 			)

@@ -129,10 +129,9 @@ func TestIntegrationSensorRunRepository(t *testing.T) {
 	sensorStartTime, _ := time.Parse(time.RFC3339, sensorEventTimeString)
 	sensorEventValues, _ := structpb.NewStruct(
 		map[string]interface{}{
-			"url":                  "https://example.io",
-			"scheduled_at":         "2022-01-02T15:04:05Z",
-			"attempt":              "2",
-			"task_start_timestamp": sensorStartTime.Unix(),
+			"url":          "https://example.io",
+			"scheduled_at": "2022-01-02T15:04:05Z",
+			"attempt":      "2",
 		},
 	)
 
@@ -244,7 +243,6 @@ func TestIntegrationSensorRunRepository(t *testing.T) {
 					"url":          "https://example.io",
 					"scheduled_at": "2022-01-02T15:04:05Z",
 					"attempt":      "3",
-					"job_duration": "120",
 					"event_time":   "2022-01-02T28:04:05Z",
 				},
 			)

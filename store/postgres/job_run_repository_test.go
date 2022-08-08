@@ -153,7 +153,6 @@ func TestIntegrationJobRunMetricsRepository(t *testing.T) {
 					"url":          "https://example.io",
 					"scheduled_at": "2022-01-02T15:04:05Z",
 					"event_time":   "2022-01-02T17:04:05Z",
-					"job_duration": "20",
 					"attempt":      "2",
 					"status":       "FINISHED",
 				},
@@ -207,7 +206,6 @@ func TestIntegrationJobRunMetricsRepository(t *testing.T) {
 					"url":          "https://example.io",
 					"scheduled_at": "2022-01-02T15:04:05Z",
 					"attempt":      "3",
-					"job_duration": "120",
 					"event_time":   "2022-01-02T28:04:05Z",
 				},
 			)

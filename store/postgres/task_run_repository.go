@@ -58,7 +58,7 @@ func (repo *TaskRunRepository) GetTaskRun(ctx context.Context, jobRunSpec models
 
 func (repo *TaskRunRepository) Save(ctx context.Context, event models.JobEvent, jobRunSpec models.JobRunSpec) error {
 	eventPayload := event.Value
-	startedAtTimeStamp := time.Unix(int64(eventPayload["task_start_timestamp"].GetNumberValue()), 0)
+	startedAtTimeStamp := time.Unix(int64(eventPayload["event_time"].GetNumberValue()), 0)
 
 	taskRun := TaskRun{
 		JobRunID:      jobRunSpec.JobRunID,
