@@ -46,7 +46,6 @@ func (repo *SensorRunRepository) Save(ctx context.Context, event models.JobEvent
 		Attempt:       int(eventPayload["attempt"].GetNumberValue()),
 		JobRunAttempt: jobRunSpec.Attempt,
 	}
-
 	return repo.db.WithContext(ctx).Create(&resource).Error
 }
 

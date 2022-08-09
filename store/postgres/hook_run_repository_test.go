@@ -118,10 +118,11 @@ func TestIntegrationHookRunRepository(t *testing.T) {
 	SLAMissDuearionSecs := int64(100)
 	eventTimeString := "2022-01-02T16:04:05Z"
 	hookEventTimeString := "2022-01-02T16:04:05Z"
+	scheduledAt := "2022-01-02T15:04:05Z"
 	eventValues, _ := structpb.NewStruct(
 		map[string]interface{}{
 			"url":          "https://example.io",
-			"scheduled_at": "2022-01-02T15:04:05Z",
+			"scheduled_at": scheduledAt,
 			"attempt":      "2",
 			"event_time":   eventTimeString,
 		},
@@ -130,7 +131,7 @@ func TestIntegrationHookRunRepository(t *testing.T) {
 	hookEventValues, _ := structpb.NewStruct(
 		map[string]interface{}{
 			"url":          "https://example.io",
-			"scheduled_at": "2022-01-02T15:04:05Z",
+			"scheduled_at": scheduledAt,
 			"event_time":   hookStartTime.Unix(),
 			"attempt":      "2",
 		},
@@ -169,8 +170,10 @@ func TestIntegrationHookRunRepository(t *testing.T) {
 			jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db)
 			err := jobRunMetricsRepository.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
 			assert.Nil(t, err)
+
 			jobRunSpec, err := jobRunMetricsRepository.Get(ctx, jobEvent, namespaceSpec, jobConfigs[0])
 			assert.Nil(t, err)
+
 			repo := postgres.NewHookRunRepository(db)
 			err = repo.Save(ctx, hookRunStartEvent, jobRunSpec)
 			assert.Nil(t, err)
@@ -178,13 +181,13 @@ func TestIntegrationHookRunRepository(t *testing.T) {
 			hookEndEventTimeString := "2022-01-02T17:04:05Z"
 			hookEndTime, err := time.Parse(time.RFC3339, hookEndEventTimeString)
 			assert.Nil(t, err)
-
 			updateEventValues, _ := structpb.NewStruct(
 				map[string]interface{}{
-					"url":        "https://example.io",
-					"event_time": hookEndTime.Unix(),
-					"attempt":    "2",
-					"status":     "SUCCESS",
+					"url":          "https://example.io",
+					"scheduled_at": scheduledAt,
+					"event_time":   hookEndTime.Unix(),
+					"attempt":      "2",
+					"status":       "SUCCESS",
 				},
 			)
 			jobUpdateEvent := models.JobEvent{

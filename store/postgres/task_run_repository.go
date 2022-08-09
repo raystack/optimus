@@ -67,7 +67,6 @@ func (repo *TaskRunRepository) Save(ctx context.Context, event models.JobEvent, 
 		Attempt:       int(eventPayload["attempt"].GetNumberValue()),
 		JobRunAttempt: jobRunSpec.Attempt,
 	}
-
 	return repo.db.WithContext(ctx).Create(&taskRun).Error
 }
 
@@ -92,7 +91,6 @@ func (repo *TaskRunRepository) Update(ctx context.Context, event models.JobEvent
 		taskRun.Status = eventPayload["status"].GetStringValue()
 	}
 	taskRun.Attempt = int(eventPayload["attempt"].GetNumberValue())
-
 	return repo.db.WithContext(ctx).Save(&taskRun).Error
 }
 

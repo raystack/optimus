@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -83,7 +82,6 @@ func (repo *HookRunRepository) Update(ctx context.Context, event models.JobEvent
 	if event.Type == models.HookFailEvent ||
 		event.Type == models.HookSuccessEvent ||
 		event.Type == models.HookRetryEvent {
-		hookRun.StartTime = time.Unix(int64(eventPayload["start_time"].GetNumberValue()), 0)
 		hookRun.EndTime = time.Unix(int64(eventPayload["event_time"].GetNumberValue()), 0)
 		hookRun.Duration = int64(hookRun.EndTime.Sub(hookRun.StartTime).Seconds())
 		hookRun.Status = strings.ToUpper(strings.Split(string(event.Type), "hook_")[1])
@@ -91,7 +89,6 @@ func (repo *HookRunRepository) Update(ctx context.Context, event models.JobEvent
 		hookRun.Status = eventPayload["Status"].GetStringValue()
 	}
 	hookRun.Attempt = int(eventPayload["attempt"].GetNumberValue())
-	fmt.Println(hookRun)
 	return repo.db.WithContext(ctx).Save(&hookRun).Error
 }
 
