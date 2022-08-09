@@ -36,7 +36,7 @@ type HookRunRepository struct {
 
 func (repo *HookRunRepository) Save(ctx context.Context, event models.JobEvent, jobRunSpec models.JobRunSpec) error {
 	eventPayload := event.Value
-	startedAtTimeStamp := time.Unix(int64(eventPayload["task_start_timestamp"].GetNumberValue()), 0)
+	startedAtTimeStamp := time.Unix(int64(eventPayload["event_time"].GetNumberValue()), 0)
 	resource := HookRun{
 		JobRunID:      jobRunSpec.JobRunID,
 		StartTime:     startedAtTimeStamp,
@@ -89,7 +89,6 @@ func (repo *HookRunRepository) Update(ctx context.Context, event models.JobEvent
 		hookRun.Status = eventPayload["Status"].GetStringValue()
 	}
 	hookRun.Attempt = int(eventPayload["attempt"].GetNumberValue())
-
 	return repo.db.WithContext(ctx).Save(&hookRun).Error
 }
 

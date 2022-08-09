@@ -68,8 +68,8 @@ func (repo *JobRunMetricsRepository) Update(ctx context.Context, event models.Jo
 		return err
 	}
 	jobRunMetrics.Status = eventPayload["status"].GetStringValue()
-	jobRunMetrics.Duration = int64(eventPayload["job_duration"].GetNumberValue())
 	jobRunMetrics.EndTime = time.Unix(int64(eventPayload["event_time"].GetNumberValue()), 0)
+	jobRunMetrics.Duration = int64(jobRunMetrics.EndTime.Sub(jobRunMetrics.StartTime))
 
 	return repo.db.WithContext(ctx).Save(&jobRunMetrics).Error
 }
@@ -180,7 +180,7 @@ func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobE
 		return err
 	}
 	// start time of "job_start_event" (scheduler task)
-	executedAt := time.Unix(int64(eventPayload["task_start_timestamp"].GetNumberValue()), 0)
+	executedAt := time.Unix(int64(eventPayload["event_time"].GetNumberValue()), 0)
 
 	bigEndTime := time.Date(3000, 9, 16, 19, 17, 23, 0, time.UTC)
 	resource := JobRunMetrics{
