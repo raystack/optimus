@@ -63,7 +63,8 @@ func (e *externalDependencyResolver) FetchStaticExternalDependenciesPerJobName(c
 	externalDependencyPerJobName := make(map[string]models.ExternalDependency)
 	for jobName, toBeResolvedDependency := range unresolvedDependenciesPerJobName {
 		optimusDependencies, unresolvedFromExternal := e.fetchStaticOptimusDependencies(ctx, toBeResolvedDependency)
-		unknownDependencies = e.convertUnresolvedToUnknownDependencies(jobName, unresolvedFromExternal)
+		unknownDependenciesFromUnresolved := e.convertUnresolvedToUnknownDependencies(jobName, unresolvedFromExternal)
+		unknownDependencies = append(unknownDependencies, unknownDependenciesFromUnresolved...)
 		// external dependency types other than optimus will be called in this line, and used in the line below
 		externalDependencyPerJobName[jobName] = models.ExternalDependency{
 			OptimusDependencies: optimusDependencies,
