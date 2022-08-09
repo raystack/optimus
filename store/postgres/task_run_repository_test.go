@@ -212,6 +212,7 @@ func TestIntegrationTaskRunRepository(t *testing.T) {
 		t.Run("should return latest task run attempt for a given jobRun", func(t *testing.T) {
 			db := DBSetup()
 			jobUpdateEventAttempt3Time, err := time.Parse(time.RFC3339, "2022-01-02T18:04:05Z")
+			assert.Nil(t, err)
 
 			eventValuesAttempt3, _ := structpb.NewStruct(
 				map[string]interface{}{
@@ -242,7 +243,10 @@ func TestIntegrationTaskRunRepository(t *testing.T) {
 			// adding for attempt number 3
 			err = jobRunMetricsRepository.Save(ctx, jobUpdateEventAttempt3, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
 			assert.Nil(t, err)
+
 			JobSuccessEventTime, err := time.Parse(time.RFC3339, "2022-01-02T28:04:05Z")
+			assert.Nil(t, err)
+
 			eventValuesAttemptFinish, _ := structpb.NewStruct(
 				map[string]interface{}{
 					"url":          "https://example.io",
