@@ -69,8 +69,8 @@ func (repo *JobRunMetricsRepository) Update(ctx context.Context, event models.Jo
 		return err
 	}
 	jobRunMetrics.Status = eventPayload["status"].GetStringValue()
-	jobRunMetrics.Duration = int64(eventPayload["job_duration"].GetNumberValue())
 	jobRunMetrics.EndTime = time.Unix(int64(eventPayload["event_time"].GetNumberValue()), 0)
+	jobRunMetrics.Duration = int64(jobRunMetrics.EndTime.Sub(jobRunMetrics.StartTime))
 
 	return repo.db.WithContext(ctx).Save(&jobRunMetrics).Error
 }
@@ -158,7 +158,7 @@ func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobE
 		ProjectID:   namespaceSpec.ProjectSpec.ID.UUID(),
 
 		ScheduledAt:   scheduledAtTimeStamp,
-		StartTime:     time.Unix(int64(eventPayload["task_start_timestamp"].GetNumberValue()), 0),
+		StartTime:     time.Unix(int64(eventPayload["event_time"].GetNumberValue()), 0),
 		EndTime:       bigEndTime,
 		SLADefinition: slaMissDurationInSec,
 

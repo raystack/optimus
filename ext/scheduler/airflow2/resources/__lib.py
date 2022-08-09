@@ -367,13 +367,9 @@ def optimus_notify(context, event_meta):
         "message"   : failure_message,
 
         "scheduled_at"      : current_schedule_date.strftime(TIMESTAMP_FORMAT),
-        "scheduled_at_ts"   : datetime.timestamp(current_schedule_date),
-
-        "task_start_timestamp"   : datetime.timestamp(context.get('task_instance').start_date),
 
         "job_run_id"    : context.get('dag_run').run_id,
         "task_run_id"   : context.get('run_id'),
-        "job_duration"  :get_job_run_duration(context),
         
         "attempt"       :context['task_instance'].try_number,
         "event_time"    :datetime.now().timestamp(),
@@ -398,10 +394,6 @@ def should_relay_airflow_callbacks(context):
         return True
 
 # time elapsed since job run started
-def get_job_run_duration(context):
-    dag_start_time = datetime.timestamp(context.get('dag_run').get_task_instance(JOB_START_EVENT_NAME).start_date)
-    current_time = datetime.now().timestamp()
-    return current_time - dag_start_time
 
 def get_run_type(context):
     task_identifier = context.get('task_instance_key_str')
