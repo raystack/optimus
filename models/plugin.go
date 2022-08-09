@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
+	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -120,6 +123,26 @@ type PluginOptions struct {
 	DryRun bool
 }
 
+// USED in models.PluginQuestion Validations
+type vFactory struct{}
+
+func (*vFactory) NewFromRegex(re, message string) survey.Validator {
+	var regex = regexp.MustCompile(re)
+	return func(v interface{}) error {
+		k := reflect.ValueOf(v).Kind()
+		if k != reflect.String {
+			return fmt.Errorf("was expecting a string, got %s", k.String())
+		}
+		val := v.(string)
+		if !regex.Match([]byte(val)) {
+			return fmt.Errorf("%s", message)
+		}
+		return nil
+	}
+}
+
+var ValidatorFactory = new(vFactory)
+
 type PluginQuestion struct {
 	Name        string
 	Prompt      string
@@ -136,7 +159,7 @@ type PluginQuestion struct {
 	Required        bool
 }
 
-func (q *PluginQuestion) isValid(value string) error {
+func (q *PluginQuestion) IsValid(value string) error {
 	if q.Required {
 		return survey.Required(value)
 	}
@@ -415,6 +438,12 @@ type registeredPlugins struct {
 	data map[string]*Plugin
 }
 
+func (*registeredPlugins) sortPlugins(list []*Plugin) []*Plugin {
+	pList := PluginList(list)
+	sort.Sort(pList)
+	return pList
+}
+
 func (s *registeredPlugins) GetByName(name string) (*Plugin, error) {
 	if unit, ok := s.data[name]; ok {
 		return unit, nil
@@ -427,7 +456,7 @@ func (s *registeredPlugins) GetAll() []*Plugin {
 	for _, unit := range s.data {
 		list = append(list, unit)
 	}
-	return list
+	return s.sortPlugins(list)
 }
 
 func (s *registeredPlugins) GetDependencyResolvers() []DependencyResolverMod {
@@ -459,7 +488,7 @@ func (s *registeredPlugins) GetTasks() []*Plugin {
 			list = append(list, unit)
 		}
 	}
-	return list
+	return s.sortPlugins(list)
 }
 
 func (s *registeredPlugins) GetHooks() []*Plugin {
@@ -469,7 +498,7 @@ func (s *registeredPlugins) GetHooks() []*Plugin {
 			list = append(list, unit)
 		}
 	}
-	return list
+	return s.sortPlugins(list)
 }
 
 func (s *registeredPlugins) Add(baseMod BasePlugin, cliMod CommandLineMod, drMod DependencyResolverMod, yamlMod CommandLineMod) error {

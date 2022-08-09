@@ -1,0 +1,33 @@
+name: bq2bqtest
+description: Testing
+plugintype: task
+pluginmods:
+  - cli
+pluginversion: latest
+image: docker.io/odpf/optimus-task-bq2bq-executor:latest
+secretpath: /tmp/auth.json
+
+questions:
+  - name: PROJECT
+    prompt: Project ID
+    help: Destination bigquery project ID
+    regexp: ^[a-zA-Z0-9_\-]+$
+    validationerror: invalid name (can only contain characters A-Z (in either case), 0-9, hyphen(-) or underscore (_)
+    minlength: 3
+  - name: DATASET
+    prompt: Dataset Name
+    help: Destination bigquery dataset ID
+    regexp: ^[a-zA-Z0-9_\-]+$
+    validationerror: invalid name (can only contain characters A-Z (in either case), 0-9, hyphen(-) or underscore (_)
+    minlength: 3
+
+defaultconfig:
+- name: TEST
+  value: "{{.test}}"
+
+defaultassets:
+  - name: query.sql
+    value: |
+      -- SQL query goes here
+
+      Select * from "project.dataset.table";ct * from "project.dataset.table";

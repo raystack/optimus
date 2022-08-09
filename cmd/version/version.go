@@ -2,7 +2,6 @@ package version
 
 import (
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/odpf/salt/log"
@@ -113,10 +112,8 @@ func (v *versionCommand) PostRunE(_ *cobra.Command, _ []string) error {
 func (v *versionCommand) printAllPluginInfos() {
 	pluginRepo := models.PluginRegistry
 	plugins := pluginRepo.GetAll()
-	pluginsList := models.PluginList(plugins) // casting to sort plugins by name in asc
-	sort.Sort(pluginsList)
-	v.logger.Info(fmt.Sprintf("\nDiscovered plugins: %d", len(pluginsList)))
-	for taskIdx, tasks := range pluginsList {
+	v.logger.Info(fmt.Sprintf("\nDiscovered plugins: %d", len(plugins)))
+	for taskIdx, tasks := range plugins {
 		schema := tasks.Info()
 		if tasks.YamlMod != nil {
 			v.logger.Info(fmt.Sprintf("\n%d. %s (%s)", taskIdx+1, schema.Name, "yaml"))
