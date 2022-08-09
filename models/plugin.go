@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/AlecAivazis/survey/v2"
 )
 
 const (
@@ -56,17 +58,17 @@ type PluginInfoRequest struct{}
 type PluginInfoResponse struct {
 	// Name should as simple as possible with no special characters
 	// should start with a character, better if all lowercase
-	Name        string     `validate:"nonzero"`
-	Description string     `validate:"nonzero"`
-	PluginType  PluginType `validate:"nonzero"`
+	Name        string
+	Description string
+	PluginType  PluginType
 	PluginMods  []PluginMod
 
-	PluginVersion string `validate:"nonzero"`
+	PluginVersion string
 	APIVersion    []string
 
 	// Image is the full path to docker container that will be
 	// scheduled for execution
-	Image string `validate:"nonzero"`
+	Image string
 
 	// SecretPath will be mounted inside the container as volume
 	// e.g. /opt/secret/auth.json
@@ -126,6 +128,29 @@ type PluginQuestion struct {
 	Multiselect []string
 
 	SubQuestions []PluginSubQuestion
+
+	Regexp          string
+	ValidationError string
+	MinLength       int
+	MaxLength       int
+	Required        bool
+}
+
+func (q *PluginQuestion) isValid(value string) error {
+	if q.Required {
+		return survey.Required(value)
+	}
+	var validators []survey.Validator
+	if q.Regexp != "" {
+		validators = append(validators, ValidatorFactory.NewFromRegex(q.Regexp, q.ValidationError))
+	}
+	if q.MinLength != 0 {
+		validators = append(validators, survey.MinLength(q.MinLength))
+	}
+	if q.MaxLength != 0 {
+		validators = append(validators, survey.MaxLength(q.MaxLength))
+	}
+	return survey.ComposeValidators(validators...)(value)
 }
 
 type PluginSubQuestion struct {
@@ -183,7 +208,7 @@ type ValidateQuestionResponse struct {
 }
 
 type PluginConfig struct {
-	Name  string `validate:"nonzero"`
+	Name  string
 	Value string
 }
 
@@ -225,7 +250,7 @@ type DefaultConfigResponse struct {
 }
 
 type PluginAsset struct {
-	Name  string `validate:"nonzero"`
+	Name  string
 	Value string
 }
 

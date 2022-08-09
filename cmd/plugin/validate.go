@@ -51,8 +51,8 @@ func (v *validateCommand) validateFile(pluginPath string) error {
 	if filepath.Ext(pluginPath) != ".yaml" {
 		return errors.New("expecting .yaml file at " + pluginPath)
 	}
-	plugin, err := yaml.NewYamlPlugin(pluginPath)
-	v.logPluginAsYaml(plugin)
+	plugin, err := yaml.NewPlugin(pluginPath)
+	v.logPluginAsYaml(&plugin)
 	return err
 }
 
@@ -76,11 +76,11 @@ func (v *validateCommand) validateDir(pluginPath string) error {
 	return nil
 }
 
-func (v *validateCommand) logPluginAsYaml(plugin *models.YamlPlugin) {
+func (v *validateCommand) logPluginAsYaml(plugin *models.CommandLineMod) {
 	if !v.logYaml {
 		return
 	}
-	yamlData, err := yml.Marshal(&plugin)
+	yamlData, err := yml.Marshal(plugin)
 	if err != nil {
 		v.logger.Error(err.Error())
 		return
