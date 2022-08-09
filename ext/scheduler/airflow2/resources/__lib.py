@@ -258,9 +258,6 @@ class SuperExternalTaskSensor(BaseSensorOperator):
             schedule_time = context['next_execution_date']
 
             # parse relevant metadata from the job metadata to build the task window
-<<<<<<< HEAD
-            upstream_schedule = self.get_schedule_interval(schedule_time)
-=======
             # TODO this needs to be updated to use optimus get job spec
             try:
                 upstream_schedule = self.get_schedule_interval(schedule_time)
@@ -269,7 +266,6 @@ class SuperExternalTaskSensor(BaseSensorOperator):
                 context[SCHEDULER_ERR_MSG] = "error while fetching upstream schedule :: {}".format(e)
                 log_failure_event(context)
                 return False
->>>>>>> 4e23e7628ddeb1cc952e104a34959ebaf8a19451
 
             last_upstream_schedule_time, _ = self.get_last_upstream_times(
                 schedule_time, upstream_schedule)
@@ -336,11 +332,7 @@ def optimus_notify(context, event_meta):
 
     current_dag_id = context.get('task_instance').dag_id
     current_execution_date = context.get('execution_date')
-<<<<<<< HEAD
-    schedule_time = context.get('next_execution_date')
-=======
     current_schedule_date = context.get('next_execution_date')
->>>>>>> 4e23e7628ddeb1cc952e104a34959ebaf8a19451
 
     # failure message pushed by failed tasks
     failure_messages = []
@@ -367,63 +359,22 @@ def optimus_notify(context, event_meta):
     print("failures: {}".format(failure_message))
 
     message = {
-<<<<<<< HEAD
-        "log_url": context.get('task_instance').log_url,
-        "task_id": context.get('task_instance').task_id,
-        "run_id": context.get('run_id'),
-        "duration": str(context.get('task_instance').duration),
-        "message": failure_message,
-        "exception": str(context.get('exception')) or "",
-
-        "scheduled_at"          : schedule_time.strftime(TIMESTAMP_FORMAT),
-        "scheduled_at_ts"       : datetime.timestamp(schedule_time),
-        "task_start_timestamp"   : datetime.timestamp(context.get('task_instance').start_date),
-        
-        "attempt"   :context['task_instance'].try_number,
-    }
-    if event_meta.get("status") != None :
-        message.status = event_meta.status
-    
-    event = {
-        "type": event_meta["event_type"],
-        "value": message,
-    }
-    resp = optimus_client.notify_event(params["project_name"], params["namespace"], params["job_name"], event)
-    print("posted event ", params, event, resp)
-    return
-=======
         "log_url"   : context.get('task_instance').log_url,
         "task_id"   : context.get('task_instance').task_id,
         "run_id"    : context.get('run_id'),
         "duration"  : str(context.get('task_instance').duration),
         "exception" : str(context.get('exception')) or "",
         "message"   : failure_message,
->>>>>>> 4e23e7628ddeb1cc952e104a34959ebaf8a19451
 
         "scheduled_at"      : current_schedule_date.strftime(TIMESTAMP_FORMAT),
         "scheduled_at_ts"   : datetime.timestamp(current_schedule_date),
 
-<<<<<<< HEAD
-    current_dag_id = context.get('task_instance').dag_id
-    current_dag_run_id = context.get('dag_run').run_id
-    schedule_time = context.get('next_execution_date')
-=======
         "task_start_timestamp"   : datetime.timestamp(context.get('task_instance').start_date),
->>>>>>> 4e23e7628ddeb1cc952e104a34959ebaf8a19451
 
         "job_run_id"    : context.get('dag_run').run_id,
         "task_run_id"   : context.get('run_id'),
         "job_duration"  :get_job_run_duration(context),
         
-<<<<<<< HEAD
-        "exception": str(context.get('exception')) or "",
-
-        "scheduled_at"          : schedule_time.strftime(TIMESTAMP_FORMAT),
-        "scheduled_at_ts"       : datetime.timestamp(schedule_time),
-        "task_start_timestamp"   : datetime.timestamp(context.get('task_instance').start_date),
-        
-=======
->>>>>>> 4e23e7628ddeb1cc952e104a34959ebaf8a19451
         "attempt"       :context['task_instance'].try_number,
         "event_time"    :datetime.now().timestamp(),
     }
