@@ -45,10 +45,7 @@ func (e *externalDependencyResolver) FetchInferredExternalDependenciesPerJobName
 	}
 	externalDependencyPerJobName := make(map[string]models.ExternalDependency)
 	for jobName, filters := range unresolvedDependenciesPerJobName {
-		optimusDependencies, err := e.fetchInferredOptimusDependencies(ctx, filters)
-		if err != nil {
-			return nil, err
-		}
+		optimusDependencies := e.fetchInferredOptimusDependencies(ctx, filters)
 		// external dependency types other than optimus will be called in this line, and used in the line below
 		externalDependencyPerJobName[jobName] = models.ExternalDependency{
 			OptimusDependencies: optimusDependencies,
@@ -65,11 +62,9 @@ func (e *externalDependencyResolver) FetchStaticExternalDependenciesPerJobName(c
 	var unknownDependencies []models.UnknownDependency
 	externalDependencyPerJobName := make(map[string]models.ExternalDependency)
 	for jobName, toBeResolvedDependency := range unresolvedDependenciesPerJobName {
-		optimusDependencies, unresolvedFromExternal, err := e.fetchStaticOptimusDependencies(ctx, toBeResolvedDependency)
-		if err != nil {
-			return nil, nil, err
-		}
-		unknownDependencies = convertUnresolvedToUnknownDependencies(jobName, unresolvedFromExternal)
+		optimusDependencies, unresolvedFromExternal := e.fetchStaticOptimusDependencies(ctx, toBeResolvedDependency)
+		unknownDependenciesFromUnresolved := e.convertUnresolvedToUnknownDependencies(jobName, unresolvedFromExternal)
+		unknownDependencies = append(unknownDependencies, unknownDependenciesFromUnresolved...)
 		// external dependency types other than optimus will be called in this line, and used in the line below
 		externalDependencyPerJobName[jobName] = models.ExternalDependency{
 			OptimusDependencies: optimusDependencies,
@@ -79,7 +74,7 @@ func (e *externalDependencyResolver) FetchStaticExternalDependenciesPerJobName(c
 	return externalDependencyPerJobName, unknownDependencies, nil
 }
 
-func convertUnresolvedToUnknownDependencies(jobName string, unresolvedDependencies []models.UnresolvedJobDependency) []models.UnknownDependency {
+func (*externalDependencyResolver) convertUnresolvedToUnknownDependencies(jobName string, unresolvedDependencies []models.UnresolvedJobDependency) []models.UnknownDependency {
 	unknownDependencies := make([]models.UnknownDependency, len(unresolvedDependencies))
 	for i := 0; i < len(unresolvedDependencies); i++ {
 		unknownDependencies[i] = models.UnknownDependency{
@@ -91,43 +86,37 @@ func convertUnresolvedToUnknownDependencies(jobName string, unresolvedDependenci
 	return unknownDependencies
 }
 
-func (e *externalDependencyResolver) fetchInferredOptimusDependencies(ctx context.Context, unresolvedDependencies []models.UnresolvedJobDependency) ([]models.OptimusDependency, error) {
+func (e *externalDependencyResolver) fetchInferredOptimusDependencies(ctx context.Context, unresolvedDependencies []models.UnresolvedJobDependency) []models.OptimusDependency {
 	var optimusDependencies []models.OptimusDependency
 	for _, unresolvedDependency := range unresolvedDependencies {
-		dependencies, err := e.fetchOptimusDependencies(ctx, unresolvedDependency)
-		if err != nil {
-			return nil, err
-		}
+		dependencies := e.fetchOptimusDependencies(ctx, unresolvedDependency)
 		optimusDependencies = append(optimusDependencies, dependencies...)
 	}
-	return optimusDependencies, nil
+	return optimusDependencies
 }
 
-func (e *externalDependencyResolver) fetchStaticOptimusDependencies(ctx context.Context, unresolvedDependencies []models.UnresolvedJobDependency) ([]models.OptimusDependency, []models.UnresolvedJobDependency, error) {
+func (e *externalDependencyResolver) fetchStaticOptimusDependencies(ctx context.Context, unresolvedDependencies []models.UnresolvedJobDependency) ([]models.OptimusDependency, []models.UnresolvedJobDependency) {
 	var optimusDependencies []models.OptimusDependency
 	var unresolvedFromExternal []models.UnresolvedJobDependency
 	for _, toBeResolvedDependency := range unresolvedDependencies {
-		dependencies, err := e.fetchOptimusDependencies(ctx, toBeResolvedDependency)
-		if err != nil {
-			return nil, nil, err
-		}
+		dependencies := e.fetchOptimusDependencies(ctx, toBeResolvedDependency)
 		if len(dependencies) == 0 {
 			unresolvedFromExternal = append(unresolvedFromExternal, toBeResolvedDependency)
 			continue
 		}
 		optimusDependencies = append(optimusDependencies, dependencies...)
 	}
-	return optimusDependencies, unresolvedFromExternal, nil
+	return optimusDependencies, unresolvedFromExternal
 }
 
-func (e *externalDependencyResolver) fetchOptimusDependencies(ctx context.Context, unresolvedDependency models.UnresolvedJobDependency) ([]models.OptimusDependency, error) {
+func (e *externalDependencyResolver) fetchOptimusDependencies(ctx context.Context, unresolvedDependency models.UnresolvedJobDependency) []models.OptimusDependency {
 	var dependencies []models.OptimusDependency
-	for _, getter := range e.optimusResourceManagers {
-		deps, err := getter.GetOptimusDependencies(ctx, unresolvedDependency)
+	for _, manager := range e.optimusResourceManagers {
+		deps, err := manager.GetOptimusDependencies(ctx, unresolvedDependency)
 		if err != nil {
-			return nil, err
+			continue
 		}
 		dependencies = append(dependencies, deps...)
 	}
-	return dependencies, nil
+	return dependencies
 }
