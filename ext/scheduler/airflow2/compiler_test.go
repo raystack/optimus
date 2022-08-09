@@ -71,7 +71,7 @@ func TestCompilerIntegration(t *testing.T) {
 		Owner: "mee@mee",
 		Behavior: models.JobSpecBehavior{
 			CatchUp:       true,
-			DependsOnPast: false,
+			DependsOnPast: true,
 		},
 		Schedule: models.JobSpecSchedule{
 			StartDate: time.Date(2000, 11, 11, 0, 0, 0, 0, time.UTC),
@@ -94,7 +94,7 @@ func TestCompilerIntegration(t *testing.T) {
 		Owner: "mee@mee",
 		Behavior: models.JobSpecBehavior{
 			CatchUp:       true,
-			DependsOnPast: false,
+			DependsOnPast: true,
 		},
 		Schedule: models.JobSpecSchedule{
 			StartDate: time.Date(2000, 11, 11, 0, 0, 0, 0, time.UTC),
@@ -142,7 +142,7 @@ func TestCompilerIntegration(t *testing.T) {
 		Owner: "mee@mee",
 		Behavior: models.JobSpecBehavior{
 			CatchUp:       true,
-			DependsOnPast: false,
+			DependsOnPast: true,
 			Retry: models.JobSpecBehaviorRetry{
 				Count:              4,
 				Delay:              0,
