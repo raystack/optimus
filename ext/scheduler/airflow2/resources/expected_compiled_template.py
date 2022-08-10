@@ -73,7 +73,7 @@ publish_job_end_event = PythonOperator(
         task_id = JOB_END_EVENT_NAME,
         python_callable = log_job_end,
         provide_context=True,
-        trigger_rule= 'all_done',
+        trigger_rule= 'all_success',
         dag=dag
     )
 
