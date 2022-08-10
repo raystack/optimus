@@ -85,7 +85,6 @@ func (MockCLIMod) CompileAssets(_ context.Context, req CompileAssetsRequest) (*C
 }
 
 func TestPluginModels(t *testing.T) {
-
 	t.Run("Plugin", func(t *testing.T) {
 		t.Run("IsYamlPlugin", func(t *testing.T) {
 			plugin := NewMockPlugin("abc", string(PluginTypeTask))
@@ -162,5 +161,4 @@ func TestPluginModels(t *testing.T) {
 			assert.Len(t, clis, len(plugins))
 		})
 	})
-
 }

@@ -182,6 +182,5 @@ func TestYamlPlugin(t *testing.T) {
 			yaml.Init(repo, invalidPluginPaths, pluginLogger)
 			assert.Empty(t, repo.GetAll())
 		})
-
 	})
 }
