@@ -406,8 +406,12 @@ type Plugin struct {
 	YamlMod       CommandLineMod
 }
 
+func (p *Plugin) IsYamlPlugin() bool {
+	return p.Base == nil
+}
+
 func (p *Plugin) GetSurveyMod() CommandLineMod {
-	if p.Base == nil {
+	if p.IsYamlPlugin() {
 		return p.YamlMod
 	}
 	return p.CLIMod

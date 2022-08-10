@@ -85,7 +85,7 @@ func (p *PluginSpec) DefaultAssets(context.Context, models.DefaultAssetsRequest)
 	}, nil
 }
 
-func (*PluginSpec) CompileAssets(_ context.Context, req models.CompileAssetsRequest) (*models.CompileAssetsResponse, error) { //nolint
+func (PluginSpec) CompileAssets(_ context.Context, req models.CompileAssetsRequest) (*models.CompileAssetsResponse, error) { //nolint
 	return &models.CompileAssetsResponse{
 		Assets: req.Assets,
 	}, nil
@@ -122,8 +122,8 @@ func Init(pluginsRepo models.PluginRepository, discoveredYamlPlugins []string, p
 			continue
 		}
 		pluginInfo, _ := yamlPlugin.PluginInfo()
-		if binPlugin, _ := pluginsRepo.GetByName(pluginInfo.Name); binPlugin != nil {
-			// if bin plugin exists skip loading yaml plugin
+		if plugin, _ := pluginsRepo.GetByName(pluginInfo.Name); plugin != nil && !plugin.IsYamlPlugin() {
+			pluginLogger.Debug("skipping yaml plugin (as binary already added): ", pluginInfo.Name)
 			continue
 		}
 		if err := pluginsRepo.Add(nil, nil, nil, yamlPlugin); err != nil {
