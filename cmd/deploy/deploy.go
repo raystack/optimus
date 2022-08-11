@@ -30,9 +30,8 @@ import (
 )
 
 const (
-	deploymentTimeout = time.Minute * 15
-	deployTimeout     = time.Minute * 30
-	pollInterval      = time.Second * 15
+	deployTimeout = time.Minute * 30
+	pollInterval  = time.Second * 15
 )
 
 type deployCommand struct {
@@ -119,7 +118,7 @@ func (d *deployCommand) PostRunE(_ *cobra.Command, _ []string) error {
 }
 
 func (d *deployCommand) deploy(selectedNamespaces []*config.Namespace) error {
-	conn, err := connectivity.NewConnectivity(d.clientConfig.Host, deploymentTimeout)
+	conn, err := connectivity.NewConnectivity(d.clientConfig.Host, deployTimeout)
 	if err != nil {
 		return err
 	}
