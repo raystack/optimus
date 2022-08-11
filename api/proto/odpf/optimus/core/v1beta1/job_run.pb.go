@@ -244,7 +244,7 @@ type RegisterInstanceRequest struct {
 	InstanceName string                 `protobuf:"bytes,5,opt,name=instance_name,json=instanceName,proto3" json:"instance_name,omitempty"`
 	InstanceType InstanceSpec_Type      `protobuf:"varint,6,opt,name=instance_type,json=instanceType,proto3,enum=odpf.optimus.core.v1beta1.InstanceSpec_Type" json:"instance_type,omitempty"`
 	// either set job_name if this is a scheduled execution
-	// or set jonrun_id if this is a manual triggered execution
+	// or set jobrun_id if this is a manual triggered execution
 	// and not really registered as a valid job
 	JobrunId string `protobuf:"bytes,7,opt,name=jobrun_id,json=jobrunId,proto3" json:"jobrun_id,omitempty"`
 }
@@ -334,7 +334,7 @@ type JobRunInputRequest struct {
 	InstanceName string                 `protobuf:"bytes,5,opt,name=instance_name,json=instanceName,proto3" json:"instance_name,omitempty"`
 	InstanceType InstanceSpec_Type      `protobuf:"varint,6,opt,name=instance_type,json=instanceType,proto3,enum=odpf.optimus.core.v1beta1.InstanceSpec_Type" json:"instance_type,omitempty"`
 	// either set job_name if this is a scheduled execution
-	// or set jonrun_id if this is a manual triggered execution
+	// or set jobrun_id if this is a manual triggered execution
 	// and not really registered as a valid job
 	JobrunId string `protobuf:"bytes,7,opt,name=jobrun_id,json=jobrunId,proto3" json:"jobrun_id,omitempty"`
 }

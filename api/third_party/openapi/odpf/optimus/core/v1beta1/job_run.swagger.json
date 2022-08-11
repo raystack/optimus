@@ -71,7 +71,7 @@
                 },
                 "jobrunId": {
                   "type": "string",
-                  "title": "either set job_name if this is a scheduled execution\nor set jonrun_id if this is a manual triggered execution\nand not really registered as a valid job"
+                  "title": "either set job_name if this is a scheduled execution\nor set jobrun_id if this is a manual triggered execution\nand not really registered as a valid job"
                 }
               }
             }
@@ -193,7 +193,7 @@
                 },
                 "jobrunId": {
                   "type": "string",
-                  "title": "either set job_name if this is a scheduled execution\nor set jonrun_id if this is a manual triggered execution\nand not really registered as a valid job"
+                  "title": "either set job_name if this is a scheduled execution\nor set jobrun_id if this is a manual triggered execution\nand not really registered as a valid job"
                 }
               }
             }
