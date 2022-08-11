@@ -97,7 +97,7 @@ func (repo jobSpecRepository) GetInferredDependenciesPerJobID(ctx context.Contex
 			"j.project_id as dependency_project_id").
 		Joins("join job j on js.resource_urn = j.destination").
 		Table("job_source js").
-		Where("js.project_id = ?", projectID.UUID()).
+		Where("js.project_id = ? and j.deleted_at is null", projectID.UUID()).
 		Find(&jobDependencies).Error; err != nil {
 		return nil, err
 	}
