@@ -65,8 +65,6 @@ require (
 	gorm.io/gorm v1.21.16
 )
 
-require github.com/hashicorp/go-getter v1.6.2
-
 require (
 	cloud.google.com/go v0.94.0 // indirect
 	cloud.google.com/go/storage v1.16.1 // indirect
