@@ -366,13 +366,13 @@ func FromInstanceProto(conf *pb.InstanceSpec) (models.InstanceSpec, error) {
 	if conf == nil {
 		return models.InstanceSpec{}, nil
 	}
-	var data []models.InstanceSpecData
+	var data []models.JobRunSpecData
 	for _, asset := range conf.GetData() {
 		assetType := models.InstanceDataTypeEnv
 		if asset.Type == pb.InstanceSpecData_TYPE_FILE {
 			assetType = models.InstanceDataTypeFile
 		}
-		data = append(data, models.InstanceSpecData{
+		data = append(data, models.JobRunSpecData{
 			Name:  asset.Name,
 			Value: asset.Value,
 			Type:  assetType,

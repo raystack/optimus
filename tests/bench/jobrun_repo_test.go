@@ -204,7 +204,7 @@ func getInstanceSpecs() []models.InstanceSpec {
 			Type:       models.InstanceTypeTask,
 			ExecutedAt: time.Date(2020, 11, 11, 1, 0, 0, 0, time.UTC),
 			Status:     models.RunStateAccepted,
-			Data: []models.InstanceSpecData{
+			Data: []models.JobRunSpecData{
 				{Name: "dstart", Value: "2020-01-02", Type: models.InstanceDataTypeEnv},
 			},
 		},

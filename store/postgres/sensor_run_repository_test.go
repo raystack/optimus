@@ -226,7 +226,7 @@ func TestIntegrationSensorRunRepository(t *testing.T) {
 			err := jobRunMetricsRepository.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
 			assert.Nil(t, err)
 
-			jobRunSpec, err := jobRunMetricsRepository.GetActiveJobRun(ctx, jobUpdateEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
+			jobRunSpec, err := jobRunMetricsRepository.GetLatestJobRunByScheduledTime(ctx, jobUpdateEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
 			assert.Nil(t, err)
 
 			// first sensor run for attempt number 2
@@ -253,7 +253,7 @@ func TestIntegrationSensorRunRepository(t *testing.T) {
 				Value: eventValuesAttemptFinish.GetFields(),
 			}
 			// should return the latest attempt number
-			jobRunSpec, err = jobRunMetricsRepository.GetActiveJobRun(ctx, jobSuccessEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
+			jobRunSpec, err = jobRunMetricsRepository.GetLatestJobRunByScheduledTime(ctx, jobSuccessEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
 			assert.Nil(t, err)
 
 			// first sensor run for attempt number 3

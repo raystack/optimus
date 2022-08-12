@@ -34,7 +34,7 @@ func DumpAssets(ctx context.Context, jobSpec models.JobSpec, scheduledAt time.Ti
 			Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 			Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 			InstanceSchedule: scheduledAt,
-			InstanceData: []models.InstanceSpecData{
+			InstanceData: []models.JobRunSpecData{
 				{
 					Name:  models.ConfigKeyExecutionTime,
 					Value: scheduledAt.Format(models.InstanceScheduledAtTimeLayout),

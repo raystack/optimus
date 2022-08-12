@@ -391,6 +391,7 @@ func (s *JobSpecServiceServerTestSuite) TestGetJob_Fail_JobSvcGetWithFiltersErro
 func TestJobSpecificationOnServer(t *testing.T) {
 	log := log.NewNoop()
 	ctx := context.Background()
+
 	t.Run("RegisterJobSpecification", func(t *testing.T) {
 		t.Run("should save a job specification", func(t *testing.T) {
 			projectName := "a-data-project"

@@ -400,6 +400,7 @@ func (s *OptimusServer) setupHandlers() error {
 		pluginRepo,
 		jobRunService,
 		runInputCompiler,
+		monitoringService,
 		models.BatchScheduler))
 	// backup service
 	pb.RegisterBackupServiceServer(s.grpcServer, v1handler.NewBackupServiceServer(s.logger,
