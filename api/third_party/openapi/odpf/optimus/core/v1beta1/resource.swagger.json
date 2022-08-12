@@ -275,23 +275,20 @@
     "v1beta1DeployResourceSpecificationResponse": {
       "type": "object",
       "properties": {
-        "logStatus": {
-          "$ref": "#/definitions/v1beta1Log"
+        "success": {
+          "type": "boolean"
+        },
+        "ack": {
+          "type": "boolean",
+          "title": "non ack responses are more of a progress/info response\nand not success or failure statuses"
+        },
+        "message": {
+          "type": "string"
+        },
+        "resourceName": {
+          "type": "string"
         }
       }
-    },
-    "v1beta1Level": {
-      "type": "string",
-      "enum": [
-        "LEVEL_UNSPECIFIED",
-        "LEVEL_TRACE",
-        "LEVEL_DEBUG",
-        "LEVEL_INFO",
-        "LEVEL_WARNING",
-        "LEVEL_ERROR",
-        "LEVEL_FATAL"
-      ],
-      "default": "LEVEL_UNSPECIFIED"
     },
     "v1beta1ListResourceSpecificationResponse": {
       "type": "object",
@@ -301,17 +298,6 @@
           "items": {
             "$ref": "#/definitions/v1beta1ResourceSpecification"
           }
-        }
-      }
-    },
-    "v1beta1Log": {
-      "type": "object",
-      "properties": {
-        "level": {
-          "$ref": "#/definitions/v1beta1Level"
-        },
-        "message": {
-          "type": "string"
         }
       }
     },

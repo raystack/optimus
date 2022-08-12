@@ -71,7 +71,7 @@
                 },
                 "jobrunId": {
                   "type": "string",
-                  "title": "either set job_name if this is a scheduled execution\nor set jobrun_id if this is a manual triggered execution\nand not really registered as a valid job"
+                  "title": "either set job_name if this is a scheduled execution\nor set jonrun_id if this is a manual triggered execution\nand not really registered as a valid job"
                 }
               }
             }
@@ -136,67 +136,6 @@
               "type": "string"
             },
             "collectionFormat": "multi"
-          }
-        ],
-        "tags": [
-          "JobRunService"
-        ]
-      }
-    },
-    "/v1beta1/project/{projectName}/job/{jobName}/run_input": {
-      "post": {
-        "summary": "JobRunInput is used to fetch task/hook compiled configuration and assets.",
-        "operationId": "JobRunService_JobRunInput",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1beta1JobRunInputResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "jobName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "scheduledAt": {
-                  "type": "string",
-                  "format": "date-time"
-                },
-                "instanceName": {
-                  "type": "string"
-                },
-                "instanceType": {
-                  "$ref": "#/definitions/v1beta1InstanceSpecType"
-                },
-                "jobrunId": {
-                  "type": "string",
-                  "title": "either set job_name if this is a scheduled execution\nor set jobrun_id if this is a manual triggered execution\nand not really registered as a valid job"
-                }
-              }
-            }
           }
         ],
         "tags": [
@@ -545,6 +484,29 @@
         }
       }
     },
+    "v1beta1InstanceContext": {
+      "type": "object",
+      "properties": {
+        "envs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "secrets": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "v1beta1InstanceSpec": {
       "type": "object",
       "properties": {
@@ -673,29 +635,6 @@
         "scheduledAt": {
           "type": "string",
           "format": "date-time"
-        }
-      }
-    },
-    "v1beta1JobRunInputResponse": {
-      "type": "object",
-      "properties": {
-        "envs": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "files": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "secrets": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
         }
       }
     },
@@ -935,7 +874,7 @@
           "$ref": "#/definitions/v1beta1InstanceSpec"
         },
         "context": {
-          "$ref": "#/definitions/v1beta1JobRunInputResponse"
+          "$ref": "#/definitions/v1beta1InstanceContext"
         }
       }
     },
