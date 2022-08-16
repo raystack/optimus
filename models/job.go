@@ -203,6 +203,10 @@ type JobSpecTaskDestination struct {
 	Type        DestinationType
 }
 
+func (jtd JobSpecTaskDestination) URN() string {
+	return fmt.Sprintf(DestinationURNFormat, jtd.Type, jtd.Destination)
+}
+
 type JobSpecTaskDependencies []string
 
 // using array to keep order, map would be more performant
@@ -435,7 +439,11 @@ type JobService interface {
 	GetByNameForProject(context.Context, string, ProjectSpec) (JobSpec, NamespaceSpec, error)
 	// TODO: to be deprecated
 	Sync(context.Context, NamespaceSpec, progress.Observer) error
+
 	Check(context.Context, NamespaceSpec, []JobSpec, progress.Observer) error
+
+	ResolveDependecy(ctx context.Context, proj ProjectSpec, currentSpec JobSpec) (interface{}, error)
+
 	// GetByDestination fetches a Job by destination for a specific project
 	GetByDestination(ctx context.Context, projectSpec ProjectSpec, destination string) (JobSpec, error)
 	// GetDownstream fetches downstream jobspecs

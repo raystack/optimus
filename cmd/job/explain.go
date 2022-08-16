@@ -2,6 +2,8 @@ package job
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +12,10 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+
+	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
+	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/cmd/connectivity"
 
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/survey"
@@ -21,8 +27,13 @@ import (
 )
 
 type explainCommand struct {
-	logger          log.Logger
-	configFilePath  string
+	logger log.Logger
+
+	configFilePath string
+
+	projectName   string
+	namespaceName string
+
 	clientConfig    *config.ClientConfig
 	jobSurvey       *survey.JobSurvey
 	namespaceSurvey *survey.NamespaceSurvey
@@ -45,41 +56,52 @@ func NewExplainCommand() *cobra.Command {
 	// Config filepath flag
 	cmd.Flags().StringVarP(&explain.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
 
+	//cmd.Flags().StringVar(&explain.host, "host", "", "Optimus service endpoint url")
+
 	return cmd
 }
 
-func (r *explainCommand) PreRunE(_ *cobra.Command, _ []string) error {
+func (e *explainCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	// Load mandatory config
-	if err := r.loadConfig(); err != nil {
+	if err := e.loadConfig(); err != nil {
 		return err
 	}
 
-	r.logger = logger.NewClientLogger(r.clientConfig.Log)
-	r.jobSurvey = survey.NewJobSurvey()
-	r.namespaceSurvey = survey.NewNamespaceSurvey(r.logger)
+	e.logger = logger.NewClientLogger(e.clientConfig.Log)
+	e.jobSurvey = survey.NewJobSurvey()
+	e.namespaceSurvey = survey.NewNamespaceSurvey(e.logger)
 	return nil
 }
 
-func (r *explainCommand) RunE(_ *cobra.Command, args []string) error {
-	namespace, err := r.namespaceSurvey.AskToSelectNamespace(r.clientConfig)
+func (e *explainCommand) RunE(_ *cobra.Command, args []string) error {
+	e.projectName = e.clientConfig.Project.Name
+	namespace, err := e.namespaceSurvey.AskToSelectNamespace(e.clientConfig)
+	e.namespaceName = namespace.Name
 	if err != nil {
 		return err
 	}
 	// TODO: fetch jobSpec from server instead
-	jobSpec, err := r.getJobSpecByName(args, namespace.Job.Path)
+	jobSpec, err := e.getJobSpecByName(args, namespace.Job.Path)
 	if err != nil {
 		return err
 	}
 
+	e.logger.Info("\n\n\n ********* string(jobSpecFromServerByte) \n\n")
+
+	jobSpecFromServer := e.GetJobSpecFromServer(jobSpec)
+
+	jobSpecFromServerByte, _ := json.Marshal(jobSpecFromServer)
+
+	e.logger.Info(string(jobSpecFromServerByte))
 	// create temporary directory
 	explainedPath := filepath.Join(".", "explain", jobSpec.Name)
 	if err := os.MkdirAll(explainedPath, 0o770); err != nil {
 		return err
 	}
-	r.logger.Info(fmt.Sprintf("Downloading assets in %s", explainedPath))
+	e.logger.Info(fmt.Sprintf("Downloading assets in %s", explainedPath))
 
 	now := time.Now()
-	r.logger.Info(fmt.Sprintf("Assuming execution time as current time of %s\n", now.Format(models.InstanceScheduledAtTimeLayout)))
+	e.logger.Info(fmt.Sprintf("Assuming execution time as current time of %s\n", now.Format(models.InstanceScheduledAtTimeLayout)))
 
 	templateEngine := compiler.NewGoEngine()
 	templates, err := compiler.DumpAssets(context.Background(), jobSpec, now, templateEngine, true)
@@ -89,16 +111,16 @@ func (r *explainCommand) RunE(_ *cobra.Command, args []string) error {
 
 	writeToFileFn := utils.WriteStringToFileIndexed()
 	for name, content := range templates {
-		if err := writeToFileFn(filepath.Join(explainedPath, name), content, r.logger.Writer()); err != nil {
+		if err := writeToFileFn(filepath.Join(explainedPath, name), content, e.logger.Writer()); err != nil {
 			return err
 		}
 	}
 
-	r.logger.Info(logger.ColoredSuccess("\nExplain complete."))
+	e.logger.Info(logger.ColoredSuccess("\nExplain complete."))
 	return nil
 }
 
-func (r *explainCommand) getJobSpecByName(args []string, namespaceJobPath string) (models.JobSpec, error) {
+func (e *explainCommand) getJobSpecByName(args []string, namespaceJobPath string) (models.JobSpec, error) {
 	pluginRepo := models.PluginRegistry
 	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespaceJobPath)
 	jobSpecRepo := local.NewJobSpecRepository(jobSpecFs, local.NewJobSpecAdapter(pluginRepo))
@@ -106,7 +128,7 @@ func (r *explainCommand) getJobSpecByName(args []string, namespaceJobPath string
 	var jobName string
 	var err error
 	if len(args) == 0 {
-		jobName, err = r.jobSurvey.AskToSelectJobName(jobSpecRepo)
+		jobName, err = e.jobSurvey.AskToSelectJobName(jobSpecRepo)
 		if err != nil {
 			return models.JobSpec{}, err
 		}
@@ -116,12 +138,41 @@ func (r *explainCommand) getJobSpecByName(args []string, namespaceJobPath string
 	return jobSpecRepo.GetByName(jobName)
 }
 
-func (r *explainCommand) loadConfig() error {
+func (e *explainCommand) GetJobSpecFromServer(jobSpec models.JobSpec) *pb.JobSpecification {
+	timeout := time.Minute * 5
+	conn, err := connectivity.NewConnectivity(e.clientConfig.Host, timeout)
+	if err != nil {
+		//todo handle later
+		fmt.Println("err:: ", err.Error())
+		return nil
+	}
+	defer conn.Close()
+
+	jobSpecService := pb.NewJobSpecificationServiceClient(conn.GetConnection())
+	jobExplainResponse, err := jobSpecService.JobExplain(conn.GetContext(), &pb.JobExplainRequest{
+		ProjectName:   e.projectName,
+		NamespaceName: e.namespaceName,
+		Spec:          v1handler.ToJobSpecificationProto(jobSpec),
+	})
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			e.logger.Error(logger.ColoredError("Refresh process took too long, timing out"))
+		}
+		//return fmt.Errorf("refresh request failed: %w", err)
+		//todo handle later
+		fmt.Println("err:: ", err.Error())
+		return nil
+	}
+
+	return jobExplainResponse.Spec
+}
+
+func (e *explainCommand) loadConfig() error {
 	// TODO: find a way to load the config in one place
-	conf, err := config.LoadClientConfig(r.configFilePath)
+	conf, err := config.LoadClientConfig(e.configFilePath)
 	if err != nil {
 		return err
 	}
-	*r.clientConfig = *conf
+	*e.clientConfig = *conf
 	return nil
 }

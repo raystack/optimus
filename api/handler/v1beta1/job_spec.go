@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -162,6 +163,55 @@ func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 		return status.Errorf(codes.Internal, "failed to compile jobs\n%s", err.Error())
 	}
 	return nil
+}
+
+func logit(logger func(msg string, args ...interface{}), v interface{}) {
+	vbyte, _ := json.Marshal(v)
+	logger(string(vbyte))
+}
+
+func (sv *JobSpecServiceServer) JobExplain(ctx context.Context, req *pb.JobExplainRequest) (*pb.JobExplainResponse, error) {
+	sv.l.Info("\n\n\n in optmus job explain \n\n\n")
+	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
+	if err != nil {
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
+	}
+
+	jobSpec, err := FromJobProto(req.GetSpec(), sv.pluginRepo)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "cannot deserialize job: \n%s", err.Error())
+	}
+
+	// validate job spec
+	if err = sv.jobSvc.Check(ctx, namespaceSpec, []models.JobSpec{jobSpec}, sv.progressObserver); err != nil {
+		return nil, status.Errorf(codes.Internal, "spec validation failed\n%s", err.Error())
+	}
+	JobSpecTaskDestination, JobSpecTaskDependencies, err := sv.jobSvc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
+	sv.l.Info("\n\nJobSpecTaskDependencies :: ")
+	logit(sv.l.Info, JobSpecTaskDependencies)
+	sv.l.Info("\n\n JobSpecTaskDestination :: ")
+	logit(sv.l.Info, JobSpecTaskDestination)
+	jobSpec.ResourceDestination = JobSpecTaskDestination.URN()
+	resolvedSpec, _ := sv.jobSvc.ResolveDependecy(ctx, namespaceSpec.ProjectSpec, jobSpec)
+	sv.l.Info("\n\nresolvedSpec :: ")
+	logit(sv.l.Info, resolvedSpec)
+
+	sv.l.Info("\n\n jobSpec :: ")
+	logit(sv.l.Info, jobSpec)
+
+	//_, err = sv.jobSvc.Create(ctx, namespaceSpec, jobSpec)
+	//if err != nil {
+	//	return nil, status.Errorf(codes.Internal, "%s: failed to save job %s", err.Error(), jobSpec.Name)
+	//}
+
+	//if err := sv.jobSvc.Sync(ctx, namespaceSpec, sv.progressObserver); err != nil {
+	//	return nil, status.Errorf(codes.Internal, "failed to sync jobs: \n%s", err.Error())
+	//}
+
+	return &pb.JobExplainResponse{
+		Success: true,
+		Spec:    ToJobSpecificationProto(jobSpec),
+	}, nil
 }
 
 func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req *pb.CreateJobSpecificationRequest) (*pb.CreateJobSpecificationResponse, error) {

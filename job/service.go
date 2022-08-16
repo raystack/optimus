@@ -480,6 +480,15 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 	return resolvedSpecs, resolvedErrors
 }
 
+func (srv *Service) ResolveDependecy(ctx context.Context, proj models.ProjectSpec, currentSpec models.JobSpec) (interface{}, error) {
+	resolvedSpec, err := srv.dependencyResolver.Resolve(ctx, proj, currentSpec, nil)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %s/%s: %w", errDependencyResolution, currentSpec.Name, currentSpec.Name, err)
+	}
+	return resolvedSpec, nil
+}
+
+// do other jobs depend on this jobSpec
 func (srv *Service) isDependency(ctx context.Context, jobSpec models.JobSpec) (bool, error) {
 	// inferred and static dependents
 	dependentJobs, err := srv.jobSpecRepository.GetDependentJobs(ctx, &jobSpec)
