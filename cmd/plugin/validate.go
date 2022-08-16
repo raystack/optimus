@@ -18,10 +18,11 @@ import (
 )
 
 type validateCommand struct {
-	logger       log.Logger
-	serverConfig *config.ServerConfig
-	path         string
-	logYaml      bool
+	logger        log.Logger
+	serverConfig  *config.ServerConfig
+	path          string
+	logYaml       bool
+	pluginVersion string
 }
 
 // NewInstallCommand initializes plugin install command
@@ -32,12 +33,13 @@ func NewValidateCommand(serverConfig *config.ServerConfig) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "validate",
 		Short:   "validate installed plugins",
-		Example: "optimus plugin validate -path bq2bq.yaml",
+		Example: "optimus plugin validate --path bq2bq.yaml --pluginversion 0.2.2 --print",
 		RunE:    validate.RunE,
 		PreRunE: validate.PreRunE,
 	}
 	cmd.Flags().StringVar(&validate.path, "path", ".plugins", "file or dir of plugins")
 	cmd.Flags().BoolVar(&validate.logYaml, "print", false, "prints yaml plugin model")
+	cmd.Flags().StringVar(&validate.pluginVersion, "pluginversion", "", "overrides pluginversion in yaml file")
 	return cmd
 }
 
@@ -46,13 +48,38 @@ func (v *validateCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
+func (v *validateCommand) overrideFile(plugin models.CommandLineMod, pluginPath string) error {
+	if v.pluginVersion == "" {
+		return nil
+	}
+	pluginRef := plugin.(*yaml.PluginSpec)
+	pluginRef.PluginVersion = v.pluginVersion
+	data, marshalErr := yml.Marshal(pluginRef)
+	if marshalErr != nil {
+		return marshalErr
+	}
+	ioerr := ioutil.WriteFile(pluginPath, data, 0)
+	if ioerr == nil {
+		v.logger.Info(fmt.Sprintf("Success in Overriding pluginversion in %s", pluginPath))
+	}
+	return ioerr
+}
+
 func (v *validateCommand) validateFile(pluginPath string) error {
-	v.logger.Info("validatig " + pluginPath)
+	v.logger.Info("\nValidating " + pluginPath)
 	if filepath.Ext(pluginPath) != ".yaml" {
 		return errors.New("expecting .yaml file at " + pluginPath)
 	}
-	plugin, err := yaml.NewPlugin(pluginPath)
-	v.logPluginAsYaml(&plugin)
+	var err error
+	var plugin models.CommandLineMod
+	if plugin, err = yaml.NewPluginSpec(pluginPath); err == nil {
+		overrideErr := v.overrideFile(plugin, pluginPath)
+		if overrideErr != nil {
+			return overrideErr
+		}
+		v.logPluginAsYaml(&plugin)
+		return nil
+	}
 	return err
 }
 

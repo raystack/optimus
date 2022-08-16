@@ -21,7 +21,6 @@ __pycache__
 optimus.yaml
 config.yaml
 coverage.txt
-uml/
 .plugins/
 /api/proto/odpf/**/*
 

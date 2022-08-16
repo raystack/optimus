@@ -64,7 +64,7 @@ func TestYamlPlugin(t *testing.T) {
 	}
 
 	t.Run("PluginSpec", func(t *testing.T) {
-		plugin, _ := yaml.NewPlugin(testYamlPluginPath)
+		plugin, _ := yaml.NewPluginSpec(testYamlPluginPath)
 		t.Run("PluginInfo", func(t *testing.T) {
 			actual, _ := plugin.PluginInfo()
 			assert.Equal(t, expectedInfo, actual)

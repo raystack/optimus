@@ -63,11 +63,11 @@ type PluginInfoResponse struct {
 	// should start with a character, better if all lowercase
 	Name        string
 	Description string
-	PluginType  PluginType
-	PluginMods  []PluginMod
+	PluginType  PluginType  `yaml:",omitempty"`
+	PluginMods  []PluginMod `yaml:",omitempty"`
 
-	PluginVersion string
-	APIVersion    []string
+	PluginVersion string   `yaml:",omitempty"`
+	APIVersion    []string `yaml:",omitempty"`
 
 	// Image is the full path to docker container that will be
 	// scheduled for execution
@@ -77,13 +77,13 @@ type PluginInfoResponse struct {
 	// e.g. /opt/secret/auth.json
 	// here auth.json should be a key in kube secret which gets
 	// translated to a file mounted in provided path
-	SecretPath string
+	SecretPath string `yaml:",omitempty"`
 
 	// DependsOn returns list of hooks this should be executed after
-	DependsOn []string
+	DependsOn []string `yaml:",omitempty"`
 	// PluginType provides the place of execution, could be before the transformation
 	// after the transformation, etc
-	HookType HookType
+	HookType HookType `yaml:",omitempty"`
 }
 
 // CommandLineMod needs to be implemented by plugins to interact with optimus CLI
@@ -144,19 +144,19 @@ func (*vFactory) NewFromRegex(re, message string) survey.Validator {
 var ValidatorFactory = new(vFactory)
 
 type PluginQuestion struct {
-	Name        string
-	Prompt      string
-	Help        string
-	Default     string
-	Multiselect []string
+	Name        string   `yaml:",omitempty"`
+	Prompt      string   `yaml:",omitempty"`
+	Help        string   `yaml:",omitempty"`
+	Default     string   `yaml:",omitempty"`
+	Multiselect []string `yaml:",omitempty"`
 
-	SubQuestions []PluginSubQuestion
+	SubQuestions []PluginSubQuestion `yaml:",omitempty"`
 
-	Regexp          string
-	ValidationError string
-	MinLength       int
-	MaxLength       int
-	Required        bool
+	Regexp          string `yaml:",omitempty"`
+	ValidationError string `yaml:",omitempty"`
+	MinLength       int    `yaml:",omitempty"`
+	MaxLength       int    `yaml:",omitempty"`
+	Required        bool   `yaml:",omitempty"`
 }
 
 func (q *PluginQuestion) IsValid(value string) error {
@@ -216,7 +216,7 @@ type GetQuestionsRequest struct {
 }
 
 type GetQuestionsResponse struct {
-	Questions PluginQuestions
+	Questions PluginQuestions `yaml:",omitempty"`
 }
 
 type ValidateQuestionRequest struct {
@@ -269,7 +269,7 @@ type DefaultConfigRequest struct {
 }
 
 type DefaultConfigResponse struct {
-	Config PluginConfigs `yaml:"defaultconfig"`
+	Config PluginConfigs `yaml:"defaultconfig,omitempty"`
 }
 
 type PluginAsset struct {
@@ -311,7 +311,7 @@ type DefaultAssetsRequest struct {
 }
 
 type DefaultAssetsResponse struct {
-	Assets PluginAssets `yaml:"defaultassets"`
+	Assets PluginAssets `yaml:"defaultassets,omitempty"`
 }
 
 type CompileAssetsRequest struct {
@@ -417,35 +417,30 @@ func (p *Plugin) GetSurveyMod() CommandLineMod {
 	return p.CLIMod
 }
 
-type PluginList []*Plugin
-
-func (s PluginList) Len() int {
-	return len(s)
-}
-func (s PluginList) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-func (s PluginList) Less(i, j int) bool {
-	return s[i].Info().Name < s[j].Info().Name
-}
-
 func (p *Plugin) Info() *PluginInfoResponse {
-	if p.Base != nil {
-		resp, _ := p.Base.PluginInfo()
+	if p.IsYamlPlugin() {
+		resp, _ := p.YamlMod.PluginInfo()
 		return resp
 	}
-	resp, _ := p.YamlMod.PluginInfo()
+	resp, _ := p.Base.PluginInfo()
 	return resp
 }
 
 type registeredPlugins struct {
-	data map[string]*Plugin
+	data       map[string]*Plugin
+	sortedKeys []string
 }
 
-func (*registeredPlugins) sortPlugins(list []*Plugin) []*Plugin {
-	pList := PluginList(list)
-	sort.Sort(pList)
-	return pList
+func (s *registeredPlugins) lazySortPluginKeys() {
+	// already sorted
+	if len(s.data) == 0 || len(s.sortedKeys) > 0 {
+		return
+	}
+
+	for k := range s.data {
+		s.sortedKeys = append(s.sortedKeys, k)
+	}
+	sort.Strings(s.sortedKeys)
 }
 
 func (s *registeredPlugins) GetByName(name string) (*Plugin, error) {
@@ -457,15 +452,18 @@ func (s *registeredPlugins) GetByName(name string) (*Plugin, error) {
 
 func (s *registeredPlugins) GetAll() []*Plugin {
 	var list []*Plugin
-	for _, unit := range s.data {
-		list = append(list, unit)
+	s.lazySortPluginKeys() // sorts keys if not sorted
+	for _, pluginName := range s.sortedKeys {
+		list = append(list, s.data[pluginName])
 	}
-	return s.sortPlugins(list)
+	return list
 }
 
 func (s *registeredPlugins) GetDependencyResolvers() []DependencyResolverMod {
 	var list []DependencyResolverMod
-	for _, unit := range s.data {
+	s.lazySortPluginKeys() // sorts keys if not sorted
+	for _, pluginKey := range s.sortedKeys {
+		unit := s.data[pluginKey]
 		if unit.DependencyMod != nil {
 			list = append(list, unit.DependencyMod)
 		}
@@ -487,22 +485,26 @@ func (s *registeredPlugins) GetCommandLines() []CommandLineMod {
 
 func (s *registeredPlugins) GetTasks() []*Plugin {
 	var list []*Plugin
-	for _, unit := range s.data {
+	s.lazySortPluginKeys() // sorts keys if not sorted
+	for _, pluginName := range s.sortedKeys {
+		unit := s.data[pluginName]
 		if unit.Info().PluginType == PluginTypeTask {
 			list = append(list, unit)
 		}
 	}
-	return s.sortPlugins(list)
+	return list
 }
 
 func (s *registeredPlugins) GetHooks() []*Plugin {
 	var list []*Plugin
-	for _, unit := range s.data {
+	s.lazySortPluginKeys()
+	for _, pluginName := range s.sortedKeys {
+		unit := s.data[pluginName]
 		if unit.Info().PluginType == PluginTypeHook {
 			list = append(list, unit)
 		}
 	}
-	return s.sortPlugins(list)
+	return list
 }
 
 func (s *registeredPlugins) Add(baseMod BasePlugin, cliMod CommandLineMod, drMod DependencyResolverMod, yamlMod CommandLineMod) error {

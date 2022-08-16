@@ -19,20 +19,20 @@ const (
 )
 
 type PluginSpec struct {
-	models.PluginInfoResponse    `yaml:",inline"`
-	models.GetQuestionsResponse  `yaml:",inline"` // PluginQuestion has extra attrs related to validation
-	models.DefaultAssetsResponse `yaml:",inline"`
-	models.DefaultConfigResponse `yaml:",inline"`
+	models.PluginInfoResponse    `yaml:",inline,omitempty"`
+	models.GetQuestionsResponse  `yaml:",inline,omitempty"`
+	models.DefaultAssetsResponse `yaml:",inline,omitempty"`
+	models.DefaultConfigResponse `yaml:",inline,omitempty"`
 }
 
 func (p *PluginSpec) PluginInfo() (*models.PluginInfoResponse, error) { // nolint
 	return &models.PluginInfoResponse{
 		Name:          p.Name,
 		Description:   p.Description,
-		Image:         p.Image,
+		Image:         fmt.Sprintf("%s:%s", p.Image, p.PluginVersion),
 		SecretPath:    p.SecretPath,
 		PluginType:    p.PluginType,
-		PluginMods:    p.PluginMods,
+		PluginMods:    []models.PluginMod{models.ModTypeCLI}, // default cli mod for yaml plugins
 		PluginVersion: p.PluginVersion,
 		HookType:      p.HookType,
 		DependsOn:     p.DependsOn,
@@ -40,13 +40,13 @@ func (p *PluginSpec) PluginInfo() (*models.PluginInfoResponse, error) { // nolin
 	}, nil
 }
 
-func (p *PluginSpec) GetQuestions(context.Context, models.GetQuestionsRequest) (*models.GetQuestionsResponse, error) { //nolint
+func (p *PluginSpec) GetQuestions(context.Context, models.GetQuestionsRequest) (*models.GetQuestionsResponse, error) {
 	return &models.GetQuestionsResponse{
 		Questions: p.Questions,
 	}, nil
 }
 
-func (p *PluginSpec) ValidateQuestion(_ context.Context, req models.ValidateQuestionRequest) (*models.ValidateQuestionResponse, error) { //nolint
+func (*PluginSpec) ValidateQuestion(_ context.Context, req models.ValidateQuestionRequest) (*models.ValidateQuestionResponse, error) {
 	question := req.Answer.Question
 	value := req.Answer.Value
 	if err := question.IsValid(value); err != nil {
@@ -60,8 +60,8 @@ func (p *PluginSpec) ValidateQuestion(_ context.Context, req models.ValidateQues
 	}, nil
 }
 
-func (p *PluginSpec) DefaultConfig(_ context.Context, req models.DefaultConfigRequest) (*models.DefaultConfigResponse, error) { //nolint
-	conf := []models.PluginConfig{}
+func (p *PluginSpec) DefaultConfig(_ context.Context, req models.DefaultConfigRequest) (*models.DefaultConfigResponse, error) {
+	var conf []models.PluginConfig
 
 	// config from survey answers
 	for _, ans := range req.Answers {
@@ -79,19 +79,19 @@ func (p *PluginSpec) DefaultConfig(_ context.Context, req models.DefaultConfigRe
 	}, nil
 }
 
-func (p *PluginSpec) DefaultAssets(context.Context, models.DefaultAssetsRequest) (*models.DefaultAssetsResponse, error) { //nolint
+func (p *PluginSpec) DefaultAssets(context.Context, models.DefaultAssetsRequest) (*models.DefaultAssetsResponse, error) {
 	return &models.DefaultAssetsResponse{
 		Assets: p.Assets,
 	}, nil
 }
 
-func (PluginSpec) CompileAssets(_ context.Context, req models.CompileAssetsRequest) (*models.CompileAssetsResponse, error) { //nolint
+func (PluginSpec) CompileAssets(_ context.Context, req models.CompileAssetsRequest) (*models.CompileAssetsResponse, error) {
 	return &models.CompileAssetsResponse{
 		Assets: req.Assets,
 	}, nil
 }
 
-func NewPlugin(pluginPath string) (models.CommandLineMod, error) {
+func NewPluginSpec(pluginPath string) (*PluginSpec, error) {
 	fs := afero.NewOsFs()
 	fd, err := fs.Open(pluginPath)
 	if err != nil {
@@ -105,7 +105,7 @@ func NewPlugin(pluginPath string) (models.CommandLineMod, error) {
 	if err != nil {
 		return nil, err
 	}
-	plugin := PluginSpec{}
+	var plugin PluginSpec
 	if err := yaml.UnmarshalStrict(pluginBytes, &plugin); err != nil {
 		return &plugin, err
 	}
@@ -116,7 +116,7 @@ func NewPlugin(pluginPath string) (models.CommandLineMod, error) {
 // NOTE: binary plugins are loaded prior to yaml plugins
 func Init(pluginsRepo models.PluginRepository, discoveredYamlPlugins []string, pluginLogger hclog.Logger) {
 	for _, yamlPluginPath := range discoveredYamlPlugins {
-		yamlPlugin, err := NewPlugin(yamlPluginPath)
+		yamlPlugin, err := NewPluginSpec(yamlPluginPath)
 		if err != nil {
 			pluginLogger.Error(fmt.Sprintf("plugin Init: %s", yamlPluginPath), err)
 			continue
