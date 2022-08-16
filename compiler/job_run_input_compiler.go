@@ -3,6 +3,7 @@ package compiler
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/utils"
@@ -20,7 +21,7 @@ const (
 
 type JobRunInputCompiler interface {
 	// Compile prepares instance execution context environment
-	Compile(ctx context.Context, namespaceSpec models.NamespaceSpec, secrets models.ProjectSecrets, jobRun models.JobRun, instanceSpec models.InstanceSpec) (assets *models.JobRunInput, err error)
+	Compile(ctx context.Context, namespaceSpec models.NamespaceSpec, secrets models.ProjectSecrets, jobSpec models.JobSpec, scheduledAt time.Time, jobRunSpecData []models.JobRunSpecData, instanceType models.InstanceType, instanceName string) (assets *models.JobRunInput, err error)
 }
 
 type compiler struct {
@@ -28,10 +29,18 @@ type compiler struct {
 	assetsCompiler *JobRunAssetsCompiler
 }
 
-func (c compiler) Compile(ctx context.Context, namespace models.NamespaceSpec, projSecrets models.ProjectSecrets, jobRun models.JobRun, instanceSpec models.InstanceSpec) (
-	*models.JobRunInput, error) {
+func (c compiler) Compile(ctx context.Context, namespace models.NamespaceSpec,
+	projSecrets models.ProjectSecrets, jobSpec models.JobSpec, scheduledAt time.Time,
+	jobRunSpecData []models.JobRunSpecData, instanceType models.InstanceType,
+	instanceName string) (*models.JobRunInput, error) {
 	secrets := projSecrets.ToMap()
-	instanceConfig := getInstanceEnv(instanceSpec)
+
+	var instanceConfig map[string]string
+	if jobRunSpecData == nil {
+		instanceConfig = nil
+	} else {
+		instanceConfig = getEnvMapFromJobRunSpecData(jobRunSpecData)
+	}
 
 	// Prepare template context and compile task config
 	taskContext := PrepareContext(
@@ -40,19 +49,19 @@ func (c compiler) Compile(ctx context.Context, namespace models.NamespaceSpec, p
 		From(instanceConfig).WithName("inst").AddToContext(),
 	)
 
-	taskCompiledConfs, err := c.configCompiler.CompileConfigs(jobRun.Spec.Task.Config, taskContext)
+	taskCompiledConfs, err := c.configCompiler.CompileConfigs(jobSpec.Task.Config, taskContext)
 	if err != nil {
 		return nil, err
 	}
 
 	// Compile the assets using context for task
-	fileMap, err := c.assetsCompiler.CompileJobRunAssets(ctx, jobRun, instanceSpec, taskContext)
+	fileMap, err := c.assetsCompiler.CompileJobRunAssets(ctx, jobSpec, jobRunSpecData, scheduledAt, taskContext)
 	if err != nil {
 		return nil, err
 	}
 
 	// If task request return the compiled assets and config
-	if instanceSpec.Type == models.InstanceTypeTask {
+	if instanceType == models.InstanceTypeTask {
 		return &models.JobRunInput{
 			ConfigMap:  utils.MergeMaps(taskCompiledConfs.Configs, instanceConfig),
 			SecretsMap: taskCompiledConfs.Secrets,
@@ -65,7 +74,7 @@ func (c compiler) Compile(ctx context.Context, namespace models.NamespaceSpec, p
 		From(taskCompiledConfs.Configs, taskCompiledConfs.Secrets).WithName("task").WithKeyPrefix(TaskConfigPrefix),
 	)
 	mergedContext := utils.MergeAnyMaps(taskContext, hookContext)
-	hookConfs, err := c.compileConfigForHook(instanceSpec.Name, jobRun, mergedContext)
+	hookConfs, err := c.compileConfigForHook(instanceName, jobSpec, mergedContext)
 	if err != nil {
 		return nil, err
 	}
@@ -77,8 +86,8 @@ func (c compiler) Compile(ctx context.Context, namespace models.NamespaceSpec, p
 	}, nil
 }
 
-func (c compiler) compileConfigForHook(hookName string, jobRun models.JobRun, templateContext map[string]interface{}) (*CompiledConfigs, error) {
-	hook, err := jobRun.Spec.GetHookByName(hookName)
+func (c compiler) compileConfigForHook(hookName string, jobSpec models.JobSpec, templateContext map[string]interface{}) (*CompiledConfigs, error) {
+	hook, err := jobSpec.GetHookByName(hookName)
 	if err != nil {
 		return nil, fmt.Errorf("requested hook not found %s: %w", hookName, err)
 	}
@@ -89,19 +98,6 @@ func (c compiler) compileConfigForHook(hookName string, jobRun models.JobRun, te
 	}
 
 	return hookConfs, err
-}
-
-func getInstanceEnv(instanceSpec models.InstanceSpec) map[string]string {
-	if instanceSpec.Data == nil {
-		return nil
-	}
-	envMap := map[string]string{}
-	for _, jobRunData := range instanceSpec.Data {
-		if jobRunData.Type == models.InstanceDataTypeEnv {
-			envMap[jobRunData.Name] = jobRunData.Value
-		}
-	}
-	return envMap
 }
 
 func NewJobRunInputCompiler(confComp *JobConfigCompiler, assetCompiler *JobRunAssetsCompiler) *compiler {

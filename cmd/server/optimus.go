@@ -53,6 +53,7 @@ func New(conf config.ServerConfig) (*OptimusServer, error) {
 	server := &OptimusServer{
 		conf:       conf,
 		serverAddr: addr,
+		logger:     createLogger(conf),
 	}
 
 	if err := checkRequiredConfigs(conf.Serve); err != nil {
@@ -60,7 +61,6 @@ func New(conf config.ServerConfig) (*OptimusServer, error) {
 	}
 
 	setupFns := []setupFn{
-		server.setupLogger,
 		server.setupPlugins,
 		server.setupTelemetry,
 		server.setupAppKey,
@@ -83,12 +83,11 @@ func New(conf config.ServerConfig) (*OptimusServer, error) {
 	return server, nil
 }
 
-func (s *OptimusServer) setupLogger() error {
-	s.logger = log.NewLogrus(
-		log.LogrusWithLevel(s.conf.Log.Level.String()),
+func createLogger(conf config.ServerConfig) *log.Logrus {
+	return log.NewLogrus(
+		log.LogrusWithLevel(conf.Log.Level.String()),
 		log.LogrusWithWriter(os.Stderr),
 	)
-	return nil
 }
 
 func (s *OptimusServer) setupPlugins() error {
@@ -349,7 +348,7 @@ func (s *OptimusServer) setupHandlers() error {
 		projectResourceSpecRepoFac: projectResourceSpecRepoFac,
 	}
 	backupRepo := postgres.NewBackupRepository(s.dbConn)
-	dataStoreService := datastore.NewService(&resourceSpecRepoFac, models.DatastoreRegistry)
+	dataStoreService := datastore.NewService(s.logger, &resourceSpecRepoFac, models.DatastoreRegistry)
 	backupService := datastore.NewBackupService(&projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), backupRepo, pluginService)
 	// adapter service
 	// adapterService := v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry)
@@ -401,6 +400,7 @@ func (s *OptimusServer) setupHandlers() error {
 		pluginRepo,
 		jobRunService,
 		runInputCompiler,
+		monitoringService,
 		models.BatchScheduler))
 	// backup service
 	pb.RegisterBackupServiceServer(s.grpcServer, v1handler.NewBackupServiceServer(s.logger,

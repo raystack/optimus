@@ -110,35 +110,33 @@ func TestIntegrationSensorRunRepository(t *testing.T) {
 		assert.Equal(t, "task unit cannot be empty", jrepo.Save(ctx, jobConfigs[1], jobDestination).Error())
 		return dbConn
 	}
-	//
-	//scheduledAt, _ := time.Parse(time.RFC3339, "2022-01-02T20:34:05+05:30")
-	//startTime, _ := time.Parse(time.RFC3339, "2022-01-01T05:30:00+05:30")
-	//endTime, _ := time.Parse(time.RFC3339, "3000-09-17T00:47:23+05:30")
 
 	SLAMissDuearionSecs := int64(100)
-	eventTimeString := "2022-01-02T16:04:05Z"
-	sensorEventTimeString := "2022-01-02T16:04:05Z"
-	eventValues, _ := structpb.NewStruct(
+	jobStartEventTimeString := "2022-01-02T16:04:05Z"
+	jobStartEventTime, _ := time.Parse(time.RFC3339, jobStartEventTimeString)
+	sensorEventTimeString := jobStartEventTimeString
+	scheduledAt := "2022-01-02T15:04:05Z"
+	jobStartEventValues, _ := structpb.NewStruct(
 		map[string]interface{}{
 			"url":          "https://example.io",
-			"scheduled_at": "2022-01-02T15:04:05Z",
+			"scheduled_at": scheduledAt,
 			"attempt":      "2",
-			"event_time":   eventTimeString,
+			"event_time":   jobStartEventTime.Unix(),
 		},
 	)
 	sensorStartTime, _ := time.Parse(time.RFC3339, sensorEventTimeString)
 	sensorEventValues, _ := structpb.NewStruct(
 		map[string]interface{}{
-			"url":                  "https://example.io",
-			"scheduled_at":         "2022-01-02T15:04:05Z",
-			"attempt":              "2",
-			"task_start_timestamp": sensorStartTime.Unix(),
+			"url":          "https://example.io",
+			"scheduled_at": scheduledAt,
+			"attempt":      "2",
+			"event_time":   sensorStartTime.Unix(),
 		},
 	)
 
 	jobEvent := models.JobEvent{
 		Type:  models.JobStartEvent,
-		Value: eventValues.GetFields(),
+		Value: jobStartEventValues.GetFields(),
 	}
 
 	sensorRunStartEvent := models.JobEvent{
@@ -183,10 +181,11 @@ func TestIntegrationSensorRunRepository(t *testing.T) {
 
 			updateEventValues, _ := structpb.NewStruct(
 				map[string]interface{}{
-					"url":        "https://example.io",
-					"event_time": sensorEndTime.Unix(),
-					"attempt":    "2",
-					"status":     "SUCCESS",
+					"url":          "https://example.io",
+					"event_time":   sensorEndTime.Unix(),
+					"scheduled_at": scheduledAt,
+					"attempt":      "2",
+					"status":       "SUCCESS",
 				},
 			)
 			jobUpdateEvent := models.JobEvent{
@@ -200,21 +199,21 @@ func TestIntegrationSensorRunRepository(t *testing.T) {
 			sensorRunSpec, err := repo.GetSensorRun(ctx, jobRunSpec)
 			assert.Nil(t, err)
 
-			assert.Equal(t, sensorRunSpec.JobRunID, jobRunSpec.JobRunID)
-			assert.Equal(t, sensorRunSpec.Duration, sensorEndTime.Unix()-sensorStartTime.Unix())
+			assert.Equal(t, jobRunSpec.JobRunID, sensorRunSpec.JobRunID)
+			assert.Equal(t, sensorEndTime.Unix()-sensorStartTime.Unix(), sensorRunSpec.Duration)
 			assert.Equal(t, "SUCCESS", sensorRunSpec.Status)
 		})
 	})
 	t.Run("GetSensorRun", func(t *testing.T) {
 		t.Run("should return latest sensor run attempt for a given jobRun", func(t *testing.T) {
 			db := DBSetup()
-
+			JobStartEventTime, _ := time.Parse(time.RFC3339, "2022-01-02T18:04:05Z")
 			eventValuesAttempt3, _ := structpb.NewStruct(
 				map[string]interface{}{
 					"url":          "https://example.io",
 					"scheduled_at": "2022-01-02T15:04:05Z",
 					"attempt":      3,
-					"event_time":   "2022-01-02T18:04:05Z",
+					"event_time":   JobStartEventTime.Unix(),
 				},
 			)
 			jobUpdateEventAttempt3 := models.JobEvent{
@@ -227,7 +226,7 @@ func TestIntegrationSensorRunRepository(t *testing.T) {
 			err := jobRunMetricsRepository.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
 			assert.Nil(t, err)
 
-			jobRunSpec, err := jobRunMetricsRepository.GetActiveJobRun(ctx, jobUpdateEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
+			jobRunSpec, err := jobRunMetricsRepository.GetLatestJobRunByScheduledTime(ctx, jobUpdateEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
 			assert.Nil(t, err)
 
 			// first sensor run for attempt number 2
@@ -239,13 +238,14 @@ func TestIntegrationSensorRunRepository(t *testing.T) {
 			err = jobRunMetricsRepository.Save(ctx, jobUpdateEventAttempt3, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
 			assert.Nil(t, err)
 
+			JobSuccessEventTime, err := time.Parse(time.RFC3339, "2022-01-02T18:14:05Z")
+			assert.Nil(t, err)
 			eventValuesAttemptFinish, _ := structpb.NewStruct(
 				map[string]interface{}{
 					"url":          "https://example.io",
 					"scheduled_at": "2022-01-02T15:04:05Z",
 					"attempt":      "3",
-					"job_duration": "120",
-					"event_time":   "2022-01-02T28:04:05Z",
+					"event_time":   JobSuccessEventTime.Unix(),
 				},
 			)
 			jobSuccessEventAttempt3 := models.JobEvent{
@@ -253,7 +253,7 @@ func TestIntegrationSensorRunRepository(t *testing.T) {
 				Value: eventValuesAttemptFinish.GetFields(),
 			}
 			// should return the latest attempt number
-			jobRunSpec, err = jobRunMetricsRepository.GetActiveJobRun(ctx, jobSuccessEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
+			jobRunSpec, err = jobRunMetricsRepository.GetLatestJobRunByScheduledTime(ctx, jobSuccessEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
 			assert.Nil(t, err)
 
 			// first sensor run for attempt number 3

@@ -253,44 +253,36 @@ class SuperExternalTaskSensor(BaseSensorOperator):
         self._optimus_client = OptimusAPIClient(optimus_hostname)
 
     def poke(self, context):
+        log_start_event(context, EVENT_NAMES.get("SENSOR_START_EVENT"))
+        schedule_time = context['next_execution_date']
+
         try:
-            log_start_event(context, EVENT_NAMES.get("SENSOR_START_EVENT"))
-            schedule_time = context['next_execution_date']
+            upstream_schedule = self.get_schedule_interval(schedule_time)
+        except Exception as e:
+            self.log.warning("error while fetching upstream schedule :: {}".format(e))
+            context[SCHEDULER_ERR_MSG] = "error while fetching upstream schedule :: {}".format(e)
+            return False
 
-            # parse relevant metadata from the job metadata to build the task window
-            # TODO this needs to be updated to use optimus get job spec
-            try:
-                upstream_schedule = self.get_schedule_interval(schedule_time)
-            except Exception as e:
-                self.log.warning("error while fetching upstream schedule :: {}".format(e))
-                context[SCHEDULER_ERR_MSG] = "error while fetching upstream schedule :: {}".format(e)
-                log_failure_event(context)
-                return False
+        last_upstream_schedule_time, _ = self.get_last_upstream_times(
+            schedule_time, upstream_schedule)
 
-            last_upstream_schedule_time, _ = self.get_last_upstream_times(
-                schedule_time, upstream_schedule)
-
-            # get schedule window
-            task_window = JobSpecTaskWindow(self.window_size, 0, "m", self._optimus_client)
-            schedule_time_window_start, schedule_time_window_end = task_window.get_schedule_window(
-                last_upstream_schedule_time.strftime(TIMESTAMP_FORMAT),upstream_schedule)
+        # get schedule window
+        task_window = JobSpecTaskWindow(self.window_size, 0, "m", self._optimus_client)
+        schedule_time_window_start, schedule_time_window_end = task_window.get_schedule_window(
+            last_upstream_schedule_time.strftime(TIMESTAMP_FORMAT),upstream_schedule)
 
 
-            self.log.info("waiting for upstream runs between: {} - {} schedule times of airflow dag run".format(
-                schedule_time_window_start, schedule_time_window_end))
+        self.log.info("waiting for upstream runs between: {} - {} schedule times of airflow dag run".format(
+            schedule_time_window_start, schedule_time_window_end))
 
-            # a = 0/0
-            if not self._are_all_job_runs_successful(schedule_time_window_start, schedule_time_window_end):
-                self.log.warning("unable to find enough successful executions for upstream '{}' in "
-                                "'{}' dated between {} and {}(inclusive), rescheduling sensor".
-                                format(self.optimus_job, self.optimus_project, schedule_time_window_start,
-                                        schedule_time_window_end))
-                log_failure_event(context)
-                return False
-            return True
-        except Exception as e :
-            context[SCHEDULER_ERR_MSG] = "error while sensor poke :: {}".format(e)
-            log_failure_event(context)
+        # a = 0/0
+        if not self._are_all_job_runs_successful(schedule_time_window_start, schedule_time_window_end):
+            self.log.warning("unable to find enough successful executions for upstream '{}' in "
+                            "'{}' dated between {} and {}(inclusive), rescheduling sensor".
+                            format(self.optimus_job, self.optimus_project, schedule_time_window_start,
+                                    schedule_time_window_end))
+            return False
+        return True
 
     def get_last_upstream_times(self, schedule_time_of_current_job, upstream_schedule_interval):
         second_ahead_of_schedule_time = schedule_time_of_current_job + timedelta(seconds=1)
@@ -367,13 +359,9 @@ def optimus_notify(context, event_meta):
         "message"   : failure_message,
 
         "scheduled_at"      : current_schedule_date.strftime(TIMESTAMP_FORMAT),
-        "scheduled_at_ts"   : datetime.timestamp(current_schedule_date),
-
-        "task_start_timestamp"   : datetime.timestamp(context.get('task_instance').start_date),
 
         "job_run_id"    : context.get('dag_run').run_id,
         "task_run_id"   : context.get('run_id'),
-        "job_duration"  :get_job_run_duration(context),
         
         "attempt"       :context['task_instance'].try_number,
         "event_time"    :datetime.now().timestamp(),
@@ -398,10 +386,6 @@ def should_relay_airflow_callbacks(context):
         return True
 
 # time elapsed since job run started
-def get_job_run_duration(context):
-    dag_start_time = datetime.timestamp(context.get('dag_run').get_task_instance(JOB_START_EVENT_NAME).start_date)
-    current_time = datetime.now().timestamp()
-    return current_time - dag_start_time
 
 def get_run_type(context):
     task_identifier = context.get('task_instance_key_str')

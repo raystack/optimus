@@ -16,6 +16,10 @@ var (
 	ErrEmptyConfig      = errors.New("empty config")
 )
 
+const (
+	ISODateFormat = "2006-01-02T15:04:05Z"
+)
+
 type ProjectJobPair struct {
 	Project models.ProjectSpec
 	Job     models.JobSpec
@@ -103,7 +107,8 @@ type JobRunMetricsRepository interface {
 	Save(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec, int64) error
 	Update(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec) error
 	Get(context.Context, models.JobEvent, models.NamespaceSpec, models.JobSpec) (models.JobRunSpec, error)
-	GetActiveJobRun(context.Context, string, models.NamespaceSpec, models.JobSpec) (models.JobRunSpec, error)
+	GetLatestJobRunByScheduledTime(context.Context, string, models.NamespaceSpec, models.JobSpec) (models.JobRunSpec, error)
+	GetByID(context.Context, uuid.UUID, models.JobSpec) (models.JobRunSpec, error)
 }
 
 // TaskRunRepository represents a storage interface for Job runs generated to

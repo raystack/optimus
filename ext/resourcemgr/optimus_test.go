@@ -238,7 +238,8 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
                         "name": "hook-1-config-1-key",
                         "value": "hook-1-config-1-value"
                     }]
-                }]
+                }],
+                "taskName": "task-1"
             }
         }
     ]
@@ -265,6 +266,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 				ProjectName:   "project",
 				NamespaceName: "namespace",
 				JobName:       "job",
+				TaskName:      "task-1",
 			},
 		}
 

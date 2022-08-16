@@ -142,7 +142,6 @@ func (s *ResourceServiceServerTestSuite) TestDeployResourceSpecification_Success
 func (s *ResourceServiceServerTestSuite) TestDeployResourceSpecification_Fail_StreamRecvError() {
 	stream := new(mock.DeployResourceSpecificationServer)
 	stream.On("Recv").Return(nil, errors.New("any error")).Once()
-	stream.On("Send", mock2.Anything).Return(nil).Once()
 
 	runtimeServiceServer := s.newResourceServiceServer()
 	err := runtimeServiceServer.DeployResourceSpecification(stream)
@@ -225,7 +224,6 @@ func (s *ResourceServiceServerTestSuite) TestDeployResourceSpecification_Fail_Re
 	s.resourceService.AssertExpectations(s.T())
 }
 
-// TODO: refactor to test suite
 func TestResourcesOnServer(t *testing.T) {
 	log := log.NewNoop()
 	ctx := context.Background()
@@ -290,7 +288,7 @@ func TestResourcesOnServer(t *testing.T) {
 			}
 
 			resourceSvc := new(mock.DatastoreService)
-			resourceSvc.On("CreateResource", ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, nil).Return(nil)
+			resourceSvc.On("CreateResource", ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, mock2.Anything).Return(nil)
 			defer resourceSvc.AssertExpectations(t)
 
 			namespaceService := new(mock.NamespaceService)
@@ -370,7 +368,7 @@ func TestResourcesOnServer(t *testing.T) {
 			}
 
 			resourceSvc := new(mock.DatastoreService)
-			resourceSvc.On("UpdateResource", ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, nil).Return(nil)
+			resourceSvc.On("UpdateResource", ctx, namespaceSpec, []models.ResourceSpec{resourceSpec}, mock2.Anything).Return(nil)
 			defer resourceSvc.AssertExpectations(t)
 
 			namespaceService := new(mock.NamespaceService)

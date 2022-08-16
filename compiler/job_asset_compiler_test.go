@@ -61,7 +61,7 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 			Name:   "bq",
 			Type:   models.InstanceTypeTask,
 			Status: models.RunStateRunning,
-			Data: []models.InstanceSpecData{
+			Data: []models.JobRunSpecData{
 				{
 					Name:  models.ConfigKeyExecutionTime,
 					Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
@@ -97,7 +97,7 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 			defer pluginRepo.AssertExpectations(t)
 
 			assetsCompiler := compiler.NewJobAssetsCompiler(nil, pluginRepo)
-			_, err := assetsCompiler.CompileJobRunAssets(ctx, jobRun, instanceSpec, templateContext)
+			_, err := assetsCompiler.CompileJobRunAssets(ctx, jobRun.Spec, instanceSpec.Data, jobRun.ScheduledAt, templateContext)
 
 			assert.NotNil(t, err)
 			assert.Equal(t, "error", err.Error())
@@ -108,7 +108,7 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 			defer pluginRepo.AssertExpectations(t)
 
 			assetsCompiler := compiler.NewJobAssetsCompiler(engine, pluginRepo)
-			assets, err := assetsCompiler.CompileJobRunAssets(ctx, jobRun, instanceSpec, templateContext)
+			assets, err := assetsCompiler.CompileJobRunAssets(ctx, jobRun.Spec, instanceSpec.Data, jobRun.ScheduledAt, templateContext)
 
 			assert.Nil(t, err)
 			expectedQuery := fmt.Sprintf("select * from table WHERE event_timestamp > '%s' and name = '%s'",
@@ -133,7 +133,7 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 			defer pluginRepo.AssertExpectations(t)
 
 			assetsCompiler := compiler.NewJobAssetsCompiler(engine, pluginRepo)
-			assets, err := assetsCompiler.CompileJobRunAssets(ctx, jobRun, instanceSpec, templateContext)
+			assets, err := assetsCompiler.CompileJobRunAssets(ctx, jobRun.Spec, instanceSpec.Data, jobRun.ScheduledAt, templateContext)
 
 			assert.Nil(t, err)
 			expectedQuery := fmt.Sprintf("select * from table WHERE event_timestamp > '%s' and name = '%s'",

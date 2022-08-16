@@ -96,9 +96,9 @@ func (s *GRPCServer) DefaultAssets(ctx context.Context, req *pbp.DefaultAssetsRe
 }
 
 func (s *GRPCServer) CompileAssets(ctx context.Context, req *pbp.CompileAssetsRequest) (*pbp.CompileAssetsResponse, error) {
-	var instanceData []models.InstanceSpecData
+	var instanceData []models.JobRunSpecData
 	for _, inst := range req.InstanceData {
-		instanceData = append(instanceData, models.InstanceSpecData{
+		instanceData = append(instanceData, models.JobRunSpecData{
 			Name:  inst.Name,
 			Value: inst.Value,
 			Type:  utils.FromEnumProto(inst.Type.String(), "type"),

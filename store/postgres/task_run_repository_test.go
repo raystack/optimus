@@ -68,9 +68,11 @@ func TestIntegrationTaskRunRepository(t *testing.T) {
 						Value: "select * from 1",
 					},
 				}),
+			ResourceDestination: jobDestination,
 		},
 		{
-			Name: "",
+			Name:                "",
+			ResourceDestination: jobDestination,
 		},
 		{
 			ID:   uuid.New(),
@@ -83,6 +85,7 @@ func TestIntegrationTaskRunRepository(t *testing.T) {
 					},
 				},
 			},
+			ResourceDestination: jobDestination,
 		},
 	}
 
@@ -116,23 +119,25 @@ func TestIntegrationTaskRunRepository(t *testing.T) {
 	//endTime, _ := time.Parse(time.RFC3339, "3000-09-17T00:47:23+05:30")
 
 	SLAMissDuearionSecs := int64(100)
-	eventTimeString := "2022-01-02T16:04:05Z"
-	taskEventTimeString := "2022-01-02T16:04:05Z"
+	jobStartEventTimeString := "2022-01-02T16:04:05Z"
+	jobStartEventTime, _ := time.Parse(time.RFC3339, jobStartEventTimeString)
+	taskEventTimeString := jobStartEventTimeString
+	scheduledAt := "2022-01-02T15:04:05Z"
 	eventValues, _ := structpb.NewStruct(
 		map[string]interface{}{
 			"url":          "https://example.io",
-			"scheduled_at": "2022-01-02T15:04:05Z",
+			"scheduled_at": scheduledAt,
 			"attempt":      "2",
-			"event_time":   eventTimeString,
+			"event_time":   jobStartEventTime.Unix(),
 		},
 	)
 	taskStartTime, _ := time.Parse(time.RFC3339, taskEventTimeString)
 	taskEventValues, _ := structpb.NewStruct(
 		map[string]interface{}{
-			"url":                  "https://example.io",
-			"scheduled_at":         "2022-01-02T15:04:05Z",
-			"attempt":              "2",
-			"task_start_timestamp": taskStartTime.Unix(),
+			"url":          "https://example.io",
+			"scheduled_at": scheduledAt,
+			"attempt":      "2",
+			"event_time":   taskStartTime.Unix(),
 		},
 	)
 
@@ -183,10 +188,11 @@ func TestIntegrationTaskRunRepository(t *testing.T) {
 
 			updateEventValues, _ := structpb.NewStruct(
 				map[string]interface{}{
-					"url":        "https://example.io",
-					"event_time": taskEndTime.Unix(),
-					"attempt":    "2",
-					"status":     "SUCCESS",
+					"url":          "https://example.io",
+					"event_time":   taskEndTime.Unix(),
+					"attempt":      "2",
+					"scheduled_at": scheduledAt,
+					"status":       "SUCCESS",
 				},
 			)
 			jobUpdateEvent := models.JobEvent{
@@ -208,13 +214,15 @@ func TestIntegrationTaskRunRepository(t *testing.T) {
 	t.Run("GetTaskRun", func(t *testing.T) {
 		t.Run("should return latest task run attempt for a given jobRun", func(t *testing.T) {
 			db := DBSetup()
+			jobUpdateEventAttempt3Time, err := time.Parse(time.RFC3339, "2022-01-02T18:04:05Z")
+			assert.Nil(t, err)
 
 			eventValuesAttempt3, _ := structpb.NewStruct(
 				map[string]interface{}{
 					"url":          "https://example.io",
 					"scheduled_at": "2022-01-02T15:04:05Z",
 					"attempt":      3,
-					"event_time":   "2022-01-02T18:04:05Z",
+					"event_time":   jobUpdateEventAttempt3Time.Unix(),
 				},
 			)
 			jobUpdateEventAttempt3 := models.JobEvent{
@@ -224,10 +232,10 @@ func TestIntegrationTaskRunRepository(t *testing.T) {
 
 			jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db)
 			// adding for attempt number 2
-			err := jobRunMetricsRepository.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
+			err = jobRunMetricsRepository.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
 			assert.Nil(t, err)
 
-			jobRunSpec, err := jobRunMetricsRepository.GetActiveJobRun(ctx, jobUpdateEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
+			jobRunSpec, err := jobRunMetricsRepository.GetLatestJobRunByScheduledTime(ctx, jobUpdateEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
 			assert.Nil(t, err)
 
 			// first task run for attempt number 2
@@ -239,13 +247,15 @@ func TestIntegrationTaskRunRepository(t *testing.T) {
 			err = jobRunMetricsRepository.Save(ctx, jobUpdateEventAttempt3, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
 			assert.Nil(t, err)
 
+			JobSuccessEventTime, err := time.Parse(time.RFC3339, "2022-01-02T15:04:05Z")
+			assert.Nil(t, err)
+
 			eventValuesAttemptFinish, _ := structpb.NewStruct(
 				map[string]interface{}{
 					"url":          "https://example.io",
 					"scheduled_at": "2022-01-02T15:04:05Z",
 					"attempt":      "3",
-					"job_duration": "120",
-					"event_time":   "2022-01-02T28:04:05Z",
+					"event_time":   JobSuccessEventTime.Unix(),
 				},
 			)
 			jobSuccessEventAttempt3 := models.JobEvent{
@@ -253,7 +263,7 @@ func TestIntegrationTaskRunRepository(t *testing.T) {
 				Value: eventValuesAttemptFinish.GetFields(),
 			}
 			// should return the latest attempt number
-			jobRunSpec, err = jobRunMetricsRepository.GetActiveJobRun(ctx, jobSuccessEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
+			jobRunSpec, err = jobRunMetricsRepository.GetLatestJobRunByScheduledTime(ctx, jobSuccessEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
 			assert.Nil(t, err)
 
 			// first task run for attempt number 3
@@ -262,6 +272,8 @@ func TestIntegrationTaskRunRepository(t *testing.T) {
 
 			taskRunSpec, err := repo.GetTaskRun(ctx, jobRunSpec)
 			assert.Equal(t, taskRunSpec.JobRunAttempt, jobRunSpec.Attempt)
+			assert.Nil(t, err)
+			assert.Equal(t, taskRunSpec.JobRunID, jobRunSpec.JobRunID)
 			assert.Nil(t, err)
 		})
 	})

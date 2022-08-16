@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/progress"
 )
 
@@ -408,6 +409,7 @@ type OptimusDependency struct {
 	ProjectName   string
 	NamespaceName string
 	JobName       string
+	TaskName      string
 }
 
 type HTTPDependency struct {
@@ -449,9 +451,9 @@ type JobService interface {
 	// GetDownstream fetches downstream jobspecs
 	GetDownstream(ctx context.Context, projectSpec ProjectSpec, jobName string) ([]JobSpec, error)
 	// Refresh Redeploy current persisted state of jobs
-	Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string, observer progress.Observer) error
+	Refresh(ctx context.Context, projectName string, namespaceNames []string, jobNames []string, logWriter writer.LogWriter) (DeploymentID, error)
 	// Deploy the requested jobs per namespace
-	Deploy(context.Context, string, string, []JobSpec, progress.Observer) (DeploymentID, error)
+	Deploy(context.Context, string, string, []JobSpec, writer.LogWriter) (DeploymentID, error)
 	// GetDeployment getting status and result of job deployment
 	GetDeployment(ctx context.Context, deployID DeploymentID) (JobDeployment, error)
 	// GetByFilter gets the jobspec based on projectName, jobName, resourceDestination filters.
@@ -619,6 +621,8 @@ type JobRunSpec struct {
 	SLAMissDelay  int
 	Duration      int64
 	SLADefinition int64
+
+	Data []JobRunSpecData
 }
 
 type TaskRunSpec struct {

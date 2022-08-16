@@ -162,7 +162,7 @@ func (s *jobRunService) prepInstance(ctx context.Context, jobRun models.JobRun, 
 		ExecutedAt: executedAt,
 		Status:     models.RunStateRunning,
 		// append optimus configs based on the values of a specific JobRun eg, jobScheduledTime
-		Data: []models.InstanceSpecData{
+		Data: []models.JobRunSpecData{
 			{
 				Name:  models.ConfigKeyExecutionTime,
 				Value: executedAt.Format(models.InstanceScheduledAtTimeLayout),

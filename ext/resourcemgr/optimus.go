@@ -113,5 +113,6 @@ func (o *optimusResourceManager) toOptimusDependency(response jobSpecificationRe
 		ProjectName:   response.ProjectName,
 		NamespaceName: response.NamespaceName,
 		JobName:       response.Job.Name,
+		TaskName:      response.Job.TaskName,
 	}
 }

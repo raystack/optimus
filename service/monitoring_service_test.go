@@ -45,6 +45,7 @@ func TestMonitoringService(t *testing.T) {
 			"event_time":   "2022-01-02T16:04:05Z",
 		},
 	)
+	jobDestination := "p.d.t"
 	jobSpec := models.JobSpec{
 		Version: 1,
 		Name:    "test1",
@@ -57,6 +58,7 @@ func TestMonitoringService(t *testing.T) {
 				},
 			},
 		},
+		ResourceDestination: jobDestination,
 	}
 	jobRunMetricsRepository := new(mock.JobRunMetricsRepository)
 
@@ -65,6 +67,7 @@ func TestMonitoringService(t *testing.T) {
 	sensorRunRepository := new(mock.SensorRunRepository)
 
 	hookRunRepository := new(mock.HookRunRepository)
+
 	monitoringService := service.NewMonitoringService(
 		jobRunMetricsRepository,
 		sensorRunRepository,
@@ -89,6 +92,7 @@ func TestMonitoringService(t *testing.T) {
 				slaMissDurationInSec,
 			).Return(nil)
 			defer jobRunMetricsRepository.AssertExpectations(t)
+
 			err = monitoringService.ProcessEvent(ctx, jobStartEvent, namespaceSpec, jobSpec)
 			assert.Nil(t, err)
 		})
@@ -132,7 +136,7 @@ func TestMonitoringService(t *testing.T) {
 				defer taskRunRepository.AssertExpectations(t)
 
 				jobRunMetricsRepository.On(
-					"GetActiveJobRun",
+					"GetLatestJobRunByScheduledTime",
 					ctx,
 					event.Value["scheduled_at"].GetStringValue(),
 					namespaceSpec,
@@ -164,7 +168,7 @@ func TestMonitoringService(t *testing.T) {
 				defer taskRunRepository.AssertExpectations(t)
 
 				jobRunMetricsRepository.On(
-					"GetActiveJobRun",
+					"GetLatestJobRunByScheduledTime",
 					ctx,
 					event.Value["scheduled_at"].GetStringValue(),
 					namespaceSpec,
@@ -199,7 +203,7 @@ func TestMonitoringService(t *testing.T) {
 				defer sensorRunRepository.AssertExpectations(t)
 
 				jobRunMetricsRepository.On(
-					"GetActiveJobRun",
+					"GetLatestJobRunByScheduledTime",
 					ctx,
 					event.Value["scheduled_at"].GetStringValue(),
 					namespaceSpec,
@@ -231,7 +235,7 @@ func TestMonitoringService(t *testing.T) {
 				defer sensorRunRepository.AssertExpectations(t)
 
 				jobRunMetricsRepository.On(
-					"GetActiveJobRun",
+					"GetLatestJobRunByScheduledTime",
 					ctx,
 					event.Value["scheduled_at"].GetStringValue(),
 					namespaceSpec,
@@ -266,7 +270,7 @@ func TestMonitoringService(t *testing.T) {
 				defer hookRunRepository.AssertExpectations(t)
 
 				jobRunMetricsRepository.On(
-					"GetActiveJobRun",
+					"GetLatestJobRunByScheduledTime",
 					ctx,
 					event.Value["scheduled_at"].GetStringValue(),
 					namespaceSpec,
@@ -298,7 +302,7 @@ func TestMonitoringService(t *testing.T) {
 				defer hookRunRepository.AssertExpectations(t)
 
 				jobRunMetricsRepository.On(
-					"GetActiveJobRun",
+					"GetLatestJobRunByScheduledTime",
 					ctx,
 					event.Value["scheduled_at"].GetStringValue(),
 					namespaceSpec,

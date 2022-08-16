@@ -33,7 +33,7 @@ type Instance struct {
 }
 
 func (j Instance) ToSpec() (models.InstanceSpec, error) {
-	var data []models.InstanceSpecData
+	var data []models.JobRunSpecData
 	if j.Data != nil {
 		if err := json.Unmarshal(j.Data, &data); err != nil {
 			return models.InstanceSpec{}, err

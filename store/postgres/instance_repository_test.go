@@ -134,7 +134,7 @@ func TestIntegrationInstanceRepository(t *testing.T) {
 			Type:       models.InstanceTypeTask,
 			Status:     models.RunStateSuccess,
 			ExecutedAt: time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC),
-			Data: []models.InstanceSpecData{
+			Data: []models.JobRunSpecData{
 				{Name: "dstart", Value: "2020-01-02", Type: models.InstanceDataTypeEnv},
 			},
 		},
