@@ -123,10 +123,10 @@ func Init(pluginsRepo models.PluginRepository, discoveredYamlPlugins []string, p
 		}
 		pluginInfo, _ := yamlPlugin.PluginInfo()
 		if plugin, _ := pluginsRepo.GetByName(pluginInfo.Name); plugin != nil && !plugin.IsYamlPlugin() {
-			pluginLogger.Debug("skipping yaml plugin (as binary already added): ", pluginInfo.Name)
+			pluginLogger.Debug(fmt.Sprintf("skipping yaml plugin (as binary already added): %s", pluginInfo.Name))
 			continue
 		}
-		if err := pluginsRepo.Add(nil, nil, nil, yamlPlugin); err != nil {
+		if err := pluginsRepo.AddYaml(yamlPlugin); err != nil {
 			pluginLogger.Error(fmt.Sprintf("PluginRegistry.Add: %s", yamlPluginPath), err)
 			continue
 		}

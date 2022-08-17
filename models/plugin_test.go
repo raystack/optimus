@@ -11,17 +11,14 @@ import (
 
 func NewMockPlugin(name, pluginType string) *models.Plugin {
 	return &models.Plugin{
-		Base:    &MockBasePlugin{Name: name, Type: pluginType},
-		CLIMod:  &MockCLIMod{Name: name, Type: pluginType, IsYamlMod: false},
-		YamlMod: &MockCLIMod{Name: name, Type: pluginType, IsYamlMod: true},
+		Base:   &MockBasePlugin{Name: name, Type: pluginType},
+		CLIMod: &MockCLIMod{Name: name, Type: pluginType},
 	}
 }
 
 func NewMockYamlPlugin(name, pluginType string) *models.Plugin {
 	return &models.Plugin{
-		Base:    nil,
-		CLIMod:  nil,
-		YamlMod: &MockCLIMod{Name: name, Type: pluginType, IsYamlMod: true},
+		YamlMod: &MockCLIMod{Name: name, Type: pluginType},
 	}
 }
 
@@ -41,14 +38,12 @@ func (p *MockBasePlugin) PluginInfo() (*models.PluginInfoResponse, error) {
 		HookType:      "",
 		Image:         "gcr.io/bq-plugin:dev",
 		SecretPath:    "/tmp/auth.json",
-		PluginMods:    []models.PluginMod{models.ModTypeDependencyResolver},
 	}, nil
 }
 
 type MockCLIMod struct {
-	Name      string
-	Type      string
-	IsYamlMod bool
+	Name string
+	Type string
 }
 
 func (p *MockCLIMod) PluginInfo() (*models.PluginInfoResponse, error) {
@@ -62,7 +57,7 @@ func (p *MockCLIMod) PluginInfo() (*models.PluginInfoResponse, error) {
 		HookType:      "",
 		Image:         "gcr.io/bq-plugin:dev",
 		SecretPath:    "/tmp/auth.json",
-		PluginMods:    []models.PluginMod{models.ModTypeDependencyResolver},
+		PluginMods:    []models.PluginMod{models.ModTypeCLI},
 	}, nil
 }
 
@@ -135,13 +130,17 @@ func TestPluginModels(t *testing.T) {
 	t.Run("PluginRegistry", func(t *testing.T) {
 		repo := models.NewPluginRepository()
 		plugins := []*models.Plugin{
-			NewMockPlugin("c", string(models.PluginTypeTask)),
-			NewMockPlugin("b", string(models.PluginTypeTask)),
+			NewMockYamlPlugin("c", string(models.PluginTypeTask)),
+			NewMockYamlPlugin("b", string(models.PluginTypeTask)),
 			NewMockPlugin("a", string(models.PluginTypeHook)),
 			NewMockYamlPlugin("z", string(models.PluginTypeTask)),
 		}
 		for _, plugin := range plugins {
-			repo.Add(plugin.Base, plugin.CLIMod, nil, plugin.YamlMod)
+			if plugin.IsYamlPlugin() {
+				repo.AddYaml(plugin.YamlMod)
+			} else {
+				repo.Add(plugin.Base, plugin.CLIMod, plugin.DependencyMod)
+			}
 		}
 
 		t.Run("should return sorted plugins", func(t *testing.T) {
@@ -155,12 +154,6 @@ func TestPluginModels(t *testing.T) {
 
 			list = repo.GetHooks()
 			assert.Equal(t, list[0].Info().Name, "a")
-		})
-
-		t.Run("GetCommandLines", func(t *testing.T) {
-			clis := repo.GetCommandLines()
-			assert.NotEmpty(t, clis)
-			assert.Len(t, clis, len(plugins))
 		})
 	})
 }

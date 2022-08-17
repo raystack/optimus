@@ -122,14 +122,14 @@ func (v *validateCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 	fm := fileInfo.Mode()
 	if fm.IsRegular() {
-		err := v.validateFile(v.path)
-		if err == nil {
-			v.logger.Info("validation complete !")
+		if err := v.validateFile(v.path); err != nil {
+			return err
 		}
-		return err
+		v.logger.Info("validation complete !")
+		return nil
 	} else if fm.IsDir() {
 		return v.validateDir(v.path)
 	} else {
-		return fmt.Errorf("invalid path")
+		return errors.New("invalid path")
 	}
 }

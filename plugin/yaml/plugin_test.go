@@ -162,7 +162,7 @@ func TestYamlPlugin(t *testing.T) {
 				Image:         "sdsd",
 				PluginVersion: "asdasd",
 				PluginType:    string(models.PluginTypeTask),
-			}, nil, nil, nil)
+			}, nil, nil)
 			assert.Nil(t, err)
 			assert.Len(t, repoWithBinayPlugin.GetAll(), 1)
 

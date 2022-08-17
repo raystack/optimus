@@ -119,6 +119,11 @@ type DependencyResolverMod interface {
 	GenerateDependencies(context.Context, GenerateDependenciesRequest) (*GenerateDependenciesResponse, error)
 }
 
+type IYamlMod interface {
+	BasePlugin
+	CommandLineMod
+}
+
 type PluginOptions struct {
 	DryRun bool
 }
@@ -385,7 +390,8 @@ var (
 )
 
 type PluginRepository interface {
-	Add(BasePlugin, CommandLineMod, DependencyResolverMod, CommandLineMod) error
+	AddYaml(IYamlMod) error                                      // yaml plugin
+	Add(BasePlugin, CommandLineMod, DependencyResolverMod) error // binary plugin
 	GetByName(string) (*Plugin, error)
 	GetAll() []*Plugin
 	GetTasks() []*Plugin
@@ -403,11 +409,11 @@ type Plugin struct {
 	// can be used in different circumstances
 	CLIMod        CommandLineMod
 	DependencyMod DependencyResolverMod
-	YamlMod       CommandLineMod
+	YamlMod       IYamlMod
 }
 
 func (p *Plugin) IsYamlPlugin() bool {
-	return p.Base == nil
+	return p.YamlMod != nil
 }
 
 func (p *Plugin) GetSurveyMod() CommandLineMod {
@@ -507,7 +513,17 @@ func (s *registeredPlugins) GetHooks() []*Plugin {
 	return list
 }
 
-func (s *registeredPlugins) Add(baseMod BasePlugin, cliMod CommandLineMod, drMod DependencyResolverMod, yamlMod CommandLineMod) error {
+// for addin yaml plugins
+func (s *registeredPlugins) AddYaml(yamlMod IYamlMod) error {
+	return s.add(nil, nil, nil, yamlMod)
+}
+
+// for addin binary plugins
+func (s *registeredPlugins) Add(baseMod BasePlugin, cliMod CommandLineMod, drMod DependencyResolverMod) error {
+	return s.add(baseMod, cliMod, drMod, nil)
+}
+
+func (s *registeredPlugins) add(baseMod BasePlugin, cliMod CommandLineMod, drMod DependencyResolverMod, yamlMod CommandLineMod) error {
 	var info *PluginInfoResponse
 	var err error
 	if baseMod != nil {
