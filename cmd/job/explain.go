@@ -37,6 +37,7 @@ type explainCommand struct {
 	clientConfig    *config.ClientConfig
 	jobSurvey       *survey.JobSurvey
 	namespaceSurvey *survey.NamespaceSurvey
+	scheduleTime    string // see if time is possible directly
 }
 
 // NewexplainCommand initializes command for explaining job specification
@@ -57,7 +58,7 @@ func NewExplainCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&explain.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
 
 	//cmd.Flags().StringVar(&explain.host, "host", "", "Optimus service endpoint url")
-
+	cmd.Flags().StringVarP(&explain.scheduleTime, "time", "t", "", "schedule time for the job deployment")
 	return cmd
 }
 
@@ -70,6 +71,13 @@ func (e *explainCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	e.logger = logger.NewClientLogger(e.clientConfig.Log)
 	e.jobSurvey = survey.NewJobSurvey()
 	e.namespaceSurvey = survey.NewNamespaceSurvey(e.logger)
+	// check if time flag is set and see if schedule time could be parsed
+	if e.scheduleTime != "" {
+		_, err := time.Parse("2006-01-02 15:04", e.scheduleTime)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -100,11 +108,22 @@ func (e *explainCommand) RunE(_ *cobra.Command, args []string) error {
 	}
 	e.logger.Info(fmt.Sprintf("Downloading assets in %s", explainedPath))
 
-	now := time.Now()
-	e.logger.Info(fmt.Sprintf("Assuming execution time as current time of %s\n", now.Format(models.InstanceScheduledAtTimeLayout)))
+	scheduleTime := time.Now()
+	// if r.scheduleTime == "" {
+	// 	r.logger.Info("did not give the time input go with the current time? y/N")
+	// 	var needSurvey string
+	// 	fmt.Scanln(&needSurvey)
+	// 	timeSurvey := survey.GetTimeSurvey()
+	// 	if needSurvey == "N" {
+	// 		tea.NewProgram(timeSurvey).Start()
+	// 	}
+	// 	scheduleTime = timeSurvey.CurrentTime
+	// }
+
+	e.logger.Info(fmt.Sprintf("Assuming execution time as current time of %s\n", scheduleTime.Format(models.InstanceScheduledAtTimeLayout)))
 
 	templateEngine := compiler.NewGoEngine()
-	templates, err := compiler.DumpAssets(context.Background(), jobSpec, now, templateEngine, true)
+	templates, err := compiler.DumpAssets(context.Background(), jobSpec, scheduleTime, templateEngine, true)
 	if err != nil {
 		return err
 	}
