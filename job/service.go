@@ -291,7 +291,10 @@ func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, j
 				}
 
 				successMsg := fmt.Sprintf("check for job passed: %s", currentSpec.Name)
-				lw.Write(writer.LogLevelInfo, successMsg)
+				if lw != nil {
+					// todo: handle this before merge
+					lw.Write(writer.LogLevelInfo, successMsg)
+				}
 				return nil, nil
 			}
 		}(jSpec, logWriter))
@@ -509,7 +512,7 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 	for _, jobSpec := range jobSpecs {
 		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				resolvedSpec, err := srv.dependencyResolver.Resolve(ctx, proj, currentSpec, progressObserver)
+				resolvedSpec, err := srv.ResolveDependecy(ctx, proj, currentSpec, progressObserver)
 				if err != nil {
 					return nil, fmt.Errorf("%s: %s/%s: %w", errDependencyResolution, jobsToNamespace[currentSpec.Name], currentSpec.Name, err)
 				}
@@ -528,12 +531,8 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 	return resolvedSpecs, resolvedErrors
 }
 
-func (srv *Service) ResolveDependecy(ctx context.Context, proj models.ProjectSpec, currentSpec models.JobSpec) (interface{}, error) {
-	resolvedSpec, err := srv.dependencyResolver.Resolve(ctx, proj, currentSpec, nil)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %s/%s: %w", errDependencyResolution, currentSpec.Name, currentSpec.Name, err)
-	}
-	return resolvedSpec, nil
+func (srv *Service) ResolveDependecy(ctx context.Context, proj models.ProjectSpec, currentSpec models.JobSpec, progressObserver progress.Observer) (models.JobSpec, error) {
+	return srv.dependencyResolver.Resolve(ctx, proj, currentSpec, progressObserver)
 }
 
 // do other jobs depend on this jobSpec

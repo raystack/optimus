@@ -180,6 +180,56 @@
         ]
       }
     },
+    "/v1beta1/project/{projectName}/namespace/{namespaceName}/job/explain": {
+      "post": {
+        "summary": "JobExplain return a new jobSpec for a namespace which belongs to a project",
+        "operationId": "JobSpecificationService_JobExplain",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1JobExplainResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "spec": {
+                  "$ref": "#/definitions/v1beta1JobSpecification"
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "JobSpecificationService"
+        ]
+      }
+    },
     "/v1beta1/project/{projectName}/namespace/{namespaceName}/job/{jobName}": {
       "get": {
         "summary": "GetJobSpecification reads a provided job spec of a namespace",
@@ -534,6 +584,23 @@
         "TYPE_HOOK_SUCCESS"
       ],
       "default": "TYPE_UNSPECIFIED"
+    },
+    "v1beta1JobExplainResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "spec": {
+          "$ref": "#/definitions/v1beta1JobSpecification"
+        },
+        "dependencies": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/v1beta1JobSpecification"
+          }
+        }
+      }
     },
     "v1beta1JobMetadata": {
       "type": "object",

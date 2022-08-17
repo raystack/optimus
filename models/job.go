@@ -442,10 +442,9 @@ type JobService interface {
 	// TODO: to be deprecated
 	Sync(context.Context, NamespaceSpec, progress.Observer) error
 
-	Check(context.Context, NamespaceSpec, []JobSpec, progress.Observer) error
+	ResolveDependecy(ctx context.Context, proj ProjectSpec, currentSpec JobSpec, progressObserver progress.Observer) (JobSpec, error)
 
-	ResolveDependecy(ctx context.Context, proj ProjectSpec, currentSpec JobSpec) (interface{}, error)
-
+	Check(context.Context, NamespaceSpec, []JobSpec, writer.LogWriter) error
 	// GetByDestination fetches a Job by destination for a specific project
 	GetByDestination(ctx context.Context, projectSpec ProjectSpec, destination string) (JobSpec, error)
 	// GetDownstream fetches downstream jobspecs

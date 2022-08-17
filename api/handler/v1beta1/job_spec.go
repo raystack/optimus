@@ -175,7 +175,7 @@ func (sv *JobSpecServiceServer) JobExplain(ctx context.Context, req *pb.JobExpla
 	}
 
 	// validate job spec
-	if err = sv.jobSvc.Check(ctx, namespaceSpec, []models.JobSpec{jobSpec}, sv.progressObserver); err != nil {
+	if err = sv.jobSvc.Check(ctx, namespaceSpec, []models.JobSpec{jobSpec}, nil); err != nil {
 		return nil, status.Errorf(codes.Internal, "spec validation failed\n%s", err.Error())
 	}
 	JobSpecTaskDestination, JobSpecTaskDependencies, err := sv.jobSvc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
@@ -184,26 +184,25 @@ func (sv *JobSpecServiceServer) JobExplain(ctx context.Context, req *pb.JobExpla
 	sv.l.Info("\n\n JobSpecTaskDestination :: ")
 	logit(sv.l.Info, JobSpecTaskDestination)
 	jobSpec.ResourceDestination = JobSpecTaskDestination.URN()
-	resolvedSpec, _ := sv.jobSvc.ResolveDependecy(ctx, namespaceSpec.ProjectSpec, jobSpec)
+	resolvedSpec, _ := sv.jobSvc.ResolveDependecy(ctx, namespaceSpec.ProjectSpec, jobSpec, nil)
 	sv.l.Info("\n\nresolvedSpec :: ")
 	logit(sv.l.Info, resolvedSpec)
 
-	sv.l.Info("\n\n jobSpec :: ")
-	logit(sv.l.Info, jobSpec)
-
-	//_, err = sv.jobSvc.Create(ctx, namespaceSpec, jobSpec)
-	//if err != nil {
-	//	return nil, status.Errorf(codes.Internal, "%s: failed to save job %s", err.Error(), jobSpec.Name)
-	//}
-
-	//if err := sv.jobSvc.Sync(ctx, namespaceSpec, sv.progressObserver); err != nil {
-	//	return nil, status.Errorf(codes.Internal, "failed to sync jobs: \n%s", err.Error())
-	//}
+	// get dependency job status
 
 	return &pb.JobExplainResponse{
-		Success: true,
-		Spec:    ToJobSpecificationProto(jobSpec),
+		Success:      true,
+		Spec:         ToJobSpecificationProto(resolvedSpec),
+		Dependencies: ToJobDependencyMap(jobSpec),
 	}, nil
+}
+
+func ToJobDependencyMap(jobSpec models.JobSpec) map[string]*pb.JobSpecification {
+	dependencyMap := map[string]*pb.JobSpecification{}
+	for upstream_job_name, dependency := range jobSpec.Dependencies {
+		dependencyMap[upstream_job_name] = ToJobSpecificationProto(*dependency.Job)
+	}
+	return dependencyMap
 }
 
 func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req *pb.CreateJobSpecificationRequest) (*pb.CreateJobSpecificationResponse, error) {

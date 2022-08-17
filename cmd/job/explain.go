@@ -154,6 +154,14 @@ func (e *explainCommand) GetJobSpecFromServer(jobSpec models.JobSpec) *pb.JobSpe
 		NamespaceName: e.namespaceName,
 		Spec:          v1handler.ToJobSpecificationProto(jobSpec),
 	})
+	// list dependencies / later do this with dependency type too.
+	for dependencyName, dependencySpec := range jobExplainResponse.Dependencies {
+		e.logger.Info(logger.ColoredSuccess("\n> Upstream job name:: %v", dependencyName))
+		e.logger.Info(logger.ColoredNotice("\nOwner:: %v", dependencySpec.Owner))
+		e.logger.Info(logger.ColoredNotice("\nSchedule Interval:: %v, StartDate:: %v, EndDate:: %v", dependencySpec.Interval, dependencySpec.StartDate, dependencySpec.EndDate))
+		e.logger.Info(logger.ColoredNotice("\nSchedule Interval:: %v, StartDate:: %v, EndDate:: %v", dependencySpec.Interval, dependencySpec.StartDate, dependencySpec.EndDate))
+		e.logger.Info(logger.ColoredNotice("\nWindowSize:: %v, WindowOffset:: %v, WindowTruncateTo:: %v", dependencySpec.WindowSize, dependencySpec.WindowOffset, dependencySpec.WindowTruncateTo))
+	}
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			e.logger.Error(logger.ColoredError("Refresh process took too long, timing out"))

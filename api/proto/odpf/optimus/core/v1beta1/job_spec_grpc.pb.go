@@ -28,6 +28,8 @@ type JobSpecificationServiceClient interface {
 	// events
 	// State of the world request
 	DeployJobSpecification(ctx context.Context, opts ...grpc.CallOption) (JobSpecificationService_DeployJobSpecificationClient, error)
+	// JobExplain return a new jobSpec for a namespace which belongs to a project
+	JobExplain(ctx context.Context, in *JobExplainRequest, opts ...grpc.CallOption) (*JobExplainResponse, error)
 	// CreateJobSpecification registers a new job for a namespace which belongs to a project
 	CreateJobSpecification(ctx context.Context, in *CreateJobSpecificationRequest, opts ...grpc.CallOption) (*CreateJobSpecificationResponse, error)
 	// GetJobSpecification reads a provided job spec of a namespace
@@ -87,6 +89,15 @@ func (x *jobSpecificationServiceDeployJobSpecificationClient) Recv() (*DeployJob
 		return nil, err
 	}
 	return m, nil
+}
+
+func (c *jobSpecificationServiceClient) JobExplain(ctx context.Context, in *JobExplainRequest, opts ...grpc.CallOption) (*JobExplainResponse, error) {
+	out := new(JobExplainResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobSpecificationService/JobExplain", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *jobSpecificationServiceClient) CreateJobSpecification(ctx context.Context, in *CreateJobSpecificationRequest, opts ...grpc.CallOption) (*CreateJobSpecificationResponse, error) {
@@ -226,6 +237,8 @@ type JobSpecificationServiceServer interface {
 	// events
 	// State of the world request
 	DeployJobSpecification(JobSpecificationService_DeployJobSpecificationServer) error
+	// JobExplain return a new jobSpec for a namespace which belongs to a project
+	JobExplain(context.Context, *JobExplainRequest) (*JobExplainResponse, error)
 	// CreateJobSpecification registers a new job for a namespace which belongs to a project
 	CreateJobSpecification(context.Context, *CreateJobSpecificationRequest) (*CreateJobSpecificationResponse, error)
 	// GetJobSpecification reads a provided job spec of a namespace
@@ -255,6 +268,9 @@ type UnimplementedJobSpecificationServiceServer struct {
 
 func (UnimplementedJobSpecificationServiceServer) DeployJobSpecification(JobSpecificationService_DeployJobSpecificationServer) error {
 	return status.Errorf(codes.Unimplemented, "method DeployJobSpecification not implemented")
+}
+func (UnimplementedJobSpecificationServiceServer) JobExplain(context.Context, *JobExplainRequest) (*JobExplainResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method JobExplain not implemented")
 }
 func (UnimplementedJobSpecificationServiceServer) CreateJobSpecification(context.Context, *CreateJobSpecificationRequest) (*CreateJobSpecificationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateJobSpecification not implemented")
@@ -321,6 +337,24 @@ func (x *jobSpecificationServiceDeployJobSpecificationServer) Recv() (*DeployJob
 		return nil, err
 	}
 	return m, nil
+}
+
+func _JobSpecificationService_JobExplain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JobExplainRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(JobSpecificationServiceServer).JobExplain(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/odpf.optimus.core.v1beta1.JobSpecificationService/JobExplain",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(JobSpecificationServiceServer).JobExplain(ctx, req.(*JobExplainRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _JobSpecificationService_CreateJobSpecification_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -498,6 +532,10 @@ var JobSpecificationService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "odpf.optimus.core.v1beta1.JobSpecificationService",
 	HandlerType: (*JobSpecificationServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "JobExplain",
+			Handler:    _JobSpecificationService_JobExplain_Handler,
+		},
 		{
 			MethodName: "CreateJobSpecification",
 			Handler:    _JobSpecificationService_CreateJobSpecification_Handler,
