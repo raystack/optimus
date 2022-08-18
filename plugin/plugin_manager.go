@@ -84,27 +84,12 @@ func (p *PluginManager) Install(dst string, sources ...string) error {
 	return nil
 }
 
-func copyToDest(dest string, file *zip.File) error {
-	if file.Mode().IsDir() {
-		return nil
+func SanitizeArchivePath(d, t string) (v string, err error) {
+	v = filepath.Join(d, t)
+	if strings.HasPrefix(v, filepath.Clean(d)) {
+		return v, nil
 	}
-	open, err := file.Open()
-	if err != nil {
-		return err
-	}
-	p, _ := filepath.Abs(file.Name)
-	if strings.Contains(p, "..") || strings.Contains(p, ".") {
-		return nil
-	}
-	name := path.Join(dest, p)
-	os.MkdirAll(path.Dir(name), os.ModePerm)
-	create, err := os.Create(name)
-	if err != nil {
-		return err
-	}
-	defer create.Close()
-	create.ReadFrom(open)
-	return nil
+	return "", fmt.Errorf("%s: %s", "content filepath is tainted", t)
 }
 
 func (p *PluginManager) UnArchive(src, dest string) error {
@@ -121,12 +106,32 @@ func (p *PluginManager) UnArchive(src, dest string) error {
 	}
 	defer read.Close()
 	for _, file := range read.File {
-		err := copyToDest(dest, file)
+		err := func() error {
+			if file.Mode().IsDir() {
+				return nil
+			}
+			open, err := file.Open()
+			if err != nil {
+				return err
+			}
+			destFileName, err := SanitizeArchivePath(dest, file.Name)
+			if err != nil {
+				return err
+			}
+			os.MkdirAll(path.Dir(destFileName), os.ModePerm)
+			create, err := os.Create(destFileName)
+			if err != nil {
+				return err
+			}
+			defer create.Close()
+			create.ReadFrom(open)
+			return nil
+		}()
 		if err != nil {
 			return err
 		}
 	}
-	p.logger.Info("cleaning " + dest)
+	p.logger.Info("cleaning " + src)
 	err = os.RemoveAll(src)
 	if err != nil {
 		return err

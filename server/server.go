@@ -160,7 +160,6 @@ func prepareHTTPProxy(grpcAddr string, grpcServer *grpc.Server, conf config.Serv
 	baseMux.HandleFunc("/plugins", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/zip")
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename='%s'", conf.Plugin.Archive))
 		http.ServeFile(w, r, conf.Plugin.Archive)
 	})
 	baseMux.Handle("/api/", otelhttp.NewHandler(http.StripPrefix("/api", gwmux), "api"))
