@@ -241,7 +241,7 @@ wait_external__dash__optimus__dash__foo__dash__external__dash__optimus__dash__pr
     upstream_optimus_project="foo-external-optimus-project",
     upstream_optimus_namespace="bar-external-optimus-namespace",
     upstream_optimus_job="foo-external-optimus-dep-job",
-    window_size="1h0m0s",
+    window_size="1h",
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     task_id="wait_foo-external-optimus-dep-job-bq",

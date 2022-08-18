@@ -5,7 +5,7 @@ NAME = "github.com/odpf/optimus"
 LAST_COMMIT := $(shell git rev-parse --short HEAD)
 LAST_TAG := "$(shell git rev-list --tags --max-count=1)"
 OPMS_VERSION := "$(shell git describe --tags ${LAST_TAG})-next"
-PROTON_COMMIT := "08584047aee49824f30464d401e898d6397cac83"
+PROTON_COMMIT := "d6c929a55bed26447064d0c89ce06fb6fa156e94"
 
 .PHONY: build test test-ci generate-proto unit-test-ci smoke-test integration-test vet coverage clean install lint
 
@@ -63,4 +63,3 @@ install: ## install required dependencies
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2.0
 	go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.5.0
 	go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@v2.5.0
-	go mod tidy

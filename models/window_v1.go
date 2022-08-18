@@ -36,7 +36,7 @@ func (w windowV1) GetEndTime(scheduleTime time.Time) (endTime time.Time, err err
 	_, endTime = w.getTimeRange(scheduleTime, truncateTo, offset, size)
 	return
 }
-
+//TODO why is 1d invalid value in window
 func (w windowV1) GetStartTime(scheduleTime time.Time) (startTime time.Time, err error) {
 	truncateTo, offset, size, getErr := w.getFieldValues()
 	if getErr != nil {
