@@ -12,24 +12,13 @@ import (
 	yml "gopkg.in/yaml.v2"
 
 	"github.com/odpf/optimus/cmd/internal/logger"
-	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin/yaml"
 )
 
-type validateCommand struct {
-	logger        log.Logger
-	serverConfig  *config.ServerConfig
-	path          string
-	logYaml       bool
-	pluginVersion string
-}
-
 // NewInstallCommand initializes plugin install command
-func NewValidateCommand(serverConfig *config.ServerConfig) *cobra.Command {
-	validate := &validateCommand{
-		serverConfig: serverConfig,
-	}
+func NewValidateCommand() *cobra.Command {
+	validate := &validateCommand{}
 	cmd := &cobra.Command{
 		Use:     "validate",
 		Short:   "validate installed plugins",
@@ -43,8 +32,15 @@ func NewValidateCommand(serverConfig *config.ServerConfig) *cobra.Command {
 	return cmd
 }
 
+type validateCommand struct {
+	logger        log.Logger
+	path          string
+	logYaml       bool
+	pluginVersion string
+}
+
 func (v *validateCommand) PreRunE(_ *cobra.Command, _ []string) error {
-	v.logger = logger.NewClientLogger(v.serverConfig.Log)
+	v.logger = logger.NewDefaultLogger()
 	return nil
 }
 

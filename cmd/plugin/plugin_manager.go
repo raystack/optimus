@@ -8,6 +8,8 @@ import (
 	"github.com/odpf/salt/log"
 )
 
+// TODO : move this to plugin domain
+
 type IPluginManager interface {
 	Install(dst string, sources ...string) error
 }
