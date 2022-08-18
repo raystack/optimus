@@ -292,7 +292,8 @@ func (s *ConfigTestSuite) initExpectedServerConfig() {
 		},
 	}
 	s.expectedServerConfig.Plugin = config.PluginConfig{}
-	s.expectedServerConfig.Plugin.Dir = "."
+	s.expectedServerConfig.Plugin.Dir = ".plugins"
+	s.expectedServerConfig.Plugin.Archive = "yaml-plugins.zip"
 }
 
 func (*ConfigTestSuite) initServerConfigEnv() {

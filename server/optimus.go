@@ -159,7 +159,7 @@ func (s *OptimusServer) setupMonitoring() error {
 }
 
 func (s *OptimusServer) setupHTTPProxy() error {
-	srv, cleanup, err := prepareHTTPProxy(s.serverAddr, s.grpcServer)
+	srv, cleanup, err := prepareHTTPProxy(s.serverAddr, s.grpcServer, s.conf)
 	s.httpServer = srv
 	s.cleanupFn = append(s.cleanupFn, cleanup)
 	return err

@@ -6,6 +6,7 @@ import (
 
 	"github.com/odpf/optimus/cmd/internal/logger"
 	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/plugin"
 )
 
 type installCommand struct {
@@ -41,14 +42,5 @@ func (i *installCommand) PreRunE(_ *cobra.Command, _ []string) error {
 }
 
 func (i *installCommand) RunE(_ *cobra.Command, _ []string) error {
-	return InstallPlugins(i.serverConfig, i.logger)
-}
-
-// TODO : move this to plugin domain
-// also used during server start
-func InstallPlugins(conf *config.ServerConfig, logger log.Logger) error {
-	dst := conf.Plugin.Dir
-	sources := conf.Plugin.Artifacts
-	pluginManger := NewPluginManager(logger)
-	return pluginManger.Install(dst, sources...)
+	return plugin.InstallPlugins(i.serverConfig)
 }

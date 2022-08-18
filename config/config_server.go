@@ -69,6 +69,7 @@ type ResourceManagerConfigOptimus struct {
 }
 
 type PluginConfig struct {
-	Dir       string   `mapstructure:"dir" default:"."`
+	Dir       string   `mapstructure:"dir" default:".plugins"`
 	Artifacts []string `mapstructure:"artifacts"`
+	Archive   string   `mapstructure:"archive" default:"yaml-plugins.zip"`
 }
