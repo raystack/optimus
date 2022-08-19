@@ -17,21 +17,18 @@ import (
 )
 
 var (
-	// for server these values are configurable
-	// for client these are static
-	DefaultClientPluginDir         = ".plugins"
-	DefaultClientPluginArchiveName = "yaml-plugins.zip"
+	// for plugin installation, discovery & sync on both client and server
+	PluginsDir         = ".plugins"
+	PluginsArchiveName = "yaml-plugins.zip"
 )
 
 type IPluginManager interface {
 	Install(dst string, sources ...string) error
-	Archive(name string) error
-	UnArchive(src, dest string) error
+	Archive(name string) error        // by server
+	UnArchive(src, dest string) error // by client
 }
 
 func NewPluginManager() IPluginManager {
-	// currently only implemenetation of https://github.com/hashicorp/go-getter
-
 	pluginLoggerOpt := &hclog.LoggerOptions{
 		Name:   "plugin-manager",
 		Output: os.Stdout,
@@ -149,7 +146,7 @@ func (p *PluginManager) Archive(archiveName string) error {
 	defer archive.Close()
 	zipWriter := zip.NewWriter(archive)
 	for _, pluginPath := range discoveredYamlPlugins {
-		err := func() error { // to avoid defer in loop
+		err := func() error {
 			f1, err := os.Open(pluginPath)
 			if err != nil {
 				return err
@@ -176,7 +173,7 @@ func (p *PluginManager) Archive(archiveName string) error {
 // used during server start
 // also exposed as cmd
 func InstallPlugins(conf *config.ServerConfig) error {
-	dst := conf.Plugin.Dir
+	dst := PluginsDir
 	sources := conf.Plugin.Artifacts
 	pluginManger := NewPluginManager()
 
@@ -184,7 +181,7 @@ func InstallPlugins(conf *config.ServerConfig) error {
 	if installErr != nil {
 		return installErr
 	}
-	archiveErr := pluginManger.Archive(conf.Plugin.Archive)
+	archiveErr := pluginManger.Archive(PluginsArchiveName)
 	if archiveErr != nil {
 		return archiveErr
 	}

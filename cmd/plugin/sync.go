@@ -44,7 +44,7 @@ func (s *syncCommand) PreRunE(_ *cobra.Command, _ []string) error {
 }
 
 func downloadArchiveFromServer(conf config.ClientConfig) error {
-	optimusServerURL := fmt.Sprintf("http://%s/%s", conf.Host, "plugins")
+	optimusServerURL := fmt.Sprintf("http://%s/%s", conf.Host, "plugins") // will url work ?
 
 	req, err := http.NewRequestWithContext(context.Background(), "GET", optimusServerURL, nil)
 	if err != nil {
@@ -56,7 +56,7 @@ func downloadArchiveFromServer(conf config.ClientConfig) error {
 		return err
 	}
 	defer resp.Body.Close()
-	out, err := os.Create(plugin.DefaultClientPluginArchiveName)
+	out, err := os.Create(plugin.PluginsArchiveName)
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func (s *syncCommand) RunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	return plugin.NewPluginManager().UnArchive(
-		plugin.DefaultClientPluginArchiveName,
-		plugin.DefaultClientPluginDir,
+		plugin.PluginsArchiveName,
+		plugin.PluginsDir,
 	)
 }

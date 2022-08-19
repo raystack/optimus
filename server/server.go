@@ -29,7 +29,7 @@ import (
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
 	_ "github.com/odpf/optimus/ext/datastore"
-	_ "github.com/odpf/optimus/plugin"
+	"github.com/odpf/optimus/plugin"
 )
 
 const (
@@ -100,7 +100,7 @@ func setupGRPCServer(l log.Logger) (*grpc.Server, error) {
 	return grpcServer, nil
 }
 
-func prepareHTTPProxy(grpcAddr string, grpcServer *grpc.Server, conf config.ServerConfig) (*http.Server, func(), error) {
+func prepareHTTPProxy(grpcAddr string, grpcServer *grpc.Server) (*http.Server, func(), error) {
 	timeoutGrpcDialCtx, grpcDialCancel := context.WithTimeout(context.Background(), DialTimeout)
 	defer grpcDialCancel()
 
@@ -160,7 +160,7 @@ func prepareHTTPProxy(grpcAddr string, grpcServer *grpc.Server, conf config.Serv
 	baseMux.HandleFunc("/plugins", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/zip")
-		http.ServeFile(w, r, conf.Plugin.Archive)
+		http.ServeFile(w, r, plugin.PluginsArchiveName)
 	})
 	baseMux.Handle("/api/", otelhttp.NewHandler(http.StripPrefix("/api", gwmux), "api"))
 

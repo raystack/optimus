@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -107,24 +108,13 @@ func modSupported(mods []models.PluginMod, mod models.PluginMod) bool {
 
 func DiscoverPluginsGivenFilePattern(pluginLogger hclog.Logger, prefix, suffix string) []string {
 	var discoveredPlugins, dirs []string
-	// current working directory
+
+	// static plugin discovery in both server and client
 	if p, err := os.Getwd(); err == nil {
-		dirs = append(dirs, p)
-		dirs = append(dirs, ".plugins")
-	}
-
-	// look in the same directory as the executable
-	if exePath, err := os.Executable(); err != nil {
-		pluginLogger.Debug(fmt.Sprintf("Error discovering exe directory: %s", err))
+		dirs = append(dirs, path.Join(p, PluginsDir))
 	} else {
-		dirs = append(dirs, filepath.Dir(exePath))
+		pluginLogger.Debug(fmt.Sprintf("Error discovering working dir: %s", err))
 	}
-
-	// add user home directory
-	if currentHomeDir, err := os.UserHomeDir(); err == nil {
-		dirs = append(dirs, filepath.Join(currentHomeDir, ".optimus", "plugins"))
-	}
-	dirs = append(dirs, []string{"/usr/bin", "/usr/local/bin"}...)
 
 	for _, dirPath := range dirs {
 		fileInfos, err := os.ReadDir(dirPath)
