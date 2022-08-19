@@ -41,8 +41,8 @@ func DumpAssets(ctx context.Context, jobSpec models.JobSpec, scheduledAt time.Ti
 		compiledAssetResponse, err := jobSpec.Task.Unit.CLIMod.CompileAssets(ctx, models.CompileAssetsRequest{
 			StartTime: startTime,
 			EndTime:   endTime,
-			Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-			Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
+			Config:    models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+			Assets:    models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 			InstanceData: []models.JobRunSpecData{
 				{
 					Name:  models.ConfigKeyExecutionTime,
