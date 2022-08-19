@@ -135,6 +135,29 @@ func (*dependencyResolver) ResolveStaticDependencies(ctx context.Context, jobSpe
 	return resolvedJobSpecDependencies, nil
 }
 
+// GetJobsByResourceDestinations get job spec of jobs that write to these destinations
+func (d *dependencyResolver) GetJobsByResourceDestinations(ctx context.Context, resourceDestinations []string,
+	subjectJobName string, progressObserver progress.Observer) ([]models.JobSpec, error) {
+	jobSpecDependencyList := []models.JobSpec{}
+	for _, depDestination := range resourceDestinations {
+		dependencyJobSpec, err := d.jobSpecRepo.GetJobByResourceDestination(ctx, depDestination)
+		if err != nil {
+			if errors.Is(err, store.ErrResourceNotFound) {
+				// should not fail for unknown dependency, its okay to not have a upstream job
+				// registered in optimus project and still refer to them in our job
+				d.notifyProgress(progressObserver, &models.ProgressJobSpecUnknownDependencyUsed{
+					Job:        subjectJobName,
+					Dependency: depDestination,
+				})
+				continue
+			}
+			return jobSpecDependencyList, fmt.Errorf("runtime dependency evaluation failed: %w", err)
+		}
+		jobSpecDependencyList = append(jobSpecDependencyList, dependencyJobSpec)
+	}
+	return jobSpecDependencyList, nil
+}
+
 // TODO: this method will be deprecated (should be refactored to separate responsibility)
 func (d *dependencyResolver) resolveInferredDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec,
 	observer progress.Observer) (models.JobSpec, error) {
@@ -152,25 +175,21 @@ func (d *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 	}
 
 	jobDependencies := resp.Dependencies
+	// todo, dont save for sources: needed for explain flow
 	if err := d.jobSourceRepo.Save(ctx, projectSpec.ID, jobSpec.ID, jobDependencies); err != nil {
 		return models.JobSpec{}, fmt.Errorf("error persisting job sources for job %s: %w", jobSpec.Name, err)
 	}
 
 	// get job spec of these destinations and append to current jobSpec
-	for _, depDestination := range jobDependencies {
-		dependencyJobSpec, err := d.jobSpecRepo.GetJobByResourceDestination(ctx, depDestination)
-		if err != nil {
-			if errors.Is(err, store.ErrResourceNotFound) {
-				// should not fail for unknown dependency, its okay to not have a upstream job
-				// registered in optimus project and still refer to them in our job
-				d.notifyProgress(observer, &models.ProgressJobSpecUnknownDependencyUsed{Job: jobSpec.Name, Dependency: depDestination})
-				continue
-			}
-			return jobSpec, fmt.Errorf("runtime dependency evaluation failed: %w", err)
-		}
-		dep := extractDependency(dependencyJobSpec, projectSpec)
-		jobSpec.Dependencies[dep.Job.Name] = dep
+	jobSpecDependencyList, err := d.GetJobsByResourceDestinations(ctx, jobDependencies, jobSpec.Name, observer)
+	if err != nil {
+		return jobSpec, err
 	}
+	jobSpecDependencyMap := map[string]models.JobSpecDependency{}
+	for _, upstreamJobSpec := range jobSpecDependencyList {
+		jobSpecDependencyMap[upstreamJobSpec.Name] = extractDependency(upstreamJobSpec, projectSpec)
+	}
+	jobSpec.Dependencies = jobSpecDependencyMap
 
 	return jobSpec, nil
 }

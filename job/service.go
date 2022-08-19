@@ -55,8 +55,9 @@ var (
 type DependencyResolver interface {
 	Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error)
 	ResolveStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository) (map[string]models.JobSpecDependency, error)
-
 	GetJobSpecsWithDependencies(ctx context.Context, projectID models.ProjectID) ([]models.JobSpec, []models.UnknownDependency, error)
+
+	GetJobsByResourceDestinations(ctx context.Context, resourceDestinations []string, subjectJobName string, progressObserver progress.Observer) ([]models.JobSpec, error)
 }
 
 type Deployer interface {
@@ -512,7 +513,7 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 	for _, jobSpec := range jobSpecs {
 		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				resolvedSpec, err := srv.ResolveDependecy(ctx, proj, currentSpec, progressObserver)
+				resolvedSpec, err := srv.dependencyResolver.Resolve(ctx, proj, currentSpec, progressObserver)
 				if err != nil {
 					return nil, fmt.Errorf("%s: %s/%s: %w", errDependencyResolution, jobsToNamespace[currentSpec.Name], currentSpec.Name, err)
 				}
@@ -531,8 +532,8 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 	return resolvedSpecs, resolvedErrors
 }
 
-func (srv *Service) ResolveDependecy(ctx context.Context, proj models.ProjectSpec, currentSpec models.JobSpec, progressObserver progress.Observer) (models.JobSpec, error) {
-	return srv.dependencyResolver.Resolve(ctx, proj, currentSpec, progressObserver)
+func (srv *Service) ResolveDependecy(ctx context.Context, resourceDestinations []string, jobSpec models.JobSpec, progressObserver progress.Observer) ([]models.JobSpec, error) {
+	return srv.dependencyResolver.GetJobsByResourceDestinations(ctx, resourceDestinations, jobSpec.Name, progressObserver)
 }
 
 // do other jobs depend on this jobSpec

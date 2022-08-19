@@ -178,31 +178,40 @@ func (sv *JobSpecServiceServer) JobExplain(ctx context.Context, req *pb.JobExpla
 	if err = sv.jobSvc.Check(ctx, namespaceSpec, []models.JobSpec{jobSpec}, nil); err != nil {
 		return nil, status.Errorf(codes.Internal, "spec validation failed\n%s", err.Error())
 	}
-	JobSpecTaskDestination, JobSpecTaskDependencies, err := sv.jobSvc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
-	sv.l.Info("\n\nJobSpecTaskDependencies :: ")
-	logit(sv.l.Info, JobSpecTaskDependencies)
-	sv.l.Info("\n\n JobSpecTaskDestination :: ")
-	logit(sv.l.Info, JobSpecTaskDestination)
-	jobSpec.ResourceDestination = JobSpecTaskDestination.URN()
-	resolvedSpec, _ := sv.jobSvc.ResolveDependecy(ctx, namespaceSpec.ProjectSpec, jobSpec, nil)
-	sv.l.Info("\n\nresolvedSpec :: ")
-	logit(sv.l.Info, resolvedSpec)
+	jobSpecTaskDestination, jobSources, _ := sv.jobSvc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
+	sv.l.Info("\n\n jobSpecTaskDestination :: ")
+	logit(sv.l.Info, jobSpecTaskDestination)
+	sv.l.Info("\n\n jobSources tables :: ")
+	logit(sv.l.Info, jobSources)
+	jobSpec.ResourceDestination = jobSpecTaskDestination.URN()
+
+	//this only resovled infered
+	dependencyJobSpecs, _ := sv.jobSvc.ResolveDependecy(ctx, jobSources, jobSpec, nil)
+	// todo handle static dependencies
+
+	// internal first
+	// static -> reading from yaml
+	// -> then scan for them ion job table  where job_name
+	// infered -> flow added read from DB job table where destenation
+
+	// externals
+	//
+
+	// take inspiration from
+
+	dependencySpecMap := make(map[string]*pb.JobSpecification)
+
+	for _, dependencyJobSpec := range dependencyJobSpecs {
+		dependencySpecMap[dependencyJobSpec.Name] = ToJobSpecificationProto(dependencyJobSpec)
+	}
 
 	// get dependency job status
 
 	return &pb.JobExplainResponse{
 		Success:      true,
-		Spec:         ToJobSpecificationProto(resolvedSpec),
-		Dependencies: ToJobDependencyMap(jobSpec),
+		Spec:         ToJobSpecificationProto(jobSpec),
+		Dependencies: dependencySpecMap,
 	}, nil
-}
-
-func ToJobDependencyMap(jobSpec models.JobSpec) map[string]*pb.JobSpecification {
-	dependencyMap := map[string]*pb.JobSpecification{}
-	for upstream_job_name, dependency := range jobSpec.Dependencies {
-		dependencyMap[upstream_job_name] = ToJobSpecificationProto(*dependency.Job)
-	}
-	return dependencyMap
 }
 
 func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req *pb.CreateJobSpecificationRequest) (*pb.CreateJobSpecificationResponse, error) {

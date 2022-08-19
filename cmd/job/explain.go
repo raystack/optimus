@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/odpf/salt/log"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -16,7 +17,6 @@ import (
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/cmd/connectivity"
-
 	"github.com/odpf/optimus/cmd/logger"
 	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/compiler"
@@ -26,6 +26,10 @@ import (
 	"github.com/odpf/optimus/utils"
 )
 
+const (
+	explainTimeout = time.Minute * 1
+)
+
 type explainCommand struct {
 	logger log.Logger
 
@@ -33,6 +37,7 @@ type explainCommand struct {
 
 	projectName   string
 	namespaceName string
+	host          string
 
 	clientConfig    *config.ClientConfig
 	jobSurvey       *survey.JobSurvey
@@ -56,8 +61,7 @@ func NewExplainCommand() *cobra.Command {
 
 	// Config filepath flag
 	cmd.Flags().StringVarP(&explain.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
-
-	//cmd.Flags().StringVar(&explain.host, "host", "", "Optimus service endpoint url")
+	cmd.Flags().StringVar(&explain.host, "host", "", "Optimus service endpoint url")
 	cmd.Flags().StringVarP(&explain.scheduleTime, "time", "t", "", "schedule time for the job deployment")
 	return cmd
 }
@@ -109,16 +113,16 @@ func (e *explainCommand) RunE(_ *cobra.Command, args []string) error {
 	e.logger.Info(fmt.Sprintf("Downloading assets in %s", explainedPath))
 
 	scheduleTime := time.Now()
-	// if r.scheduleTime == "" {
-	// 	r.logger.Info("did not give the time input go with the current time? y/N")
-	// 	var needSurvey string
-	// 	fmt.Scanln(&needSurvey)
-	// 	timeSurvey := survey.GetTimeSurvey()
-	// 	if needSurvey == "N" {
-	// 		tea.NewProgram(timeSurvey).Start()
-	// 	}
-	// 	scheduleTime = timeSurvey.CurrentTime
-	// }
+	if e.scheduleTime == "" {
+		e.logger.Info("did not give the time input go with the current time? y/N")
+		var needSurvey string
+		fmt.Scanln(&needSurvey)
+		timeSurvey := survey.GetTimeSurvey()
+		if needSurvey == "N" {
+			tea.NewProgram(timeSurvey).Start()
+		}
+		scheduleTime = timeSurvey.CurrentTime
+	}
 
 	e.logger.Info(fmt.Sprintf("Assuming execution time as current time of %s\n", scheduleTime.Format(models.InstanceScheduledAtTimeLayout)))
 
@@ -158,11 +162,9 @@ func (e *explainCommand) getJobSpecByName(args []string, namespaceJobPath string
 }
 
 func (e *explainCommand) GetJobSpecFromServer(jobSpec models.JobSpec) *pb.JobSpecification {
-	timeout := time.Minute * 5
-	conn, err := connectivity.NewConnectivity(e.clientConfig.Host, timeout)
+	conn, err := connectivity.NewConnectivity(e.clientConfig.Host, explainTimeout)
 	if err != nil {
-		//todo handle later
-		fmt.Println("err:: ", err.Error())
+		// todo handle later
 		return nil
 	}
 	defer conn.Close()
@@ -185,9 +187,8 @@ func (e *explainCommand) GetJobSpecFromServer(jobSpec models.JobSpec) *pb.JobSpe
 		if errors.Is(err, context.DeadlineExceeded) {
 			e.logger.Error(logger.ColoredError("Refresh process took too long, timing out"))
 		}
-		//return fmt.Errorf("refresh request failed: %w", err)
-		//todo handle later
-		fmt.Println("err:: ", err.Error())
+		// return fmt.Errorf("refresh request failed: %w", err)
+		// todo handle later
 		return nil
 	}
 
