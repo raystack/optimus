@@ -49,9 +49,9 @@ func (c *JobRunAssetsCompiler) CompileJobRunAssets(ctx context.Context, jobSpec 
 		compiledAssetResponse, err := plugin.CLIMod.CompileAssets(ctx, models.CompileAssetsRequest{
 			StartTime:    startTime,
 			EndTime:      endTime,
-			Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-			Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-			InstanceData:     jobRunSpecData,
+			Config:       models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+			Assets:       models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
+			InstanceData: jobRunSpecData,
 		})
 		if err != nil {
 			return nil, err
