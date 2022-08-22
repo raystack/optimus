@@ -107,7 +107,7 @@ func (d *deleteCommand) deleteSecret(req *pb.DeleteSecretRequest) error {
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			d.logger.Error(logger.ColoredError("Secret delete took too long, timing out"))
+			d.logger.Error("Secret delete took too long, timing out")
 		}
 		return fmt.Errorf("%w: request failed for deleting secret %s", err, req.SecretName)
 	}

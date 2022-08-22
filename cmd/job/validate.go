@@ -111,7 +111,7 @@ func (v *validateCommand) validateJobSpecificationRequest(jobSpecs []models.JobS
 	respStream, err := job.CheckJobSpecifications(conn.GetContext(), checkJobSpecRequest)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			v.logger.Error(logger.ColoredError("Validate process took too long, timing out"))
+			v.logger.Error("Validate process took too long, timing out")
 		}
 		return fmt.Errorf("validate request failed: %w", err)
 	}

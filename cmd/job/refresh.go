@@ -121,7 +121,7 @@ func (r *refreshCommand) refreshJobSpecificationRequest() error {
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			r.logger.Error(logger.ColoredError("Refresh process took too long, timing out"))
+			r.logger.Error("Refresh process took too long, timing out")
 		}
 		return fmt.Errorf("refresh request failed: %w", err)
 	}

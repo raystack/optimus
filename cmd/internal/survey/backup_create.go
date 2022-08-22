@@ -3,8 +3,6 @@ package survey
 import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/odpf/salt/log"
-
-	"github.com/odpf/optimus/cmd/internal/logger"
 )
 
 // BackupCreateSurvey defines survey for creating backup
@@ -70,7 +68,7 @@ func (b *BackupCreateSurvey) AskConfirmToContinue() (bool, error) {
 		return false, err
 	}
 	if proceedWithBackup == answerNo {
-		b.logger.Info(logger.ColoredNotice("Aborting..."))
+		b.logger.Info("Aborting...")
 		return false, nil
 	}
 	return true, nil
