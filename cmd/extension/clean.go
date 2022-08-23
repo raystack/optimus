@@ -34,7 +34,7 @@ func (c *cleanCommand) RunE(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	if !confirmed {
-		c.logger.Info("Aborted clean process ...")
+		c.logger.Warn("Aborted clean process ...")
 		return nil
 	}
 	return extension.Clean(verbose)

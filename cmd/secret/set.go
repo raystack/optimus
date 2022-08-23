@@ -139,7 +139,7 @@ func (s *setCommand) RunE(_ *cobra.Command, args []string) error {
 				}
 				return s.updateSecret(updateSecretRequest)
 			}
-			s.logger.Info("Aborting...")
+			s.logger.Warn("Aborting...")
 			return nil
 		}
 		return fmt.Errorf("%w: request failed for creating secret %s", err, secretName)

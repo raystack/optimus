@@ -162,7 +162,7 @@ func (c *createCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 
 	if err := c.runBackupDryRunRequest(); err != nil {
-		c.logger.Info("Failed to run backup dry run")
+		c.logger.Warn("Failed to run backup dry run")
 		return err
 	}
 	if c.onlyDryRun {
@@ -255,7 +255,7 @@ func (c *createCommand) runBackupDryRunRequest() error {
 
 func (c *createCommand) printBackupDryRunResponse(request *pb.BackupDryRunRequest, response *pb.BackupDryRunResponse) {
 	if c.ignoreDownstream {
-		c.logger.Info("\nBackup list for %s. Downstreams will be ignored.", request.ResourceName)
+		c.logger.Warn("\nBackup list for %s. Downstreams will be ignored.", request.ResourceName)
 	} else {
 		c.logger.Info("\nBackup list for %s. Supported downstreams will be included.", request.ResourceName)
 	}
@@ -264,7 +264,7 @@ func (c *createCommand) printBackupDryRunResponse(request *pb.BackupDryRunReques
 	}
 
 	if len(response.IgnoredResources) > 0 {
-		c.logger.Info("\nThese resources will be ignored:")
+		c.logger.Warn("\nThese resources will be ignored:")
 	}
 	for counter, ignoredResource := range response.IgnoredResources {
 		c.logger.Info(fmt.Sprintf("%d. %s", counter+1, ignoredResource))

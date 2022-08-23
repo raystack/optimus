@@ -171,7 +171,7 @@ func (c *createCommand) runReplayRequest(jobName, startDate, endDate string) (st
 
 	c.logger.Info("\n> Initiating replay")
 	if c.forceRun {
-		c.logger.Info("> Force running replay even if its already in progress")
+		c.logger.Warn("> Force running replay even if its already in progress")
 	}
 
 	replay := pb.NewReplayServiceClient(conn.GetConnection())
@@ -265,7 +265,7 @@ func (c *createCommand) printReplayDryRunResponse(replayRequest *pb.ReplayDryRun
 
 	// ignored jobs
 	if len(replayDryRunResponse.IgnoredJobs) > 0 {
-		c.logger.Info("> Ignored jobs")
+		c.logger.Warn("> Ignored jobs")
 		ignoredJobsCount := 0
 		for _, job := range replayDryRunResponse.IgnoredJobs {
 			ignoredJobsCount++

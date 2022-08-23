@@ -102,7 +102,7 @@ func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to get replay requests: %w", err)
 	}
 	if len(replayResponse.ReplayList) == 0 {
-		l.logger.Info(fmt.Sprintf("No replays were found in %s project.", l.projectName))
+		l.logger.Warn(fmt.Sprintf("No replays were found in %s project.", l.projectName))
 	} else {
 		l.printReplayListResponse(replayResponse)
 	}

@@ -92,12 +92,6 @@ func New() *cli.Command {
 
 func initializeColor() {
 	cs := term.NewColorScheme()
-	logger.ColoredNotice = func(s string, a ...interface{}) string {
-		return cs.Yellowf(s, a...)
-	}
-	logger.ColoredError = func(s string, a ...interface{}) string {
-		return cs.Redf(s, a...)
-	}
 	logger.ColoredSuccess = func(s string, a ...interface{}) string {
 		return cs.Greenf(s, a...)
 	}

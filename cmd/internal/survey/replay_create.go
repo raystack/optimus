@@ -28,7 +28,7 @@ func (r *ReplayCreateSurvey) AskConfirmToContinue() (bool, error) {
 		return false, err
 	}
 	if proceedWithReplay == answerNo {
-		r.logger.Info("Aborting...")
+		r.logger.Warn("Aborting...")
 		return false, nil
 	}
 	return true, nil

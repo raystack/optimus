@@ -111,7 +111,7 @@ func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 
 	if len(listBackupsResponse.Backups) == 0 {
-		l.logger.Info("No backups were found in %s project.", l.projectName)
+		l.logger.Warn("No backups were found in %s project.", l.projectName)
 	} else {
 		l.logger.Info("Recent backups")
 		result := l.stringifyBackupListResponse(listBackupsResponse)

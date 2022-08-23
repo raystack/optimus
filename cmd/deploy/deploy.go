@@ -138,7 +138,7 @@ func (d *deployCommand) deploy(selectedNamespaces []*config.Namespace) error {
 
 func (d *deployCommand) deployJobs(conn *connectivity.Connectivity, selectedNamespaces []*config.Namespace) error {
 	if d.ignoreJobDeployment {
-		d.logger.Info("> Skipping job deployment")
+		d.logger.Warn("> Skipping job deployment")
 		return nil
 	}
 
@@ -160,7 +160,7 @@ func (d *deployCommand) deployJobs(conn *connectivity.Connectivity, selectedName
 		}
 		if err := d.sendNamespaceJobRequest(stream, namespace, progressFn); err != nil {
 			if errors.Is(err, models.ErrNoJobs) {
-				d.logger.Info(fmt.Sprintf("no job specifications are found for namespace [%s]", namespace.Name))
+				d.logger.Warn(fmt.Sprintf("no job specifications are found for namespace [%s]", namespace.Name))
 				continue
 			}
 			return fmt.Errorf("error getting job specs for namespace [%s]: %w", namespace.Name, err)
@@ -266,7 +266,7 @@ func (d *deployCommand) deployResources(
 	selectedNamespaces []*config.Namespace,
 ) error {
 	if d.ignoreResourceDeployment {
-		d.logger.Info("> Skipping resource deployment")
+		d.logger.Warn("> Skipping resource deployment")
 		return nil
 	}
 	d.logger.Info("> Deploying all resources")
@@ -333,7 +333,7 @@ func (d *deployCommand) sendNamespaceResourceRequest(
 		request, err := d.getResourceDeploymentRequest(ctx, namespace.Name, storeName, repoFS)
 		if err != nil {
 			if errors.Is(err, models.ErrNoResources) {
-				d.logger.Info(fmt.Sprintf("no resource specifications are found for namespace [%s]", namespace.Name))
+				d.logger.Warn(fmt.Sprintf("no resource specifications are found for namespace [%s]", namespace.Name))
 				continue
 			}
 			return fmt.Errorf("error getting resource specs for namespace [%s]: %w", namespace.Name, err)

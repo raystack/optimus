@@ -68,7 +68,7 @@ func (b *BackupCreateSurvey) AskConfirmToContinue() (bool, error) {
 		return false, err
 	}
 	if proceedWithBackup == answerNo {
-		b.logger.Info("Aborting...")
+		b.logger.Warn("Aborting...")
 		return false, nil
 	}
 	return true, nil
