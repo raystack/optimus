@@ -77,6 +77,7 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
     def __init__(self,
                  optimus_hostname,
                  optimus_projectname,
+                 optimus_namespacename,
                  optimus_jobname,
                  *args,
                  **kwargs):
@@ -90,6 +91,7 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
         
         # used to fetch job env from optimus for adding to k8s pod
         self.optimus_hostname = optimus_hostname
+        self.optimus_namespacename = optimus_namespacename
         self.optimus_jobname  = optimus_jobname
         self.optimus_projectname = optimus_projectname
         self._optimus_client = OptimusAPIClient(optimus_hostname)
@@ -102,7 +104,7 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
 
     def fetch_env_from_optimus(self, context):
         scheduled_at = context["next_execution_date"].strftime(TIMESTAMP_FORMAT)
-        job_meta = self._optimus_client.get_job_metadata(scheduled_at, self.optimus_projectname, self.optimus_jobname)
+        job_meta = self._optimus_client.get_job_metadata(scheduled_at, self.optimus_namespacename, self.optimus_projectname, self.optimus_jobname)
         return [ 
             k8s.V1EnvVar(name=key,value=val) for key, val in job_meta["context"]["envs"].items()
         ] + [
