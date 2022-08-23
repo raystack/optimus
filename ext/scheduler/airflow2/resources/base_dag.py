@@ -157,6 +157,7 @@ init_container = k8s.V1Container(
 transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperKubernetesPodOperator(
     optimus_hostname="{{$.Hostname}}",
     optimus_projectname="{{$.Namespace.ProjectSpec.Name}}",
+    optimus_namespacename="{{$.Namespace.Name}}",
     optimus_jobname="{{.Job.Name}}",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
@@ -202,6 +203,7 @@ init_container_{{$hookSchema.Name | replace "-" "__dash__"}} = k8s.V1Container(
 hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
     optimus_hostname="{{$.Hostname}}",
     optimus_projectname="{{$.Namespace.ProjectSpec.Name}}",
+    optimus_namespacename="{{$.Namespace.Name}}",
     optimus_jobname="{{$.Job.Name}}",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),

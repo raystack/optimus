@@ -119,6 +119,7 @@ init_container = k8s.V1Container(
 transformation_bq = SuperKubernetesPodOperator(
     optimus_hostname="http://airflow.example.io",
     optimus_projectname="foo-project",
+    optimus_namespacename="bar-namespace",
     optimus_jobname="foo",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
@@ -157,6 +158,7 @@ init_container_transporter = k8s.V1Container(
 hook_transporter = SuperKubernetesPodOperator(
     optimus_hostname="http://airflow.example.io",
     optimus_projectname="foo-project",
+    optimus_namespacename="bar-namespace",
     optimus_jobname="foo",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
@@ -190,6 +192,7 @@ init_container_predator = k8s.V1Container(
 hook_predator = SuperKubernetesPodOperator(
     optimus_hostname="http://airflow.example.io",
     optimus_projectname="foo-project",
+    optimus_namespacename="bar-namespace",
     optimus_jobname="foo",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
@@ -223,6 +226,7 @@ init_container_hook__dash__for__dash__fail = k8s.V1Container(
 hook_hook__dash__for__dash__fail = SuperKubernetesPodOperator(
     optimus_hostname="http://airflow.example.io",
     optimus_projectname="foo-project",
+    optimus_namespacename="bar-namespace",
     optimus_jobname="foo",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
