@@ -14,7 +14,7 @@ import (
 	"github.com/odpf/optimus/cmd/deploy"
 	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/internal/connectivity"
-	"github.com/odpf/optimus/cmd/logger"
+	"github.com/odpf/optimus/cmd/internal/logger"
 	"github.com/odpf/optimus/config"
 )
 

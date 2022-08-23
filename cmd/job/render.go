@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/cmd/logger"
+	"github.com/odpf/optimus/cmd/internal/logger"
 	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"

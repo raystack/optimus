@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/cmd/logger"
+	"github.com/odpf/optimus/cmd/internal/logger"
 	"github.com/odpf/optimus/cmd/plugin"
 	"github.com/odpf/optimus/cmd/server"
 	"github.com/odpf/optimus/config"

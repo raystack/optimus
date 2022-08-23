@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
-	"github.com/odpf/optimus/cmd/logger"
+	"github.com/odpf/optimus/cmd/internal/logger"
 	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/utils"
