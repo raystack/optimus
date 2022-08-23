@@ -314,8 +314,10 @@ func (d *deployCommand) processResourceDeploymentResponse(
 			return err
 		}
 
-		if logStatus := resp.GetLogStatus(); logStatus != nil && d.verbose {
-			logger.PrintLogStatus(d.logger, logStatus)
+		if logStatus := resp.GetLogStatus(); logStatus != nil {
+			if d.verbose {
+				logger.PrintLogStatus(d.logger, logStatus)
+			}
 		}
 	}
 	return nil
@@ -406,8 +408,10 @@ func (d *deployCommand) processJobDeploymentResponses(stream pb.JobSpecification
 			return []string{}, err
 		}
 
-		if logStatus := resp.GetLogStatus(); logStatus != nil && d.verbose {
-			logger.PrintLogStatus(d.logger, logStatus)
+		if logStatus := resp.GetLogStatus(); logStatus != nil {
+			if d.verbose {
+				logger.PrintLogStatus(d.logger, logStatus)
+			}
 			continue
 		}
 
