@@ -15,8 +15,8 @@ import (
 	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/internal/connectivity"
 	"github.com/odpf/optimus/cmd/internal/logger"
+	"github.com/odpf/optimus/cmd/internal/progressbar"
 	nameSpcCmd "github.com/odpf/optimus/cmd/namespace"
-	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/config"
 )

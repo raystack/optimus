@@ -16,7 +16,7 @@ import (
 	"github.com/odpf/optimus/cmd/internal"
 	"github.com/odpf/optimus/cmd/internal/connectivity"
 	"github.com/odpf/optimus/cmd/internal/logger"
-	"github.com/odpf/optimus/cmd/progressbar"
+	"github.com/odpf/optimus/cmd/internal/progressbar"
 	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
