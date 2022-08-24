@@ -396,11 +396,6 @@ func (srv *JobService) GetByNameForProject(ctx context.Context, s string, spec m
 	return args.Get(0).(models.JobSpec), args.Get(1).(models.NamespaceSpec), args.Error(2)
 }
 
-func (srv *JobService) Sync(ctx context.Context, spec models.NamespaceSpec, observer progress.Observer) error {
-	args := srv.Called(ctx, spec, observer)
-	return args.Error(0)
-}
-
 func (srv *JobService) GetTaskDependencies(ctx context.Context, namespaceSpec models.NamespaceSpec, spec models.JobSpec) (models.JobSpecTaskDestination,
 	models.JobSpecTaskDependencies, error) {
 	args := srv.Called(ctx, namespaceSpec, spec)
