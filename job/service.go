@@ -137,7 +137,7 @@ func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, 
 	return result, nil
 }
 
-func (srv *Service) bulkCreate(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, logWriter writer.LogWriter) []models.JobSpec {
+func (srv *Service) BulkCreate(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, logWriter writer.LogWriter) []models.JobSpec {
 	result := []models.JobSpec{}
 	var op string
 
@@ -800,7 +800,7 @@ func (srv *Service) Refresh(ctx context.Context, projectName string, namespaceNa
 	}
 
 	// resolve dependency and persist
-	srv.identifyAndPersistJobSources(ctx, projectSpec, jobSpecs, logWriter)
+	srv.IdentifyAndPersistJobSources(ctx, projectSpec, jobSpecs, logWriter)
 	successMsg := "info: dependencies resolved"
 	logWriter.Write(writer.LogLevelInfo, successMsg)
 
@@ -862,7 +862,7 @@ func (srv *Service) fetchSpecsForGivenJobNames(ctx context.Context, projectSpec 
 	return jobSpecs, nil
 }
 
-func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpec models.ProjectSpec,
+func (srv *Service) IdentifyAndPersistJobSources(ctx context.Context, projectSpec models.ProjectSpec,
 	jobSpecs []models.JobSpec, logWriter writer.LogWriter) {
 	start := time.Now()
 	defer resolveDependencyHistogram.Observe(time.Since(start).Seconds())
@@ -945,13 +945,13 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 
 	createdAndModifiedJobs := createdJobs
 	createdAndModifiedJobs = append(createdAndModifiedJobs, modifiedJobs...)
-	savedJobs := srv.bulkCreate(ctx, namespaceSpec, createdAndModifiedJobs, logWriter)
+	savedJobs := srv.BulkCreate(ctx, namespaceSpec, createdAndModifiedJobs, logWriter)
 
 	srv.bulkDelete(ctx, namespaceSpec, deletedJobs, logWriter)
 
 	// Resolve inferred dependency
 	if len(savedJobs) > 0 {
-		srv.identifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, savedJobs, logWriter)
+		srv.IdentifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, savedJobs, logWriter)
 	}
 
 	// Deploy through deploy manager
@@ -1036,4 +1036,8 @@ func getHash(val string) string {
 
 func (srv *Service) GetDeployment(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error) {
 	return srv.deployManager.GetStatus(ctx, deployID)
+}
+
+func (srv *Service) ScheduleDeployment(ctx context.Context, projectSpec models.ProjectSpec) (models.DeploymentID, error) {
+	return srv.deployManager.Deploy(ctx, projectSpec)
 }

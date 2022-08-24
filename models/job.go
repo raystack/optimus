@@ -419,6 +419,9 @@ type HTTPDependency struct {
 type JobService interface {
 	// Create constructs a Job and commits it to a storage
 	Create(context.Context, NamespaceSpec, JobSpec) (JobSpec, error)
+	// BulkCreate does create for more than one jobs
+	BulkCreate(context.Context, NamespaceSpec, []JobSpec, writer.LogWriter) []JobSpec
+
 	// GetByName fetches a Job by name for a specific namespace
 	GetByName(context.Context, string, NamespaceSpec) (JobSpec, error)
 	// GetAll reads all job specifications of the given namespace
@@ -435,8 +438,12 @@ type JobService interface {
 
 	// GetByNameForProject fetches a Job by name for a specific project
 	GetByNameForProject(context.Context, string, ProjectSpec) (JobSpec, NamespaceSpec, error)
-	// TODO: to be deprecated
-	Sync(context.Context, NamespaceSpec, progress.Observer) error
+
+	// IdentifyAndPersistJobSources identifies and Persist job sources in job_source table
+	IdentifyAndPersistJobSources(context.Context, ProjectSpec, []JobSpec, writer.LogWriter)
+	// ScheduleDeployment Queues deployment for a project
+	ScheduleDeployment(context.Context, ProjectSpec) (DeploymentID, error)
+
 	Check(context.Context, NamespaceSpec, []JobSpec, writer.LogWriter) error
 	// GetByDestination fetches a Job by destination for a specific project
 	GetByDestination(ctx context.Context, projectSpec ProjectSpec, destination string) (JobSpec, error)

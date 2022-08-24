@@ -163,30 +163,48 @@ func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req 
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
-	jobSpec, err := FromJobProto(req.GetSpec(), sv.pluginRepo)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "cannot deserialize job: \n%s", err.Error())
+	reqJobSpecs := req.GetSpecs()
+	var jobSpecs []models.JobSpec
+	for _, spec := range reqJobSpecs {
+		jobSpec, err := FromJobProto(spec, sv.pluginRepo)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "cannot deserialize job: \n%s", err.Error())
+		}
+		jobSpecs = append(jobSpecs, jobSpec)
+	}
+
+	jobNames := make([]string, len(jobSpecs))
+	for i, jobSpec := range jobSpecs {
+		jobNames[i] = jobSpec.Name
 	}
 
 	// validate job spec
-	if err = sv.jobSvc.Check(ctx, namespaceSpec, []models.JobSpec{jobSpec}, logWriter); err != nil {
+	if err = sv.jobSvc.Check(ctx, namespaceSpec, jobSpecs, logWriter); err != nil {
 		return nil, status.Errorf(codes.Internal, "spec validation failed\n%s", err.Error())
 	}
 
-	_, err = sv.jobSvc.Create(ctx, namespaceSpec, jobSpec)
+	jobSpecs = sv.jobSvc.BulkCreate(ctx, namespaceSpec, jobSpecs, logWriter)
+
+	sv.jobSvc.IdentifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, jobSpecs, logWriter)
+
+	successMsg := "info: dependencies resolved"
+	logWriter.Write(writer.LogLevelInfo, successMsg)
+
+	deployID, err := sv.jobSvc.ScheduleDeployment(ctx, namespaceSpec.ProjectSpec)
+
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: failed to save job %s", err.Error(), jobSpec.Name)
+		return &pb.CreateJobSpecificationResponse{
+			Success:      false,
+			Message:      fmt.Sprintf("job %s is/are created but deployment failed for project %s, error:: %s", strings.Join(jobNames, ", "), req.GetProjectName(), err.Error()),
+			DeploymentId: models.DeploymentID(uuid.Nil).UUID().String(),
+		}, nil
 	}
-
-	// TODO: remove progressObserver injection here
-	if err := sv.jobSvc.Sync(ctx, namespaceSpec, sv.progressObserver); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to sync jobs: \n%s", err.Error())
-	}
-
 	runtimeDeployJobSpecificationCounter.Inc()
+
 	return &pb.CreateJobSpecificationResponse{
-		Success: true,
-		Message: fmt.Sprintf("job %s is created and deployed successfully on project %s", jobSpec.Name, req.GetProjectName()),
+		Success:      true,
+		Message:      fmt.Sprintf("jobs %s is/are created and queued for deployment on project %s", strings.Join(jobNames, ", "), req.GetProjectName()),
+		DeploymentId: deployID.UUID().String(),
 	}, nil
 }
 

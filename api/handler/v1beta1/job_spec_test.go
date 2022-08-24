@@ -422,6 +422,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				Base: execUnit1,
 			}, nil)
 
+			deploymentId := models.DeploymentID(uuid.New())
 			jobSpec := models.JobSpec{
 				Name: jobName,
 				Task: models.JobSpecTask{
@@ -451,9 +452,10 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			}
 
 			jobSvc := new(mock.JobService)
-			jobSvc.On("Create", ctx, namespaceSpec, jobSpec).Return(jobSpec, nil)
 			jobSvc.On("Check", ctx, namespaceSpec, []models.JobSpec{jobSpec}, mock2.Anything).Return(nil)
-			jobSvc.On("Sync", mock2.Anything, namespaceSpec, mock2.Anything).Return(nil)
+			jobSvc.On("BulkCreate", ctx, namespaceSpec, []models.JobSpec{jobSpec}, mock2.Anything).Return([]models.JobSpec{jobSpec}, nil)
+			jobSvc.On("IdentifyAndPersistJobSources", ctx, namespaceSpec.ProjectSpec, []models.JobSpec{jobSpec}, mock2.Anything).Return(nil)
+			jobSvc.On("ScheduleDeployment", ctx, namespaceSpec.ProjectSpec).Return(deploymentId, nil)
 			defer jobSvc.AssertExpectations(t)
 
 			namespaceService := new(mock.NamespaceService)
@@ -469,17 +471,18 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				nil,
 			)
 
-			jobProto := v1.ToJobSpecificationProto(jobSpec)
+			jobProto := []*pb.JobSpecification{v1.ToJobSpecificationProto(jobSpec)}
 			request := pb.CreateJobSpecificationRequest{
 				ProjectName:   projectName,
 				NamespaceName: namespaceSpec.Name,
-				Spec:          jobProto,
+				Specs:         jobProto,
 			}
 			resp, err := jobSpecServiceServer.CreateJobSpecification(ctx, &request)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.CreateJobSpecificationResponse{
-				Success: true,
-				Message: "job my-job is created and deployed successfully on project a-data-project",
+				Success:      true,
+				Message:      "jobs my-job is/are created and queued for deployment on project a-data-project",
+				DeploymentId: deploymentId.UUID().String(),
 			}, resp)
 		})
 	})
