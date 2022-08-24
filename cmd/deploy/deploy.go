@@ -17,8 +17,8 @@ import (
 
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/cmd/connectivity"
-	"github.com/odpf/optimus/cmd/logger"
+	"github.com/odpf/optimus/cmd/internal/connectivity"
+	"github.com/odpf/optimus/cmd/internal/logger"
 	"github.com/odpf/optimus/cmd/namespace"
 	"github.com/odpf/optimus/cmd/plugin"
 	"github.com/odpf/optimus/cmd/project"
@@ -314,8 +314,10 @@ func (d *deployCommand) processResourceDeploymentResponse(
 			return err
 		}
 
-		if logStatus := resp.GetLogStatus(); logStatus != nil && d.verbose {
-			logger.PrintLogStatus(d.logger, logStatus)
+		if logStatus := resp.GetLogStatus(); logStatus != nil {
+			if d.verbose {
+				logger.PrintLogStatus(d.logger, logStatus)
+			}
 		}
 	}
 	return nil
@@ -406,8 +408,10 @@ func (d *deployCommand) processJobDeploymentResponses(stream pb.JobSpecification
 			return []string{}, err
 		}
 
-		if logStatus := resp.GetLogStatus(); logStatus != nil && d.verbose {
-			logger.PrintLogStatus(d.logger, logStatus)
+		if logStatus := resp.GetLogStatus(); logStatus != nil {
+			if d.verbose {
+				logger.PrintLogStatus(d.logger, logStatus)
+			}
 			continue
 		}
 
