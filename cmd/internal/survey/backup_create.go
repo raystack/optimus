@@ -4,7 +4,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/odpf/salt/log"
 
-	"github.com/odpf/optimus/cmd/logger"
+	"github.com/odpf/optimus/cmd/internal/logger"
 )
 
 // BackupCreateSurvey defines survey for creating backup

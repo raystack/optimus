@@ -6,7 +6,7 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/cmd/survey"
+	"github.com/odpf/optimus/cmd/internal/survey"
 	"github.com/odpf/optimus/extension/model"
 )
 
