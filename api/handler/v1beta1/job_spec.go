@@ -193,11 +193,7 @@ func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req 
 	deployID, err := sv.jobSvc.ScheduleDeployment(ctx, namespaceSpec.ProjectSpec)
 
 	if err != nil {
-		return &pb.CreateJobSpecificationResponse{
-			Success:      false,
-			Message:      fmt.Sprintf("job %s is/are created but deployment failed for project %s, error:: %s", strings.Join(jobNames, ", "), req.GetProjectName(), err.Error()),
-			DeploymentId: models.DeploymentID(uuid.Nil).UUID().String(),
-		}, nil
+		return nil, status.Errorf(codes.Internal, "jobs %s is/are created but deployment scheduling failed for project %s, error:: %s", strings.Join(jobNames, ", "), req.GetProjectName(), err.Error())
 	}
 	runtimeDeployJobSpecificationCounter.Inc()
 
