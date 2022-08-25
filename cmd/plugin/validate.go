@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	yml "gopkg.in/yaml.v2"
 
-	"github.com/odpf/optimus/cmd/logger"
+	"github.com/odpf/optimus/cmd/internal/logger"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin/yaml"
