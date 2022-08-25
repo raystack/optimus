@@ -59,10 +59,11 @@ func (v *validateCommand) overrideFile(plugin models.CommandLineMod, pluginPath 
 		return marshalErr
 	}
 	ioerr := ioutil.WriteFile(pluginPath, data, 0)
-	if ioerr == nil {
-		v.logger.Info(fmt.Sprintf("Success in Overriding pluginversion in %s", pluginPath))
+	if ioerr != nil {
+		return ioerr
 	}
-	return ioerr
+	v.logger.Info(fmt.Sprintf("Success in Overriding pluginversion in %s", pluginPath))
+	return nil
 }
 
 func (v *validateCommand) validateFile(pluginPath string) error {
@@ -70,17 +71,16 @@ func (v *validateCommand) validateFile(pluginPath string) error {
 	if filepath.Ext(pluginPath) != ".yaml" {
 		return errors.New("expecting .yaml file at " + pluginPath)
 	}
-	var err error
-	var plugin models.CommandLineMod
-	if plugin, err = yaml.NewPluginSpec(pluginPath); err == nil {
-		overrideErr := v.overrideFile(plugin, pluginPath)
-		if overrideErr != nil {
-			return overrideErr
-		}
-		v.logPluginAsYaml(&plugin)
-		return nil
+	plugin, err := yaml.NewPluginSpec(pluginPath)
+	if err != nil {
+		return err
 	}
-	return err
+	overrideErr := v.overrideFile(plugin, pluginPath)
+	if overrideErr != nil {
+		return overrideErr
+	}
+	v.logPluginAsYaml(plugin)
+	return nil
 }
 
 func (v *validateCommand) validateDir(pluginPath string) error {
@@ -103,7 +103,7 @@ func (v *validateCommand) validateDir(pluginPath string) error {
 	return nil
 }
 
-func (v *validateCommand) logPluginAsYaml(plugin *models.CommandLineMod) {
+func (v *validateCommand) logPluginAsYaml(plugin models.CommandLineMod) {
 	if !v.logYaml {
 		return
 	}
