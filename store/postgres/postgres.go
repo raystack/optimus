@@ -7,7 +7,6 @@
 package postgres
 
 import (
-	"embed"
 	"errors"
 	"fmt"
 	"io"
@@ -26,9 +25,6 @@ import (
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
 )
-
-//go:embed migrations
-var migrationFs embed.FS
 
 const (
 	resourcePath   = "migrations"
