@@ -9,10 +9,11 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
-	"github.com/odpf/optimus/store"
 	"github.com/odpf/salt/log"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+
+	"github.com/odpf/optimus/store"
 )
 
 //go:embed migrations
