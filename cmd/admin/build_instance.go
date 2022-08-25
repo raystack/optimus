@@ -142,7 +142,7 @@ func (b *buildInstanceCommand) writeInstanceResponse(jobResponse *pb.RegisterIns
 	}
 
 	if len(b.keysWithUnsubstitutedValue) > 0 {
-		b.logger.Warn(logger.ColoredNotice("Value not substituted for keys:\n%s", strings.Join(b.keysWithUnsubstitutedValue, "\n")))
+		b.logger.Warn("Value not substituted for keys:\n%s", strings.Join(b.keysWithUnsubstitutedValue, "\n"))
 	}
 	return nil
 }

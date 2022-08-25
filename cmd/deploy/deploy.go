@@ -79,20 +79,20 @@ func (d *deployCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	}
 	d.logger = logger.NewClientLogger(d.clientConfig.Log)
 
-	d.logger.Info(logger.ColoredNotice("Initializing client plugins"))
+	d.logger.Info("Initializing client plugins")
 	d.pluginCleanFn, err = plugin.TriggerClientPluginsInit(d.clientConfig.Log.Level)
 	d.logger.Info("initialization finished!\n")
 	return err
 }
 
 func (d *deployCommand) RunE(_ *cobra.Command, _ []string) error {
-	d.logger.Info(logger.ColoredNotice("Registering project [%s] to [%s]", d.clientConfig.Project.Name, d.clientConfig.Host))
+	d.logger.Info("Registering project [%s] to [%s]", d.clientConfig.Project.Name, d.clientConfig.Host)
 	if err := project.RegisterProject(d.logger, d.clientConfig.Host, d.clientConfig.Project); err != nil {
 		return err
 	}
 	d.logger.Info("project registration finished!\n")
 
-	d.logger.Info(logger.ColoredNotice("Validating namespaces"))
+	d.logger.Info("Validating namespaces")
 	selectedNamespaces, err := d.clientConfig.GetSelectedNamespaces(d.selectedNamespaceNames...)
 	if err != nil {
 		return err
@@ -102,7 +102,7 @@ func (d *deployCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 	d.logger.Info("validation finished!\n")
 
-	d.logger.Info(logger.ColoredNotice("Registering namespaces for [%s] to [%s]", d.clientConfig.Project.Name, d.clientConfig.Host))
+	d.logger.Info("Registering namespaces for [%s] to [%s]", d.clientConfig.Project.Name, d.clientConfig.Host)
 	if err := namespace.RegisterSelectedNamespaces(d.logger, d.clientConfig.Host, d.clientConfig.Project.Name, selectedNamespaces...); err != nil {
 		return err
 	}
@@ -138,7 +138,7 @@ func (d *deployCommand) deploy(selectedNamespaces []*config.Namespace) error {
 
 func (d *deployCommand) deployJobs(conn *connectivity.Connectivity, selectedNamespaces []*config.Namespace) error {
 	if d.ignoreJobDeployment {
-		d.logger.Info("> Skipping job deployment")
+		d.logger.Warn("> Skipping job deployment")
 		return nil
 	}
 
@@ -146,7 +146,7 @@ func (d *deployCommand) deployJobs(conn *connectivity.Connectivity, selectedName
 	for _, namespace := range selectedNamespaces {
 		namespaceNames = append(namespaceNames, namespace.Name)
 	}
-	d.logger.Info(logger.ColoredNotice("\n> Deploying jobs from namespaces [%s]", strings.Join(namespaceNames, ",")))
+	d.logger.Info("\n> Deploying jobs from namespaces [%s]", strings.Join(namespaceNames, ","))
 
 	stream, err := d.getJobStreamClient(conn)
 	if err != nil {
@@ -160,7 +160,7 @@ func (d *deployCommand) deployJobs(conn *connectivity.Connectivity, selectedName
 		}
 		if err := d.sendNamespaceJobRequest(stream, namespace, progressFn); err != nil {
 			if errors.Is(err, models.ErrNoJobs) {
-				d.logger.Info(fmt.Sprintf("no job specifications are found for namespace [%s]", namespace.Name))
+				d.logger.Warn(fmt.Sprintf("no job specifications are found for namespace [%s]", namespace.Name))
 				continue
 			}
 			return fmt.Errorf("error getting job specs for namespace [%s]: %w", namespace.Name, err)
@@ -180,7 +180,7 @@ func (d *deployCommand) deployJobs(conn *connectivity.Connectivity, selectedName
 		return err
 	}
 
-	d.logger.Info(logger.ColoredNotice("> Polling deployment results:"))
+	d.logger.Info("> Polling deployment results:")
 
 	var pollErrs error
 	var wg sync.WaitGroup
@@ -254,7 +254,7 @@ func (d *deployCommand) getJobStreamClient(
 	stream, err := client.DeployJobSpecification(conn.GetContext())
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			d.logger.Error(logger.ColoredError("Deployment process took too long, timing out"))
+			d.logger.Error("Deployment process took too long, timing out")
 		}
 		return nil, fmt.Errorf("deployement failed: %w", err)
 	}
@@ -266,10 +266,10 @@ func (d *deployCommand) deployResources(
 	selectedNamespaces []*config.Namespace,
 ) error {
 	if d.ignoreResourceDeployment {
-		d.logger.Info("> Skipping resource deployment")
+		d.logger.Warn("> Skipping resource deployment")
 		return nil
 	}
-	d.logger.Info(logger.ColoredNotice("> Deploying all resources"))
+	d.logger.Info("> Deploying all resources")
 
 	stream, err := d.getResourceStreamClient(conn)
 	if err != nil {
@@ -333,7 +333,7 @@ func (d *deployCommand) sendNamespaceResourceRequest(
 		request, err := d.getResourceDeploymentRequest(ctx, namespace.Name, storeName, repoFS)
 		if err != nil {
 			if errors.Is(err, models.ErrNoResources) {
-				d.logger.Info(fmt.Sprintf("no resource specifications are found for namespace [%s]", namespace.Name))
+				d.logger.Warn(fmt.Sprintf("no resource specifications are found for namespace [%s]", namespace.Name))
 				continue
 			}
 			return fmt.Errorf("error getting resource specs for namespace [%s]: %w", namespace.Name, err)
@@ -388,7 +388,7 @@ func (d *deployCommand) getResourceStreamClient(
 	stream, err := client.DeployResourceSpecification(conn.GetContext())
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			d.logger.Error(logger.ColoredError("Deployment process took too long, timing out"))
+			d.logger.Error("Deployment process took too long, timing out")
 		}
 		return nil, fmt.Errorf("deployement failed: %w", err)
 	}
@@ -435,7 +435,7 @@ func PollJobDeployment(ctx context.Context, l log.Logger, jobSpecService pb.JobS
 		})
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
-				l.Error(logger.ColoredError("Get deployment process took too long, timing out"))
+				l.Error("Get deployment process took too long, timing out")
 			}
 			return fmt.Errorf("getting deployment status failed: %w", err)
 		}
@@ -455,19 +455,19 @@ func PollJobDeployment(ctx context.Context, l log.Logger, jobSpecService pb.JobS
 			if len(resp.Failures) > 0 {
 				for _, failedJob := range resp.Failures {
 					if failedJob.GetJobName() != "" {
-						l.Error(logger.ColoredError("Unable to deploy job %s: %s", failedJob.GetJobName(), failedJob.GetMessage()))
+						l.Error("Unable to deploy job %s: %s", failedJob.GetJobName(), failedJob.GetMessage())
 					} else {
-						l.Error(logger.ColoredError("Job deployment failed: %s", failedJob.GetMessage()))
+						l.Error("Job deployment failed: %s", failedJob.GetMessage())
 					}
 				}
 			}
 			if len(resp.UnknownDependencies) > 0 {
-				l.Error(logger.ColoredError("Unable to create sensors for below jobs:"))
+				l.Error("Unable to create sensors for below jobs:")
 				for jobName, dependencies := range resp.UnknownDependencies {
-					l.Error(logger.ColoredError("- %s: invalid dependency name(s): %s.", jobName, dependencies))
+					l.Error("- %s: invalid dependency name(s): %s.", jobName, dependencies)
 				}
 			}
-			l.Error(logger.ColoredError("Deployed %d/%d jobs.", resp.SuccessCount, resp.SuccessCount+resp.FailureCount))
+			l.Error("Deployed %d/%d jobs.", resp.SuccessCount, resp.SuccessCount+resp.FailureCount)
 			return errors.New("job deployment failed")
 		}
 

@@ -47,7 +47,7 @@ func (r *uninstallCommand) RunE(cmd *cobra.Command, _ []string) error {
 			return err
 		}
 		if !confirmed {
-			r.logger.Info("Aborted uninstallation ...")
+			r.logger.Warn("Aborted uninstallation ...")
 			return nil
 		}
 	}

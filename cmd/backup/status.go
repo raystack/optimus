@@ -107,7 +107,7 @@ func (s *statusCommand) RunE(_ *cobra.Command, args []string) error {
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			s.logger.Error(logger.ColoredError("Getting backup detail took too long, timing out"))
+			s.logger.Error("Getting backup detail took too long, timing out")
 		}
 		return fmt.Errorf("request failed to get backup detail: %w", err)
 	}
@@ -127,7 +127,7 @@ func (s *statusCommand) stringifyBackupDetailResponse(backupDetailResponse *pb.G
 	if ttl != "" {
 		ttlDuration, err := time.ParseDuration(ttl)
 		if err != nil {
-			s.logger.Error(logger.ColoredError("Unable to parse backup TTL: %v", err))
+			s.logger.Error("Unable to parse backup TTL: %v", err)
 		} else {
 			expiry = expiry.Add(ttlDuration)
 		}

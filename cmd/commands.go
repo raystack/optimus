@@ -5,7 +5,6 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/odpf/salt/cmdx"
-	"github.com/odpf/salt/term"
 	cli "github.com/spf13/cobra"
 
 	"github.com/odpf/optimus/cmd/admin"
@@ -32,7 +31,7 @@ import (
 // unless the stdout/err is a tty, colors/progressbar should be disabled
 func New() *cli.Command {
 	if utils.IsTerminal(os.Stdout) {
-		initializeColor()
+		logger.InitializeColor()
 	}
 
 	cmd := &cli.Command{
@@ -88,17 +87,4 @@ func New() *cli.Command {
 
 	extension.UpdateWithExtension(cmd)
 	return cmd
-}
-
-func initializeColor() {
-	cs := term.NewColorScheme()
-	logger.ColoredNotice = func(s string, a ...interface{}) string {
-		return cs.Yellowf(s, a...)
-	}
-	logger.ColoredError = func(s string, a ...interface{}) string {
-		return cs.Redf(s, a...)
-	}
-	logger.ColoredSuccess = func(s string, a ...interface{}) string {
-		return cs.Greenf(s, a...)
-	}
 }

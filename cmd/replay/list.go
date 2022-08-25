@@ -97,12 +97,12 @@ func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.logger.Error(logger.ColoredError("Replay request took too long, timing out"))
+			l.logger.Error("Replay request took too long, timing out")
 		}
 		return fmt.Errorf("failed to get replay requests: %w", err)
 	}
 	if len(replayResponse.ReplayList) == 0 {
-		l.logger.Info(fmt.Sprintf("No replays were found in %s project.", l.projectName))
+		l.logger.Warn(fmt.Sprintf("No replays were found in %s project.", l.projectName))
 	} else {
 		l.printReplayListResponse(replayResponse)
 	}
@@ -110,7 +110,7 @@ func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 }
 
 func (l *listCommand) printReplayListResponse(replayListResponse *pb.ListReplaysResponse) {
-	l.logger.Info(logger.ColoredNotice("Recent replays"))
+	l.logger.Info("Recent replays")
 	table := tablewriter.NewWriter(l.logger.Writer())
 	table.SetBorder(false)
 	table.SetHeader([]string{
