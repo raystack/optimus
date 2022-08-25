@@ -63,6 +63,8 @@ func NewExplainCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&explain.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
 	cmd.Flags().StringVar(&explain.host, "host", "", "Optimus service endpoint url")
 	cmd.Flags().StringVarP(&explain.scheduleTime, "time", "t", "", "schedule time for the job deployment")
+
+	//cmd.Flags().StringVar(&explain.host, "host", "", "Optimus service endpoint url")
 	return cmd
 }
 
@@ -126,6 +128,9 @@ func (e *explainCommand) RunE(_ *cobra.Command, args []string) error {
 
 	e.logger.Info(fmt.Sprintf("Assuming execution time as current time of %s\n", scheduleTime.Format(models.InstanceScheduledAtTimeLayout)))
 
+	now := time.Now()
+	e.logger.Info(fmt.Sprintf("Assuming execution time as current time of %s\n", now.Format(models.InstanceScheduledAtTimeLayout)))
+
 	templateEngine := compiler.NewGoEngine()
 	templates, err := compiler.DumpAssets(context.Background(), jobSpec, scheduleTime, templateEngine, true)
 	if err != nil {
@@ -164,7 +169,8 @@ func (e *explainCommand) getJobSpecByName(args []string, namespaceJobPath string
 func (e *explainCommand) GetJobSpecFromServer(jobSpec models.JobSpec) *pb.JobSpecification {
 	conn, err := connectivity.NewConnectivity(e.clientConfig.Host, explainTimeout)
 	if err != nil {
-		// todo handle later
+		//todo handle later
+		fmt.Println("err:: ", err.Error())
 		return nil
 	}
 	defer conn.Close()
@@ -187,8 +193,9 @@ func (e *explainCommand) GetJobSpecFromServer(jobSpec models.JobSpec) *pb.JobSpe
 		if errors.Is(err, context.DeadlineExceeded) {
 			e.logger.Error(logger.ColoredError("Refresh process took too long, timing out"))
 		}
-		// return fmt.Errorf("refresh request failed: %w", err)
-		// todo handle later
+		//return fmt.Errorf("refresh request failed: %w", err)
+		//todo handle later
+		fmt.Println("err:: ", err.Error())
 		return nil
 	}
 

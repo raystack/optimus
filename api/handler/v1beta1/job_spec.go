@@ -174,6 +174,7 @@ func (sv *JobSpecServiceServer) JobExplain(ctx context.Context, req *pb.JobExpla
 		return nil, status.Errorf(codes.Internal, "cannot deserialize job: \n%s", err.Error())
 	}
 
+	// logWriter := writer.NewLogWriter(sv.l)
 	// validate job spec
 	if err = sv.jobSvc.Check(ctx, namespaceSpec, []models.JobSpec{jobSpec}, nil); err != nil {
 		return nil, status.Errorf(codes.Internal, "spec validation failed\n%s", err.Error())
@@ -186,7 +187,7 @@ func (sv *JobSpecServiceServer) JobExplain(ctx context.Context, req *pb.JobExpla
 	jobSpec.ResourceDestination = jobSpecTaskDestination.URN()
 
 	//this only resovled infered
-	dependencyJobSpecs, _ := sv.jobSvc.ResolveDependecy(ctx, jobSources, jobSpec, nil)
+	dependencyJobSpecs, _ := sv.jobSvc.ResolveDependecy(ctx, jobSources, jobSpec)
 	// todo handle static dependencies
 
 	// internal first

@@ -446,6 +446,9 @@ type JobService interface {
 	ResolveDependecy(ctx context.Context, resourceDestinations []string, currentSpec JobSpec, progressObserver progress.Observer) ([]JobSpec, error)
 
 	Check(context.Context, NamespaceSpec, []JobSpec, writer.LogWriter) error
+
+	ResolveDependecy(ctx context.Context, proj ProjectSpec, currentSpec JobSpec) (interface{}, error)
+
 	// GetByDestination fetches a Job by destination for a specific project
 	GetByDestination(ctx context.Context, projectSpec ProjectSpec, destination string) (JobSpec, error)
 	// GetDownstream fetches downstream jobspecs
