@@ -17,9 +17,7 @@ type installCommand struct {
 
 // NewInstallCommand initializes plugin install command
 func NewInstallCommand() *cobra.Command {
-	install := &installCommand{
-		serverConfig: &config.ServerConfig{},
-	}
+	install := &installCommand{}
 	cmd := &cobra.Command{
 		Use:     "install",
 		Short:   "install and extract plugins to a dir",
@@ -36,7 +34,7 @@ func (i *installCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	*i.serverConfig = *c
+	i.serverConfig = c
 	i.logger = logger.NewClientLogger(c.Log)
 	return nil
 }

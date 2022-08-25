@@ -8,9 +8,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/cmd/server"
 	"github.com/odpf/optimus/config"
 	oplugin "github.com/odpf/optimus/plugin"
+	"github.com/odpf/optimus/server"
 )
 
 type serveCommand struct {

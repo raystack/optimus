@@ -24,11 +24,11 @@ var (
 
 type IPluginManager interface {
 	Install(dst string, sources ...string) error
-	Archive(name string) error        // by server
-	UnArchive(src, dest string) error // by client
+	Archive(name string) error
+	UnArchive(src, dest string) error
 }
 
-func NewPluginManager() IPluginManager {
+func NewPluginManager() *PluginManager {
 	pluginLoggerOpt := &hclog.LoggerOptions{
 		Name:   "plugin-manager",
 		Output: os.Stdout,
@@ -70,7 +70,6 @@ func (p *PluginManager) installOne(dst, src string) error {
 }
 
 func (p *PluginManager) Install(dst string, sources ...string) error {
-	// p.preCleanUp(dst) -- TODO: after making plugin discovery static
 	for _, src := range sources {
 		if err := p.installOne(dst, src); err != nil {
 			p.logger.Error("*** Plugin Installation Aborted !!. Please check if plugin.artifacts are correct")

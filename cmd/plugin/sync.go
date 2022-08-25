@@ -15,9 +15,7 @@ import (
 
 // NewInstallCommand initializes plugin install command
 func NewSyncCommand() *cobra.Command {
-	sync := &syncCommand{
-		clientConfig: &config.ClientConfig{},
-	}
+	sync := &syncCommand{}
 	cmd := &cobra.Command{
 		Use:     "sync",
 		Short:   "sync plugins from server",
@@ -39,12 +37,12 @@ func (s *syncCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	*s.clientConfig = *c
+	s.clientConfig = c
 	return nil
 }
 
-func downloadArchiveFromServer(conf config.ClientConfig) error {
-	optimusServerURL := fmt.Sprintf("http://%s/%s", conf.Host, "plugins") // will url work ?
+func (s *syncCommand) downloadArchiveFromServer() error {
+	optimusServerURL := fmt.Sprintf("http://%s/%s", s.clientConfig.Host, "plugins") // will url work ?
 
 	req, err := http.NewRequestWithContext(context.Background(), "GET", optimusServerURL, nil)
 	if err != nil {
@@ -66,7 +64,7 @@ func downloadArchiveFromServer(conf config.ClientConfig) error {
 }
 
 func (s *syncCommand) RunE(_ *cobra.Command, _ []string) error {
-	err := downloadArchiveFromServer(*s.clientConfig)
+	err := s.downloadArchiveFromServer()
 	if err != nil {
 		return err
 	}
