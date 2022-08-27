@@ -13,6 +13,8 @@ import (
 	"github.com/kushsharma/parallel"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/progress"
@@ -137,7 +139,7 @@ func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, 
 	return result, nil
 }
 
-func (srv *Service) BulkCreate(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, logWriter writer.LogWriter) []models.JobSpec {
+func (srv *Service) bulkCreate(ctx context.Context, namespace models.NamespaceSpec, jobSpecs []models.JobSpec, logWriter writer.LogWriter) []models.JobSpec {
 	result := []models.JobSpec{}
 	var op string
 
@@ -701,7 +703,7 @@ func (srv *Service) Refresh(ctx context.Context, projectName string, namespaceNa
 	}
 
 	// resolve dependency and persist
-	srv.IdentifyAndPersistJobSources(ctx, projectSpec, jobSpecs, logWriter)
+	srv.identifyAndPersistJobSources(ctx, projectSpec, jobSpecs, logWriter)
 	successMsg := "info: dependencies resolved"
 	logWriter.Write(writer.LogLevelInfo, successMsg)
 
@@ -763,7 +765,7 @@ func (srv *Service) fetchSpecsForGivenJobNames(ctx context.Context, projectSpec 
 	return jobSpecs, nil
 }
 
-func (srv *Service) IdentifyAndPersistJobSources(ctx context.Context, projectSpec models.ProjectSpec,
+func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpec models.ProjectSpec,
 	jobSpecs []models.JobSpec, logWriter writer.LogWriter) {
 	start := time.Now()
 	defer resolveDependencyHistogram.Observe(time.Since(start).Seconds())
@@ -846,13 +848,13 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 
 	createdAndModifiedJobs := createdJobs
 	createdAndModifiedJobs = append(createdAndModifiedJobs, modifiedJobs...)
-	savedJobs := srv.BulkCreate(ctx, namespaceSpec, createdAndModifiedJobs, logWriter)
+	savedJobs := srv.bulkCreate(ctx, namespaceSpec, createdAndModifiedJobs, logWriter)
 
 	srv.bulkDelete(ctx, namespaceSpec, deletedJobs, logWriter)
 
 	// Resolve inferred dependency
 	if len(savedJobs) > 0 {
-		srv.IdentifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, savedJobs, logWriter)
+		srv.identifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, savedJobs, logWriter)
 	}
 
 	// Deploy through deploy manager
@@ -939,6 +941,17 @@ func (srv *Service) GetDeployment(ctx context.Context, deployID models.Deploymen
 	return srv.deployManager.GetStatus(ctx, deployID)
 }
 
-func (srv *Service) ScheduleDeployment(ctx context.Context, projectSpec models.ProjectSpec) (models.DeploymentID, error) {
-	return srv.deployManager.Deploy(ctx, projectSpec)
+func (srv *Service) CreateAndDeployJobSpecifications(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpecs []models.JobSpec, logWriter writer.LogWriter) (models.DeploymentID, error) {
+	// validate job spec
+	if err := srv.Check(ctx, namespaceSpec, jobSpecs, logWriter); err != nil {
+		return models.DeploymentID{}, status.Errorf(codes.Internal, "spec validation failed\n%s", err.Error())
+	}
+
+	jobSpecs = srv.bulkCreate(ctx, namespaceSpec, jobSpecs, logWriter)
+
+	srv.identifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, jobSpecs, logWriter)
+
+	logWriter.Write(writer.LogLevelInfo, "info: dependencies resolved")
+
+	return srv.deployManager.Deploy(ctx, namespaceSpec.ProjectSpec)
 }

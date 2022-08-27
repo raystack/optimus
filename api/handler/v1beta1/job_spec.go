@@ -177,20 +177,7 @@ func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req 
 	for i, jobSpec := range jobSpecs {
 		jobNames[i] = jobSpec.Name
 	}
-
-	// validate job spec
-	if err = sv.jobSvc.Check(ctx, namespaceSpec, jobSpecs, logWriter); err != nil {
-		return nil, status.Errorf(codes.Internal, "spec validation failed\n%s", err.Error())
-	}
-
-	jobSpecs = sv.jobSvc.BulkCreate(ctx, namespaceSpec, jobSpecs, logWriter)
-
-	sv.jobSvc.IdentifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, jobSpecs, logWriter)
-
-	successMsg := "info: dependencies resolved"
-	logWriter.Write(writer.LogLevelInfo, successMsg)
-
-	deployID, err := sv.jobSvc.ScheduleDeployment(ctx, namespaceSpec.ProjectSpec)
+	deployID, err := sv.jobSvc.CreateAndDeployJobSpecifications(ctx, namespaceSpec, jobSpecs, logWriter)
 
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "jobs %s is/are created but deployment scheduling failed for project %s, error:: %s", strings.Join(jobNames, ", "), req.GetProjectName(), err.Error())

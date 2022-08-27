@@ -452,10 +452,8 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			}
 
 			jobSvc := new(mock.JobService)
-			jobSvc.On("Check", ctx, namespaceSpec, []models.JobSpec{jobSpec}, mock2.Anything).Return(nil)
-			jobSvc.On("BulkCreate", ctx, namespaceSpec, []models.JobSpec{jobSpec}, mock2.Anything).Return([]models.JobSpec{jobSpec}, nil)
-			jobSvc.On("IdentifyAndPersistJobSources", ctx, namespaceSpec.ProjectSpec, []models.JobSpec{jobSpec}, mock2.Anything).Return(nil)
-			jobSvc.On("ScheduleDeployment", ctx, namespaceSpec.ProjectSpec).Return(deploymentID, nil)
+			// jobSvc.On("Check", ctx, namespaceSpec, []models.JobSpec{jobSpec}, mock2.Anything).Return(nil)
+			jobSvc.On("CreateAndDeployJobSpecifications", ctx, namespaceSpec, []models.JobSpec{jobSpec}, mock2.Anything).Return(deploymentID, nil)
 			defer jobSvc.AssertExpectations(t)
 
 			namespaceService := new(mock.NamespaceService)

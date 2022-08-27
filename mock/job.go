@@ -450,17 +450,8 @@ func (srv *JobService) GetByResourceDestination(ctx context.Context, resourceDes
 	return args.Get(0).(models.JobSpec), args.Error(1)
 }
 
-func (srv *JobService) BulkCreate(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpec []models.JobSpec, logWriter writer.LogWriter) []models.JobSpec {
+func (srv *JobService) CreateAndDeployJobSpecifications(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpec []models.JobSpec, logWriter writer.LogWriter) (models.DeploymentID, error) {
 	args := srv.Called(ctx, namespaceSpec, jobSpec, logWriter)
-	return args.Get(0).([]models.JobSpec)
-}
-
-func (srv *JobService) IdentifyAndPersistJobSources(ctx context.Context, projectSpec models.ProjectSpec, jobSpec []models.JobSpec, logWriter writer.LogWriter) {
-	srv.Called(ctx, projectSpec, jobSpec, logWriter)
-}
-
-func (srv *JobService) ScheduleDeployment(ctx context.Context, projectSpec models.ProjectSpec) (models.DeploymentID, error) {
-	args := srv.Called(ctx, projectSpec)
 	return args.Get(0).(models.DeploymentID), args.Error(1)
 }
 
