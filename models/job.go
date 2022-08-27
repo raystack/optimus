@@ -438,7 +438,6 @@ type JobService interface {
 
 	// GetByNameForProject fetches a Job by name for a specific project
 	GetByNameForProject(context.Context, string, ProjectSpec) (JobSpec, NamespaceSpec, error)
-
 	Check(context.Context, NamespaceSpec, []JobSpec, writer.LogWriter) error
 	// GetByDestination fetches a Job by destination for a specific project
 	GetByDestination(ctx context.Context, projectSpec ProjectSpec, destination string) (JobSpec, error)
