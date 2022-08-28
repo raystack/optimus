@@ -23,90 +23,123 @@ type windowV1 struct {
 }
 
 func (w windowV1) Validate() error {
-	_, _, _, err := w.getFieldValues() // nolint:dogsled
+	_, err := w.prepareWindow() // nolint:dogsled
 	return err
 }
 
-func (w windowV1) GetEndTime(scheduleTime time.Time) (endTime time.Time, err error) {
-	truncateTo, offset, size, getErr := w.getFieldValues()
-	if getErr != nil {
-		err = getErr
-		return
-	}
-	_, endTime = w.getTimeRange(scheduleTime, truncateTo, offset, size)
-	return
-}
-
-// TODO why is 1d invalid value in window
-func (w windowV1) GetStartTime(scheduleTime time.Time) (startTime time.Time, err error) {
-	truncateTo, offset, size, getErr := w.getFieldValues()
-	if getErr != nil {
-		err = getErr
-		return
-	}
-	startTime, _ = w.getTimeRange(scheduleTime, truncateTo, offset, size)
-	return
-}
-
 func (w windowV1) GetTruncateTo() string {
-	truncateTo, _, _, _ := w.getFieldValues() // nolint:dogsled
-	return truncateTo
+	return w.truncateTo
 }
 
 func (w windowV1) GetOffsetAsDuration() time.Duration {
-	_, offset, _, _ := w.getFieldValues() // nolint:dogsled
-	return offset
+	jobSpecTaskWindow, _ := w.prepareWindow()
+	return jobSpecTaskWindow.Offset
 }
 
 func (w windowV1) GetOffset() string {
 	if w.offset != "" {
 		return w.offset
 	}
-	return w.inHrs(int(w.GetOffsetAsDuration().Hours()))
+	return w.inHrs(0)
 }
 
 func (w windowV1) GetSizeAsDuration() time.Duration {
-	_, _, size, _ := w.getFieldValues() // nolint:dogsled
-	return size
+	jobSpecTaskWindow, _ := w.prepareWindow()
+	return jobSpecTaskWindow.Size
 }
 
 func (w windowV1) GetSize() string {
 	if w.size != "" {
 		return w.size
 	}
-	return w.inHrs(int(w.GetSizeAsDuration().Hours()))
+	return w.inHrs(24)
 }
 
-func (windowV1) inHrs(hrs int) string {
-	if hrs == 0 {
-		return "0"
+func (w windowV1) GetStartTime(scheduledAt time.Time) (startTime time.Time, err error) {
+	jobSpecTaskWindow, err := w.prepareWindow()
+	if err != nil {
+		return
 	}
-	return fmt.Sprintf("%dh", hrs)
+	startTime, _ = jobSpecTaskWindow.getWindowDate(scheduledAt, jobSpecTaskWindow.Size, jobSpecTaskWindow.Offset, jobSpecTaskWindow.TruncateTo)
+	return
 }
 
-func (windowV1) getTimeRange(scheduleTime time.Time, truncateTo string, offset, size time.Duration) (time.Time, time.Time) {
-	floatingEnd := scheduleTime
+func (w windowV1) GetEndTime(scheduledAt time.Time) (endTime time.Time, err error) {
+	jobSpecTaskWindow, err := w.prepareWindow()
+	if err != nil {
+		return
+	}
+	_, endTime = jobSpecTaskWindow.getWindowDate(scheduledAt, jobSpecTaskWindow.Size, jobSpecTaskWindow.Offset, jobSpecTaskWindow.TruncateTo)
+	return
+}
+
+type JobSpecTaskWindow struct {
+	Size       time.Duration
+	Offset     time.Duration
+	TruncateTo string
+}
+
+func (w *windowV1) prepareWindow() (JobSpecTaskWindow, error) {
+	var err error
+	window := JobSpecTaskWindow{}
+	window.Size = HoursInDay
+	window.Offset = 0
+	window.TruncateTo = "d"
+
+	if w.truncateTo != "" {
+		window.TruncateTo = w.truncateTo
+	}
+
+	// check if string contains monthly notation
+	if w.size != "" {
+		window.Size, err = w.tryParsingInMonths(w.size)
+		if err != nil {
+			// treat as normal duration
+			window.Size, err = time.ParseDuration(w.size)
+			if err != nil {
+				return window, fmt.Errorf("failed to parse task window with size %v: %w", w.size, err)
+			}
+		}
+	}
+
+	// check if string contains monthly notation
+	if w.offset != "" {
+		window.Offset, err = w.tryParsingInMonths(w.offset)
+		if err != nil {
+			// treat as normal duration
+			window.Offset, err = time.ParseDuration(w.offset)
+			if err != nil {
+				return window, fmt.Errorf("failed to parse task window with offset %v: %w", w.offset, err)
+			}
+		}
+	}
+
+	return window, nil
+}
+
+func (*JobSpecTaskWindow) getWindowDate(today time.Time, windowSize, windowOffset time.Duration, windowTruncateTo string) (time.Time, time.Time) {
+	floatingEnd := today
 
 	// apply truncation to end
-	if truncateTo == "h" {
+	if windowTruncateTo == "h" {
 		// remove time upto hours
 		floatingEnd = floatingEnd.Truncate(time.Hour)
-	} else if truncateTo == "d" {
+	} else if windowTruncateTo == "d" {
 		// remove time upto day
 		floatingEnd = floatingEnd.Truncate(HoursInDay)
-	} else if truncateTo == "w" {
+	} else if windowTruncateTo == "w" {
 		// shift current window to nearest Sunday
 		nearestSunday := time.Duration(time.Saturday-floatingEnd.Weekday()+1) * HoursInDay
 		floatingEnd = floatingEnd.Add(nearestSunday)
 		floatingEnd = floatingEnd.Truncate(HoursInDay)
 	}
 
-	windowEnd := floatingEnd.Add(offset)
-	windowStart := windowEnd.Add(-size)
+	windowEnd := floatingEnd.Add(windowOffset)
+	windowStart := windowEnd.Add(-windowSize)
 
 	// handle monthly windows separately as every month is not of same size
-	if truncateTo == "M" {
-		floatingEnd = scheduleTime
+	if windowTruncateTo == "M" || windowTruncateTo == "m" {
+		floatingEnd = today
 		// shift current window to nearest month start and end
 
 		// truncate the date
@@ -114,7 +147,7 @@ func (windowV1) getTimeRange(scheduleTime time.Time, truncateTo string, offset, 
 
 		// then add the month offset
 		// for handling offset, treat 30 days as 1 month
-		offsetMonths := offset / HoursInMonth
+		offsetMonths := windowOffset / HoursInMonth
 		floatingEnd = floatingEnd.AddDate(0, int(offsetMonths), 0)
 
 		// then find the last day of this month
@@ -127,7 +160,7 @@ func (windowV1) getTimeRange(scheduleTime time.Time, truncateTo string, offset, 
 		floatingStart := time.Date(floatingEnd.Year(), floatingEnd.Month(), 1, 0, 0, 0, 0, time.UTC)
 		// for handling size, treat 30 days as 1 month, and as we have already truncated current month
 		// subtract 1 from this
-		sizeMonths := (size / HoursInMonth) - 1
+		sizeMonths := (windowSize / HoursInMonth) - 1
 		if sizeMonths > 0 {
 			floatingStart = floatingStart.AddDate(0, int(-sizeMonths), 0)
 		}
@@ -139,43 +172,14 @@ func (windowV1) getTimeRange(scheduleTime time.Time, truncateTo string, offset, 
 	return windowStart, windowEnd
 }
 
-func (w windowV1) getFieldValues() (truncateTo string, offsetAsDuration, sizeAsDuration time.Duration, err error) {
-	truncateTo = "d"
-	if w.truncateTo != "" {
-		truncateTo = w.truncateTo
+func (windowV1) inHrs(hrs int) string {
+	if hrs == 0 {
+		return "0"
 	}
-
-	sizeAsDuration = HoursInDay
-	if w.size != "" {
-		tempSize, sizeErr := w.tryParsing(w.size)
-		if sizeErr != nil {
-			err = sizeErr
-			return
-		}
-		sizeAsDuration = tempSize
-	}
-
-	if w.offset != "" {
-		tempOffset, offsetErr := w.tryParsing(w.offset)
-		if offsetErr != nil {
-			err = offsetErr
-			return
-		}
-		offsetAsDuration = tempOffset
-	}
-	return
+	return fmt.Sprintf("%dh", hrs)
 }
 
-func (w windowV1) tryParsing(str string) (time.Duration, error) {
-	var output time.Duration
-	rst, err := w.tryParsingInMonths(str)
-	if err != nil {
-		return time.ParseDuration(str)
-	}
-	output = rst
-	return output, nil
-}
-
+// check if string contains monthly notation
 func (windowV1) tryParsingInMonths(str string) (time.Duration, error) {
 	sz := time.Duration(0)
 	monthMatches := monthExp.FindAllStringSubmatch(str, -1)
