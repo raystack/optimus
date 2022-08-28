@@ -80,7 +80,7 @@ func (p *PluginManager) Install(dst string, sources ...string) error {
 	return nil
 }
 
-func SanitizeArchivePath(d, t string) (v string, err error) {
+func sanitizeArchivePath(d, t string) (v string, err error) {
 	v = filepath.Join(d, t)
 	if strings.HasPrefix(v, filepath.Clean(d)) {
 		return v, nil
@@ -110,7 +110,7 @@ func (p *PluginManager) UnArchive(src, dest string) error {
 			if err != nil {
 				return err
 			}
-			destFileName, err := SanitizeArchivePath(dest, file.Name)
+			destFileName, err := sanitizeArchivePath(dest, file.Name)
 			if err != nil {
 				return err
 			}
