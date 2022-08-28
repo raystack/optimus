@@ -38,9 +38,9 @@ type Job struct {
 	TaskName   string
 	TaskConfig datatypes.JSON
 
-	WindowSize       *string
-	WindowOffset     *string
-	WindowTruncateTo *string
+	WindowSize       string
+	WindowOffset     string
+	WindowTruncateTo string
 
 	Assets               datatypes.JSON
 	Hooks                datatypes.JSON
@@ -224,40 +224,19 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		return models.JobSpec{}, fmt.Errorf("getting namespace spec of a job error: %w", err)
 	}
 
-	var truncateTo, offset, size string
-	switch conf.Version {
-	case 1:
-		if conf.WindowTruncateTo != nil {
-			truncateTo = *conf.WindowTruncateTo
-		}
-
-		if conf.WindowOffset != nil {
-			offset = *conf.WindowOffset
-		} else if conf.OldWindowOffset != nil {
-			offset = fmt.Sprintf("%fh", time.Duration(*conf.OldWindowOffset).Hours())
-		}
-
-		if conf.WindowSize != nil {
-			size = *conf.WindowSize
-		} else if conf.OldWindowSize != nil {
-			size = fmt.Sprintf("%fh", time.Duration(*conf.OldWindowSize).Hours())
-		}
-	case 2: // nolint:gomnd
-		if conf.WindowTruncateTo != nil {
-			truncateTo = *conf.WindowTruncateTo
-		}
-
-		if conf.WindowOffset != nil {
-			offset = *conf.WindowOffset
-		}
-
-		if conf.WindowSize != nil {
-			size = *conf.WindowSize
-		}
+	var offset, size = conf.WindowOffset, conf.WindowSize
+	if offset == "" && conf.OldWindowOffset != nil {
+		offset = fmt.Sprintf("%fh", time.Duration(*conf.OldWindowOffset).Hours())
+	}
+	if size == "" && conf.OldWindowSize != nil {
+		size = fmt.Sprintf("%fh", time.Duration(*conf.OldWindowSize).Hours())
 	}
 
-	window, err := models.NewWindow(conf.Version, truncateTo, offset, size)
+	window, err := models.NewWindow(conf.Version, conf.WindowTruncateTo, offset, size)
 	if err != nil {
+		return models.JobSpec{}, err
+	}
+	if err := window.Validate(); err != nil {
 		return models.JobSpec{}, err
 	}
 
@@ -383,36 +362,17 @@ func (JobSpecAdapter) FromJobSpec(spec models.JobSpec, resourceDestination strin
 		return Job{}, err
 	}
 
-	var truncateTo, offset, size *string
-	var oldSize, oldOffset *time.Duration
-	if spec.Task.Window != nil {
-		tempTruncateTo := spec.Task.Window.GetTruncateTo()
-		if tempTruncateTo != "" {
-			truncateTo = &tempTruncateTo
-		}
-		tempSize := spec.Task.Window.GetSize()
-		if tempSize != "" {
-			size = &tempSize
-		}
-		if spec.Task.Window.GetSizeAsDuration() > 0 {
-			tempSizeDuration := spec.Task.Window.GetSizeAsDuration()
-			oldSize = &tempSizeDuration
-		}
-		tempOffset := spec.Task.Window.GetOffset()
-		if tempOffset != "" {
-			offset = &tempOffset
-		}
-		if spec.Task.Window.GetOffsetAsDuration() > 0 {
-			tempOffsetDuration := spec.Task.Window.GetOffsetAsDuration()
-			oldOffset = &tempOffsetDuration
-		}
-	}
-
 	metadata, err := json.Marshal(spec.Metadata)
 	if err != nil {
 		return Job{}, err
 	}
 
+	var truncateTo, offset, size string
+	if spec.Task.Window != nil {
+		truncateTo = spec.Task.Window.GetTruncateTo()
+		offset = spec.Task.Window.GetOffset()
+		size = spec.Task.Window.GetSize()
+	}
 	return Job{
 		ID:                   spec.ID,
 		Version:              spec.Version,
@@ -435,8 +395,6 @@ func (JobSpecAdapter) FromJobSpec(spec models.JobSpec, resourceDestination strin
 		Hooks:                hooksJSON,
 		Metadata:             metadata,
 		ExternalDependencies: externalDependenciesJSON,
-		OldWindowSize:        (*int64)(oldSize),
-		OldWindowOffset:      (*int64)(oldOffset),
 	}, nil
 }
 

@@ -16,8 +16,6 @@ import (
 	"github.com/odpf/optimus/utils"
 )
 
-const HoursInDay = time.Hour * 24
-
 func FromJobProto(spec *pb.JobSpecification, pluginRepo models.PluginRepository) (models.JobSpec, error) {
 	startDate, err := time.Parse(models.JobDatetimeLayout, spec.StartDate)
 	if err != nil {
