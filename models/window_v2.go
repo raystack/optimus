@@ -3,7 +3,6 @@ package models
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -49,16 +48,8 @@ func (w windowV2) GetTruncateTo() string {
 	return w.truncateTo
 }
 
-func (windowV2) GetOffsetAsDuration() time.Duration {
-	return 0
-}
-
 func (w windowV2) GetOffset() string {
 	return w.offset
-}
-
-func (windowV2) GetSizeAsDuration() time.Duration {
-	return 0
 }
 
 func (w windowV2) GetSize() string {
@@ -83,7 +74,7 @@ func (w windowV2) validateOffset() error {
 		return nil
 	}
 
-	_, nonMonthDuration, err := w.getMonthsAndDuration(w.offset)
+	_, nonMonthDuration, err := monthsAndNonMonthExpression(w.offset)
 	if err != nil {
 		return err
 	}
@@ -100,7 +91,7 @@ func (w windowV2) validateSize() error {
 		return nil
 	}
 
-	months, nonMonthDuration, err := w.getMonthsAndDuration(w.size)
+	months, nonMonthDuration, err := monthsAndNonMonthExpression(w.size)
 	if err != nil {
 		return err
 	}
@@ -116,27 +107,6 @@ func (w windowV2) validateSize() error {
 		return errors.New("size cannot be negative")
 	}
 	return nil
-}
-
-func (windowV2) getMonthsAndDuration(timeDuration string) (int, string, error) {
-	if strings.Contains(timeDuration, "M") == false {
-		return 0, timeDuration, nil
-	}
-	maxSubString := 2
-	splits := strings.SplitN(timeDuration, "M", maxSubString)
-	months, err := strconv.Atoi(splits[0])
-	if err != nil {
-		return 0, "0", err
-	}
-	// duration contains only month
-	if len(splits) == 1 || splits[1] == "" {
-		return months, "0", nil
-	}
-	// if duration is negative then use the negative duration for both the splits.
-	if months < 0 {
-		return months, "-" + splits[1], nil
-	}
-	return months, splits[1], nil
 }
 
 func (w windowV2) truncateTime(scheduleTime time.Time) time.Time {
@@ -174,7 +144,7 @@ func (w windowV2) adjustOffset(truncatedTime time.Time) (time.Time, error) {
 	if w.offset == "" {
 		return truncatedTime, nil
 	}
-	months, nonMonthDurationString, err := w.getMonthsAndDuration(w.offset)
+	months, nonMonthDurationString, err := monthsAndNonMonthExpression(w.offset)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -190,7 +160,7 @@ func (w windowV2) getStartTime(endTime time.Time) (time.Time, error) {
 	if w.size == "" {
 		return endTime, nil
 	}
-	months, nonMonthDurationString, err := w.getMonthsAndDuration(w.size)
+	months, nonMonthDurationString, err := monthsAndNonMonthExpression(w.size)
 	if err != nil {
 		return time.Time{}, err
 	}

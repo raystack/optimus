@@ -315,8 +315,8 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 			assert.Nil(t, err)
 			taskSchema = checkModel.Task.Unit.Info()
 			assert.Equal(t, tTask, taskSchema.Name)
-			assert.Equal(t, time.Hour*2, checkModel.Task.Window.GetOffsetAsDuration())
-			assert.Equal(t, time.Duration(0), checkModel.Task.Window.GetSizeAsDuration())
+			assert.Equal(t, "2h", checkModel.Task.Window.GetOffset())
+			assert.Equal(t, "0", checkModel.Task.Window.GetSize())
 		})
 		t.Run("upsert without ID should auto generate it", func(t *testing.T) {
 			db := DBSetup()
