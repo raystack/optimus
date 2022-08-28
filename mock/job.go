@@ -412,9 +412,9 @@ func (srv *JobService) Delete(ctx context.Context, c models.NamespaceSpec, jobSp
 	return args.Error(0)
 }
 
-func (srv *JobService) Run(ctx context.Context, ns models.NamespaceSpec, js []models.JobSpec, obs progress.Observer) error {
-	args := srv.Called(ctx, ns, js, obs)
-	return args.Error(0)
+func (srv *JobService) Run(ctx context.Context, ns models.NamespaceSpec, js []models.JobSpec) (models.JobDeploymentDetail, error) {
+	args := srv.Called(ctx, ns, js)
+	return args.Get(0).(models.JobDeploymentDetail), args.Error(1)
 }
 
 func (srv *JobService) GetByDestination(_ context.Context, projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {

@@ -118,37 +118,6 @@ func TestAirflow2(t *testing.T) {
 			defer mockBucket.AssertExpectations(t)
 
 			mockBucketFac := new(MockedBucketFactory)
-			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, nil)
-			defer mockBucketFac.AssertExpectations(t)
-
-			compiler := new(MockedCompiler)
-			air := airflow2.NewScheduler(mockBucketFac, nil, compiler)
-			defer compiler.AssertExpectations(t)
-
-			compiler.On("Compile", air.GetTemplate(), ns, jobSpecs[0]).Return(models.Job{
-				Name:     jobSpecs[0].Name,
-				Contents: []byte("job-1-compiled"),
-			}, nil)
-
-			mockBucket.On("WriteAll", mock.Anything, "dags/__lib.py", airflow2.SharedLib, (*blob.WriterOptions)(nil)).Return(nil)
-			mockBucket.On("WriteAll", mock.Anything, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name), []byte("job-1-compiled"), (*blob.WriterOptions)(nil)).Return(nil)
-			err := air.DeployJobs(ctx, ns, jobSpecs, nil)
-			assert.Nil(t, err)
-
-			storedBytes, err := inMemBlob.ReadAll(ctx, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name))
-			assert.Nil(t, err)
-			assert.Equal(t, []byte("job-1-compiled"), storedBytes)
-		})
-	})
-	t.Run("DeployJobsVerbose", func(t *testing.T) {
-		t.Run("should successfully deploy jobs to blob buckets", func(t *testing.T) {
-			inMemBlob := memblob.OpenBucket(nil)
-			mockBucket := &MockedBucket{
-				bucket: inMemBlob,
-			}
-			defer mockBucket.AssertExpectations(t)
-
-			mockBucketFac := new(MockedBucketFactory)
 			defer mockBucketFac.AssertExpectations(t)
 
 			compiler := new(MockedCompiler)
@@ -174,7 +143,7 @@ func TestAirflow2(t *testing.T) {
 				SuccessCount: 1,
 			}
 
-			actualDeployDetail, err := air.DeployJobsVerbose(ctx, ns, jobSpecs)
+			actualDeployDetail, err := air.DeployJobs(ctx, ns, jobSpecs)
 			assert.Nil(t, err)
 			assert.Equal(t, expectedDeployDetail, actualDeployDetail)
 
@@ -199,7 +168,7 @@ func TestAirflow2(t *testing.T) {
 			mockBucketFac.On("New", mock.Anything, proj).Return(mockBucket, errors.New(errorMsg))
 
 			air := airflow2.NewScheduler(mockBucketFac, nil, compiler)
-			actualDeployDetail, err := air.DeployJobsVerbose(ctx, ns, jobSpecs)
+			actualDeployDetail, err := air.DeployJobs(ctx, ns, jobSpecs)
 
 			assert.Equal(t, errorMsg, err.Error())
 			assert.Equal(t, models.JobDeploymentDetail{}, actualDeployDetail)
@@ -235,7 +204,7 @@ func TestAirflow2(t *testing.T) {
 				},
 			}
 
-			actualDeployDetail, err := air.DeployJobsVerbose(ctx, ns, jobSpecs)
+			actualDeployDetail, err := air.DeployJobs(ctx, ns, jobSpecs)
 			assert.Nil(t, err)
 			assert.Equal(t, expectedDeployDetail, actualDeployDetail)
 		})

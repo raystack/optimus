@@ -235,7 +235,7 @@ func TestDeployer(t *testing.T) {
 
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec1.Name).Return(namespaceSpec1, nil)
 
-			batchScheduler.On("DeployJobsVerbose", ctx, namespaceSpec1, jobSpecsWithPriorityWeight).Return(models.JobDeploymentDetail{}, errors.New(errorMsg))
+			batchScheduler.On("DeployJobs", ctx, namespaceSpec1, jobSpecsWithPriorityWeight).Return(models.JobDeploymentDetail{}, errors.New(errorMsg))
 
 			jobDeploymentRepo.On("Update", ctx, tMock.Anything).Return(nil)
 
@@ -301,7 +301,7 @@ func TestDeployer(t *testing.T) {
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec1.Name).Return(namespaceSpec1, nil)
 
 			batchScheduler.On("ListJobs", ctx, namespaceSpec1, listOptions).Return(schedulerJobNamespace1, nil).Once()
-			batchScheduler.On("DeployJobsVerbose", ctx, namespaceSpec1, jobSpecsWithPriorityWeight).Return(models.JobDeploymentDetail{}, nil)
+			batchScheduler.On("DeployJobs", ctx, namespaceSpec1, jobSpecsWithPriorityWeight).Return(models.JobDeploymentDetail{}, nil)
 
 			jobDeploymentRepo.On("Update", ctx, tMock.Anything).Return(errors.New(errorMsg))
 
@@ -443,9 +443,9 @@ func TestDeployer(t *testing.T) {
 			priorityResolver.On("Resolve", ctx, jobSpecsWithDependency, nil).Return(jobSpecsWithPriorityWeight, nil)
 
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec1.Name).Return(namespaceSpec1, nil)
-			batchScheduler.On("DeployJobsVerbose", ctx, namespaceSpec1, []models.JobSpec{jobSpecsWithPriorityWeight[0]}).Return(jobDeploymentDetailNamespace1, nil).Once()
+			batchScheduler.On("DeployJobs", ctx, namespaceSpec1, []models.JobSpec{jobSpecsWithPriorityWeight[0]}).Return(jobDeploymentDetailNamespace1, nil).Once()
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec2.Name).Return(namespaceSpec2, nil)
-			batchScheduler.On("DeployJobsVerbose", ctx, namespaceSpec2, []models.JobSpec{jobSpecsWithPriorityWeight[1]}).Return(jobDeploymentDetailNamespace2, nil).Once()
+			batchScheduler.On("DeployJobs", ctx, namespaceSpec2, []models.JobSpec{jobSpecsWithPriorityWeight[1]}).Return(jobDeploymentDetailNamespace2, nil).Once()
 
 			batchScheduler.On("ListJobs", ctx, namespaceSpec1, listOptions).Return(schedulerJobNamespace1, nil).Once()
 			batchScheduler.On("ListJobs", ctx, namespaceSpec2, listOptions).Return(schedulerJobNamespace2, errors.New(errorMsg)).Once()
@@ -592,9 +592,9 @@ func TestDeployer(t *testing.T) {
 			priorityResolver.On("Resolve", ctx, jobSpecsWithDependency, nil).Return(jobSpecsWithPriorityWeight, nil)
 
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec1.Name).Return(namespaceSpec1, nil)
-			batchScheduler.On("DeployJobsVerbose", ctx, namespaceSpec1, []models.JobSpec{jobSpecsWithPriorityWeight[0]}).Return(jobDeploymentDetailNamespace1, nil).Once()
+			batchScheduler.On("DeployJobs", ctx, namespaceSpec1, []models.JobSpec{jobSpecsWithPriorityWeight[0]}).Return(jobDeploymentDetailNamespace1, nil).Once()
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec2.Name).Return(namespaceSpec2, nil)
-			batchScheduler.On("DeployJobsVerbose", ctx, namespaceSpec2, []models.JobSpec{jobSpecsWithPriorityWeight[1]}).Return(jobDeploymentDetailNamespace2, nil).Once()
+			batchScheduler.On("DeployJobs", ctx, namespaceSpec2, []models.JobSpec{jobSpecsWithPriorityWeight[1]}).Return(jobDeploymentDetailNamespace2, nil).Once()
 
 			batchScheduler.On("ListJobs", ctx, namespaceSpec1, listOptions).Return(schedulerJobNamespace1, nil).Once()
 
@@ -741,9 +741,9 @@ func TestDeployer(t *testing.T) {
 			priorityResolver.On("Resolve", ctx, jobSpecsWithDependency, nil).Return(jobSpecsWithPriorityWeight, nil)
 
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec1.Name).Return(namespaceSpec1, nil)
-			batchScheduler.On("DeployJobsVerbose", ctx, namespaceSpec1, []models.JobSpec{jobSpecsWithPriorityWeight[0]}).Return(jobDeploymentDetailNamespace1, nil).Once()
+			batchScheduler.On("DeployJobs", ctx, namespaceSpec1, []models.JobSpec{jobSpecsWithPriorityWeight[0]}).Return(jobDeploymentDetailNamespace1, nil).Once()
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec2.Name).Return(namespaceSpec2, nil)
-			batchScheduler.On("DeployJobsVerbose", ctx, namespaceSpec2, []models.JobSpec{jobSpecsWithPriorityWeight[1]}).Return(jobDeploymentDetailNamespace2, nil).Once()
+			batchScheduler.On("DeployJobs", ctx, namespaceSpec2, []models.JobSpec{jobSpecsWithPriorityWeight[1]}).Return(jobDeploymentDetailNamespace2, nil).Once()
 
 			batchScheduler.On("ListJobs", ctx, namespaceSpec1, listOptions).Return(schedulerJobNamespace1, nil).Once()
 			batchScheduler.On("ListJobs", ctx, namespaceSpec2, listOptions).Return(schedulerJobNamespace2, nil).Once()
@@ -890,9 +890,9 @@ func TestDeployer(t *testing.T) {
 			priorityResolver.On("Resolve", ctx, jobSpecsWithDependency, nil).Return(jobSpecsWithPriorityWeight, nil)
 
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec1.Name).Return(namespaceSpec1, nil)
-			batchScheduler.On("DeployJobsVerbose", ctx, namespaceSpec1, []models.JobSpec{jobSpecsWithPriorityWeight[0]}).Return(jobDeploymentDetailNamespace1, nil).Once()
+			batchScheduler.On("DeployJobs", ctx, namespaceSpec1, []models.JobSpec{jobSpecsWithPriorityWeight[0]}).Return(jobDeploymentDetailNamespace1, nil).Once()
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec2.Name).Return(namespaceSpec2, nil)
-			batchScheduler.On("DeployJobsVerbose", ctx, namespaceSpec2, []models.JobSpec{jobSpecsWithPriorityWeight[1]}).Return(jobDeploymentDetailNamespace2, nil).Once()
+			batchScheduler.On("DeployJobs", ctx, namespaceSpec2, []models.JobSpec{jobSpecsWithPriorityWeight[1]}).Return(jobDeploymentDetailNamespace2, nil).Once()
 
 			batchScheduler.On("ListJobs", ctx, namespaceSpec1, listOptions).Return(schedulerJobNamespace1, nil).Once()
 
@@ -1051,9 +1051,9 @@ func TestDeployer(t *testing.T) {
 			priorityResolver.On("Resolve", ctx, jobSpecsWithDependency, nil).Return(jobSpecsWithPriorityWeight, nil)
 
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec1.Name).Return(namespaceSpec1, nil)
-			batchScheduler.On("DeployJobsVerbose", ctx, namespaceSpec1, []models.JobSpec{jobSpecsWithPriorityWeight[0]}).Return(jobDeploymentDetailNamespace1, nil).Once()
+			batchScheduler.On("DeployJobs", ctx, namespaceSpec1, []models.JobSpec{jobSpecsWithPriorityWeight[0]}).Return(jobDeploymentDetailNamespace1, nil).Once()
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec2.Name).Return(namespaceSpec2, nil)
-			batchScheduler.On("DeployJobsVerbose", ctx, namespaceSpec2, []models.JobSpec{jobSpecsWithPriorityWeight[1]}).Return(jobDeploymentDetailNamespace2, nil).Once()
+			batchScheduler.On("DeployJobs", ctx, namespaceSpec2, []models.JobSpec{jobSpecsWithPriorityWeight[1]}).Return(jobDeploymentDetailNamespace2, nil).Once()
 
 			batchScheduler.On("ListJobs", ctx, namespaceSpec1, listOptions).Return(schedulerJobNamespace1, nil).Once()
 			batchScheduler.On("ListJobs", ctx, namespaceSpec2, listOptions).Return(schedulerJobNamespace2, nil).Once()

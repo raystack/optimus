@@ -12,7 +12,6 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/odpf/optimus/api/writer"
-	"github.com/odpf/optimus/core/progress"
 )
 
 var (
@@ -434,7 +433,7 @@ type JobService interface {
 
 	// Run creates a new job run for provided job spec and schedules it to execute
 	// immediately
-	Run(context.Context, NamespaceSpec, []JobSpec, progress.Observer) error
+	Run(context.Context, NamespaceSpec, []JobSpec) (JobDeploymentDetail, error)
 
 	// GetByNameForProject fetches a Job by name for a specific project
 	GetByNameForProject(context.Context, string, ProjectSpec) (JobSpec, NamespaceSpec, error)

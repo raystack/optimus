@@ -610,12 +610,12 @@ func jobDeletionFilter(dagNames []string) []string {
 }
 
 func (srv *Service) Run(ctx context.Context, nsSpec models.NamespaceSpec,
-	jobSpecs []models.JobSpec, observer progress.Observer) error {
+	jobSpecs []models.JobSpec) (models.JobDeploymentDetail, error) {
 	// Note(kush.sharma): ideally we should resolve dependencies & priorities
 	// before passing it to be deployed but as the used scheduler doesn't support
 	// it yet to use them appropriately, I am not doing it to avoid unnecessary
 	// processing
-	return srv.manualScheduler.DeployJobs(ctx, nsSpec, jobSpecs, observer)
+	return srv.manualScheduler.DeployJobs(ctx, nsSpec, jobSpecs)
 }
 
 // NewService creates a new instance of JobService, requiring

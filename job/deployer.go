@@ -84,7 +84,7 @@ func (d *deployer) deployJobsPerNamespace(ctx context.Context, jobDeployment *mo
 		return err
 	}
 
-	deployNamespaceDetail, err := d.batchScheduler.DeployJobsVerbose(ctx, namespaceSpec, jobSpecs)
+	deployNamespaceDetail, err := d.batchScheduler.DeployJobs(ctx, namespaceSpec, jobSpecs)
 	if err != nil {
 		return err
 	}

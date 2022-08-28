@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/kushsharma/parallel"
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
@@ -80,64 +79,8 @@ func (s *scheduler) VerifyJob(_ context.Context, namespace models.NamespaceSpec,
 	return err
 }
 
-// DeployJobs is used by Deploy process
-// Any progress is being sent through observer
-// This will be deprecated when job deployment being done asynchronously
-func (s *scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec,
-	progressObserver progress.Observer,
-) error {
+func (s *scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec) (models.JobDeploymentDetail, error) {
 	spanCtx, span := startChildSpan(ctx, "DeployJobs")
-	defer span.End()
-
-	bucket, err := s.bucketFac.New(spanCtx, namespace.ProjectSpec)
-	if err != nil {
-		return err
-	}
-	defer bucket.Close()
-
-	bucket.WriteAll(spanCtx, filepath.Join(JobsDir, baseLibFileName), SharedLib, nil)
-
-	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
-	for _, j := range jobs {
-		runner.Add(func(currentJobSpec models.JobSpec) func() (interface{}, error) {
-			return func() (interface{}, error) {
-				compiledJob, err := s.compiler.Compile(s.GetTemplate(), namespace, currentJobSpec)
-				if err != nil {
-					return nil, err
-				}
-				s.notifyProgress(progressObserver, &models.ProgressJobSpecCompiled{
-					Name: compiledJob.Name,
-				})
-
-				blobKey := PathFromJobName(JobsDir, namespace.ID.String(), compiledJob.Name, JobsExtension)
-				if err := bucket.WriteAll(ctx, blobKey, compiledJob.Contents, nil); err != nil {
-					s.notifyProgress(progressObserver, &models.ProgressJobUpload{
-						Name: compiledJob.Name,
-						Err:  err,
-					})
-					return nil, err
-				}
-				s.notifyProgress(progressObserver, &models.ProgressJobUpload{
-					Name: compiledJob.Name,
-					Err:  nil,
-				})
-				return nil, nil
-			}
-		}(j))
-	}
-	for _, result := range runner.Run() {
-		if result.Err != nil {
-			err = multierror.Append(err, result.Err)
-		}
-	}
-	return err
-}
-
-// DeployJobsVerbose does not use observer but instead return the deployment detail
-// This is being used by refresh command to deploy jobs after dependencies refreshed
-// TODO: Deprecate the other DeployJobs and rename this.
-func (s *scheduler) DeployJobsVerbose(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec) (models.JobDeploymentDetail, error) {
-	spanCtx, span := startChildSpan(ctx, "DeployJobsVerbose")
 	defer span.End()
 
 	bucket, err := s.bucketFac.New(spanCtx, namespace.ProjectSpec)
