@@ -94,7 +94,7 @@ func (r *runCommand) runJobSpecificationRequest(jobSpec models.JobSpec) error {
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			r.logger.Info("process took too long, timing out")
+			r.logger.Warn("process took too long, timing out")
 		}
 		return fmt.Errorf("request failed for job %s: %w", jobSpec.Name, err)
 	}

@@ -84,7 +84,7 @@ func (v *versionCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 
 func (v *versionCommand) RunE(_ *cobra.Command, _ []string) error {
 	// Print client version
-	v.logger.Info(fmt.Sprintf("Client: %s-%s", logger.ColoredNotice(config.BuildVersion), logger.ColoredNotice(config.BuildCommit)))
+	v.logger.Info(fmt.Sprintf("Client: %s-%s", config.BuildVersion, config.BuildCommit))
 
 	// Print server version
 	if v.isWithServer {
@@ -92,7 +92,7 @@ func (v *versionCommand) RunE(_ *cobra.Command, _ []string) error {
 		if err != nil {
 			return err
 		}
-		v.logger.Info(fmt.Sprintf("Server: %s", logger.ColoredNotice(srvVer)))
+		v.logger.Info(fmt.Sprintf("Server: %s", srvVer))
 	}
 
 	// Print version update if new version is exist

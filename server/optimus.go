@@ -178,7 +178,7 @@ func (s *OptimusServer) startListening() {
 }
 
 func (s *OptimusServer) Shutdown() {
-	s.logger.Info("Shutting down server")
+	s.logger.Warn("Shutting down server")
 	if s.httpServer != nil {
 		// Create a deadline to wait for server
 		ctxProxy, cancelProxy := context.WithTimeout(context.Background(), shutdownWait)
