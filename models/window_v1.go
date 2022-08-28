@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	HoursInDay   = time.Hour * 24
+	HoursInDay   = 24
 	HoursInMonth = HoursInDay * 30
 )
 
@@ -31,11 +31,6 @@ func (w windowV1) GetTruncateTo() string {
 	return w.truncateTo
 }
 
-func (w windowV1) GetOffsetAsDuration() time.Duration {
-	jobSpecTaskWindow, _ := w.prepareWindow()
-	return jobSpecTaskWindow.Offset
-}
-
 func (w windowV1) GetOffset() string {
 	if w.offset != "" {
 		return w.offset
@@ -43,16 +38,11 @@ func (w windowV1) GetOffset() string {
 	return w.inHrs(0)
 }
 
-func (w windowV1) GetSizeAsDuration() time.Duration {
-	jobSpecTaskWindow, _ := w.prepareWindow()
-	return jobSpecTaskWindow.Size
-}
-
 func (w windowV1) GetSize() string {
 	if w.size != "" {
 		return w.size
 	}
-	return w.inHrs(24)
+	return w.inHrs(HoursInDay)
 }
 
 func (w windowV1) GetStartTime(scheduledAt time.Time) (startTime time.Time, err error) {
@@ -82,7 +72,7 @@ type JobSpecTaskWindow struct {
 func (w *windowV1) prepareWindow() (JobSpecTaskWindow, error) {
 	var err error
 	window := JobSpecTaskWindow{}
-	window.Size = HoursInDay
+	window.Size = time.Hour * HoursInDay
 	window.Offset = 0
 	window.TruncateTo = "d"
 
@@ -126,12 +116,12 @@ func (*JobSpecTaskWindow) getWindowDate(today time.Time, windowSize, windowOffse
 		floatingEnd = floatingEnd.Truncate(time.Hour)
 	} else if windowTruncateTo == "d" {
 		// remove time upto day
-		floatingEnd = floatingEnd.Truncate(HoursInDay)
+		floatingEnd = floatingEnd.Truncate(time.Hour * HoursInDay)
 	} else if windowTruncateTo == "w" {
 		// shift current window to nearest Sunday
-		nearestSunday := time.Duration(time.Saturday-floatingEnd.Weekday()+1) * HoursInDay
+		nearestSunday := time.Duration(time.Saturday-floatingEnd.Weekday()+1) * time.Hour * HoursInDay
 		floatingEnd = floatingEnd.Add(nearestSunday)
-		floatingEnd = floatingEnd.Truncate(HoursInDay)
+		floatingEnd = floatingEnd.Truncate(time.Hour * HoursInDay)
 	}
 
 	windowEnd := floatingEnd.Add(windowOffset)
@@ -147,20 +137,20 @@ func (*JobSpecTaskWindow) getWindowDate(today time.Time, windowSize, windowOffse
 
 		// then add the month offset
 		// for handling offset, treat 30 days as 1 month
-		offsetMonths := windowOffset / HoursInMonth
+		offsetMonths := windowOffset / (time.Hour * HoursInMonth)
 		floatingEnd = floatingEnd.AddDate(0, int(offsetMonths), 0)
 
 		// then find the last day of this month
 		floatingEnd = floatingEnd.AddDate(0, 1, -1)
 
 		// final end is computed
-		windowEnd = floatingEnd.Truncate(HoursInDay)
+		windowEnd = floatingEnd.Truncate(time.Hour * HoursInDay)
 
 		// truncate days/hours from window start as well
 		floatingStart := time.Date(floatingEnd.Year(), floatingEnd.Month(), 1, 0, 0, 0, 0, time.UTC)
 		// for handling size, treat 30 days as 1 month, and as we have already truncated current month
 		// subtract 1 from this
-		sizeMonths := (windowSize / HoursInMonth) - 1
+		sizeMonths := (windowSize / (time.Hour * HoursInMonth)) - 1
 		if sizeMonths > 0 {
 			floatingStart = floatingStart.AddDate(0, int(-sizeMonths), 0)
 		}
@@ -189,7 +179,7 @@ func (windowV1) tryParsingInMonths(str string) (time.Duration, error) {
 		if err != nil {
 			return sz, fmt.Errorf("failed to parse task configuration of %s: %w", str, err)
 		}
-		sz = HoursInMonth * time.Duration(monthsCount)
+		sz = time.Hour * HoursInMonth * time.Duration(monthsCount)
 		if monthMatches[0][1] == "-" {
 			sz *= -1
 		}
