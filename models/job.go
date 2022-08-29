@@ -419,7 +419,7 @@ type JobService interface {
 	// Create constructs a Job and commits it to a storage
 	Create(context.Context, NamespaceSpec, JobSpec) (JobSpec, error)
 
-	CreateAndDeployJobSpecifications(context.Context, NamespaceSpec, []JobSpec, writer.LogWriter) (DeploymentID, error)
+	CreateAndDeploy(context.Context, NamespaceSpec, []JobSpec, writer.LogWriter) (DeploymentID, error)
 
 	// GetByName fetches a Job by name for a specific namespace
 	GetByName(context.Context, string, NamespaceSpec) (JobSpec, error)

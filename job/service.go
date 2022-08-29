@@ -941,7 +941,7 @@ func (srv *Service) GetDeployment(ctx context.Context, deployID models.Deploymen
 	return srv.deployManager.GetStatus(ctx, deployID)
 }
 
-func (srv *Service) CreateAndDeployJobSpecifications(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpecs []models.JobSpec, logWriter writer.LogWriter) (models.DeploymentID, error) {
+func (srv *Service) CreateAndDeploy(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpecs []models.JobSpec, logWriter writer.LogWriter) (models.DeploymentID, error) {
 	// validate job spec
 	if err := srv.Check(ctx, namespaceSpec, jobSpecs, logWriter); err != nil {
 		return models.DeploymentID{}, status.Errorf(codes.Internal, "spec validation failed\n%s", err.Error())

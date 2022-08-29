@@ -177,7 +177,7 @@ func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req 
 	for i, jobSpec := range jobSpecs {
 		jobNames[i] = jobSpec.Name
 	}
-	deployID, err := sv.jobSvc.CreateAndDeployJobSpecifications(ctx, namespaceSpec, jobSpecs, logWriter)
+	deployID, err := sv.jobSvc.CreateAndDeploy(ctx, namespaceSpec, jobSpecs, logWriter)
 
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "jobs %s is/are created but deployment scheduling failed for project %s, error:: %s", strings.Join(jobNames, ", "), req.GetProjectName(), err.Error())
