@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
@@ -246,6 +247,30 @@ func (*dependencyResolver) resolveHookDependencies(jobSpec models.JobSpec) model
 		jobSpec.Hooks[hookIdx] = jobHook
 	}
 	return jobSpec
+}
+
+// GetJobsByResourceDestinations get job spec of jobs that write to these destinations
+func (d *dependencyResolver) GetJobsByResourceDestinations(ctx context.Context, resourceDestinations []string,
+	subjectJobName string, logWriter writer.LogWriter) ([]models.JobSpec, error) {
+	jobSpecDependencyList := []models.JobSpec{}
+	for _, depDestination := range resourceDestinations {
+		dependencyJobSpec, err := d.jobSpecRepo.GetJobByResourceDestination(ctx, depDestination)
+		if err != nil {
+			if errors.Is(err, store.ErrResourceNotFound) {
+				// should not fail for unknown dependency, its okay to not have a upstream job
+				// registered in optimus project and still refer to them in our job
+				event := &models.ProgressJobSpecUnknownDependencyUsed{
+					Job:        subjectJobName,
+					Dependency: depDestination,
+				}
+				logWriter.Write(writer.LogLevelError, event.String())
+				continue
+			}
+			return jobSpecDependencyList, fmt.Errorf("runtime dependency evaluation failed: %w", err)
+		}
+		jobSpecDependencyList = append(jobSpecDependencyList, dependencyJobSpec)
+	}
+	return jobSpecDependencyList, nil
 }
 
 func (d *dependencyResolver) GetJobSpecsWithDependencies(ctx context.Context, projectID models.ProjectID) ([]models.JobSpec, []models.UnknownDependency, error) {

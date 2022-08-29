@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -154,6 +155,48 @@ func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 	}
 
 	return nil
+}
+
+func (sv *JobSpecServiceServer) JobExplain(ctx context.Context, req *pb.JobExplainRequest) (*pb.JobExplainResponse, error) {
+	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
+	if err != nil {
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
+	}
+
+	jobSpec, err := FromJobProto(req.GetSpec(), sv.pluginRepo)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "cannot deserialize job: \n%s", err.Error())
+	}
+
+	logWriter := writer.NewLogWriter(sv.l)
+	// validate job spec
+	if err = sv.jobSvc.Check(ctx, namespaceSpec, []models.JobSpec{jobSpec}, logWriter); err != nil {
+		return nil, status.Errorf(codes.Internal, "spec validation failed\n%s", err.Error())
+	}
+	jobSpecTaskDestination, jobSources, _ := sv.jobSvc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
+	jobSpec.ResourceDestination = jobSpecTaskDestination.URN()
+
+	// this only resolved inferred dependencies , manage for intefered dependencies and external dependencies
+	dependencyJobSpecs, _ := sv.jobSvc.ResolveDependecy(ctx, jobSources, jobSpec, logWriter)
+
+	vbyte, _ := json.Marshal(jobSpec.Dependencies)
+	logWriter.Write(writer.LogLevelInfo, string(vbyte))
+
+	// check dependecy status from optimus
+
+	// check resources availability
+
+	dependencySpecMap := make(map[string]*pb.JobSpecification)
+	for _, dependencyJobSpec := range dependencyJobSpecs {
+		dependencySpecMap[dependencyJobSpec.Name] = ToJobSpecificationProto(dependencyJobSpec)
+	}
+
+	// get dependency job status
+	return &pb.JobExplainResponse{
+		Success:      true,
+		Spec:         ToJobSpecificationProto(jobSpec),
+		Dependencies: dependencySpecMap,
+	}, nil
 }
 
 func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req *pb.CreateJobSpecificationRequest) (*pb.CreateJobSpecificationResponse, error) {

@@ -32,6 +32,7 @@ var ErrEmptyJobName = errors.New("job name cannot be an empty string")
 
 const (
 	baseLibFileName   = "__lib.py"
+	dagBasicInfo      = "api/v1/dags/%s"
 	dagStatusURL      = "api/v1/dags/%s/dagRuns"
 	dagStatusBatchURL = "api/v1/dags/~/dagRuns/list"
 	dagRunClearURL    = "api/v1/dags/%s/clearTaskInstances"
@@ -239,6 +240,29 @@ func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec
 		}
 	}
 	return jobs, nil
+}
+
+func (s *scheduler) GetDagBasicInfo(ctx context.Context, projSpec models.ProjectSpec, jobName string) ([]models.JobStatus, error) {
+	spanCtx, span := startChildSpan(ctx, "GetDagBasicInfo")
+	defer span.End()
+
+	var jobStatus []models.JobStatus
+	var list DagRunListResponse
+	req := airflowRequest{
+		URL:    dagBasicInfo,
+		method: http.MethodGet,
+		param:  jobName,
+		body:   nil,
+	}
+	resp, err := s.client.invoke(spanCtx, req, projSpec)
+	if err != nil {
+		return jobStatus, fmt.Errorf("failure reason for fetching airflow dag basic Info: %w", err)
+	}
+	err = json.Unmarshal(resp, &list)
+	if err != nil {
+		return nil, fmt.Errorf("json error: %s : %w", string(resp), err)
+	}
+	return toJobStatus(list)
 }
 
 func (s *scheduler) GetJobStatus(ctx context.Context, projSpec models.ProjectSpec, jobName string) ([]models.JobStatus, error) {

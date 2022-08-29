@@ -59,6 +59,7 @@ type DependencyResolver interface {
 	ResolveStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository) (map[string]models.JobSpecDependency, error)
 
 	GetJobSpecsWithDependencies(ctx context.Context, projectID models.ProjectID) ([]models.JobSpec, []models.UnknownDependency, error)
+	GetJobsByResourceDestinations(ctx context.Context, resourceDestinations []string, subjectJobName string, logWriter writer.LogWriter) ([]models.JobSpec, error)
 }
 
 type Deployer interface {
@@ -763,6 +764,10 @@ func (srv *Service) fetchSpecsForGivenJobNames(ctx context.Context, projectSpec 
 		jobSpecs = append(jobSpecs, jobSpec)
 	}
 	return jobSpecs, nil
+}
+
+func (srv *Service) ResolveDependecy(ctx context.Context, resourceDestinations []string, jobSpec models.JobSpec, logWriter writer.LogWriter) ([]models.JobSpec, error) {
+	return srv.dependencyResolver.GetJobsByResourceDestinations(ctx, resourceDestinations, jobSpec.Name, logWriter)
 }
 
 func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpec models.ProjectSpec,

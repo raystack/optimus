@@ -427,6 +427,11 @@ func (srv *JobService) GetDownstream(ctx context.Context, projectSpec models.Pro
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
+func (srv *JobService) ResolveDependecy(ctx context.Context, resourceDestinations []string, currentSpec models.JobSpec, logWriter writer.LogWriter) ([]models.JobSpec, error) {
+	args := srv.Called(ctx, resourceDestinations, currentSpec, logWriter)
+	return args.Get(0).([]models.JobSpec), args.Error(1)
+}
+
 func (srv *JobService) Refresh(ctx context.Context, projectName string, namespaceNames, jobNames []string, logWriter writer.LogWriter) (models.DeploymentID, error) {
 	args := srv.Called(ctx, projectName, namespaceNames, jobNames, logWriter)
 	return args.Get(0).(models.DeploymentID), args.Error(1)
@@ -558,6 +563,11 @@ func (_m *DependencyResolver) GetJobSpecsWithDependencies(ctx context.Context, p
 	}
 
 	return r0, r1, r2
+}
+
+func (_m *DependencyResolver) GetJobsByResourceDestinations(ctx context.Context, resourceDestinations []string, subjectJobName string, logWriter writer.LogWriter) ([]models.JobSpec, error) {
+	args := _m.Called(ctx, resourceDestinations, subjectJobName, logWriter)
+	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
 // Resolve provides a mock function with given fields: ctx, projectSpec, jobSpec, observer

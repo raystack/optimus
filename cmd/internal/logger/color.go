@@ -10,6 +10,8 @@ import (
 var (
 	// ColoredSuccess format message with color for success
 	ColoredSuccess = fmt.Sprintf
+	ColoredNotice  = fmt.Sprintf
+	ColoredError   = fmt.Sprintf
 
 	tp          = termenv.EnvColorProfile()
 	ColorYellow = tp.Color("#FFAF00")
@@ -21,5 +23,13 @@ func InitializeColor() {
 	cs := term.NewColorScheme()
 	ColoredSuccess = func(s string, a ...interface{}) string {
 		return cs.Greenf(s, a...)
+	}
+
+	ColoredNotice = func(s string, a ...interface{}) string {
+		return cs.Yellowf(s, a...)
+	}
+
+	ColoredError = func(s string, a ...interface{}) string {
+		return cs.Redf(s, a...)
 	}
 }

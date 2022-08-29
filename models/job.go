@@ -203,6 +203,10 @@ type JobSpecTaskDestination struct {
 	Type        DestinationType
 }
 
+func (jtd JobSpecTaskDestination) URN() string {
+	return fmt.Sprintf(DestinationURNFormat, jtd.Type, jtd.Destination)
+}
+
 type JobSpecTaskDependencies []string
 
 // using array to keep order, map would be more performant
@@ -450,6 +454,9 @@ type JobService interface {
 	GetDeployment(ctx context.Context, deployID DeploymentID) (JobDeployment, error)
 	// GetByFilter gets the jobspec based on projectName, jobName, resourceDestination filters.
 	GetByFilter(ctx context.Context, filter JobSpecFilter) ([]JobSpec, error)
+
+	// ResolveDependecy get jobs that write to the given resource destination
+	ResolveDependecy(ctx context.Context, resourceDestinations []string, currentSpec JobSpec, logWriter writer.LogWriter) ([]JobSpec, error)
 }
 
 // JobCompiler takes template file of a scheduler and after applying
