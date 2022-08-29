@@ -179,6 +179,14 @@ func (sv *JobSpecServiceServer) JobExplain(ctx context.Context, req *pb.JobExpla
 	// this only resolved inferred dependencies , manage for intefered dependencies and external dependencies
 	dependencyJobSpecs, _ := sv.jobSvc.ResolveDependecy(ctx, jobSources, jobSpec, logWriter)
 
+	// get internal dependencies by jobID
+	// getExternalDependenciesByJobName 
+	/*
+		jobSpecs[i].Dependencies = d.groupDependencies(internalDependencies)
+		jobSpecs[i].ExternalDependencies.OptimusDependencies = append(jobSpecs[i].ExternalDependencies.OptimusDependencies, externalDependency.OptimusDependencies...)
+		jobSpecs[i].Hooks = d.fetchHookWithDependencies(jobSpecs[i])
+	*/
+	
 	vbyte, _ := json.Marshal(jobSpec.Dependencies)
 	logWriter.Write(writer.LogLevelInfo, string(vbyte))
 
@@ -186,6 +194,7 @@ func (sv *JobSpecServiceServer) JobExplain(ctx context.Context, req *pb.JobExpla
 
 	// check resources availability
 
+	// jobs that will get impacted, who have/will have sensors on the current job 
 	dependencySpecMap := make(map[string]*pb.JobSpecification)
 	for _, dependencyJobSpec := range dependencyJobSpecs {
 		dependencySpecMap[dependencyJobSpec.Name] = ToJobSpecificationProto(dependencyJobSpec)
