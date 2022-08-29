@@ -2049,4 +2049,74 @@ func TestService(t *testing.T) {
 			assert.Equal(t, models.JobDeployment{}, deployment)
 		})
 	})
+
+	t.Run("CreateAndDeploy", func(t *testing.T) {
+		projSpec := models.ProjectSpec{
+			Name: "proj",
+		}
+		namespaceSpec := models.NamespaceSpec{
+			ID:          uuid.Must(uuid.NewRandom()),
+			Name:        "dev-team-1",
+			ProjectSpec: projSpec,
+		}
+
+		jobSpec := models.JobSpec{
+			Version: 1,
+			Name:    "test",
+			Owner:   "optimus",
+			Schedule: models.JobSpecSchedule{
+				StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+				Interval:  "@daily",
+			},
+			NamespaceSpec: namespaceSpec,
+			Dependencies:  map[string]models.JobSpecDependency{},
+		}
+		jobSpecs := []models.JobSpec{jobSpec}
+
+		enrichedJobSpec := jobSpec
+		enrichedJobSpec.ID = uuid.New()
+
+		batchScheduler := new(mock.Scheduler)
+		batchScheduler.On("VerifyJob", ctx, namespaceSpec, jobSpec).Return(nil)
+		defer batchScheduler.AssertExpectations(t)
+
+		pluginService := new(mock.DependencyResolverPluginService)
+		defer pluginService.AssertExpectations(t)
+		destination := &models.GenerateDestinationResponse{
+			Destination: "project.dataset.table",
+			Type:        models.DestinationTypeBigquery,
+		}
+		pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(destination, nil)
+		pluginService.On("GenerateDependencies", ctx, jobSpec, namespaceSpec, true).Return(&models.GenerateDependenciesResponse{}, nil)
+		pluginService.On("GenerateDependencies", ctx, enrichedJobSpec, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{}, nil)
+
+		logWriter := new(mock.LogWriter)
+		logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+		defer logWriter.AssertExpectations(t)
+
+		repo := new(mock.NamespaceJobSpecRepository)
+		repo.On("Save", ctx, jobSpec, "bigquery://project.dataset.table").Return(nil)
+		repo.On("GetByName", ctx, jobSpec.Name).Return(enrichedJobSpec, nil)
+		defer repo.AssertExpectations(t)
+
+		namespaceJobSpecRepoFactory := new(mock.NamespaceJobSpecRepoFactory)
+		namespaceJobSpecRepoFactory.On("New", namespaceSpec).Return(repo)
+		defer namespaceJobSpecRepoFactory.AssertExpectations(t)
+
+		deployManager := new(mock.DeployManager)
+		defer deployManager.AssertExpectations(t)
+
+		t.Run("should able to create , persist job sources and schedule deployment", func(t *testing.T) {
+			deployID := models.DeploymentID(uuid.New())
+			deployManager.On("Deploy", ctx, namespaceSpec.ProjectSpec).Return(deployID, nil)
+
+			svc := job.NewService(namespaceJobSpecRepoFactory, batchScheduler, nil, nil,
+				nil, nil, nil, nil, nil, deployManager, pluginService, nil, nil)
+
+			deploymentID, err := svc.CreateAndDeploy(ctx, namespaceSpec, jobSpecs, logWriter)
+
+			assert.Nil(t, err)
+			assert.Equal(t, deployID, deploymentID)
+		})
+	})
 }

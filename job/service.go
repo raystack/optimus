@@ -949,7 +949,9 @@ func (srv *Service) CreateAndDeploy(ctx context.Context, namespaceSpec models.Na
 
 	jobSpecs = srv.bulkCreate(ctx, namespaceSpec, jobSpecs, logWriter)
 
-	srv.identifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, jobSpecs, logWriter)
+	if len(jobSpecs) > 0 {
+		srv.identifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, jobSpecs, logWriter)
+	}
 
 	logWriter.Write(writer.LogLevelInfo, "info: dependencies resolved")
 

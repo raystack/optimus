@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	mock2 "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
@@ -481,6 +483,92 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				Message:      "jobs my-job is/are created and queued for deployment on project a-data-project",
 				DeploymentId: deploymentID.UUID().String(),
 			}, resp)
+		})
+		t.Run("should handle error for failed createJobSpecification", func(t *testing.T) {
+			projectName := "a-data-project"
+
+			projectSpec := models.ProjectSpec{
+				Name: projectName,
+				Config: map[string]string{
+					"BUCKET": "gs://some_folder",
+				},
+			}
+
+			namespaceSpec := models.NamespaceSpec{
+				Name:        "dev-test-namespace-1",
+				ProjectSpec: projectSpec,
+			}
+
+			jobName := "my-job"
+			taskName := "bq2bq"
+			execUnit1 := new(mock.BasePlugin)
+			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
+				Name:  taskName,
+				Image: "random-image",
+			}, nil)
+			defer execUnit1.AssertExpectations(t)
+
+			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
+				Base: execUnit1,
+			}, nil)
+
+			jobSpec := models.JobSpec{
+				Name: jobName,
+				Task: models.JobSpecTask{
+					Unit: &models.Plugin{
+						Base: execUnit1,
+					},
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "DO",
+							Value: "THIS",
+						},
+					},
+					Window: models.JobSpecTaskWindow{
+						Size:       time.Hour,
+						Offset:     0,
+						TruncateTo: "d",
+					},
+				},
+				Assets: *models.JobAssets{}.New(
+					[]models.JobSpecAsset{
+						{
+							Name:  "query.sql",
+							Value: "select * from 1",
+						},
+					}),
+				Dependencies: map[string]models.JobSpecDependency{},
+			}
+
+			jobSvc := new(mock.JobService)
+			CreateAndDeployError := status.Errorf(codes.Internal, "CreateAndDeployError")
+			jobSvc.On("CreateAndDeploy", ctx, namespaceSpec, []models.JobSpec{jobSpec}, mock2.Anything).Return(models.DeploymentID{}, CreateAndDeployError)
+			defer jobSvc.AssertExpectations(t)
+
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
+			defer namespaceService.AssertExpectations(t)
+
+			jobSpecServiceServer := v1.NewJobSpecServiceServer(
+				log,
+				jobSvc,
+				pluginRepo,
+				nil,
+				namespaceService,
+				nil,
+			)
+
+			jobProto := []*pb.JobSpecification{v1.ToJobSpecificationProto(jobSpec)}
+			request := pb.CreateJobSpecificationRequest{
+				ProjectName:   projectName,
+				NamespaceName: namespaceSpec.Name,
+				Specs:         jobProto,
+			}
+			_, err := jobSpecServiceServer.CreateJobSpecification(ctx, &request)
+			expextedError := status.Errorf(codes.Internal, "jobs %s is/are created but deployment scheduling failed for project %s, error:: %s", jobName, projectName, CreateAndDeployError.Error())
+
+			assert.Equal(t, err, expextedError)
 		})
 	})
 	t.Run("DeleteJobSpecification", func(t *testing.T) {
