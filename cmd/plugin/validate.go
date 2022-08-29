@@ -16,7 +16,6 @@ import (
 	"github.com/odpf/optimus/plugin/yaml"
 )
 
-// NewInstallCommand initializes plugin install command
 func NewValidateCommand() *cobra.Command {
 	validate := &validateCommand{}
 	cmd := &cobra.Command{
