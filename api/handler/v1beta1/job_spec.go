@@ -163,6 +163,33 @@ func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req 
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
+	reqJobSpec := req.GetSpec()
+	jobSpec, err := FromJobProto(reqJobSpec, sv.pluginRepo)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "cannot deserialize job: \n%s", err.Error())
+	}
+	jobSpecs := []models.JobSpec{jobSpec}
+
+	deployID, err := sv.jobSvc.CreateAndDeploy(ctx, namespaceSpec, jobSpecs, logWriter)
+
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "job %s is created but deployment scheduling failed for project %s, error:: %s", jobSpec.Name, req.GetProjectName(), err.Error())
+	}
+	runtimeDeployJobSpecificationCounter.Inc()
+
+	return &pb.CreateJobSpecificationResponse{
+		Success: true,
+		Message: fmt.Sprintf("job %s is created and queued for deployment on project %s, with DeploymentId :: %s", jobSpec.Name, req.GetProjectName(), deployID.UUID().String()),
+	}, nil
+}
+
+func (sv *JobSpecServiceServer) AddJobSpecifications(ctx context.Context, req *pb.AddJobSpecificationsRequest) (*pb.AddJobSpecificationsResponse, error) {
+	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
+	logWriter := writer.NewLogWriter(sv.l)
+	if err != nil {
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
+	}
+
 	reqJobSpecs := req.GetSpecs()
 	var jobSpecs []models.JobSpec
 	for _, spec := range reqJobSpecs {
@@ -184,9 +211,8 @@ func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req 
 	}
 	runtimeDeployJobSpecificationCounter.Inc()
 
-	return &pb.CreateJobSpecificationResponse{
-		Success:      true,
-		Message:      fmt.Sprintf("jobs %s is/are created and queued for deployment on project %s", strings.Join(jobNames, ", "), req.GetProjectName()),
+	return &pb.AddJobSpecificationsResponse{
+		Log:          fmt.Sprintf("jobs %s is/are created and queued for deployment on project %s", strings.Join(jobNames, ", "), req.GetProjectName()),
 		DeploymentId: deployID.UUID().String(),
 	}, nil
 }
