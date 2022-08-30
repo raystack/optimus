@@ -43,11 +43,13 @@ func NewCreateCommand() *cobra.Command {
 
 func (c *createCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	// Load mandatory config
-	if err := c.loadConfig(); err != nil {
+	conf, err := config.LoadClientConfig(c.configFilePath)
+	if err != nil {
 		return err
 	}
 
-	c.logger = logger.NewClientLogger(c.clientConfig.Log)
+	*c.clientConfig = *conf
+	c.logger = logger.NewClientLogger(conf.Log)
 	c.namespaceSurvey = survey.NewNamespaceSurvey(c.logger)
 	c.jobCreateSurvey = survey.NewJobCreateSurvey()
 	return nil
@@ -90,15 +92,5 @@ func (c *createCommand) RunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	c.logger.Info(logger.ColoredSuccess("Job successfully created at %s", jobDirectory))
-	return nil
-}
-
-func (c *createCommand) loadConfig() error {
-	// TODO: find a way to load the config in one place
-	conf, err := config.LoadClientConfig(c.configFilePath)
-	if err != nil {
-		return err
-	}
-	*c.clientConfig = *conf
 	return nil
 }

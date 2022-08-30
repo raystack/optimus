@@ -43,11 +43,13 @@ func NewAddHookCommand() *cobra.Command {
 
 func (a *addHookCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	// Load mandatory config
-	if err := a.loadConfig(); err != nil {
+	conf, err := config.LoadClientConfig(a.configFilePath)
+	if err != nil {
 		return err
 	}
 
-	a.logger = logger.NewClientLogger(a.clientConfig.Log)
+	*a.clientConfig = *conf
+	a.logger = logger.NewClientLogger(conf.Log)
 	a.jobSurvey = survey.NewJobSurvey()
 	a.jobAddHookSurvey = survey.NewJobAddHookSurvey()
 	a.namespaceSurvey = survey.NewNamespaceSurvey(a.logger)
@@ -83,15 +85,5 @@ func (a *addHookCommand) RunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	a.logger.Info(logger.ColoredSuccess("Hook successfully added to %s", selectedJobName))
-	return nil
-}
-
-func (a *addHookCommand) loadConfig() error {
-	// TODO: find a way to load the config in one place
-	conf, err := config.LoadClientConfig(a.configFilePath)
-	if err != nil {
-		return err
-	}
-	*a.clientConfig = *conf
 	return nil
 }

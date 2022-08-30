@@ -50,11 +50,13 @@ func NewRenderCommand() *cobra.Command {
 
 func (r *renderCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	// Load mandatory config
-	if err := r.loadConfig(); err != nil {
+	conf, err := config.LoadClientConfig(r.configFilePath)
+	if err != nil {
 		return err
 	}
 
-	r.logger = logger.NewClientLogger(r.clientConfig.Log)
+	*r.clientConfig = *conf
+	r.logger = logger.NewClientLogger(conf.Log)
 	r.jobSurvey = survey.NewJobSurvey()
 	r.namespaceSurvey = survey.NewNamespaceSurvey(r.logger)
 	return nil
@@ -114,14 +116,4 @@ func (r *renderCommand) getJobSpecByName(args []string, namespaceJobPath string)
 		jobName = args[0]
 	}
 	return jobSpecRepo.GetByName(jobName)
-}
-
-func (r *renderCommand) loadConfig() error {
-	// TODO: find a way to load the config in one place
-	conf, err := config.LoadClientConfig(r.configFilePath)
-	if err != nil {
-		return err
-	}
-	*r.clientConfig = *conf
-	return nil
 }

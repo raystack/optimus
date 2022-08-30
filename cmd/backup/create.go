@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strings"
 
-	saltConfig "github.com/odpf/salt/config"
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 
@@ -24,7 +23,7 @@ import (
 type createCommand struct {
 	logger         log.Logger
 	configFilePath string
-	clientConfig   *config.ClientConfig
+	isConfigExist  bool
 
 	namespaceSurvey    *survey.NamespaceSurvey
 	backupCreateSurvey *survey.BackupCreateSurvey
@@ -46,9 +45,7 @@ type createCommand struct {
 
 // NewCreateCommand initializes command to create backup
 func NewCreateCommand() *cobra.Command {
-	create := &createCommand{
-		clientConfig: &config.ClientConfig{},
-	}
+	create := &createCommand{}
 
 	cmd := &cobra.Command{
 		Use:     "create",
@@ -85,17 +82,13 @@ func (c *createCommand) injectFlags(cmd *cobra.Command) {
 
 func (c *createCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	// Load config
-	if err := c.loadConfig(); err != nil {
-		return err
-	}
-
 	conf, err := internal.LoadOptionalConfig(c.configFilePath)
 	if err != nil {
 		return err
 	}
-	c.clientConfig = conf
 
-	if c.clientConfig == nil {
+	if conf == nil {
+		c.isConfigExist = false
 		c.logger = logger.NewDefaultLogger()
 		c.namespaceSurvey = survey.NewNamespaceSurvey(c.logger)
 		c.backupCreateSurvey = survey.NewBackupCreateSurvey(c.logger)
@@ -105,24 +98,25 @@ func (c *createCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	c.logger = logger.NewClientLogger(c.clientConfig.Log)
+	c.isConfigExist = true
+	c.logger = logger.NewClientLogger(conf.Log)
 	c.namespaceSurvey = survey.NewNamespaceSurvey(c.logger)
 	c.backupCreateSurvey = survey.NewBackupCreateSurvey(c.logger)
 
-	return c.fillAttributes()
+	return c.fillAttributes(conf)
 }
 
-func (c *createCommand) fillAttributes() error {
+func (c *createCommand) fillAttributes(conf *config.ClientConfig) error {
 	if c.projectName == "" {
-		c.projectName = c.clientConfig.Project.Name
+		c.projectName = conf.Project.Name
 	}
 	if c.host == "" {
-		c.host = c.clientConfig.Host
+		c.host = conf.Host
 	}
 
 	// use flag or ask namespace name
 	if c.namespace == "" {
-		namespace, err := c.namespaceSurvey.AskToSelectNamespace(c.clientConfig)
+		namespace, err := c.namespaceSurvey.AskToSelectNamespace(conf)
 		if err != nil {
 			return err
 		}
@@ -141,7 +135,7 @@ func (c *createCommand) fillAttributes() error {
 			return err
 		}
 	} else {
-		namespace, err := c.clientConfig.GetNamespaceByName(c.namespace)
+		namespace, err := conf.GetNamespaceByName(c.namespace)
 		if err != nil {
 			return err
 		}
@@ -273,7 +267,7 @@ func (c *createCommand) printBackupDryRunResponse(request *pb.BackupDryRunReques
 }
 
 func (c *createCommand) prepareInput() error {
-	if c.clientConfig == nil {
+	if !c.isConfigExist {
 		if err := prepareDatastoreName(c.storerName); err != nil {
 			return err
 		}
@@ -332,19 +326,5 @@ func prepareDatastoreName(datastoreName string) error {
 	if !validStore {
 		return fmt.Errorf("invalid datastore type, available values are: %v", availableStorers)
 	}
-	return nil
-}
-
-func (c *createCommand) loadConfig() error {
-	// TODO: find a way to load the config in one place
-	conf, err := config.LoadClientConfig(c.configFilePath)
-	if err != nil {
-		if errors.As(err, &saltConfig.ConfigFileNotFoundError{}) {
-			c.clientConfig = nil
-			return nil
-		}
-		return err
-	}
-	*c.clientConfig = *conf
 	return nil
 }
