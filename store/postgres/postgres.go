@@ -18,6 +18,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres" // required for postgres migrate driver
 	"github.com/golang-migrate/migrate/v4/source/httpfs"
+	"github.com/odpf/optimus/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -47,8 +48,8 @@ func NewHTTPFSMigrator(dbConnURL string) (*migrate.Migrate, error) {
 }
 
 // Connect connect to the DB with custom configuration.
-func Connect(connURL string, maxIdleConnections, maxOpenConnections int, writer io.Writer) (*gorm.DB, error) {
-	db, err := gorm.Open(postgres.Open(connURL), &gorm.Config{
+func Connect(dbConf config.DBConfig, writer io.Writer) (*gorm.DB, error) {
+	db, err := gorm.Open(postgres.Open(dbConf.DSN), &gorm.Config{
 		Logger: logger.New(
 			stdlog.New(writer, "\r\n", stdlog.LstdFlags), // io writer
 			logger.Config{
@@ -74,8 +75,8 @@ func Connect(connURL string, maxIdleConnections, maxOpenConnections int, writer 
 	if err != nil {
 		return nil, err
 	}
-	sqlDB.SetMaxIdleConns(maxIdleConnections)
-	sqlDB.SetMaxOpenConns(maxOpenConnections)
+	sqlDB.SetMaxIdleConns(dbConf.MaxIdleConnection)
+	sqlDB.SetMaxOpenConns(dbConf.MaxOpenConnection)
 	return db, nil
 }
 
