@@ -1,4 +1,4 @@
-// postgres implementation relies on gorm for queries which is very very
+// Package postgres implementation relies on gorm for queries which is very very
 // inefficient at the moment, we are trading convenience with performance
 // for example in lot of select stmts, we pull all related relations as well
 // even when we don't really need to, most of the times these relation
@@ -7,16 +7,12 @@
 package postgres
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	stdlog "log"
-	"net/http"
 	"time"
 
-	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres" // required for postgres migrate driver
-	"github.com/golang-migrate/migrate/v4/source/httpfs"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -26,21 +22,9 @@ import (
 	"gorm.io/gorm/schema"
 )
 
-const (
-	resourcePath   = "migrations"
-	tracingSpanKey = "otel:span"
-)
+const tracingSpanKey = "otel:span"
 
 var tracer = otel.Tracer("optimus/store/postgres")
-
-// NewHTTPFSMigrator reads the migrations from httpfs and returns the migrate.Migrate
-func NewHTTPFSMigrator(dbConnURL string) (*migrate.Migrate, error) {
-	src, err := httpfs.New(http.FS(migrationFs), resourcePath)
-	if err != nil {
-		return &migrate.Migrate{}, fmt.Errorf("db migrator: %w", err)
-	}
-	return migrate.NewWithSourceInstance("httpfs", src, dbConnURL)
-}
 
 // Connect connect to the DB with custom configuration.
 func Connect(connURL string, maxIdleConnections, maxOpenConnections int, writer io.Writer) (*gorm.DB, error) {
@@ -73,20 +57,6 @@ func Connect(connURL string, maxIdleConnections, maxOpenConnections int, writer 
 	sqlDB.SetMaxIdleConns(maxIdleConnections)
 	sqlDB.SetMaxOpenConns(maxOpenConnections)
 	return db, nil
-}
-
-// Migrate to run up migrations
-func Migrate(connURL string) error {
-	m, err := NewHTTPFSMigrator(connURL)
-	if err != nil {
-		return fmt.Errorf("db migrator: %w", err)
-	}
-	defer m.Close()
-
-	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return fmt.Errorf("db migrator: %w", err)
-	}
-	return nil
 }
 
 func InitTrace(db *gorm.DB) error {
