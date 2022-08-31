@@ -2,15 +2,16 @@ package playground
 
 import (
 	"github.com/spf13/cobra"
+
+	"github.com/odpf/optimus/cmd/playground/window"
 )
 
-// acts a folder for other playground commands
-// NewJobCommand initializes command for job
+// NewPlaygroundCommand initializes command for playground
 func NewPlaygroundCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "playground",
-		Short: "play around with certain functions",
+		Short: "Play around with some Optimus features",
 	}
-	cmd.AddCommand(NewPlaygroundWindowCommand())
+	cmd.AddCommand(window.NewCommand())
 	return cmd
 }
