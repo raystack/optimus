@@ -144,7 +144,7 @@ func TestIntegrationJobRunMetricsRepository(t *testing.T) {
 			*sensorRunRepository,
 			*taskRunRepository,
 			*hookRunRepository)
-		
+
 		err := repo.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
 		assert.Nil(t, err)
 
