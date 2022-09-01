@@ -34,6 +34,11 @@ type HookRunRepository struct {
 	db *gorm.DB
 }
 
+func (repo *HookRunRepository) DeleteByJobRunID(ctx context.Context, jobRunIDs []uuid.UUID) error {
+	var hookRun HookRun
+	return repo.db.WithContext(ctx).Unscoped().Where("job_run_id IN ?", jobRunIDs).Delete(&hookRun).Error
+}
+
 func (repo *HookRunRepository) Save(ctx context.Context, event models.JobEvent, jobRunSpec models.JobRunSpec) error {
 	eventPayload := event.Value
 	startedAtTimeStamp := time.Unix(int64(eventPayload["event_time"].GetNumberValue()), 0)

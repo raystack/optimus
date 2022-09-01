@@ -57,7 +57,15 @@ func BenchmarkReplayRepository(b *testing.B) {
 		}
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(dbConn, project, adapter)
-		jobRepo := postgres.NewNamespaceJobSpecRepository(dbConn, namespace, projectJobSpecRepo, adapter)
+		taskRunRepository := postgres.NewTaskRunRepository(dbConn)
+		sensorRunRepository := postgres.NewSensorRunRepository(dbConn)
+		hookRunRepository := postgres.NewHookRunRepository(dbConn)
+		jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(dbConn,
+			*sensorRunRepository,
+			*taskRunRepository,
+			*hookRunRepository)
+
+		jobRepo := postgres.NewNamespaceJobSpecRepository(dbConn, namespace, projectJobSpecRepo, *jobRunMetricsRepository, adapter)
 
 		for i := 0; i < len(jobs); i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)

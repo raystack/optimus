@@ -49,6 +49,11 @@ func (repo *SensorRunRepository) Save(ctx context.Context, event models.JobEvent
 	return repo.db.WithContext(ctx).Create(&resource).Error
 }
 
+func (repo *SensorRunRepository) DeleteByJobRunID(ctx context.Context, jobRunIDs []uuid.UUID) error {
+	var sensorRun SensorRun
+	return repo.db.WithContext(ctx).Unscoped().Where("job_run_id IN ?", jobRunIDs).Delete(&sensorRun).Error
+}
+
 func (repo *SensorRunRepository) Update(ctx context.Context, event models.JobEvent, jobRunSpec models.JobRunSpec) error {
 	eventPayload := event.Value
 

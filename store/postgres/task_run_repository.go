@@ -34,6 +34,11 @@ type TaskRunRepository struct {
 	db *gorm.DB
 }
 
+func (repo *TaskRunRepository) DeleteByJobRunID(ctx context.Context, jobRunIDs []uuid.UUID) error {
+	var taskRun TaskRun
+	return repo.db.WithContext(ctx).Unscoped().Where("job_run_id IN ?", jobRunIDs).Delete(&taskRun).Error
+}
+
 func (repo *TaskRunRepository) GetTaskRun(ctx context.Context, jobRunSpec models.JobRunSpec) (models.TaskRunSpec, error) {
 	var taskRun TaskRun
 	err := repo.db.WithContext(ctx).Where("job_run_id = ?  and job_run_attempt = ?", jobRunSpec.JobRunID, jobRunSpec.Attempt).First(&taskRun).Error

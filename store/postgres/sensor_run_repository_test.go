@@ -105,7 +105,16 @@ func TestIntegrationSensorRunRepository(t *testing.T) {
 		assert.Nil(t, prepo.Save(ctx, projectSpec))
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(dbConn, projectSpec, adapter)
-		jrepo := postgres.NewNamespaceJobSpecRepository(dbConn, namespaceSpec, projectJobSpecRepo, adapter)
+
+		taskRunRepository := postgres.NewTaskRunRepository(dbConn)
+		sensorRunRepository := postgres.NewSensorRunRepository(dbConn)
+		hookRunRepository := postgres.NewHookRunRepository(dbConn)
+		jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(dbConn,
+			*sensorRunRepository,
+			*taskRunRepository,
+			*hookRunRepository)
+
+		jrepo := postgres.NewNamespaceJobSpecRepository(dbConn, namespaceSpec, projectJobSpecRepo, *jobRunMetricsRepository, adapter)
 		assert.Nil(t, jrepo.Save(ctx, jobConfigs[0], jobDestination))
 		assert.Equal(t, "task unit cannot be empty", jrepo.Save(ctx, jobConfigs[1], jobDestination).Error())
 		return dbConn
@@ -146,7 +155,13 @@ func TestIntegrationSensorRunRepository(t *testing.T) {
 
 	t.Run("Save", func(t *testing.T) {
 		db := DBSetup()
-		jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db)
+		taskRunRepository := postgres.NewTaskRunRepository(db)
+		sensorRunRepository := postgres.NewSensorRunRepository(db)
+		hookRunRepository := postgres.NewHookRunRepository(db)
+		jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+			*sensorRunRepository,
+			*taskRunRepository,
+			*hookRunRepository)
 		err := jobRunMetricsRepository.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
 		assert.Nil(t, err)
 		jobRunSpec, err := jobRunMetricsRepository.Get(ctx, jobEvent, namespaceSpec, jobConfigs[0])
@@ -165,7 +180,13 @@ func TestIntegrationSensorRunRepository(t *testing.T) {
 	t.Run("Update", func(t *testing.T) {
 		t.Run("should update sensor runs correctly", func(t *testing.T) {
 			db := DBSetup()
-			jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db)
+			taskRunRepository := postgres.NewTaskRunRepository(db)
+			sensorRunRepository := postgres.NewSensorRunRepository(db)
+			hookRunRepository := postgres.NewHookRunRepository(db)
+			jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+				*sensorRunRepository,
+				*taskRunRepository,
+				*hookRunRepository)
 			err := jobRunMetricsRepository.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
 			assert.Nil(t, err)
 			jobRunSpec, err := jobRunMetricsRepository.Get(ctx, jobEvent, namespaceSpec, jobConfigs[0])
@@ -221,7 +242,13 @@ func TestIntegrationSensorRunRepository(t *testing.T) {
 				Value: eventValuesAttempt3.GetFields(),
 			}
 
-			jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db)
+			taskRunRepository := postgres.NewTaskRunRepository(db)
+			sensorRunRepository := postgres.NewSensorRunRepository(db)
+			hookRunRepository := postgres.NewHookRunRepository(db)
+			jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+				*sensorRunRepository,
+				*taskRunRepository,
+				*hookRunRepository)
 			// adding for attempt number 2
 			err := jobRunMetricsRepository.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
 			assert.Nil(t, err)

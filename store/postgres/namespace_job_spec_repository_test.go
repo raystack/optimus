@@ -177,7 +177,15 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 			err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
 			assert.Nil(t, err)
 
-			repo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			taskRunRepository := postgres.NewTaskRunRepository(db)
+			sensorRunRepository := postgres.NewSensorRunRepository(db)
+			hookRunRepository := postgres.NewHookRunRepository(db)
+			jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+				*sensorRunRepository,
+				*taskRunRepository,
+				*hookRunRepository)
+
+			repo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, *jobRunMetricsRepository, adapter)
 
 			err = repo.Insert(ctx, testModels[0], jobDestination)
 			assert.Nil(t, err)
@@ -213,7 +221,15 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
 			defer projectJobSpecRepo.AssertExpectations(t)
 
-			repo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			taskRunRepository := postgres.NewTaskRunRepository(db)
+			sensorRunRepository := postgres.NewSensorRunRepository(db)
+			hookRunRepository := postgres.NewHookRunRepository(db)
+			jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+				*sensorRunRepository,
+				*taskRunRepository,
+				*hookRunRepository)
+
+			repo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, *jobRunMetricsRepository, adapter)
 
 			// first insert
 			err := repo.Insert(ctx, testModels[0], jobDestination)
@@ -249,8 +265,16 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 			}, nil)
 			defer execUnit2.AssertExpectations(t)
 
+			taskRunRepository := postgres.NewTaskRunRepository(db)
+			sensorRunRepository := postgres.NewSensorRunRepository(db)
+			hookRunRepository := postgres.NewHookRunRepository(db)
+			jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+				*sensorRunRepository,
+				*taskRunRepository,
+				*hookRunRepository)
+
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-			repo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			repo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, *jobRunMetricsRepository, adapter)
 
 			// try for create
 			err := repo.Save(ctx, testModelA, jobDestination)
@@ -284,8 +308,16 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 			}, nil)
 			defer execUnit2.AssertExpectations(t)
 
+			taskRunRepository := postgres.NewTaskRunRepository(db)
+			sensorRunRepository := postgres.NewSensorRunRepository(db)
+			hookRunRepository := postgres.NewHookRunRepository(db)
+			jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+				*sensorRunRepository,
+				*taskRunRepository,
+				*hookRunRepository)
+
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-			repo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			repo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, *jobRunMetricsRepository, adapter)
 
 			// try for create
 			testModelA.Task.Unit = &models.Plugin{Base: execUnit1, DependencyMod: depMod1}
@@ -318,8 +350,16 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 			testModelA := testConfigs[0]
 			testModelA.ID = uuid.Nil
 
+			taskRunRepository := postgres.NewTaskRunRepository(db)
+			sensorRunRepository := postgres.NewSensorRunRepository(db)
+			hookRunRepository := postgres.NewHookRunRepository(db)
+			jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+				*sensorRunRepository,
+				*taskRunRepository,
+				*hookRunRepository)
+
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-			repo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			repo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, *jobRunMetricsRepository, adapter)
 
 			// try for create
 			err := repo.Save(ctx, testModelA, jobDestination)
@@ -338,8 +378,16 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 				PluginType: models.PluginTypeTask,
 			}, nil)
 
+			taskRunRepository := postgres.NewTaskRunRepository(db)
+			sensorRunRepository := postgres.NewSensorRunRepository(db)
+			hookRunRepository := postgres.NewHookRunRepository(db)
+			jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+				*sensorRunRepository,
+				*taskRunRepository,
+				*hookRunRepository)
+
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-			repo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			repo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, *jobRunMetricsRepository, adapter)
 
 			err := repo.Insert(ctx, testModel, jobDestination)
 			assert.Nil(t, err)
@@ -428,9 +476,17 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 
 			defer execUnit1.AssertExpectations(t)
 
+			taskRunRepository := postgres.NewTaskRunRepository(db)
+			sensorRunRepository := postgres.NewSensorRunRepository(db)
+			hookRunRepository := postgres.NewHookRunRepository(db)
+			jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+				*sensorRunRepository,
+				*taskRunRepository,
+				*hookRunRepository)
+
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-			jobRepoNamespace1 := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-			jobRepoNamespace2 := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec2, projectJobSpecRepo, adapter)
+			jobRepoNamespace1 := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, *jobRunMetricsRepository, adapter)
+			jobRepoNamespace2 := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec2, projectJobSpecRepo, *jobRunMetricsRepository, adapter)
 
 			// try to create with first namespace
 			err := jobRepoNamespace1.Save(ctx, testModelA, jobDestination)
@@ -455,8 +511,16 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 
 			defer execUnit1.AssertExpectations(t)
 
+			taskRunRepository := postgres.NewTaskRunRepository(db)
+			sensorRunRepository := postgres.NewSensorRunRepository(db)
+			hookRunRepository := postgres.NewHookRunRepository(db)
+			jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+				*sensorRunRepository,
+				*taskRunRepository,
+				*hookRunRepository)
+
 			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-			repo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			repo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, *jobRunMetricsRepository, adapter)
 
 			// try for create
 			err := repo.Save(ctx, testModelA, jobDestination)
@@ -489,8 +553,16 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
+		taskRunRepository := postgres.NewTaskRunRepository(db)
+		sensorRunRepository := postgres.NewSensorRunRepository(db)
+		hookRunRepository := postgres.NewHookRunRepository(db)
+		jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+			*sensorRunRepository,
+			*taskRunRepository,
+			*hookRunRepository)
+
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-		repo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		repo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, *jobRunMetricsRepository, adapter)
 
 		err := repo.Insert(ctx, testModels[0], jobDestination)
 		assert.Nil(t, err)
@@ -506,8 +578,16 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 		testModels := []models.JobSpec{}
 		testModels = append(testModels, testConfigs...)
 
+		taskRunRepository := postgres.NewTaskRunRepository(db)
+		sensorRunRepository := postgres.NewSensorRunRepository(db)
+		hookRunRepository := postgres.NewHookRunRepository(db)
+		jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+			*sensorRunRepository,
+			*taskRunRepository,
+			*hookRunRepository)
+
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-		repo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		repo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, *jobRunMetricsRepository, adapter)
 
 		err := repo.Insert(ctx, testModels[0], jobDestination)
 		assert.Nil(t, err)

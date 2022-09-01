@@ -41,7 +41,10 @@ const (
 )
 
 type JobRunMetricsRepository struct {
-	db *gorm.DB
+	db                  *gorm.DB
+	sensorRunRepository SensorRunRepository
+	taskRunRepository   TaskRunRepository
+	hookRunRepository   HookRunRepository
 }
 
 // TableName overrides the table name used by User to `profiles`
@@ -72,6 +75,29 @@ func (repo *JobRunMetricsRepository) Update(ctx context.Context, event models.Jo
 	jobRunMetrics.Duration = int64(jobRunMetrics.EndTime.Sub(jobRunMetrics.StartTime))
 
 	return repo.db.WithContext(ctx).Save(&jobRunMetrics).Error
+}
+
+func (repo *JobRunMetricsRepository) DeleteAllByJobID(ctx context.Context, jobID uuid.UUID) error {
+	var jobRun JobRunMetrics
+	jobRunIDs, err := repo.GetAllJobRunIDByJobID(ctx, jobID)
+	if err != nil {
+		return err
+	}
+
+	err = repo.sensorRunRepository.DeleteByJobRunID(ctx, jobRunIDs)
+	if err != nil {
+		return err
+	}
+	err = repo.taskRunRepository.DeleteByJobRunID(ctx, jobRunIDs)
+	if err != nil {
+		return err
+	}
+	err = repo.hookRunRepository.DeleteByJobRunID(ctx, jobRunIDs)
+	if err != nil {
+		return err
+	}
+
+	return repo.db.WithContext(ctx).Unscoped().Where("job_id = ?", jobID).Delete(&jobRun).Error
 }
 
 // GetLatestJobRunByScheduledTime get the latest jobRun instance for a given schedule time
@@ -106,6 +132,22 @@ func (repo *JobRunMetricsRepository) GetLatestJobRunByScheduledTime(ctx context.
 		SLADefinition: jobRunMetrics.SLADefinition,
 	}
 	return jobRunSpec, err
+}
+
+func (repo *JobRunMetricsRepository) GetAllJobRunIDByJobID(ctx context.Context, jobID uuid.UUID) ([]uuid.UUID, error) {
+	var jobRunMetricsList []JobRunMetrics
+	err := repo.db.WithContext(ctx).Select("job_run_id").Where("job_id = ? ", jobID).Find(&jobRunMetricsList).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return []uuid.UUID{}, store.ErrResourceNotFound
+		}
+		return []uuid.UUID{}, err
+	}
+	jobRunMetricsRunIDList := make([]uuid.UUID, len(jobRunMetricsList))
+	for i, jobRun := range jobRunMetricsList {
+		jobRunMetricsRunIDList[i] = jobRun.JobRunID
+	}
+	return jobRunMetricsRunIDList, err
 }
 
 func (repo *JobRunMetricsRepository) GetByID(ctx context.Context, jobRunID uuid.UUID, jobSpec models.JobSpec) (models.JobRunSpec, error) {
@@ -199,9 +241,12 @@ func (repo *JobRunMetricsRepository) Save(ctx context.Context, event models.JobE
 	return repo.db.WithContext(ctx).Create(&resource).Error
 }
 
-func NewJobRunMetricsRepository(db *gorm.DB) *JobRunMetricsRepository {
+func NewJobRunMetricsRepository(db *gorm.DB, sensorRunRepository SensorRunRepository, taskRunRepository TaskRunRepository, hookRunRepository HookRunRepository) *JobRunMetricsRepository {
 	return &JobRunMetricsRepository{
-		db: db,
+		db:                  db,
+		sensorRunRepository: sensorRunRepository,
+		taskRunRepository:   taskRunRepository,
+		hookRunRepository:   hookRunRepository,
 	}
 }
 

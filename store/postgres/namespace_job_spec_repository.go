@@ -13,10 +13,11 @@ import (
 )
 
 type NamespaceJobSpecRepository struct {
-	db                 *gorm.DB
-	namespace          models.NamespaceSpec
-	projectJobSpecRepo store.ProjectJobSpecRepository
-	adapter            *JobSpecAdapter
+	db                      *gorm.DB
+	namespace               models.NamespaceSpec
+	projectJobSpecRepo      store.ProjectJobSpecRepository
+	jobRunMetricsRepository JobRunMetricsRepository
+	adapter                 *JobSpecAdapter
 }
 
 func (repo *NamespaceJobSpecRepository) Insert(ctx context.Context, spec models.JobSpec, jobDestination string) error {
@@ -87,6 +88,9 @@ func (repo *NamespaceJobSpecRepository) HardDelete(ctx context.Context, name str
 	} else if err != nil {
 		return fmt.Errorf("failed to fetch soft deleted resource: %w", err)
 	}
+	if err := repo.jobRunMetricsRepository.DeleteAllByJobID(ctx, r.ID); err != nil {
+		return err
+	}
 	return repo.db.WithContext(ctx).Unscoped().Where("id = ?", r.ID).Delete(&Job{}).Error
 }
 
@@ -107,12 +111,13 @@ func (repo *NamespaceJobSpecRepository) GetAll(ctx context.Context) ([]models.Jo
 	return specs, nil
 }
 
-func NewNamespaceJobSpecRepository(db *gorm.DB, namespace models.NamespaceSpec, projectJobSpecRepo store.ProjectJobSpecRepository, adapter *JobSpecAdapter) *NamespaceJobSpecRepository {
+func NewNamespaceJobSpecRepository(db *gorm.DB, namespace models.NamespaceSpec, projectJobSpecRepo store.ProjectJobSpecRepository, jobRunMetricsRepository JobRunMetricsRepository, adapter *JobSpecAdapter) *NamespaceJobSpecRepository {
 	return &NamespaceJobSpecRepository{
-		db:                 db,
-		namespace:          namespace,
-		projectJobSpecRepo: projectJobSpecRepo,
-		adapter:            adapter,
+		db:                      db,
+		namespace:               namespace,
+		projectJobSpecRepo:      projectJobSpecRepo,
+		jobRunMetricsRepository: jobRunMetricsRepository,
+		adapter:                 adapter,
 	}
 }
 

@@ -213,10 +213,15 @@ func (s *OptimusServer) setupHandlers() error {
 	projectRepo := postgres.NewProjectRepository(s.dbConn, s.appKey)
 	namespaceRepository := postgres.NewNamespaceRepository(s.dbConn, s.appKey)
 	projectSecretRepo := postgres.NewSecretRepository(s.dbConn, s.appKey)
-	jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(s.dbConn)
 	taskRunRepository := postgres.NewTaskRunRepository(s.dbConn)
 	sensorRunRepository := postgres.NewSensorRunRepository(s.dbConn)
 	hookRunRepository := postgres.NewHookRunRepository(s.dbConn)
+	jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(
+		s.dbConn,
+		*sensorRunRepository,
+		*taskRunRepository,
+		*hookRunRepository,
+	)
 
 	dbAdapter := postgres.NewAdapter(models.PluginRegistry)
 	replaySpecRepo := postgres.NewReplayRepository(s.dbConn, dbAdapter)
@@ -244,8 +249,9 @@ func (s *OptimusServer) setupHandlers() error {
 
 	// registered job store repository factory
 	namespaceJobSpecRepoFac := namespaceJobSpecRepoFactory{
-		db:                    s.dbConn,
-		projectJobSpecRepoFac: *projectJobSpecRepoFac,
+		db:                      s.dbConn,
+		projectJobSpecRepoFac:   *projectJobSpecRepoFac,
+		jobRunMetricsRepository: *jobRunMetricsRepository,
 	}
 
 	externalDependencyResolver, err := job.NewExternalDependencyResolver(s.conf.ResourceManagers)

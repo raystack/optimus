@@ -54,7 +54,14 @@ func BenchmarkJobRepository(b *testing.B) {
 		db := dbSetup()
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var repo store.NamespaceJobSpecRepository = postgres.NewNamespaceJobSpecRepository(db, namespace, projectJobSpecRepo, adapter)
+		taskRunRepository := postgres.NewTaskRunRepository(db)
+		sensorRunRepository := postgres.NewSensorRunRepository(db)
+		hookRunRepository := postgres.NewHookRunRepository(db)
+		jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+			*sensorRunRepository,
+			*taskRunRepository,
+			*hookRunRepository)
+		var repo store.NamespaceJobSpecRepository = postgres.NewNamespaceJobSpecRepository(db, namespace, projectJobSpecRepo, *jobRunMetricsRepository, adapter)
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
@@ -71,7 +78,14 @@ func BenchmarkJobRepository(b *testing.B) {
 		db := dbSetup()
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var repo store.NamespaceJobSpecRepository = postgres.NewNamespaceJobSpecRepository(db, namespace, projectJobSpecRepo, adapter)
+		taskRunRepository := postgres.NewTaskRunRepository(db)
+		sensorRunRepository := postgres.NewSensorRunRepository(db)
+		hookRunRepository := postgres.NewHookRunRepository(db)
+		jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+			*sensorRunRepository,
+			*taskRunRepository,
+			*hookRunRepository)
+		var repo store.NamespaceJobSpecRepository = postgres.NewNamespaceJobSpecRepository(db, namespace, projectJobSpecRepo, *jobRunMetricsRepository, adapter)
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
@@ -100,7 +114,14 @@ func BenchmarkJobRepository(b *testing.B) {
 		db := dbSetup()
 
 		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var repo store.NamespaceJobSpecRepository = postgres.NewNamespaceJobSpecRepository(db, namespace, projectJobSpecRepo, adapter)
+		taskRunRepository := postgres.NewTaskRunRepository(db)
+		sensorRunRepository := postgres.NewSensorRunRepository(db)
+		hookRunRepository := postgres.NewHookRunRepository(db)
+		jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+			*sensorRunRepository,
+			*taskRunRepository,
+			*hookRunRepository)
+		var repo store.NamespaceJobSpecRepository = postgres.NewNamespaceJobSpecRepository(db, namespace, projectJobSpecRepo, *jobRunMetricsRepository, adapter)
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
@@ -159,7 +180,14 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 		db := dbSetup()
 
 		var repo store.ProjectJobSpecRepository = postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var namespaceJobSpecRepo = postgres.NewNamespaceJobSpecRepository(db, namespace, repo, adapter)
+		taskRunRepository := postgres.NewTaskRunRepository(db)
+		sensorRunRepository := postgres.NewSensorRunRepository(db)
+		hookRunRepository := postgres.NewHookRunRepository(db)
+		jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+			*sensorRunRepository,
+			*taskRunRepository,
+			*hookRunRepository)
+		var namespaceJobSpecRepo = postgres.NewNamespaceJobSpecRepository(db, namespace, repo, *jobRunMetricsRepository, adapter)
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
@@ -188,7 +216,16 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 		db := dbSetup()
 
 		var repo store.ProjectJobSpecRepository = postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var namespaceJobSpecRepo = postgres.NewNamespaceJobSpecRepository(db, namespace, repo, adapter)
+
+		taskRunRepository := postgres.NewTaskRunRepository(db)
+		sensorRunRepository := postgres.NewSensorRunRepository(db)
+		hookRunRepository := postgres.NewHookRunRepository(db)
+		jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+			*sensorRunRepository,
+			*taskRunRepository,
+			*hookRunRepository)
+
+		var namespaceJobSpecRepo = postgres.NewNamespaceJobSpecRepository(db, namespace, repo, *jobRunMetricsRepository, adapter)
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
@@ -214,7 +251,15 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 		db := dbSetup()
 
 		var repo store.ProjectJobSpecRepository = postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var namespaceJobSpecRepo = postgres.NewNamespaceJobSpecRepository(db, namespace, repo, adapter)
+
+		taskRunRepository := postgres.NewTaskRunRepository(db)
+		sensorRunRepository := postgres.NewSensorRunRepository(db)
+		hookRunRepository := postgres.NewHookRunRepository(db)
+		jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+			*sensorRunRepository,
+			*taskRunRepository,
+			*hookRunRepository)
+		var namespaceJobSpecRepo = postgres.NewNamespaceJobSpecRepository(db, namespace, repo, *jobRunMetricsRepository, adapter)
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
@@ -243,7 +288,14 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 		db := dbSetup()
 
 		var repo store.ProjectJobSpecRepository = postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var namespaceJobSpecRepo = postgres.NewNamespaceJobSpecRepository(db, namespace, repo, adapter)
+		taskRunRepository := postgres.NewTaskRunRepository(db)
+		sensorRunRepository := postgres.NewSensorRunRepository(db)
+		hookRunRepository := postgres.NewHookRunRepository(db)
+		jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+			*sensorRunRepository,
+			*taskRunRepository,
+			*hookRunRepository)
+		var namespaceJobSpecRepo = postgres.NewNamespaceJobSpecRepository(db, namespace, repo, *jobRunMetricsRepository, adapter)
 
 		for i := 0; i < 1000; i++ {
 			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
@@ -266,7 +318,14 @@ func BenchmarkProjectJobRepo(b *testing.B) {
 		db := dbSetup()
 
 		var repo store.ProjectJobSpecRepository = postgres.NewProjectJobSpecRepository(db, project, adapter)
-		var namespaceJobSpecRepo = postgres.NewNamespaceJobSpecRepository(db, namespace, repo, adapter)
+		taskRunRepository := postgres.NewTaskRunRepository(db)
+		sensorRunRepository := postgres.NewSensorRunRepository(db)
+		hookRunRepository := postgres.NewHookRunRepository(db)
+		jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db,
+			*sensorRunRepository,
+			*taskRunRepository,
+			*hookRunRepository)
+		var namespaceJobSpecRepo = postgres.NewNamespaceJobSpecRepository(db, namespace, repo, *jobRunMetricsRepository, adapter)
 
 		var ids []uuid.UUID
 		for i := 0; i < 1000; i++ {

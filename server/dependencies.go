@@ -47,8 +47,9 @@ func (fac *replayWorkerFact) New() job.ReplayWorker {
 
 // namespaceJobSpecRepoFactory stores raw specifications
 type namespaceJobSpecRepoFactory struct {
-	db                    *gorm.DB
-	projectJobSpecRepoFac projectJobSpecRepoFactory
+	db                      *gorm.DB
+	projectJobSpecRepoFac   projectJobSpecRepoFactory
+	jobRunMetricsRepository postgres.JobRunMetricsRepository
 }
 
 func (fac *namespaceJobSpecRepoFactory) New(namespace models.NamespaceSpec) store.NamespaceJobSpecRepository {
@@ -56,6 +57,7 @@ func (fac *namespaceJobSpecRepoFactory) New(namespace models.NamespaceSpec) stor
 		fac.db,
 		namespace,
 		fac.projectJobSpecRepoFac.New(namespace.ProjectSpec),
+		fac.jobRunMetricsRepository,
 		postgres.NewAdapter(models.PluginRegistry),
 	)
 }
