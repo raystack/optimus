@@ -29,7 +29,7 @@ import (
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/config"
 	_ "github.com/odpf/optimus/ext/datastore"
-	_ "github.com/odpf/optimus/plugin"
+	"github.com/odpf/optimus/plugin"
 )
 
 const (
@@ -156,6 +156,11 @@ func prepareHTTPProxy(grpcAddr string, grpcServer *grpc.Server) (*http.Server, f
 	baseMux := http.NewServeMux()
 	baseMux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "pong")
+	})
+	baseMux.HandleFunc("/plugins", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/zip")
+		http.ServeFile(w, r, plugin.PluginsArchiveName)
 	})
 	baseMux.Handle("/api/", otelhttp.NewHandler(http.StripPrefix("/api", gwmux), "api"))
 
