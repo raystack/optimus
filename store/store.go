@@ -174,7 +174,7 @@ type JobDeploymentRepository interface {
 	GetByStatusAndProjectID(context.Context, models.JobDeploymentStatus, models.ProjectID) (models.JobDeployment, error)
 	Update(ctx context.Context, deploymentSpec models.JobDeployment) error
 	GetByStatus(ctx context.Context, status models.JobDeploymentStatus) ([]models.JobDeployment, error)
-	GetFirstExecutableRequest(ctx context.Context) (models.JobDeployment, error)
+	GetExecutableRequest(ctx context.Context, count int) ([]models.JobDeployment, error)
 }
 
 // JobSourceRepository represents a storage interface for job sources
