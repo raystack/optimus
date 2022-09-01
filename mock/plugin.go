@@ -12,7 +12,7 @@ type SupportedPluginRepo struct {
 	mock.Mock
 }
 
-func (repo *SupportedPluginRepo) AddYaml(mod models.IYamlMod) error {
+func (repo *SupportedPluginRepo) AddYaml(mod models.YamlMod) error {
 	return repo.Called(mod).Error(0)
 }
 
