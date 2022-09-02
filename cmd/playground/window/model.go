@@ -90,6 +90,9 @@ func (m *model) View() string {
 	s.WriteString("RESULT")
 	s.WriteString("\n")
 	s.WriteString(m.generateWindowResultView())
+	s.WriteString("\n")
+	s.WriteString("DOCUMENTATION:\n")
+	s.WriteString("- https://odpf.github.io/optimus/docs/concepts/intervals-and-windows")
 	return s.String()
 }
 
@@ -182,7 +185,7 @@ func (m *model) generateWindowInputView() string {
 		m.generateValueWithCursorPointerView(pointToSize, m.sizeInput.Value()),
 	})
 	table.Append([]string{
-		"scheduled_time",
+		"job schedule",
 		m.generateSechduledTimeView(),
 	})
 	table.Render()
@@ -192,7 +195,7 @@ func (m *model) generateWindowInputView() string {
 func (m *model) generateWindowTableRowView(version int) []string {
 	window, err := models.NewWindow(version, string(m.truncateTo), m.offsetInput.Value(), m.sizeInput.Value())
 	if err != nil {
-		return []string{fmt.Sprintf("window v%d", version), err.Error()}
+		return []string{fmt.Sprintf("%d", version), err.Error()}
 	}
 	var startTimeRow string
 	if startTime, err := window.GetStartTime(m.scheduledTime); err != nil {
@@ -206,7 +209,7 @@ func (m *model) generateWindowTableRowView(version int) []string {
 	} else {
 		endTimeRow = endTime.Format(time.RFC3339)
 	}
-	return []string{fmt.Sprintf("window v%d", version), startTimeRow, endTimeRow}
+	return []string{fmt.Sprintf("%d", version), startTimeRow, endTimeRow}
 }
 
 func (m *model) generateSechduledTimeView() string {
