@@ -481,7 +481,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.CreateJobSpecificationResponse{
 				Success: true,
-				Message: fmt.Sprintf("job my-job is created and queued for deployment on project a-data-project, with DeploymentId :: %s", deploymentID.UUID().String()),
+				Message: fmt.Sprintf("job is created and queued for deployment on project a-data-project, with DeploymentId :: %s", deploymentID.UUID().String()),
 			}, resp)
 		})
 		t.Run("should handle error for failed createJobSpecification", func(t *testing.T) {
@@ -566,7 +566,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				Spec:          jobProto,
 			}
 			_, err := jobSpecServiceServer.CreateJobSpecification(ctx, &request)
-			expextedError := status.Errorf(codes.Internal, "job %s is created but deployment scheduling failed for project %s, error:: %s", jobName, projectName, CreateAndDeployError.Error())
+			expextedError := status.Errorf(codes.Internal, "job addition failed for project %s, error:: %s", projectName, CreateAndDeployError.Error())
 
 			assert.Equal(t, err, expextedError)
 		})
@@ -654,7 +654,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			resp, err := jobSpecServiceServer.AddJobSpecifications(ctx, &request)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.AddJobSpecificationsResponse{
-				Log:          "jobs my-job is/are created and queued for deployment on project a-data-project",
+				Log:          "jobs are created and queued for deployment on project a-data-project",
 				DeploymentId: deploymentID.UUID().String(),
 			}, resp)
 		})
@@ -740,7 +740,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				Specs:         jobProto,
 			}
 			_, err := jobSpecServiceServer.AddJobSpecifications(ctx, &request)
-			expextedError := status.Errorf(codes.Internal, "jobs %s is/are created but deployment scheduling failed for project %s, error:: %s", jobName, projectName, CreateAndDeployError.Error())
+			expextedError := status.Errorf(codes.Internal, "jobs addition failed for project %s, error:: %s", projectName, CreateAndDeployError.Error())
 
 			assert.Equal(t, err, expextedError)
 		})

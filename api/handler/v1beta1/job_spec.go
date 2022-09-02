@@ -173,13 +173,13 @@ func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req 
 	deployID, err := sv.jobSvc.CreateAndDeploy(ctx, namespaceSpec, jobSpecs, logWriter)
 
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "job %s is created but deployment scheduling failed for project %s, error:: %s", jobSpec.Name, req.GetProjectName(), err.Error())
+		return nil, status.Errorf(codes.Internal, "job addition failed for project %s, error:: %s", req.GetProjectName(), err.Error())
 	}
 	runtimeDeployJobSpecificationCounter.Inc()
 
 	return &pb.CreateJobSpecificationResponse{
 		Success: true,
-		Message: fmt.Sprintf("job %s is created and queued for deployment on project %s, with DeploymentId :: %s", jobSpec.Name, req.GetProjectName(), deployID.UUID().String()),
+		Message: fmt.Sprintf("job is created and queued for deployment on project %s, with DeploymentId :: %s", req.GetProjectName(), deployID.UUID().String()),
 	}, nil
 }
 
@@ -200,19 +200,15 @@ func (sv *JobSpecServiceServer) AddJobSpecifications(ctx context.Context, req *p
 		jobSpecs = append(jobSpecs, jobSpec)
 	}
 
-	jobNames := make([]string, len(jobSpecs))
-	for i, jobSpec := range jobSpecs {
-		jobNames[i] = jobSpec.Name
-	}
 	deployID, err := sv.jobSvc.CreateAndDeploy(ctx, namespaceSpec, jobSpecs, logWriter)
 
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "jobs %s is/are created but deployment scheduling failed for project %s, error:: %s", strings.Join(jobNames, ", "), req.GetProjectName(), err.Error())
+		return nil, status.Errorf(codes.Internal, "jobs addition failed for project %s, error:: %s", req.GetProjectName(), err.Error())
 	}
 	runtimeDeployJobSpecificationCounter.Inc()
 
 	return &pb.AddJobSpecificationsResponse{
-		Log:          fmt.Sprintf("jobs %s is/are created and queued for deployment on project %s", strings.Join(jobNames, ", "), req.GetProjectName()),
+		Log:          fmt.Sprintf("jobs are created and queued for deployment on project %s", req.GetProjectName()),
 		DeploymentId: deployID.UUID().String(),
 	}, nil
 }
