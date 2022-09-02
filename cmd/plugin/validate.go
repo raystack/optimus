@@ -17,7 +17,7 @@ func NewValidateCommand() *cobra.Command {
 	validate := &validateCommand{}
 	cmd := &cobra.Command{
 		Use:     "validate",
-		Short:   "validate installed plugins",
+		Short:   "validate yaml plugins",
 		Example: "optimus plugin validate --path bq2bq.yaml",
 		RunE:    validate.RunE,
 		PreRunE: validate.PreRunE,

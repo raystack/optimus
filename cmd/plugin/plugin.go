@@ -13,9 +13,8 @@ import (
 
 func NewPluginCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "plugin",
-		Short:  "Manage plugins",
-		Hidden: true,
+		Use:   "plugin",
+		Short: "Manage plugins",
 		Annotations: map[string]string{
 			"group:dev": "true",
 		},

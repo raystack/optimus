@@ -20,7 +20,7 @@ func NewInstallCommand() *cobra.Command {
 	install := &installCommand{}
 	cmd := &cobra.Command{
 		Use:     "install",
-		Short:   "install and extract plugins to a dir",
+		Short:   "download and extract plugins to a dir (on server)",
 		Example: "optimus plugin install",
 		RunE:    install.RunE,
 		PreRunE: install.PreRunE,
