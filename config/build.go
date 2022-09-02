@@ -16,7 +16,7 @@ var (
 
 // AppName returns the name used as identifier in telemetry
 func AppName() string {
-	if len(os.Args) == 2 && os.Args[1] == "serve" {
+	if len(os.Args) > 1 && os.Args[1] == "serve" {
 		return ServerName
 	}
 	return ClientName
