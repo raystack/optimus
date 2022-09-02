@@ -27,6 +27,14 @@ linters:
     - errcheck
     - maintidx
     - errchkjson
+    - nosnakecase
+    - nonamedreturns
+    - exhaustruct
+    - gosec
+    - rowserrcheck
+    - sqlclosecheck
+    - structcheck
+    - wastedassign
 
     # Following linters should be enabled after fixing the code
     - testpackage
@@ -54,7 +62,7 @@ linters-settings:
     rules:
       - name: atomic
       - name: context-as-argument
-      - name: context-keys-type
+#      - name: context-keys-type #perf issue
       - name: defer
       - name: dot-imports
       - name: empty-block
@@ -62,25 +70,24 @@ linters-settings:
       - name: error-return
 #      - name: error-strings
       - name: early-return
-      - name: errorf
+#      - name: errorf #perf issue
 #      - name: exported
       - name: if-return
       - name: increment-decrement
       - name: indent-error-flow
 #      - name: flag-parameter
 #      - name: modifies-parameter
-      - name: modifies-value-receiver
+#      - name: modifies-value-receiver #perf issue
       - name: package-comments
       - name: range
       - name: receiver-naming
       - name: redefines-builtin-id
       - name: superfluous-else
-      - name: time-naming
+#      - name: time-naming #perf issue
 #      - name: unexported-naming
 #      - name: unexported-return
-      - name: var-declaration
+#      - name: var-declaration #perf issue
       - name: var-naming
-      - name: var-declaration
       - name: unused-receiver
       - name: unused-parameter
       - name: useless-break
