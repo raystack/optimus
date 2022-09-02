@@ -13,6 +13,8 @@ import (
 	"github.com/kushsharma/parallel"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/progress"
@@ -393,96 +395,6 @@ func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSp
 	}
 }
 
-// Sync fetches all the jobs that belong to a project, resolves its dependencies
-// assign proper priority weights, compiles it and uploads it to the destination
-// store.
-// It syncs the internal store state with destination batch batchScheduler by deleting
-// what is not needed anymore
-func (srv *Service) Sync(ctx context.Context, namespace models.NamespaceSpec, progressObserver progress.Observer) error {
-	projectJobSpecRepo := srv.projectJobSpecRepoFactory.New(namespace.ProjectSpec)
-	jobSpecs, err := srv.GetDependencyResolvedSpecs(ctx, namespace.ProjectSpec, projectJobSpecRepo, progressObserver)
-	if err != nil {
-		// if err is caused during dependency resolution in a job spec that belong to
-		// different namespace then the current, on which this operation is being performed,
-		// then don't treat this as error
-		var merrs *multierror.Error
-		if !errors.As(err, &merrs) {
-			return err
-		}
-		var newErr error
-		for _, cerr := range merrs.Errors {
-			if strings.Contains(cerr.Error(), errDependencyResolution.Error()) {
-				if !strings.Contains(cerr.Error(), namespace.Name) {
-					continue
-				}
-			}
-			newErr = multierror.Append(newErr, cerr)
-		}
-		if newErr != nil {
-			return newErr
-		}
-	}
-	// TODO: use it once logorus implementing logwriter
-	// successMsg := "info: dependencies resolved"
-	// sender.SendSuccessMessage(nil, successMsg)
-
-	jobSpecs, err = srv.priorityResolver.Resolve(ctx, jobSpecs, progressObserver)
-	if err != nil {
-		return err
-	}
-	srv.notifyProgress(progressObserver, &models.ProgressJobPriorityWeightAssign{})
-
-	jobSpecs, err = srv.filterJobSpecForNamespace(ctx, projectJobSpecRepo, jobSpecs, namespace)
-	if err != nil {
-		return err
-	}
-
-	if err := srv.batchScheduler.DeployJobs(ctx, namespace, jobSpecs, progressObserver); err != nil {
-		return err
-	}
-
-	// get all stored job names
-	schedulerJobs, err := srv.batchScheduler.ListJobs(ctx, namespace, models.SchedulerListOptions{OnlyName: true})
-	if err != nil {
-		return err
-	}
-	var destJobNames []string
-	for _, j := range schedulerJobs {
-		destJobNames = append(destJobNames, j.Name)
-	}
-
-	// filter what we need to keep/delete
-	var sourceJobNames []string
-	for _, jobSpec := range jobSpecs {
-		sourceJobNames = append(sourceJobNames, jobSpec.Name)
-	}
-	jobsToDelete := setSubtract(destJobNames, sourceJobNames)
-	jobsToDelete = jobDeletionFilter(jobsToDelete)
-	if len(jobsToDelete) > 0 {
-		if err := srv.batchScheduler.DeleteJobs(ctx, namespace, jobsToDelete, progressObserver); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// filterJobSpecForNamespace returns only job specs of a given namespace
-func (srv *Service) filterJobSpecForNamespace(ctx context.Context, projectJobSpecRepo store.ProjectJobSpecRepository,
-	jobSpecs []models.JobSpec, namespace models.NamespaceSpec) ([]models.JobSpec, error) {
-	namespaceJobSpecNames, err := projectJobSpecRepo.GetJobNamespaces(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var filteredJobSpecs []models.JobSpec
-	for _, jobSpec := range jobSpecs {
-		if srv.ifPresentInNamespace(namespaceJobSpecNames[namespace.Name], jobSpec.Name) {
-			filteredJobSpecs = append(filteredJobSpecs, jobSpec)
-		}
-	}
-	return filteredJobSpecs, nil
-}
-
 func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository,
 	progressObserver progress.Observer) (resolvedSpecs []models.JobSpec, resolvedErrors error) {
 	// fetch all jobs since dependency resolution happens for all jobs in a project, not just for a namespace
@@ -683,15 +595,6 @@ func setSubtract(from, remove []string) []string {
 	return res
 }
 
-func (*Service) ifPresentInNamespace(jobSpecNames []string, jobSpecToFind string) bool {
-	for _, jName := range jobSpecNames {
-		if jName == jobSpecToFind {
-			return true
-		}
-	}
-	return false
-}
-
 // jobDeletionFilter helps in keeping created dags even if they are not in source repo
 func jobDeletionFilter(dagNames []string) []string {
 	filtered := make([]string, 0)
@@ -707,12 +610,12 @@ func jobDeletionFilter(dagNames []string) []string {
 }
 
 func (srv *Service) Run(ctx context.Context, nsSpec models.NamespaceSpec,
-	jobSpecs []models.JobSpec, observer progress.Observer) error {
+	jobSpecs []models.JobSpec) (models.JobDeploymentDetail, error) {
 	// Note(kush.sharma): ideally we should resolve dependencies & priorities
 	// before passing it to be deployed but as the used scheduler doesn't support
 	// it yet to use them appropriately, I am not doing it to avoid unnecessary
 	// processing
-	return srv.manualScheduler.DeployJobs(ctx, nsSpec, jobSpecs, observer)
+	return srv.manualScheduler.DeployJobs(ctx, nsSpec, jobSpecs)
 }
 
 // NewService creates a new instance of JobService, requiring
@@ -1036,4 +939,21 @@ func getHash(val string) string {
 
 func (srv *Service) GetDeployment(ctx context.Context, deployID models.DeploymentID) (models.JobDeployment, error) {
 	return srv.deployManager.GetStatus(ctx, deployID)
+}
+
+func (srv *Service) CreateAndDeploy(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpecs []models.JobSpec, logWriter writer.LogWriter) (models.DeploymentID, error) {
+	// validate job spec
+	if err := srv.Check(ctx, namespaceSpec, jobSpecs, logWriter); err != nil {
+		return models.DeploymentID{}, status.Errorf(codes.Internal, "spec validation failed\n%s", err.Error())
+	}
+
+	jobSpecs = srv.bulkCreate(ctx, namespaceSpec, jobSpecs, logWriter)
+
+	if len(jobSpecs) > 0 {
+		srv.identifyAndPersistJobSources(ctx, namespaceSpec.ProjectSpec, jobSpecs, logWriter)
+	}
+
+	logWriter.Write(writer.LogLevelInfo, "info: dependencies resolved")
+
+	return srv.deployManager.Deploy(ctx, namespaceSpec.ProjectSpec)
 }

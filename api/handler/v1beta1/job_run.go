@@ -316,8 +316,8 @@ func (sv *JobRunServiceServer) RunJob(ctx context.Context, req *pb.RunJobRequest
 		}
 		jobSpecs = append(jobSpecs, jobSpec)
 	}
-	if err := sv.jobSvc.Run(ctx, namespaceSpec, jobSpecs, nil); err != nil {
-		return nil, status.Errorf(codes.Internal, "%s: failed to queue job for execution %s", err.Error(), req.ProjectName)
+	if jobDeploymentDetails, err := sv.jobSvc.Run(ctx, namespaceSpec, jobSpecs); err != nil {
+		return nil, status.Errorf(codes.Internal, "%s: failed to queue job for execution %s , %s", err.Error(), req.ProjectName, jobDeploymentDetails.Failures)
 	}
 
 	return &pb.RunJobResponse{}, nil
