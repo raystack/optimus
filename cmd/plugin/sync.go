@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -39,7 +40,7 @@ type syncCommand struct {
 func (s *syncCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	c, err := config.LoadClientConfig(s.configFilePath)
 	if err != nil {
-		return err
+		return errors.New("project not initialized or error in loading config : \n" + err.Error())
 	}
 	s.clientConfig = c
 	s.logger = logger.NewClientLogger(c.Log)
