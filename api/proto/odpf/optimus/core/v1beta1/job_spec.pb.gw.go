@@ -604,7 +604,7 @@ func RegisterJobSpecificationServiceHandlerServer(ctx context.Context, mux *runt
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.JobSpecificationService/AddJobSpecifications", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/add/jobs"))
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.JobSpecificationService/AddJobSpecifications", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/jobs"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -801,7 +801,7 @@ func RegisterJobSpecificationServiceHandlerClient(ctx context.Context, mux *runt
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.JobSpecificationService/AddJobSpecifications", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/add/jobs"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.JobSpecificationService/AddJobSpecifications", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/jobs"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -923,7 +923,7 @@ func RegisterJobSpecificationServiceHandlerClient(ctx context.Context, mux *runt
 var (
 	pattern_JobSpecificationService_CreateJobSpecification_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "job"}, ""))
 
-	pattern_JobSpecificationService_AddJobSpecifications_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 2, 6}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "add", "jobs"}, ""))
+	pattern_JobSpecificationService_AddJobSpecifications_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "jobs"}, ""))
 
 	pattern_JobSpecificationService_GetJobSpecification_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "job", "job_name"}, ""))
 
