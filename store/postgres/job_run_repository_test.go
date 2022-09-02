@@ -153,7 +153,6 @@ func TestIntegrationJobRunMetricsRepository(t *testing.T) {
 					"url":          "https://example.io",
 					"scheduled_at": "2022-01-02T15:04:05Z",
 					"event_time":   "2022-01-02T17:04:05Z",
-					"job_duration": "20",
 					"attempt":      "2",
 					"status":       "FINISHED",
 				},
@@ -177,7 +176,7 @@ func TestIntegrationJobRunMetricsRepository(t *testing.T) {
 			assert.Equal(t, time.Unix(int64(jobEvent.Value["event_time"].GetNumberValue()), 0), jobRunSpec.EndTime)
 		})
 	})
-	t.Run("GetActiveJobRun", func(t *testing.T) {
+	t.Run("GetLatestJobRunByScheduledTime", func(t *testing.T) {
 		t.Run("should return latest job run attempt for a given scheduled time", func(t *testing.T) {
 			db := DBSetup()
 
@@ -207,7 +206,6 @@ func TestIntegrationJobRunMetricsRepository(t *testing.T) {
 					"url":          "https://example.io",
 					"scheduled_at": "2022-01-02T15:04:05Z",
 					"attempt":      "3",
-					"job_duration": "120",
 					"event_time":   "2022-01-02T28:04:05Z",
 				},
 			)
@@ -216,7 +214,7 @@ func TestIntegrationJobRunMetricsRepository(t *testing.T) {
 				Value: eventValuesAttemptFinish.GetFields(),
 			}
 			//should return the latest attempt number
-			jobRunSpec, err := repo.GetActiveJobRun(ctx, jobSuccessEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
+			jobRunSpec, err := repo.GetLatestJobRunByScheduledTime(ctx, jobSuccessEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
 			assert.Equal(t, jobRunSpec.Attempt, 3)
 			assert.Nil(t, err)
 		})

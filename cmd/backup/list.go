@@ -12,11 +12,11 @@ import (
 	"github.com/spf13/cobra"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/cmd/connectivity"
 	"github.com/odpf/optimus/cmd/internal"
-	"github.com/odpf/optimus/cmd/logger"
-	"github.com/odpf/optimus/cmd/progressbar"
-	"github.com/odpf/optimus/cmd/survey"
+	"github.com/odpf/optimus/cmd/internal/connectivity"
+	"github.com/odpf/optimus/cmd/internal/logger"
+	"github.com/odpf/optimus/cmd/internal/progressbar"
+	"github.com/odpf/optimus/cmd/internal/survey"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 )
@@ -104,16 +104,16 @@ func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.logger.Error(logger.ColoredError("Getting list of backups took too long, timing out"))
+			l.logger.Error("Getting list of backups took too long, timing out")
 			return err
 		}
 		return fmt.Errorf("request failed to get list of backups: %w", err)
 	}
 
 	if len(listBackupsResponse.Backups) == 0 {
-		l.logger.Info(logger.ColoredNotice("No backups were found in %s project.", l.projectName))
+		l.logger.Warn("No backups were found in %s project.", l.projectName)
 	} else {
-		l.logger.Info(logger.ColoredNotice("Recent backups"))
+		l.logger.Info("Recent backups")
 		result := l.stringifyBackupListResponse(listBackupsResponse)
 		l.logger.Info(result)
 	}

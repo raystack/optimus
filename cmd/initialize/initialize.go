@@ -10,8 +10,8 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
-	"github.com/odpf/optimus/cmd/logger"
-	"github.com/odpf/optimus/cmd/survey"
+	"github.com/odpf/optimus/cmd/internal/logger"
+	"github.com/odpf/optimus/cmd/internal/survey"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/utils"
 )
@@ -110,6 +110,6 @@ func (i *initializeCommand) setupDirPathForClientConfig(clientConfig *config.Cli
 }
 
 func (i *initializeCommand) getClientConfigPath() string {
-	fileName := fmt.Sprintf("%s.%s", config.DefaultFilename, config.DefaultFileExtension)
+	fileName := config.DefaultFilename
 	return path.Join(i.dirPath, fileName)
 }

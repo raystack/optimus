@@ -9,11 +9,11 @@ import (
 	"github.com/spf13/cobra"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/cmd/connectivity"
 	"github.com/odpf/optimus/cmd/internal"
-	"github.com/odpf/optimus/cmd/logger"
+	"github.com/odpf/optimus/cmd/internal/connectivity"
+	"github.com/odpf/optimus/cmd/internal/logger"
+	"github.com/odpf/optimus/cmd/internal/progressbar"
 	"github.com/odpf/optimus/cmd/plugin"
-	"github.com/odpf/optimus/cmd/progressbar"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 )
@@ -84,7 +84,7 @@ func (v *versionCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 
 func (v *versionCommand) RunE(_ *cobra.Command, _ []string) error {
 	// Print client version
-	v.logger.Info(fmt.Sprintf("Client: %s-%s", logger.ColoredNotice(config.BuildVersion), logger.ColoredNotice(config.BuildCommit)))
+	v.logger.Info(fmt.Sprintf("Client: %s-%s", config.BuildVersion, config.BuildCommit))
 
 	// Print server version
 	if v.isWithServer {
@@ -92,7 +92,7 @@ func (v *versionCommand) RunE(_ *cobra.Command, _ []string) error {
 		if err != nil {
 			return err
 		}
-		v.logger.Info(fmt.Sprintf("Server: %s", logger.ColoredNotice(srvVer)))
+		v.logger.Info(fmt.Sprintf("Server: %s", srvVer))
 	}
 
 	// Print version update if new version is exist

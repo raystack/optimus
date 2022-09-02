@@ -12,8 +12,8 @@ import (
 
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/cmd/connectivity"
-	"github.com/odpf/optimus/cmd/logger"
+	"github.com/odpf/optimus/cmd/internal/connectivity"
+	"github.com/odpf/optimus/cmd/internal/logger"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
@@ -94,7 +94,7 @@ func (r *runCommand) runJobSpecificationRequest(jobSpec models.JobSpec) error {
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			r.logger.Info("process took too long, timing out")
+			r.logger.Warn("process took too long, timing out")
 		}
 		return fmt.Errorf("request failed for job %s: %w", jobSpec.Name, err)
 	}

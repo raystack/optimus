@@ -71,7 +71,7 @@ func TestCompilerIntegration(t *testing.T) {
 		Owner: "mee@mee",
 		Behavior: models.JobSpecBehavior{
 			CatchUp:       true,
-			DependsOnPast: false,
+			DependsOnPast: true,
 		},
 		Schedule: models.JobSpecSchedule{
 			StartDate: time.Date(2000, 11, 11, 0, 0, 0, 0, time.UTC),
@@ -94,7 +94,7 @@ func TestCompilerIntegration(t *testing.T) {
 		Owner: "mee@mee",
 		Behavior: models.JobSpecBehavior{
 			CatchUp:       true,
-			DependsOnPast: false,
+			DependsOnPast: true,
 		},
 		Schedule: models.JobSpecSchedule{
 			StartDate: time.Date(2000, 11, 11, 0, 0, 0, 0, time.UTC),
@@ -142,7 +142,7 @@ func TestCompilerIntegration(t *testing.T) {
 		Owner: "mee@mee",
 		Behavior: models.JobSpecBehavior{
 			CatchUp:       true,
-			DependsOnPast: false,
+			DependsOnPast: true,
 			Retry: models.JobSpecBehaviorRetry{
 				Count:              4,
 				Delay:              0,
@@ -174,6 +174,18 @@ func TestCompilerIntegration(t *testing.T) {
 			// we'll add resolved dependencies
 			"destination1": {Job: &depSpecIntra, Project: &projSpec, Type: models.JobSpecDependencyTypeIntra},
 			"destination2": {Job: &depSpecInter, Project: &externalProjSpec, Type: models.JobSpecDependencyTypeInter},
+		},
+		ExternalDependencies: models.ExternalDependency{
+			OptimusDependencies: []models.OptimusDependency{
+				{
+					Name:          "external-optimus",
+					Host:          "http://optimus.external.io",
+					ProjectName:   "foo-external-optimus-project",
+					NamespaceName: "bar-external-optimus-namespace",
+					JobName:       "foo-external-optimus-dep-job",
+					TaskName:      "bq",
+				},
+			},
 		},
 		Assets: *models.JobAssets{}.New(
 			[]models.JobSpecAsset{

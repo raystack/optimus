@@ -11,11 +11,11 @@ import (
 	"google.golang.org/grpc/status"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/cmd/connectivity"
 	"github.com/odpf/optimus/cmd/internal"
-	"github.com/odpf/optimus/cmd/logger"
-	"github.com/odpf/optimus/cmd/progressbar"
-	"github.com/odpf/optimus/cmd/survey"
+	"github.com/odpf/optimus/cmd/internal/connectivity"
+	"github.com/odpf/optimus/cmd/internal/logger"
+	"github.com/odpf/optimus/cmd/internal/progressbar"
+	"github.com/odpf/optimus/cmd/internal/survey"
 	"github.com/odpf/optimus/config"
 )
 
@@ -139,7 +139,7 @@ func (s *setCommand) RunE(_ *cobra.Command, args []string) error {
 				}
 				return s.updateSecret(updateSecretRequest)
 			}
-			s.logger.Info(logger.ColoredNotice("Aborting..."))
+			s.logger.Warn("Aborting...")
 			return nil
 		}
 		return fmt.Errorf("%w: request failed for creating secret %s", err, secretName)
@@ -162,7 +162,7 @@ func (s *setCommand) registerSecret(req *pb.RegisterSecretRequest) error {
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			s.logger.Error(logger.ColoredError("Secret registration took too long, timing out"))
+			s.logger.Error("Secret registration took too long, timing out")
 		}
 		return err
 	}
@@ -185,7 +185,7 @@ func (s *setCommand) updateSecret(req *pb.UpdateSecretRequest) error {
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			s.logger.Error(logger.ColoredError("Secret update took too long, timing out"))
+			s.logger.Error("Secret update took too long, timing out")
 		}
 		return fmt.Errorf("%w: request failed for updating secret %s", err, req.SecretName)
 	}

@@ -463,9 +463,17 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 
 	taskConf := models.JobSpecConfigs{}
 	for _, c := range conf.Task.Config {
+		name, ok := c.Key.(string)
+		if !ok {
+			return models.JobSpec{}, fmt.Errorf("spec reading error, failed to convert key %+v to string", c.Key)
+		}
+		value, ok := c.Value.(string)
+		if !ok {
+			return models.JobSpec{}, fmt.Errorf("spec reading error, failed to convert value %+v on key %s to string", c.Value, name)
+		}
 		taskConf = append(taskConf, models.JobSpecConfigItem{
-			Name:  c.Key.(string),
-			Value: c.Value.(string), // TODO: panics when value not valid, error with macros
+			Name:  name,
+			Value: value,
 		})
 	}
 

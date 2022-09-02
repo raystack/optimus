@@ -13,9 +13,9 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/cmd/connectivity"
 	"github.com/odpf/optimus/cmd/internal"
-	"github.com/odpf/optimus/cmd/logger"
+	"github.com/odpf/optimus/cmd/internal/connectivity"
+	"github.com/odpf/optimus/cmd/internal/logger"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/utils"
@@ -142,7 +142,7 @@ func (b *buildInstanceCommand) writeInstanceResponse(jobResponse *pb.RegisterIns
 	}
 
 	if len(b.keysWithUnsubstitutedValue) > 0 {
-		b.logger.Warn(logger.ColoredNotice("Value not substituted for keys:\n%s", strings.Join(b.keysWithUnsubstitutedValue, "\n")))
+		b.logger.Warn("Value not substituted for keys:\n%s", strings.Join(b.keysWithUnsubstitutedValue, "\n"))
 	}
 	return nil
 }

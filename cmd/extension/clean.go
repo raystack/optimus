@@ -4,7 +4,7 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/cmd/survey"
+	"github.com/odpf/optimus/cmd/internal/survey"
 	"github.com/odpf/optimus/extension"
 )
 
@@ -34,7 +34,7 @@ func (c *cleanCommand) RunE(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	if !confirmed {
-		c.logger.Info("Aborted clean process ...")
+		c.logger.Warn("Aborted clean process ...")
 		return nil
 	}
 	return extension.Clean(verbose)

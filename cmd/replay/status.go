@@ -11,10 +11,10 @@ import (
 	"github.com/xlab/treeprint"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/cmd/connectivity"
 	"github.com/odpf/optimus/cmd/internal"
-	"github.com/odpf/optimus/cmd/logger"
-	"github.com/odpf/optimus/cmd/progressbar"
+	"github.com/odpf/optimus/cmd/internal/connectivity"
+	"github.com/odpf/optimus/cmd/internal/logger"
+	"github.com/odpf/optimus/cmd/internal/progressbar"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 )
@@ -105,7 +105,7 @@ func (s *statusCommand) RunE(_ *cobra.Command, args []string) error {
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			s.logger.Error(logger.ColoredError("Replay request took too long, timing out"))
+			s.logger.Error("Replay request took too long, timing out")
 		}
 		return fmt.Errorf("request getting status for replay %s is failed: %w", args[0], err)
 	}
@@ -115,13 +115,13 @@ func (s *statusCommand) RunE(_ *cobra.Command, args []string) error {
 
 func (s *statusCommand) printReplayStatusResponse(replayStatusResponse *pb.GetReplayStatusResponse) {
 	if replayStatusResponse.State == models.ReplayStatusFailed {
-		s.logger.Info(fmt.Sprintf("\nThis replay has been marked as %s", logger.ColoredNotice(models.ReplayStatusFailed)))
+		s.logger.Info(fmt.Sprintf("\nThis replay has been marked as %s", models.ReplayStatusFailed))
 	} else if replayStatusResponse.State == models.ReplayStatusReplayed {
-		s.logger.Info(fmt.Sprintf("\nThis replay is still %s", logger.ColoredNotice("running")))
+		s.logger.Info(fmt.Sprintf("\nThis replay is still %s", "running"))
 	} else if replayStatusResponse.State == models.ReplayStatusSuccess {
 		s.logger.Info(fmt.Sprintf("\nThis replay has been marked as %s", logger.ColoredSuccess(models.ReplayStatusSuccess)))
 	}
-	s.logger.Info(logger.ColoredNotice("Latest Instances Status"))
+	s.logger.Info("Latest Instances Status")
 	s.logger.Info(s.printStatusTree(replayStatusResponse.Response, treeprint.New()).String())
 }
 

@@ -76,7 +76,7 @@ func TestJobRunService(t *testing.T) {
 				Type:       models.InstanceTypeTask,
 				ExecutedAt: mockedTimeNow,
 				Status:     models.RunStateRunning,
-				Data: []models.InstanceSpecData{
+				Data: []models.JobRunSpecData{
 					{
 						Name:  models.ConfigKeyExecutionTime,
 						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
@@ -119,7 +119,7 @@ func TestJobRunService(t *testing.T) {
 				Type:       models.InstanceTypeTask,
 				ExecutedAt: mockedTimeNow,
 				Status:     models.RunStateRunning,
-				Data: []models.InstanceSpecData{
+				Data: []models.JobRunSpecData{
 					{
 						Name:  models.ConfigKeyExecutionTime,
 						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
@@ -170,7 +170,7 @@ func TestJobRunService(t *testing.T) {
 				Type:       models.InstanceTypeHook,
 				ExecutedAt: mockedTimeNow,
 				Status:     models.RunStateRunning,
-				Data: []models.InstanceSpecData{
+				Data: []models.JobRunSpecData{
 					{
 						Name:  models.ConfigKeyExecutionTime,
 						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
@@ -213,7 +213,7 @@ func TestJobRunService(t *testing.T) {
 				Type:       models.InstanceTypeHook,
 				ExecutedAt: mockedTimeNow,
 				Status:     models.RunStateRunning,
-				Data: []models.InstanceSpecData{
+				Data: []models.JobRunSpecData{
 					{
 						Name:  models.ConfigKeyExecutionTime,
 						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
@@ -263,7 +263,7 @@ func TestJobRunService(t *testing.T) {
 				Type:       models.InstanceTypeTask,
 				ExecutedAt: mockedTimeNow,
 				Status:     models.RunStateRunning,
-				Data: []models.InstanceSpecData{
+				Data: []models.JobRunSpecData{
 					{
 						Name:  models.ConfigKeyExecutionTime,
 						Value: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),

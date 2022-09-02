@@ -6,7 +6,7 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/cmd/survey"
+	"github.com/odpf/optimus/cmd/internal/survey"
 	"github.com/odpf/optimus/extension/model"
 )
 
@@ -47,7 +47,7 @@ func (r *uninstallCommand) RunE(cmd *cobra.Command, _ []string) error {
 			return err
 		}
 		if !confirmed {
-			r.logger.Info("Aborted uninstallation ...")
+			r.logger.Warn("Aborted uninstallation ...")
 			return nil
 		}
 	}

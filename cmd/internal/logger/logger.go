@@ -3,30 +3,38 @@ package logger
 import (
 	"fmt"
 
+	"github.com/muesli/termenv"
 	"github.com/odpf/salt/log"
 	"github.com/sirupsen/logrus"
 
 	"github.com/odpf/optimus/config"
 )
 
-type plainFormatter int
+type colorFormatter int
 
-func (*plainFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+func (*colorFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+	var colorcode = ColorWhite
+	switch entry.Level {
+	case logrus.ErrorLevel, logrus.FatalLevel, logrus.PanicLevel:
+		colorcode = ColorRed
+	case logrus.WarnLevel:
+		colorcode = ColorYellow
+	}
 	if len(entry.Data) > 0 {
 		var data string
 		for key, val := range entry.Data {
 			data += fmt.Sprintf("%s: %v ", key, val)
 		}
-		return []byte(fmt.Sprintf("%s %s\n", entry.Message, data)), nil
+		return []byte(termenv.String(fmt.Sprintf("%s %s \n", entry.Message, data)).Foreground(colorcode).String()), nil
 	}
-	return []byte(fmt.Sprintf("%s\n", entry.Message)), nil
+	return []byte(termenv.String(fmt.Sprintf("%s\n", entry.Message)).Foreground(colorcode).String()), nil
 }
 
 // NewDefaultLogger initialzes plain logger
 func NewDefaultLogger() log.Logger {
 	return log.NewLogrus(
 		log.LogrusWithLevel(config.LogLevelInfo.String()),
-		log.LogrusWithFormatter(new(plainFormatter)),
+		log.LogrusWithFormatter(new(colorFormatter)),
 	)
 }
 
@@ -38,6 +46,6 @@ func NewClientLogger(logConfig config.LogConfig) log.Logger {
 
 	return log.NewLogrus(
 		log.LogrusWithLevel(logConfig.Level.String()),
-		log.LogrusWithFormatter(new(plainFormatter)),
+		log.LogrusWithFormatter(new(colorFormatter)),
 	)
 }

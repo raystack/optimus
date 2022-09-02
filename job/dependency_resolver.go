@@ -314,12 +314,12 @@ func (d *dependencyResolver) getExternalDependenciesByJobName(ctx context.Contex
 		return input1
 	}
 
-	unresolvedStaticDependenciesPerJobName, unknownDependenciesFromInternal := d.getUnresolvedStaticDependencies(jobSpecs, internalJobDependencies)
-	staticExternalDependencyPerJobName, unknownDependenciesFromExternal, err := d.externalDependencyResolver.FetchStaticExternalDependenciesPerJobName(ctx, unresolvedStaticDependenciesPerJobName)
+	unresolvedStaticDependenciesPerJobName, unknownStaticDependenciesFromInternal := d.getUnresolvedStaticDependencies(jobSpecs, internalJobDependencies)
+	staticExternalDependencyPerJobName, unknownStaticDependenciesFromExternal, err := d.externalDependencyResolver.FetchStaticExternalDependenciesPerJobName(ctx, unresolvedStaticDependenciesPerJobName)
 	if err != nil {
 		return nil, nil, err
 	}
-	unknownDependencies := mergeUnknownDependencies(unknownDependenciesFromInternal, unknownDependenciesFromExternal)
+	unknownStaticDependencies := mergeUnknownDependencies(unknownStaticDependenciesFromInternal, unknownStaticDependenciesFromExternal)
 
 	unresolvedInferredDependenciesPerJobName, err := d.getUnresolvedInferredDependencies(ctx, projectID, jobSpecs, internalJobDependencies)
 	if err != nil {
@@ -331,29 +331,17 @@ func (d *dependencyResolver) getExternalDependenciesByJobName(ctx context.Contex
 	}
 
 	externalDependenciesByJobName := mergeExternalDependencies(staticExternalDependencyPerJobName, inferredExternalDependencyPerJobName)
-	return externalDependenciesByJobName, unknownDependencies, nil
+	return externalDependenciesByJobName, unknownStaticDependencies, nil
 }
 
 func (d *dependencyResolver) getUnresolvedStaticDependencies(jobSpecs []models.JobSpec, internalJobDependencies map[uuid.UUID][]models.JobSpec) (map[string][]models.UnresolvedJobDependency, []models.UnknownDependency) {
-	convertToUnknownDependencies := func(unknownStaticDependencyNames []string, jobName, projectName string) []models.UnknownDependency {
-		unknownDependencies := make([]models.UnknownDependency, len(unknownStaticDependencyNames))
-		for i := 0; i < len(unknownStaticDependencyNames); i++ {
-			unknownDependencies[i] = models.UnknownDependency{
-				JobName:               jobName,
-				DependencyProjectName: projectName,
-				DependencyJobName:     unknownStaticDependencyNames[i],
-			}
-		}
-		return unknownDependencies
-	}
-
 	unresolvedStaticDependenciesPerJobName := make(map[string][]models.UnresolvedJobDependency)
 	var unknownDependencies []models.UnknownDependency
 	for _, jobSpec := range jobSpecs {
 		resolvedDependencies := internalJobDependencies[jobSpec.ID]
 		unresolvedStaticDependencies, unknownStaticDependencyNames := d.identifyUnresolvedStaticDependencies(jobSpec.Dependencies, resolvedDependencies)
 
-		unknownDependenciesPerJob := convertToUnknownDependencies(unknownStaticDependencyNames, jobSpec.Name, jobSpec.GetProjectSpec().Name)
+		unknownDependenciesPerJob := d.convertToUnknownDependencies(unknownStaticDependencyNames, jobSpec.Name, jobSpec.GetProjectSpec().Name)
 		unknownDependencies = append(unknownDependencies, unknownDependenciesPerJob...)
 
 		if len(unresolvedStaticDependencies) > 0 {
@@ -361,6 +349,18 @@ func (d *dependencyResolver) getUnresolvedStaticDependencies(jobSpecs []models.J
 		}
 	}
 	return unresolvedStaticDependenciesPerJobName, unknownDependencies
+}
+
+func (*dependencyResolver) convertToUnknownDependencies(unknownStaticDependencyNames []string, jobName, projectName string) []models.UnknownDependency {
+	unknownDependencies := make([]models.UnknownDependency, len(unknownStaticDependencyNames))
+	for i := 0; i < len(unknownStaticDependencyNames); i++ {
+		unknownDependencies[i] = models.UnknownDependency{
+			JobName:               jobName,
+			DependencyProjectName: projectName,
+			DependencyJobName:     unknownStaticDependencyNames[i],
+		}
+	}
+	return unknownDependencies
 }
 
 func (*dependencyResolver) identifyUnresolvedStaticDependencies(jobDependencies map[string]models.JobSpecDependency, resolvedStaticDependencies []models.JobSpec) ([]models.UnresolvedJobDependency, []string) {

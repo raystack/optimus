@@ -277,7 +277,7 @@ type CompileAssetsRequest struct {
 	Assets PluginAssets
 
 	// the instance for which these assets are being compiled for
-	InstanceData     []InstanceSpecData
+	InstanceData     []JobRunSpecData
 	InstanceSchedule time.Time
 }
 

@@ -12,10 +12,10 @@ import (
 	"github.com/spf13/cobra"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/cmd/connectivity"
 	"github.com/odpf/optimus/cmd/internal"
-	"github.com/odpf/optimus/cmd/logger"
-	"github.com/odpf/optimus/cmd/progressbar"
+	"github.com/odpf/optimus/cmd/internal/connectivity"
+	"github.com/odpf/optimus/cmd/internal/logger"
+	"github.com/odpf/optimus/cmd/internal/progressbar"
 	"github.com/odpf/optimus/config"
 )
 
@@ -100,16 +100,16 @@ func (l *listCommand) listSecret(req *pb.ListSecretsRequest) error {
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			l.logger.Error(logger.ColoredError("Secret listing took too long, timing out"))
+			l.logger.Error("Secret listing took too long, timing out")
 		}
 		return fmt.Errorf("%w: request failed for listing secrets", err)
 	}
 
 	if len(listSecretsResponse.Secrets) == 0 {
-		l.logger.Info(logger.ColoredNotice("No secrets were found in %s project.", req.ProjectName))
+		l.logger.Info("No secrets were found in %s project.", req.ProjectName)
 	} else {
 		result := l.stringifyListOfSecrets(listSecretsResponse)
-		l.logger.Info(logger.ColoredNotice("Secrets for project: %s", l.projectName))
+		l.logger.Info("Secrets for project: %s", l.projectName)
 		l.logger.Info(result)
 	}
 	return nil

@@ -12,12 +12,12 @@ import (
 	"github.com/spf13/cobra"
 
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/cmd/connectivity"
 	"github.com/odpf/optimus/cmd/internal"
-	"github.com/odpf/optimus/cmd/logger"
+	"github.com/odpf/optimus/cmd/internal/connectivity"
+	"github.com/odpf/optimus/cmd/internal/logger"
+	"github.com/odpf/optimus/cmd/internal/progressbar"
+	"github.com/odpf/optimus/cmd/internal/survey"
 	nameSpcCmd "github.com/odpf/optimus/cmd/namespace"
-	"github.com/odpf/optimus/cmd/progressbar"
-	"github.com/odpf/optimus/cmd/survey"
 	"github.com/odpf/optimus/config"
 )
 
@@ -162,7 +162,7 @@ func (c *createCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 
 	if err := c.runBackupDryRunRequest(); err != nil {
-		c.logger.Info(logger.ColoredNotice("Failed to run backup dry run"))
+		c.logger.Warn("Failed to run backup dry run")
 		return err
 	}
 	if c.onlyDryRun {
@@ -207,7 +207,7 @@ func (c *createCommand) runBackupRequest() error {
 
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			c.logger.Error(logger.ColoredError("Backup took too long, timing out"))
+			c.logger.Error("Backup took too long, timing out")
 		}
 		return fmt.Errorf("request failed to backup job %s: %w", backupRequest.ResourceName, err)
 	}
@@ -244,7 +244,7 @@ func (c *createCommand) runBackupDryRunRequest() error {
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			c.logger.Error(logger.ColoredError("Backup dry run took too long, timing out"))
+			c.logger.Error("Backup dry run took too long, timing out")
 		}
 		return fmt.Errorf("request failed to backup %s: %w", request.ResourceName, err)
 	}
@@ -255,16 +255,16 @@ func (c *createCommand) runBackupDryRunRequest() error {
 
 func (c *createCommand) printBackupDryRunResponse(request *pb.BackupDryRunRequest, response *pb.BackupDryRunResponse) {
 	if c.ignoreDownstream {
-		c.logger.Info(logger.ColoredNotice("\nBackup list for %s. Downstreams will be ignored.", request.ResourceName))
+		c.logger.Warn("\nBackup list for %s. Downstreams will be ignored.", request.ResourceName)
 	} else {
-		c.logger.Info(logger.ColoredNotice("\nBackup list for %s. Supported downstreams will be included.", request.ResourceName))
+		c.logger.Info("\nBackup list for %s. Supported downstreams will be included.", request.ResourceName)
 	}
 	for counter, resource := range response.ResourceName {
 		c.logger.Info(fmt.Sprintf("%d. %s", counter+1, resource))
 	}
 
 	if len(response.IgnoredResources) > 0 {
-		c.logger.Info("\nThese resources will be ignored:")
+		c.logger.Warn("\nThese resources will be ignored:")
 	}
 	for counter, ignoredResource := range response.IgnoredResources {
 		c.logger.Info(fmt.Sprintf("%d. %s", counter+1, ignoredResource))

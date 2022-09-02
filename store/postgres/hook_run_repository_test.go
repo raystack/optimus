@@ -118,10 +118,11 @@ func TestIntegrationHookRunRepository(t *testing.T) {
 	SLAMissDuearionSecs := int64(100)
 	eventTimeString := "2022-01-02T16:04:05Z"
 	hookEventTimeString := "2022-01-02T16:04:05Z"
+	scheduledAt := "2022-01-02T15:04:05Z"
 	eventValues, _ := structpb.NewStruct(
 		map[string]interface{}{
 			"url":          "https://example.io",
-			"scheduled_at": "2022-01-02T15:04:05Z",
+			"scheduled_at": scheduledAt,
 			"attempt":      "2",
 			"event_time":   eventTimeString,
 		},
@@ -129,10 +130,10 @@ func TestIntegrationHookRunRepository(t *testing.T) {
 	hookStartTime, _ := time.Parse(time.RFC3339, hookEventTimeString)
 	hookEventValues, _ := structpb.NewStruct(
 		map[string]interface{}{
-			"url":                  "https://example.io",
-			"scheduled_at":         "2022-01-02T15:04:05Z",
-			"attempt":              "2",
-			"task_start_timestamp": hookStartTime.Unix(),
+			"url":          "https://example.io",
+			"scheduled_at": scheduledAt,
+			"event_time":   hookStartTime.Unix(),
+			"attempt":      "2",
 		},
 	)
 
@@ -169,8 +170,10 @@ func TestIntegrationHookRunRepository(t *testing.T) {
 			jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(db)
 			err := jobRunMetricsRepository.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
 			assert.Nil(t, err)
+
 			jobRunSpec, err := jobRunMetricsRepository.Get(ctx, jobEvent, namespaceSpec, jobConfigs[0])
 			assert.Nil(t, err)
+
 			repo := postgres.NewHookRunRepository(db)
 			err = repo.Save(ctx, hookRunStartEvent, jobRunSpec)
 			assert.Nil(t, err)
@@ -178,13 +181,13 @@ func TestIntegrationHookRunRepository(t *testing.T) {
 			hookEndEventTimeString := "2022-01-02T17:04:05Z"
 			hookEndTime, err := time.Parse(time.RFC3339, hookEndEventTimeString)
 			assert.Nil(t, err)
-
 			updateEventValues, _ := structpb.NewStruct(
 				map[string]interface{}{
-					"url":        "https://example.io",
-					"event_time": hookEndTime.Unix(),
-					"attempt":    "2",
-					"status":     "SUCCESS",
+					"url":          "https://example.io",
+					"scheduled_at": scheduledAt,
+					"event_time":   hookEndTime.Unix(),
+					"attempt":      "2",
+					"status":       "SUCCESS",
 				},
 			)
 			jobUpdateEvent := models.JobEvent{
@@ -199,7 +202,7 @@ func TestIntegrationHookRunRepository(t *testing.T) {
 			assert.Nil(t, err)
 
 			assert.Equal(t, hookRunSpec.JobRunID, jobRunSpec.JobRunID)
-			assert.Equal(t, hookRunSpec.Duration, hookEndTime.Unix()-hookStartTime.Unix())
+			assert.Equal(t, hookEndTime.Unix()-hookStartTime.Unix(), hookRunSpec.Duration)
 			assert.Equal(t, "SUCCESS", hookRunSpec.Status)
 		})
 	})
@@ -225,7 +228,7 @@ func TestIntegrationHookRunRepository(t *testing.T) {
 			err := jobRunMetricsRepository.Save(ctx, jobEvent, namespaceSpec, jobConfigs[0], SLAMissDuearionSecs)
 			assert.Nil(t, err)
 
-			jobRunSpec, err := jobRunMetricsRepository.GetActiveJobRun(ctx, jobUpdateEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
+			jobRunSpec, err := jobRunMetricsRepository.GetLatestJobRunByScheduledTime(ctx, jobUpdateEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
 			assert.Nil(t, err)
 			// first hook run for attempt number 2
 			repo := postgres.NewHookRunRepository(db)
@@ -241,7 +244,6 @@ func TestIntegrationHookRunRepository(t *testing.T) {
 					"url":          "https://example.io",
 					"scheduled_at": "2022-01-02T15:04:05Z",
 					"attempt":      "3",
-					"job_duration": "120",
 					"event_time":   "2022-01-02T28:04:05Z",
 				},
 			)
@@ -250,7 +252,7 @@ func TestIntegrationHookRunRepository(t *testing.T) {
 				Value: eventValuesAttemptFinish.GetFields(),
 			}
 			// should return the latest attempt number
-			jobRunSpec, err = jobRunMetricsRepository.GetActiveJobRun(ctx, jobSuccessEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
+			jobRunSpec, err = jobRunMetricsRepository.GetLatestJobRunByScheduledTime(ctx, jobSuccessEventAttempt3.Value["scheduled_at"].GetStringValue(), namespaceSpec, jobConfigs[0])
 			assert.Nil(t, err)
 
 			// first hook run for attempt number 3

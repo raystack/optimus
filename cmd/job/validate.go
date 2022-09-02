@@ -13,9 +13,8 @@ import (
 
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/cmd/connectivity"
-	"github.com/odpf/optimus/cmd/logger"
-	"github.com/odpf/optimus/cmd/progressbar"
+	"github.com/odpf/optimus/cmd/internal/connectivity"
+	"github.com/odpf/optimus/cmd/internal/logger"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
@@ -112,64 +111,30 @@ func (v *validateCommand) validateJobSpecificationRequest(jobSpecs []models.JobS
 	respStream, err := job.CheckJobSpecifications(conn.GetContext(), checkJobSpecRequest)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			v.logger.Error(logger.ColoredError("Validate process took too long, timing out"))
+			v.logger.Error("Validate process took too long, timing out")
 		}
 		return fmt.Errorf("validate request failed: %w", err)
 	}
-	return v.getCheckJobSpecificationsResponse(respStream, len(jobSpecs))
+	return v.getCheckJobSpecificationsResponse(respStream)
 }
 
-func (v *validateCommand) getCheckJobSpecificationsResponse(stream pb.JobSpecificationService_CheckJobSpecificationsClient, totalJobs int) error {
-	ackCounter := 0
-	failedCounter := 0
-
-	spinner := progressbar.NewProgressBar()
-	if !v.verbose {
-		spinner.StartProgress(totalJobs, "validating jobs")
-	}
-
-	var validateErrors []string
-	var streamError error
+func (v *validateCommand) getCheckJobSpecificationsResponse(stream pb.JobSpecificationService_CheckJobSpecificationsClient) error {
 	for {
 		resp, err := stream.Recv()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			streamError = err
-			break
+			return err
 		}
-		if resp.Ack {
-			// ack for the job spec
-			if !resp.GetSuccess() {
-				failedCounter++
-				validateErrors = append(validateErrors, fmt.Sprintf("failed to validate: %s, %s\n", resp.GetJobName(), resp.GetMessage()))
-			}
-			ackCounter++
-			if v.verbose {
-				v.logger.Info(fmt.Sprintf("%d/%d. %s successfully checked", ackCounter, totalJobs, resp.GetJobName()))
-			}
-			spinner.SetProgress(ackCounter)
-		} else if v.verbose {
-			// ordinary progress event
-			v.logger.Info(fmt.Sprintf("info '%s': %s", resp.GetJobName(), resp.GetMessage()))
-		}
-	}
-	spinner.Stop()
 
-	if len(validateErrors) > 0 {
-		if v.verbose {
-			for i, reqErr := range validateErrors {
-				v.logger.Error(fmt.Sprintf("%d. %s", i+1, reqErr))
-			}
+		if logStatus := resp.GetLogStatus(); logStatus != nil && v.verbose {
+			logger.PrintLogStatus(v.logger, logStatus)
+			continue
 		}
-	} else if streamError != nil && ackCounter == totalJobs && failedCounter == 0 {
-		// if we have uploaded all jobs successfully, further steps in pipeline
-		// should not cause errors to fail and should end with warnings if any.
-		v.logger.Warn(logger.ColoredNotice("request ended with warning", "err", streamError))
-		return nil
 	}
-	return streamError
+
+	return nil
 }
 
 func (v *validateCommand) loadConfig() error {
