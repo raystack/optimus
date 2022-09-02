@@ -481,7 +481,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.CreateJobSpecificationResponse{
 				Success: true,
-				Message: fmt.Sprintf("job is created and queued for deployment on project a-data-project, with DeploymentId :: %s", deploymentID.UUID().String()),
+				Message: fmt.Sprintf("job is created and queued for deployment on project a-data-project, with Deployment ID : %s", deploymentID.UUID().String()),
 			}, resp)
 		})
 		t.Run("should handle error for failed createJobSpecification", func(t *testing.T) {

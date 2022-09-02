@@ -171,15 +171,15 @@ func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req 
 	jobSpecs := []models.JobSpec{jobSpec}
 
 	deployID, err := sv.jobSvc.CreateAndDeploy(ctx, namespaceSpec, jobSpecs, logWriter)
-
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "job addition failed for project %s, error:: %s", req.GetProjectName(), err.Error())
 	}
+
 	runtimeDeployJobSpecificationCounter.Inc()
 
 	return &pb.CreateJobSpecificationResponse{
 		Success: true,
-		Message: fmt.Sprintf("job is created and queued for deployment on project %s, with DeploymentId :: %s", req.GetProjectName(), deployID.UUID().String()),
+		Message: fmt.Sprintf("job is created and queued for deployment on project %s, with Deployment ID : %s", req.GetProjectName(), deployID.UUID().String()),
 	}, nil
 }
 
@@ -201,10 +201,10 @@ func (sv *JobSpecServiceServer) AddJobSpecifications(ctx context.Context, req *p
 	}
 
 	deployID, err := sv.jobSvc.CreateAndDeploy(ctx, namespaceSpec, jobSpecs, logWriter)
-
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "jobs addition failed for project %s, error:: %s", req.GetProjectName(), err.Error())
 	}
+
 	runtimeDeployJobSpecificationCounter.Inc()
 
 	return &pb.AddJobSpecificationsResponse{
