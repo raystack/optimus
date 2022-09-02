@@ -119,7 +119,7 @@ type DependencyResolverMod interface {
 	GenerateDependencies(context.Context, GenerateDependenciesRequest) (*GenerateDependenciesResponse, error)
 }
 
-type IYamlMod interface {
+type YamlMod interface {
 	BasePlugin
 	CommandLineMod
 }
@@ -390,7 +390,7 @@ var (
 )
 
 type PluginRepository interface {
-	AddYaml(IYamlMod) error                                      // yaml plugin
+	AddYaml(YamlMod) error                                       // yaml plugin
 	Add(BasePlugin, CommandLineMod, DependencyResolverMod) error // binary plugin
 	GetByName(string) (*Plugin, error)
 	GetAll() []*Plugin
@@ -409,7 +409,7 @@ type Plugin struct {
 	// can be used in different circumstances
 	CLIMod        CommandLineMod
 	DependencyMod DependencyResolverMod
-	YamlMod       IYamlMod
+	YamlMod       YamlMod
 }
 
 func (p *Plugin) IsYamlPlugin() bool {
@@ -514,7 +514,7 @@ func (s *registeredPlugins) GetHooks() []*Plugin {
 }
 
 // for addin yaml plugins
-func (s *registeredPlugins) AddYaml(yamlMod IYamlMod) error {
+func (s *registeredPlugins) AddYaml(yamlMod YamlMod) error {
 	return s.add(nil, nil, nil, yamlMod)
 }
 

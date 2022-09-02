@@ -2,17 +2,14 @@ package plugin
 
 import (
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
-	yml "gopkg.in/yaml.v2"
 
 	"github.com/odpf/optimus/cmd/internal/logger"
-	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin/yaml"
 )
 
@@ -21,43 +18,21 @@ func NewValidateCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "validate",
 		Short:   "validate installed plugins",
-		Example: "optimus plugin validate --path bq2bq.yaml --pluginversion 0.2.2 --print",
+		Example: "optimus plugin validate --path bq2bq.yaml",
 		RunE:    validate.RunE,
 		PreRunE: validate.PreRunE,
 	}
 	cmd.Flags().StringVar(&validate.path, "path", ".plugins", "file or dir of plugins")
-	cmd.Flags().BoolVar(&validate.logYaml, "print", false, "prints yaml plugin model")
-	cmd.Flags().StringVar(&validate.pluginVersion, "pluginversion", "", "overrides pluginversion in yaml file")
 	return cmd
 }
 
 type validateCommand struct {
-	logger        log.Logger
-	path          string
-	logYaml       bool
-	pluginVersion string
+	logger log.Logger
+	path   string
 }
 
 func (v *validateCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	v.logger = logger.NewDefaultLogger()
-	return nil
-}
-
-func (v *validateCommand) overrideFile(plugin models.CommandLineMod, pluginPath string) error {
-	if v.pluginVersion == "" {
-		return nil
-	}
-	pluginRef := plugin.(*yaml.PluginSpec)
-	pluginRef.PluginVersion = v.pluginVersion
-	data, marshalErr := yml.Marshal(pluginRef)
-	if marshalErr != nil {
-		return marshalErr
-	}
-	ioerr := ioutil.WriteFile(pluginPath, data, 0)
-	if ioerr != nil {
-		return ioerr
-	}
-	v.logger.Info(fmt.Sprintf("Success in Overriding pluginversion in %s", pluginPath))
 	return nil
 }
 
@@ -66,15 +41,10 @@ func (v *validateCommand) validateFile(pluginPath string) error {
 	if filepath.Ext(pluginPath) != ".yaml" {
 		return errors.New("expecting .yaml file at " + pluginPath)
 	}
-	plugin, err := yaml.NewPluginSpec(pluginPath)
+	_, err := yaml.NewPluginSpec(pluginPath)
 	if err != nil {
 		return err
 	}
-	overrideErr := v.overrideFile(plugin, pluginPath)
-	if overrideErr != nil {
-		return overrideErr
-	}
-	v.logPluginAsYaml(plugin)
 	return nil
 }
 
@@ -96,18 +66,6 @@ func (v *validateCommand) validateDir(pluginPath string) error {
 	}
 	v.logger.Info("validation complete !")
 	return nil
-}
-
-func (v *validateCommand) logPluginAsYaml(plugin models.CommandLineMod) {
-	if !v.logYaml {
-		return
-	}
-	yamlData, err := yml.Marshal(plugin)
-	if err != nil {
-		v.logger.Error(err.Error())
-		return
-	}
-	v.logger.Info(string(yamlData))
 }
 
 func (v *validateCommand) RunE(_ *cobra.Command, _ []string) error {
