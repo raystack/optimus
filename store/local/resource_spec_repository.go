@@ -249,7 +249,7 @@ func (repo *resourceRepository) findInDir(dirName string) (models.ResourceSpec, 
 	resourceSpec.Assets = assets
 
 	if _, ok := repo.cache.data[resourceSpec.Name]; ok {
-		return resourceSpec, fmt.Errorf("job name should be unique across directories: %s", resourceSpec.Name)
+		return resourceSpec, fmt.Errorf("resource name should be unique across directories: %s", resourceSpec.Name)
 	}
 	repo.cache.data[resourceSpec.Name] = cacheItem{
 		path: dirName,
