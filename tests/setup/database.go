@@ -82,7 +82,7 @@ func dropTables(db *gorm.DB) error {
 	}
 	var errMsgs []string
 	for _, table := range tablesToDelete {
-		if err := db.Exec(fmt.Sprintf("drop table %s", table)).Error; err != nil {
+		if err := db.Exec(fmt.Sprintf("drop table if exists %s", table)).Error; err != nil {
 			toleratedErrMsg := fmt.Sprintf("table \"%s\" does not exist", table)
 			if !strings.Contains(err.Error(), toleratedErrMsg) {
 				errMsgs = append(errMsgs, err.Error())
@@ -101,6 +101,10 @@ func TruncateTables(db *gorm.DB) {
 	db.Exec("TRUNCATE TABLE resource CASCADE")
 
 	db.Exec("TRUNCATE TABLE job_run CASCADE")
+	db.Exec("TRUNCATE TABLE sensor_run CASCADE")
+	db.Exec("TRUNCATE TABLE task_run CASCADE")
+	db.Exec("TRUNCATE TABLE hook_run CASCADE")
+
 	db.Exec("TRUNCATE TABLE job_run_old CASCADE")
 	db.Exec("TRUNCATE TABLE instance CASCADE")
 
