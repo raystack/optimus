@@ -5,6 +5,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -27,11 +28,10 @@ type migrationStep struct {
 }
 
 type migration struct {
-	logger                 log.Logger
 	incomingOptimusVersion string
+	dbConnURL              string
 
-	db      *gorm.DB
-	migrate *migrate.Migrate
+	logger log.Logger
 }
 
 // NewMigration initializes migration mechanism specific for postgres
@@ -45,59 +45,46 @@ func NewMigration(logger log.Logger, incomingOptimusVersion, dbConnURL string) (
 	if dbConnURL == "" {
 		return nil, errors.New("database connection url is empty")
 	}
-	m, err := newMigrate(dbConnURL)
-	if err != nil {
-		return nil, fmt.Errorf("error initializing migrate: %w", err)
-	}
-	db, err := gorm.Open(postgres.Open(dbConnURL))
-	if err != nil {
-		return nil, fmt.Errorf("error initializing gorm: %w", err)
-	}
 	return &migration{
 		incomingOptimusVersion: incomingOptimusVersion,
-		db:                     db,
-		migrate:                m,
+		dbConnURL:              dbConnURL,
 		logger:                 logger,
 	}, nil
 }
 
-func newMigrate(dbConnURL string) (*migrate.Migrate, error) {
-	path := "migrations"
-	src, err := iofs.New(migrationFs, path)
-	if err != nil {
-		return nil, fmt.Errorf("error initializing source: %w", err)
-	}
-	name := "iofs"
-	return migrate.NewWithSourceInstance(name, src, dbConnURL)
-}
-
 func (m *migration) Up(ctx context.Context) error {
-	if err := m.db.AutoMigrate(&migrationStep{}); err != nil {
-		return fmt.Errorf("error auto-migrate migration_version: %w", err)
+	dbClient, dbClientCleanup, err := m.newDBClient()
+	if err != nil {
+		return fmt.Errorf("error initializing db client: %w", err)
+	}
+	defer dbClientCleanup()
+
+	if err := dbClient.WithContext(ctx).AutoMigrate(&migrationStep{}); err != nil {
+		return fmt.Errorf("error setting up migration_steps: %w", err)
 	}
 
-	existingStep, err := m.getLatestMigrationStep(ctx)
+	latestStep, err := m.getLatestMigrationStep(ctx, dbClient)
 	if err != nil {
-		return err
+		return fmt.Errorf("error getting the latest migration step: %w", err)
 	}
-	if m.incomingOptimusVersion < existingStep.CurrentOptimusVersion {
-		return fmt.Errorf("optimus version [%s] should be higher or equal than existing [%s]",
-			m.incomingOptimusVersion, existingStep.CurrentOptimusVersion,
-		)
+	if m.incomingOptimusVersion < latestStep.CurrentOptimusVersion {
+		return fmt.Errorf("optimus version [%s] should be higher or equal than existing [%s]", m.incomingOptimusVersion, latestStep.CurrentOptimusVersion)
 	}
-	if m.incomingOptimusVersion == existingStep.CurrentOptimusVersion {
-		m.logger.Warn(
-			fmt.Sprintf("migration up is skipped because optimus version [%s] is the same as current one",
-				m.incomingOptimusVersion,
-			),
-		)
+	if m.incomingOptimusVersion == latestStep.CurrentOptimusVersion {
+		m.logger.Warn(fmt.Sprintf("migration up is skipped because optimus version [%s] is the same as current one", m.incomingOptimusVersion))
 		return nil
 	}
 
-	if err := m.migrate.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return fmt.Errorf("error migrating up: %w", err)
+	migrationClient, migrationClientCleanup, err := m.newMigrationClient()
+	if err != nil {
+		return fmt.Errorf("error initializing migration client: %w", err)
 	}
-	newVersion, _, err := m.migrate.Version()
+	defer migrationClientCleanup()
+
+	if err := migrationClient.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return fmt.Errorf("error executing migration up: %w", err)
+	}
+	newVersion, _, err := migrationClient.Version()
 	if err != nil {
 		return fmt.Errorf("error getting current migration version: %w", err)
 	}
@@ -105,48 +92,108 @@ func (m *migration) Up(ctx context.Context) error {
 	newMigrationVersion := &migrationStep{
 		CurrentOptimusVersion:   m.incomingOptimusVersion,
 		CurrentMigrationVersion: newVersion,
-		PreviousOptimusVersion:  existingStep.CurrentOptimusVersion,
+		PreviousOptimusVersion:  latestStep.CurrentOptimusVersion,
 		CreatedAt:               time.Now(),
 	}
-	return m.addMigrationStep(ctx, newMigrationVersion)
+	return m.addMigrationStep(ctx, dbClient, newMigrationVersion)
 }
 
 func (m *migration) Rollback(ctx context.Context) error {
-	existingStep, err := m.getLatestMigrationStep(ctx)
+	dbClient, dbClientCleanup, err := m.newDBClient()
+	if err != nil {
+		return fmt.Errorf("error initializing db client: %w", err)
+	}
+	defer dbClientCleanup()
+
+	if err := dbClient.WithContext(ctx).AutoMigrate(&migrationStep{}); err != nil {
+		return fmt.Errorf("error setting up migration_steps: %w", err)
+	}
+
+	latestStep, err := m.getLatestMigrationStep(ctx, dbClient)
 	if err != nil {
 		return err
 	}
-	if m.incomingOptimusVersion != existingStep.CurrentOptimusVersion {
-		return fmt.Errorf("expecting optimus with version [%s] but got [%s]",
-			existingStep.CurrentOptimusVersion, m.incomingOptimusVersion,
-		)
+	if m.incomingOptimusVersion != latestStep.CurrentOptimusVersion {
+		return fmt.Errorf("expecting optimus with version [%s] but got [%s]", latestStep.CurrentOptimusVersion, m.incomingOptimusVersion)
 	}
 
-	previousMigrationVersion, err := m.getMigrationVersion(ctx, existingStep.PreviousOptimusVersion)
+	previousMigrationVersion, err := m.getMigrationVersion(ctx, dbClient, latestStep.PreviousOptimusVersion)
 	if err != nil {
 		return err
 	}
 	if previousMigrationVersion == 0 {
-		m.logger.Warn("migration rollback is skipped because previous migration version is zero")
+		m.logger.Warn("migration rollback is skipped because previous migration version is not registered")
 		return nil
 	}
 
-	if err := m.migrate.Migrate(previousMigrationVersion); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+	migrationClient, migrationClientCleanup, err := m.newMigrationClient()
+	if err != nil {
+		return fmt.Errorf("error initializing migration client: %w", err)
+	}
+	defer migrationClientCleanup()
+
+	if err := migrationClient.Migrate(previousMigrationVersion); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return fmt.Errorf("error migrating to version [%d]: %w", previousMigrationVersion, err)
 	}
-	return m.removeMigrationStep(ctx, existingStep)
+	return m.removeMigrationStep(ctx, dbClient, latestStep)
 }
 
-func (m *migration) removeMigrationStep(ctx context.Context, oldStep *migrationStep) error {
-	return m.db.WithContext(ctx).
+func (m *migration) newMigrationClient() (migrationClient *migrate.Migrate, cleanup func(), err error) {
+	path := "migrations"
+	sourceDriver, sourceDriverErr := iofs.New(migrationFs, path)
+	if sourceDriverErr != nil {
+		err = fmt.Errorf("error initializing source driver: %w", sourceDriverErr)
+		return
+	}
+	name := "iofs"
+	migrationInstance, migrationInstanceErr := migrate.NewWithSourceInstance(name, sourceDriver, m.dbConnURL)
+	if migrationInstanceErr != nil {
+		err = fmt.Errorf("error initializing migration instance: %w", migrationInstanceErr)
+		return
+	}
+	migrationClient = migrationInstance
+	cleanup = func() {
+		sourceErr, databaseErr := migrationClient.Close()
+		if sourceErr != nil {
+			m.logger.Error("source driver error encountered when closing migration connection: %w", sourceErr)
+		}
+		if databaseErr != nil {
+			m.logger.Error("database error encountered when closing migration connection: %w", databaseErr)
+		}
+	}
+	return
+}
+
+func (m *migration) newDBClient() (dbClient *gorm.DB, cleanup func(), err error) {
+	gormDB, gormDBErr := gorm.Open(postgres.Open(m.dbConnURL))
+	if gormDBErr != nil {
+		err = fmt.Errorf("error initializing gorm db: %w", gormDBErr)
+		return
+	}
+	db, dbErr := gormDB.DB()
+	if dbErr != nil {
+		err = fmt.Errorf("error getting db: %w", dbErr)
+		return
+	}
+	dbClient = gormDB
+	cleanup = func() {
+		if closeErr := db.Close(); closeErr != nil {
+			m.logger.Error("error encountered when closing db connection: %w", closeErr)
+		}
+	}
+	return
+}
+
+func (*migration) removeMigrationStep(ctx context.Context, db *gorm.DB, oldStep *migrationStep) error {
+	return db.WithContext(ctx).
 		Where("current_optimus_version = ? and current_migration_version = ? and previous_optimus_version = ?",
 			oldStep.CurrentOptimusVersion, oldStep.CurrentMigrationVersion, oldStep.PreviousOptimusVersion).
 		Delete(&migrationStep{}).Error
 }
 
-func (m *migration) getMigrationVersion(ctx context.Context, optimusVersion string) (uint, error) {
+func (*migration) getMigrationVersion(ctx context.Context, db *gorm.DB, optimusVersion string) (uint, error) {
 	var rst migrationStep
-	if err := m.db.WithContext(ctx).
+	if err := db.WithContext(ctx).
 		Select("current_optimus_version, current_migration_version, previous_optimus_version, created_at").
 		Table("migration_steps").
 		Where("current_optimus_version = ?", optimusVersion).
@@ -157,9 +204,9 @@ func (m *migration) getMigrationVersion(ctx context.Context, optimusVersion stri
 	return rst.CurrentMigrationVersion, nil
 }
 
-func (m *migration) addMigrationStep(ctx context.Context, newStep *migrationStep) error {
+func (m *migration) addMigrationStep(ctx context.Context, db *gorm.DB, newStep *migrationStep) error {
 	var existingSteps []migrationStep
-	if err := m.db.WithContext(ctx).
+	if err := db.WithContext(ctx).
 		Where(newStep).
 		First(&existingSteps).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return fmt.Errorf("error getting existing steps: %w", err)
@@ -168,17 +215,17 @@ func (m *migration) addMigrationStep(ctx context.Context, newStep *migrationStep
 		m.logger.Warn("migration step is not added because it already exists")
 		return nil
 	}
-	return m.db.WithContext(ctx).Create(newStep).Error
+	return db.WithContext(ctx).Create(newStep).Error
 }
 
-func (m *migration) getLatestMigrationStep(ctx context.Context) (*migrationStep, error) {
+func (*migration) getLatestMigrationStep(ctx context.Context, db *gorm.DB) (*migrationStep, error) {
 	var rst migrationStep
-	if err := m.db.WithContext(ctx).
+	if err := db.WithContext(ctx).
 		Select("m.current_optimus_version, m.current_migration_version, m.previous_optimus_version, m.created_at").
 		Table("migration_steps m").
 		Joins("right join schema_migrations s on m.current_migration_version = s.version").
 		Order("m.created_at desc limit 1").
-		Find(&rst).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		Find(&rst).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) && !strings.Contains(err.Error(), "42P01") {
 		return nil, fmt.Errorf("error getting existing step: %w", err)
 	}
 	return &rst, nil

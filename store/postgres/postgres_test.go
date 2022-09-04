@@ -85,7 +85,7 @@ func dropTables(db *gorm.DB) error {
 	}
 	var errMsgs []string
 	for _, table := range tablesToDelete {
-		if err := db.Exec(fmt.Sprintf("drop table %s", table)).Error; err != nil {
+		if err := db.Exec(fmt.Sprintf("drop table if exists %s", table)).Error; err != nil {
 			toleratedErrMsg := fmt.Sprintf("table \"%s\" does not exist", table)
 			if !strings.Contains(err.Error(), toleratedErrMsg) {
 				errMsgs = append(errMsgs, err.Error())
