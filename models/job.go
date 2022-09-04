@@ -12,7 +12,6 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/odpf/optimus/api/writer"
-	"github.com/odpf/optimus/core/progress"
 )
 
 var (
@@ -419,6 +418,9 @@ type HTTPDependency struct {
 type JobService interface {
 	// Create constructs a Job and commits it to a storage
 	Create(context.Context, NamespaceSpec, JobSpec) (JobSpec, error)
+
+	CreateAndDeploy(context.Context, NamespaceSpec, []JobSpec, writer.LogWriter) (DeploymentID, error)
+
 	// GetByName fetches a Job by name for a specific namespace
 	GetByName(context.Context, string, NamespaceSpec) (JobSpec, error)
 	// GetAll reads all job specifications of the given namespace
@@ -431,12 +433,10 @@ type JobService interface {
 
 	// Run creates a new job run for provided job spec and schedules it to execute
 	// immediately
-	Run(context.Context, NamespaceSpec, []JobSpec, progress.Observer) error
+	Run(context.Context, NamespaceSpec, []JobSpec) (JobDeploymentDetail, error)
 
 	// GetByNameForProject fetches a Job by name for a specific project
 	GetByNameForProject(context.Context, string, ProjectSpec) (JobSpec, NamespaceSpec, error)
-	// TODO: to be deprecated
-	Sync(context.Context, NamespaceSpec, progress.Observer) error
 	Check(context.Context, NamespaceSpec, []JobSpec, writer.LogWriter) error
 	// GetByDestination fetches a Job by destination for a specific project
 	GetByDestination(ctx context.Context, projectSpec ProjectSpec, destination string) (JobSpec, error)

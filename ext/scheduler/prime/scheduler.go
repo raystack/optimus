@@ -27,28 +27,7 @@ func (*Scheduler) ListJobs(context.Context, models.NamespaceSpec, models.Schedul
 	panic("implement me")
 }
 
-func (s *Scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec, _ progress.Observer) error {
-	var jobRuns []models.JobRun
-	for _, j := range jobs {
-		jobRuns = append(jobRuns, models.JobRun{
-			Spec:        j,
-			Trigger:     models.TriggerManual,
-			ScheduledAt: s.Now(),
-		})
-	}
-
-	jobDestination := "" // fetch job destination from plugin service
-	for _, runs := range jobRuns {
-		if err := s.jobRunRepo.Save(ctx, namespace, runs, jobDestination); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// what is the reason for this
-// where more should we romove the namespace id to namespace name, to get this reflected in gcs
-func (s *Scheduler) DeployJobsVerbose(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec) (models.JobDeploymentDetail, error) {
+func (s *Scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec) (models.JobDeploymentDetail, error) {
 	var jobRuns []models.JobRun
 	for _, j := range jobs {
 		jobRuns = append(jobRuns, models.JobRun{

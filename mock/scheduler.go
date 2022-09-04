@@ -25,12 +25,7 @@ func (ms *Scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpe
 	return args.Get(0).([]models.Job), args.Error(1)
 }
 
-func (ms *Scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec, obs progress.Observer) error {
-	args := ms.Called(ctx, namespace, jobs, obs)
-	return args.Error(0)
-}
-
-func (ms *Scheduler) DeployJobsVerbose(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec) (models.JobDeploymentDetail, error) {
+func (ms *Scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSpec, jobs []models.JobSpec) (models.JobDeploymentDetail, error) {
 	args := ms.Called(ctx, namespace, jobs)
 	return args.Get(0).(models.JobDeploymentDetail), args.Error(1)
 }
