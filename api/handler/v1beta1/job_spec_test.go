@@ -510,9 +510,10 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
 				Base: execUnit1,
 			}, nil)
-			window, err := models.NewWindow(1, "d", "0", "1h")
+			window, _ := models.NewWindow(1, "d", "0", "1h")
 			jobSpec := models.JobSpec{
-				Name: jobName,
+				Version: 1,
+				Name:    jobName,
 				Task: models.JobSpecTask{
 					Unit: &models.Plugin{
 						Base: execUnit1,
@@ -559,7 +560,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				NamespaceName: namespaceSpec.Name,
 				Spec:          jobProto,
 			}
-			_, err = jobSpecServiceServer.CreateJobSpecification(ctx, &request)
+			_, err := jobSpecServiceServer.CreateJobSpecification(ctx, &request)
 			expextedError := status.Errorf(codes.Internal, "job addition failed for project %s, error:: %s", projectName, CreateAndDeployError.Error())
 
 			assert.Equal(t, err, expextedError)
@@ -594,9 +595,10 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			}, nil)
 
 			deploymentID := models.DeploymentID(uuid.New())
-			window, err := models.NewWindow(1, "d", "0", "1h")
+			window, _ := models.NewWindow(1, "d", "0", "1h")
 			jobSpec := models.JobSpec{
-				Name: jobName,
+				Version: 1,
+				Name:    jobName,
 				Task: models.JobSpecTask{
 					Unit: &models.Plugin{
 						Base: execUnit1,
@@ -677,9 +679,10 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
 				Base: execUnit1,
 			}, nil)
-			window, err := models.NewWindow(1, "d", "0", "1h")
+			window, _ := models.NewWindow(1, "d", "0", "1h")
 			jobSpec := models.JobSpec{
-				Name: jobName,
+				Version: 1,
+				Name:    jobName,
 				Task: models.JobSpecTask{
 					Unit: &models.Plugin{
 						Base: execUnit1,
@@ -726,7 +729,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				NamespaceName: namespaceSpec.Name,
 				Specs:         jobProto,
 			}
-			_, err = jobSpecServiceServer.AddJobSpecifications(ctx, &request)
+			_, err := jobSpecServiceServer.AddJobSpecifications(ctx, &request)
 			expextedError := status.Errorf(codes.Internal, "jobs addition failed for project %s, error:: %s", projectName, CreateAndDeployError.Error())
 
 			assert.Equal(t, err, expextedError)

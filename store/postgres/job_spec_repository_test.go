@@ -368,6 +368,7 @@ func TestJobSpecRepository(t *testing.T) {
 			assert.Nil(t, err)
 
 			// prepare the external project's jobs
+			window, _ := models.NewWindow(1, "h", "0", "24h")
 			externalProjectJobs := []models.JobSpec{
 				{
 					ID:            uuid.New(),
@@ -380,11 +381,7 @@ func TestJobSpecRepository(t *testing.T) {
 								Name: "do", Value: "this",
 							},
 						},
-						Window: models.JobSpecTaskWindow{
-							Size:       time.Hour * 24,
-							Offset:     0,
-							TruncateTo: "h",
-						},
+						Window: window,
 					},
 				},
 				{
@@ -398,11 +395,7 @@ func TestJobSpecRepository(t *testing.T) {
 								Name: "do", Value: "this",
 							},
 						},
-						Window: models.JobSpecTaskWindow{
-							Size:       time.Hour * 24,
-							Offset:     0,
-							TruncateTo: "h",
-						},
+						Window: window,
 					},
 					Dependencies: map[string]models.JobSpecDependency{
 						testModels[1].Name: {},
@@ -601,7 +594,7 @@ func TestJobSpecRepository(t *testing.T) {
 			externalNamespaceRepo := postgres.NewNamespaceRepository(db, hash)
 			err = externalNamespaceRepo.Insert(ctx, externalProjectSpec, externalProjectNamespaceSpec)
 			assert.Nil(t, err)
-
+			window, _ := models.NewWindow(1, "d", "0", "1h")
 			externalProjectJobs := []models.JobSpec{
 				{
 					ID:            uuid.New(),
@@ -614,11 +607,7 @@ func TestJobSpecRepository(t *testing.T) {
 								Name: "do", Value: "this",
 							},
 						},
-						Window: models.JobSpecTaskWindow{
-							Size:       time.Hour * 24,
-							Offset:     0,
-							TruncateTo: "h",
-						},
+						Window: window,
 					},
 				},
 				{
@@ -632,11 +621,7 @@ func TestJobSpecRepository(t *testing.T) {
 								Name: "do", Value: "this",
 							},
 						},
-						Window: models.JobSpecTaskWindow{
-							Size:       time.Hour * 24,
-							Offset:     0,
-							TruncateTo: "h",
-						},
+						Window: window,
 					},
 				},
 			}
