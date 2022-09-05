@@ -107,7 +107,7 @@ func (repo jobSpecRepository) GetInferredDependenciesPerJobID(ctx context.Contex
 func (repo jobSpecRepository) GetStaticDependenciesPerJobID(ctx context.Context, projectID models.ProjectID) (map[uuid.UUID][]models.JobSpec, error) {
 	var jobDependencies []jobDependency
 	requestedJobsQuery := repo.db.
-		Select("id, name, jsonb_object_keys(dependencies) as dependency_name").
+		Select("id, name, jsonb_object_keys(dependencies) as dependency_name, project_id").
 		Table("job").Where("project_id = ?", projectID.UUID())
 	dependenciesQuery := repo.db.
 		Select("j.id, j.name, j.namespace_id, j.task_name, j.project_id, p.name as project_name").
@@ -124,7 +124,7 @@ func (repo jobSpecRepository) GetStaticDependenciesPerJobID(ctx context.Context,
 			"d.project_id as dependency_project_id").
 		Table("(?) rj", requestedJobsQuery).
 		Joins("join (?) d on ("+
-			"rj.dependency_name=d.name or "+
+			"(rj.dependency_name=d.name and rj.project_id=d.project_id) or "+
 			"rj.dependency_name=d.project_name || '/' ||d.name)", dependenciesQuery).
 		Find(&jobDependencies).Error; err != nil {
 		return nil, err
@@ -156,7 +156,8 @@ func (repo jobSpecRepository) getDependentJobsStatic(ctx context.Context, jobSpe
 
 	projectAndJobName := fmt.Sprintf("%s/%s", jobSpec.GetProjectSpec().Name, jobSpec.Name)
 	if err := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project").
-		Where("((dependencies -> ?) IS NOT NULL or (dependencies -> ?) IS NOT NULL)", jobSpec.Name, projectAndJobName).Find(&jobs).Error; err != nil {
+		Where("(((dependencies -> ?) IS NOT NULL and project_id = ?) or (dependencies -> ?) IS NOT NULL)",
+			jobSpec.Name, jobSpec.GetProjectSpec().ID.UUID(), projectAndJobName).Find(&jobs).Error; err != nil {
 		return nil, err
 	}
 	for _, job := range jobs {
