@@ -57,7 +57,7 @@ const (
 
 	JobRetryEvent JobEventType = "retry"
 
-	JobSpecDefaultVersion = 2
+	JobSpecDefaultVersion = 1
 )
 
 // JobSpec represents a job

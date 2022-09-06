@@ -34,22 +34,21 @@ the provided filter, we will have to consume all the records which are created t
 inside the table even though the previous rows might already been processed.
 
 These `DSTART` and `DEND` values of the input window could vary depending on the ETL
-job requirement. For a daily executing job, it could be of 24 hours, but for hourly
-executing job, it will be 1 hour. Similary a job might be consuming data for a week
-or a month, so no matter what day we are executing the query we might need to shift the
-window dates to the first day of the month as start and last day of the month as end.
+job requirement. 
+- For a simple transformation job executing daily, it would need to consume full day worth of data of yesterday.
+- A job might be consuming data for a week/month for an aggregation job, but the data boundaries should be complete,
+  not consuming any partial data of a day.
 
-Optimus allows input window to be customized via 3 configurations.
+Optimus allows user to define the amount of data window to consume through window configurations.
+The configurations act on the schedule_time of the job and applied in order to compute dstart and dend.
 
-- **Size**: It's the length of the task window, 1 hour, 24 hour, 1 week. This will result
-  into the difference between DSTART and DEND
-- **Offset**: It is a possible usecase that the day transformation is executing, and the
-  day ETL want to consume the data has some time difference. For example, even though job
-  is executing today and in normal situations, it should be consuming data from yesterday to
-  X hours before, there are cases when the input window needs to be shifted to few hours in past
-  or even future.
-- **Truncate_to**: Window start and end may not always lies on exactly the day job wants them
-  to be even if we use the above parameters. Sometimes window just needs to be aligned
-  to a well-defined business window like month start to month end, or week start to weekend
-  even though today is middle of the week. `Truncate_to` helps aligning the windows to
-  exact business time windows.
+- **Truncate_to**: The data window on most of the scenarios needs to be aligned to a well-defined time window 
+  like month start to month end, or week start to weekend with week start being monday, or a complete day. 
+  Inorder to achieve that the truncate_to option is provided which can be configured with either of these values 
+  "h", "d", "w", "M" through which for a given schedule_time the end_time will be the end of last hour, day, week, month respectively.
+- **Offset**: Offset is time duration configuration which enables user to move the `end_time` post truncation. 
+  User can define the duration like "24h", "2h45m", "60s", "-45m24h", "0", "", "2M", "45M24h", "45M24h30m"
+  where "h","m","s","M" means hour, month, seconds, Month respectively. 
+- **Size**: Size enables user to define the amount of data to consume from the `end_time` again defined through the duration same as offset.
+
+The above expectation of windowing is properly handled in job spec version 2, version 1 has some limitations in some of these expectations.
