@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -18,15 +16,11 @@ import (
 )
 
 const (
-	JobConfigVersion = 1
-	HoursInDay       = time.Hour * 24
-	HoursInMonth     = 30 * 24 * time.Hour
+	HoursInDay   = time.Hour * 24
+	HoursInMonth = 30 * 24 * time.Hour
 )
 
-var (
-	monthExp             = regexp.MustCompile("(\\+|-)?([0-9]+)(M)") //nolint:gosimple
-	ErrNotAMonthDuration = errors.New("invalid month string")
-)
+var ErrNotAMonthDuration = errors.New("invalid month string")
 
 func init() { //nolint:gochecknoinits
 	_ = validator.SetValidationFunc("isCron", utils.CronIntervalValidator)
@@ -334,44 +328,6 @@ func (conf *Job) MergeFrom(parent Job) {
 	}
 }
 
-func (conf *Job) prepareWindow() (models.JobSpecTaskWindow, error) {
-	var err error
-	window := models.JobSpecTaskWindow{}
-	window.Size = HoursInDay
-	window.Offset = 0
-	window.TruncateTo = "d"
-
-	if conf.Task.Window.TruncateTo != "" {
-		window.TruncateTo = conf.Task.Window.TruncateTo
-	}
-
-	// check if string contains monthly notation
-	if conf.Task.Window.Size != "" {
-		window.Size, err = tryParsingInMonths(conf.Task.Window.Size)
-		if err != nil {
-			// treat as normal duration
-			window.Size, err = time.ParseDuration(conf.Task.Window.Size)
-			if err != nil {
-				return window, fmt.Errorf("failed to parse task window %s with size %v: %w", conf.Name, conf.Task.Window.Size, err)
-			}
-		}
-	}
-
-	// check if string contains monthly notation
-	if conf.Task.Window.Offset != "" {
-		window.Offset, err = tryParsingInMonths(conf.Task.Window.Offset)
-		if err != nil {
-			// treat as normal duration
-			window.Offset, err = time.ParseDuration(conf.Task.Window.Offset)
-			if err != nil {
-				return window, fmt.Errorf("failed to parse task window %s with offset %v: %w", conf.Name, conf.Task.Window.Offset, err)
-			}
-		}
-	}
-
-	return window, nil
-}
-
 type JobDependency struct {
 	JobName string         `yaml:"job,omitempty"`
 	Type    string         `yaml:"type,omitempty"`
@@ -445,9 +401,11 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		hooks = append(hooks, adaptHook)
 	}
 
-	// prep window
-	window, err := conf.prepareWindow()
+	window, err := models.NewWindow(conf.Version, conf.Task.Window.TruncateTo, conf.Task.Window.Offset, conf.Task.Window.Size)
 	if err != nil {
+		return models.JobSpec{}, err
+	}
+	if err := window.Validate(); err != nil {
 		return models.JobSpec{}, err
 	}
 
@@ -494,8 +452,12 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		})
 	}
 
+	version := conf.Version
+	if version == 0 {
+		version = models.JobSpecDefaultVersion
+	}
 	job := models.JobSpec{
-		Version:     conf.Version,
+		Version:     version,
 		Name:        strings.TrimSpace(conf.Name),
 		Owner:       conf.Owner,
 		Description: conf.Description,
@@ -576,8 +538,19 @@ func (JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 		})
 	}
 
+	var truncateTo, offset, size string
+	if spec.Task.Window != nil {
+		truncateTo = spec.Task.Window.GetTruncateTo()
+		offset = spec.Task.Window.GetOffset()
+		size = spec.Task.Window.GetSize()
+	}
+
+	version := spec.Version
+	if version == 0 {
+		version = models.JobSpecDefaultVersion
+	}
 	parsed := Job{
-		Version:     spec.Version,
+		Version:     version,
 		Name:        spec.Name,
 		Owner:       spec.Owner,
 		Description: spec.Description,
@@ -600,9 +573,9 @@ func (JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 			Name:   spec.Task.Unit.Info().Name,
 			Config: taskConf,
 			Window: JobTaskWindow{
-				Size:       spec.Task.Window.SizeString(),
-				Offset:     spec.Task.Window.OffsetString(),
-				TruncateTo: spec.Task.Window.TruncateTo,
+				TruncateTo: truncateTo,
+				Offset:     offset,
+				Size:       size,
 			},
 		},
 		Asset:        spec.Assets.ToMap(),
@@ -677,35 +650,6 @@ func JobSpecConfigFromYamlSlice(conf yaml.MapSlice) models.JobSpecConfigs {
 		})
 	}
 	return conv
-}
-
-// check if string contains monthly notation
-func tryParsingInMonths(str string) (time.Duration, error) {
-	sz := time.Duration(0)
-	monthMatches := monthExp.FindAllStringSubmatch(str, -1)
-	if len(monthMatches) > 0 && len(monthMatches[0]) == 4 {
-		// replace month notation with days first, treating 1M as 30 days
-		monthsCount, err := strconv.Atoi(monthMatches[0][2])
-		if err != nil {
-			return sz, fmt.Errorf("failed to parse task configuration of %s: %w", str, err)
-		}
-		sz = HoursInMonth * time.Duration(monthsCount)
-		if monthMatches[0][1] == "-" {
-			sz *= -1
-		}
-
-		str = strings.TrimSpace(monthExp.ReplaceAllString(str, ""))
-		if len(str) > 0 {
-			// check if there is remaining time that we can still parse
-			remainingTime, err := time.ParseDuration(str)
-			if err != nil {
-				return sz, fmt.Errorf("failed to parse task configuration of %s: %w", str, err)
-			}
-			sz += remainingTime
-		}
-		return sz, nil
-	}
-	return sz, ErrNotAMonthDuration
 }
 
 func prepHTTPDependency(dep HTTPDependency, index int) (models.HTTPDependency, error) {

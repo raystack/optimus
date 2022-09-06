@@ -271,14 +271,14 @@ type CompileAssetsRequest struct {
 
 	// Task configs
 	Config PluginConfigs
-	Window JobSpecTaskWindow
 
 	// Job assets
 	Assets PluginAssets
 
 	// the instance for which these assets are being compiled for
-	InstanceData     []JobRunSpecData
-	InstanceSchedule time.Time
+	InstanceData []JobRunSpecData
+	StartTime    time.Time
+	EndTime      time.Time
 }
 
 type CompileAssetsResponse struct {

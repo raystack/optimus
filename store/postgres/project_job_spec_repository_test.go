@@ -6,7 +6,6 @@ package postgres_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -68,10 +67,15 @@ func TestIntegrationProjectJobSpecRepository(t *testing.T) {
 	pluginRepo.On("GetByName", tHook).Return(&models.Plugin{Base: hookUnit2}, nil)
 	adapter := postgres.NewAdapter(pluginRepo)
 
+	window, err := models.NewWindow(1, "h", "0", "24h")
+	if err != nil {
+		panic(err)
+	}
 	testConfigs := []models.JobSpec{
 		{
-			ID:   uuid.New(),
-			Name: "g-optimus-id",
+			Version: 1,
+			ID:      uuid.New(),
+			Name:    "g-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: &models.Plugin{Base: execUnit1, DependencyMod: depMod},
 				Config: []models.JobSpecConfigItem{
@@ -80,11 +84,7 @@ func TestIntegrationProjectJobSpecRepository(t *testing.T) {
 						Value: "this",
 					},
 				},
-				Window: models.JobSpecTaskWindow{
-					Size:       time.Hour * 24,
-					Offset:     0,
-					TruncateTo: "h",
-				},
+				Window: window,
 			},
 			Assets: *models.JobAssets{}.New(
 				[]models.JobSpecAsset{
@@ -110,8 +110,9 @@ func TestIntegrationProjectJobSpecRepository(t *testing.T) {
 			Name: "",
 		},
 		{
-			ID:   uuid.New(),
-			Name: "t-optimus-id",
+			Version: 1,
+			ID:      uuid.New(),
+			Name:    "t-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: &models.Plugin{Base: execUnit2, DependencyMod: depMod2},
 				Config: []models.JobSpecConfigItem{

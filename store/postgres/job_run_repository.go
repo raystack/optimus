@@ -90,6 +90,11 @@ func (repo *JobRunMetricsRepository) GetLatestJobRunByScheduledTime(ctx context.
 		return models.JobRunSpec{}, err
 	}
 
+	jobRunSpecData, err := getJobRunSpecData(jobRunMetrics.StartTime, jobRunMetrics.ScheduledAt, jobSpec)
+	if err != nil {
+		return models.JobRunSpec{}, err
+	}
+
 	jobRunSpec := models.JobRunSpec{
 		JobRunID:      jobRunMetrics.JobRunID,
 		JobID:         jobRunMetrics.JobID,
@@ -102,7 +107,7 @@ func (repo *JobRunMetricsRepository) GetLatestJobRunByScheduledTime(ctx context.
 		Attempt:       jobRunMetrics.Attempt,
 		SLAMissDelay:  jobRunMetrics.SLAMissDelay,
 		Duration:      jobRunMetrics.Duration,
-		Data:          getJobRunSpecData(jobRunMetrics.StartTime, jobRunMetrics.ScheduledAt, jobSpec),
+		Data:          jobRunSpecData,
 		SLADefinition: jobRunMetrics.SLADefinition,
 	}
 	return jobRunSpec, err
@@ -117,6 +122,10 @@ func (repo *JobRunMetricsRepository) GetByID(ctx context.Context, jobRunID uuid.
 		}
 		return models.JobRunSpec{}, err
 	}
+	jobRunSpecData, err := getJobRunSpecData(jobRunMetrics.StartTime, jobRunMetrics.ScheduledAt, jobSpec)
+	if err != nil {
+		return models.JobRunSpec{}, err
+	}
 	jobRunSpec := models.JobRunSpec{
 		JobRunID:      jobRunMetrics.JobRunID,
 		JobID:         jobRunMetrics.JobID,
@@ -128,7 +137,7 @@ func (repo *JobRunMetricsRepository) GetByID(ctx context.Context, jobRunID uuid.
 		Status:        jobRunMetrics.Status,
 		Attempt:       jobRunMetrics.Attempt,
 		SLAMissDelay:  jobRunMetrics.SLAMissDelay,
-		Data:          getJobRunSpecData(jobRunMetrics.StartTime, jobRunMetrics.ScheduledAt, jobSpec),
+		Data:          jobRunSpecData,
 		Duration:      jobRunMetrics.Duration,
 		SLADefinition: jobRunMetrics.SLADefinition,
 	}
@@ -153,6 +162,10 @@ func (repo *JobRunMetricsRepository) Get(ctx context.Context, event models.JobEv
 		return models.JobRunSpec{}, err
 	}
 
+	jobRunSpecData, err := getJobRunSpecData(jobRunMetrics.StartTime, scheduledAtTimeStamp, jobSpec)
+	if err != nil {
+		return models.JobRunSpec{}, err
+	}
 	jobRunSpec := models.JobRunSpec{
 		JobRunID:     jobRunMetrics.JobRunID,
 		JobID:        jobRunMetrics.JobID,
@@ -163,7 +176,7 @@ func (repo *JobRunMetricsRepository) Get(ctx context.Context, event models.JobEv
 		EndTime:      jobRunMetrics.EndTime,
 		Status:       jobRunMetrics.Status,
 		Attempt:      jobRunMetrics.Attempt,
-		Data:         getJobRunSpecData(jobRunMetrics.StartTime, scheduledAtTimeStamp, jobSpec),
+		Data:         jobRunSpecData,
 		SLAMissDelay: jobRunMetrics.SLAMissDelay,
 		Duration:     jobRunMetrics.Duration,
 	}
@@ -205,8 +218,16 @@ func NewJobRunMetricsRepository(db *gorm.DB) *JobRunMetricsRepository {
 	}
 }
 
-func getJobRunSpecData(executedAt time.Time, scheduledAt time.Time, jobSpec models.JobSpec) []models.JobRunSpecData {
-	return []models.JobRunSpecData{
+func getJobRunSpecData(executedAt time.Time, scheduledAt time.Time, jobSpec models.JobSpec) ([]models.JobRunSpecData, error) {
+	startTime, err := jobSpec.Task.Window.GetStartTime(scheduledAt)
+	if err != nil {
+		return nil, err
+	}
+	endTime, err := jobSpec.Task.Window.GetEndTime(scheduledAt)
+	if err != nil {
+		return nil, err
+	}
+	jobRunSpecData := []models.JobRunSpecData{
 		{
 			Name:  models.ConfigKeyExecutionTime,
 			Value: executedAt.Format(models.InstanceScheduledAtTimeLayout),
@@ -214,12 +235,12 @@ func getJobRunSpecData(executedAt time.Time, scheduledAt time.Time, jobSpec mode
 		},
 		{
 			Name:  models.ConfigKeyDstart,
-			Value: jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+			Value: startTime.Format(models.InstanceScheduledAtTimeLayout),
 			Type:  models.InstanceDataTypeEnv,
 		},
 		{
 			Name:  models.ConfigKeyDend,
-			Value: jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+			Value: endTime.Format(models.InstanceScheduledAtTimeLayout),
 			Type:  models.InstanceDataTypeEnv,
 		},
 		{
@@ -228,4 +249,5 @@ func getJobRunSpecData(executedAt time.Time, scheduledAt time.Time, jobSpec mode
 			Type:  models.InstanceDataTypeEnv,
 		},
 	}
+	return jobRunSpecData, nil
 }
