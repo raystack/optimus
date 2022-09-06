@@ -503,7 +503,7 @@ func TestService(t *testing.T) {
 				nil, nil, nil, nil, nil, nil, jobSpecRepo, nil)
 			err := svc.Delete(ctx, namespaceSpec, jobSpecsBase[0])
 			assert.NotNil(t, err)
-			assert.Equal(t, "cannot delete job test since it's dependency of other job", err.Error())
+			assert.Equal(t, "cannot delete job test since it's dependency of other jobs: downstream-test", err.Error())
 		})
 
 		t.Run("should return error if unable to delete job spec", func(t *testing.T) {
