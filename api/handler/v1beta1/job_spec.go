@@ -163,16 +163,14 @@ func (sv *JobSpecServiceServer) JobExplain(ctx context.Context, req *pb.JobExpla
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
-	jobSpec, err := FromJobProto(req.GetSpec(), sv.pluginRepo)
+	reqJobSpec := req.GetSpec()
+	jobSpec, err := FromJobProto(reqJobSpec, sv.pluginRepo)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "cannot deserialize job: \n%s", err.Error())
 	}
 
 	logWriter := writer.NewLogWriter(sv.l)
-	// validate job spec
-	if err = sv.jobSvc.Check(ctx, namespaceSpec, []models.JobSpec{jobSpec}, logWriter); err != nil {
-		return nil, status.Errorf(codes.Internal, "spec validation failed\n%s", err.Error())
-	}
+
 	jobSpecTaskDestination, jobSources, _ := sv.jobSvc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
 	jobSpec.ResourceDestination = jobSpecTaskDestination.URN()
 
@@ -215,6 +213,33 @@ func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req 
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
+	reqJobSpec := req.GetSpec()
+	jobSpec, err := FromJobProto(reqJobSpec, sv.pluginRepo)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "cannot deserialize job: \n%s", err.Error())
+	}
+	jobSpecs := []models.JobSpec{jobSpec}
+
+	deployID, err := sv.jobSvc.CreateAndDeploy(ctx, namespaceSpec, jobSpecs, logWriter)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "job addition failed for project %s, error:: %s", req.GetProjectName(), err.Error())
+	}
+
+	runtimeDeployJobSpecificationCounter.Inc()
+
+	return &pb.CreateJobSpecificationResponse{
+		Success: true,
+		Message: fmt.Sprintf("job is created and queued for deployment on project %s, with Deployment ID : %s", req.GetProjectName(), deployID.UUID().String()),
+	}, nil
+}
+
+func (sv *JobSpecServiceServer) AddJobSpecifications(ctx context.Context, req *pb.AddJobSpecificationsRequest) (*pb.AddJobSpecificationsResponse, error) {
+	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
+	logWriter := writer.NewLogWriter(sv.l)
+	if err != nil {
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
+	}
+
 	reqJobSpecs := req.GetSpecs()
 	var jobSpecs []models.JobSpec
 	for _, spec := range reqJobSpecs {
@@ -225,20 +250,15 @@ func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req 
 		jobSpecs = append(jobSpecs, jobSpec)
 	}
 
-	jobNames := make([]string, len(jobSpecs))
-	for i, jobSpec := range jobSpecs {
-		jobNames[i] = jobSpec.Name
-	}
-	deployID, err := sv.jobSvc.CreateAndDeployJobSpecifications(ctx, namespaceSpec, jobSpecs, logWriter)
-
+	deployID, err := sv.jobSvc.CreateAndDeploy(ctx, namespaceSpec, jobSpecs, logWriter)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "jobs %s is/are created but deployment scheduling failed for project %s, error:: %s", strings.Join(jobNames, ", "), req.GetProjectName(), err.Error())
+		return nil, status.Errorf(codes.Internal, "jobs addition failed for project %s, error:: %s", req.GetProjectName(), err.Error())
 	}
+
 	runtimeDeployJobSpecificationCounter.Inc()
 
-	return &pb.CreateJobSpecificationResponse{
-		Success:      true,
-		Message:      fmt.Sprintf("jobs %s is/are created and queued for deployment on project %s", strings.Join(jobNames, ", "), req.GetProjectName()),
+	return &pb.AddJobSpecificationsResponse{
+		Log:          fmt.Sprintf("jobs are created and queued for deployment on project %s", req.GetProjectName()),
 		DeploymentId: deployID.UUID().String(),
 	}, nil
 }

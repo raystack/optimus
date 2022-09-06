@@ -25,7 +25,7 @@ type SchedulerUnit interface {
 	GetName() string
 	VerifyJob(ctx context.Context, namespace NamespaceSpec, job JobSpec) error
 	ListJobs(ctx context.Context, namespace NamespaceSpec, opts SchedulerListOptions) ([]Job, error)
-	// depricated for deploy in optimus
+
 	DeployJobs(ctx context.Context, namespace NamespaceSpec, jobs []JobSpec) (JobDeploymentDetail, error)
 	DeleteJobs(ctx context.Context, namespace NamespaceSpec, jobNames []string, obs progress.Observer) error
 

@@ -5,7 +5,7 @@ NAME = "github.com/odpf/optimus"
 LAST_COMMIT := $(shell git rev-parse --short HEAD)
 LAST_TAG := "$(shell git rev-list --tags --max-count=1)"
 OPMS_VERSION := "$(shell git describe --tags ${LAST_TAG})-next"
-PROTON_COMMIT := "96af95395b4d9eada45d896c40af4bac93328050"
+PROTON_COMMIT := "7313ddefebb36ea7060b147cc04ae71f53da2fc8"
 
 .PHONY: build test test-ci generate-proto unit-test-ci smoke-test integration-test vet coverage clean install lint
 
@@ -57,7 +57,7 @@ lint:
 
 install: ## install required dependencies
 	@echo "> installing dependencies"
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.44.1
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.47.3
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.0
 	go install github.com/bufbuild/buf/cmd/buf@v1.5.0
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2.0

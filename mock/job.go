@@ -455,7 +455,7 @@ func (srv *JobService) GetByResourceDestination(ctx context.Context, resourceDes
 	return args.Get(0).(models.JobSpec), args.Error(1)
 }
 
-func (srv *JobService) CreateAndDeployJobSpecifications(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpec []models.JobSpec, logWriter writer.LogWriter) (models.DeploymentID, error) {
+func (srv *JobService) CreateAndDeploy(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpec []models.JobSpec, logWriter writer.LogWriter) (models.DeploymentID, error) {
 	args := srv.Called(ctx, namespaceSpec, jobSpec, logWriter)
 	return args.Get(0).(models.DeploymentID), args.Error(1)
 }
