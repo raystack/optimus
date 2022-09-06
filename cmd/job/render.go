@@ -30,9 +30,7 @@ type renderCommand struct {
 
 // NewRenderCommand initializes command for rendering job specification
 func NewRenderCommand() *cobra.Command {
-	render := &renderCommand{
-		clientConfig: &config.ClientConfig{},
-	}
+	render := &renderCommand{}
 	cmd := &cobra.Command{
 		Use:     "render",
 		Short:   "Apply template values in job specification to current 'render' directory",
@@ -55,7 +53,7 @@ func (r *renderCommand) PreRunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	*r.clientConfig = *conf
+	r.clientConfig = conf
 	r.logger = logger.NewClientLogger(conf.Log)
 	r.jobSurvey = survey.NewJobSurvey()
 	r.namespaceSurvey = survey.NewNamespaceSurvey(r.logger)

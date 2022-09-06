@@ -33,9 +33,7 @@ type validateCommand struct {
 
 // NewValidateCommand initializes command for validating job specification
 func NewValidateCommand() *cobra.Command {
-	validate := &validateCommand{
-		clientConfig: &config.ClientConfig{},
-	}
+	validate := &validateCommand{}
 
 	cmd := &cobra.Command{
 		Use:     "validate",
@@ -59,7 +57,7 @@ func (v *validateCommand) PreRunE(_ *cobra.Command, _ []string) error { // Load 
 	if err != nil {
 		return err
 	}
-	*v.clientConfig = *conf
+	v.clientConfig = conf
 	v.logger = logger.NewClientLogger(conf.Log)
 	return nil
 }

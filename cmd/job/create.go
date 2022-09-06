@@ -25,9 +25,7 @@ type createCommand struct {
 
 // NewCreateCommand initializes job create command
 func NewCreateCommand() *cobra.Command {
-	create := &createCommand{
-		clientConfig: &config.ClientConfig{},
-	}
+	create := &createCommand{}
 	cmd := &cobra.Command{
 		Use:     "create",
 		Short:   "Create a new Job",
@@ -48,7 +46,7 @@ func (c *createCommand) PreRunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	*c.clientConfig = *conf
+	c.clientConfig = conf
 	c.logger = logger.NewClientLogger(conf.Log)
 	c.namespaceSurvey = survey.NewNamespaceSurvey(c.logger)
 	c.jobCreateSurvey = survey.NewJobCreateSurvey()

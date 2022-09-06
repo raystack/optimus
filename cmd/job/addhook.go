@@ -23,9 +23,7 @@ type addHookCommand struct {
 
 // NewAddHookCommand initializes command for adding hook
 func NewAddHookCommand() *cobra.Command {
-	addHook := &addHookCommand{
-		clientConfig: &config.ClientConfig{},
-	}
+	addHook := &addHookCommand{}
 	cmd := &cobra.Command{
 		Use:     "addhook",
 		Aliases: []string{"add_hook", "add-hook", "addHook", "attach_hook", "attach-hook", "attachHook"},
@@ -48,7 +46,7 @@ func (a *addHookCommand) PreRunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	*a.clientConfig = *conf
+	a.clientConfig = conf
 	a.logger = logger.NewClientLogger(conf.Log)
 	a.jobSurvey = survey.NewJobSurvey()
 	a.jobAddHookSurvey = survey.NewJobAddHookSurvey()
