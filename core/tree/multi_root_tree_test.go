@@ -46,14 +46,19 @@ func TestMultiRootDagTree(t *testing.T) {
 			treeNode2 := tree.NewTreeNode(models.JobSpec{
 				Name: "job2",
 			})
+			treeNode3 := tree.NewTreeNode(models.JobSpec{
+				Name: "job3",
+			})
 			multiRootTree := tree.NewMultiRootTree()
 			multiRootTree.AddNode(treeNode1)
 			multiRootTree.AddNode(treeNode2)
-			treeNode1.AddDependent(treeNode2)
+			multiRootTree.AddNode(treeNode3)
+			treeNode1.AddDependent(treeNode3)
+			treeNode3.AddDependent(treeNode2)
 			treeNode2.AddDependent(treeNode1)
 			err := multiRootTree.IsCyclic()
 			assert.NotNil(t, err)
-			assert.Contains(t, err.Error(), "cycle dependency")
+			assert.Equal(t, "a cycle dependency encountered in the tree: job1->job3->job2", err.Error())
 		})
 		t.Run("should not return error if not cyclic", func(t *testing.T) {
 			treeNode1 := tree.NewTreeNode(models.JobSpec{

@@ -3,6 +3,8 @@ package tree
 import (
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 )
 
 // ErrCyclicDependencyEncountered is triggered a tree has a cyclic dependency
@@ -49,7 +51,9 @@ func (t *MultiRootTree) GetNodeByName(dagName string) (*TreeNode, bool) {
 // IsCyclic - detects if there are any cycles in the tree
 func (t *MultiRootTree) IsCyclic() error {
 	visitedMap := make(map[string]bool)
-	for _, node := range t.dataMap {
+	data := t.getSortedKeys()
+	for _, k := range data {
+		node := t.dataMap[k]
 		if _, visited := visitedMap[node.GetName()]; !visited {
 			pathMap := make(map[string]bool)
 			err := t.hasCycle(node, visitedMap, pathMap)
@@ -59,6 +63,16 @@ func (t *MultiRootTree) IsCyclic() error {
 		}
 	}
 	return nil
+}
+
+// get sorted dataMap keys
+func (t *MultiRootTree) getSortedKeys() []string {
+	keys := []string{}
+	for k := range t.dataMap {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // runs a DFS on a given tree using visitor pattern
@@ -80,7 +94,11 @@ func (t *MultiRootTree) hasCycle(root *TreeNode, visited, pathMap map[string]boo
 
 			_, childAlreadyInPath := pathMap[child.GetName()] // 1 -> 2 -> 1
 			if childAlreadyInPath && pathMap[child.GetName()] {
-				cyclicErr = fmt.Errorf("%w: %s", ErrCyclicDependencyEncountered, root.GetName())
+				paths := []string{}
+				for k := range pathMap {
+					paths = append(paths, k)
+				}
+				cyclicErr = fmt.Errorf("%w: %s", ErrCyclicDependencyEncountered, strings.Join(paths, "->"))
 			}
 			if cyclicErr != nil {
 				return cyclicErr
