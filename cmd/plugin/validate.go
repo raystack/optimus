@@ -2,9 +2,11 @@ package plugin
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
@@ -53,6 +55,7 @@ func (v *validateCommand) validateDir(pluginPath string) error {
 	if err != nil {
 		return err
 	}
+	var errorFiles []string
 	for _, file := range files {
 		path := filepath.Join(pluginPath, file.Name())
 		if file.IsDir() {
@@ -61,10 +64,15 @@ func (v *validateCommand) validateDir(pluginPath string) error {
 		}
 		err := v.validateFile(path)
 		if err != nil {
+			errorFiles = append(errorFiles, path)
 			v.logger.Error(err.Error())
 		}
 	}
-	v.logger.Info("validation complete !")
+	if len(errorFiles) > 0 {
+		fmt.Fprintf(os.Stderr, "error: %v: \n%v\n", "validation errors in yaml file(s) :", strings.Join(errorFiles, "\n"))
+		os.Exit(1)
+	}
+	v.logger.Info("validation success !")
 	return nil
 }
 
