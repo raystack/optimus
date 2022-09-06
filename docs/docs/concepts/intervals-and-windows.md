@@ -52,3 +52,4 @@ The configurations act on the schedule_time of the job and applied in order to c
 - **Size**: Size enables user to define the amount of data to consume from the `end_time` again defined through the duration same as offset.
 
 The above expectation of windowing is properly handled in job spec version 2, version 1 has some limitations in some of these expectations.
+You can verify these configurations through `optimus playground command`
