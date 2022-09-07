@@ -33,6 +33,10 @@ func TestBackupService(t *testing.T) {
 	}
 
 	t.Run("BackupResourceDryRun", func(t *testing.T) {
+		window, err := models.NewWindow(1, "d", "0", "1h")
+		if err != nil {
+			panic(err)
+		}
 		jobTask := models.JobSpecTask{
 			Config: models.JobSpecConfigs{
 				{
@@ -41,11 +45,7 @@ func TestBackupService(t *testing.T) {
 				},
 			},
 			Priority: 2000,
-			Window: models.JobSpecTaskWindow{
-				Size:       time.Hour,
-				Offset:     0,
-				TruncateTo: "d",
-			},
+			Window:   window,
 		}
 		jobAssets := *models.JobAssets{}.New(
 			[]models.JobSpecAsset{
@@ -867,6 +867,10 @@ func TestBackupService(t *testing.T) {
 		})
 	})
 	t.Run("BackupResource", func(t *testing.T) {
+		window, err := models.NewWindow(1, "d", "0", "1h")
+		if err != nil {
+			panic(err)
+		}
 		jobTask := models.JobSpecTask{
 			Config: models.JobSpecConfigs{
 				{
@@ -875,11 +879,7 @@ func TestBackupService(t *testing.T) {
 				},
 			},
 			Priority: 2000,
-			Window: models.JobSpecTaskWindow{
-				Size:       time.Hour,
-				Offset:     0,
-				TruncateTo: "d",
-			},
+			Window:   window,
 		}
 		jobAssets := *models.JobAssets{}.New(
 			[]models.JobSpecAsset{

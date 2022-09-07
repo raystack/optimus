@@ -26,10 +26,6 @@ var (
 const (
 	JobDatetimeLayout = "2006-01-02"
 
-	// assuming all month are 30 days long for simplicity
-	HoursInMonth = time.Duration(30) * 24 * time.Hour
-	HoursInDay   = 24 * time.Hour
-
 	// JobSpecDependencyTypeIntra represents dependency within a project
 	JobSpecDependencyTypeIntra JobSpecDependencyType = "intra"
 	// JobSpecDependencyTypeInter represents dependency within optimus but cross project
@@ -60,6 +56,8 @@ const (
 	SensorSuccessEvent JobEventType = "sensor_success"
 
 	JobRetryEvent JobEventType = "retry"
+
+	JobSpecDefaultVersion = 1
 )
 
 // JobSpec represents a job
@@ -194,7 +192,7 @@ func (n *JobSpecNotifier) ShouldNotify(eventType JobEventType) bool {
 type JobSpecTask struct {
 	Unit     *Plugin `json:"-" yaml:"-"`
 	Config   JobSpecConfigs
-	Window   JobSpecTaskWindow
+	Window   Window
 	Priority int
 }
 
@@ -224,77 +222,6 @@ func (j JobSpecConfigs) Get(name string) (string, bool) {
 type JobSpecConfigItem struct {
 	Name  string
 	Value string
-}
-
-type JobSpecTaskWindow struct {
-	Size       time.Duration
-	Offset     time.Duration
-	TruncateTo string
-}
-
-func (w *JobSpecTaskWindow) GetStart(scheduledAt time.Time) time.Time {
-	s, _ := w.getWindowDate(scheduledAt, w.Size, w.Offset, w.TruncateTo)
-	return s
-}
-
-func (w *JobSpecTaskWindow) GetEnd(scheduledAt time.Time) time.Time {
-	_, e := w.getWindowDate(scheduledAt, w.Size, w.Offset, w.TruncateTo)
-	return e
-}
-
-func (*JobSpecTaskWindow) getWindowDate(today time.Time, windowSize, windowOffset time.Duration, windowTruncateTo string) (time.Time, time.Time) {
-	floatingEnd := today
-
-	// apply truncation to end
-	if windowTruncateTo == "h" {
-		// remove time upto hours
-		floatingEnd = floatingEnd.Truncate(time.Hour)
-	} else if windowTruncateTo == "d" {
-		// remove time upto day
-		floatingEnd = floatingEnd.Truncate(HoursInDay)
-	} else if windowTruncateTo == "w" {
-		// shift current window to nearest Sunday
-		nearestSunday := time.Duration(time.Saturday-floatingEnd.Weekday()+1) * HoursInDay
-		floatingEnd = floatingEnd.Add(nearestSunday)
-		floatingEnd = floatingEnd.Truncate(HoursInDay)
-	}
-
-	windowEnd := floatingEnd.Add(windowOffset)
-	windowStart := windowEnd.Add(-windowSize)
-
-	// handle monthly windows separately as every month is not of same size
-	if windowTruncateTo == "M" {
-		floatingEnd = today
-		// shift current window to nearest month start and end
-
-		// truncate the date
-		floatingEnd = time.Date(floatingEnd.Year(), floatingEnd.Month(), 1, 0, 0, 0, 0, time.UTC)
-
-		// then add the month offset
-		// for handling offset, treat 30 days as 1 month
-		offsetMonths := windowOffset / HoursInMonth
-		floatingEnd = floatingEnd.AddDate(0, int(offsetMonths), 0)
-
-		// then find the last day of this month
-		floatingEnd = floatingEnd.AddDate(0, 1, -1)
-
-		// final end is computed
-		windowEnd = floatingEnd.Truncate(HoursInDay)
-
-		// truncate days/hours from window start as well
-		floatingStart := time.Date(floatingEnd.Year(), floatingEnd.Month(), 1, 0, 0, 0, 0, time.UTC)
-		// for handling size, treat 30 days as 1 month, and as we have already truncated current month
-		// subtract 1 from this
-		sizeMonths := (windowSize / HoursInMonth) - 1
-		if sizeMonths > 0 {
-			floatingStart = floatingStart.AddDate(0, int(-sizeMonths), 0)
-		}
-
-		// final start is computed
-		windowStart = floatingStart
-	}
-
-	return windowStart, windowEnd
 }
 
 type JobSpecHook struct {
@@ -356,25 +283,6 @@ func (a *JobAssets) GetByName(name string) (JobSpecAsset, error) {
 		}
 	}
 	return JobSpecAsset{}, ErrNoSuchAsset
-}
-
-func (w *JobSpecTaskWindow) SizeString() string {
-	return w.inHrs(int(w.Size.Hours()))
-}
-
-func (w *JobSpecTaskWindow) OffsetString() string {
-	return w.inHrs(int(w.Offset.Hours()))
-}
-
-func (*JobSpecTaskWindow) inHrs(hrs int) string {
-	if hrs == 0 {
-		return "0"
-	}
-	return fmt.Sprintf("%dh", hrs)
-}
-
-func (w *JobSpecTaskWindow) String() string {
-	return fmt.Sprintf("size_%dh", int(w.Size.Hours()))
 }
 
 type JobSpecDependencyType string

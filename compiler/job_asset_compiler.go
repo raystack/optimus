@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/odpf/optimus/models"
@@ -26,6 +27,14 @@ func (c *JobRunAssetsCompiler) CompileJobRunAssets(ctx context.Context, jobSpec 
 		return nil, err
 	}
 
+	startTime, err := jobSpec.Task.Window.GetStartTime(scheduledAt)
+	if err != nil {
+		return nil, fmt.Errorf("error getting start time: %w", err)
+	}
+	endTime, err := jobSpec.Task.Window.GetEndTime(scheduledAt)
+	if err != nil {
+		return nil, fmt.Errorf("error getting end time: %w", err)
+	}
 	var instanceFileMap map[string]string
 	if jobRunSpecData == nil {
 		instanceFileMap = nil
@@ -38,11 +47,11 @@ func (c *JobRunAssetsCompiler) CompileJobRunAssets(ctx context.Context, jobSpec 
 	if plugin.CLIMod != nil {
 		// check if task needs to override the compilation behaviour
 		compiledAssetResponse, err := plugin.CLIMod.CompileAssets(ctx, models.CompileAssetsRequest{
-			Window:           jobSpec.Task.Window,
-			Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-			Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-			InstanceSchedule: scheduledAt,
-			InstanceData:     jobRunSpecData,
+			StartTime:    startTime,
+			EndTime:      endTime,
+			Config:       models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+			Assets:       models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
+			InstanceData: jobRunSpecData,
 		})
 		if err != nil {
 			return nil, err

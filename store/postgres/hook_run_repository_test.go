@@ -49,6 +49,11 @@ func TestIntegrationHookRunRepository(t *testing.T) {
 	pluginRepo.On("GetByName", tTask).Return(&models.Plugin{Base: execUnit2}, nil)
 	adapter := postgres.NewAdapter(pluginRepo)
 
+	window, err := models.NewWindow(1, "", "", "")
+	if err != nil {
+		panic(err)
+	}
+
 	jobConfigs := []models.JobSpec{
 		{
 			ID:   uuid.New(),
@@ -60,6 +65,7 @@ func TestIntegrationHookRunRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
+				Window: window,
 			},
 			Assets: *models.JobAssets{}.New(
 				[]models.JobSpecAsset{

@@ -79,10 +79,15 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 		Name:        "dev-team-2",
 		ProjectSpec: projectSpec,
 	}
+	window, err := models.NewWindow(1, "h", "0", "24h")
+	if err != nil {
+		panic(err)
+	}
 	testConfigs := []models.JobSpec{
 		{
-			ID:   uuid.New(),
-			Name: "g-optimus-id",
+			Version: 1,
+			ID:      uuid.New(),
+			Name:    "g-optimus-id",
 			Behavior: models.JobSpecBehavior{
 				DependsOnPast: false,
 				CatchUp:       true,
@@ -99,11 +104,7 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: models.JobSpecTaskWindow{
-					Size:       time.Hour * 24,
-					Offset:     0,
-					TruncateTo: "h",
-				},
+				Window: window,
 			},
 			Assets: *models.JobAssets{}.New(
 				[]models.JobSpecAsset{
@@ -145,8 +146,9 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 			NamespaceSpec: namespaceSpec,
 		},
 		{
-			ID:   uuid.New(),
-			Name: "t-optimus-id",
+			Version: 1,
+			ID:      uuid.New(),
+			Name:    "t-optimus-id",
 			Task: models.JobSpecTask{
 				Unit: &models.Plugin{Base: execUnit2, DependencyMod: depMod2},
 				Config: []models.JobSpecConfigItem{
@@ -298,8 +300,11 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 			taskSchema := checkModel.Task.Unit.Info()
 			assert.Equal(t, gTask, taskSchema.Name)
 
-			testModelA.Task.Window.Offset = time.Hour * 2
-			testModelA.Task.Window.Size = 0
+			window, err := models.NewWindow(1, "h", "2h", "0")
+			if err != nil {
+				panic(err)
+			}
+			testModelA.Task.Window = window
 
 			// try for update
 			testModelA.Task.Unit = &models.Plugin{Base: execUnit2, DependencyMod: depMod2}
@@ -310,8 +315,8 @@ func TestIntegrationNamespaceJobSpecRepository(t *testing.T) {
 			assert.Nil(t, err)
 			taskSchema = checkModel.Task.Unit.Info()
 			assert.Equal(t, tTask, taskSchema.Name)
-			assert.Equal(t, time.Hour*2, checkModel.Task.Window.Offset)
-			assert.Equal(t, time.Duration(0), checkModel.Task.Window.Size)
+			assert.Equal(t, "2h", checkModel.Task.Window.GetOffset())
+			assert.Equal(t, "0", checkModel.Task.Window.GetSize())
 		})
 		t.Run("upsert without ID should auto generate it", func(t *testing.T) {
 			db := DBSetup()

@@ -16,8 +16,6 @@ import (
 	"github.com/odpf/optimus/utils"
 )
 
-const HoursInDay = time.Hour * 24
-
 func FromJobProto(spec *pb.JobSpecification, pluginRepo models.PluginRepository) (models.JobSpec, error) {
 	startDate, err := time.Parse(models.JobDatetimeLayout, spec.StartDate)
 	if err != nil {
@@ -52,8 +50,11 @@ func FromJobProto(spec *pb.JobSpecification, pluginRepo models.PluginRepository)
 		}
 	}
 
-	window, err := prepareWindow(spec.WindowSize, spec.WindowOffset, spec.WindowTruncateTo)
+	window, err := models.NewWindow(int(spec.Version), spec.GetWindowTruncateTo(), spec.GetWindowOffset(), spec.GetWindowSize())
 	if err != nil {
+		return models.JobSpec{}, err
+	}
+	if err := window.Validate(); err != nil {
 		return models.JobSpec{}, err
 	}
 
@@ -103,8 +104,12 @@ func FromJobProto(spec *pb.JobSpecification, pluginRepo models.PluginRepository)
 		metadata.Resource = FromJobSpecMetadataResourceProto(spec.Metadata.Resource)
 		metadata.Airflow = FromJobSpecMetadataAirflowProto(spec.Metadata.Airflow)
 	}
+	version := int(spec.Version)
+	if version == 0 {
+		version = models.JobSpecDefaultVersion
+	}
 	return models.JobSpec{
-		Version:     int(spec.Version),
+		Version:     version,
 		Name:        spec.Name,
 		Owner:       spec.Owner,
 		Description: spec.Description,
@@ -137,31 +142,6 @@ func FromJobProto(spec *pb.JobSpecification, pluginRepo models.PluginRepository)
 	}, nil
 }
 
-func prepareWindow(windowSize, windowOffset, truncateTo string) (models.JobSpecTaskWindow, error) {
-	var err error
-	window := models.JobSpecTaskWindow{}
-	window.Size = HoursInDay
-	window.Offset = 0
-	window.TruncateTo = "d"
-
-	if truncateTo != "" {
-		window.TruncateTo = truncateTo
-	}
-	if windowSize != "" {
-		window.Size, err = time.ParseDuration(windowSize)
-		if err != nil {
-			return window, fmt.Errorf("failed to parse task window with size %v: %w", windowSize, err)
-		}
-	}
-	if windowOffset != "" {
-		window.Offset, err = time.ParseDuration(windowOffset)
-		if err != nil {
-			return window, fmt.Errorf("failed to parse task window with offset %v: %w", windowOffset, err)
-		}
-	}
-	return window, nil
-}
-
 func ToJobSpecificationResponseProto(jobSpec models.JobSpec) *pb.JobSpecificationResponse {
 	return &pb.JobSpecificationResponse{
 		ProjectName:   jobSpec.GetProjectSpec().Name,
@@ -182,8 +162,19 @@ func ToJobSpecificationProto(spec models.JobSpec) *pb.JobSpecification {
 		})
 	}
 
+	var truncateTo, offset, size string
+	if spec.Task.Window != nil {
+		truncateTo = spec.Task.Window.GetTruncateTo()
+		offset = spec.Task.Window.GetOffset()
+		size = spec.Task.Window.GetSize()
+	}
+
+	version := int32(spec.Version)
+	if version == 0 {
+		version = models.JobSpecDefaultVersion
+	}
 	conf := &pb.JobSpecification{
-		Version:          int32(spec.Version),
+		Version:          version,
 		Name:             spec.Name,
 		Owner:            spec.Owner,
 		Interval:         spec.Schedule.Interval,
@@ -191,9 +182,9 @@ func ToJobSpecificationProto(spec models.JobSpec) *pb.JobSpecification {
 		DependsOnPast:    spec.Behavior.DependsOnPast,
 		CatchUp:          spec.Behavior.CatchUp,
 		TaskName:         spec.Task.Unit.Info().Name,
-		WindowSize:       spec.Task.Window.SizeString(),
-		WindowOffset:     spec.Task.Window.OffsetString(),
-		WindowTruncateTo: spec.Task.Window.TruncateTo,
+		WindowTruncateTo: truncateTo,
+		WindowOffset:     offset,
+		WindowSize:       size,
 		Assets:           spec.Assets.ToMap(),
 		Dependencies:     []*pb.JobDependency{},
 		Hooks:            adaptedHook,

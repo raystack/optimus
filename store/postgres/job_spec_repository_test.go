@@ -6,7 +6,6 @@ package postgres_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -58,10 +57,15 @@ func TestJobSpecRepository(t *testing.T) {
 		Name:        "dev-team-2",
 		ProjectSpec: externalProjectSpec,
 	}
+	window, err := models.NewWindow(1, "h", "0", "24h")
+	if err != nil {
+		panic(err)
+	}
 	testConfigs := []models.JobSpec{
 		{
-			ID:   uuid.New(),
-			Name: "job-1",
+			Version: 1,
+			ID:      uuid.New(),
+			Name:    "job-1",
 			Behavior: models.JobSpecBehavior{
 				DependsOnPast: false,
 				CatchUp:       true,
@@ -78,11 +82,7 @@ func TestJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: models.JobSpecTaskWindow{
-					Size:       time.Hour * 24,
-					Offset:     0,
-					TruncateTo: "h",
-				},
+				Window: window,
 			},
 			Assets: *models.JobAssets{}.New(
 				[]models.JobSpecAsset{
@@ -111,8 +111,9 @@ func TestJobSpecRepository(t *testing.T) {
 			NamespaceSpec:       namespaceSpec,
 		},
 		{
-			ID:   uuid.New(),
-			Name: "job-2",
+			Version: 1,
+			ID:      uuid.New(),
+			Name:    "job-2",
 			Behavior: models.JobSpecBehavior{
 				DependsOnPast: false,
 				CatchUp:       true,
@@ -129,11 +130,7 @@ func TestJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: models.JobSpecTaskWindow{
-					Size:       time.Hour * 24,
-					Offset:     0,
-					TruncateTo: "h",
-				},
+				Window: window,
 			},
 			Assets: *models.JobAssets{}.New(
 				[]models.JobSpecAsset{
@@ -162,8 +159,9 @@ func TestJobSpecRepository(t *testing.T) {
 			NamespaceSpec:       namespaceSpec,
 		},
 		{
-			ID:   uuid.New(),
-			Name: "job-3",
+			Version: 1,
+			ID:      uuid.New(),
+			Name:    "job-3",
 			Behavior: models.JobSpecBehavior{
 				DependsOnPast: false,
 				CatchUp:       true,
@@ -180,11 +178,7 @@ func TestJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: models.JobSpecTaskWindow{
-					Size:       time.Hour * 24,
-					Offset:     0,
-					TruncateTo: "h",
-				},
+				Window: window,
 			},
 			Assets: *models.JobAssets{}.New(
 				[]models.JobSpecAsset{
@@ -197,8 +191,9 @@ func TestJobSpecRepository(t *testing.T) {
 			NamespaceSpec: namespaceSpec,
 		},
 		{
-			ID:   uuid.New(),
-			Name: "job-4",
+			Version: 1,
+			ID:      uuid.New(),
+			Name:    "job-4",
 			Behavior: models.JobSpecBehavior{
 				DependsOnPast: false,
 				CatchUp:       true,
@@ -215,11 +210,7 @@ func TestJobSpecRepository(t *testing.T) {
 						Name: "do", Value: "this",
 					},
 				},
-				Window: models.JobSpecTaskWindow{
-					Size:       time.Hour * 24,
-					Offset:     0,
-					TruncateTo: "h",
-				},
+				Window: window,
 			},
 			Assets: *models.JobAssets{}.New(
 				[]models.JobSpecAsset{
@@ -307,7 +298,7 @@ func TestJobSpecRepository(t *testing.T) {
 	})
 
 	t.Run("GetDependentJobs", func(t *testing.T) {
-		t.Run("GetDependentJobs should return inferred dependent jobs", func(t *testing.T) {
+		t.Run("GetDependentJobs should return inferred and static dependent jobs", func(t *testing.T) {
 			db := DBSetup()
 
 			defer execUnit1.AssertExpectations(t)
@@ -343,6 +334,93 @@ func TestJobSpecRepository(t *testing.T) {
 			checkModel, err = repo.GetDependentJobs(ctx, &testModels[1])
 			assert.Nil(t, err)
 			assert.Equal(t, testModels[2].Name, checkModel[0].Name)
+		})
+
+		t.Run("GetDependentJobs should return static dependent jobs from same project if the project is not specified in the dependency list", func(t *testing.T) {
+			db := DBSetup()
+
+			defer execUnit1.AssertExpectations(t)
+			var testModels []models.JobSpec
+			testModels = append(testModels, testConfigs...)
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			namespaceRepo := postgres.NewNamespaceRepository(db, hash)
+			err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
+			assert.Nil(t, err)
+
+			externalNamespaceRepo := postgres.NewNamespaceRepository(db, hash)
+			err = externalNamespaceRepo.Insert(ctx, externalProjectSpec, externalProjectNamespaceSpec)
+			assert.Nil(t, err)
+
+			// prepare the project's jobs
+			jobSpecRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			err = jobSpecRepo.Insert(ctx, testModels[0], jobDestination)
+			assert.Nil(t, err)
+			err = jobSpecRepo.Insert(ctx, testModels[1], jobDestination1)
+			assert.Nil(t, err)
+			err = jobSpecRepo.Insert(ctx, testModels[2], "")
+			assert.Nil(t, err)
+
+			// insert the inferred dependency
+			jobSourceRepo := postgres.NewJobSourceRepository(db)
+			err = jobSourceRepo.Save(ctx, projectSpec.ID, testModels[1].ID, []string{testModels[0].ResourceDestination})
+			assert.Nil(t, err)
+
+			// prepare the external project's jobs
+			window, _ := models.NewWindow(1, "h", "0", "24h")
+			externalProjectJobs := []models.JobSpec{
+				{
+					ID:            uuid.New(),
+					Name:          testModels[1].Name,
+					NamespaceSpec: externalProjectNamespaceSpec,
+					Task: models.JobSpecTask{
+						Unit: &models.Plugin{Base: execUnit1},
+						Config: []models.JobSpecConfigItem{
+							{
+								Name: "do", Value: "this",
+							},
+						},
+						Window: window,
+					},
+				},
+				{
+					ID:            uuid.New(),
+					Name:          testModels[2].Name,
+					NamespaceSpec: externalProjectNamespaceSpec,
+					Task: models.JobSpecTask{
+						Unit: &models.Plugin{Base: execUnit1},
+						Config: []models.JobSpecConfigItem{
+							{
+								Name: "do", Value: "this",
+							},
+						},
+						Window: window,
+					},
+					Dependencies: map[string]models.JobSpecDependency{
+						testModels[1].Name: {},
+					},
+				},
+			}
+			externalProjectJobDestination := "x.d.t"
+			externalProjectJobSpecRepo := postgres.NewNamespaceJobSpecRepository(db, externalProjectNamespaceSpec, projectJobSpecRepo, adapter)
+			err = externalProjectJobSpecRepo.Insert(ctx, externalProjectJobs[0], externalProjectJobDestination)
+			assert.Nil(t, err)
+			err = externalProjectJobSpecRepo.Insert(ctx, externalProjectJobs[1], "")
+			assert.Nil(t, err)
+
+			// check getting inferred dependent jobs
+			repo := postgres.NewJobSpecRepository(db, adapter)
+			checkModel, err := repo.GetDependentJobs(ctx, &testModels[0])
+			assert.Nil(t, err)
+			assert.Equal(t, testModels[1].Name, checkModel[0].Name)
+
+			// check getting static dependent jobs
+			checkModel, err = repo.GetDependentJobs(ctx, &testModels[1])
+			assert.Nil(t, err)
+			assert.Equal(t, 1, len(checkModel))
+			assert.Equal(t, testModels[2].Name, checkModel[0].Name)
+			assert.Equal(t, testModels[2].ID, checkModel[0].ID)
 		})
 	})
 
@@ -485,6 +563,88 @@ func TestJobSpecRepository(t *testing.T) {
 			assert.EqualValues(t, []string{intraDependency.NamespaceSpec.Name, interDependency.NamespaceSpec.Name}, []string{checkModel[jobWithDependency.ID][0].NamespaceSpec.Name, checkModel[jobWithDependency.ID][1].NamespaceSpec.Name})
 			assert.EqualValues(t, []string{intraDependency.GetProjectSpec().Name, interDependency.GetProjectSpec().Name}, []string{checkModel[jobWithDependency.ID][0].GetProjectSpec().Name, checkModel[jobWithDependency.ID][1].GetProjectSpec().Name})
 			assert.EqualValues(t, []string{gTask, gTask}, []string{checkModel[jobWithDependency.ID][0].Task.Unit.Info().Name, checkModel[jobWithDependency.ID][1].Task.Unit.Info().Name})
+			assert.Nil(t, err)
+		})
+		t.Run("GetStaticDependenciesPerJobID should return only the dependencies in the same project if project dependency is not set", func(t *testing.T) {
+			db := DBSetup()
+
+			defer execUnit1.AssertExpectations(t)
+			var testModels []models.JobSpec
+			testModels = append(testModels, testConfigs...)
+
+			testModels[0].Dependencies = map[string]models.JobSpecDependency{
+				testModels[1].Name: {Project: &testModels[1].NamespaceSpec.ProjectSpec, Job: &testModels[1]},
+			}
+
+			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
+			defer projectJobSpecRepo.AssertExpectations(t)
+
+			// prepare internal project job specs
+			namespaceRepo := postgres.NewNamespaceRepository(db, hash)
+			err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
+			assert.Nil(t, err)
+
+			jobSpecRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			err = jobSpecRepo.Insert(ctx, testModels[0], jobDestination)
+			assert.Nil(t, err)
+			err = jobSpecRepo.Insert(ctx, testModels[1], jobDestination1)
+			assert.Nil(t, err)
+
+			// prepare external project job specs
+			externalNamespaceRepo := postgres.NewNamespaceRepository(db, hash)
+			err = externalNamespaceRepo.Insert(ctx, externalProjectSpec, externalProjectNamespaceSpec)
+			assert.Nil(t, err)
+			window, _ := models.NewWindow(1, "d", "0", "1h")
+			externalProjectJobs := []models.JobSpec{
+				{
+					ID:            uuid.New(),
+					Name:          testModels[0].Name,
+					NamespaceSpec: externalProjectNamespaceSpec,
+					Task: models.JobSpecTask{
+						Unit: &models.Plugin{Base: execUnit1},
+						Config: []models.JobSpecConfigItem{
+							{
+								Name: "do", Value: "this",
+							},
+						},
+						Window: window,
+					},
+				},
+				{
+					ID:            uuid.New(),
+					Name:          testModels[1].Name,
+					NamespaceSpec: externalProjectNamespaceSpec,
+					Task: models.JobSpecTask{
+						Unit: &models.Plugin{Base: execUnit1},
+						Config: []models.JobSpecConfigItem{
+							{
+								Name: "do", Value: "this",
+							},
+						},
+						Window: window,
+					},
+				},
+			}
+			externalProjectJobs[0].Dependencies = map[string]models.JobSpecDependency{
+				externalProjectJobs[1].Name: {Project: &externalProjectJobs[1].NamespaceSpec.ProjectSpec, Job: &externalProjectJobs[1]},
+			}
+
+			externalJobSpecRepo := postgres.NewNamespaceJobSpecRepository(db, externalProjectNamespaceSpec, projectJobSpecRepo, adapter)
+			err = externalJobSpecRepo.Insert(ctx, externalProjectJobs[0], "")
+			assert.Nil(t, err)
+			err = externalJobSpecRepo.Insert(ctx, externalProjectJobs[1], "")
+			assert.Nil(t, err)
+
+			repo := postgres.NewJobSpecRepository(db, adapter)
+			checkModel, err := repo.GetStaticDependenciesPerJobID(ctx, projectSpec.ID)
+
+			jobWithDependency := testModels[0]
+			intraDependency := testModels[1]
+			noOfInternalDependencies := 1
+			assert.Equal(t, noOfInternalDependencies, len(checkModel[jobWithDependency.ID]))
+			assert.EqualValues(t, []string{intraDependency.Name}, []string{checkModel[jobWithDependency.ID][0].Name})
+			assert.EqualValues(t, []string{intraDependency.NamespaceSpec.Name}, []string{checkModel[jobWithDependency.ID][0].NamespaceSpec.Name})
+			assert.EqualValues(t, []string{intraDependency.GetProjectSpec().Name}, []string{checkModel[jobWithDependency.ID][0].GetProjectSpec().Name})
 			assert.Nil(t, err)
 		})
 	})

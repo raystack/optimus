@@ -109,13 +109,9 @@ func (s *GRPCServer) CompileAssets(ctx context.Context, req *pbp.CompileAssetsRe
 		PluginOptions: models.PluginOptions{DryRun: req.Options.DryRun},
 		Config:        AdaptConfigsFromProto(req.Configs),
 		Assets:        AdaptAssetsFromProto(req.Assets),
-		Window: models.JobSpecTaskWindow{
-			Size:       req.Window.Size.AsDuration(),
-			Offset:     req.Window.Offset.AsDuration(),
-			TruncateTo: req.Window.TruncateTo,
-		},
-		InstanceData:     instanceData,
-		InstanceSchedule: req.InstanceSchedule.AsTime(),
+		InstanceData:  instanceData,
+		StartTime:     req.StartTime.AsTime(),
+		EndTime:       req.EndTime.AsTime(),
 	})
 	if err != nil {
 		return nil, err

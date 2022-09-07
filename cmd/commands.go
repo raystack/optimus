@@ -15,6 +15,7 @@ import (
 	"github.com/odpf/optimus/cmd/internal/logger"
 	"github.com/odpf/optimus/cmd/job"
 	"github.com/odpf/optimus/cmd/namespace"
+	"github.com/odpf/optimus/cmd/playground"
 	"github.com/odpf/optimus/cmd/plugin"
 	"github.com/odpf/optimus/cmd/project"
 	"github.com/odpf/optimus/cmd/replay"
@@ -78,6 +79,7 @@ func New() *cli.Command {
 		resource.NewResourceCommand(),
 		secret.NewSecretCommand(),
 		version.NewVersionCommand(),
+		playground.NewPlaygroundCommand(),
 	)
 	// Server related commands
 	cmd.AddCommand(

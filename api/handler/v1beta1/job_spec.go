@@ -319,6 +319,7 @@ func (sv *JobSpecServiceServer) DeleteJobSpecification(ctx context.Context, req 
 	}, nil
 }
 
+// TODO RefreshJobs to save the loaded jobspecs to avoid writing oldWindowSize & oldWindowOffset temporarily
 func (sv *JobSpecServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, stream pb.JobSpecificationService_RefreshJobsServer) error {
 	startTime := time.Now()
 	responseWriter := writer.NewRefreshJobResponseWriter(stream)
