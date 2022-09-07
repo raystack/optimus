@@ -1,0 +1,22 @@
+name: bq2bqtest
+description: Testing
+plugintype: task
+pluginmods:
+  - cli
+# pluginversion: ""
+# image: ""
+secretpath: /tmp/auth.json
+
+questions:
+  - name: PROJECT
+    prompt: Project ID
+    regexp: ^[a-zA-Z0-9_\-]+$
+    minlength: 3
+
+defaultconfig:
+- name: TEST
+  value: "{{.test}}"
+
+defaultassets:
+  - name: query.sql
+    value: Select * from "project.dataset.table";

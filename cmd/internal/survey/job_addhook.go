@@ -44,7 +44,7 @@ func (j *JobAddHookSurvey) AskToAddHook(jobSpec models.JobSpec, pluginRepo model
 	}
 
 	var jobSpecConfigs models.JobSpecConfigs
-	if cliMod := selectedHook.CLIMod; cliMod != nil {
+	if cliMod := selectedHook.GetSurveyMod(); cliMod != nil {
 		ctx := context.Background()
 		hookAnswers, err := j.askHookQuestions(ctx, cliMod, jobSpec.Name)
 		if err != nil {
