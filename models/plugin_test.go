@@ -133,6 +133,7 @@ func TestPluginModels(t *testing.T) {
 			NewMockYamlPlugin("c", string(models.PluginTypeTask)),
 			NewMockYamlPlugin("b", string(models.PluginTypeTask)),
 			NewMockPlugin("a", string(models.PluginTypeHook)),
+			NewMockYamlPlugin("a", string(models.PluginTypeHook)),
 			NewMockYamlPlugin("z", string(models.PluginTypeTask)),
 		}
 		for _, plugin := range plugins {
@@ -142,6 +143,12 @@ func TestPluginModels(t *testing.T) {
 				repo.Add(plugin.Base, plugin.CLIMod, plugin.DependencyMod)
 			}
 		}
+		t.Run("should allow both yaml and bin implementations in plugin", func(t *testing.T) {
+			plugin, _ := repo.GetByName("a")
+			assert.Equal(t, plugin.IsYamlPlugin(), true)
+			assert.NotNil(t, plugin.CLIMod)
+			assert.NotNil(t, plugin.YamlMod)
+		})
 
 		t.Run("should return sorted plugins", func(t *testing.T) {
 			list := repo.GetAll()

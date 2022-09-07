@@ -560,10 +560,8 @@ func (s *registeredPlugins) add(baseMod BasePlugin, cliMod CommandLineMod, drMod
 	}
 
 	isCandidatePluginYaml := yamlMod != nil
-	// check if name is already used
 	existingPlugin, alreadyPresent := s.data[info.Name]
 	if alreadyPresent {
-		// same type of plugin case
 		if existingPlugin.IsYamlPlugin() == isCandidatePluginYaml {
 			return fmt.Errorf("plugin name already in use %s", info.Name)
 		}
