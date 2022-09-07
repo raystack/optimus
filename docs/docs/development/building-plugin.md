@@ -10,7 +10,7 @@ Whereas tasks used in jobs that define how the transformation will execute, what
 Optimus can be divided in two logical parts when we are thinking of a pluggable model, one is the **core** where everything happens which is common for all job/datastore, and the other part which could be variable and needs user specific definitions of how things should work which is a **plugin**.
 
 Currently Optimus plugin can be implemented as binary executable.
-But `support for yaml` implementation of plugins is also introduced with limited 
+And `support for yaml` implementation of plugins is also introduced with limited 
 scope (discussed below).
 
 Optimus Plugin is just an adapter between optimus and  what actually needs to be executed. Actual transformation will be packed in a docker image and Optimus will execute these arbitrary docker images as long as it has access to reach container registry. Plugin provides the optimus server with the info about the docker image.
@@ -30,17 +30,17 @@ Before getting into the difference between two plugins ,we need to get familiar 
 
 ## Supported Use-Cases of Plugins in Optimus
 
-* plugin-info use-cases: 
-  * discover all plugins in `.plugins` folder and list their info.
-  * refer - `optimus version` (lists all the plugins available),
-* project side use-cases :
-  * survey to populate job specifications and assets.
+* Plugin Info Usecases: 
+  * Discover all plugins and list their info.
+  * Refer - `optimus version` (lists all the plugins available),
+* Project Side Usecases :
+  * Survey to populate job specifications and assets.
   * Plugins provide the questionare and default values (default assets for job) to the survey implemtnation in optimus.
-  * refer -  `optimus job create`
-* server side use-cases :
+  * Refer -  `optimus job create`
+* Server Side Usecases :
   * CompileAssets & DependencyResolver
   * Theses are currently supported server side behaviour that is delegated to plugins implementations.
-  * refer - [transformers](https://github.com/odpf/transformers/blob/main/task/bq2bq/main.go#L274) 
+  * Refer - [transformers](https://github.com/odpf/transformers/blob/main/task/bq2bq/main.go#L274) 
 
 ## Binary Implementation of Plugin
 
@@ -110,9 +110,11 @@ type YamlPlugin struct {
 	} `yaml:"defaultconfig"`
 }
 ```
+refer to sample implemenation [here](#2a-creating-a-yaml-plugin)
 ### Limitations of Yaml plugins:
 
-Here the scope of yaml plugins is limited to drive survey, provide default values for job config and assets and provide plugin info. As majoiry of the plugins are expected to implement subset these use-cases, the addition of yaml definitions for plugins; simplifies development, packaging and distribution of plugins.
+Here the scope of yaml plugins is limited to drive survey, provide default values for job config and assets and provide plugin info. As majoiry of the plugins are expected to implement subset these use-cases, the support for yaml definitions for plugins is added which simplifies development, packaging and distribution of plugins.
+
 For plugins that require to enrich optimus server side behaviour, yaml definitions falls short as this would require some code.
 
 ### Validating Yaml plugins:
@@ -124,7 +126,7 @@ optimus plugin validate --path {{directory of yaml plugins}}
 
 ** Note: The yaml plugin is expected to have file name as `optimus-plugin-{{name}}.yaml`
 
-** Note: If Both yaml and binary plugin with same name are installed, the binary plugin is prioritized and yaml plugin is ignored. This is for backward compatibility.
+** Note: If Both yaml and binary plugin with same name are installed, Yaml implementation is prioritised over the corresponding counterparts in binary implemenation.
 ## Creating Plugin : Tutorial
 
 To demonstrate the above mentioned wrapping functionality, let's create a plugin in Go as well as a yaml definition and use python for actual transformation logic. You can choose to fork this [example](https://github.com/kushsharma/optimus-plugins) template and modify it as per your needs or start fresh. To demonstrate how to start from scratch, we will be starting from an empty git repository and build a plugin which will find potential hazardous **Near Earth Orbit** objects every day, let's call it **neo** for short. 
@@ -295,14 +297,15 @@ RUN pip install -r requirements.txt
 CMD ["python3", "main.py"]
 ```
 ### 2a. Creating a yaml plugin
-
+The Yaml implementation is as simple as providing the plugin details as below.
 ```yaml
-name: neo
+name: Neo
 description: Near earth object tracker
 plugintype: task
 pluginversion: latest
 image: ghcr.io/kushsharma/optimus-task-neo-executor
 secretpath: /tmp/.secrets
+
 questions:
 - name: RANGE_START
   prompt: Date range start
@@ -313,6 +316,7 @@ questions:
   help: YYYY-MM-DD format
   required: true
 ```
+Based on the usecase, additional validation can be added to the questions section. Refer [above](#yaml-implementation-of-plugin) for more usecases and features provided.
 
 ### 2b. Creating a binary plugin
 
@@ -706,28 +710,37 @@ Use this [repository](https://github.com/kushsharma/optimus-plugins) as an examp
 
 ### Installing a plugin
 
-
-Plugins need to be installed in Optimus server before it can be used. Optimus uses `.plugin` directory in the current working directory for discovering plugin binaries.
+Plugins need to be installed in Optimus server before it can be used. Optimus uses following directories for discovering plugin binaries
+```
+./.plugins
+./
+<exec>/
+<exec>/.optimus/plugins
+$HOME/.optimus/plugins
+/usr/bin
+/usr/local/bin
+```
+Even though the above list of directories are involved in plugin discovery, it is advised to use `.plugins` in the current working directory of the project or optimus binary.
 
 ### Server-side installation
 On Server side, plugins (both binary and yaml) can be installed declaratively at runtime by listing the plugin artifacts in plugins section of server config.
 ```bash
-optimus plugin install  # server side
+optimus plugin install -c config.yaml  # This will install plugins in `.plugins` folder.
 ```
 Plugin section to be added in server config:
 ```yaml
 plugin:
   artifacts:
-    - https://...path/to/optimus-plugin-neo.yaml
-    - http://.../plugins.zip
-    - ../transformers/optimus-bq2bq_darwin_arm64
-    - ../transformers/optimus-plugin-bq2bq.yaml
+    - https://...path/to/optimus-plugin-neo.yaml  # http 
+    - http://.../plugins.zip # zip 
+    - ../transformers/optimus-bq2bq_darwin_arm64 # relative paths
+    - ../transformers/optimus-plugin-neo.yaml
 ```
 ### Project-side installation
-On the project side, where optimus cli is used to generate specifications or deployment, optimus cli can sync the yaml plugins supported and served by optimus server (as declared in project config) as below.
+On the project side, where optimus cli is used to generate specifications or deployment, optimus cli can sync the yaml plugins supported-and-served by optimus server (with host as declared in project config).
 
 ```bash
-optimus plugin sync     # project side
+optimus plugin sync -c optimus.yaml    # This will install plugins in `.plugins` folder.
 ```
 
 ### Using in job specification
