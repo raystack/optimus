@@ -526,13 +526,13 @@ func (s *registeredPlugins) Add(baseMod BasePlugin, cliMod CommandLineMod, drMod
 func (s *registeredPlugins) add(baseMod BasePlugin, cliMod CommandLineMod, drMod DependencyResolverMod, yamlMod CommandLineMod) error {
 	var info *PluginInfoResponse
 	var err error
-	if baseMod != nil {
-		info, err = baseMod.PluginInfo()
+	if yamlMod != nil {
+		info, err = yamlMod.PluginInfo()
 		if err != nil {
 			return err
 		}
 	} else {
-		info, err = yamlMod.PluginInfo()
+		info, err = baseMod.PluginInfo()
 		if err != nil {
 			return err
 		}
@@ -540,11 +540,6 @@ func (s *registeredPlugins) add(baseMod BasePlugin, cliMod CommandLineMod, drMod
 
 	if info.Name == "" {
 		return errors.New("plugin name cannot be empty")
-	}
-
-	// check if name is already used
-	if _, ok := s.data[info.Name]; ok {
-		return fmt.Errorf("plugin name already in use %s", info.Name)
 	}
 
 	// image is a required field
@@ -564,6 +559,21 @@ func (s *registeredPlugins) add(baseMod BasePlugin, cliMod CommandLineMod, drMod
 		return ErrUnsupportedPlugin
 	}
 
+	isCandidatePluginYaml := yamlMod != nil
+	// check if name is already used
+	existingPlugin, alreadyPresent := s.data[info.Name]
+	if alreadyPresent {
+		// same type of plugin case
+		if existingPlugin.IsYamlPlugin() == isCandidatePluginYaml {
+			return fmt.Errorf("plugin name already in use %s", info.Name)
+		}
+		// merge plugin case : existing plugin is binary and candidate is yaml
+		// (as binaries are loaded first)
+		s.data[info.Name].YamlMod = yamlMod
+		return nil
+	}
+
+	// creating new plugin
 	s.data[info.Name] = &Plugin{
 		Base:          baseMod,
 		CLIMod:        cliMod,
