@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"os"
-
 	"github.com/MakeNowJust/heredoc"
 	"github.com/odpf/salt/cmdx"
 	cli "github.com/spf13/cobra"
@@ -12,7 +10,6 @@ import (
 	"github.com/odpf/optimus/cmd/deploy"
 	"github.com/odpf/optimus/cmd/extension"
 	"github.com/odpf/optimus/cmd/initialize"
-	"github.com/odpf/optimus/cmd/internal/logger"
 	"github.com/odpf/optimus/cmd/job"
 	"github.com/odpf/optimus/cmd/namespace"
 	"github.com/odpf/optimus/cmd/playground"
@@ -23,7 +20,6 @@ import (
 	"github.com/odpf/optimus/cmd/secret"
 	"github.com/odpf/optimus/cmd/serve"
 	"github.com/odpf/optimus/cmd/version"
-	"github.com/odpf/optimus/utils"
 )
 
 // New constructs the 'root' command. It houses all other sub commands
@@ -31,10 +27,6 @@ import (
 // interactive output like progress bars should go to stderr
 // unless the stdout/err is a tty, colors/progressbar should be disabled
 func New() *cli.Command {
-	if utils.IsTerminal(os.Stdout) {
-		logger.InitializeColor()
-	}
-
 	cmd := &cli.Command{
 		Use: "optimus <command> <subcommand> [flags]",
 		Long: heredoc.Doc(`
