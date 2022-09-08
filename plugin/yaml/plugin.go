@@ -116,17 +116,13 @@ func NewPluginSpec(pluginPath string) (*PluginSpec, error) {
 // NOTE: binary plugins are loaded prior to yaml plugins
 func Init(pluginsRepo models.PluginRepository, discoveredYamlPlugins []string, pluginLogger hclog.Logger) {
 	for _, yamlPluginPath := range discoveredYamlPlugins {
-		yamlPlugin, err := NewPluginSpec(yamlPluginPath)
+		yamlPluginSpec, err := NewPluginSpec(yamlPluginPath)
 		if err != nil {
 			pluginLogger.Error(fmt.Sprintf("plugin Init: %s", yamlPluginPath), err)
 			continue
 		}
-		pluginInfo, _ := yamlPlugin.PluginInfo()
-		if plugin, _ := pluginsRepo.GetByName(pluginInfo.Name); plugin != nil && !plugin.IsYamlPlugin() {
-			pluginLogger.Debug(fmt.Sprintf("skipping yaml plugin (as binary already added): %s", pluginInfo.Name))
-			continue
-		}
-		if err := pluginsRepo.AddYaml(yamlPlugin); err != nil {
+		pluginInfo, _ := yamlPluginSpec.PluginInfo()
+		if err := pluginsRepo.AddYaml(yamlPluginSpec); err != nil {
 			pluginLogger.Error(fmt.Sprintf("PluginRegistry.Add: %s", yamlPluginPath), err)
 			continue
 		}
