@@ -41,24 +41,33 @@ func TestMultiRootDagTree(t *testing.T) {
 	t.Run("IsCyclic", func(t *testing.T) {
 		t.Run("should throw an error if cyclic", func(t *testing.T) {
 			treeNode1 := tree.NewTreeNode(models.JobSpec{
-				Name: "job1",
+				Name: "pilotdata-integration.playground.job1",
 			})
 			treeNode2 := tree.NewTreeNode(models.JobSpec{
-				Name: "job2",
+				Name: "pilotdata-integration.playground.job2",
 			})
 			treeNode3 := tree.NewTreeNode(models.JobSpec{
-				Name: "job3",
+				Name: "pilotdata-integration.playground.job3",
+			})
+			treeNode4 := tree.NewTreeNode(models.JobSpec{
+				Name: "pilotdata-integration.playground.job4",
 			})
 			multiRootTree := tree.NewMultiRootTree()
 			multiRootTree.AddNode(treeNode1)
 			multiRootTree.AddNode(treeNode2)
 			multiRootTree.AddNode(treeNode3)
-			treeNode1.AddDependent(treeNode3)
+			multiRootTree.AddNode(treeNode4)
+			treeNode4.AddDependent(treeNode3)
 			treeNode3.AddDependent(treeNode2)
 			treeNode2.AddDependent(treeNode1)
+			treeNode2.AddDependent(treeNode4)
 			err := multiRootTree.IsCyclic()
 			assert.NotNil(t, err)
-			assert.Equal(t, "a cycle dependency encountered in the tree: job1->job3->job2", err.Error())
+			assert.Equal(t, `a cycle dependency encountered in the tree: 
+->pilotdata-integration.playground.job2
+	->pilotdata-integration.playground.job3
+		->pilotdata-integration.playground.job4
+			->pilotdata-integration.playground.job2`, err.Error())
 		})
 		t.Run("should not return error if not cyclic", func(t *testing.T) {
 			treeNode1 := tree.NewTreeNode(models.JobSpec{

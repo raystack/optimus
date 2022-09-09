@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"strings"
 )
 
 // ErrCyclicDependencyEncountered is triggered a tree has a cyclic dependency
@@ -55,8 +54,7 @@ func (t *MultiRootTree) IsCyclic() error {
 	for _, k := range data {
 		node := t.dataMap[k]
 		if _, visited := visitedMap[node.GetName()]; !visited {
-			pathMap := make(map[string]bool)
-			err := t.hasCycle(node, visitedMap, pathMap)
+			err := t.isCyclic(node, visitedMap)
 			if err != nil {
 				return err
 			}
@@ -75,18 +73,25 @@ func (t *MultiRootTree) getSortedKeys() []string {
 	return keys
 }
 
+func (t *MultiRootTree) isCyclic(root *TreeNode, visited map[string]bool) error {
+	pathMap := make(map[string]bool)
+	paths := []string{}
+	return t.hasCycle(root, visited, pathMap, paths)
+}
+
 // runs a DFS on a given tree using visitor pattern
-func (t *MultiRootTree) hasCycle(root *TreeNode, visited, pathMap map[string]bool) error {
+func (t *MultiRootTree) hasCycle(root *TreeNode, visited, pathMap map[string]bool, paths []string) error {
 	_, isNodeVisited := visited[root.GetName()]
 	if !isNodeVisited || !visited[root.GetName()] {
 		pathMap[root.GetName()] = true
 		visited[root.GetName()] = true
+		paths = append(paths, root.GetName())
 		var cyclicErr error
 		for _, child := range root.Dependents {
 			n, _ := t.GetNodeByName(child.GetName())
 			_, isChildVisited := visited[child.GetName()]
 			if !isChildVisited || !visited[child.GetName()] {
-				cyclicErr = t.hasCycle(n, visited, pathMap)
+				cyclicErr = t.hasCycle(n, visited, pathMap, paths)
 			}
 			if cyclicErr != nil {
 				return cyclicErr
@@ -94,19 +99,33 @@ func (t *MultiRootTree) hasCycle(root *TreeNode, visited, pathMap map[string]boo
 
 			_, childAlreadyInPath := pathMap[child.GetName()] // 1 -> 2 -> 1
 			if childAlreadyInPath && pathMap[child.GetName()] {
-				paths := []string{}
-				for k := range pathMap {
-					paths = append(paths, k)
-				}
-				cyclicErr = fmt.Errorf("%w: %s", ErrCyclicDependencyEncountered, strings.Join(paths, "->"))
+				paths = append(paths, child.GetName())
+				cyclicErr = fmt.Errorf("%w: %s", ErrCyclicDependencyEncountered, stringifyPaths(paths))
 			}
 			if cyclicErr != nil {
 				return cyclicErr
 			}
 		}
 		pathMap[root.GetName()] = false
+		i := 0
+		for i < len(paths) && paths[i] != root.GetName() {
+			i++
+		}
+		paths = append(paths[:i], paths[i+1:]...)
 	}
 	return nil
+}
+
+func stringifyPaths(paths []string) string {
+	s := ""
+	for i := len(paths) - 1; i >= 0; i-- {
+		tabs := "\n"
+		for j := 0; j < len(paths)-1-i; j++ {
+			tabs = tabs + "\t"
+		}
+		s = s + tabs + "->" + paths[i]
+	}
+	return s
 }
 
 // NewMultiRootTree returns an instance of multi root dag tree
