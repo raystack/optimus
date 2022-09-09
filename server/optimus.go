@@ -136,9 +136,7 @@ func (s *OptimusServer) setupDB() error {
 	if err := postgres.Migrate(s.conf.Serve.DB.DSN); err != nil {
 		return fmt.Errorf("postgres.Migrate: %w", err)
 	}
-	// TODO: Connect should accept DBConfig
-	s.dbConn, err = postgres.Connect(s.conf.Serve.DB.DSN, s.conf.Serve.DB.MaxIdleConnection,
-		s.conf.Serve.DB.MaxOpenConnection, s.logger.Writer())
+	s.dbConn, err = postgres.Connect(s.conf.Serve.DB, s.logger.Writer())
 	if err != nil {
 		return fmt.Errorf("postgres.Connect: %w", err)
 	}

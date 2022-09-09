@@ -33,9 +33,7 @@ type validateCommand struct {
 
 // NewValidateCommand initializes command for validating job specification
 func NewValidateCommand() *cobra.Command {
-	validate := &validateCommand{
-		clientConfig: &config.ClientConfig{},
-	}
+	validate := &validateCommand{}
 
 	cmd := &cobra.Command{
 		Use:     "validate",
@@ -55,10 +53,12 @@ func NewValidateCommand() *cobra.Command {
 }
 
 func (v *validateCommand) PreRunE(_ *cobra.Command, _ []string) error { // Load mandatory config
-	if err := v.loadConfig(); err != nil {
+	conf, err := config.LoadClientConfig(v.configFilePath)
+	if err != nil {
 		return err
 	}
-	v.logger = logger.NewClientLogger(v.clientConfig.Log)
+	v.clientConfig = conf
+	v.logger = logger.NewClientLogger(conf.Log)
 	return nil
 }
 
@@ -134,15 +134,5 @@ func (v *validateCommand) getCheckJobSpecificationsResponse(stream pb.JobSpecifi
 		}
 	}
 
-	return nil
-}
-
-func (v *validateCommand) loadConfig() error {
-	// TODO: find a way to load the config in one place
-	conf, err := config.LoadClientConfig(v.configFilePath)
-	if err != nil {
-		return err
-	}
-	*v.clientConfig = *conf
 	return nil
 }
