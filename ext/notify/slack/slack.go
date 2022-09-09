@@ -179,7 +179,7 @@ func buildMessageBlocks(events []event) []api.Block {
 					}
 				}
 			}
-		case models.JobFailureEvent:
+		case models.JobFailureEvent, models.TaskFailEvent, models.HookFailEvent, models.SensorFailEvent:
 			heading := api.NewTextBlockObject("plain_text",
 				fmt.Sprintf("[Job] Failure | %s/%s", evt.projectName, evt.namespaceName), true, false)
 			blocks = append(blocks, api.NewHeaderBlock(heading))
