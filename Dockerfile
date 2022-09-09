@@ -4,7 +4,7 @@ ARG USER=optimus
 COPY optimus /usr/bin/optimus
 WORKDIR /app 
 
-RUN adduser $USER
+RUN adduser -D $USER 
 RUN chown -R $USER:$USER /app
 
 USER $USER
