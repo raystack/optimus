@@ -59,6 +59,10 @@ func TestJobRunServiceServer(t *testing.T) {
 		}, nil)
 		defer basePlugin1.AssertExpectations(t)
 
+		window, err := models.NewWindow(1, "", "", "")
+		if err != nil {
+			panic(err)
+		}
 		jobSpec := models.JobSpec{
 			ID:   uuid.Must(uuid.NewRandom()),
 			Name: jobName,
@@ -72,6 +76,7 @@ func TestJobRunServiceServer(t *testing.T) {
 						Value: "this",
 					},
 				},
+				Window: window,
 			},
 			Assets: *models.JobAssets{}.New(
 				[]models.JobSpecAsset{
@@ -82,6 +87,14 @@ func TestJobRunServiceServer(t *testing.T) {
 				}),
 		}
 
+		startTime, err := jobSpec.Task.Window.GetStartTime(scheduledAt)
+		if err != nil {
+			panic(err)
+		}
+		endTime, err := jobSpec.Task.Window.GetEndTime(scheduledAt)
+		if err != nil {
+			panic(err)
+		}
 		instanceSpec := models.InstanceSpec{
 			Name:   "do-this",
 			Type:   models.InstanceTypeTask,
@@ -94,12 +107,12 @@ func TestJobRunServiceServer(t *testing.T) {
 				},
 				{
 					Name:  models.ConfigKeyDstart,
-					Value: jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+					Value: startTime.Format(models.InstanceScheduledAtTimeLayout),
 					Type:  models.InstanceDataTypeEnv,
 				},
 				{
 					Name:  models.ConfigKeyDend,
-					Value: jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+					Value: endTime.Format(models.InstanceScheduledAtTimeLayout),
 					Type:  models.InstanceDataTypeEnv,
 				},
 			},
@@ -150,8 +163,8 @@ func TestJobRunServiceServer(t *testing.T) {
 				&models.JobRunInput{
 					ConfigMap: map[string]string{
 						models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-						models.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						models.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDstart:        startTime.Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDend:          endTime.Format(models.InstanceScheduledAtTimeLayout),
 					},
 					FileMap: map[string]string{
 						"query.sql": "select * from 1",
@@ -189,8 +202,8 @@ func TestJobRunServiceServer(t *testing.T) {
 				Context: &pb.JobRunInputResponse{
 					Envs: map[string]string{
 						models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-						models.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						models.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDstart:        startTime.Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDend:          endTime.Format(models.InstanceScheduledAtTimeLayout),
 					},
 					Files: map[string]string{
 						"query.sql": "select * from 1",
@@ -220,8 +233,8 @@ func TestJobRunServiceServer(t *testing.T) {
 				&models.JobRunInput{
 					ConfigMap: map[string]string{
 						models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-						models.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						models.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDstart:        startTime.Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDend:          endTime.Format(models.InstanceScheduledAtTimeLayout),
 					},
 					FileMap: map[string]string{
 						"query.sql": "select * from 1",
@@ -260,8 +273,8 @@ func TestJobRunServiceServer(t *testing.T) {
 				Context: &pb.JobRunInputResponse{
 					Envs: map[string]string{
 						models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-						models.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-						models.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDstart:        startTime.Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDend:          endTime.Format(models.InstanceScheduledAtTimeLayout),
 					},
 					Files: map[string]string{
 						"query.sql": "select * from 1",
@@ -560,6 +573,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
 			scheduledAtTimestamp := timestamppb.New(scheduledAt)
 			req := pb.GetWindowRequest{
+				Version:     1,
 				ScheduledAt: scheduledAtTimestamp,
 				Size:        "24h",
 				Offset:      "24h",
@@ -1038,10 +1052,13 @@ func TestJobRunServiceServer(t *testing.T) {
 
 		basePlugin1 := new(mock.BasePlugin)
 
+		window, err := models.NewWindow(1, "h", "24h", "24h")
+		assert.Nil(t, err)
 		jobSpec := models.JobSpec{
 			ID:   uuid.Must(uuid.NewRandom()),
 			Name: jobName,
 			Task: models.JobSpecTask{
+				Window: window,
 				Unit: &models.Plugin{
 					Base: basePlugin1,
 				},
@@ -1077,6 +1094,10 @@ func TestJobRunServiceServer(t *testing.T) {
 				Type:  models.SecretTypeUserDefined,
 			},
 		}
+		startTime, err := jobSpec.Task.Window.GetStartTime(scheduledAt)
+		assert.Nil(t, err)
+		endTime, err := jobSpec.Task.Window.GetEndTime(scheduledAt)
+		assert.Nil(t, err)
 		jobRunSpec := models.JobRunSpec{
 			NamespaceID: namespaceSpec.ID,
 			ProjectID:   projectSpec.ID.UUID(),
@@ -1090,12 +1111,12 @@ func TestJobRunServiceServer(t *testing.T) {
 				},
 				{
 					Name:  models.ConfigKeyDstart,
-					Value: jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+					Value: startTime.Format(models.InstanceScheduledAtTimeLayout),
 					Type:  models.InstanceDataTypeEnv,
 				},
 				{
 					Name:  models.ConfigKeyDend,
-					Value: jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+					Value: endTime.Format(models.InstanceScheduledAtTimeLayout),
 					Type:  models.InstanceDataTypeEnv,
 				},
 			},
@@ -1119,12 +1140,16 @@ func TestJobRunServiceServer(t *testing.T) {
 		jobRunService := new(mock.JobRunService)
 
 		jobRunInputCompiler := new(mock.JobInputCompiler)
+		startTime, err = jobSpec.Task.Window.GetStartTime(scheduledAt)
+		assert.Nil(t, err)
+		endTime, err = jobSpec.Task.Window.GetEndTime(scheduledAt)
+		assert.Nil(t, err)
 		jobRunInputCompiler.On("Compile", ctx, namespaceSpec, models.ProjectSecrets(secrets), jobSpec, scheduledAt, jobRunSpec.Data, instanceType, instanceName).Return(
 			&models.JobRunInput{
 				ConfigMap: map[string]string{
 					models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-					models.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-					models.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+					models.ConfigKeyDstart:        startTime.Format(models.InstanceScheduledAtTimeLayout),
+					models.ConfigKeyDend:          endTime.Format(models.InstanceScheduledAtTimeLayout),
 				},
 				FileMap: map[string]string{
 					"query.sql": "select * from 1",
@@ -1153,11 +1178,16 @@ func TestJobRunServiceServer(t *testing.T) {
 		resp, err := JobRunServiceServer.JobRunInput(ctx, &jobRunInputRequest)
 		assert.Nil(t, err)
 
+		//TODO get stringified time
+		startTime, err = jobSpec.Task.Window.GetStartTime(scheduledAt)
+		assert.Nil(t, err)
+		endTime, err = jobSpec.Task.Window.GetEndTime(scheduledAt)
+		assert.Nil(t, err)
 		expectedResponse := &pb.JobRunInputResponse{
 			Envs: map[string]string{
 				models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-				models.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-				models.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+				models.ConfigKeyDstart:        startTime.Format(models.InstanceScheduledAtTimeLayout),
+				models.ConfigKeyDend:          endTime.Format(models.InstanceScheduledAtTimeLayout),
 			},
 			Files: map[string]string{
 				"query.sql": "select * from 1",

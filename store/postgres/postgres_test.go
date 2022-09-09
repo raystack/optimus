@@ -13,6 +13,7 @@ import (
 	"github.com/odpf/salt/log"
 	"gorm.io/gorm"
 
+	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/store/postgres"
 )
 
@@ -41,7 +42,12 @@ func mustReadDBConfig() string {
 func migrateDB() {
 	dbURL := mustReadDBConfig()
 
-	dbConn, err := postgres.Connect(dbURL, 1, 1, os.Stdout)
+	dbConf := config.DBConfig{
+		DSN:               dbURL,
+		MaxIdleConnection: 1,
+		MaxOpenConnection: 1,
+	}
+	dbConn, err := postgres.Connect(dbConf, os.Stdout)
 	if err != nil {
 		panic(err)
 	}

@@ -60,7 +60,6 @@ log:
 #    headers: # might necessary for authorization
 #
 # plugin:
-#   dir: .plugins
 #   artifacts:
 #     # refer : https://github.com/hashicorp/go-getter
 #     - ../transformers/dist/transformers_0.1.0_macos_arm64.tar.gz

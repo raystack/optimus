@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -15,11 +16,12 @@ import (
 	"github.com/odpf/optimus/plugin/v1beta1/base"
 	"github.com/odpf/optimus/plugin/v1beta1/cli"
 	"github.com/odpf/optimus/plugin/v1beta1/dependencyresolver"
+	"github.com/odpf/optimus/plugin/yaml"
 )
 
 func Initialize(pluginLogger hclog.Logger, arg ...string) error {
 	discoveredPlugins := DiscoverPlugins(pluginLogger)
-	pluginLogger.Debug(fmt.Sprintf("discovering plugins(%d)...", len(discoveredPlugins)))
+	pluginLogger.Debug(fmt.Sprintf("discovering binary plugins(%d)...", len(discoveredPlugins)))
 
 	// pluginMap is the map of plugins we can dispense.
 	pluginMap := map[string]plugin.Plugin{
@@ -88,6 +90,10 @@ func Initialize(pluginLogger hclog.Logger, arg ...string) error {
 		pluginLogger.Debug("plugin ready: ", baseInfo.Name)
 	}
 
+	// first fetch binary plugins, then add yaml plugin for which binary is not added earlier
+	discoveredYamlPlugins := DiscoverPluginsGivenFilePattern(pluginLogger, yaml.Prefix, yaml.Suffix)
+	pluginLogger.Debug(fmt.Sprintf("discovering yaml   plugins(%d)...", len(discoveredYamlPlugins)))
+	yaml.Init(models.PluginRegistry, discoveredYamlPlugins, pluginLogger)
 	return nil
 }
 
@@ -100,28 +106,14 @@ func modSupported(mods []models.PluginMod, mod models.PluginMod) bool {
 	return false
 }
 
-// DiscoverPlugins look for plugin binaries in following folders
-// order to search is top to down
-// ./
-// <exec>/
-// <exec>/.optimus/plugins
-// $HOME/.optimus/plugins
-// /usr/bin
-// /usr/local/bin
-//
-// for duplicate binaries(even with different versions for now), only the first found will be used
-// sample plugin name: optimus-myplugin_linux_amd64
-func DiscoverPlugins(pluginLogger hclog.Logger) []string {
-	var (
-		prefix            = "optimus-"
-		suffix            = fmt.Sprintf("_%s_%s", runtime.GOOS, runtime.GOARCH)
-		discoveredPlugins []string
-	)
+func DiscoverPluginsGivenFilePattern(pluginLogger hclog.Logger, prefix, suffix string) []string {
+	var discoveredPlugins, dirs []string
 
-	var dirs []string
-	// current working directory
 	if p, err := os.Getwd(); err == nil {
+		dirs = append(dirs, path.Join(p, PluginsDir))
 		dirs = append(dirs, p)
+	} else {
+		pluginLogger.Debug(fmt.Sprintf("Error discovering working dir: %s", err))
 	}
 
 	// look in the same directory as the executable
@@ -135,7 +127,6 @@ func DiscoverPlugins(pluginLogger hclog.Logger) []string {
 	if currentHomeDir, err := os.UserHomeDir(); err == nil {
 		dirs = append(dirs, filepath.Join(currentHomeDir, ".optimus", "plugins"))
 	}
-	dirs = append(dirs, []string{"/usr/bin", "/usr/local/bin"}...)
 
 	for _, dirPath := range dirs {
 		fileInfos, err := os.ReadDir(dirPath)
@@ -189,6 +180,25 @@ func DiscoverPlugins(pluginLogger hclog.Logger) []string {
 		}
 	}
 	return discoveredPlugins
+}
+
+// DiscoverPlugins look for plugin binaries in following folders
+// order to search is top to down
+// ./
+// <exec>/
+// <exec>/.optimus/plugins
+// $HOME/.optimus/plugins
+// /usr/bin
+// /usr/local/bin
+//
+// for duplicate binaries(even with different versions for now), only the first found will be used
+// sample plugin name: optimus-myplugin_linux_amd64
+func DiscoverPlugins(pluginLogger hclog.Logger) []string {
+	var (
+		prefix = "optimus-"
+		suffix = fmt.Sprintf("_%s_%s", runtime.GOOS, runtime.GOARCH)
+	)
+	return DiscoverPluginsGivenFilePattern(pluginLogger, prefix, suffix)
 }
 
 // Factory returns a new plugin instance

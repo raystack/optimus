@@ -24,9 +24,14 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 
 		execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "bq"}, nil)
 
+		window, err := models.NewWindow(1, "", "", "")
+		if err != nil {
+			panic(err)
+		}
 		jobSpec := models.JobSpec{
-			Name:  "foo",
-			Owner: "optimus",
+			Version: 1,
+			Name:    "foo",
+			Owner:   "optimus",
 			Task: models.JobSpecTask{
 				Unit:     plugin,
 				Priority: 2000,
@@ -36,6 +41,7 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 						Value: "22",
 					},
 				},
+				Window: window,
 			},
 			Dependencies: map[string]models.JobSpecDependency{},
 			Assets: *models.JobAssets{}.New(
@@ -56,6 +62,15 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 			ScheduledAt: time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC),
 		}
 
+		startTime, err := jobSpec.Task.Window.GetStartTime(jobRun.ScheduledAt)
+		if err != nil {
+			panic(err)
+		}
+		endTime, err := jobSpec.Task.Window.GetEndTime(jobRun.ScheduledAt)
+		if err != nil {
+			panic(err)
+		}
+
 		mockedTimeNow := time.Now()
 		instanceSpec := models.InstanceSpec{
 			Name:   "bq",
@@ -69,12 +84,12 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 				},
 				{
 					Name:  models.ConfigKeyDstart,
-					Value: jobSpec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+					Value: startTime.Format(models.InstanceScheduledAtTimeLayout),
 					Type:  models.InstanceDataTypeEnv,
 				},
 				{
 					Name:  models.ConfigKeyDend,
-					Value: jobSpec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+					Value: endTime.Format(models.InstanceScheduledAtTimeLayout),
 					Type:  models.InstanceDataTypeEnv,
 				},
 			},
@@ -117,11 +132,11 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 		})
 		t.Run("compiles the assets successfully", func(t *testing.T) {
 			cliMod.On("CompileAssets", context.Background(), models.CompileAssetsRequest{
-				Window:           jobSpec.Task.Window,
-				Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-				Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-				InstanceSchedule: jobRun.ScheduledAt,
-				InstanceData:     instanceSpec.Data,
+				Config:       models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+				Assets:       models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
+				InstanceData: instanceSpec.Data,
+				StartTime:    startTime,
+				EndTime:      endTime,
 			}).Return(&models.CompileAssetsResponse{Assets: models.PluginAssets{
 				models.PluginAsset{
 					Name:  "query.sql",

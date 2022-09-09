@@ -8,7 +8,6 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc/metadata"
 
-	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin/v1beta1/base"
@@ -46,7 +45,6 @@ func (m *GRPCClient) GenerateDestination(ctx context.Context, request models.Gen
 	resp, err := m.client.GenerateDestination(outCtx, &pbp.GenerateDestinationRequest{
 		Config:  cli.AdaptConfigsToProto(request.Config),
 		Assets:  cli.AdaptAssetsToProto(request.Assets),
-		Project: v1.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, m.name),
 		Options: &pbp.PluginOptions{DryRun: request.DryRun},
 	}, grpc_retry.WithBackoff(grpc_retry.BackoffExponential(BackoffDuration)),
 		grpc_retry.WithMax(PluginGRPCMaxRetry))
@@ -68,7 +66,6 @@ func (m *GRPCClient) GenerateDependencies(ctx context.Context, request models.Ge
 	resp, err := m.client.GenerateDependencies(outCtx, &pbp.GenerateDependenciesRequest{
 		Config:  cli.AdaptConfigsToProto(request.Config),
 		Assets:  cli.AdaptAssetsToProto(request.Assets),
-		Project: v1.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, m.name),
 		Options: &pbp.PluginOptions{DryRun: request.DryRun},
 	}, grpc_retry.WithBackoff(grpc_retry.BackoffExponential(BackoffDuration)),
 		grpc_retry.WithMax(PluginGRPCMaxRetry))

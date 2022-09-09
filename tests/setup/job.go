@@ -27,10 +27,9 @@ func Job(i int, namespace models.NamespaceSpec, bq2bq models.DependencyResolverM
 		},
 	}
 
-	window := models.JobSpecTaskWindow{
-		Size:       time.Hour * 24,
-		Offset:     time.Second * 0,
-		TruncateTo: "h",
+	window, err := models.NewWindow(1, "h", "0", "24h")
+	if err != nil {
+		panic(err)
 	}
 	var hooks []models.JobSpecHook
 	if hookUnit != nil {

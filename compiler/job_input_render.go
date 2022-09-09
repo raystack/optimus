@@ -25,15 +25,24 @@ func DumpAssets(ctx context.Context, jobSpec models.JobSpec, scheduledAt time.Ti
 		jobDestination = jobDestinationResponse.Destination
 	}
 
+	startTime, err := jobSpec.Task.Window.GetStartTime(scheduledAt)
+	if err != nil {
+		return nil, fmt.Errorf("error getting start time: %w", err)
+	}
+	endTime, err := jobSpec.Task.Window.GetEndTime(scheduledAt)
+	if err != nil {
+		return nil, fmt.Errorf("error getting end time: %w", err)
+	}
+
 	assetsToDump := jobSpec.Assets.ToMap()
 
 	if allowOverride {
 		// check if task needs to override the compilation behaviour
 		compiledAssetResponse, err := jobSpec.Task.Unit.CLIMod.CompileAssets(ctx, models.CompileAssetsRequest{
-			Window:           jobSpec.Task.Window,
-			Config:           models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
-			Assets:           models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
-			InstanceSchedule: scheduledAt,
+			StartTime: startTime,
+			EndTime:   endTime,
+			Config:    models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
+			Assets:    models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 			InstanceData: []models.JobRunSpecData{
 				{
 					Name:  models.ConfigKeyExecutionTime,
@@ -53,8 +62,8 @@ func DumpAssets(ctx context.Context, jobSpec models.JobSpec, scheduledAt time.Ti
 
 	// compile again if needed
 	templates, err := engine.CompileFiles(assetsToDump, map[string]interface{}{
-		models.ConfigKeyDstart:        jobSpec.Task.Window.GetStart(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
-		models.ConfigKeyDend:          jobSpec.Task.Window.GetEnd(scheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+		models.ConfigKeyDstart:        startTime.Format(models.InstanceScheduledAtTimeLayout),
+		models.ConfigKeyDend:          endTime.Format(models.InstanceScheduledAtTimeLayout),
 		models.ConfigKeyExecutionTime: scheduledAt.Format(models.InstanceScheduledAtTimeLayout),
 		models.ConfigKeyDestination:   jobDestination,
 	})

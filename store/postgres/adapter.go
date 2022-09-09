@@ -35,11 +35,12 @@ type Job struct {
 	NamespaceID uuid.UUID
 	Namespace   Namespace `gorm:"foreignKey:NamespaceID"`
 
-	TaskName         string
-	TaskConfig       datatypes.JSON
-	WindowSize       *int64 // duration in nanos
-	WindowOffset     *int64
-	WindowTruncateTo *string
+	TaskName   string
+	TaskConfig datatypes.JSON
+
+	WindowSize       string
+	WindowOffset     string
+	WindowTruncateTo string
 
 	Assets               datatypes.JSON
 	Hooks                datatypes.JSON
@@ -49,6 +50,11 @@ type Job struct {
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
 	DeletedAt gorm.DeletedAt
+
+	// Deprecated: do not use it unless WindowSize is empty
+	OldWindowSize *int64 // duration in nanos
+	// Deprecated: do not use it unless WindowOffset is empty
+	OldWindowOffset *int64
 }
 
 type JobBehavior struct {
@@ -218,9 +224,29 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		return models.JobSpec{}, fmt.Errorf("getting namespace spec of a job error: %w", err)
 	}
 
+	var offset, size = conf.WindowOffset, conf.WindowSize
+	if offset == "" && conf.OldWindowOffset != nil {
+		offset = fmt.Sprintf("%fh", time.Duration(*conf.OldWindowOffset).Hours())
+	}
+	if size == "" && conf.OldWindowSize != nil {
+		size = fmt.Sprintf("%fh", time.Duration(*conf.OldWindowSize).Hours())
+	}
+
+	window, err := models.NewWindow(conf.Version, conf.WindowTruncateTo, offset, size)
+	if err != nil {
+		return models.JobSpec{}, err
+	}
+	if err := window.Validate(); err != nil {
+		return models.JobSpec{}, err
+	}
+
+	version := conf.Version
+	if version == 0 {
+		version = models.JobSpecDefaultVersion
+	}
 	job := models.JobSpec{
 		ID:                  conf.ID,
-		Version:             conf.Version,
+		Version:             version,
 		Name:                conf.Name,
 		Owner:               conf.Owner,
 		ResourceDestination: conf.Destination,
@@ -244,11 +270,7 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 		Task: models.JobSpecTask{
 			Unit:   execUnit,
 			Config: taskConf,
-			Window: models.JobSpecTaskWindow{
-				Size:       time.Duration(*conf.WindowSize),
-				Offset:     time.Duration(*conf.WindowOffset),
-				TruncateTo: *conf.WindowTruncateTo,
-			},
+			Window: window,
 		},
 		Assets:               *(models.JobAssets{}).New(jobAssets),
 		Dependencies:         dependencies,
@@ -340,14 +362,17 @@ func (JobSpecAdapter) FromJobSpec(spec models.JobSpec, resourceDestination strin
 		return Job{}, err
 	}
 
-	wsize := spec.Task.Window.Size.Nanoseconds()
-	woffset := spec.Task.Window.Offset.Nanoseconds()
-
 	metadata, err := json.Marshal(spec.Metadata)
 	if err != nil {
 		return Job{}, err
 	}
 
+	var truncateTo, offset, size string
+	if spec.Task.Window != nil {
+		truncateTo = spec.Task.Window.GetTruncateTo()
+		offset = spec.Task.Window.GetOffset()
+		size = spec.Task.Window.GetSize()
+	}
 	return Job{
 		ID:                   spec.ID,
 		Version:              spec.Version,
@@ -363,9 +388,9 @@ func (JobSpecAdapter) FromJobSpec(spec models.JobSpec, resourceDestination strin
 		Dependencies:         dependenciesJSON,
 		TaskName:             spec.Task.Unit.Info().Name,
 		TaskConfig:           taskConfigJSON,
-		WindowSize:           &wsize,
-		WindowOffset:         &woffset,
-		WindowTruncateTo:     &spec.Task.Window.TruncateTo,
+		WindowSize:           size,
+		WindowOffset:         offset,
+		WindowTruncateTo:     truncateTo,
 		Assets:               assetsJSON,
 		Hooks:                hooksJSON,
 		Metadata:             metadata,

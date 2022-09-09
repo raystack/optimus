@@ -3,6 +3,7 @@ package v1beta1
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/odpf/salt/log"
@@ -277,9 +278,7 @@ func (sv *JobRunServiceServer) JobRun(ctx context.Context, req *pb.JobRunRequest
 }
 
 func (*JobRunServiceServer) GetWindow(_ context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
-	scheduledTime := req.ScheduledAt.AsTime()
-	err := req.ScheduledAt.CheckValid()
-	if err != nil {
+	if err := req.GetScheduledAt().CheckValid(); err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to parse schedule time %s", err.Error(), req.GetScheduledAt())
 	}
 
@@ -287,17 +286,26 @@ func (*JobRunServiceServer) GetWindow(_ context.Context, req *pb.GetWindowReques
 		return nil, status.Error(codes.InvalidArgument, "window size, offset and truncate_to must be provided")
 	}
 
-	window, err := prepareWindow(req.GetSize(), req.GetOffset(), req.GetTruncateTo())
+	window, err := models.NewWindow(int(req.Version), req.GetTruncateTo(), req.GetOffset(), req.GetSize())
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
+	}
+	if err := window.Validate(); err != nil {
+		return nil, err
 	}
 
-	windowStart := timestamppb.New(window.GetStart(scheduledTime))
-	windowEnd := timestamppb.New(window.GetEnd(scheduledTime))
+	startTime, err := window.GetStartTime(req.GetScheduledAt().AsTime())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("error getting start time: %s", err.Error()))
+	}
+	endTime, err := window.GetEndTime(req.GetScheduledAt().AsTime())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("error getting end time: %s", err.Error()))
+	}
 
 	return &pb.GetWindowResponse{
-		Start: windowStart,
-		End:   windowEnd,
+		Start: timestamppb.New(startTime),
+		End:   timestamppb.New(endTime),
 	}, nil
 }
 

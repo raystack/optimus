@@ -137,11 +137,12 @@ func (s *jobRunService) Register(ctx context.Context, namespace models.Namespace
 	}
 
 	// get whatever is saved, querying again ensures it was saved correctly
-	if jobRun, _, err = s.jobRunRepo.GetByID(ctx, jobRun.ID); err != nil {
+	jobRunResult, _, err := s.jobRunRepo.GetByID(ctx, jobRun.ID)
+	if err != nil {
 		return models.InstanceSpec{}, fmt.Errorf("failed to save instance for %s of %s:%s: %w",
 			jobRun, instanceName, instanceType, err)
 	}
-	return jobRun.GetInstance(instanceName, instanceType)
+	return jobRunResult.GetInstance(instanceName, instanceType)
 }
 
 func (s *jobRunService) prepInstance(ctx context.Context, jobRun models.JobRun, instanceType models.InstanceType, instanceName string, executedAt time.Time, namespace models.NamespaceSpec) (models.InstanceSpec, error) {
@@ -154,6 +155,15 @@ func (s *jobRunService) prepInstance(ctx context.Context, jobRun models.JobRun, 
 	}
 	if dest != nil {
 		jobDestination = dest.Destination
+	}
+
+	startTime, err := jobRun.Spec.Task.Window.GetStartTime(jobRun.ScheduledAt)
+	if err != nil {
+		return models.InstanceSpec{}, fmt.Errorf("error getting start time: %w", err)
+	}
+	endTime, err := jobRun.Spec.Task.Window.GetEndTime(jobRun.ScheduledAt)
+	if err != nil {
+		return models.InstanceSpec{}, fmt.Errorf("error getting end time: %w", err)
 	}
 
 	return models.InstanceSpec{
@@ -170,12 +180,12 @@ func (s *jobRunService) prepInstance(ctx context.Context, jobRun models.JobRun, 
 			},
 			{
 				Name:  models.ConfigKeyDstart,
-				Value: jobRun.Spec.Task.Window.GetStart(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+				Value: startTime.Format(models.InstanceScheduledAtTimeLayout),
 				Type:  models.InstanceDataTypeEnv,
 			},
 			{
 				Name:  models.ConfigKeyDend,
-				Value: jobRun.Spec.Task.Window.GetEnd(jobRun.ScheduledAt).Format(models.InstanceScheduledAtTimeLayout),
+				Value: endTime.Format(models.InstanceScheduledAtTimeLayout),
 				Type:  models.InstanceDataTypeEnv,
 			},
 			{

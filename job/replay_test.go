@@ -64,15 +64,19 @@ func TestReplay(t *testing.T) {
 		StartDate: dagStartTime,
 		Interval:  "@daily",
 	}
+	oneDayWindow, err := models.NewWindow(1, "", "", "24h")
+	if err != nil {
+		panic(err)
+	}
 	oneDayTaskWindow := models.JobSpecTask{
-		Window: models.JobSpecTaskWindow{
-			Size: time.Hour * 24,
-		},
+		Window: oneDayWindow,
+	}
+	threeDaysWindow, err := models.NewWindow(1, "", "", "72h")
+	if err != nil {
+		panic(err)
 	}
 	threeDayTaskWindow := models.JobSpecTask{
-		Window: models.JobSpecTaskWindow{
-			Size: time.Hour * 24 * 3,
-		},
+		Window: threeDaysWindow,
 	}
 	projSpec := models.ProjectSpec{
 		Name: "proj",
