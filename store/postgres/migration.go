@@ -138,21 +138,18 @@ func (m *migration) Rollback(ctx context.Context) error {
 	return m.removeMigrationStep(ctx, dbClient, latestStep)
 }
 
-func (m *migration) newMigrationClient() (migrationClient *migrate.Migrate, cleanup func(), err error) {
+func (m *migration) newMigrationClient() (*migrate.Migrate, func(), error) {
 	path := "migrations"
-	sourceDriver, sourceDriverErr := iofs.New(migrationFs, path)
-	if sourceDriverErr != nil {
-		err = fmt.Errorf("error initializing source driver: %w", sourceDriverErr)
-		return
+	sourceDriver, err := iofs.New(migrationFs, path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error initializing source driver: %w", err)
 	}
 	name := "iofs"
-	migrationInstance, migrationInstanceErr := migrate.NewWithSourceInstance(name, sourceDriver, m.dbConnURL)
-	if migrationInstanceErr != nil {
-		err = fmt.Errorf("error initializing migration instance: %w", migrationInstanceErr)
-		return
+	migrationClient, err := migrate.NewWithSourceInstance(name, sourceDriver, m.dbConnURL)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error initializing migration client: %w", err)
 	}
-	migrationClient = migrationInstance
-	cleanup = func() {
+	cleanup := func() {
 		sourceErr, databaseErr := migrationClient.Close()
 		if sourceErr != nil {
 			m.logger.Error("source driver error encountered when closing migration connection: %w", sourceErr)
@@ -161,27 +158,25 @@ func (m *migration) newMigrationClient() (migrationClient *migrate.Migrate, clea
 			m.logger.Error("database error encountered when closing migration connection: %w", databaseErr)
 		}
 	}
-	return
+	return migrationClient, cleanup, nil
 }
 
-func (m *migration) newDBClient() (dbClient *gorm.DB, cleanup func(), err error) {
-	gormDB, gormDBErr := gorm.Open(postgres.Open(m.dbConnURL))
-	if gormDBErr != nil {
-		err = fmt.Errorf("error initializing gorm db: %w", gormDBErr)
-		return
+func (m *migration) newDBClient() (*gorm.DB, func(), error) {
+	dbClient, err := gorm.Open(postgres.Open(m.dbConnURL))
+	if err != nil {
+		return nil, nil, fmt.Errorf("error initializing db client: %w", err)
 	}
-	db, dbErr := gormDB.DB()
-	if dbErr != nil {
-		err = fmt.Errorf("error getting db: %w", dbErr)
-		return
-	}
-	dbClient = gormDB
-	cleanup = func() {
-		if closeErr := db.Close(); closeErr != nil {
-			m.logger.Error("error encountered when closing db connection: %w", closeErr)
+	cleanup := func() {
+		db, err := dbClient.DB()
+		if err != nil {
+			m.logger.Error("error getting db: %w", err)
+			return
+		}
+		if err := db.Close(); err != nil {
+			m.logger.Error("error encountered when closing db connection: %w", err)
 		}
 	}
-	return
+	return dbClient, cleanup, nil
 }
 
 func (*migration) removeMigrationStep(ctx context.Context, db *gorm.DB, oldStep *migrationStep) error {
