@@ -115,7 +115,7 @@ func (e *explainCommand) RunE(_ *cobra.Command, args []string) error {
 	scheduleTime := time.Now()
 
 	e.logger.Info(fmt.Sprintf("Assuming execution time as current time of %s\n", scheduleTime.Format(models.InstanceScheduledAtTimeLayout)))
-	
+
 	templateEngine := compiler.NewGoEngine()
 	templates, err := compiler.DumpAssets(context.Background(), jobSpec, scheduleTime, templateEngine, true)
 	if err != nil {
@@ -165,7 +165,6 @@ func (e *explainCommand) GetJobSpecFromServer(jobSpec models.JobSpec) *pb.JobSpe
 		NamespaceName: e.namespaceName,
 		Spec:          v1handler.ToJobSpecificationProto(jobSpec),
 	})
-	fmt.Println("jobExplainResponse:: ", jobExplainResponse)
 	// list dependencies / later do this with dependency type too.
 	for dependencyName, dependencySpec := range jobExplainResponse.Dependencies {
 		e.logger.Info(logger.ColoredSuccess("\n> Upstream job name:: %v", dependencyName))

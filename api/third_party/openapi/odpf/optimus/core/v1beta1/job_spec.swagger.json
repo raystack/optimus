@@ -168,11 +168,8 @@
             "schema": {
               "type": "object",
               "properties": {
-                "specs": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/v1beta1JobSpecification"
-                  }
+                "spec": {
+                  "$ref": "#/definitions/v1beta1JobSpecification"
                 }
               }
             }
@@ -487,9 +484,6 @@
           "type": "boolean"
         },
         "message": {
-          "type": "string"
-        },
-        "deploymentId": {
           "type": "string"
         }
       }

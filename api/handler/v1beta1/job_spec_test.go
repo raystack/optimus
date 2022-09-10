@@ -453,7 +453,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			}
 
 			jobSvc := new(mock.JobService)
-			
+
 			jobSvc.On("CreateAndDeploy", ctx, namespaceSpec, []models.JobSpec{jobSpec}, mock2.Anything).Return(deploymentID, nil)
 			defer jobSvc.AssertExpectations(t)
 
@@ -470,11 +470,11 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				nil,
 			)
 
-			jobProto := []*pb.JobSpecification{v1.ToJobSpecificationProto(jobSpec)}
+			jobProto := v1.ToJobSpecificationProto(jobSpec)
 			request := pb.CreateJobSpecificationRequest{
 				ProjectName:   projectName,
 				NamespaceName: namespaceSpec.Name,
-				Specs:         jobProto,
+				Spec:          jobProto,
 			}
 			resp, err := jobSpecServiceServer.CreateJobSpecification(ctx, &request)
 			assert.Nil(t, err)
