@@ -84,16 +84,6 @@ func (repo jobSpecRepository) GetDependentJobs(ctx context.Context, jobSpec *mod
 	return allDependentJobs, nil
 }
 
-func (repo jobSpecRepository) IsJobDestinationDuplicate(ctx context.Context, jobSpec models.JobSpec) bool {
-	var job Job
-	if err := repo.db.WithContext(ctx).Where("destination = ? and name != ?", jobSpec.ResourceDestination).First(&job).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return models.JobSpec{}, store.ErrResourceNotFound
-		}
-	}
-	return repo.adapter.ToSpec(job)
-}
-
 func (repo jobSpecRepository) GetInferredDependenciesPerJobID(ctx context.Context, projectID models.ProjectID) (map[uuid.UUID][]models.JobSpec, error) {
 	var jobDependencies []jobDependency
 	if err := repo.db.WithContext(ctx).

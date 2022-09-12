@@ -52,7 +52,6 @@ type JobSpecRepository interface {
 
 	GetDependentJobsInferred(context.Context, *models.JobSpec) ([]models.JobSpec, error)
 	GetDependentJobsStatic(context.Context, *models.JobSpec) ([]models.JobSpec, error)
-	IsJobDestinationDuplicate(ctx context.Context, jobSpec models.JobSpec) bool
 }
 
 // NamespaceJobSpecRepository represents a storage interface for Job specifications at a namespace level

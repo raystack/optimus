@@ -15,6 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/progress"
@@ -771,6 +772,21 @@ func (srv *Service) fetchSpecsForGivenJobNames(ctx context.Context, projectSpec 
 func (srv *Service) EnrichUpstreamJobs(ctx context.Context, jobSpec models.JobSpec, jobSource []string, logWriter writer.LogWriter) (models.JobSpec, []models.UnknownDependency, error) {
 	jobSpec, unknownDependency, err := srv.dependencyResolver.EnrichUpstreamJobs(ctx, jobSpec, jobSource, logWriter)
 	return jobSpec, unknownDependency, err
+}
+
+func (srv *Service) IsJobDestinationDuplicate(ctx context.Context, jobSpec models.JobSpec) (string, error) {
+	jobWithSameDestination, err := srv.jobSpecRepository.GetJobByResourceDestination(ctx, jobSpec.ResourceDestination)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", nil
+		}
+		return "", err
+	}
+	if jobWithSameDestination.Name == jobSpec.Name && jobWithSameDestination.NamespaceSpec.ProjectSpec.Name == jobSpec.NamespaceSpec.ProjectSpec.Name {
+		// this is the same job from the DB. hance not an issues
+		return "", nil
+	}
+	return jobWithSameDestination.Name, nil
 }
 
 func (srv *Service) GetDownstreamJobs(ctx context.Context, jobSpec models.JobSpec) ([]models.JobSpec, error) {

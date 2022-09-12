@@ -219,16 +219,18 @@ func (sv *JobSpecServiceServer) JobExplain(ctx context.Context, req *pb.JobExpla
 	}, nil
 }
 
-func (sv *JobSpecServiceServer) hightlightJobWarnings(ctx context.Context, jobSpec models.JobSpec, logWriter writer.LogWriter) error {
+func (sv *JobSpecServiceServer) hightlightJobWarnings(ctx context.Context, jobSpec models.JobSpec, logWriter writer.LogWriter) {
 	//TODO: send these warnings in api response
 	if jobSpec.Behavior.CatchUp {
 		logWriter.Write(writer.LogLevelWarning, "Catchup is enabled")
 	}
 
-	if sv.jobSvc.IsJobDestinationDuplicate(ctx, jobSpec) {
-		logWriter.Write(writer.LogLevelWarning, " already a job already exists with same Destination:"+jobSpec.ResourceDestination+" exixting jobName:"+alreadyExixtingJob.Name)
+	if dupDestJobName, err := sv.jobSvc.IsJobDestinationDuplicate(ctx, jobSpec); err != nil {
+		logWriter.Write(writer.LogLevelWarning, " already a job already exists with same Destination:"+jobSpec.ResourceDestination+" exixting jobName:"+dupDestJobName)
+	} else {
+		logWriter.Write(writer.LogLevelError, " could not perform duplicate job  destination check err:"+err.Error())
 	}
-
+	// todo: return a warning struct , with warning levels, and msgs
 }
 
 func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req *pb.CreateJobSpecificationRequest) (*pb.CreateJobSpecificationResponse, error) {
