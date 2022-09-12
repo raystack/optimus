@@ -363,8 +363,10 @@ type JobService interface {
 	// GetByFilter gets the jobspec based on projectName, jobName, resourceDestination filters.
 	GetByFilter(ctx context.Context, filter JobSpecFilter) ([]JobSpec, error)
 
-	// ResolveDependecy get jobs that write to the given resource destination
-	ResolveDependecy(ctx context.Context, resourceDestinations []string, currentSpec JobSpec, logWriter writer.LogWriter) ([]JobSpec, error)
+	// EnrichUpstreamJobs adds upstream job information to a jobSpec without persisting it in database
+	EnrichUpstreamJobs(ctx context.Context, currentSpec JobSpec, jobSources []string, logWriter writer.LogWriter) (JobSpec, []UnknownDependency, error)
+	// GetDownstreamJobs reads static as well as inferred down stream dependencies
+	GetDownstreamJobs(ctx context.Context, jobSpec JobSpec) ([]JobSpec, error)
 }
 
 // JobCompiler takes template file of a scheduler and after applying

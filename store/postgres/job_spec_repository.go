@@ -69,19 +69,29 @@ func (repo jobSpecRepository) GetJobByResourceDestination(ctx context.Context, r
 
 func (repo jobSpecRepository) GetDependentJobs(ctx context.Context, jobSpec *models.JobSpec) ([]models.JobSpec, error) {
 	var allDependentJobs []models.JobSpec
-	dependentJobsInferred, err := repo.getDependentJobsInferred(ctx, jobSpec)
+	dependentJobsInferred, err := repo.GetDependentJobsInferred(ctx, jobSpec)
 	if err != nil {
 		return nil, err
 	}
 	allDependentJobs = append(allDependentJobs, dependentJobsInferred...)
 
-	dependentJobsStatic, err := repo.getDependentJobsStatic(ctx, jobSpec)
+	dependentJobsStatic, err := repo.GetDependentJobsStatic(ctx, jobSpec)
 	if err != nil {
 		return nil, err
 	}
 	allDependentJobs = append(allDependentJobs, dependentJobsStatic...)
 
 	return allDependentJobs, nil
+}
+
+func (repo jobSpecRepository) IsJobDestinationDuplicate(ctx context.Context, jobSpec models.JobSpec) bool {
+	var job Job
+	if err := repo.db.WithContext(ctx).Where("destination = ? and name != ?", jobSpec.ResourceDestination).First(&job).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.JobSpec{}, store.ErrResourceNotFound
+		}
+	}
+	return repo.adapter.ToSpec(job)
 }
 
 func (repo jobSpecRepository) GetInferredDependenciesPerJobID(ctx context.Context, projectID models.ProjectID) (map[uuid.UUID][]models.JobSpec, error) {
@@ -132,7 +142,7 @@ func (repo jobSpecRepository) GetStaticDependenciesPerJobID(ctx context.Context,
 	return repo.adapter.groupToDependenciesPerJobID(jobDependencies)
 }
 
-func (repo jobSpecRepository) getDependentJobsInferred(ctx context.Context, jobSpec *models.JobSpec) ([]models.JobSpec, error) {
+func (repo jobSpecRepository) GetDependentJobsInferred(ctx context.Context, jobSpec *models.JobSpec) ([]models.JobSpec, error) {
 	var jobs []Job
 	var specs []models.JobSpec
 
@@ -150,7 +160,7 @@ func (repo jobSpecRepository) getDependentJobsInferred(ctx context.Context, jobS
 	return specs, nil
 }
 
-func (repo jobSpecRepository) getDependentJobsStatic(ctx context.Context, jobSpec *models.JobSpec) ([]models.JobSpec, error) {
+func (repo jobSpecRepository) GetDependentJobsStatic(ctx context.Context, jobSpec *models.JobSpec) ([]models.JobSpec, error) {
 	var jobs []Job
 	var specs []models.JobSpec
 

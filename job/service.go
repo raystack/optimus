@@ -59,7 +59,9 @@ type DependencyResolver interface {
 	ResolveStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository) (map[string]models.JobSpecDependency, error)
 
 	GetJobSpecsWithDependencies(ctx context.Context, projectID models.ProjectID) ([]models.JobSpec, []models.UnknownDependency, error)
-	GetJobsByResourceDestinations(ctx context.Context, resourceDestinations []string, subjectJobName string, logWriter writer.LogWriter) ([]models.JobSpec, error)
+
+	// EnrichUpstreamJobs adds upstream jobs(inferred, static, external) in jobSpec
+	EnrichUpstreamJobs(ctx context.Context, subjectJobSpec models.JobSpec, upstreamDestinations []string, logWriter writer.LogWriter) (models.JobSpec, []models.UnknownDependency, error)
 }
 
 type Deployer interface {
@@ -766,8 +768,19 @@ func (srv *Service) fetchSpecsForGivenJobNames(ctx context.Context, projectSpec 
 	return jobSpecs, nil
 }
 
-func (srv *Service) ResolveDependecy(ctx context.Context, resourceDestinations []string, jobSpec models.JobSpec, logWriter writer.LogWriter) ([]models.JobSpec, error) {
-	return srv.dependencyResolver.GetJobsByResourceDestinations(ctx, resourceDestinations, jobSpec.Name, logWriter)
+func (srv *Service) EnrichUpstreamJobs(ctx context.Context, jobSpec models.JobSpec, jobSource []string, logWriter writer.LogWriter) (models.JobSpec, []models.UnknownDependency, error) {
+	jobSpec, unknownDependency, err := srv.dependencyResolver.EnrichUpstreamJobs(ctx, jobSpec, jobSource, logWriter)
+	return jobSpec, unknownDependency, err
+}
+
+func (srv *Service) GetDownstreamJobs(ctx context.Context, jobSpec models.JobSpec) ([]models.JobSpec, error) {
+	downstreamJobs, err := srv.jobSpecRepository.GetDependentJobsInferred(ctx, &jobSpec)
+	staticDownstreamJobs, staticDownstreamErr := srv.jobSpecRepository.GetDependentJobsStatic(ctx, &jobSpec)
+	if staticDownstreamErr != nil {
+		err = multierror.Append(err, staticDownstreamErr)
+	}
+	downstreamJobs = append(downstreamJobs, staticDownstreamJobs...)
+	return downstreamJobs, err
 }
 
 func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpec models.ProjectSpec,

@@ -158,40 +158,58 @@ func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 }
 
 func (sv *JobSpecServiceServer) JobExplain(ctx context.Context, req *pb.JobExplainRequest) (*pb.JobExplainResponse, error) {
+	logWriter := writer.NewLogWriter(sv.l)
+
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
+	// todo: handle for local job as well as job from server
 	reqJobSpec := req.GetSpec()
 	jobSpec, err := FromJobProto(reqJobSpec, sv.pluginRepo)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "cannot deserialize job: \n%s", err.Error())
 	}
 
-	logWriter := writer.NewLogWriter(sv.l)
+	jobDestination, jobSources, _ := sv.jobSvc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
+	jobSpec.ResourceDestination = jobDestination.URN()
 
-	jobSpecTaskDestination, jobSources, _ := sv.jobSvc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
-	jobSpec.ResourceDestination = jobSpecTaskDestination.URN()
+	jobSpec, unknownDependency, err := sv.jobSvc.EnrichUpstreamJobs(ctx, jobSpec, jobSources, logWriter)
+	if err != nil {
+		// TODO: handle error
+		logWriter.Write(writer.LogLevelInfo, err.Error())
+	}
+	if len(unknownDependency) > 0 {
+		// todo: understand the unknown dependencies better
+		unknownDependencyBytes, _ := json.Marshal(unknownDependency)
+		logWriter.Write(writer.LogLevelInfo, "following unknown dependencies have been detected "+string(unknownDependencyBytes))
+	}
 
-	// this only resolved inferred dependencies , manage for intefered dependencies and external dependencies
-	dependencyJobSpecs, _ := sv.jobSvc.ResolveDependecy(ctx, jobSources, jobSpec, logWriter)
+	// get downstream runs
+	downStreamJobs, err := sv.jobSvc.GetDownstreamJobs(ctx, jobSpec)
+	if err != nil {
+		// todo: attend this later
+		logWriter.Write(writer.LogLevelError, err.Error())
+	}
+	jobSpecBytes, _ := json.Marshal(jobSpec)
+	logWriter.Write(writer.LogLevelInfo, "jobSpec :: "+string(jobSpecBytes))
+	downStreamJobsBytes, _ := json.Marshal(downStreamJobs)
+	logWriter.Write(writer.LogLevelInfo, "downstream jobs :: "+string(downStreamJobsBytes))
 
-	// get internal dependencies by jobID
-	// getExternalDependenciesByJobName
-
-	vbyte, _ := json.Marshal(jobSpec.Dependencies)
-	logWriter.Write(writer.LogLevelInfo, string(vbyte))
+	err = sv.jobSvc.Check(ctx, namespaceSpec, []models.JobSpec{jobSpec}, logWriter)
+	if err != nil {
+		logWriter.Write(writer.LogLevelInfo, err.Error())
+	}
+	// check resources availability
+	//		@arinda how to do this ?
 
 	// check dependecy status from optimus
+	//
 
-	// check resources availability
-
+	sv.hightlightJobWarnings(ctx, jobSpec, logWriter)
 	// jobs that will get impacted, who have/will have sensors on the current job
 	dependencySpecMap := make(map[string]*pb.JobSpecification)
-	for _, dependencyJobSpec := range dependencyJobSpecs {
-		dependencySpecMap[dependencyJobSpec.Name] = ToJobSpecificationProto(dependencyJobSpec)
-	}
 
 	// get dependency job status
 	return &pb.JobExplainResponse{
@@ -199,6 +217,18 @@ func (sv *JobSpecServiceServer) JobExplain(ctx context.Context, req *pb.JobExpla
 		Spec:         ToJobSpecificationProto(jobSpec),
 		Dependencies: dependencySpecMap,
 	}, nil
+}
+
+func (sv *JobSpecServiceServer) hightlightJobWarnings(ctx context.Context, jobSpec models.JobSpec, logWriter writer.LogWriter) error {
+	//TODO: send these warnings in api response
+	if jobSpec.Behavior.CatchUp {
+		logWriter.Write(writer.LogLevelWarning, "Catchup is enabled")
+	}
+
+	if sv.jobSvc.IsJobDestinationDuplicate(ctx, jobSpec) {
+		logWriter.Write(writer.LogLevelWarning, " already a job already exists with same Destination:"+jobSpec.ResourceDestination+" exixting jobName:"+alreadyExixtingJob.Name)
+	}
+
 }
 
 func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req *pb.CreateJobSpecificationRequest) (*pb.CreateJobSpecificationResponse, error) {

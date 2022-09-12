@@ -250,10 +250,10 @@ func (*dependencyResolver) resolveHookDependencies(jobSpec models.JobSpec) model
 }
 
 // GetJobsByResourceDestinations get job spec of jobs that write to these destinations
-func (d *dependencyResolver) GetJobsByResourceDestinations(ctx context.Context, resourceDestinations []string,
+func (d *dependencyResolver) getJobsByResourceDestinations(ctx context.Context, upstreamDestinations []string,
 	subjectJobName string, logWriter writer.LogWriter) ([]models.JobSpec, error) {
 	jobSpecDependencyList := []models.JobSpec{}
-	for _, depDestination := range resourceDestinations {
+	for _, depDestination := range upstreamDestinations {
 		dependencyJobSpec, err := d.jobSpecRepo.GetJobByResourceDestination(ctx, depDestination)
 		if err != nil {
 			if errors.Is(err, store.ErrResourceNotFound) {
@@ -271,6 +271,40 @@ func (d *dependencyResolver) GetJobsByResourceDestinations(ctx context.Context, 
 		jobSpecDependencyList = append(jobSpecDependencyList, dependencyJobSpec)
 	}
 	return jobSpecDependencyList, nil
+}
+
+func (d *dependencyResolver) EnrichUpstreamJobs(ctx context.Context, subjectJobSpec models.JobSpec,
+	upstreamDestinations []string, logWriter writer.LogWriter) (models.JobSpec, []models.UnknownDependency, error) {
+	var unknownDependencies []models.UnknownDependency
+
+	inferredInternalUpstreams, err := d.getJobsByResourceDestinations(ctx,
+		upstreamDestinations,
+		subjectJobSpec.Name,
+		logWriter)
+	if err != nil {
+		return subjectJobSpec, unknownDependencies, err
+	}
+
+	internalDependenciesByJobID := map[uuid.UUID][]models.JobSpec{
+		subjectJobSpec.ID: inferredInternalUpstreams,
+	}
+	externalDependenciesByJobName, unknownDependencies, err := d.getExternalDependenciesByJobName(ctx,
+		subjectJobSpec.NamespaceSpec.ProjectSpec.ID,
+		[]models.JobSpec{subjectJobSpec},
+		internalDependenciesByJobID)
+	if err != nil {
+		return subjectJobSpec, unknownDependencies, err
+	}
+
+	subjectJobSpec.Dependencies = d.groupDependencies(inferredInternalUpstreams)
+
+	subjectJobSpec.ExternalDependencies.OptimusDependencies = append(
+		subjectJobSpec.ExternalDependencies.OptimusDependencies,
+		externalDependenciesByJobName[subjectJobSpec.Name].OptimusDependencies...)
+
+	subjectJobSpec.Hooks = d.fetchHookWithDependencies(subjectJobSpec)
+
+	return subjectJobSpec, unknownDependencies, err
 }
 
 func (d *dependencyResolver) GetJobSpecsWithDependencies(ctx context.Context, projectID models.ProjectID) ([]models.JobSpec, []models.UnknownDependency, error) {
