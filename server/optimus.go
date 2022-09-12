@@ -132,15 +132,19 @@ func (s *OptimusServer) setupAppKey() error {
 }
 
 func (s *OptimusServer) setupDB() error {
-	var err error
-	if err := postgres.Migrate(s.conf.Serve.DB.DSN); err != nil {
-		return fmt.Errorf("postgres.Migrate: %w", err)
+	migration, err := postgres.NewMigration(s.logger, config.BuildVersion, s.conf.Serve.DB.DSN)
+	if err != nil {
+		return fmt.Errorf("error initializing migration: %w", err)
 	}
+	ctx := context.Background()
+	if err := migration.Up(ctx); err != nil {
+		return fmt.Errorf("error executing migration up: %w", err)
+	}
+
 	s.dbConn, err = postgres.Connect(s.conf.Serve.DB, s.logger.Writer())
 	if err != nil {
 		return fmt.Errorf("postgres.Connect: %w", err)
 	}
-
 	return nil
 }
 
