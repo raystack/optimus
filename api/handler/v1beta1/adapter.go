@@ -255,22 +255,6 @@ func FromProjectProto(conf *pb.ProjectSpecification) models.ProjectSpec {
 	}
 }
 
-// ToProjectProtoWithSecrets is unused, TODO: delete
-func ToProjectProtoWithSecrets(spec models.ProjectSpec) *pb.ProjectSpecification {
-	secrets := []*pb.ProjectSpecification_ProjectSecret{}
-	for _, s := range spec.Secret {
-		secrets = append(secrets, &pb.ProjectSpecification_ProjectSecret{
-			Name:  s.Name,
-			Value: s.Value,
-		})
-	}
-	return &pb.ProjectSpecification{
-		Name:    spec.Name,
-		Config:  spec.Config,
-		Secrets: secrets,
-	}
-}
-
 func FromProjectProtoWithSecrets(conf *pb.ProjectSpecification) models.ProjectSpec {
 	if conf == nil {
 		return models.ProjectSpec{}

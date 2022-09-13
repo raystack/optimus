@@ -8,9 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/cmd/internal/logger"
-	"github.com/odpf/optimus/cmd/plugin"
 	"github.com/odpf/optimus/config"
+	oplugin "github.com/odpf/optimus/plugin"
 	"github.com/odpf/optimus/server"
 )
 
@@ -45,7 +44,7 @@ func (s *serveCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 
 	if s.installPlugins {
-		if err := plugin.InstallPlugins(conf, logger.NewClientLogger(conf.Log)); err != nil {
+		if err := oplugin.InstallPlugins(conf); err != nil {
 			return fmt.Errorf("unable to install plugins at server: %w", err)
 		}
 	}

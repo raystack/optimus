@@ -9,12 +9,10 @@ import (
 
 	"github.com/odpf/salt/config"
 	"github.com/spf13/afero"
-	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
 const (
-	ErrFailedToRead       = "unable to read optimus config file %v (%s)"
 	DefaultFilename       = "optimus.yaml"
 	DefaultConfigFilename = "config.yaml" // default file name for server config
 	DefaultFileExtension  = "yaml"
@@ -23,26 +21,8 @@ const (
 )
 
 var (
-	FS         = afero.NewReadOnlyFs(afero.NewOsFs())
-	EmptyFlags = &pflag.FlagSet{}
-	currPath   string
-	execPath   string
+	FS = afero.NewReadOnlyFs(afero.NewOsFs())
 )
-
-//nolint:gochecknoinits
-func init() { // TODO: move paths initialization outside init()
-	p, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
-	currPath = p
-
-	p, err = os.Executable()
-	if err != nil {
-		panic(err)
-	}
-	execPath = filepath.Dir(p)
-}
 
 // LoadClientConfig load the project specific config from these locations:
 // 1. filepath. ./optimus <client_command> -c "path/to/config/optimus.yaml"
@@ -68,6 +48,10 @@ func LoadClientConfig(filePath string) (*ClientConfig, error) {
 		opts = append(opts, config.WithFile(filePath))
 	} else {
 		// load opt from current directory
+		currPath, err := os.Getwd()
+		if err != nil {
+			return nil, err
+		}
 		opts = append(opts, config.WithPath(currPath))
 	}
 
@@ -107,6 +91,11 @@ func LoadServerConfig(filePath string) (*ServerConfig, error) {
 		opts = append(opts, config.WithFile(filePath))
 	} else {
 		// load opt from exec
+		p, err := os.Executable()
+		if err != nil {
+			return nil, err
+		}
+		execPath := filepath.Dir(p)
 		opts = append(opts, config.WithPath(execPath))
 	}
 	// load opt from env var

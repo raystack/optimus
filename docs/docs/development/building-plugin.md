@@ -7,9 +7,15 @@ Optimus's responsibilities are currently divided in two parts, scheduling a tran
 
 Whereas tasks used in jobs that define how the transformation will execute, what configuration does it need as input from user, how does this task resolves dependencies between each other, what kind of assets it might need. These questions are very open and answers to them could be different in  different organisation and users. To allow flexibility of answering these questions by developers themselves, we have chosen to make it easy to  contribute a new kind of task or even a hook. This modularity in Optimus is achieved using plugins.
 
-> Plugins are self-contained binaries which implements predefined protobuf interfaces to extend Optimus functionalities.
-
 Optimus can be divided in two logical parts when we are thinking of a pluggable model, one is the **core** where everything happens which is common for all job/datastore, and the other part which could be variable and needs user specific definitions of how things should work which is a **plugin**.
+
+Currently Optimus plugin can be implemented as binary executable.
+And `support for yaml` implementation of plugins is also introduced with limited 
+scope (discussed below).
+
+Optimus Plugin is just an adapter between optimus and  what actually needs to be executed. Actual transformation will be packed in a docker image and Optimus will execute these arbitrary docker images as long as it has access to reach container registry. Plugin provides the optimus server with the info about the docker image.
+
+> Plugin itself is not executed for transformation but only used for adapting conditions which Optimus requires to be defined for each task.
 
 ## Types of Plugins in Optimus
 At the moment mainly there are two types of plugins which optimus supports. These are : ***Hook*** and  ***Task***
@@ -22,17 +28,108 @@ Before getting into the difference between two plugins ,we need to get familiar 
 | Configuration          | It has its own set of configs and asset directory.           | It has its own set of configs and share the same asset directory across all hooks as the base job. |
 
 
-## Creating a plugin
+## Supported Use-Cases of Plugins in Optimus
 
-At the moment Optimus supports task as well as hook plugins. In this section we will be explaining how to write a new task although both are very similar. Plugins are implemented using [go-plugin](https://github.com/hashicorp/go-plugin) developed by Hashicorp used in terraform and other similar products. 
+* Plugin Info Usecases: 
+  * Discover all plugins and list their info.
+  * Refer - `optimus version` (lists all the plugins available),
+* Project Side Usecases :
+  * Survey to populate job specifications and assets.
+  * Plugins provide the questionare and default values (default assets for job) to the survey implemtnation in optimus.
+  * Refer -  `optimus job create`
+* Server Side Usecases :
+  * CompileAssets & DependencyResolver
+  * Theses are currently supported server side behaviour that is delegated to plugins implementations.
+  * Refer - [transformers](https://github.com/odpf/transformers/blob/main/task/bq2bq/main.go#L274) 
+
+## Binary Implementation of Plugin
+
+Binary implementation of Plugins are self-contained binaries which implements predefined protobuf interfaces to extend Optimus functionalities.
+Binary Plugins are implemented using [go-plugin](https://github.com/hashicorp/go-plugin) developed by Hashicorp used in terraform and other similar products. 
 
 > Plugins can be implemented in any language as long as they can be exported as a single self-contained executable binary and implements a GRPC server. 
 
-It is recommended to use Go currently for writing plugins because of its cross platform build functionality and to reuse protobuf sdk provided within Optimus core. Although the plugin is written in Go, it will be just an adapter between what actually needs to be executed. Actual transformation will be packed in a docker image and Optimus will execute these arbitrary docker images as long as it has access to reach container registry. 
+It is recommended to use Go currently for writing plugins because of its cross platform build functionality and to reuse protobuf sdk provided within Optimus core. 
 
-> Plugin binary itself is not executed for transformation but only used for adapting conditions which Optimus requires to be defined for each task.
+> Binary Plugins can potentially modify the behavior of Optimus in undesired ways. Exercise caution when adding new plugins developed by unrecognized developers.
 
-To demonstrate this wrapping functionality, let's create a plugin in Go and use python for actual transformation logic. You can choose to fork this [example](https://github.com/kushsharma/optimus-plugins) template and modify it as per your needs or start fresh. To demonstrate how to start from scratch, we will be starting from an empty git repository and build a plugin which will find potential hazardous **Near Earth Orbit** objects every day, let's call it **neo** for short. 
+
+## Yaml Implementation of Plugin
+Most plugins are expected to implement just the info and project side use-cases (mentioned above) and thease are data-driven i.e., plugin just provide data to optimus.
+To simplify the development process of plugins, support for yaml mode of defining plugins is added.
+
+```go
+// representation of a yaml plugin schema in golang
+
+// below struct definition in golang can be marshalled 
+// to generate yaml plugins
+
+type YamlPlugin struct {
+	// info use-case
+	Name          string `yaml:"name"`
+	Description   string `yaml:"description"`
+	Plugintype    string `yaml:"plugintype"`
+	Pluginversion string `yaml:"pluginversion"`
+	Image         string `yaml:"image"`
+	Secretpath    string `yaml:"secretpath"`
+  
+	// survey use-case
+	Questions     []struct {
+		Name            string `yaml:"name"`
+		Prompt          string `yaml:"prompt"`
+		Help            string `yaml:"help"`
+		Regexp          string `yaml:"regexp"`
+		Validationerror string `yaml:"validationerror"`
+		Minlength       int    `yaml:"minlength"`
+		Required        bool     `yaml:"required,omitempty"`
+		Maxlength       int    `yaml:"maxlength,omitempty"`
+		Subquestions    []struct {
+			Ifvalue   string `yaml:"ifvalue"`
+			Questions []struct {
+				Name        string   `yaml:"name"`
+				Prompt      string   `yaml:"prompt"`
+				Help        string   `yaml:"help"`
+				Multiselect []string `yaml:"multiselect"`
+				Regexp          string `yaml:"regexp"`
+				Validationerror string `yaml:"validationerror"`
+				Minlength       int    `yaml:"minlength"`
+				Required        bool     `yaml:"required,omitempty"`
+				Maxlength       int    `yaml:"maxlength,omitempty"`
+			} `yaml:"questions"`
+		} `yaml:"subquestions,omitempty"`
+	} `yaml:"questions"`
+
+	// default-static-values use-case
+	Defaultassets []struct {
+		Name  string `yaml:"name"`
+		Value string `yaml:"value"`
+	} `yaml:"defaultassets"`
+	Defaultconfig []struct {
+		Name  string `yaml:"name"`
+		Value string `yaml:"value"`
+	} `yaml:"defaultconfig"`
+}
+```
+refer to sample implemenation [here](#2a-creating-a-yaml-plugin)
+### Limitations of Yaml plugins:
+
+Here the scope of yaml plugins is limited to drive survey, provide default values for job config and assets and provide plugin info. As majoiry of the plugins are expected to implement subset these use-cases, the support for yaml definitions for plugins is added which simplifies development, packaging and distribution of plugins.
+
+For plugins that require to enrich optimus server side behaviour, yaml definitions falls short as this would require some code.
+
+### Validating Yaml plugins:
+Also support for validating yaml plugin is added into optimus.
+After creating yaml definitions of plugin, one can validate them as below:
+```bash
+optimus plugin validate --path {{directory of yaml plugins}}
+```
+
+** Note: The yaml plugin is expected to have file name as `optimus-plugin-{{name}}.yaml`
+
+** Note: If Both yaml and binary plugin with same name are installed, Yaml implementation is prioritised over the corresponding counterparts in binary implemenation.
+## Creating Plugin : Tutorial
+
+To demonstrate the above mentioned wrapping functionality, let's create a plugin in Go as well as a yaml definition and use python for actual transformation logic. You can choose to fork this [example](https://github.com/kushsharma/optimus-plugins) template and modify it as per your needs or start fresh. To demonstrate how to start from scratch, we will be starting from an empty git repository and build a plugin which will find potential hazardous **Near Earth Orbit** objects every day, let's call it **neo** for short. 
 
 Brief description of Neo is as follows
 
@@ -43,7 +140,7 @@ Brief description of Neo is as follows
 - Output of this object count can be printed in logs for now but in a real use case can be pushed to Kafka topic or written to a database.
 - Plugin will be written in **Go** and **Neo** in **python**.
 
-### Preparing task executor
+### 1. Preparing task executor
 
 Start by initialising an empty git repository with the following folder structure
 
@@ -199,12 +296,35 @@ RUN pip install -r requirements.txt
 
 CMD ["python3", "main.py"]
 ```
+### 2a. Creating a yaml plugin
+The Yaml implementation is as simple as providing the plugin details as below.
+```yaml
+name: Neo
+description: Near earth object tracker
+plugintype: task
+pluginversion: latest
+image: ghcr.io/kushsharma/optimus-task-neo-executor
+secretpath: /tmp/.secrets
 
+questions:
+- name: RANGE_START
+  prompt: Date range start
+  help: YYYY-MM-DD format
+  required: true
+- name: RANGE_END
+  prompt: Date range end
+  help: YYYY-MM-DD format
+  required: true
+```
+Based on the usecase, additional validation can be added to the questions section. Refer [above](#yaml-implementation-of-plugin) for more usecases and features provided.
 
+### 2b. Creating a binary plugin
+
+At the moment Optimus supports task as well as hook plugins. In this section we will be explaining how to write a new task although both are very similar. 
 
 Now that base image is ready for execution, this needs to be scheduled at a fixed interval using `jobs` but for optimus to understand **Neo** task, we need to write an adapter for it.
 
-### Implementing plugin interface
+#### Implementing plugin interface
 
 Because we are using Go, start by initialising Go module in `neo` directory as follows
 
@@ -591,8 +711,8 @@ Use this [repository](https://github.com/kushsharma/optimus-plugins) as an examp
 ### Installing a plugin
 
 Plugins need to be installed in Optimus server before it can be used. Optimus uses following directories for discovering plugin binaries
-
-```shell
+```
+./.plugins
 ./
 <exec>/
 <exec>/.optimus/plugins
@@ -600,10 +720,28 @@ $HOME/.optimus/plugins
 /usr/bin
 /usr/local/bin
 ```
+Even though the above list of directories are involved in plugin discovery, it is advised to use `.plugins` in the current working directory of the project or optimus binary.
 
-If Optimus cli is used to generate specifications or deployment, plugin should be installed in a client's machine as well. 
+### Server-side installation
+On Server side, plugins (both binary and yaml) can be installed declaratively at runtime by listing the plugin artifacts in plugins section of server config.
+```bash
+optimus plugin install -c config.yaml  # This will install plugins in `.plugins` folder.
+```
+Plugin section to be added in server config:
+```yaml
+plugin:
+  artifacts:
+    - https://...path/to/optimus-plugin-neo.yaml  # http 
+    - http://.../plugins.zip # zip 
+    - ../transformers/optimus-bq2bq_darwin_arm64 # relative paths
+    - ../transformers/optimus-plugin-neo.yaml
+```
+### Project-side installation
+On the project side, where optimus cli is used to generate specifications or deployment, optimus cli can sync the yaml plugins supported-and-served by optimus server (with host as declared in project config).
 
-> Plugins can potentially modify the behavior of Optimus in undesired ways. Exercise caution when adding new plugins developed by unrecognized developers.
+```bash
+optimus plugin sync -c optimus.yaml    # This will install plugins in `.plugins` folder.
+```
 
 ### Using in job specification
 

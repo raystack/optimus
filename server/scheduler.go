@@ -61,7 +61,9 @@ func initPrimeCluster(l log.Logger, conf config.ServerConfig, jobrunRepo store.J
 			clusterPlanner.Close() // err is nil
 		}
 		if clusterServer != nil {
-			clusterServer.Shutdown() // TODO: log error
+			if err := clusterServer.Shutdown(); err != nil {
+				l.Error("Error while closing cluster server: %s", err.Error())
+			}
 		}
 	}
 

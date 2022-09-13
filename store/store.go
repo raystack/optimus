@@ -189,3 +189,9 @@ type JobSourceRepository interface {
 	DeleteByJobID(context.Context, uuid.UUID) error
 	GetResourceURNsPerJobID(context.Context, models.ProjectID) (map[uuid.UUID][]string, error)
 }
+
+// Migration is a contract for migration
+type Migration interface {
+	Up(context.Context) error
+	Rollback(context.Context) error
+}
