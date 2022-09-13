@@ -12,6 +12,10 @@ type SupportedPluginRepo struct {
 	mock.Mock
 }
 
+func (repo *SupportedPluginRepo) AddYaml(mod models.YamlMod) error {
+	return repo.Called(mod).Error(0)
+}
+
 func (repo *SupportedPluginRepo) Add(plugin models.BasePlugin, mod models.CommandLineMod, mod2 models.DependencyResolverMod) error {
 	return repo.Called(plugin, mod, mod2).Error(0)
 }

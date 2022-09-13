@@ -4,8 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
+	"regexp"
+	"sort"
 	"strings"
 	"time"
+
+	"github.com/AlecAivazis/survey/v2"
 )
 
 const (
@@ -58,11 +63,11 @@ type PluginInfoResponse struct {
 	// should start with a character, better if all lowercase
 	Name        string
 	Description string
-	PluginType  PluginType
-	PluginMods  []PluginMod
+	PluginType  PluginType  `yaml:",omitempty"`
+	PluginMods  []PluginMod `yaml:",omitempty"`
 
-	PluginVersion string
-	APIVersion    []string
+	PluginVersion string   `yaml:",omitempty"`
+	APIVersion    []string `yaml:",omitempty"`
 
 	// Image is the full path to docker container that will be
 	// scheduled for execution
@@ -72,13 +77,13 @@ type PluginInfoResponse struct {
 	// e.g. /opt/secret/auth.json
 	// here auth.json should be a key in kube secret which gets
 	// translated to a file mounted in provided path
-	SecretPath string
+	SecretPath string `yaml:",omitempty"`
 
 	// DependsOn returns list of hooks this should be executed after
-	DependsOn []string
+	DependsOn []string `yaml:",omitempty"`
 	// PluginType provides the place of execution, could be before the transformation
 	// after the transformation, etc
-	HookType HookType
+	HookType HookType `yaml:",omitempty"`
 }
 
 // CommandLineMod needs to be implemented by plugins to interact with optimus CLI
@@ -114,18 +119,66 @@ type DependencyResolverMod interface {
 	GenerateDependencies(context.Context, GenerateDependenciesRequest) (*GenerateDependenciesResponse, error)
 }
 
+type YamlMod interface {
+	BasePlugin
+	CommandLineMod
+}
+
 type PluginOptions struct {
 	DryRun bool
 }
 
-type PluginQuestion struct {
-	Name        string
-	Prompt      string
-	Help        string
-	Default     string
-	Multiselect []string
+// USED in models.PluginQuestion Validations
+type vFactory struct{}
 
-	SubQuestions []PluginSubQuestion
+func (*vFactory) NewFromRegex(re, message string) survey.Validator {
+	var regex = regexp.MustCompile(re)
+	return func(v interface{}) error {
+		k := reflect.ValueOf(v).Kind()
+		if k != reflect.String {
+			return fmt.Errorf("was expecting a string, got %s", k.String())
+		}
+		val := v.(string)
+		if !regex.Match([]byte(val)) {
+			return fmt.Errorf("%s", message)
+		}
+		return nil
+	}
+}
+
+var ValidatorFactory = new(vFactory)
+
+type PluginQuestion struct {
+	Name        string   `yaml:",omitempty"`
+	Prompt      string   `yaml:",omitempty"`
+	Help        string   `yaml:",omitempty"`
+	Default     string   `yaml:",omitempty"`
+	Multiselect []string `yaml:",omitempty"`
+
+	SubQuestions []PluginSubQuestion `yaml:",omitempty"`
+
+	Regexp          string `yaml:",omitempty"`
+	ValidationError string `yaml:",omitempty"`
+	MinLength       int    `yaml:",omitempty"`
+	MaxLength       int    `yaml:",omitempty"`
+	Required        bool   `yaml:",omitempty"`
+}
+
+func (q *PluginQuestion) IsValid(value string) error {
+	if q.Required {
+		return survey.Required(value)
+	}
+	var validators []survey.Validator
+	if q.Regexp != "" {
+		validators = append(validators, ValidatorFactory.NewFromRegex(q.Regexp, q.ValidationError))
+	}
+	if q.MinLength != 0 {
+		validators = append(validators, survey.MinLength(q.MinLength))
+	}
+	if q.MaxLength != 0 {
+		validators = append(validators, survey.MaxLength(q.MaxLength))
+	}
+	return survey.ComposeValidators(validators...)(value)
 }
 
 type PluginSubQuestion struct {
@@ -168,7 +221,7 @@ type GetQuestionsRequest struct {
 }
 
 type GetQuestionsResponse struct {
-	Questions PluginQuestions
+	Questions PluginQuestions `yaml:",omitempty"`
 }
 
 type ValidateQuestionRequest struct {
@@ -221,7 +274,7 @@ type DefaultConfigRequest struct {
 }
 
 type DefaultConfigResponse struct {
-	Config PluginConfigs
+	Config PluginConfigs `yaml:"defaultconfig,omitempty"`
 }
 
 type PluginAsset struct {
@@ -263,7 +316,7 @@ type DefaultAssetsRequest struct {
 }
 
 type DefaultAssetsResponse struct {
-	Assets PluginAssets
+	Assets PluginAssets `yaml:"defaultassets,omitempty"`
 }
 
 type CompileAssetsRequest struct {
@@ -337,7 +390,8 @@ var (
 )
 
 type PluginRepository interface {
-	Add(BasePlugin, CommandLineMod, DependencyResolverMod) error
+	AddYaml(YamlMod) error                                       // yaml plugin
+	Add(BasePlugin, CommandLineMod, DependencyResolverMod) error // binary plugin
 	GetByName(string) (*Plugin, error)
 	GetAll() []*Plugin
 	GetTasks() []*Plugin
@@ -355,15 +409,44 @@ type Plugin struct {
 	// can be used in different circumstances
 	CLIMod        CommandLineMod
 	DependencyMod DependencyResolverMod
+	YamlMod       YamlMod
+}
+
+func (p *Plugin) IsYamlPlugin() bool {
+	return p.YamlMod != nil
+}
+
+func (p *Plugin) GetSurveyMod() CommandLineMod {
+	if p.IsYamlPlugin() {
+		return p.YamlMod
+	}
+	return p.CLIMod
 }
 
 func (p *Plugin) Info() *PluginInfoResponse {
+	if p.IsYamlPlugin() {
+		resp, _ := p.YamlMod.PluginInfo()
+		return resp
+	}
 	resp, _ := p.Base.PluginInfo()
 	return resp
 }
 
 type registeredPlugins struct {
-	data map[string]*Plugin
+	data       map[string]*Plugin
+	sortedKeys []string
+}
+
+func (s *registeredPlugins) lazySortPluginKeys() {
+	// already sorted
+	if len(s.data) == 0 || len(s.sortedKeys) > 0 {
+		return
+	}
+
+	for k := range s.data {
+		s.sortedKeys = append(s.sortedKeys, k)
+	}
+	sort.Strings(s.sortedKeys)
 }
 
 func (s *registeredPlugins) GetByName(name string) (*Plugin, error) {
@@ -375,15 +458,18 @@ func (s *registeredPlugins) GetByName(name string) (*Plugin, error) {
 
 func (s *registeredPlugins) GetAll() []*Plugin {
 	var list []*Plugin
-	for _, unit := range s.data {
-		list = append(list, unit)
+	s.lazySortPluginKeys() // sorts keys if not sorted
+	for _, pluginName := range s.sortedKeys {
+		list = append(list, s.data[pluginName])
 	}
 	return list
 }
 
 func (s *registeredPlugins) GetDependencyResolvers() []DependencyResolverMod {
 	var list []DependencyResolverMod
-	for _, unit := range s.data {
+	s.lazySortPluginKeys() // sorts keys if not sorted
+	for _, pluginKey := range s.sortedKeys {
+		unit := s.data[pluginKey]
 		if unit.DependencyMod != nil {
 			list = append(list, unit.DependencyMod)
 		}
@@ -396,6 +482,8 @@ func (s *registeredPlugins) GetCommandLines() []CommandLineMod {
 	for _, unit := range s.data {
 		if unit.CLIMod != nil {
 			list = append(list, unit.CLIMod)
+		} else if unit.YamlMod != nil {
+			list = append(list, unit.YamlMod)
 		}
 	}
 	return list
@@ -403,7 +491,9 @@ func (s *registeredPlugins) GetCommandLines() []CommandLineMod {
 
 func (s *registeredPlugins) GetTasks() []*Plugin {
 	var list []*Plugin
-	for _, unit := range s.data {
+	s.lazySortPluginKeys() // sorts keys if not sorted
+	for _, pluginName := range s.sortedKeys {
+		unit := s.data[pluginName]
 		if unit.Info().PluginType == PluginTypeTask {
 			list = append(list, unit)
 		}
@@ -413,7 +503,9 @@ func (s *registeredPlugins) GetTasks() []*Plugin {
 
 func (s *registeredPlugins) GetHooks() []*Plugin {
 	var list []*Plugin
-	for _, unit := range s.data {
+	s.lazySortPluginKeys()
+	for _, pluginName := range s.sortedKeys {
+		unit := s.data[pluginName]
 		if unit.Info().PluginType == PluginTypeHook {
 			list = append(list, unit)
 		}
@@ -421,18 +513,33 @@ func (s *registeredPlugins) GetHooks() []*Plugin {
 	return list
 }
 
+// for addin yaml plugins
+func (s *registeredPlugins) AddYaml(yamlMod YamlMod) error {
+	return s.add(nil, nil, nil, yamlMod)
+}
+
+// for addin binary plugins
 func (s *registeredPlugins) Add(baseMod BasePlugin, cliMod CommandLineMod, drMod DependencyResolverMod) error {
-	info, err := baseMod.PluginInfo()
-	if err != nil {
-		return err
-	}
-	if info.Name == "" {
-		return errors.New("plugin name cannot be empty")
+	return s.add(baseMod, cliMod, drMod, nil)
+}
+
+func (s *registeredPlugins) add(baseMod BasePlugin, cliMod CommandLineMod, drMod DependencyResolverMod, yamlMod CommandLineMod) error {
+	var info *PluginInfoResponse
+	var err error
+	if yamlMod != nil {
+		info, err = yamlMod.PluginInfo()
+		if err != nil {
+			return err
+		}
+	} else {
+		info, err = baseMod.PluginInfo()
+		if err != nil {
+			return err
+		}
 	}
 
-	// check if name is already used
-	if _, ok := s.data[info.Name]; ok {
-		return fmt.Errorf("plugin name already in use %s", info.Name)
+	if info.Name == "" {
+		return errors.New("plugin name cannot be empty")
 	}
 
 	// image is a required field
@@ -452,10 +559,24 @@ func (s *registeredPlugins) Add(baseMod BasePlugin, cliMod CommandLineMod, drMod
 		return ErrUnsupportedPlugin
 	}
 
+	isCandidatePluginYaml := yamlMod != nil
+	existingPlugin, alreadyPresent := s.data[info.Name]
+	if alreadyPresent {
+		if existingPlugin.IsYamlPlugin() == isCandidatePluginYaml {
+			return fmt.Errorf("plugin name already in use %s", info.Name)
+		}
+		// merge plugin case : existing plugin is binary and candidate is yaml
+		// (as binaries are loaded first)
+		s.data[info.Name].YamlMod = yamlMod
+		return nil
+	}
+
+	// creating new plugin
 	s.data[info.Name] = &Plugin{
 		Base:          baseMod,
 		CLIMod:        cliMod,
 		DependencyMod: drMod,
+		YamlMod:       yamlMod,
 	}
 	return nil
 }
