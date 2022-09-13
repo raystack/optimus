@@ -272,11 +272,13 @@ func TestBuildMessages(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		workerErrChan := make(chan error)
 		t.Run(tt.name, func(t *testing.T) {
-			got := buildMessageBlocks(tt.args.events)
+			got := buildMessageBlocks(tt.args.events, workerErrChan)
 			b, err := json.MarshalIndent(got, "", "    ")
 			assert.Nil(t, err)
 			assert.Equal(t, tt.want, string(b))
 		})
+		assert.Equal(t, len(workerErrChan), 0)
 	}
 }

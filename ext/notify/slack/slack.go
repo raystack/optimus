@@ -141,7 +141,7 @@ func (s *Notifier) queueNotification(receiverIDs []string, oauthSecret string, a
 }
 
 // accumulate messages
-func buildMessageBlocks(events []event) []api.Block {
+func buildMessageBlocks(events []event, workerErrChan chan error) []api.Block {
 	var blocks []api.Block
 
 	// core details related to event
@@ -150,8 +150,7 @@ func buildMessageBlocks(events []event) []api.Block {
 		fieldSlice = append(fieldSlice, api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Job:*\n%s", evt.jobName), false, false))
 		fieldSlice = append(fieldSlice, api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Owner:*\n%s", evt.owner), false, false))
 
-		switch evt.meta.Type {
-		case models.SLAMissEvent:
+		if evt.meta.Type.IsOfType(models.SLAMissEvent) {
 			heading := api.NewTextBlockObject("plain_text",
 				fmt.Sprintf("[Job] SLA Breached | %s/%s", evt.projectName, evt.namespaceName), true, false)
 			blocks = append(blocks, api.NewHeaderBlock(heading))
@@ -179,7 +178,7 @@ func buildMessageBlocks(events []event) []api.Block {
 					}
 				}
 			}
-		case models.JobFailureEvent:
+		} else if evt.meta.Type.IsOfType(models.JobFailureEvent) {
 			heading := api.NewTextBlockObject("plain_text",
 				fmt.Sprintf("[Job] Failure | %s/%s", evt.projectName, evt.namespaceName), true, false)
 			blocks = append(blocks, api.NewHeaderBlock(heading))
@@ -193,8 +192,8 @@ func buildMessageBlocks(events []event) []api.Block {
 			if taskID, ok := evt.meta.Value["task_id"]; ok && taskID.GetStringValue() != "" {
 				fieldSlice = append(fieldSlice, api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Task ID:*\n%s", taskID.GetStringValue()), false, false))
 			}
-		default:
-			// unknown event
+		} else {
+			workerErrChan <- fmt.Errorf("worker_buildMessageBlocks: unknown event type: %v", evt.meta.Type)
 			continue
 		}
 
@@ -249,7 +248,7 @@ func (s *Notifier) Worker(ctx context.Context) {
 				continue
 			}
 			var messageOptions []api.MsgOption
-			messageOptions = append(messageOptions, api.MsgOptionBlocks(buildMessageBlocks(events)...))
+			messageOptions = append(messageOptions, api.MsgOptionBlocks(buildMessageBlocks(events, s.workerErrChan)...))
 			messageOptions = append(messageOptions, api.MsgOptionAsUser(true))
 
 			client := api.New(route.authToken, api.OptionAPIURL(s.slackURL))
