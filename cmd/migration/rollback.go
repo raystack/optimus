@@ -33,7 +33,7 @@ func (r *rollbackCommand) RunE(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("error loading client config: %w", err)
 	}
 
-	l := logger.NewClientLogger(clientConfig.Log)
+	l := logger.NewClientLogger()
 	dsn := clientConfig.Serve.DB.DSN
 
 	l.Info("initiating migration")

@@ -48,7 +48,9 @@ type deployCommand struct {
 
 // NewDeployCommand initializes command for deployment
 func NewDeployCommand() *cobra.Command {
-	deploy := &deployCommand{}
+	deploy := &deployCommand{
+		logger: logger.NewClientLogger(),
+	}
 
 	cmd := &cobra.Command{
 		Use:   "deploy",
@@ -77,7 +79,6 @@ func (d *deployCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	d.logger = logger.NewClientLogger(d.clientConfig.Log)
 
 	d.logger.Info("Initializing client plugins")
 	d.pluginCleanFn, err = plugin.TriggerClientPluginsInit(d.clientConfig.Log.Level)
@@ -86,7 +87,7 @@ func (d *deployCommand) PreRunE(_ *cobra.Command, _ []string) error {
 }
 
 func (d *deployCommand) RunE(_ *cobra.Command, _ []string) error {
-	d.logger.Info(fmt.Sprintf("Registering project [%s] to [%s]", d.clientConfig.Project.Name, d.clientConfig.Host))
+	d.logger.Info("Registering project [%s] to [%s]", d.clientConfig.Project.Name, d.clientConfig.Host)
 	if err := project.RegisterProject(d.logger, d.clientConfig.Host, d.clientConfig.Project); err != nil {
 		return err
 	}
@@ -102,7 +103,7 @@ func (d *deployCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 	d.logger.Info("validation finished!\n")
 
-	d.logger.Info(fmt.Sprintf("Registering namespaces for [%s] to [%s]", d.clientConfig.Project.Name, d.clientConfig.Host))
+	d.logger.Info("Registering namespaces for [%s] to [%s]", d.clientConfig.Project.Name, d.clientConfig.Host)
 	if err := namespace.RegisterSelectedNamespaces(d.logger, d.clientConfig.Host, d.clientConfig.Project.Name, selectedNamespaces...); err != nil {
 		return err
 	}
@@ -146,7 +147,7 @@ func (d *deployCommand) deployJobs(conn *connectivity.Connectivity, selectedName
 	for _, namespace := range selectedNamespaces {
 		namespaceNames = append(namespaceNames, namespace.Name)
 	}
-	d.logger.Info(fmt.Sprintf("\n> Deploying jobs from namespaces [%s]", strings.Join(namespaceNames, ",")))
+	d.logger.Info("\n> Deploying jobs from namespaces [%s]", strings.Join(namespaceNames, ","))
 
 	stream, err := d.getJobStreamClient(conn)
 	if err != nil {
@@ -160,7 +161,7 @@ func (d *deployCommand) deployJobs(conn *connectivity.Connectivity, selectedName
 		}
 		if err := d.sendNamespaceJobRequest(stream, namespace, progressFn); err != nil {
 			if errors.Is(err, models.ErrNoJobs) {
-				d.logger.Warn(fmt.Sprintf("no job specifications are found for namespace [%s]", namespace.Name))
+				d.logger.Warn("no job specifications are found for namespace [%s]", namespace.Name)
 				continue
 			}
 			return fmt.Errorf("error getting job specs for namespace [%s]: %w", namespace.Name, err)
@@ -329,11 +330,11 @@ func (d *deployCommand) sendNamespaceResourceRequest(
 ) error {
 	datastoreSpecFs := resource.CreateDataStoreSpecFs(namespace)
 	for storeName, repoFS := range datastoreSpecFs {
-		d.logger.Info(fmt.Sprintf("> Deploying %s resources for namespace [%s]", storeName, namespace.Name))
+		d.logger.Info("> Deploying %s resources for namespace [%s]", storeName, namespace.Name)
 		request, err := d.getResourceDeploymentRequest(ctx, namespace.Name, storeName, repoFS)
 		if err != nil {
 			if errors.Is(err, models.ErrNoResources) {
-				d.logger.Warn(fmt.Sprintf("no resource specifications are found for namespace [%s]", namespace.Name))
+				d.logger.Warn("no resource specifications are found for namespace [%s]", namespace.Name)
 				continue
 			}
 			return fmt.Errorf("error getting resource specs for namespace [%s]: %w", namespace.Name, err)
@@ -417,14 +418,13 @@ func (d *deployCommand) processJobDeploymentResponses(stream pb.JobSpecification
 
 		deploymentID := resp.GetDeploymentId()
 		deployIDMaps[deploymentID] = true
-		d.logger.Info(logger.ColoredSuccess("deployID %s successfully submitted\n", deploymentID))
+		d.logger.Info("deployID %s successfully submitted\n", deploymentID)
 	}
 
 	deployIDs := []string{}
 	for deployID := range deployIDMaps {
 		deployIDs = append(deployIDs, deployID)
 	}
-
 	return deployIDs, nil
 }
 
@@ -442,32 +442,32 @@ func PollJobDeployment(ctx context.Context, l log.Logger, jobSpecService pb.JobS
 
 		switch resp.Status {
 		case models.JobDeploymentStatusInProgress.String():
-			l.Info(fmt.Sprintf("Deployment request for deployID %s is in progress...", deployID))
+			l.Info("Deployment request for deployID %s is in progress...", deployID)
 		case models.JobDeploymentStatusInQueue.String():
-			l.Info(fmt.Sprintf("Deployment request for deployID %s is in queue...", deployID))
+			l.Info("Deployment request for deployID %s is in queue...", deployID)
 		case models.JobDeploymentStatusCancelled.String():
-			l.Error(fmt.Sprintf("Deployment request for deployID %s is cancelled.", deployID))
+			l.Error("Deployment request for deployID %s is cancelled.", deployID)
 			return errors.New("job deployment cancelled")
 		case models.JobDeploymentStatusSucceed.String():
-			l.Info(logger.ColoredSuccess("Success deploying %d jobs for deployID %s", resp.SuccessCount, deployID))
+			l.Info("Success deploying %d jobs for deployID %s", resp.SuccessCount, deployID)
 			return nil
 		case models.JobDeploymentStatusFailed.String():
 			if len(resp.Failures) > 0 {
 				for _, failedJob := range resp.Failures {
 					if failedJob.GetJobName() != "" {
-						l.Error(fmt.Sprintf("Unable to deploy job %s: %s", failedJob.GetJobName(), failedJob.GetMessage()))
+						l.Error("Unable to deploy job %s: %s", failedJob.GetJobName(), failedJob.GetMessage())
 					} else {
-						l.Error(fmt.Sprintf("Job deployment failed: %s", failedJob.GetMessage()))
+						l.Error("Job deployment failed: %s", failedJob.GetMessage())
 					}
 				}
 			}
 			if len(resp.UnknownDependencies) > 0 {
 				l.Error("Unable to create sensors for below jobs:")
 				for jobName, dependencies := range resp.UnknownDependencies {
-					l.Error(fmt.Sprintf("- %s: invalid dependency name(s): %s.", jobName, dependencies))
+					l.Error("- %s: invalid dependency name(s): %s.", jobName, dependencies)
 				}
 			}
-			l.Error(fmt.Sprintf("Deployed %d/%d jobs.", resp.SuccessCount, resp.SuccessCount+resp.FailureCount))
+			l.Error("Deployed %d/%d jobs.", resp.SuccessCount, resp.SuccessCount+resp.FailureCount)
 			return errors.New("job deployment failed")
 		}
 

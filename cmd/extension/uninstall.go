@@ -1,8 +1,6 @@
 package extension
 
 import (
-	"fmt"
-
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 
@@ -58,9 +56,9 @@ func (r *uninstallCommand) RunE(cmd *cobra.Command, _ []string) error {
 	}
 
 	if tagName == "" {
-		r.logger.Info(fmt.Sprintf("Uninstalling [%s] ...", r.project.CommandName))
+		r.logger.Info("Uninstalling [%s] ...", r.project.CommandName)
 	} else {
-		r.logger.Info(fmt.Sprintf("Uninstalling [%s@%s] ...", r.project.CommandName, tagName))
+		r.logger.Info("Uninstalling [%s@%s] ...", r.project.CommandName, tagName)
 	}
 	if err := manager.Uninstall(r.project.CommandName, tagName); err != nil {
 		r.logger.Error("... finished with error")

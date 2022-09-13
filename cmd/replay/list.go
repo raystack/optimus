@@ -29,7 +29,9 @@ type listCommand struct {
 
 // NewListCommand initializes list command for replay
 func NewListCommand() *cobra.Command {
-	list := &listCommand{}
+	list := &listCommand{
+		logger: logger.NewClientLogger(),
+	}
 
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -43,7 +45,6 @@ The list command is used to fetch the recent replay in one project.
 	}
 
 	list.injectFlags(cmd)
-
 	return cmd
 }
 
@@ -64,19 +65,16 @@ func (l *listCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	}
 
 	if conf == nil {
-		l.logger = logger.NewDefaultLogger()
 		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	l.logger = logger.NewClientLogger(conf.Log)
 	if l.projectName == "" {
 		l.projectName = conf.Project.Name
 	}
 	if l.host == "" {
 		l.host = conf.Host
 	}
-
 	return nil
 }
 

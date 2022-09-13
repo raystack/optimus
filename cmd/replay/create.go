@@ -47,7 +47,11 @@ type createCommand struct {
 
 // NewCreateCommand initializes command for replay create
 func NewCreateCommand() *cobra.Command {
-	create := &createCommand{}
+	l := logger.NewClientLogger()
+	create := &createCommand{
+		logger: l,
+		survey: survey.NewReplayCreateSurvey(l),
+	}
 
 	cmd := &cobra.Command{
 		Use:     "create",
@@ -102,21 +106,16 @@ func (c *createCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	}
 
 	if conf == nil {
-		c.logger = logger.NewDefaultLogger()
-		c.survey = survey.NewReplayCreateSurvey(c.logger)
 		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	c.logger = logger.NewClientLogger(conf.Log)
-	c.survey = survey.NewReplayCreateSurvey(c.logger)
 	if c.projectName == "" {
 		c.projectName = conf.Project.Name
 	}
 	if c.host == "" {
 		c.host = conf.Host
 	}
-
 	return nil
 }
 
@@ -150,7 +149,7 @@ func (c *createCommand) RunE(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	c.logger.Info(logger.ColoredSuccess("Replay request created with id %s", replayID))
+	c.logger.Info("Replay request created with id %s", replayID)
 	return nil
 }
 
@@ -231,7 +230,7 @@ func (c *createCommand) printReplayExecutionTree(jobName, startDate, endDate str
 }
 
 func (c *createCommand) printReplayDryRunResponse(replayRequest *pb.ReplayDryRunRequest, replayDryRunResponse *pb.ReplayDryRunResponse) {
-	c.logger.Info(fmt.Sprintf("For %s project and %s namespace\n", replayRequest.ProjectName, replayRequest.NamespaceName))
+	c.logger.Info("For %s project and %s namespace\n", replayRequest.ProjectName, replayRequest.NamespaceName)
 	c.logger.Info("\n> Replay runs")
 	table := tablewriter.NewWriter(c.logger.Writer())
 	table.SetBorder(false)
@@ -269,7 +268,7 @@ func (c *createCommand) printReplayDryRunResponse(replayRequest *pb.ReplayDryRun
 		ignoredJobsCount := 0
 		for _, job := range replayDryRunResponse.IgnoredJobs {
 			ignoredJobsCount++
-			c.logger.Info(fmt.Sprintf("%d. %s", ignoredJobsCount, job))
+			c.logger.Info("%d. %s", ignoredJobsCount, job)
 		}
 		// separator
 		c.logger.Info("")

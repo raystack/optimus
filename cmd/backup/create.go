@@ -45,7 +45,12 @@ type createCommand struct {
 
 // NewCreateCommand initializes command to create backup
 func NewCreateCommand() *cobra.Command {
-	create := &createCommand{}
+	l := logger.NewClientLogger()
+	create := &createCommand{
+		logger:             l,
+		namespaceSurvey:    survey.NewNamespaceSurvey(l),
+		backupCreateSurvey: survey.NewBackupCreateSurvey(l),
+	}
 
 	cmd := &cobra.Command{
 		Use:     "create",
@@ -89,20 +94,11 @@ func (c *createCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 
 	if conf == nil {
 		c.isConfigExist = false
-		c.logger = logger.NewDefaultLogger()
-		c.namespaceSurvey = survey.NewNamespaceSurvey(c.logger)
-		c.backupCreateSurvey = survey.NewBackupCreateSurvey(c.logger)
-
 		internal.MarkFlagsRequired(cmd, []string{"project-name", "host", "namespace"})
-
 		return nil
 	}
 
 	c.isConfigExist = true
-	c.logger = logger.NewClientLogger(conf.Log)
-	c.namespaceSurvey = survey.NewNamespaceSurvey(c.logger)
-	c.backupCreateSurvey = survey.NewBackupCreateSurvey(c.logger)
-
 	return c.fillAttributes(conf)
 }
 
@@ -210,9 +206,9 @@ func (c *createCommand) runBackupRequest() error {
 }
 
 func (c *createCommand) printBackupResponse(backupResponse *pb.CreateBackupResponse) {
-	c.logger.Info(logger.ColoredSuccess("Resource backup completed successfully:"))
+	c.logger.Info("Resource backup completed successfully:")
 	for counter, result := range backupResponse.Urn {
-		c.logger.Info(fmt.Sprintf("%d. %s", counter+1, result))
+		c.logger.Info("%d. %s", counter+1, result)
 	}
 }
 
@@ -254,14 +250,14 @@ func (c *createCommand) printBackupDryRunResponse(request *pb.BackupDryRunReques
 		c.logger.Info("\nBackup list for %s. Supported downstreams will be included.", request.ResourceName)
 	}
 	for counter, resource := range response.ResourceName {
-		c.logger.Info(fmt.Sprintf("%d. %s", counter+1, resource))
+		c.logger.Info("%d. %s", counter+1, resource)
 	}
 
 	if len(response.IgnoredResources) > 0 {
 		c.logger.Warn("\nThese resources will be ignored:")
 	}
 	for counter, ignoredResource := range response.IgnoredResources {
-		c.logger.Info(fmt.Sprintf("%d. %s", counter+1, ignoredResource))
+		c.logger.Info("%d. %s", counter+1, ignoredResource)
 	}
 	c.logger.Info("")
 }

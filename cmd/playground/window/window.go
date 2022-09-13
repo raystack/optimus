@@ -14,7 +14,7 @@ type command struct {
 
 // NewCommand initializes command for window playground
 func NewCommand() *cobra.Command {
-	window := command{log: logger.NewDefaultLogger()}
+	window := command{log: logger.NewClientLogger()}
 	cmd := &cobra.Command{
 		Use:   "window",
 		Short: "Play around with window configuration",

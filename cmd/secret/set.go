@@ -36,7 +36,9 @@ type setCommand struct {
 
 // NewSetCommand initializes command for setting secret
 func NewSetCommand() *cobra.Command {
-	set := &setCommand{}
+	set := &setCommand{
+		logger: logger.NewClientLogger(),
+	}
 
 	cmd := &cobra.Command{
 		Use:     "set",
@@ -52,7 +54,6 @@ Use base64 flag if the value has been encoded.
 	}
 
 	set.injectFlags(cmd)
-
 	return cmd
 }
 
@@ -79,13 +80,11 @@ func (s *setCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	}
 
 	if conf == nil {
-		s.logger = logger.NewDefaultLogger()
 		s.survey = survey.NewSecretSetSurvey()
 		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	s.logger = logger.NewClientLogger(conf.Log)
 	s.survey = survey.NewSecretSetSurvey()
 	if s.projectName == "" {
 		s.projectName = conf.Project.Name
@@ -93,7 +92,6 @@ func (s *setCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	if s.host == "" {
 		s.host = conf.Host
 	}
-
 	return nil
 }
 
@@ -166,7 +164,7 @@ func (s *setCommand) registerSecret(req *pb.RegisterSecretRequest) error {
 		}
 		return err
 	}
-	s.logger.Info(logger.ColoredSuccess("Secret registered"))
+	s.logger.Info("Secret registered")
 	return nil
 }
 
@@ -189,6 +187,6 @@ func (s *setCommand) updateSecret(req *pb.UpdateSecretRequest) error {
 		}
 		return fmt.Errorf("%w: request failed for updating secret %s", err, req.SecretName)
 	}
-	s.logger.Info(logger.ColoredSuccess("Secret updated"))
+	s.logger.Info("Secret updated")
 	return nil
 }

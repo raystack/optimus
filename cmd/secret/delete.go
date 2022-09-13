@@ -27,7 +27,9 @@ type deleteCommand struct {
 
 // NewDeleteCommand initializes command to delete secret
 func NewDeleteCommand() *cobra.Command {
-	dlt := &deleteCommand{}
+	dlt := &deleteCommand{
+		logger: logger.NewClientLogger(),
+	}
 
 	cmd := &cobra.Command{
 		Use:     "delete",
@@ -37,9 +39,7 @@ func NewDeleteCommand() *cobra.Command {
 		RunE:    dlt.RunE,
 		PreRunE: dlt.PreRunE,
 	}
-
 	dlt.injectFlags(cmd)
-
 	return cmd
 }
 
@@ -62,19 +62,16 @@ func (d *deleteCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	}
 
 	if conf == nil {
-		d.logger = logger.NewDefaultLogger()
 		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	d.logger = logger.NewClientLogger(conf.Log)
 	if d.projectName == "" {
 		d.projectName = conf.Project.Name
 	}
 	if d.host == "" {
 		d.host = conf.Host
 	}
-
 	return nil
 }
 
@@ -111,6 +108,6 @@ func (d *deleteCommand) deleteSecret(req *pb.DeleteSecretRequest) error {
 		}
 		return fmt.Errorf("%w: request failed for deleting secret %s", err, req.SecretName)
 	}
-	d.logger.Info(logger.ColoredSuccess("Secret deleted"))
+	d.logger.Info("Secret deleted")
 	return nil
 }

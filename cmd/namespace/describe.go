@@ -29,7 +29,9 @@ type describeCommand struct {
 
 // NewDescribeCommand initializes command to describe namespace
 func NewDescribeCommand() *cobra.Command {
-	describe := &describeCommand{}
+	describe := &describeCommand{
+		logger: logger.NewClientLogger(),
+	}
 
 	cmd := &cobra.Command{
 		Use:     "describe",
@@ -40,7 +42,6 @@ func NewDescribeCommand() *cobra.Command {
 	}
 
 	describe.injectFlags(cmd)
-
 	return cmd
 }
 
@@ -68,19 +69,16 @@ func (d *describeCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	}
 
 	if conf == nil {
-		d.logger = logger.NewDefaultLogger()
 		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	d.logger = logger.NewClientLogger(conf.Log)
 	if d.projectName == "" {
 		d.projectName = conf.Project.Name
 	}
 	if d.host == "" {
 		d.host = conf.Host
 	}
-
 	return nil
 }
 
@@ -96,7 +94,7 @@ func (d *describeCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 	result := d.stringifyNamespace(namespace)
 	d.logger.Info("Successfully getting namespace!")
-	d.logger.Info(fmt.Sprintf("==============================\n%s", result))
+	d.logger.Info("==============================\n%s", result)
 	return nil
 }
 

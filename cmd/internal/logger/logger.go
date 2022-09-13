@@ -2,50 +2,61 @@ package logger
 
 import (
 	"fmt"
+	"io"
+	"os"
 
-	"github.com/muesli/termenv"
+	"github.com/fatih/color"
 	"github.com/odpf/salt/log"
-	"github.com/sirupsen/logrus"
-
-	"github.com/odpf/optimus/config"
 )
 
-type colorFormatter int
-
-func (*colorFormatter) Format(entry *logrus.Entry) ([]byte, error) {
-	var colorcode termenv.Color
-	switch entry.Level {
-	case logrus.ErrorLevel, logrus.FatalLevel, logrus.PanicLevel:
-		colorcode = ColorRed
-	case logrus.WarnLevel:
-		colorcode = ColorYellow
-	}
-	if len(entry.Data) > 0 {
-		var data string
-		for key, val := range entry.Data {
-			data += fmt.Sprintf("%s: %v ", key, val)
-		}
-		return []byte(termenv.String(fmt.Sprintf("%s %s \n", entry.Message, data)).Foreground(colorcode).String()), nil
-	}
-	return []byte(termenv.String(fmt.Sprintf("%s\n", entry.Message)).Foreground(colorcode).String()), nil
+type defaultLogger struct {
+	writer   io.Writer
+	exitFunc func(int)
 }
 
-// NewDefaultLogger initialzes plain logger
-func NewDefaultLogger() log.Logger {
-	return log.NewLogrus(
-		log.LogrusWithLevel(config.LogLevelInfo.String()),
-		log.LogrusWithFormatter(new(colorFormatter)),
-	)
+func (d defaultLogger) Debug(msg string, args ...interface{}) {
+	c := color.New(color.FgWhite)
+	d.write(c, msg, args...)
 }
 
-// NewClientLogger initializes client logger based on log configuration
-func NewClientLogger(logConfig config.LogConfig) log.Logger {
-	if logConfig.Level == "" {
-		return NewDefaultLogger()
-	}
+func (d defaultLogger) Info(msg string, args ...interface{}) {
+	c := color.New(color.FgWhite)
+	d.write(c, msg, args...)
+}
 
-	return log.NewLogrus(
-		log.LogrusWithLevel(logConfig.Level.String()),
-		log.LogrusWithFormatter(new(colorFormatter)),
-	)
+func (d defaultLogger) Warn(msg string, args ...interface{}) {
+	c := color.New(color.FgYellow)
+	d.write(c, msg, args...)
+}
+
+func (d defaultLogger) Error(msg string, args ...interface{}) {
+	c := color.New(color.FgRed)
+	d.write(c, msg, args...)
+}
+
+func (d defaultLogger) Fatal(msg string, args ...interface{}) {
+	c := color.New(color.FgRed)
+	d.write(c, msg, args...)
+	d.exitFunc(1)
+}
+
+func (defaultLogger) Level() string {
+	return ""
+}
+
+func (d defaultLogger) Writer() io.Writer {
+	return d.writer
+}
+
+func (d defaultLogger) write(c *color.Color, msg string, args ...interface{}) {
+	plainMessage := fmt.Sprintf(msg, args...)
+	c.Fprintln(d.writer, plainMessage)
+}
+
+// NewClientLogger initializes client logger
+func NewClientLogger() log.Logger {
+	return &defaultLogger{
+		writer:   os.Stdin,
+		exitFunc: os.Exit,
+	}
 }

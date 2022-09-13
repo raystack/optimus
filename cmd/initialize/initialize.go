@@ -25,10 +25,10 @@ type initializeCommand struct {
 
 // NewInitializeCommand initializes command to interactively initialize client config
 func NewInitializeCommand() *cobra.Command {
-	logger := logger.NewDefaultLogger()
+	l := logger.NewClientLogger()
 	initialize := &initializeCommand{
-		logger:     logger,
-		initSurvey: survey.NewInitializeSurvey(logger),
+		logger:     l,
+		initSurvey: survey.NewInitializeSurvey(l),
 	}
 	cmd := &cobra.Command{
 		Use:     "init",
@@ -68,8 +68,8 @@ func (i *initializeCommand) RunE(_ *cobra.Command, _ []string) error {
 	if err := i.initClientConfig(clientConfig); err != nil {
 		return err
 	}
-	i.logger.Info("Client config is initialized successfully")
-	i.logger.Info(fmt.Sprintf("If you want to modify, go to [%s]", filePath))
+	i.logger.Info("Client config is initialized successfully\n")
+	i.logger.Info("If you want to modify, go to [%s]", filePath)
 	return nil
 }
 
