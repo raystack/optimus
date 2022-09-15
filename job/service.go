@@ -339,8 +339,8 @@ func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, 
 		return err
 	}
 
-	if len(*dependentJobNames) > 0 {
-		return fmt.Errorf("cannot delete job %s since it's dependency of other jobs: %s", jobSpec.Name, strings.Join(*dependentJobNames, ","))
+	if len(dependentJobNames) > 0 {
+		return fmt.Errorf("cannot delete job %s since it's dependency of other jobs: %s", jobSpec.Name, strings.Join(dependentJobNames, ","))
 	}
 
 	// delete jobs from internal store
@@ -365,9 +365,9 @@ func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSp
 			logWriter.Write(writer.LogLevelWarning, warnMsg)
 			continue
 		}
-		if len(*dependentJobNames) > 0 {
+		if len(dependentJobNames) > 0 {
 			failure++
-			err = fmt.Errorf("cannot delete job %s since it's dependency of other jobs: %s", jobSpec.Name, strings.Join(*dependentJobNames, ","))
+			err = fmt.Errorf("cannot delete job %s since it's dependency of other jobs: %s", jobSpec.Name, strings.Join(dependentJobNames, ","))
 			warnMsg := fmt.Sprintf("[%s] error '%s': failed to delete job, %s", namespace.Name, jobSpec.Name, err.Error())
 			logWriter.Write(writer.LogLevelWarning, warnMsg)
 			continue
@@ -439,7 +439,7 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 }
 
 // do other jobs depend on this jobSpec
-func (srv *Service) getDependentJobNames(ctx context.Context, jobSpec models.JobSpec) (*[]string, error) {
+func (srv *Service) getDependentJobNames(ctx context.Context, jobSpec models.JobSpec) ([]string, error) {
 	// inferred and static dependents
 	dependentJobs, err := srv.jobSpecRepository.GetDependentJobs(ctx, &jobSpec)
 	if err != nil {
@@ -449,7 +449,7 @@ func (srv *Service) getDependentJobNames(ctx context.Context, jobSpec models.Job
 	for i, job := range dependentJobs {
 		jobNames[i] = job.Name
 	}
-	return &jobNames, nil
+	return jobNames, nil
 }
 
 func (srv *Service) GetByDestination(ctx context.Context, projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
