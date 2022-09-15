@@ -48,7 +48,7 @@ require (
 	github.com/slack-go/slack v0.9.1
 	github.com/spf13/afero v1.8.2
 	github.com/spf13/cobra v1.2.1
-	github.com/spf13/pflag v1.0.5
+	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.8.1
 	github.com/stretchr/testify v1.7.1
 	github.com/xlab/treeprint v1.1.0
@@ -94,7 +94,7 @@ require (
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.2.0 // indirect
-	github.com/fatih/color v1.7.0 // indirect
+	github.com/fatih/color v1.7.0
 	github.com/felixge/httpsnoop v1.0.2 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect

@@ -15,27 +15,23 @@ import (
 	"github.com/odpf/optimus/plugin/yaml"
 )
 
-func NewValidateCommand() *cobra.Command {
-	validate := &validateCommand{}
-	cmd := &cobra.Command{
-		Use:     "validate",
-		Short:   "validate yaml plugins",
-		Example: "optimus plugin validate --path bq2bq.yaml",
-		RunE:    validate.RunE,
-		PreRunE: validate.PreRunE,
-	}
-	cmd.Flags().StringVar(&validate.path, "path", ".plugins", "file or dir of plugins")
-	return cmd
-}
-
 type validateCommand struct {
 	logger log.Logger
 	path   string
 }
 
-func (v *validateCommand) PreRunE(_ *cobra.Command, _ []string) error {
-	v.logger = logger.NewDefaultLogger()
-	return nil
+func NewValidateCommand() *cobra.Command {
+	validate := &validateCommand{
+		logger: logger.NewClientLogger(),
+	}
+	cmd := &cobra.Command{
+		Use:     "validate",
+		Short:   "validate yaml plugins",
+		Example: "optimus plugin validate --path bq2bq.yaml",
+		RunE:    validate.RunE,
+	}
+	cmd.Flags().StringVar(&validate.path, "path", ".plugins", "file or dir of plugins")
+	return cmd
 }
 
 func (v *validateCommand) validateFile(pluginPath string) error {

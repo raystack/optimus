@@ -2,7 +2,6 @@ package extension
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
@@ -44,7 +43,7 @@ func (a *activateCommand) RunE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	a.logger.Info(fmt.Sprintf("Activating tag [%s] ...", tagName))
+	a.logger.Info("Activating tag [%s] ...", tagName)
 	if err := manager.Activate(a.project.CommandName, tagName); err != nil {
 		a.logger.Error("... finished with error")
 		return err

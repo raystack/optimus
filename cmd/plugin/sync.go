@@ -3,7 +3,6 @@ package plugin
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -18,8 +17,16 @@ import (
 	"github.com/odpf/optimus/plugin"
 )
 
+type syncCommand struct {
+	configFilePath string
+	clientConfig   *config.ClientConfig
+	logger         log.Logger
+}
+
 func NewSyncCommand() *cobra.Command {
-	sync := &syncCommand{}
+	sync := &syncCommand{
+		logger: logger.NewClientLogger(),
+	}
 	cmd := &cobra.Command{
 		Use:     "sync",
 		Short:   "sync plugins from server",
@@ -31,19 +38,12 @@ func NewSyncCommand() *cobra.Command {
 	return cmd
 }
 
-type syncCommand struct {
-	configFilePath string
-	clientConfig   *config.ClientConfig
-	logger         log.Logger
-}
-
 func (s *syncCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	c, err := config.LoadClientConfig(s.configFilePath)
 	if err != nil {
-		return errors.New("project not initialized or error in loading config : \n" + err.Error())
+		return errors.New("project not initialized or error in loading config : " + err.Error())
 	}
 	s.clientConfig = c
-	s.logger = logger.NewClientLogger(c.Log)
 	return nil
 }
 
@@ -69,7 +69,7 @@ func getPluginDownloadURL(host string) (*url.URL, error) {
 
 func (s *syncCommand) downloadArchiveFromServer() error {
 	downloadURL, err := getPluginDownloadURL(s.clientConfig.Host)
-	s.logger.Info(fmt.Sprintf("download URL : %s", downloadURL.String()))
+	s.logger.Info("download URL : %s", downloadURL.String())
 	if err != nil {
 		return err
 	}

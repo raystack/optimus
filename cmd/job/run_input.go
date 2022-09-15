@@ -47,6 +47,7 @@ func NewJobRunInputCommand() *cobra.Command {
 	jobRunInput := &jobRunInputCommand{
 		assetOutputDir: "/tmp/",
 		runType:        "task",
+		logger:         logger.NewClientLogger(),
 	}
 	cmd := &cobra.Command{
 		Use:     "run-input",
@@ -88,26 +89,23 @@ func (j *jobRunInputCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	}
 
 	if conf == nil {
-		j.logger = logger.NewDefaultLogger()
 		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	j.logger = logger.NewClientLogger(conf.Log)
 	if j.projectName == "" {
 		j.projectName = conf.Project.Name
 	}
 	if j.host == "" {
 		j.host = conf.Host
 	}
-
 	return nil
 }
 
 func (j *jobRunInputCommand) RunE(_ *cobra.Command, args []string) error {
 	jobName := args[0]
-	j.logger.Info(fmt.Sprintf("Requesting resources for project %s, job %s at %s", j.projectName, jobName, j.host))
-	j.logger.Info(fmt.Sprintf("Run name %s, run type %s, scheduled at %s\n", j.runName, j.runType, j.scheduledAt))
+	j.logger.Info("Requesting resources for project %s, job %s at %s", j.projectName, jobName, j.host)
+	j.logger.Info("Run name %s, run type %s, scheduled at %s\n", j.runName, j.runType, j.scheduledAt)
 	j.logger.Info("please wait...")
 
 	jobScheduledTimeProto, err := j.getJobScheduledTimeProto()

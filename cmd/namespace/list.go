@@ -33,6 +33,7 @@ type listCommand struct {
 func NewListCommand() *cobra.Command {
 	list := &listCommand{
 		clientConfig: &config.ClientConfig{},
+		logger:       logger.NewClientLogger(),
 	}
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -68,24 +69,21 @@ func (l *listCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	l.clientConfig = conf
 
 	if l.clientConfig == nil {
-		l.logger = logger.NewDefaultLogger()
 		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	l.logger = logger.NewClientLogger(l.clientConfig.Log)
 	if l.projectName == "" {
 		l.projectName = l.clientConfig.Project.Name
 	}
 	if l.host == "" {
 		l.host = l.clientConfig.Host
 	}
-
 	return nil
 }
 
 func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
-	l.logger.Info(fmt.Sprintf("Getting all namespaces for project [%s] from [%s]", l.projectName, l.host))
+	l.logger.Info("Getting all namespaces for project [%s] from [%s]", l.projectName, l.host)
 	namespacesFromServer, err := l.listNamespacesFromServer(l.host, l.projectName)
 	if err != nil {
 		return err
@@ -96,7 +94,7 @@ func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 	result := l.stringifyNamespaces(namespacesFromLocal, namespacesFromServer)
 	l.logger.Info("Successfully getting namespace!")
-	l.logger.Info(fmt.Sprintf("==============================\n%s", result))
+	l.logger.Info("==============================\n%s", result)
 	return nil
 }
 

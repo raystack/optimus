@@ -2,7 +2,6 @@ package job
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -30,7 +29,12 @@ type renderCommand struct {
 
 // NewRenderCommand initializes command for rendering job specification
 func NewRenderCommand() *cobra.Command {
-	render := &renderCommand{}
+	l := logger.NewClientLogger()
+	render := &renderCommand{
+		logger:          l,
+		jobSurvey:       survey.NewJobSurvey(),
+		namespaceSurvey: survey.NewNamespaceSurvey(l),
+	}
 	cmd := &cobra.Command{
 		Use:     "render",
 		Short:   "Apply template values in job specification to current 'render' directory",
@@ -54,9 +58,6 @@ func (r *renderCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	}
 
 	r.clientConfig = conf
-	r.logger = logger.NewClientLogger(conf.Log)
-	r.jobSurvey = survey.NewJobSurvey()
-	r.namespaceSurvey = survey.NewNamespaceSurvey(r.logger)
 	return nil
 }
 
@@ -76,10 +77,10 @@ func (r *renderCommand) RunE(_ *cobra.Command, args []string) error {
 	if err := os.MkdirAll(renderedPath, 0o770); err != nil {
 		return err
 	}
-	r.logger.Info(fmt.Sprintf("Rendering assets in %s", renderedPath))
+	r.logger.Info("Rendering assets in %s", renderedPath)
 
 	now := time.Now()
-	r.logger.Info(fmt.Sprintf("Assuming execution time as current time of %s\n", now.Format(models.InstanceScheduledAtTimeLayout)))
+	r.logger.Info("Assuming execution time as current time of %s\n", now.Format(models.InstanceScheduledAtTimeLayout))
 
 	templateEngine := compiler.NewGoEngine()
 	templates, err := compiler.DumpAssets(context.Background(), jobSpec, now, templateEngine, true)
@@ -94,7 +95,7 @@ func (r *renderCommand) RunE(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	r.logger.Info(logger.ColoredSuccess("\nRender complete."))
+	r.logger.Info("\nRender complete.")
 	return nil
 }
 

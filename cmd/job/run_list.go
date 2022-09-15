@@ -31,7 +31,9 @@ type runListCommand struct {
 
 // NewRunListCommand initializes run list command
 func NewRunListCommand() *cobra.Command {
-	run := &runListCommand{}
+	run := &runListCommand{
+		logger: logger.NewClientLogger(),
+	}
 
 	cmd := &cobra.Command{
 		Use:     "list-runs",
@@ -41,9 +43,7 @@ func NewRunListCommand() *cobra.Command {
 		RunE:    run.RunE,
 		PreRunE: run.PreRunE,
 	}
-
 	run.injectFlags(cmd)
-
 	return cmd
 }
 
@@ -67,26 +67,22 @@ func (r *runListCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	}
 
 	if conf == nil {
-		r.logger = logger.NewDefaultLogger()
 		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	r.logger = logger.NewClientLogger(conf.Log)
 	if r.projectName == "" {
 		r.projectName = conf.Project.Name
 	}
 	if r.host == "" {
 		r.host = conf.Host
 	}
-
 	return nil
 }
 
 func (r *runListCommand) RunE(_ *cobra.Command, args []string) error {
 	jobName := args[0]
-	r.logger.Info(fmt.Sprintf("Requesting status for project %s, job %s from %s",
-		r.projectName, jobName, r.host))
+	r.logger.Info("Requesting status for project %s, job %s from %s", r.projectName, jobName, r.host)
 
 	if err := r.validateDateArgs(r.startDate, r.endDate); err != nil {
 		return err
@@ -118,9 +114,9 @@ func (r *runListCommand) callJobRun(jobRunRequest *pb.JobRunRequest) error {
 
 	jobRuns := jobRunResponse.GetJobRuns()
 	for _, jobRun := range jobRuns {
-		r.logger.Info(fmt.Sprintf("%s - %s", jobRun.GetScheduledAt().AsTime(), jobRun.GetState()))
+		r.logger.Info("%s - %s", jobRun.GetScheduledAt().AsTime(), jobRun.GetState())
 	}
-	r.logger.Info(logger.ColoredSuccess("\nFound %d jobRun instances.", len(jobRuns)))
+	r.logger.Info("\nFound %d jobRun instances.", len(jobRuns))
 	return nil
 }
 

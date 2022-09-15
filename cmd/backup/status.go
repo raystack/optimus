@@ -32,7 +32,9 @@ type statusCommand struct {
 
 // NewStatusCommand initialize command for backup status
 func NewStatusCommand() *cobra.Command {
-	status := &statusCommand{}
+	status := &statusCommand{
+		logger: logger.NewClientLogger(),
+	}
 	cmd := &cobra.Command{
 		Use:     "status",
 		Short:   "Get backup info using uuid and datastore",
@@ -64,19 +66,16 @@ func (s *statusCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	}
 
 	if conf == nil {
-		s.logger = logger.NewDefaultLogger()
 		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	s.logger = logger.NewClientLogger(conf.Log)
 	if s.projectName == "" {
 		s.projectName = conf.Project.Name
 	}
 	if s.host == "" {
 		s.host = conf.Host
 	}
-
 	return nil
 }
 

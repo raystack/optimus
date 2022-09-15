@@ -23,7 +23,13 @@ type addHookCommand struct {
 
 // NewAddHookCommand initializes command for adding hook
 func NewAddHookCommand() *cobra.Command {
-	addHook := &addHookCommand{}
+	l := logger.NewClientLogger()
+	addHook := &addHookCommand{
+		logger:           l,
+		jobSurvey:        survey.NewJobSurvey(),
+		jobAddHookSurvey: survey.NewJobAddHookSurvey(),
+		namespaceSurvey:  survey.NewNamespaceSurvey(l),
+	}
 	cmd := &cobra.Command{
 		Use:     "addhook",
 		Aliases: []string{"add_hook", "add-hook", "addHook", "attach_hook", "attach-hook", "attachHook"},
@@ -47,10 +53,6 @@ func (a *addHookCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	}
 
 	a.clientConfig = conf
-	a.logger = logger.NewClientLogger(conf.Log)
-	a.jobSurvey = survey.NewJobSurvey()
-	a.jobAddHookSurvey = survey.NewJobAddHookSurvey()
-	a.namespaceSurvey = survey.NewNamespaceSurvey(a.logger)
 	return nil
 }
 
@@ -82,6 +84,6 @@ func (a *addHookCommand) RunE(_ *cobra.Command, _ []string) error {
 	if err := jobSpecRepo.Save(jobSpec); err != nil {
 		return err
 	}
-	a.logger.Info(logger.ColoredSuccess("Hook successfully added to %s", selectedJobName))
+	a.logger.Info("Hook successfully added to %s", selectedJobName)
 	return nil
 }

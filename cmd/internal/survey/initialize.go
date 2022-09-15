@@ -184,9 +184,9 @@ func (i *InititalizeSurvey) askInitNamespaceName(dirPath string) (string, error)
 			return name, err
 		}
 		if confirmedToReplace {
-			i.logger.Info(fmt.Sprintf("Confirmed to replace [%s] for namespace [%s]", namespaceDirPath, name))
+			i.logger.Info("Confirmed to replace [%s] for namespace [%s]", namespaceDirPath, name)
 			return name, nil
 		}
-		i.logger.Info(fmt.Sprintf("Confirmed NOT to replace [%s], let's initiate another namespace", namespaceDirPath))
+		i.logger.Info("Confirmed NOT to replace [%s], let's initiate another namespace", namespaceDirPath)
 	}
 }

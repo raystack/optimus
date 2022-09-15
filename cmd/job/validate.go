@@ -33,7 +33,9 @@ type validateCommand struct {
 
 // NewValidateCommand initializes command for validating job specification
 func NewValidateCommand() *cobra.Command {
-	validate := &validateCommand{}
+	validate := &validateCommand{
+		logger: logger.NewClientLogger(),
+	}
 
 	cmd := &cobra.Command{
 		Use:     "validate",
@@ -58,7 +60,6 @@ func (v *validateCommand) PreRunE(_ *cobra.Command, _ []string) error { // Load 
 		return err
 	}
 	v.clientConfig = conf
-	v.logger = logger.NewClientLogger(conf.Log)
 	return nil
 }
 
@@ -77,7 +78,7 @@ func (v *validateCommand) RunE(_ *cobra.Command, _ []string) error {
 
 	start := time.Now()
 	projectName := v.clientConfig.Project.Name
-	v.logger.Info(fmt.Sprintf("Validating job specifications for project: %s, namespace: %s", projectName, namespace.Name))
+	v.logger.Info("Validating job specifications for project: %s, namespace: %s", projectName, namespace.Name)
 	jobSpecs, err := jobSpecRepo.GetAll()
 	if err != nil {
 		return fmt.Errorf("directory '%s': %w", namespace.Job.Path, err)
@@ -85,7 +86,7 @@ func (v *validateCommand) RunE(_ *cobra.Command, _ []string) error {
 	if err := v.validateJobSpecificationRequest(jobSpecs); err != nil {
 		return err
 	}
-	v.logger.Info(logger.ColoredSuccess("Jobs validated successfully, took %s", time.Since(start).Round(time.Second)))
+	v.logger.Info("Jobs validated successfully, took %s", time.Since(start).Round(time.Second))
 	return nil
 }
 

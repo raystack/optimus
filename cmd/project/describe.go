@@ -1,7 +1,6 @@
 package project
 
 import (
-	"fmt"
 	"path"
 	"time"
 
@@ -29,7 +28,9 @@ type describeCommand struct {
 
 // NewDescribeCommand initializes command to describe a project
 func NewDescribeCommand() *cobra.Command {
-	describe := &describeCommand{}
+	describe := &describeCommand{
+		logger: logger.NewClientLogger(),
+	}
 
 	cmd := &cobra.Command{
 		Use:     "describe",
@@ -64,24 +65,21 @@ func (d *describeCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	}
 
 	if conf == nil {
-		d.logger = logger.NewDefaultLogger()
 		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	d.logger = logger.NewClientLogger(conf.Log)
 	if d.projectName == "" {
 		d.projectName = conf.Project.Name
 	}
 	if d.host == "" {
 		d.host = conf.Host
 	}
-
 	return nil
 }
 
 func (d *describeCommand) RunE(_ *cobra.Command, _ []string) error {
-	d.logger.Info(fmt.Sprintf("Getting project [%s] from host [%s]", d.projectName, d.host))
+	d.logger.Info("Getting project [%s] from host [%s]", d.projectName, d.host)
 	project, err := d.getProject()
 	if err != nil {
 		return err
@@ -91,7 +89,7 @@ func (d *describeCommand) RunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	d.logger.Info("Successfully getting project!")
-	d.logger.Info(fmt.Sprintf("============================\n%s", string(marshalledProject)))
+	d.logger.Info("============================\n%s", string(marshalledProject))
 	return nil
 }
 

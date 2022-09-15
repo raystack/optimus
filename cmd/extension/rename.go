@@ -2,7 +2,6 @@ package extension
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
@@ -44,7 +43,7 @@ func (r *renameCommand) RunE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	r.logger.Info(fmt.Sprintf("Ranaming command [%s] to [%s] ...", r.project.CommandName, targetCommandName))
+	r.logger.Info("Ranaming command [%s] to [%s] ...", r.project.CommandName, targetCommandName)
 	if err := manager.Rename(r.project.CommandName, targetCommandName); err != nil {
 		r.logger.Error("... finished with error")
 		return err

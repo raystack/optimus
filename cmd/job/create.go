@@ -25,7 +25,12 @@ type createCommand struct {
 
 // NewCreateCommand initializes job create command
 func NewCreateCommand() *cobra.Command {
-	create := &createCommand{}
+	l := logger.NewClientLogger()
+	create := &createCommand{
+		logger:          l,
+		namespaceSurvey: survey.NewNamespaceSurvey(l),
+		jobCreateSurvey: survey.NewJobCreateSurvey(),
+	}
 	cmd := &cobra.Command{
 		Use:     "create",
 		Short:   "Create a new Job",
@@ -47,9 +52,6 @@ func (c *createCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	}
 
 	c.clientConfig = conf
-	c.logger = logger.NewClientLogger(conf.Log)
-	c.namespaceSurvey = survey.NewNamespaceSurvey(c.logger)
-	c.jobCreateSurvey = survey.NewJobCreateSurvey()
 	return nil
 }
 
@@ -89,6 +91,6 @@ func (c *createCommand) RunE(_ *cobra.Command, _ []string) error {
 	if err := jobSpecRepo.SaveAt(spec, jobDirectory); err != nil {
 		return err
 	}
-	c.logger.Info(logger.ColoredSuccess("Job successfully created at %s", jobDirectory))
+	c.logger.Info("Job successfully created at %s", jobDirectory)
 	return nil
 }

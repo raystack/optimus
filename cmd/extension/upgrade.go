@@ -2,7 +2,6 @@ package extension
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
@@ -40,7 +39,7 @@ func (u *upgradeCommand) RunE(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	u.logger.Info(fmt.Sprintf("Upgrading [%s] ...", u.project.CommandName))
+	u.logger.Info("Upgrading [%s] ...", u.project.CommandName)
 	ctx := context.Background()
 	if err := manager.Upgrade(ctx, u.project.CommandName); err != nil {
 		u.logger.Error("... finished with error")
