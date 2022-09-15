@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+
+	"github.com/xlab/treeprint"
 )
 
 // ErrCyclicDependencyEncountered is triggered a tree has a cyclic dependency
@@ -117,15 +119,17 @@ func (t *MultiRootTree) hasCycle(root *TreeNode, visited, pathMap map[string]boo
 }
 
 func stringifyPaths(paths []string) string {
-	s := ""
-	for i := len(paths) - 1; i >= 0; i-- {
-		tabs := "\n"
-		for j := 0; j < len(paths)-1-i; j++ {
-			tabs = tabs + "\t"
-		}
-		s = s + tabs + "->" + paths[i]
+	if len(paths) == 0 {
+		return ""
 	}
-	return s
+	root := treeprint.NewWithRoot(paths[len(paths)-1])
+	tree := root
+
+	for i := len(paths) - 2; i >= 0; i-- {
+		tree = tree.AddBranch(paths[i])
+	}
+
+	return "\n" + root.String()
 }
 
 // NewMultiRootTree returns an instance of multi root dag tree
