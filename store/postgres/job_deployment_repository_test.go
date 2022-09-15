@@ -223,7 +223,7 @@ func TestIntegrationJobDeploymentRepository(t *testing.T) {
 		executableRequest, err := repo.GetExecutableRequest(ctx, 4)
 		assert.Nil(t, err)
 
-		assert.Len(t, executableRequest, 3)
+		assert.Len(t, executableRequest, 2)
 	})
 
 	t.Run("GetByStatus", func(t *testing.T) {
