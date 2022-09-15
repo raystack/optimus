@@ -2,11 +2,12 @@ package server
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/ext/scheduler/airflow2"
 	"github.com/odpf/optimus/ext/scheduler/airflow2/compiler"
 	"github.com/odpf/optimus/models"
-	"net/http"
 )
 
 func initScheduler(conf config.ServerConfig) (models.SchedulerUnit, error) {
