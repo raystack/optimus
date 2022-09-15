@@ -255,7 +255,7 @@ func TestDeployManager(t *testing.T) {
 			}
 
 			jobDeploymentRepository.On("GetByStatus", testifyMock.Anything, models.JobDeploymentStatusInProgress).Return([]models.JobDeployment{}, nil)
-			jobDeploymentRepository.On("GetExecutableRequest", testifyMock.Anything).Return(jobDeployments, nil)
+			jobDeploymentRepository.On("GetExecutableRequest", testifyMock.Anything, testifyMock.Anything).Return(jobDeployments, nil)
 			deployer.On("Deploy", testifyMock.Anything, jobDeployments[0]).Return(nil).Maybe()
 
 			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
@@ -287,7 +287,7 @@ func TestDeployManager(t *testing.T) {
 			jobDeploymentRepository.On("GetByStatus", testifyMock.Anything, models.JobDeploymentStatusInProgress).Return(timedOutDeployments, nil)
 			timedOutDeployments[0].Status = models.JobDeploymentStatusCancelled
 			jobDeploymentRepository.On("Update", testifyMock.Anything, timedOutDeployments[0]).Return(nil)
-			jobDeploymentRepository.On("GetExecutableRequest", testifyMock.Anything).Return([]models.JobDeployment{}, store.ErrResourceNotFound)
+			jobDeploymentRepository.On("GetExecutableRequest", testifyMock.Anything, testifyMock.Anything).Return([]models.JobDeployment{}, store.ErrResourceNotFound)
 
 			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
 			deployManager.Assign()
@@ -308,7 +308,7 @@ func TestDeployManager(t *testing.T) {
 			}
 
 			jobDeploymentRepository.On("GetByStatus", testifyMock.Anything, models.JobDeploymentStatusInProgress).Return([]models.JobDeployment{}, errors.New(errorMsg))
-			jobDeploymentRepository.On("GetExecutableRequest", testifyMock.Anything).Return([]models.JobDeployment{}, store.ErrResourceNotFound)
+			jobDeploymentRepository.On("GetExecutableRequest", testifyMock.Anything, testifyMock.Anything).Return([]models.JobDeployment{}, store.ErrResourceNotFound)
 
 			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
 			deployManager.Assign()
@@ -339,7 +339,7 @@ func TestDeployManager(t *testing.T) {
 			jobDeploymentRepository.On("GetByStatus", testifyMock.Anything, models.JobDeploymentStatusInProgress).Return(timedOutDeployments, nil)
 			timedOutDeployments[0].Status = models.JobDeploymentStatusCancelled
 			jobDeploymentRepository.On("Update", testifyMock.Anything, timedOutDeployments[0]).Return(errors.New(errorMsg))
-			jobDeploymentRepository.On("GetExecutableRequest", testifyMock.Anything).Return([]models.JobDeployment{}, store.ErrResourceNotFound)
+			jobDeploymentRepository.On("GetExecutableRequest", testifyMock.Anything, testifyMock.Anything).Return([]models.JobDeployment{}, store.ErrResourceNotFound)
 
 			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
 			deployManager.Assign()
@@ -370,7 +370,7 @@ func TestDeployManager(t *testing.T) {
 			jobDeploymentRepository.On("GetByStatus", testifyMock.Anything, models.JobDeploymentStatusInProgress).Return(timedOutDeployments, nil)
 			timedOutDeployments[0].Status = models.JobDeploymentStatusCancelled
 			jobDeploymentRepository.On("Update", testifyMock.Anything, timedOutDeployments[0]).Return(nil)
-			jobDeploymentRepository.On("GetExecutableRequest", testifyMock.Anything).Return([]models.JobDeployment{}, store.ErrResourceNotFound)
+			jobDeploymentRepository.On("GetExecutableRequest", testifyMock.Anything, testifyMock.Anything).Return([]models.JobDeployment{}, store.ErrResourceNotFound)
 
 			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
 			deployManager.Assign()
@@ -401,7 +401,7 @@ func TestDeployManager(t *testing.T) {
 			jobDeploymentRepository.On("GetByStatus", testifyMock.Anything, models.JobDeploymentStatusInProgress).Return(timedOutDeployments, nil)
 			timedOutDeployments[0].Status = models.JobDeploymentStatusCancelled
 			jobDeploymentRepository.On("Update", testifyMock.Anything, timedOutDeployments[0]).Return(nil)
-			jobDeploymentRepository.On("GetExecutableRequest", testifyMock.Anything).Return([]models.JobDeployment{}, errors.New(errorMsg))
+			jobDeploymentRepository.On("GetExecutableRequest", testifyMock.Anything, testifyMock.Anything).Return([]models.JobDeployment{}, errors.New(errorMsg))
 
 			deployManager := job.NewDeployManager(log, deployManagerConfig, deployer, uuidProvider, jobDeploymentRepository, nil)
 			deployManager.Assign()
