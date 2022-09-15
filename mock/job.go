@@ -721,7 +721,7 @@ func (repo *JobDeploymentRepository) Update(ctx context.Context, deploymentSpec 
 }
 
 func (repo *JobDeploymentRepository) GetExecutableRequest(ctx context.Context, count int) ([]models.JobDeployment, error) {
-	args := repo.Called(ctx)
+	args := repo.Called(ctx, count)
 	return args.Get(0).([]models.JobDeployment), args.Error(1)
 }
 
