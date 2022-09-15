@@ -41,6 +41,7 @@ func (d defaultLogger) Fatal(msg string, args ...interface{}) {
 }
 
 func (defaultLogger) Level() string {
+	// this is to adhere to the logger interface
 	return ""
 }
 
