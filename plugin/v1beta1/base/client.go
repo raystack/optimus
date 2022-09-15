@@ -94,8 +94,4 @@ func (m *GRPCClient) MakeFatalOnConnErr(err error) {
 	}
 	m.Logger.Error(fmt.Sprintf("Core communication failed with plugin: \n%+v", err))
 	m.Logger.Error(fmt.Sprintf("Exiting application, plugin crashed %s", m.Name))
-
-	// TODO(kush.sharma): once plugins are more stable and we have strict health
-	// checks we can remove this fail
-	panic(err)
 }
