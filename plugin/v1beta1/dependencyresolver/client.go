@@ -8,6 +8,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc/metadata"
 
+	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin/v1beta1/base"
@@ -46,6 +47,8 @@ func (m *GRPCClient) GenerateDestination(ctx context.Context, request models.Gen
 		Config:  cli.AdaptConfigsToProto(request.Config),
 		Assets:  cli.AdaptAssetsToProto(request.Assets),
 		Options: &pbp.PluginOptions{DryRun: request.DryRun},
+		// Fallback for secrets, please do not remove until secrets cleanup
+		Project: v1.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, m.name),
 	}, grpc_retry.WithBackoff(grpc_retry.BackoffExponential(BackoffDuration)),
 		grpc_retry.WithMax(PluginGRPCMaxRetry))
 	if err != nil {
@@ -67,6 +70,8 @@ func (m *GRPCClient) GenerateDependencies(ctx context.Context, request models.Ge
 		Config:  cli.AdaptConfigsToProto(request.Config),
 		Assets:  cli.AdaptAssetsToProto(request.Assets),
 		Options: &pbp.PluginOptions{DryRun: request.DryRun},
+		// Fallback for secrets, please do not remove until secrets cleanup
+		Project: v1.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, m.name),
 	}, grpc_retry.WithBackoff(grpc_retry.BackoffExponential(BackoffDuration)),
 		grpc_retry.WithMax(PluginGRPCMaxRetry))
 	if err != nil {
