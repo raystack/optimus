@@ -112,7 +112,8 @@ func (repo *jobDeploymentRepository) GetAndUpdateExecutableRequests(ctx context.
 			return err
 		}
 
-		for _, jobDeployment := range jobDeployments {
+		jobDeploymentSpecs = make([]models.JobDeployment, len(jobDeployments))
+		for i, jobDeployment := range jobDeployments {
 			jobDeploymentSpec, err := jobDeployment.ToSpec()
 			if err != nil {
 				return err
@@ -122,7 +123,7 @@ func (repo *jobDeploymentRepository) GetAndUpdateExecutableRequests(ctx context.
 				return err
 			}
 			jobDeploymentSpec.Status = models.JobDeploymentStatusInProgress
-			jobDeploymentSpecs = append(jobDeploymentSpecs, jobDeploymentSpec)
+			jobDeploymentSpecs[i] = jobDeploymentSpec
 		}
 
 		return nil
