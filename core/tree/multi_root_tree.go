@@ -78,16 +78,16 @@ func (t *MultiRootTree) getSortedKeys() []string {
 func (t *MultiRootTree) isCyclic(root *TreeNode, visited map[string]bool) error {
 	pathMap := make(map[string]bool)
 	paths := []string{}
-	return t.hasCycle(root, visited, pathMap, paths)
+	return t.hasCycle(root, visited, pathMap, &paths)
 }
 
 // runs a DFS on a given tree using visitor pattern
-func (t *MultiRootTree) hasCycle(root *TreeNode, visited, pathMap map[string]bool, paths []string) error {
+func (t *MultiRootTree) hasCycle(root *TreeNode, visited, pathMap map[string]bool, paths *[]string) error {
 	_, isNodeVisited := visited[root.GetName()]
 	if !isNodeVisited || !visited[root.GetName()] {
 		pathMap[root.GetName()] = true
 		visited[root.GetName()] = true
-		paths = append(paths, root.GetName())
+		*paths = append(*paths, root.GetName())
 		var cyclicErr error
 		for _, child := range root.Dependents {
 			n, _ := t.GetNodeByName(child.GetName())
@@ -101,8 +101,8 @@ func (t *MultiRootTree) hasCycle(root *TreeNode, visited, pathMap map[string]boo
 
 			_, childAlreadyInPath := pathMap[child.GetName()] // 1 -> 2 -> 1
 			if childAlreadyInPath && pathMap[child.GetName()] {
-				paths = append(paths, child.GetName())
-				cyclicErr = fmt.Errorf("%w: %s", ErrCyclicDependencyEncountered, stringifyPaths(paths))
+				*paths = append(*paths, child.GetName())
+				cyclicErr = fmt.Errorf("%w: %s", ErrCyclicDependencyEncountered, stringifyPaths(*paths))
 			}
 			if cyclicErr != nil {
 				return cyclicErr
@@ -110,10 +110,10 @@ func (t *MultiRootTree) hasCycle(root *TreeNode, visited, pathMap map[string]boo
 		}
 		pathMap[root.GetName()] = false
 		i := 0
-		for i < len(paths) && paths[i] != root.GetName() {
+		for i < len(*paths) && (*paths)[i] != root.GetName() {
 			i++
 		}
-		paths = append(paths[:i], paths[i+1:]...)
+		*paths = append((*paths)[:i], (*paths)[i+1:]...)
 	}
 	return nil
 }
@@ -122,10 +122,11 @@ func stringifyPaths(paths []string) string {
 	if len(paths) == 0 {
 		return ""
 	}
-	root := treeprint.NewWithRoot(paths[len(paths)-1])
+	i := len(paths) - 1
+	root := treeprint.NewWithRoot(paths[i])
 	tree := root
 
-	for i := len(paths) - 2; i >= 0; i-- {
+	for i--; i >= 0; i-- {
 		tree = tree.AddBranch(paths[i])
 	}
 
