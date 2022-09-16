@@ -115,17 +115,17 @@ func (repo *jobDeploymentRepository) GetAndUpdateExecutableRequests(ctx context.
 			return err
 		}
 
-		for i, jobDeployment := range jobDeployments {
+		for _, jobDeployment := range jobDeployments {
 			jobDeploymentSpec, err := jobDeployment.ToSpec()
 			if err != nil {
 				return err
 			}
-			jobDeployments[i].Status = models.JobDeploymentStatusInProgress.String()
+			jobDeployment.Status = models.JobDeploymentStatusInProgress.String()
+			if err := tx.WithContext(ctx).Save(&jobDeployment).Error; err != nil {
+				return err
+			}
+			jobDeploymentSpec.Status = models.JobDeploymentStatusInProgress
 			jobDeploymentSpecs = append(jobDeploymentSpecs, jobDeploymentSpec)
-		}
-
-		if len(jobDeployments) > 0 {
-			return tx.WithContext(ctx).Save(&jobDeployments).Error
 		}
 
 		return nil
