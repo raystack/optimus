@@ -121,8 +121,8 @@ func (m *deployManager) Assign() {
 		return
 	}
 
-	count := int(atomic.LoadInt32(&m.deployerCapacity))
-	jobDeployments, err := m.deployRepository.GetAndUpdateExecutableRequests(ctx, count)
+	limit := int(atomic.LoadInt32(&m.deployerCapacity))
+	jobDeployments, err := m.deployRepository.GetAndUpdateExecutableRequests(ctx, limit)
 	if err != nil {
 		m.l.Error("failed to fetch executable deployment request to assign deployer", "error", err.Error())
 		return
