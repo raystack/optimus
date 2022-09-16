@@ -105,6 +105,9 @@ func (m *GRPCClient) DefaultAssets(ctx context.Context, request models.DefaultAs
 }
 
 func (m *GRPCClient) CompileAssets(ctx context.Context, request models.CompileAssetsRequest) (*models.CompileAssetsResponse, error) {
+	_, span := base.Tracer.Start(ctx, "CompileAssets")
+	defer span.End()
+
 	var instanceData []*pb.InstanceSpecData
 	for _, inst := range request.InstanceData {
 		instanceData = append(instanceData, &pb.InstanceSpecData{
