@@ -121,17 +121,17 @@ func (m *deployManager) Assign() {
 		return
 	}
 
-	for int(atomic.LoadInt32(&m.deployerCapacity)) > 0 {
-		// TODO: avoid having multiple query
-		jobDeployment, err := m.deployRepository.GetFirstExecutableRequest(ctx)
-		if err != nil {
-			if errors.Is(err, store.ErrResourceNotFound) {
-				m.l.Debug("no deployment request found to assign deployer")
-				return
-			}
-			m.l.Error("failed to fetch executable deployment request to assign deployer", "error", err.Error())
-			return
-		}
+	limit := int(atomic.LoadInt32(&m.deployerCapacity))
+	jobDeployments, err := m.deployRepository.GetAndUpdateExecutableRequests(ctx, limit)
+	if err != nil {
+		m.l.Error("failed to fetch executable deployment request to assign deployer", "error", err.Error())
+		return
+	}
+	if len(jobDeployments) == 0 {
+		m.l.Debug("no deployment request found to assign deployer")
+		return
+	}
+	for _, jobDeployment := range jobDeployments {
 		m.l.Info("deployer taking a request", "request id", jobDeployment.ID.UUID(), "project name", jobDeployment.Project.Name)
 		atomic.AddInt32(&m.deployerCapacity, -1)
 		go m.spawnDeployer(m.deployer, jobDeployment)

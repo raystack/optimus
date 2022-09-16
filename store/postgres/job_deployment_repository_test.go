@@ -177,7 +177,7 @@ func TestIntegrationJobDeploymentRepository(t *testing.T) {
 		assert.EqualValues(t, []models.DeploymentID{jobDeployments[0].ID, jobDeployments[1].ID}, []models.DeploymentID{storedDeployment1.ID, storedDeployment2.ID})
 	})
 
-	t.Run("GetFirstExecutableRequest", func(t *testing.T) {
+	t.Run("GetAndUpdateExecutableRequests", func(t *testing.T) {
 		db := DBSetup()
 
 		jobDeployments := []models.JobDeployment{
@@ -220,10 +220,10 @@ func TestIntegrationJobDeploymentRepository(t *testing.T) {
 		err = repo.Save(ctx, jobDeployments[3])
 		assert.Nil(t, err)
 
-		executableRequest, err := repo.GetFirstExecutableRequest(ctx)
+		executableRequest, err := repo.GetAndUpdateExecutableRequests(ctx, 4)
 		assert.Nil(t, err)
 
-		assert.Equal(t, jobDeployments[2].ID, executableRequest.ID)
+		assert.Len(t, executableRequest, 2)
 	})
 
 	t.Run("GetByStatus", func(t *testing.T) {

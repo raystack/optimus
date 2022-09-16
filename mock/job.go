@@ -720,9 +720,9 @@ func (repo *JobDeploymentRepository) Update(ctx context.Context, deploymentSpec 
 	return args.Error(0)
 }
 
-func (repo *JobDeploymentRepository) GetFirstExecutableRequest(ctx context.Context) (models.JobDeployment, error) {
-	args := repo.Called(ctx)
-	return args.Get(0).(models.JobDeployment), args.Error(1)
+func (repo *JobDeploymentRepository) GetAndUpdateExecutableRequests(ctx context.Context, limit int) ([]models.JobDeployment, error) {
+	args := repo.Called(ctx, limit)
+	return args.Get(0).([]models.JobDeployment), args.Error(1)
 }
 
 func (repo *JobDeploymentRepository) GetByStatus(ctx context.Context, status models.JobDeploymentStatus) ([]models.JobDeployment, error) {
