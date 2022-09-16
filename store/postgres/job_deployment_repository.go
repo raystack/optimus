@@ -104,11 +104,11 @@ func (repo *jobDeploymentRepository) GetByStatusAndProjectID(ctx context.Context
 	return jobDeployment.ToSpec()
 }
 
-func (repo *jobDeploymentRepository) GetExecutableRequest(ctx context.Context, count int) (jobDeploymentSpecs []models.JobDeployment, err error) {
+func (repo *jobDeploymentRepository) GetAndUpdateExecutableRequests(ctx context.Context, limit int) (jobDeploymentSpecs []models.JobDeployment, err error) {
 	err = repo.db.Transaction(func(tx *gorm.DB) error {
 		var jobDeployments []JobDeployment
 		if err := tx.WithContext(ctx).Preload("Project").Where("status=? and project_id not in (select project_id from job_deployment where status=?)",
-			models.JobDeploymentStatusInQueue.String(), models.JobDeploymentStatusInProgress.String()).Order("created_at ASC").Limit(count).Find(&jobDeployments).Error; err != nil {
+			models.JobDeploymentStatusInQueue.String(), models.JobDeploymentStatusInProgress.String()).Order("created_at ASC").Limit(limit).Find(&jobDeployments).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return store.ErrResourceNotFound
 			}
