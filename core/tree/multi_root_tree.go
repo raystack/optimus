@@ -49,22 +49,6 @@ func (t *MultiRootTree) GetNodeByName(dagName string) (*TreeNode, bool) {
 	return value, ok
 }
 
-// IsCyclic - detects if there are any cycles in the tree
-func (t *MultiRootTree) IsCyclic() error {
-	visitedMap := make(map[string]bool)
-	data := t.getSortedKeys()
-	for _, k := range data {
-		node := t.dataMap[k]
-		if _, visited := visitedMap[node.GetName()]; !visited {
-			err := t.isCyclic(node, visitedMap)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 // get sorted dataMap keys
 func (t *MultiRootTree) getSortedKeys() []string {
 	keys := []string{}
@@ -75,50 +59,62 @@ func (t *MultiRootTree) getSortedKeys() []string {
 	return keys
 }
 
-func (t *MultiRootTree) isCyclic(root *TreeNode, visited map[string]bool) error {
-	pathMap := make(map[string]bool)
-	paths := []string{}
-	return t.hasCycle(root, visited, pathMap, &paths)
-}
+// ValidateCyclic - detects if there are any cycles in the tree
+func (t *MultiRootTree) ValidateCyclic() error {
+	// runs a DFS on a given tree using visitor pattern
+	var checkCyclic func(*TreeNode, map[string]bool, map[string]bool, *[]string) error
+	checkCyclic = func(node *TreeNode, visitedNodeNames, visitedPaths map[string]bool, orderedVisitedPaths *[]string) error {
+		_, isNodeVisited := visitedNodeNames[node.GetName()]
+		if !isNodeVisited || !visitedNodeNames[node.GetName()] {
+			visitedPaths[node.GetName()] = true
+			visitedNodeNames[node.GetName()] = true
+			*orderedVisitedPaths = append(*orderedVisitedPaths, node.GetName())
+			var cyclicErr error
+			for _, child := range node.Dependents {
+				n, _ := t.GetNodeByName(child.GetName())
+				_, isChildVisited := visitedNodeNames[child.GetName()]
+				if !isChildVisited || !visitedNodeNames[child.GetName()] {
+					cyclicErr = checkCyclic(n, visitedNodeNames, visitedPaths, orderedVisitedPaths)
+				}
+				if cyclicErr != nil {
+					return cyclicErr
+				}
 
-// runs a DFS on a given tree using visitor pattern
-func (t *MultiRootTree) hasCycle(root *TreeNode, visited, pathMap map[string]bool, paths *[]string) error {
-	_, isNodeVisited := visited[root.GetName()]
-	if !isNodeVisited || !visited[root.GetName()] {
-		pathMap[root.GetName()] = true
-		visited[root.GetName()] = true
-		*paths = append(*paths, root.GetName())
-		var cyclicErr error
-		for _, child := range root.Dependents {
-			n, _ := t.GetNodeByName(child.GetName())
-			_, isChildVisited := visited[child.GetName()]
-			if !isChildVisited || !visited[child.GetName()] {
-				cyclicErr = t.hasCycle(n, visited, pathMap, paths)
+				if isVisited, ok := visitedPaths[child.GetName()]; ok && isVisited {
+					*orderedVisitedPaths = append(*orderedVisitedPaths, child.GetName())
+					cyclicErr = fmt.Errorf("%w: %s", ErrCyclicDependencyEncountered, prettifyPaths(*orderedVisitedPaths))
+				}
+				if cyclicErr != nil {
+					return cyclicErr
+				}
 			}
-			if cyclicErr != nil {
-				return cyclicErr
+			visitedPaths[node.GetName()] = false
+			i := 0
+			for i < len(*orderedVisitedPaths) && (*orderedVisitedPaths)[i] != node.GetName() {
+				i++
 			}
-
-			_, childAlreadyInPath := pathMap[child.GetName()] // 1 -> 2 -> 1
-			if childAlreadyInPath && pathMap[child.GetName()] {
-				*paths = append(*paths, child.GetName())
-				cyclicErr = fmt.Errorf("%w: %s", ErrCyclicDependencyEncountered, stringifyPaths(*paths))
-			}
-			if cyclicErr != nil {
-				return cyclicErr
-			}
+			*orderedVisitedPaths = append((*orderedVisitedPaths)[:i], (*orderedVisitedPaths)[i+1:]...)
 		}
-		pathMap[root.GetName()] = false
-		i := 0
-		for i < len(*paths) && (*paths)[i] != root.GetName() {
-			i++
-		}
-		*paths = append((*paths)[:i], (*paths)[i+1:]...)
+		return nil
 	}
+
+	visitedNodeNames := make(map[string]bool)
+	data := t.getSortedKeys()
+	for _, k := range data {
+		node := t.dataMap[k]
+		if _, visited := visitedNodeNames[node.GetName()]; !visited {
+			visitedPaths := map[string]bool{}
+			orderedVisitedPaths := []string{}
+			if err := checkCyclic(node, visitedNodeNames, visitedPaths, &orderedVisitedPaths); err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
-func stringifyPaths(paths []string) string {
+func prettifyPaths(paths []string) string {
 	if len(paths) == 0 {
 		return ""
 	}

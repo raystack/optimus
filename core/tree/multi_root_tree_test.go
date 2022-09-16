@@ -23,7 +23,7 @@ func TestMultiRootDagTree(t *testing.T) {
 		multiRootTree.AddNodeIfNotExist(treeNode1)
 		multiRootTree.AddNodeIfNotExist(treeNode2)
 
-		err := multiRootTree.IsCyclic()
+		err := multiRootTree.ValidateCyclic()
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), tree.ErrCyclicDependencyEncountered.Error())
 	})
@@ -38,7 +38,7 @@ func TestMultiRootDagTree(t *testing.T) {
 		assert.Equal(t, 1, len(rootNodes))
 		assert.Equal(t, "job1", rootNodes[0].Data.GetName())
 	})
-	t.Run("IsCyclic", func(t *testing.T) {
+	t.Run("ValidateCyclic", func(t *testing.T) {
 		t.Run("should throw an error if cyclic", func(t *testing.T) {
 			treeNode1 := tree.NewTreeNode(models.JobSpec{
 				Name: "pilotdata-integration.playground.job1",
@@ -61,7 +61,7 @@ func TestMultiRootDagTree(t *testing.T) {
 			treeNode3.AddDependent(treeNode2)
 			treeNode2.AddDependent(treeNode1)
 			treeNode2.AddDependent(treeNode4)
-			err := multiRootTree.IsCyclic()
+			err := multiRootTree.ValidateCyclic()
 			assert.NotNil(t, err)
 			assert.Equal(t, `a cycle dependency encountered in the tree: 
 pilotdata-integration.playground.job2
@@ -81,7 +81,7 @@ pilotdata-integration.playground.job2
 			multiRootTree.AddNode(treeNode1)
 			multiRootTree.AddNode(treeNode2)
 			treeNode1.AddDependent(treeNode2)
-			err := multiRootTree.IsCyclic()
+			err := multiRootTree.ValidateCyclic()
 			assert.Nil(t, err)
 		})
 	})
