@@ -109,9 +109,6 @@ func (repo *jobDeploymentRepository) GetAndUpdateExecutableRequests(ctx context.
 		var jobDeployments []JobDeployment
 		if err := tx.WithContext(ctx).Preload("Project").Where("status=? and project_id not in (select project_id from job_deployment where status=?)",
 			models.JobDeploymentStatusInQueue.String(), models.JobDeploymentStatusInProgress.String()).Order("created_at ASC").Limit(limit).Find(&jobDeployments).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return store.ErrResourceNotFound
-			}
 			return err
 		}
 
