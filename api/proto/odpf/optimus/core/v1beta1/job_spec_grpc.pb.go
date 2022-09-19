@@ -28,8 +28,8 @@ type JobSpecificationServiceClient interface {
 	// events
 	// State of the world request
 	DeployJobSpecification(ctx context.Context, opts ...grpc.CallOption) (JobSpecificationService_DeployJobSpecificationClient, error)
-	// JobExplain return a new jobSpec for a namespace which belongs to a project
-	JobExplain(ctx context.Context, in *JobExplainRequest, opts ...grpc.CallOption) (*JobExplainResponse, error)
+	// JobInspect return a new jobSpec for a namespace which belongs to a project
+	JobInspect(ctx context.Context, in *JobInspectRequest, opts ...grpc.CallOption) (*JobInspectResponse, error)
 	// CreateJobSpecification registers a new job for a namespace which belongs to a project
 	CreateJobSpecification(ctx context.Context, in *CreateJobSpecificationRequest, opts ...grpc.CallOption) (*CreateJobSpecificationResponse, error)
 	// AddJobSpecification registers new jobs for a namespace which belongs to the given project
@@ -93,9 +93,9 @@ func (x *jobSpecificationServiceDeployJobSpecificationClient) Recv() (*DeployJob
 	return m, nil
 }
 
-func (c *jobSpecificationServiceClient) JobExplain(ctx context.Context, in *JobExplainRequest, opts ...grpc.CallOption) (*JobExplainResponse, error) {
-	out := new(JobExplainResponse)
-	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobSpecificationService/JobExplain", in, out, opts...)
+func (c *jobSpecificationServiceClient) JobInspect(ctx context.Context, in *JobInspectRequest, opts ...grpc.CallOption) (*JobInspectResponse, error) {
+	out := new(JobInspectResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobSpecificationService/JobInspect", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -248,8 +248,8 @@ type JobSpecificationServiceServer interface {
 	// events
 	// State of the world request
 	DeployJobSpecification(JobSpecificationService_DeployJobSpecificationServer) error
-	// JobExplain return a new jobSpec for a namespace which belongs to a project
-	JobExplain(context.Context, *JobExplainRequest) (*JobExplainResponse, error)
+	// JobInspect return a new jobSpec for a namespace which belongs to a project
+	JobInspect(context.Context, *JobInspectRequest) (*JobInspectResponse, error)
 	// CreateJobSpecification registers a new job for a namespace which belongs to a project
 	CreateJobSpecification(context.Context, *CreateJobSpecificationRequest) (*CreateJobSpecificationResponse, error)
 	// AddJobSpecification registers new jobs for a namespace which belongs to the given project
@@ -282,8 +282,8 @@ type UnimplementedJobSpecificationServiceServer struct {
 func (UnimplementedJobSpecificationServiceServer) DeployJobSpecification(JobSpecificationService_DeployJobSpecificationServer) error {
 	return status.Errorf(codes.Unimplemented, "method DeployJobSpecification not implemented")
 }
-func (UnimplementedJobSpecificationServiceServer) JobExplain(context.Context, *JobExplainRequest) (*JobExplainResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method JobExplain not implemented")
+func (UnimplementedJobSpecificationServiceServer) JobInspect(context.Context, *JobInspectRequest) (*JobInspectResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method JobInspect not implemented")
 }
 func (UnimplementedJobSpecificationServiceServer) CreateJobSpecification(context.Context, *CreateJobSpecificationRequest) (*CreateJobSpecificationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateJobSpecification not implemented")
@@ -355,20 +355,20 @@ func (x *jobSpecificationServiceDeployJobSpecificationServer) Recv() (*DeployJob
 	return m, nil
 }
 
-func _JobSpecificationService_JobExplain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(JobExplainRequest)
+func _JobSpecificationService_JobInspect_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JobInspectRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(JobSpecificationServiceServer).JobExplain(ctx, in)
+		return srv.(JobSpecificationServiceServer).JobInspect(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/odpf.optimus.core.v1beta1.JobSpecificationService/JobExplain",
+		FullMethod: "/odpf.optimus.core.v1beta1.JobSpecificationService/JobInspect",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(JobSpecificationServiceServer).JobExplain(ctx, req.(*JobExplainRequest))
+		return srv.(JobSpecificationServiceServer).JobInspect(ctx, req.(*JobInspectRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -567,8 +567,8 @@ var JobSpecificationService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*JobSpecificationServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "JobExplain",
-			Handler:    _JobSpecificationService_JobExplain_Handler,
+			MethodName: "JobInspect",
+			Handler:    _JobSpecificationService_JobInspect_Handler,
 		},
 		{
 			MethodName: "CreateJobSpecification",

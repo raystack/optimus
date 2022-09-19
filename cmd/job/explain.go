@@ -160,13 +160,13 @@ func (e *explainCommand) GetJobSpecFromServer(jobSpec models.JobSpec) *pb.JobSpe
 	defer conn.Close()
 
 	jobSpecService := pb.NewJobSpecificationServiceClient(conn.GetConnection())
-	jobExplainResponse, err := jobSpecService.JobExplain(conn.GetContext(), &pb.JobExplainRequest{
+	jobInspectResponse, err := jobSpecService.JobInspect(conn.GetContext(), &pb.JobInspectRequest{
 		ProjectName:   e.projectName,
 		NamespaceName: e.namespaceName,
 		Spec:          v1handler.ToJobSpecificationProto(jobSpec),
 	})
 	// list dependencies / later do this with dependency type too.
-	for dependencyName, dependencySpec := range jobExplainResponse.Dependencies {
+	for dependencyName, dependencySpec := range jobInspectResponse.Dependencies {
 		e.logger.Info(logger.ColoredSuccess("\n> Upstream job name:: %v", dependencyName))
 		e.logger.Info(logger.ColoredNotice("\nOwner:: %v", dependencySpec.Owner))
 		e.logger.Info(logger.ColoredNotice("\nSchedule Interval:: %v, StartDate:: %v, EndDate:: %v", dependencySpec.Interval, dependencySpec.StartDate, dependencySpec.EndDate))
@@ -181,7 +181,7 @@ func (e *explainCommand) GetJobSpecFromServer(jobSpec models.JobSpec) *pb.JobSpe
 		return nil
 	}
 
-	return jobExplainResponse.Spec
+	return jobInspectResponse.Spec
 }
 
 func (e *explainCommand) loadConfig() error {

@@ -180,15 +180,15 @@
         ]
       }
     },
-    "/v1beta1/project/{projectName}/namespace/{namespaceName}/job/explain": {
+    "/v1beta1/project/{projectName}/namespace/{namespaceName}/job/inspect": {
       "post": {
-        "summary": "JobExplain return a new jobSpec for a namespace which belongs to a project",
-        "operationId": "JobSpecificationService_JobExplain",
+        "summary": "JobInspect return a new jobSpec for a namespace which belongs to a project",
+        "operationId": "JobSpecificationService_JobInspect",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1beta1JobExplainResponse"
+              "$ref": "#/definitions/v1beta1JobInspectResponse"
             }
           },
           "default": {
@@ -218,6 +218,9 @@
             "schema": {
               "type": "object",
               "properties": {
+                "jobName": {
+                  "type": "string"
+                },
                 "spec": {
                   "$ref": "#/definitions/v1beta1JobSpecification"
                 }
@@ -649,7 +652,7 @@
       ],
       "default": "TYPE_UNSPECIFIED"
     },
-    "v1beta1JobExplainResponse": {
+    "v1beta1JobInspectResponse": {
       "type": "object",
       "properties": {
         "success": {

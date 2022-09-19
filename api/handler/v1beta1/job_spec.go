@@ -157,8 +157,10 @@ func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 }
 
 // todo: later rename this to job inspect
-func (sv *JobSpecServiceServer) JobExplain(ctx context.Context, req *pb.JobExplainRequest) (*pb.JobExplainResponse, error) {
+func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspectRequest) (*pb.JobInspectResponse, error) {
 	logWriter := writer.NewLogWriter(sv.l)
+
+	// get
 
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
@@ -193,7 +195,7 @@ func (sv *JobSpecServiceServer) JobExplain(ctx context.Context, req *pb.JobExpla
 	dependencySpecMap := make(map[string]*pb.JobSpecification)
 
 	// get dependency job status
-	return &pb.JobExplainResponse{
+	return &pb.JobInspectResponse{
 		Success:      true,
 		Spec:         ToJobSpecificationProto(jobSpec),
 		Dependencies: dependencySpecMap,
