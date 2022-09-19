@@ -160,18 +160,27 @@ func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspectRequest) (*pb.JobInspectResponse, error) {
 	logWriter := writer.NewLogWriter(sv.l)
 
-	// get
-
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
-	// todo: handle for local job as well as job from server
-	reqJobSpec := req.GetSpec()
-	jobSpec, err := FromJobProto(reqJobSpec, sv.pluginRepo)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "cannot deserialize job: \n%s", err.Error())
+	var jobSpec models.JobSpec
+
+	jobName := req.GetJobName()
+	if jobName == "" {
+		// jobSpec must be provided by client
+		reqJobSpec := req.GetSpec()
+		jobSpec, err = FromJobProto(reqJobSpec, sv.pluginRepo)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "cannot deserialize job: \n%s", err.Error())
+		}
+	} else {
+		// get job spec from DB
+		jobSpec, err = sv.jobSvc.GetByName(ctx, jobName, namespaceSpec)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "cannot obtain jobSpec: \n%s", err.Error())
+		}
 	}
 
 	jobDestination, jobSources, _ := sv.jobSvc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
