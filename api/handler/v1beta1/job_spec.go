@@ -2,7 +2,6 @@ package v1beta1
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -157,6 +156,7 @@ func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 	return nil
 }
 
+// todo: later rename this to job inspect
 func (sv *JobSpecServiceServer) JobExplain(ctx context.Context, req *pb.JobExplainRequest) (*pb.JobExplainResponse, error) {
 	logWriter := writer.NewLogWriter(sv.l)
 
@@ -173,36 +173,17 @@ func (sv *JobSpecServiceServer) JobExplain(ctx context.Context, req *pb.JobExpla
 	}
 
 	jobDestination, jobSources, _ := sv.jobSvc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
+	// check resources availability
+
 	jobSpec.ResourceDestination = jobDestination.URN()
 
-	jobSpec, unknownDependency, err := sv.jobSvc.EnrichUpstreamJobs(ctx, jobSpec, jobSources, logWriter)
-	if err != nil {
-		// TODO: handle error
-		logWriter.Write(writer.LogLevelInfo, err.Error())
-	}
-	if len(unknownDependency) > 0 {
-		// todo: understand the unknown dependencies better
-		unknownDependencyBytes, _ := json.Marshal(unknownDependency)
-		logWriter.Write(writer.LogLevelInfo, "following unknown dependencies have been detected "+string(unknownDependencyBytes))
-	}
-
-	// get downstream runs
-	downStreamJobs, err := sv.jobSvc.GetDownstreamJobs(ctx, jobSpec)
-	if err != nil {
-		// todo: attend this later
-		logWriter.Write(writer.LogLevelError, err.Error())
-	}
-	jobSpecBytes, _ := json.Marshal(jobSpec)
-	logWriter.Write(writer.LogLevelInfo, "jobSpec :: "+string(jobSpecBytes))
-	downStreamJobsBytes, _ := json.Marshal(downStreamJobs)
-	logWriter.Write(writer.LogLevelInfo, "downstream jobs :: "+string(downStreamJobsBytes))
+	jobSourcesString := fmt.Sprintf("%v", jobSources)
+	sv.l.Info(jobSourcesString)
 
 	err = sv.jobSvc.Check(ctx, namespaceSpec, []models.JobSpec{jobSpec}, logWriter)
 	if err != nil {
 		logWriter.Write(writer.LogLevelInfo, err.Error())
 	}
-	// check resources availability
-	//		@arinda how to do this ?
 
 	// check dependecy status from optimus
 	//
