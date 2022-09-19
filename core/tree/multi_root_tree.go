@@ -49,14 +49,14 @@ func (t *MultiRootTree) GetNodeByName(dagName string) (*TreeNode, bool) {
 	return value, ok
 }
 
-// get sorted dataMap keys
-func (t *MultiRootTree) getSortedKeys() []string {
-	keys := []string{}
-	for k := range t.dataMap {
-		keys = append(keys, k)
+// get sorted nodeNames from dataMap
+func (t *MultiRootTree) getSortedNodeNames() []string {
+	nodeNames := []string{}
+	for nodeName := range t.dataMap {
+		nodeNames = append(nodeNames, nodeName)
 	}
-	sort.Strings(keys)
-	return keys
+	sort.Strings(nodeNames)
+	return nodeNames
 }
 
 // ValidateCyclic - detects if there are any cycles in the tree
@@ -99,9 +99,9 @@ func (t *MultiRootTree) ValidateCyclic() error {
 	}
 
 	visitedNodeNames := make(map[string]bool)
-	data := t.getSortedKeys()
-	for _, k := range data {
-		node := t.dataMap[k]
+	nodeNames := t.getSortedNodeNames()
+	for _, nodeName := range nodeNames {
+		node := t.dataMap[nodeName]
 		if _, visited := visitedNodeNames[node.GetName()]; !visited {
 			visitedPaths := map[string]bool{}
 			orderedVisitedPaths := []string{}
