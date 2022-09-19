@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/stretchr/testify/mock"
+	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/models"
@@ -169,6 +170,11 @@ type ResourceSpecRepository struct {
 
 func (r *ResourceSpecRepository) Save(ctx context.Context, spec models.ResourceSpec) error {
 	return r.Called(ctx, spec).Error(0)
+}
+
+func (r *ResourceSpecRepository) SaveWithTx(ctx context.Context, tx *gorm.DB, spec models.ResourceSpec) (*gorm.DB, error) {
+	args := r.Called(ctx, tx, spec)
+	return args.Get(0).(*gorm.DB), args.Error(1)
 }
 
 func (r *ResourceSpecRepository) GetByName(ctx context.Context, s string) (models.ResourceSpec, error) {

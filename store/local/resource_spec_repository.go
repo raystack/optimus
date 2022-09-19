@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/afero"
 	"gopkg.in/yaml.v2"
+	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/models"
 )
@@ -95,6 +96,11 @@ func (repo *resourceRepository) Save(_ context.Context, resourceSpec models.Reso
 		specDir = existingJob.path
 	}
 	return repo.SaveAt(resourceSpec, specDir)
+}
+
+func (repo *resourceRepository) SaveWithTx(_ context.Context, _ *gorm.DB, _ models.ResourceSpec) (*gorm.DB, error) {
+	// TODO: remove this once we separate local repo and server repo
+	return nil, nil
 }
 
 // GetAll finds all the resources recursively in current and sub directory

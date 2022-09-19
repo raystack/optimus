@@ -145,10 +145,21 @@ func (srv Service) saveResource(
 					lw.Write(writer.LogLevelWarning, warnMsg)
 					return nil, nil // nolint:nilnil
 				}
-				if err := repo.Save(ctx, spec); err != nil {
+
+				// save spec to DB
+				tx, err := repo.SaveWithTx(ctx, nil, spec)
+				if err != nil {
+					tx.Rollback()
 					return nil, err
 				}
-				return nil, storeDatastore(spec)
+
+				// create / update actual resource on service account
+				if err := storeDatastore(spec); err != nil {
+					tx.Rollback()
+					return nil, err
+				}
+
+				return nil, tx.Commit().Error
 			}
 		}(incomingSpec, logWriter))
 	}

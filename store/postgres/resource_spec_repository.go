@@ -205,39 +205,67 @@ type resourceSpecRepository struct {
 }
 
 func (repo *resourceSpecRepository) Insert(ctx context.Context, resource models.ResourceSpec) error {
+	tx, err := repo.insertWithTx(ctx, nil, resource)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
+}
+
+func (repo *resourceSpecRepository) insertWithTx(ctx context.Context, tx *gorm.DB, resource models.ResourceSpec) (*gorm.DB, error) {
+	if tx == nil {
+		tx = repo.db.Begin()
+	}
 	if resource.Name == "" {
-		return errors.New("name cannot be empty")
+		return tx, errors.New("name cannot be empty")
 	}
 	p, err := Resource{}.FromSpecWithNamespace(resource, repo.namespace)
 	if err != nil {
-		return err
+		return tx, err
 	}
 	// if soft deleted earlier
 	if err := repo.HardDelete(ctx, resource.Name); err != nil {
-		return err
+		return tx, err
 	}
-	return repo.db.WithContext(ctx).Create(&p).Error
+	return tx, tx.WithContext(ctx).Create(&p).Error
 }
 
 func (repo *resourceSpecRepository) Save(ctx context.Context, spec models.ResourceSpec) error {
+	tx, err := repo.SaveWithTx(ctx, nil, spec)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
+}
+
+func (repo *resourceSpecRepository) SaveWithTx(ctx context.Context, tx *gorm.DB, spec models.ResourceSpec) (*gorm.DB, error) {
+	if tx == nil {
+		tx = repo.db.Begin()
+	}
+
 	existingResource, namespaceSpec, err := repo.projectResourceSpecRepo.GetByName(ctx, spec.Name)
 	if errors.Is(err, store.ErrResourceNotFound) {
-		return repo.Insert(ctx, spec)
+		return repo.insertWithTx(ctx, tx, spec)
 	} else if err != nil {
-		return fmt.Errorf("unable to find resource by name: %w", err)
+		return tx, fmt.Errorf("unable to find resource by name: %w", err)
 	}
 
 	if namespaceSpec.ID != repo.namespace.ID {
-		return fmt.Errorf("resource %s already exists for the project %s", spec.Name, repo.namespace.ProjectSpec.Name)
+		return tx, fmt.Errorf("resource %s already exists for the project %s", spec.Name, repo.namespace.ProjectSpec.Name)
 	}
 
 	resource, err := Resource{}.FromSpec(spec)
 	if err != nil {
-		return err
+		return tx, err
 	}
 	resource.ID = existingResource.ID
 
-	return repo.db.WithContext(ctx).Model(&resource).Updates(&resource).Error
+	return tx, tx.WithContext(ctx).Model(&resource).Updates(&resource).Error
+
 }
 
 func (repo *resourceSpecRepository) GetByName(ctx context.Context, name string) (models.ResourceSpec, error) {

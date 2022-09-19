@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/models"
 )
@@ -140,6 +141,7 @@ type ProjectResourceSpecRepository interface {
 // ResourceSpecRepository represents a storage interface for Resource specifications at namespace level
 type ResourceSpecRepository interface {
 	Save(context.Context, models.ResourceSpec) error
+	SaveWithTx(context.Context, *gorm.DB, models.ResourceSpec) (*gorm.DB, error)
 	GetByName(context.Context, string) (models.ResourceSpec, error)
 	GetAll(context.Context) ([]models.ResourceSpec, error)
 	Delete(context.Context, string) error
