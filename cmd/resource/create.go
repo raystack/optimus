@@ -25,8 +25,12 @@ type createCommand struct {
 
 // NewCreateCommand initializes resource create command
 func NewCreateCommand(clientConfig *config.ClientConfig) *cobra.Command {
+	l := logger.NewClientLogger()
 	create := &createCommand{
-		clientConfig: clientConfig,
+		clientConfig:         clientConfig,
+		logger:               l,
+		namespaceSurvey:      survey.NewNamespaceSurvey(l),
+		resourceCreateSurvey: survey.NewResourceCreateSurvey(),
 	}
 
 	cmd := &cobra.Command{
@@ -34,16 +38,8 @@ func NewCreateCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		Short:   "Create a new resource",
 		Example: "optimus resource create",
 		RunE:    create.RunE,
-		PreRunE: create.PreRunE,
 	}
 	return cmd
-}
-
-func (c *createCommand) PreRunE(_ *cobra.Command, _ []string) error {
-	c.logger = logger.NewClientLogger(c.clientConfig.Log)
-	c.namespaceSurvey = survey.NewNamespaceSurvey(c.logger)
-	c.resourceCreateSurvey = survey.NewResourceCreateSurvey()
-	return nil
 }
 
 func (c *createCommand) RunE(_ *cobra.Command, _ []string) error {
@@ -97,7 +93,7 @@ func (c *createCommand) RunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	c.logger.Info(logger.ColoredSuccess("Resource created successfully %s", resourceName))
+	c.logger.Info("Resource created successfully %s", resourceName)
 	return nil
 }
 

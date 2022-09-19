@@ -29,7 +29,9 @@ type statusCommand struct {
 
 // NewStatusCommand initializes command for replay status
 func NewStatusCommand() *cobra.Command {
-	status := &statusCommand{}
+	status := &statusCommand{
+		logger: logger.NewClientLogger(),
+	}
 
 	cmd := &cobra.Command{
 		Use:     "status",
@@ -50,7 +52,6 @@ It takes one argument, replay ID[required] that gets generated when starting a r
 	}
 
 	status.injectFlags(cmd)
-
 	return cmd
 }
 
@@ -71,19 +72,16 @@ func (s *statusCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	}
 
 	if conf == nil {
-		s.logger = logger.NewDefaultLogger()
 		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	s.logger = logger.NewClientLogger(conf.Log)
 	if s.projectName == "" {
 		s.projectName = conf.Project.Name
 	}
 	if s.host == "" {
 		s.host = conf.Host
 	}
-
 	return nil
 }
 
@@ -115,11 +113,11 @@ func (s *statusCommand) RunE(_ *cobra.Command, args []string) error {
 
 func (s *statusCommand) printReplayStatusResponse(replayStatusResponse *pb.GetReplayStatusResponse) {
 	if replayStatusResponse.State == models.ReplayStatusFailed {
-		s.logger.Info(fmt.Sprintf("\nThis replay has been marked as %s", models.ReplayStatusFailed))
+		s.logger.Info("\nThis replay has been marked as %s", models.ReplayStatusFailed)
 	} else if replayStatusResponse.State == models.ReplayStatusReplayed {
-		s.logger.Info(fmt.Sprintf("\nThis replay is still %s", "running"))
+		s.logger.Info("\nThis replay is still running")
 	} else if replayStatusResponse.State == models.ReplayStatusSuccess {
-		s.logger.Info(fmt.Sprintf("\nThis replay has been marked as %s", logger.ColoredSuccess(models.ReplayStatusSuccess)))
+		s.logger.Info("\nThis replay has been marked as %s", models.ReplayStatusSuccess)
 	}
 	s.logger.Info("Latest Instances Status")
 	s.logger.Info(s.printStatusTree(replayStatusResponse.Response, treeprint.New()).String())

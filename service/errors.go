@@ -53,22 +53,21 @@ func FromError(err error, entity, msg string) *DomainError {
 		msgStr = err.Error()
 	}
 
-	// TODO: Improve the msg, append to existing msg
-	if msg == "" {
-		msg = msgStr
+	if msg != "" {
+		msgStr = fmt.Sprintf("%s, %s", msg, msgStr)
 	}
 
 	return &DomainError{
 		Err:       err,
-		Message:   msg,
+		Message:   msgStr,
 		Entity:    entity,
 		ErrorType: errType,
 	}
 }
 
 func (e *DomainError) Error() string {
-	return fmt.Sprintf("%v: %v for entity %v",
-		e.Message, e.ErrorType.String(), e.Entity)
+	return fmt.Sprintf("%v for entity %v: %v",
+		e.ErrorType.String(), e.Entity, e.Message)
 }
 
 func (e *DomainError) Unwrap() error {
@@ -84,6 +83,6 @@ func (e *DomainError) DebugString() string {
 		wrappedError = e.Err.Error()
 	}
 
-	return fmt.Sprintf("%v: %v for %v: %s",
-		e.Message, e.ErrorType.String(), e.Entity, wrappedError)
+	return fmt.Sprintf("%v for %v: %v (%s)",
+		e.ErrorType.String(), e.Entity, e.Message, wrappedError)
 }

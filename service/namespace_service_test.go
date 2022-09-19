@@ -37,14 +37,14 @@ func TestNamespaceService(t *testing.T) {
 
 			_, err := svc.Get(ctx, "", "namespace")
 			assert.NotNil(t, err)
-			assert.Equal(t, "project name cannot be empty: invalid argument for entity project", err.Error())
+			assert.Equal(t, "invalid argument for entity project: project name cannot be empty", err.Error())
 		})
 		t.Run("return error when namespace name is empty", func(t *testing.T) {
 			svc := service.NewNamespaceService(nil, nil)
 
 			_, err := svc.Get(ctx, "project", "")
 			assert.NotNil(t, err)
-			assert.Equal(t, "namespace name cannot be empty: invalid argument for entity namespace", err.Error())
+			assert.Equal(t, "invalid argument for entity namespace: namespace name cannot be empty", err.Error())
 		})
 		t.Run("return error when repo returns error", func(t *testing.T) {
 			namespaceRepository := new(mock.NamespaceRepository)
@@ -56,7 +56,7 @@ func TestNamespaceService(t *testing.T) {
 
 			_, err := svc.Get(ctx, project.Name, "nonexistent")
 			assert.NotNil(t, err)
-			assert.Equal(t, "resource not found: not found for entity namespace", err.Error())
+			assert.Equal(t, "not found for entity namespace: resource not found", err.Error())
 		})
 		t.Run("return project and namespace successfully", func(t *testing.T) {
 			namespaceRepository := new(mock.NamespaceRepository)
@@ -80,7 +80,7 @@ func TestNamespaceService(t *testing.T) {
 
 			_, err := svc.GetByName(ctx, project, "")
 			assert.NotNil(t, err)
-			assert.Equal(t, "namespace name cannot be empty: invalid argument for entity namespace", err.Error())
+			assert.Equal(t, "invalid argument for entity namespace: namespace name cannot be empty", err.Error())
 		})
 		t.Run("returns error when repo returns error", func(t *testing.T) {
 			namespaceRepository := new(mock.NamespaceRepository)
@@ -92,7 +92,7 @@ func TestNamespaceService(t *testing.T) {
 
 			_, err := svc.GetByName(ctx, project, "nonexistent")
 			assert.NotNil(t, err)
-			assert.Equal(t, "resource not found: not found for entity namespace", err.Error())
+			assert.Equal(t, "not found for entity namespace: resource not found", err.Error())
 		})
 		t.Run("returns namespace successfully", func(t *testing.T) {
 			namespaceRepository := new(mock.NamespaceRepository)
@@ -135,7 +135,7 @@ func TestNamespaceService(t *testing.T) {
 
 			_, _, err := svc.GetNamespaceOptionally(ctx, project.Name, "nonexistent")
 			assert.NotNil(t, err)
-			assert.Equal(t, "resource not found: not found for entity namespace", err.Error())
+			assert.Equal(t, "not found for entity namespace: resource not found", err.Error())
 		})
 		t.Run("return project when namespace name is empty", func(t *testing.T) {
 			defer projService.AssertExpectations(t)
@@ -177,7 +177,7 @@ func TestNamespaceService(t *testing.T) {
 
 			err := svc.Save(ctx, project.Name, ns)
 			assert.NotNil(t, err)
-			assert.Equal(t, "namespace name cannot be empty: invalid argument for entity namespace", err.Error())
+			assert.Equal(t, "invalid argument for entity namespace: namespace name cannot be empty", err.Error())
 		})
 		t.Run("returns error when fetching project fails", func(t *testing.T) {
 			defer projService.AssertExpectations(t)
@@ -191,7 +191,7 @@ func TestNamespaceService(t *testing.T) {
 
 			err := svc.Save(ctx, project.Name, namespace)
 			assert.NotNil(t, err)
-			assert.Equal(t, "resource not found: not found for entity namespace", err.Error())
+			assert.Equal(t, "not found for entity namespace: resource not found", err.Error())
 		})
 		t.Run("calls repo to store project successfully", func(t *testing.T) {
 			defer projService.AssertExpectations(t)
@@ -231,7 +231,7 @@ func TestNamespaceService(t *testing.T) {
 
 			_, err := svc.GetAll(ctx, project.Name)
 			assert.NotNil(t, err)
-			assert.Equal(t, "internal error: internal error for entity namespace", err.Error())
+			assert.Equal(t, "internal error for entity namespace: internal error", err.Error())
 		})
 		t.Run("return namespaces successfully", func(t *testing.T) {
 			defer projService.AssertExpectations(t)

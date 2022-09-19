@@ -32,7 +32,9 @@ type versionCommand struct {
 
 // NewVersionCommand initializes command to get version
 func NewVersionCommand() *cobra.Command {
-	v := &versionCommand{}
+	v := &versionCommand{
+		logger: logger.NewClientLogger(),
+	}
 
 	cmd := &cobra.Command{
 		Use:      "version",
@@ -59,8 +61,6 @@ func (v *versionCommand) injectFlags(cmd *cobra.Command) {
 }
 
 func (v *versionCommand) PreRunE(cmd *cobra.Command, _ []string) error {
-	v.logger = logger.NewDefaultLogger()
-
 	if v.isWithServer {
 		conf, err := internal.LoadOptionalConfig(v.configFilePath)
 		if err != nil {
@@ -69,11 +69,8 @@ func (v *versionCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 
 		if conf == nil {
 			cmd.MarkFlagRequired("host")
-		} else {
-			v.logger = logger.NewClientLogger(conf.Log)
-			if v.host == "" {
-				v.host = conf.Host
-			}
+		} else if v.host == "" {
+			v.host = conf.Host
 		}
 	}
 
@@ -84,7 +81,7 @@ func (v *versionCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 
 func (v *versionCommand) RunE(_ *cobra.Command, _ []string) error {
 	// Print client version
-	v.logger.Info(fmt.Sprintf("Client: %s-%s", config.BuildVersion, config.BuildCommit))
+	v.logger.Info("Client: %s-%s", config.BuildVersion, config.BuildCommit)
 
 	// Print server version
 	if v.isWithServer {
@@ -92,7 +89,7 @@ func (v *versionCommand) RunE(_ *cobra.Command, _ []string) error {
 		if err != nil {
 			return err
 		}
-		v.logger.Info(fmt.Sprintf("Server: %s", srvVer))
+		v.logger.Info("Server: %s", srvVer)
 	}
 
 	// Print version update if new version is exist
@@ -112,20 +109,20 @@ func (v *versionCommand) PostRunE(_ *cobra.Command, _ []string) error {
 func (v *versionCommand) printAllPluginInfos() {
 	pluginRepo := models.PluginRegistry
 	plugins := pluginRepo.GetAll()
-	v.logger.Info(fmt.Sprintf("\nDiscovered plugins: %d", len(plugins)))
+	v.logger.Info("\nDiscovered plugins: %d", len(plugins))
 	for taskIdx, tasks := range plugins {
 		schema := tasks.Info()
-		v.logger.Info(fmt.Sprintf("\n%d. %s", taskIdx+1, schema.Name))
-		v.logger.Info(fmt.Sprintf("Description: %s", schema.Description))
-		v.logger.Info(fmt.Sprintf("Image: %s", schema.Image))
-		v.logger.Info(fmt.Sprintf("Type: %s", schema.PluginType))
-		v.logger.Info(fmt.Sprintf("Plugin version: %s", schema.PluginVersion))
-		v.logger.Info(fmt.Sprintf("Plugin mods: %v", schema.PluginMods))
+		v.logger.Info("\n%d. %s", taskIdx+1, schema.Name)
+		v.logger.Info("Description: %s", schema.Description)
+		v.logger.Info("Image: %s", schema.Image)
+		v.logger.Info("Type: %s", schema.PluginType)
+		v.logger.Info("Plugin version: %s", schema.PluginVersion)
+		v.logger.Info("Plugin mods: %v", schema.PluginMods)
 		if schema.HookType != "" {
-			v.logger.Info(fmt.Sprintf("Hook type: %s", schema.HookType))
+			v.logger.Info("Hook type: %s", schema.HookType)
 		}
 		if len(schema.DependsOn) != 0 {
-			v.logger.Info(fmt.Sprintf("Depends on: %v", schema.DependsOn))
+			v.logger.Info("Depends on: %v", schema.DependsOn)
 		}
 	}
 }

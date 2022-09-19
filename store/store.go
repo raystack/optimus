@@ -20,11 +20,6 @@ const (
 	ISODateFormat = "2006-01-02T15:04:05Z"
 )
 
-type ProjectJobPair struct {
-	Project models.ProjectSpec
-	Job     models.JobSpec
-}
-
 // ProjectJobSpecRepository represents a storage interface for Job specifications at a project level
 // This will be deprecated and avoid having multiple job spec repositories
 type ProjectJobSpecRepository interface {
@@ -177,7 +172,7 @@ type JobDeploymentRepository interface {
 	GetByStatusAndProjectID(context.Context, models.JobDeploymentStatus, models.ProjectID) (models.JobDeployment, error)
 	Update(ctx context.Context, deploymentSpec models.JobDeployment) error
 	GetByStatus(ctx context.Context, status models.JobDeploymentStatus) ([]models.JobDeployment, error)
-	GetFirstExecutableRequest(ctx context.Context) (models.JobDeployment, error)
+	GetAndUpdateExecutableRequests(ctx context.Context, limit int) ([]models.JobDeployment, error)
 }
 
 // JobSourceRepository represents a storage interface for job sources

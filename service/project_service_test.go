@@ -27,7 +27,7 @@ func TestProjectService(t *testing.T) {
 
 			_, err := svc.Get(ctx, "")
 			assert.NotNil(t, err)
-			assert.Equal(t, "project name cannot be empty: invalid argument for entity project", err.Error())
+			assert.Equal(t, "invalid argument for entity project: project name cannot be empty", err.Error())
 		})
 		t.Run("return error when project name is invalid", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
@@ -39,7 +39,7 @@ func TestProjectService(t *testing.T) {
 
 			_, err := svc.Get(ctx, "nonexistent")
 			assert.NotNil(t, err)
-			assert.Equal(t, "resource not found: not found for entity project", err.Error())
+			assert.Equal(t, "not found for entity project: resource not found", err.Error())
 		})
 		t.Run("return project successfully", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
@@ -64,7 +64,7 @@ func TestProjectService(t *testing.T) {
 
 			err := svc.Save(ctx, proj)
 			assert.NotNil(t, err)
-			assert.Equal(t, "project name cannot be empty: invalid argument for entity project", err.Error())
+			assert.Equal(t, "invalid argument for entity project: project name cannot be empty", err.Error())
 		})
 		t.Run("calls repo to store project successfully", func(t *testing.T) {
 			project2 := models.ProjectSpec{
@@ -96,7 +96,7 @@ func TestProjectService(t *testing.T) {
 
 			_, err := svc.GetAll(ctx)
 			assert.NotNil(t, err)
-			assert.Equal(t, "internal error: internal error for entity project", err.Error())
+			assert.Equal(t, "internal error for entity project: internal error", err.Error())
 		})
 		t.Run("return projects successfully", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)

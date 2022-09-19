@@ -44,7 +44,7 @@ func (i *installCommand) RunE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	i.logger.Info(fmt.Sprintf("Installing [%s] ...", remotePath))
+	i.logger.Info("Installing [%s] ...", remotePath)
 	ctx := context.Background()
 	if err := manager.Install(ctx, remotePath, commandName); err != nil {
 		i.logger.Error("... finished with error")

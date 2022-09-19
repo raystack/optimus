@@ -14,7 +14,7 @@ import (
 
 // UpdateWithExtension updates input command with the available extensions
 func UpdateWithExtension(cmd *cobra.Command) {
-	logger := logger.NewDefaultLogger()
+	logger := logger.NewClientLogger()
 	reservedCommandNames := getReservedCommandNames(cmd)
 
 	cmd.AddCommand(extensionCommand(logger, reservedCommandNames))

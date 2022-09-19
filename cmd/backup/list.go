@@ -31,7 +31,9 @@ type listCommand struct {
 
 // NewListCommand initialize command to list backup
 func NewListCommand() *cobra.Command {
-	list := &listCommand{}
+	list := &listCommand{
+		logger: logger.NewClientLogger(),
+	}
 
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -42,7 +44,6 @@ func NewListCommand() *cobra.Command {
 	}
 
 	list.injectFlags(cmd)
-
 	return cmd
 }
 
@@ -63,19 +64,16 @@ func (l *listCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	}
 
 	if conf == nil {
-		l.logger = logger.NewDefaultLogger()
 		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	l.logger = logger.NewClientLogger(conf.Log)
 	if l.projectName == "" {
 		l.projectName = conf.Project.Name
 	}
 	if l.host == "" {
 		l.host = conf.Host
 	}
-
 	return nil
 }
 

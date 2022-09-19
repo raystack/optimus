@@ -33,6 +33,7 @@ type runCommand struct {
 func NewRunCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	run := &runCommand{
 		clientConfig: clientConfig,
+		logger:       logger.NewClientLogger(),
 	}
 
 	cmd := &cobra.Command{
@@ -42,16 +43,10 @@ func NewRunCommand(clientConfig *config.ClientConfig) *cobra.Command {
 		Example: "optimus job run <job_name>",
 		Hidden:  true,
 		RunE:    run.RunE,
-		PreRunE: run.PreRunE,
 	}
 	cmd.Flags().StringVarP(&run.namespaceName, "namespace", "n", run.namespaceName, "Namespace of the resource within project")
 	cmd.MarkFlagRequired("namespace")
 	return cmd
-}
-
-func (r *runCommand) PreRunE(_ *cobra.Command, _ []string) error {
-	r.logger = logger.NewClientLogger(r.clientConfig.Log)
-	return nil
 }
 
 func (r *runCommand) RunE(_ *cobra.Command, args []string) error {

@@ -29,7 +29,7 @@ type registerCommand struct {
 // NewRegisterCommand initializes command for registering namespace
 func NewRegisterCommand() *cobra.Command {
 	register := &registerCommand{
-		logger: logger.NewDefaultLogger(),
+		logger: logger.NewClientLogger(),
 	}
 
 	cmd := &cobra.Command{
@@ -50,14 +50,14 @@ func (r *registerCommand) RunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	if r.namespaceName != "" {
-		r.logger.Info(fmt.Sprintf("Registering namespace [%s] to [%s]", r.namespaceName, clientConfig.Host))
+		r.logger.Info("Registering namespace [%s] to [%s]", r.namespaceName, clientConfig.Host)
 		namespace, err := clientConfig.GetNamespaceByName(r.namespaceName)
 		if err != nil {
 			return err
 		}
 		return RegisterNamespace(r.logger, clientConfig.Host, clientConfig.Project.Name, namespace)
 	}
-	r.logger.Info(fmt.Sprintf("Registering all available namespaces from client config to [%s]", clientConfig.Host))
+	r.logger.Info("Registering all available namespaces from client config to [%s]", clientConfig.Host)
 	return RegisterSelectedNamespaces(r.logger, clientConfig.Host, clientConfig.Project.Name, clientConfig.Namespaces...)
 }
 
@@ -101,13 +101,13 @@ func RegisterNamespace(l log.Logger, serverHost, projectName string, namespace *
 	})
 	if err != nil {
 		if status.Code(err) == codes.FailedPrecondition {
-			l.Warn(fmt.Sprintf("Ignoring namespace [%s] config changes: %v", namespace.Name, err))
+			l.Warn("Ignoring namespace [%s] config changes: %v", namespace.Name, err)
 			return nil
 		}
 		return fmt.Errorf("failed to register or update namespace [%s]: %w", namespace.Name, err)
 	} else if !registerResponse.Success {
 		return fmt.Errorf("failed to update namespace [%s]: %s", namespace.Name, registerResponse.Message)
 	}
-	l.Info(fmt.Sprintf("Namespace [%s] registration finished successfully", namespace.Name))
+	l.Info("Namespace [%s] registration finished successfully", namespace.Name)
 	return nil
 }

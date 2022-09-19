@@ -104,26 +104,32 @@ func (repo *jobDeploymentRepository) GetByStatusAndProjectID(ctx context.Context
 	return jobDeployment.ToSpec()
 }
 
-func (repo *jobDeploymentRepository) GetFirstExecutableRequest(ctx context.Context) (jobDeploymentSpec models.JobDeployment, err error) {
+func (repo *jobDeploymentRepository) GetAndUpdateExecutableRequests(ctx context.Context, limit int) (jobDeploymentSpecs []models.JobDeployment, err error) {
 	err = repo.db.Transaction(func(tx *gorm.DB) error {
-		var jobDeployment JobDeployment
+		var jobDeployments []JobDeployment
 		if err := tx.WithContext(ctx).Preload("Project").Where("status=? and project_id not in (select project_id from job_deployment where status=?)",
-			models.JobDeploymentStatusInQueue.String(), models.JobDeploymentStatusInProgress.String()).Order("created_at ASC").First(&jobDeployment).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return store.ErrResourceNotFound
-			}
-			return err
-		}
-		jobDeploymentSpec, err = jobDeployment.ToSpec()
-		if err != nil {
+			models.JobDeploymentStatusInQueue.String(), models.JobDeploymentStatusInProgress.String()).Order("created_at ASC").Limit(limit).Find(&jobDeployments).Error; err != nil {
 			return err
 		}
 
-		jobDeployment.Status = models.JobDeploymentStatusInProgress.String()
-		return tx.WithContext(ctx).Save(&jobDeployment).Error
+		jobDeploymentSpecs = make([]models.JobDeployment, len(jobDeployments))
+		for i, jobDeployment := range jobDeployments {
+			jobDeploymentSpec, err := jobDeployment.ToSpec()
+			if err != nil {
+				return err
+			}
+			jobDeployment.Status = models.JobDeploymentStatusInProgress.String()
+			if err := tx.WithContext(ctx).Save(&jobDeployment).Error; err != nil {
+				return err
+			}
+			jobDeploymentSpec.Status = models.JobDeploymentStatusInProgress
+			jobDeploymentSpecs[i] = jobDeploymentSpec
+		}
+
+		return nil
 	})
 
-	return jobDeploymentSpec, err
+	return jobDeploymentSpecs, err
 }
 
 func (repo *jobDeploymentRepository) GetByStatus(ctx context.Context, status models.JobDeploymentStatus) ([]models.JobDeployment, error) {

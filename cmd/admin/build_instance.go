@@ -48,6 +48,7 @@ func NewBuildInstanceCommand() *cobra.Command {
 	buildInstance := &buildInstanceCommand{
 		assetOutputDir: "/tmp/",
 		runType:        "task",
+		logger:         logger.NewClientLogger(),
 	}
 	cmd := &cobra.Command{
 		Use:     "instance",
@@ -90,26 +91,23 @@ func (b *buildInstanceCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	}
 
 	if conf == nil {
-		b.logger = logger.NewDefaultLogger()
 		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	b.logger = logger.NewClientLogger(conf.Log)
 	if b.projectName == "" {
 		b.projectName = conf.Project.Name
 	}
 	if b.host == "" {
 		b.host = conf.Host
 	}
-
 	return nil
 }
 
 func (b *buildInstanceCommand) RunE(_ *cobra.Command, args []string) error {
 	jobName := args[0]
-	b.logger.Info(fmt.Sprintf("Requesting resources for project %s, job %s at %s", b.projectName, jobName, b.host))
-	b.logger.Info(fmt.Sprintf("Run name %s, run type %s, scheduled at %s\n", b.runName, b.runType, b.scheduledAt))
+	b.logger.Info("Requesting resources for project %s, job %s at %s", b.projectName, jobName, b.host)
+	b.logger.Info("Run name %s, run type %s, scheduled at %s", b.runName, b.runType, b.scheduledAt)
 	b.logger.Info("please wait...")
 
 	jobScheduledTimeProto, err := b.getJobScheduledTimeProto()

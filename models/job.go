@@ -171,18 +171,18 @@ type JobSpecNotifier struct {
 	Channels []string
 }
 
-func (n *JobSpecNotifier) ShouldNotify(eventType JobEventType) bool {
-	var faiulreEvents = []JobEventType{JobFailureEvent, JobFailEvent, TaskFailEvent, HookFailEvent, SensorFailEvent}
+func (incomingEvent JobEventType) IsOfType(targetEvent JobEventType) bool {
+	var failureEvents = []JobEventType{JobFailureEvent, JobFailEvent, TaskFailEvent, HookFailEvent, SensorFailEvent}
 
-	switch n.On {
+	switch targetEvent {
 	case JobFailureEvent:
-		for _, event := range faiulreEvents {
-			if eventType == event {
+		for _, event := range failureEvents {
+			if incomingEvent == event {
 				return true
 			}
 		}
 	case SLAMissEvent:
-		if eventType == SLAMissEvent {
+		if incomingEvent == SLAMissEvent {
 			return true
 		}
 	}

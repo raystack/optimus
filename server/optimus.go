@@ -223,7 +223,6 @@ func (s *OptimusServer) setupHandlers() error {
 	dbAdapter := postgres.NewAdapter(models.PluginRegistry)
 	replaySpecRepo := postgres.NewReplayRepository(s.dbConn, dbAdapter)
 	jobRunRepo := postgres.NewJobRunRepository(s.dbConn, dbAdapter)
-	instanceRepo := postgres.NewInstanceRepository(s.dbConn, dbAdapter)
 	jobSpecRepo := postgres.NewJobSpecRepository(s.dbConn, dbAdapter)
 	jobSourceRepository := postgres.NewJobSourceRepository(s.dbConn)
 
@@ -421,15 +420,9 @@ func (s *OptimusServer) setupHandlers() error {
 		monitoringService,
 	))
 
-	cleanupCluster, err := initPrimeCluster(s.logger, s.conf, jobRunRepo, instanceRepo)
-	if err != nil {
-		return err
-	}
-
 	s.cleanupFn = append(s.cleanupFn, func() {
 		replayManager.Close() // err is nil
 	})
-	s.cleanupFn = append(s.cleanupFn, cleanupCluster)
 	s.cleanupFn = append(s.cleanupFn, func() {
 		err = eventService.Close()
 		if err != nil {

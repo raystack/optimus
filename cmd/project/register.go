@@ -29,7 +29,7 @@ type registerCommand struct {
 // NewRegisterCommand initializes command to create a project
 func NewRegisterCommand() *cobra.Command {
 	register := &registerCommand{
-		logger: logger.NewDefaultLogger(),
+		logger: logger.NewClientLogger(),
 	}
 
 	cmd := &cobra.Command{
@@ -49,12 +49,12 @@ func (r *registerCommand) RunE(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	r.logger.Info(fmt.Sprintf("Registering project [%s] to server [%s]", clientConfig.Project.Name, clientConfig.Host))
+	r.logger.Info("Registering project [%s] to server [%s]", clientConfig.Project.Name, clientConfig.Host)
 	if err := RegisterProject(r.logger, clientConfig.Host, clientConfig.Project); err != nil {
 		return err
 	}
 	if r.withNamespaces {
-		r.logger.Info(fmt.Sprintf("Registering all namespaces from: %s", filePath))
+		r.logger.Info("Registering all namespaces from: %s", filePath)
 		if err := namespace.RegisterSelectedNamespaces(r.logger, clientConfig.Host, clientConfig.Project.Name, clientConfig.Namespaces...); err != nil {
 			return err
 		}

@@ -85,7 +85,7 @@ func TestNamespaceOnServer(t *testing.T) {
 			}
 			_, err := namespaceServiceServer.RegisterProjectNamespace(ctx, &namespaceRequest)
 			assert.NotNil(t, err)
-			assert.Equal(t, "rpc error: code = NotFound desc = project does not exist: not found for entity namespace: unable to store namespace", err.Error())
+			assert.Equal(t, "rpc error: code = NotFound desc = not found for entity namespace: project does not exist: unable to store namespace", err.Error())
 		})
 	})
 

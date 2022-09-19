@@ -335,14 +335,13 @@ func (srv *Service) GetTaskDependencies(ctx context.Context, namespace models.Na
 
 // Delete deletes a job spec from all spec repos
 func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec) error {
-	isDependency, err := srv.isDependency(ctx, jobSpec)
+	dependentJobNames, err := srv.getDependentJobNames(ctx, jobSpec)
 	if err != nil {
 		return err
 	}
 
-	if isDependency {
-		// TODO: Ideally should include list of jobs that are using the requested job in the error message
-		return fmt.Errorf("cannot delete job %s since it's dependency of other job", jobSpec.Name)
+	if len(dependentJobNames) > 0 {
+		return fmt.Errorf("cannot delete job %s since it's dependency of other jobs: %s", jobSpec.Name, strings.Join(dependentJobNames, ","))
 	}
 
 	// delete jobs from internal store
@@ -360,17 +359,16 @@ func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSp
 	namespaceJobSpecRepo := srv.namespaceJobSpecRepoFactory.New(namespace)
 	success, failure := 0, 0
 	for _, jobSpec := range jobSpecsToDelete {
-		isDependency, err := srv.isDependency(ctx, jobSpec)
+		dependentJobNames, err := srv.getDependentJobNames(ctx, jobSpec)
 		if err != nil {
 			failure++
 			warnMsg := fmt.Sprintf("[%s] error '%s': failed to delete job, %s", namespace.Name, jobSpec.Name, err.Error())
 			logWriter.Write(writer.LogLevelWarning, warnMsg)
 			continue
 		}
-		if isDependency {
-			// TODO: Ideally should include list of jobs that are using the requested job in the error message
+		if len(dependentJobNames) > 0 {
 			failure++
-			err = fmt.Errorf("cannot delete job %s since it's dependency of other job", jobSpec.Name)
+			err = fmt.Errorf("cannot delete job %s since it's dependency of other jobs: %s", jobSpec.Name, strings.Join(dependentJobNames, ","))
 			warnMsg := fmt.Sprintf("[%s] error '%s': failed to delete job, %s", namespace.Name, jobSpec.Name, err.Error())
 			logWriter.Write(writer.LogLevelWarning, warnMsg)
 			continue
@@ -442,13 +440,17 @@ func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.
 }
 
 // do other jobs depend on this jobSpec
-func (srv *Service) isDependency(ctx context.Context, jobSpec models.JobSpec) (bool, error) {
+func (srv *Service) getDependentJobNames(ctx context.Context, jobSpec models.JobSpec) ([]string, error) {
 	// inferred and static dependents
 	dependentJobs, err := srv.jobSpecRepository.GetDependentJobs(ctx, &jobSpec)
 	if err != nil {
-		return false, fmt.Errorf("unable to check dependents of job %s", jobSpec.Name)
+		return nil, fmt.Errorf("unable to check dependents of job %s", jobSpec.Name)
 	}
-	return len(dependentJobs) > 0, nil
+	jobNames := make([]string, len(dependentJobs))
+	for i, job := range dependentJobs {
+		jobNames[i] = job.Name
+	}
+	return jobNames, nil
 }
 
 func (srv *Service) GetByDestination(ctx context.Context, projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
@@ -678,7 +680,7 @@ func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec,
 		}
 	}
 
-	if err := dagTree.IsCyclic(); err != nil {
+	if err := dagTree.ValidateCyclic(); err != nil {
 		return nil, err
 	}
 

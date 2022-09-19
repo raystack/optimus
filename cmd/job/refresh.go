@@ -38,7 +38,9 @@ type refreshCommand struct {
 
 // NewRefreshCommand initializes command for refreshing job specification
 func NewRefreshCommand() *cobra.Command {
-	refresh := &refreshCommand{}
+	refresh := &refreshCommand{
+		logger: logger.NewClientLogger(),
+	}
 
 	cmd := &cobra.Command{
 		Use:     "refresh",
@@ -50,7 +52,6 @@ func NewRefreshCommand() *cobra.Command {
 	}
 
 	refresh.injectFlags(cmd)
-
 	return cmd
 }
 
@@ -75,19 +76,16 @@ func (r *refreshCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	}
 
 	if conf == nil {
-		r.logger = logger.NewDefaultLogger()
 		internal.MarkFlagsRequired(cmd, []string{"project-name", "host"})
 		return nil
 	}
 
-	r.logger = logger.NewClientLogger(conf.Log)
 	if r.projectName == "" {
 		r.projectName = conf.Project.Name
 	}
 	if r.host == "" {
 		r.host = conf.Host
 	}
-
 	return nil
 }
 
@@ -95,14 +93,14 @@ func (r *refreshCommand) RunE(_ *cobra.Command, _ []string) error {
 	if len(r.selectedNamespaceNames) > 0 || len(r.selectedJobNames) > 0 {
 		r.logger.Info("Refreshing job dependencies of selected jobs/namespaces")
 	} else {
-		r.logger.Info(fmt.Sprintf("Refreshing job dependencies of all jobs in %s", r.projectName))
+		r.logger.Info("Refreshing job dependencies of all jobs in %s", r.projectName)
 	}
 
 	start := time.Now()
 	if err := r.refreshJobSpecificationRequest(); err != nil {
 		return err
 	}
-	r.logger.Info(logger.ColoredSuccess("Job refresh & deployment finished, took %s", time.Since(start).Round(time.Second)))
+	r.logger.Info("Job refresh & deployment finished, took %s", time.Since(start).Round(time.Second))
 	return nil
 }
 
