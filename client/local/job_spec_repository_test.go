@@ -44,7 +44,7 @@ func TestJobSpecRepository(t *testing.T) {
 	execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name: "foo",
 	}, nil)
-	pluginRepo := new(mock.SupportedPluginRepo)
+	pluginRepo := mock.NewPluginRepository(t)
 	pluginRepo.On("GetByName", "foo").Return(&models.Plugin{Base: execUnit}, nil)
 	adapter := local.NewJobSpecAdapter(pluginRepo)
 
@@ -209,8 +209,7 @@ func TestJobSpecRepository(t *testing.T) {
 				Name:       hookName,
 				PluginType: models.PluginTypeHook,
 			}, nil)
-			pluginsRepo := new(mock.SupportedPluginRepo)
-			pluginsRepo.On("GetByName", hookName).Return(&models.Plugin{Base: hookUnit1}, nil)
+			pluginsRepo := mock.NewPluginRepository(t)
 			pluginsRepo.On("GetByName", "foo").Return(&models.Plugin{Base: execUnit}, nil)
 			adapterNew := local.NewJobSpecAdapter(pluginsRepo)
 

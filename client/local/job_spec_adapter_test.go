@@ -76,7 +76,7 @@ hooks: []`
 			Name: "bq2bq",
 		}, nil)
 
-		pluginRepo := new(mock.SupportedPluginRepo)
+		pluginRepo := mock.NewPluginRepository(t)
 		pluginRepo.On("GetByName", "bq2bq").Return(&models.Plugin{
 			Base: execUnit,
 		}, nil)
@@ -150,10 +150,7 @@ hooks: []`
 			Name: "bq2bq",
 		}, nil)
 
-		pluginRepo := new(mock.SupportedPluginRepo)
-		pluginRepo.On("GetByName", "bq2bq").Return(&models.Plugin{
-			Base: execUnit,
-		}, nil)
+		pluginRepo := mock.NewPluginRepository(t)
 		adapter := local.NewJobSpecAdapter(pluginRepo)
 
 		modelJob, actualErr := adapter.ToSpec(localJobParsed)
@@ -223,10 +220,7 @@ hooks: []`
 			Name: "bq2bq",
 		}, nil)
 
-		pluginRepo := new(mock.SupportedPluginRepo)
-		pluginRepo.On("GetByName", "bq2bq").Return(&models.Plugin{
-			Base: execUnit,
-		}, nil)
+		pluginRepo := mock.NewPluginRepository(t)
 		adapter := local.NewJobSpecAdapter(pluginRepo)
 
 		modelJob, actualErr := adapter.ToSpec(localJobParsed)
@@ -298,7 +292,7 @@ hooks: []`
 			Name: "bq2bq",
 		}, nil)
 
-		pluginRepo := new(mock.SupportedPluginRepo)
+		pluginRepo := mock.NewPluginRepository(t)
 		pluginRepo.On("GetByName", "bq2bq").Return(&models.Plugin{
 			Base: execUnit,
 		}, nil)
