@@ -601,20 +601,20 @@ func (_m *JobSourceRepository) GetByResourceURN(_a0 context.Context, _a1 string)
 	return r0, r1
 }
 
-// GetResourceURNsPerJobID provides a mock function with given fields: _a0, _a1
-func (_m *JobSourceRepository) GetResourceURNsPerJobID(_a0 context.Context, _a1 models.ProjectID) (map[uuid.UUID][]string, error) {
-	ret := _m.Called(_a0, _a1)
+// GetResourceURNsPerJobID provides a mock function with given fields: ctx, projectName
+func (_m *JobSourceRepository) GetResourceURNsPerJobID(ctx context.Context, projectName string) (map[uuid.UUID][]string, error) {
+	ret := _m.Called(ctx, projectName)
 
 	var r0 map[uuid.UUID][]string
-	if rf, ok := ret.Get(0).(func(context.Context, models.ProjectID) map[uuid.UUID][]string); ok {
-		r0 = rf(_a0, _a1)
+	if rf, ok := ret.Get(0).(func(context.Context, string) map[uuid.UUID][]string); ok {
+		r0 = rf(ctx, projectName)
 	} else if ret.Get(0) != nil {
 		r0 = ret.Get(0).(map[uuid.UUID][]string)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, models.ProjectID) error); ok {
-		r1 = rf(_a0, _a1)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, projectName)
 	} else {
 		r1 = ret.Error(1)
 	}

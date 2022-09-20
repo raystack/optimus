@@ -197,6 +197,9 @@ func (d *dependencyResolver) GetJobSpecsWithDependencies(ctx context.Context, pr
 	if ctx == nil {
 		return nil, nil, errors.New("context is nil")
 	}
+	if projectName == "" {
+		return nil, nil, errors.New("projet name is empty")
+	}
 	jobSpecs, err := d.jobSpecRepo.GetAllByProjectName(ctx, projectName)
 	if err != nil {
 		return nil, nil, err
