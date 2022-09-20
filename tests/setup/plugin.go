@@ -56,7 +56,7 @@ func InMemoryPluginRegistry() models.PluginRepository {
 		Image:      "example.io/namespace/hook-image:latest",
 	}, nil)
 
-	pluginRepo := new(mock.SupportedPluginRepo)
+	pluginRepo := new(mock.PluginRepository)
 	pluginRepo.On("GetByName", "bq2bq").Return(&models.Plugin{
 		Base:          bq2bq,
 		DependencyMod: bq2bq,
