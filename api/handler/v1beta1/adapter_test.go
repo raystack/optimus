@@ -57,7 +57,7 @@ func TestAdapter(t *testing.T) {
 		}, nil)
 		defer execUnit1.AssertExpectations(t)
 
-		pluginRepo := new(mock.SupportedPluginRepo)
+		pluginRepo := mock.NewPluginRepository(t)
 		pluginRepo.On("GetByName", "sample-task").Return(&models.Plugin{
 			Base: execUnit1,
 		}, nil)

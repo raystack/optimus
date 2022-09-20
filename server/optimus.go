@@ -224,12 +224,11 @@ func (s *OptimusServer) setupHandlers() error {
 	dbAdapter := postgres.NewAdapter(models.PluginRegistry)
 	replaySpecRepo := postgres.NewReplayRepository(s.dbConn, dbAdapter)
 	jobRunRepo := postgres.NewJobRunRepository(s.dbConn, dbAdapter)
-	jobSpecRepo := postgres.NewJobSpecRepository(s.dbConn, dbAdapter)
-	jobSourceRepository := postgres.NewJobSourceRepository(s.dbConn)
-
-	projectJobSpecRepoFac := &projectJobSpecRepoFactory{
-		db: s.dbConn,
+	jobSpecRepo, err := postgres.NewJobSpecRepository(s.dbConn, dbAdapter)
+	if err != nil {
+		return err
 	}
+	jobSourceRepository := postgres.NewJobSourceRepository(s.dbConn)
 
 	scheduler, err := initScheduler(s.conf)
 	if err != nil {
@@ -244,17 +243,11 @@ func (s *OptimusServer) setupHandlers() error {
 	secretService := service.NewSecretService(projectService, namespaceService, projectSecretRepo)
 	pluginService := service.NewPluginService(secretService, models.PluginRegistry, engine, s.logger, jobSpecAssetDump(engine))
 
-	// registered job store repository factory
-	namespaceJobSpecRepoFac := namespaceJobSpecRepoFactory{
-		db:                    s.dbConn,
-		projectJobSpecRepoFac: *projectJobSpecRepoFac,
-	}
-
 	externalDependencyResolver, err := job.NewExternalDependencyResolver(s.conf.ResourceManagers)
 	if err != nil {
 		return err
 	}
-	dependencyResolver := job.NewDependencyResolver(jobSpecRepo, jobSourceRepository, pluginService, projectJobSpecRepoFac, externalDependencyResolver)
+	dependencyResolver := job.NewDependencyResolver(projectRepo, jobSpecRepo, jobSourceRepository, pluginService, externalDependencyResolver)
 	priorityResolver := job.NewPriorityResolver()
 
 	replayWorkerFactory := &replayWorkerFact{
@@ -313,12 +306,10 @@ func (s *OptimusServer) setupHandlers() error {
 	// runtime service instance over grpc
 	manualScheduler := models.ManualScheduler
 	jobService := job.NewService(
-		&namespaceJobSpecRepoFac,
 		scheduler,
 		manualScheduler,
 		dependencyResolver,
 		priorityResolver,
-		projectJobSpecRepoFac,
 		replayManager,
 		namespaceService,
 		projectService,

@@ -94,7 +94,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 			Type:  models.SecretTypeUserDefined,
 		},
 	}
-	pluginRepo := new(mock.SupportedPluginRepo)
+	pluginRepo := mock.NewPluginRepository(t)
 
 	createJobRunInputCompiler := func() compiler.JobRunInputCompiler {
 		engine := compiler.NewGoEngine()
