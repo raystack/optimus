@@ -10,7 +10,7 @@ import (
 	"github.com/briandowns/spinner"
 	"github.com/schollz/progressbar/v3"
 
-	"github.com/odpf/optimus/utils"
+	"github.com/odpf/optimus/internal/utils"
 )
 
 const (

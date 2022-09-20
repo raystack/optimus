@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/utils"
+	"github.com/odpf/optimus/internal/utils"
 )
 
 func TestMapHelper(t *testing.T) {

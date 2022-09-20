@@ -10,9 +10,9 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"gopkg.in/yaml.v2"
 
+	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store/local"
-	"github.com/odpf/optimus/utils"
 )
 
 var (

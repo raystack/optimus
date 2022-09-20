@@ -5,19 +5,19 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/tree"
+	tree2 "github.com/odpf/optimus/internal/lib/tree"
 	"github.com/odpf/optimus/models"
 )
 
 func TestMultiRootDagTree(t *testing.T) {
 	t.Run("GetNameAndDependents", func(t *testing.T) {
-		treeNode1 := tree.NewTreeNode(models.JobSpec{
+		treeNode1 := tree2.NewTreeNode(models.JobSpec{
 			Name: "job1",
 		})
-		treeNode2 := tree.NewTreeNode(models.JobSpec{
+		treeNode2 := tree2.NewTreeNode(models.JobSpec{
 			Name: "job2",
 		})
-		multiRootTree := tree.NewMultiRootTree()
+		multiRootTree := tree2.NewMultiRootTree()
 		treeNode1.AddDependent(treeNode2)
 		treeNode2.AddDependent(treeNode1)
 		multiRootTree.AddNodeIfNotExist(treeNode1)
@@ -25,13 +25,13 @@ func TestMultiRootDagTree(t *testing.T) {
 
 		err := multiRootTree.ValidateCyclic()
 		assert.NotNil(t, err)
-		assert.Contains(t, err.Error(), tree.ErrCyclicDependencyEncountered.Error())
+		assert.Contains(t, err.Error(), tree2.ErrCyclicDependencyEncountered.Error())
 	})
 	t.Run("MarkRoot", func(t *testing.T) {
-		treeNode1 := tree.NewTreeNode(models.JobSpec{
+		treeNode1 := tree2.NewTreeNode(models.JobSpec{
 			Name: "job1",
 		})
-		multiRootTree := tree.NewMultiRootTree()
+		multiRootTree := tree2.NewMultiRootTree()
 		multiRootTree.AddNode(treeNode1)
 		multiRootTree.MarkRoot(treeNode1)
 		rootNodes := multiRootTree.GetRootNodes()
@@ -40,19 +40,19 @@ func TestMultiRootDagTree(t *testing.T) {
 	})
 	t.Run("ValidateCyclic", func(t *testing.T) {
 		t.Run("should throw an error if cyclic", func(t *testing.T) {
-			treeNode1 := tree.NewTreeNode(models.JobSpec{
+			treeNode1 := tree2.NewTreeNode(models.JobSpec{
 				Name: "pilotdata-integration.playground.job1",
 			})
-			treeNode2 := tree.NewTreeNode(models.JobSpec{
+			treeNode2 := tree2.NewTreeNode(models.JobSpec{
 				Name: "pilotdata-integration.playground.job2",
 			})
-			treeNode3 := tree.NewTreeNode(models.JobSpec{
+			treeNode3 := tree2.NewTreeNode(models.JobSpec{
 				Name: "pilotdata-integration.playground.job3",
 			})
-			treeNode4 := tree.NewTreeNode(models.JobSpec{
+			treeNode4 := tree2.NewTreeNode(models.JobSpec{
 				Name: "pilotdata-integration.playground.job4",
 			})
-			multiRootTree := tree.NewMultiRootTree()
+			multiRootTree := tree2.NewMultiRootTree()
 			multiRootTree.AddNode(treeNode1)
 			multiRootTree.AddNode(treeNode2)
 			multiRootTree.AddNode(treeNode3)
@@ -71,13 +71,13 @@ pilotdata-integration.playground.job2
 `, err.Error())
 		})
 		t.Run("should not return error if not cyclic", func(t *testing.T) {
-			treeNode1 := tree.NewTreeNode(models.JobSpec{
+			treeNode1 := tree2.NewTreeNode(models.JobSpec{
 				Name: "job1",
 			})
-			treeNode2 := tree.NewTreeNode(models.JobSpec{
+			treeNode2 := tree2.NewTreeNode(models.JobSpec{
 				Name: "job2",
 			})
-			multiRootTree := tree.NewMultiRootTree()
+			multiRootTree := tree2.NewMultiRootTree()
 			multiRootTree.AddNode(treeNode1)
 			multiRootTree.AddNode(treeNode2)
 			treeNode1.AddDependent(treeNode2)

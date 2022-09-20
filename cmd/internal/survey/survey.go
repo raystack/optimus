@@ -8,8 +8,8 @@ import (
 	petname "github.com/dustinkirkland/golang-petname"
 	"github.com/spf13/afero"
 
+	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/store/local"
-	"github.com/odpf/optimus/utils"
 )
 
 const (

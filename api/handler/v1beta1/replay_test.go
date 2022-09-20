@@ -15,8 +15,8 @@ import (
 
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
 	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/core/set"
-	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/internal/lib/set"
+	"github.com/odpf/optimus/internal/lib/tree"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"

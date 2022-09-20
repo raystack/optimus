@@ -13,7 +13,7 @@ import (
 	"github.com/odpf/optimus/cmd/internal/logger"
 	"github.com/odpf/optimus/cmd/internal/survey"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/utils"
+	"github.com/odpf/optimus/internal/utils"
 )
 
 type initializeCommand struct {

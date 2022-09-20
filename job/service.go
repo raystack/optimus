@@ -17,8 +17,8 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/odpf/optimus/api/writer"
-	"github.com/odpf/optimus/core/progress"
-	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/internal/lib/progress"
+	"github.com/odpf/optimus/internal/lib/tree"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store"

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/odpf/optimus/core/progress"
-	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/internal/lib/progress"
+	"github.com/odpf/optimus/internal/lib/tree"
 	"github.com/odpf/optimus/models"
 )
 

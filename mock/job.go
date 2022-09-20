@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/api/writer"
-	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/internal/lib/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
 	"github.com/odpf/optimus/store/local"

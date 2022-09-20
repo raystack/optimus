@@ -20,7 +20,7 @@ import (
 	"github.com/odpf/optimus/cmd/internal/survey"
 	"github.com/odpf/optimus/cmd/namespace"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/core/set"
+	"github.com/odpf/optimus/internal/lib/set"
 )
 
 type taskRunBlock struct {

@@ -24,12 +24,12 @@ import (
 	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/ext/notify/pagerduty"
 	"github.com/odpf/optimus/ext/notify/slack"
+	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin"
 	"github.com/odpf/optimus/service"
 	"github.com/odpf/optimus/store/postgres"
-	"github.com/odpf/optimus/utils"
 )
 
 type setupFn func() error

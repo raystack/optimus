@@ -18,8 +18,8 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/compiler"
-	"github.com/odpf/optimus/core/progress"
 	"github.com/odpf/optimus/ext/scheduler/airflow2"
+	"github.com/odpf/optimus/internal/lib/progress"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
