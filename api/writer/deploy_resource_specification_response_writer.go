@@ -1,7 +1,7 @@
 package writer
 
 import (
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
 type deployResourceSpecificationResponseWriter struct {

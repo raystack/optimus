@@ -11,11 +11,11 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/internal/lib/tree"
+	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 )
 
 func TestReplaySyncer(t *testing.T) {

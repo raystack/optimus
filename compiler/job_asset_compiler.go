@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/utils"
 )
 
 type JobRunAssetsCompiler struct {

@@ -15,7 +15,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/odpf/optimus/core/cron"
+	"github.com/odpf/optimus/internal/lib/cron"
 	"github.com/odpf/optimus/models"
 )
 

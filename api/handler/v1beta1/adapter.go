@@ -10,10 +10,10 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/internal/lib/tree"
+	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/utils"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
 func FromJobProto(spec *pb.JobSpecification, pluginRepo models.PluginRepository) (models.JobSpec, error) {

@@ -11,10 +11,10 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/robfig/cron/v3"
 
-	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/internal/lib/tree"
+	"github.com/odpf/optimus/internal/store"
+	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
-	"github.com/odpf/optimus/utils"
 )
 
 var (

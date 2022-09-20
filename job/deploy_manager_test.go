@@ -12,10 +12,10 @@ import (
 	testifyMock "github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 )
 
 func TestDeployManager(t *testing.T) {

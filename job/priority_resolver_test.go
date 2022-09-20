@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/internal/lib/tree"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 )

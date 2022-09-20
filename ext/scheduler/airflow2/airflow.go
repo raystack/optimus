@@ -17,8 +17,8 @@ import (
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 
-	"github.com/odpf/optimus/core/cron"
-	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/internal/lib/cron"
+	"github.com/odpf/optimus/internal/lib/progress"
 	"github.com/odpf/optimus/models"
 )
 

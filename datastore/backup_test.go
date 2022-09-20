@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/odpf/optimus/datastore"
+	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 )
 
 func TestBackupService(t *testing.T) {
