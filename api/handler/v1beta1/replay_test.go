@@ -14,12 +14,12 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/internal/lib/set"
 	"github.com/odpf/optimus/internal/lib/tree"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
 func TestReplayOnServer(t *testing.T) {

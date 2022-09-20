@@ -8,11 +8,11 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/client/cmd/internal"
 	"github.com/odpf/optimus/client/cmd/internal/connectivity"
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/config"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
 const describeTimeout = time.Minute * 15

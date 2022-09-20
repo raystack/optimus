@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
-	"github.com/odpf/optimus/store"
 )
 
 func TestMonitoringService(t *testing.T) {

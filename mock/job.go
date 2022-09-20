@@ -9,8 +9,8 @@ import (
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/client/local"
 	"github.com/odpf/optimus/internal/lib/progress"
+	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 )
 
 // ProjectJobSpecRepoFactory to manage job specs at project level

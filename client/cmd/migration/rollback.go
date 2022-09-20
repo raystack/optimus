@@ -8,7 +8,7 @@ import (
 
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/store/postgres"
+	"github.com/odpf/optimus/internal/store/postgres"
 )
 
 type rollbackCommand struct {

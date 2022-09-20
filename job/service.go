@@ -19,9 +19,9 @@ import (
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/internal/lib/progress"
 	"github.com/odpf/optimus/internal/lib/tree"
+	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
-	"github.com/odpf/optimus/store"
 )
 
 const (

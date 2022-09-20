@@ -11,9 +11,9 @@ import (
 	mock2 "github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/datastore"
+	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 )
 
 func TestService(t *testing.T) {

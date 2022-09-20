@@ -12,9 +12,9 @@ import (
 	"github.com/robfig/cron/v3"
 
 	"github.com/odpf/optimus/internal/lib/tree"
+	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 )
 
 var (

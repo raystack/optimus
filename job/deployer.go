@@ -7,9 +7,9 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/odpf/salt/log"
 
+	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
-	"github.com/odpf/optimus/store"
 )
 
 type deployer struct {

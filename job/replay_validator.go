@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/odpf/optimus/internal/lib/tree"
+	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 )
 
 // ReplayStatusToValidate signifies list of status to be used when checking active replays

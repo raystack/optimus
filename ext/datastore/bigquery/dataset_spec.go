@@ -9,8 +9,8 @@ import (
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
 
-	v1 "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/models"
+	v1 "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
 var datasetNameParseRegex = regexp.MustCompile(`^([\w-]+)\.(\w+)$`)

@@ -7,7 +7,7 @@ LAST_TAG := "$(shell git rev-list --tags --max-count=1)"
 OPMS_VERSION := "$(shell git describe --tags ${LAST_TAG})-next"
 PROTON_COMMIT := "1a8b127a4e8ae6a30868166d7c60839d01c24ba5"
 
-.PHONY: build test test-ci generate-proto unit-test-ci smoke-test integration-test vet coverage clean install lint
+.PHONY: build test test-ci generate-proto unit-test-ci integration-test vet coverage clean install lint
 
 .DEFAULT_GOAL := build
 
@@ -17,7 +17,7 @@ build: # build optimus binary
 	@go build -ldflags "-X ${NAME}/config.BuildVersion=${OPMS_VERSION} -X ${NAME}/config.BuildCommit=${LAST_COMMIT}" -o optimus .
 	@echo " - build complete"
 
-test-ci: smoke-test unit-test-ci vet scheduler-resource-test ## run tests
+test-ci: unit-test-ci vet scheduler-resource-test ## run tests
 
 scheduler-resource-test:
 	cd ./ext/scheduler/airflow2/tests && pip3 install -r requirements.txt && python3 -m unittest discover .
@@ -30,9 +30,6 @@ generate-proto: ## regenerate protos
 
 unit-test-ci:
 	go test -count 5 -race -coverprofile coverage.txt -covermode=atomic -timeout 1m -tags=unit_test ./...
-
-smoke-test: build
-	@bash ./scripts/smoke-test.sh
 
 integration-test:
 	go test -count 1 -cover -race -timeout 1m ./... -run TestIntegration

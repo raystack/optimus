@@ -1,8 +1,8 @@
 package cli
 
 import (
-	pb "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
 	"github.com/odpf/optimus/models"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
 )
 
 func AdaptQuestionToProto(q models.PluginQuestion) *pb.PluginQuestion {

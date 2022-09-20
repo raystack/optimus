@@ -7,9 +7,8 @@ import (
 	"os"
 	"time"
 
-	_ "github.com/odpf/optimus/client/extension/provider"
-
 	clientCmd "github.com/odpf/optimus/client/cmd"
+	_ "github.com/odpf/optimus/client/extension/provider"
 	_ "github.com/odpf/optimus/ext/datastore"
 	server "github.com/odpf/optimus/server/cmd"
 )

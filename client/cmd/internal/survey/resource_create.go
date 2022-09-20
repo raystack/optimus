@@ -9,8 +9,8 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 
+	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 )
 
 // ResourceCreateSurvey defines surveys for resource creation

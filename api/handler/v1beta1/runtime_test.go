@@ -10,11 +10,11 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
 func TestRuntimeServiceServer(t *testing.T) {

@@ -7,11 +7,11 @@ import (
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
-	pbp "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
 	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin/v1beta1/base"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	pbp "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
 )
 
 const (

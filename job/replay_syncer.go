@@ -11,8 +11,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
+	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 )
 
 const (
