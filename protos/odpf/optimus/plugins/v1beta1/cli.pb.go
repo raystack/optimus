@@ -7,7 +7,7 @@
 package optimus
 
 import (
-	v1beta1 "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	v1beta1 "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"

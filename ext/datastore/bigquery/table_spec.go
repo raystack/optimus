@@ -11,7 +11,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"gopkg.in/yaml.v3"
 
-	v1 "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
+	v1 "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/models"
 )
 

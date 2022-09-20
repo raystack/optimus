@@ -1,7 +1,7 @@
 package cli
 
 import (
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
 	"github.com/odpf/optimus/models"
 )
 

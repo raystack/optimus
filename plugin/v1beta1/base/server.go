@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
+	pbp "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
 	"github.com/odpf/optimus/models"
 )
 

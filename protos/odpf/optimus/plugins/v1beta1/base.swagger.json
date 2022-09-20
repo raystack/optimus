@@ -1,0 +1,131 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "odpf/optimus/plugins/v1beta1/base.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "BaseService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {},
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "typeUrl": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1beta1HookType": {
+      "type": "string",
+      "enum": [
+        "HOOK_TYPE_UNSPECIFIED",
+        "HOOK_TYPE_PRE",
+        "HOOK_TYPE_POST",
+        "HOOK_TYPE_FAIL"
+      ],
+      "default": "HOOK_TYPE_UNSPECIFIED",
+      "title": "HookType enumerates the type of hook Optimus supports"
+    },
+    "v1beta1PluginInfoResponse": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "pluginType": {
+          "$ref": "#/definitions/v1beta1PluginType"
+        },
+        "pluginMods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1PluginMod"
+          }
+        },
+        "pluginVersion": {
+          "type": "string",
+          "title": "plugin_version is the semver version of this individual plugin"
+        },
+        "apiVersion": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "api_versions indicates the versions of the Optimus Plugin API\nthis plugin supports"
+        },
+        "image": {
+          "type": "string",
+          "title": "docker image including version if this executes a docker image"
+        },
+        "dependsOn": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "HOOK specific\nname of hooks on which this should depend on before executing"
+        },
+        "hookType": {
+          "$ref": "#/definitions/v1beta1HookType"
+        },
+        "secretPath": {
+          "type": "string",
+          "title": "Experimental\nwill be mounted inside the container as volume"
+        }
+      }
+    },
+    "v1beta1PluginMod": {
+      "type": "string",
+      "enum": [
+        "PLUGIN_MOD_UNSPECIFIED",
+        "PLUGIN_MOD_CLI",
+        "PLUGIN_MOD_DEPENDENCYRESOLVER"
+      ],
+      "default": "PLUGIN_MOD_UNSPECIFIED",
+      "title": "PluginMod enumerates the type of mods this plugin supports"
+    },
+    "v1beta1PluginType": {
+      "type": "string",
+      "enum": [
+        "PLUGIN_TYPE_UNSPECIFIED",
+        "PLUGIN_TYPE_TASK",
+        "PLUGIN_TYPE_HOOK"
+      ],
+      "default": "PLUGIN_TYPE_UNSPECIFIED",
+      "title": "PluginType enumerates the type of plugins Optimus supports"
+    }
+  }
+}

@@ -9,7 +9,7 @@ import (
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/hashicorp/go-hclog"
 
-	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
+	pbp "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
 	"github.com/odpf/optimus/models"
 )
 
