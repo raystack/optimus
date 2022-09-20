@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/api/writer"
+	"github.com/odpf/optimus/client/local"
 	"github.com/odpf/optimus/internal/lib/progress"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/store"
-	"github.com/odpf/optimus/store/local"
 )
 
 // ProjectJobSpecRepoFactory to manage job specs at project level

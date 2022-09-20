@@ -7,9 +7,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/odpf/optimus/cmd"
+	_ "github.com/odpf/optimus/client/extension/provider"
+
+	clientCmd "github.com/odpf/optimus/client/cmd"
 	_ "github.com/odpf/optimus/ext/datastore"
-	_ "github.com/odpf/optimus/extension/provider"
+	server "github.com/odpf/optimus/server/cmd"
 )
 
 var errRequestFail = errors.New("🔥 unable to complete request successfully")
@@ -18,7 +20,12 @@ var errRequestFail = errors.New("🔥 unable to complete request successfully")
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	command := cmd.New()
+	command := clientCmd.New()
+
+	// Add Server related commands
+	command.AddCommand(
+		server.NewServeCommand(),
+	)
 
 	if err := command.Execute(); err != nil {
 		fmt.Println(errRequestFail)
