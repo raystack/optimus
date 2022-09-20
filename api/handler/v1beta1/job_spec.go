@@ -156,9 +156,8 @@ func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 	return nil
 }
 
-// todo: later rename this to job inspect
 func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspectRequest) (*pb.JobInspectResponse, error) {
-	logWriter := writer.NewLogWriter(sv.l)
+	logWriter := &writer.BufferedLogger{}
 
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
@@ -167,62 +166,47 @@ func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspe
 
 	var jobSpec models.JobSpec
 
-	jobName := req.GetJobName()
-	if jobName == "" {
+	if req.GetJobName() == "" {
 		// jobSpec must be provided by client
-		reqJobSpec := req.GetSpec()
-		jobSpec, err = FromJobProto(reqJobSpec, sv.pluginRepo)
+		jobSpec, err = FromJobProto(req.GetSpec(), sv.pluginRepo)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "cannot deserialize job: \n%s", err.Error())
 		}
 	} else {
 		// get job spec from DB
-		jobSpec, err = sv.jobSvc.GetByName(ctx, jobName, namespaceSpec)
+		jobSpec, err = sv.jobSvc.GetByName(ctx, req.GetJobName(), namespaceSpec)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "cannot obtain jobSpec: \n%s", err.Error())
 		}
 	}
 
-	jobDestination, jobSources, _ := sv.jobSvc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
-	// check resources availability
-
+	jobDestination, jobSources, err := sv.jobSvc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Unable to generate destination and dependencies sources: \n%s", err.Error())
+	}
 	jobSpec.ResourceDestination = jobDestination.URN()
 
-	jobSourcesString := fmt.Sprintf("%v", jobSources)
-	sv.l.Info(jobSourcesString)
-
-	err = sv.jobSvc.Check(ctx, namespaceSpec, []models.JobSpec{jobSpec}, logWriter)
-	if err != nil {
-		logWriter.Write(writer.LogLevelInfo, err.Error())
-	}
-
-	// check dependecy status from optimus
-	//
+	sv.jobSvc.Check(ctx, namespaceSpec, []models.JobSpec{jobSpec}, logWriter)
 
 	sv.hightlightJobWarnings(ctx, jobSpec, logWriter)
-	// jobs that will get impacted, who have/will have sensors on the current job
-	dependencySpecMap := make(map[string]*pb.JobSpecification)
 
-	// get dependency job status
 	return &pb.JobInspectResponse{
-		Success:      true,
-		Spec:         ToJobSpecificationProto(jobSpec),
-		Dependencies: dependencySpecMap,
+		Spec:        ToJobSpecificationProto(jobSpec),
+		Sources:     jobSources,
+		Destination: jobSpec.ResourceDestination,
+		Log:         logWriter.Messages,
 	}, nil
 }
 
 func (sv *JobSpecServiceServer) hightlightJobWarnings(ctx context.Context, jobSpec models.JobSpec, logWriter writer.LogWriter) {
-	//TODO: send these warnings in api response
 	if jobSpec.Behavior.CatchUp {
 		logWriter.Write(writer.LogLevelWarning, "Catchup is enabled")
 	}
-
 	if dupDestJobName, err := sv.jobSvc.IsJobDestinationDuplicate(ctx, jobSpec); err != nil {
-		logWriter.Write(writer.LogLevelWarning, " already a job already exists with same Destination:"+jobSpec.ResourceDestination+" exixting jobName:"+dupDestJobName)
-	} else {
-		logWriter.Write(writer.LogLevelError, " could not perform duplicate job  destination check err:"+err.Error())
+		logWriter.Write(writer.LogLevelError, " could not perform duplicate job destination check err:"+err.Error())
+	} else if dupDestJobName != "" {
+		logWriter.Write(writer.LogLevelWarning, " already a job already exists with same Destination:"+jobSpec.ResourceDestination+" existing jobName:"+dupDestJobName)
 	}
-	// todo: return a warning struct , with warning levels, and msgs
 }
 
 func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req *pb.CreateJobSpecificationRequest) (*pb.CreateJobSpecificationResponse, error) {

@@ -277,12 +277,13 @@ func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, j
 		runner.Add(func(currentSpec models.JobSpec, lw writer.LogWriter) func() (interface{}, error) {
 			return func() (interface{}, error) {
 				// check dependencies
+				var specCheckErrors error
 				_, err := srv.pluginService.GenerateDependencies(ctx, currentSpec, namespace, true)
 				if err != nil {
 					if !errors.Is(err, service.ErrDependencyModNotFound) {
 						errMsg := fmt.Sprintf("check for job failed: %s, reason: %s", currentSpec.Name, fmt.Sprintf("dependency resolution: %s\n", err.Error()))
 						lw.Write(writer.LogLevelError, errMsg)
-						return nil, fmt.Errorf("%s %s: %w", errDependencyResolution.Error(), currentSpec.Name, err)
+						specCheckErrors = multierror.Append(specCheckErrors, fmt.Errorf("%s %s: %w", errDependencyResolution.Error(), currentSpec.Name, err))
 					}
 				}
 
@@ -290,12 +291,14 @@ func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, j
 				if err := srv.batchScheduler.VerifyJob(ctx, namespace, currentSpec); err != nil {
 					errMsg := fmt.Sprintf("check for job failed: %s, reason: %s", currentSpec.Name, fmt.Sprintf("compilation: %s\n", err.Error()))
 					lw.Write(writer.LogLevelError, errMsg)
-					return nil, fmt.Errorf("failed to compile %s: %w", currentSpec.Name, err)
+					specCheckErrors = multierror.Append(specCheckErrors, fmt.Errorf("failed to compile %s: %w", currentSpec.Name, err))
 				}
 
-				successMsg := fmt.Sprintf("check for job passed: %s", currentSpec.Name)
-				lw.Write(writer.LogLevelInfo, successMsg)
-				return nil, nil
+				if specCheckErrors == nil {
+					successMsg := fmt.Sprintf("check for job passed: %s", currentSpec.Name)
+					lw.Write(writer.LogLevelInfo, successMsg)
+				}
+				return nil, specCheckErrors
 			}
 		}(jSpec, logWriter))
 	}
@@ -777,7 +780,7 @@ func (srv *Service) IsJobDestinationDuplicate(ctx context.Context, jobSpec model
 		return "", err
 	}
 	if jobWithSameDestination.Name == jobSpec.Name && jobWithSameDestination.NamespaceSpec.ProjectSpec.Name == jobSpec.NamespaceSpec.ProjectSpec.Name {
-		// this is the same job from the DB. hance not an issues
+		// this is the same job from the DB. hence not an issues
 		return "", nil
 	}
 	return jobWithSameDestination.Name, nil

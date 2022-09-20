@@ -655,16 +655,22 @@
     "v1beta1JobInspectResponse": {
       "type": "object",
       "properties": {
-        "success": {
-          "type": "boolean"
-        },
         "spec": {
           "$ref": "#/definitions/v1beta1JobSpecification"
         },
-        "dependencies": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/v1beta1JobSpecification"
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "destination": {
+          "type": "string"
+        },
+        "log": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1Log"
           }
         }
       }

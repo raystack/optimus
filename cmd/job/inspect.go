@@ -50,10 +50,10 @@ func NewExplainCommand() *cobra.Command {
 		clientConfig: &config.ClientConfig{},
 	}
 	cmd := &cobra.Command{
-		Use:     "explain",
+		Use:     "inspect",
 		Short:   "Apply template values in job specification to current 'explain' directory", // todo fix this
 		Long:    "Process optimus job specification based on macros/functions used.",         // todo fix this
-		Example: "optimus job explain [<job_name>]",
+		Example: "optimus job inspect [<job_name>]",
 		RunE:    explain.RunE,
 		PreRunE: explain.PreRunE,
 	}
@@ -72,7 +72,7 @@ func (e *explainCommand) PreRunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	e.logger = logger.NewClientLogger(e.clientConfig.Log)
+	e.logger = logger.NewClientLogger()
 	e.jobSurvey = survey.NewJobSurvey()
 	e.namespaceSurvey = survey.NewNamespaceSurvey(e.logger)
 	// check if time flag is set and see if schedule time could be parsed
@@ -165,14 +165,7 @@ func (e *explainCommand) GetJobSpecFromServer(jobSpec models.JobSpec) *pb.JobSpe
 		NamespaceName: e.namespaceName,
 		Spec:          v1handler.ToJobSpecificationProto(jobSpec),
 	})
-	// list dependencies / later do this with dependency type too.
-	for dependencyName, dependencySpec := range jobInspectResponse.Dependencies {
-		e.logger.Info(logger.ColoredSuccess("\n> Upstream job name:: %v", dependencyName))
-		e.logger.Info(logger.ColoredNotice("\nOwner:: %v", dependencySpec.Owner))
-		e.logger.Info(logger.ColoredNotice("\nSchedule Interval:: %v, StartDate:: %v, EndDate:: %v", dependencySpec.Interval, dependencySpec.StartDate, dependencySpec.EndDate))
-		e.logger.Info(logger.ColoredNotice("\nSchedule Interval:: %v, StartDate:: %v, EndDate:: %v", dependencySpec.Interval, dependencySpec.StartDate, dependencySpec.EndDate))
-		e.logger.Info(logger.ColoredNotice("\nWindowSize:: %v, WindowOffset:: %v, WindowTruncateTo:: %v", dependencySpec.WindowSize, dependencySpec.WindowOffset, dependencySpec.WindowTruncateTo))
-	}
+
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			e.logger.Error(logger.ColoredError("Refresh process took too long, timing out"))
