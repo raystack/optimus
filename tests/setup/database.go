@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/store/postgres"
+	"github.com/odpf/optimus/internal/store/postgres"
 )
 
 var (

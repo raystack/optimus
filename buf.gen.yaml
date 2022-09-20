@@ -1,18 +1,18 @@
 version: v1
 plugins:
   - name: go
-    out: api/proto
+    out: protos
     # appending ",M<path/to/protofile>=<package name in current project after compilation>"
     # is required for protoc-gen-go to provide what the import path for a given
     # proto file should be.
     # This is necessary while importing a proto file foo/a.proto from another
     # directory, e.g. bar/b.proto
-    opt: paths=source_relative,Modpf/optimus/core/v1beta1/runtime.proto=github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/project.proto=github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/namespace.proto=github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/job_spec.proto=github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/job_run.proto=github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/status.proto=github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/resource.proto=github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1
+    opt: paths=source_relative,Modpf/optimus/core/v1beta1/runtime.proto=github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/project.proto=github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/namespace.proto=github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/job_spec.proto=github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/job_run.proto=github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/status.proto=github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1,Modpf/optimus/core/v1beta1/resource.proto=github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1
   - name: go-grpc
-    out: api/proto
+    out: protos
     opt: paths=source_relative,require_unimplemented_servers=true
   - name: grpc-gateway
-    out: api/proto
+    out: protos
     opt: paths=source_relative
   - name: openapiv2
-    out: api/third_party/openapi
+    out: protos

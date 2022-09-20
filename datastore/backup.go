@@ -8,10 +8,10 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/odpf/optimus/internal/store"
+	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
-	"github.com/odpf/optimus/store"
-	"github.com/odpf/optimus/utils"
 )
 
 // backupListWindow window interval to fetch recent backups

@@ -17,10 +17,10 @@ import (
 	"google.golang.org/grpc/status"
 
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/internal/lib/progress"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
 type JobSpecServiceServerTestSuite struct {

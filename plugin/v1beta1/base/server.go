@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
 	"github.com/odpf/optimus/models"
+	pbp "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
 )
 
 // GRPCServer will be used by plugins, this is working as proto adapter

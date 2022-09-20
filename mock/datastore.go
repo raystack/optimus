@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/api/writer"
+	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 )
 
 type Datastorer struct {

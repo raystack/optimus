@@ -9,11 +9,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/cron"
+	"github.com/odpf/optimus/internal/lib/cron"
+	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
-	"github.com/odpf/optimus/store"
 )
 
 func TestJobRunService(t *testing.T) {

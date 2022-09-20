@@ -3,10 +3,10 @@ package cli
 import (
 	"context"
 
-	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
+	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin/v1beta1/base"
-	"github.com/odpf/optimus/utils"
+	pbp "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
 )
 
 // GRPCServer will be used by plugins this is working as proto adapter

@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/core/progress"
+	"github.com/odpf/optimus/internal/lib/progress"
 	"github.com/odpf/optimus/models"
 )
 

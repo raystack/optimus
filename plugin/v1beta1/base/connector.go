@@ -7,8 +7,8 @@ import (
 	"github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
 
-	pbp "github.com/odpf/optimus/api/proto/odpf/optimus/plugins/v1beta1"
 	"github.com/odpf/optimus/models"
+	pbp "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
 )
 
 var _ plugin.GRPCPlugin = &Connector{}

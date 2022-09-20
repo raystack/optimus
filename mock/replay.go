@@ -7,10 +7,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/core/tree"
+	"github.com/odpf/optimus/internal/lib/tree"
+	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 )
 
 type ReplayRepository struct {

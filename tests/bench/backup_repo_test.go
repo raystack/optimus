@@ -13,9 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
+	"github.com/odpf/optimus/internal/store"
+	"github.com/odpf/optimus/internal/store/postgres"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
-	"github.com/odpf/optimus/store/postgres"
 	"github.com/odpf/optimus/tests/setup"
 )
 

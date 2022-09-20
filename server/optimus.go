@@ -18,18 +18,19 @@ import (
 	"gorm.io/gorm"
 
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
 	jobRunCompiler "github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/ext/notify/pagerduty"
 	"github.com/odpf/optimus/ext/notify/slack"
+	"github.com/odpf/optimus/internal/store/postgres"
+	"github.com/odpf/optimus/internal/telemetry"
+	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/service"
-	"github.com/odpf/optimus/store/postgres"
-	"github.com/odpf/optimus/utils"
 )
 
 type setupFn func() error
@@ -113,7 +114,7 @@ func (s *OptimusServer) setupPlugins() error {
 }
 
 func (s *OptimusServer) setupTelemetry() error {
-	teleShutdown, err := config.InitTelemetry(s.logger, s.conf.Telemetry)
+	teleShutdown, err := telemetry.Init(s.logger, s.conf.Telemetry)
 	if err != nil {
 		return err
 	}

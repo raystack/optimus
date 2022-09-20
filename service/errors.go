@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/odpf/optimus/store"
+	"github.com/odpf/optimus/internal/store"
 )
 
 const (

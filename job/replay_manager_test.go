@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	mocklib "github.com/stretchr/testify/mock"
 
+	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store"
 )
 
 func TestReplayManager(t *testing.T) {
