@@ -5,647 +5,603 @@ package postgres_test
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
 	"github.com/odpf/optimus/internal/store/postgres"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 )
 
-func TestJobSpecRepository(t *testing.T) {
-	ctx := context.Background()
-	projectSpec := models.ProjectSpec{
-		ID:   models.ProjectID(uuid.New()),
-		Name: "t-optimus-id",
-		Config: map[string]string{
-			"bucket": "gs://some_folder",
-		},
-	}
-	externalProjectSpec := models.ProjectSpec{
-		ID:   models.ProjectID(uuid.New()),
-		Name: "external-project",
-		Config: map[string]string{
-			"bucket": "gs://some_folder",
-		},
-	}
-	gTask := "g-task"
-	//tTask := "t-task"
-	jobDestination := "p.d.t"
-	jobDestination1 := "p.d.t1"
-	jobDestination2 := "p.d.t2"
+type JobSpecRepositoryTestSuite struct {
+	suite.Suite
 
-	execUnit1 := new(mock.BasePlugin)
-	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
-		Name:       gTask,
-		PluginType: models.PluginTypeTask,
-	}, nil)
+	db *gorm.DB
+}
 
-	pluginRepo := new(mock.SupportedPluginRepo)
-	pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1}, nil)
-	adapter := postgres.NewAdapter(pluginRepo)
-	namespaceSpec := models.NamespaceSpec{
-		ID:          uuid.New(),
-		Name:        "dev-team-1",
-		ProjectSpec: projectSpec,
-	}
-	externalProjectNamespaceSpec := models.NamespaceSpec{
-		ID:          uuid.New(),
-		Name:        "dev-team-2",
-		ProjectSpec: externalProjectSpec,
-	}
-	window, err := models.NewWindow(1, "h", "0", "24h")
+func (j *JobSpecRepositoryTestSuite) SetupTest() {
+	// TODO: check if we can refactor this to avoid using public db connection variable
+	migrateDB()
+	j.db = optimusDB
+	j.db.Logger = logger.Default.LogMode(logger.Info)
+}
+
+func (j *JobSpecRepositoryTestSuite) TearDownSuite() {
+	db, err := j.db.DB()
 	if err != nil {
 		panic(err)
 	}
-	testConfigs := []models.JobSpec{
-		{
-			Version: 1,
-			ID:      uuid.New(),
-			Name:    "job-1",
-			Behavior: models.JobSpecBehavior{
-				DependsOnPast: false,
-				CatchUp:       true,
-				Retry: models.JobSpecBehaviorRetry{
-					Count:              2,
-					Delay:              0,
-					ExponentialBackoff: true,
-				},
-			},
-			Task: models.JobSpecTask{
-				Unit: &models.Plugin{Base: execUnit1},
-				Config: []models.JobSpecConfigItem{
-					{
-						Name: "do", Value: "this",
-					},
-				},
-				Window: window,
-			},
-			Assets: *models.JobAssets{}.New(
-				[]models.JobSpecAsset{
-					{
-						Name:  "query.sql",
-						Value: "select * from 1",
-					},
-				},
-			),
-			ExternalDependencies: models.ExternalDependency{
-				HTTPDependencies: []models.HTTPDependency{
-					{
-						Name: "test_http_sensor_1",
-						RequestParams: map[string]string{
-							"key_test": "value_test",
-						},
-						URL: "http://test/optimus/status/1",
-						Headers: map[string]string{
-							"Content-Type": "application/json",
-						},
-					},
-				},
-			},
-			ResourceDestination: jobDestination,
-			Dependencies:        map[string]models.JobSpecDependency{},
-			NamespaceSpec:       namespaceSpec,
-		},
-		{
-			Version: 1,
-			ID:      uuid.New(),
-			Name:    "job-2",
-			Behavior: models.JobSpecBehavior{
-				DependsOnPast: false,
-				CatchUp:       true,
-				Retry: models.JobSpecBehaviorRetry{
-					Count:              2,
-					Delay:              0,
-					ExponentialBackoff: true,
-				},
-			},
-			Task: models.JobSpecTask{
-				Unit: &models.Plugin{Base: execUnit1},
-				Config: []models.JobSpecConfigItem{
-					{
-						Name: "do", Value: "this",
-					},
-				},
-				Window: window,
-			},
-			Assets: *models.JobAssets{}.New(
-				[]models.JobSpecAsset{
-					{
-						Name:  "query.sql",
-						Value: "select * from 1",
-					},
-				},
-			),
-			ExternalDependencies: models.ExternalDependency{
-				HTTPDependencies: []models.HTTPDependency{
-					{
-						Name: "test_http_sensor_1",
-						RequestParams: map[string]string{
-							"key_test": "value_test",
-						},
-						URL: "http://test/optimus/status/1",
-						Headers: map[string]string{
-							"Content-Type": "application/json",
-						},
-					},
-				},
-			},
-			Dependencies:        map[string]models.JobSpecDependency{},
-			ResourceDestination: jobDestination1,
-			NamespaceSpec:       namespaceSpec,
-		},
-		{
-			Version: 1,
-			ID:      uuid.New(),
-			Name:    "job-3",
-			Behavior: models.JobSpecBehavior{
-				DependsOnPast: false,
-				CatchUp:       true,
-				Retry: models.JobSpecBehaviorRetry{
-					Count:              2,
-					Delay:              0,
-					ExponentialBackoff: true,
-				},
-			},
-			Task: models.JobSpecTask{
-				Unit: &models.Plugin{Base: execUnit1},
-				Config: []models.JobSpecConfigItem{
-					{
-						Name: "do", Value: "this",
-					},
-				},
-				Window: window,
-			},
-			Assets: *models.JobAssets{}.New(
-				[]models.JobSpecAsset{
-					{
-						Name:  "query.sql",
-						Value: "select * from 1",
-					},
-				},
-			),
-			NamespaceSpec: namespaceSpec,
-		},
-		{
-			Version: 1,
-			ID:      uuid.New(),
-			Name:    "job-4",
-			Behavior: models.JobSpecBehavior{
-				DependsOnPast: false,
-				CatchUp:       true,
-				Retry: models.JobSpecBehaviorRetry{
-					Count:              2,
-					Delay:              0,
-					ExponentialBackoff: true,
-				},
-			},
-			Task: models.JobSpecTask{
-				Unit: &models.Plugin{Base: execUnit1},
-				Config: []models.JobSpecConfigItem{
-					{
-						Name: "do", Value: "this",
-					},
-				},
-				Window: window,
-			},
-			Assets: *models.JobAssets{}.New(
-				[]models.JobSpecAsset{
-					{
-						Name:  "query.sql",
-						Value: "select * from 1",
-					},
-				},
-			),
-			Dependencies:        map[string]models.JobSpecDependency{},
-			ResourceDestination: jobDestination2,
-			NamespaceSpec:       externalProjectNamespaceSpec,
-		},
+	if err := db.Close(); err != nil {
+		panic(err)
 	}
-	testConfigs[2].Dependencies = map[string]models.JobSpecDependency{
-		testConfigs[1].Name: {},
+	migrateDB()
+}
+
+func (j *JobSpecRepositoryTestSuite) TestGetAllByProjectName() {
+	project0 := j.getDummyProject("project_test0")
+	namespace0 := j.getDummyNamespace("namespace_test0", project0)
+	job0 := j.getDummyJob("job_test0", "destination_test0", namespace0)
+	job1 := j.getDummyJob("job_test1", "destination_test1", namespace0)
+
+	project1 := j.getDummyProject("project_test1")
+	namespace1 := j.getDummyNamespace("namespace_test1", project1)
+	job2 := j.getDummyJob("job_test2", "destination_test2", namespace1)
+
+	insertRecords(j.db, []*postgres.Project{project0, project1})
+	insertRecords(j.db, []*postgres.Namespace{namespace0, namespace1})
+	insertRecords(j.db, []*postgres.Job{job0, job1, job2})
+
+	j.Run("should return all jobs within a project and nil", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+		pluginRepository.On("GetByName", "").Return(nil, nil)
+
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		projectName := project0.Name
+
+		actualJobSpecs, actualError := repository.GetAllByProjectName(ctx, projectName)
+
+		j.NoError(actualError)
+		j.Len(actualJobSpecs, 2)
+		j.Equal(job0.Name, actualJobSpecs[0].Name)
+		j.Equal(job0.Project.Name, actualJobSpecs[0].NamespaceSpec.ProjectSpec.Name)
+		j.Equal(job1.Name, actualJobSpecs[1].Name)
+		j.Equal(job1.Project.Name, actualJobSpecs[1].NamespaceSpec.ProjectSpec.Name)
+	})
+}
+
+func (j *JobSpecRepositoryTestSuite) TestGetAllByProjectNameAndNamespaceName() {
+	project := j.getDummyProject("project_test")
+	namespace0 := j.getDummyNamespace("namespace_test0", project)
+	namespace1 := j.getDummyNamespace("namespace_test1", project)
+	job0 := j.getDummyJob("job_test0", "destination_test0", namespace0)
+	job1 := j.getDummyJob("job_test1", "destination_test1", namespace0)
+	job2 := j.getDummyJob("job_test2", "destination_test2", namespace1)
+
+	insertRecords(j.db, []*postgres.Project{project})
+	insertRecords(j.db, []*postgres.Namespace{namespace0, namespace1})
+	insertRecords(j.db, []*postgres.Job{job0, job1, job2})
+
+	j.Run("should return all jobs within a project with the specified namespace and nil", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+		pluginRepository.On("GetByName", "").Return(nil, nil)
+
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		projectName := project.Name
+		namespaceName := namespace0.Name
+
+		actualJobSpecs, actualError := repository.GetAllByProjectNameAndNamespaceName(ctx, projectName, namespaceName)
+
+		j.NoError(actualError)
+		j.Len(actualJobSpecs, 2)
+		j.Equal(job0.Name, actualJobSpecs[0].Name)
+		j.Equal(job0.Namespace.Name, actualJobSpecs[0].NamespaceSpec.Name)
+		j.Equal(job1.Name, actualJobSpecs[1].Name)
+		j.Equal(job1.Namespace.Name, actualJobSpecs[1].NamespaceSpec.Name)
+	})
+}
+
+func (j *JobSpecRepositoryTestSuite) TestGetByNameAndProjectName() {
+	project := j.getDummyProject("project_test")
+	namespace := j.getDummyNamespace("namespace_test", project)
+	job := j.getDummyJob("job_test", "destination_test", namespace)
+
+	insertRecords(j.db, []*postgres.Project{project})
+	insertRecords(j.db, []*postgres.Namespace{namespace})
+	insertRecords(j.db, []*postgres.Job{job})
+
+	j.Run("should return empty and error if no job is found", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		jobName := "unknown_job"
+		projectName := project.Name
+
+		actualJobSpec, actualError := repository.GetByNameAndProjectName(ctx, jobName, projectName)
+
+		j.Error(actualError)
+		j.Empty(actualJobSpec)
+	})
+
+	j.Run("should return job spec and nil if no error is encountered", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+		pluginRepository.On("GetByName", "").Return(nil, nil)
+
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		jobName := job.Name
+		projectName := project.Name
+
+		actualJobSpec, actualError := repository.GetByNameAndProjectName(ctx, jobName, projectName)
+
+		j.NoError(actualError)
+		j.Equal(jobName, actualJobSpec.Name)
+	})
+}
+
+func (j *JobSpecRepositoryTestSuite) TestGetByResourceDestinationURN() {
+	project := j.getDummyProject("project_test")
+	namespace := j.getDummyNamespace("namespace_test", project)
+	job := j.getDummyJob("job_test", "destination_test", namespace)
+
+	insertRecords(j.db, []*postgres.Project{project})
+	insertRecords(j.db, []*postgres.Namespace{namespace})
+	insertRecords(j.db, []*postgres.Job{job})
+
+	j.Run("should return empty and error if error is encountered", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		destination := "unknown_destination"
+
+		actualJobSpec, actualError := repository.GetByResourceDestinationURN(ctx, destination)
+
+		j.Error(actualError)
+		j.Empty(actualJobSpec)
+	})
+
+	j.Run("should return job and nil if no error encountered", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+		pluginRepository.On("GetByName", "").Return(nil, nil)
+
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		destination := job.Destination
+
+		actualJobSpec, actualError := repository.GetByResourceDestinationURN(ctx, destination)
+
+		j.NoError(actualError)
+		j.Equal(job.Name, actualJobSpec.Name)
+	})
+}
+
+func (j *JobSpecRepositoryTestSuite) TestGetDependentJobs() {
+	project := j.getDummyProject("project_test")
+	namespace := j.getDummyNamespace("namespace_test", project)
+	job0 := j.getDummyJob("job_test0", "destination_test0", namespace)
+	job1 := j.getDummyJob("job_test1", "destination_test1", namespace)
+	job2 := j.getDummyJob("job_test2", "destination_test2", namespace)
+	job3 := j.getDummyJob("job_test3", "destination_test3", namespace)
+
+	job1Dependencies, _ := json.Marshal(map[string]models.JobSpecDependency{
+		job0.Name: {Type: models.JobSpecDependencyTypeIntra},
+	})
+	job1.Dependencies = job1Dependencies
+	job2Dependencies, _ := json.Marshal(map[string]models.JobSpecDependency{
+		fmt.Sprintf("%s/%s", project.Name, job0.Name): {Type: models.JobSpecDependencyTypeIntra},
+	})
+	job2.Dependencies = job2Dependencies
+
+	insertRecords(j.db, []*postgres.Project{project})
+	insertRecords(j.db, []*postgres.Namespace{namespace})
+	insertRecords(j.db, []*postgres.Job{job0, job1, job2, job3})
+
+	job3JobSource := &postgres.JobSource{JobID: job3.ID, ResourceURN: job0.Destination, ProjectID: project.ID}
+	insertRecords(j.db, []*postgres.JobSource{job3JobSource})
+
+	j.Run("should return dependent jobs and nil if no error is encountered", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+		pluginRepository.On("GetByName", "").Return(nil, nil)
+
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		jobName := job0.Name
+		resourceDestinationURN := job0.Destination
+		projectName := project.Name
+
+		actualJobSpecs, actualError := repository.GetDependentJobs(ctx, jobName, resourceDestinationURN, projectName)
+
+		j.NoError(actualError)
+		j.Len(actualJobSpecs, 3)
+		j.Equal(job1.Name, actualJobSpecs[1].Name)
+		j.Equal(job2.Name, actualJobSpecs[2].Name)
+		j.Equal(job3.Name, actualJobSpecs[0].Name)
+	})
+}
+
+func (j *JobSpecRepositoryTestSuite) TestGetInferredDependenciesPerJobID() {
+	project := j.getDummyProject("project_test")
+	namespace := j.getDummyNamespace("namespace_test", project)
+	job0 := j.getDummyJob("job_test0", "destination_test0", namespace)
+	job1 := j.getDummyJob("job_test1", "destination_test1", namespace)
+
+	insertRecords(j.db, []*postgres.Project{project})
+	insertRecords(j.db, []*postgres.Namespace{namespace})
+	insertRecords(j.db, []*postgres.Job{job0, job1})
+
+	job0JobSource := &postgres.JobSource{JobID: job0.ID, ResourceURN: job1.Destination, ProjectID: project.ID}
+	insertRecords(j.db, []*postgres.JobSource{job0JobSource})
+
+	j.Run("should return inferred dependencies per job id within a project and nil if no error is encountered", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+		pluginRepository.On("GetByName", "").Return(nil, nil)
+
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		projectName := project.Name
+
+		actualInferredDependenciesPerJobID, actualError := repository.GetInferredDependenciesPerJobID(ctx, projectName)
+
+		j.NoError(actualError)
+		j.Len(actualInferredDependenciesPerJobID, 1)
+		j.Len(actualInferredDependenciesPerJobID[job0.ID], 1)
+		j.Equal(job1.Name, actualInferredDependenciesPerJobID[job0.ID][0].Name)
+	})
+}
+
+func (j *JobSpecRepositoryTestSuite) TestGetStaticDependenciesPerJobID() {
+	project := j.getDummyProject("project_test")
+	namespace := j.getDummyNamespace("namespace_test", project)
+	job0 := j.getDummyJob("job_test0", "destination_test0", namespace)
+	job1 := j.getDummyJob("job_test1", "destination_test1", namespace)
+
+	job0Dependencies, _ := json.Marshal(map[string]models.JobSpecDependency{
+		job1.Name: {Type: models.JobSpecDependencyTypeIntra},
+	})
+	job0.Dependencies = job0Dependencies
+
+	insertRecords(j.db, []*postgres.Project{project})
+	insertRecords(j.db, []*postgres.Namespace{namespace})
+	insertRecords(j.db, []*postgres.Job{job0, job1})
+
+	j.Run("should return static dependencies per job id within a project and nil if no error is encountered", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+		pluginRepository.On("GetByName", "").Return(nil, nil)
+
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		projectName := project.Name
+
+		actualInferredDependenciesPerJobID, actualError := repository.GetStaticDependenciesPerJobID(ctx, projectName)
+
+		j.NoError(actualError)
+		j.Len(actualInferredDependenciesPerJobID, 1)
+		j.Len(actualInferredDependenciesPerJobID[job0.ID], 1)
+		j.Equal(job1.Name, actualInferredDependenciesPerJobID[job0.ID][0].Name)
+	})
+}
+
+func (j *JobSpecRepositoryTestSuite) TestSave() {
+	project := j.getDummyProject("project_test")
+	namespace := j.getDummyNamespace("namespace_test", project)
+	existingJob := j.getDummyJob("job_test", "destination_test", namespace)
+
+	insertRecords(j.db, []*postgres.Project{project})
+	insertRecords(j.db, []*postgres.Namespace{namespace})
+	insertRecords(j.db, []*postgres.Job{existingJob})
+
+	j.Run("should return error if error encountered when saving", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		inputJobSpec := models.JobSpec{
+			Name: existingJob.Name,
+			NamespaceSpec: models.NamespaceSpec{
+				ID:   namespace.ID,
+				Name: namespace.Name,
+				ProjectSpec: models.ProjectSpec{
+					ID:   models.ProjectID(project.ID),
+					Name: project.Name,
+				},
+			},
+		}
+
+		actualError := repository.Save(ctx, inputJobSpec)
+
+		j.Error(actualError)
+	})
+
+	j.Run("should insert job spec if not exist and return nil if no error is encountered", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+		execUnit := &mock.BasePlugin{}
+		execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
+			Name:       "task",
+			PluginType: models.PluginTypeTask,
+		}, nil)
+
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		inputJobSpec := models.JobSpec{
+			Name: "job_test2",
+			NamespaceSpec: models.NamespaceSpec{
+				ID:   namespace.ID,
+				Name: namespace.Name,
+				ProjectSpec: models.ProjectSpec{
+					ID:   models.ProjectID(project.ID),
+					Name: project.Name,
+				},
+			},
+			Task: models.JobSpecTask{
+				Unit: &models.Plugin{Base: execUnit},
+			},
+		}
+
+		actualError := repository.Save(ctx, inputJobSpec)
+		storedJobs := readStoredRecordsByFilter[*postgres.Job](j.db, map[string]interface{}{
+			"name": inputJobSpec.Name,
+		})
+
+		j.NoError(actualError)
+		j.Equal(inputJobSpec.Name, storedJobs[0].Name)
+	})
+
+	j.Run("should update existing job spec and return nil if no error is encountered", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+		execUnit := &mock.BasePlugin{}
+		execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
+			Name:       "task",
+			PluginType: models.PluginTypeTask,
+		}, nil)
+
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		inputJobSpec := models.JobSpec{
+			Name:        existingJob.Name,
+			Description: "updated description",
+			NamespaceSpec: models.NamespaceSpec{
+				ID:   namespace.ID,
+				Name: namespace.Name,
+				ProjectSpec: models.ProjectSpec{
+					ID:   models.ProjectID(project.ID),
+					Name: project.Name,
+				},
+			},
+			Task: models.JobSpecTask{
+				Unit: &models.Plugin{Base: execUnit},
+			},
+		}
+
+		actualError := repository.Save(ctx, inputJobSpec)
+		storedJobs := readStoredRecordsByFilter[*postgres.Job](j.db, map[string]interface{}{
+			"name": inputJobSpec.Name,
+		})
+
+		j.NoError(actualError)
+		j.Equal(inputJobSpec.Description, storedJobs[0].Description)
+	})
+}
+
+func (j *JobSpecRepositoryTestSuite) TestDeleteByID() {
+	project := j.getDummyProject("project_test")
+	namespace := j.getDummyNamespace("namespace_test", project)
+	existingJob := j.getDummyJob("job_test", "destination_test", namespace)
+
+	insertRecords(j.db, []*postgres.Project{project})
+	insertRecords(j.db, []*postgres.Namespace{namespace})
+	insertRecords(j.db, []*postgres.Job{existingJob})
+
+	existingJobSource := &postgres.JobSource{JobID: existingJob.ID, ResourceURN: existingJob.Destination, ProjectID: project.ID}
+	insertRecords(j.db, []*postgres.JobSource{existingJobSource})
+
+	j.Run("should return nil if the targeted id does not exist", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		inputID := uuid.New()
+
+		actualError := repository.DeleteByID(ctx, inputID)
+		storedJobs := readStoredRecords[*postgres.Job](j.db)
+		storedJobSources := readStoredRecords[*postgres.JobSource](j.db)
+
+		j.NoError(actualError)
+		j.Len(storedJobs, 1)
+		j.Len(storedJobSources, 1)
+	})
+
+	j.Run("should delete job and job sources specified by id and return nil if no error is encountered during delete", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		inputID := existingJob.ID
+
+		actualError := repository.DeleteByID(ctx, inputID)
+		storedJobs := readStoredRecords[*postgres.Job](j.db)
+		storedJobSources := readStoredRecords[*postgres.JobSource](j.db)
+
+		j.NoError(actualError)
+		j.Len(storedJobs, 0)
+		j.Len(storedJobSources, 0)
+	})
+}
+
+func (*JobSpecRepositoryTestSuite) getDummyJob(name, destination string, namespace *postgres.Namespace) *postgres.Job {
+	dependencies, _ := json.Marshal(map[string]models.JobSpecDependency{})
+	taskConfigs, _ := json.Marshal(models.JobSpecConfigs{})
+	assets, _ := json.Marshal([]postgres.JobAsset{})
+	hooks, _ := json.Marshal([]postgres.JobHook{})
+	var interval string
+	return &postgres.Job{
+		ID:           uuid.New(),
+		Version:      1,
+		Name:         name,
+		NamespaceID:  namespace.ID,
+		Namespace:    *namespace,
+		ProjectID:    namespace.ProjectID,
+		Project:      namespace.Project,
+		Destination:  destination,
+		Dependencies: dependencies,
+		TaskConfig:   taskConfigs,
+		Assets:       assets,
+		Hooks:        hooks,
+		Interval:     &interval,
 	}
-	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
-	DBSetup := func() *gorm.DB {
-		dbConn := setupDB()
-		truncateTables(dbConn)
+}
 
-		projRepo := postgres.NewProjectRepository(dbConn, hash)
-		assert.Nil(t, projRepo.Save(ctx, projectSpec))
-		assert.Nil(t, projRepo.Save(ctx, externalProjectSpec))
-		return dbConn
+func (*JobSpecRepositoryTestSuite) getDummyNamespace(name string, project *postgres.Project) *postgres.Namespace {
+	config, _ := json.Marshal(map[string]string{})
+	return &postgres.Namespace{
+		ID:        uuid.New(),
+		Name:      name,
+		Project:   *project,
+		ProjectID: project.ID,
+		Config:    config,
 	}
+}
 
-	t.Run("GetByJobName", func(t *testing.T) {
-		t.Run("GetByJobName should return expected job for specified jobName filter", func(t *testing.T) {
-			db := DBSetup()
+func (*JobSpecRepositoryTestSuite) getDummyProject(name string) *postgres.Project {
+	config := map[string]string{
+		"bucket": "gs://some_folder",
+	}
+	configJSON, err := json.Marshal(config)
+	if err != nil {
+		panic(err)
+	}
+	return &postgres.Project{
+		ID:     uuid.New(),
+		Name:   name,
+		Config: configJSON,
+	}
+}
 
-			defer execUnit1.AssertExpectations(t)
-			var testModels []models.JobSpec
-			testModels = append(testModels, testConfigs...)
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
+func TestNewJobSpecRepository(t *testing.T) {
+	plugin := mock.NewPluginRepository(t)
 
-			namespaceRepo := postgres.NewNamespaceRepository(db, hash)
-			err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
-			assert.Nil(t, err)
+	t.Run("should return nil and error if db client is nil", func(t *testing.T) {
+		var db *gorm.DB
+		adapter := postgres.NewAdapter(plugin)
 
-			jobspecRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-			err = jobspecRepo.Insert(ctx, testModels[0], jobDestination)
-			assert.Nil(t, err)
-			err = jobspecRepo.Insert(ctx, testModels[1], jobDestination1)
-			assert.Nil(t, err)
+		actualRepository, actualError := postgres.NewJobSpecRepository(db, adapter)
 
-			repo := postgres.NewJobSpecRepository(db, adapter)
-			checkModel, err := repo.GetJobByName(ctx, testModels[0].Name)
-			assert.Nil(t, err)
-			assert.Equal(t, testModels[0].Name, checkModel[0].Name)
-
-			checkModel1, err := repo.GetJobByName(ctx, testModels[1].Name)
-			assert.Nil(t, err)
-			assert.Equal(t, testModels[1].Name, checkModel1[0].Name)
-		})
+		assert.Nil(t, actualRepository)
+		assert.Error(t, actualError)
 	})
 
-	t.Run("GetByResourceDestination", func(t *testing.T) {
-		t.Run("GetByResourceDestination should return expected job for specified resourceDestination filter", func(t *testing.T) {
-			db := DBSetup()
+	t.Run("should return nil and error if adapter is nil", func(t *testing.T) {
+		db := &gorm.DB{}
+		var adapter *postgres.JobSpecAdapter
 
-			defer execUnit1.AssertExpectations(t)
-			var testModels []models.JobSpec
-			testModels = append(testModels, testConfigs...)
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
+		actualRepository, actualError := postgres.NewJobSpecRepository(db, adapter)
 
-			namespaceRepo := postgres.NewNamespaceRepository(db, hash)
-			err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
-			assert.Nil(t, err)
-
-			jobspecRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-			err = jobspecRepo.Insert(ctx, testModels[0], jobDestination)
-			assert.Nil(t, err)
-			err = jobspecRepo.Insert(ctx, testModels[1], jobDestination1)
-			assert.Nil(t, err)
-
-			repo := postgres.NewJobSpecRepository(db, adapter)
-			checkModel, err := repo.GetJobByResourceDestination(ctx, jobDestination)
-			assert.Nil(t, err)
-			assert.Equal(t, testModels[0].Name, checkModel.Name)
-		})
+		assert.Nil(t, actualRepository)
+		assert.Error(t, actualError)
 	})
 
-	t.Run("GetDependentJobs", func(t *testing.T) {
-		t.Run("GetDependentJobs should return inferred and static dependent jobs", func(t *testing.T) {
-			db := DBSetup()
+	t.Run("should return repository and nil if no error is encountered", func(t *testing.T) {
+		db := &gorm.DB{}
+		adapter := postgres.NewAdapter(plugin)
 
-			defer execUnit1.AssertExpectations(t)
-			var testModels []models.JobSpec
-			testModels = append(testModels, testConfigs...)
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
+		actualRepository, actualError := postgres.NewJobSpecRepository(db, adapter)
 
-			namespaceRepo := postgres.NewNamespaceRepository(db, hash)
-			err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
-			assert.Nil(t, err)
-
-			jobSpecRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-			err = jobSpecRepo.Insert(ctx, testModels[0], jobDestination)
-			assert.Nil(t, err)
-			err = jobSpecRepo.Insert(ctx, testModels[1], jobDestination1)
-			assert.Nil(t, err)
-			err = jobSpecRepo.Insert(ctx, testModels[2], "")
-			assert.Nil(t, err)
-
-			// insert the inferred dependency
-			jobSourceRepo := postgres.NewJobSourceRepository(db)
-			err = jobSourceRepo.Save(ctx, projectSpec.ID, testModels[1].ID, []string{testModels[0].ResourceDestination})
-			assert.Nil(t, err)
-
-			// check getting inferred dependent jobs
-			repo := postgres.NewJobSpecRepository(db, adapter)
-			checkModel, err := repo.GetDependentJobs(ctx, &testModels[0])
-			assert.Nil(t, err)
-			assert.Equal(t, testModels[1].Name, checkModel[0].Name)
-
-			// check getting static dependent jobs
-			checkModel, err = repo.GetDependentJobs(ctx, &testModels[1])
-			assert.Nil(t, err)
-			assert.Equal(t, testModels[2].Name, checkModel[0].Name)
-		})
-
-		t.Run("GetDependentJobs should return static dependent jobs from same project if the project is not specified in the dependency list", func(t *testing.T) {
-			db := DBSetup()
-
-			defer execUnit1.AssertExpectations(t)
-			var testModels []models.JobSpec
-			testModels = append(testModels, testConfigs...)
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			namespaceRepo := postgres.NewNamespaceRepository(db, hash)
-			err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
-			assert.Nil(t, err)
-
-			externalNamespaceRepo := postgres.NewNamespaceRepository(db, hash)
-			err = externalNamespaceRepo.Insert(ctx, externalProjectSpec, externalProjectNamespaceSpec)
-			assert.Nil(t, err)
-
-			// prepare the project's jobs
-			jobSpecRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-			err = jobSpecRepo.Insert(ctx, testModels[0], jobDestination)
-			assert.Nil(t, err)
-			err = jobSpecRepo.Insert(ctx, testModels[1], jobDestination1)
-			assert.Nil(t, err)
-			err = jobSpecRepo.Insert(ctx, testModels[2], "")
-			assert.Nil(t, err)
-
-			// insert the inferred dependency
-			jobSourceRepo := postgres.NewJobSourceRepository(db)
-			err = jobSourceRepo.Save(ctx, projectSpec.ID, testModels[1].ID, []string{testModels[0].ResourceDestination})
-			assert.Nil(t, err)
-
-			// prepare the external project's jobs
-			window, _ := models.NewWindow(1, "h", "0", "24h")
-			externalProjectJobs := []models.JobSpec{
-				{
-					ID:            uuid.New(),
-					Name:          testModels[1].Name,
-					NamespaceSpec: externalProjectNamespaceSpec,
-					Task: models.JobSpecTask{
-						Unit: &models.Plugin{Base: execUnit1},
-						Config: []models.JobSpecConfigItem{
-							{
-								Name: "do", Value: "this",
-							},
-						},
-						Window: window,
-					},
-				},
-				{
-					ID:            uuid.New(),
-					Name:          testModels[2].Name,
-					NamespaceSpec: externalProjectNamespaceSpec,
-					Task: models.JobSpecTask{
-						Unit: &models.Plugin{Base: execUnit1},
-						Config: []models.JobSpecConfigItem{
-							{
-								Name: "do", Value: "this",
-							},
-						},
-						Window: window,
-					},
-					Dependencies: map[string]models.JobSpecDependency{
-						testModels[1].Name: {},
-					},
-				},
-			}
-			externalProjectJobDestination := "x.d.t"
-			externalProjectJobSpecRepo := postgres.NewNamespaceJobSpecRepository(db, externalProjectNamespaceSpec, projectJobSpecRepo, adapter)
-			err = externalProjectJobSpecRepo.Insert(ctx, externalProjectJobs[0], externalProjectJobDestination)
-			assert.Nil(t, err)
-			err = externalProjectJobSpecRepo.Insert(ctx, externalProjectJobs[1], "")
-			assert.Nil(t, err)
-
-			// check getting inferred dependent jobs
-			repo := postgres.NewJobSpecRepository(db, adapter)
-			checkModel, err := repo.GetDependentJobs(ctx, &testModels[0])
-			assert.Nil(t, err)
-			assert.Equal(t, testModels[1].Name, checkModel[0].Name)
-
-			// check getting static dependent jobs
-			checkModel, err = repo.GetDependentJobs(ctx, &testModels[1])
-			assert.Nil(t, err)
-			assert.Equal(t, 1, len(checkModel))
-			assert.Equal(t, testModels[2].Name, checkModel[0].Name)
-			assert.Equal(t, testModels[2].ID, checkModel[0].ID)
-		})
+		assert.NotNil(t, actualRepository)
+		assert.NoError(t, actualError)
 	})
+}
 
-	t.Run("GetInferredDependenciesPerJobID", func(t *testing.T) {
-		t.Run("GetInferredDependenciesPerJobID should return all intra and inter project inferred dependencies", func(t *testing.T) {
-			db := DBSetup()
-
-			defer execUnit1.AssertExpectations(t)
-			var testModels []models.JobSpec
-			testModels = append(testModels, testConfigs...)
-
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			namespaceRepo := postgres.NewNamespaceRepository(db, hash)
-			err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
-			assert.Nil(t, err)
-
-			err = namespaceRepo.Insert(ctx, externalProjectSpec, externalProjectNamespaceSpec)
-			assert.Nil(t, err)
-
-			jobSpecRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-			err = jobSpecRepo.Insert(ctx, testModels[0], jobDestination)
-			assert.Nil(t, err)
-			err = jobSpecRepo.Insert(ctx, testModels[1], jobDestination1)
-			assert.Nil(t, err)
-
-			externalJobSpecRepo := postgres.NewNamespaceJobSpecRepository(db, externalProjectNamespaceSpec, projectJobSpecRepo, adapter)
-			err = externalJobSpecRepo.Insert(ctx, testModels[3], jobDestination2)
-			assert.Nil(t, err)
-
-			// insert the inferred dependency
-			jobSourceRepo := postgres.NewJobSourceRepository(db)
-			err = jobSourceRepo.Save(ctx, projectSpec.ID, testModels[0].ID, []string{testModels[1].ResourceDestination, testModels[3].ResourceDestination})
-			assert.Nil(t, err)
-
-			// check getting inferred dependent jobs
-			repo := postgres.NewJobSpecRepository(db, adapter)
-			checkModel, err := repo.GetInferredDependenciesPerJobID(ctx, projectSpec.ID)
-
-			jobWithDependency := testModels[0]
-			intraDependency := testModels[1]
-			interDependency := testModels[3]
-			assert.EqualValues(t, []string{intraDependency.Name, interDependency.Name}, []string{checkModel[jobWithDependency.ID][0].Name, checkModel[jobWithDependency.ID][1].Name})
-			assert.EqualValues(t, []string{intraDependency.NamespaceSpec.Name, interDependency.NamespaceSpec.Name}, []string{checkModel[jobWithDependency.ID][0].NamespaceSpec.Name, checkModel[jobWithDependency.ID][1].NamespaceSpec.Name})
-			assert.EqualValues(t, []string{intraDependency.GetProjectSpec().Name, interDependency.GetProjectSpec().Name}, []string{checkModel[jobWithDependency.ID][0].GetProjectSpec().Name, checkModel[jobWithDependency.ID][1].GetProjectSpec().Name})
-			assert.EqualValues(t, []string{jobDestination1, jobDestination2}, []string{checkModel[jobWithDependency.ID][0].ResourceDestination, checkModel[jobWithDependency.ID][1].ResourceDestination})
-			assert.EqualValues(t, []string{gTask, gTask}, []string{checkModel[jobWithDependency.ID][0].Task.Unit.Info().Name, checkModel[jobWithDependency.ID][1].Task.Unit.Info().Name})
-			assert.Nil(t, err)
-		})
-	})
-
-	t.Run("GetStaticDependenciesPerJobID", func(t *testing.T) {
-		t.Run("GetStaticDependenciesPerJobID should return all intra and inter project static dependencies", func(t *testing.T) {
-			db := DBSetup()
-
-			defer execUnit1.AssertExpectations(t)
-			var testModels []models.JobSpec
-			testModels = append(testModels, testConfigs...)
-
-			testModels[0].Dependencies = map[string]models.JobSpecDependency{
-				testModels[1].Name: {Project: &testModels[1].NamespaceSpec.ProjectSpec, Job: &testModels[1]},
-				testModels[3].Name: {Project: &testModels[3].NamespaceSpec.ProjectSpec, Job: &testModels[3], Type: models.JobSpecDependencyTypeInter},
-			}
-
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			namespaceRepo := postgres.NewNamespaceRepository(db, hash)
-			err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
-			assert.Nil(t, err)
-
-			err = namespaceRepo.Insert(ctx, externalProjectSpec, externalProjectNamespaceSpec)
-			assert.Nil(t, err)
-
-			jobSpecRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-			err = jobSpecRepo.Insert(ctx, testModels[0], jobDestination)
-			assert.Nil(t, err)
-			err = jobSpecRepo.Insert(ctx, testModels[1], jobDestination1)
-			assert.Nil(t, err)
-
-			externalJobSpecRepo := postgres.NewNamespaceJobSpecRepository(db, externalProjectNamespaceSpec, projectJobSpecRepo, adapter)
-			err = externalJobSpecRepo.Insert(ctx, testModels[3], jobDestination2)
-			assert.Nil(t, err)
-
-			repo := postgres.NewJobSpecRepository(db, adapter)
-			checkModel, err := repo.GetStaticDependenciesPerJobID(ctx, projectSpec.ID)
-
-			jobWithDependency := testModels[0]
-			intraDependency := testModels[1]
-			interDependency := testModels[3]
-			assert.EqualValues(t, []string{intraDependency.Name, interDependency.Name}, []string{checkModel[jobWithDependency.ID][0].Name, checkModel[jobWithDependency.ID][1].Name})
-			assert.EqualValues(t, []string{intraDependency.NamespaceSpec.Name, interDependency.NamespaceSpec.Name}, []string{checkModel[jobWithDependency.ID][0].NamespaceSpec.Name, checkModel[jobWithDependency.ID][1].NamespaceSpec.Name})
-			assert.EqualValues(t, []string{intraDependency.GetProjectSpec().Name, interDependency.GetProjectSpec().Name}, []string{checkModel[jobWithDependency.ID][0].GetProjectSpec().Name, checkModel[jobWithDependency.ID][1].GetProjectSpec().Name})
-			assert.EqualValues(t, []string{gTask, gTask}, []string{checkModel[jobWithDependency.ID][0].Task.Unit.Info().Name, checkModel[jobWithDependency.ID][1].Task.Unit.Info().Name})
-			assert.Nil(t, err)
-		})
-		t.Run("GetStaticDependenciesPerJobID should return only the dependencies that are found in internal server", func(t *testing.T) {
-			db := DBSetup()
-
-			defer execUnit1.AssertExpectations(t)
-			var testModels []models.JobSpec
-			testModels = append(testModels, testConfigs...)
-
-			testModels[0].Dependencies = map[string]models.JobSpecDependency{
-				testModels[1].Name: {Project: &testModels[1].NamespaceSpec.ProjectSpec, Job: &testModels[1]},
-				testModels[3].Name: {Project: &testModels[3].NamespaceSpec.ProjectSpec, Job: &testModels[3], Type: models.JobSpecDependencyTypeInter},
-				"external-server-project/external-server-job": {Type: models.JobSpecDependencyTypeInter},
-			}
-
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			namespaceRepo := postgres.NewNamespaceRepository(db, hash)
-			err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
-			assert.Nil(t, err)
-
-			err = namespaceRepo.Insert(ctx, externalProjectSpec, externalProjectNamespaceSpec)
-			assert.Nil(t, err)
-
-			jobSpecRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-			err = jobSpecRepo.Insert(ctx, testModels[0], jobDestination)
-			assert.Nil(t, err)
-			err = jobSpecRepo.Insert(ctx, testModels[1], jobDestination1)
-			assert.Nil(t, err)
-
-			externalJobSpecRepo := postgres.NewNamespaceJobSpecRepository(db, externalProjectNamespaceSpec, projectJobSpecRepo, adapter)
-			err = externalJobSpecRepo.Insert(ctx, testModels[3], jobDestination2)
-			assert.Nil(t, err)
-
-			repo := postgres.NewJobSpecRepository(db, adapter)
-			checkModel, err := repo.GetStaticDependenciesPerJobID(ctx, projectSpec.ID)
-
-			jobWithDependency := testModels[0]
-			intraDependency := testModels[1]
-			interDependency := testModels[3]
-			noOfInternalDependencies := 2
-			assert.Equal(t, noOfInternalDependencies, len(checkModel[jobWithDependency.ID]))
-			assert.EqualValues(t, []string{intraDependency.Name, interDependency.Name}, []string{checkModel[jobWithDependency.ID][0].Name, checkModel[jobWithDependency.ID][1].Name})
-			assert.EqualValues(t, []string{intraDependency.NamespaceSpec.Name, interDependency.NamespaceSpec.Name}, []string{checkModel[jobWithDependency.ID][0].NamespaceSpec.Name, checkModel[jobWithDependency.ID][1].NamespaceSpec.Name})
-			assert.EqualValues(t, []string{intraDependency.GetProjectSpec().Name, interDependency.GetProjectSpec().Name}, []string{checkModel[jobWithDependency.ID][0].GetProjectSpec().Name, checkModel[jobWithDependency.ID][1].GetProjectSpec().Name})
-			assert.EqualValues(t, []string{gTask, gTask}, []string{checkModel[jobWithDependency.ID][0].Task.Unit.Info().Name, checkModel[jobWithDependency.ID][1].Task.Unit.Info().Name})
-			assert.Nil(t, err)
-		})
-		t.Run("GetStaticDependenciesPerJobID should return only the dependencies in the same project if project dependency is not set", func(t *testing.T) {
-			db := DBSetup()
-
-			defer execUnit1.AssertExpectations(t)
-			var testModels []models.JobSpec
-			testModels = append(testModels, testConfigs...)
-
-			testModels[0].Dependencies = map[string]models.JobSpecDependency{
-				testModels[1].Name: {Project: &testModels[1].NamespaceSpec.ProjectSpec, Job: &testModels[1]},
-			}
-
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			// prepare internal project job specs
-			namespaceRepo := postgres.NewNamespaceRepository(db, hash)
-			err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
-			assert.Nil(t, err)
-
-			jobSpecRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-			err = jobSpecRepo.Insert(ctx, testModels[0], jobDestination)
-			assert.Nil(t, err)
-			err = jobSpecRepo.Insert(ctx, testModels[1], jobDestination1)
-			assert.Nil(t, err)
-
-			// prepare external project job specs
-			externalNamespaceRepo := postgres.NewNamespaceRepository(db, hash)
-			err = externalNamespaceRepo.Insert(ctx, externalProjectSpec, externalProjectNamespaceSpec)
-			assert.Nil(t, err)
-			window, _ := models.NewWindow(1, "d", "0", "1h")
-			externalProjectJobs := []models.JobSpec{
-				{
-					ID:            uuid.New(),
-					Name:          testModels[0].Name,
-					NamespaceSpec: externalProjectNamespaceSpec,
-					Task: models.JobSpecTask{
-						Unit: &models.Plugin{Base: execUnit1},
-						Config: []models.JobSpecConfigItem{
-							{
-								Name: "do", Value: "this",
-							},
-						},
-						Window: window,
-					},
-				},
-				{
-					ID:            uuid.New(),
-					Name:          testModels[1].Name,
-					NamespaceSpec: externalProjectNamespaceSpec,
-					Task: models.JobSpecTask{
-						Unit: &models.Plugin{Base: execUnit1},
-						Config: []models.JobSpecConfigItem{
-							{
-								Name: "do", Value: "this",
-							},
-						},
-						Window: window,
-					},
-				},
-			}
-			externalProjectJobs[0].Dependencies = map[string]models.JobSpecDependency{
-				externalProjectJobs[1].Name: {Project: &externalProjectJobs[1].NamespaceSpec.ProjectSpec, Job: &externalProjectJobs[1]},
-			}
-
-			externalJobSpecRepo := postgres.NewNamespaceJobSpecRepository(db, externalProjectNamespaceSpec, projectJobSpecRepo, adapter)
-			err = externalJobSpecRepo.Insert(ctx, externalProjectJobs[0], "")
-			assert.Nil(t, err)
-			err = externalJobSpecRepo.Insert(ctx, externalProjectJobs[1], "")
-			assert.Nil(t, err)
-
-			repo := postgres.NewJobSpecRepository(db, adapter)
-			checkModel, err := repo.GetStaticDependenciesPerJobID(ctx, projectSpec.ID)
-
-			jobWithDependency := testModels[0]
-			intraDependency := testModels[1]
-			noOfInternalDependencies := 1
-			assert.Equal(t, noOfInternalDependencies, len(checkModel[jobWithDependency.ID]))
-			assert.EqualValues(t, []string{intraDependency.Name}, []string{checkModel[jobWithDependency.ID][0].Name})
-			assert.EqualValues(t, []string{intraDependency.NamespaceSpec.Name}, []string{checkModel[jobWithDependency.ID][0].NamespaceSpec.Name})
-			assert.EqualValues(t, []string{intraDependency.GetProjectSpec().Name}, []string{checkModel[jobWithDependency.ID][0].GetProjectSpec().Name})
-			assert.Nil(t, err)
-		})
-	})
+func TestJobSpecRepository(t *testing.T) {
+	suite.Run(t, &JobSpecRepositoryTestSuite{})
 }
