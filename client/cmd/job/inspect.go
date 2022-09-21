@@ -2,7 +2,6 @@ package job
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -14,15 +13,15 @@ import (
 	"github.com/spf13/cobra"
 
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
-	pb "github.com/odpf/optimus/api/proto/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/cmd/internal/connectivity"
-	"github.com/odpf/optimus/cmd/internal/logger"
-	"github.com/odpf/optimus/cmd/internal/survey"
+	"github.com/odpf/optimus/client/cmd/internal/connectivity"
+	"github.com/odpf/optimus/client/cmd/internal/logger"
+	"github.com/odpf/optimus/client/cmd/internal/survey"
+	"github.com/odpf/optimus/client/local"
 	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
-	"github.com/odpf/optimus/store/local"
-	"github.com/odpf/optimus/utils"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
 const (
@@ -98,14 +97,6 @@ func (e *explainCommand) RunE(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	e.logger.Info("\n\n\n ********* string(jobSpecFromServerByte) \n\n")
-
-	jobSpecFromServer := e.GetJobSpecFromServer(jobSpec)
-
-	jobSpecFromServerByte, _ := json.Marshal(jobSpecFromServer)
-
-	e.logger.Info(string(jobSpecFromServerByte))
-	// create temporary directory
 	explainedPath := filepath.Join(".", "explain", jobSpec.Name)
 	if err := os.MkdirAll(explainedPath, 0o770); err != nil {
 		return err
@@ -151,7 +142,7 @@ func (e *explainCommand) getJobSpecByName(args []string, namespaceJobPath string
 	return jobSpecRepo.GetByName(jobName)
 }
 
-func (e *explainCommand) GetJobSpecFromServer(jobSpec models.JobSpec) *pb.JobSpecification {
+func (e *explainCommand) GetJobSpecFromServer(jobSpec models.JobSpec) *pb.JobInspectResponse {
 	conn, err := connectivity.NewConnectivity(e.clientConfig.Host, explainTimeout)
 	if err != nil {
 		e.logger.Error(logger.ColoredError(err.Error()))
@@ -174,7 +165,7 @@ func (e *explainCommand) GetJobSpecFromServer(jobSpec models.JobSpec) *pb.JobSpe
 		return nil
 	}
 
-	return jobInspectResponse.Spec
+	return jobInspectResponse
 }
 
 func (e *explainCommand) loadConfig() error {
