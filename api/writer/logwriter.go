@@ -38,6 +38,7 @@ type BufferedLogger struct {
 	Messages []*pb.Log
 }
 
+// nolint: unparam
 func (b *BufferedLogger) Write(level LogLevel, message string) error {
 	b.Messages = append(b.Messages, newLogStatusProto(level, message))
 	return nil
