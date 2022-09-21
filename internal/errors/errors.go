@@ -3,9 +3,10 @@ package errors
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"strings"
 )
 
 type ErrorType string
@@ -38,7 +39,7 @@ func NewError(errType ErrorType, entity string, msg string) *DomainError {
 	}
 }
 
-func NewInternalError(entity string, msg string, err error) *DomainError {
+func InternalError(entity string, msg string, err error) *DomainError {
 	return &DomainError{
 		Entity:     entity,
 		ErrorType:  ErrInternalError,
@@ -47,7 +48,7 @@ func NewInternalError(entity string, msg string, err error) *DomainError {
 	}
 }
 
-func NewInvalidArgumentError(entity string, msg string) *DomainError {
+func InvalidArgument(entity string, msg string) *DomainError {
 	return &DomainError{
 		ErrorType:  ErrInvalidArgument,
 		Entity:     entity,
@@ -56,13 +57,21 @@ func NewInvalidArgumentError(entity string, msg string) *DomainError {
 	}
 }
 
-func NewNotFoundError(entity string, msg string) *DomainError {
+func NotFound(entity string, msg string) *DomainError {
 	return &DomainError{
 		ErrorType:  ErrNotFound,
 		Entity:     entity,
 		Message:    msg,
 		WrappedErr: nil,
 	}
+}
+
+func Is(err, target error) bool {
+	return errors.Is(err, target)
+}
+
+func As(err error, target any) bool {
+	return errors.As(err, target)
 }
 
 func (e *DomainError) Error() string {

@@ -1,14 +1,16 @@
 package tenant
 
 import (
-	"errors"
+	"github.com/odpf/optimus/internal/errors"
 )
+
+const EntityProject = "project"
 
 type ProjectName string
 
 func ProjectNameFrom(name string) (ProjectName, error) {
 	if name == "" {
-		return "", errors.New("project name is empty")
+		return "", errors.InvalidArgument(EntityProject, "project name is empty")
 	}
 	return ProjectName(name), nil
 }
@@ -18,7 +20,7 @@ func (pn ProjectName) String() string {
 }
 
 type Project struct {
-	name ProjectName
+	name   ProjectName
 	config map[string]string
 }
 
@@ -32,7 +34,7 @@ func (p *Project) GetConfig(key string) (string, error) {
 			return v, nil
 		}
 	}
-	return "", errors.New("project config not found: " + key)
+	return "", errors.NotFound("project", "config not found: "+key)
 }
 
 // GetConfigs returns a clone of project configurations

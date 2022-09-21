@@ -3,14 +3,15 @@ package tenant
 import (
 	"context"
 	"encoding/json"
-	"errors"
+	"time"
+
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/store"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
-	"time"
+
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/store"
 )
 
 type ProjectRepository struct {
@@ -53,18 +54,41 @@ func (repo ProjectRepository) Save(ctx context.Context, tenantProject *tenant.Pr
 	if err != nil {
 		return err
 	}
-	return repo.db.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).Create(&project).Error
+
+	existing, err := repo.get(ctx, tenantProject.Name())
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return repo.db.WithContext(ctx).Create(&project).Error
+		}
+		return errors.InternalError("project", "unable to save project", err)
+	}
+
+	if len(tenantProject.GetConfigs()) == 0 {
+		return store.ErrEmptyConfig
+	}
+	project.ID = existing.ID
+	return repo.db.WithContext(ctx).Updates(&project).Error
 }
 
 func (repo ProjectRepository) GetByName(ctx context.Context, name tenant.ProjectName) (*tenant.Project, error) {
-	var project Project
-	if err := repo.db.WithContext(ctx).Where("name = ?", name).First(&project).Error; err != nil {
+	project, err := repo.get(ctx, name)
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, store.ErrResourceNotFound
+			return nil, errors.NotFound("project", "record not found")
 		}
-		return nil, err
+		return nil, errors.InternalError("project", "error while getting project", err)
 	}
 	return project.ToTenantProject()
+}
+
+func (repo ProjectRepository) get(ctx context.Context, name tenant.ProjectName) (Project, error) {
+	var project Project
+
+	err := repo.db.WithContext(ctx).Where("name = ?", name).First(&project).Error
+	if err != nil {
+		return Project{}, err
+	}
+	return project, nil
 }
 
 func (repo ProjectRepository) GetAll(ctx context.Context) ([]*tenant.Project, error) {
@@ -72,6 +96,7 @@ func (repo ProjectRepository) GetAll(ctx context.Context) ([]*tenant.Project, er
 	if err := repo.db.WithContext(ctx).Find(&projects).Error; err != nil {
 		return nil, err
 	}
+
 	var tenantProjects []*tenant.Project
 	for _, proj := range projects {
 		tenantProject, err := proj.ToTenantProject()

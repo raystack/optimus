@@ -3,18 +3,19 @@ package v1beta1
 import (
 	"context"
 	"fmt"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
 	"strings"
 
 	"github.com/odpf/salt/log"
 
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
 type ProjectHandler struct {
 	l              log.Logger
 	projectService ProjectService
+
 	pb.UnimplementedProjectServiceServer
 }
 
@@ -33,11 +34,8 @@ func (sv *ProjectHandler) RegisterProject(ctx context.Context, req *pb.RegisterP
 		return nil, errors.MapToGRPCErr(err, fmt.Sprintf("not able to register project %s", req.GetProject().Name))
 	}
 
-	//TODO update the proto ro remove the success & Message
-	return &pb.RegisterProjectResponse{
-		Success: true,
-		Message: "",
-	}, nil
+	// TODO update the proto to remove the success & Message
+	return &pb.RegisterProjectResponse{}, nil
 }
 
 func (sv *ProjectHandler) ListProjects(ctx context.Context, _ *pb.ListProjectsRequest) (*pb.ListProjectsResponse, error) {
