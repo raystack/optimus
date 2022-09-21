@@ -69,7 +69,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			resourceRepo := new(mock.ResourceSpecRepository)
@@ -125,7 +125,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			datastorer := new(mock.Datastorer)
@@ -225,7 +225,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			dsRepo := new(mock.SupportedDatastoreRepo)
@@ -257,7 +257,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			datastorer := new(mock.Datastorer)
@@ -294,7 +294,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			datastorer := new(mock.Datastorer)
@@ -358,7 +358,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			datastorer := new(mock.Datastorer)
@@ -410,7 +410,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			datastorer := new(mock.Datastorer)
@@ -490,7 +490,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			datastorer := new(mock.Datastorer)
@@ -578,7 +578,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			datastorer := new(mock.Datastorer)
@@ -675,7 +675,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			datastorer := new(mock.Datastorer)
@@ -775,7 +775,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			datastorer := new(mock.Datastorer)
@@ -904,7 +904,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			resourceRepo := new(mock.ResourceSpecRepository)
@@ -983,7 +983,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			datastorer := new(mock.Datastorer)
@@ -1125,7 +1125,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			datastorer := new(mock.Datastorer)
@@ -1256,7 +1256,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			dsRepo := new(mock.SupportedDatastoreRepo)
@@ -1293,7 +1293,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			datastorer := new(mock.Datastorer)
@@ -1334,7 +1334,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			datastorer := new(mock.Datastorer)
@@ -1389,7 +1389,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			datastorer := new(mock.Datastorer)
@@ -1458,7 +1458,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			datastorer := new(mock.Datastorer)
@@ -1543,7 +1543,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			datastorer := new(mock.Datastorer)
@@ -1660,7 +1660,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			datastorer := new(mock.Datastorer)
@@ -1787,7 +1787,7 @@ func TestBackupService(t *testing.T) {
 			execUnit := new(mock.BasePlugin)
 			defer execUnit.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			defer pluginService.AssertExpectations(t)
 
 			datastorer := new(mock.Datastorer)

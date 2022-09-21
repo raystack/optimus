@@ -249,9 +249,9 @@ func (srv *Service) GetByNameForProject(ctx context.Context, name string, proj m
 	return jobSpec, jobSpec.NamespaceSpec, nil
 }
 
-// TODO: use project name instead of namespace spec
+// TODO: use project name and namespace name instead
 func (srv *Service) GetAll(ctx context.Context, namespace models.NamespaceSpec) ([]models.JobSpec, error) {
-	jobSpecs, err := srv.jobSpecRepository.GetAllByProjectName(ctx, namespace.ProjectSpec.Name)
+	jobSpecs, err := srv.jobSpecRepository.GetAllByProjectNameAndNamespaceName(ctx, namespace.ProjectSpec.Name, namespace.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve jobs: %w", err)
 	}
@@ -805,7 +805,7 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 }
 
 func (srv *Service) getJobsDiff(ctx context.Context, namespace models.NamespaceSpec, requestedJobSpecs []models.JobSpec) ([]models.JobSpec, []models.JobSpec, []models.JobSpec, error) {
-	existingJobSpecs, err := srv.jobSpecRepository.GetAllByProjectNameAndNamespaceName(ctx, namespace.Name, namespace.ProjectSpec.Name)
+	existingJobSpecs, err := srv.jobSpecRepository.GetAllByProjectNameAndNamespaceName(ctx, namespace.ProjectSpec.Name, namespace.Name)
 	if err != nil {
 		return nil, nil, nil, err
 	}

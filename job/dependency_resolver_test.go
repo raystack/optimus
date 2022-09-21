@@ -112,7 +112,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSpec1Sources := []string{"project.dataset.table2_destination"}
 
 			// task dependencies
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: jobSpec1Sources}, nil)
 			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{}, nil)
 			defer pluginService.AssertExpectations(t)
@@ -215,7 +215,7 @@ func TestDependencyResolver(t *testing.T) {
 			defer jobSpecRepository.AssertExpectations(t)
 
 			jobSpec1Sources := []string{"project.dataset.table2_destination"}
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{
 				Dependencies: jobSpec1Sources,
 			}, nil)
@@ -287,7 +287,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSpecRepository.On("GetByResourceDestinationURN", ctx, "project.dataset.table2_destination").Return(jobSpec2, errors.New("random error"))
 			defer jobSpecRepository.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			jobSpec1Sources := []string{"project.dataset.table2_destination"}
 			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(
 				&models.GenerateDependenciesResponse{Dependencies: jobSpec1Sources}, nil)
@@ -330,7 +330,7 @@ func TestDependencyResolver(t *testing.T) {
 				NamespaceSpec: namespaceSpec,
 			}
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{}, errors.New("random error"))
 			defer pluginService.AssertExpectations(t)
 
@@ -366,7 +366,7 @@ func TestDependencyResolver(t *testing.T) {
 				NamespaceSpec: namespaceSpec,
 			}
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			jobSpec1Sources := []string{"project.dataset.table3_destination"}
 			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{
 				Dependencies: []string{"project.dataset.table3_destination"},
@@ -411,7 +411,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSpecRepository.On("GetByResourceDestinationURN", ctx, "project.dataset.table3_destination").Return(models.JobSpec{}, errors.New("spec not found"))
 			defer jobSpecRepository.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			jobSpec1Sources := []string{"project.dataset.table3_destination"}
 			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{
 				Dependencies: []string{"project.dataset.table3_destination"},
@@ -479,7 +479,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSpecRepository.On("GetByNameAndProjectName", ctx, "static_dep", projectName).Return(models.JobSpec{}, errors.New("spec not found"))
 			defer jobSpecRepository.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{
 				Dependencies: jobSpec1Sources,
 			}, nil)
@@ -543,7 +543,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSpecRepository.On("GetByResourceDestinationURN", ctx, jobSpec1Sources[0]).Return(jobSpec1, nil)
 			defer jobSpecRepository.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			pluginService.On("GenerateDependencies", ctx, jobSpec2, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{
 				Dependencies: jobSpec1Sources,
 			}, nil)
@@ -629,7 +629,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSpecRepository.On("GetByNameAndProjectName", ctx, "test3", projectName).Return(jobSpec3, nil)
 			defer jobSpecRepository.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{
 				Dependencies: jobSpec1Sources,
 			}, nil)
@@ -758,7 +758,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSpecRepository.On("GetByNameAndProjectName", ctx, "test3", externalProjectName).Return(jobSpec3, nil)
 			defer jobSpecRepository.AssertExpectations(t)
 
-			pluginService := new(mock.DependencyResolverPluginService)
+			pluginService := mock.NewPluginService(t)
 			pluginService.On("GenerateDependencies", ctx, jobSpec1, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{
 				Dependencies: jobSpec1Sources,
 			}, nil)
