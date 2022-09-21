@@ -33,16 +33,27 @@ func NewJobSpecRepository(db *gorm.DB, adapter *JobSpecAdapter) (store.JobSpecRe
 }
 
 func (j jobSpecRepository) GetAllByProjectName(ctx context.Context, projectName string) ([]models.JobSpec, error) {
-	jobs, err := j.getAllByProjectName(ctx, projectName)
-	if err != nil {
+	var jobs []Job
+	if err := j.db.WithContext(ctx).
+		Preload("Namespace").
+		Preload("Project").
+		Joins("Project").
+		Where(`"Project"."name" = ?`, projectName). // TODO: this line is a hack because of GORM's behavior, need to find another way
+		Find(&jobs).Error; err != nil {
 		return nil, err
 	}
 	return j.toJobSpecs(jobs)
 }
 
 func (j jobSpecRepository) GetAllByProjectNameAndNamespaceName(ctx context.Context, projectName, namespaceName string) ([]models.JobSpec, error) {
-	jobs, err := j.getAllByProjectNameAndNamespaceName(ctx, projectName, namespaceName)
-	if err != nil {
+	var jobs []Job
+	if err := j.db.WithContext(ctx).
+		Preload("Namespace").
+		Preload("Project").
+		Joins("Project").
+		Joins("Namespace").
+		Where(`"Project"."name" = ? and "Namespace"."name" = ?`, projectName, namespaceName). // TODO: this line is a hack because of GORM's behavior, need to find another way
+		Find(&jobs).Error; err != nil {
 		return nil, err
 	}
 	return j.toJobSpecs(jobs)
@@ -57,8 +68,15 @@ func (j jobSpecRepository) GetByNameAndProjectName(ctx context.Context, name, pr
 }
 
 func (j jobSpecRepository) GetByResourceDestinationURN(ctx context.Context, resourceDestinationURN string) (models.JobSpec, error) {
-	job, err := j.getByResourceDestinationURN(ctx, resourceDestinationURN)
-	if err != nil {
+	var job Job
+	if err := j.db.WithContext(ctx).
+		Preload("Namespace").
+		Preload("Project").
+		Where("destination = ?", resourceDestinationURN).
+		First(&job).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models.JobSpec{}, store.ErrResourceNotFound
+		}
 		return models.JobSpec{}, err
 	}
 	return j.adapter.ToSpec(job)
@@ -163,21 +181,6 @@ func (j jobSpecRepository) DeleteByID(ctx context.Context, id uuid.UUID) error {
 	})
 }
 
-func (j jobSpecRepository) getByResourceDestinationURN(ctx context.Context, resourceDestinationURN string) (Job, error) {
-	var job Job
-	if err := j.db.WithContext(ctx).
-		Preload("Namespace").
-		Preload("Project").
-		Where("destination = ?", resourceDestinationURN).
-		First(&job).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return Job{}, store.ErrResourceNotFound
-		}
-		return Job{}, err
-	}
-	return job, nil
-}
-
 func (j jobSpecRepository) getByNameAndProjectName(ctx context.Context, name, projectName string) (Job, error) {
 	var job Job
 	if err := j.db.WithContext(ctx).
@@ -192,33 +195,6 @@ func (j jobSpecRepository) getByNameAndProjectName(ctx context.Context, name, pr
 		return Job{}, err
 	}
 	return job, nil
-}
-
-func (j jobSpecRepository) getAllByProjectNameAndNamespaceName(ctx context.Context, projectName, namespaceName string) ([]Job, error) {
-	var jobs []Job
-	if err := j.db.WithContext(ctx).
-		Preload("Namespace").
-		Preload("Project").
-		Joins("Project").
-		Joins("Namespace").
-		Where(`"Project"."name" = ? and "Namespace"."name" = ?`, projectName, namespaceName). // TODO: this line is a hack because of GORM's behavior, need to find another way
-		Find(&jobs).Error; err != nil {
-		return nil, err
-	}
-	return jobs, nil
-}
-
-func (j jobSpecRepository) getAllByProjectName(ctx context.Context, projectName string) ([]Job, error) {
-	var jobs []Job
-	if err := j.db.WithContext(ctx).
-		Preload("Namespace").
-		Preload("Project").
-		Joins("Project").
-		Where(`"Project"."name" = ?`, projectName). // TODO: this line is a hack because of GORM's behavior, need to find another way
-		Find(&jobs).Error; err != nil {
-		return nil, err
-	}
-	return jobs, nil
 }
 
 func (j jobSpecRepository) insert(ctx context.Context, job Job) error {
@@ -241,18 +217,6 @@ func (j jobSpecRepository) hardDelete(ctx context.Context, name, projectName str
 		return fmt.Errorf("failed to fetch soft deleted resource: %w", err)
 	}
 	return j.db.WithContext(ctx).Unscoped().Where("id = ?", job.ID).Delete(&Job{}).Error
-}
-
-func (j jobSpecRepository) toJobSpecs(jobs []Job) ([]models.JobSpec, error) {
-	jobSpecs := make([]models.JobSpec, len(jobs))
-	for i, job := range jobs {
-		jobSpec, err := j.adapter.ToSpec(job)
-		if err != nil {
-			return nil, err
-		}
-		jobSpecs[i] = jobSpec
-	}
-	return jobSpecs, nil
 }
 
 func (j jobSpecRepository) getDependentJobsInferred(ctx context.Context, resourceDestinationURN string) ([]Job, error) {
@@ -282,4 +246,16 @@ func (j jobSpecRepository) getDependentJobsStatic(ctx context.Context, name, pro
 		return nil, err
 	}
 	return jobs, nil
+}
+
+func (j jobSpecRepository) toJobSpecs(jobs []Job) ([]models.JobSpec, error) {
+	jobSpecs := make([]models.JobSpec, len(jobs))
+	for i, job := range jobs {
+		jobSpec, err := j.adapter.ToSpec(job)
+		if err != nil {
+			return nil, err
+		}
+		jobSpecs[i] = jobSpec
+	}
+	return jobSpecs, nil
 }

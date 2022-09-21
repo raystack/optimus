@@ -45,18 +45,18 @@ func (j *JobSpecRepositoryTestSuite) TearDownSuite() {
 }
 
 func (j *JobSpecRepositoryTestSuite) TestGetAllByProjectName() {
-	project0 := j.getDummyProject("project_test0")
-	namespace0 := j.getDummyNamespace("namespace_test0", project0)
-	job0 := j.getDummyJob("job_test0", "destination_test0", namespace0)
-	job1 := j.getDummyJob("job_test1", "destination_test1", namespace0)
+	projectTarget := j.getDummyProject("project_target")
+	namespaceTarget := j.getDummyNamespace("namespace_target", projectTarget)
+	job1Target := j.getDummyJob("job1_target", "destination1_target", namespaceTarget)
+	job2Target := j.getDummyJob("job2_target", "destination2_target", namespaceTarget)
 
-	project1 := j.getDummyProject("project_test1")
-	namespace1 := j.getDummyNamespace("namespace_test1", project1)
-	job2 := j.getDummyJob("job_test2", "destination_test2", namespace1)
+	projectToIgnore := j.getDummyProject("project_to_ignore")
+	namespaceToIgnore := j.getDummyNamespace("namespace_to_ignore", projectToIgnore)
+	jobToIgnore := j.getDummyJob("job_to_ignore", "destination_to_ignore", namespaceToIgnore)
 
-	insertRecords(j.db, []*postgres.Project{project0, project1})
-	insertRecords(j.db, []*postgres.Namespace{namespace0, namespace1})
-	insertRecords(j.db, []*postgres.Job{job0, job1, job2})
+	insertRecords(j.db, []*postgres.Project{projectTarget, projectToIgnore})
+	insertRecords(j.db, []*postgres.Namespace{namespaceTarget, namespaceToIgnore})
+	insertRecords(j.db, []*postgres.Job{job1Target, job2Target, jobToIgnore})
 
 	j.Run("should return all jobs within a project and nil", func() {
 		pluginRepository := mock.NewPluginRepository(j.T())
@@ -70,30 +70,30 @@ func (j *JobSpecRepositoryTestSuite) TestGetAllByProjectName() {
 		}
 
 		ctx := context.Background()
-		projectName := project0.Name
+		projectName := projectTarget.Name
 
 		actualJobSpecs, actualError := repository.GetAllByProjectName(ctx, projectName)
 
 		j.NoError(actualError)
 		j.Len(actualJobSpecs, 2)
-		j.Equal(job0.Name, actualJobSpecs[0].Name)
-		j.Equal(job0.Project.Name, actualJobSpecs[0].NamespaceSpec.ProjectSpec.Name)
-		j.Equal(job1.Name, actualJobSpecs[1].Name)
-		j.Equal(job1.Project.Name, actualJobSpecs[1].NamespaceSpec.ProjectSpec.Name)
+		j.Equal(job1Target.Name, actualJobSpecs[0].Name)
+		j.Equal(job1Target.Project.Name, actualJobSpecs[0].NamespaceSpec.ProjectSpec.Name)
+		j.Equal(job2Target.Name, actualJobSpecs[1].Name)
+		j.Equal(job2Target.Project.Name, actualJobSpecs[1].NamespaceSpec.ProjectSpec.Name)
 	})
 }
 
 func (j *JobSpecRepositoryTestSuite) TestGetAllByProjectNameAndNamespaceName() {
-	project := j.getDummyProject("project_test")
-	namespace0 := j.getDummyNamespace("namespace_test0", project)
-	namespace1 := j.getDummyNamespace("namespace_test1", project)
-	job0 := j.getDummyJob("job_test0", "destination_test0", namespace0)
-	job1 := j.getDummyJob("job_test1", "destination_test1", namespace0)
-	job2 := j.getDummyJob("job_test2", "destination_test2", namespace1)
+	projectTarget := j.getDummyProject("project_target")
+	namespaceTarget := j.getDummyNamespace("namespace_target", projectTarget)
+	namespaceToIgnore := j.getDummyNamespace("namespace_to_ignore", projectTarget)
+	job1Target := j.getDummyJob("job1_target", "destination1_target", namespaceTarget)
+	job2Target := j.getDummyJob("job2_target", "destination2_target", namespaceTarget)
+	jobToIgnore := j.getDummyJob("job_to_ignore", "destination_to_ignore", namespaceToIgnore)
 
-	insertRecords(j.db, []*postgres.Project{project})
-	insertRecords(j.db, []*postgres.Namespace{namespace0, namespace1})
-	insertRecords(j.db, []*postgres.Job{job0, job1, job2})
+	insertRecords(j.db, []*postgres.Project{projectTarget})
+	insertRecords(j.db, []*postgres.Namespace{namespaceTarget, namespaceToIgnore})
+	insertRecords(j.db, []*postgres.Job{job1Target, job2Target, jobToIgnore})
 
 	j.Run("should return all jobs within a project with the specified namespace and nil", func() {
 		pluginRepository := mock.NewPluginRepository(j.T())
@@ -107,31 +107,32 @@ func (j *JobSpecRepositoryTestSuite) TestGetAllByProjectNameAndNamespaceName() {
 		}
 
 		ctx := context.Background()
-		projectName := project.Name
-		namespaceName := namespace0.Name
+		projectName := projectTarget.Name
+		namespaceName := namespaceTarget.Name
 
 		actualJobSpecs, actualError := repository.GetAllByProjectNameAndNamespaceName(ctx, projectName, namespaceName)
 
 		j.NoError(actualError)
 		j.Len(actualJobSpecs, 2)
-		j.Equal(job0.Name, actualJobSpecs[0].Name)
-		j.Equal(job0.Namespace.Name, actualJobSpecs[0].NamespaceSpec.Name)
-		j.Equal(job1.Name, actualJobSpecs[1].Name)
-		j.Equal(job1.Namespace.Name, actualJobSpecs[1].NamespaceSpec.Name)
+		j.Equal(job1Target.Name, actualJobSpecs[0].Name)
+		j.Equal(job1Target.Namespace.Name, actualJobSpecs[0].NamespaceSpec.Name)
+		j.Equal(job2Target.Name, actualJobSpecs[1].Name)
+		j.Equal(job2Target.Namespace.Name, actualJobSpecs[1].NamespaceSpec.Name)
 	})
 }
 
 func (j *JobSpecRepositoryTestSuite) TestGetByNameAndProjectName() {
-	project := j.getDummyProject("project_test")
-	namespace := j.getDummyNamespace("namespace_test", project)
-	job := j.getDummyJob("job_test", "destination_test", namespace)
+	storedProject := j.getDummyProject("project_test")
+	storedNamespace := j.getDummyNamespace("namespace_test", storedProject)
+	storedJob := j.getDummyJob("job_test", "destination_test", storedNamespace)
 
-	insertRecords(j.db, []*postgres.Project{project})
-	insertRecords(j.db, []*postgres.Namespace{namespace})
-	insertRecords(j.db, []*postgres.Job{job})
+	insertRecords(j.db, []*postgres.Project{storedProject})
+	insertRecords(j.db, []*postgres.Namespace{storedNamespace})
+	insertRecords(j.db, []*postgres.Job{storedJob})
 
 	j.Run("should return empty and error if no job is found", func() {
 		pluginRepository := mock.NewPluginRepository(j.T())
+
 		db := j.db
 		adapter := postgres.NewAdapter(pluginRepository)
 		repository, err := postgres.NewJobSpecRepository(db, adapter)
@@ -141,7 +142,7 @@ func (j *JobSpecRepositoryTestSuite) TestGetByNameAndProjectName() {
 
 		ctx := context.Background()
 		jobName := "unknown_job"
-		projectName := project.Name
+		projectName := storedProject.Name
 
 		actualJobSpec, actualError := repository.GetByNameAndProjectName(ctx, jobName, projectName)
 
@@ -161,8 +162,8 @@ func (j *JobSpecRepositoryTestSuite) TestGetByNameAndProjectName() {
 		}
 
 		ctx := context.Background()
-		jobName := job.Name
-		projectName := project.Name
+		jobName := storedJob.Name
+		projectName := storedProject.Name
 
 		actualJobSpec, actualError := repository.GetByNameAndProjectName(ctx, jobName, projectName)
 
@@ -172,13 +173,13 @@ func (j *JobSpecRepositoryTestSuite) TestGetByNameAndProjectName() {
 }
 
 func (j *JobSpecRepositoryTestSuite) TestGetByResourceDestinationURN() {
-	project := j.getDummyProject("project_test")
-	namespace := j.getDummyNamespace("namespace_test", project)
-	job := j.getDummyJob("job_test", "destination_test", namespace)
+	storedProject := j.getDummyProject("project_test")
+	storedNamespace := j.getDummyNamespace("namespace_test", storedProject)
+	storedJob := j.getDummyJob("job_test", "destination_test", storedNamespace)
 
-	insertRecords(j.db, []*postgres.Project{project})
-	insertRecords(j.db, []*postgres.Namespace{namespace})
-	insertRecords(j.db, []*postgres.Job{job})
+	insertRecords(j.db, []*postgres.Project{storedProject})
+	insertRecords(j.db, []*postgres.Namespace{storedNamespace})
+	insertRecords(j.db, []*postgres.Job{storedJob})
 
 	j.Run("should return empty and error if error is encountered", func() {
 		pluginRepository := mock.NewPluginRepository(j.T())
@@ -210,38 +211,38 @@ func (j *JobSpecRepositoryTestSuite) TestGetByResourceDestinationURN() {
 		}
 
 		ctx := context.Background()
-		destination := job.Destination
+		destination := storedJob.Destination
 
 		actualJobSpec, actualError := repository.GetByResourceDestinationURN(ctx, destination)
 
 		j.NoError(actualError)
-		j.Equal(job.Name, actualJobSpec.Name)
+		j.Equal(storedJob.Name, actualJobSpec.Name)
 	})
 }
 
 func (j *JobSpecRepositoryTestSuite) TestGetDependentJobs() {
-	project := j.getDummyProject("project_test")
-	namespace := j.getDummyNamespace("namespace_test", project)
-	job0 := j.getDummyJob("job_test0", "destination_test0", namespace)
-	job1 := j.getDummyJob("job_test1", "destination_test1", namespace)
-	job2 := j.getDummyJob("job_test2", "destination_test2", namespace)
-	job3 := j.getDummyJob("job_test3", "destination_test3", namespace)
+	projectTarget := j.getDummyProject("project_test")
+	namespaceTarget := j.getDummyNamespace("namespace_test", projectTarget)
+	jobWithNoDependency := j.getDummyJob("job_with_no_dependency", "destination_with_no_dependency_test", namespaceTarget)
+	job1 := j.getDummyJob("job1", "destination1", namespaceTarget)
+	job2 := j.getDummyJob("job2", "destination2", namespaceTarget)
+	job3 := j.getDummyJob("job3", "destination3", namespaceTarget)
 
-	job1Dependencies, _ := json.Marshal(map[string]models.JobSpecDependency{
-		job0.Name: {Type: models.JobSpecDependencyTypeIntra},
+	dependenciesForJob1, _ := json.Marshal(map[string]models.JobSpecDependency{
+		jobWithNoDependency.Name: {Type: models.JobSpecDependencyTypeIntra},
 	})
-	job1.Dependencies = job1Dependencies
-	job2Dependencies, _ := json.Marshal(map[string]models.JobSpecDependency{
-		fmt.Sprintf("%s/%s", project.Name, job0.Name): {Type: models.JobSpecDependencyTypeIntra},
+	job1.Dependencies = dependenciesForJob1
+	dependenciesForJob2, _ := json.Marshal(map[string]models.JobSpecDependency{
+		fmt.Sprintf("%s/%s", projectTarget.Name, jobWithNoDependency.Name): {Type: models.JobSpecDependencyTypeIntra},
 	})
-	job2.Dependencies = job2Dependencies
+	job2.Dependencies = dependenciesForJob2
 
-	insertRecords(j.db, []*postgres.Project{project})
-	insertRecords(j.db, []*postgres.Namespace{namespace})
-	insertRecords(j.db, []*postgres.Job{job0, job1, job2, job3})
+	insertRecords(j.db, []*postgres.Project{projectTarget})
+	insertRecords(j.db, []*postgres.Namespace{namespaceTarget})
+	insertRecords(j.db, []*postgres.Job{jobWithNoDependency, job1, job2, job3})
 
-	job3JobSource := &postgres.JobSource{JobID: job3.ID, ResourceURN: job0.Destination, ProjectID: project.ID}
-	insertRecords(j.db, []*postgres.JobSource{job3JobSource})
+	jobSourceForJob3 := &postgres.JobSource{JobID: job3.ID, ResourceURN: jobWithNoDependency.Destination, ProjectID: projectTarget.ID}
+	insertRecords(j.db, []*postgres.JobSource{jobSourceForJob3})
 
 	j.Run("should return dependent jobs and nil if no error is encountered", func() {
 		pluginRepository := mock.NewPluginRepository(j.T())
@@ -255,9 +256,9 @@ func (j *JobSpecRepositoryTestSuite) TestGetDependentJobs() {
 		}
 
 		ctx := context.Background()
-		jobName := job0.Name
-		resourceDestinationURN := job0.Destination
-		projectName := project.Name
+		jobName := jobWithNoDependency.Name
+		resourceDestinationURN := jobWithNoDependency.Destination
+		projectName := projectTarget.Name
 
 		actualJobSpecs, actualError := repository.GetDependentJobs(ctx, jobName, resourceDestinationURN, projectName)
 
@@ -272,15 +273,15 @@ func (j *JobSpecRepositoryTestSuite) TestGetDependentJobs() {
 func (j *JobSpecRepositoryTestSuite) TestGetInferredDependenciesPerJobID() {
 	project := j.getDummyProject("project_test")
 	namespace := j.getDummyNamespace("namespace_test", project)
-	job0 := j.getDummyJob("job_test0", "destination_test0", namespace)
-	job1 := j.getDummyJob("job_test1", "destination_test1", namespace)
+	jobWithDependency := j.getDummyJob("job_with_dependency", "destination1", namespace)
+	jobWithNoDependency := j.getDummyJob("job_with_no_dependency", "destination2", namespace)
 
 	insertRecords(j.db, []*postgres.Project{project})
 	insertRecords(j.db, []*postgres.Namespace{namespace})
-	insertRecords(j.db, []*postgres.Job{job0, job1})
+	insertRecords(j.db, []*postgres.Job{jobWithDependency, jobWithNoDependency})
 
-	job0JobSource := &postgres.JobSource{JobID: job0.ID, ResourceURN: job1.Destination, ProjectID: project.ID}
-	insertRecords(j.db, []*postgres.JobSource{job0JobSource})
+	jobSource := &postgres.JobSource{JobID: jobWithDependency.ID, ResourceURN: jobWithNoDependency.Destination, ProjectID: project.ID}
+	insertRecords(j.db, []*postgres.JobSource{jobSource})
 
 	j.Run("should return inferred dependencies per job id within a project and nil if no error is encountered", func() {
 		pluginRepository := mock.NewPluginRepository(j.T())
@@ -300,25 +301,25 @@ func (j *JobSpecRepositoryTestSuite) TestGetInferredDependenciesPerJobID() {
 
 		j.NoError(actualError)
 		j.Len(actualInferredDependenciesPerJobID, 1)
-		j.Len(actualInferredDependenciesPerJobID[job0.ID], 1)
-		j.Equal(job1.Name, actualInferredDependenciesPerJobID[job0.ID][0].Name)
+		j.Len(actualInferredDependenciesPerJobID[jobWithDependency.ID], 1)
+		j.Equal(jobWithNoDependency.Name, actualInferredDependenciesPerJobID[jobWithDependency.ID][0].Name)
 	})
 }
 
 func (j *JobSpecRepositoryTestSuite) TestGetStaticDependenciesPerJobID() {
 	project := j.getDummyProject("project_test")
 	namespace := j.getDummyNamespace("namespace_test", project)
-	job0 := j.getDummyJob("job_test0", "destination_test0", namespace)
-	job1 := j.getDummyJob("job_test1", "destination_test1", namespace)
+	jobWithDependency := j.getDummyJob("job_with_dependency", "destination1", namespace)
+	jobWithNoDependency := j.getDummyJob("job_with_no_dependency", "destination2", namespace)
 
-	job0Dependencies, _ := json.Marshal(map[string]models.JobSpecDependency{
-		job1.Name: {Type: models.JobSpecDependencyTypeIntra},
+	jobDependencies, _ := json.Marshal(map[string]models.JobSpecDependency{
+		jobWithNoDependency.Name: {Type: models.JobSpecDependencyTypeIntra},
 	})
-	job0.Dependencies = job0Dependencies
+	jobWithDependency.Dependencies = jobDependencies
 
 	insertRecords(j.db, []*postgres.Project{project})
 	insertRecords(j.db, []*postgres.Namespace{namespace})
-	insertRecords(j.db, []*postgres.Job{job0, job1})
+	insertRecords(j.db, []*postgres.Job{jobWithDependency, jobWithNoDependency})
 
 	j.Run("should return static dependencies per job id within a project and nil if no error is encountered", func() {
 		pluginRepository := mock.NewPluginRepository(j.T())
@@ -338,8 +339,8 @@ func (j *JobSpecRepositoryTestSuite) TestGetStaticDependenciesPerJobID() {
 
 		j.NoError(actualError)
 		j.Len(actualInferredDependenciesPerJobID, 1)
-		j.Len(actualInferredDependenciesPerJobID[job0.ID], 1)
-		j.Equal(job1.Name, actualInferredDependenciesPerJobID[job0.ID][0].Name)
+		j.Len(actualInferredDependenciesPerJobID[jobWithDependency.ID], 1)
+		j.Equal(jobWithNoDependency.Name, actualInferredDependenciesPerJobID[jobWithDependency.ID][0].Name)
 	})
 }
 
