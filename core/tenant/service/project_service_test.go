@@ -14,7 +14,12 @@ import (
 
 func TestProjectService(t *testing.T) {
 	ctx := context.Background()
-	savedProject, _ := tenant.NewProject("savedProj", map[string]string{"BUCKET": "gs://some_folder"})
+	conf := map[string]string{
+		tenant.ProjectSchedulerHost:  "host",
+		tenant.ProjectStoragePathKey: "gs://location",
+		"BUCKET":                     "gs://some_folder",
+	}
+	savedProject, _ := tenant.NewProject("savedProj", conf)
 
 	t.Run("Save", func(t *testing.T) {
 		t.Run("returns error when fails in service", func(t *testing.T) {

@@ -2,9 +2,15 @@ package tenant
 
 import (
 	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/utils"
 )
 
-const EntityProject = "project"
+const (
+	EntityProject = "project"
+
+	ProjectStoragePathKey = "STORAGE_PATH"
+	ProjectSchedulerHost  = "SCHEDULER_HOST"
+)
 
 type ProjectName string
 
@@ -50,6 +56,10 @@ func NewProject(name string, config map[string]string) (*Project, error) {
 	prjName, err := ProjectNameFrom(name)
 	if err != nil {
 		return nil, err
+	}
+
+	if !utils.Contains(config, ProjectStoragePathKey, ProjectSchedulerHost) {
+		return nil, errors.InvalidArgument(EntityProject, "missing mandatory configuration")
 	}
 
 	return &Project{

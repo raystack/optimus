@@ -63,7 +63,7 @@ func (repo ProjectRepository) Save(ctx context.Context, tenantProject *tenant.Pr
 		return errors.Wrap(tenant.EntityProject, "unable to save project", err)
 	}
 
-	if len(tenantProject.GetConfigs()) == 0 {
+	if len(tenantProject.GetConfigs()) == 0 { // TODO: project config cannot be empty
 		return store.ErrEmptyConfig
 	}
 	project.ID = existing.ID
@@ -74,7 +74,7 @@ func (repo ProjectRepository) GetByName(ctx context.Context, name tenant.Project
 	project, err := repo.get(ctx, name)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.NotFound(tenant.EntityProject, "name: "+name.String())
+			return nil, errors.NotFound(tenant.EntityProject, "no record for "+name.String())
 		}
 		return nil, errors.Wrap(tenant.EntityProject, "error while getting project", err)
 	}

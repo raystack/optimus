@@ -10,18 +10,18 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/store"
 	postgres "github.com/odpf/optimus/internal/store/postgres/tenant"
 	"github.com/odpf/optimus/tests/setup"
 )
 
 func TestProjectRepository(t *testing.T) {
 	transporterKafkaBrokerKey := "KAFKA_BROKERS"
-
 	proj, _ := tenant.NewProject("t-optimus-1",
 		map[string]string{
-			"bucket":                  "gs://some_folder-2",
-			transporterKafkaBrokerKey: "10.12.12.12:6668,10.12.12.13:6668",
+			"bucket":                     "gs://some_folder-2",
+			transporterKafkaBrokerKey:    "10.12.12.12:6668,10.12.12.13:6668",
+			tenant.ProjectSchedulerHost:  "host",
+			tenant.ProjectStoragePathKey: "gs://location",
 		})
 
 	ctx := context.Background()
@@ -80,20 +80,6 @@ func TestProjectRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, "gs://some_place", config)
 		})
-		t.Run("skips update if config is empty", func(t *testing.T) {
-			db := dbSetup()
-			repo := postgres.NewProjectRepository(db)
-
-			err := repo.Save(ctx, proj)
-			assert.Nil(t, err)
-			savedProj, err := repo.GetByName(ctx, proj.Name())
-			assert.Nil(t, err)
-			assert.Equal(t, "t-optimus-1", savedProj.Name().String())
-
-			proj2, _ := tenant.NewProject(proj.Name().String(), map[string]string{})
-			err = repo.Save(ctx, proj2)
-			assert.Equal(t, store.ErrEmptyConfig, err)
-		})
 	})
 	t.Run("GetAll", func(t *testing.T) {
 		t.Run("returns all the projects in db", func(t *testing.T) {
@@ -122,7 +108,7 @@ func TestProjectRepository(t *testing.T) {
 
 			_, err := repo.GetByName(ctx, proj.Name())
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "not found for entity project: record not found")
+			assert.EqualError(t, err, "not found for entity project: no record for t-optimus-1")
 		})
 		t.Run("returns the saved project with same name", func(t *testing.T) {
 			db := dbSetup()

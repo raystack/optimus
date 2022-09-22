@@ -31,8 +31,18 @@ func TestEntityProject(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity project: project name is empty")
 		})
+		t.Run("fails to create if config is empty", func(t *testing.T) {
+			project, err := tenant.NewProject("name", map[string]string{})
+
+			assert.Nil(t, project)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "invalid argument for entity project: missing mandatory configuration")
+		})
 		t.Run("creates a project model", func(t *testing.T) {
-			project, err := tenant.NewProject("t-optimus", map[string]string{"a": "b"})
+			project, err := tenant.NewProject("t-optimus", map[string]string{
+				tenant.ProjectSchedulerHost:  "b",
+				tenant.ProjectStoragePathKey: "d",
+			})
 			assert.Nil(t, err)
 
 			assert.NotNil(t, project)
@@ -40,9 +50,13 @@ func TestEntityProject(t *testing.T) {
 
 			assert.NotNil(t, project.GetConfigs())
 
-			val, err := project.GetConfig("a")
+			val1, err := project.GetConfig(tenant.ProjectSchedulerHost)
 			assert.Nil(t, err)
-			assert.Equal(t, "b", val)
+			assert.Equal(t, "b", val1)
+
+			val2, err := project.GetConfig(tenant.ProjectStoragePathKey)
+			assert.Nil(t, err)
+			assert.Equal(t, "d", val2)
 		})
 	})
 }

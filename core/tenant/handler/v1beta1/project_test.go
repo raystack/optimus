@@ -17,7 +17,12 @@ import (
 func TestProjectHandler(t *testing.T) {
 	logger := log.NewNoop()
 	ctx := context.Background()
-	savedProject, _ := tenant.NewProject("savedProj", map[string]string{"BUCKET": "gs://some_folder"})
+	conf := map[string]string{
+		tenant.ProjectSchedulerHost:  "host",
+		tenant.ProjectStoragePathKey: "gs://location",
+		"BUCKET":                     "gs://some_folder",
+	}
+	savedProject, _ := tenant.NewProject("savedProj", conf)
 
 	t.Run("RegisterProject", func(t *testing.T) {
 		t.Run("returns error when name is empty", func(t *testing.T) {
@@ -26,7 +31,7 @@ func TestProjectHandler(t *testing.T) {
 
 			registerReq := pb.RegisterProjectRequest{Project: &pb.ProjectSpecification{
 				Name:   "",
-				Config: map[string]string{"BUCKET": "gs://some_folder"},
+				Config: conf,
 			}}
 
 			_, err := handler.RegisterProject(ctx, &registerReq)
@@ -43,7 +48,7 @@ func TestProjectHandler(t *testing.T) {
 
 			registerReq := pb.RegisterProjectRequest{Project: &pb.ProjectSpecification{
 				Name:   "proj",
-				Config: map[string]string{"BUCKET": "gs://some_folder"},
+				Config: conf,
 			}}
 
 			_, err := handler.RegisterProject(ctx, &registerReq)
@@ -60,7 +65,7 @@ func TestProjectHandler(t *testing.T) {
 
 			registerReq := pb.RegisterProjectRequest{Project: &pb.ProjectSpecification{
 				Name:   "proj",
-				Config: map[string]string{"BUCKET": "gs://some_folder"},
+				Config: conf,
 			}}
 
 			_, err := handler.RegisterProject(ctx, &registerReq)
