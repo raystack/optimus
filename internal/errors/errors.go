@@ -83,7 +83,20 @@ func (e *DomainError) Unwrap() error {
 	return e.WrappedErr
 }
 
-func MapToGRPCErr(err error, msg string) error {
+func Wrap(entity, msg string, err error) error {
+	if errors.Is(err, &DomainError{}) {
+		return err
+	}
+
+	return &DomainError{
+		ErrorType:  ErrInternalError,
+		Entity:     entity,
+		Message:    msg,
+		WrappedErr: err,
+	}
+}
+
+func GRPCErr(err error, msg string) error {
 	code := codes.Internal
 	var de *DomainError
 	if errors.As(err, &de) {

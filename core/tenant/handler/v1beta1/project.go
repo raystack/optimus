@@ -28,10 +28,10 @@ type ProjectService interface {
 func (sv *ProjectHandler) RegisterProject(ctx context.Context, req *pb.RegisterProjectRequest) (*pb.RegisterProjectResponse, error) {
 	project, err := fromProjectProto(req.GetProject())
 	if err != nil {
-		return nil, errors.MapToGRPCErr(err, fmt.Sprintf("not able to register project %s", req.GetProject().Name))
+		return nil, errors.GRPCErr(err, fmt.Sprintf("not able to register project %s", req.GetProject().Name))
 	}
 	if err := sv.projectService.Save(ctx, project); err != nil {
-		return nil, errors.MapToGRPCErr(err, fmt.Sprintf("not able to register project %s", req.GetProject().Name))
+		return nil, errors.GRPCErr(err, fmt.Sprintf("not able to register project %s", req.GetProject().Name))
 	}
 
 	// TODO update the proto to remove the success & Message
@@ -41,7 +41,7 @@ func (sv *ProjectHandler) RegisterProject(ctx context.Context, req *pb.RegisterP
 func (sv *ProjectHandler) ListProjects(ctx context.Context, _ *pb.ListProjectsRequest) (*pb.ListProjectsResponse, error) {
 	projects, err := sv.projectService.GetAll(ctx)
 	if err != nil {
-		return nil, errors.MapToGRPCErr(err, "failed to retrieve saved projects")
+		return nil, errors.GRPCErr(err, "failed to retrieve saved projects")
 	}
 
 	var projSpecsProto []*pb.ProjectSpecification
@@ -57,11 +57,11 @@ func (sv *ProjectHandler) ListProjects(ctx context.Context, _ *pb.ListProjectsRe
 func (sv *ProjectHandler) GetProject(ctx context.Context, req *pb.GetProjectRequest) (*pb.GetProjectResponse, error) {
 	projName, err := tenant.ProjectNameFrom(req.GetProjectName())
 	if err != nil {
-		return nil, errors.MapToGRPCErr(err, fmt.Sprintf("failed to retrieve project [%s]", req.GetProjectName()))
+		return nil, errors.GRPCErr(err, fmt.Sprintf("failed to retrieve project [%s]", req.GetProjectName()))
 	}
 	project, err := sv.projectService.Get(ctx, projName)
 	if err != nil {
-		return nil, errors.MapToGRPCErr(err, fmt.Sprintf("failed to retrieve project [%s]", req.GetProjectName()))
+		return nil, errors.GRPCErr(err, fmt.Sprintf("failed to retrieve project [%s]", req.GetProjectName()))
 	}
 	return &pb.GetProjectResponse{
 		Project: toProjectProto(project),

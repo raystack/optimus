@@ -34,7 +34,7 @@ func (p *Project) GetConfig(key string) (string, error) {
 			return v, nil
 		}
 	}
-	return "", errors.NotFound("project", "config not found: "+key)
+	return "", errors.NotFound(EntityProject, "config not found: "+key)
 }
 
 // GetConfigs returns a clone of project configurations

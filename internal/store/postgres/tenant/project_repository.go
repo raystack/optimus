@@ -60,7 +60,7 @@ func (repo ProjectRepository) Save(ctx context.Context, tenantProject *tenant.Pr
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return repo.db.WithContext(ctx).Create(&project).Error
 		}
-		return errors.InternalError("project", "unable to save project", err)
+		return errors.Wrap(tenant.EntityProject, "unable to save project", err)
 	}
 
 	if len(tenantProject.GetConfigs()) == 0 {
@@ -74,9 +74,9 @@ func (repo ProjectRepository) GetByName(ctx context.Context, name tenant.Project
 	project, err := repo.get(ctx, name)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.NotFound("project", "record not found")
+			return nil, errors.NotFound(tenant.EntityProject, "name: "+name.String())
 		}
-		return nil, errors.InternalError("project", "error while getting project", err)
+		return nil, errors.Wrap(tenant.EntityProject, "error while getting project", err)
 	}
 	return project.ToTenantProject()
 }
@@ -94,7 +94,7 @@ func (repo ProjectRepository) get(ctx context.Context, name tenant.ProjectName) 
 func (repo ProjectRepository) GetAll(ctx context.Context) ([]*tenant.Project, error) {
 	var projects []Project
 	if err := repo.db.WithContext(ctx).Find(&projects).Error; err != nil {
-		return nil, err
+		return nil, errors.Wrap(tenant.EntityProject, "error in GetAll", err)
 	}
 
 	var tenantProjects []*tenant.Project
