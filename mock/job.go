@@ -412,6 +412,11 @@ func (srv *JobService) GetTaskDependencies(ctx context.Context, namespaceSpec mo
 	return args.Get(0).(models.JobSpecTaskDestination), args.Get(1).(models.JobSpecTaskDependencies), args.Error(2)
 }
 
+func (srv *JobService) GetJobSourceAndDestination(ctx context.Context, spec models.JobSpec) (models.JobSpecTaskDestination, models.JobSpecTaskDependencies, error) {
+	args := srv.Called(ctx, spec)
+	return args.Get(0).(models.JobSpecTaskDestination), args.Get(1).(models.JobSpecTaskDependencies), args.Error(2)
+}
+
 func (srv *JobService) Check(ctx context.Context, namespaceSpec models.NamespaceSpec, specs []models.JobSpec, logWriter writer.LogWriter) error {
 	args := srv.Called(ctx, namespaceSpec, specs, logWriter)
 	return args.Error(0)

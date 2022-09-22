@@ -310,6 +310,31 @@ func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, j
 	return err
 }
 
+func (srv *Service) GetJobSourceAndDestination(ctx context.Context, jobSpec models.JobSpec) (models.JobSpecTaskDestination, models.JobSpecTaskDependencies, error) {
+	var mullErr error
+	var destination models.JobSpecTaskDestination
+	var dependencies models.JobSpecTaskDependencies
+	dest, err := srv.pluginService.GenerateDestination(ctx, jobSpec, jobSpec.NamespaceSpec)
+	if err != nil {
+		mullErr = multierror.Append(mullErr, fmt.Errorf("unable to generate destination err::%w", err))
+	}
+
+	if dest != nil {
+		destination.Destination = dest.Destination
+		destination.Type = dest.Type
+	}
+
+	deps, err := srv.pluginService.GenerateDependencies(ctx, jobSpec, jobSpec.NamespaceSpec, false)
+	if err != nil {
+		mullErr = multierror.Append(mullErr, fmt.Errorf("failed to generate dependencies::%w", err))
+	}
+	if deps != nil {
+		dependencies = deps.Dependencies
+	}
+
+	return destination, dependencies, mullErr
+}
+
 func (srv *Service) GetTaskDependencies(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec) (models.JobSpecTaskDestination,
 	models.JobSpecTaskDependencies, error) {
 	destination := models.JobSpecTaskDestination{}

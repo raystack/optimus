@@ -166,26 +166,27 @@ func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspe
 
 	var jobSpec models.JobSpec
 
-	if req.GetJobName() == "" {
-		// jobSpec must be provided by client
-		jobSpec, err = FromJobProto(req.GetSpec(), sv.pluginRepo)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "cannot deserialize job: \n%s", err.Error())
-		}
-	} else {
+	if req.GetJobName() != "" {
 		// get job spec from DB
 		jobSpec, err = sv.jobSvc.GetByName(ctx, req.GetJobName(), namespaceSpec)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "cannot obtain jobSpec: \n%s", err.Error())
+			return nil, status.Errorf(codes.NotFound, "cannot obtain jobSpec from optimus server: \n%s", err.Error())
+		}
+	} else {
+		// jobSpec must be provided by client
+		jobSpec, err = FromJobProto(req.GetSpec(), sv.pluginRepo)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "cannot deserialize job: \n%s", err.Error())
 		}
 	}
+	jobSpec.NamespaceSpec = namespaceSpec
 
-	jobDestination, jobSources, err := sv.jobSvc.GetTaskDependencies(ctx, namespaceSpec, jobSpec)
+	jobDestination, jobSources, err := sv.jobSvc.GetJobSourceAndDestination(ctx, jobSpec)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Unable to generate destination and dependencies sources: \n%s", err.Error())
+		logWriter.Write(writer.LogLevelError, fmt.Sprintf("Unable to determine job destination and sources: \n%s", err.Error()))
 	}
-	jobSpec.ResourceDestination = jobDestination.URN()
 
+	jobSpec.ResourceDestination = jobDestination.URN()
 	sv.jobSvc.Check(ctx, namespaceSpec, []models.JobSpec{jobSpec}, logWriter)
 
 	sv.hightlightJobWarnings(ctx, jobSpec, logWriter)

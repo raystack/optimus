@@ -343,6 +343,10 @@ type JobService interface {
 	GetTaskDependencies(context.Context, NamespaceSpec, JobSpec) (JobSpecTaskDestination,
 		JobSpecTaskDependencies, error)
 
+	// GetJobSourceAndDestination returns job task source and destination tables
+	GetJobSourceAndDestination(context.Context, JobSpec) (
+		JobSpecTaskDestination, JobSpecTaskDependencies, error)
+
 	// Run creates a new job run for provided job spec and schedules it to execute
 	// immediately
 	Run(context.Context, NamespaceSpec, []JobSpec) (JobDeploymentDetail, error)

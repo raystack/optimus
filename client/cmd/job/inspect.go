@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/odpf/salt/log"
@@ -17,15 +15,14 @@ import (
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/internal/survey"
 	"github.com/odpf/optimus/client/local"
-	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
 const (
-	explainTimeout = time.Minute * 1
+	inspectTimeout         = time.Minute * 1
+	optimusServerFetchFlag = "server"
 )
 
 type explainCommand struct {
@@ -40,7 +37,6 @@ type explainCommand struct {
 	clientConfig    *config.ClientConfig
 	jobSurvey       *survey.JobSurvey
 	namespaceSurvey *survey.NamespaceSurvey
-	scheduleTime    string // see if time is possible directly
 }
 
 // NewExplainCommand initializes command for explaining job specification
@@ -52,16 +48,14 @@ func NewExplainCommand() *cobra.Command {
 		Use:     "inspect",
 		Short:   "Apply template values in job specification to current 'explain' directory", // todo fix this
 		Long:    "Process optimus job specification based on macros/functions used.",         // todo fix this
-		Example: "optimus job inspect [<job_name>]",
+		Example: "optimus job inspect [<job_name>] [--server]",
+		Args:    cobra.MinimumNArgs(1),
 		RunE:    explain.RunE,
 		PreRunE: explain.PreRunE,
 	}
-
-	// Config filepath flag
 	cmd.Flags().StringVarP(&explain.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
 	cmd.Flags().StringVar(&explain.host, "host", "", "Optimus service endpoint url")
-	cmd.Flags().StringVarP(&explain.scheduleTime, "time", "t", "", "schedule time for the job deployment")
-
+	cmd.Flags().Bool(optimusServerFetchFlag, false, "fetch jobSpec from server")
 	return cmd
 }
 
@@ -70,57 +64,37 @@ func (e *explainCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	if err := e.loadConfig(); err != nil {
 		return err
 	}
-
 	e.logger = logger.NewClientLogger()
 	e.jobSurvey = survey.NewJobSurvey()
 	e.namespaceSurvey = survey.NewNamespaceSurvey(e.logger)
-	// check if time flag is set and see if schedule time could be parsed
-	if e.scheduleTime != "" {
-		_, err := time.Parse("2006-01-02 15:04", e.scheduleTime)
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
-func (e *explainCommand) RunE(_ *cobra.Command, args []string) error {
+func (e *explainCommand) RunE(cmd *cobra.Command, args []string) error {
 	e.projectName = e.clientConfig.Project.Name
 	namespace, err := e.namespaceSurvey.AskToSelectNamespace(e.clientConfig)
 	e.namespaceName = namespace.Name
 	if err != nil {
 		return err
 	}
-	// TODO: fetch jobSpec from server instead
-	jobSpec, err := e.getJobSpecByName(args, namespace.Job.Path)
-	if err != nil {
-		return err
-	}
 
-	explainedPath := filepath.Join(".", "explain", jobSpec.Name)
-	if err := os.MkdirAll(explainedPath, 0o770); err != nil {
-		return err
-	}
-	e.logger.Info(fmt.Sprintf("Downloading assets in %s", explainedPath))
+	var jobSpec models.JobSpec
 
-	scheduleTime := time.Now()
-
-	e.logger.Info(fmt.Sprintf("Assuming execution time as current time of %s\n", scheduleTime.Format(models.InstanceScheduledAtTimeLayout)))
-
-	templateEngine := compiler.NewGoEngine()
-	templates, err := compiler.DumpAssets(context.Background(), jobSpec, scheduleTime, templateEngine, true)
-	if err != nil {
-		return err
-	}
-
-	writeToFileFn := utils.WriteStringToFileIndexed()
-	for name, content := range templates {
-		if err := writeToFileFn(filepath.Join(explainedPath, name), content, e.logger.Writer()); err != nil {
+	serverFetch, _ := cmd.Flags().GetBool(optimusServerFetchFlag)
+	if !serverFetch {
+		jobSpec, err = e.getJobSpecByName(args, namespace.Job.Path)
+		if err != nil {
 			return err
 		}
+	} else {
+		jobSpec.Name = args[0]
 	}
 
-	e.logger.Info(logger.ColoredSuccess("\nExplain complete."))
+	start := time.Now()
+	if err := e.inspectJobSpecification(jobSpec, serverFetch); err != nil {
+		return err
+	}
+	e.logger.Info(logger.ColoredSuccess("Jobs inspected successfully, took %s", time.Since(start).Round(time.Second)))
 	return nil
 }
 
@@ -142,32 +116,6 @@ func (e *explainCommand) getJobSpecByName(args []string, namespaceJobPath string
 	return jobSpecRepo.GetByName(jobName)
 }
 
-func (e *explainCommand) GetJobSpecFromServer(jobSpec models.JobSpec) *pb.JobInspectResponse {
-	conn, err := connectivity.NewConnectivity(e.clientConfig.Host, explainTimeout)
-	if err != nil {
-		e.logger.Error(logger.ColoredError(err.Error()))
-		return nil
-	}
-	defer conn.Close()
-
-	jobSpecService := pb.NewJobSpecificationServiceClient(conn.GetConnection())
-	jobInspectResponse, err := jobSpecService.JobInspect(conn.GetContext(), &pb.JobInspectRequest{
-		ProjectName:   e.projectName,
-		NamespaceName: e.namespaceName,
-		Spec:          v1handler.ToJobSpecificationProto(jobSpec),
-	})
-
-	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			e.logger.Error(logger.ColoredError("Refresh process took too long, timing out"))
-		}
-		e.logger.Error(logger.ColoredError("err:: %v", err.Error()))
-		return nil
-	}
-
-	return jobInspectResponse
-}
-
 func (e *explainCommand) loadConfig() error {
 	// TODO: find a way to load the config in one place
 	conf, err := config.LoadClientConfig(e.configFilePath)
@@ -175,5 +123,55 @@ func (e *explainCommand) loadConfig() error {
 		return err
 	}
 	*e.clientConfig = *conf
+	return nil
+}
+
+func (e *explainCommand) inspectJobSpecification(jobSpec models.JobSpec, serverFetch bool) error {
+	conn, err := connectivity.NewConnectivity(e.clientConfig.Host, inspectTimeout)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	var adaptedSpec *pb.JobSpecification
+	var jobName string
+	if !serverFetch {
+		adaptedSpec = v1handler.ToJobSpecificationProto(jobSpec)
+	} else {
+		jobName = jobSpec.Name
+	}
+
+	jobInspectRequest := &pb.JobInspectRequest{
+		ProjectName:   e.clientConfig.Project.Name,
+		NamespaceName: e.namespaceName,
+		Spec:          adaptedSpec,
+		JobName:       jobName,
+	}
+	job := pb.NewJobSpecificationServiceClient(conn.GetConnection())
+	resp, err := job.JobInspect(conn.GetContext(), jobInspectRequest)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			e.logger.Error("Inspect process took too long, timing out")
+		}
+		return fmt.Errorf("inspect request failed: %w", err)
+	}
+	return e.processJobInspectResponse(resp)
+}
+
+func (e *explainCommand) processJobInspectResponse(resp *pb.JobInspectResponse) error {
+	e.logger.Info("\n> Job Destination:: %v", resp.Destination)
+	e.logger.Info("\n> Job Sources:: %v", resp.Sources)
+	for i := 0; i < len(resp.Log); i++ {
+		switch resp.Log[i].Level {
+		case pb.Level_LEVEL_INFO:
+			e.logger.Info(fmt.Sprintf("\n>%v", resp.Log[i].Message))
+		case pb.Level_LEVEL_WARNING:
+			e.logger.Info(logger.ColoredNotice(fmt.Sprintf("\n>%v", resp.Log[i].Message)))
+		case pb.Level_LEVEL_ERROR:
+			e.logger.Info(logger.ColoredError(fmt.Sprintf("\n>%v", resp.Log[i].Message)))
+		default:
+			e.logger.Error(logger.ColoredError(fmt.Sprintf("unhandled log level::%v specified with error msg ::%v", resp.Log[i].Level, resp.Log[i].Message)))
+		}
+	}
 	return nil
 }
