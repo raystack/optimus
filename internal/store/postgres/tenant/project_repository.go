@@ -23,7 +23,7 @@ const (
 	getProjectByNameQuery = `select ` + projectColumns + ` from project where name = ? and deleted_at is null`
 	getAllProjects        = `select ` + projectColumns + ` from project where deleted_at is null`
 
-	insertProjectQuery = `insert into project (name, config, project_id, created_at, updated_at) values (?, ?, ?, now(), now())`
+	insertProjectQuery = `insert into project (name, config, created_at, updated_at) values (?, ?, now(), now())`
 	updateProjectQuery = `update project set config=?, updated_at=now() where name=?`
 )
 
