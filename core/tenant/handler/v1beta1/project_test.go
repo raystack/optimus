@@ -75,7 +75,7 @@ func TestProjectHandler(t *testing.T) {
 	t.Run("ListProjects", func(t *testing.T) {
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			projectService := new(ProjectService)
-			projectService.On("GetAll", ctx).Return([]*tenant.Project{}, errors.New("unable to fetch"))
+			projectService.On("GetAll", ctx).Return(nil, errors.New("unable to fetch"))
 			defer projectService.AssertExpectations(t)
 
 			handler := v1beta1.NewProjectHandler(logger, projectService)
@@ -114,7 +114,7 @@ func TestProjectHandler(t *testing.T) {
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			projectService := new(ProjectService)
 			projectService.On("Get", ctx, tenant.ProjectName("savedProj")).
-				Return(&tenant.Project{}, errors.New("random error"))
+				Return(nil, errors.New("random error"))
 			defer projectService.AssertExpectations(t)
 
 			handler := v1beta1.NewProjectHandler(logger, projectService)
@@ -152,10 +152,18 @@ func (p *ProjectService) Save(ctx context.Context, project *tenant.Project) erro
 
 func (p *ProjectService) Get(ctx context.Context, name tenant.ProjectName) (*tenant.Project, error) {
 	args := p.Called(ctx, name)
-	return args.Get(0).(*tenant.Project), args.Error(1)
+	var prj *tenant.Project
+	if args.Get(0) != nil {
+		prj = args.Get(0).(*tenant.Project)
+	}
+	return prj, args.Error(1)
 }
 
 func (p *ProjectService) GetAll(ctx context.Context) ([]*tenant.Project, error) {
 	args := p.Called(ctx)
-	return args.Get(0).([]*tenant.Project), args.Error(1)
+	var prjs []*tenant.Project
+	if args.Get(0) != nil {
+		prjs = args.Get(0).([]*tenant.Project)
+	}
+	return prjs, args.Error(1)
 }

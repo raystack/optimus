@@ -52,7 +52,7 @@ func TestProjectService(t *testing.T) {
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			projectRepo := new(ProjectRepo)
 			projectRepo.On("GetAll", ctx).
-				Return([]*tenant.Project{}, errors.New("error in getting all"))
+				Return(nil, errors.New("error in getting all"))
 			defer projectRepo.AssertExpectations(t)
 
 			projService := service.NewProjectService(projectRepo)
@@ -78,7 +78,7 @@ func TestProjectService(t *testing.T) {
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			projectRepo := new(ProjectRepo)
 			projectRepo.On("GetByName", ctx, tenant.ProjectName("savedProj")).
-				Return(&tenant.Project{}, errors.New("error in getting"))
+				Return(nil, errors.New("error in getting"))
 			defer projectRepo.AssertExpectations(t)
 
 			projService := service.NewProjectService(projectRepo)
@@ -112,10 +112,18 @@ func (p *ProjectRepo) Save(ctx context.Context, project *tenant.Project) error {
 
 func (p *ProjectRepo) GetByName(ctx context.Context, name tenant.ProjectName) (*tenant.Project, error) {
 	args := p.Called(ctx, name)
-	return args.Get(0).(*tenant.Project), args.Error(1)
+	var prj *tenant.Project
+	if args.Get(0) != nil {
+		prj = args.Get(0).(*tenant.Project)
+	}
+	return prj, args.Error(1)
 }
 
 func (p *ProjectRepo) GetAll(ctx context.Context) ([]*tenant.Project, error) {
 	args := p.Called(ctx)
-	return args.Get(0).([]*tenant.Project), args.Error(1)
+	var prjs []*tenant.Project
+	if args.Get(0) != nil {
+		prjs = args.Get(0).([]*tenant.Project)
+	}
+	return prjs, args.Error(1)
 }
