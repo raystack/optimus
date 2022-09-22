@@ -25,7 +25,7 @@ const (
 	optimusServerFetchFlag = "server"
 )
 
-type explainCommand struct {
+type inspectCommand struct {
 	logger log.Logger
 
 	configFilePath string
@@ -39,27 +39,27 @@ type explainCommand struct {
 	namespaceSurvey *survey.NamespaceSurvey
 }
 
-// NewExplainCommand initializes command for explaining job specification
-func NewExplainCommand() *cobra.Command {
-	explain := &explainCommand{
+// NewInspectCommand initializes command for inspecting job specification
+func NewInspectCommand() *cobra.Command {
+	inspect := &inspectCommand{
 		clientConfig: &config.ClientConfig{},
 	}
 	cmd := &cobra.Command{
 		Use:     "inspect",
-		Short:   "Apply template values in job specification to current 'explain' directory", // todo fix this
-		Long:    "Process optimus job specification based on macros/functions used.",         // todo fix this
+		Short:   "inspect optimus job specification using local and server spec",
+		Long:    "inspect optimus job specification using local and server spec",
 		Example: "optimus job inspect [<job_name>] [--server]",
 		Args:    cobra.MinimumNArgs(1),
-		RunE:    explain.RunE,
-		PreRunE: explain.PreRunE,
+		RunE:    inspect.RunE,
+		PreRunE: inspect.PreRunE,
 	}
-	cmd.Flags().StringVarP(&explain.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
-	cmd.Flags().StringVar(&explain.host, "host", "", "Optimus service endpoint url")
+	cmd.Flags().StringVarP(&inspect.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
+	cmd.Flags().StringVar(&inspect.host, "host", "", "Optimus service endpoint url")
 	cmd.Flags().Bool(optimusServerFetchFlag, false, "fetch jobSpec from server")
 	return cmd
 }
 
-func (e *explainCommand) PreRunE(_ *cobra.Command, _ []string) error {
+func (e *inspectCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	// Load mandatory config
 	if err := e.loadConfig(); err != nil {
 		return err
@@ -70,7 +70,7 @@ func (e *explainCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func (e *explainCommand) RunE(cmd *cobra.Command, args []string) error {
+func (e *inspectCommand) RunE(cmd *cobra.Command, args []string) error {
 	e.projectName = e.clientConfig.Project.Name
 	namespace, err := e.namespaceSurvey.AskToSelectNamespace(e.clientConfig)
 	e.namespaceName = namespace.Name
@@ -98,7 +98,7 @@ func (e *explainCommand) RunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (e *explainCommand) getJobSpecByName(args []string, namespaceJobPath string) (models.JobSpec, error) {
+func (e *inspectCommand) getJobSpecByName(args []string, namespaceJobPath string) (models.JobSpec, error) {
 	pluginRepo := models.PluginRegistry
 	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespaceJobPath)
 	jobSpecRepo := local.NewJobSpecRepository(jobSpecFs, local.NewJobSpecAdapter(pluginRepo))
@@ -116,8 +116,7 @@ func (e *explainCommand) getJobSpecByName(args []string, namespaceJobPath string
 	return jobSpecRepo.GetByName(jobName)
 }
 
-func (e *explainCommand) loadConfig() error {
-	// TODO: find a way to load the config in one place
+func (e *inspectCommand) loadConfig() error {
 	conf, err := config.LoadClientConfig(e.configFilePath)
 	if err != nil {
 		return err
@@ -126,7 +125,7 @@ func (e *explainCommand) loadConfig() error {
 	return nil
 }
 
-func (e *explainCommand) inspectJobSpecification(jobSpec models.JobSpec, serverFetch bool) error {
+func (e *inspectCommand) inspectJobSpecification(jobSpec models.JobSpec, serverFetch bool) error {
 	conn, err := connectivity.NewConnectivity(e.clientConfig.Host, inspectTimeout)
 	if err != nil {
 		return err
@@ -158,7 +157,7 @@ func (e *explainCommand) inspectJobSpecification(jobSpec models.JobSpec, serverF
 	return e.processJobInspectResponse(resp)
 }
 
-func (e *explainCommand) processJobInspectResponse(resp *pb.JobInspectResponse) error {
+func (e *inspectCommand) processJobInspectResponse(resp *pb.JobInspectResponse) error {
 	e.logger.Info("\n> Job Destination:: %v", resp.Destination)
 	e.logger.Info("\n> Job Sources:: %v", resp.Sources)
 	for i := 0; i < len(resp.Log); i++ {
