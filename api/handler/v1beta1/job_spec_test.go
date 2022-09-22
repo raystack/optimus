@@ -1091,4 +1091,135 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			assert.Contains(t, err.Error(), errorMsg)
 		})
 	})
+	t.Run("JobInspect", func(t *testing.T) {
+		projectName := "a-data-project"
+		namespaceName := "a-data-namespace"
+		jobName := "a-data-job"
+		taskName := "bq2bq"
+		resourceDestination := "destination-table"
+		resourceDestinationUrn := "bigquery://destination-table"
+
+		window, _ := models.NewWindow(1, "d", "0", "1h")
+
+		projectSpec := models.ProjectSpec{
+			ID:   models.ProjectID(uuid.New()),
+			Name: projectName,
+			Config: map[string]string{
+				"bucket": "gs://some_folder",
+			},
+		}
+		namespaceSpec := models.NamespaceSpec{
+			ID:          uuid.New(),
+			Name:        namespaceName,
+			ProjectSpec: projectSpec,
+		}
+
+		execUnit1 := new(mock.BasePlugin)
+		defer execUnit1.AssertExpectations(t)
+		execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
+			Name:  taskName,
+			Image: "random-image",
+		}, nil)
+		pluginRepo := new(mock.SupportedPluginRepo)
+		pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
+			Base: execUnit1,
+		}, nil)
+		jobSpec := models.JobSpec{
+			Version: 1,
+			Name:    jobName,
+			Task: models.JobSpecTask{
+				Unit: &models.Plugin{Base: execUnit1},
+				Config: models.JobSpecConfigs{
+					{
+						Name:  "DO",
+						Value: "THIS",
+					},
+				},
+				Window: window,
+			},
+			Behavior: models.JobSpecBehavior{
+				CatchUp: true,
+			},
+			Assets: *models.JobAssets{}.New(
+				[]models.JobSpecAsset{
+					{
+						Name:  "query.sql",
+						Value: "select * from tableName",
+					},
+				}),
+			Dependencies: map[string]models.JobSpecDependency{},
+		}
+
+		t.Run("should inspect job successfully from local job spec", func(t *testing.T) {
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectName, namespaceName).Return(namespaceSpec, nil).Once()
+			defer namespaceService.AssertExpectations(t)
+
+			jobSpecServiceServer := v1.NewJobSpecServiceServer(
+				log,
+				jobService,
+				pluginRepo,
+				nil,
+				namespaceService,
+				nil,
+			)
+
+			GetJobSourceAndDestinationLog := pb.Log{
+				Level:   pb.Level_LEVEL_INFO,
+				Message: "successfully generated job destination and sources",
+			}
+			catchUpWarning := pb.Log{
+				Level:   pb.Level_LEVEL_WARNING,
+				Message: "Catchup is enabled",
+			}
+			expectedJobInspectResponse := &pb.JobInspectResponse{
+				Spec:        v1.ToJobSpecificationProto(jobSpec),
+				Destination: resourceDestinationUrn,
+				Sources:     []string{"bigquery://tableName"},
+				Log: []*pb.Log{
+					&GetJobSourceAndDestinationLog,
+					&catchUpWarning,
+				},
+			}
+			jobSpec.NamespaceSpec = namespaceSpec
+
+			jobDestination := models.JobSpecTaskDestination{
+				Destination: resourceDestination,
+				Type:        models.DestinationTypeBigquery,
+			}
+			//logWriter := &writer.BufferedLogger{}
+			jobService.On("GetJobSourceAndDestination", ctx, jobSpec).Return(jobDestination, models.JobSpecTaskDependencies{"bigquery://tableName"}, nil)
+
+			jobSpecInternal := jobSpec
+			jobSpecInternal.ResourceDestination = resourceDestinationUrn
+			jobService.On("Check", ctx, namespaceSpec, []models.JobSpec{jobSpecInternal}, mock2.Anything).Return(nil)
+			jobService.On("IsJobDestinationDuplicate", ctx, jobSpecInternal, mock2.Anything).Return("", nil)
+
+			jobInspectRequest := &pb.JobInspectRequest{
+				Spec:          v1.ToJobSpecificationProto(jobSpec),
+				ProjectName:   projectName,
+				NamespaceName: namespaceName,
+				JobName:       "",
+			}
+			jobInspectResponse, err := jobSpecServiceServer.JobInspect(ctx, jobInspectRequest)
+
+			assert.Nil(t, err)
+			assert.Equal(t, expectedJobInspectResponse.Spec, jobInspectResponse.Spec)
+			assert.Equal(t, expectedJobInspectResponse.Destination, jobInspectResponse.Destination)
+			assert.Equal(t, expectedJobInspectResponse.Sources, jobInspectResponse.Sources)
+			for _, logExpeceted := range expectedJobInspectResponse.Log {
+				var found bool
+				for _, logActual := range jobInspectResponse.Log {
+					if logActual.Level == logExpeceted.Level && logActual.Message == logExpeceted.Message {
+						found = true
+						break
+					}
+				}
+				assert.True(t, found)
+			}
+		})
+	})
 }

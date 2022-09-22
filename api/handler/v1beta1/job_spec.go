@@ -184,6 +184,8 @@ func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspe
 	jobDestination, jobSources, err := sv.jobSvc.GetJobSourceAndDestination(ctx, jobSpec)
 	if err != nil {
 		logWriter.Write(writer.LogLevelError, fmt.Sprintf("Unable to determine job destination and sources: \n%s", err.Error()))
+	} else {
+		logWriter.Write(writer.LogLevelInfo, "successfully generated job destination and sources")
 	}
 
 	jobSpec.ResourceDestination = jobDestination.URN()
