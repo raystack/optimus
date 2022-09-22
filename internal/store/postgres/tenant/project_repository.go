@@ -18,6 +18,15 @@ type ProjectRepository struct {
 	db *gorm.DB
 }
 
+const (
+	projectColumns        = `id, name, config, created_at, updated_at`
+	getProjectByNameQuery = `select ` + projectColumns + ` from project where name = ? and deleted_at is null`
+	getAllProjects        = `select ` + projectColumns + ` from project where deleted_at is null`
+
+	insertProjectQuery = `insert into project (name, config, project_id, created_at, updated_at) values (?, ?, ?, now(), now())`
+	updateProjectQuery = `update project set config=?, updated_at=now() where name=?`
+)
+
 type Project struct {
 	ID     uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
 	Name   string    `gorm:"not null;unique"`
@@ -55,10 +64,10 @@ func (repo ProjectRepository) Save(ctx context.Context, tenantProject *tenant.Pr
 		return err
 	}
 
-	existing, err := repo.get(ctx, tenantProject.Name())
+	_, err = repo.get(ctx, tenantProject.Name())
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return repo.db.WithContext(ctx).Create(&project).Error
+			return repo.db.WithContext(ctx).Exec(insertProjectQuery, project.Name, project.Config).Error
 		}
 		return errors.Wrap(tenant.EntityProject, "unable to save project", err)
 	}
@@ -66,8 +75,7 @@ func (repo ProjectRepository) Save(ctx context.Context, tenantProject *tenant.Pr
 	if len(tenantProject.GetConfigs()) == 0 { // TODO: project config cannot be empty
 		return store.ErrEmptyConfig
 	}
-	project.ID = existing.ID
-	return repo.db.WithContext(ctx).Updates(&project).Error
+	return repo.db.WithContext(ctx).Exec(updateProjectQuery, project.Config, project.Name).Error
 }
 
 func (repo ProjectRepository) GetByName(ctx context.Context, name tenant.ProjectName) (*tenant.Project, error) {
@@ -84,7 +92,7 @@ func (repo ProjectRepository) GetByName(ctx context.Context, name tenant.Project
 func (repo ProjectRepository) get(ctx context.Context, name tenant.ProjectName) (Project, error) {
 	var project Project
 
-	err := repo.db.WithContext(ctx).Where("name = ?", name).First(&project).Error
+	err := repo.db.WithContext(ctx).Raw(getProjectByNameQuery, name.String()).First(&project).Error
 	if err != nil {
 		return Project{}, err
 	}
@@ -93,7 +101,7 @@ func (repo ProjectRepository) get(ctx context.Context, name tenant.ProjectName) 
 
 func (repo ProjectRepository) GetAll(ctx context.Context) ([]*tenant.Project, error) {
 	var projects []Project
-	if err := repo.db.WithContext(ctx).Find(&projects).Error; err != nil {
+	if err := repo.db.WithContext(ctx).Raw(getAllProjects).Scan(&projects).Error; err != nil {
 		return nil, errors.Wrap(tenant.EntityProject, "error in GetAll", err)
 	}
 

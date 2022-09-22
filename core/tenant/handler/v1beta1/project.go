@@ -25,12 +25,12 @@ type ProjectService interface {
 	GetAll(context.Context) ([]*tenant.Project, error)
 }
 
-func (sv *ProjectHandler) RegisterProject(ctx context.Context, req *pb.RegisterProjectRequest) (*pb.RegisterProjectResponse, error) {
+func (ph *ProjectHandler) RegisterProject(ctx context.Context, req *pb.RegisterProjectRequest) (*pb.RegisterProjectResponse, error) {
 	project, err := fromProjectProto(req.GetProject())
 	if err != nil {
 		return nil, errors.GRPCErr(err, fmt.Sprintf("not able to register project %s", req.GetProject().Name))
 	}
-	if err := sv.projectService.Save(ctx, project); err != nil {
+	if err := ph.projectService.Save(ctx, project); err != nil {
 		return nil, errors.GRPCErr(err, fmt.Sprintf("not able to register project %s", req.GetProject().Name))
 	}
 
@@ -38,8 +38,8 @@ func (sv *ProjectHandler) RegisterProject(ctx context.Context, req *pb.RegisterP
 	return &pb.RegisterProjectResponse{}, nil
 }
 
-func (sv *ProjectHandler) ListProjects(ctx context.Context, _ *pb.ListProjectsRequest) (*pb.ListProjectsResponse, error) {
-	projects, err := sv.projectService.GetAll(ctx)
+func (ph *ProjectHandler) ListProjects(ctx context.Context, _ *pb.ListProjectsRequest) (*pb.ListProjectsResponse, error) {
+	projects, err := ph.projectService.GetAll(ctx)
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to retrieve saved projects")
 	}
@@ -54,12 +54,12 @@ func (sv *ProjectHandler) ListProjects(ctx context.Context, _ *pb.ListProjectsRe
 	}, nil
 }
 
-func (sv *ProjectHandler) GetProject(ctx context.Context, req *pb.GetProjectRequest) (*pb.GetProjectResponse, error) {
+func (ph *ProjectHandler) GetProject(ctx context.Context, req *pb.GetProjectRequest) (*pb.GetProjectResponse, error) {
 	projName, err := tenant.ProjectNameFrom(req.GetProjectName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, fmt.Sprintf("failed to retrieve project [%s]", req.GetProjectName()))
 	}
-	project, err := sv.projectService.Get(ctx, projName)
+	project, err := ph.projectService.Get(ctx, projName)
 	if err != nil {
 		return nil, errors.GRPCErr(err, fmt.Sprintf("failed to retrieve project [%s]", req.GetProjectName()))
 	}

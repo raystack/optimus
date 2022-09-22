@@ -74,9 +74,9 @@ func TestProjectRepository(t *testing.T) {
 			err = repo.Save(ctx, proj2)
 			assert.Nil(t, err)
 
-			savedProj, err = repo.GetByName(ctx, proj2.Name())
+			updatedProj, err := repo.GetByName(ctx, proj2.Name())
 			assert.Nil(t, err)
-			config, err := savedProj.GetConfig("STORAGE")
+			config, err := updatedProj.GetConfig("STORAGE")
 			assert.Nil(t, err)
 			assert.Equal(t, "gs://some_place", config)
 		})
