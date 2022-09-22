@@ -2119,4 +2119,85 @@ func TestService(t *testing.T) {
 			assert.Equal(t, deployID, deploymentID)
 		})
 	})
+
+	t.Run("GetJobSourceAndDestination", func(t *testing.T) {
+		projSpec := models.ProjectSpec{
+			Name: "proj",
+		}
+		namespaceSpec := models.NamespaceSpec{
+			ID:          uuid.Must(uuid.NewRandom()),
+			Name:        "dev-team-1",
+			ProjectSpec: projSpec,
+		}
+		jobSpec := models.JobSpec{
+			Version: 1,
+			Name:    "test",
+			Owner:   "optimus",
+			Schedule: models.JobSpecSchedule{
+				StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+				Interval:  "@daily",
+			},
+			NamespaceSpec: namespaceSpec,
+			Dependencies:  map[string]models.JobSpecDependency{},
+		}
+
+		destination := &models.GenerateDestinationResponse{
+			Destination: "project.dataset.table",
+			Type:        models.DestinationTypeBigquery,
+		}
+
+		t.Run("should be able to get destination and source tables", func(t *testing.T) {
+			pluginService := new(mock.DependencyResolverPluginService)
+			defer pluginService.AssertExpectations(t)
+			pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(destination, nil)
+			pluginService.On("GenerateDependencies", ctx, jobSpec, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: []string{"dependency1urn"}}, nil)
+			svc := job.NewService(
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				pluginService,
+				nil,
+				nil)
+
+			JobSpecTaskDestination, JobSpecTaskDependencies, err := svc.GetJobSourceAndDestination(ctx, jobSpec)
+			assert.Nil(t, err)
+			assert.Equal(t, JobSpecTaskDestination.Destination, "project.dataset.table")
+			assert.Equal(t, JobSpecTaskDependencies, models.JobSpecTaskDependencies{"dependency1urn"})
+		})
+		t.Run("should not exit early if GenerateDestination fails, should send both errors instead", func(t *testing.T) {
+			pluginService := new(mock.DependencyResolverPluginService)
+			defer pluginService.AssertExpectations(t)
+			pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(&models.GenerateDestinationResponse{}, fmt.Errorf("GenerateDestination Error message"))
+			pluginService.On("GenerateDependencies", ctx, jobSpec, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{}, fmt.Errorf("GenerateDependencies Error message"))
+			svc := job.NewService(
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				pluginService,
+				nil,
+				nil)
+
+			_, _, err := svc.GetJobSourceAndDestination(ctx, jobSpec)
+
+			assert.Equal(t, `2 errors occurred:
+	* unable to generate destination err::GenerateDestination Error message
+	* failed to generate dependencies err::GenerateDependencies Error message
+
+`, err.Error())
+		})
+	})
 }

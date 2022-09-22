@@ -326,7 +326,7 @@ func (srv *Service) GetJobSourceAndDestination(ctx context.Context, jobSpec mode
 
 	deps, err := srv.pluginService.GenerateDependencies(ctx, jobSpec, jobSpec.NamespaceSpec, false)
 	if err != nil {
-		mullErr = multierror.Append(mullErr, fmt.Errorf("failed to generate dependencies::%w", err))
+		mullErr = multierror.Append(mullErr, fmt.Errorf("failed to generate dependencies err::%w", err))
 	}
 	if deps != nil {
 		dependencies = deps.Dependencies
