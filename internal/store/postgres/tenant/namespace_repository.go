@@ -16,8 +16,6 @@ import (
 
 type NamespaceRepository struct {
 	db *gorm.DB
-
-	projectRepo ProjectRepository
 }
 
 const (
