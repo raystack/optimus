@@ -118,7 +118,7 @@ func getDecodedSecret(encodedString string) (string, error) {
 
 	base64Decoded, err := base64.StdEncoding.DecodeString(encodedString)
 	if err != nil {
-		return "", errors.Wrap(tenant.EntitySecret, "failed to decode base64 string: %s", err)
+		return "", errors.InvalidArgument(tenant.EntitySecret, "failed to decode base64 string")
 	}
 	return string(base64Decoded), nil
 }
