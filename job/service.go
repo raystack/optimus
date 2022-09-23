@@ -136,6 +136,7 @@ func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, 
 	if jobDestinationResponse != nil {
 		jobDestination = jobDestinationResponse.URN()
 	}
+	spec.NamespaceSpec = namespace
 	spec.ResourceDestination = jobDestination
 	if err := srv.jobSpecRepository.Save(ctx, spec); err != nil {
 		return models.JobSpec{}, fmt.Errorf("failed to save job: %s: %w", spec.Name, err)

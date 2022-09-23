@@ -120,6 +120,7 @@ func TestService(t *testing.T) {
 					Interval:  "@daily",
 				},
 				ResourceDestination: destination.URN(),
+				NamespaceSpec:       namespaceSpec,
 			}
 
 			pluginService := mock.NewPluginService(t)

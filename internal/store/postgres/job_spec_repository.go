@@ -38,7 +38,7 @@ func (j jobSpecRepository) GetAllByProjectName(ctx context.Context, projectName 
 		Preload("Namespace").
 		Preload("Project").
 		Joins("Project").
-		Where(`"Project"."name" = ?`, projectName). // TODO: this line is a hack because of GORM's behavior, need to find another way
+		Where(`"Project"."name" = ?`, projectName).
 		Find(&jobs).Error; err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func (j jobSpecRepository) GetAllByProjectNameAndNamespaceName(ctx context.Conte
 		Preload("Project").
 		Joins("Project").
 		Joins("Namespace").
-		Where(`"Project"."name" = ? and "Namespace"."name" = ?`, projectName, namespaceName). // TODO: this line is a hack because of GORM's behavior, need to find another way
+		Where(`"Project"."name" = ? and "Namespace"."name" = ?`, projectName, namespaceName).
 		Find(&jobs).Error; err != nil {
 		return nil, err
 	}
@@ -187,7 +187,7 @@ func (j jobSpecRepository) getByNameAndProjectName(ctx context.Context, name, pr
 		Preload("Namespace").
 		Preload("Project").
 		Joins("Project").
-		Where(`"job"."name" = ? and "Project"."name" = ?`, name, projectName). // TODO: this line is a hack because of GORM's behavior, need to find another way
+		Where(`"job"."name" = ? and "Project"."name" = ?`, name, projectName).
 		First(&job).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return Job{}, store.ErrResourceNotFound
