@@ -127,6 +127,7 @@ func DiscoverPluginsGivenFilePattern(pluginLogger hclog.Logger, prefix, suffix s
 	if currentHomeDir, err := os.UserHomeDir(); err == nil {
 		dirs = append(dirs, filepath.Join(currentHomeDir, ".optimus", "plugins"))
 	}
+	dirs = append(dirs, []string{"/usr/bin", "/usr/local/bin"}...)
 
 	for _, dirPath := range dirs {
 		fileInfos, err := os.ReadDir(dirPath)
