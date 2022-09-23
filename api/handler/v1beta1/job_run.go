@@ -282,10 +282,6 @@ func (*JobRunServiceServer) GetWindow(_ context.Context, req *pb.GetWindowReques
 		return nil, status.Errorf(codes.Internal, "%s: failed to parse schedule time %s", err.Error(), req.GetScheduledAt())
 	}
 
-	if req.GetSize() == "" || req.GetOffset() == "" || req.GetTruncateTo() == "" {
-		return nil, status.Error(codes.InvalidArgument, "window size, offset and truncate_to must be provided")
-	}
-
 	window, err := models.NewWindow(int(req.Version), req.GetTruncateTo(), req.GetOffset(), req.GetSize())
 	if err != nil {
 		return nil, err

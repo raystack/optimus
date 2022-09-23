@@ -268,7 +268,7 @@ func (*JobCreateSurvey) getWindowParameters(winName string) local.JobTaskWindow 
 		return local.JobTaskWindow{
 			Size:       "24h",
 			Offset:     "0",
-			TruncateTo: "h",
+			TruncateTo: "d",
 		}
 	case "weekly":
 		return local.JobTaskWindow{
