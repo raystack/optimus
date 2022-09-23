@@ -15,6 +15,10 @@ type windowV2 struct {
 	size       string
 }
 
+func (windowV2) GetVersion() int {
+	return 2 //nolint:gomnd
+}
+
 func (w windowV2) Validate() error {
 	if err := w.validateTruncateTo(); err != nil {
 		return fmt.Errorf("error validating truncate_to: %w", err)

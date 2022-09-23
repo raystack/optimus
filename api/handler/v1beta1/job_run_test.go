@@ -585,28 +585,6 @@ func TestJobRunServiceServer(t *testing.T) {
 			assert.Equal(t, "2020-11-11T00:00:00Z", resp.GetStart().AsTime().Format(time.RFC3339))
 			assert.Equal(t, "2020-11-12T00:00:00Z", resp.GetEnd().AsTime().Format(time.RFC3339))
 		})
-
-		t.Run("should return error if any of the required fields in request is missing", func(t *testing.T) {
-			JobRunServiceServer := v1.NewJobRunServiceServer(
-				log,
-				nil, nil,
-				nil, nil, nil,
-				nil,
-				nil,
-				monitoringService,
-				nil,
-			)
-			scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
-			scheduledAtTimestamp := timestamppb.New(scheduledAt)
-			req := pb.GetWindowRequest{
-				ScheduledAt: scheduledAtTimestamp,
-				Size:        "",
-				Offset:      "24h",
-				TruncateTo:  "d",
-			}
-			_, err := JobRunServiceServer.GetWindow(ctx, &req)
-			assert.Equal(t, "rpc error: code = InvalidArgument desc = window size, offset and truncate_to must be provided", err.Error())
-		})
 	})
 	t.Run("JobRun", func(t *testing.T) {
 		date, err := time.Parse(AirflowDateFormat, "2022-03-25T02:00:00+00:00")

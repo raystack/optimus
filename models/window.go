@@ -15,6 +15,7 @@ type Window interface {
 	GetTruncateTo() string
 	GetOffset() string
 	GetSize() string
+	GetVersion() int
 }
 
 func NewWindow(version int, truncateTo, offset, size string) (Window, error) {
