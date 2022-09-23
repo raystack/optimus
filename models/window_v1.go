@@ -27,6 +27,10 @@ func (w windowV1) Validate() error {
 	return err
 }
 
+func (windowV1) GetVersion() int {
+	return 1
+}
+
 func (w windowV1) GetTruncateTo() string {
 	return w.truncateTo
 }
@@ -74,7 +78,7 @@ func (w *windowV1) prepareWindow() (JobSpecTaskWindow, error) {
 	window := JobSpecTaskWindow{}
 	window.Size = time.Hour * HoursInDay
 	window.Offset = 0
-	window.TruncateTo = "d"
+	window.TruncateTo = ""
 
 	if w.truncateTo != "" {
 		window.TruncateTo = w.truncateTo
@@ -128,7 +132,7 @@ func (*JobSpecTaskWindow) getWindowDate(today time.Time, windowSize, windowOffse
 	windowStart := windowEnd.Add(-windowSize)
 
 	// handle monthly windows separately as every month is not of same size
-	if windowTruncateTo == "M" || windowTruncateTo == "m" {
+	if windowTruncateTo == "M" {
 		floatingEnd = today
 		// shift current window to nearest month start and end
 
