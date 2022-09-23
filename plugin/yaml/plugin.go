@@ -29,7 +29,7 @@ func (p *PluginSpec) PluginInfo() *models.PluginInfoResponse {
 	return &models.PluginInfoResponse{
 		Name:          p.Name,
 		Description:   p.Description,
-		Image:         fmt.Sprintf("%s:%s", p.Image, p.PluginVersion),
+		Image:         p.Image,
 		SecretPath:    p.SecretPath,
 		PluginType:    p.PluginType,
 		PluginMods:    []models.PluginMod{models.ModTypeCLI},
