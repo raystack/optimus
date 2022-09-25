@@ -672,6 +672,36 @@
           "items": {
             "$ref": "#/definitions/v1beta1Log"
           }
+        },
+        "upstreamJobs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1OptimusDependency"
+          }
+        },
+        "downstreamJobs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1OptimusDependency"
+          }
+        },
+        "externalDependency": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1OptimusDependency"
+          }
+        },
+        "httpDependency": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1HttpDependency"
+          }
+        },
+        "unknownDependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1UnknownDependencies"
+          }
         }
       }
     },
@@ -863,6 +893,32 @@
         }
       }
     },
+    "v1beta1OptimusDependency": {
+      "type": "object",
+      "properties": {
+        "Name": {
+          "type": "string"
+        },
+        "Host": {
+          "type": "string"
+        },
+        "ProjectName": {
+          "type": "string"
+        },
+        "NamespaceName": {
+          "type": "string"
+        },
+        "TaskName": {
+          "type": "string"
+        },
+        "Headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "v1beta1RefreshJobsResponse": {
       "type": "object",
       "properties": {
@@ -871,6 +927,17 @@
         },
         "logStatus": {
           "$ref": "#/definitions/v1beta1Log"
+        }
+      }
+    },
+    "v1beta1UnknownDependencies": {
+      "type": "object",
+      "properties": {
+        "JobName": {
+          "type": "string"
+        },
+        "ProjectName": {
+          "type": "string"
         }
       }
     }

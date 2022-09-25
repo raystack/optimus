@@ -368,6 +368,10 @@ type JobService interface {
 	GetByFilter(ctx context.Context, filter JobSpecFilter) ([]JobSpec, error)
 	// IsJobDestinationDuplicate checks is already another job exists in the project with same resource Destination
 	IsJobDestinationDuplicate(ctx context.Context, jobSpec JobSpec) (string, error)
+	// EnrichUpstreamJobs adds upstream job information to a jobSpec without persisting it in database
+	EnrichUpstreamJobs(ctx context.Context, currentSpec JobSpec, jobSources []string, logWriter writer.LogWriter) (JobSpec, []UnknownDependency, error)
+	// GetDownstreamJobs reads static as well as inferred down stream dependencies
+	GetDownstreamJobs(ctx context.Context, jobSpec JobSpec) ([]JobSpec, error)
 }
 
 // JobCompiler takes template file of a scheduler and after applying

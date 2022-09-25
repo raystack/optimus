@@ -156,16 +156,47 @@ func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 	return nil
 }
 
+func getDpendencyBreakupForInspect(jobSpec models.JobSpec) ([]*pb.OptimusDependency, []*pb.OptimusDependency, []*pb.HttpDependency) {
+	var internalDependencies []*pb.OptimusDependency
+	for _, dependency := range jobSpec.Dependencies {
+		internalDependencies = append(internalDependencies, &pb.OptimusDependency{
+			Name:          dependency.Job.Name,
+			ProjectName:   dependency.Job.GetProjectSpec().Name,
+			NamespaceName: dependency.Job.NamespaceSpec.Name,
+			TaskName:      dependency.Job.Task.Unit.Info().Name,
+		})
+	}
+	var externalDependencies []*pb.OptimusDependency
+	for _, dependency := range jobSpec.ExternalDependencies.OptimusDependencies {
+		externalDependencies = append(externalDependencies, &pb.OptimusDependency{
+			Name:          dependency.JobName,
+			Host:          dependency.Host,
+			Headers:       dependency.Headers,
+			ProjectName:   dependency.ProjectName,
+			NamespaceName: dependency.NamespaceName,
+			TaskName:      dependency.TaskName,
+		})
+	}
+	var httpDependency []*pb.HttpDependency
+	for _, dependency := range jobSpec.ExternalDependencies.HTTPDependencies {
+		httpDependency = append(httpDependency, &pb.HttpDependency{
+			Name:    dependency.Name,
+			Url:     dependency.URL,
+			Params:  dependency.RequestParams,
+			Headers: dependency.Headers,
+		})
+	}
+	return internalDependencies, externalDependencies, httpDependency
+}
+
 func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspectRequest) (*pb.JobInspectResponse, error) {
 	logWriter := &writer.BufferedLogger{}
-
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 
 	var jobSpec models.JobSpec
-
 	if req.GetJobName() != "" {
 		// get job spec from DB
 		jobSpec, err = sv.jobSvc.GetByName(ctx, req.GetJobName(), namespaceSpec)
@@ -178,6 +209,9 @@ func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspe
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "cannot deserialize job: \n%s", err.Error())
 		}
+		logMsg := fmt.Sprintf("received job slec %#v", jobSpec)
+		sv.l.Info(logMsg)
+		logWriter.Write(writer.LogLevelInfo, logMsg)
 	}
 	jobSpec.NamespaceSpec = namespaceSpec
 
@@ -187,17 +221,55 @@ func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspe
 	} else {
 		logWriter.Write(writer.LogLevelInfo, "successfully generated job destination and sources")
 	}
-
 	jobSpec.ResourceDestination = jobDestination.URN()
+
+	jobSpec, unknownDependency, err := sv.jobSvc.EnrichUpstreamJobs(ctx, jobSpec, jobSources, logWriter)
+
+	// Internally runs dry run , and asset compilation
 	sv.jobSvc.Check(ctx, namespaceSpec, []models.JobSpec{jobSpec}, logWriter)
 
 	sv.hightlightJobWarnings(ctx, jobSpec, logWriter)
 
+	if err != nil {
+		logWriter.Write(writer.LogLevelError, fmt.Sprintf("error while enriching upstreams dependeincies %v", err.Error()))
+	}
+	if len(unknownDependency) > 0 {
+		logWriter.Write(writer.LogLevelInfo, fmt.Sprintf("following unknown dependencies have been detected %v", unknownDependency))
+	}
+	var unknownDependencyProto []*pb.UnknownDependencies
+	for _, dependency := range unknownDependency {
+		unknownDependencyProto = append(unknownDependencyProto, &pb.UnknownDependencies{
+			JobName:     dependency.JobName,
+			ProjectName: dependency.DependencyProjectName,
+		})
+	}
+
+	downStreamJobs, err := sv.jobSvc.GetDownstreamJobs(ctx, jobSpec)
+	if err != nil {
+		logWriter.Write(writer.LogLevelError, fmt.Sprintf("unable to get downstream jobs %v", err.Error()))
+	}
+	var downStreamJobsProtoSpecArray []*pb.OptimusDependency
+	for _, job := range downStreamJobs {
+		downStreamJobsProtoSpecArray = append(downStreamJobsProtoSpecArray, &pb.OptimusDependency{
+			Name:          job.Name,
+			ProjectName:   job.GetProjectSpec().Name,
+			NamespaceName: job.NamespaceSpec.Name,
+			TaskName:      job.Task.Unit.Info().Name,
+		})
+	}
+
+	intenralDepsProto, externalDepsProto, httpDepsProto := getDpendencyBreakupForInspect(jobSpec)
+
 	return &pb.JobInspectResponse{
-		Spec:        ToJobSpecificationProto(jobSpec),
-		Sources:     jobSources,
-		Destination: jobSpec.ResourceDestination,
-		Log:         logWriter.Messages,
+		Spec:                ToJobSpecificationProto(jobSpec),
+		Sources:             jobSources,
+		Destination:         jobSpec.ResourceDestination,
+		Log:                 logWriter.Messages,
+		UpstreamJobs:        intenralDepsProto,
+		ExternalDependency:  externalDepsProto,
+		HttpDependency:      httpDepsProto,
+		DownstreamJobs:      downStreamJobsProtoSpecArray,
+		UnknownDependencies: unknownDependencyProto,
 	}, nil
 }
 

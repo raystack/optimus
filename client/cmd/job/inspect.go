@@ -160,6 +160,7 @@ func (e *inspectCommand) inspectJobSpecification(jobSpec models.JobSpec, serverF
 func (e *inspectCommand) processJobInspectResponse(resp *pb.JobInspectResponse) error {
 	e.logger.Info("\n> Job Destination:: %v", resp.Destination)
 	e.logger.Info("\n> Job Sources:: %v", resp.Sources)
+
 	for i := 0; i < len(resp.Log); i++ {
 		switch resp.Log[i].Level {
 		case pb.Level_LEVEL_INFO:

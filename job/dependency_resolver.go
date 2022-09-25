@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/internal/lib/progress"
 	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/models"
@@ -295,6 +296,67 @@ func (d *dependencyResolver) getInternalDependenciesByJobID(ctx context.Context,
 	}
 
 	return mergeInternalDependencies(staticDependenciesPerJobID, inferredDependenciesPerJobID), nil
+}
+
+// GetJobsByResourceDestinations get job spec of jobs that write to these destinations
+func (d *dependencyResolver) getJobsByResourceDestinations(ctx context.Context, upstreamDestinations []string,
+	subjectJobName string, logWriter writer.LogWriter) ([]models.JobSpec, error) {
+	jobSpecDependencyList := []models.JobSpec{}
+	for _, depDestination := range upstreamDestinations {
+		dependencyJobSpec, err := d.jobSpecRepo.GetJobByResourceDestination(ctx, depDestination)
+		if err != nil {
+			if errors.Is(err, store.ErrResourceNotFound) {
+				// should not fail for unknown dependency, its okay to not have a upstream job
+				// registered in optimus project and still refer to them in our job
+				event := &models.ProgressJobSpecUnknownDependencyUsed{
+					Job:        subjectJobName,
+					Dependency: depDestination,
+				}
+				logWriter.Write(writer.LogLevelError, event.String())
+				continue
+			}
+			return jobSpecDependencyList, fmt.Errorf("runtime dependency evaluation failed: %w", err)
+		}
+		jobSpecDependencyList = append(jobSpecDependencyList, dependencyJobSpec)
+	}
+	return jobSpecDependencyList, nil
+}
+
+func (d *dependencyResolver) EnrichUpstreamJobs(ctx context.Context, subjectJobSpec models.JobSpec,
+	upstreamDestinations []string, logWriter writer.LogWriter) (models.JobSpec, []models.UnknownDependency, error) {
+	var unknownDependencies []models.UnknownDependency
+
+	inferredInternalUpstreams, err := d.getJobsByResourceDestinations(ctx,
+		upstreamDestinations,
+		subjectJobSpec.Name,
+		logWriter)
+	if err != nil {
+		return subjectJobSpec, unknownDependencies, err
+	}
+	groupedInferredInternalUpstreams := d.groupDependencies(inferredInternalUpstreams)
+
+	for jobName, dependecySpec := range groupedInferredInternalUpstreams {
+		subjectJobSpec.Dependencies[jobName] = dependecySpec
+	}
+
+	internalDependenciesByJobID := map[uuid.UUID][]models.JobSpec{
+		subjectJobSpec.ID: inferredInternalUpstreams,
+	}
+	externalDependenciesByJobName, unknownDependencies, err := d.getExternalDependenciesByJobName(ctx,
+		subjectJobSpec.GetProjectSpec().ID,
+		[]models.JobSpec{subjectJobSpec},
+		internalDependenciesByJobID)
+	if err != nil {
+		return subjectJobSpec, unknownDependencies, err
+	}
+
+	subjectJobSpec.ExternalDependencies.OptimusDependencies = append(
+		subjectJobSpec.ExternalDependencies.OptimusDependencies,
+		externalDependenciesByJobName[subjectJobSpec.Name].OptimusDependencies...)
+
+	subjectJobSpec.Hooks = d.fetchHookWithDependencies(subjectJobSpec)
+
+	return subjectJobSpec, unknownDependencies, err
 }
 
 func (d *dependencyResolver) getExternalDependenciesByJobName(ctx context.Context, projectID models.ProjectID, jobSpecs []models.JobSpec, internalJobDependencies map[uuid.UUID][]models.JobSpec) (map[string]models.ExternalDependency, []models.UnknownDependency, error) {

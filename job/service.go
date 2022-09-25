@@ -60,6 +60,9 @@ type DependencyResolver interface {
 	ResolveStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec, projectJobSpecRepo store.ProjectJobSpecRepository) (map[string]models.JobSpecDependency, error)
 
 	GetJobSpecsWithDependencies(ctx context.Context, projectID models.ProjectID) ([]models.JobSpec, []models.UnknownDependency, error)
+
+	// EnrichUpstreamJobs adds upstream jobs(inferred, static, external) in jobSpec
+	EnrichUpstreamJobs(ctx context.Context, subjectJobSpec models.JobSpec, upstreamDestinations []string, logWriter writer.LogWriter) (models.JobSpec, []models.UnknownDependency, error)
 }
 
 type Deployer interface {
@@ -481,13 +484,34 @@ func (srv *Service) getDependentJobNames(ctx context.Context, jobSpec models.Job
 	return jobNames, nil
 }
 
+func (srv *Service) EnrichUpstreamJobs(ctx context.Context, jobSpec models.JobSpec, jobSource []string, logWriter writer.LogWriter) (models.JobSpec, []models.UnknownDependency, error) {
+	resolvedStaticDeps, err := srv.dependencyResolver.ResolveStaticDependencies(ctx, jobSpec, jobSpec.GetProjectSpec(), srv.projectJobSpecRepoFactory.New(jobSpec.GetProjectSpec()))
+	if err != nil {
+		logWriter.Write(writer.LogLevelError, fmt.Sprintf("failed to resolve static dependeincies, err:%v", err.Error()))
+	} else {
+		jobSpec.Dependencies = resolvedStaticDeps
+	}
+	jobSpec, unknownDependency, err := srv.dependencyResolver.EnrichUpstreamJobs(ctx, jobSpec, jobSource, logWriter)
+	return jobSpec, unknownDependency, err
+}
+
+func (srv *Service) GetDownstreamJobs(ctx context.Context, jobSpec models.JobSpec) ([]models.JobSpec, error) {
+	downstreamJobs, err := srv.jobSpecRepository.GetDependentJobsInferred(ctx, &jobSpec)
+	staticDownstreamJobs, staticDownstreamErr := srv.jobSpecRepository.GetDependentJobsStatic(ctx, &jobSpec)
+	if staticDownstreamErr != nil {
+		err = multierror.Append(err, staticDownstreamErr)
+	}
+	downstreamJobs = append(downstreamJobs, staticDownstreamJobs...)
+	return downstreamJobs, err
+}
+
 func (srv *Service) GetByDestination(ctx context.Context, projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
 	// generate job spec using datastore destination. if a destination can be owned by multiple jobs, need to change to list
 	jobSpec, err := srv.jobSpecRepository.GetJobByResourceDestination(ctx, destination)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
-	if jobSpec.NamespaceSpec.ProjectSpec.Name == projectSpec.Name {
+	if jobSpec.GetProjectSpec().Name == projectSpec.Name {
 		return jobSpec, nil
 	}
 	return models.JobSpec{}, store.ErrResourceNotFound
@@ -804,7 +828,7 @@ func (srv *Service) IsJobDestinationDuplicate(ctx context.Context, jobSpec model
 		}
 		return "", err
 	}
-	if jobWithSameDestination.Name == jobSpec.Name && jobWithSameDestination.NamespaceSpec.ProjectSpec.Name == jobSpec.NamespaceSpec.ProjectSpec.Name {
+	if jobWithSameDestination.Name == jobSpec.Name && jobWithSameDestination.GetProjectSpec().Name == jobSpec.GetProjectSpec().Name {
 		// this is the same job from the DB. hence not an issues
 		return "", nil
 	}
