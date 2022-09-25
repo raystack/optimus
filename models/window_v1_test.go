@@ -35,7 +35,7 @@ func TestWindowV1(t *testing.T) {
 			}
 		})
 		t.Run("should not return error for valid window truncate configs", func(t *testing.T) {
-			validTruncateConfigs := []string{"h", "d", "w", "m", "M", ""}
+			validTruncateConfigs := []string{"h", "d", "w", "M", ""}
 			for _, config := range validTruncateConfigs {
 				window, err := models.NewWindow(1, config, "", "")
 				if err != nil {
@@ -69,8 +69,8 @@ func TestWindowV1(t *testing.T) {
 					Size:              "24h",
 					Offset:            "0",
 					TruncateTo:        "",
-					ExpectedStartTime: time.Date(2020, 7, 9, 0, 0, 0, 0, time.UTC),  // modified from the original, since it was not consistent with the implementation default truncate. original [time.Date(2020, 7, 9, 6, 33, 22, 0, time.UTC)]
-					ExpectedEndTime:   time.Date(2020, 7, 10, 0, 0, 0, 0, time.UTC), // modified from the original, since it was not consistent with the implementation default truncate. original [time.Date(2020, 7, 10, 6, 33, 22, 0, time.UTC)]
+					ExpectedStartTime: time.Date(2020, 7, 9, 6, 33, 22, 0, time.UTC),  // modified from the original, since it was not consistent with the implementation default truncate. original [time.Date(2020, 7, 9, 6, 33, 22, 0, time.UTC)]
+					ExpectedEndTime:   time.Date(2020, 7, 10, 6, 33, 22, 0, time.UTC), // modified from the original, since it was not consistent with the implementation default truncate. original [time.Date(2020, 7, 10, 6, 33, 22, 0, time.UTC)]
 				},
 				{
 					ScheduleTime:      time.Date(2020, 7, 10, 6, 33, 22, 0, time.UTC),

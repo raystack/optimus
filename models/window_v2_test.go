@@ -98,6 +98,14 @@ func TestWindowV2(t *testing.T) {
 					TruncateTo:        "h",
 					ExpectedStartTime: time.Date(2022, 07, 04, 02, 0, 0, 0, time.UTC),
 					ExpectedEndTime:   time.Date(2022, 07, 05, 02, 0, 0, 0, time.UTC),
+				}, {
+					Scenario:          "should not truncate if truncate to is empty",
+					ScheduleTime:      time.Date(2022, 07, 05, 02, 10, 10, 10, time.UTC),
+					Size:              "24h",
+					Offset:            "0",
+					TruncateTo:        "",
+					ExpectedStartTime: time.Date(2022, 07, 04, 02, 10, 10, 10, time.UTC),
+					ExpectedEndTime:   time.Date(2022, 07, 05, 02, 10, 10, 10, time.UTC),
 				},
 				{
 					Scenario:          "should truncate to the previous day on truncate to day",

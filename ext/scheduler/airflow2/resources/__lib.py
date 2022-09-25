@@ -151,11 +151,12 @@ class OptimusAPIClient:
         self._raise_error_if_request_failed(response)
         return response.json()
 
-    def get_task_window(self, scheduled_at: str, window_size: str, window_offset: str,
+    def get_task_window(self, scheduled_at: str, version: int, window_size: str, window_offset: str,
                         window_truncate_upto: str) -> dict:
-        url = '{optimus_host}/api/v1beta1/window?scheduledAt={scheduled_at}&size={window_size}&offset={window_offset}&truncate_to={window_truncate_upto}'.format(
+        url = '{optimus_host}/api/v1beta1/window?scheduledAt={scheduled_at}&version={window_version}&size={window_size}&offset={window_offset}&truncate_to={window_truncate_upto}'.format(
             optimus_host=self.host,
             scheduled_at=scheduled_at,
+            window_version=version,
             window_size=window_size,
             window_offset=window_offset,
             window_truncate_upto=window_truncate_upto,
@@ -195,7 +196,8 @@ class OptimusAPIClient:
 
 
 class JobSpecTaskWindow:
-    def __init__(self, size: str, offset: str, truncate_to: str, optimus_client: OptimusAPIClient):
+    def __init__(self, version: int, size: str, offset: str, truncate_to: str, optimus_client: OptimusAPIClient):
+        self.version = version
         self.size = size
         self.offset = offset
         self.truncate_to = truncate_to
@@ -229,7 +231,7 @@ class JobSpecTaskWindow:
         return timestamp.strftime(TIMESTAMP_FORMAT)
 
     def _fetch_task_window(self, scheduled_at: str) -> dict:
-        return self._optimus_client.get_task_window(scheduled_at, self.size, self.offset, self.truncate_to)
+        return self._optimus_client.get_task_window(scheduled_at, self.version, self.size, self.offset, self.truncate_to)
 
 
 class SuperExternalTaskSensor(BaseSensorOperator):
@@ -242,14 +244,16 @@ class SuperExternalTaskSensor(BaseSensorOperator):
             upstream_optimus_namespace: str,
             upstream_optimus_job: str,
             window_size: str,
+            window_version: int,
             *args,
             **kwargs) -> None:
         kwargs['mode'] = kwargs.get('mode', 'reschedule')
         super().__init__(**kwargs)
         self.optimus_project = upstream_optimus_project
-        self.optimus_namespace =upstream_optimus_namespace
+        self.optimus_namespace = upstream_optimus_namespace
         self.optimus_job = upstream_optimus_job
         self.window_size = window_size
+        self.window_version = window_version
         self._optimus_client = OptimusAPIClient(optimus_hostname)
 
     def poke(self, context):
@@ -267,7 +271,7 @@ class SuperExternalTaskSensor(BaseSensorOperator):
             schedule_time, upstream_schedule)
 
         # get schedule window
-        task_window = JobSpecTaskWindow(self.window_size, 0, "m", self._optimus_client)
+        task_window = JobSpecTaskWindow(self.window_version, self.window_size, 0, "", self._optimus_client)
         schedule_time_window_start, schedule_time_window_end = task_window.get_schedule_window(
             last_upstream_schedule_time.strftime(TIMESTAMP_FORMAT),upstream_schedule)
 
@@ -362,7 +366,7 @@ def optimus_notify(context, event_meta):
 
         "job_run_id"    : context.get('dag_run').run_id,
         "task_run_id"   : context.get('run_id'),
-        
+
         "attempt"       :context['task_instance'].try_number,
         "event_time"    :datetime.now().timestamp(),
     }
@@ -445,7 +449,7 @@ def log_failure_event(context):
     if not should_relay_airflow_callbacks(context):
         return
     run_type = get_run_type(context)
-        
+
     meta = {
         "event_type": "TYPE_{}_FAIL".format(run_type)
     }
