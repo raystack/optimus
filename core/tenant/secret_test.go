@@ -29,6 +29,24 @@ func TestEntitySecret(t *testing.T) {
 		})
 	})
 	t.Run("Secret", func(t *testing.T) {
+		t.Run("SecretType", func(t *testing.T) {
+			t.Run("returns error when unknown type", func(t *testing.T) {
+				unknown := "unknown"
+				_, err := tenant.SecretTypeFromString(unknown)
+				assert.NotNil(t, err)
+				assert.EqualError(t, err, "invalid argument for entity secret: unknown type for secret type: unknown")
+			})
+			t.Run("returns user defined type for valid string", func(t *testing.T) {
+				typ, err := tenant.SecretTypeFromString(tenant.UserDefinedSecret.String())
+				assert.Nil(t, err)
+				assert.Equal(t, tenant.UserDefinedSecret.String(), typ.String())
+			})
+			t.Run("returns system defined type for valid string", func(t *testing.T) {
+				typ, err := tenant.SecretTypeFromString(tenant.SystemDefinedSecret.String())
+				assert.Nil(t, err)
+				assert.Equal(t, tenant.SystemDefinedSecret.String(), typ.String())
+			})
+		})
 		t.Run("returns error when name is empty", func(t *testing.T) {
 			_, err := tenant.NewSecret("", tenant.UserDefinedSecret, "", tenant.Tenant{})
 			assert.NotNil(t, err)
@@ -58,6 +76,7 @@ func TestEntitySecret(t *testing.T) {
 			assert.Equal(t, "name", s.Name())
 			assert.Equal(t, "user", s.Type().String())
 			assert.Equal(t, "encoded==", s.EncodedValue())
+			assert.Equal(t, tnnt, s.Tenant())
 		})
 	})
 }

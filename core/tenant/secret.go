@@ -44,6 +44,17 @@ func (p PlainTextSecret) Name() string {
 
 type SecretType string
 
+func SecretTypeFromString(str string) (SecretType, error) {
+	switch str {
+	case UserDefinedSecret.String():
+		return UserDefinedSecret, nil
+	case SystemDefinedSecret.String():
+		return SystemDefinedSecret, nil
+	default:
+		return "", errors.InvalidArgument(EntitySecret, "unknown type for secret type: "+str)
+	}
+}
+
 func (s SecretType) String() string {
 	return string(s)
 }
@@ -66,6 +77,10 @@ func (s Secret) Type() SecretType {
 
 func (s Secret) EncodedValue() string {
 	return s.encodedValue
+}
+
+func (s Secret) Tenant() Tenant {
+	return s.tenant
 }
 
 func NewSecret(name string, _type SecretType, encodedValue string, tenant Tenant) (*Secret, error) {

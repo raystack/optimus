@@ -33,6 +33,18 @@ func TestAggregateRootTenant(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, "n-optimus", namespaceName.String())
 		})
+		t.Run("converts tenant to only project scope tenant", func(t *testing.T) {
+			tnnt, err := tenant.NewTenant("t-optimus", "n-optimus")
+			assert.Nil(t, err)
+
+			scope := tnnt.ToProjectScope()
+			assert.Nil(t, err)
+			assert.Equal(t, "t-optimus", scope.ProjectName().String())
+
+			_, err = scope.NamespaceName()
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "not found for entity tenant: namespace name is not present")
+		})
 	})
 	t.Run("WithDetails", func(t *testing.T) {
 		projectConf := map[string]string{
