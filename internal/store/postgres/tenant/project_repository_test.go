@@ -14,7 +14,7 @@ import (
 	"github.com/odpf/optimus/tests/setup"
 )
 
-func TestIntegrationProjectRepository(t *testing.T) {
+func TestPostgresProjectRepository(t *testing.T) {
 	transporterKafkaBrokerKey := "KAFKA_BROKERS"
 	proj, _ := tenant.NewProject("t-optimus-1",
 		map[string]string{

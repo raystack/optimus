@@ -14,7 +14,7 @@ import (
 	"github.com/odpf/optimus/tests/setup"
 )
 
-func TestIntegrationSecretRepository(t *testing.T) {
+func TestPostgresSecretRepository(t *testing.T) {
 	ctx := context.Background()
 
 	proj, _ := tenant.NewProject("test-proj",
