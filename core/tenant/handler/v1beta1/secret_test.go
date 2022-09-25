@@ -89,7 +89,6 @@ func TestNewSecretsHandler(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
 				"secret: secret name is empty: failed to register secret ")
-
 		})
 		t.Run("returns error when error is returned from service", func(t *testing.T) {
 			secretService := new(SecretService)
@@ -110,7 +109,6 @@ func TestNewSecretsHandler(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "rpc error: code = Internal desc = error in "+
 				"saving: failed to register secret name")
-
 		})
 		t.Run("saves the secret", func(t *testing.T) {
 			secretService := new(SecretService)

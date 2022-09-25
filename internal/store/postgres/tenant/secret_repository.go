@@ -99,7 +99,7 @@ type Secret struct {
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
 }
 
-func NewSecret(secret *tenant.Secret) (Secret, error) {
+func NewSecret(secret *tenant.Secret) Secret {
 	nsName := ""
 	if ns, err := secret.Tenant().NamespaceName(); err == nil {
 		nsName = ns.String()
@@ -114,7 +114,7 @@ func NewSecret(secret *tenant.Secret) (Secret, error) {
 		Type:          secret.Type().String(),
 		ProjectName:   secret.Tenant().ProjectName().String(),
 		NamespaceName: nsName,
-	}, nil
+	}
 }
 
 func (s Secret) ToTenantSecret() (*tenant.Secret, error) {
@@ -161,12 +161,9 @@ func (s Secret) ToSecretInfo() (*dto.SecretInfo, error) {
 }
 
 func (s SecretRepository) Save(ctx context.Context, t tenant.Tenant, tenantSecret *tenant.Secret) error {
-	secret, err := NewSecret(tenantSecret)
-	if err != nil {
-		return err
-	}
+	secret := NewSecret(tenantSecret)
 
-	_, err = s.get(ctx, t, tenantSecret.Name())
+	_, err := s.get(ctx, t, tenantSecret.Name())
 	if err == nil {
 		return errors.NewError(errors.ErrAlreadyExists, tenant.EntitySecret, "secret already exists")
 	}
@@ -189,12 +186,9 @@ func (s SecretRepository) Save(ctx context.Context, t tenant.Tenant, tenantSecre
 }
 
 func (s SecretRepository) Update(ctx context.Context, t tenant.Tenant, tenantSecret *tenant.Secret) error {
-	secret, err := NewSecret(tenantSecret)
-	if err != nil {
-		return err
-	}
+	secret := NewSecret(tenantSecret)
 
-	_, err = s.get(ctx, t, tenantSecret.Name())
+	_, err := s.get(ctx, t, tenantSecret.Name())
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.NotFound(tenant.EntitySecret, "unable to update, secret not found for "+tenantSecret.Name())
@@ -230,7 +224,7 @@ func (s SecretRepository) Get(ctx context.Context, t tenant.Tenant, name string)
 }
 
 // get is scoped only at project level, used for db operations
-func (s SecretRepository) get(ctx context.Context, t tenant.Tenant, name string) (Secret, error) {
+func (s SecretRepository) get(ctx context.Context, t tenant.Tenant, name string) (Secret, error) { // nolint: unparam
 	var secret Secret
 
 	err := s.db.WithContext(ctx).Raw(getSecretByNameAtProject, name, t.ProjectName().String()).
@@ -241,17 +235,17 @@ func (s SecretRepository) get(ctx context.Context, t tenant.Tenant, name string)
 
 func (s SecretRepository) GetAll(ctx context.Context, t tenant.Tenant) ([]*tenant.Secret, error) {
 	var secrets []Secret
-	var err error
+	var queryErr error
 
-	if name, err := t.NamespaceName(); err == nil {
-		err = s.db.WithContext(ctx).Raw(getAllSecretsAvailableForNamespace, t.ProjectName().String(), name.String()).
+	if nsName, err := t.NamespaceName(); err == nil {
+		queryErr = s.db.WithContext(ctx).Raw(getAllSecretsAvailableForNamespace, t.ProjectName().String(), nsName.String()).
 			Scan(&secrets).Error
 	} else {
-		err = s.db.WithContext(ctx).Raw(getAllSecretsInProject, t.ProjectName().String()).
+		queryErr = s.db.WithContext(ctx).Raw(getAllSecretsInProject, t.ProjectName().String()).
 			Scan(&secrets).Error
 	}
-	if err != nil {
-		return nil, errors.Wrap(tenant.EntitySecret, "unable to get all secrets in scope", err)
+	if queryErr != nil {
+		return nil, errors.Wrap(tenant.EntitySecret, "unable to get all secrets in scope", queryErr)
 	}
 
 	tenantSecrets := make([]*tenant.Secret, len(secrets))
@@ -263,7 +257,7 @@ func (s SecretRepository) GetAll(ctx context.Context, t tenant.Tenant) ([]*tenan
 		tenantSecrets[i] = tenantSecret
 	}
 
-	return tenantSecrets, err
+	return tenantSecrets, nil
 }
 
 // Delete will not support soft delete, once deleted it has to be created again
