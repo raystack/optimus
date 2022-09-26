@@ -11,9 +11,10 @@ import (
 )
 
 type jobSpecReadWriter struct {
-	referenceJobSpecFileName string
-	referenceAssetDirName    string
-	specFS                   fs.FS
+	referenceJobSpecFileName       string
+	referenceParentJobSpecFileName string
+	referenceAssetDirName          string
+	specFS                         fs.FS
 }
 
 func NewJobSpecReadWriter(specFS fs.FS) (SpecReadWriter[*JobSpec], error) {
@@ -22,9 +23,10 @@ func NewJobSpecReadWriter(specFS fs.FS) (SpecReadWriter[*JobSpec], error) {
 	}
 
 	return &jobSpecReadWriter{
-		referenceJobSpecFileName: "job.yaml",
-		referenceAssetDirName:    "assets",
-		specFS:                   specFS,
+		referenceJobSpecFileName:       "job.yaml",
+		referenceParentJobSpecFileName: "this.yaml",
+		referenceAssetDirName:          "assets",
+		specFS:                         specFS,
 	}, nil
 }
 
@@ -33,13 +35,32 @@ func (j jobSpecReadWriter) ReadAll(rootDirPath string) ([]*JobSpec, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	var jobSpecs []*JobSpec
 	for _, p := range dirPaths {
-		spec, err := j.read(p)
+		// read parent job spec (this.yaml) if any
+		parentJobSpecFilePaths, err := discoverParentSpecFilePaths(j.specFS, rootDirPath, p, j.referenceParentJobSpecFileName)
+		parentJobSpecs := make([]*JobSpec, len(parentJobSpecFilePaths))
+		for i, filePath := range parentJobSpecFilePaths {
+			parentJobSpec, err := readJobSpecFromFilePath(j.specFS, filePath)
+			if err != nil {
+				return nil, err
+			}
+			parentJobSpecs[i] = parentJobSpec
+		}
+
+		// read current job spec
+		currentJobSpec, err := j.read(p)
 		if err != nil {
 			return nil, err
 		}
-		jobSpecs = append(jobSpecs, spec)
+
+		// overwrite job spec with its parents
+		// from most prioritize to least prioritize
+		jobSpecSequence := append([]*JobSpec{currentJobSpec}, parentJobSpecs...)
+		jobSpec := mergeJobSpecs(jobSpecSequence...)
+
+		jobSpecs = append(jobSpecs, &jobSpec)
 	}
 	return jobSpecs, nil
 }
@@ -120,4 +141,14 @@ func readAssetFromFilePath(fileFS fs.FS, filePath string) ([]byte, error) {
 	defer f.Close()
 
 	return rawAssetContent, nil
+}
+
+func mergeJobSpecs(jobSpecs ...*JobSpec) JobSpec {
+	mergedJobSpec := JobSpec{}
+
+	for _, jobSpec := range jobSpecs {
+		mergedJobSpec.MergeFrom(*jobSpec)
+	}
+
+	return mergedJobSpec
 }

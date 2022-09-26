@@ -2,7 +2,6 @@ package local_test
 
 import (
 	"fmt"
-	"io/fs"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -11,6 +10,7 @@ import (
 	"github.com/odpf/optimus/client/local"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/yaml.v2"
 )
 
 type JobReadWriterTestSuite struct {
@@ -72,6 +72,11 @@ func (s *JobReadWriterTestSuite) TestReadAll() {
 			"root/ns2/jobs/example3",
 			"root/ns2/jobs/example4",
 		)
+		specFS["root/ns1/this.yaml"] = &fstest.MapFile{
+			Data: []byte(`task:
+  config:
+    EXAMPLE: parent`),
+		}
 		jobReaderWriter, err := local.NewJobSpecReadWriter(specFS)
 		s.Require().NoError(err)
 
@@ -79,10 +84,39 @@ func (s *JobReadWriterTestSuite) TestReadAll() {
 		s.Assert().NoError(err)
 		s.Assert().Len(jobSpecs, 4)
 	})
+	s.Run("return jobSpec and nil when contains parent spec this.yaml", func() {
+		specFS := createValidSpecFS("root/parent/ns1/jobs/example1")
+		specFS["root/parent/ns1/this.yaml"] = &fstest.MapFile{
+			Data: []byte(`task:
+  config:
+    EXAMPLE: parent_overwrite`),
+		}
+		specFS["root/parent/this.yaml"] = &fstest.MapFile{
+			Data: []byte(`task:
+  config:
+    EXAMPLE: parent
+    EXAMPLE2: parent_no_overwrite`),
+		}
+		jobReaderWriter, err := local.NewJobSpecReadWriter(specFS)
+		s.Require().NoError(err)
 
+		jobSpecs, err := jobReaderWriter.ReadAll("root")
+		s.Assert().NoError(err)
+		s.Assert().Len(jobSpecs, 1)
+		expectedTaskConfig := []yaml.MapItem{
+			{Key: "PROJECT", Value: "godata"},
+			{Key: "DATASET", Value: "example"},
+			{Key: "TABLE", Value: "example1"},
+			{Key: "SQL_TYPE", Value: "STANDARD"},
+			{Key: "LOAD_METHOD", Value: "REPLACE"},
+			{Key: "EXAMPLE", Value: "parent_overwrite"},
+			{Key: "EXAMPLE2", Value: "parent_no_overwrite"},
+		}
+		s.Assert().Equal(yaml.MapSlice(expectedTaskConfig), jobSpecs[0].Task.Config)
+	})
 }
 
-func createValidSpecFS(specDirPaths ...string) fs.FS {
+func createValidSpecFS(specDirPaths ...string) fstest.MapFS {
 	templateJobSpec := `version: 1
 name: godata.ds.%s
 owner: optimus@optimus.dev
