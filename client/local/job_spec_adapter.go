@@ -26,65 +26,6 @@ func init() { //nolint:gochecknoinits
 	_ = validator.SetValidationFunc("isCron", utils.CronIntervalValidator)
 }
 
-// Job are inputs from user to create a job
-// yaml representation of the job
-type Job struct {
-	Version      int    `yaml:"version,omitempty" validate:"min=1,max=100"`
-	Name         string `validate:"min=3,max=1024"`
-	Owner        string `yaml:"owner" validate:"min=3,max=1024"`
-	Description  string `yaml:"description,omitempty"`
-	Schedule     JobSchedule
-	Behavior     JobBehavior
-	Task         JobTask
-	Asset        map[string]string `yaml:"asset,omitempty"`
-	Labels       map[string]string `yaml:"labels,omitempty"`
-	Dependencies []JobDependency
-	Hooks        []JobHook
-	Metadata     JobSpecMetadata `yaml:"metadata,omitempty"`
-}
-
-type JobSchedule struct {
-	StartDate string `yaml:"start_date" json:"start_date" validate:"regexp=^\\d{4}-\\d{2}-\\d{2}$"`
-	EndDate   string `yaml:"end_date,omitempty" json:"end_date"`
-	Interval  string `yaml:"interval" validate:"isCron"`
-}
-
-type JobBehavior struct {
-	DependsOnPast bool             `yaml:"depends_on_past" json:"depends_on_past"`
-	Catchup       bool             `yaml:"catch_up" json:"catch_up"`
-	Retry         JobBehaviorRetry `yaml:"retry,omitempty" json:"retry"`
-	Notify        []JobNotifier    `yaml:"notify,omitempty" json:"notify"`
-}
-
-type JobBehaviorRetry struct {
-	Count              int    `yaml:"count,omitempty" json:"count,omitempty"`
-	Delay              string `yaml:"delay,omitempty" json:"delay,omitempty"`
-	ExponentialBackoff bool   `yaml:"exponential_backoff,omitempty" json:"exponential_backoff,omitempty"`
-}
-
-type JobNotifier struct {
-	On       string `yaml:"on" json:"on" validate:"regexp=^(sla_miss|failure|)$"`
-	Config   map[string]string
-	Channels []string
-}
-
-type JobTask struct {
-	Name   string
-	Config yaml.MapSlice `yaml:"config,omitempty"`
-	Window JobTaskWindow
-}
-
-type JobTaskWindow struct {
-	Size       string
-	Offset     string
-	TruncateTo string `yaml:"truncate_to" validate:"regexp=^(h|d|w|M|m)$"`
-}
-
-type JobHook struct {
-	Name   string
-	Config yaml.MapSlice `yaml:"config,omitempty"`
-}
-
 // ToSpec converts the local's JobHook representation to the optimus' models.JobSpecHook
 func (a JobHook) ToSpec(pluginsRepo models.PluginRepository) (models.JobSpecHook, error) {
 	hookUnit, err := pluginsRepo.GetByName(a.Name)
@@ -105,35 +46,11 @@ func (JobHook) FromSpec(spec models.JobSpecHook) JobHook {
 	}
 }
 
-// JobSpecMetadata is a metadata representation for a job spec
-type JobSpecMetadata struct {
-	Resource JobSpecResource `yaml:"resource,omitempty"`
-	Airflow  JobSpecAirflow  `yaml:"airflow"`
-}
-
-// JobSpecResource represents the resource management configuration
-type JobSpecResource struct {
-	Request JobSpecResourceConfig `yaml:"request,omitempty"`
-	Limit   JobSpecResourceConfig `yaml:"limit,omitempty"`
-}
-
-// JobSpecResourceConfig is a resource configuration
-type JobSpecResourceConfig struct {
-	Memory string `yaml:"memory,omitempty"`
-	CPU    string `yaml:"cpu,omitempty"`
-}
-
-// JobSpecAirflow represents additional configuration for airflow specific
-type JobSpecAirflow struct {
-	Pool  string `yaml:"pool"`
-	Queue string `yaml:"queue"`
-}
-
 // MergeFrom merges parent job into this
 // - non zero values on child are ignored
 // - zero values on parent are ignored
 // - slices are merged
-func (conf *Job) MergeFrom(parent Job) {
+func (conf *JobSpec) MergeFrom(parent JobSpec) {
 	if conf.Version == 0 {
 		conf.Version = parent.Version
 	}
@@ -328,24 +245,11 @@ func (conf *Job) MergeFrom(parent Job) {
 	}
 }
 
-type JobDependency struct {
-	JobName string         `yaml:"job,omitempty"`
-	Type    string         `yaml:"type,omitempty"`
-	HTTPDep HTTPDependency `yaml:"http,omitempty"`
-}
-
-type HTTPDependency struct {
-	Name          string            `yaml:"name"`
-	RequestParams map[string]string `yaml:"params,omitempty"`
-	URL           string            `yaml:"url"`
-	Headers       map[string]string `yaml:"headers,omitempty"`
-}
-
 type JobSpecAdapter struct {
 	pluginRepo models.PluginRepository
 }
 
-func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
+func (adapt JobSpecAdapter) ToSpec(conf JobSpec) (models.JobSpec, error) {
 	var err error
 
 	// parse dates
@@ -506,9 +410,9 @@ func (adapt JobSpecAdapter) ToSpec(conf Job) (models.JobSpec, error) {
 	return job, nil
 }
 
-func (JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
+func (JobSpecAdapter) FromSpec(spec models.JobSpec) (JobSpec, error) {
 	if spec.Task.Unit == nil {
-		return Job{}, errors.New("exec unit is nil")
+		return JobSpec{}, errors.New("exec unit is nil")
 	}
 
 	labels := map[string]string{}
@@ -549,7 +453,7 @@ func (JobSpecAdapter) FromSpec(spec models.JobSpec) (Job, error) {
 	if version == 0 {
 		version = models.JobSpecDefaultVersion
 	}
-	parsed := Job{
+	parsed := JobSpec{
 		Version:     version,
 		Name:        spec.Name,
 		Owner:       spec.Owner,

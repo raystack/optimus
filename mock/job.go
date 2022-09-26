@@ -211,9 +211,9 @@ type JobConfigLocalFactory struct {
 	mock.Mock
 }
 
-func (fac *JobConfigLocalFactory) New(inputs models.JobSpec) (local.Job, error) {
+func (fac *JobConfigLocalFactory) New(inputs models.JobSpec) (local.JobSpec, error) {
 	args := fac.Called(inputs)
-	return args.Get(0).(local.Job), args.Error(1)
+	return args.Get(0).(local.JobSpec), args.Error(1)
 }
 
 type JobService struct {

@@ -33,15 +33,15 @@ func (j jobSpecReadWriter) ReadAll(rootDirPath string) ([]*JobSpec, error) {
 	if err != nil {
 		return nil, err
 	}
-	var output []*JobSpec
+	var jobSpecs []*JobSpec
 	for _, p := range dirPaths {
 		spec, err := j.read(p)
 		if err != nil {
 			return nil, err
 		}
-		output = append(output, spec)
+		jobSpecs = append(jobSpecs, spec)
 	}
-	return output, nil
+	return jobSpecs, nil
 }
 
 func (jobSpecReadWriter) Write(dirPath string, spec *JobSpec) error {

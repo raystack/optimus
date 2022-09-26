@@ -48,7 +48,7 @@ func TestJobSpecRepository(t *testing.T) {
 	pluginRepo.On("GetByName", "foo").Return(&models.Plugin{Base: execUnit}, nil)
 	adapter := local.NewJobSpecAdapter(pluginRepo)
 
-	jobConfig := local.Job{
+	jobConfig := local.JobSpec{
 		Version: 1,
 		Name:    "test",
 		Owner:   "optimus",

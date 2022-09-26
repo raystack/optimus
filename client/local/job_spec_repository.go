@@ -155,7 +155,7 @@ func (repo *jobRepository) refreshCache() error {
 	repo.cache.dirty = true
 	repo.cache.data = make(map[string]cacheItem)
 
-	_, err := repo.scanDirs(".", Job{})
+	_, err := repo.scanDirs(".", JobSpec{})
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -164,7 +164,7 @@ func (repo *jobRepository) refreshCache() error {
 	return nil
 }
 
-func (repo *jobRepository) findInDir(dirName string, inheritedSpec Job) (models.JobSpec, error) {
+func (repo *jobRepository) findInDir(dirName string, inheritedSpec JobSpec) (models.JobSpec, error) {
 	jobSpec := models.JobSpec{}
 	if strings.TrimSpace(dirName) == "" {
 		return jobSpec, fmt.Errorf("dir name cannot be an empty string")
@@ -180,7 +180,7 @@ func (repo *jobRepository) findInDir(dirName string, inheritedSpec Job) (models.
 	defer fd.Close()
 
 	dec := yaml.NewDecoder(fd)
-	var inputs Job
+	var inputs JobSpec
 	if err = dec.Decode(&inputs); err != nil {
 		return jobSpec, fmt.Errorf("error parsing job spec in %s: %w", dirName, err)
 	}
@@ -236,7 +236,7 @@ func (repo *jobRepository) findInDir(dirName string, inheritedSpec Job) (models.
 	return jobSpec, nil
 }
 
-func (repo *jobRepository) scanDirs(path string, inheritedSpec Job) ([]models.JobSpec, error) {
+func (repo *jobRepository) scanDirs(path string, inheritedSpec JobSpec) ([]models.JobSpec, error) {
 	specs := []models.JobSpec{}
 
 	// find this config
@@ -272,21 +272,21 @@ func (repo *jobRepository) scanDirs(path string, inheritedSpec Job) ([]models.Jo
 	return specs, nil
 }
 
-func (repo *jobRepository) getThisSpec(dirName string) (Job, error) {
+func (repo *jobRepository) getThisSpec(dirName string) (JobSpec, error) {
 	fd, err := repo.fs.Open(repo.thisFilePath(dirName))
 	if err != nil {
 		if os.IsNotExist(err) {
-			return Job{}, nil
+			return JobSpec{}, nil
 		}
-		return Job{}, err
+		return JobSpec{}, err
 	}
 	defer fd.Close()
 
 	// prepare a clone
-	var inputs Job
+	var inputs JobSpec
 	dec := yaml.NewDecoder(fd)
 	if err = dec.Decode(&inputs); err != nil {
-		return Job{}, fmt.Errorf("error parsing job spec in %s: %w", dirName, err)
+		return JobSpec{}, fmt.Errorf("error parsing job spec in %s: %w", dirName, err)
 	}
 	return inputs, nil
 }

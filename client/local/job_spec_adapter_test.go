@@ -67,7 +67,7 @@ dependencies:
       url: "https://optimus-host:80/serve/2/"
 
 hooks: []`
-		var localJobParsed local.Job
+		var localJobParsed local.JobSpec
 		err := yaml.Unmarshal([]byte(yamlSpec), &localJobParsed)
 		assert.Nil(t, err)
 
@@ -141,7 +141,7 @@ dependencies:
         key-4: value-4
       url: "https://optimus-host:80/serve/2/"
 hooks: []`
-		var localJobParsed local.Job
+		var localJobParsed local.JobSpec
 		err := yaml.Unmarshal([]byte(yamlSpec), &localJobParsed)
 		assert.Nil(t, err)
 
@@ -211,7 +211,7 @@ dependencies:
         key-4: value-4
       url: "https://optimus-host:80/serve/2/"
 hooks: []`
-		var localJobParsed local.Job
+		var localJobParsed local.JobSpec
 		err := yaml.Unmarshal([]byte(yamlSpec), &localJobParsed)
 		assert.Nil(t, err)
 
@@ -283,7 +283,7 @@ dependencies:
       url: "https://optimus-host:80/serve/2/"
 
 hooks: []`
-		var localJobParsed local.Job
+		var localJobParsed local.JobSpec
 		err := yaml.Unmarshal([]byte(yamlSpec), &localJobParsed)
 		assert.Nil(t, err)
 
@@ -308,11 +308,11 @@ hooks: []`
 
 func TestJob_MergeFrom(t *testing.T) {
 	type fields struct {
-		child    local.Job
-		expected local.Job
+		child    local.JobSpec
+		expected local.JobSpec
 	}
 	type args struct {
-		parent local.Job
+		parent local.JobSpec
 	}
 	tests := []struct {
 		name   string
@@ -322,15 +322,15 @@ func TestJob_MergeFrom(t *testing.T) {
 		{
 			name: "should successfully copy version if child has zero value",
 			fields: fields{
-				child: local.Job{
+				child: local.JobSpec{
 					Version: 0,
 				},
-				expected: local.Job{
+				expected: local.JobSpec{
 					Version: 1,
 				},
 			},
 			args: args{
-				parent: local.Job{
+				parent: local.JobSpec{
 					Version: 1,
 				},
 			},
@@ -338,8 +338,8 @@ func TestJob_MergeFrom(t *testing.T) {
 		{
 			name: "should successfully copy root level values if child has zero value",
 			fields: fields{
-				child: local.Job{},
-				expected: local.Job{
+				child: local.JobSpec{},
+				expected: local.JobSpec{
 					Description: "hey",
 					Labels: map[string]string{
 						"optimus": "prime",
@@ -362,7 +362,7 @@ func TestJob_MergeFrom(t *testing.T) {
 				},
 			},
 			args: args{
-				parent: local.Job{
+				parent: local.JobSpec{
 					Description: "hey",
 					Labels: map[string]string{
 						"optimus": "prime",
@@ -388,15 +388,15 @@ func TestJob_MergeFrom(t *testing.T) {
 		{
 			name: "should not merge if child already contains non zero values",
 			fields: fields{
-				child: local.Job{
+				child: local.JobSpec{
 					Version: 2,
 				},
-				expected: local.Job{
+				expected: local.JobSpec{
 					Version: 2,
 				},
 			},
 			args: args{
-				parent: local.Job{
+				parent: local.JobSpec{
 					Version: 1,
 				},
 			},
@@ -404,7 +404,7 @@ func TestJob_MergeFrom(t *testing.T) {
 		{
 			name: "should merge task configs properly",
 			fields: fields{
-				child: local.Job{
+				child: local.JobSpec{
 					Task: local.JobTask{
 						Name: "panda",
 						Config: []yaml.MapItem{
@@ -415,7 +415,7 @@ func TestJob_MergeFrom(t *testing.T) {
 						},
 					},
 				},
-				expected: local.Job{
+				expected: local.JobSpec{
 					Task: local.JobTask{
 						Name: "panda",
 						Config: []yaml.MapItem{
@@ -432,7 +432,7 @@ func TestJob_MergeFrom(t *testing.T) {
 				},
 			},
 			args: args{
-				parent: local.Job{
+				parent: local.JobSpec{
 					Task: local.JobTask{
 						Name: "panda",
 						Config: []yaml.MapItem{
@@ -448,7 +448,7 @@ func TestJob_MergeFrom(t *testing.T) {
 		{
 			name: "should merge hooks configs properly",
 			fields: fields{
-				child: local.Job{
+				child: local.JobSpec{
 					Hooks: []local.JobHook{
 						{
 							Name: "kungfu",
@@ -464,7 +464,7 @@ func TestJob_MergeFrom(t *testing.T) {
 						},
 					},
 				},
-				expected: local.Job{
+				expected: local.JobSpec{
 					Hooks: []local.JobHook{
 						{
 							Name: "kungfu",
@@ -501,7 +501,7 @@ func TestJob_MergeFrom(t *testing.T) {
 				},
 			},
 			args: args{
-				parent: local.Job{
+				parent: local.JobSpec{
 					Hooks: []local.JobHook{
 						{
 							Name: "kungfu",
@@ -541,7 +541,7 @@ func TestJob_MergeFrom(t *testing.T) {
 		{
 			name: "should inherit notify configs from parent if doesn't exists",
 			fields: fields{
-				child: local.Job{
+				child: local.JobSpec{
 					Behavior: local.JobBehavior{
 						Notify: []local.JobNotifier{
 							{
@@ -551,7 +551,7 @@ func TestJob_MergeFrom(t *testing.T) {
 						},
 					},
 				},
-				expected: local.Job{
+				expected: local.JobSpec{
 					Behavior: local.JobBehavior{
 						Notify: []local.JobNotifier{
 							{
@@ -570,7 +570,7 @@ func TestJob_MergeFrom(t *testing.T) {
 				},
 			},
 			args: args{
-				parent: local.Job{
+				parent: local.JobSpec{
 					Behavior: local.JobBehavior{
 						Notify: []local.JobNotifier{
 							{

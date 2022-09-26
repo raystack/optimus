@@ -89,6 +89,13 @@ owner: optimus@optimus.dev
 schedule:
   start_date: "2022-03-22"
   interval: 0 22 * * * 
+behavior:
+  depends_on_past: true
+  catch_up: false
+  notify:
+    - on: test
+      channel:
+        - test://hello
 task:
   name: bq2bq
   config:
@@ -102,7 +109,29 @@ task:
     offset: 24h
     truncate_to: d
 labels:
-  orchestrator: optimus`
+  orchestrator: optimus
+dependencies: 
+  - 
+    http: 
+      name: http-sensor-1
+      headers: 
+        Authentication: Token-1
+        Content-type: application/json
+      params: 
+        key-1: value-1
+        key-2: value-2
+      url: "https://optimus-host:80/serve/1/"
+  - 
+    http: 
+      name: http-sensor-2
+      headers: 
+        Authentication: Token-2
+        Content-type: application/json
+      params: 
+        key-3: value-3
+        key-4: value-4
+      url: "https://optimus-host:80/serve/2/"
+hooks: []`
 	templateAsset := `SELECT * FROM %s`
 
 	specFS := fstest.MapFS{}
