@@ -26,10 +26,13 @@ func (r resourceSpecReadWriter) ReadAll(rootDirPath string) ([]*ResourceSpec, er
 	return output, nil
 }
 
-func (resourceSpecReadWriter) Write(path string, s *ResourceSpec) error {
+func (resourceSpecReadWriter) Write(dirPath string, spec *ResourceSpec) error {
+	// TODO: implement write resource spec here. Given dirPath and resource spec
+	// create resource.yaml specification inside dirPath folder
 	return nil
 }
 
 func (resourceSpecReadWriter) read(dirPath string) (*ResourceSpec, error) {
+	// TODO: implement read 1 resource spec given their dirPath
 	return nil, nil
 }
