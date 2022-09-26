@@ -25,7 +25,6 @@ func TestTenantService(t *testing.T) {
 
 	t.Run("GetDetails", func(t *testing.T) {
 		t.Run("returns error when tenant invalid", func(t *testing.T) {
-
 			tenantService := service.NewTenantService(nil, nil, nil)
 
 			_, err := tenantService.GetDetails(ctx, tenant.Tenant{})
