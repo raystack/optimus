@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -24,6 +25,7 @@ import (
 	"github.com/odpf/optimus/client/cmd/resource"
 	"github.com/odpf/optimus/client/local"
 	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/internal/lib/converter"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
@@ -224,28 +226,53 @@ func (d *deployCommand) sendNamespaceJobRequest(
 }
 
 func (*deployCommand) getJobDeploymentRequest(projectName string, namespace *config.Namespace) (*pb.DeployJobSpecificationRequest, error) {
-	pluginRepo := models.PluginRegistry
-
-	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
-	jobSpecRepo := local.NewJobSpecRepository(
-		jobSpecFs,
-		local.NewJobSpecAdapter(pluginRepo),
-	)
-
-	jobSpecs, err := jobSpecRepo.GetAll()
+	jobSpecConverter := converter.NewJobSpecConverter()
+	jobSpecReaderWriter, err := local.NewJobSpecReadWriter(os.DirFS("."))
 	if err != nil {
 		return nil, err
 	}
 
-	adaptedJobSpecs := make([]*pb.JobSpecification, len(jobSpecs))
-	for i, spec := range jobSpecs {
-		adaptedJobSpecs[i] = v1handler.ToJobSpecificationProto(spec)
+	// ReadAll job specs from given job path
+	jobSpecs, err := jobSpecReaderWriter.ReadAll(namespace.Job.Path)
+	if err != nil {
+		return nil, err
 	}
+
+	// convert job spec to its proto
+	jobSpecProtos := make([]*pb.JobSpecification, len(jobSpecs))
+	for _, jobSpec := range jobSpecs {
+		jobSpecProto := jobSpecConverter.ToProto(jobSpec)
+		jobSpecProtos = append(jobSpecProtos, &jobSpecProto)
+	}
+
 	return &pb.DeployJobSpecificationRequest{
-		Jobs:          adaptedJobSpecs,
+		Jobs:          jobSpecProtos,
 		ProjectName:   projectName,
 		NamespaceName: namespace.Name,
 	}, nil
+
+	// pluginRepo := models.PluginRegistry
+
+	// jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
+	// jobSpecRepo := local.NewJobSpecRepository(
+	// 	jobSpecFs,
+	// 	local.NewJobSpecAdapter(pluginRepo),
+	// )
+
+	// jobSpecs, err := jobSpecRepo.GetAll()
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// adaptedJobSpecs := make([]*pb.JobSpecification, len(jobSpecs))
+	// for i, spec := range jobSpecs {
+	// 	adaptedJobSpecs[i] = v1handler.ToJobSpecificationProto(spec)
+	// }
+	// return &pb.DeployJobSpecificationRequest{
+	// 	Jobs:          adaptedJobSpecs,
+	// 	ProjectName:   projectName,
+	// 	NamespaceName: namespace.Name,
+	// }, nil
 }
 
 func (d *deployCommand) getJobStreamClient(
