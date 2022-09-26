@@ -223,6 +223,10 @@
                 },
                 "spec": {
                   "$ref": "#/definitions/v1beta1JobSpecification"
+                },
+                "scheduledAt": {
+                  "type": "string",
+                  "format": "date-time"
                 }
               }
             }
@@ -702,6 +706,12 @@
           "items": {
             "$ref": "#/definitions/v1beta1UnknownDependencies"
           }
+        },
+        "upstreamRuns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1UpstreamRuns"
+          }
         }
       }
     },
@@ -938,6 +948,21 @@
         },
         "ProjectName": {
           "type": "string"
+        }
+      }
+    },
+    "v1beta1UpstreamRuns": {
+      "type": "object",
+      "properties": {
+        "JobIdentifier": {
+          "type": "string"
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       }
     }

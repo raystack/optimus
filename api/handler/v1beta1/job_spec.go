@@ -14,8 +14,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/odpf/optimus/api/writer"
+	"github.com/odpf/optimus/internal/lib/cron"
 	"github.com/odpf/optimus/internal/lib/progress"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
@@ -189,12 +191,44 @@ func getDpendencyProtoForInspect(jobSpec models.JobSpec) ([]*pb.OptimusDependenc
 	return internalDependencies, externalDependencies, httpDependency
 }
 
+func getExpectedDependencyRuns(jobSpec models.JobSpec, scheduleTime time.Time, logWriter writer.LogWriter) []*pb.UpstreamRuns {
+	upstreamRuns := []*pb.UpstreamRuns{}
+	windowStartTime, err := jobSpec.Task.Window.GetStartTime(scheduleTime)
+	if err != nil {
+		logWriter.Write(writer.LogLevelError, fmt.Sprintf("unable to get Window start time  for %s/%s", jobSpec.GetProjectSpec().Name, jobSpec.Name))
+	}
+	windowEndTime, err := jobSpec.Task.Window.GetEndTime(scheduleTime)
+	if err != nil {
+		logWriter.Write(writer.LogLevelError, fmt.Sprintf("unable to get Window end time  for %s/%s", jobSpec.GetProjectSpec().Name, jobSpec.Name))
+	}
+
+	for jobName, jobDependency := range jobSpec.Dependencies {
+		jobIdentifier := fmt.Sprintf("%s/%s", jobDependency.Job.GetProjectSpec().Name, jobName)
+		jobCron, err := cron.ParseCronSchedule(jobDependency.Job.Schedule.Interval)
+		if err != nil {
+			logWriter.Write(writer.LogLevelError, fmt.Sprintf("unable to Parse Cron Schedule for %s", jobIdentifier))
+		}
+		expectedRuns := jobCron.GetExpectedRuns(windowStartTime, windowEndTime)
+		var expectedRunsPb []*timestamppb.Timestamp
+		for _, runTimestamp := range expectedRuns {
+			expectedRunsPb = append(expectedRunsPb, timestamppb.New(runTimestamp))
+		}
+		upstreamRuns = append(upstreamRuns, &pb.UpstreamRuns{
+			JobIdentifier: jobIdentifier,
+			Runs:          expectedRunsPb,
+		})
+		logWriter.Write(writer.LogLevelInfo, fmt.Sprintf("ExpectedRuns for %s are %v", jobIdentifier, expectedRuns))
+	}
+	return upstreamRuns
+}
+
 func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspectRequest) (*pb.JobInspectResponse, error) {
 	logWriter := &writer.BufferedLogger{}
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
+	scheduleTime := req.GetScheduledAt().AsTime()
 
 	var jobSpec models.JobSpec
 	if req.GetJobName() != "" {
@@ -224,6 +258,8 @@ func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspe
 	jobSpec.ResourceDestination = jobDestination.URN()
 
 	jobSpec, unknownDependency, err := sv.jobSvc.EnrichUpstreamJobs(ctx, jobSpec, jobSources, logWriter)
+
+	upstreamRunsPb := getExpectedDependencyRuns(jobSpec, scheduleTime, logWriter)
 
 	// Internally runs dry run , and asset compilation
 	sv.jobSvc.Check(ctx, namespaceSpec, []models.JobSpec{jobSpec}, logWriter)
@@ -270,6 +306,7 @@ func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspe
 		HttpDependency:      httpDepsProto,
 		DownstreamJobs:      downStreamJobsProtoSpecArray,
 		UnknownDependencies: unknownDependencyProto,
+		UpstreamRuns:        upstreamRunsPb,
 	}, nil
 }
 
