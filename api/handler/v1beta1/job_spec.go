@@ -156,7 +156,7 @@ func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 	return nil
 }
 
-func getDpendencyBreakupForInspect(jobSpec models.JobSpec) ([]*pb.OptimusDependency, []*pb.OptimusDependency, []*pb.HttpDependency) {
+func getDpendencyProtoForInspect(jobSpec models.JobSpec) ([]*pb.OptimusDependency, []*pb.OptimusDependency, []*pb.HttpDependency) {
 	var internalDependencies []*pb.OptimusDependency
 	for _, dependency := range jobSpec.Dependencies {
 		internalDependencies = append(internalDependencies, &pb.OptimusDependency{
@@ -258,7 +258,7 @@ func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspe
 		})
 	}
 
-	intenralDepsProto, externalDepsProto, httpDepsProto := getDpendencyBreakupForInspect(jobSpec)
+	intenralDepsProto, externalDepsProto, httpDepsProto := getDpendencyProtoForInspect(jobSpec)
 
 	return &pb.JobInspectResponse{
 		Spec:                ToJobSpecificationProto(jobSpec),
