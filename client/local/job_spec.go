@@ -1,6 +1,7 @@
 package local
 
 import (
+	"errors"
 	"io/fs"
 )
 
@@ -10,6 +11,10 @@ type jobSpecReadWriter struct {
 }
 
 func NewJobSpecReadWriter(specFS fs.FS) (SpecReadWriter[*JobSpec], error) {
+	if specFS == nil {
+		return nil, errors.New("specFS is nil")
+	}
+
 	return &jobSpecReadWriter{
 		referenceFileName: "job.yaml",
 		specFS:            specFS,
