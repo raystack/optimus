@@ -1,11 +1,5 @@
 package local
 
-type JobSpec struct {
-}
-
-type ResourceSpec struct {
-}
-
 type ValidSpec interface {
 	*JobSpec | *ResourceSpec
 }
