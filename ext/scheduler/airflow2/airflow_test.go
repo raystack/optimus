@@ -134,10 +134,6 @@ func TestAirflow2(t *testing.T) {
 			mockBucket.On("WriteAll", mock.Anything, "dags/__lib.py", airflow2.SharedLib, (*blob.WriterOptions)(nil)).Return(nil)
 			mockBucket.On("WriteAll", ctx, fmt.Sprintf("dags/%s/%s.py", ns.Name, jobSpecs[0].Name), []byte("job-1-compiled"), (*blob.WriterOptions)(nil)).Return(nil)
 			mockBucket.On("Delete", ctx, fmt.Sprintf("dags/%s/%s.py", ns.ID.String(), jobSpecs[0].Name)).Return(nil)
-			mockBucket.On("Delete", ctx, fmt.Sprintf("dags/%s", ns.ID.String())).Return(nil)
-			mockBucket.On("List", &blob.ListOptions{
-				Prefix: fmt.Sprintf("dags/%s", ns.ID.String()),
-			}).Return(&blob.ListIterator{})
 
 			expectedDeployDetail := models.JobDeploymentDetail{
 				SuccessCount: 1,
@@ -211,7 +207,7 @@ func TestAirflow2(t *testing.T) {
 	})
 	t.Run("DeleteJobs", func(t *testing.T) {
 		t.Run("should successfully delete jobs from blob buckets", func(t *testing.T) {
-			jobKey := fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name)
+			jobKey := fmt.Sprintf("dags/%s/%s.py", ns.Name, jobSpecs[0].Name)
 
 			inMemBlob := memblob.OpenBucket(nil)
 			_ = inMemBlob.WriteAll(ctx, jobKey, []byte("hello"), nil)
@@ -219,7 +215,7 @@ func TestAirflow2(t *testing.T) {
 			mockBucket := &MockedBucket{
 				bucket: inMemBlob,
 			}
-			mockBucket.On("Delete", mock.Anything, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name)).Return(nil)
+			mockBucket.On("Delete", mock.Anything, fmt.Sprintf("dags/%s/%s.py", ns.Name, jobSpecs[0].Name)).Return(nil)
 			defer mockBucket.AssertExpectations(t)
 
 			mockBucketFac := new(MockedBucketFactory)
@@ -239,7 +235,7 @@ func TestAirflow2(t *testing.T) {
 			mockBucket := &MockedBucket{
 				bucket: inMemBlob,
 			}
-			mockBucket.On("Delete", mock.Anything, fmt.Sprintf("dags/%s/%s.py", nsUUID, jobSpecs[0].Name)).Return(nil)
+			mockBucket.On("Delete", mock.Anything, fmt.Sprintf("dags/%s/%s.py", ns.Name, jobSpecs[0].Name)).Return(nil)
 			defer mockBucket.AssertExpectations(t)
 
 			mockBucketFac := new(MockedBucketFactory)
@@ -257,11 +253,11 @@ func TestAirflow2(t *testing.T) {
 			mockBucket := &MockedBucket{
 				bucket: inMemBlob,
 			}
-			_ = inMemBlob.WriteAll(ctx, filepath.Join(airflow2.PathForJobDirectory(airflow2.JobsDir, ns.ID.String()), "file1.py"), []byte("test1"), nil)
-			_ = inMemBlob.WriteAll(ctx, filepath.Join(airflow2.PathForJobDirectory(airflow2.JobsDir, ns.ID.String()), "file2.py"), []byte("test2"), nil)
+			_ = inMemBlob.WriteAll(ctx, filepath.Join(airflow2.PathForJobDirectory(airflow2.JobsDir, ns.Name), "file1.py"), []byte("test1"), nil)
+			_ = inMemBlob.WriteAll(ctx, filepath.Join(airflow2.PathForJobDirectory(airflow2.JobsDir, ns.Name), "file2.py"), []byte("test2"), nil)
 			_ = inMemBlob.WriteAll(ctx, "bar.py", []byte("test3"), nil)
 			mockBucket.On("List", &blob.ListOptions{
-				Prefix: airflow2.PathForJobDirectory(airflow2.JobsDir, ns.ID.String()),
+				Prefix: airflow2.PathForJobDirectory(airflow2.JobsDir, ns.Name),
 			})
 			defer mockBucket.AssertExpectations(t)
 
@@ -279,11 +275,11 @@ func TestAirflow2(t *testing.T) {
 			mockBucket := &MockedBucket{
 				bucket: inMemBlob,
 			}
-			_ = inMemBlob.WriteAll(ctx, filepath.Join(airflow2.PathForJobDirectory(airflow2.JobsDir, ns.ID.String()), "file1.py"), []byte("test1"), nil)
-			_ = inMemBlob.WriteAll(ctx, filepath.Join(airflow2.PathForJobDirectory(airflow2.JobsDir, ns.ID.String()), "file2.json"), []byte("test2"), nil)
+			_ = inMemBlob.WriteAll(ctx, filepath.Join(airflow2.PathForJobDirectory(airflow2.JobsDir, ns.Name), "file1.py"), []byte("test1"), nil)
+			_ = inMemBlob.WriteAll(ctx, filepath.Join(airflow2.PathForJobDirectory(airflow2.JobsDir, ns.Name), "file2.json"), []byte("test2"), nil)
 			_ = inMemBlob.WriteAll(ctx, "bar.py", []byte("test3"), nil)
 			mockBucket.On("List", &blob.ListOptions{
-				Prefix: airflow2.PathForJobDirectory(airflow2.JobsDir, ns.ID.String()),
+				Prefix: airflow2.PathForJobDirectory(airflow2.JobsDir, ns.Name),
 			})
 			defer mockBucket.AssertExpectations(t)
 
@@ -301,13 +297,13 @@ func TestAirflow2(t *testing.T) {
 			mockBucket := &MockedBucket{
 				bucket: inMemBlob,
 			}
-			_ = inMemBlob.WriteAll(ctx, airflow2.PathFromJobName(airflow2.JobsDir, ns.ID.String(), "file1", airflow2.JobsExtension), []byte("test1"), nil)
-			_ = inMemBlob.WriteAll(ctx, airflow2.PathFromJobName(airflow2.JobsDir, ns.ID.String(), "file2", airflow2.JobsExtension), []byte("test2"), nil)
+			_ = inMemBlob.WriteAll(ctx, airflow2.PathFromJobName(airflow2.JobsDir, ns.Name, "file1", airflow2.JobsExtension), []byte("test1"), nil)
+			_ = inMemBlob.WriteAll(ctx, airflow2.PathFromJobName(airflow2.JobsDir, ns.Name, "file2", airflow2.JobsExtension), []byte("test2"), nil)
 			mockBucket.On("List", &blob.ListOptions{
-				Prefix: airflow2.PathForJobDirectory(airflow2.JobsDir, ns.ID.String()),
+				Prefix: airflow2.PathForJobDirectory(airflow2.JobsDir, ns.Name),
 			})
-			mockBucket.On("ReadAll", mock.Anything, airflow2.PathFromJobName(airflow2.JobsDir, ns.ID.String(), "file1", airflow2.JobsExtension))
-			mockBucket.On("ReadAll", mock.Anything, airflow2.PathFromJobName(airflow2.JobsDir, ns.ID.String(), "file2", airflow2.JobsExtension))
+			mockBucket.On("ReadAll", mock.Anything, airflow2.PathFromJobName(airflow2.JobsDir, ns.Name, "file1", airflow2.JobsExtension))
+			mockBucket.On("ReadAll", mock.Anything, airflow2.PathFromJobName(airflow2.JobsDir, ns.Name, "file2", airflow2.JobsExtension))
 			defer mockBucket.AssertExpectations(t)
 
 			mockBucketFac := new(MockedBucketFactory)
