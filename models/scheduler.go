@@ -24,12 +24,15 @@ var (
 type SchedulerUnit interface {
 	GetName() string
 	VerifyJob(ctx context.Context, namespace NamespaceSpec, job JobSpec) error
-	ListJobs(ctx context.Context, namespace NamespaceSpec, opts SchedulerListOptions) ([]Job, error)
+	ListJobs(ctx context.Context, nsDirectoryIdentifier string, namespace NamespaceSpec, opts SchedulerListOptions) ([]Job, error)
 	DeployJobs(ctx context.Context, namespace NamespaceSpec, jobs []JobSpec) (JobDeploymentDetail, error)
-	DeleteJobs(ctx context.Context, namespace NamespaceSpec, jobNames []string, obs progress.Observer) error
+	DeleteJobs(ctx context.Context, nsDirectoryIdentifier string, namespace NamespaceSpec, jobNames []string, obs progress.Observer) error
 
 	// GetJobStatus should return the current and previous status of job
 	GetJobStatus(ctx context.Context, projSpec ProjectSpec, jobName string) ([]JobStatus, error)
+
+	// DeleteDagsDirectoryIfEmpty remove jobs Folder if it exists
+	DeleteDagsDirectoryIfEmpty(ctx context.Context, nsDirectoryIdentifier string, namespace NamespaceSpec) error
 
 	// Clear clears state of job between provided start and end dates
 	Clear(ctx context.Context, projSpec ProjectSpec, jobName string, startDate, endDate time.Time) error

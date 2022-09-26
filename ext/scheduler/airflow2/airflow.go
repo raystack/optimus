@@ -111,15 +111,23 @@ func (s *scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSp
 	return jobDeploymentDetail, nil
 }
 
-// deleteDirectoryIfEmpty remove jobs Folder if it exists
-func deleteDirectoryIfEmpty(ctx context.Context, jobsDir string, bucket Bucket) error {
-	spanCtx, span := startChildSpan(ctx, "deleteDirectoryIfEmpty")
+// DeleteDagsDirectoryIfEmpty remove jobs Folder if it exists
+func (s *scheduler) DeleteDagsDirectoryIfEmpty(ctx context.Context, nsDirectoryIdentifier string, namespace models.NamespaceSpec) error {
+	spanCtx, span := startChildSpan(ctx, "DeleteDagsDirectoryIfEmpty")
 	span.End()
+
+	bucket, err := s.bucketFac.New(spanCtx, namespace.ProjectSpec)
+	if err != nil {
+		return err
+	}
+
+	defer bucket.Close()
+	jobsDir := PathForJobDirectory(JobsDir, nsDirectoryIdentifier)
 
 	it := bucket.List(&blob.ListOptions{
 		Prefix: jobsDir,
 	})
-	_, err := it.Next(spanCtx)
+	_, err = it.Next(spanCtx)
 	if err != nil {
 		if errors.Is(err, io.EOF) {
 			return bucket.Delete(ctx, jobsDir)
@@ -157,20 +165,10 @@ func (s *scheduler) compileAndUpload(ctx context.Context, namespace models.Names
 			return deployFailure
 		}
 	}
-	err = deleteDirectoryIfEmpty(ctx, PathForJobDirectory(JobsDir, namespace.ID.String()), bucket)
-	if err != nil {
-		if gcerrors.Code(err) != gcerrors.NotFound {
-			deployFailure := models.JobDeploymentFailure{
-				JobName: currentJobSpec.Name,
-				Message: "failed to cleanup old dags folder " + err.Error(),
-			}
-			return deployFailure
-		}
-	}
 	return nil
 }
 
-func (s *scheduler) DeleteJobs(ctx context.Context, namespace models.NamespaceSpec, jobNames []string, progressObserver progress.Observer) error {
+func (s *scheduler) DeleteJobs(ctx context.Context, nsDirectoryIdentifier string, namespace models.NamespaceSpec, jobNames []string, progressObserver progress.Observer) error {
 	spanCtx, span := startChildSpan(ctx, "DeleteJobs")
 	defer span.End()
 
@@ -182,7 +180,7 @@ func (s *scheduler) DeleteJobs(ctx context.Context, namespace models.NamespaceSp
 		if strings.TrimSpace(jobName) == "" {
 			return ErrEmptyJobName
 		}
-		blobKey := PathFromJobName(JobsDir, namespace.ID.String(), jobName, JobsExtension)
+		blobKey := PathFromJobName(JobsDir, nsDirectoryIdentifier, jobName, JobsExtension)
 		if err := bucket.Delete(spanCtx, blobKey); err != nil {
 			// ignore missing files
 			if gcerrors.Code(err) != gcerrors.NotFound {
@@ -197,7 +195,7 @@ func (s *scheduler) DeleteJobs(ctx context.Context, namespace models.NamespaceSp
 }
 
 // TODO list jobs should not refer from the scheduler, rather should list from db and it has notthing to do with scheduler.
-func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec, opts models.SchedulerListOptions) ([]models.Job, error) {
+func (s *scheduler) ListJobs(ctx context.Context, nsDirectoryIdentifier string, namespace models.NamespaceSpec, opts models.SchedulerListOptions) ([]models.Job, error) {
 	spanCtx, span := startChildSpan(ctx, "ListJobs")
 	defer span.End()
 
@@ -207,11 +205,10 @@ func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec
 	}
 	defer bucket.Close()
 
-	namespaceID := namespace.ID.String()
 	var jobs []models.Job
 	// get all items under namespace directory
 	it := bucket.List(&blob.ListOptions{
-		Prefix: PathForJobDirectory(JobsDir, namespaceID),
+		Prefix: PathForJobDirectory(JobsDir, nsDirectoryIdentifier),
 	})
 	for {
 		obj, err := it.Next(spanCtx)
@@ -233,7 +230,7 @@ func (s *scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec
 		return jobs, nil
 	}
 	for idx, job := range jobs {
-		jobs[idx].Contents, err = bucket.ReadAll(spanCtx, PathFromJobName(JobsDir, namespaceID, job.Name, JobsExtension))
+		jobs[idx].Contents, err = bucket.ReadAll(spanCtx, PathFromJobName(JobsDir, nsDirectoryIdentifier, job.Name, JobsExtension))
 		if err != nil {
 			return nil, err
 		}

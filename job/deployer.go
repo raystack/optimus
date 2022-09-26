@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/odpf/salt/log"
+	"gocloud.dev/gcerrors"
 
 	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/models"
@@ -113,26 +114,38 @@ func (d *deployer) completeJobDeployment(ctx context.Context, jobDeployment mode
 }
 
 func (d *deployer) cleanPerNamespace(ctx context.Context, namespaceSpec models.NamespaceSpec, jobs []models.JobSpec) error {
-	// get all stored job names
-	schedulerJobs, err := d.batchScheduler.ListJobs(ctx, namespaceSpec, models.SchedulerListOptions{OnlyName: true})
-	if err != nil {
-		return err
+	namespaceIdentifiers := []string{
+		namespaceSpec.ID.String(), // old, kept for folder cleanup, to be removed after complete migration of name space folder #cleaup
+		namespaceSpec.Name,
 	}
-	var destJobNames []string
-	for _, j := range schedulerJobs {
-		destJobNames = append(destJobNames, j.Name)
-	}
-
-	// filter what we need to keep/delete
-	var sourceJobNames []string
-	for _, jobSpec := range jobs {
-		sourceJobNames = append(sourceJobNames, jobSpec.Name)
-	}
-	jobsToDelete := setSubtract(destJobNames, sourceJobNames)
-	jobsToDelete = jobDeletionFilter(jobsToDelete)
-	if len(jobsToDelete) > 0 {
-		if err := d.batchScheduler.DeleteJobs(ctx, namespaceSpec, jobsToDelete, nil); err != nil {
+	for _, nsDirectoryIdentifier := range namespaceIdentifiers {
+		// get all stored job names
+		schedulerJobs, err := d.batchScheduler.ListJobs(ctx, nsDirectoryIdentifier, namespaceSpec, models.SchedulerListOptions{OnlyName: true})
+		if err != nil {
 			return err
+		}
+		var destJobNames []string
+		for _, j := range schedulerJobs {
+			destJobNames = append(destJobNames, j.Name)
+		}
+
+		// filter what we need to keep/delete
+		var sourceJobNames []string
+		for _, jobSpec := range jobs {
+			sourceJobNames = append(sourceJobNames, jobSpec.Name)
+		}
+		jobsToDelete := setSubtract(destJobNames, sourceJobNames)
+		if len(jobsToDelete) > 0 {
+			if err := d.batchScheduler.DeleteJobs(ctx, nsDirectoryIdentifier, namespaceSpec, jobsToDelete, nil); err != nil {
+				return err
+			}
+		}
+
+		err = d.batchScheduler.DeleteDagsDirectoryIfEmpty(ctx, nsDirectoryIdentifier, namespaceSpec)
+		if err != nil {
+			if gcerrors.Code(err) != gcerrors.NotFound {
+				return err
+			}
 		}
 	}
 	return nil

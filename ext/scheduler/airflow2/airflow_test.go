@@ -227,7 +227,7 @@ func TestAirflow2(t *testing.T) {
 			defer mockBucketFac.AssertExpectations(t)
 
 			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
-			err := air.DeleteJobs(ctx, ns, []string{"job-1"}, nil)
+			err := air.DeleteJobs(ctx, ns.Name, ns, []string{"job-1"}, nil)
 			assert.Nil(t, err)
 
 			jobStillExist, err := inMemBlob.Exists(ctx, jobKey)
@@ -247,7 +247,7 @@ func TestAirflow2(t *testing.T) {
 			defer mockBucketFac.AssertExpectations(t)
 
 			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
-			err := air.DeleteJobs(ctx, ns, []string{"job-1"}, nil)
+			err := air.DeleteJobs(ctx, ns.Name, ns, []string{"job-1"}, nil)
 			assert.Nil(t, err)
 		})
 	})
@@ -270,7 +270,7 @@ func TestAirflow2(t *testing.T) {
 			defer mockBucketFac.AssertExpectations(t)
 
 			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
-			respJobs, err := air.ListJobs(ctx, ns, models.SchedulerListOptions{OnlyName: true})
+			respJobs, err := air.ListJobs(ctx, ns.Name, ns, models.SchedulerListOptions{OnlyName: true})
 			assert.Nil(t, err)
 			assert.Equal(t, 2, len(respJobs))
 		})
@@ -292,7 +292,7 @@ func TestAirflow2(t *testing.T) {
 			defer mockBucketFac.AssertExpectations(t)
 
 			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
-			respJobs, err := air.ListJobs(ctx, ns, models.SchedulerListOptions{OnlyName: true})
+			respJobs, err := air.ListJobs(ctx, ns.Name, ns, models.SchedulerListOptions{OnlyName: true})
 			assert.Nil(t, err)
 			assert.Equal(t, 1, len(respJobs))
 		})
@@ -315,7 +315,7 @@ func TestAirflow2(t *testing.T) {
 			defer mockBucketFac.AssertExpectations(t)
 
 			air := airflow2.NewScheduler(mockBucketFac, nil, nil)
-			respJobs, err := air.ListJobs(ctx, ns, models.SchedulerListOptions{})
+			respJobs, err := air.ListJobs(ctx, ns.Name, ns, models.SchedulerListOptions{})
 			assert.Nil(t, err)
 			assert.Equal(t, 2, len(respJobs))
 		})
