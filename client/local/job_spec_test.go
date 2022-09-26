@@ -3,7 +3,7 @@ package local_test
 import (
 	"fmt"
 	"io/fs"
-	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -47,41 +47,43 @@ func (s *JobReadWriterTestSuite) TestReadAll() {
 		s.Require().NoError(err)
 
 		invalidRootPath := "invalid"
-		paths, err := jobSpecReadWriter.ReadAll(invalidRootPath)
+		jobSpecs, err := jobSpecReadWriter.ReadAll(invalidRootPath)
 		s.Assert().Error(err)
-		s.Assert().Nil(paths)
+		s.Assert().Nil(jobSpecs)
 	})
-	s.T().Skip() // TODO: remove once read all implementation is done
-	specFS := createValidSpecFS(
-		"root/ns1/jobs/example1",
-		"root/ns1/jobs/example2",
-		"root/ns2/jobs/example3",
-		"root/ns2/jobs/example4",
-	)
-	jobReaderWriter, err := local.NewJobSpecReadWriter(specFS)
-	s.Require().NoError(err)
+	s.Run("return nil and error when read one job spec is error", func() {
+		specFS := fstest.MapFS{
+			"root/ns1/jobs/example1/job.yaml": {
+				Data: []byte(`invalid yaml`),
+			},
+		}
+		jobSpecReadWriter, err := local.NewJobSpecReadWriter(specFS)
+		s.Require().NoError(err)
 
-	_, _ = jobReaderWriter.ReadAll("root")
-	// TODO: check ReadAll result
-}
-
-func TestDiscoverPaths(t *testing.T) {
-
-}
-
-func (s *JobReadWriterTestSuite) TestReadAll_Fail() {
-	s.T().Skip() // TODO: remove once read all implementation is done
-	s.Run("when discoverSpecDirPath error", func() {
-		// TODO: implement test fail here
+		jobSpecs, err := jobSpecReadWriter.ReadAll("root")
+		s.Assert().Error(err)
+		s.Assert().ErrorContains(err, "yaml: unmarshal errors")
+		s.Assert().Nil(jobSpecs)
 	})
-	s.Run("when individual read spec error", func() {
-		// TODO: implement test fail here
+	s.Run("return jobSpec and nil when read all success", func() {
+		specFS := createValidSpecFS(
+			"root/ns1/jobs/example1",
+			"root/ns1/jobs/example2",
+			"root/ns2/jobs/example3",
+			"root/ns2/jobs/example4",
+		)
+		jobReaderWriter, err := local.NewJobSpecReadWriter(specFS)
+		s.Require().NoError(err)
+
+		jobSpecs, err := jobReaderWriter.ReadAll("root")
+		s.Assert().NoError(err)
+		s.Assert().Len(jobSpecs, 4)
 	})
+
 }
 
 func createValidSpecFS(specDirPaths ...string) fs.FS {
-	template := `
-version: 1
+	templateJobSpec := `version: 1
 name: godata.ds.%s
 owner: optimus@optimus.dev
 schedule:
@@ -100,8 +102,8 @@ task:
     offset: 24h
     truncate_to: d
 labels:
-  orchestrator: optimus
-`
+  orchestrator: optimus`
+	templateAsset := `SELECT * FROM %s`
 
 	specFS := fstest.MapFS{}
 
@@ -109,12 +111,17 @@ labels:
 		splittedDirPath := strings.Split(specDirPath, "/")
 		jobName := splittedDirPath[len(splittedDirPath)-1]
 
-		dataRaw := fmt.Sprintf(template, jobName, jobName)
-		// TODO: create dummy assets
+		dataRaw := fmt.Sprintf(templateJobSpec, jobName, jobName)
+		assetRaw := fmt.Sprintf(templateAsset, jobName)
 
-		specFS[specDirPath] = &fstest.MapFile{
+		jobSpecFilePath := filepath.Join(specDirPath, "job.yaml")
+		assetFilePath := filepath.Join(specDirPath, "assets", "query.sql")
+
+		specFS[jobSpecFilePath] = &fstest.MapFile{
 			Data: []byte(dataRaw),
-			Mode: os.ModeTemporary,
+		}
+		specFS[assetFilePath] = &fstest.MapFile{
+			Data: []byte(assetRaw),
 		}
 	}
 
