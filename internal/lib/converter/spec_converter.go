@@ -5,27 +5,27 @@ import (
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
-type Converter[S local.JobSpec | local.ResourceSpec, P pb.JobSpecification | pb.ResourceSpecification] interface {
+type SpecConverter[S local.JobSpec | local.ResourceSpec, P pb.JobSpecification | pb.ResourceSpecification] interface {
 	ToProto(*S) P
 	ToSpec(*P) S
 }
 
-type converter[S local.JobSpec | local.ResourceSpec, P pb.JobSpecification | pb.ResourceSpecification] struct {
+type specConverter[S local.JobSpec | local.ResourceSpec, P pb.JobSpecification | pb.ResourceSpecification] struct {
 	toProto func(*S) P
 	toSpec  func(*P) S
 }
 
-func newConverter[S local.JobSpec | local.ResourceSpec, P pb.JobSpecification | pb.ResourceSpecification](toProto func(*S) P, toSpec func(*P) S) Converter[S, P] {
-	return &converter[S, P]{
+func newConverter[S local.JobSpec | local.ResourceSpec, P pb.JobSpecification | pb.ResourceSpecification](toProto func(*S) P, toSpec func(*P) S) SpecConverter[S, P] {
+	return &specConverter[S, P]{
 		toProto: toProto,
 		toSpec:  toSpec,
 	}
 }
 
-func (c *converter[S, P]) ToProto(s *S) P {
+func (c *specConverter[S, P]) ToProto(s *S) P {
 	return c.toProto(s)
 }
 
-func (c *converter[S, P]) ToSpec(p *P) S {
+func (c *specConverter[S, P]) ToSpec(p *P) S {
 	return c.toSpec(p)
 }
