@@ -94,23 +94,30 @@ func readAssetsFromDirPath(fileFS fs.FS, dirPath string) (map[string]string, err
 
 	assetsMap := make(map[string]string)
 	for _, assetFilePath := range assetFilePaths {
-		fileAsset, err := fileFS.Open(assetFilePath)
+		assetContent, err := readAssetFromFilePath(fileFS, assetFilePath)
 		if err != nil {
 			return nil, err
 		}
 
-		rawAssetContent, err := io.ReadAll(fileAsset)
-		if err != nil {
-			fileAsset.Close()
-			return nil, err
-		}
-		fileAsset.Close()
-
-		assetContent := string(rawAssetContent)
 		assetKey := strings.TrimPrefix(assetFilePath, dirPath)
 		assetKey = strings.TrimPrefix(assetKey, "/")
-		assetsMap[assetKey] = assetContent
+		assetsMap[assetKey] = string(assetContent)
 	}
 
 	return assetsMap, nil
+}
+
+func readAssetFromFilePath(fileFS fs.FS, filePath string) ([]byte, error) {
+	f, err := fileFS.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	rawAssetContent, err := io.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	return rawAssetContent, nil
 }
