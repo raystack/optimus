@@ -20,10 +20,14 @@ import (
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	jobRunCompiler "github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"
+	tModel "github.com/odpf/optimus/core/tenant"
+	tHandler "github.com/odpf/optimus/core/tenant/handler/v1beta1"
+	tService "github.com/odpf/optimus/core/tenant/service"
 	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/ext/notify/pagerduty"
 	"github.com/odpf/optimus/ext/notify/slack"
 	"github.com/odpf/optimus/internal/store/postgres"
+	"github.com/odpf/optimus/internal/store/postgres/tenant"
 	"github.com/odpf/optimus/internal/telemetry"
 	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/job"
@@ -231,6 +235,17 @@ func (s *OptimusServer) setupHandlers() error {
 		db: s.dbConn,
 	}
 
+	// Tenant Bounded Context Setup
+	tProjectRepo := tenant.NewProjectRepository(s.dbConn)
+	tNamespaceRepo := tenant.NewNamespaceRepository(s.dbConn)
+	tSecretRepo := tenant.NewSecretRepository(s.dbConn)
+
+	tProjectService := tService.NewProjectService(tProjectRepo)
+	tNamespaceService := tService.NewNamespaceService(tNamespaceRepo)
+	// Ignore error here for now, move to setupApplicationKey at cleanup
+	tAppKey, _ := tModel.NewApplicationKey(s.conf.Serve.AppKey)
+	tSecretService := tService.NewSecretService(tAppKey, tSecretRepo)
+
 	scheduler, err := initScheduler(s.conf)
 	if err != nil {
 		return err
@@ -366,8 +381,11 @@ func (s *OptimusServer) setupHandlers() error {
 		hookRunRepository,
 		taskRunRepository)
 
-	// secret service
-	pb.RegisterSecretServiceServer(s.grpcServer, v1handler.NewSecretServiceServer(s.logger, secretService))
+	// Tenant Handlers
+	pb.RegisterSecretServiceServer(s.grpcServer, tHandler.NewSecretsHandler(s.logger, tSecretService))
+	pb.RegisterProjectServiceServer(s.grpcServer, tHandler.NewProjectHandler(s.logger, tProjectService))
+	pb.RegisterNamespaceServiceServer(s.grpcServer, tHandler.NewNamespaceHandler(s.logger, tNamespaceService))
+
 	// resource service
 	pb.RegisterResourceServiceServer(s.grpcServer, v1handler.NewResourceServiceServer(s.logger,
 		dataStoreService,
@@ -380,12 +398,6 @@ func (s *OptimusServer) setupHandlers() error {
 		namespaceService,
 		projectService,
 		jobService)) // TODO: Replace with replayService after extracting
-	// project service
-	pb.RegisterProjectServiceServer(s.grpcServer, v1handler.NewProjectServiceServer(s.logger,
-		projectService))
-	// namespace service
-	pb.RegisterNamespaceServiceServer(s.grpcServer, v1handler.NewNamespaceServiceServer(s.logger,
-		namespaceService))
 	// job Spec service
 	pb.RegisterJobSpecificationServiceServer(s.grpcServer, v1handler.NewJobSpecServiceServer(s.logger,
 		jobService,
