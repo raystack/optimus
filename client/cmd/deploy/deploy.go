@@ -12,14 +12,17 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/odpf/salt/log"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"go.uber.org/multierr"
 
+	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	"github.com/odpf/optimus/client/cmd/internal/connectivity"
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/namespace"
 	"github.com/odpf/optimus/client/cmd/plugin"
 	"github.com/odpf/optimus/client/cmd/project"
+	"github.com/odpf/optimus/client/cmd/resource"
 	"github.com/odpf/optimus/client/local"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/internal/lib/converter"
@@ -237,9 +240,9 @@ func (*deployCommand) getJobDeploymentRequest(projectName string, namespace *con
 
 	// convert job spec to its proto
 	jobSpecProtos := make([]*pb.JobSpecification, len(jobSpecs))
-	for i, jobSpec := range jobSpecs {
+	for _, jobSpec := range jobSpecs {
 		jobSpecProto := jobSpecConverter.ToProto(jobSpec)
-		jobSpecProtos[i] = &jobSpecProto
+		jobSpecProtos = append(jobSpecProtos, &jobSpecProto)
 	}
 
 	return &pb.DeployJobSpecificationRequest{
@@ -352,8 +355,10 @@ func (d *deployCommand) sendNamespaceResourceRequest(
 	ctx context.Context, stream pb.ResourceService_DeployResourceSpecificationClient,
 	namespace *config.Namespace, progressFn func(totalCount int),
 ) error {
-	for _, dataStore := range namespace.Datastore {
-		request, err := d.getResourceDeploymentRequest(ctx, namespace, dataStore)
+	datastoreSpecFs := resource.CreateDataStoreSpecFs(namespace)
+	for storeName, repoFS := range datastoreSpecFs {
+		d.logger.Info("> Deploying %s resources for namespace [%s]", storeName, namespace.Name)
+		request, err := d.getResourceDeploymentRequest(ctx, namespace.Name, storeName, repoFS)
 		if err != nil {
 			if errors.Is(err, models.ErrNoResources) {
 				d.logger.Warn("no resource specifications are found for namespace [%s]", namespace.Name)
@@ -361,88 +366,47 @@ func (d *deployCommand) sendNamespaceResourceRequest(
 			}
 			return fmt.Errorf("error getting resource specs for namespace [%s]: %w", namespace.Name, err)
 		}
+
 		if err := stream.Send(request); err != nil {
 			return fmt.Errorf("deployment for namespace [%s] failed: %w", namespace.Name, err)
 		}
 		progressFn(len(request.GetResources()))
 	}
-	// datastoreSpecFs := resource.CreateDataStoreSpecFs(namespace)
-	// for storeName, repoFS := range datastoreSpecFs {
-	// 	d.logger.Info("> Deploying %s resources for namespace [%s]", storeName, namespace.Name)
-	// 	request, err := d.getResourceDeploymentRequest(ctx, namespace.Name, storeName, repoFS)
-	// 	if err != nil {
-	// 		if errors.Is(err, models.ErrNoResources) {
-	// 			d.logger.Warn("no resource specifications are found for namespace [%s]", namespace.Name)
-	// 			continue
-	// 		}
-	// 		return fmt.Errorf("error getting resource specs for namespace [%s]: %w", namespace.Name, err)
-	// 	}
-
-	// 	if err := stream.Send(request); err != nil {
-	// 		return fmt.Errorf("deployment for namespace [%s] failed: %w", namespace.Name, err)
-	// 	}
-	// 	progressFn(len(request.GetResources()))
-	// }
 	return nil
 }
 
 func (d *deployCommand) getResourceDeploymentRequest(
 	ctx context.Context,
-	namespace *config.Namespace, datastore config.Datastore,
+	namespaceName, storeName string,
+	repoFS afero.Fs,
 ) (*pb.DeployResourceSpecificationRequest, error) {
-	resourceSpecConverter := converter.NewResourceSpecConverter()
-	resourceSpecReaderWriter, err := local.NewResourceSpecReadWriter(os.DirFS("."))
+	datastoreRepo := models.DatastoreRegistry
+
+	ds, err := datastoreRepo.GetByName(storeName)
+	if err != nil {
+		return nil, fmt.Errorf("unsupported datastore [%s] for namesapce [%s]", storeName, namespaceName)
+	}
+
+	resourceSpecRepo := local.NewResourceSpecRepository(repoFS, ds)
+	resourceSpecs, err := resourceSpecRepo.GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// ReadAll resource specs from given resource path
-	resourceSpecs, err := resourceSpecReaderWriter.ReadAll(datastore.Path)
-	if err != nil {
-		return nil, err
+	adaptedSpecs := make([]*pb.ResourceSpecification, len(resourceSpecs))
+	for i, spec := range resourceSpecs {
+		adapted, err := v1handler.ToResourceProto(spec)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize [%s] for namespace [%s]: %w", spec.Name, namespaceName, err)
+		}
+		adaptedSpecs[i] = adapted
 	}
-
-	// convert resource spec to its proto
-	resourceSpecProtos := make([]*pb.ResourceSpecification, len(resourceSpecs))
-	for i, resourceSpec := range resourceSpecs {
-		resourceSpecProto := resourceSpecConverter.ToProto(resourceSpec)
-		resourceSpecProtos[i] = &resourceSpecProto
-	}
-
 	return &pb.DeployResourceSpecificationRequest{
-		Resources:     resourceSpecProtos,
+		Resources:     adaptedSpecs,
 		ProjectName:   d.clientConfig.Project.Name,
-		DatastoreName: datastore.Type,
-		NamespaceName: namespace.Name,
+		DatastoreName: storeName,
+		NamespaceName: namespaceName,
 	}, nil
-
-	// datastoreRepo := models.DatastoreRegistry
-
-	// ds, err := datastoreRepo.GetByName(storeName)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("unsupported datastore [%s] for namesapce [%s]", storeName, namespaceName)
-	// }
-
-	// resourceSpecRepo := local.NewResourceSpecRepository(repoFS, ds)
-	// resourceSpecs, err := resourceSpecRepo.GetAll(ctx)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// adaptedSpecs := make([]*pb.ResourceSpecification, len(resourceSpecs))
-	// for i, spec := range resourceSpecs {
-	// 	adapted, err := v1handler.ToResourceProto(spec)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("failed to serialize [%s] for namespace [%s]: %w", spec.Name, namespaceName, err)
-	// 	}
-	// 	adaptedSpecs[i] = adapted
-	// }
-	// return &pb.DeployResourceSpecificationRequest{
-	// 	Resources:     adaptedSpecs,
-	// 	ProjectName:   d.clientConfig.Project.Name,
-	// 	DatastoreName: storeName,
-	// 	NamespaceName: namespaceName,
-	// }, nil
 }
 
 func (d *deployCommand) getResourceStreamClient(

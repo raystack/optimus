@@ -5,7 +5,7 @@ import (
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
-func NewJobSpecConverter() SpecConverter[local.JobSpec, pb.JobSpecification] {
+func NewJobSpecConverter() Converter[local.JobSpec, pb.JobSpecification] {
 	return newConverter(jobSpecToProto, jobProtoToSpec)
 }
 
