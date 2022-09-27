@@ -41,7 +41,7 @@ func (j jobSpecReadWriter) ReadAll(rootDirPath string) ([]*JobSpec, error) {
 	}
 
 	// read all spec parents (this.yaml)
-	var parentJobSpecsMap map[string]*JobSpec
+	parentJobSpecsMap := map[string]*JobSpec{}
 	for _, dirPath := range dirParentPaths {
 		filePath := filepath.Join(dirPath, j.referenceParentJobSpecFileName)
 		parentJobSpec, err := readJobSpecFromFilePath(j.specFS, filePath)
@@ -59,7 +59,14 @@ func (j jobSpecReadWriter) ReadAll(rootDirPath string) ([]*JobSpec, error) {
 			return nil, err
 		}
 
-		// TODO: merge from parents
+		// merge with parent job specs
+		splittedPath := strings.Split(dirPath, "/")
+		for i := range splittedPath {
+			currentDirPath := strings.Join(splittedPath[:len(splittedPath)-i], "/")
+			if parentJobSpec, ok := parentJobSpecsMap[currentDirPath]; ok {
+				jobSpec.MergeFrom(*parentJobSpec)
+			}
+		}
 		jobSpecs = append(jobSpecs, jobSpec)
 	}
 

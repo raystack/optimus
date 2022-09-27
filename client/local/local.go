@@ -2,13 +2,14 @@ package local
 
 import (
 	"io/fs"
+	"path/filepath"
 	"strings"
 )
 
 func discoverSpecDirPaths(specFS fs.FS, rootSpecDir, referenceFileName string) ([]string, error) {
 	return discoverPathsUsingSelector(specFS, rootSpecDir, func(path string, d fs.DirEntry) (string, bool) {
 		if !d.IsDir() && strings.HasSuffix(path, referenceFileName) {
-			return strings.TrimSuffix(path, referenceFileName), true
+			return filepath.Dir(path), true
 		}
 		return "", false
 	})
