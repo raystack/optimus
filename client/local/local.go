@@ -2,21 +2,8 @@ package local
 
 import (
 	"io/fs"
-	"path/filepath"
 	"strings"
 )
-
-func discoverParentSpecFilePaths(specFS fs.FS, rootSpecDir, childSpecDir, referenceFileName string) ([]string, error) {
-	return discoverPathsUsingSelector(specFS, rootSpecDir, func(path string, d fs.DirEntry) (string, bool) {
-		if !strings.Contains(childSpecDir, filepath.Dir(path)) {
-			return "", false
-		}
-		if !d.IsDir() && strings.HasSuffix(path, referenceFileName) {
-			return path, true
-		}
-		return "", false
-	})
-}
 
 func discoverSpecDirPaths(specFS fs.FS, rootSpecDir, referenceFileName string) ([]string, error) {
 	return discoverPathsUsingSelector(specFS, rootSpecDir, func(path string, d fs.DirEntry) (string, bool) {
@@ -27,7 +14,7 @@ func discoverSpecDirPaths(specFS fs.FS, rootSpecDir, referenceFileName string) (
 	})
 }
 
-func discoverAssetFilePaths(fileFS fs.FS, rootDir string) ([]string, error) {
+func discoverFilePaths(fileFS fs.FS, rootDir string) ([]string, error) {
 	return discoverPathsUsingSelector(fileFS, rootDir, func(path string, d fs.DirEntry) (string, bool) {
 		if !d.IsDir() {
 			return path, true

@@ -35,33 +35,34 @@ func (j jobSpecReadWriter) ReadAll(rootDirPath string) ([]*JobSpec, error) {
 	if err != nil {
 		return nil, err
 	}
+	dirParentPaths, err := discoverSpecDirPaths(j.specFS, rootDirPath, j.referenceParentJobSpecFileName)
+	if err != nil {
+		return nil, err
+	}
 
-	var jobSpecs []*JobSpec
-	for _, p := range dirPaths {
-		// read parent job spec (this.yaml) if any
-		parentJobSpecFilePaths, err := discoverParentSpecFilePaths(j.specFS, rootDirPath, p, j.referenceParentJobSpecFileName)
-		parentJobSpecs := make([]*JobSpec, len(parentJobSpecFilePaths))
-		for i, filePath := range parentJobSpecFilePaths {
-			parentJobSpec, err := readJobSpecFromFilePath(j.specFS, filePath)
-			if err != nil {
-				return nil, err
-			}
-			parentJobSpecs[i] = parentJobSpec
+	// read all spec parents (this.yaml)
+	var parentJobSpecsMap map[string]*JobSpec
+	for _, dirPath := range dirParentPaths {
+		filePath := filepath.Join(dirPath, j.referenceParentJobSpecFileName)
+		parentJobSpec, err := readJobSpecFromFilePath(j.specFS, filePath)
+		if err != nil {
+			return nil, err
 		}
+		parentJobSpecsMap[dirPath] = parentJobSpec
+	}
 
-		// read current job spec
-		currentJobSpec, err := j.read(p)
+	// read job specs
+	var jobSpecs []*JobSpec
+	for _, dirPath := range dirPaths {
+		jobSpec, err := j.read(dirPath)
 		if err != nil {
 			return nil, err
 		}
 
-		// overwrite job spec with its parents
-		// from most prioritize to least prioritize
-		jobSpecSequence := append([]*JobSpec{currentJobSpec}, parentJobSpecs...)
-		jobSpec := mergeJobSpecs(jobSpecSequence...)
-
-		jobSpecs = append(jobSpecs, &jobSpec)
+		// TODO: merge from parents
+		jobSpecs = append(jobSpecs, jobSpec)
 	}
+
 	return jobSpecs, nil
 }
 
@@ -108,7 +109,7 @@ func readJobSpecFromFilePath(fileFS fs.FS, filePath string) (*JobSpec, error) {
 }
 
 func readAssetsFromDirPath(fileFS fs.FS, dirPath string) (map[string]string, error) {
-	assetFilePaths, err := discoverAssetFilePaths(fileFS, dirPath)
+	assetFilePaths, err := discoverFilePaths(fileFS, dirPath)
 	if err != nil {
 		return nil, err
 	}
