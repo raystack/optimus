@@ -302,8 +302,6 @@ func TestDeployer(t *testing.T) {
 
 			batchScheduler.On("ListJobs", ctx, namespaceSpec1.Name, namespaceSpec1, listOptions).Return(schedulerJobNamespace1, nil).Once()
 			batchScheduler.On("ListJobs", ctx, namespaceSpec1.ID.String(), namespaceSpec1, listOptions).Return(schedulerJobNamespace1, nil).Once()
-			batchScheduler.On("DeleteDagsDirectoryIfEmpty", ctx, namespaceSpec1.Name, namespaceSpec1).Return(nil).Once()
-			batchScheduler.On("DeleteDagsDirectoryIfEmpty", ctx, namespaceSpec1.ID.String(), namespaceSpec1).Return(nil).Once()
 
 			batchScheduler.On("DeployJobs", ctx, namespaceSpec1, jobSpecsWithPriorityWeight).Return(models.JobDeploymentDetail{}, nil)
 
@@ -456,9 +454,6 @@ func TestDeployer(t *testing.T) {
 
 			batchScheduler.On("ListJobs", ctx, namespaceSpec2.ID.String(), namespaceSpec2, listOptions).Return(schedulerJobNamespace2, errors.New(errorMsg))
 
-			batchScheduler.On("DeleteDagsDirectoryIfEmpty", ctx, namespaceSpec1.Name, namespaceSpec1).Return(nil).Once()
-			batchScheduler.On("DeleteDagsDirectoryIfEmpty", ctx, namespaceSpec1.ID.String(), namespaceSpec1).Return(nil).Once()
-
 			jobDeploymentRepo.On("Update", ctx, jobDeploymentSucceed).Return(nil).Once()
 
 			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, batchScheduler)
@@ -610,8 +605,6 @@ func TestDeployer(t *testing.T) {
 			//batchScheduler.On("ListJobs", ctx, namespaceSpec2.Name, namespaceSpec2, listOptions).Return(schedulerJobNamespace2, nil).Once()
 			batchScheduler.On("ListJobs", ctx, namespaceSpec2.ID.String(), namespaceSpec2, listOptions).Return(schedulerJobNamespace2, nil).Once()
 
-			batchScheduler.On("DeleteDagsDirectoryIfEmpty", ctx, namespaceSpec1.Name, namespaceSpec1).Return(nil).Once()
-			batchScheduler.On("DeleteDagsDirectoryIfEmpty", ctx, namespaceSpec1.ID.String(), namespaceSpec1).Return(nil).Once()
 			batchScheduler.On("DeleteJobs", ctx, namespaceSpec2.ID.String(), namespaceSpec2, []string{unusedFileName}, nil).Return(errors.New(errorMsg))
 
 			jobDeploymentRepo.On("Update", ctx, jobDeploymentSucceed).Return(nil).Once()
@@ -763,11 +756,6 @@ func TestDeployer(t *testing.T) {
 			batchScheduler.On("ListJobs", ctx, namespaceSpec2.Name, namespaceSpec2, listOptions).Return(schedulerJobNamespace2, nil).Once()
 			batchScheduler.On("ListJobs", ctx, namespaceSpec2.ID.String(), namespaceSpec2, listOptions).Return(schedulerJobNamespace2, nil).Once()
 
-			batchScheduler.On("DeleteDagsDirectoryIfEmpty", ctx, namespaceSpec1.Name, namespaceSpec1).Return(nil).Once()
-			batchScheduler.On("DeleteDagsDirectoryIfEmpty", ctx, namespaceSpec1.ID.String(), namespaceSpec1).Return(nil).Once()
-			batchScheduler.On("DeleteDagsDirectoryIfEmpty", ctx, namespaceSpec2.Name, namespaceSpec2).Return(nil).Once()
-			batchScheduler.On("DeleteDagsDirectoryIfEmpty", ctx, namespaceSpec2.ID.String(), namespaceSpec2).Return(nil).Once()
-
 			jobDeploymentRepo.On("Update", ctx, jobDeploymentSucceed).Return(nil).Once()
 
 			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, batchScheduler)
@@ -918,11 +906,6 @@ func TestDeployer(t *testing.T) {
 			batchScheduler.On("ListJobs", ctx, namespaceSpec1.ID.String(), namespaceSpec1, listOptions).Return(schedulerJobNamespace1, nil).Once()
 			batchScheduler.On("ListJobs", ctx, namespaceSpec2.Name, namespaceSpec2, listOptions).Return(schedulerJobNamespace2, nil).Once()
 			batchScheduler.On("ListJobs", ctx, namespaceSpec2.ID.String(), namespaceSpec2, listOptions).Return(schedulerJobNamespace2, nil).Once()
-
-			batchScheduler.On("DeleteDagsDirectoryIfEmpty", ctx, namespaceSpec1.Name, namespaceSpec1).Return(nil).Once()
-			batchScheduler.On("DeleteDagsDirectoryIfEmpty", ctx, namespaceSpec1.ID.String(), namespaceSpec1).Return(nil).Once()
-			batchScheduler.On("DeleteDagsDirectoryIfEmpty", ctx, namespaceSpec2.Name, namespaceSpec2).Return(nil).Once()
-			batchScheduler.On("DeleteDagsDirectoryIfEmpty", ctx, namespaceSpec2.ID.String(), namespaceSpec2).Return(nil).Once()
 
 			batchScheduler.On("DeleteJobs", ctx, namespaceSpec2.Name, namespaceSpec2, []string{unusedFileName}, nil).Return(nil)
 			batchScheduler.On("DeleteJobs", ctx, namespaceSpec2.ID.String(), namespaceSpec2, []string{unusedFileName}, nil).Return(nil)
@@ -1088,10 +1071,6 @@ func TestDeployer(t *testing.T) {
 			batchScheduler.On("ListJobs", ctx, namespaceSpec2.Name, namespaceSpec2, listOptions).Return(schedulerJobNamespace2, nil).Once()
 			batchScheduler.On("ListJobs", ctx, namespaceSpec2.ID.String(), namespaceSpec2, listOptions).Return(schedulerJobNamespace2, nil).Once()
 
-			batchScheduler.On("DeleteDagsDirectoryIfEmpty", ctx, namespaceSpec1.Name, namespaceSpec1).Return(nil).Once()
-			batchScheduler.On("DeleteDagsDirectoryIfEmpty", ctx, namespaceSpec1.ID.String(), namespaceSpec1).Return(nil).Once()
-			batchScheduler.On("DeleteDagsDirectoryIfEmpty", ctx, namespaceSpec2.Name, namespaceSpec2).Return(nil).Once()
-			batchScheduler.On("DeleteDagsDirectoryIfEmpty", ctx, namespaceSpec2.ID.String(), namespaceSpec2).Return(nil).Once()
 			jobDeploymentRepo.On("Update", ctx, jobDeploymentSucceed).Return(nil).Once()
 
 			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, batchScheduler)

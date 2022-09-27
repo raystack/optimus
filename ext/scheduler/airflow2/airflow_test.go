@@ -216,6 +216,10 @@ func TestAirflow2(t *testing.T) {
 				bucket: inMemBlob,
 			}
 			mockBucket.On("Delete", mock.Anything, fmt.Sprintf("dags/%s/%s.py", ns.Name, jobSpecs[0].Name)).Return(nil)
+			mockBucket.On("Delete", mock.Anything, fmt.Sprintf("dags/%s", ns.Name)).Return(nil)
+			mockBucket.On("List", &blob.ListOptions{
+				Prefix: fmt.Sprintf("dags/%s", ns.Name),
+			}).Return(&blob.ListIterator{})
 			defer mockBucket.AssertExpectations(t)
 
 			mockBucketFac := new(MockedBucketFactory)
@@ -236,6 +240,10 @@ func TestAirflow2(t *testing.T) {
 				bucket: inMemBlob,
 			}
 			mockBucket.On("Delete", mock.Anything, fmt.Sprintf("dags/%s/%s.py", ns.Name, jobSpecs[0].Name)).Return(nil)
+			mockBucket.On("Delete", mock.Anything, fmt.Sprintf("dags/%s", ns.Name)).Return(nil)
+			mockBucket.On("List", &blob.ListOptions{
+				Prefix: fmt.Sprintf("dags/%s", ns.Name),
+			}).Return(&blob.ListIterator{})
 			defer mockBucket.AssertExpectations(t)
 
 			mockBucketFac := new(MockedBucketFactory)

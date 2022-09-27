@@ -111,23 +111,17 @@ func (s *scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSp
 	return jobDeploymentDetail, nil
 }
 
-// DeleteDagsDirectoryIfEmpty remove jobs Folder if it exists
-func (s *scheduler) DeleteDagsDirectoryIfEmpty(ctx context.Context, nsDirectoryIdentifier string, namespace models.NamespaceSpec) error {
-	spanCtx, span := startChildSpan(ctx, "DeleteDagsDirectoryIfEmpty")
+// deleteDirectoryIfEmpty remove jobs Folder if it exists
+func deleteDirectoryIfEmpty(ctx context.Context, nsDirectoryIdentifier string, bucket Bucket) error {
+	spanCtx, span := startChildSpan(ctx, "deleteDirectoryIfEmpty")
 	span.End()
 
-	bucket, err := s.bucketFac.New(spanCtx, namespace.ProjectSpec)
-	if err != nil {
-		return err
-	}
-
-	defer bucket.Close()
 	jobsDir := PathForJobDirectory(JobsDir, nsDirectoryIdentifier)
 
 	it := bucket.List(&blob.ListOptions{
 		Prefix: jobsDir,
 	})
-	_, err = it.Next(spanCtx)
+	_, err := it.Next(spanCtx)
 	if err != nil {
 		if errors.Is(err, io.EOF) {
 			return bucket.Delete(ctx, jobsDir)
@@ -190,6 +184,12 @@ func (s *scheduler) DeleteJobs(ctx context.Context, nsDirectoryIdentifier string
 		s.notifyProgress(progressObserver, &models.ProgressJobRemoteDelete{
 			Name: jobName,
 		})
+	}
+	err = deleteDirectoryIfEmpty(ctx, nsDirectoryIdentifier, bucket)
+	if err != nil {
+		if gcerrors.Code(err) != gcerrors.NotFound {
+			return err
+		}
 	}
 	return nil
 }

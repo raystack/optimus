@@ -6,7 +6,6 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/odpf/salt/log"
-	"gocloud.dev/gcerrors"
 
 	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/models"
@@ -137,13 +136,6 @@ func (d *deployer) cleanPerNamespace(ctx context.Context, namespaceSpec models.N
 		jobsToDelete := setSubtract(destJobNames, sourceJobNames)
 		if len(jobsToDelete) > 0 {
 			if err := d.batchScheduler.DeleteJobs(ctx, nsDirectoryIdentifier, namespaceSpec, jobsToDelete, nil); err != nil {
-				return err
-			}
-		}
-
-		err = d.batchScheduler.DeleteDagsDirectoryIfEmpty(ctx, nsDirectoryIdentifier, namespaceSpec)
-		if err != nil {
-			if gcerrors.Code(err) != gcerrors.NotFound {
 				return err
 			}
 		}

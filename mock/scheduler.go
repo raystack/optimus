@@ -64,8 +64,3 @@ func (ms *Scheduler) GetJobRuns(ctx context.Context, projectSpec models.ProjectS
 	args := ms.Called(ctx, projectSpec, jobQuery, jobCron)
 	return args.Get(0).([]models.JobRun), args.Error(1)
 }
-
-func (ms *Scheduler) DeleteDagsDirectoryIfEmpty(ctx context.Context, nsDirectoryIdentifier string, namespace models.NamespaceSpec) error {
-	args := ms.Called(ctx, nsDirectoryIdentifier, namespace)
-	return args.Error(0)
-}
