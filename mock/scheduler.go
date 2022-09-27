@@ -20,8 +20,8 @@ func (ms *Scheduler) VerifyJob(ctx context.Context, namespace models.NamespaceSp
 	return args.Error(0)
 }
 
-func (ms *Scheduler) ListJobs(ctx context.Context, namespace models.NamespaceSpec, opts models.SchedulerListOptions) ([]models.Job, error) {
-	args := ms.Called(ctx, namespace, opts)
+func (ms *Scheduler) ListJobs(ctx context.Context, nsDirectoryIdentifier string, namespace models.NamespaceSpec, opts models.SchedulerListOptions) ([]models.Job, error) {
+	args := ms.Called(ctx, nsDirectoryIdentifier, namespace, opts)
 	return args.Get(0).([]models.Job), args.Error(1)
 }
 
@@ -30,8 +30,8 @@ func (ms *Scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceS
 	return args.Get(0).(models.JobDeploymentDetail), args.Error(1)
 }
 
-func (ms *Scheduler) DeleteJobs(ctx context.Context, namespace models.NamespaceSpec, jobNames []string, obs progress.Observer) error {
-	args := ms.Called(ctx, namespace, jobNames, obs)
+func (ms *Scheduler) DeleteJobs(ctx context.Context, nsDirectoryIdentifier string, namespace models.NamespaceSpec, jobNames []string, obs progress.Observer) error {
+	args := ms.Called(ctx, nsDirectoryIdentifier, namespace, jobNames, obs)
 	return args.Error(0)
 }
 

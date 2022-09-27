@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,9 +24,6 @@ import (
 )
 
 const (
-	// PersistJobPrefix is used to keep the job during sync even if they are not in source repo
-	PersistJobPrefix string = "__"
-
 	ConcurrentTicketPerSec = 40
 	ConcurrentLimit        = 600
 
@@ -351,7 +347,17 @@ func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, 
 	}
 
 	// delete from batch scheduler
-	return srv.batchScheduler.DeleteJobs(ctx, namespace, []string{jobSpec.Name}, nil)
+	namespaceIdentifiers := []string{
+		namespace.ID.String(), // old, kept for folder cleanup, to be removed after complete migration of name space folder #cleaup
+		namespace.Name,
+	}
+	for _, nsDirectoryIdentifier := range namespaceIdentifiers {
+		err = srv.batchScheduler.DeleteJobs(ctx, nsDirectoryIdentifier, namespace, []string{jobSpec.Name}, nil)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSpec, jobSpecsToDelete []models.JobSpec,
@@ -593,20 +599,6 @@ func setSubtract(from, remove []string) []string {
 	}
 
 	return res
-}
-
-// jobDeletionFilter helps in keeping created dags even if they are not in source repo
-func jobDeletionFilter(dagNames []string) []string {
-	filtered := make([]string, 0)
-	for _, dag := range dagNames {
-		if strings.HasPrefix(dag, PersistJobPrefix) {
-			continue
-		}
-
-		filtered = append(filtered, dag)
-	}
-
-	return filtered
 }
 
 func (srv *Service) Run(ctx context.Context, nsSpec models.NamespaceSpec,

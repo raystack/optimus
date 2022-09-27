@@ -23,7 +23,7 @@ func (*Scheduler) VerifyJob(context.Context, models.NamespaceSpec, models.JobSpe
 	return nil
 }
 
-func (*Scheduler) ListJobs(context.Context, models.NamespaceSpec, models.SchedulerListOptions) ([]models.Job, error) {
+func (*Scheduler) ListJobs(context.Context, string, models.NamespaceSpec, models.SchedulerListOptions) ([]models.Job, error) {
 	panic("implement me")
 }
 
@@ -46,7 +46,7 @@ func (s *Scheduler) DeployJobs(ctx context.Context, namespace models.NamespaceSp
 	return models.JobDeploymentDetail{}, nil
 }
 
-func (*Scheduler) DeleteJobs(context.Context, models.NamespaceSpec, []string, progress.Observer) error {
+func (*Scheduler) DeleteJobs(context.Context, string, models.NamespaceSpec, []string, progress.Observer) error {
 	return nil
 }
 
