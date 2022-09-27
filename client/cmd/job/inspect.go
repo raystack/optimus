@@ -163,13 +163,13 @@ func (e *inspectCommand) processJobInspectResponse(resp *pb.JobInspectResponse) 
 	for i := 0; i < len(resp.Log); i++ {
 		switch resp.Log[i].Level {
 		case pb.Level_LEVEL_INFO:
-			e.logger.Info(fmt.Sprintf("\n>%v", resp.Log[i].Message))
+			e.logger.Info(fmt.Sprintf("\n> [info] %v", resp.Log[i].Message))
 		case pb.Level_LEVEL_WARNING:
-			e.logger.Info(logger.ColoredNotice(fmt.Sprintf("\n>%v", resp.Log[i].Message)))
+			e.logger.Info(logger.ColoredNotice(fmt.Sprintf("\n> [warn] %v", resp.Log[i].Message)))
 		case pb.Level_LEVEL_ERROR:
-			e.logger.Info(logger.ColoredError(fmt.Sprintf("\n>%v", resp.Log[i].Message)))
+			e.logger.Info(logger.ColoredError(fmt.Sprintf("\n> [error] %v", resp.Log[i].Message)))
 		default:
-			e.logger.Error(logger.ColoredError(fmt.Sprintf("unhandled log level::%v specified with error msg ::%v", resp.Log[i].Level, resp.Log[i].Message)))
+			e.logger.Error(logger.ColoredError(fmt.Sprintf("\nunhandled log level::%v specified with error msg ::%v", resp.Log[i].Level, resp.Log[i].Message)))
 		}
 	}
 	return nil
