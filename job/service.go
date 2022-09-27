@@ -358,7 +358,7 @@ func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, 
 		}
 	}
 
-	return err
+	return srv.batchScheduler.DeleteDagsDirectoryIfEmpty(ctx, namespace.ID.String(), namespace)
 }
 
 func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSpec, jobSpecsToDelete []models.JobSpec,

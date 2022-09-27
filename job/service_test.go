@@ -451,6 +451,7 @@ func TestService(t *testing.T) {
 			batchScheduler := new(mock.Scheduler)
 			batchScheduler.On("DeleteJobs", ctx, namespaceSpec.Name, namespaceSpec, []string{jobSpecsBase[0].Name}, nil).Return(nil)
 			batchScheduler.On("DeleteJobs", ctx, namespaceSpec.ID.String(), namespaceSpec, []string{jobSpecsBase[0].Name}, nil).Return(nil)
+			batchScheduler.On("DeleteDagsDirectoryIfEmpty", ctx, namespaceSpec.ID.String(), namespaceSpec).Return(nil).Once()
 			defer batchScheduler.AssertExpectations(t)
 
 			svc := job.NewService(namespaceJobSpecRepoFac, batchScheduler, nil, nil, nil,
