@@ -3,10 +3,10 @@ package local
 import (
 	"errors"
 	"io"
-	"io/fs"
 	"path/filepath"
 	"strings"
 
+	"github.com/spf13/afero"
 	"gopkg.in/yaml.v2"
 )
 
@@ -14,10 +14,10 @@ type jobSpecReadWriter struct {
 	referenceJobSpecFileName       string
 	referenceParentJobSpecFileName string
 	referenceAssetDirName          string
-	specFS                         fs.FS
+	specFS                         afero.Fs
 }
 
-func NewJobSpecReadWriter(specFS fs.FS) (SpecReadWriter[*JobSpec], error) {
+func NewJobSpecReadWriter(specFS afero.Fs) (SpecReadWriter[*JobSpec], error) {
 	if specFS == nil {
 		return nil, errors.New("specFS is nil")
 	}
@@ -73,7 +73,7 @@ func (j jobSpecReadWriter) ReadAll(rootDirPath string) ([]*JobSpec, error) {
 	return jobSpecs, nil
 }
 
-func (jobSpecReadWriter) Write(dirPath string, spec *JobSpec) error {
+func (j jobSpecReadWriter) Write(dirPath string, spec *JobSpec) error {
 	// TODO: implement write job spec here. Given dirPath and job spec
 	// create job.yaml specification as well as their asset inside dirPath folder
 	return nil
@@ -100,7 +100,7 @@ func (j jobSpecReadWriter) read(dirPath string) (*JobSpec, error) {
 	return jobSpec, nil
 }
 
-func readJobSpecFromFilePath(fileFS fs.FS, filePath string) (*JobSpec, error) {
+func readJobSpecFromFilePath(fileFS afero.Fs, filePath string) (*JobSpec, error) {
 	fileSpec, err := fileFS.Open(filePath)
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func readJobSpecFromFilePath(fileFS fs.FS, filePath string) (*JobSpec, error) {
 	return &jobSpec, nil
 }
 
-func readAssetsFromDirPath(fileFS fs.FS, dirPath string) (map[string]string, error) {
+func readAssetsFromDirPath(fileFS afero.Fs, dirPath string) (map[string]string, error) {
 	assetFilePaths, err := discoverFilePaths(fileFS, dirPath)
 	if err != nil {
 		return nil, err
@@ -136,7 +136,7 @@ func readAssetsFromDirPath(fileFS fs.FS, dirPath string) (map[string]string, err
 	return assetsMap, nil
 }
 
-func readAssetFromFilePath(fileFS fs.FS, filePath string) ([]byte, error) {
+func readAssetFromFilePath(fileFS afero.Fs, filePath string) ([]byte, error) {
 	f, err := fileFS.Open(filePath)
 	if err != nil {
 		return nil, err

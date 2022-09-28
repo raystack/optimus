@@ -5,24 +5,24 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"testing/fstest"
 
 	"github.com/odpf/optimus/client/local"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/yaml.v2"
 )
 
-type JobReadWriterTestSuite struct {
+type JobSpecReadWriterTestSuite struct {
 	suite.Suite
 }
 
-func TestJobReaderWriter(t *testing.T) {
-	s := new(JobReadWriterTestSuite)
+func TestJobSpecReadWriter(t *testing.T) {
+	s := new(JobSpecReadWriterTestSuite)
 	suite.Run(t, s)
 }
 
-func TestNewJobReadWriter(t *testing.T) {
+func TestNewJobSpecReadWriter(t *testing.T) {
 	t.Run("when specFS is nil", func(t *testing.T) {
 		jobSpecReadWriter, err := local.NewJobSpecReadWriter(nil)
 
@@ -31,7 +31,7 @@ func TestNewJobReadWriter(t *testing.T) {
 	})
 
 	t.Run("when specFS is valid", func(t *testing.T) {
-		specFS := fstest.MapFS{}
+		specFS := afero.NewMemMapFs()
 
 		jobSpecReadWriter, err := local.NewJobSpecReadWriter(specFS)
 
@@ -40,23 +40,24 @@ func TestNewJobReadWriter(t *testing.T) {
 	})
 }
 
-func (s *JobReadWriterTestSuite) TestReadAll() {
+func (s *JobSpecReadWriterTestSuite) TestReadAll() {
 	s.Run("return nil and error when discovering file paths is error", func() {
-		specFS := fstest.MapFS{}
+		specFS := afero.NewMemMapFs()
 		jobSpecReadWriter, err := local.NewJobSpecReadWriter(specFS)
 		s.Require().NoError(err)
 
 		invalidRootPath := "invalid"
 		jobSpecs, err := jobSpecReadWriter.ReadAll(invalidRootPath)
+
 		s.Assert().Error(err)
 		s.Assert().Nil(jobSpecs)
 	})
+
 	s.Run("return nil and error when read one job spec is error", func() {
-		specFS := fstest.MapFS{
-			"root/ns1/jobs/example1/job.yaml": {
-				Data: []byte(`invalid yaml`),
-			},
-		}
+		specFS := afero.NewMemMapFs()
+		err := writeTo(specFS, "root/ns1/jobs/example1/job.yaml", "invalid yaml")
+		s.Require().NoError(err)
+
 		jobSpecReadWriter, err := local.NewJobSpecReadWriter(specFS)
 		s.Require().NoError(err)
 
@@ -65,38 +66,37 @@ func (s *JobReadWriterTestSuite) TestReadAll() {
 		s.Assert().ErrorContains(err, "yaml: unmarshal errors")
 		s.Assert().Nil(jobSpecs)
 	})
+
 	s.Run("return jobSpec and nil when read all success", func() {
 		specFS := createValidSpecFS(
 			"root/ns1/jobs/example1",
 			"root/ns1/jobs/example2",
-			"root/ns2/jobs/example3",
-			"root/ns2/jobs/example4",
 		)
-		specFS["root/ns1/this.yaml"] = &fstest.MapFile{
-			Data: []byte(`task:
+		err := writeTo(specFS, "root/ns1/this.yaml", `task:
   config:
-    EXAMPLE: parent`),
-		}
+    EXAMPLE: parent`)
+		s.Require().NoError(err)
+
 		jobReaderWriter, err := local.NewJobSpecReadWriter(specFS)
 		s.Require().NoError(err)
 
 		jobSpecs, err := jobReaderWriter.ReadAll("root")
 		s.Assert().NoError(err)
-		s.Assert().Len(jobSpecs, 4)
+		s.Assert().Len(jobSpecs, 2)
 	})
+
 	s.Run("return jobSpec and nil when contains parent spec this.yaml", func() {
 		specFS := createValidSpecFS("root/parent/ns1/jobs/example1")
-		specFS["root/parent/ns1/this.yaml"] = &fstest.MapFile{
-			Data: []byte(`task:
+		err := writeTo(specFS, "root/parent/ns1/this.yaml", `task:
   config:
-    EXAMPLE: parent_overwrite`),
-		}
-		specFS["root/parent/this.yaml"] = &fstest.MapFile{
-			Data: []byte(`task:
+    EXAMPLE: parent_overwrite`)
+		s.Require().NoError(err)
+		err = writeTo(specFS, "root/parent/this.yaml", `task:
   config:
     EXAMPLE: parent
-    EXAMPLE2: parent_no_overwrite`),
-		}
+    EXAMPLE2: parent_no_overwrite`)
+		s.Require().NoError(err)
+
 		jobReaderWriter, err := local.NewJobSpecReadWriter(specFS)
 		s.Require().NoError(err)
 
@@ -116,7 +116,7 @@ func (s *JobReadWriterTestSuite) TestReadAll() {
 	})
 }
 
-func createValidSpecFS(specDirPaths ...string) fstest.MapFS {
+func createValidSpecFS(specDirPaths ...string) afero.Fs {
 	templateJobSpec := `version: 1
 name: godata.ds.%s
 owner: optimus@optimus.dev
@@ -168,7 +168,7 @@ dependencies:
 hooks: []`
 	templateAsset := `SELECT * FROM %s`
 
-	specFS := fstest.MapFS{}
+	specFS := afero.NewMemMapFs()
 
 	for _, specDirPath := range specDirPaths {
 		splittedDirPath := strings.Split(specDirPath, "/")
@@ -180,13 +180,20 @@ hooks: []`
 		jobSpecFilePath := filepath.Join(specDirPath, "job.yaml")
 		assetFilePath := filepath.Join(specDirPath, "assets", "query.sql")
 
-		specFS[jobSpecFilePath] = &fstest.MapFile{
-			Data: []byte(dataRaw),
-		}
-		specFS[assetFilePath] = &fstest.MapFile{
-			Data: []byte(assetRaw),
-		}
+		writeTo(specFS, jobSpecFilePath, dataRaw)
+		writeTo(specFS, assetFilePath, assetRaw)
 	}
 
 	return specFS
+}
+
+func writeTo(fs afero.Fs, filePath string, content string) error {
+	f, err := fs.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.WriteString(content)
+
+	return err
 }

@@ -1,13 +1,15 @@
 package local
 
-import "io/fs"
+import (
+	"github.com/spf13/afero"
+)
 
 type resourceSpecReadWriter struct {
 	referenceFileName string
-	specFS            fs.FS
+	specFS            afero.Fs
 }
 
-func NewResourceSpecReadWriter(specFS fs.FS) (SpecReadWriter[*ResourceSpec], error) {
+func NewResourceSpecReadWriter(specFS afero.Fs) (SpecReadWriter[*ResourceSpec], error) {
 	return &resourceSpecReadWriter{
 		referenceFileName: "resource.yaml",
 		specFS:            specFS,
