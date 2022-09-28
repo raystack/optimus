@@ -2,7 +2,10 @@ package local_test
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -116,6 +119,114 @@ func (s *JobSpecReadWriterTestSuite) TestReadAll() {
 	})
 }
 
+func (s *JobSpecReadWriterTestSuite) TestWrite() {
+	s.Run("return error when job spec is nil", func() {
+		specFS := afero.NewMemMapFs()
+		filePath := "root/ns1/jobs/example1"
+
+		jobSpecReadWriter, err := local.NewJobSpecReadWriter(specFS)
+		s.Require().NoError(err)
+
+		err = jobSpecReadWriter.Write(filePath, nil)
+		s.Assert().Error(err)
+	})
+
+	s.Run("return error when job file path is restricted to write", func() {
+		specFS := afero.NewMemMapFs()
+		err := specFS.MkdirAll("root/ns1/jobs", os.ModeDir)
+		s.Require().NoError(err)
+		specFS = afero.NewReadOnlyFs(specFS)
+		filePath := "root/ns1/jobs/example1"
+		jobSpec := local.JobSpec{Version: 1}
+
+		jobSpecReadWriter, err := local.NewJobSpecReadWriter(specFS)
+		s.Require().NoError(err)
+
+		err = jobSpecReadWriter.Write(filePath, &jobSpec)
+		s.Assert().Error(err)
+	})
+
+	s.Run("return error when coudln't create asset file", func() {
+		specFS := afero.NewMemMapFs()
+		re, err := regexp.Compile(`root/ns1/jobs/example1/job\.yaml`) // only allow to create job.yaml
+		s.Require().NoError(err)
+		specFS = afero.NewRegexpFs(specFS, re)
+		filePath := "root/ns1/jobs/example1"
+		jobSpec := local.JobSpec{Version: 1}
+		jobSpec.Asset = map[string]string{
+			"query.sql": "SELECT * FROM example",
+		}
+
+		jobSpecReadWriter, err := local.NewJobSpecReadWriter(specFS)
+		s.Require().NoError(err)
+
+		err = jobSpecReadWriter.Write(filePath, &jobSpec)
+		s.Assert().Error(err)
+	})
+
+	s.Run("return nil when success to create job spec and its assets", func() {
+		specFS := afero.NewMemMapFs()
+		filePath := "root/ns1/jobs/example1"
+		jobSpec := local.JobSpec{Version: 1}
+		jobSpec.Asset = map[string]string{
+			"query.sql": "SELECT * FROM example",
+		}
+
+		jobSpecReadWriter, err := local.NewJobSpecReadWriter(specFS)
+		s.Require().NoError(err)
+
+		err = jobSpecReadWriter.Write(filePath, &jobSpec)
+		s.Assert().NoError(err)
+		jobYamlContent, err := readFrom(specFS, filepath.Join(filePath, "job.yaml"))
+		s.Require().NoError(err)
+		expectedYamlContent := `version: 1
+name: ""
+owner: ""
+description: ""
+schedule:
+  start_date: ""
+  end_date: ""
+  interval: ""
+behavior:
+  depends_on_past: false
+  catch_up: false
+  retry:
+    count: 0
+    delay: ""
+    exponential_backoff: false
+  notify: []
+task:
+  name: ""
+  config: {}
+  window:
+    size: ""
+    offset: ""
+    truncate_to: ""
+asset:
+  query.sql: SELECT * FROM example
+labels: {}
+dependencies: []
+hooks: []
+metadata:
+  resource:
+    request:
+      memory: ""
+      cpu: ""
+    limit:
+      memory: ""
+      cpu: ""
+  airflow:
+    pool: ""
+    queue: ""
+`
+		s.Assert().Equal(expectedYamlContent, jobYamlContent)
+		assetQueryContent, err := readFrom(specFS, filepath.Join(filePath, "assets", "query.sql"))
+		s.Require().NoError(err)
+		expectedAssetQueryContent := "SELECT * FROM example"
+		s.Assert().Equal(expectedAssetQueryContent, assetQueryContent)
+	})
+}
+
 func createValidSpecFS(specDirPaths ...string) afero.Fs {
 	templateJobSpec := `version: 1
 name: godata.ds.%s
@@ -196,4 +307,17 @@ func writeTo(fs afero.Fs, filePath string, content string) error {
 	_, err = f.WriteString(content)
 
 	return err
+}
+
+func readFrom(fs afero.Fs, filePath string) (string, error) {
+	f, err := fs.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	content, err := ioutil.ReadAll(f)
+	if err != nil {
+		return "", err
+	}
+	return string(content), nil
 }

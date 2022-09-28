@@ -74,8 +74,24 @@ func (j jobSpecReadWriter) ReadAll(rootDirPath string) ([]*JobSpec, error) {
 }
 
 func (j jobSpecReadWriter) Write(dirPath string, spec *JobSpec) error {
-	// TODO: implement write job spec here. Given dirPath and job spec
-	// create job.yaml specification as well as their asset inside dirPath folder
+	if spec == nil {
+		return errors.New("job spec is nil")
+	}
+
+	// write job spec
+	jobSpecFilePath := filepath.Join(dirPath, j.referenceJobSpecFileName)
+	if err := writeJobSpecToFilePath(j.specFS, jobSpecFilePath, spec); err != nil {
+		return err
+	}
+
+	// write assets
+	for assetFileName, assetContent := range spec.Asset {
+		assetFilePath := filepath.Join(dirPath, j.referenceAssetDirName, assetFileName)
+		if err := writeAssetToFilePath(j.specFS, assetFilePath, assetContent); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -128,9 +144,9 @@ func readAssetsFromDirPath(fileFS afero.Fs, dirPath string) (map[string]string, 
 			return nil, err
 		}
 
-		assetKey := strings.TrimPrefix(assetFilePath, dirPath)
-		assetKey = strings.TrimPrefix(assetKey, "/")
-		assetsMap[assetKey] = string(assetContent)
+		assetFileName := strings.TrimPrefix(assetFilePath, dirPath)
+		assetFileName = strings.TrimPrefix(assetFileName, "/")
+		assetsMap[assetFileName] = string(assetContent)
 	}
 
 	return assetsMap, nil
@@ -149,6 +165,32 @@ func readAssetFromFilePath(fileFS afero.Fs, filePath string) ([]byte, error) {
 	defer f.Close()
 
 	return rawAssetContent, nil
+}
+
+func writeJobSpecToFilePath(fileFS afero.Fs, filePath string, jobSpec *JobSpec) error {
+	f, err := fileFS.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	jobSpecRaw, err := yaml.Marshal(jobSpec)
+	if err != nil {
+		return err
+	}
+
+	_, err = f.Write(jobSpecRaw)
+	return err
+}
+
+func writeAssetToFilePath(fileFS afero.Fs, filePath string, content string) error {
+	f, err := fileFS.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.WriteString(content)
+	return err
 }
 
 func mergeJobSpecs(jobSpecs ...*JobSpec) JobSpec {
