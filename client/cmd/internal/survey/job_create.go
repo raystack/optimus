@@ -104,7 +104,7 @@ func (*JobCreateSurvey) getTaskConfig(cliMod models.CommandLineMod, answers mode
 	var taskConfig yaml.MapSlice
 	if generatedConfigResponse.Config != nil {
 		jobSpecConfigs := generatedConfigResponse.Config.ToJobSpec()
-		taskConfig = local.JobSpecConfigToYamlSlice(jobSpecConfigs)
+		taskConfig = local.JobSpecConfigToMap(jobSpecConfigs)
 	}
 	return taskConfig, nil
 }

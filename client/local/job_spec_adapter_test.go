@@ -407,26 +407,17 @@ func TestJob_MergeFrom(t *testing.T) {
 				child: local.JobSpec{
 					Task: local.JobTask{
 						Name: "panda",
-						Config: []yaml.MapItem{
-							{
-								Key:   "dance",
-								Value: "happy",
-							},
+						Config: map[string]string{
+							"dance": "happy",
 						},
 					},
 				},
 				expected: local.JobSpec{
 					Task: local.JobTask{
 						Name: "panda",
-						Config: []yaml.MapItem{
-							{
-								Key:   "dance",
-								Value: "happy",
-							},
-							{
-								Key:   "eat",
-								Value: "ramen",
-							},
+						Config: map[string]string{
+							"dance": "happy",
+							"eat":   "ramen",
 						},
 					},
 				},
@@ -435,11 +426,8 @@ func TestJob_MergeFrom(t *testing.T) {
 				parent: local.JobSpec{
 					Task: local.JobTask{
 						Name: "panda",
-						Config: []yaml.MapItem{
-							{
-								Key:   "eat",
-								Value: "ramen",
-							},
+						Config: map[string]string{
+							"eat": "ramen",
 						},
 					},
 				},
@@ -455,11 +443,8 @@ func TestJob_MergeFrom(t *testing.T) {
 						},
 						{
 							Name: "martial",
-							Config: []yaml.MapItem{
-								{
-									Key:   "arts",
-									Value: "2",
-								},
+							Config: map[string]string{
+								"arts": "2",
 							},
 						},
 					},
@@ -468,33 +453,21 @@ func TestJob_MergeFrom(t *testing.T) {
 					Hooks: []local.JobHook{
 						{
 							Name: "kungfu",
-							Config: []yaml.MapItem{
-								{
-									Key:   "ninza",
-									Value: "run",
-								},
+							Config: map[string]string{
+								"ninza": "run",
 							},
 						},
 						{
 							Name: "martial",
-							Config: []yaml.MapItem{
-								{
-									Key:   "arts",
-									Value: "2",
-								},
-								{
-									Key:   "kick",
-									Value: "high",
-								},
+							Config: map[string]string{
+								"arts": "2",
+								"kick": "high",
 							},
 						},
 						{
 							Name: "saitama",
-							Config: []yaml.MapItem{
-								{
-									Key:   "punch",
-									Value: 1,
-								},
+							Config: map[string]string{
+								"punch": "1",
 							},
 						},
 					},
@@ -505,33 +478,21 @@ func TestJob_MergeFrom(t *testing.T) {
 					Hooks: []local.JobHook{
 						{
 							Name: "kungfu",
-							Config: []yaml.MapItem{
-								{
-									Key:   "ninza",
-									Value: "run",
-								},
+							Config: map[string]string{
+								"ninza": "run",
 							},
 						},
 						{
 							Name: "martial",
-							Config: []yaml.MapItem{
-								{
-									Key:   "arts",
-									Value: "3",
-								},
-								{
-									Key:   "kick",
-									Value: "high",
-								},
+							Config: map[string]string{
+								"arts": "3",
+								"kick": "high",
 							},
 						},
 						{
 							Name: "saitama",
-							Config: []yaml.MapItem{
-								{
-									Key:   "punch",
-									Value: 1,
-								},
+							Config: map[string]string{
+								"punch": "1",
 							},
 						},
 					},

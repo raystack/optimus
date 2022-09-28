@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"gopkg.in/validator.v2"
-	"gopkg.in/yaml.v2"
 
 	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
@@ -33,7 +32,7 @@ func (a JobHook) ToSpec(pluginsRepo models.PluginRepository) (models.JobSpecHook
 		return models.JobSpecHook{}, fmt.Errorf("spec reading error: %w", err)
 	}
 	return models.JobSpecHook{
-		Config: JobSpecConfigFromYamlSlice(a.Config),
+		Config: JobSpecConfigFromMap(a.Config),
 		Unit:   hookUnit,
 	}, nil
 }
@@ -42,7 +41,7 @@ func (a JobHook) ToSpec(pluginsRepo models.PluginRepository) (models.JobSpecHook
 func (JobHook) FromSpec(spec models.JobSpecHook) JobHook {
 	return JobHook{
 		Name:   spec.Unit.Info().Name,
-		Config: JobSpecConfigToYamlSlice(spec.Config),
+		Config: JobSpecConfigToMap(spec.Config),
 	}
 }
 
@@ -125,15 +124,7 @@ func (adapt JobSpecAdapter) ToSpec(conf JobSpec) (models.JobSpec, error) {
 	}
 
 	taskConf := models.JobSpecConfigs{}
-	for _, c := range conf.Task.Config {
-		name, ok := c.Key.(string)
-		if !ok {
-			return models.JobSpec{}, fmt.Errorf("spec reading error, failed to convert key %+v to string", c.Key)
-		}
-		value, ok := c.Value.(string)
-		if !ok {
-			return models.JobSpec{}, fmt.Errorf("spec reading error, failed to convert value %+v on key %s to string", c.Value, name)
-		}
+	for name, value := range conf.Task.Config {
 		taskConf = append(taskConf, models.JobSpecConfigItem{
 			Name:  name,
 			Value: value,
@@ -221,12 +212,9 @@ func (JobSpecAdapter) FromSpec(spec models.JobSpec) (JobSpec, error) {
 		labels[k] = v
 	}
 
-	taskConf := yaml.MapSlice{}
+	taskConf := map[string]string{}
 	for _, l := range spec.Task.Config {
-		taskConf = append(taskConf, yaml.MapItem{
-			Key:   l.Name,
-			Value: l.Value,
-		})
+		taskConf[l.Name] = l.Value
 	}
 
 	retryDelayDuration := ""
@@ -335,23 +323,20 @@ func NewJobSpecAdapter(pluginRepo models.PluginRepository) *JobSpecAdapter {
 	}
 }
 
-func JobSpecConfigToYamlSlice(conf models.JobSpecConfigs) yaml.MapSlice {
-	conv := yaml.MapSlice{}
+func JobSpecConfigToMap(conf models.JobSpecConfigs) map[string]string {
+	conv := map[string]string{}
 	for _, c := range conf {
-		conv = append(conv, yaml.MapItem{
-			Key:   c.Name,
-			Value: c.Value,
-		})
+		conv[c.Name] = c.Value
 	}
 	return conv
 }
 
-func JobSpecConfigFromYamlSlice(conf yaml.MapSlice) models.JobSpecConfigs {
+func JobSpecConfigFromMap(conf map[string]string) models.JobSpecConfigs {
 	conv := models.JobSpecConfigs{}
-	for _, c := range conf {
+	for key, value := range conf {
 		conv = append(conv, models.JobSpecConfigItem{
-			Name:  c.Key.(string),
-			Value: c.Value.(string),
+			Name:  key,
+			Value: value,
 		})
 	}
 	return conv

@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/yaml.v2"
 )
 
 type JobSpecReadWriterTestSuite struct {
@@ -106,16 +105,16 @@ func (s *JobSpecReadWriterTestSuite) TestReadAll() {
 		jobSpecs, err := jobReaderWriter.ReadAll("root")
 		s.Assert().NoError(err)
 		s.Assert().Len(jobSpecs, 1)
-		expectedTaskConfig := []yaml.MapItem{
-			{Key: "PROJECT", Value: "godata"},
-			{Key: "DATASET", Value: "example"},
-			{Key: "TABLE", Value: "example1"},
-			{Key: "SQL_TYPE", Value: "STANDARD"},
-			{Key: "LOAD_METHOD", Value: "REPLACE"},
-			{Key: "EXAMPLE", Value: "parent_overwrite"},
-			{Key: "EXAMPLE2", Value: "parent_no_overwrite"},
+		expectedTaskConfig := map[string]string{
+			"PROJECT":     "godata",
+			"DATASET":     "example",
+			"TABLE":       "example1",
+			"SQL_TYPE":    "STANDARD",
+			"LOAD_METHOD": "REPLACE",
+			"EXAMPLE":     "parent_overwrite",
+			"EXAMPLE2":    "parent_no_overwrite",
 		}
-		s.Assert().Equal(yaml.MapSlice(expectedTaskConfig), jobSpecs[0].Task.Config)
+		s.Assert().Equal(expectedTaskConfig, jobSpecs[0].Task.Config)
 	})
 }
 
@@ -183,17 +182,17 @@ func (s *JobSpecReadWriterTestSuite) TestWrite() {
 name: ""
 owner: ""
 schedule:
-  start_date: ""
-  interval: ""
+    start_date: ""
+    interval: ""
 behavior:
-  depends_on_past: false
-  catch_up: false
+    depends_on_past: false
+    catch_up: false
 task:
-  name: ""
-  window:
-    size: ""
-    offset: ""
-    truncate_to: ""
+    name: ""
+    window:
+        size: ""
+        offset: ""
+        truncate_to: ""
 dependencies: []
 hooks: []
 `

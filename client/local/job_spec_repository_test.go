@@ -9,7 +9,6 @@ import (
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v2"
 
 	"github.com/odpf/optimus/client/local"
 	"github.com/odpf/optimus/mock"
@@ -62,11 +61,8 @@ func TestJobSpecRepository(t *testing.T) {
 		},
 		Task: local.JobTask{
 			Name: "foo",
-			Config: yaml.MapSlice{
-				{
-					Key:   "table",
-					Value: "tab1",
-				},
+			Config: map[string]string{
+				"table": "tab1",
 			},
 			Window: local.JobTaskWindow{
 				Size:       "24h",

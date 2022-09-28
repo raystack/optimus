@@ -1,7 +1,5 @@
 package local
 
-import "gopkg.in/yaml.v2"
-
 type JobSpec struct {
 	Version      int               `yaml:"version,omitempty"`
 	Name         string            `yaml:"name"`
@@ -43,9 +41,9 @@ type JobNotifier struct {
 }
 
 type JobTask struct {
-	Name   string        `yaml:"name"`
-	Config yaml.MapSlice `yaml:"config,omitempty"`
-	Window JobTaskWindow `yaml:"window"`
+	Name   string            `yaml:"name"`
+	Config map[string]string `yaml:"config,omitempty"`
+	Window JobTaskWindow     `yaml:"window"`
 }
 
 type JobTaskWindow struct {
@@ -55,8 +53,8 @@ type JobTaskWindow struct {
 }
 
 type JobHook struct {
-	Name   string        `yaml:"name"`
-	Config yaml.MapSlice `yaml:"config,omitempty"`
+	Name   string            `yaml:"name"`
+	Config map[string]string `yaml:"config,omitempty"`
 }
 
 type JobDependency struct {
@@ -220,19 +218,19 @@ func (j *JobSpec) MergeFrom(anotherJobSpec JobSpec) {
 	}
 	if anotherJobSpec.Task.Config != nil {
 		if j.Task.Config == nil {
-			j.Task.Config = []yaml.MapItem{}
+			j.Task.Config = map[string]string{}
 		}
 	}
-	for _, pc := range anotherJobSpec.Task.Config {
+	for pcKey, pc := range anotherJobSpec.Task.Config {
 		alreadyExists := false
-		for _, cc := range j.Task.Config {
-			if cc.Key.(string) == pc.Key.(string) {
+		for ccKey := range j.Task.Config {
+			if ccKey == pcKey {
 				alreadyExists = true
 				break
 			}
 		}
 		if !alreadyExists {
-			j.Task.Config = append(j.Task.Config, pc)
+			j.Task.Config[pcKey] = pc
 		}
 	}
 
@@ -248,16 +246,16 @@ func (j *JobSpec) MergeFrom(anotherJobSpec JobSpec) {
 			// check if hook already present in child
 			if ph.Name == j.Hooks[chi].Name {
 				// try to copy configs
-				for _, phc := range ph.Config {
+				for phcKey, phc := range ph.Config {
 					alreadyExists := false
-					for chci := range j.Hooks[chi].Config {
-						if phc.Key == j.Hooks[chi].Config[chci].Key {
+					for chciKey := range j.Hooks[chi].Config {
+						if phcKey == chciKey {
 							alreadyExists = true
 							break
 						}
 					}
 					if !alreadyExists {
-						j.Hooks[chi].Config = append(j.Hooks[chi].Config, phc)
+						j.Hooks[chi].Config[phcKey] = phc
 					}
 				}
 			}
@@ -268,7 +266,7 @@ func (j *JobSpec) MergeFrom(anotherJobSpec JobSpec) {
 		if _, ok := existingHooks[ph.Name]; !ok {
 			j.Hooks = append(j.Hooks, JobHook{
 				Name:   ph.Name,
-				Config: append(yaml.MapSlice{}, ph.Config...),
+				Config: ph.Config,
 			})
 		}
 	}

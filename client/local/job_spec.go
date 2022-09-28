@@ -2,12 +2,10 @@ package local
 
 import (
 	"errors"
-	"io"
 	"path/filepath"
 	"strings"
 
 	"github.com/spf13/afero"
-	"gopkg.in/yaml.v2"
 )
 
 type jobSpecReadWriter struct {
@@ -44,7 +42,7 @@ func (j jobSpecReadWriter) ReadAll(rootDirPath string) ([]*JobSpec, error) {
 	parentJobSpecsMap := map[string]*JobSpec{}
 	for _, dirPath := range dirParentPaths {
 		filePath := filepath.Join(dirPath, j.referenceParentJobSpecFileName)
-		parentJobSpec, err := readJobSpecFromFilePath(j.specFS, filePath)
+		parentJobSpec, err := readSpec[*JobSpec](j.specFS, filePath)
 		if err != nil {
 			return nil, err
 		}
@@ -54,7 +52,7 @@ func (j jobSpecReadWriter) ReadAll(rootDirPath string) ([]*JobSpec, error) {
 	// read job specs
 	var jobSpecs []*JobSpec
 	for _, dirPath := range dirPaths {
-		jobSpec, err := j.read(dirPath)
+		jobSpec, err := j.readJobSpecFromDirPath(dirPath)
 		if err != nil {
 			return nil, err
 		}
@@ -80,14 +78,14 @@ func (j jobSpecReadWriter) Write(dirPath string, spec *JobSpec) error {
 
 	// write job spec
 	jobSpecFilePath := filepath.Join(dirPath, j.referenceJobSpecFileName)
-	if err := writeJobSpecToFilePath(j.specFS, jobSpecFilePath, spec); err != nil {
+	if err := writeSpec[*JobSpec](j.specFS, jobSpecFilePath, spec); err != nil {
 		return err
 	}
 
 	// write assets
 	for assetFileName, assetContent := range spec.Asset {
 		assetFilePath := filepath.Join(dirPath, j.referenceAssetDirName, assetFileName)
-		if err := writeAssetToFilePath(j.specFS, assetFilePath, assetContent); err != nil {
+		if err := writeFile(j.specFS, assetFilePath, assetContent); err != nil {
 			return err
 		}
 	}
@@ -95,17 +93,17 @@ func (j jobSpecReadWriter) Write(dirPath string, spec *JobSpec) error {
 	return nil
 }
 
-func (j jobSpecReadWriter) read(dirPath string) (*JobSpec, error) {
+func (j jobSpecReadWriter) readJobSpecFromDirPath(dirPath string) (*JobSpec, error) {
 	// read job.yaml
 	specFilePath := filepath.Join(dirPath, j.referenceJobSpecFileName)
-	jobSpec, err := readJobSpecFromFilePath(j.specFS, specFilePath)
+	jobSpec, err := readSpec[*JobSpec](j.specFS, specFilePath)
 	if err != nil {
 		return nil, err
 	}
 
 	// read assets
 	assetDirPath := filepath.Join(dirPath, j.referenceAssetDirName)
-	assets, err := readAssetsFromDirPath(j.specFS, assetDirPath)
+	assets, err := j.readAssetsFromDirPath(assetDirPath)
 	if err != nil {
 		return nil, err
 	}
@@ -116,30 +114,15 @@ func (j jobSpecReadWriter) read(dirPath string) (*JobSpec, error) {
 	return jobSpec, nil
 }
 
-func readJobSpecFromFilePath(fileFS afero.Fs, filePath string) (*JobSpec, error) {
-	fileSpec, err := fileFS.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer fileSpec.Close()
-
-	var jobSpec JobSpec
-	if err := yaml.NewDecoder(fileSpec).Decode(&jobSpec); err != nil {
-		return nil, err
-	}
-
-	return &jobSpec, nil
-}
-
-func readAssetsFromDirPath(fileFS afero.Fs, dirPath string) (map[string]string, error) {
-	assetFilePaths, err := discoverFilePaths(fileFS, dirPath)
+func (j jobSpecReadWriter) readAssetsFromDirPath(dirPath string) (map[string]string, error) {
+	assetFilePaths, err := discoverFilePaths(j.specFS, dirPath)
 	if err != nil {
 		return nil, err
 	}
 
 	assetsMap := make(map[string]string)
 	for _, assetFilePath := range assetFilePaths {
-		assetContent, err := readAssetFromFilePath(fileFS, assetFilePath)
+		assetContent, err := readFile(j.specFS, assetFilePath)
 		if err != nil {
 			return nil, err
 		}
@@ -150,45 +133,4 @@ func readAssetsFromDirPath(fileFS afero.Fs, dirPath string) (map[string]string, 
 	}
 
 	return assetsMap, nil
-}
-
-func readAssetFromFilePath(fileFS afero.Fs, filePath string) ([]byte, error) {
-	f, err := fileFS.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-
-	rawAssetContent, err := io.ReadAll(f)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	return rawAssetContent, nil
-}
-
-func writeJobSpecToFilePath(fileFS afero.Fs, filePath string, jobSpec *JobSpec) error {
-	f, err := fileFS.Create(filePath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	jobSpecRaw, err := yaml.Marshal(jobSpec)
-	if err != nil {
-		return err
-	}
-
-	_, err = f.Write(jobSpecRaw)
-	return err
-}
-
-func writeAssetToFilePath(fileFS afero.Fs, filePath string, content string) error {
-	f, err := fileFS.Create(filePath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	_, err = f.WriteString(content)
-	return err
 }
