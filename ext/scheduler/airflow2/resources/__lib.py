@@ -240,6 +240,7 @@ class SuperExternalTaskSensor(BaseSensorOperator):
     def __init__(
             self,
             optimus_hostname: str,
+            upstream_optimus_hostname: str,
             upstream_optimus_project: str,
             upstream_optimus_namespace: str,
             upstream_optimus_job: str,
@@ -255,6 +256,7 @@ class SuperExternalTaskSensor(BaseSensorOperator):
         self.window_size = window_size
         self.window_version = window_version
         self._optimus_client = OptimusAPIClient(optimus_hostname)
+        self._upstream_optimus_client = OptimusAPIClient(upstream_optimus_hostname)
 
     def poke(self, context):
         log_start_event(context, EVENT_NAMES.get("SENSOR_START_EVENT"))
@@ -297,7 +299,7 @@ class SuperExternalTaskSensor(BaseSensorOperator):
 
     def get_schedule_interval(self, schedule_time):
         schedule_time_str = schedule_time.strftime(TIMESTAMP_FORMAT)
-        job_metadata = self._optimus_client.get_job_metadata(schedule_time_str, self.optimus_namespace, self.optimus_project, self.optimus_job)
+        job_metadata = self._upstream_optimus_client.get_job_metadata(schedule_time_str, self.optimus_namespace, self.optimus_project, self.optimus_job)
         upstream_schedule = lookup_non_standard_cron_expression(job_metadata['spec']['interval'])
         return upstream_schedule
 
@@ -305,7 +307,7 @@ class SuperExternalTaskSensor(BaseSensorOperator):
     #  it points to execution_date
     def _are_all_job_runs_successful(self, schedule_time_window_start, schedule_time_window_end) -> bool:
         try:
-            api_response = self._optimus_client.get_job_run(self.optimus_project, self.optimus_job, schedule_time_window_start, schedule_time_window_end)
+            api_response = self._upstream_optimus_client.get_job_run(self.optimus_project, self.optimus_job, schedule_time_window_start, schedule_time_window_end)
             self.log.info("job_run api response :: {}".format(api_response))
         except Exception as e:
             self.log.warning("error while fetching job runs :: {}".format(e))
