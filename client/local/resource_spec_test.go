@@ -15,6 +15,10 @@ type ResourceSpecReadWriterTestSuite struct {
 	suite.Suite
 }
 
+func TestResourceSpecReadWriter(t *testing.T) {
+	suite.Run(t, &ResourceSpecReadWriterTestSuite{})
+}
+
 func (r *ResourceSpecReadWriterTestSuite) TestReadAll() {
 	r.Run("should return nil and error if root dir path is empty", func() {
 		specFS := afero.NewMemMapFs()
@@ -205,8 +209,4 @@ func TestNewResourceSpecReadWriter(t *testing.T) {
 		assert.NotNil(t, actualResourceSpecReadWriter)
 		assert.NoError(t, actualError)
 	})
-}
-
-func TestResourceSpecReadWriter(t *testing.T) {
-	suite.Run(t, &ResourceSpecReadWriterTestSuite{})
 }

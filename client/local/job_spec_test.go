@@ -45,8 +45,7 @@ func TestNewJobSpecReadWriter(t *testing.T) {
 func (s *JobSpecReadWriterTestSuite) TestReadAll() {
 	s.Run("return nil and error when discovering file paths is error", func() {
 		specFS := afero.NewMemMapFs()
-		jobSpecReadWriter, err := local.NewJobSpecReadWriter(specFS)
-		s.Require().NoError(err)
+		jobSpecReadWriter := local.NewTestJobSpecReadWriter(specFS)
 
 		invalidRootPath := "invalid"
 		jobSpecs, err := jobSpecReadWriter.ReadAll(invalidRootPath)
@@ -60,8 +59,7 @@ func (s *JobSpecReadWriterTestSuite) TestReadAll() {
 		err := writeTo(specFS, "root/ns1/jobs/example1/job.yaml", "invalid yaml")
 		s.Require().NoError(err)
 
-		jobSpecReadWriter, err := local.NewJobSpecReadWriter(specFS)
-		s.Require().NoError(err)
+		jobSpecReadWriter := local.NewTestJobSpecReadWriter(specFS)
 
 		jobSpecs, err := jobSpecReadWriter.ReadAll("root")
 		s.Assert().Error(err)
@@ -79,10 +77,9 @@ func (s *JobSpecReadWriterTestSuite) TestReadAll() {
     EXAMPLE: parent`)
 		s.Require().NoError(err)
 
-		jobReaderWriter, err := local.NewJobSpecReadWriter(specFS)
-		s.Require().NoError(err)
+		jobSpecReadWriter := local.NewTestJobSpecReadWriter(specFS)
 
-		jobSpecs, err := jobReaderWriter.ReadAll("root")
+		jobSpecs, err := jobSpecReadWriter.ReadAll("root")
 		s.Assert().NoError(err)
 		s.Assert().Len(jobSpecs, 2)
 	})
@@ -99,10 +96,9 @@ func (s *JobSpecReadWriterTestSuite) TestReadAll() {
     EXAMPLE2: parent_no_overwrite`)
 		s.Require().NoError(err)
 
-		jobReaderWriter, err := local.NewJobSpecReadWriter(specFS)
-		s.Require().NoError(err)
+		jobSpecReadWriter := local.NewTestJobSpecReadWriter(specFS)
 
-		jobSpecs, err := jobReaderWriter.ReadAll("root")
+		jobSpecs, err := jobSpecReadWriter.ReadAll("root")
 		s.Assert().NoError(err)
 		s.Assert().Len(jobSpecs, 1)
 		expectedTaskConfig := map[string]string{
@@ -123,10 +119,9 @@ func (s *JobSpecReadWriterTestSuite) TestWrite() {
 		specFS := afero.NewMemMapFs()
 		filePath := "root/ns1/jobs/example1"
 
-		jobSpecReadWriter, err := local.NewJobSpecReadWriter(specFS)
-		s.Require().NoError(err)
+		jobSpecReadWriter := local.NewTestJobSpecReadWriter(specFS)
 
-		err = jobSpecReadWriter.Write(filePath, nil)
+		err := jobSpecReadWriter.Write(filePath, nil)
 		s.Assert().Error(err)
 	})
 
@@ -138,8 +133,7 @@ func (s *JobSpecReadWriterTestSuite) TestWrite() {
 		filePath := "root/ns1/jobs/example1"
 		jobSpec := local.JobSpec{Version: 1}
 
-		jobSpecReadWriter, err := local.NewJobSpecReadWriter(specFS)
-		s.Require().NoError(err)
+		jobSpecReadWriter := local.NewTestJobSpecReadWriter(specFS)
 
 		err = jobSpecReadWriter.Write(filePath, &jobSpec)
 		s.Assert().Error(err)
@@ -156,8 +150,7 @@ func (s *JobSpecReadWriterTestSuite) TestWrite() {
 			"query.sql": "SELECT * FROM example",
 		}
 
-		jobSpecReadWriter, err := local.NewJobSpecReadWriter(specFS)
-		s.Require().NoError(err)
+		jobSpecReadWriter := local.NewTestJobSpecReadWriter(specFS)
 
 		err = jobSpecReadWriter.Write(filePath, &jobSpec)
 		s.Assert().Error(err)
@@ -171,10 +164,9 @@ func (s *JobSpecReadWriterTestSuite) TestWrite() {
 			"query.sql": "SELECT * FROM example",
 		}
 
-		jobSpecReadWriter, err := local.NewJobSpecReadWriter(specFS)
-		s.Require().NoError(err)
+		jobSpecReadWriter := local.NewTestJobSpecReadWriter(specFS)
 
-		err = jobSpecReadWriter.Write(filePath, &jobSpec)
+		err := jobSpecReadWriter.Write(filePath, &jobSpec)
 		s.Assert().NoError(err)
 		jobYamlContent, err := readFrom(specFS, filepath.Join(filePath, "job.yaml"))
 		s.Require().NoError(err)
