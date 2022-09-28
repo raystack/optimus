@@ -259,6 +259,7 @@ hook_hook__dash__for__dash__fail = SuperKubernetesPodOperator(
 
 wait_foo__dash__intra__dash__dep__dash__job = SuperExternalTaskSensor(
     optimus_hostname="http://airflow.example.io",
+    upstream_optimus_hostname="http://airflow.example.io",
     upstream_optimus_project="foo-project",
     upstream_optimus_namespace="bar-namespace",
     upstream_optimus_job="foo-intra-dep-job",
@@ -271,6 +272,7 @@ wait_foo__dash__intra__dash__dep__dash__job = SuperExternalTaskSensor(
 )
 wait_foo__dash__inter__dash__dep__dash__job = SuperExternalTaskSensor(
     optimus_hostname="http://airflow.example.io",
+    upstream_optimus_hostname="http://airflow.example.io",
     upstream_optimus_project="foo-external-project",
     upstream_optimus_namespace="bar-namespace",
     upstream_optimus_job="foo-inter-dep-job",
@@ -283,7 +285,8 @@ wait_foo__dash__inter__dash__dep__dash__job = SuperExternalTaskSensor(
 )
 
 wait_external__dash__optimus__dash__foo__dash__external__dash__optimus__dash__project__dash__foo__dash__external__dash__optimus__dash__dep__dash__job = SuperExternalTaskSensor(
-    optimus_hostname="http://optimus.external.io",
+    optimus_hostname="http://airflow.example.io",
+    upstream_optimus_hostname="http://optimus.external.io",
     upstream_optimus_project="foo-external-optimus-project",
     upstream_optimus_namespace="bar-external-optimus-namespace",
     upstream_optimus_job="foo-external-optimus-dep-job",
