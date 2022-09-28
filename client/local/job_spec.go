@@ -78,7 +78,7 @@ func (j jobSpecReadWriter) Write(dirPath string, spec *JobSpec) error {
 
 	// write job spec
 	jobSpecFilePath := filepath.Join(dirPath, j.referenceJobSpecFileName)
-	if err := writeSpec[*JobSpec](j.specFS, jobSpecFilePath, spec); err != nil {
+	if err := writeSpec(j.specFS, jobSpecFilePath, spec); err != nil {
 		return err
 	}
 
