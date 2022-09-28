@@ -1,44 +1,56 @@
 package local
 
 import (
+	"errors"
+	"fmt"
+	"path/filepath"
+
 	"github.com/spf13/afero"
 )
 
 type resourceSpecReadWriter struct {
-	referenceFileName string
-	specFS            afero.Fs
+	referenceSpecFileName string
+	specFS                afero.Fs
 }
 
 func NewResourceSpecReadWriter(specFS afero.Fs) (SpecReadWriter[*ResourceSpec], error) {
+	if specFS == nil {
+		return nil, errors.New("spec fs is nil")
+	}
 	return &resourceSpecReadWriter{
-		referenceFileName: "resource.yaml",
-		specFS:            specFS,
+		referenceSpecFileName: "resource.yaml",
+		specFS:                specFS,
 	}, nil
 }
 
-func (r *resourceSpecReadWriter) ReadAll(rootDirPath string) ([]*ResourceSpec, error) {
-	dirPaths, err := discoverSpecDirPaths(r.specFS, rootDirPath, r.referenceFileName)
+func (r resourceSpecReadWriter) ReadAll(rootDirPath string) ([]*ResourceSpec, error) {
+	if rootDirPath == "" {
+		return nil, errors.New("root dir path is empty")
+	}
+	specDirPaths, err := discoverSpecDirPaths(r.specFS, rootDirPath, r.referenceSpecFileName)
 	if err != nil {
 		return nil, err
 	}
-	var output []*ResourceSpec
-	for _, p := range dirPaths {
-		spec, err := r.read(p)
+
+	output := make([]*ResourceSpec, len(specDirPaths))
+	for i, dirPath := range specDirPaths {
+		filePath := filepath.Join(dirPath, r.referenceSpecFileName)
+		spec, err := readSpec[*ResourceSpec](r.specFS, filePath)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error reading spec under [%s]: %w", filePath, err)
 		}
-		output = append(output, spec)
+		output[i] = spec
 	}
 	return output, nil
 }
 
-func (*resourceSpecReadWriter) Write(dirPath string, spec *ResourceSpec) error {
-	// TODO: implement write resource spec here. Given dirPath and resource spec
-	// create resource.yaml specification inside dirPath folder
-	return nil
-}
-
-func (*resourceSpecReadWriter) read(dirPath string) (*ResourceSpec, error) {
-	// TODO: implement read 1 resource spec given their dirPath
-	return nil, nil
+func (r resourceSpecReadWriter) Write(dirPath string, spec *ResourceSpec) error {
+	if dirPath == "" {
+		return errors.New("dir path is empty")
+	}
+	if spec == nil {
+		return errors.New("spec is nil")
+	}
+	filePath := filepath.Join(dirPath, r.referenceSpecFileName)
+	return writeSpec(r.specFS, filePath, spec)
 }
