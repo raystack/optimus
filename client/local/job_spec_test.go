@@ -182,42 +182,20 @@ func (s *JobSpecReadWriterTestSuite) TestWrite() {
 		expectedYamlContent := `version: 1
 name: ""
 owner: ""
-description: ""
 schedule:
   start_date: ""
-  end_date: ""
   interval: ""
 behavior:
   depends_on_past: false
   catch_up: false
-  retry:
-    count: 0
-    delay: ""
-    exponential_backoff: false
-  notify: []
 task:
   name: ""
-  config: {}
   window:
     size: ""
     offset: ""
     truncate_to: ""
-asset:
-  query.sql: SELECT * FROM example
-labels: {}
 dependencies: []
 hooks: []
-metadata:
-  resource:
-    request:
-      memory: ""
-      cpu: ""
-    limit:
-      memory: ""
-      cpu: ""
-  airflow:
-    pool: ""
-    queue: ""
 `
 		s.Assert().Equal(expectedYamlContent, jobYamlContent)
 		assetQueryContent, err := readFrom(specFS, filepath.Join(filePath, "assets", "query.sql"))

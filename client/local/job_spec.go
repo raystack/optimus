@@ -192,13 +192,3 @@ func writeAssetToFilePath(fileFS afero.Fs, filePath string, content string) erro
 	_, err = f.WriteString(content)
 	return err
 }
-
-func mergeJobSpecs(jobSpecs ...*JobSpec) JobSpec {
-	mergedJobSpec := JobSpec{}
-
-	for _, jobSpec := range jobSpecs {
-		mergedJobSpec.MergeFrom(*jobSpec)
-	}
-
-	return mergedJobSpec
-}

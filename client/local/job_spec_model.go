@@ -3,37 +3,37 @@ package local
 import "gopkg.in/yaml.v2"
 
 type JobSpec struct {
-	Version      int               `yaml:"version"`
+	Version      int               `yaml:"version,omitempty"`
 	Name         string            `yaml:"name"`
 	Owner        string            `yaml:"owner"`
-	Description  string            `yaml:"description"`
+	Description  string            `yaml:"description,omitempty"`
 	Schedule     JobSchedule       `yaml:"schedule"`
 	Behavior     JobBehavior       `yaml:"behavior"`
 	Task         JobTask           `yaml:"task"`
-	Asset        map[string]string `yaml:"asset"`
-	Labels       map[string]string `yaml:"labels"`
+	Asset        map[string]string `yaml:"-"`
+	Labels       map[string]string `yaml:"labels,omitempty"`
 	Dependencies []JobDependency   `yaml:"dependencies"`
 	Hooks        []JobHook         `yaml:"hooks"`
-	Metadata     JobSpecMetadata   `yaml:"metadata"`
+	Metadata     JobSpecMetadata   `yaml:"metadata,omitempty"`
 }
 
 type JobSchedule struct {
 	StartDate string `yaml:"start_date"`
-	EndDate   string `yaml:"end_date"`
+	EndDate   string `yaml:"end_date,omitempty"`
 	Interval  string `yaml:"interval"`
 }
 
 type JobBehavior struct {
 	DependsOnPast bool             `yaml:"depends_on_past"`
 	Catchup       bool             `yaml:"catch_up"`
-	Retry         JobBehaviorRetry `yaml:"retry"`
-	Notify        []JobNotifier    `yaml:"notify"`
+	Retry         JobBehaviorRetry `yaml:"retry,omitempty"`
+	Notify        []JobNotifier    `yaml:"notify,omitempty"`
 }
 
 type JobBehaviorRetry struct {
-	Count              int    `yaml:"count"`
-	Delay              string `yaml:"delay"`
-	ExponentialBackoff bool   `yaml:"exponential_backoff"`
+	Count              int    `yaml:"count,omitempty"`
+	Delay              string `yaml:"delay,omitempty"`
+	ExponentialBackoff bool   `yaml:"exponential_backoff,omitempty"`
 }
 
 type JobNotifier struct {
@@ -44,7 +44,7 @@ type JobNotifier struct {
 
 type JobTask struct {
 	Name   string        `yaml:"name"`
-	Config yaml.MapSlice `yaml:"config"`
+	Config yaml.MapSlice `yaml:"config,omitempty"`
 	Window JobTaskWindow `yaml:"window"`
 }
 
@@ -56,35 +56,35 @@ type JobTaskWindow struct {
 
 type JobHook struct {
 	Name   string        `yaml:"name"`
-	Config yaml.MapSlice `yaml:"config"`
+	Config yaml.MapSlice `yaml:"config,omitempty"`
 }
 
 type JobDependency struct {
-	JobName string         `yaml:"job"`
-	Type    string         `yaml:"type"`
-	HTTPDep HTTPDependency `yaml:"http"`
+	JobName string         `yaml:"job,omitempty"`
+	Type    string         `yaml:"type,omitempty"`
+	HTTPDep HTTPDependency `yaml:"http,omitempty"`
 }
 
 type HTTPDependency struct {
 	Name          string            `yaml:"name"`
-	RequestParams map[string]string `yaml:"params"`
+	RequestParams map[string]string `yaml:"params,omitempty"`
 	URL           string            `yaml:"url"`
-	Headers       map[string]string `yaml:"headers"`
+	Headers       map[string]string `yaml:"headers,omitempty"`
 }
 
 type JobSpecMetadata struct {
-	Resource JobSpecResource `yaml:"resource"`
+	Resource JobSpecResource `yaml:"resource,omitempty"`
 	Airflow  JobSpecAirflow  `yaml:"airflow"`
 }
 
 type JobSpecResource struct {
-	Request JobSpecResourceConfig `yaml:"request"`
-	Limit   JobSpecResourceConfig `yaml:"limit"`
+	Request JobSpecResourceConfig `yaml:"request,omitempty"`
+	Limit   JobSpecResourceConfig `yaml:"limit,omitempty"`
 }
 
 type JobSpecResourceConfig struct {
-	Memory string `yaml:"memory"`
-	CPU    string `yaml:"cpu"`
+	Memory string `yaml:"memory,omitempty"`
+	CPU    string `yaml:"cpu,omitempty"`
 }
 
 type JobSpecAirflow struct {
