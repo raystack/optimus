@@ -45,6 +45,21 @@ func (r resourceSpecReadWriter) ReadAll(rootDirPath string) ([]*ResourceSpec, er
 	return specs, nil
 }
 
+func (r resourceSpecReadWriter) ReadByName(rootDirPath, name string) (*ResourceSpec, error) {
+	if name == "" {
+		return nil, errors.New("name is empty")
+	}
+	allSpecs, err := r.ReadAll(rootDirPath)
+	if err != nil {
+		return nil, fmt.Errorf("error reading all specs under [%s]: %w", rootDirPath, err)
+	}
+	spec := getOne(allSpecs, func(rs *ResourceSpec) bool { return rs.Name == name })
+	if spec == nil {
+		return nil, fmt.Errorf("spec with name [%s] is not found", name)
+	}
+	return spec, nil
+}
+
 func (r resourceSpecReadWriter) Write(dirPath string, spec *ResourceSpec) error {
 	if dirPath == "" {
 		return errors.New("dir path is empty")

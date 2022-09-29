@@ -119,6 +119,73 @@ func (j *JobSpecReadWriterTestSuite) TestReadAll() {
 	})
 }
 
+func (j *JobSpecReadWriterTestSuite) TestReadByName() {
+	j.Run("should return nil and error if root dir is empty", func() {
+		specFS := afero.NewMemMapFs()
+		specReadWriter := local.NewTestJobSpecReadWriter(specFS)
+
+		var rootDirPath string
+		name := "resource"
+
+		actualJobSpec, actualError := specReadWriter.ReadByName(rootDirPath, name)
+
+		j.Assert().Nil(actualJobSpec)
+		j.Assert().Error(actualError)
+	})
+
+	j.Run("should return nil and error if name is empty", func() {
+		specFS := afero.NewMemMapFs()
+		specReadWriter := local.NewTestJobSpecReadWriter(specFS)
+
+		rootDirPath := "namespace"
+		var name string
+
+		actualJobSpec, actualError := specReadWriter.ReadByName(rootDirPath, name)
+
+		j.Assert().Nil(actualJobSpec)
+		j.Assert().Error(actualError)
+	})
+
+	j.Run("should return nil and error if error is encountered when reading specs", func() {
+		specFS := afero.NewMemMapFs()
+		specReadWriter := local.NewTestJobSpecReadWriter(specFS)
+
+		rootDirPath := "namespace"
+		name := "resource"
+
+		actualJobSpec, actualError := specReadWriter.ReadByName(rootDirPath, name)
+
+		j.Assert().Nil(actualJobSpec)
+		j.Assert().Error(actualError)
+	})
+
+	j.Run("should return nil and error if spec with the specified name is not found", func() {
+		specFS := j.createValidSpecFS("root/ns1/jobs/example1")
+		specReadWriter := local.NewTestJobSpecReadWriter(specFS)
+
+		rootDirPath := "root"
+		name := "example2"
+
+		actualJobSpec, actualError := specReadWriter.ReadByName(rootDirPath, name)
+
+		j.Assert().Nil(actualJobSpec)
+		j.Assert().Error(actualError)
+	})
+
+	j.Run("should return spec and nil if spec with the specified name is found", func() {
+		specFS := j.createValidSpecFS("root/ns1/jobs/example1")
+		specReadWriter := local.NewTestJobSpecReadWriter(specFS)
+
+		rootDirPath := "root"
+		name := "example1"
+
+		actualJobSpec, actualError := specReadWriter.ReadByName(rootDirPath, name)
+
+		j.Assert().EqualValues(name, actualJobSpec.Name)
+		j.Assert().NoError(actualError)
+	})
+}
+
 func (j *JobSpecReadWriterTestSuite) TestWrite() {
 	j.Run("return error if file path is empty", func() {
 		specFS := afero.NewMemMapFs()
@@ -218,7 +285,7 @@ hooks: []
 
 func (j *JobSpecReadWriterTestSuite) createValidSpecFS(specDirPaths ...string) afero.Fs {
 	templateJobSpec := `version: 1
-name: godata.ds.%s
+name: %s
 owner: optimus@optimus.dev
 schedule:
   start_date: "2022-03-22"

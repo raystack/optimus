@@ -5,7 +5,8 @@ type ValidSpec interface {
 }
 
 type SpecReader[S ValidSpec] interface {
-	ReadAll(specRootDir string) ([]S, error)
+	ReadAll(rootDirPath string) ([]S, error)
+	ReadByName(rootDirPath, name string) (S, error)
 }
 
 type SpecWriter[S ValidSpec] interface {

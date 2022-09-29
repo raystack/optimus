@@ -56,6 +56,21 @@ func (j jobSpecReadWriter) ReadAll(rootDirPath string) ([]*JobSpec, error) {
 	return jobSpecs, nil
 }
 
+func (j jobSpecReadWriter) ReadByName(rootDirPath, name string) (*JobSpec, error) {
+	if name == "" {
+		return nil, errors.New("name is empty")
+	}
+	allSpecs, err := j.ReadAll(rootDirPath)
+	if err != nil {
+		return nil, fmt.Errorf("error reading all specs under [%s]: %w", rootDirPath, err)
+	}
+	spec := getOne(allSpecs, func(js *JobSpec) bool { return js.Name == name })
+	if spec == nil {
+		return nil, fmt.Errorf("spec with name [%s] is not found", name)
+	}
+	return spec, nil
+}
+
 func (j jobSpecReadWriter) Write(dirPath string, spec *JobSpec) error {
 	if dirPath == "" {
 		return errors.New("dir path is empty")

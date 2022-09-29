@@ -113,6 +113,129 @@ func (r *ResourceSpecReadWriterTestSuite) TestReadAll() {
 	})
 }
 
+func (r *ResourceSpecReadWriterTestSuite) TestReadByName() {
+	r.Run("should return nil and error if root dir is empty", func() {
+		specFS := afero.NewMemMapFs()
+		specReadWriter := local.NewTestResourceSpecReadWriter(specFS)
+
+		var rootDirPath string
+		name := "resource"
+
+		actualResourceSpec, actualError := specReadWriter.ReadByName(rootDirPath, name)
+
+		r.Assert().Nil(actualResourceSpec)
+		r.Assert().Error(actualError)
+	})
+
+	r.Run("should return nil and error if name is empty", func() {
+		specFS := afero.NewMemMapFs()
+		specReadWriter := local.NewTestResourceSpecReadWriter(specFS)
+
+		rootDirPath := "namespace"
+		var name string
+
+		actualResourceSpec, actualError := specReadWriter.ReadByName(rootDirPath, name)
+
+		r.Assert().Nil(actualResourceSpec)
+		r.Assert().Error(actualError)
+	})
+
+	r.Run("should return nil and error if error is encountered when reading specs", func() {
+		specFS := afero.NewMemMapFs()
+		specReadWriter := local.NewTestResourceSpecReadWriter(specFS)
+
+		rootDirPath := "namespace"
+		name := "resource"
+
+		actualResourceSpec, actualError := specReadWriter.ReadByName(rootDirPath, name)
+
+		r.Assert().Nil(actualResourceSpec)
+		r.Assert().Error(actualError)
+	})
+
+	r.Run("should return nil and error if spec with the specified name is not found", func() {
+		rawSpecContent := `
+  version: 1
+  name: project.dataset.user
+  type: table
+  labels:
+    orchestrator: optimus
+  spec:
+  - name: id
+    type: string
+    mode: nullable
+  - name: name
+    type: string
+    mode: nullable
+`
+		specFS := afero.NewMemMapFs()
+		fileSpec, _ := specFS.Create("namespace/resource/user/resource.yaml")
+		fileSpec.WriteString(rawSpecContent)
+		fileSpec.Close()
+		specReadWriter := local.NewTestResourceSpecReadWriter(specFS)
+
+		rootDirPath := "namespace"
+		name := "resource"
+
+		actualResourceSpec, actualError := specReadWriter.ReadByName(rootDirPath, name)
+
+		r.Assert().Nil(actualResourceSpec)
+		r.Assert().Error(actualError)
+	})
+
+	r.Run("should return spec and nil if spec with the specified name is found", func() {
+		rawSpecContent := `
+  version: 1
+  name: project.dataset.user
+  type: table
+  labels:
+    orchestrator: optimus
+  spec:
+  - name: id
+    type: string
+    mode: nullable
+  - name: name
+    type: string
+    mode: nullable
+`
+		specFS := afero.NewMemMapFs()
+		fileSpec, _ := specFS.Create("namespace/resource/user/resource.yaml")
+		fileSpec.WriteString(rawSpecContent)
+		fileSpec.Close()
+		specReadWriter := local.NewTestResourceSpecReadWriter(specFS)
+
+		expectedResourceSpecs := &local.ResourceSpec{
+			Version: 1,
+			Name:    "project.dataset.user",
+			Type:    "table",
+			Labels: map[string]string{
+				"orchestrator": "optimus",
+			},
+			Spec: []interface{}{
+				map[string]interface{}{
+
+					"name": "id",
+					"type": "string",
+					"mode": "nullable",
+				},
+				map[string]interface{}{
+					"name": "name",
+					"type": "string",
+					"mode": "nullable",
+				},
+			},
+		}
+
+		rootDirPath := "namespace"
+		name := "project.dataset.user"
+
+		actualResourceSpec, actualError := specReadWriter.ReadByName(rootDirPath, name)
+
+		r.Assert().EqualValues(expectedResourceSpecs, actualResourceSpec)
+		r.Assert().NoError(actualError)
+	})
+}
+
 func (r *ResourceSpecReadWriterTestSuite) TestWrite() {
 	r.Run("should return error if dir path is empty", func() {
 		specFS := afero.NewMemMapFs()
