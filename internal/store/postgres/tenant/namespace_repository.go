@@ -11,7 +11,6 @@ import (
 
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/store"
 )
 
 type NamespaceRepository struct {
@@ -79,7 +78,7 @@ SELECT ?, ?, id, now(), now() FROM project p WHERE p.name = ?;`
 	}
 
 	if len(tenantNamespace.GetConfigs()) == 0 {
-		return store.ErrEmptyConfig
+		return errors.NewError(errors.ErrFailedPrecond, tenant.EntityNamespace, "empty config")
 	}
 	updateNamespaceQuery := `UPDATE namespace SET config=?, updated_at=now() FROM namespace n
 JOIN project p ON p.id = n.project_id  WHERE p.name = ? AND n.name=?`
