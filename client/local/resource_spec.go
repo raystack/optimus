@@ -27,21 +27,22 @@ func (r resourceSpecReadWriter) ReadAll(rootDirPath string) ([]*ResourceSpec, er
 	if rootDirPath == "" {
 		return nil, errors.New("root dir path is empty")
 	}
+
 	specDirPaths, err := discoverSpecDirPaths(r.specFS, rootDirPath, r.referenceSpecFileName)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error discovering spec paths under [%s]: %w", rootDirPath, err)
 	}
 
-	output := make([]*ResourceSpec, len(specDirPaths))
+	specs := make([]*ResourceSpec, len(specDirPaths))
 	for i, dirPath := range specDirPaths {
 		filePath := filepath.Join(dirPath, r.referenceSpecFileName)
 		spec, err := readSpec[*ResourceSpec](r.specFS, filePath)
 		if err != nil {
 			return nil, fmt.Errorf("error reading spec under [%s]: %w", filePath, err)
 		}
-		output[i] = spec
+		specs[i] = spec
 	}
-	return output, nil
+	return specs, nil
 }
 
 func (r resourceSpecReadWriter) Write(dirPath string, spec *ResourceSpec) error {
