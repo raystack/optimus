@@ -9,10 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/odpf/optimus/client/local"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/odpf/optimus/client/local"
 )
 
 type JobSpecReadWriterTestSuite struct {
@@ -24,83 +25,87 @@ func TestJobSpecReadWriter(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestNewJobSpecReadWriter(t *testing.T) {
-	t.Run("when specFS is nil", func(t *testing.T) {
-		jobSpecReadWriter, err := local.NewJobSpecReadWriter(nil)
-
-		assert.Error(t, err)
-		assert.Nil(t, jobSpecReadWriter)
-	})
-
-	t.Run("when specFS is valid", func(t *testing.T) {
-		specFS := afero.NewMemMapFs()
-
-		jobSpecReadWriter, err := local.NewJobSpecReadWriter(specFS)
-
-		assert.NoError(t, err)
-		assert.NotNil(t, jobSpecReadWriter)
-	})
-}
-
-func (s *JobSpecReadWriterTestSuite) TestReadAll() {
-	s.Run("return nil and error when discovering file paths is error", func() {
+func (j *JobSpecReadWriterTestSuite) TestReadAll() {
+	j.Run("return nil and error if root dir path is empty", func() {
 		specFS := afero.NewMemMapFs()
 		jobSpecReadWriter := local.NewTestJobSpecReadWriter(specFS)
 
-		invalidRootPath := "invalid"
-		jobSpecs, err := jobSpecReadWriter.ReadAll(invalidRootPath)
+		var rootDirPath string
 
-		s.Assert().Error(err)
-		s.Assert().Nil(jobSpecs)
+		jobSpecs, err := jobSpecReadWriter.ReadAll(rootDirPath)
+
+		j.Assert().Error(err)
+		j.Assert().Nil(jobSpecs)
 	})
 
-	s.Run("return nil and error when read one job spec is error", func() {
+	j.Run("return nil and error when discovering file paths is error", func() {
 		specFS := afero.NewMemMapFs()
-		err := writeTo(specFS, "root/ns1/jobs/example1/job.yaml", "invalid yaml")
-		s.Require().NoError(err)
+		jobSpecReadWriter := local.NewTestJobSpecReadWriter(specFS)
+
+		rootDirPath := "invalid"
+
+		jobSpecs, err := jobSpecReadWriter.ReadAll(rootDirPath)
+
+		j.Assert().Error(err)
+		j.Assert().Nil(jobSpecs)
+	})
+
+	j.Run("return nil and error when read one job spec is error", func() {
+		specFS := afero.NewMemMapFs()
+		err := j.writeTo(specFS, "root/ns1/jobs/example1/job.yaml", "invalid yaml")
+		j.Require().NoError(err)
 
 		jobSpecReadWriter := local.NewTestJobSpecReadWriter(specFS)
 
-		jobSpecs, err := jobSpecReadWriter.ReadAll("root")
-		s.Assert().Error(err)
-		s.Assert().ErrorContains(err, "yaml: unmarshal errors")
-		s.Assert().Nil(jobSpecs)
+		rootDirPath := "root"
+
+		jobSpecs, err := jobSpecReadWriter.ReadAll(rootDirPath)
+
+		j.Assert().Error(err)
+		j.Assert().ErrorContains(err, "yaml: unmarshal errors")
+		j.Assert().Nil(jobSpecs)
 	})
 
-	s.Run("return jobSpec and nil when read all success", func() {
-		specFS := createValidSpecFS(
+	j.Run("return job specs and nil when read all success", func() {
+		specFS := j.createValidSpecFS(
 			"root/ns1/jobs/example1",
 			"root/ns1/jobs/example2",
 		)
-		err := writeTo(specFS, "root/ns1/this.yaml", `task:
+		err := j.writeTo(specFS, "root/ns1/this.yaml", `task:
   config:
     EXAMPLE: parent`)
-		s.Require().NoError(err)
+		j.Require().NoError(err)
 
 		jobSpecReadWriter := local.NewTestJobSpecReadWriter(specFS)
 
-		jobSpecs, err := jobSpecReadWriter.ReadAll("root")
-		s.Assert().NoError(err)
-		s.Assert().Len(jobSpecs, 2)
+		rootDirPath := "root"
+
+		jobSpecs, err := jobSpecReadWriter.ReadAll(rootDirPath)
+
+		j.Assert().NoError(err)
+		j.Assert().Len(jobSpecs, 2)
 	})
 
-	s.Run("return jobSpec and nil when contains parent spec this.yaml", func() {
-		specFS := createValidSpecFS("root/parent/ns1/jobs/example1")
-		err := writeTo(specFS, "root/parent/ns1/this.yaml", `task:
+	j.Run("return job specs containing parent config and nil if parent spec this.yaml is specified", func() {
+		specFS := j.createValidSpecFS("root/parent/ns1/jobs/example1")
+		err := j.writeTo(specFS, "root/parent/ns1/this.yaml", `task:
   config:
     EXAMPLE: parent_overwrite`)
-		s.Require().NoError(err)
-		err = writeTo(specFS, "root/parent/this.yaml", `task:
+		j.Require().NoError(err)
+		err = j.writeTo(specFS, "root/parent/this.yaml", `task:
   config:
     EXAMPLE: parent
     EXAMPLE2: parent_no_overwrite`)
-		s.Require().NoError(err)
+		j.Require().NoError(err)
 
 		jobSpecReadWriter := local.NewTestJobSpecReadWriter(specFS)
 
-		jobSpecs, err := jobSpecReadWriter.ReadAll("root")
-		s.Assert().NoError(err)
-		s.Assert().Len(jobSpecs, 1)
+		rootDirPath := "root"
+
+		jobSpecs, err := jobSpecReadWriter.ReadAll(rootDirPath)
+
+		j.Assert().NoError(err)
+		j.Assert().Len(jobSpecs, 1)
 		expectedTaskConfig := map[string]string{
 			"PROJECT":     "godata",
 			"DATASET":     "example",
@@ -110,39 +115,54 @@ func (s *JobSpecReadWriterTestSuite) TestReadAll() {
 			"EXAMPLE":     "parent_overwrite",
 			"EXAMPLE2":    "parent_no_overwrite",
 		}
-		s.Assert().Equal(expectedTaskConfig, jobSpecs[0].Task.Config)
+		j.Assert().Equal(expectedTaskConfig, jobSpecs[0].Task.Config)
 	})
 }
 
-func (s *JobSpecReadWriterTestSuite) TestWrite() {
-	s.Run("return error when job spec is nil", func() {
+func (j *JobSpecReadWriterTestSuite) TestWrite() {
+	j.Run("return error if file path is empty", func() {
 		specFS := afero.NewMemMapFs()
-		filePath := "root/ns1/jobs/example1"
-
 		jobSpecReadWriter := local.NewTestJobSpecReadWriter(specFS)
 
-		err := jobSpecReadWriter.Write(filePath, nil)
-		s.Assert().Error(err)
+		var filePath string
+		jobSpec := &local.JobSpec{}
+
+		err := jobSpecReadWriter.Write(filePath, jobSpec)
+
+		j.Assert().Error(err)
 	})
 
-	s.Run("return error when job file path is restricted to write", func() {
+	j.Run("return error if job spec is nil", func() {
+		specFS := afero.NewMemMapFs()
+		jobSpecReadWriter := local.NewTestJobSpecReadWriter(specFS)
+
+		filePath := "root/ns1/jobs/example1"
+		var jobSpec *local.JobSpec
+
+		err := jobSpecReadWriter.Write(filePath, jobSpec)
+
+		j.Assert().Error(err)
+	})
+
+	j.Run("return error if job file path is restricted to write", func() {
 		specFS := afero.NewMemMapFs()
 		err := specFS.MkdirAll("root/ns1/jobs", os.ModeDir)
-		s.Require().NoError(err)
-		specFS = afero.NewReadOnlyFs(specFS)
+		j.Require().NoError(err)
+		readOnlySpecFS := afero.NewReadOnlyFs(specFS)
+		jobSpecReadWriter := local.NewTestJobSpecReadWriter(readOnlySpecFS)
+
 		filePath := "root/ns1/jobs/example1"
-		jobSpec := local.JobSpec{Version: 1}
+		jobSpec := &local.JobSpec{Version: 1}
 
-		jobSpecReadWriter := local.NewTestJobSpecReadWriter(specFS)
+		err = jobSpecReadWriter.Write(filePath, jobSpec)
 
-		err = jobSpecReadWriter.Write(filePath, &jobSpec)
-		s.Assert().Error(err)
+		j.Assert().Error(err)
 	})
 
-	s.Run("return error when coudln't create asset file", func() {
+	j.Run("return error when coudln't create asset file", func() {
 		specFS := afero.NewMemMapFs()
 		re, err := regexp.Compile(`root/ns1/jobs/example1/job\.yaml`) // only allow to create job.yaml
-		s.Require().NoError(err)
+		j.Require().NoError(err)
 		specFS = afero.NewRegexpFs(specFS, re)
 		filePath := "root/ns1/jobs/example1"
 		jobSpec := local.JobSpec{Version: 1}
@@ -153,10 +173,10 @@ func (s *JobSpecReadWriterTestSuite) TestWrite() {
 		jobSpecReadWriter := local.NewTestJobSpecReadWriter(specFS)
 
 		err = jobSpecReadWriter.Write(filePath, &jobSpec)
-		s.Assert().Error(err)
+		j.Assert().Error(err)
 	})
 
-	s.Run("return nil when success to create job spec and its assets", func() {
+	j.Run("return nil when success to create job spec and its assets", func() {
 		specFS := afero.NewMemMapFs()
 		filePath := "root/ns1/jobs/example1"
 		jobSpec := local.JobSpec{Version: 1}
@@ -167,9 +187,9 @@ func (s *JobSpecReadWriterTestSuite) TestWrite() {
 		jobSpecReadWriter := local.NewTestJobSpecReadWriter(specFS)
 
 		err := jobSpecReadWriter.Write(filePath, &jobSpec)
-		s.Assert().NoError(err)
-		jobYamlContent, err := readFrom(specFS, filepath.Join(filePath, "job.yaml"))
-		s.Require().NoError(err)
+		j.Assert().NoError(err)
+		jobYamlContent, err := j.readFrom(specFS, filepath.Join(filePath, "job.yaml"))
+		j.Require().NoError(err)
 		expectedYamlContent := `version: 1
 name: ""
 owner: ""
@@ -188,15 +208,15 @@ task:
 dependencies: []
 hooks: []
 `
-		s.Assert().Equal(expectedYamlContent, jobYamlContent)
-		assetQueryContent, err := readFrom(specFS, filepath.Join(filePath, "assets", "query.sql"))
-		s.Require().NoError(err)
+		j.Assert().Equal(expectedYamlContent, jobYamlContent)
+		assetQueryContent, err := j.readFrom(specFS, filepath.Join(filePath, "assets", "query.sql"))
+		j.Require().NoError(err)
 		expectedAssetQueryContent := "SELECT * FROM example"
-		s.Assert().Equal(expectedAssetQueryContent, assetQueryContent)
+		j.Assert().Equal(expectedAssetQueryContent, assetQueryContent)
 	})
 }
 
-func createValidSpecFS(specDirPaths ...string) afero.Fs {
+func (j *JobSpecReadWriterTestSuite) createValidSpecFS(specDirPaths ...string) afero.Fs {
 	templateJobSpec := `version: 1
 name: godata.ds.%s
 owner: optimus@optimus.dev
@@ -260,14 +280,14 @@ hooks: []`
 		jobSpecFilePath := filepath.Join(specDirPath, "job.yaml")
 		assetFilePath := filepath.Join(specDirPath, "assets", "query.sql")
 
-		writeTo(specFS, jobSpecFilePath, dataRaw)
-		writeTo(specFS, assetFilePath, assetRaw)
+		j.writeTo(specFS, jobSpecFilePath, dataRaw)
+		j.writeTo(specFS, assetFilePath, assetRaw)
 	}
 
 	return specFS
 }
 
-func writeTo(fs afero.Fs, filePath string, content string) error {
+func (j *JobSpecReadWriterTestSuite) writeTo(fs afero.Fs, filePath string, content string) error {
 	f, err := fs.Create(filePath)
 	if err != nil {
 		return err
@@ -278,7 +298,7 @@ func writeTo(fs afero.Fs, filePath string, content string) error {
 	return err
 }
 
-func readFrom(fs afero.Fs, filePath string) (string, error) {
+func (j *JobSpecReadWriterTestSuite) readFrom(fs afero.Fs, filePath string) (string, error) {
 	f, err := fs.Open(filePath)
 	if err != nil {
 		return "", err
@@ -289,4 +309,24 @@ func readFrom(fs afero.Fs, filePath string) (string, error) {
 		return "", err
 	}
 	return string(content), nil
+}
+
+func TestNewJobSpecReadWriter(t *testing.T) {
+	t.Run("return nil and error if spec fs is nil", func(t *testing.T) {
+		var specFS afero.Fs
+
+		jobSpecReadWriter, err := local.NewJobSpecReadWriter(specFS)
+
+		assert.Error(t, err)
+		assert.Nil(t, jobSpecReadWriter)
+	})
+
+	t.Run("return job spec read writer and nil if no error is encountered", func(t *testing.T) {
+		specFS := afero.NewMemMapFs()
+
+		jobSpecReadWriter, err := local.NewJobSpecReadWriter(specFS)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, jobSpecReadWriter)
+	})
 }

@@ -4,10 +4,10 @@ import "github.com/spf13/afero"
 
 func NewTestJobSpecReadWriter(specFS afero.Fs) SpecReadWriter[*JobSpec] {
 	return &jobSpecReadWriter{
-		referenceJobSpecFileName:       "job.yaml",
-		referenceParentJobSpecFileName: "this.yaml",
-		referenceAssetDirName:          "assets",
-		specFS:                         specFS,
+		referenceSpecFileName:   "job.yaml",
+		referenceParentFileName: "this.yaml",
+		referenceAssetDirName:   "assets",
+		specFS:                  specFS,
 	}
 }
 

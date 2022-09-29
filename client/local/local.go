@@ -2,7 +2,6 @@ package local
 
 import (
 	"fmt"
-	"io"
 	"io/fs"
 	"path/filepath"
 	"strings"
@@ -67,29 +66,4 @@ func readSpec[S ValidSpec](specFS afero.Fs, filePath string) (S, error) {
 		return nil, fmt.Errorf("error decoding spec under [%s]: %w", filePath, err)
 	}
 	return spec, nil
-}
-
-func readFile(fileFS afero.Fs, filePath string) ([]byte, error) {
-	f, err := fileFS.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-
-	raw, err := io.ReadAll(f)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	return raw, nil
-}
-
-func writeFile(fileFS afero.Fs, filePath, content string) error {
-	f, err := fileFS.Create(filePath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	_, err = f.WriteString(content)
-	return err
 }
