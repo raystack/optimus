@@ -67,12 +67,13 @@ func (r *ResourceSpecReadWriterTestSuite) TestReadAll() {
   labels:
     orchestrator: optimus
   spec:
-  - name: id
-    type: string
-    mode: nullable
-  - name: name
-    type: string
-    mode: nullable
+    schema:
+    - name: id
+      type: string
+      mode: nullable
+    - name: name
+      type: string
+      mode: nullable
 `
 		specFS := afero.NewMemMapFs()
 		fileSpec, _ := specFS.Create("namespace/resource/user/resource.yaml")
@@ -88,17 +89,18 @@ func (r *ResourceSpecReadWriterTestSuite) TestReadAll() {
 				Labels: map[string]string{
 					"orchestrator": "optimus",
 				},
-				Spec: []interface{}{
-					map[string]interface{}{
-
-						"name": "id",
-						"type": "string",
-						"mode": "nullable",
-					},
-					map[string]interface{}{
-						"name": "name",
-						"type": "string",
-						"mode": "nullable",
+				Spec: map[string]interface{}{
+					"schema": []interface{}{
+						map[string]interface{}{
+							"name": "id",
+							"type": "string",
+							"mode": "nullable",
+						},
+						map[string]interface{}{
+							"name": "name",
+							"type": "string",
+							"mode": "nullable",
+						},
 					},
 				},
 			},
@@ -161,12 +163,13 @@ func (r *ResourceSpecReadWriterTestSuite) TestReadByName() {
   labels:
     orchestrator: optimus
   spec:
-  - name: id
-    type: string
-    mode: nullable
-  - name: name
-    type: string
-    mode: nullable
+    schema:
+    - name: id
+      type: string
+      mode: nullable
+    - name: name
+      type: string
+      mode: nullable
 `
 		specFS := afero.NewMemMapFs()
 		fileSpec, _ := specFS.Create("namespace/resource/user/resource.yaml")
@@ -191,12 +194,13 @@ func (r *ResourceSpecReadWriterTestSuite) TestReadByName() {
   labels:
     orchestrator: optimus
   spec:
-  - name: id
-    type: string
-    mode: nullable
-  - name: name
-    type: string
-    mode: nullable
+    schema:
+    - name: id
+      type: string
+      mode: nullable
+    - name: name
+      type: string
+      mode: nullable
 `
 		specFS := afero.NewMemMapFs()
 		fileSpec, _ := specFS.Create("namespace/resource/user/resource.yaml")
@@ -211,17 +215,19 @@ func (r *ResourceSpecReadWriterTestSuite) TestReadByName() {
 			Labels: map[string]string{
 				"orchestrator": "optimus",
 			},
-			Spec: []interface{}{
-				map[string]interface{}{
+			Spec: map[string]interface{}{
+				"schema": []interface{}{
+					map[string]interface{}{
 
-					"name": "id",
-					"type": "string",
-					"mode": "nullable",
-				},
-				map[string]interface{}{
-					"name": "name",
-					"type": "string",
-					"mode": "nullable",
+						"name": "id",
+						"type": "string",
+						"mode": "nullable",
+					},
+					map[string]interface{}{
+						"name": "name",
+						"type": "string",
+						"mode": "nullable",
+					},
 				},
 			},
 		}
@@ -273,17 +279,19 @@ func (r *ResourceSpecReadWriterTestSuite) TestWrite() {
 			Labels: map[string]string{
 				"orchestrator": "optimus",
 			},
-			Spec: []interface{}{
-				map[string]interface{}{
+			Spec: map[string]interface{}{
+				"schema": []map[string]interface{}{
+					{
 
-					"name": "id",
-					"type": "string",
-					"mode": "nullable",
-				},
-				map[string]interface{}{
-					"name": "name",
-					"type": "string",
-					"mode": "nullable",
+						"name": "id",
+						"type": "string",
+						"mode": "nullable",
+					},
+					{
+						"name": "name",
+						"type": "string",
+						"mode": "nullable",
+					},
 				},
 			},
 		}
@@ -300,15 +308,16 @@ func (r *ResourceSpecReadWriterTestSuite) TestWrite() {
 		expectedContent := []byte(`version: 1
 name: project.dataset.user
 type: table
-spec:
-    - mode: nullable
-      name: id
-      type: string
-    - mode: nullable
-      name: name
-      type: string
 labels:
     orchestrator: optimus
+spec:
+    schema:
+        - mode: nullable
+          name: id
+          type: string
+        - mode: nullable
+          name: name
+          type: string
 `)
 		r.Assert().EqualValues(expectedContent, actualContent)
 	})

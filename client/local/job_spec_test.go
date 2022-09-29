@@ -125,7 +125,7 @@ func (j *JobSpecReadWriterTestSuite) TestReadByName() {
 		specReadWriter := local.NewTestJobSpecReadWriter(specFS)
 
 		var rootDirPath string
-		name := "resource"
+		name := "example2"
 
 		actualJobSpec, actualError := specReadWriter.ReadByName(rootDirPath, name)
 
@@ -151,7 +151,7 @@ func (j *JobSpecReadWriterTestSuite) TestReadByName() {
 		specReadWriter := local.NewTestJobSpecReadWriter(specFS)
 
 		rootDirPath := "namespace"
-		name := "resource"
+		name := "example2"
 
 		actualJobSpec, actualError := specReadWriter.ReadByName(rootDirPath, name)
 
