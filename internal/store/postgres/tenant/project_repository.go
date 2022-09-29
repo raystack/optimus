@@ -11,7 +11,6 @@ import (
 
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/store"
 )
 
 type ProjectRepository struct {
@@ -19,12 +18,7 @@ type ProjectRepository struct {
 }
 
 const (
-	projectColumns        = `id, name, config, created_at, updated_at`
-	getProjectByNameQuery = `select ` + projectColumns + ` from project where name = ? and deleted_at is null`
-	getAllProjects        = `select ` + projectColumns + ` from project where deleted_at is null`
-
-	insertProjectQuery = `insert into project (name, config, created_at, updated_at) values (?, ?, now(), now())`
-	updateProjectQuery = `update project set config=?, updated_at=now() where name=?`
+	projectColumns = `id, name, config, created_at, updated_at`
 )
 
 type Project struct {
@@ -67,14 +61,13 @@ func (repo ProjectRepository) Save(ctx context.Context, tenantProject *tenant.Pr
 	_, err = repo.get(ctx, tenantProject.Name())
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			insertProjectQuery := `INSERT INTO project (name, config, created_at, updated_at) VALUES (?, ?, now(), now())`
 			return repo.db.WithContext(ctx).Exec(insertProjectQuery, project.Name, project.Config).Error
 		}
 		return errors.Wrap(tenant.EntityProject, "unable to save project", err)
 	}
 
-	if len(tenantProject.GetConfigs()) == 0 { // TODO: project config cannot be empty
-		return store.ErrEmptyConfig
-	}
+	updateProjectQuery := `UPDATE project SET config=?, updated_at=now() WHERE name=?`
 	return repo.db.WithContext(ctx).Exec(updateProjectQuery, project.Config, project.Name).Error
 }
 
@@ -92,6 +85,7 @@ func (repo ProjectRepository) GetByName(ctx context.Context, name tenant.Project
 func (repo ProjectRepository) get(ctx context.Context, name tenant.ProjectName) (Project, error) {
 	var project Project
 
+	getProjectByNameQuery := `SELECT ` + projectColumns + ` FROM project WHERE name = ? AND deleted_at IS NULL`
 	err := repo.db.WithContext(ctx).Raw(getProjectByNameQuery, name.String()).First(&project).Error
 	if err != nil {
 		return Project{}, err
@@ -101,6 +95,8 @@ func (repo ProjectRepository) get(ctx context.Context, name tenant.ProjectName) 
 
 func (repo ProjectRepository) GetAll(ctx context.Context) ([]*tenant.Project, error) {
 	var projects []Project
+
+	getAllProjects := `SELECT ` + projectColumns + ` FROM project WHERE deleted_at IS NULL`
 	if err := repo.db.WithContext(ctx).Raw(getAllProjects).Scan(&projects).Error; err != nil {
 		return nil, errors.Wrap(tenant.EntityProject, "error in GetAll", err)
 	}

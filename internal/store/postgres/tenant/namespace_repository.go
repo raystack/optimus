@@ -19,12 +19,7 @@ type NamespaceRepository struct {
 }
 
 const (
-	namespaceColumns         = `n.id, n.name, n.config, p.name as project_name, n.created_at, n.updated_at`
-	getNamespaceByNameQuery  = `select ` + namespaceColumns + ` from namespace n join project p on p.id = n.project_id where p.name = ? and n.name = ? and n.deleted_at is null`
-	getAllNamespaceInProject = `select ` + namespaceColumns + ` from namespace n join project p on p.id = n.project_id where p.name = ? and n.deleted_at is null`
-
-	insertNamespace      = `insert into namespace (name, config, project_id, updated_at, created_at) SELECT ?, ?, id, now(), now() FROM project p where p.name = ?;`
-	updateNamespaceQuery = `update namespace set config=?, updated_at=now() From namespace n join project p on p.id = n.project_id  where p.name = ? and n.name=?`
+	namespaceColumns = `n.id, n.name, n.config, p.name as project_name, n.created_at, n.updated_at`
 )
 
 type Namespace struct {
@@ -75,6 +70,8 @@ func (n *NamespaceRepository) Save(ctx context.Context, tenantNamespace *tenant.
 	_, err = n.get(ctx, tenantNamespace.ProjectName(), tenantNamespace.Name())
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			insertNamespace := `INSERT INTO namespace (name, config, project_id, updated_at, created_at)
+SELECT ?, ?, id, now(), now() FROM project p WHERE p.name = ?;`
 			return n.db.WithContext(ctx).
 				Exec(insertNamespace, namespace.Name, namespace.Config, namespace.ProjectName).Error
 		}
@@ -84,6 +81,8 @@ func (n *NamespaceRepository) Save(ctx context.Context, tenantNamespace *tenant.
 	if len(tenantNamespace.GetConfigs()) == 0 {
 		return store.ErrEmptyConfig
 	}
+	updateNamespaceQuery := `UPDATE namespace SET config=?, updated_at=now() FROM namespace n
+JOIN project p ON p.id = n.project_id  WHERE p.name = ? AND n.name=?`
 	return n.db.WithContext(ctx).
 		Exec(updateNamespaceQuery, namespace.Config, namespace.ProjectName, namespace.Name).Error
 }
@@ -102,6 +101,8 @@ func (n *NamespaceRepository) GetByName(ctx context.Context, projectName tenant.
 func (n *NamespaceRepository) get(ctx context.Context, projName tenant.ProjectName, name tenant.NamespaceName) (Namespace, error) {
 	var namespace Namespace
 
+	getNamespaceByNameQuery := `SELECT ` + namespaceColumns + ` FROM namespace n
+JOIN PROJECT p ON p.id = n.project_id WHERE p.name = ? AND n.name = ? AND n.deleted_at IS NULL`
 	err := n.db.WithContext(ctx).Raw(getNamespaceByNameQuery, projName.String(), name.String()).
 		First(&namespace).Error
 	if err != nil {
@@ -112,7 +113,8 @@ func (n *NamespaceRepository) get(ctx context.Context, projName tenant.ProjectNa
 
 func (n *NamespaceRepository) GetAll(ctx context.Context, projectName tenant.ProjectName) ([]*tenant.Namespace, error) {
 	var namespaces []Namespace
-
+	getAllNamespaceInProject := `SELECT ` + namespaceColumns + ` FROM namespace n
+JOIN project p ON p.id = n.project_id WHERE p.name = ? AND n.deleted_at IS NULL`
 	err := n.db.WithContext(ctx).Raw(getAllNamespaceInProject, projectName.String()).
 		Scan(&namespaces).Error
 	if err != nil {

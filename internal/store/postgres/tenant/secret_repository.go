@@ -27,13 +27,6 @@ JOIN project p ON p.id = s.project_id
 LEFT JOIN namespace n ON n.id = s.namespace_id
 WHERE p.name = ?`
 
-	getAllSecretsAvailableForNamespace = `select ` + secretColumns + `
-FROM secret s 
-	JOIN project p ON p.id = s.project_id
-	LEFT JOIN namespace n ON n.id = s.namespace_id
-WHERE p.name = ?
-and (s.namespace_id is null or n.name = ?)`
-
 	secretCTE = `WITH cte_tenant AS (
 SELECT p.id AS project_id, p.name AS project_name, n.id AS namespace_id, n.name AS namespace_name 
 FROM project p
@@ -41,47 +34,6 @@ FROM project p
 		ON p.id = n.project_id and n.name = ?
 WHERE p.name = ?
 ) `
-
-	getSecretByNameQuery = secretCTE + `select s.id, s.name, s.value, s.type, t.project_name, t.namespace_name, s.created_at, s.updated_at
-FROM secret s
-    JOIN cte_tenant t 
-        ON t.project_id = s.project_id
-        AND (t.namespace_id is null OR t.namespace_id = s.namespace_id )
-WHERE s.name = ?`
-
-	getSecretByNameAtProject = `select s.name
-FROM secret s
-JOIN project p
-ON p.id = s.project_id
-WHERE s.name = ?
-AND p.name = ?
-`
-
-	insertSecret = secretCTE + `insert into secret (name, value, type, project_id, namespace_id, updated_at, created_at)
-SELECT ?, ?, ?, t.project_id, t.namespace_id, now(), now()
-FROM cte_tenant t`
-
-	updateSecret = `update secret
-set value=?, type=?, updated_at=now()
-From secret s 
-    join project p 
-        on p.id = s.project_id  
-where p.name = ? and s.name=?`
-
-	deleteForNamespaceScope = secretCTE + `DELETE
-FROM secret s
-USING cte_tenant t
-WHERE s.name = ?
-and s.project_id = t.project_id
-and s.namespace_id = t.namespace_id`
-
-	deleteForProjectScope = `DELETE
-FROM secret s
-USING project p 
-WHERE p.name = ?
-AND s.name = ?
-AND s.project_id = p.id
-AND s.namespace_id is null`
 )
 
 type Secret struct {
@@ -172,6 +124,10 @@ func (s SecretRepository) Save(ctx context.Context, t tenant.Tenant, tenantSecre
 		return errors.Wrap(tenant.EntitySecret, "unable to save secret", err)
 	}
 
+	insertSecret := secretCTE + `INSERT INTO secret (name, value, type, project_id, namespace_id, updated_at, created_at)
+SELECT ?, ?, ?, t.project_id, t.namespace_id, NOW(), NOW()
+FROM cte_tenant t`
+
 	result := s.db.WithContext(ctx).Exec(insertSecret, secret.NamespaceName, secret.ProjectName,
 		secret.Name, secret.Value, secret.Type)
 
@@ -196,6 +152,13 @@ func (s SecretRepository) Update(ctx context.Context, t tenant.Tenant, tenantSec
 		return errors.Wrap(tenant.EntitySecret, "unable to update secret", err)
 	}
 
+	updateSecret := `UPDATE secret
+SET value=?, type=?, updated_at=NOW()
+FROM secret s
+    JOIN project p
+        ON p.id = s.project_id
+WHERE p.name = ? AND s.name=?`
+
 	err = s.db.WithContext(ctx).Exec(updateSecret, secret.Value, secret.Type, secret.ProjectName, secret.Name).Error
 	if err != nil {
 		return errors.Wrap(tenant.EntitySecret, "unable to update secret", err)
@@ -211,6 +174,12 @@ func (s SecretRepository) Get(ctx context.Context, t tenant.Tenant, name string)
 		namespaceName = ns.String()
 	}
 
+	getSecretByNameQuery := secretCTE + `SELECT s.id, s.name, s.value, s.type, t.project_name, t.namespace_name, s.created_at, s.updated_at
+FROM secret s
+    JOIN cte_tenant t
+        ON t.project_id = s.project_id
+        AND (t.namespace_id IS NULL OR t.namespace_id = s.namespace_id )
+WHERE s.name = ?`
 	err := s.db.WithContext(ctx).Raw(getSecretByNameQuery, namespaceName, t.ProjectName().String(), name).
 		First(&secret).Error
 	if err != nil {
@@ -227,6 +196,13 @@ func (s SecretRepository) Get(ctx context.Context, t tenant.Tenant, name string)
 func (s SecretRepository) get(ctx context.Context, t tenant.Tenant, name string) (Secret, error) { // nolint: unparam
 	var secret Secret
 
+	getSecretByNameAtProject := `SELECT s.name
+FROM secret s
+JOIN project p
+ON p.id = s.project_id
+WHERE s.name = ?
+AND p.name = ?
+`
 	err := s.db.WithContext(ctx).Raw(getSecretByNameAtProject, name, t.ProjectName().String()).
 		First(&secret).Error
 
@@ -238,6 +214,12 @@ func (s SecretRepository) GetAll(ctx context.Context, t tenant.Tenant) ([]*tenan
 	var queryErr error
 
 	if nsName, err := t.NamespaceName(); err == nil {
+		getAllSecretsAvailableForNamespace := `SELECT ` + secretColumns + `
+FROM secret s
+	JOIN project p ON p.id = s.project_id
+	LEFT JOIN namespace n ON n.id = s.namespace_id
+WHERE p.name = ?
+AND (s.namespace_id IS NULL or n.name = ?)`
 		queryErr = s.db.WithContext(ctx).Raw(getAllSecretsAvailableForNamespace, t.ProjectName().String(), nsName.String()).
 			Scan(&secrets).Error
 	} else {
@@ -264,8 +246,21 @@ func (s SecretRepository) GetAll(ctx context.Context, t tenant.Tenant) ([]*tenan
 func (s SecretRepository) Delete(ctx context.Context, t tenant.Tenant, name string) error {
 	var result *gorm.DB
 	if ns, err := t.NamespaceName(); err == nil {
+		deleteForNamespaceScope := secretCTE + `DELETE
+FROM secret s
+USING cte_tenant t
+WHERE s.name = ?
+AND s.project_id = t.project_id
+AND s.namespace_id = t.namespace_id`
 		result = s.db.WithContext(ctx).Exec(deleteForNamespaceScope, ns.String(), t.ProjectName().String(), name)
 	} else {
+		deleteForProjectScope := `DELETE
+FROM secret s
+USING project p
+WHERE p.name = ?
+AND s.name = ?
+AND s.project_id = p.id
+AND s.namespace_id IS NULL`
 		result = s.db.WithContext(ctx).Exec(deleteForProjectScope, t.ProjectName().String(), name)
 	}
 
