@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"reflect"
 	"strings"
 	"time"
 
@@ -85,8 +84,8 @@ func (adapt JobSpecAdapter) ToSpec(conf JobSpec) (models.JobSpec, error) {
 				Type: depType,
 			}
 		}
-		if !reflect.DeepEqual(dep.HTTPDep, HTTPDependency{}) {
-			httpDep, err := prepHTTPDependency(dep.HTTPDep, index)
+		if dep.HTTPDep != nil {
+			httpDep, err := prepHTTPDependency(*dep.HTTPDep, index)
 			if err != nil {
 				return models.JobSpec{}, err
 			}
@@ -132,11 +131,8 @@ func (adapt JobSpecAdapter) ToSpec(conf JobSpec) (models.JobSpec, error) {
 	}
 
 	retryDelayDuration := time.Duration(0)
-	if conf.Behavior.Retry.Delay != "" {
-		retryDelayDuration, err = time.ParseDuration(conf.Behavior.Retry.Delay)
-		if err != nil {
-			return models.JobSpec{}, err
-		}
+	if conf.Behavior.Retry.Delay != 0 {
+		retryDelayDuration = conf.Behavior.Retry.Delay
 	}
 
 	var jobNotifiers []models.JobSpecNotifier
@@ -217,9 +213,9 @@ func (JobSpecAdapter) FromSpec(spec models.JobSpec) (JobSpec, error) {
 		taskConf[l.Name] = l.Value
 	}
 
-	retryDelayDuration := ""
+	retryDelayDuration := time.Duration(0)
 	if spec.Behavior.Retry.Delay.Nanoseconds() > 0 {
-		retryDelayDuration = spec.Behavior.Retry.Delay.String()
+		retryDelayDuration = spec.Behavior.Retry.Delay
 	}
 
 	var notifiers []JobNotifier
@@ -255,7 +251,7 @@ func (JobSpecAdapter) FromSpec(spec models.JobSpec) (JobSpec, error) {
 		Behavior: JobBehavior{
 			DependsOnPast: spec.Behavior.DependsOnPast,
 			Catchup:       spec.Behavior.CatchUp,
-			Retry: JobBehaviorRetry{
+			Retry: &JobBehaviorRetry{
 				Count:              spec.Behavior.Retry.Count,
 				Delay:              retryDelayDuration,
 				ExponentialBackoff: spec.Behavior.Retry.ExponentialBackoff,
@@ -274,18 +270,18 @@ func (JobSpecAdapter) FromSpec(spec models.JobSpec) (JobSpec, error) {
 		Asset:        spec.Assets.ToMap(),
 		Dependencies: []JobDependency{},
 		Hooks:        []JobHook{},
-		Metadata: JobSpecMetadata{
-			Resource: JobSpecResource{
-				Request: JobSpecResourceConfig{
+		Metadata: &JobSpecMetadata{
+			Resource: &JobSpecResource{
+				Request: &JobSpecResourceConfig{
 					Memory: spec.Metadata.Resource.Request.Memory,
 					CPU:    spec.Metadata.Resource.Request.CPU,
 				},
-				Limit: JobSpecResourceConfig{
+				Limit: &JobSpecResourceConfig{
 					Memory: spec.Metadata.Resource.Limit.Memory,
 					CPU:    spec.Metadata.Resource.Limit.CPU,
 				},
 			},
-			Airflow: JobSpecAirflow{
+			Airflow: &JobSpecAirflow{
 				Pool:  spec.Metadata.Airflow.Pool,
 				Queue: spec.Metadata.Airflow.Queue,
 			},
@@ -303,8 +299,14 @@ func (JobSpecAdapter) FromSpec(spec models.JobSpec) (JobSpec, error) {
 	}
 	// external http dependencies
 	for _, dep := range spec.ExternalDependencies.HTTPDependencies {
+		httpDep := &HTTPDependency{
+			Name:          dep.Name,
+			RequestParams: dep.RequestParams,
+			URL:           dep.URL,
+			Headers:       dep.Headers,
+		}
 		parsed.Dependencies = append(parsed.Dependencies, JobDependency{
-			HTTPDep: HTTPDependency(dep),
+			HTTPDep: httpDep,
 		})
 	}
 

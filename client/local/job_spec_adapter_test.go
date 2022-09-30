@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
@@ -348,9 +349,9 @@ func TestJob_MergeFrom(t *testing.T) {
 					Behavior: local.JobBehavior{
 						DependsOnPast: false,
 						Catchup:       true,
-						Retry: local.JobBehaviorRetry{
+						Retry: &local.JobBehaviorRetry{
 							Count:              3,
-							Delay:              "2m",
+							Delay:              2 * time.Minute,
 							ExponentialBackoff: false,
 						},
 					},
@@ -371,9 +372,9 @@ func TestJob_MergeFrom(t *testing.T) {
 					Behavior: local.JobBehavior{
 						DependsOnPast: false,
 						Catchup:       true,
-						Retry: local.JobBehaviorRetry{
+						Retry: &local.JobBehaviorRetry{
 							Count:              3,
-							Delay:              "2m",
+							Delay:              2 * time.Minute,
 							ExponentialBackoff: false,
 						},
 					},
