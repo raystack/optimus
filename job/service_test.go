@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	mock2 "github.com/stretchr/testify/mock"
+	tMock "github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/job"
@@ -271,7 +271,7 @@ func TestService(t *testing.T) {
 			defer batchScheduler.AssertExpectations(t)
 
 			logWriter := new(mock.LogWriter)
-			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			logWriter.On("Write", tMock.Anything, tMock.Anything).Return(nil)
 			defer logWriter.AssertExpectations(t)
 
 			jobService := job.NewService(batchScheduler, nil, nil, nil, nil, nil, nil, nil, pluginService, nil, nil)
@@ -306,7 +306,7 @@ func TestService(t *testing.T) {
 			defer batchScheduler.AssertExpectations(t)
 
 			logWriter := new(mock.LogWriter)
-			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			logWriter.On("Write", tMock.Anything, tMock.Anything).Return(nil)
 			defer logWriter.AssertExpectations(t)
 
 			jobService := job.NewService(batchScheduler, nil, nil, nil, nil, nil, nil, nil, pluginService, nil, nil)
@@ -557,6 +557,60 @@ func TestService(t *testing.T) {
 			_, err := svc.Deploy(ctx, projSpec.Name, namespaceSpec.Name, requestedJobSpecs, logWriter)
 
 			assert.Error(t, err)
+		})
+
+		t.Run("should delete existing jobs if they are missing from the incoming ones and return deployment id and nil", func(t *testing.T) {
+			namespaceService := new(mock.NamespaceService)
+			deployManager := new(mock.DeployManager)
+			pluginService := mock.NewPluginService(t)
+			jobSpecRepository := mock.NewJobSpecRepository(t)
+			jobService := job.NewService(nil, nil, nil, nil, nil, namespaceService, nil, deployManager, pluginService, jobSpecRepository, nil)
+
+			projetSpec := models.ProjectSpec{
+				Name: "project",
+			}
+			namespaceSpec := models.NamespaceSpec{
+				Name:        "namespace",
+				ProjectSpec: projetSpec,
+			}
+
+			ctx := context.Background()
+			inputProjectName := "project"
+			inputNamespaceName := "namespace"
+			inputJobSpecs := []models.JobSpec{
+				{
+					Name:          "job1",
+					NamespaceSpec: namespaceSpec,
+				},
+			}
+
+			namespaceService.On("Get", ctx, inputProjectName, inputNamespaceName).Return(namespaceSpec, nil)
+
+			existingJobSpecs := []models.JobSpec{
+				{
+					Name:          "job1",
+					NamespaceSpec: namespaceSpec,
+				},
+				{
+					Name:          "job3",
+					NamespaceSpec: namespaceSpec,
+				},
+			}
+			jobSpecRepository.On("GetAllByProjectNameAndNamespaceName", ctx, inputProjectName, inputNamespaceName).Return(existingJobSpecs, nil)
+
+			logWriter := new(mock.LogWriter)
+			logWriter.On("Write", tMock.Anything, tMock.Anything).Return(nil)
+
+			jobSpecRepository.On("GetDependentJobs", ctx, tMock.Anything, inputProjectName, tMock.Anything).Return([]models.JobSpec{}, nil)
+			jobSpecRepository.On("DeleteByID", ctx, tMock.Anything).Return(nil)
+
+			expectedDeploymentID := models.DeploymentID(uuid.New())
+			deployManager.On("Deploy", ctx, tMock.Anything).Return(expectedDeploymentID, nil)
+
+			actualDeploymentID, actualError := jobService.Deploy(ctx, inputProjectName, inputNamespaceName, inputJobSpecs, logWriter)
+
+			assert.EqualValues(t, expectedDeploymentID, actualDeploymentID)
+			assert.NoError(t, actualError)
 		})
 	})
 
@@ -914,7 +968,7 @@ func TestService(t *testing.T) {
 
 			service := job.NewService(nil, nil, dependencyResolver, nil, nil, namespaceService, projectService, deployManager, pluginService, jobSpecRepository, jobSourceRepo)
 
-			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			logWriter.On("Write", tMock.Anything, tMock.Anything).Return(nil)
 			deployID, err := service.Refresh(ctx, projSpec.Name, nil, nil, logWriter)
 
 			assert.Nil(t, err)
@@ -972,7 +1026,7 @@ func TestService(t *testing.T) {
 
 			service := job.NewService(nil, nil, dependencyResolver, nil, nil, namespaceService, projectService, deployManager, pluginService, jobSpecRepository, jobSourceRepo)
 
-			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			logWriter.On("Write", tMock.Anything, tMock.Anything).Return(nil)
 			deployID, err := service.Refresh(ctx, projSpec.Name, namespaceNames, nil, logWriter)
 
 			assert.Nil(t, err)
@@ -1034,7 +1088,7 @@ func TestService(t *testing.T) {
 
 			service := job.NewService(nil, batchScheduler, dependencyResolver, priorityResolver, nil, namespaceService, projectService, deployManager, pluginService, jobSpecRepository, jobSourceRepo)
 
-			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			logWriter.On("Write", tMock.Anything, tMock.Anything).Return(nil)
 			deployID, err := service.Refresh(ctx, projSpec.Name, nil, jobNames, logWriter)
 
 			assert.Nil(t, err)
@@ -1094,7 +1148,7 @@ func TestService(t *testing.T) {
 
 			service := job.NewService(nil, nil, dependencyResolver, nil, nil, namespaceService, projectService, deployManager, nil, jobSpecRepository, jobSourceRepo)
 
-			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			logWriter.On("Write", tMock.Anything, tMock.Anything).Return(nil)
 			deployID, err := service.Refresh(ctx, projSpec.Name, nil, nil, logWriter)
 
 			assert.Error(t, err)
@@ -1127,7 +1181,7 @@ func TestService(t *testing.T) {
 
 			service := job.NewService(nil, nil, dependencyResolver, nil, nil, namespaceService, projectService, deployManager, nil, nil, jobSourceRepo)
 
-			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			logWriter.On("Write", tMock.Anything, tMock.Anything).Return(nil)
 			deployID, err := service.Refresh(ctx, projSpec.Name, namespaceNames, nil, logWriter)
 
 			assert.Equal(t, errorMsg, err.Error())
@@ -1163,7 +1217,7 @@ func TestService(t *testing.T) {
 
 			service := job.NewService(nil, nil, dependencyResolver, nil, nil, namespaceService, projectService, deployManager, nil, jobSpecRepository, jobSourceRepo)
 
-			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			logWriter.On("Write", tMock.Anything, tMock.Anything).Return(nil)
 			deployID, err := service.Refresh(ctx, projSpec.Name, namespaceNames, nil, logWriter)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve jobs: %s", errorMsg), err.Error())
@@ -1209,7 +1263,7 @@ func TestService(t *testing.T) {
 
 			service := job.NewService(nil, nil, dependencyResolver, nil, nil, namespaceService, projectService, deployManager, nil, jobSpecRepository, jobSourceRepo)
 
-			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			logWriter.On("Write", tMock.Anything, tMock.Anything).Return(nil)
 			deployID, err := service.Refresh(ctx, projSpec.Name, nil, jobNames, logWriter)
 
 			assert.Equal(t, fmt.Sprintf("failed to retrieve job: %s", errorMsg), err.Error())
@@ -1278,7 +1332,7 @@ func TestService(t *testing.T) {
 
 			service := job.NewService(nil, nil, dependencyResolver, nil, nil, namespaceService, projectService, deployManager, pluginService, jobSpecRepository, jobSourceRepo)
 
-			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			logWriter.On("Write", tMock.Anything, tMock.Anything).Return(nil)
 			deployID, err := service.Refresh(ctx, projSpec.Name, nil, nil, logWriter)
 
 			assert.Nil(t, err)
@@ -1349,7 +1403,7 @@ func TestService(t *testing.T) {
 
 			service := job.NewService(nil, nil, dependencyResolver, nil, nil, namespaceService, projectService, deployManager, pluginService, jobSpecRepository, jobSourceRepo)
 
-			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			logWriter.On("Write", tMock.Anything, tMock.Anything).Return(nil)
 			deployID, err := service.Refresh(ctx, projSpec.Name, nil, nil, logWriter)
 
 			assert.Nil(t, err)
@@ -1404,7 +1458,7 @@ func TestService(t *testing.T) {
 
 			service := job.NewService(nil, nil, dependencyResolver, nil, nil, namespaceService, projectService, deployManager, pluginService, jobSpecRepository, jobSourceRepo)
 
-			logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+			logWriter.On("Write", tMock.Anything, tMock.Anything).Return(nil)
 			deployID, err := service.Refresh(ctx, projSpec.Name, nil, nil, logWriter)
 
 			assert.Contains(t, err.Error(), errorMsg)
@@ -1495,7 +1549,7 @@ func TestService(t *testing.T) {
 		pluginService.On("GenerateDependencies", ctx, enrichedJobSpec, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{}, nil)
 
 		logWriter := new(mock.LogWriter)
-		logWriter.On("Write", mock2.Anything, mock2.Anything).Return(nil)
+		logWriter.On("Write", tMock.Anything, tMock.Anything).Return(nil)
 		defer logWriter.AssertExpectations(t)
 
 		jobSpecRepository := mock.NewJobSpecRepository(t)
