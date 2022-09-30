@@ -26,24 +26,21 @@ var (
 const InterJobDependencyNameSections = 2
 
 type dependencyResolver struct {
-	projectSpecRepo store.ProjectRepository
-	jobSpecRepo     store.JobSpecRepository
-	jobSourceRepo   store.JobSourceRepository
-	pluginService   service.PluginService
+	jobSpecRepo   store.JobSpecRepository
+	jobSourceRepo store.JobSourceRepository
+	pluginService service.PluginService
 
 	externalDependencyResolver ExternalDependencyResolver
 }
 
 // NewDependencyResolver creates a new instance of Resolver
 func NewDependencyResolver(
-	projectSpecRepo store.ProjectRepository,
 	jobSpecRepo store.JobSpecRepository,
 	jobSourceRepo store.JobSourceRepository,
 	pluginService service.PluginService,
 	externalDependencyResolver ExternalDependencyResolver,
 ) DependencyResolver {
 	return &dependencyResolver{
-		projectSpecRepo:            projectSpecRepo,
 		jobSpecRepo:                jobSpecRepo,
 		jobSourceRepo:              jobSourceRepo,
 		pluginService:              pluginService,
@@ -158,16 +155,12 @@ func (d *dependencyResolver) resolveStaticDependencies(ctx context.Context, jobS
 				}
 				projectName := depParts[0]
 				jobName := depParts[1]
-				project, err := d.projectSpecRepo.GetByName(ctx, projectName)
-				if err != nil {
-					return models.JobSpec{}, fmt.Errorf("error getting project [%s]: %w", projectName, err)
-				}
 				job, err := d.jobSpecRepo.GetByNameAndProjectName(ctx, jobName, projectName)
 				if err != nil {
 					return models.JobSpec{}, fmt.Errorf("%s for job %s: %w", ErrUnknownCrossProjectDependency, depName, err)
 				}
 				depSpec.Job = &job
-				depSpec.Project = &project
+				depSpec.Project = &job.NamespaceSpec.ProjectSpec
 				jobSpec.Dependencies[depName] = depSpec
 			default:
 				return models.JobSpec{}, fmt.Errorf("unsupported dependency type: %s", depSpec.Type)
@@ -198,7 +191,7 @@ func (d *dependencyResolver) GetJobSpecsWithDependencies(ctx context.Context, pr
 		return nil, nil, errors.New("context is nil")
 	}
 	if projectName == "" {
-		return nil, nil, errors.New("projet name is empty")
+		return nil, nil, errors.New("project name is empty")
 	}
 	jobSpecs, err := d.jobSpecRepo.GetAllByProjectName(ctx, projectName)
 	if err != nil {

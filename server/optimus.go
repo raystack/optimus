@@ -247,7 +247,7 @@ func (s *OptimusServer) setupHandlers() error {
 	if err != nil {
 		return err
 	}
-	dependencyResolver := job.NewDependencyResolver(projectRepo, jobSpecRepo, jobSourceRepository, pluginService, externalDependencyResolver)
+	dependencyResolver := job.NewDependencyResolver(jobSpecRepo, jobSourceRepository, pluginService, externalDependencyResolver)
 	priorityResolver := job.NewPriorityResolver()
 
 	replayWorkerFactory := &replayWorkerFact{
