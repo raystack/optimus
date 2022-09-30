@@ -13,80 +13,95 @@ import (
 )
 
 type jobSpecRepository struct {
-	db      *gorm.DB
+	db *gorm.DB
+
 	adapter *JobSpecAdapter
 }
 
-func NewJobSpecRepository(db *gorm.DB, adapter *JobSpecAdapter) store.JobSpecRepository {
+// NewJobSpecRepository initializes job spec repository
+func NewJobSpecRepository(db *gorm.DB, adapter *JobSpecAdapter) (store.JobSpecRepository, error) {
+	if db == nil {
+		return nil, errors.New("db client is nil")
+	}
+	if adapter == nil {
+		return nil, errors.New("adapter is nil")
+	}
 	return &jobSpecRepository{
 		db:      db,
 		adapter: adapter,
-	}
+	}, nil
 }
 
-func (repo jobSpecRepository) GetAllByProjectID(ctx context.Context, projectID models.ProjectID) ([]models.JobSpec, error) {
+func (j jobSpecRepository) GetAllByProjectName(ctx context.Context, projectName string) ([]models.JobSpec, error) {
 	var jobs []Job
-	if err := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project").Where("project_id = ?", projectID.UUID()).Find(&jobs).Error; err != nil {
+	if err := j.db.WithContext(ctx).
+		Preload("Namespace").
+		Preload("Project").
+		Joins("Project").
+		Where(`"Project"."name" = ?`, projectName).
+		Find(&jobs).Error; err != nil {
 		return nil, err
 	}
-
-	jobSpecs := make([]models.JobSpec, len(jobs))
-	for i, job := range jobs {
-		adapt, err := repo.adapter.ToSpec(job)
-		if err != nil {
-			return nil, err
-		}
-		jobSpecs[i] = adapt
-	}
-	return jobSpecs, nil
+	return j.toJobSpecs(jobs)
 }
 
-func (repo jobSpecRepository) GetJobByName(ctx context.Context, jobName string) ([]models.JobSpec, error) {
+func (j jobSpecRepository) GetAllByProjectNameAndNamespaceName(ctx context.Context, projectName, namespaceName string) ([]models.JobSpec, error) {
 	var jobs []Job
-	var specs []models.JobSpec
-	if err := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project").Where("name = ?", jobName).Find(&jobs).Error; err != nil {
+	if err := j.db.WithContext(ctx).
+		Preload("Namespace").
+		Preload("Project").
+		Joins("Project").
+		Joins("Namespace").
+		Where(`"Project"."name" = ? and "Namespace"."name" = ?`, projectName, namespaceName).
+		Find(&jobs).Error; err != nil {
 		return nil, err
 	}
-	for _, job := range jobs {
-		adapt, err := repo.adapter.ToSpec(job)
-		if err != nil {
-			return specs, err
-		}
-		specs = append(specs, adapt)
-	}
-	return specs, nil
+	return j.toJobSpecs(jobs)
 }
 
-func (repo jobSpecRepository) GetJobByResourceDestination(ctx context.Context, resourceDestination string) (models.JobSpec, error) {
+func (j jobSpecRepository) GetByNameAndProjectName(ctx context.Context, name, projectName string) (models.JobSpec, error) {
+	job, err := j.getByNameAndProjectName(ctx, name, projectName)
+	if err != nil {
+		return models.JobSpec{}, err
+	}
+	return j.adapter.ToSpec(job)
+}
+
+func (j jobSpecRepository) GetByResourceDestinationURN(ctx context.Context, resourceDestinationURN string) (models.JobSpec, error) {
 	var job Job
-	if err := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project").Where("destination = ?", resourceDestination).First(&job).Error; err != nil {
+	if err := j.db.WithContext(ctx).
+		Preload("Namespace").
+		Preload("Project").
+		Where("destination = ?", resourceDestinationURN).
+		First(&job).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.JobSpec{}, store.ErrResourceNotFound
 		}
+		return models.JobSpec{}, err
 	}
-	return repo.adapter.ToSpec(job)
+	return j.adapter.ToSpec(job)
 }
 
-func (repo jobSpecRepository) GetDependentJobs(ctx context.Context, jobSpec *models.JobSpec) ([]models.JobSpec, error) {
-	var allDependentJobs []models.JobSpec
-	dependentJobsInferred, err := repo.getDependentJobsInferred(ctx, jobSpec)
+func (j jobSpecRepository) GetDependentJobs(ctx context.Context, jobName, resourceDestinationURN, projectName string) ([]models.JobSpec, error) {
+	var allDependentJobs []Job
+	dependentJobsInferred, err := j.getDependentJobsInferred(ctx, resourceDestinationURN)
 	if err != nil {
 		return nil, err
 	}
 	allDependentJobs = append(allDependentJobs, dependentJobsInferred...)
 
-	dependentJobsStatic, err := repo.getDependentJobsStatic(ctx, jobSpec)
+	dependentJobsStatic, err := j.getDependentJobsStatic(ctx, jobName, projectName)
 	if err != nil {
 		return nil, err
 	}
 	allDependentJobs = append(allDependentJobs, dependentJobsStatic...)
 
-	return allDependentJobs, nil
+	return j.toJobSpecs(allDependentJobs)
 }
 
-func (repo jobSpecRepository) GetInferredDependenciesPerJobID(ctx context.Context, projectID models.ProjectID) (map[uuid.UUID][]models.JobSpec, error) {
+func (j jobSpecRepository) GetInferredDependenciesPerJobID(ctx context.Context, projectName string) (map[uuid.UUID][]models.JobSpec, error) {
 	var jobDependencies []jobDependency
-	if err := repo.db.WithContext(ctx).
+	if err := j.db.WithContext(ctx).
 		Preload("DependencyNamespace").Preload("DependencyProject").
 		Select("js.job_id, "+
 			"j.id as dependency_id, "+
@@ -96,24 +111,27 @@ func (repo jobSpecRepository) GetInferredDependenciesPerJobID(ctx context.Contex
 			"j.namespace_id as dependency_namespace_id, "+
 			"j.project_id as dependency_project_id").
 		Joins("join job j on js.resource_urn = j.destination").
+		Joins("join project p on js.project_id = p.id").
 		Table("job_source js").
-		Where("js.project_id = ? and j.deleted_at is null", projectID.UUID()).
+		Where("p.name = ? and j.deleted_at is null", projectName).
 		Find(&jobDependencies).Error; err != nil {
 		return nil, err
 	}
-	return repo.adapter.groupToDependenciesPerJobID(jobDependencies)
+	return j.adapter.groupToDependenciesPerJobID(jobDependencies)
 }
 
-func (repo jobSpecRepository) GetStaticDependenciesPerJobID(ctx context.Context, projectID models.ProjectID) (map[uuid.UUID][]models.JobSpec, error) {
+func (j jobSpecRepository) GetStaticDependenciesPerJobID(ctx context.Context, projectName string) (map[uuid.UUID][]models.JobSpec, error) {
 	var jobDependencies []jobDependency
-	requestedJobsQuery := repo.db.
-		Select("id, name, jsonb_object_keys(dependencies) as dependency_name, project_id").
-		Table("job").Where("project_id = ?", projectID.UUID())
-	dependenciesQuery := repo.db.
+	requestedJobsQuery := j.db.
+		Select("j.id, j.name, jsonb_object_keys(j.dependencies) as dependency_name, j.project_id").
+		Table("job j").
+		Joins("join project p on j.project_id = p.id").
+		Where("p.name = ?", projectName)
+	dependenciesQuery := j.db.
 		Select("j.id, j.name, j.namespace_id, j.task_name, j.project_id, p.name as project_name").
 		Table("job j").Joins("join project p on j.project_id = p.id")
 
-	if err := repo.db.WithContext(ctx).
+	if err := j.db.WithContext(ctx).
 		Preload("DependencyNamespace").Preload("DependencyProject").
 		Select("rj.id as job_id, "+
 			"rj.name as job_name, "+
@@ -129,43 +147,115 @@ func (repo jobSpecRepository) GetStaticDependenciesPerJobID(ctx context.Context,
 		Find(&jobDependencies).Error; err != nil {
 		return nil, err
 	}
-	return repo.adapter.groupToDependenciesPerJobID(jobDependencies)
+	return j.adapter.groupToDependenciesPerJobID(jobDependencies)
 }
 
-func (repo jobSpecRepository) getDependentJobsInferred(ctx context.Context, jobSpec *models.JobSpec) ([]models.JobSpec, error) {
-	var jobs []Job
-	var specs []models.JobSpec
+func (j jobSpecRepository) Save(ctx context.Context, incomingJobSpec models.JobSpec) error {
+	incomingJob, err := j.adapter.FromJobSpec(incomingJobSpec, incomingJobSpec.ResourceDestination)
+	if err != nil {
+		return err
+	}
 
-	subQuery := repo.db.Select("job_id").Where("resource_urn = ?", jobSpec.ResourceDestination).Table("job_source")
-	if err := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project").Where("id IN (?)", subQuery).Find(&jobs).Error; err != nil {
-		return nil, err
+	existingJob, err := j.getByNameAndProjectName(ctx, incomingJob.Name, incomingJob.Project.Name)
+	if errors.Is(err, store.ErrResourceNotFound) {
+		return j.insert(ctx, incomingJob)
+	} else if err != nil {
+		return fmt.Errorf("unable to retrieve spec by name: %w", err)
 	}
-	for _, job := range jobs {
-		adapt, err := repo.adapter.ToSpec(job)
-		if err != nil {
-			return specs, err
-		}
-		specs = append(specs, adapt)
+
+	zeroUUID := uuid.UUID{}
+	if incomingJob.NamespaceID != zeroUUID && incomingJob.NamespaceID != existingJob.NamespaceID {
+		return fmt.Errorf("job [%s] already exists in namespace [%s] for project [%s]", incomingJob.Name, existingJob.Namespace.Name, existingJob.Project.Name)
 	}
-	return specs, nil
+
+	incomingJob.ID = existingJob.ID
+	return j.db.WithContext(ctx).Model(&incomingJob).Updates(&incomingJob).Error
 }
 
-func (repo jobSpecRepository) getDependentJobsStatic(ctx context.Context, jobSpec *models.JobSpec) ([]models.JobSpec, error) {
-	var jobs []Job
-	var specs []models.JobSpec
+func (j jobSpecRepository) DeleteByID(ctx context.Context, id uuid.UUID) error {
+	return j.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.WithContext(ctx).Where("id = ?", id).Delete(&Job{}).Error; err != nil {
+			return err
+		}
+		return tx.WithContext(ctx).Where("job_id = ?", id).Delete(&JobSource{}).Error
+	})
+}
 
-	projectAndJobName := fmt.Sprintf("%s/%s", jobSpec.GetProjectSpec().Name, jobSpec.Name)
-	if err := repo.db.WithContext(ctx).Preload("Namespace").Preload("Project").
-		Where("(((dependencies -> ?) IS NOT NULL and project_id = ?) or (dependencies -> ?) IS NOT NULL)",
-			jobSpec.Name, jobSpec.GetProjectSpec().ID.UUID(), projectAndJobName).Find(&jobs).Error; err != nil {
+func (j jobSpecRepository) getByNameAndProjectName(ctx context.Context, name, projectName string) (Job, error) {
+	var job Job
+	if err := j.db.WithContext(ctx).
+		Preload("Namespace").
+		Preload("Project").
+		Joins("Project").
+		Where(`"job"."name" = ? and "Project"."name" = ?`, name, projectName).
+		First(&job).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return Job{}, store.ErrResourceNotFound
+		}
+		return Job{}, err
+	}
+	return job, nil
+}
+
+func (j jobSpecRepository) insert(ctx context.Context, job Job) error {
+	if err := j.hardDelete(ctx, job.Name, job.Project.Name); err != nil {
+		return err
+	}
+	return j.db.WithContext(ctx).Create(&job).Error
+}
+
+func (j jobSpecRepository) hardDelete(ctx context.Context, name, projectName string) error {
+	var job Job
+	if err := j.db.WithContext(ctx).
+		Unscoped().
+		Joins("Project").
+		Where(`"job"."name" = ? and "Project"."name" = ?`, name, projectName).
+		First(&job).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return fmt.Errorf("failed to fetch soft deleted resource: %w", err)
+	}
+	return j.db.WithContext(ctx).Unscoped().Where("id = ?", job.ID).Delete(&Job{}).Error
+}
+
+func (j jobSpecRepository) getDependentJobsInferred(ctx context.Context, resourceDestinationURN string) ([]Job, error) {
+	var jobs []Job
+	subQuery := j.db.Select("job_id").
+		Where("resource_urn = ?", resourceDestinationURN).
+		Table("job_source")
+	if err := j.db.WithContext(ctx).
+		Preload("Namespace").
+		Preload("Project").
+		Where("id IN (?)", subQuery).
+		Find(&jobs).Error; err != nil {
 		return nil, err
 	}
-	for _, job := range jobs {
-		adapt, err := repo.adapter.ToSpec(job)
-		if err != nil {
-			return specs, err
-		}
-		specs = append(specs, adapt)
+	return jobs, nil
+}
+
+func (j jobSpecRepository) getDependentJobsStatic(ctx context.Context, name, projectName string) ([]Job, error) {
+	var jobs []Job
+	projectAndJobName := fmt.Sprintf("%s/%s", projectName, name)
+	if err := j.db.WithContext(ctx).
+		Preload("Namespace").
+		Preload("Project").
+		Joins("Project").
+		Where(`(("job"."dependencies" -> ?) IS NOT NULL and "Project"."name" = ?) or ("job".dependencies -> ?) IS NOT NULL`, name, projectName, projectAndJobName).
+		Find(&jobs).Error; err != nil {
+		return nil, err
 	}
-	return specs, nil
+	return jobs, nil
+}
+
+func (j jobSpecRepository) toJobSpecs(jobs []Job) ([]models.JobSpec, error) {
+	jobSpecs := make([]models.JobSpec, len(jobs))
+	for i, job := range jobs {
+		jobSpec, err := j.adapter.ToSpec(job)
+		if err != nil {
+			return nil, err
+		}
+		jobSpecs[i] = jobSpec
+	}
+	return jobSpecs, nil
 }

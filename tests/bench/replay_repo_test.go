@@ -56,12 +56,12 @@ func BenchmarkReplayRepository(b *testing.B) {
 			assert.Nil(b, secretRepo.Save(ctx, project, namespace, setup.Secret(i)))
 		}
 
-		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(dbConn, project, adapter)
-		jobRepo := postgres.NewNamespaceJobSpecRepository(dbConn, namespace, projectJobSpecRepo, adapter)
+		jobSpecRepository, err := postgres.NewJobSpecRepository(dbConn, adapter)
+		assert.NoError(b, err)
 
 		for i := 0; i < len(jobs); i++ {
-			dest := fmt.Sprintf("bigquery://integration:playground.table%d", i)
-			err := jobRepo.Insert(ctx, jobs[i], dest)
+			jobs[i].ResourceDestination = fmt.Sprintf("bigquery://integration:playground.table%d", i)
+			err := jobSpecRepository.Save(ctx, jobs[i])
 			assert.Nil(b, err)
 		}
 

@@ -344,8 +344,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				},
 			}
 
-			allTasksRepo := new(mock.SupportedPluginRepo)
-			allTasksRepo.On("GetByName", taskName).Return(execUnit1, nil)
+			allTasksRepo := mock.NewPluginRepository(t)
 
 			nsService := new(mock.NamespaceService)
 			nsService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).
@@ -446,8 +445,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				},
 			}
 
-			allTasksRepo := new(mock.SupportedPluginRepo)
-			allTasksRepo.On("GetByName", taskName).Return(execUnit1, nil)
+			allTasksRepo := mock.NewPluginRepository(t)
 
 			namespaceService := new(mock.NamespaceService)
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)

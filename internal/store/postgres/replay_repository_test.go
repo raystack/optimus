@@ -62,22 +62,25 @@ func TestIntegrationReplayRepository(t *testing.T) {
 	gTask := "g-task"
 	jobConfigs := []models.JobSpec{
 		{
-			Version:       1,
-			ID:            uuid.New(),
-			Name:          "job-1",
-			NamespaceSpec: namespaceSpec,
+			Version:             1,
+			ID:                  uuid.New(),
+			Name:                "job-1",
+			NamespaceSpec:       namespaceSpec,
+			ResourceDestination: jobDestination,
 		},
 		{
-			Version:       1,
-			ID:            uuid.New(),
-			Name:          "job-2",
-			NamespaceSpec: namespaceSpec,
+			Version:             1,
+			ID:                  uuid.New(),
+			Name:                "job-2",
+			NamespaceSpec:       namespaceSpec,
+			ResourceDestination: jobDestination,
 		},
 		{
-			Version:       1,
-			ID:            uuid.New(),
-			Name:          "job-3",
-			NamespaceSpec: namespaceSpec,
+			Version:             1,
+			ID:                  uuid.New(),
+			Name:                "job-3",
+			NamespaceSpec:       namespaceSpec,
+			ResourceDestination: jobDestination,
 		},
 	}
 	startTime := time.Date(2021, 1, 15, 0, 0, 0, 0, time.UTC)
@@ -157,7 +160,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 		depMod1 := new(mock.DependencyResolverMod)
 		defer depMod1.AssertExpectations(t)
 
-		pluginRepo := new(mock.SupportedPluginRepo)
+		pluginRepo := mock.NewPluginRepository(t)
 		defer pluginRepo.AssertExpectations(t)
 		pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 		adapter := postgres.NewAdapter(pluginRepo)
@@ -172,10 +175,10 @@ func TestIntegrationReplayRepository(t *testing.T) {
 		err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
 		assert.Nil(t, err)
 
-		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-		jobRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+		jobSpecRepository, err := postgres.NewJobSpecRepository(db, adapter)
+		assert.NoError(t, err)
 
-		err = jobRepo.Insert(ctx, jobConfigs[0], jobDestination)
+		err = jobSpecRepository.Save(ctx, jobConfigs[0])
 		assert.Nil(t, err)
 
 		repo := postgres.NewReplayRepository(db, adapter)
@@ -202,7 +205,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 		depMod1 := new(mock.DependencyResolverMod)
 		defer depMod1.AssertExpectations(t)
 
-		pluginRepo := new(mock.SupportedPluginRepo)
+		pluginRepo := mock.NewPluginRepository(t)
 		defer pluginRepo.AssertExpectations(t)
 		pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 		adapter := postgres.NewAdapter(pluginRepo)
@@ -214,9 +217,9 @@ func TestIntegrationReplayRepository(t *testing.T) {
 		err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
 		assert.Nil(t, err)
 
-		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-		jobRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-		err = jobRepo.Insert(ctx, jobConfigs[0], jobDestination)
+		jobSpecRepository, err := postgres.NewJobSpecRepository(db, adapter)
+		assert.NoError(t, err)
+		err = jobSpecRepository.Save(ctx, jobConfigs[0])
 		assert.Nil(t, err)
 
 		repo := postgres.NewReplayRepository(db, adapter)
@@ -256,7 +259,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 				testConfigs[idx].Job = jobConfig
 			}
 
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 			defer pluginRepo.AssertExpectations(t)
 			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 			adapter := postgres.NewAdapter(pluginRepo)
@@ -265,14 +268,14 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
 			assert.Nil(t, err)
 
-			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-			jobRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			jobSpecRepository, err := postgres.NewJobSpecRepository(db, adapter)
+			assert.NoError(t, err)
 
-			err = jobRepo.Insert(ctx, testModels[0].Job, jobDestination)
+			err = jobSpecRepository.Save(ctx, testModels[0].Job)
 			assert.Nil(t, err)
-			err = jobRepo.Insert(ctx, testModels[1].Job, jobDestination)
+			err = jobSpecRepository.Save(ctx, testModels[1].Job)
 			assert.Nil(t, err)
-			err = jobRepo.Insert(ctx, testModels[2].Job, jobDestination)
+			err = jobSpecRepository.Save(ctx, testModels[2].Job)
 			assert.Nil(t, err)
 
 			repo := postgres.NewReplayRepository(db, adapter)
@@ -309,7 +312,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 				testConfigs[idx].Job = jobConfig
 			}
 
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 			defer pluginRepo.AssertExpectations(t)
 			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 			adapter := postgres.NewAdapter(pluginRepo)
@@ -318,13 +321,13 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			err := namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
 			assert.Nil(t, err)
 
-			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-			jobRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
-			err = jobRepo.Insert(ctx, testModels[0].Job, jobDestination)
+			jobSpecRepository, err := postgres.NewJobSpecRepository(db, adapter)
+			assert.NoError(t, err)
+			err = jobSpecRepository.Save(ctx, testModels[0].Job)
 			assert.Nil(t, err)
-			err = jobRepo.Insert(ctx, testModels[1].Job, jobDestination)
+			err = jobSpecRepository.Save(ctx, testModels[1].Job)
 			assert.Nil(t, err)
-			err = jobRepo.Insert(ctx, testModels[2].Job, jobDestination)
+			err = jobSpecRepository.Save(ctx, testModels[2].Job)
 			assert.Nil(t, err)
 
 			repo := postgres.NewReplayRepository(db, adapter)
@@ -360,7 +363,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 				testConfigs[idx].Job = jobConfig
 			}
 
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 			defer pluginRepo.AssertExpectations(t)
 			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 			adapter := postgres.NewAdapter(pluginRepo)
@@ -373,14 +376,14 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			err = namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
 			assert.Nil(t, err)
 
-			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-			jobRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			jobSpecRepository, err := postgres.NewJobSpecRepository(db, adapter)
+			assert.NoError(t, err)
 
-			err = jobRepo.Insert(ctx, testModels[0].Job, jobDestination)
+			err = jobSpecRepository.Save(ctx, testModels[0].Job)
 			assert.Nil(t, err)
-			err = jobRepo.Insert(ctx, testModels[1].Job, jobDestination)
+			err = jobSpecRepository.Save(ctx, testModels[1].Job)
 			assert.Nil(t, err)
-			err = jobRepo.Insert(ctx, testModels[2].Job, jobDestination)
+			err = jobSpecRepository.Save(ctx, testModels[2].Job)
 			assert.Nil(t, err)
 
 			repo := postgres.NewReplayRepository(db, adapter)
@@ -416,7 +419,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 				testConfigs[idx].Job = jobConfig
 			}
 
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 			defer pluginRepo.AssertExpectations(t)
 			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 			adapter := postgres.NewAdapter(pluginRepo)
@@ -429,14 +432,14 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			err = namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
 			assert.Nil(t, err)
 
-			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-			jobRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			jobSpecRepository, err := postgres.NewJobSpecRepository(db, adapter)
+			assert.NoError(t, err)
 
-			err = jobRepo.Insert(ctx, testModels[0].Job, jobDestination)
+			err = jobSpecRepository.Save(ctx, testModels[0].Job)
 			assert.Nil(t, err)
-			err = jobRepo.Insert(ctx, testModels[1].Job, jobDestination)
+			err = jobSpecRepository.Save(ctx, testModels[1].Job)
 			assert.Nil(t, err)
-			err = jobRepo.Insert(ctx, testModels[2].Job, jobDestination)
+			err = jobSpecRepository.Save(ctx, testModels[2].Job)
 			assert.Nil(t, err)
 
 			repo := postgres.NewReplayRepository(db, adapter)
@@ -468,7 +471,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 				testConfigs[idx].Job = jobConfig
 			}
 
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 			defer pluginRepo.AssertExpectations(t)
 			adapter := postgres.NewAdapter(pluginRepo)
 
@@ -480,14 +483,14 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			err = namespaceRepo.Insert(ctx, projectSpec, namespaceSpec)
 			assert.Nil(t, err)
 
-			projectJobSpecRepo := postgres.NewProjectJobSpecRepository(db, projectSpec, adapter)
-			jobRepo := postgres.NewNamespaceJobSpecRepository(db, namespaceSpec, projectJobSpecRepo, adapter)
+			jobSpecRepository, err := postgres.NewJobSpecRepository(db, adapter)
+			assert.NoError(t, err)
 
-			err = jobRepo.Insert(ctx, testModels[0].Job, jobDestination)
+			err = jobSpecRepository.Save(ctx, testModels[0].Job)
 			assert.Nil(t, err)
-			err = jobRepo.Insert(ctx, testModels[1].Job, jobDestination)
+			err = jobSpecRepository.Save(ctx, testModels[1].Job)
 			assert.Nil(t, err)
-			err = jobRepo.Insert(ctx, testModels[2].Job, jobDestination)
+			err = jobSpecRepository.Save(ctx, testModels[2].Job)
 			assert.Nil(t, err)
 
 			repo := postgres.NewReplayRepository(db, adapter)

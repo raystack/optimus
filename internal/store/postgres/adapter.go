@@ -373,6 +373,8 @@ func (JobSpecAdapter) FromJobSpec(spec models.JobSpec, resourceDestination strin
 		offset = spec.Task.Window.GetOffset()
 		size = spec.Task.Window.GetSize()
 	}
+	project := Project{}.FromSpec(spec.GetProjectSpec())
+	namespace := Namespace{}.FromSpec(spec.NamespaceSpec)
 	return Job{
 		ID:                   spec.ID,
 		Version:              spec.Version,
@@ -395,6 +397,10 @@ func (JobSpecAdapter) FromJobSpec(spec models.JobSpec, resourceDestination strin
 		Hooks:                hooksJSON,
 		Metadata:             metadata,
 		ExternalDependencies: externalDependenciesJSON,
+		ProjectID:            project.ID,
+		Project:              project,
+		NamespaceID:          namespace.ID,
+		Namespace:            namespace,
 	}, nil
 }
 

@@ -20,39 +20,19 @@ const (
 	ISODateFormat = "2006-01-02T15:04:05Z"
 )
 
-// ProjectJobSpecRepository represents a storage interface for Job specifications at a project level
-// This will be deprecated and avoid having multiple job spec repositories
-type ProjectJobSpecRepository interface {
-	GetByName(context.Context, string) (models.JobSpec, models.NamespaceSpec, error)
-	GetByNameForProject(ctx context.Context, projectName, jobName string) (models.JobSpec, models.ProjectSpec, error)
-	GetAll(context.Context) ([]models.JobSpec, error)
-
-	// GetByIDs returns all the jobs as requested by its ID
-	GetByIDs(context.Context, []uuid.UUID) ([]models.JobSpec, error)
-
-	// GetJobNamespaces returns [namespace name] -> []{job name,...} in a project
-	GetJobNamespaces(ctx context.Context) (map[string][]string, error)
-}
-
-// JobSpecRepository represents a storage interface for Job specification
 type JobSpecRepository interface {
-	GetAllByProjectID(context.Context, models.ProjectID) ([]models.JobSpec, error)
-	// TODO: change to GetJobsByName as it returns multiple jobs
-	GetJobByName(context.Context, string) ([]models.JobSpec, error)
-	// TODO: allow to also GetJobByResourceDestination for a specific project
-	GetJobByResourceDestination(context.Context, string) (models.JobSpec, error)
-	GetDependentJobs(context.Context, *models.JobSpec) ([]models.JobSpec, error)
-	GetInferredDependenciesPerJobID(context.Context, models.ProjectID) (map[uuid.UUID][]models.JobSpec, error)
-	GetStaticDependenciesPerJobID(context.Context, models.ProjectID) (map[uuid.UUID][]models.JobSpec, error)
-}
+	GetAllByProjectName(ctx context.Context, projectName string) ([]models.JobSpec, error)
+	GetAllByProjectNameAndNamespaceName(ctx context.Context, projectName, namespaceName string) ([]models.JobSpec, error)
 
-// NamespaceJobSpecRepository represents a storage interface for Job specifications at a namespace level
-// This will be deprecated and avoid having multiple job spec repositories
-type NamespaceJobSpecRepository interface {
-	Save(context.Context, models.JobSpec, string) error
-	GetByName(context.Context, string) (models.JobSpec, error)
-	GetAll(context.Context) ([]models.JobSpec, error)
-	Delete(context.Context, uuid.UUID) error
+	GetByNameAndProjectName(ctx context.Context, name, projectName string) (models.JobSpec, error)
+	GetByResourceDestinationURN(ctx context.Context, resourceDestinationURN string) (models.JobSpec, error)
+
+	GetDependentJobs(ctx context.Context, jobName, resourceDestinationURN, projectName string) ([]models.JobSpec, error)
+	GetInferredDependenciesPerJobID(ctx context.Context, projectName string) (map[uuid.UUID][]models.JobSpec, error)
+	GetStaticDependenciesPerJobID(ctx context.Context, projectName string) (map[uuid.UUID][]models.JobSpec, error)
+
+	Save(ctx context.Context, jobSpec models.JobSpec) error
+	DeleteByID(ctx context.Context, id uuid.UUID) error
 }
 
 // ProjectRepository represents a storage interface for registered projects
@@ -179,7 +159,7 @@ type JobSourceRepository interface {
 	GetAll(context.Context, models.ProjectID) ([]models.JobSource, error)
 	GetByResourceURN(context.Context, string) ([]models.JobSource, error)
 	DeleteByJobID(context.Context, uuid.UUID) error
-	GetResourceURNsPerJobID(context.Context, models.ProjectID) (map[uuid.UUID][]string, error)
+	GetResourceURNsPerJobID(ctx context.Context, projectName string) (map[uuid.UUID][]string, error)
 }
 
 // Migration is a contract for migration
