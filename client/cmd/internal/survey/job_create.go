@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
-	"gopkg.in/yaml.v2"
 
 	"github.com/odpf/optimus/client/local"
 	"github.com/odpf/optimus/internal/utils"
@@ -37,16 +36,16 @@ func NewJobCreateSurvey() *JobCreateSurvey {
 }
 
 // AskToCreateJob asks questions to create job
-func (j *JobCreateSurvey) AskToCreateJob(jobSpecRepo JobSpecRepository, defaultJobName string) (local.Job, error) {
+func (j *JobCreateSurvey) AskToCreateJob(jobSpecRepo JobSpecRepository, defaultJobName string) (local.JobSpec, error) {
 	availableTaskNames := j.getAvailableTaskNames()
 	if len(availableTaskNames) == 0 {
-		return local.Job{}, errors.New("no supported task plugin found")
+		return local.JobSpec{}, errors.New("no supported task plugin found")
 	}
 
 	createQuestions := j.getCreateQuestions(jobSpecRepo, defaultJobName, availableTaskNames)
 	jobInput, err := j.askCreateQuestions(createQuestions)
 	if err != nil {
-		return local.Job{}, err
+		return local.JobSpec{}, err
 	}
 
 	cliMod, err := j.getPluginCLIMod(jobInput.Task.Name)
@@ -94,14 +93,14 @@ func (*JobCreateSurvey) getJobAsset(cliMod models.CommandLineMod, answers models
 	return asset, nil
 }
 
-func (*JobCreateSurvey) getTaskConfig(cliMod models.CommandLineMod, answers models.PluginAnswers) (yaml.MapSlice, error) {
+func (*JobCreateSurvey) getTaskConfig(cliMod models.CommandLineMod, answers models.PluginAnswers) (map[string]string, error) {
 	ctx := context.Background()
 	defaultConfigRequest := models.DefaultConfigRequest{Answers: answers}
 	generatedConfigResponse, err := cliMod.DefaultConfig(ctx, defaultConfigRequest)
 	if err != nil {
 		return nil, err
 	}
-	var taskConfig yaml.MapSlice
+	var taskConfig map[string]string
 	if generatedConfigResponse.Config != nil {
 		jobSpecConfigs := generatedConfigResponse.Config.ToJobSpec()
 		taskConfig = local.JobSpecConfigToMap(jobSpecConfigs)
@@ -179,17 +178,17 @@ this effects runtime dependencies and template macros`,
 	}
 }
 
-func (j *JobCreateSurvey) askCreateQuestions(questions []*survey.Question) (local.Job, error) {
+func (j *JobCreateSurvey) askCreateQuestions(questions []*survey.Question) (local.JobSpec, error) {
 	baseInputsRaw := make(map[string]interface{})
 	if err := survey.Ask(questions, &baseInputsRaw); err != nil {
-		return local.Job{}, err
+		return local.JobSpec{}, err
 	}
 	baseInputs, err := utils.ConvertToStringMap(baseInputsRaw)
 	if err != nil {
-		return local.Job{}, err
+		return local.JobSpec{}, err
 	}
 
-	return local.Job{
+	return local.JobSpec{
 		Version: models.JobSpecDefaultVersion,
 		Name:    baseInputs["name"],
 		Owner:   baseInputs["owner"],

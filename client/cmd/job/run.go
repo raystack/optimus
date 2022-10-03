@@ -10,12 +10,10 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
-	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	"github.com/odpf/optimus/client/cmd/internal/connectivity"
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/local"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
@@ -55,28 +53,26 @@ func (r *runCommand) RunE(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	pluginRepo := models.PluginRegistry
-	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
-	jobSpecRepo := local.NewJobSpecRepository(
-		jobSpecFs,
-		local.NewJobSpecAdapter(pluginRepo),
-	)
+	jobSpecReadWriter, err := local.NewJobSpecReadWriter(afero.NewOsFs())
+	if err != nil {
+		return err
+	}
 
-	jobSpec, err := jobSpecRepo.GetByName(args[0])
+	jobSpec, err := jobSpecReadWriter.ReadByName(namespace.Job.Path, args[0])
 	if err != nil {
 		return err
 	}
 	return r.runJobSpecificationRequest(jobSpec)
 }
 
-func (r *runCommand) runJobSpecificationRequest(jobSpec models.JobSpec) error {
+func (r *runCommand) runJobSpecificationRequest(jobSpec *local.JobSpec) error {
 	conn, err := connectivity.NewConnectivity(r.clientConfig.Host, runJobTimeout)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	adaptedSpec := v1handler.ToJobSpecificationProto(jobSpec)
+	jobSpecProto := jobSpec.ToProto()
 
 	r.logger.Info("please wait...")
 	jobRun := pb.NewJobRunServiceClient(conn.GetConnection())
@@ -84,7 +80,7 @@ func (r *runCommand) runJobSpecificationRequest(jobSpec models.JobSpec) error {
 		ProjectName:   r.clientConfig.Project.Name,
 		NamespaceName: r.namespaceName,
 		Specifications: []*pb.JobSpecification{
-			adaptedSpec,
+			jobSpecProto,
 		},
 	})
 	if err != nil {

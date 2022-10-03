@@ -224,25 +224,22 @@ func (d *deployCommand) sendNamespaceJobRequest(
 }
 
 func (*deployCommand) getJobDeploymentRequest(projectName string, namespace *config.Namespace) (*pb.DeployJobSpecificationRequest, error) {
-	pluginRepo := models.PluginRegistry
-
-	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
-	jobSpecRepo := local.NewJobSpecRepository(
-		jobSpecFs,
-		local.NewJobSpecAdapter(pluginRepo),
-	)
-
-	jobSpecs, err := jobSpecRepo.GetAll()
+	jobSpecReadWriter, err := local.NewJobSpecReadWriter(afero.NewOsFs())
 	if err != nil {
 		return nil, err
 	}
 
-	adaptedJobSpecs := make([]*pb.JobSpecification, len(jobSpecs))
-	for i, spec := range jobSpecs {
-		adaptedJobSpecs[i] = v1handler.ToJobSpecificationProto(spec)
+	jobSpecs, err := jobSpecReadWriter.ReadAll(namespace.Job.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	jobSpecsProto := make([]*pb.JobSpecification, len(jobSpecs))
+	for i, jobSpec := range jobSpecs {
+		jobSpecsProto[i] = jobSpec.ToProto()
 	}
 	return &pb.DeployJobSpecificationRequest{
-		Jobs:          adaptedJobSpecs,
+		Jobs:          jobSpecsProto,
 		ProjectName:   projectName,
 		NamespaceName: namespace.Name,
 	}, nil
