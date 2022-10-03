@@ -9,6 +9,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 
+	"github.com/odpf/optimus/client/local"
 	"github.com/odpf/optimus/models"
 )
 
@@ -30,8 +31,8 @@ func NewJobSurvey() *JobSurvey {
 }
 
 // AskToSelectJobName asks to select job name
-func (*JobSurvey) AskToSelectJobName(jobSpecRepo JobSpecRepository) (string, error) {
-	jobs, err := jobSpecRepo.GetAll()
+func (*JobSurvey) AskToSelectJobName(jobSpecReader local.SpecReader[*local.JobSpec], jobDirPath string) (string, error) {
+	jobs, err := jobSpecReader.ReadAll(jobDirPath)
 	if err != nil {
 		return "", err
 	}

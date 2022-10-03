@@ -36,13 +36,13 @@ func NewJobCreateSurvey() *JobCreateSurvey {
 }
 
 // AskToCreateJob asks questions to create job
-func (j *JobCreateSurvey) AskToCreateJob(jobSpecRepo JobSpecRepository, defaultJobName string) (local.JobSpec, error) {
+func (j *JobCreateSurvey) AskToCreateJob(jobSpecReader local.SpecReader[*local.JobSpec], jobDir, defaultJobName string) (local.JobSpec, error) {
 	availableTaskNames := j.getAvailableTaskNames()
 	if len(availableTaskNames) == 0 {
 		return local.JobSpec{}, errors.New("no supported task plugin found")
 	}
 
-	createQuestions := j.getCreateQuestions(jobSpecRepo, defaultJobName, availableTaskNames)
+	createQuestions := j.getCreateQuestions(jobSpecReader, jobDir, defaultJobName, availableTaskNames)
 	jobInput, err := j.askCreateQuestions(createQuestions)
 	if err != nil {
 		return local.JobSpec{}, err
@@ -118,7 +118,7 @@ func (*JobCreateSurvey) getAvailableTaskNames() []string {
 	return output
 }
 
-func (j *JobCreateSurvey) getCreateQuestions(jobSpecRepo JobSpecRepository, defaultJobName string, availableTaskNames []string) []*survey.Question {
+func (j *JobCreateSurvey) getCreateQuestions(jobSpecReader local.SpecReader[*local.JobSpec], jobDir, defaultJobName string, availableTaskNames []string) []*survey.Question {
 	return []*survey.Question{
 		{
 			Name: "name",
@@ -127,7 +127,7 @@ func (j *JobCreateSurvey) getCreateQuestions(jobSpecRepo JobSpecRepository, defa
 				Default: defaultJobName,
 				Help:    "It should be unique across whole optimus project",
 			},
-			Validate: survey.ComposeValidators(validateJobName, j.getValidateJobUniqueness(jobSpecRepo)),
+			Validate: survey.ComposeValidators(validateJobName, j.getValidateJobUniqueness(jobSpecReader, jobDir)),
 		},
 		{
 			Name: "owner",
@@ -242,13 +242,13 @@ func (j *JobCreateSurvey) askPluginQuestions(cliMod models.CommandLineMod, jobNa
 }
 
 // getValidateJobUniqueness return a validator that checks if the job already exists with the same name
-func (*JobCreateSurvey) getValidateJobUniqueness(repository JobSpecRepository) survey.Validator {
+func (*JobCreateSurvey) getValidateJobUniqueness(jobSpecReader local.SpecReader[*local.JobSpec], jobDir string) survey.Validator {
 	return func(val interface{}) error {
 		jobName, ok := val.(string)
 		if !ok {
 			return fmt.Errorf("invalid type of job name %v", reflect.TypeOf(val).Name())
 		}
-		if _, err := repository.GetByName(jobName); err == nil {
+		if _, err := jobSpecReader.ReadByName(jobDir, jobName); err == nil {
 			return fmt.Errorf("job with the provided name already exists")
 		}
 		return nil

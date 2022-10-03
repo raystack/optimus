@@ -1,6 +1,8 @@
 package job
 
 import (
+	"path/filepath"
+
 	"github.com/odpf/salt/log"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -9,7 +11,6 @@ import (
 	"github.com/odpf/optimus/client/cmd/internal/survey"
 	"github.com/odpf/optimus/client/local"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 )
 
 type addHookCommand struct {
@@ -62,26 +63,25 @@ func (a *addHookCommand) RunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	pluginRepo := models.PluginRegistry
-	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
-	jobSpecRepo := local.NewJobSpecRepository(
-		jobSpecFs,
-		local.NewJobSpecAdapter(pluginRepo),
-	)
+	jobSpecReadWriter, err := local.NewJobSpecReadWriter(afero.NewOsFs())
+	if err != nil {
+		return err
+	}
 
-	selectedJobName, err := a.jobSurvey.AskToSelectJobName(jobSpecRepo)
+	selectedJobName, err := a.jobSurvey.AskToSelectJobName(jobSpecReadWriter, namespace.Job.Path)
 	if err != nil {
 		return err
 	}
-	jobSpec, err := jobSpecRepo.GetByName(selectedJobName)
+	jobSpec, err := jobSpecReadWriter.ReadByName(namespace.Job.Path, selectedJobName)
 	if err != nil {
 		return err
 	}
-	jobSpec, err = a.jobAddHookSurvey.AskToAddHook(jobSpec, pluginRepo)
+	newJobSpec, err := a.jobAddHookSurvey.AskToAddHook(jobSpec)
 	if err != nil {
 		return err
 	}
-	if err := jobSpecRepo.Save(jobSpec); err != nil {
+	jobSpecDirPath := filepath.Join(namespace.Job.Path, selectedJobName)
+	if err := jobSpecReadWriter.Write(jobSpecDirPath, newJobSpec); err != nil {
 		return err
 	}
 	a.logger.Info("Hook successfully added to %s", selectedJobName)

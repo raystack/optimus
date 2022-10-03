@@ -83,7 +83,13 @@ func (r *renderCommand) RunE(_ *cobra.Command, args []string) error {
 	r.logger.Info("Assuming execution time as current time of %s\n", now.Format(models.InstanceScheduledAtTimeLayout))
 
 	templateEngine := compiler.NewGoEngine()
-	templates, err := compiler.DumpAssets(context.Background(), jobSpec, now, templateEngine, true)
+	// TODO: investigate this, is compiler being used in client side?
+	adapter := local.NewJobSpecAdapter(models.PluginRegistry)
+	jobSpecModel, err := adapter.ToSpec(*jobSpec)
+	if err != nil {
+		return err
+	}
+	templates, err := compiler.DumpAssets(context.Background(), jobSpecModel, now, templateEngine, true)
 	if err != nil {
 		return err
 	}
@@ -99,20 +105,22 @@ func (r *renderCommand) RunE(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func (r *renderCommand) getJobSpecByName(args []string, namespaceJobPath string) (models.JobSpec, error) {
-	pluginRepo := models.PluginRegistry
-	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespaceJobPath)
-	jobSpecRepo := local.NewJobSpecRepository(jobSpecFs, local.NewJobSpecAdapter(pluginRepo))
-
+func (r *renderCommand) getJobSpecByName(args []string, namespaceJobPath string) (*local.JobSpec, error) {
 	var jobName string
 	var err error
+
+	jobSpecReadWriter, err := local.NewJobSpecReadWriter(afero.NewOsFs())
+	if err != nil {
+		return nil, err
+	}
+
 	if len(args) == 0 {
-		jobName, err = r.jobSurvey.AskToSelectJobName(jobSpecRepo)
+		jobName, err = r.jobSurvey.AskToSelectJobName(jobSpecReadWriter, namespaceJobPath)
 		if err != nil {
-			return models.JobSpec{}, err
+			return nil, err
 		}
 	} else {
 		jobName = args[0]
 	}
-	return jobSpecRepo.GetByName(jobName)
+	return jobSpecReadWriter.ReadByName(namespaceJobPath, jobName)
 }
