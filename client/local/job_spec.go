@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -93,6 +94,9 @@ func (j jobSpecReadWriter) Write(dirPath string, spec *JobSpec) error {
 }
 
 func (j jobSpecReadWriter) writeAsset(filePath, content string) error {
+	if err := j.specFS.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
+		return err
+	}
 	f, err := j.specFS.Create(filePath)
 	if err != nil {
 		return fmt.Errorf("error creating asset file into [%s]: %w", filePath, err)

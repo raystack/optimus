@@ -3,6 +3,7 @@ package local
 import (
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -47,6 +48,9 @@ func discoverPathsUsingSelector(specFS afero.Fs, rootSpecDir string, selectPath 
 }
 
 func writeSpec[S ValidSpec](specFS afero.Fs, filePath string, spec S) error {
+	if err := specFS.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
+		return err
+	}
 	fileSpec, err := specFS.Create(filePath)
 	if err != nil {
 		return fmt.Errorf("error creating spec under [%s]: %w", filePath, err)
