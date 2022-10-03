@@ -137,41 +137,26 @@ func (j *JobSpec) ToProto() *pb.JobSpecification {
 	return &jobSpecProto
 }
 
-// TODO: can use open source lib to merge the struct eg. https://github.com/imdario/mergo
+// TODO: refactor this
 // MergeFrom merges parent job into this
 // - non zero values on child are ignored
 // - zero values on parent are ignored
 // - slices are merged
 func (j *JobSpec) MergeFrom(anotherJobSpec JobSpec) {
-	if j.Version == 0 {
-		j.Version = anotherJobSpec.Version
+	j.Version = getValue(j.Version, anotherJobSpec.Version)
+	j.Description = getValue(j.Description, anotherJobSpec.Description)
+	j.Owner = getValue(j.Owner, anotherJobSpec.Owner)
+	j.Schedule.Interval = getValue(j.Schedule.Interval, anotherJobSpec.Schedule.Interval)
+	j.Schedule.StartDate = getValue(j.Schedule.StartDate, anotherJobSpec.Schedule.StartDate)
+	j.Schedule.EndDate = getValue(j.Schedule.EndDate, anotherJobSpec.Schedule.EndDate)
+	if j.Behavior.Retry != nil {
+		j.Behavior.Retry.ExponentialBackoff = getValue(j.Behavior.Retry.ExponentialBackoff, anotherJobSpec.Behavior.Retry.ExponentialBackoff)
+		j.Behavior.Retry.Delay = getValue(j.Behavior.Retry.Delay, anotherJobSpec.Behavior.Retry.Delay)
+		j.Behavior.Retry.Count = getValue(j.Behavior.Retry.Count, anotherJobSpec.Behavior.Retry.Count)
 	}
+	j.Behavior.DependsOnPast = getValue(j.Behavior.DependsOnPast, anotherJobSpec.Behavior.DependsOnPast)
+	j.Behavior.Catchup = getValue(j.Behavior.Catchup, anotherJobSpec.Behavior.Catchup)
 
-	if j.Schedule.Interval == "" {
-		j.Schedule.Interval = anotherJobSpec.Schedule.Interval
-	}
-	if j.Schedule.StartDate == "" {
-		j.Schedule.StartDate = anotherJobSpec.Schedule.StartDate
-	}
-	if j.Schedule.EndDate == "" {
-		j.Schedule.EndDate = anotherJobSpec.Schedule.EndDate
-	}
-
-	if j.Behavior.Retry != nil && j.Behavior.Retry.ExponentialBackoff == false {
-		j.Behavior.Retry.ExponentialBackoff = anotherJobSpec.Behavior.Retry.ExponentialBackoff
-	}
-	if j.Behavior.Retry != nil && j.Behavior.Retry.Delay == 0 {
-		j.Behavior.Retry.Delay = anotherJobSpec.Behavior.Retry.Delay
-	}
-	if j.Behavior.Retry != nil && j.Behavior.Retry.Count == 0 {
-		j.Behavior.Retry.Count = anotherJobSpec.Behavior.Retry.Count
-	}
-	if j.Behavior.DependsOnPast == false {
-		j.Behavior.DependsOnPast = anotherJobSpec.Behavior.DependsOnPast
-	}
-	if j.Behavior.Catchup == false {
-		j.Behavior.Catchup = anotherJobSpec.Behavior.Catchup
-	}
 	for _, pNotify := range anotherJobSpec.Behavior.Notify {
 		childNotifyIdx := -1
 		for cnIdx, cn := range j.Behavior.Notify {
@@ -214,14 +199,6 @@ func (j *JobSpec) MergeFrom(anotherJobSpec JobSpec) {
 		}
 	}
 
-	if j.Description == "" {
-		j.Description = anotherJobSpec.Description
-	}
-
-	if j.Owner == "" {
-		j.Owner = anotherJobSpec.Owner
-	}
-
 	if anotherJobSpec.Labels != nil {
 		if j.Labels == nil {
 			j.Labels = map[string]string{}
@@ -251,18 +228,10 @@ func (j *JobSpec) MergeFrom(anotherJobSpec JobSpec) {
 		}
 	}
 
-	if j.Task.Name == "" {
-		j.Task.Name = anotherJobSpec.Task.Name
-	}
-	if j.Task.Window.TruncateTo == "" {
-		j.Task.Window.TruncateTo = anotherJobSpec.Task.Window.TruncateTo
-	}
-	if j.Task.Window.Offset == "" {
-		j.Task.Window.Offset = anotherJobSpec.Task.Window.Offset
-	}
-	if j.Task.Window.Size == "" {
-		j.Task.Window.Size = anotherJobSpec.Task.Window.Size
-	}
+	j.Task.Name = getValue(j.Task.Name, anotherJobSpec.Task.Name)
+	j.Task.Window.TruncateTo = getValue(j.Task.Window.TruncateTo, anotherJobSpec.Task.Window.TruncateTo)
+	j.Task.Window.Offset = getValue(j.Task.Window.Offset, anotherJobSpec.Task.Window.Offset)
+	j.Task.Window.Size = getValue(j.Task.Window.Size, anotherJobSpec.Task.Window.Size)
 	if anotherJobSpec.Task.Config != nil {
 		if j.Task.Config == nil {
 			j.Task.Config = map[string]string{}
@@ -317,24 +286,30 @@ func (j *JobSpec) MergeFrom(anotherJobSpec JobSpec) {
 			})
 		}
 	}
-	if anotherJobSpec.Metadata != nil && anotherJobSpec.Metadata.Resource.Request.CPU != "" {
-		j.Metadata.Resource.Request.CPU = anotherJobSpec.Metadata.Resource.Request.CPU
+
+	if metadata := anotherJobSpec.Metadata; metadata != nil {
+		if resource := metadata.Resource; resource != nil {
+			if request := resource.Request; request != nil {
+				j.Metadata.Resource.Request.CPU = getValue(j.Metadata.Resource.Request.CPU, request.CPU)
+				j.Metadata.Resource.Request.Memory = getValue(j.Metadata.Resource.Request.Memory, request.Memory)
+			}
+			if limit := resource.Limit; limit != nil {
+				j.Metadata.Resource.Limit.CPU = getValue(j.Metadata.Resource.Limit.CPU, limit.CPU)
+				j.Metadata.Resource.Limit.Memory = getValue(j.Metadata.Resource.Limit.Memory, limit.Memory)
+			}
+		}
+		if airflow := metadata.Airflow; airflow != nil {
+			j.Metadata.Airflow.Pool = getValue(j.Metadata.Airflow.Pool, airflow.Pool)
+			j.Metadata.Airflow.Queue = getValue(j.Metadata.Airflow.Queue, airflow.Queue)
+		}
 	}
-	if anotherJobSpec.Metadata != nil && anotherJobSpec.Metadata.Resource.Request.Memory != "" {
-		j.Metadata.Resource.Request.Memory = anotherJobSpec.Metadata.Resource.Request.Memory
+}
+
+func getValue[V int | string | bool | time.Duration](reference, other V) V {
+	if reference == *new(V) {
+		return other
 	}
-	if anotherJobSpec.Metadata != nil && anotherJobSpec.Metadata.Resource.Limit.CPU != "" {
-		j.Metadata.Resource.Limit.CPU = anotherJobSpec.Metadata.Resource.Limit.CPU
-	}
-	if anotherJobSpec.Metadata != nil && anotherJobSpec.Metadata.Resource.Limit.Memory != "" {
-		j.Metadata.Resource.Limit.Memory = anotherJobSpec.Metadata.Resource.Limit.Memory
-	}
-	if anotherJobSpec.Metadata != nil && anotherJobSpec.Metadata.Airflow.Pool != "" {
-		j.Metadata.Airflow.Pool = anotherJobSpec.Metadata.Airflow.Pool
-	}
-	if anotherJobSpec.Metadata != nil && anotherJobSpec.Metadata.Airflow.Queue != "" {
-		j.Metadata.Airflow.Queue = anotherJobSpec.Metadata.Airflow.Queue
-	}
+	return reference
 }
 
 func getJobSpecBehaviorProto(jobSpecBehavior JobBehavior) *pb.JobSpecification_Behavior {
