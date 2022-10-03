@@ -51,20 +51,20 @@ func TestJobSpecRepository(t *testing.T) {
 		Version: 1,
 		Name:    "test",
 		Owner:   "optimus",
-		Schedule: local.JobSchedule{
+		Schedule: local.JobSpecSchedule{
 			StartDate: "2020-12-02",
 			Interval:  "@daily",
 		},
-		Behavior: local.JobBehavior{
+		Behavior: local.JobSpecBehavior{
 			Catchup:       true,
 			DependsOnPast: false,
 		},
-		Task: local.JobTask{
+		Task: local.JobSpecTask{
 			Name: "foo",
 			Config: map[string]string{
 				"table": "tab1",
 			},
-			Window: local.JobTaskWindow{
+			Window: local.JobSpecTaskWindow{
 				Size:       "24h",
 				Offset:     "0",
 				TruncateTo: "d",
@@ -73,7 +73,7 @@ func TestJobSpecRepository(t *testing.T) {
 		Asset: map[string]string{
 			"query.sql": "select * from 1",
 		},
-		Dependencies: []local.JobDependency{
+		Dependencies: []local.JobSpecDependency{
 			{
 				JobName: "bar",
 				Type:    models.JobSpecDependencyTypeIntra.String(),

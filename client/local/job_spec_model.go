@@ -9,69 +9,69 @@ import (
 )
 
 type JobSpec struct {
-	Version      int               `yaml:"version,omitempty"`
-	Name         string            `yaml:"name"`
-	Owner        string            `yaml:"owner"`
-	Description  string            `yaml:"description,omitempty"`
-	Schedule     JobSchedule       `yaml:"schedule"`
-	Behavior     JobBehavior       `yaml:"behavior"`
-	Task         JobTask           `yaml:"task"`
-	Asset        map[string]string `yaml:"-"`
-	Labels       map[string]string `yaml:"labels,omitempty"`
-	Dependencies []JobDependency   `yaml:"dependencies"`
-	Hooks        []JobHook         `yaml:"hooks"`
-	Metadata     *JobSpecMetadata  `yaml:"metadata,omitempty"`
+	Version      int                 `yaml:"version,omitempty"`
+	Name         string              `yaml:"name"`
+	Owner        string              `yaml:"owner"`
+	Description  string              `yaml:"description,omitempty"`
+	Schedule     JobSpecSchedule     `yaml:"schedule"`
+	Behavior     JobSpecBehavior     `yaml:"behavior"`
+	Task         JobSpecTask         `yaml:"task"`
+	Asset        map[string]string   `yaml:"-"`
+	Labels       map[string]string   `yaml:"labels,omitempty"`
+	Hooks        []JobSpecHook       `yaml:"hooks"`
+	Dependencies []JobSpecDependency `yaml:"dependencies"`
+	Metadata     *JobSpecMetadata    `yaml:"metadata,omitempty"`
 }
 
-type JobSchedule struct {
+type JobSpecSchedule struct {
 	StartDate string `yaml:"start_date"`
 	EndDate   string `yaml:"end_date,omitempty"`
 	Interval  string `yaml:"interval"`
 }
 
-type JobBehavior struct {
-	DependsOnPast bool              `yaml:"depends_on_past"`
-	Catchup       bool              `yaml:"catch_up"`
-	Retry         *JobBehaviorRetry `yaml:"retry,omitempty"`
-	Notify        []JobNotifier     `yaml:"notify,omitempty"`
+type JobSpecBehavior struct {
+	DependsOnPast bool                      `yaml:"depends_on_past"`
+	Catchup       bool                      `yaml:"catch_up"`
+	Retry         *JobSpecBehaviorRetry     `yaml:"retry,omitempty"`
+	Notify        []JobSpecBehaviorNotifier `yaml:"notify,omitempty"`
 }
 
-type JobBehaviorRetry struct {
+type JobSpecBehaviorRetry struct {
 	Count              int           `yaml:"count,omitempty"`
 	Delay              time.Duration `yaml:"delay,omitempty"`
 	ExponentialBackoff bool          `yaml:"exponential_backoff,omitempty"`
 }
 
-type JobNotifier struct {
+type JobSpecBehaviorNotifier struct {
 	On       string            `yaml:"on"`
 	Config   map[string]string `yaml:"config"`
 	Channels []string          `yaml:"channels"`
 }
 
-type JobTask struct {
+type JobSpecTask struct {
 	Name   string            `yaml:"name"`
 	Config map[string]string `yaml:"config,omitempty"`
-	Window JobTaskWindow     `yaml:"window"`
+	Window JobSpecTaskWindow `yaml:"window"`
 }
 
-type JobTaskWindow struct {
+type JobSpecTaskWindow struct {
 	Size       string `yaml:"size"`
 	Offset     string `yaml:"offset"`
 	TruncateTo string `yaml:"truncate_to"`
 }
 
-type JobHook struct {
+type JobSpecHook struct {
 	Name   string            `yaml:"name"`
 	Config map[string]string `yaml:"config,omitempty"`
 }
 
-type JobDependency struct {
-	JobName string          `yaml:"job,omitempty"`
-	Type    string          `yaml:"type,omitempty"`
-	HTTPDep *HTTPDependency `yaml:"http,omitempty"`
+type JobSpecDependency struct {
+	JobName string                 `yaml:"job,omitempty"`
+	Type    string                 `yaml:"type,omitempty"`
+	HTTP    *JobSpecDependencyHTTP `yaml:"http,omitempty"`
 }
 
-type HTTPDependency struct {
+type JobSpecDependencyHTTP struct {
 	Name          string            `yaml:"name"`
 	RequestParams map[string]string `yaml:"params,omitempty"`
 	URL           string            `yaml:"url"`
@@ -79,70 +79,168 @@ type HTTPDependency struct {
 }
 
 type JobSpecMetadata struct {
-	Resource *JobSpecResource `yaml:"resource,omitempty"`
-	Airflow  *JobSpecAirflow  `yaml:"airflow,omitempty"`
+	Resource *JobSpecMetadataResource `yaml:"resource,omitempty"`
+	Airflow  *JobSpecMetadataAirflow  `yaml:"airflow,omitempty"`
 }
 
-type JobSpecResource struct {
-	Request *JobSpecResourceConfig `yaml:"request,omitempty"`
-	Limit   *JobSpecResourceConfig `yaml:"limit,omitempty"`
+type JobSpecMetadataResource struct {
+	Request *JobSpecMetadataResourceConfig `yaml:"request,omitempty"`
+	Limit   *JobSpecMetadataResourceConfig `yaml:"limit,omitempty"`
 }
 
-type JobSpecResourceConfig struct {
+type JobSpecMetadataResourceConfig struct {
 	Memory string `yaml:"memory,omitempty"`
 	CPU    string `yaml:"cpu,omitempty"`
 }
 
-type JobSpecAirflow struct {
+type JobSpecMetadataAirflow struct {
 	Pool  string `yaml:"pool" json:"pool"`
 	Queue string `yaml:"queue" json:"queue"`
 }
 
-func (j *JobSpec) ToProto() *pb.JobSpecification {
-	jobSpecProto := pb.JobSpecification{}
-
-	jobSpecProto.Version = int32(j.Version)
-	jobSpecProto.Name = j.Name
-	jobSpecProto.Owner = j.Owner
-	jobSpecProto.Description = j.Description
-	jobSpecProto.Assets = j.Asset
-	jobSpecProto.Labels = j.Labels
-
-	// JobSchedule
-	jobSpecProto.StartDate = j.Schedule.StartDate
-	jobSpecProto.EndDate = j.Schedule.EndDate
-	jobSpecProto.Interval = j.Schedule.Interval
-
-	// JobBehaviour
-	jobSpecProto.DependsOnPast = j.Behavior.DependsOnPast
-	jobSpecProto.CatchUp = j.Behavior.Catchup
-	jobSpecProto.Behavior = getJobSpecBehaviorProto(j.Behavior)
-
-	// JobTask
-	jobSpecProto.TaskName = j.Task.Name
-	jobSpecProto.WindowSize = j.Task.Window.Size
-	jobSpecProto.WindowOffset = j.Task.Window.Offset
-	jobSpecProto.WindowTruncateTo = j.Task.Window.TruncateTo
-	jobSpecProto.Config = getJobSpecConfigItemsProto(j.Task.Config)
-
-	// Dependencies
-	jobSpecProto.Dependencies = getJobSpecDependenciesProto(j.Dependencies)
-
-	// Hooks
-	jobSpecProto.Hooks = getJobSpecHooksProto(j.Hooks)
-
-	// Metadata
-	jobSpecProto.Metadata = getJobSpecMetadataProto(j.Metadata)
-
-	return &jobSpecProto
+func (j JobSpec) ToProto() *pb.JobSpecification {
+	return &pb.JobSpecification{
+		Version:          int32(j.Version),
+		Name:             j.Name,
+		Owner:            j.Owner,
+		StartDate:        j.Schedule.StartDate,
+		EndDate:          j.Schedule.EndDate,
+		Interval:         j.Schedule.Interval,
+		DependsOnPast:    j.Behavior.DependsOnPast,
+		CatchUp:          j.Behavior.Catchup,
+		TaskName:         j.Task.Name,
+		Config:           j.getProtoJobConfigItems(),
+		WindowSize:       j.Task.Window.Size,
+		WindowOffset:     j.Task.Window.Offset,
+		WindowTruncateTo: j.Task.Window.TruncateTo,
+		Dependencies:     j.getProtoJobDependencies(),
+		Assets:           j.Asset,
+		Hooks:            j.getProtoJobSpecHooks(),
+		Description:      j.Description,
+		Labels:           j.Labels,
+		Behavior:         j.getProtoJobSpecBehavior(),
+		Metadata:         j.getProtoJobMetadata(),
+	}
 }
 
-// TODO: refactor this
-// MergeFrom merges parent job into this
-// - non zero values on child are ignored
-// - zero values on parent are ignored
-// - slices are merged
-func (j *JobSpec) MergeFrom(anotherJobSpec JobSpec) {
+func (j JobSpec) getProtoJobMetadata() *pb.JobMetadata {
+	if j.Metadata == nil {
+		return nil
+	}
+
+	var resource *pb.JobSpecMetadataResource
+	if j.Metadata.Resource != nil {
+		resource = &pb.JobSpecMetadataResource{
+			Request: j.getProtoJobSpecMetadataResourceConfig(j.Metadata.Resource.Request),
+			Limit:   j.getProtoJobSpecMetadataResourceConfig(j.Metadata.Resource.Limit),
+		}
+	}
+	var airflow *pb.JobSpecMetadataAirflow
+	if j.Metadata.Airflow != nil {
+		airflow = &pb.JobSpecMetadataAirflow{
+			Pool:  j.Metadata.Airflow.Pool,
+			Queue: j.Metadata.Airflow.Queue,
+		}
+	}
+	return &pb.JobMetadata{
+		Resource: resource,
+		Airflow:  airflow,
+	}
+}
+
+func (j JobSpec) getProtoJobSpecMetadataResourceConfig(jobSpecMetadataResourceConfig *JobSpecMetadataResourceConfig) *pb.JobSpecMetadataResourceConfig {
+	if jobSpecMetadataResourceConfig == nil {
+		return nil
+	}
+	return &pb.JobSpecMetadataResourceConfig{
+		Cpu:    jobSpecMetadataResourceConfig.CPU,
+		Memory: jobSpecMetadataResourceConfig.Memory,
+	}
+}
+
+func (j JobSpec) getProtoJobSpecBehavior() *pb.JobSpecification_Behavior {
+	if j.Behavior.Retry == nil && len(j.Behavior.Notify) == 0 {
+		return nil
+	}
+
+	var retry *pb.JobSpecification_Behavior_Retry
+	if j.Behavior.Retry != nil {
+		retry = &pb.JobSpecification_Behavior_Retry{
+			Count:              int32(j.Behavior.Retry.Count),
+			ExponentialBackoff: j.Behavior.Retry.ExponentialBackoff,
+		}
+		if j.Behavior.Retry.Delay != 0 {
+			retry.Delay = durationpb.New(j.Behavior.Retry.Delay)
+		}
+	}
+	var notifies []*pb.JobSpecification_Behavior_Notifiers
+	if len(j.Behavior.Notify) > 0 {
+		notifies = make([]*pb.JobSpecification_Behavior_Notifiers, len(j.Behavior.Notify))
+		for i, notify := range j.Behavior.Notify {
+			notifies[i] = &pb.JobSpecification_Behavior_Notifiers{
+				On:       pb.JobEvent_Type(pb.JobEvent_Type_value[utils.ToEnumProto(string(notify.On), "type")]),
+				Channels: notify.Channels,
+				Config:   notify.Config,
+			}
+		}
+	}
+	return &pb.JobSpecification_Behavior{
+		Retry:  retry,
+		Notify: notifies,
+	}
+}
+
+func (j JobSpec) getProtoJobSpecHooks() []*pb.JobSpecHook {
+	protoJobSpecHooks := make([]*pb.JobSpecHook, len(j.Hooks))
+	for i, hook := range j.Hooks {
+		var protoJobConfigItems []*pb.JobConfigItem
+		for name, value := range hook.Config {
+			protoJobConfigItems = append(protoJobConfigItems, &pb.JobConfigItem{
+				Name:  name,
+				Value: value,
+			})
+		}
+		protoJobSpecHooks[i] = &pb.JobSpecHook{
+			Name:   hook.Name,
+			Config: protoJobConfigItems,
+		}
+	}
+	return protoJobSpecHooks
+}
+
+func (j JobSpec) getProtoJobDependencies() []*pb.JobDependency {
+	protoJobDependencies := make([]*pb.JobDependency, len(j.Dependencies))
+	for i, dependency := range j.Dependencies {
+		jobSpecDependencyProto := pb.JobDependency{
+			Name: dependency.JobName,
+			Type: dependency.Type,
+		}
+		if dependency.HTTP != nil {
+			jobSpecDependencyProto.HttpDependency = &pb.HttpDependency{
+				Name:    dependency.HTTP.Name,
+				Url:     dependency.HTTP.URL,
+				Headers: dependency.HTTP.Headers,
+				Params:  dependency.HTTP.RequestParams,
+			}
+		}
+		protoJobDependencies[i] = &jobSpecDependencyProto
+	}
+	return protoJobDependencies
+}
+
+func (j JobSpec) getProtoJobConfigItems() []*pb.JobConfigItem {
+	var protoJobConfigItems []*pb.JobConfigItem
+	for name, value := range j.Task.Config {
+		protoJobConfigItems = append(protoJobConfigItems, &pb.JobConfigItem{
+			Name:  name, // TODO: on server, convert name to upper case
+			Value: value,
+		})
+	}
+	return protoJobConfigItems
+}
+
+// TODO: there are some refactors required, however it will be addressed once we relook at the job spec inheritence
+func (j *JobSpec) mergeFrom(anotherJobSpec JobSpec) {
 	j.Version = getValue(j.Version, anotherJobSpec.Version)
 	j.Description = getValue(j.Description, anotherJobSpec.Description)
 	j.Owner = getValue(j.Owner, anotherJobSpec.Owner)
@@ -212,7 +310,7 @@ func (j *JobSpec) MergeFrom(anotherJobSpec JobSpec) {
 
 	if anotherJobSpec.Dependencies != nil {
 		if j.Dependencies == nil {
-			j.Dependencies = []JobDependency{}
+			j.Dependencies = []JobSpecDependency{}
 		}
 	}
 	for _, dep := range anotherJobSpec.Dependencies {
@@ -252,7 +350,7 @@ func (j *JobSpec) MergeFrom(anotherJobSpec JobSpec) {
 
 	if anotherJobSpec.Hooks != nil {
 		if j.Hooks == nil {
-			j.Hooks = []JobHook{}
+			j.Hooks = []JobSpecHook{}
 		}
 	}
 	existingHooks := map[string]bool{}
@@ -280,7 +378,7 @@ func (j *JobSpec) MergeFrom(anotherJobSpec JobSpec) {
 	for _, ph := range anotherJobSpec.Hooks {
 		// copy non existing hooks
 		if _, ok := existingHooks[ph.Name]; !ok {
-			j.Hooks = append(j.Hooks, JobHook{
+			j.Hooks = append(j.Hooks, JobSpecHook{
 				Name:   ph.Name,
 				Config: ph.Config,
 			})
@@ -310,117 +408,4 @@ func getValue[V int | string | bool | time.Duration](reference, other V) V {
 		return other
 	}
 	return reference
-}
-
-func getJobSpecBehaviorProto(jobSpecBehavior JobBehavior) *pb.JobSpecification_Behavior {
-	if jobSpecBehavior.Retry == nil && len(jobSpecBehavior.Notify) == 0 {
-		return nil
-	}
-
-	behavior := &pb.JobSpecification_Behavior{}
-	// behavior retry
-	if jobSpecBehavior.Retry != nil {
-		behavior.Retry = &pb.JobSpecification_Behavior_Retry{
-			Count:              int32(jobSpecBehavior.Retry.Count),
-			ExponentialBackoff: jobSpecBehavior.Retry.ExponentialBackoff,
-		}
-		if jobSpecBehavior.Retry.Delay != 0 {
-			behavior.Retry.Delay = durationpb.New(jobSpecBehavior.Retry.Delay)
-		}
-	}
-	// behavior notify
-	if len(jobSpecBehavior.Notify) > 0 {
-		behavior.Notify = []*pb.JobSpecification_Behavior_Notifiers{}
-		for _, notify := range jobSpecBehavior.Notify {
-			behavior.Notify = append(behavior.Notify, &pb.JobSpecification_Behavior_Notifiers{
-				On:       pb.JobEvent_Type(pb.JobEvent_Type_value[utils.ToEnumProto(string(notify.On), "type")]),
-				Channels: notify.Channels,
-				Config:   notify.Config,
-			})
-		}
-	}
-
-	return behavior
-}
-
-func getJobSpecConfigItemsProto(jobSpecConfig map[string]string) []*pb.JobConfigItem {
-	jobSpecConfigProto := []*pb.JobConfigItem{}
-	for configName, configValue := range jobSpecConfig {
-		jobSpecConfigProto = append(jobSpecConfigProto, &pb.JobConfigItem{
-			Name:  configName,
-			Value: configValue,
-		})
-	}
-	return jobSpecConfigProto
-}
-
-func getJobSpecDependenciesProto(jobSpecDependencies []JobDependency) []*pb.JobDependency {
-	jobSpecDependenciesProto := []*pb.JobDependency{}
-	for _, dependency := range jobSpecDependencies {
-		jobSpecDependencyProto := pb.JobDependency{
-			Name: dependency.JobName,
-			Type: dependency.Type,
-		}
-		if dependency.HTTPDep != nil {
-			jobSpecDependencyProto.HttpDependency = &pb.HttpDependency{
-				Name:    dependency.HTTPDep.Name,
-				Url:     dependency.HTTPDep.URL,
-				Headers: dependency.HTTPDep.Headers,
-				Params:  dependency.HTTPDep.RequestParams,
-			}
-			jobSpecDependenciesProto = append(jobSpecDependenciesProto, &jobSpecDependencyProto)
-		}
-	}
-	return jobSpecDependenciesProto
-}
-
-func getJobSpecHooksProto(jobSpecHooks []JobHook) []*pb.JobSpecHook {
-	jobSpecHooksProto := []*pb.JobSpecHook{}
-	for _, hook := range jobSpecHooks {
-		jobSpecHookProto := &pb.JobSpecHook{Name: hook.Name}
-		jobSpecHookProto.Config = []*pb.JobConfigItem{}
-		for hookConfigName, hookConfigValue := range hook.Config {
-			jobSpecHookProto.Config = append(jobSpecHookProto.Config, &pb.JobConfigItem{
-				Name:  hookConfigName,
-				Value: hookConfigValue,
-			})
-			jobSpecHooksProto = append(jobSpecHooksProto, jobSpecHookProto)
-		}
-	}
-	return jobSpecHooksProto
-}
-
-func getJobSpecMetadataProto(jobSpecMetadata *JobSpecMetadata) *pb.JobMetadata {
-	if jobSpecMetadata == nil {
-		return nil
-	}
-
-	jobSpecMetadataProto := &pb.JobMetadata{}
-
-	// Resource
-	if jobSpecMetadata.Resource != nil {
-		jobSpecMetadataProto.Resource = &pb.JobSpecMetadataResource{}
-		jobSpecMetadataProto.Resource.Request = getJobSpecResourceConfigProto(jobSpecMetadata.Resource.Request)
-		jobSpecMetadataProto.Resource.Limit = getJobSpecResourceConfigProto(jobSpecMetadata.Resource.Limit)
-	}
-
-	// Airflow
-	if jobSpecMetadata.Airflow != nil {
-		jobSpecMetadataProto.Airflow = &pb.JobSpecMetadataAirflow{
-			Pool:  jobSpecMetadata.Airflow.Pool,
-			Queue: jobSpecMetadata.Airflow.Queue,
-		}
-	}
-
-	return jobSpecMetadataProto
-}
-
-func getJobSpecResourceConfigProto(jobSpecResourceConfig *JobSpecResourceConfig) *pb.JobSpecMetadataResourceConfig {
-	if jobSpecResourceConfig == nil {
-		return nil
-	}
-	return &pb.JobSpecMetadataResourceConfig{
-		Cpu:    jobSpecResourceConfig.CPU,
-		Memory: jobSpecResourceConfig.Memory,
-	}
 }

@@ -346,16 +346,16 @@ func TestJob_MergeFrom(t *testing.T) {
 						"optimus": "prime",
 						"gogo":    "gadget",
 					},
-					Behavior: local.JobBehavior{
+					Behavior: local.JobSpecBehavior{
 						DependsOnPast: false,
 						Catchup:       true,
-						Retry: &local.JobBehaviorRetry{
+						Retry: &local.JobSpecBehaviorRetry{
 							Count:              3,
 							Delay:              2 * time.Minute,
 							ExponentialBackoff: false,
 						},
 					},
-					Schedule: local.JobSchedule{
+					Schedule: local.JobSpecSchedule{
 						StartDate: "2020",
 						EndDate:   "2021",
 						Interval:  "@daily",
@@ -369,16 +369,16 @@ func TestJob_MergeFrom(t *testing.T) {
 						"optimus": "prime",
 						"gogo":    "gadget",
 					},
-					Behavior: local.JobBehavior{
+					Behavior: local.JobSpecBehavior{
 						DependsOnPast: false,
 						Catchup:       true,
-						Retry: &local.JobBehaviorRetry{
+						Retry: &local.JobSpecBehaviorRetry{
 							Count:              3,
 							Delay:              2 * time.Minute,
 							ExponentialBackoff: false,
 						},
 					},
-					Schedule: local.JobSchedule{
+					Schedule: local.JobSpecSchedule{
 						StartDate: "2020",
 						EndDate:   "2021",
 						Interval:  "@daily",
@@ -406,7 +406,7 @@ func TestJob_MergeFrom(t *testing.T) {
 			name: "should merge task configs properly",
 			fields: fields{
 				child: local.JobSpec{
-					Task: local.JobTask{
+					Task: local.JobSpecTask{
 						Name: "panda",
 						Config: map[string]string{
 							"dance": "happy",
@@ -414,7 +414,7 @@ func TestJob_MergeFrom(t *testing.T) {
 					},
 				},
 				expected: local.JobSpec{
-					Task: local.JobTask{
+					Task: local.JobSpecTask{
 						Name: "panda",
 						Config: map[string]string{
 							"dance": "happy",
@@ -425,7 +425,7 @@ func TestJob_MergeFrom(t *testing.T) {
 			},
 			args: args{
 				parent: local.JobSpec{
-					Task: local.JobTask{
+					Task: local.JobSpecTask{
 						Name: "panda",
 						Config: map[string]string{
 							"eat": "ramen",
@@ -438,7 +438,7 @@ func TestJob_MergeFrom(t *testing.T) {
 			name: "should merge hooks configs properly",
 			fields: fields{
 				child: local.JobSpec{
-					Hooks: []local.JobHook{
+					Hooks: []local.JobSpecHook{
 						{
 							Name: "kungfu",
 						},
@@ -451,7 +451,7 @@ func TestJob_MergeFrom(t *testing.T) {
 					},
 				},
 				expected: local.JobSpec{
-					Hooks: []local.JobHook{
+					Hooks: []local.JobSpecHook{
 						{
 							Name: "kungfu",
 							Config: map[string]string{
@@ -476,7 +476,7 @@ func TestJob_MergeFrom(t *testing.T) {
 			},
 			args: args{
 				parent: local.JobSpec{
-					Hooks: []local.JobHook{
+					Hooks: []local.JobSpecHook{
 						{
 							Name: "kungfu",
 							Config: map[string]string{
@@ -504,8 +504,8 @@ func TestJob_MergeFrom(t *testing.T) {
 			name: "should inherit notify configs from parent if doesn't exists",
 			fields: fields{
 				child: local.JobSpec{
-					Behavior: local.JobBehavior{
-						Notify: []local.JobNotifier{
+					Behavior: local.JobSpecBehavior{
+						Notify: []local.JobSpecBehaviorNotifier{
 							{
 								On:       "test",
 								Channels: []string{"t://hello"},
@@ -514,8 +514,8 @@ func TestJob_MergeFrom(t *testing.T) {
 					},
 				},
 				expected: local.JobSpec{
-					Behavior: local.JobBehavior{
-						Notify: []local.JobNotifier{
+					Behavior: local.JobSpecBehavior{
+						Notify: []local.JobSpecBehaviorNotifier{
 							{
 								On:       "test",
 								Channels: []string{"t://hello", "t://hello-parent"},
@@ -533,8 +533,8 @@ func TestJob_MergeFrom(t *testing.T) {
 			},
 			args: args{
 				parent: local.JobSpec{
-					Behavior: local.JobBehavior{
-						Notify: []local.JobNotifier{
+					Behavior: local.JobSpecBehavior{
+						Notify: []local.JobSpecBehaviorNotifier{
 							{
 								On:       "test",
 								Channels: []string{"t://hello-parent"},

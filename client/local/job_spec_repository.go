@@ -184,7 +184,7 @@ func (repo *jobRepository) findInDir(dirName string, inheritedSpec JobSpec) (mod
 	if err = dec.Decode(&inputs); err != nil {
 		return jobSpec, fmt.Errorf("error parsing job spec in %s: %w", dirName, err)
 	}
-	inputs.MergeFrom(inheritedSpec)
+	inputs.mergeFrom(inheritedSpec)
 	if err := validator.Validate(inputs); err != nil {
 		return jobSpec, fmt.Errorf("failed to validate job specification: %s: %w", dirName, err)
 	}
@@ -244,7 +244,7 @@ func (repo *jobRepository) scanDirs(path string, inheritedSpec JobSpec) ([]model
 	if err != nil {
 		return nil, err
 	}
-	thisSpec.MergeFrom(inheritedSpec)
+	thisSpec.mergeFrom(inheritedSpec)
 
 	// filter folders & scan recursively
 	folders, err := repo.getDirs(path)

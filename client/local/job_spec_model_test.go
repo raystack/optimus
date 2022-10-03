@@ -23,7 +23,7 @@ func (s *JobSpecTestSuite) TestToProto() {
 	s.Run("should return job spec proto with behavior proto nil when behavior.retry is nil and behavior.notify is empty", func() {
 		jobSpec := createCompleteJobSpec()
 		jobSpec.Behavior.Retry = nil
-		jobSpec.Behavior.Notify = []local.JobNotifier{}
+		jobSpec.Behavior.Notify = []local.JobSpecBehaviorNotifier{}
 
 		expectedProto := createCompleteJobSpecProto()
 		expectedProto.Behavior = nil
@@ -66,20 +66,20 @@ func createCompleteJobSpec() local.JobSpec {
 		Name:        "job_1",
 		Owner:       "optimus@optimus.dev",
 		Description: "job one",
-		Schedule: local.JobSchedule{
+		Schedule: local.JobSpecSchedule{
 			StartDate: "30-09-2022",
 			EndDate:   "01-01-2050",
 			Interval:  "12 10 * * *",
 		},
-		Behavior: local.JobBehavior{
+		Behavior: local.JobSpecBehavior{
 			DependsOnPast: true,
 			Catchup:       true,
-			Retry: &local.JobBehaviorRetry{
+			Retry: &local.JobSpecBehaviorRetry{
 				Count:              10,
 				Delay:              2 * time.Second,
 				ExponentialBackoff: true,
 			},
-			Notify: []local.JobNotifier{
+			Notify: []local.JobSpecBehaviorNotifier{
 				{
 					On: "failure",
 					Config: map[string]string{
@@ -89,12 +89,12 @@ func createCompleteJobSpec() local.JobSpec {
 				},
 			},
 		},
-		Task: local.JobTask{
+		Task: local.JobSpecTask{
 			Name: "job_task_1",
 			Config: map[string]string{
 				"taskkey": "taskvalue",
 			},
-			Window: local.JobTaskWindow{
+			Window: local.JobSpecTaskWindow{
 				Size:       "24h",
 				Offset:     "1h",
 				TruncateTo: "d",
@@ -106,11 +106,11 @@ func createCompleteJobSpec() local.JobSpec {
 		Labels: map[string]string{
 			"orchestrator": "optimus",
 		},
-		Dependencies: []local.JobDependency{
+		Dependencies: []local.JobSpecDependency{
 			{
 				JobName: "job_name_1",
 				Type:    "extra",
-				HTTPDep: &local.HTTPDependency{
+				HTTP: &local.JobSpecDependencyHTTP{
 					Name: "http_dep",
 					RequestParams: map[string]string{
 						"param1": "paramvalue",
@@ -126,7 +126,7 @@ func createCompleteJobSpec() local.JobSpec {
 				Type:    "intra",
 			},
 		},
-		Hooks: []local.JobHook{
+		Hooks: []local.JobSpecHook{
 			{
 				Name: "hook_1",
 				Config: map[string]string{
@@ -135,17 +135,17 @@ func createCompleteJobSpec() local.JobSpec {
 			},
 		},
 		Metadata: &local.JobSpecMetadata{
-			Resource: &local.JobSpecResource{
-				Request: &local.JobSpecResourceConfig{
+			Resource: &local.JobSpecMetadataResource{
+				Request: &local.JobSpecMetadataResourceConfig{
 					CPU:    "250m",
 					Memory: "64Mi",
 				},
-				Limit: &local.JobSpecResourceConfig{
+				Limit: &local.JobSpecMetadataResourceConfig{
 					CPU:    "500m",
 					Memory: "128Mi",
 				},
 			},
-			Airflow: &local.JobSpecAirflow{
+			Airflow: &local.JobSpecMetadataAirflow{
 				Pool:  "poolA",
 				Queue: "queueA",
 			},

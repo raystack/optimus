@@ -53,7 +53,7 @@ func (r resourceSpecReadWriter) ReadByName(rootDirPath, name string) (*ResourceS
 	if err != nil {
 		return nil, fmt.Errorf("error reading all specs under [%s]: %w", rootDirPath, err)
 	}
-	spec := getOne(allSpecs, func(rs *ResourceSpec) bool { return rs.Name == name })
+	spec := getFirstSpecByFilter(allSpecs, func(rs *ResourceSpec) bool { return rs.Name == name })
 	if spec == nil {
 		return nil, fmt.Errorf("spec with name [%s] is not found", name)
 	}

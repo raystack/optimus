@@ -72,7 +72,7 @@ func readSpec[S ValidSpec](specFS afero.Fs, filePath string) (S, error) {
 	return spec, nil
 }
 
-func getOne[S ValidSpec](specs []S, filter func(S) bool) S {
+func getFirstSpecByFilter[S ValidSpec](specs []S, filter func(S) bool) S {
 	for _, s := range specs {
 		if filter(s) {
 			return s

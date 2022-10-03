@@ -192,21 +192,21 @@ func (j *JobCreateSurvey) askCreateQuestions(questions []*survey.Question) (loca
 		Version: models.JobSpecDefaultVersion,
 		Name:    baseInputs["name"],
 		Owner:   baseInputs["owner"],
-		Schedule: local.JobSchedule{
+		Schedule: local.JobSpecSchedule{
 			StartDate: baseInputs["start_date"],
 			Interval:  baseInputs["interval"],
 		},
-		Task: local.JobTask{
+		Task: local.JobSpecTask{
 			Name:   baseInputs["task"],
 			Window: j.getWindowParameters(baseInputs["window"]),
 		},
 		Asset: map[string]string{},
-		Behavior: local.JobBehavior{
+		Behavior: local.JobSpecBehavior{
 			Catchup:       false,
 			DependsOnPast: false,
 		},
-		Dependencies: []local.JobDependency{},
-		Hooks:        []local.JobHook{},
+		Dependencies: []local.JobSpecDependency{},
+		Hooks:        []local.JobSpecHook{},
 		Labels: map[string]string{
 			"orchestrator": "optimus",
 		},
@@ -255,28 +255,28 @@ func (*JobCreateSurvey) getValidateJobUniqueness(repository JobSpecRepository) s
 	}
 }
 
-func (*JobCreateSurvey) getWindowParameters(winName string) local.JobTaskWindow {
+func (*JobCreateSurvey) getWindowParameters(winName string) local.JobSpecTaskWindow {
 	switch winName {
 	case "hourly":
-		return local.JobTaskWindow{
+		return local.JobSpecTaskWindow{
 			Size:       "1h",
 			Offset:     "0",
 			TruncateTo: "h",
 		}
 	case "daily":
-		return local.JobTaskWindow{
+		return local.JobSpecTaskWindow{
 			Size:       "24h",
 			Offset:     "0",
 			TruncateTo: "d",
 		}
 	case "weekly":
-		return local.JobTaskWindow{
+		return local.JobSpecTaskWindow{
 			Size:       "168h",
 			Offset:     "0",
 			TruncateTo: "w",
 		}
 	case "monthly":
-		return local.JobTaskWindow{
+		return local.JobSpecTaskWindow{
 			Size:       "720h",
 			Offset:     "0",
 			TruncateTo: "M",
@@ -284,7 +284,7 @@ func (*JobCreateSurvey) getWindowParameters(winName string) local.JobTaskWindow 
 	}
 
 	// default
-	return local.JobTaskWindow{
+	return local.JobSpecTaskWindow{
 		Size:       "24h",
 		Offset:     "0",
 		TruncateTo: "h",

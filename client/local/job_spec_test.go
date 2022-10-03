@@ -2,7 +2,7 @@ package local_test
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -10,10 +10,10 @@ import (
 	"testing"
 
 	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 
 	"github.com/odpf/optimus/client/local"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 type JobSpecReadWriterTestSuite struct {
@@ -226,7 +226,7 @@ func (j *JobSpecReadWriterTestSuite) TestWrite() {
 		j.Assert().Error(err)
 	})
 
-	j.Run("return error when coudln't create asset file", func() {
+	j.Run("return error when cannot create asset file", func() {
 		specFS := afero.NewMemMapFs()
 		re, err := regexp.Compile(`root/ns1/jobs/example1/job\.yaml`) // only allow to create job.yaml
 		j.Require().NoError(err)
@@ -272,8 +272,8 @@ task:
         size: ""
         offset: ""
         truncate_to: ""
-dependencies: []
 hooks: []
+dependencies: []
 `
 		j.Assert().Equal(expectedYamlContent, jobYamlContent)
 		assetQueryContent, err := j.readFrom(specFS, filepath.Join(filePath, "assets", "query.sql"))
@@ -371,7 +371,7 @@ func (JobSpecReadWriterTestSuite) readFrom(fs afero.Fs, filePath string) (string
 		return "", err
 	}
 
-	content, err := ioutil.ReadAll(f)
+	content, err := io.ReadAll(f)
 	if err != nil {
 		return "", err
 	}

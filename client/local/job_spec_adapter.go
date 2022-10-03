@@ -25,7 +25,7 @@ func init() { //nolint:gochecknoinits
 }
 
 // ToSpec converts the local's JobHook representation to the optimus' models.JobSpecHook
-func (a JobHook) ToSpec(pluginsRepo models.PluginRepository) (models.JobSpecHook, error) {
+func (a JobSpecHook) ToSpec(pluginsRepo models.PluginRepository) (models.JobSpecHook, error) {
 	hookUnit, err := pluginsRepo.GetByName(a.Name)
 	if err != nil {
 		return models.JobSpecHook{}, fmt.Errorf("spec reading error: %w", err)
@@ -37,8 +37,8 @@ func (a JobHook) ToSpec(pluginsRepo models.PluginRepository) (models.JobSpecHook
 }
 
 // FromSpec converts the optimus' models.JobSpecHook representation to the local's JobHook
-func (JobHook) FromSpec(spec models.JobSpecHook) JobHook {
-	return JobHook{
+func (JobSpecHook) FromSpec(spec models.JobSpecHook) JobSpecHook {
+	return JobSpecHook{
 		Name:   spec.Unit.Info().Name,
 		Config: JobSpecConfigToMap(spec.Config),
 	}
@@ -84,8 +84,8 @@ func (adapt JobSpecAdapter) ToSpec(conf JobSpec) (models.JobSpec, error) {
 				Type: depType,
 			}
 		}
-		if dep.HTTPDep != nil {
-			httpDep, err := prepHTTPDependency(*dep.HTTPDep, index)
+		if dep.HTTP != nil {
+			httpDep, err := prepHTTPDependency(*dep.HTTP, index)
 			if err != nil {
 				return models.JobSpec{}, err
 			}
@@ -218,9 +218,9 @@ func (JobSpecAdapter) FromSpec(spec models.JobSpec) (JobSpec, error) {
 		retryDelayDuration = spec.Behavior.Retry.Delay
 	}
 
-	var notifiers []JobNotifier
+	var notifiers []JobSpecBehaviorNotifier
 	for _, notify := range spec.Behavior.Notify {
-		notifiers = append(notifiers, JobNotifier{
+		notifiers = append(notifiers, JobSpecBehaviorNotifier{
 			On:       string(notify.On),
 			Config:   notify.Config,
 			Channels: notify.Channels,
@@ -244,44 +244,44 @@ func (JobSpecAdapter) FromSpec(spec models.JobSpec) (JobSpec, error) {
 		Owner:       spec.Owner,
 		Description: spec.Description,
 		Labels:      labels,
-		Schedule: JobSchedule{
+		Schedule: JobSpecSchedule{
 			Interval:  spec.Schedule.Interval,
 			StartDate: spec.Schedule.StartDate.Format(models.JobDatetimeLayout),
 		},
-		Behavior: JobBehavior{
+		Behavior: JobSpecBehavior{
 			DependsOnPast: spec.Behavior.DependsOnPast,
 			Catchup:       spec.Behavior.CatchUp,
-			Retry: &JobBehaviorRetry{
+			Retry: &JobSpecBehaviorRetry{
 				Count:              spec.Behavior.Retry.Count,
 				Delay:              retryDelayDuration,
 				ExponentialBackoff: spec.Behavior.Retry.ExponentialBackoff,
 			},
 			Notify: notifiers,
 		},
-		Task: JobTask{
+		Task: JobSpecTask{
 			Name:   spec.Task.Unit.Info().Name,
 			Config: taskConf,
-			Window: JobTaskWindow{
+			Window: JobSpecTaskWindow{
 				TruncateTo: truncateTo,
 				Offset:     offset,
 				Size:       size,
 			},
 		},
 		Asset:        spec.Assets.ToMap(),
-		Dependencies: []JobDependency{},
-		Hooks:        []JobHook{},
+		Dependencies: []JobSpecDependency{},
+		Hooks:        []JobSpecHook{},
 		Metadata: &JobSpecMetadata{
-			Resource: &JobSpecResource{
-				Request: &JobSpecResourceConfig{
+			Resource: &JobSpecMetadataResource{
+				Request: &JobSpecMetadataResourceConfig{
 					Memory: spec.Metadata.Resource.Request.Memory,
 					CPU:    spec.Metadata.Resource.Request.CPU,
 				},
-				Limit: &JobSpecResourceConfig{
+				Limit: &JobSpecMetadataResourceConfig{
 					Memory: spec.Metadata.Resource.Limit.Memory,
 					CPU:    spec.Metadata.Resource.Limit.CPU,
 				},
 			},
-			Airflow: &JobSpecAirflow{
+			Airflow: &JobSpecMetadataAirflow{
 				Pool:  spec.Metadata.Airflow.Pool,
 				Queue: spec.Metadata.Airflow.Queue,
 			},
@@ -292,27 +292,27 @@ func (JobSpecAdapter) FromSpec(spec models.JobSpec) (JobSpec, error) {
 		parsed.Schedule.EndDate = spec.Schedule.EndDate.Format(models.JobDatetimeLayout)
 	}
 	for name, dep := range spec.Dependencies {
-		parsed.Dependencies = append(parsed.Dependencies, JobDependency{
+		parsed.Dependencies = append(parsed.Dependencies, JobSpecDependency{
 			JobName: name,
 			Type:    dep.Type.String(),
 		})
 	}
 	// external http dependencies
 	for _, dep := range spec.ExternalDependencies.HTTPDependencies {
-		httpDep := &HTTPDependency{
+		httpDep := &JobSpecDependencyHTTP{
 			Name:          dep.Name,
 			RequestParams: dep.RequestParams,
 			URL:           dep.URL,
 			Headers:       dep.Headers,
 		}
-		parsed.Dependencies = append(parsed.Dependencies, JobDependency{
-			HTTPDep: httpDep,
+		parsed.Dependencies = append(parsed.Dependencies, JobSpecDependency{
+			HTTP: httpDep,
 		})
 	}
 
 	// prep hooks
 	for _, hook := range spec.Hooks {
-		h := JobHook{}.FromSpec(hook)
+		h := JobSpecHook{}.FromSpec(hook)
 		parsed.Hooks = append(parsed.Hooks, h)
 	}
 
@@ -344,7 +344,7 @@ func JobSpecConfigFromMap(conf map[string]string) models.JobSpecConfigs {
 	return conv
 }
 
-func prepHTTPDependency(dep HTTPDependency, index int) (models.HTTPDependency, error) {
+func prepHTTPDependency(dep JobSpecDependencyHTTP, index int) (models.HTTPDependency, error) {
 	var httpDep models.HTTPDependency
 	if _, err := url.ParseRequestURI(dep.URL); err != nil {
 		return httpDep, fmt.Errorf("invalid url present on HTTPDependencies index %d of jobs.yaml, invalid reason : %w", index, err)
