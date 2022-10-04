@@ -1,59 +1,42 @@
 package survey
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 
-	"github.com/odpf/optimus/internal/store"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/client/local"
 )
 
-// ResourceCreateSurvey defines surveys for resource creation
-type ResourceCreateSurvey struct{}
-
-// NewResourceCreateSurvey initializes survey for resource create
-func NewResourceCreateSurvey() *ResourceCreateSurvey {
-	return nil
+// ResourceSpecCreateSurvey defines surveys for resource spec creation
+type ResourceSpecCreateSurvey struct {
+	resourceSpecReadWriter local.SpecReadWriter[*local.ResourceSpec]
 }
 
-// AskToSelectResourceType asks the user to select resource type
-func (*ResourceCreateSurvey) AskToSelectResourceType(types []string) (string, error) {
-	var resourceType string
-	if err := survey.AskOne(
-		&survey.Select{
-			Message: "Select supported resource type?",
-			Options: types,
-		},
-		&resourceType,
-	); err != nil {
-		return "", err
+// NewResourceSpecCreateSurvey initializes survey for resource spec create
+func NewResourceSpecCreateSurvey(resourceSpecReadWriter local.SpecReadWriter[*local.ResourceSpec]) *ResourceSpecCreateSurvey {
+	return &ResourceSpecCreateSurvey{
+		resourceSpecReadWriter: resourceSpecReadWriter,
 	}
-	return resourceType, nil
 }
 
-// AskResourceName asks the user to input the required resource name
-func (r *ResourceCreateSurvey) AskResourceName(
-	resourceSpecRepo store.ResourceSpecRepository,
-	typeController models.DatastoreTypeController,
-	resourceDirPath string,
-) (string, error) {
-	resourceNameDefault := strings.ReplaceAll(strings.ReplaceAll(resourceDirPath, "/", "."), "\\", ".")
-
+// AskResourceSpecName asks the user to input the required resource spec name
+func (r ResourceSpecCreateSurvey) AskResourceSpecName(rootDirPath string) (string, error) {
+	defaultResourceName := strings.ReplaceAll(strings.ReplaceAll(rootDirPath, "/", "."), "\\", ".")
 	qs := []*survey.Question{
 		{
 			Name: "name",
 			Prompt: &survey.Input{
 				Message: "What is the resource name?(should conform to selected resource type)",
-				Default: resourceNameDefault,
+				Default: defaultResourceName,
 			},
-			Validate: survey.ComposeValidators(validateNoSlash, survey.MinLength(3),
-				survey.MaxLength(1024), r.isValidDatastoreSpec(typeController.Validator()),
-				r.isResourceNameUnique(resourceSpecRepo)),
+			Validate: survey.ComposeValidators(
+				validateNoSlash,
+				survey.MinLength(3),
+				survey.MaxLength(1024),
+				r.isResourceSpecNameUnique(rootDirPath)),
 		},
 	}
 	inputs := map[string]interface{}{}
@@ -63,29 +46,17 @@ func (r *ResourceCreateSurvey) AskResourceName(
 	return inputs["name"].(string), nil
 }
 
-// isResourceNameUnique return a validator that checks if the resource already exists with the same name
-func (*ResourceCreateSurvey) isResourceNameUnique(repository store.ResourceSpecRepository) survey.Validator {
+func (r ResourceSpecCreateSurvey) isResourceSpecNameUnique(rootDirPath string) survey.Validator {
 	return func(val interface{}) error {
 		str, ok := val.(string)
 		if !ok {
 			return fmt.Errorf("invalid type of resource name %v", reflect.TypeOf(val).Name())
 		}
-		if _, err := repository.GetByName(context.Background(), str); err == nil {
+		if _, err := r.resourceSpecReadWriter.ReadByName(rootDirPath, str); err == nil {
 			return fmt.Errorf("resource with the provided name already exists")
-		} else if !errors.Is(err, models.ErrNoSuchSpec) && !errors.Is(err, models.ErrNoResources) {
+		} else if !strings.Contains(err.Error(), "not found") {
 			return err
 		}
 		return nil
-	}
-}
-
-// isValidDatastoreSpec tries to adapt provided resource with datastore
-func (*ResourceCreateSurvey) isValidDatastoreSpec(valiFn models.DatastoreSpecValidator) survey.Validator {
-	return func(val interface{}) error {
-		str, ok := val.(string)
-		if !ok {
-			return fmt.Errorf("invalid type of resource name %v", reflect.TypeOf(val).Name())
-		}
-		return valiFn(models.ResourceSpec{Name: str})
 	}
 }
