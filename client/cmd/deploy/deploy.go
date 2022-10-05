@@ -278,9 +278,7 @@ func (d *deployCommand) deployResources(
 		progressFn := func(totalCount int) {
 			totalSpecsCount += totalCount
 		}
-		if err := d.sendNamespaceResourceRequest(
-			conn.GetContext(), stream, namespace, progressFn,
-		); err != nil {
+		if err := d.sendNamespaceResourceRequest(stream, namespace, progressFn); err != nil {
 			return err
 		}
 	}
@@ -321,13 +319,13 @@ func (d *deployCommand) processResourceDeploymentResponse(
 }
 
 func (d *deployCommand) sendNamespaceResourceRequest(
-	ctx context.Context, stream pb.ResourceService_DeployResourceSpecificationClient,
+	stream pb.ResourceService_DeployResourceSpecificationClient,
 	namespace *config.Namespace, progressFn func(totalCount int),
 ) error {
 	datastoreSpecFs := resource.CreateDataStoreSpecFs(namespace)
 	for storeName, repoFS := range datastoreSpecFs {
 		d.logger.Info("> Deploying %s resources for namespace [%s]", storeName, namespace.Name)
-		request, err := d.getResourceDeploymentRequest(ctx, namespace.Name, storeName, repoFS)
+		request, err := d.getResourceDeploymentRequest(namespace.Name, storeName, repoFS)
 		if err != nil {
 			if errors.Is(err, models.ErrNoResources) {
 				d.logger.Warn("no resource specifications are found for namespace [%s]", namespace.Name)
@@ -345,9 +343,7 @@ func (d *deployCommand) sendNamespaceResourceRequest(
 }
 
 func (d *deployCommand) getResourceDeploymentRequest(
-	ctx context.Context,
-	namespaceName, storeName string,
-	repoFS afero.Fs,
+	namespaceName, storeName string, repoFS afero.Fs,
 ) (*pb.DeployResourceSpecificationRequest, error) {
 	resourceSpecReadWritter, err := local.NewResourceSpecReadWriter(repoFS)
 	if err != nil {
