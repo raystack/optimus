@@ -100,7 +100,7 @@ func (*JobCreateSurvey) getTaskConfig(cliMod models.CommandLineMod, answers mode
 	if err != nil {
 		return nil, err
 	}
-	var taskConfig map[string]string
+	taskConfig := make(map[string]string)
 	if generatedConfigResponse.Config != nil {
 		jobSpecConfigs := generatedConfigResponse.Config.ToJobSpec()
 		for _, conf := range []models.JobSpecConfigItem(jobSpecConfigs) {

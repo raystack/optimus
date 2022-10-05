@@ -162,7 +162,7 @@ func (j jobSpecReadWriter) readJobSpecAssetsMappedByFileName(dirPath string) (ma
 		if err != nil {
 			return nil, fmt.Errorf("error reading asset file under [%s]: %w", assetFilePath, err)
 		}
-		assetFileName := strings.TrimPrefix(assetFilePath, dirPath)
+		assetFileName := strings.TrimPrefix(assetFilePath, assetDirPath)
 		assetFileName = strings.TrimPrefix(assetFileName, "/")
 		assetsMap[assetFileName] = string(assetContent)
 	}
