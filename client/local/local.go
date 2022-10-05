@@ -55,8 +55,9 @@ func writeSpec[S ValidSpec](specFS afero.Fs, filePath string, spec S) error {
 	if err != nil {
 		return fmt.Errorf("error creating spec under [%s]: %w", filePath, err)
 	}
+	indent := 2
 	encoder := yaml.NewEncoder(fileSpec)
-	encoder.SetIndent(2)
+	encoder.SetIndent(indent)
 	return encoder.Encode(spec)
 }
 

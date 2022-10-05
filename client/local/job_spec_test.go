@@ -10,10 +10,10 @@ import (
 	"testing"
 
 	"github.com/spf13/afero"
-
-	"github.com/odpf/optimus/client/local"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/odpf/optimus/client/local"
 )
 
 type JobSpecReadWriterTestSuite struct {
@@ -261,17 +261,17 @@ func (j *JobSpecReadWriterTestSuite) TestWrite() {
 name: ""
 owner: ""
 schedule:
-    start_date: ""
-    interval: ""
+  start_date: ""
+  interval: ""
 behavior:
-    depends_on_past: false
-    catch_up: false
+  depends_on_past: false
+  catch_up: false
 task:
-    name: ""
-    window:
-        size: ""
-        offset: ""
-        truncate_to: ""
+  name: ""
+  window:
+    size: ""
+    offset: ""
+    truncate_to: ""
 hooks: []
 dependencies: []
 `

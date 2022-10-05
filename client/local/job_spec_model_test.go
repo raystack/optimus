@@ -4,10 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/optimus/client/local"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/types/known/durationpb"
+
+	"github.com/odpf/optimus/client/local"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
 type JobSpecTestSuite struct {

@@ -309,15 +309,15 @@ func (r *ResourceSpecReadWriterTestSuite) TestWrite() {
 name: project.dataset.user
 type: table
 labels:
-    orchestrator: optimus
+  orchestrator: optimus
 spec:
-    schema:
-        - mode: nullable
-          name: id
-          type: string
-        - mode: nullable
-          name: name
-          type: string
+  schema:
+    - mode: nullable
+      name: id
+      type: string
+    - mode: nullable
+      name: name
+      type: string
 `)
 		r.Assert().EqualValues(expectedContent, actualContent)
 	})
