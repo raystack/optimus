@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: optimus-db
+spec:
+  selector:
+    matchLabels:
+      app: database
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: database
+    spec:
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
+      volumes:
+      - name: data-path
+        persistentVolumeClaim:
+          claimName: optimus-db-pvc
+      containers:
+      - name: postgres
+        image: postgres:14-alpine
+        resources:
+          limits:
+            cpu: 1
+          requests:
+            cpu: "200m"
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: data-path
+          mountPath: /var/lib/postgresql/data
+        env:
+        - name: POSTGRES_USER
+          value: optimus
+        - name: POSTGRES_PASSWORD
+          value: optimus
+        - name: POSTGRES_DB
+          value: optimus
+        ports:
+        - name: postgres
+          containerPort: 5432
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -h
+            - localhost
+            - -U
+            - optimus
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -h
+            - localhost
+            - -U
+            - optimus
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+---
+
+# postgres svc
+apiVersion: v1
+kind: Service
+metadata:
+  name: database-service
+spec:
+  selector:
+    app: database
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
