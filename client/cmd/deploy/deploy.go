@@ -15,7 +15,6 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/multierr"
 
-	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	"github.com/odpf/optimus/client/cmd/internal/connectivity"
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/namespace"
@@ -350,29 +349,27 @@ func (d *deployCommand) getResourceDeploymentRequest(
 	namespaceName, storeName string,
 	repoFS afero.Fs,
 ) (*pb.DeployResourceSpecificationRequest, error) {
-	datastoreRepo := models.DatastoreRegistry
-
-	ds, err := datastoreRepo.GetByName(storeName)
-	if err != nil {
-		return nil, fmt.Errorf("unsupported datastore [%s] for namesapce [%s]", storeName, namespaceName)
-	}
-
-	resourceSpecRepo := local.NewResourceSpecRepository(repoFS, ds)
-	resourceSpecs, err := resourceSpecRepo.GetAll(ctx)
+	resourceSpecReadWritter, err := local.NewResourceSpecReadWriter(repoFS)
 	if err != nil {
 		return nil, err
 	}
 
-	adaptedSpecs := make([]*pb.ResourceSpecification, len(resourceSpecs))
-	for i, spec := range resourceSpecs {
-		adapted, err := v1handler.ToResourceProto(spec)
-		if err != nil {
-			return nil, fmt.Errorf("failed to serialize [%s] for namespace [%s]: %w", spec.Name, namespaceName, err)
-		}
-		adaptedSpecs[i] = adapted
+	resourceSpecs, err := resourceSpecReadWritter.ReadAll(".")
+	if err != nil {
+		return nil, err
 	}
+
+	resourceSpecsProto := make([]*pb.ResourceSpecification, len(resourceSpecs))
+	for i, resourceSpec := range resourceSpecs {
+		resourceSpecProto, err := resourceSpec.ToProto()
+		if err != nil {
+			return nil, err
+		}
+		resourceSpecsProto[i] = resourceSpecProto
+	}
+
 	return &pb.DeployResourceSpecificationRequest{
-		Resources:     adaptedSpecs,
+		Resources:     resourceSpecsProto,
 		ProjectName:   d.clientConfig.Project.Name,
 		DatastoreName: storeName,
 		NamespaceName: namespaceName,
