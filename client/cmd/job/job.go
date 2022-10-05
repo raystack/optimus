@@ -29,7 +29,6 @@ func NewJobCommand() *cobra.Command {
 		NewCreateCommand(),
 		NewAddHookCommand(),
 		NewRefreshCommand(),
-		NewRenderCommand(),
 		NewRunListCommand(),
 		NewValidateCommand(),
 		NewJobRunInputCommand(),
