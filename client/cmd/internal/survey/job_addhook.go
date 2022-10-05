@@ -59,7 +59,7 @@ func (j *JobAddHookSurvey) AskToAddHook(jobSpec *local.JobSpec) (*local.JobSpec,
 			return nil, err
 		}
 	}
-	newJobSpec.Hooks = append(jobSpec.Hooks, local.JobHook{
+	newJobSpec.Hooks = append(jobSpec.Hooks, local.JobSpecHook{
 		Name:   selectedHook.Info().Name,
 		Config: config,
 	})
