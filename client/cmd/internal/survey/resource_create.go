@@ -29,7 +29,7 @@ func (r ResourceSpecCreateSurvey) AskResourceSpecName(rootDirPath string) (strin
 		{
 			Name: "name",
 			Prompt: &survey.Input{
-				Message: "What is the resource name?(should conform to selected resource type)",
+				Message: "What is the resource name?",
 				Default: defaultResourceName,
 			},
 			Validate: survey.ComposeValidators(
@@ -44,6 +44,22 @@ func (r ResourceSpecCreateSurvey) AskResourceSpecName(rootDirPath string) (strin
 		return "", err
 	}
 	return inputs["name"].(string), nil
+}
+
+func (r ResourceSpecCreateSurvey) AskResourceSpecType() (string, error) {
+	var resourceSpecType string
+	if err := survey.AskOne(
+		&survey.Input{
+			Message: "What is the resource type?",
+		},
+		&resourceSpecType,
+		survey.WithValidator(
+			survey.ComposeValidators(survey.Required),
+		),
+	); err != nil {
+		return "", err
+	}
+	return resourceSpecType, nil
 }
 
 func (r ResourceSpecCreateSurvey) isResourceSpecNameUnique(rootDirPath string) survey.Validator {

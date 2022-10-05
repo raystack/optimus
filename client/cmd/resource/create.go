@@ -46,7 +46,7 @@ func (c createCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 	// TODO: re-check if datastore needs to be in slice, currently assuming
 	if len(selectedNamespace.Datastore) == 0 {
-		return fmt.Errorf("data store for selected namespace [%s] is not configured", selectedNamespace.Name)
+		return fmt.Errorf("data store for namespace [%s] is not configured", selectedNamespace.Name)
 	}
 
 	specFS := afero.NewOsFs()
@@ -58,6 +58,10 @@ func (c createCommand) RunE(_ *cobra.Command, _ []string) error {
 
 	rootDirPath := selectedNamespace.Datastore[0].Path
 	resourceName, err := resourceSpecCreateSurvey.AskResourceSpecName(rootDirPath)
+	if err != nil {
+		return err
+	}
+	resourceType, err := resourceSpecCreateSurvey.AskResourceSpecType()
 	if err != nil {
 		return err
 	}
@@ -74,7 +78,7 @@ func (c createCommand) RunE(_ *cobra.Command, _ []string) error {
 	if err := resourceSpecReadWriter.Write(resourceDirectory, &local.ResourceSpec{
 		Version: 1,
 		Name:    resourceName,
-		Type:    selectedNamespace.Datastore[0].Type,
+		Type:    resourceType,
 	}); err != nil {
 		return err
 	}
