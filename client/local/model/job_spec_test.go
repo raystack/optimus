@@ -28,8 +28,10 @@ func (s *JobSpecTestSuite) TestToProto() {
 
 		expectedProto := createCompleteJobSpecProto()
 		expectedProto.Behavior = nil
-		jobSpecProto := jobSpec.ToProto()
-		s.Assert().EqualValues(expectedProto, jobSpecProto)
+
+		actualProto := jobSpec.ToProto()
+
+		s.Assert().EqualValues(expectedProto, actualProto)
 	})
 
 	s.Run("should return job spec proto with metadata proto nil when job spec metadata is nil", func() {
@@ -158,6 +160,7 @@ func createCompleteJobSpecProto() *pb.JobSpecification {
 	return &pb.JobSpecification{
 		Version:       1,
 		Name:          "job_1",
+		Description:   "job one",
 		Owner:         "optimus@optimus.dev",
 		StartDate:     "30-09-2022",
 		EndDate:       "01-01-2050",
@@ -195,6 +198,17 @@ func createCompleteJobSpecProto() *pb.JobSpecification {
 		},
 		Labels: map[string]string{
 			"orchestrator": "optimus",
+		},
+		Hooks: []*pb.JobSpecHook{
+			{
+				Name: "hook_1",
+				Config: []*pb.JobConfigItem{
+					{
+						Name:  "hookkey",
+						Value: "hookvalue",
+					},
+				},
+			},
 		},
 		Dependencies: []*pb.JobDependency{
 			{
