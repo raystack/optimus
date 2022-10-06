@@ -1,4 +1,4 @@
-package spec_io
+package specio
 
 import (
 	"errors"
@@ -8,8 +8,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	specModel "github.com/odpf/optimus/client/local/spec_model"
 	"github.com/spf13/afero"
+
+	"github.com/odpf/optimus/client/local"
+	"github.com/odpf/optimus/client/local/internal"
+	"github.com/odpf/optimus/client/local/model"
 )
 
 type jobSpecReadWriter struct {
@@ -22,7 +25,7 @@ type jobSpecReadWriter struct {
 	specFS afero.Fs
 }
 
-func NewJobSpecReadWriter(specFS afero.Fs, opts ...jobSpecReadWriterOpt) (SpecReadWriter[*specModel.JobSpec], error) {
+func NewJobSpecReadWriter(specFS afero.Fs, opts ...jobSpecReadWriterOpt) (local.SpecReadWriter[*model.JobSpec], error) {
 	if specFS == nil {
 		return nil, errors.New("specFS is nil")
 	}
@@ -43,7 +46,7 @@ func NewJobSpecReadWriter(specFS afero.Fs, opts ...jobSpecReadWriterOpt) (SpecRe
 	return j, nil
 }
 
-func (j jobSpecReadWriter) ReadAll(rootDirPath string) ([]*specModel.JobSpec, error) {
+func (j jobSpecReadWriter) ReadAll(rootDirPath string) ([]*model.JobSpec, error) {
 	if rootDirPath == "" {
 		return nil, errors.New("root dir path is empty")
 	}
@@ -53,11 +56,11 @@ func (j jobSpecReadWriter) ReadAll(rootDirPath string) ([]*specModel.JobSpec, er
 		return nil, fmt.Errorf("error reading parent specs under [%s]: %w", rootDirPath, err)
 	}
 
-	dirPaths, err := discoverSpecDirPaths(j.specFS, rootDirPath, j.referenceSpecFileName)
+	dirPaths, err := internal.DiscoverSpecDirPaths(j.specFS, rootDirPath, j.referenceSpecFileName)
 	if err != nil {
 		return nil, fmt.Errorf("error discovering spec dir paths under [%s]: %w", rootDirPath, err)
 	}
-	jobSpecs := make([]*specModel.JobSpec, len(dirPaths))
+	jobSpecs := make([]*model.JobSpec, len(dirPaths))
 	for i, dirPath := range dirPaths {
 		jobSpec, err := j.readJobSpec(dirPath)
 		if err != nil {
@@ -71,7 +74,7 @@ func (j jobSpecReadWriter) ReadAll(rootDirPath string) ([]*specModel.JobSpec, er
 	return jobSpecs, nil
 }
 
-func (j jobSpecReadWriter) ReadByName(rootDirPath, name string) (*specModel.JobSpec, error) {
+func (j jobSpecReadWriter) ReadByName(rootDirPath, name string) (*model.JobSpec, error) {
 	if name == "" {
 		return nil, errors.New("name is empty")
 	}
@@ -79,14 +82,14 @@ func (j jobSpecReadWriter) ReadByName(rootDirPath, name string) (*specModel.JobS
 	if err != nil {
 		return nil, fmt.Errorf("error reading all specs under [%s]: %w", rootDirPath, err)
 	}
-	spec := getFirstSpecByFilter(allSpecs, func(js *specModel.JobSpec) bool { return js.Name == name })
+	spec := internal.GetFirstSpecByFilter(allSpecs, func(js *model.JobSpec) bool { return js.Name == name })
 	if spec == nil {
 		return nil, fmt.Errorf("spec with name [%s] is not found", name)
 	}
 	return spec, nil
 }
 
-func (j jobSpecReadWriter) Write(dirPath string, spec *specModel.JobSpec) error {
+func (j jobSpecReadWriter) Write(dirPath string, spec *model.JobSpec) error {
 	if dirPath == "" {
 		return errors.New("dir path is empty")
 	}
@@ -95,7 +98,7 @@ func (j jobSpecReadWriter) Write(dirPath string, spec *specModel.JobSpec) error 
 	}
 
 	specFilePath := filepath.Join(dirPath, j.referenceSpecFileName)
-	if err := writeSpec(j.specFS, specFilePath, spec); err != nil {
+	if err := internal.WriteSpec(j.specFS, specFilePath, spec); err != nil {
 		return fmt.Errorf("error writing spec into [%s]: %w", specFilePath, err)
 	}
 	for assetFileName, assetContent := range spec.Asset {
@@ -120,7 +123,7 @@ func (j jobSpecReadWriter) writeJobSpecAsset(filePath, content string) error {
 	return err
 }
 
-func (jobSpecReadWriter) mergeJobSpecWithParents(spec *specModel.JobSpec, specDirPath string, jobSpecParentsMappedByDirPath map[string]*specModel.JobSpec) {
+func (jobSpecReadWriter) mergeJobSpecWithParents(spec *model.JobSpec, specDirPath string, jobSpecParentsMappedByDirPath map[string]*model.JobSpec) {
 	splitDirPaths := strings.Split(specDirPath, "/")
 	for i := range splitDirPaths {
 		pathNearSpecIdx := len(splitDirPaths) - i
@@ -132,15 +135,15 @@ func (jobSpecReadWriter) mergeJobSpecWithParents(spec *specModel.JobSpec, specDi
 	}
 }
 
-func (j jobSpecReadWriter) readJobSpecParentsMappedByDirPath(rootDirPath string) (map[string]*specModel.JobSpec, error) {
-	parentDirPaths, err := discoverSpecDirPaths(j.specFS, rootDirPath, j.referenceParentFileName)
+func (j jobSpecReadWriter) readJobSpecParentsMappedByDirPath(rootDirPath string) (map[string]*model.JobSpec, error) {
+	parentDirPaths, err := internal.DiscoverSpecDirPaths(j.specFS, rootDirPath, j.referenceParentFileName)
 	if err != nil {
 		return nil, fmt.Errorf("error discovering parent spec paths under [%s]: %w", rootDirPath, err)
 	}
-	parentsMappedByDirPath := make(map[string]*specModel.JobSpec)
+	parentsMappedByDirPath := make(map[string]*model.JobSpec)
 	for _, dirPath := range parentDirPaths {
 		filePath := filepath.Join(dirPath, j.referenceParentFileName)
-		spec, err := readSpec[*specModel.JobSpec](j.specFS, filePath)
+		spec, err := internal.ReadSpec[*model.JobSpec](j.specFS, filePath)
 		if err != nil {
 			return nil, fmt.Errorf("error reading spec under [%s]: %w", filePath, err)
 		}
@@ -149,9 +152,9 @@ func (j jobSpecReadWriter) readJobSpecParentsMappedByDirPath(rootDirPath string)
 	return parentsMappedByDirPath, nil
 }
 
-func (j jobSpecReadWriter) readJobSpec(dirPath string) (*specModel.JobSpec, error) {
+func (j jobSpecReadWriter) readJobSpec(dirPath string) (*model.JobSpec, error) {
 	specFilePath := filepath.Join(dirPath, j.referenceSpecFileName)
-	jobSpec, err := readSpec[*specModel.JobSpec](j.specFS, specFilePath)
+	jobSpec, err := internal.ReadSpec[*model.JobSpec](j.specFS, specFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("error reading spec under [%s]: %w", dirPath, err)
 	}
@@ -165,7 +168,7 @@ func (j jobSpecReadWriter) readJobSpec(dirPath string) (*specModel.JobSpec, erro
 
 func (j jobSpecReadWriter) readJobSpecAssetsMappedByFileName(dirPath string) (map[string]string, error) {
 	assetDirPath := filepath.Join(dirPath, j.referenceAssetDirName)
-	assetFilePaths, err := discoverFilePaths(j.specFS, assetDirPath)
+	assetFilePaths, err := internal.DiscoverFilePaths(j.specFS, assetDirPath)
 	if err != nil {
 		return nil, fmt.Errorf("error discovering asset file paths under [%s]: %w", assetDirPath, err)
 	}

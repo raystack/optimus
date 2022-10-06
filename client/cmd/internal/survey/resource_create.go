@@ -6,19 +6,20 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
-	specIO "github.com/odpf/optimus/client/local/spec_io"
-	specModel "github.com/odpf/optimus/client/local/spec_model"
+
+	"github.com/odpf/optimus/client/local"
+	"github.com/odpf/optimus/client/local/model"
 )
 
 // ResourceSpecCreateSurvey defines surveys for resource spec creation
 type ResourceSpecCreateSurvey struct {
-	resourceSpecReadWriter specIO.SpecReadWriter[*specModel.ResourceSpec]
+	resourceSpecReader local.SpecReader[*model.ResourceSpec]
 }
 
 // NewResourceSpecCreateSurvey initializes survey for resource spec create
-func NewResourceSpecCreateSurvey(resourceSpecReadWriter specIO.SpecReadWriter[*specModel.ResourceSpec]) *ResourceSpecCreateSurvey {
+func NewResourceSpecCreateSurvey(resourceSpecReader local.SpecReader[*model.ResourceSpec]) *ResourceSpecCreateSurvey {
 	return &ResourceSpecCreateSurvey{
-		resourceSpecReadWriter: resourceSpecReadWriter,
+		resourceSpecReader: resourceSpecReader,
 	}
 }
 
@@ -68,7 +69,7 @@ func (r ResourceSpecCreateSurvey) isResourceSpecNameUnique(rootDirPath string) s
 		if !ok {
 			return fmt.Errorf("invalid type of resource name %v", reflect.TypeOf(val).Name())
 		}
-		if _, err := r.resourceSpecReadWriter.ReadByName(rootDirPath, str); err == nil {
+		if _, err := r.resourceSpecReader.ReadByName(rootDirPath, str); err == nil {
 			return fmt.Errorf("resource with the provided name already exists")
 		} else if !strings.Contains(err.Error(), "not found") {
 			return err

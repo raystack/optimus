@@ -1,4 +1,4 @@
-package spec_model_test
+package model_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	specModel "github.com/odpf/optimus/client/local/spec_model"
+	"github.com/odpf/optimus/client/local/model"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
@@ -24,7 +24,7 @@ func (s *JobSpecTestSuite) TestToProto() {
 	s.Run("should return job spec proto with behavior proto nil when behavior.retry is nil and behavior.notify is empty", func() {
 		jobSpec := createCompleteJobSpec()
 		jobSpec.Behavior.Retry = nil
-		jobSpec.Behavior.Notify = []specModel.JobSpecBehaviorNotifier{}
+		jobSpec.Behavior.Notify = []model.JobSpecBehaviorNotifier{}
 
 		expectedProto := createCompleteJobSpecProto()
 		expectedProto.Behavior = nil
@@ -61,26 +61,26 @@ func (s *JobSpecTestSuite) TestToProto() {
 	})
 }
 
-func createCompleteJobSpec() specModel.JobSpec {
-	return specModel.JobSpec{
+func createCompleteJobSpec() model.JobSpec {
+	return model.JobSpec{
 		Version:     1,
 		Name:        "job_1",
 		Owner:       "optimus@optimus.dev",
 		Description: "job one",
-		Schedule: specModel.JobSpecSchedule{
+		Schedule: model.JobSpecSchedule{
 			StartDate: "30-09-2022",
 			EndDate:   "01-01-2050",
 			Interval:  "12 10 * * *",
 		},
-		Behavior: specModel.JobSpecBehavior{
+		Behavior: model.JobSpecBehavior{
 			DependsOnPast: true,
 			Catchup:       true,
-			Retry: &specModel.JobSpecBehaviorRetry{
+			Retry: &model.JobSpecBehaviorRetry{
 				Count:              10,
 				Delay:              2 * time.Second,
 				ExponentialBackoff: true,
 			},
-			Notify: []specModel.JobSpecBehaviorNotifier{
+			Notify: []model.JobSpecBehaviorNotifier{
 				{
 					On: "failure",
 					Config: map[string]string{
@@ -90,12 +90,12 @@ func createCompleteJobSpec() specModel.JobSpec {
 				},
 			},
 		},
-		Task: specModel.JobSpecTask{
+		Task: model.JobSpecTask{
 			Name: "job_task_1",
 			Config: map[string]string{
 				"taskkey": "taskvalue",
 			},
-			Window: specModel.JobSpecTaskWindow{
+			Window: model.JobSpecTaskWindow{
 				Size:       "24h",
 				Offset:     "1h",
 				TruncateTo: "d",
@@ -107,11 +107,11 @@ func createCompleteJobSpec() specModel.JobSpec {
 		Labels: map[string]string{
 			"orchestrator": "optimus",
 		},
-		Dependencies: []specModel.JobSpecDependency{
+		Dependencies: []model.JobSpecDependency{
 			{
 				JobName: "job_name_1",
 				Type:    "extra",
-				HTTP: &specModel.JobSpecDependencyHTTP{
+				HTTP: &model.JobSpecDependencyHTTP{
 					Name: "http_dep",
 					RequestParams: map[string]string{
 						"param1": "paramvalue",
@@ -127,7 +127,7 @@ func createCompleteJobSpec() specModel.JobSpec {
 				Type:    "intra",
 			},
 		},
-		Hooks: []specModel.JobSpecHook{
+		Hooks: []model.JobSpecHook{
 			{
 				Name: "hook_1",
 				Config: map[string]string{
@@ -135,18 +135,18 @@ func createCompleteJobSpec() specModel.JobSpec {
 				},
 			},
 		},
-		Metadata: &specModel.JobSpecMetadata{
-			Resource: &specModel.JobSpecMetadataResource{
-				Request: &specModel.JobSpecMetadataResourceConfig{
+		Metadata: &model.JobSpecMetadata{
+			Resource: &model.JobSpecMetadataResource{
+				Request: &model.JobSpecMetadataResourceConfig{
 					CPU:    "250m",
 					Memory: "64Mi",
 				},
-				Limit: &specModel.JobSpecMetadataResourceConfig{
+				Limit: &model.JobSpecMetadataResourceConfig{
 					CPU:    "500m",
 					Memory: "128Mi",
 				},
 			},
-			Airflow: &specModel.JobSpecMetadataAirflow{
+			Airflow: &model.JobSpecMetadataAirflow{
 				Pool:  "poolA",
 				Queue: "queueA",
 			},

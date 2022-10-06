@@ -9,9 +9,8 @@ import (
 
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/internal/survey"
+	"github.com/odpf/optimus/client/local/specio"
 	"github.com/odpf/optimus/config"
-
-	specIO "github.com/odpf/optimus/client/local/spec_io"
 )
 
 type addHookCommand struct {
@@ -64,7 +63,7 @@ func (a *addHookCommand) RunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	jobSpecReadWriter, err := specIO.NewJobSpecReadWriter(afero.NewOsFs())
+	jobSpecReadWriter, err := specio.NewJobSpecReadWriter(afero.NewOsFs())
 	if err != nil {
 		return err
 	}

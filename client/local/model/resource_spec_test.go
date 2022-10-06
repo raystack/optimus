@@ -1,4 +1,4 @@
-package spec_model_test
+package model_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	specModel "github.com/odpf/optimus/client/local/spec_model"
+	"github.com/odpf/optimus/client/local/model"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
@@ -34,7 +34,7 @@ func (r *ResourceSpecTestSuite) TestToProto() {
 				},
 			},
 		}
-		resourceSpec := &specModel.ResourceSpec{
+		resourceSpec := &model.ResourceSpec{
 			Version: 1,
 			Name:    "resource",
 			Type:    "table",

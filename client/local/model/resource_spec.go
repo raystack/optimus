@@ -1,4 +1,4 @@
-package spec_model
+package model
 
 import (
 	"fmt"

@@ -1,11 +1,12 @@
-package spec_model
+package model
 
 import (
 	"time"
 
+	"google.golang.org/protobuf/types/known/durationpb"
+
 	"github.com/odpf/optimus/internal/utils"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
-	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 type JobSpec struct {

@@ -13,8 +13,8 @@ import (
 
 	"github.com/odpf/optimus/client/cmd/internal/connectivity"
 	"github.com/odpf/optimus/client/cmd/internal/logger"
-	specIO "github.com/odpf/optimus/client/local/spec_io"
-	specModel "github.com/odpf/optimus/client/local/spec_model"
+	"github.com/odpf/optimus/client/local/model"
+	"github.com/odpf/optimus/client/local/specio"
 	"github.com/odpf/optimus/config"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
@@ -68,7 +68,7 @@ func (v *validateCommand) RunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	jobSpecReadWriter, err := specIO.NewJobSpecReadWriter(afero.NewOsFs())
+	jobSpecReadWriter, err := specio.NewJobSpecReadWriter(afero.NewOsFs())
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func (v *validateCommand) RunE(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func (v *validateCommand) validateJobSpecificationRequest(jobSpecs []*specModel.JobSpec) error {
+func (v *validateCommand) validateJobSpecificationRequest(jobSpecs []*model.JobSpec) error {
 	conn, err := connectivity.NewConnectivity(v.clientConfig.Host, validateTimeout)
 	if err != nil {
 		return err

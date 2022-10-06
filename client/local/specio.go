@@ -1,11 +1,9 @@
-package spec_io
+package local
 
-import (
-	specModel "github.com/odpf/optimus/client/local/spec_model"
-)
+import "github.com/odpf/optimus/client/local/model"
 
 type ValidSpec interface {
-	*specModel.JobSpec | *specModel.ResourceSpec
+	*model.JobSpec | *model.ResourceSpec
 }
 
 type SpecReader[S ValidSpec] interface {

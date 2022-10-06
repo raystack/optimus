@@ -1,12 +1,15 @@
-package spec_io
+package specio
 
 import (
 	"errors"
 	"fmt"
 	"path/filepath"
 
-	specModel "github.com/odpf/optimus/client/local/spec_model"
 	"github.com/spf13/afero"
+
+	"github.com/odpf/optimus/client/local"
+	"github.com/odpf/optimus/client/local/internal"
+	"github.com/odpf/optimus/client/local/model"
 )
 
 type resourceSpecReadWriter struct {
@@ -14,7 +17,7 @@ type resourceSpecReadWriter struct {
 	specFS                afero.Fs
 }
 
-func NewResourceSpecReadWriter(specFS afero.Fs) (SpecReadWriter[*specModel.ResourceSpec], error) {
+func NewResourceSpecReadWriter(specFS afero.Fs) (local.SpecReadWriter[*model.ResourceSpec], error) {
 	if specFS == nil {
 		return nil, errors.New("spec fs is nil")
 	}
@@ -24,20 +27,20 @@ func NewResourceSpecReadWriter(specFS afero.Fs) (SpecReadWriter[*specModel.Resou
 	}, nil
 }
 
-func (r resourceSpecReadWriter) ReadAll(rootDirPath string) ([]*specModel.ResourceSpec, error) {
+func (r resourceSpecReadWriter) ReadAll(rootDirPath string) ([]*model.ResourceSpec, error) {
 	if rootDirPath == "" {
 		return nil, errors.New("root dir path is empty")
 	}
 
-	specDirPaths, err := discoverSpecDirPaths(r.specFS, rootDirPath, r.referenceSpecFileName)
+	specDirPaths, err := internal.DiscoverSpecDirPaths(r.specFS, rootDirPath, r.referenceSpecFileName)
 	if err != nil {
 		return nil, fmt.Errorf("error discovering spec paths under [%s]: %w", rootDirPath, err)
 	}
 
-	specs := make([]*specModel.ResourceSpec, len(specDirPaths))
+	specs := make([]*model.ResourceSpec, len(specDirPaths))
 	for i, dirPath := range specDirPaths {
 		filePath := filepath.Join(dirPath, r.referenceSpecFileName)
-		spec, err := readSpec[*specModel.ResourceSpec](r.specFS, filePath)
+		spec, err := internal.ReadSpec[*model.ResourceSpec](r.specFS, filePath)
 		if err != nil {
 			return nil, fmt.Errorf("error reading spec under [%s]: %w", filePath, err)
 		}
@@ -46,7 +49,7 @@ func (r resourceSpecReadWriter) ReadAll(rootDirPath string) ([]*specModel.Resour
 	return specs, nil
 }
 
-func (r resourceSpecReadWriter) ReadByName(rootDirPath, name string) (*specModel.ResourceSpec, error) {
+func (r resourceSpecReadWriter) ReadByName(rootDirPath, name string) (*model.ResourceSpec, error) {
 	if name == "" {
 		return nil, errors.New("name is empty")
 	}
@@ -54,14 +57,14 @@ func (r resourceSpecReadWriter) ReadByName(rootDirPath, name string) (*specModel
 	if err != nil {
 		return nil, fmt.Errorf("error reading all specs under [%s]: %w", rootDirPath, err)
 	}
-	spec := getFirstSpecByFilter(allSpecs, func(rs *specModel.ResourceSpec) bool { return rs.Name == name })
+	spec := internal.GetFirstSpecByFilter(allSpecs, func(rs *model.ResourceSpec) bool { return rs.Name == name })
 	if spec == nil {
 		return nil, fmt.Errorf("spec with name [%s] is not found", name)
 	}
 	return spec, nil
 }
 
-func (r resourceSpecReadWriter) Write(dirPath string, spec *specModel.ResourceSpec) error {
+func (r resourceSpecReadWriter) Write(dirPath string, spec *model.ResourceSpec) error {
 	if dirPath == "" {
 		return errors.New("dir path is empty")
 	}
@@ -69,5 +72,5 @@ func (r resourceSpecReadWriter) Write(dirPath string, spec *specModel.ResourceSp
 		return errors.New("spec is nil")
 	}
 	filePath := filepath.Join(dirPath, r.referenceSpecFileName)
-	return writeSpec(r.specFS, filePath, spec)
+	return internal.WriteSpec(r.specFS, filePath, spec)
 }

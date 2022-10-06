@@ -1,12 +1,13 @@
-package spec_io
+package specio
 
 import (
 	"github.com/spf13/afero"
 
-	specModel "github.com/odpf/optimus/client/local/spec_model"
+	"github.com/odpf/optimus/client/local"
+	"github.com/odpf/optimus/client/local/model"
 )
 
-func NewTestJobSpecReadWriter(specFS afero.Fs) SpecReadWriter[*specModel.JobSpec] {
+func NewTestJobSpecReadWriter(specFS afero.Fs) local.SpecReadWriter[*model.JobSpec] {
 	return &jobSpecReadWriter{
 		referenceSpecFileName:   "job.yaml",
 		referenceParentFileName: "this.yaml",
@@ -15,7 +16,7 @@ func NewTestJobSpecReadWriter(specFS afero.Fs) SpecReadWriter[*specModel.JobSpec
 	}
 }
 
-func NewTestResourceSpecReadWriter(specFS afero.Fs) SpecReadWriter[*specModel.ResourceSpec] {
+func NewTestResourceSpecReadWriter(specFS afero.Fs) local.SpecReadWriter[*model.ResourceSpec] {
 	return &resourceSpecReadWriter{
 		referenceSpecFileName: "resource.yaml",
 		specFS:                specFS,

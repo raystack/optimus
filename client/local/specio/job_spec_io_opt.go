@@ -1,4 +1,4 @@
-package spec_io
+package specio
 
 type jobSpecReadWriterOpt func(*jobSpecReadWriter) error
 

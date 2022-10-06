@@ -1,4 +1,4 @@
-package spec_io_test
+package specio_test
 
 import (
 	"io"
@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
-	specIO "github.com/odpf/optimus/client/local/spec_io"
-	specModel "github.com/odpf/optimus/client/local/spec_model"
+	"github.com/odpf/optimus/client/local/model"
+	"github.com/odpf/optimus/client/local/specio"
 )
 
 type ResourceSpecReadWriterTestSuite struct {
@@ -23,7 +23,7 @@ func TestResourceSpecReadWriter(t *testing.T) {
 func (r *ResourceSpecReadWriterTestSuite) TestReadAll() {
 	r.Run("should return nil and error if root dir path is empty", func() {
 		specFS := afero.NewMemMapFs()
-		specReadWriter := specIO.NewTestResourceSpecReadWriter(specFS)
+		specReadWriter := specio.NewTestResourceSpecReadWriter(specFS)
 
 		var rootDirPath string
 
@@ -35,7 +35,7 @@ func (r *ResourceSpecReadWriterTestSuite) TestReadAll() {
 
 	r.Run("should return nil and error if encountered error when discovering spec dir paths", func() {
 		specFS := afero.NewMemMapFs()
-		specReadWriter := specIO.NewTestResourceSpecReadWriter(specFS)
+		specReadWriter := specio.NewTestResourceSpecReadWriter(specFS)
 
 		rootDirPath := "invalid_dir_path"
 
@@ -50,7 +50,7 @@ func (r *ResourceSpecReadWriterTestSuite) TestReadAll() {
 		fileSpec, _ := specFS.Create("namespace/resource/user/resource.yaml")
 		fileSpec.WriteString("invalid yaml")
 		fileSpec.Close()
-		specReadWriter := specIO.NewTestResourceSpecReadWriter(specFS)
+		specReadWriter := specio.NewTestResourceSpecReadWriter(specFS)
 
 		rootDirPath := "namespace"
 
@@ -80,9 +80,9 @@ func (r *ResourceSpecReadWriterTestSuite) TestReadAll() {
 		fileSpec, _ := specFS.Create("namespace/resource/user/resource.yaml")
 		fileSpec.WriteString(rawSpecContent)
 		fileSpec.Close()
-		specReadWriter := specIO.NewTestResourceSpecReadWriter(specFS)
+		specReadWriter := specio.NewTestResourceSpecReadWriter(specFS)
 
-		expectedResourceSpecs := []*specModel.ResourceSpec{
+		expectedResourceSpecs := []*model.ResourceSpec{
 			{
 				Version: 1,
 				Name:    "project.dataset.user",
@@ -119,7 +119,7 @@ func (r *ResourceSpecReadWriterTestSuite) TestReadAll() {
 func (r *ResourceSpecReadWriterTestSuite) TestReadByName() {
 	r.Run("should return nil and error if root dir is empty", func() {
 		specFS := afero.NewMemMapFs()
-		specReadWriter := specIO.NewTestResourceSpecReadWriter(specFS)
+		specReadWriter := specio.NewTestResourceSpecReadWriter(specFS)
 
 		var rootDirPath string
 		name := "resource"
@@ -132,7 +132,7 @@ func (r *ResourceSpecReadWriterTestSuite) TestReadByName() {
 
 	r.Run("should return nil and error if name is empty", func() {
 		specFS := afero.NewMemMapFs()
-		specReadWriter := specIO.NewTestResourceSpecReadWriter(specFS)
+		specReadWriter := specio.NewTestResourceSpecReadWriter(specFS)
 
 		rootDirPath := "namespace"
 		var name string
@@ -145,7 +145,7 @@ func (r *ResourceSpecReadWriterTestSuite) TestReadByName() {
 
 	r.Run("should return nil and error if error is encountered when reading specs", func() {
 		specFS := afero.NewMemMapFs()
-		specReadWriter := specIO.NewTestResourceSpecReadWriter(specFS)
+		specReadWriter := specio.NewTestResourceSpecReadWriter(specFS)
 
 		rootDirPath := "namespace"
 		name := "resource"
@@ -176,7 +176,7 @@ func (r *ResourceSpecReadWriterTestSuite) TestReadByName() {
 		fileSpec, _ := specFS.Create("namespace/resource/user/resource.yaml")
 		fileSpec.WriteString(rawSpecContent)
 		fileSpec.Close()
-		specReadWriter := specIO.NewTestResourceSpecReadWriter(specFS)
+		specReadWriter := specio.NewTestResourceSpecReadWriter(specFS)
 
 		rootDirPath := "namespace"
 		name := "resource"
@@ -207,9 +207,9 @@ func (r *ResourceSpecReadWriterTestSuite) TestReadByName() {
 		fileSpec, _ := specFS.Create("namespace/resource/user/resource.yaml")
 		fileSpec.WriteString(rawSpecContent)
 		fileSpec.Close()
-		specReadWriter := specIO.NewTestResourceSpecReadWriter(specFS)
+		specReadWriter := specio.NewTestResourceSpecReadWriter(specFS)
 
-		expectedResourceSpecs := &specModel.ResourceSpec{
+		expectedResourceSpecs := &model.ResourceSpec{
 			Version: 1,
 			Name:    "project.dataset.user",
 			Type:    "table",
@@ -246,10 +246,10 @@ func (r *ResourceSpecReadWriterTestSuite) TestReadByName() {
 func (r *ResourceSpecReadWriterTestSuite) TestWrite() {
 	r.Run("should return error if dir path is empty", func() {
 		specFS := afero.NewMemMapFs()
-		specReadWriter := specIO.NewTestResourceSpecReadWriter(specFS)
+		specReadWriter := specio.NewTestResourceSpecReadWriter(specFS)
 
 		var dirPath string
-		spec := &specModel.ResourceSpec{}
+		spec := &model.ResourceSpec{}
 
 		actualError := specReadWriter.Write(dirPath, spec)
 
@@ -258,10 +258,10 @@ func (r *ResourceSpecReadWriterTestSuite) TestWrite() {
 
 	r.Run("should return error if spec is nil", func() {
 		specFS := afero.NewMemMapFs()
-		specReadWriter := specIO.NewTestResourceSpecReadWriter(specFS)
+		specReadWriter := specio.NewTestResourceSpecReadWriter(specFS)
 
 		dirPath := "namespace"
-		var spec *specModel.ResourceSpec
+		var spec *model.ResourceSpec
 
 		actualError := specReadWriter.Write(dirPath, spec)
 
@@ -270,10 +270,10 @@ func (r *ResourceSpecReadWriterTestSuite) TestWrite() {
 
 	r.Run("should write spec to file and return nil if no error is encountered", func() {
 		specFS := afero.NewMemMapFs()
-		specReadWriter := specIO.NewTestResourceSpecReadWriter(specFS)
+		specReadWriter := specio.NewTestResourceSpecReadWriter(specFS)
 
 		dirPath := "namespace"
-		spec := &specModel.ResourceSpec{
+		spec := &model.ResourceSpec{
 			Version: 1,
 			Name:    "project.dataset.user",
 			Type:    "table",
@@ -328,7 +328,7 @@ func TestNewResourceSpecReadWriter(t *testing.T) {
 	t.Run("should return nil and error if spec fs is nil", func(t *testing.T) {
 		var specFS afero.Fs
 
-		actualResourceSpecReadWriter, actualError := local.NewResourceSpecReadWriter(specFS)
+		actualResourceSpecReadWriter, actualError := specio.NewResourceSpecReadWriter(specFS)
 
 		assert.Nil(t, actualResourceSpecReadWriter)
 		assert.Error(t, actualError)
@@ -337,7 +337,7 @@ func TestNewResourceSpecReadWriter(t *testing.T) {
 	t.Run("should job resource spec read writer and nil if spec fs is not nil", func(t *testing.T) {
 		specFS := afero.NewMemMapFs()
 
-		actualResourceSpecReadWriter, actualError := local.NewResourceSpecReadWriter(specFS)
+		actualResourceSpecReadWriter, actualError := specio.NewResourceSpecReadWriter(specFS)
 
 		assert.NotNil(t, actualResourceSpecReadWriter)
 		assert.NoError(t, actualError)

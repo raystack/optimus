@@ -1,4 +1,4 @@
-package spec_io
+package internal
 
 import (
 	"fmt"
@@ -9,9 +9,11 @@ import (
 
 	"github.com/spf13/afero"
 	"gopkg.in/yaml.v3"
+
+	"github.com/odpf/optimus/client/local"
 )
 
-func discoverSpecDirPaths(specFS afero.Fs, rootSpecDir, referenceFileName string) ([]string, error) {
+func DiscoverSpecDirPaths(specFS afero.Fs, rootSpecDir, referenceFileName string) ([]string, error) {
 	return discoverPathsUsingSelector(specFS, rootSpecDir, func(path string, info fs.FileInfo) (string, bool) {
 		if !info.IsDir() && strings.HasSuffix(path, referenceFileName) {
 			return filepath.Dir(path), true
@@ -20,7 +22,7 @@ func discoverSpecDirPaths(specFS afero.Fs, rootSpecDir, referenceFileName string
 	})
 }
 
-func discoverFilePaths(fileFS afero.Fs, rootDir string) ([]string, error) {
+func DiscoverFilePaths(fileFS afero.Fs, rootDir string) ([]string, error) {
 	return discoverPathsUsingSelector(fileFS, rootDir, func(path string, info fs.FileInfo) (string, bool) {
 		if !info.IsDir() {
 			return path, true
@@ -47,7 +49,7 @@ func discoverPathsUsingSelector(specFS afero.Fs, rootSpecDir string, selectPath 
 	return specDirPaths, nil
 }
 
-func writeSpec[S ValidSpec](specFS afero.Fs, filePath string, spec S) error {
+func WriteSpec[S local.ValidSpec](specFS afero.Fs, filePath string, spec S) error {
 	if err := specFS.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
 		return err
 	}
@@ -61,7 +63,7 @@ func writeSpec[S ValidSpec](specFS afero.Fs, filePath string, spec S) error {
 	return encoder.Encode(spec)
 }
 
-func readSpec[S ValidSpec](specFS afero.Fs, filePath string) (S, error) {
+func ReadSpec[S local.ValidSpec](specFS afero.Fs, filePath string) (S, error) {
 	fileSpec, err := specFS.Open(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("error opening spec under [%s]: %w", filePath, err)
@@ -75,7 +77,7 @@ func readSpec[S ValidSpec](specFS afero.Fs, filePath string) (S, error) {
 	return spec, nil
 }
 
-func getFirstSpecByFilter[S ValidSpec](specs []S, filter func(S) bool) S {
+func GetFirstSpecByFilter[S local.ValidSpec](specs []S, filter func(S) bool) S {
 	for _, s := range specs {
 		if filter(s) {
 			return s
