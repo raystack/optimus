@@ -173,7 +173,7 @@ func (e *inspectCommand) printLogs(logs []*pb.Log) {
 	}
 }
 
-func (e *inspectCommand) displayBasicInfoSection(basicInfoSection *pb.BasicInfoSection) {
+func (e *inspectCommand) displayBasicInfoSection(basicInfoSection *pb.JobInspectResponse_BasicInfoSection) {
 	e.logger.Info(logger.ColoredNotice("\n-----------------------------------------------------------------------------"))
 	e.logger.Info(logger.ColoredNotice("\n    * BASIC INFO"))
 	e.logger.Info(logger.ColoredNotice("\n-----------------------------------------------------------------------------"))

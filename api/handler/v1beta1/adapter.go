@@ -150,8 +150,8 @@ func ToJobSpecificationResponseProto(jobSpec models.JobSpec) *pb.JobSpecificatio
 	}
 }
 
-func ToBasicInfoSectionProto(jobBasicInfo models.JobBasicInfo) *pb.BasicInfoSection {
-	return &pb.BasicInfoSection{
+func ToBasicInfoSectionProto(jobBasicInfo models.JobBasicInfo) *pb.JobInspectResponse_BasicInfoSection {
+	return &pb.JobInspectResponse_BasicInfoSection{
 		Destination: jobBasicInfo.Destination,
 		Source:      jobBasicInfo.JobSource,
 		Job:         ToJobSpecificationProto(jobBasicInfo.Spec),
