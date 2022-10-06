@@ -69,7 +69,20 @@ func (s *JobSpecTestSuite) TestToProto() {
 	})
 }
 
-func (s *JobSpecTestSuite) getCompleteJobSpec() model.JobSpec {
+// TODO: this unit test needs refactoring, depending on its implementation
+func (s *JobSpecTestSuite) TestMergeFrom() {
+	s.Run("should add the current job spec with the incoming one", func() {
+		jobSpec1 := s.getCompleteJobSpec()
+		jobSpec1.Behavior.Notify = nil
+		jobSpec2 := s.getCompleteJobSpec()
+
+		jobSpec1.MergeFrom(jobSpec2)
+
+		s.Assert().EqualValues(jobSpec2, jobSpec1)
+	})
+}
+
+func (*JobSpecTestSuite) getCompleteJobSpec() model.JobSpec {
 	return model.JobSpec{
 		Version:     1,
 		Name:        "job_1",
@@ -162,7 +175,7 @@ func (s *JobSpecTestSuite) getCompleteJobSpec() model.JobSpec {
 	}
 }
 
-func (s *JobSpecTestSuite) getCompleteJobSpecProto() *pb.JobSpecification {
+func (*JobSpecTestSuite) getCompleteJobSpecProto() *pb.JobSpecification {
 	return &pb.JobSpecification{
 		Version:       1,
 		Name:          "job_1",

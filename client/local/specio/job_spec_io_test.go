@@ -389,6 +389,15 @@ func TestNewJobSpecReadWriter(t *testing.T) {
 		assert.Nil(t, jobSpecReadWriter)
 	})
 
+	t.Run("accept options and return job spec read writer and nil if no eror is encountered", func(t *testing.T) {
+		specFS := afero.NewMemMapFs()
+
+		jobSpecReadWriter, err := specio.NewJobSpecReadWriter(specFS, specio.WithJobSpecParentReading())
+
+		assert.NoError(t, err)
+		assert.NotNil(t, jobSpecReadWriter)
+	})
+
 	t.Run("return job spec read writer and nil if no error is encountered", func(t *testing.T) {
 		specFS := afero.NewMemMapFs()
 
