@@ -157,8 +157,6 @@ func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 }
 
 func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspectRequest) (*pb.JobInspectResponse, error) {
-	logWriter := &writer.BufferedLogger{}
-
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
@@ -180,36 +178,11 @@ func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspe
 		}
 	}
 	jobSpec.NamespaceSpec = namespaceSpec
-
-	jobDestination, jobSources, err := sv.jobSvc.GetJobSourceAndDestination(ctx, jobSpec)
-	if err != nil {
-		logWriter.Write(writer.LogLevelError, fmt.Sprintf("Unable to determine job destination and sources: \n%s", err.Error()))
-	} else {
-		logWriter.Write(writer.LogLevelInfo, "successfully generated job destination and sources")
-	}
-
-	jobSpec.ResourceDestination = jobDestination.URN()
-	sv.jobSvc.Check(ctx, namespaceSpec, []models.JobSpec{jobSpec}, logWriter)
-
-	sv.hightlightJobWarnings(ctx, jobSpec, logWriter)
+	jobBasicInfo := sv.jobSvc.GetJobBasicInfo(ctx, jobSpec)
 
 	return &pb.JobInspectResponse{
-		Spec:        ToJobSpecificationProto(jobSpec),
-		Sources:     jobSources,
-		Destination: jobSpec.ResourceDestination,
-		Log:         logWriter.Messages,
+		BasicInfo: ToBasicInfoSectionProto(jobBasicInfo),
 	}, nil
-}
-
-func (sv *JobSpecServiceServer) hightlightJobWarnings(ctx context.Context, jobSpec models.JobSpec, logWriter writer.LogWriter) {
-	if jobSpec.Behavior.CatchUp {
-		logWriter.Write(writer.LogLevelWarning, "Catchup is enabled")
-	}
-	if dupDestJobName, err := sv.jobSvc.IsJobDestinationDuplicate(ctx, jobSpec); err != nil {
-		logWriter.Write(writer.LogLevelError, " could not perform duplicate job destination check err:"+err.Error())
-	} else if dupDestJobName != "" {
-		logWriter.Write(writer.LogLevelWarning, " already a job already exists with same Destination:"+jobSpec.ResourceDestination+" existing jobName:"+dupDestJobName)
-	}
 }
 
 func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req *pb.CreateJobSpecificationRequest) (*pb.CreateJobSpecificationResponse, error) {

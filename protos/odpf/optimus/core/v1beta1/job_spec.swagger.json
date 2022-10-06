@@ -464,6 +464,29 @@
         }
       }
     },
+    "v1beta1BasicInfoSection": {
+      "type": "object",
+      "properties": {
+        "job": {
+          "$ref": "#/definitions/v1beta1JobSpecification"
+        },
+        "source": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "destination": {
+          "type": "string"
+        },
+        "notice": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1Log"
+          }
+        }
+      }
+    },
     "v1beta1CheckJobSpecificationResponse": {
       "type": "object",
       "properties": {
@@ -524,6 +547,23 @@
         }
       },
       "title": "DeployJobSpecificationResponse hold the value of DeploymentID\nand the log messages"
+    },
+    "v1beta1DownstreamSection": {
+      "type": "object",
+      "properties": {
+        "downstreamJobs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1OptimusDependency"
+          }
+        },
+        "notice": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1Log"
+          }
+        }
+      }
     },
     "v1beta1GetDeployJobsStatusResponse": {
       "type": "object",
@@ -655,23 +695,14 @@
     "v1beta1JobInspectResponse": {
       "type": "object",
       "properties": {
-        "spec": {
-          "$ref": "#/definitions/v1beta1JobSpecification"
+        "basicInfo": {
+          "$ref": "#/definitions/v1beta1BasicInfoSection"
         },
-        "sources": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+        "upstreams": {
+          "$ref": "#/definitions/v1beta1UpstreamSection"
         },
-        "destination": {
-          "type": "string"
-        },
-        "log": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1Log"
-          }
+        "downstreams": {
+          "$ref": "#/definitions/v1beta1DownstreamSection"
         }
       }
     },
@@ -863,6 +894,32 @@
         }
       }
     },
+    "v1beta1OptimusDependency": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "projectName": {
+          "type": "string"
+        },
+        "namespaceName": {
+          "type": "string"
+        },
+        "taskName": {
+          "type": "string"
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "v1beta1RefreshJobsResponse": {
       "type": "object",
       "properties": {
@@ -871,6 +928,52 @@
         },
         "logStatus": {
           "$ref": "#/definitions/v1beta1Log"
+        }
+      }
+    },
+    "v1beta1UnknownDependencies": {
+      "type": "object",
+      "properties": {
+        "jobName": {
+          "type": "string"
+        },
+        "projectName": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1UpstreamSection": {
+      "type": "object",
+      "properties": {
+        "externalDependency": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1OptimusDependency"
+          }
+        },
+        "internalDependency": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1OptimusDependency"
+          }
+        },
+        "httpDependency": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1HttpDependency"
+          }
+        },
+        "unknownDependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1UnknownDependencies"
+          }
+        },
+        "notice": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1Log"
+          }
         }
       }
     }

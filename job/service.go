@@ -26,9 +26,6 @@ import (
 )
 
 const (
-	// PersistJobPrefix is used to keep the job during sync even if they are not in source repo
-	PersistJobPrefix string = "__"
-
 	ConcurrentTicketPerSec = 40
 	ConcurrentLimit        = 600
 
@@ -310,29 +307,44 @@ func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, j
 	return err
 }
 
-func (srv *Service) GetJobSourceAndDestination(ctx context.Context, jobSpec models.JobSpec) (models.JobSpecTaskDestination, models.JobSpecTaskDependencies, error) {
-	var mullErr error
-	var destination models.JobSpecTaskDestination
-	var dependencies models.JobSpecTaskDependencies
+func (srv *Service) GetJobBasicInfo(ctx context.Context, jobSpec models.JobSpec) models.JobBasicInfo {
+	var jobBasicInfo models.JobBasicInfo
+	jobBasicInfo.Spec = jobSpec
+
 	dest, err := srv.pluginService.GenerateDestination(ctx, jobSpec, jobSpec.NamespaceSpec)
 	if err != nil {
-		mullErr = multierror.Append(mullErr, fmt.Errorf("unable to generate destination err::%w", err))
+		jobBasicInfo.Log.Write(writer.LogLevelError, fmt.Sprintf("unable to generate destination, err:%v", err))
 	}
-
 	if dest != nil {
-		destination.Destination = dest.Destination
-		destination.Type = dest.Type
+		destination := models.JobSpecTaskDestination{
+			Destination: dest.Destination,
+			Type:        dest.Type,
+		}
+		jobBasicInfo.Destination = destination.URN()
 	}
 
 	deps, err := srv.pluginService.GenerateDependencies(ctx, jobSpec, jobSpec.NamespaceSpec, false)
 	if err != nil {
-		mullErr = multierror.Append(mullErr, fmt.Errorf("failed to generate dependencies err::%w", err))
+		jobBasicInfo.Log.Write(writer.LogLevelError, fmt.Sprintf("failed to generate dependencies, err:%v", err))
+	} else {
+		if deps != nil {
+			jobBasicInfo.JobSource = deps.Dependencies
+		} else {
+			jobBasicInfo.Log.Write(writer.LogLevelWarning, "no dependencies detected")
+		}
 	}
-	if deps != nil {
-		dependencies = deps.Dependencies
+	srv.Check(ctx, jobSpec.NamespaceSpec, []models.JobSpec{jobSpec}, &jobBasicInfo.Log)
+
+	if jobSpec.Behavior.CatchUp {
+		jobBasicInfo.Log.Write(writer.LogLevelWarning, "Catchup is enabled")
+	}
+	if dupDestJobName, err := srv.IsJobDestinationDuplicate(ctx, jobSpec); err != nil {
+		jobBasicInfo.Log.Write(writer.LogLevelError, " could not perform duplicate job destination check, err:"+err.Error())
+	} else if dupDestJobName != "" {
+		jobBasicInfo.Log.Write(writer.LogLevelWarning, " already a job already exists with same Destination:"+jobSpec.ResourceDestination+" existing jobName:"+dupDestJobName)
 	}
 
-	return destination, dependencies, mullErr
+	return jobBasicInfo
 }
 
 func (srv *Service) GetTaskDependencies(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec) (models.JobSpecTaskDestination,
@@ -379,7 +391,17 @@ func (srv *Service) Delete(ctx context.Context, namespace models.NamespaceSpec, 
 	}
 
 	// delete from batch scheduler
-	return srv.batchScheduler.DeleteJobs(ctx, namespace, []string{jobSpec.Name}, nil)
+	namespaceIdentifiers := []string{
+		namespace.ID.String(), // old, kept for folder cleanup, to be removed after complete migration of name space folder #cleaup
+		namespace.Name,
+	}
+	for _, nsDirectoryIdentifier := range namespaceIdentifiers {
+		err = srv.batchScheduler.DeleteJobs(ctx, nsDirectoryIdentifier, namespace, []string{jobSpec.Name}, nil)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSpec, jobSpecsToDelete []models.JobSpec,
@@ -624,20 +646,6 @@ func setSubtract(from, remove []string) []string {
 	}
 
 	return res
-}
-
-// jobDeletionFilter helps in keeping created dags even if they are not in source repo
-func jobDeletionFilter(dagNames []string) []string {
-	filtered := make([]string, 0)
-	for _, dag := range dagNames {
-		if strings.HasPrefix(dag, PersistJobPrefix) {
-			continue
-		}
-
-		filtered = append(filtered, dag)
-	}
-
-	return filtered
 }
 
 func (srv *Service) Run(ctx context.Context, nsSpec models.NamespaceSpec,

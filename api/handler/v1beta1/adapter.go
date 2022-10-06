@@ -150,6 +150,15 @@ func ToJobSpecificationResponseProto(jobSpec models.JobSpec) *pb.JobSpecificatio
 	}
 }
 
+func ToBasicInfoSectionProto(jobBasicInfo models.JobBasicInfo) *pb.BasicInfoSection {
+	return &pb.BasicInfoSection{
+		Destination: jobBasicInfo.Destination,
+		Source:      jobBasicInfo.JobSource,
+		Job:         ToJobSpecificationProto(jobBasicInfo.Spec),
+		Notice:      jobBasicInfo.Log.Messages,
+	}
+}
+
 func ToJobSpecificationProto(spec models.JobSpec) *pb.JobSpecification {
 	adaptedHook := ToHookProto(spec.Hooks)
 
