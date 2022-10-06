@@ -22,11 +22,11 @@ func TestJobSpecTestSuite(t *testing.T) {
 
 func (s *JobSpecTestSuite) TestToProto() {
 	s.Run("should return job spec proto with behavior proto nil when behavior.retry is nil and behavior.notify is empty", func() {
-		jobSpec := createCompleteJobSpec()
+		jobSpec := s.getCompleteJobSpec()
 		jobSpec.Behavior.Retry = nil
 		jobSpec.Behavior.Notify = []model.JobSpecBehaviorNotifier{}
 
-		expectedProto := createCompleteJobSpecProto()
+		expectedProto := s.getCompleteJobSpecProto()
 		expectedProto.Behavior = nil
 
 		actualProto := jobSpec.ToProto()
@@ -35,35 +35,41 @@ func (s *JobSpecTestSuite) TestToProto() {
 	})
 
 	s.Run("should return job spec proto with metadata proto nil when job spec metadata is nil", func() {
-		jobSpec := createCompleteJobSpec()
+		jobSpec := s.getCompleteJobSpec()
 		jobSpec.Metadata = nil
 
-		expectedProto := createCompleteJobSpecProto()
+		expectedProto := s.getCompleteJobSpecProto()
 		expectedProto.Metadata = nil
-		jobSpecProto := jobSpec.ToProto()
-		s.Assert().EqualValues(expectedProto, jobSpecProto)
+
+		actualProto := jobSpec.ToProto()
+
+		s.Assert().EqualValues(expectedProto, actualProto)
 	})
 
 	s.Run("should return job spec proto with metadata resource config proto nil when metadata.resource config is nil", func() {
-		jobSpec := createCompleteJobSpec()
+		jobSpec := s.getCompleteJobSpec()
 		jobSpec.Metadata.Resource.Request = nil
 
-		expectedProto := createCompleteJobSpecProto()
+		expectedProto := s.getCompleteJobSpecProto()
 		expectedProto.Metadata.Resource.Request = nil
-		jobSpecProto := jobSpec.ToProto()
-		s.Assert().EqualValues(expectedProto, jobSpecProto)
+
+		actualProto := jobSpec.ToProto()
+
+		s.Assert().EqualValues(expectedProto, actualProto)
 	})
 
 	s.Run("should return complete job spec proto when job spec is complete", func() {
-		jobSpec := createCompleteJobSpec()
-		expectedProto := createCompleteJobSpecProto()
+		jobSpec := s.getCompleteJobSpec()
 
-		jobSpecProto := jobSpec.ToProto()
-		s.Assert().EqualValues(expectedProto, jobSpecProto)
+		expectedProto := s.getCompleteJobSpecProto()
+
+		actualProto := jobSpec.ToProto()
+
+		s.Assert().EqualValues(expectedProto, actualProto)
 	})
 }
 
-func createCompleteJobSpec() model.JobSpec {
+func (s *JobSpecTestSuite) getCompleteJobSpec() model.JobSpec {
 	return model.JobSpec{
 		Version:     1,
 		Name:        "job_1",
@@ -156,7 +162,7 @@ func createCompleteJobSpec() model.JobSpec {
 	}
 }
 
-func createCompleteJobSpecProto() *pb.JobSpecification {
+func (s *JobSpecTestSuite) getCompleteJobSpecProto() *pb.JobSpecification {
 	return &pb.JobSpecification{
 		Version:       1,
 		Name:          "job_1",
