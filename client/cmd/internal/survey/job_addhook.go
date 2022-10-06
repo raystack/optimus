@@ -59,7 +59,8 @@ func (j *JobAddHookSurvey) AskToAddHook(jobSpec *model.JobSpec) (*model.JobSpec,
 			return nil, err
 		}
 	}
-	newJobSpec.Hooks = append(jobSpec.Hooks, model.JobSpecHook{
+	// TODO: remove the golint exception below
+	newJobSpec.Hooks = append(jobSpec.Hooks, model.JobSpecHook{ //nolint:gocritic
 		Name:   selectedHook.Info().Name,
 		Config: config,
 	})

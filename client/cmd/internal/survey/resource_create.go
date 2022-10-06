@@ -47,7 +47,7 @@ func (r ResourceSpecCreateSurvey) AskResourceSpecName(rootDirPath string) (strin
 	return inputs["name"].(string), nil
 }
 
-func (r ResourceSpecCreateSurvey) AskResourceSpecType() (string, error) {
+func (ResourceSpecCreateSurvey) AskResourceSpecType() (string, error) {
 	var resourceSpecType string
 	if err := survey.AskOne(
 		&survey.Input{

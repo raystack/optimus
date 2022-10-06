@@ -149,7 +149,7 @@ func (j JobSpec) getProtoJobMetadata() *pb.JobMetadata {
 	}
 }
 
-func (j JobSpec) getProtoJobSpecMetadataResourceConfig(jobSpecMetadataResourceConfig *JobSpecMetadataResourceConfig) *pb.JobSpecMetadataResourceConfig {
+func (JobSpec) getProtoJobSpecMetadataResourceConfig(jobSpecMetadataResourceConfig *JobSpecMetadataResourceConfig) *pb.JobSpecMetadataResourceConfig {
 	if jobSpecMetadataResourceConfig == nil {
 		return nil
 	}
@@ -179,7 +179,7 @@ func (j JobSpec) getProtoJobSpecBehavior() *pb.JobSpecification_Behavior {
 		notifies = make([]*pb.JobSpecification_Behavior_Notifiers, len(j.Behavior.Notify))
 		for i, notify := range j.Behavior.Notify {
 			notifies[i] = &pb.JobSpecification_Behavior_Notifiers{
-				On:       pb.JobEvent_Type(pb.JobEvent_Type_value[utils.ToEnumProto(string(notify.On), "type")]),
+				On:       pb.JobEvent_Type(pb.JobEvent_Type_value[utils.ToEnumProto(notify.On, "type")]),
 				Channels: notify.Channels,
 				Config:   notify.Config,
 			}
@@ -240,7 +240,7 @@ func (j JobSpec) getProtoJobConfigItems() []*pb.JobConfigItem {
 	return protoJobConfigItems
 }
 
-// TODO: there are some refactors required, however it will be addressed once we relook at the job spec inheritence
+// TODO: there are some refactors required, however it will be addressed once we relook at the job spec inheritance
 func (j *JobSpec) MergeFrom(anotherJobSpec JobSpec) {
 	j.Version = getValue(j.Version, anotherJobSpec.Version)
 	j.Description = getValue(j.Description, anotherJobSpec.Description)
@@ -404,8 +404,11 @@ func (j *JobSpec) MergeFrom(anotherJobSpec JobSpec) {
 	}
 }
 
+// TODO: refactor this function since this is used only within a single method in job spec.
+// the intent is also not clear, especially when reading the calling method above.
 func getValue[V int | string | bool | time.Duration](reference, other V) V {
-	if reference == *new(V) {
+	var zero V
+	if reference == zero {
 		return other
 	}
 	return reference

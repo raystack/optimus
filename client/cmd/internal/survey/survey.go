@@ -6,8 +6,9 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	petname "github.com/dustinkirkland/golang-petname"
-	"github.com/odpf/optimus/internal/utils"
 	"github.com/spf13/afero"
+
+	"github.com/odpf/optimus/internal/utils"
 )
 
 const (
