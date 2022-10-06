@@ -223,7 +223,7 @@ func (d *deployCommand) sendNamespaceJobRequest(
 }
 
 func (*deployCommand) getJobDeploymentRequest(projectName string, namespace *config.Namespace) (*pb.DeployJobSpecificationRequest, error) {
-	jobSpecReadWriter, err := specIO.NewJobSpecReadWriter(afero.NewOsFs())
+	jobSpecReadWriter, err := specIO.NewJobSpecReadWriter(afero.NewOsFs(), specIO.WithJobSpecParentReading())
 	if err != nil {
 		return nil, err
 	}
