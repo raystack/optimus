@@ -13,6 +13,7 @@ func NewTestJobSpecReadWriter(specFS afero.Fs) local.SpecReadWriter[*model.JobSp
 		referenceParentFileName: "this.yaml",
 		referenceAssetDirName:   "assets",
 		specFS:                  specFS,
+		withParentReading:       true,
 	}
 }
 
