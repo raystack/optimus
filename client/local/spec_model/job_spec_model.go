@@ -1,4 +1,4 @@
-package local
+package spec_model
 
 import (
 	"time"
@@ -240,7 +240,7 @@ func (j JobSpec) getProtoJobConfigItems() []*pb.JobConfigItem {
 }
 
 // TODO: there are some refactors required, however it will be addressed once we relook at the job spec inheritence
-func (j *JobSpec) mergeFrom(anotherJobSpec JobSpec) {
+func (j *JobSpec) MergeFrom(anotherJobSpec JobSpec) {
 	j.Version = getValue(j.Version, anotherJobSpec.Version)
 	j.Description = getValue(j.Description, anotherJobSpec.Description)
 	j.Owner = getValue(j.Owner, anotherJobSpec.Owner)

@@ -7,7 +7,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 
-	"github.com/odpf/optimus/client/local"
+	specModel "github.com/odpf/optimus/client/local/spec_model"
 	"github.com/odpf/optimus/models"
 )
 
@@ -24,7 +24,7 @@ func NewJobAddHookSurvey() *JobAddHookSurvey {
 }
 
 // AskToAddHook asks questions to add hook to a job
-func (j *JobAddHookSurvey) AskToAddHook(jobSpec *local.JobSpec) (*local.JobSpec, error) {
+func (j *JobAddHookSurvey) AskToAddHook(jobSpec *specModel.JobSpec) (*specModel.JobSpec, error) {
 	pluginRepo := models.PluginRegistry
 	newJobSpec := *jobSpec
 	availableHookNames := j.getAvailableHookNames()
@@ -59,7 +59,7 @@ func (j *JobAddHookSurvey) AskToAddHook(jobSpec *local.JobSpec) (*local.JobSpec,
 			return nil, err
 		}
 	}
-	newJobSpec.Hooks = append(jobSpec.Hooks, local.JobSpecHook{
+	newJobSpec.Hooks = append(jobSpec.Hooks, specModel.JobSpecHook{
 		Name:   selectedHook.Info().Name,
 		Config: config,
 	})
@@ -106,7 +106,7 @@ func (*JobAddHookSurvey) askToSelectHook(options []string) (string, error) {
 	return answer, nil
 }
 
-func (*JobAddHookSurvey) isSelectedHookAlreadyInJob(jobSpec *local.JobSpec, selectedHookName string) bool {
+func (*JobAddHookSurvey) isSelectedHookAlreadyInJob(jobSpec *specModel.JobSpec, selectedHookName string) bool {
 	for _, hook := range jobSpec.Hooks {
 		if hook.Name == selectedHookName {
 			return true

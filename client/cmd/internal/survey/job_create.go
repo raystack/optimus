@@ -9,7 +9,8 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 
-	"github.com/odpf/optimus/client/local"
+	specIO "github.com/odpf/optimus/client/local/spec_io"
+	specModel "github.com/odpf/optimus/client/local/spec_model"
 	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
 )
@@ -36,16 +37,16 @@ func NewJobCreateSurvey() *JobCreateSurvey {
 }
 
 // AskToCreateJob asks questions to create job
-func (j *JobCreateSurvey) AskToCreateJob(jobSpecReader local.SpecReader[*local.JobSpec], jobDir, defaultJobName string) (local.JobSpec, error) {
+func (j *JobCreateSurvey) AskToCreateJob(jobSpecReader specIO.SpecReader[*specModel.JobSpec], jobDir, defaultJobName string) (specModel.JobSpec, error) {
 	availableTaskNames := j.getAvailableTaskNames()
 	if len(availableTaskNames) == 0 {
-		return local.JobSpec{}, errors.New("no supported task plugin found")
+		return specModel.JobSpec{}, errors.New("no supported task plugin found")
 	}
 
 	createQuestions := j.getCreateQuestions(jobSpecReader, jobDir, defaultJobName, availableTaskNames)
 	jobInput, err := j.askCreateQuestions(createQuestions)
 	if err != nil {
-		return local.JobSpec{}, err
+		return specModel.JobSpec{}, err
 	}
 
 	cliMod, err := j.getPluginCLIMod(jobInput.Task.Name)
@@ -120,7 +121,7 @@ func (*JobCreateSurvey) getAvailableTaskNames() []string {
 	return output
 }
 
-func (j *JobCreateSurvey) getCreateQuestions(jobSpecReader local.SpecReader[*local.JobSpec], jobDir, defaultJobName string, availableTaskNames []string) []*survey.Question {
+func (j *JobCreateSurvey) getCreateQuestions(jobSpecReader specIO.SpecReader[*specModel.JobSpec], jobDir, defaultJobName string, availableTaskNames []string) []*survey.Question {
 	return []*survey.Question{
 		{
 			Name: "name",
@@ -180,35 +181,35 @@ this effects runtime dependencies and template macros`,
 	}
 }
 
-func (j *JobCreateSurvey) askCreateQuestions(questions []*survey.Question) (local.JobSpec, error) {
+func (j *JobCreateSurvey) askCreateQuestions(questions []*survey.Question) (specModel.JobSpec, error) {
 	baseInputsRaw := make(map[string]interface{})
 	if err := survey.Ask(questions, &baseInputsRaw); err != nil {
-		return local.JobSpec{}, err
+		return specModel.JobSpec{}, err
 	}
 	baseInputs, err := utils.ConvertToStringMap(baseInputsRaw)
 	if err != nil {
-		return local.JobSpec{}, err
+		return specModel.JobSpec{}, err
 	}
 
-	return local.JobSpec{
+	return specModel.JobSpec{
 		Version: models.JobSpecDefaultVersion,
 		Name:    baseInputs["name"],
 		Owner:   baseInputs["owner"],
-		Schedule: local.JobSpecSchedule{
+		Schedule: specModel.JobSpecSchedule{
 			StartDate: baseInputs["start_date"],
 			Interval:  baseInputs["interval"],
 		},
-		Task: local.JobSpecTask{
+		Task: specModel.JobSpecTask{
 			Name:   baseInputs["task"],
 			Window: j.getWindowParameters(baseInputs["window"]),
 		},
 		Asset: map[string]string{},
-		Behavior: local.JobSpecBehavior{
+		Behavior: specModel.JobSpecBehavior{
 			Catchup:       false,
 			DependsOnPast: false,
 		},
-		Dependencies: []local.JobSpecDependency{},
-		Hooks:        []local.JobSpecHook{},
+		Dependencies: []specModel.JobSpecDependency{},
+		Hooks:        []specModel.JobSpecHook{},
 		Labels: map[string]string{
 			"orchestrator": "optimus",
 		},
@@ -244,7 +245,7 @@ func (j *JobCreateSurvey) askPluginQuestions(cliMod models.CommandLineMod, jobNa
 }
 
 // getValidateJobUniqueness return a validator that checks if the job already exists with the same name
-func (*JobCreateSurvey) getValidateJobUniqueness(jobSpecReader local.SpecReader[*local.JobSpec], jobDir string) survey.Validator {
+func (*JobCreateSurvey) getValidateJobUniqueness(jobSpecReader specIO.SpecReader[*specModel.JobSpec], jobDir string) survey.Validator {
 	return func(val interface{}) error {
 		jobName, ok := val.(string)
 		if !ok {
@@ -257,28 +258,28 @@ func (*JobCreateSurvey) getValidateJobUniqueness(jobSpecReader local.SpecReader[
 	}
 }
 
-func (*JobCreateSurvey) getWindowParameters(winName string) local.JobSpecTaskWindow {
+func (*JobCreateSurvey) getWindowParameters(winName string) specModel.JobSpecTaskWindow {
 	switch winName {
 	case "hourly":
-		return local.JobSpecTaskWindow{
+		return specModel.JobSpecTaskWindow{
 			Size:       "1h",
 			Offset:     "0",
 			TruncateTo: "h",
 		}
 	case "daily":
-		return local.JobSpecTaskWindow{
+		return specModel.JobSpecTaskWindow{
 			Size:       "24h",
 			Offset:     "0",
 			TruncateTo: "d",
 		}
 	case "weekly":
-		return local.JobSpecTaskWindow{
+		return specModel.JobSpecTaskWindow{
 			Size:       "168h",
 			Offset:     "0",
 			TruncateTo: "w",
 		}
 	case "monthly":
-		return local.JobSpecTaskWindow{
+		return specModel.JobSpecTaskWindow{
 			Size:       "720h",
 			Offset:     "0",
 			TruncateTo: "M",
@@ -286,7 +287,7 @@ func (*JobCreateSurvey) getWindowParameters(winName string) local.JobSpecTaskWin
 	}
 
 	// default
-	return local.JobSpecTaskWindow{
+	return specModel.JobSpecTaskWindow{
 		Size:       "24h",
 		Offset:     "0",
 		TruncateTo: "h",

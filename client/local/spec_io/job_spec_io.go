@@ -1,4 +1,4 @@
-package local
+package spec_io
 
 import (
 	"errors"
@@ -8,10 +8,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	specModel "github.com/odpf/optimus/client/local/spec_model"
 	"github.com/spf13/afero"
 )
 
 type jobSpecReadWriter struct {
+	withParentReading bool
+
 	referenceParentFileName string
 	referenceSpecFileName   string
 	referenceAssetDirName   string
@@ -19,19 +22,28 @@ type jobSpecReadWriter struct {
 	specFS afero.Fs
 }
 
-func NewJobSpecReadWriter(specFS afero.Fs) (SpecReadWriter[*JobSpec], error) {
+func NewJobSpecReadWriter(specFS afero.Fs, opts ...jobSpecReadWriterOpt) (SpecReadWriter[*specModel.JobSpec], error) {
 	if specFS == nil {
 		return nil, errors.New("specFS is nil")
 	}
-	return &jobSpecReadWriter{
+	j := &jobSpecReadWriter{
+		withParentReading:       false,
 		referenceParentFileName: "this.yaml",
 		referenceSpecFileName:   "job.yaml",
 		referenceAssetDirName:   "assets",
 		specFS:                  specFS,
-	}, nil
+	}
+
+	for _, opt := range opts {
+		if err := opt(j); err != nil {
+			return nil, err
+		}
+	}
+
+	return j, nil
 }
 
-func (j jobSpecReadWriter) ReadAll(rootDirPath string) ([]*JobSpec, error) {
+func (j jobSpecReadWriter) ReadAll(rootDirPath string) ([]*specModel.JobSpec, error) {
 	if rootDirPath == "" {
 		return nil, errors.New("root dir path is empty")
 	}
@@ -45,19 +57,21 @@ func (j jobSpecReadWriter) ReadAll(rootDirPath string) ([]*JobSpec, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error discovering spec dir paths under [%s]: %w", rootDirPath, err)
 	}
-	jobSpecs := make([]*JobSpec, len(dirPaths))
+	jobSpecs := make([]*specModel.JobSpec, len(dirPaths))
 	for i, dirPath := range dirPaths {
 		jobSpec, err := j.readJobSpec(dirPath)
 		if err != nil {
 			return nil, fmt.Errorf("error reading job spec under [%s]: %w", dirPath, err)
 		}
-		j.mergeJobSpecWithParents(jobSpec, dirPath, jobSpecParentsMappedByDirPath)
+		if j.withParentReading {
+			j.mergeJobSpecWithParents(jobSpec, dirPath, jobSpecParentsMappedByDirPath)
+		}
 		jobSpecs[i] = jobSpec
 	}
 	return jobSpecs, nil
 }
 
-func (j jobSpecReadWriter) ReadByName(rootDirPath, name string) (*JobSpec, error) {
+func (j jobSpecReadWriter) ReadByName(rootDirPath, name string) (*specModel.JobSpec, error) {
 	if name == "" {
 		return nil, errors.New("name is empty")
 	}
@@ -65,14 +79,14 @@ func (j jobSpecReadWriter) ReadByName(rootDirPath, name string) (*JobSpec, error
 	if err != nil {
 		return nil, fmt.Errorf("error reading all specs under [%s]: %w", rootDirPath, err)
 	}
-	spec := getFirstSpecByFilter(allSpecs, func(js *JobSpec) bool { return js.Name == name })
+	spec := getFirstSpecByFilter(allSpecs, func(js *specModel.JobSpec) bool { return js.Name == name })
 	if spec == nil {
 		return nil, fmt.Errorf("spec with name [%s] is not found", name)
 	}
 	return spec, nil
 }
 
-func (j jobSpecReadWriter) Write(dirPath string, spec *JobSpec) error {
+func (j jobSpecReadWriter) Write(dirPath string, spec *specModel.JobSpec) error {
 	if dirPath == "" {
 		return errors.New("dir path is empty")
 	}
@@ -106,27 +120,27 @@ func (j jobSpecReadWriter) writeJobSpecAsset(filePath, content string) error {
 	return err
 }
 
-func (jobSpecReadWriter) mergeJobSpecWithParents(spec *JobSpec, specDirPath string, jobSpecParentsMappedByDirPath map[string]*JobSpec) {
+func (jobSpecReadWriter) mergeJobSpecWithParents(spec *specModel.JobSpec, specDirPath string, jobSpecParentsMappedByDirPath map[string]*specModel.JobSpec) {
 	splitDirPaths := strings.Split(specDirPath, "/")
 	for i := range splitDirPaths {
 		pathNearSpecIdx := len(splitDirPaths) - i
 		rootToNearSpecPaths := splitDirPaths[:pathNearSpecIdx]
 		parentDirPath := filepath.Join(rootToNearSpecPaths...)
 		if parentJobSpec, ok := jobSpecParentsMappedByDirPath[parentDirPath]; ok {
-			spec.mergeFrom(*parentJobSpec)
+			spec.MergeFrom(*parentJobSpec)
 		}
 	}
 }
 
-func (j jobSpecReadWriter) readJobSpecParentsMappedByDirPath(rootDirPath string) (map[string]*JobSpec, error) {
+func (j jobSpecReadWriter) readJobSpecParentsMappedByDirPath(rootDirPath string) (map[string]*specModel.JobSpec, error) {
 	parentDirPaths, err := discoverSpecDirPaths(j.specFS, rootDirPath, j.referenceParentFileName)
 	if err != nil {
 		return nil, fmt.Errorf("error discovering parent spec paths under [%s]: %w", rootDirPath, err)
 	}
-	parentsMappedByDirPath := make(map[string]*JobSpec)
+	parentsMappedByDirPath := make(map[string]*specModel.JobSpec)
 	for _, dirPath := range parentDirPaths {
 		filePath := filepath.Join(dirPath, j.referenceParentFileName)
-		spec, err := readSpec[*JobSpec](j.specFS, filePath)
+		spec, err := readSpec[*specModel.JobSpec](j.specFS, filePath)
 		if err != nil {
 			return nil, fmt.Errorf("error reading spec under [%s]: %w", filePath, err)
 		}
@@ -135,9 +149,9 @@ func (j jobSpecReadWriter) readJobSpecParentsMappedByDirPath(rootDirPath string)
 	return parentsMappedByDirPath, nil
 }
 
-func (j jobSpecReadWriter) readJobSpec(dirPath string) (*JobSpec, error) {
+func (j jobSpecReadWriter) readJobSpec(dirPath string) (*specModel.JobSpec, error) {
 	specFilePath := filepath.Join(dirPath, j.referenceSpecFileName)
-	jobSpec, err := readSpec[*JobSpec](j.specFS, specFilePath)
+	jobSpec, err := readSpec[*specModel.JobSpec](j.specFS, specFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("error reading spec under [%s]: %w", dirPath, err)
 	}

@@ -11,7 +11,7 @@ import (
 
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/internal/survey"
-	"github.com/odpf/optimus/client/local"
+	specIO "github.com/odpf/optimus/client/local/spec_io"
 	"github.com/odpf/optimus/config"
 )
 
@@ -75,7 +75,7 @@ func (c *createCommand) RunE(_ *cobra.Command, _ []string) error {
 	jobDirectory := filepath.Join(jwd, newDirName)
 	defaultJobName := strings.ReplaceAll(strings.ReplaceAll(jobDirectory, "/", "."), "\\", ".")
 
-	jobSpecReadWriter, err := local.NewJobSpecReadWriter(jobSpecFs)
+	jobSpecReadWriter, err := specIO.NewJobSpecReadWriter(jobSpecFs)
 	if err != nil {
 		return err
 	}

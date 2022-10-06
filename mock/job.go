@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/api/writer"
-	"github.com/odpf/optimus/client/local"
+	specModel "github.com/odpf/optimus/client/local/spec_model"
 	"github.com/odpf/optimus/internal/lib/progress"
 	"github.com/odpf/optimus/models"
 )
@@ -211,9 +211,9 @@ type JobConfigLocalFactory struct {
 	mock.Mock
 }
 
-func (fac *JobConfigLocalFactory) New(inputs models.JobSpec) (local.JobSpec, error) {
+func (fac *JobConfigLocalFactory) New(inputs models.JobSpec) (specModel.JobSpec, error) {
 	args := fac.Called(inputs)
-	return args.Get(0).(local.JobSpec), args.Error(1)
+	return args.Get(0).(specModel.JobSpec), args.Error(1)
 }
 
 type JobService struct {

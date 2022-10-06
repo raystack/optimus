@@ -1,4 +1,4 @@
-package local_test
+package spec_model_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/odpf/optimus/client/local"
+	specModel "github.com/odpf/optimus/client/local/spec_model"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
@@ -15,10 +15,10 @@ type ResourceSpecTestSuite struct {
 }
 
 func TestResourceSpecTestSuite(t *testing.T) {
-	suite.Run(t, &ResourceSpecReadWriterTestSuite{})
+	suite.Run(t, &ResourceSpecTestSuite{})
 }
 
-func (r *ResourceSpecReadWriterTestSuite) TestToProto() {
+func (r *ResourceSpecTestSuite) TestToProto() {
 	r.Run("should return resource spec proto and nil if no error is encountered", func() {
 		spec := map[string]interface{}{
 			"schema": []interface{}{
@@ -34,7 +34,7 @@ func (r *ResourceSpecReadWriterTestSuite) TestToProto() {
 				},
 			},
 		}
-		resourceSpec := &local.ResourceSpec{
+		resourceSpec := &specModel.ResourceSpec{
 			Version: 1,
 			Name:    "resource",
 			Type:    "table",

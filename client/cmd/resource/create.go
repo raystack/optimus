@@ -10,7 +10,8 @@ import (
 
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/internal/survey"
-	"github.com/odpf/optimus/client/local"
+	specIO "github.com/odpf/optimus/client/local/spec_io"
+	specModel "github.com/odpf/optimus/client/local/spec_model"
 	"github.com/odpf/optimus/config"
 )
 
@@ -50,7 +51,7 @@ func (c createCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 
 	specFS := afero.NewOsFs()
-	resourceSpecReadWriter, err := local.NewResourceSpecReadWriter(specFS)
+	resourceSpecReadWriter, err := specIO.NewResourceSpecReadWriter(specFS)
 	if err != nil {
 		return err
 	}
@@ -75,7 +76,7 @@ func (c createCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 
 	resourceDirectory := filepath.Join(workingDirectory, resourceSpecDirectoryName)
-	if err := resourceSpecReadWriter.Write(resourceDirectory, &local.ResourceSpec{
+	if err := resourceSpecReadWriter.Write(resourceDirectory, &specModel.ResourceSpec{
 		Version: 1,
 		Name:    resourceName,
 		Type:    resourceType,

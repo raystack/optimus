@@ -6,17 +6,17 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
-
-	"github.com/odpf/optimus/client/local"
+	specIO "github.com/odpf/optimus/client/local/spec_io"
+	specModel "github.com/odpf/optimus/client/local/spec_model"
 )
 
 // ResourceSpecCreateSurvey defines surveys for resource spec creation
 type ResourceSpecCreateSurvey struct {
-	resourceSpecReadWriter local.SpecReadWriter[*local.ResourceSpec]
+	resourceSpecReadWriter specIO.SpecReadWriter[*specModel.ResourceSpec]
 }
 
 // NewResourceSpecCreateSurvey initializes survey for resource spec create
-func NewResourceSpecCreateSurvey(resourceSpecReadWriter local.SpecReadWriter[*local.ResourceSpec]) *ResourceSpecCreateSurvey {
+func NewResourceSpecCreateSurvey(resourceSpecReadWriter specIO.SpecReadWriter[*specModel.ResourceSpec]) *ResourceSpecCreateSurvey {
 	return &ResourceSpecCreateSurvey{
 		resourceSpecReadWriter: resourceSpecReadWriter,
 	}

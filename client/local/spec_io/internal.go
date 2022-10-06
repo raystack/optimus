@@ -1,4 +1,4 @@
-package local
+package spec_io
 
 import (
 	"fmt"

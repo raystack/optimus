@@ -21,7 +21,7 @@ import (
 	"github.com/odpf/optimus/client/cmd/plugin"
 	"github.com/odpf/optimus/client/cmd/project"
 	"github.com/odpf/optimus/client/cmd/resource"
-	"github.com/odpf/optimus/client/local"
+	specIO "github.com/odpf/optimus/client/local/spec_io"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
@@ -223,7 +223,7 @@ func (d *deployCommand) sendNamespaceJobRequest(
 }
 
 func (*deployCommand) getJobDeploymentRequest(projectName string, namespace *config.Namespace) (*pb.DeployJobSpecificationRequest, error) {
-	jobSpecReadWriter, err := local.NewJobSpecReadWriter(afero.NewOsFs())
+	jobSpecReadWriter, err := specIO.NewJobSpecReadWriter(afero.NewOsFs())
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +345,7 @@ func (d *deployCommand) sendNamespaceResourceRequest(
 func (d *deployCommand) getResourceDeploymentRequest(
 	namespaceName, storeName string, repoFS afero.Fs,
 ) (*pb.DeployResourceSpecificationRequest, error) {
-	resourceSpecReadWritter, err := local.NewResourceSpecReadWriter(repoFS)
+	resourceSpecReadWritter, err := specIO.NewResourceSpecReadWriter(repoFS)
 	if err != nil {
 		return nil, err
 	}
