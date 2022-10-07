@@ -143,8 +143,12 @@ func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationServic
 			return deployID, err
 		}
 
-		if logStatus := resp.GetLogStatus(); logStatus != nil && r.verbose {
-			logger.PrintLogStatus(r.logger, logStatus)
+		if logStatus := resp.GetLogStatus(); logStatus != nil {
+			if r.verbose {
+				logger.PrintLogStatusVerbose(r.logger, logStatus)
+			} else {
+				logger.PrintLogStatus(r.logger, logStatus)
+			}
 			continue
 		}
 

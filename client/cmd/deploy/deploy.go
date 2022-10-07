@@ -317,6 +317,8 @@ func (d *deployCommand) processResourceDeploymentResponse(
 
 		if logStatus := resp.GetLogStatus(); logStatus != nil {
 			if d.verbose {
+				logger.PrintLogStatusVerbose(d.logger, logStatus)
+			} else {
 				logger.PrintLogStatus(d.logger, logStatus)
 			}
 		}
@@ -411,6 +413,8 @@ func (d *deployCommand) processJobDeploymentResponses(stream pb.JobSpecification
 
 		if logStatus := resp.GetLogStatus(); logStatus != nil {
 			if d.verbose {
+				logger.PrintLogStatusVerbose(d.logger, logStatus)
+			} else {
 				logger.PrintLogStatus(d.logger, logStatus)
 			}
 			continue
