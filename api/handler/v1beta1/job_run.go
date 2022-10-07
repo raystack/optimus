@@ -278,11 +278,15 @@ func (sv *JobRunServiceServer) JobRun(ctx context.Context, req *pb.JobRunRequest
 }
 
 func (*JobRunServiceServer) GetWindow(_ context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
+	// TODO the default version to be deprecated & made mandatory in future releases
+	version := 1
 	if err := req.GetScheduledAt().CheckValid(); err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: failed to parse schedule time %s", err.Error(), req.GetScheduledAt())
 	}
-
-	window, err := models.NewWindow(int(req.Version), req.GetTruncateTo(), req.GetOffset(), req.GetSize())
+	if req.Version != 0 {
+		version = int(req.Version)
+	}
+	window, err := models.NewWindow(version, req.GetTruncateTo(), req.GetOffset(), req.GetSize())
 	if err != nil {
 		return nil, err
 	}
