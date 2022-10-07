@@ -24,7 +24,7 @@ func TestEntitySecret(t *testing.T) {
 			pts, err := tenant.NewPlainTextSecret("secret_name", "secret_val")
 			assert.Nil(t, err)
 
-			assert.Equal(t, "secret_name", pts.Name())
+			assert.Equal(t, "secret_name", pts.Name().String())
 			assert.Equal(t, "secret_val", pts.Value())
 		})
 	})
@@ -73,7 +73,7 @@ func TestEntitySecret(t *testing.T) {
 			s, err := tenant.NewSecret("name", tenant.UserDefinedSecret, "encoded==", tnnt)
 
 			assert.Nil(t, err)
-			assert.Equal(t, "name", s.Name())
+			assert.Equal(t, "name", s.Name().String())
 			assert.Equal(t, "user", s.Type().String())
 			assert.Equal(t, "encoded==", s.EncodedValue())
 			assert.Equal(t, tnnt, s.Tenant())

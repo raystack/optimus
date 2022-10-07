@@ -15,7 +15,8 @@ import (
 
 func TestSecretService(t *testing.T) {
 	ctx := context.Background()
-	key, _ := tenant.NewApplicationKey("32charshtesthashtesthashtesthash")
+	bytes := []byte("32charshtesthashtesthashtesthash")
+	key := (*[32]byte)(bytes[:])
 	tnnt, _ := tenant.NewTenant("test-project", "test-namespace")
 	invalidSecret := tenant.Secret{}
 

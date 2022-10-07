@@ -61,7 +61,7 @@ func NewSecret(secret *tenant.Secret) Secret {
 	base64cipher := base64.StdEncoding.EncodeToString([]byte(secret.EncodedValue()))
 
 	return Secret{
-		Name:          secret.Name(),
+		Name:          secret.Name().String(),
 		Value:         base64cipher,
 		Type:          secret.Type().String(),
 		ProjectName:   secret.Tenant().ProjectName().String(),
@@ -147,7 +147,7 @@ func (s SecretRepository) Update(ctx context.Context, t tenant.Tenant, tenantSec
 	_, err := s.get(ctx, t, tenantSecret.Name())
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return errors.NotFound(tenant.EntitySecret, "unable to update, secret not found for "+tenantSecret.Name())
+			return errors.NotFound(tenant.EntitySecret, "unable to update, secret not found for "+tenantSecret.Name().String())
 		}
 		return errors.Wrap(tenant.EntitySecret, "unable to update secret", err)
 	}
@@ -193,7 +193,7 @@ WHERE s.name = ?`
 }
 
 // get is scoped only at project level, used for db operations
-func (s SecretRepository) get(ctx context.Context, t tenant.Tenant, name string) (Secret, error) { // nolint: unparam
+func (s SecretRepository) get(ctx context.Context, t tenant.Tenant, name tenant.SecretName) (Secret, error) { // nolint: unparam
 	var secret Secret
 
 	getSecretByNameAtProject := `SELECT s.name
@@ -203,7 +203,7 @@ ON p.id = s.project_id
 WHERE s.name = ?
 AND p.name = ?
 `
-	err := s.db.WithContext(ctx).Raw(getSecretByNameAtProject, name, t.ProjectName().String()).
+	err := s.db.WithContext(ctx).Raw(getSecretByNameAtProject, name.String(), t.ProjectName().String()).
 		First(&secret).Error
 
 	return secret, err

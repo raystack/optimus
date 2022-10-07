@@ -14,14 +14,28 @@ const (
 	SecretTypeSystemDefinedPrefix = "_OPTIMUS_"
 )
 
+type SecretName string
+
+func SecretNameFrom(name string) (SecretName, error) {
+	if name == "" {
+		return "", errors.InvalidArgument(EntitySecret, "secret name is empty")
+	}
+	return SecretName(name), nil
+}
+
+func (sn SecretName) String() string {
+	return string(sn)
+}
+
 type PlainTextSecret struct {
-	name  string
+	name  SecretName
 	value string
 }
 
 func NewPlainTextSecret(name string, value string) (*PlainTextSecret, error) {
-	if name == "" {
-		return nil, errors.InvalidArgument(EntitySecret, "secret name is empty")
+	secretName, err := SecretNameFrom(name)
+	if err != nil {
+		return nil, err
 	}
 
 	if value == "" {
@@ -29,7 +43,7 @@ func NewPlainTextSecret(name string, value string) (*PlainTextSecret, error) {
 	}
 
 	return &PlainTextSecret{
-		name:  name,
+		name:  secretName,
 		value: value,
 	}, nil
 }
@@ -38,7 +52,7 @@ func (p PlainTextSecret) Value() string {
 	return p.value
 }
 
-func (p PlainTextSecret) Name() string {
+func (p PlainTextSecret) Name() SecretName {
 	return p.name
 }
 
@@ -60,14 +74,14 @@ func (s SecretType) String() string {
 }
 
 type Secret struct {
-	name         string
+	name         SecretName
 	encodedValue string
 
 	_type  SecretType
 	tenant Tenant
 }
 
-func (s Secret) Name() string {
+func (s Secret) Name() SecretName {
 	return s.name
 }
 
@@ -84,8 +98,9 @@ func (s Secret) Tenant() Tenant {
 }
 
 func NewSecret(name string, _type SecretType, encodedValue string, tenant Tenant) (*Secret, error) {
-	if name == "" {
-		return nil, errors.InvalidArgument(EntitySecret, "secret name is empty")
+	secretName, err := SecretNameFrom(name)
+	if err != nil {
+		return nil, err
 	}
 
 	if !(_type == UserDefinedSecret || _type == SystemDefinedSecret) {
@@ -101,7 +116,7 @@ func NewSecret(name string, _type SecretType, encodedValue string, tenant Tenant
 	}
 
 	return &Secret{
-		name:         name,
+		name:         secretName,
 		encodedValue: encodedValue,
 		_type:        _type,
 		tenant:       tenant,

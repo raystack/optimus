@@ -10,6 +10,8 @@ import (
 	"github.com/odpf/optimus/internal/errors"
 )
 
+const keyLength = 32
+
 type SecretRepository interface {
 	Save(context.Context, tenant.Tenant, *tenant.Secret) error
 	Update(context.Context, tenant.Tenant, *tenant.Secret) error
@@ -20,7 +22,7 @@ type SecretRepository interface {
 }
 
 type SecretService struct {
-	appKey tenant.ApplicationKey
+	appKey *[keyLength]byte
 	repo   SecretRepository
 }
 
@@ -29,12 +31,12 @@ func (s SecretService) Save(ctx context.Context, t tenant.Tenant, secret *tenant
 		return errors.InvalidArgument(tenant.EntitySecret, "secret is not valid")
 	}
 
-	encoded, err := cryptopasta.Encrypt([]byte(secret.Value()), s.appKey.GetKey())
+	encoded, err := cryptopasta.Encrypt([]byte(secret.Value()), s.appKey)
 	if err != nil {
 		return errors.InternalError(tenant.EntitySecret, "unable to encrypt the secret", err)
 	}
 
-	item, err := tenant.NewSecret(secret.Name(), tenant.UserDefinedSecret, string(encoded), t)
+	item, err := tenant.NewSecret(secret.Name().String(), tenant.UserDefinedSecret, string(encoded), t)
 	if err != nil {
 		return err
 	}
@@ -47,12 +49,12 @@ func (s SecretService) Update(ctx context.Context, t tenant.Tenant, secret *tena
 		return errors.InvalidArgument(tenant.EntitySecret, "secret is not valid")
 	}
 
-	encoded, err := cryptopasta.Encrypt([]byte(secret.Value()), s.appKey.GetKey())
+	encoded, err := cryptopasta.Encrypt([]byte(secret.Value()), s.appKey)
 	if err != nil {
 		return errors.InternalError(tenant.EntitySecret, "unable to encrypt the secret", err)
 	}
 
-	item, err := tenant.NewSecret(secret.Name(), tenant.UserDefinedSecret, string(encoded), t)
+	item, err := tenant.NewSecret(secret.Name().String(), tenant.UserDefinedSecret, string(encoded), t)
 	if err != nil {
 		return err
 	}
@@ -74,7 +76,7 @@ func (s SecretService) Get(ctx context.Context, ten tenant.Tenant, name string) 
 		return nil, err
 	}
 
-	cleartext, err := cryptopasta.Decrypt([]byte(secret.EncodedValue()), s.appKey.GetKey())
+	cleartext, err := cryptopasta.Decrypt([]byte(secret.EncodedValue()), s.appKey)
 	if err != nil {
 		return nil, err
 	}
@@ -94,12 +96,12 @@ func (s SecretService) GetAll(ctx context.Context, ten tenant.Tenant) ([]*tenant
 
 	ptsecrets := make([]*tenant.PlainTextSecret, len(secrets))
 	for i, secret := range secrets {
-		cleartext, err := cryptopasta.Decrypt([]byte(secret.EncodedValue()), s.appKey.GetKey())
+		cleartext, err := cryptopasta.Decrypt([]byte(secret.EncodedValue()), s.appKey)
 		if err != nil {
 			return nil, err
 		}
 
-		pts, err := tenant.NewPlainTextSecret(secret.Name(), string(cleartext))
+		pts, err := tenant.NewPlainTextSecret(secret.Name().String(), string(cleartext))
 		if err != nil {
 			return nil, err
 		}
@@ -121,7 +123,7 @@ func (s SecretService) GetSecretsInfo(ctx context.Context, t tenant.Tenant) ([]*
 	return s.repo.GetSecretsInfo(ctx, t)
 }
 
-func NewSecretService(appKey tenant.ApplicationKey, repo SecretRepository) *SecretService {
+func NewSecretService(appKey *[32]byte, repo SecretRepository) *SecretService {
 	return &SecretService{
 		appKey: appKey,
 		repo:   repo,

@@ -111,7 +111,7 @@ func TestTenantService(t *testing.T) {
 
 			tenantService := service.NewTenantService(nil, nil, secretsGetter)
 
-			secret, err := tenantService.GetSecret(ctx, tnnt, pts.Name())
+			secret, err := tenantService.GetSecret(ctx, tnnt, pts.Name().String())
 			assert.Nil(t, err)
 			assert.Equal(t, "secret_value", secret.Value())
 		})
