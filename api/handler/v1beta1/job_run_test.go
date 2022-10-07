@@ -298,7 +298,7 @@ func TestJobRunServiceServer(t *testing.T) {
 	})
 
 	t.Run("GetWindow", func(t *testing.T) {
-		t.Run("should return the correct window date range", func(t *testing.T) {
+		t.Run("should return the correct window date range for version 1", func(t *testing.T) {
 			JobRunServiceServer := v1.NewJobRunServiceServer(
 				log,
 				nil, nil, nil, nil,
@@ -323,6 +323,57 @@ func TestJobRunServiceServer(t *testing.T) {
 
 			assert.Equal(t, "2020-11-11T00:00:00Z", resp.GetStart().AsTime().Format(time.RFC3339))
 			assert.Equal(t, "2020-11-12T00:00:00Z", resp.GetEnd().AsTime().Format(time.RFC3339))
+		})
+		t.Run("should fetch window date range for version 2", func(t *testing.T) {
+			JobRunServiceServer := v1.NewJobRunServiceServer(
+				log,
+				nil, nil, nil, nil,
+				nil,
+				nil,
+				nil,
+				monitoringService,
+				nil,
+			)
+
+			scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
+			scheduledAtTimestamp := timestamppb.New(scheduledAt)
+			req := pb.GetWindowRequest{
+				ScheduledAt: scheduledAtTimestamp,
+				Version:     2,
+				Size:        "24h",
+				Offset:      "24h",
+				TruncateTo:  "d",
+			}
+			resp, err := JobRunServiceServer.GetWindow(ctx, &req)
+			assert.Nil(t, err)
+
+			assert.Equal(t, "2020-11-11T00:00:00Z", resp.GetStart().AsTime().Format(time.RFC3339))
+			assert.Equal(t, "2020-11-12T00:00:00Z", resp.GetEnd().AsTime().Format(time.RFC3339))
+		})
+		t.Run("should ensure backward compatibility for previous fetch window configurations", func(t *testing.T) {
+			JobRunServiceServer := v1.NewJobRunServiceServer(
+				log,
+				nil, nil, nil, nil,
+				nil,
+				nil,
+				nil,
+				monitoringService,
+				nil,
+			)
+
+			scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
+			scheduledAtTimestamp := timestamppb.New(scheduledAt)
+			req := pb.GetWindowRequest{
+				ScheduledAt: scheduledAtTimestamp,
+				Size:        "24h",
+				Offset:      "",
+				TruncateTo:  "m",
+			}
+			resp, err := JobRunServiceServer.GetWindow(ctx, &req)
+			assert.Nil(t, err)
+
+			assert.Equal(t, "2020-11-10T00:00:00Z", resp.GetStart().AsTime().Format(time.RFC3339))
+			assert.Equal(t, "2020-11-11T00:00:00Z", resp.GetEnd().AsTime().Format(time.RFC3339))
 		})
 	})
 	t.Run("JobRun", func(t *testing.T) {
