@@ -103,7 +103,7 @@ func NewSecret(name string, _type SecretType, encodedValue string, tenant Tenant
 		return nil, err
 	}
 
-	if !(_type == UserDefinedSecret || _type == SystemDefinedSecret) {
+	if _type != UserDefinedSecret && _type != SystemDefinedSecret {
 		return nil, errors.InvalidArgument(EntitySecret, "invalid secret type")
 	}
 
