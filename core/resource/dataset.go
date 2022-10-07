@@ -9,12 +9,12 @@ const (
 // Store represents the type of datasource, resource corresponds to
 type Store string
 
-func FromString(name string) (Store, error) {
+func FromStringToStore(name string) (Store, error) {
 	switch name {
 	case string(BigQuery):
 		return BigQuery, nil
 	default:
-		return "", errors.InvalidArgument(EntityResource, "unknown store"+name)
+		return "", errors.InvalidArgument(EntityResource, "unknown store "+name)
 	}
 }
 
@@ -26,7 +26,7 @@ type Dataset struct {
 }
 
 func DataSetFrom(store string, database string, schema string) (Dataset, error) {
-	dataStore, err := FromString(store)
+	dataStore, err := FromStringToStore(store)
 	if err != nil {
 		return Dataset{}, err
 	}
@@ -57,4 +57,18 @@ func (d Dataset) IsSame(d2 Dataset) bool {
 func (d Dataset) URN() string {
 	// formats name as bigquery://project:dataset
 	return string(d.Store) + "://" + d.Database + ":" + d.Schema
+}
+
+type DatasetDetails struct {
+	dataset Dataset
+
+	description            string
+	defaultTableExpiration int64
+	labels                 map[string]string
+
+	Location string
+}
+
+func (d DatasetDetails) FullName() string {
+	return d.dataset.FullName()
 }

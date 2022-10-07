@@ -13,5 +13,16 @@ type Metadata struct {
 	Version     int
 	Description string
 	Labels      map[string]string
-	Owner       string
+}
+
+type Schema []Field
+
+type Field struct {
+	Name        string
+	Type        string
+	Description string
+	Mode        string
+
+	// optional sub-schema, when record type
+	Schema Schema
 }

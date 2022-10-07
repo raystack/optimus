@@ -24,6 +24,10 @@ func (n Name) String() string {
 	return string(n)
 }
 
+type Spec interface {
+	GetURN() string
+}
+
 type Resource struct {
 	name Name
 
@@ -47,7 +51,7 @@ func (r *Resource) URN() string {
 	return r.dataset.URN() + "." + r.name.String()
 }
 
-func NewResource(fullName string, kind Kind, tnnt tenant.Tenant, spec string) (*Resource, error) {
+func NewResource(fullName string, kind Kind, tnnt tenant.Tenant, spec Spec) (*Resource, error) {
 
 	return nil, nil
 }
