@@ -48,11 +48,11 @@ func NewPlainTextSecret(name string, value string) (*PlainTextSecret, error) {
 	}, nil
 }
 
-func (p PlainTextSecret) Value() string {
+func (p *PlainTextSecret) Value() string {
 	return p.value
 }
 
-func (p PlainTextSecret) Name() SecretName {
+func (p *PlainTextSecret) Name() SecretName {
 	return p.name
 }
 
@@ -81,19 +81,19 @@ type Secret struct {
 	tenant Tenant
 }
 
-func (s Secret) Name() SecretName {
+func (s *Secret) Name() SecretName {
 	return s.name
 }
 
-func (s Secret) Type() SecretType {
+func (s *Secret) Type() SecretType {
 	return s._type
 }
 
-func (s Secret) EncodedValue() string {
+func (s *Secret) EncodedValue() string {
 	return s.encodedValue
 }
 
-func (s Secret) Tenant() Tenant {
+func (s *Secret) Tenant() Tenant {
 	return s.tenant
 }
 

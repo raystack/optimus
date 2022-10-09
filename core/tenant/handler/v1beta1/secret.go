@@ -16,7 +16,7 @@ import (
 type SecretService interface {
 	Save(context.Context, tenant.Tenant, *tenant.PlainTextSecret) error
 	Update(context.Context, tenant.Tenant, *tenant.PlainTextSecret) error
-	Delete(context.Context, tenant.Tenant, string) error
+	Delete(context.Context, tenant.Tenant, tenant.SecretName) error
 	GetSecretsInfo(context.Context, tenant.Tenant) ([]*dto.SecretInfo, error)
 }
 
@@ -99,13 +99,18 @@ func (sv *SecretHandler) ListSecrets(ctx context.Context, req *pb.ListSecretsReq
 }
 
 func (sv *SecretHandler) DeleteSecret(ctx context.Context, req *pb.DeleteSecretRequest) (*pb.DeleteSecretResponse, error) {
-	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
+	secretName, err := tenant.SecretNameFrom(req.GetSecretName())
 	if err != nil {
-		return nil, errors.GRPCErr(err, "failed to delete secret "+req.GetSecretName())
+		return nil, errors.GRPCErr(err, "failed to delete secret"+req.GetSecretName())
 	}
 
-	if err := sv.secretService.Delete(ctx, tnnt, req.GetSecretName()); err != nil {
-		return nil, errors.GRPCErr(err, "failed to delete secret "+req.GetSecretName())
+	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
+	if err != nil {
+		return nil, errors.GRPCErr(err, "failed to delete secret "+secretName.String())
+	}
+
+	if err = sv.secretService.Delete(ctx, tnnt, secretName); err != nil {
+		return nil, errors.GRPCErr(err, "failed to delete secret "+secretName.String())
 	}
 
 	return &pb.DeleteSecretResponse{}, nil

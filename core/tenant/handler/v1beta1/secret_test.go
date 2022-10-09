@@ -273,25 +273,41 @@ func TestNewSecretsHandler(t *testing.T) {
 	})
 	t.Run("DeleteSecret", func(t *testing.T) {
 		t.Run("returns error when invalid tenant", func(t *testing.T) {
-			t.Run("returns error when invalid tenant", func(t *testing.T) {
-				secretService := new(SecretService)
-				handler := v1beta1.NewSecretsHandler(logger, secretService)
+			secretService := new(SecretService)
+			handler := v1beta1.NewSecretsHandler(logger, secretService)
 
-				deleteRequest := pb.DeleteSecretRequest{
-					ProjectName:   "",
-					NamespaceName: "",
-					SecretName:    "name",
-				}
+			deleteRequest := pb.DeleteSecretRequest{
+				ProjectName:   "",
+				NamespaceName: "",
+				SecretName:    "name",
+			}
 
-				_, err := handler.DeleteSecret(ctx, &deleteRequest)
-				assert.NotNil(t, err)
-				assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity"+
-					" project: project name is empty: failed to delete secret name")
-			})
+			_, err := handler.DeleteSecret(ctx, &deleteRequest)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity"+
+				" project: project name is empty: failed to delete secret name")
+		})
+		t.Run("returns error when invalid secret name", func(t *testing.T) {
+			secretService := new(SecretService)
+			handler := v1beta1.NewSecretsHandler(logger, secretService)
+
+			deleteRequest := pb.DeleteSecretRequest{
+				ProjectName:   "proj",
+				NamespaceName: "test-ns",
+				SecretName:    "",
+			}
+
+			_, err := handler.DeleteSecret(ctx, &deleteRequest)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
+				"secret: secret name is empty: failed to delete secret")
 		})
 		t.Run("returns error when error is returned from service", func(t *testing.T) {
 			secretService := new(SecretService)
-			secretService.On("Delete", ctx, tnnt, "name").
+			sn, err := tenant.SecretNameFrom("name")
+			assert.Nil(t, err)
+
+			secretService.On("Delete", ctx, tnnt, sn).
 				Return(errors.New("error in delete"))
 			handler := v1beta1.NewSecretsHandler(logger, secretService)
 
@@ -301,14 +317,18 @@ func TestNewSecretsHandler(t *testing.T) {
 				SecretName:    "name",
 			}
 
-			_, err := handler.DeleteSecret(ctx, &deleteRequest)
+			_, err = handler.DeleteSecret(ctx, &deleteRequest)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "rpc error: code = Internal desc = error in delete: failed to "+
 				"delete secret name")
 		})
 		t.Run("deletes the secrets", func(t *testing.T) {
 			secretService := new(SecretService)
-			secretService.On("Delete", ctx, tnnt, "name").Return(nil)
+
+			sn, err := tenant.SecretNameFrom("name")
+			assert.Nil(t, err)
+
+			secretService.On("Delete", ctx, tnnt, sn).Return(nil)
 			handler := v1beta1.NewSecretsHandler(logger, secretService)
 
 			deleteRequest := pb.DeleteSecretRequest{
@@ -317,7 +337,7 @@ func TestNewSecretsHandler(t *testing.T) {
 				SecretName:    "name",
 			}
 
-			_, err := handler.DeleteSecret(ctx, &deleteRequest)
+			_, err = handler.DeleteSecret(ctx, &deleteRequest)
 			assert.Nil(t, err)
 		})
 	})
@@ -337,7 +357,7 @@ func (s *SecretService) Update(ctx context.Context, tenant tenant.Tenant, secret
 	return args.Error(0)
 }
 
-func (s *SecretService) Delete(ctx context.Context, tenant tenant.Tenant, name string) error {
+func (s *SecretService) Delete(ctx context.Context, tenant tenant.Tenant, name tenant.SecretName) error {
 	args := s.Called(ctx, tenant, name)
 	return args.Error(0)
 }

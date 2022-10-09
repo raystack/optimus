@@ -15,9 +15,9 @@ const keyLength = 32
 type SecretRepository interface {
 	Save(context.Context, tenant.Tenant, *tenant.Secret) error
 	Update(context.Context, tenant.Tenant, *tenant.Secret) error
-	Get(context.Context, tenant.Tenant, string) (*tenant.Secret, error)
+	Get(context.Context, tenant.Tenant, tenant.SecretName) (*tenant.Secret, error)
 	GetAll(context.Context, tenant.Tenant) ([]*tenant.Secret, error)
-	Delete(context.Context, tenant.Tenant, string) error
+	Delete(context.Context, tenant.Tenant, tenant.SecretName) error
 	GetSecretsInfo(context.Context, tenant.Tenant) ([]*dto.SecretInfo, error)
 }
 
@@ -63,7 +63,8 @@ func (s SecretService) Update(ctx context.Context, t tenant.Tenant, secret *tena
 }
 
 func (s SecretService) Get(ctx context.Context, ten tenant.Tenant, name string) (*tenant.PlainTextSecret, error) {
-	if name == "" {
+	secretName, err := tenant.SecretNameFrom(name)
+	if err != nil {
 		return nil, errors.InvalidArgument(tenant.EntitySecret, "secret name is not valid")
 	}
 
@@ -71,7 +72,7 @@ func (s SecretService) Get(ctx context.Context, ten tenant.Tenant, name string) 
 		return nil, errors.InvalidArgument(tenant.EntitySecret, "tenant is not valid")
 	}
 
-	secret, err := s.repo.Get(ctx, ten, name)
+	secret, err := s.repo.Get(ctx, ten, secretName)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +112,7 @@ func (s SecretService) GetAll(ctx context.Context, ten tenant.Tenant) ([]*tenant
 	return ptsecrets, nil
 }
 
-func (s SecretService) Delete(ctx context.Context, t tenant.Tenant, name string) error {
+func (s SecretService) Delete(ctx context.Context, t tenant.Tenant, name tenant.SecretName) error {
 	if name == "" {
 		return errors.InvalidArgument(tenant.EntitySecret, "secret name is not valid")
 	}

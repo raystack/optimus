@@ -59,7 +59,7 @@ func TestPostgresSecretRepository(t *testing.T) {
 			err = repo.Save(ctx, projectOnlyTenant, validSecret)
 			assert.Nil(t, err)
 
-			secret, err := repo.Get(ctx, projectOnlyTenant, validSecret.Name().String())
+			secret, err := repo.Get(ctx, projectOnlyTenant, validSecret.Name())
 			assert.Nil(t, err)
 			assert.Equal(t, validSecret.Name(), secret.Name())
 			assert.Equal(t, tenant.UserDefinedSecret, secret.Type())
@@ -80,7 +80,7 @@ func TestPostgresSecretRepository(t *testing.T) {
 			err = repo.Save(ctx, tnnt, validSecret)
 			assert.Nil(t, err)
 
-			secret, err := repo.Get(ctx, tnnt, validSecret.Name().String())
+			secret, err := repo.Get(ctx, tnnt, validSecret.Name())
 			assert.Nil(t, err)
 			assert.Equal(t, validSecret.Name(), secret.Name())
 			assert.Equal(t, tenant.UserDefinedSecret, secret.Type())
@@ -102,7 +102,7 @@ func TestPostgresSecretRepository(t *testing.T) {
 			err = repo.Save(ctx, tnnt, validSecret)
 			assert.Nil(t, err)
 
-			secret, err := repo.Get(ctx, tnnt, validSecret.Name().String())
+			secret, err := repo.Get(ctx, tnnt, validSecret.Name())
 			assert.Nil(t, err)
 			assert.Equal(t, validSecret.Name(), secret.Name())
 
@@ -123,7 +123,7 @@ func TestPostgresSecretRepository(t *testing.T) {
 			err = repo.Save(ctx, tnnt, validSecret)
 			assert.Nil(t, err)
 
-			secret, err := repo.Get(ctx, tnnt, validSecret.Name().String())
+			secret, err := repo.Get(ctx, tnnt, validSecret.Name())
 			assert.Nil(t, err)
 			assert.Equal(t, validSecret.Name(), secret.Name())
 			assert.Equal(t, validSecret.EncodedValue(), secret.EncodedValue())
@@ -134,7 +134,7 @@ func TestPostgresSecretRepository(t *testing.T) {
 			err = repo.Update(ctx, tnnt, updatedSecret)
 			assert.Nil(t, err)
 
-			updated, err := repo.Get(ctx, tnnt, validSecret.Name().String())
+			updated, err := repo.Get(ctx, tnnt, validSecret.Name())
 			assert.Nil(t, err)
 			assert.Equal(t, updatedSecret.Name(), updated.Name())
 			assert.Equal(t, updatedSecret.EncodedValue(), updated.EncodedValue())
@@ -163,7 +163,7 @@ func TestPostgresSecretRepository(t *testing.T) {
 
 			repo := postgres.NewSecretRepository(db)
 
-			_, err = repo.Get(ctx, tnnt, validSecret.Name().String())
+			_, err = repo.Get(ctx, tnnt, validSecret.Name())
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "not found for entity secret: no record for secret_name")
 		})
@@ -179,7 +179,7 @@ func TestPostgresSecretRepository(t *testing.T) {
 			err = repo.Save(ctx, tnnt, validSecret)
 			assert.Nil(t, err)
 
-			secret, err := repo.Get(ctx, tnnt, validSecret.Name().String())
+			secret, err := repo.Get(ctx, tnnt, validSecret.Name())
 			assert.Nil(t, err)
 			assert.Equal(t, validSecret.Name(), secret.Name())
 			assert.Equal(t, tenant.UserDefinedSecret, secret.Type())
@@ -270,10 +270,10 @@ func TestPostgresSecretRepository(t *testing.T) {
 			err = repo.Save(ctx, tnnt, validSecret)
 			assert.Nil(t, err)
 
-			err = repo.Delete(ctx, tnnt, validSecret.Name().String())
+			err = repo.Delete(ctx, tnnt, validSecret.Name())
 			assert.Nil(t, err)
 
-			_, err = repo.Get(ctx, tnnt, validSecret.Name().String())
+			_, err = repo.Get(ctx, tnnt, validSecret.Name())
 			assert.NotNil(t, err)
 		})
 		t.Run("deletes the secret for project", func(t *testing.T) {
@@ -288,10 +288,10 @@ func TestPostgresSecretRepository(t *testing.T) {
 			err = repo.Save(ctx, tnnt, validSecret)
 			assert.Nil(t, err)
 
-			err = repo.Delete(ctx, tnnt, validSecret.Name().String())
+			err = repo.Delete(ctx, tnnt, validSecret.Name())
 			assert.Nil(t, err)
 
-			_, err = repo.Get(ctx, tnnt, validSecret.Name().String())
+			_, err = repo.Get(ctx, tnnt, validSecret.Name())
 			assert.NotNil(t, err)
 		})
 		t.Run("returns error when non existing is deleted", func(t *testing.T) {
@@ -303,7 +303,7 @@ func TestPostgresSecretRepository(t *testing.T) {
 
 			repo := postgres.NewSecretRepository(db)
 
-			err = repo.Delete(ctx, tnnt, validSecret.Name().String())
+			err = repo.Delete(ctx, tnnt, validSecret.Name())
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "not found for entity secret: secret to delete not found secret_name")
 		})

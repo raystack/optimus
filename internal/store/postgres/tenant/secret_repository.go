@@ -167,7 +167,7 @@ WHERE p.name = ? AND s.name=?`
 }
 
 // Get is scoped to the tenant provided in the argument
-func (s SecretRepository) Get(ctx context.Context, t tenant.Tenant, name string) (*tenant.Secret, error) {
+func (s SecretRepository) Get(ctx context.Context, t tenant.Tenant, name tenant.SecretName) (*tenant.Secret, error) {
 	var secret Secret
 	namespaceName := ""
 	if ns, err := t.NamespaceName(); err == nil {
@@ -184,7 +184,7 @@ WHERE s.name = ?`
 		First(&secret).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.NotFound(tenant.EntitySecret, "no record for "+name)
+			return nil, errors.NotFound(tenant.EntitySecret, "no record for "+name.String())
 		}
 		return nil, errors.Wrap(tenant.EntitySecret, "error while getting project", err)
 	}
@@ -243,7 +243,7 @@ AND (s.namespace_id IS NULL or n.name = ?)`
 }
 
 // Delete will not support soft delete, once deleted it has to be created again
-func (s SecretRepository) Delete(ctx context.Context, t tenant.Tenant, name string) error {
+func (s SecretRepository) Delete(ctx context.Context, t tenant.Tenant, name tenant.SecretName) error {
 	var result *gorm.DB
 	if ns, err := t.NamespaceName(); err == nil {
 		deleteForNamespaceScope := secretCTE + `DELETE
@@ -252,7 +252,7 @@ USING cte_tenant t
 WHERE s.name = ?
 AND s.project_id = t.project_id
 AND s.namespace_id = t.namespace_id`
-		result = s.db.WithContext(ctx).Exec(deleteForNamespaceScope, ns.String(), t.ProjectName().String(), name)
+		result = s.db.WithContext(ctx).Exec(deleteForNamespaceScope, ns.String(), t.ProjectName().String(), name.String())
 	} else {
 		deleteForProjectScope := `DELETE
 FROM secret s
@@ -269,7 +269,7 @@ AND s.namespace_id IS NULL`
 	}
 
 	if result.RowsAffected == 0 {
-		return errors.NotFound(tenant.EntitySecret, "secret to delete not found "+name)
+		return errors.NotFound(tenant.EntitySecret, "secret to delete not found "+name.String())
 	}
 	return nil
 }

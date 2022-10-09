@@ -126,31 +126,42 @@ func TestSecretService(t *testing.T) {
 			assert.EqualError(t, err, "invalid argument for entity secret: tenant is not valid")
 		})
 		t.Run("returns error when repo returns error", func(t *testing.T) {
+			sn, err := tenant.SecretNameFrom("name")
+			assert.Nil(t, err)
+
 			secretRepo := new(SecretRepo)
-			secretRepo.On("Get", ctx, tnnt, "name").Return(nil, errors.New("error in get"))
+			secretRepo.On("Get", ctx, tnnt, sn).Return(nil, errors.New("error in get"))
 			defer secretRepo.AssertExpectations(t)
 
 			secretService := service.NewSecretService(key, secretRepo)
-			_, err := secretService.Get(ctx, tnnt, "name")
+			_, err = secretService.Get(ctx, tnnt, "name")
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "error in get")
 		})
 		t.Run("returns error when not able to decode", func(t *testing.T) {
+			sn, err := tenant.SecretNameFrom("name")
+			assert.Nil(t, err)
+
 			secretRepo := new(SecretRepo)
-			secretRepo.On("Get", ctx, tnnt, "name").Return(&invalidSecret, nil)
+			secretRepo.On("Get", ctx, tnnt, sn).Return(&invalidSecret, nil)
 			defer secretRepo.AssertExpectations(t)
 
 			secretService := service.NewSecretService(key, secretRepo)
-			_, err := secretService.Get(ctx, tnnt, "name")
+			_, err = secretService.Get(ctx, tnnt, "name")
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "malformed ciphertext")
 		})
 		t.Run("returns the secret in plain text form", func(t *testing.T) {
 			encodedArr := []byte{63, 158, 156, 88, 23, 217, 166, 22, 135, 126, 204, 156, 107, 103, 217, 229, 58, 37,
 				182, 124, 36, 80, 59, 94, 141, 238, 154, 6, 197, 70, 227, 117, 185}
-			sec, _ := tenant.NewSecret("name", tenant.UserDefinedSecret, string(encodedArr), tnnt)
+			sec, err := tenant.NewSecret("name", tenant.UserDefinedSecret, string(encodedArr), tnnt)
+			assert.Nil(t, err)
+
+			sn, err := tenant.SecretNameFrom("name")
+			assert.Nil(t, err)
+
 			secretRepo := new(SecretRepo)
-			secretRepo.On("Get", ctx, tnnt, "name").Return(sec, nil)
+			secretRepo.On("Get", ctx, tnnt, sn).Return(sec, nil)
 			defer secretRepo.AssertExpectations(t)
 
 			secretService := service.NewSecretService(key, secretRepo)
@@ -215,22 +226,28 @@ func TestSecretService(t *testing.T) {
 			assert.EqualError(t, err, "invalid argument for entity secret: secret name is not valid")
 		})
 		t.Run("returns error when service returns error", func(t *testing.T) {
+			sn, err := tenant.SecretNameFrom("name")
+			assert.Nil(t, err)
+
 			secretRepo := new(SecretRepo)
-			secretRepo.On("Delete", ctx, tnnt, "name").Return(errors.New("error in delete"))
+			secretRepo.On("Delete", ctx, tnnt, sn).Return(errors.New("error in delete"))
 			defer secretRepo.AssertExpectations(t)
 
 			secretService := service.NewSecretService(key, secretRepo)
-			err := secretService.Delete(ctx, tnnt, "name")
+			err = secretService.Delete(ctx, tnnt, sn)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "error in delete")
 		})
 		t.Run("deletes the secret successfully", func(t *testing.T) {
+			sn, err := tenant.SecretNameFrom("name")
+			assert.Nil(t, err)
+
 			secretRepo := new(SecretRepo)
-			secretRepo.On("Delete", ctx, tnnt, "name").Return(nil)
+			secretRepo.On("Delete", ctx, tnnt, sn).Return(nil)
 			defer secretRepo.AssertExpectations(t)
 
 			secretService := service.NewSecretService(key, secretRepo)
-			err := secretService.Delete(ctx, tnnt, "name")
+			err = secretService.Delete(ctx, tnnt, "name")
 			assert.Nil(t, err)
 		})
 	})
@@ -269,7 +286,7 @@ func (s *SecretRepo) Update(ctx context.Context, tenant tenant.Tenant, secret *t
 	return args.Error(0)
 }
 
-func (s *SecretRepo) Get(ctx context.Context, t tenant.Tenant, name string) (*tenant.Secret, error) {
+func (s *SecretRepo) Get(ctx context.Context, t tenant.Tenant, name tenant.SecretName) (*tenant.Secret, error) {
 	args := s.Called(ctx, t, name)
 	var sec *tenant.Secret
 	if args.Get(0) != nil {
@@ -287,7 +304,7 @@ func (s *SecretRepo) GetAll(ctx context.Context, t tenant.Tenant) ([]*tenant.Sec
 	return secrets, args.Error(1)
 }
 
-func (s *SecretRepo) Delete(ctx context.Context, tenant tenant.Tenant, name string) error {
+func (s *SecretRepo) Delete(ctx context.Context, tenant tenant.Tenant, name tenant.SecretName) error {
 	args := s.Called(ctx, tenant, name)
 	return args.Error(0)
 }
