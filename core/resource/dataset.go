@@ -25,22 +25,17 @@ type Dataset struct {
 	Schema   string
 }
 
-func DataSetFrom(store string, database string, schema string) (Dataset, error) {
-	dataStore, err := FromStringToStore(store)
-	if err != nil {
-		return Dataset{}, err
-	}
-
+func DataSetFrom(store Store, database string, schema string) (Dataset, error) {
 	if database == "" {
-		return Dataset{}, errors.InvalidArgument(EntityResource, "database name is empty")
+		return Dataset{}, errors.InvalidArgument(EntityResource, "database/project name is empty")
 	}
 
 	if schema == "" {
-		return Dataset{}, errors.InvalidArgument(EntityResource, "schema name is empty")
+		return Dataset{}, errors.InvalidArgument(EntityResource, "schema/dataset name is empty")
 	}
 
 	return Dataset{
-		Store:    dataStore,
+		Store:    store,
 		Database: database,
 		Schema:   schema,
 	}, nil
@@ -60,15 +55,20 @@ func (d Dataset) URN() string {
 }
 
 type DatasetDetails struct {
-	dataset Dataset
+	Dataset Dataset
 
-	description            string
-	defaultTableExpiration int64
-	labels                 map[string]string
-
-	Location string
+	Description string                 `mapstructure:"description,omitempty"`
+	ExtraConfig map[string]interface{} `mapstructure:",remain"`
 }
 
 func (d DatasetDetails) FullName() string {
-	return d.dataset.FullName()
+	return d.Dataset.FullName()
+}
+
+func (d DatasetDetails) URN() string {
+	return d.Dataset.URN()
+}
+
+func (DatasetDetails) Validate() error {
+	return nil
 }
