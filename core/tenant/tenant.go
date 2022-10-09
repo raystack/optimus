@@ -30,6 +30,23 @@ func (t Tenant) ToProjectScope() Tenant {
 	}
 }
 
+func NewNamespaceTenant(projectName string, namespaceName string) (Tenant, error) {
+	projName, err := ProjectNameFrom(projectName)
+	if err != nil {
+		return Tenant{}, err
+	}
+
+	nsName, err := NamespaceNameFrom(namespaceName)
+	if err != nil {
+		return Tenant{}, err
+	}
+
+	return Tenant{
+		projName: projName,
+		nsName:   &nsName,
+	}, nil
+}
+
 func NewTenant(projectName string, namespaceName string) (Tenant, error) {
 	projName, err := ProjectNameFrom(projectName)
 	if err != nil {
