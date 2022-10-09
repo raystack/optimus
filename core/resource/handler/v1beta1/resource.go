@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/odpf/salt/log"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/resource"
@@ -54,9 +55,18 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 			continue
 		}
 
+		store, err := resource.FromStringToStore(request.GetDatastoreName())
+		if err != nil {
+			errMsg := fmt.Sprintf("invalid store name for %s: %s", request.GetDatastoreName(), err.Error())
+			rh.l.Error(errMsg)
+			responseWriter.Write(writer.LogLevelError, errMsg)
+			errNamespaces = append(errNamespaces, request.NamespaceName)
+			continue
+		}
+
 		var resourceSpecs []*resource.Resource
 		for _, resourceProto := range request.GetResources() {
-			adapted, err := fromResourceProto(resourceProto)
+			adapted, err := fromResourceProto(resourceProto, tnnt, store)
 			if err != nil {
 				errMsg := fmt.Sprintf("%s: cannot adapt resource %s", err.Error(), resourceProto.GetName())
 				rh.l.Error(errMsg)
@@ -121,14 +131,19 @@ func (rh ResourceHandler) ListResourceSpecification(ctx context.Context, req *pb
 }
 
 func (rh ResourceHandler) CreateResource(ctx context.Context, req *pb.CreateResourceRequest) (*pb.CreateResourceResponse, error) {
-	res, err := fromResourceProto(req.Resource)
+	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to create resource")
 	}
 
-	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
+	store, err := resource.FromStringToStore(req.GetDatastoreName())
 	if err != nil {
-		return nil, errors.GRPCErr(err, "failed to create resource "+res.FullName())
+		return nil, errors.GRPCErr(err, "invalid read resource request")
+	}
+
+	res, err := fromResourceProto(req.Resource, tnnt, store)
+	if err != nil {
+		return nil, errors.GRPCErr(err, "failed to create resource")
 	}
 
 	err = rh.service.Create(ctx, tnnt, res)
@@ -172,14 +187,19 @@ func (rh ResourceHandler) ReadResource(ctx context.Context, req *pb.ReadResource
 }
 
 func (rh ResourceHandler) UpdateResource(ctx context.Context, req *pb.UpdateResourceRequest) (*pb.UpdateResourceResponse, error) {
-	res, err := fromResourceProto(req.Resource)
+	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to update resource")
 	}
 
-	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
+	store, err := resource.FromStringToStore(req.GetDatastoreName())
 	if err != nil {
-		return nil, errors.GRPCErr(err, "failed to update resource "+res.FullName())
+		return nil, errors.GRPCErr(err, "invalid update resource request")
+	}
+
+	res, err := fromResourceProto(req.Resource, tnnt, store)
+	if err != nil {
+		return nil, errors.GRPCErr(err, "failed to update resource")
 	}
 
 	err = rh.service.Update(ctx, tnnt, res)
@@ -191,14 +211,48 @@ func (rh ResourceHandler) UpdateResource(ctx context.Context, req *pb.UpdateReso
 	return &pb.UpdateResourceResponse{}, nil
 }
 
-func fromResourceProto(rs *pb.ResourceSpecification) (*resource.Resource, error) {
+func fromResourceProto(rs *pb.ResourceSpecification, tnnt tenant.Tenant, store resource.Store) (*resource.Resource, error) {
 	if rs == nil {
 		return nil, errors.InvalidArgument(resource.EntityResource, "empty resource")
 	}
 
-	return nil, nil
+	spec := rs.GetSpec().AsMap()
+
+	var description string
+	if protoSpecField, ok := rs.Spec.Fields["description"]; ok {
+		description = strings.TrimSpace(protoSpecField.GetStringValue())
+	}
+	metadata := resource.Metadata{
+		Version:     rs.Version,
+		Description: description,
+		Labels:      rs.Labels,
+	}
+
+	kind, err := resource.FromStringToKind(rs.GetType())
+	if err != nil {
+		return nil, err
+	}
+
+	return resource.NewResource(rs.Name, kind, store, tnnt, &metadata, spec)
 }
 
 func toResourceProto(res *resource.Resource) (*pb.ResourceSpecification, error) {
-	return nil, nil
+	meta := res.Metadata()
+	if meta == nil {
+		return nil, errors.InvalidArgument(resource.EntityResource, "missing resource metadata")
+	}
+
+	pbStruct, err := structpb.NewStruct(res.Spec())
+	if err != nil {
+		return nil, errors.InvalidArgument(resource.EntityResource, "unable to convert spec to proto struct")
+	}
+
+	return &pb.ResourceSpecification{
+		Version: meta.Version,
+		Name:    res.FullName(),
+		Type:    res.Kind().String(),
+		Spec:    pbStruct,
+		Assets:  nil,
+		Labels:  meta.Labels,
+	}, nil
 }
