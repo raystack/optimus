@@ -27,7 +27,7 @@ func TestNamespaceHandler(t *testing.T) {
 
 	t.Run("RegisterProjectNamespace", func(t *testing.T) {
 		t.Run("returns error when project name is empty", func(t *testing.T) {
-			namespaceService := new(NamespaceService)
+			namespaceService := new(namespaceService)
 			handler := v1beta1.NewNamespaceHandler(logger, namespaceService)
 
 			registerReq := pb.RegisterProjectNamespaceRequest{
@@ -43,7 +43,7 @@ func TestNamespaceHandler(t *testing.T) {
 				"project: project name is empty: error in register namespace NS")
 		})
 		t.Run("returns error when name is empty", func(t *testing.T) {
-			namespaceService := new(NamespaceService)
+			namespaceService := new(namespaceService)
 			handler := v1beta1.NewNamespaceHandler(logger, namespaceService)
 
 			registerReq := pb.RegisterProjectNamespaceRequest{
@@ -59,7 +59,7 @@ func TestNamespaceHandler(t *testing.T) {
 				"namespace: namespace name is empty: error in register namespace ")
 		})
 		t.Run("returns error when fails in service", func(t *testing.T) {
-			namespaceService := new(NamespaceService)
+			namespaceService := new(namespaceService)
 			namespaceService.On("Save", ctx, mock.Anything).Return(errors.New("error in saving"))
 			defer namespaceService.AssertExpectations(t)
 
@@ -78,7 +78,7 @@ func TestNamespaceHandler(t *testing.T) {
 				"register namespace ns")
 		})
 		t.Run("saves the namespace successfully", func(t *testing.T) {
-			namespaceService := new(NamespaceService)
+			namespaceService := new(namespaceService)
 			namespaceService.On("Save", ctx, mock.Anything).Return(nil)
 			defer namespaceService.AssertExpectations(t)
 
@@ -97,7 +97,7 @@ func TestNamespaceHandler(t *testing.T) {
 	})
 	t.Run("ListProjectNamespaces", func(t *testing.T) {
 		t.Run("returns error when project name is empty", func(t *testing.T) {
-			namespaceService := new(NamespaceService)
+			namespaceService := new(namespaceService)
 
 			handler := v1beta1.NewNamespaceHandler(logger, namespaceService)
 
@@ -109,7 +109,7 @@ func TestNamespaceHandler(t *testing.T) {
 				"project: project name is empty: error in list namespaces")
 		})
 		t.Run("returns error when service returns error", func(t *testing.T) {
-			namespaceService := new(NamespaceService)
+			namespaceService := new(namespaceService)
 			namespaceService.On("GetAll", ctx, savedProject.Name()).
 				Return(nil, errors.New("unable to fetch"))
 			defer namespaceService.AssertExpectations(t)
@@ -123,7 +123,7 @@ func TestNamespaceHandler(t *testing.T) {
 			assert.EqualError(t, err, "rpc error: code = Internal desc = unable to fetch: error in list namespaces")
 		})
 		t.Run("returns the list of saved namespaces", func(t *testing.T) {
-			namespaceService := new(NamespaceService)
+			namespaceService := new(namespaceService)
 			namespaceService.On("GetAll", ctx, savedProject.Name()).Return([]*tenant.Namespace{savedNS}, nil)
 			defer namespaceService.AssertExpectations(t)
 
@@ -140,7 +140,7 @@ func TestNamespaceHandler(t *testing.T) {
 	})
 	t.Run("GetNamespace", func(t *testing.T) {
 		t.Run("returns error when project name is empty", func(t *testing.T) {
-			namespaceService := new(NamespaceService)
+			namespaceService := new(namespaceService)
 
 			handler := v1beta1.NewNamespaceHandler(logger, namespaceService)
 
@@ -153,7 +153,7 @@ func TestNamespaceHandler(t *testing.T) {
 				"project: project name is empty: error in get namespace ns")
 		})
 		t.Run("returns error when namespace name is empty", func(t *testing.T) {
-			namespaceService := new(NamespaceService)
+			namespaceService := new(namespaceService)
 
 			handler := v1beta1.NewNamespaceHandler(logger, namespaceService)
 
@@ -166,7 +166,7 @@ func TestNamespaceHandler(t *testing.T) {
 				" namespace: namespace name is empty: error in get namespace ")
 		})
 		t.Run("returns error when service returns error", func(t *testing.T) {
-			namespaceService := new(NamespaceService)
+			namespaceService := new(namespaceService)
 			namespaceService.On("Get", ctx, savedProject.Name(), savedNS.Name()).
 				Return(nil, errors.New("random error"))
 			defer namespaceService.AssertExpectations(t)
@@ -182,7 +182,7 @@ func TestNamespaceHandler(t *testing.T) {
 				"in get namespace savedNS")
 		})
 		t.Run("returns the namespace successfully", func(t *testing.T) {
-			namespaceService := new(NamespaceService)
+			namespaceService := new(namespaceService)
 			namespaceService.On("Get", ctx, savedProject.Name(), savedNS.Name()).
 				Return(savedNS, nil)
 			defer namespaceService.AssertExpectations(t)
@@ -200,16 +200,16 @@ func TestNamespaceHandler(t *testing.T) {
 	})
 }
 
-type NamespaceService struct {
+type namespaceService struct {
 	mock.Mock
 }
 
-func (n *NamespaceService) Save(ctx context.Context, namespace *tenant.Namespace) error {
+func (n *namespaceService) Save(ctx context.Context, namespace *tenant.Namespace) error {
 	args := n.Called(ctx, namespace)
 	return args.Error(0)
 }
 
-func (n *NamespaceService) Get(ctx context.Context, name tenant.ProjectName, nsName tenant.NamespaceName) (*tenant.Namespace, error) {
+func (n *namespaceService) Get(ctx context.Context, name tenant.ProjectName, nsName tenant.NamespaceName) (*tenant.Namespace, error) {
 	args := n.Called(ctx, name, nsName)
 	var ns *tenant.Namespace
 	if args.Get(0) != nil {
@@ -218,7 +218,7 @@ func (n *NamespaceService) Get(ctx context.Context, name tenant.ProjectName, nsN
 	return ns, args.Error(1)
 }
 
-func (n *NamespaceService) GetAll(ctx context.Context, name tenant.ProjectName) ([]*tenant.Namespace, error) {
+func (n *namespaceService) GetAll(ctx context.Context, name tenant.ProjectName) ([]*tenant.Namespace, error) {
 	args := n.Called(ctx, name)
 	var nss []*tenant.Namespace
 	if args.Get(0) != nil {

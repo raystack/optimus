@@ -27,7 +27,7 @@ func TestNewSecretsHandler(t *testing.T) {
 
 	t.Run("RegisterSecret", func(t *testing.T) {
 		t.Run("returns error when invalid tenant", func(t *testing.T) {
-			secretService := new(SecretService)
+			secretService := new(secretService)
 			handler := v1beta1.NewSecretsHandler(logger, secretService)
 
 			registerReq := pb.RegisterSecretRequest{
@@ -43,7 +43,7 @@ func TestNewSecretsHandler(t *testing.T) {
 				"project: project name is empty: failed to register secret name")
 		})
 		t.Run("returns error when value to decode is empty", func(t *testing.T) {
-			secretService := new(SecretService)
+			secretService := new(secretService)
 			handler := v1beta1.NewSecretsHandler(logger, secretService)
 
 			registerReq := pb.RegisterSecretRequest{
@@ -59,7 +59,7 @@ func TestNewSecretsHandler(t *testing.T) {
 				"secret: empty value for secret: failed to register secret name")
 		})
 		t.Run("returns error when not able to decode value", func(t *testing.T) {
-			secretService := new(SecretService)
+			secretService := new(secretService)
 			handler := v1beta1.NewSecretsHandler(logger, secretService)
 
 			registerReq := pb.RegisterSecretRequest{
@@ -75,7 +75,7 @@ func TestNewSecretsHandler(t *testing.T) {
 				"secret: failed to decode base64 string: failed to register secret name")
 		})
 		t.Run("returns error when secret name is empty", func(t *testing.T) {
-			secretService := new(SecretService)
+			secretService := new(secretService)
 			handler := v1beta1.NewSecretsHandler(logger, secretService)
 
 			registerReq := pb.RegisterSecretRequest{
@@ -91,7 +91,7 @@ func TestNewSecretsHandler(t *testing.T) {
 				"secret: secret name is empty: failed to register secret ")
 		})
 		t.Run("returns error when error is returned from service", func(t *testing.T) {
-			secretService := new(SecretService)
+			secretService := new(secretService)
 			secretService.On("Save", ctx, mock.Anything, mock.Anything).
 				Return(errors.New("error in saving"))
 			defer secretService.AssertExpectations(t)
@@ -111,7 +111,7 @@ func TestNewSecretsHandler(t *testing.T) {
 				"saving: failed to register secret name")
 		})
 		t.Run("saves the secret", func(t *testing.T) {
-			secretService := new(SecretService)
+			secretService := new(secretService)
 			secretService.On("Save", ctx, tnnt, mock.Anything).Return(nil)
 			defer secretService.AssertExpectations(t)
 
@@ -130,7 +130,7 @@ func TestNewSecretsHandler(t *testing.T) {
 	})
 	t.Run("UpdateSecret", func(t *testing.T) {
 		t.Run("returns error when invalid tenant", func(t *testing.T) {
-			secretService := new(SecretService)
+			secretService := new(secretService)
 			handler := v1beta1.NewSecretsHandler(logger, secretService)
 
 			updateRequest := pb.UpdateSecretRequest{
@@ -146,7 +146,7 @@ func TestNewSecretsHandler(t *testing.T) {
 				"project: project name is empty: failed to update secret name")
 		})
 		t.Run("returns error when not able to decode value", func(t *testing.T) {
-			secretService := new(SecretService)
+			secretService := new(secretService)
 			handler := v1beta1.NewSecretsHandler(logger, secretService)
 
 			updateRequest := pb.UpdateSecretRequest{
@@ -162,7 +162,7 @@ func TestNewSecretsHandler(t *testing.T) {
 				"secret: failed to decode base64 string: failed to update secret name")
 		})
 		t.Run("returns error when secret name is empty", func(t *testing.T) {
-			secretService := new(SecretService)
+			secretService := new(secretService)
 			handler := v1beta1.NewSecretsHandler(logger, secretService)
 
 			updateRequest := pb.UpdateSecretRequest{
@@ -178,7 +178,7 @@ func TestNewSecretsHandler(t *testing.T) {
 				"secret: secret name is empty: failed to update secret ")
 		})
 		t.Run("returns error when error is returned from service", func(t *testing.T) {
-			secretService := new(SecretService)
+			secretService := new(secretService)
 			secretService.On("Update", ctx, tnnt, mock.Anything).Return(errors.New("error in update"))
 			defer secretService.AssertExpectations(t)
 
@@ -197,7 +197,7 @@ func TestNewSecretsHandler(t *testing.T) {
 				"to update secret name")
 		})
 		t.Run("updates the secret", func(t *testing.T) {
-			secretService := new(SecretService)
+			secretService := new(secretService)
 			secretService.On("Update", ctx, tnnt, mock.Anything).Return(nil)
 			defer secretService.AssertExpectations(t)
 
@@ -216,7 +216,7 @@ func TestNewSecretsHandler(t *testing.T) {
 	})
 	t.Run("ListSecrets", func(t *testing.T) {
 		t.Run("returns error when invalid tenant", func(t *testing.T) {
-			secretService := new(SecretService)
+			secretService := new(secretService)
 			handler := v1beta1.NewSecretsHandler(logger, secretService)
 
 			listRequest := pb.ListSecretsRequest{
@@ -229,7 +229,7 @@ func TestNewSecretsHandler(t *testing.T) {
 				"project: project name is empty: failed to list secrets")
 		})
 		t.Run("returns error when error is returned from service", func(t *testing.T) {
-			secretService := new(SecretService)
+			secretService := new(secretService)
 			projectTenant, _ := tenant.NewTenant(proj.String(), "")
 			secretService.On("GetSecretsInfo", ctx, projectTenant).
 				Return(nil, errors.New("error in list"))
@@ -254,7 +254,7 @@ func TestNewSecretsHandler(t *testing.T) {
 				UpdatedAt: time.Date(2022, 9, 22, 0, 0, 0, 0, time.UTC),
 			}
 			projectTenant, _ := tenant.NewTenant(proj.String(), "")
-			secretService := new(SecretService)
+			secretService := new(secretService)
 			secretService.On("GetSecretsInfo", ctx, projectTenant).
 				Return([]*dto.SecretInfo{&secretInfo}, nil)
 			defer secretService.AssertExpectations(t)
@@ -273,7 +273,7 @@ func TestNewSecretsHandler(t *testing.T) {
 	})
 	t.Run("DeleteSecret", func(t *testing.T) {
 		t.Run("returns error when invalid tenant", func(t *testing.T) {
-			secretService := new(SecretService)
+			secretService := new(secretService)
 			handler := v1beta1.NewSecretsHandler(logger, secretService)
 
 			deleteRequest := pb.DeleteSecretRequest{
@@ -288,7 +288,7 @@ func TestNewSecretsHandler(t *testing.T) {
 				" project: project name is empty: failed to delete secret name")
 		})
 		t.Run("returns error when invalid secret name", func(t *testing.T) {
-			secretService := new(SecretService)
+			secretService := new(secretService)
 			handler := v1beta1.NewSecretsHandler(logger, secretService)
 
 			deleteRequest := pb.DeleteSecretRequest{
@@ -303,7 +303,7 @@ func TestNewSecretsHandler(t *testing.T) {
 				"secret: secret name is empty: failed to delete secret")
 		})
 		t.Run("returns error when error is returned from service", func(t *testing.T) {
-			secretService := new(SecretService)
+			secretService := new(secretService)
 			sn, err := tenant.SecretNameFrom("name")
 			assert.Nil(t, err)
 
@@ -323,7 +323,7 @@ func TestNewSecretsHandler(t *testing.T) {
 				"delete secret name")
 		})
 		t.Run("deletes the secrets", func(t *testing.T) {
-			secretService := new(SecretService)
+			secretService := new(secretService)
 
 			sn, err := tenant.SecretNameFrom("name")
 			assert.Nil(t, err)
@@ -343,26 +343,26 @@ func TestNewSecretsHandler(t *testing.T) {
 	})
 }
 
-type SecretService struct {
+type secretService struct {
 	mock.Mock
 }
 
-func (s *SecretService) Save(ctx context.Context, tenant tenant.Tenant, secret *tenant.PlainTextSecret) error {
+func (s *secretService) Save(ctx context.Context, tenant tenant.Tenant, secret *tenant.PlainTextSecret) error {
 	args := s.Called(ctx, tenant, secret)
 	return args.Error(0)
 }
 
-func (s *SecretService) Update(ctx context.Context, tenant tenant.Tenant, secret *tenant.PlainTextSecret) error {
+func (s *secretService) Update(ctx context.Context, tenant tenant.Tenant, secret *tenant.PlainTextSecret) error {
 	args := s.Called(ctx, tenant, secret)
 	return args.Error(0)
 }
 
-func (s *SecretService) Delete(ctx context.Context, tenant tenant.Tenant, name tenant.SecretName) error {
+func (s *secretService) Delete(ctx context.Context, tenant tenant.Tenant, name tenant.SecretName) error {
 	args := s.Called(ctx, tenant, name)
 	return args.Error(0)
 }
 
-func (s *SecretService) GetSecretsInfo(ctx context.Context, tenant tenant.Tenant) ([]*dto.SecretInfo, error) {
+func (s *secretService) GetSecretsInfo(ctx context.Context, tenant tenant.Tenant) ([]*dto.SecretInfo, error) {
 	args := s.Called(ctx, tenant)
 	var secrets []*dto.SecretInfo
 	if args.Get(0) != nil {

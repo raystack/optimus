@@ -26,7 +26,7 @@ func TestProjectHandler(t *testing.T) {
 
 	t.Run("RegisterProject", func(t *testing.T) {
 		t.Run("returns error when name is empty", func(t *testing.T) {
-			projectService := new(ProjectService)
+			projectService := new(projectService)
 			handler := v1beta1.NewProjectHandler(logger, projectService)
 
 			registerReq := pb.RegisterProjectRequest{Project: &pb.ProjectSpecification{
@@ -40,7 +40,7 @@ func TestProjectHandler(t *testing.T) {
 				"project: project name is empty: not able to register project ")
 		})
 		t.Run("returns error when fails in service", func(t *testing.T) {
-			projectService := new(ProjectService)
+			projectService := new(projectService)
 			projectService.On("Save", ctx, mock.Anything).Return(errors.New("error in saving"))
 			defer projectService.AssertExpectations(t)
 
@@ -57,7 +57,7 @@ func TestProjectHandler(t *testing.T) {
 				"to register project proj")
 		})
 		t.Run("saves the project successfully", func(t *testing.T) {
-			projectService := new(ProjectService)
+			projectService := new(projectService)
 			projectService.On("Save", ctx, mock.Anything).Return(nil)
 			defer projectService.AssertExpectations(t)
 
@@ -74,7 +74,7 @@ func TestProjectHandler(t *testing.T) {
 	})
 	t.Run("ListProjects", func(t *testing.T) {
 		t.Run("returns error when service returns error", func(t *testing.T) {
-			projectService := new(ProjectService)
+			projectService := new(projectService)
 			projectService.On("GetAll", ctx).Return(nil, errors.New("unable to fetch"))
 			defer projectService.AssertExpectations(t)
 
@@ -86,7 +86,7 @@ func TestProjectHandler(t *testing.T) {
 				"retrieve saved projects")
 		})
 		t.Run("returns the list of saved projects", func(t *testing.T) {
-			projectService := new(ProjectService)
+			projectService := new(projectService)
 			projectService.On("GetAll", ctx).
 				Return([]*tenant.Project{savedProject}, nil)
 			defer projectService.AssertExpectations(t)
@@ -102,7 +102,7 @@ func TestProjectHandler(t *testing.T) {
 	})
 	t.Run("GetProject", func(t *testing.T) {
 		t.Run("returns error when project name is empty", func(t *testing.T) {
-			projectService := new(ProjectService)
+			projectService := new(projectService)
 
 			handler := v1beta1.NewProjectHandler(logger, projectService)
 
@@ -112,7 +112,7 @@ func TestProjectHandler(t *testing.T) {
 				"project: project name is empty: failed to retrieve project []")
 		})
 		t.Run("returns error when service returns error", func(t *testing.T) {
-			projectService := new(ProjectService)
+			projectService := new(projectService)
 			projectService.On("Get", ctx, tenant.ProjectName("savedProj")).
 				Return(nil, errors.New("random error"))
 			defer projectService.AssertExpectations(t)
@@ -125,7 +125,7 @@ func TestProjectHandler(t *testing.T) {
 				"retrieve project [savedProj]")
 		})
 		t.Run("returns the project successfully", func(t *testing.T) {
-			projectService := new(ProjectService)
+			projectService := new(projectService)
 			projectService.On("Get", ctx, tenant.ProjectName("savedProj")).Return(savedProject, nil)
 			defer projectService.AssertExpectations(t)
 
@@ -141,16 +141,16 @@ func TestProjectHandler(t *testing.T) {
 	})
 }
 
-type ProjectService struct {
+type projectService struct {
 	mock.Mock
 }
 
-func (p *ProjectService) Save(ctx context.Context, project *tenant.Project) error {
+func (p *projectService) Save(ctx context.Context, project *tenant.Project) error {
 	args := p.Called(ctx, project)
 	return args.Error(0)
 }
 
-func (p *ProjectService) Get(ctx context.Context, name tenant.ProjectName) (*tenant.Project, error) {
+func (p *projectService) Get(ctx context.Context, name tenant.ProjectName) (*tenant.Project, error) {
 	args := p.Called(ctx, name)
 	var prj *tenant.Project
 	if args.Get(0) != nil {
@@ -159,7 +159,7 @@ func (p *ProjectService) Get(ctx context.Context, name tenant.ProjectName) (*ten
 	return prj, args.Error(1)
 }
 
-func (p *ProjectService) GetAll(ctx context.Context) ([]*tenant.Project, error) {
+func (p *projectService) GetAll(ctx context.Context) ([]*tenant.Project, error) {
 	args := p.Called(ctx)
 	var prjs []*tenant.Project
 	if args.Get(0) != nil {

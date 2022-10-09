@@ -23,7 +23,7 @@ func TestProjectService(t *testing.T) {
 
 	t.Run("Save", func(t *testing.T) {
 		t.Run("returns error when fails in service", func(t *testing.T) {
-			projectRepo := new(ProjectRepo)
+			projectRepo := new(projectRepo)
 			projectRepo.On("Save", ctx, mock.Anything).Return(errors.New("error in saving"))
 			defer projectRepo.AssertExpectations(t)
 
@@ -36,7 +36,7 @@ func TestProjectService(t *testing.T) {
 			assert.EqualError(t, err, "error in saving")
 		})
 		t.Run("saves the project successfully", func(t *testing.T) {
-			projectRepo := new(ProjectRepo)
+			projectRepo := new(projectRepo)
 			projectRepo.On("Save", ctx, mock.Anything).Return(nil)
 			defer projectRepo.AssertExpectations(t)
 
@@ -50,7 +50,7 @@ func TestProjectService(t *testing.T) {
 	})
 	t.Run("GetAll", func(t *testing.T) {
 		t.Run("returns error when service returns error", func(t *testing.T) {
-			projectRepo := new(ProjectRepo)
+			projectRepo := new(projectRepo)
 			projectRepo.On("GetAll", ctx).
 				Return(nil, errors.New("error in getting all"))
 			defer projectRepo.AssertExpectations(t)
@@ -62,7 +62,7 @@ func TestProjectService(t *testing.T) {
 			assert.EqualError(t, err, "error in getting all")
 		})
 		t.Run("returns the list of saved projects", func(t *testing.T) {
-			projectRepo := new(ProjectRepo)
+			projectRepo := new(projectRepo)
 			projectRepo.On("GetAll", ctx).
 				Return([]*tenant.Project{savedProject}, nil)
 			defer projectRepo.AssertExpectations(t)
@@ -76,7 +76,7 @@ func TestProjectService(t *testing.T) {
 	})
 	t.Run("Get", func(t *testing.T) {
 		t.Run("returns error when service returns error", func(t *testing.T) {
-			projectRepo := new(ProjectRepo)
+			projectRepo := new(projectRepo)
 			projectRepo.On("GetByName", ctx, tenant.ProjectName("savedProj")).
 				Return(nil, errors.New("error in getting"))
 			defer projectRepo.AssertExpectations(t)
@@ -88,7 +88,7 @@ func TestProjectService(t *testing.T) {
 			assert.EqualError(t, err, "error in getting")
 		})
 		t.Run("returns the project successfully", func(t *testing.T) {
-			projectRepo := new(ProjectRepo)
+			projectRepo := new(projectRepo)
 			projectRepo.On("GetByName", ctx, tenant.ProjectName("savedProj")).Return(savedProject, nil)
 			defer projectRepo.AssertExpectations(t)
 
@@ -101,16 +101,16 @@ func TestProjectService(t *testing.T) {
 	})
 }
 
-type ProjectRepo struct {
+type projectRepo struct {
 	mock.Mock
 }
 
-func (p *ProjectRepo) Save(ctx context.Context, project *tenant.Project) error {
+func (p *projectRepo) Save(ctx context.Context, project *tenant.Project) error {
 	args := p.Called(ctx, project)
 	return args.Error(0)
 }
 
-func (p *ProjectRepo) GetByName(ctx context.Context, name tenant.ProjectName) (*tenant.Project, error) {
+func (p *projectRepo) GetByName(ctx context.Context, name tenant.ProjectName) (*tenant.Project, error) {
 	args := p.Called(ctx, name)
 	var prj *tenant.Project
 	if args.Get(0) != nil {
@@ -119,7 +119,7 @@ func (p *ProjectRepo) GetByName(ctx context.Context, name tenant.ProjectName) (*
 	return prj, args.Error(1)
 }
 
-func (p *ProjectRepo) GetAll(ctx context.Context) ([]*tenant.Project, error) {
+func (p *projectRepo) GetAll(ctx context.Context) ([]*tenant.Project, error) {
 	args := p.Called(ctx)
 	var prjs []*tenant.Project
 	if args.Get(0) != nil {

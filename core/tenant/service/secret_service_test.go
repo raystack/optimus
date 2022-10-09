@@ -22,7 +22,7 @@ func TestSecretService(t *testing.T) {
 
 	t.Run("Save", func(t *testing.T) {
 		t.Run("returns error when secret is not provided", func(t *testing.T) {
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 
 			secretService := service.NewSecretService(key, secretRepo)
 			err := secretService.Save(ctx, tnnt, nil)
@@ -30,7 +30,7 @@ func TestSecretService(t *testing.T) {
 			assert.EqualError(t, err, "invalid argument for entity secret: secret is not valid")
 		})
 		t.Run("returns error when secret name is not provided", func(t *testing.T) {
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 
 			invalidSecret := tenant.PlainTextSecret{}
 			secretService := service.NewSecretService(key, secretRepo)
@@ -39,7 +39,7 @@ func TestSecretService(t *testing.T) {
 			assert.EqualError(t, err, "invalid argument for entity secret: secret name is empty")
 		})
 		t.Run("returns error when repo return error", func(t *testing.T) {
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 			secretRepo.On("Save", ctx, tnnt, mock.Anything).Return(errors.New("error in save"))
 			defer secretRepo.AssertExpectations(t)
 
@@ -52,7 +52,7 @@ func TestSecretService(t *testing.T) {
 			assert.EqualError(t, err, "error in save")
 		})
 		t.Run("saves the secret after encoding", func(t *testing.T) {
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 			secretRepo.On("Save", ctx, tnnt, mock.Anything).Return(nil)
 			defer secretRepo.AssertExpectations(t)
 
@@ -66,7 +66,7 @@ func TestSecretService(t *testing.T) {
 	})
 	t.Run("Update", func(t *testing.T) {
 		t.Run("returns error when secret is not provided", func(t *testing.T) {
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 
 			secretService := service.NewSecretService(key, secretRepo)
 			err := secretService.Update(ctx, tnnt, nil)
@@ -74,7 +74,7 @@ func TestSecretService(t *testing.T) {
 			assert.EqualError(t, err, "invalid argument for entity secret: secret is not valid")
 		})
 		t.Run("returns error when secret name is not provided", func(t *testing.T) {
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 			invalidSecret := tenant.PlainTextSecret{}
 
 			secretService := service.NewSecretService(key, secretRepo)
@@ -83,7 +83,7 @@ func TestSecretService(t *testing.T) {
 			assert.EqualError(t, err, "invalid argument for entity secret: secret name is empty")
 		})
 		t.Run("returns error when repo return error", func(t *testing.T) {
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 			secretRepo.On("Update", ctx, tnnt, mock.Anything).Return(errors.New("error in update"))
 			defer secretRepo.AssertExpectations(t)
 
@@ -96,7 +96,7 @@ func TestSecretService(t *testing.T) {
 			assert.EqualError(t, err, "error in update")
 		})
 		t.Run("saves the secret after encoding", func(t *testing.T) {
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 			secretRepo.On("Update", ctx, tnnt, mock.Anything).Return(nil)
 			defer secretRepo.AssertExpectations(t)
 
@@ -110,7 +110,7 @@ func TestSecretService(t *testing.T) {
 	})
 	t.Run("Get", func(t *testing.T) {
 		t.Run("returns error when secret name is empty", func(t *testing.T) {
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 
 			secretService := service.NewSecretService(key, secretRepo)
 			_, err := secretService.Get(ctx, tnnt, "")
@@ -118,7 +118,7 @@ func TestSecretService(t *testing.T) {
 			assert.EqualError(t, err, "invalid argument for entity secret: secret name is not valid")
 		})
 		t.Run("returns error when tenant is invalid", func(t *testing.T) {
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 
 			secretService := service.NewSecretService(key, secretRepo)
 			_, err := secretService.Get(ctx, tenant.Tenant{}, "name")
@@ -129,7 +129,7 @@ func TestSecretService(t *testing.T) {
 			sn, err := tenant.SecretNameFrom("name")
 			assert.Nil(t, err)
 
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 			secretRepo.On("Get", ctx, tnnt, sn).Return(nil, errors.New("error in get"))
 			defer secretRepo.AssertExpectations(t)
 
@@ -142,7 +142,7 @@ func TestSecretService(t *testing.T) {
 			sn, err := tenant.SecretNameFrom("name")
 			assert.Nil(t, err)
 
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 			secretRepo.On("Get", ctx, tnnt, sn).Return(&invalidSecret, nil)
 			defer secretRepo.AssertExpectations(t)
 
@@ -160,7 +160,7 @@ func TestSecretService(t *testing.T) {
 			sn, err := tenant.SecretNameFrom("name")
 			assert.Nil(t, err)
 
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 			secretRepo.On("Get", ctx, tnnt, sn).Return(sec, nil)
 			defer secretRepo.AssertExpectations(t)
 
@@ -173,7 +173,7 @@ func TestSecretService(t *testing.T) {
 	})
 	t.Run("GetAll", func(t *testing.T) {
 		t.Run("returns error when tenant is invalid", func(t *testing.T) {
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 
 			secretService := service.NewSecretService(key, secretRepo)
 			_, err := secretService.GetAll(ctx, tenant.Tenant{})
@@ -181,7 +181,7 @@ func TestSecretService(t *testing.T) {
 			assert.EqualError(t, err, "invalid argument for entity secret: tenant is not valid")
 		})
 		t.Run("returns error when repo returns error", func(t *testing.T) {
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 			secretRepo.On("GetAll", ctx, tnnt).Return(nil, errors.New("error in get all"))
 			defer secretRepo.AssertExpectations(t)
 
@@ -191,7 +191,7 @@ func TestSecretService(t *testing.T) {
 			assert.EqualError(t, err, "error in get all")
 		})
 		t.Run("returns error when not able to decode", func(t *testing.T) {
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 			secretRepo.On("GetAll", ctx, tnnt).
 				Return([]*tenant.Secret{&invalidSecret}, nil)
 			defer secretRepo.AssertExpectations(t)
@@ -205,7 +205,7 @@ func TestSecretService(t *testing.T) {
 			encodedArr := []byte{63, 158, 156, 88, 23, 217, 166, 22, 135, 126, 204, 156, 107, 103, 217, 229, 58, 37,
 				182, 124, 36, 80, 59, 94, 141, 238, 154, 6, 197, 70, 227, 117, 185}
 			sec, _ := tenant.NewSecret("name", tenant.UserDefinedSecret, string(encodedArr), tnnt)
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 			secretRepo.On("GetAll", ctx, tnnt).Return([]*tenant.Secret{sec}, nil)
 			defer secretRepo.AssertExpectations(t)
 
@@ -218,7 +218,7 @@ func TestSecretService(t *testing.T) {
 	})
 	t.Run("Delete", func(t *testing.T) {
 		t.Run("returns error when secret name is empty", func(t *testing.T) {
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 
 			secretService := service.NewSecretService(key, secretRepo)
 			err := secretService.Delete(ctx, tnnt, "")
@@ -229,7 +229,7 @@ func TestSecretService(t *testing.T) {
 			sn, err := tenant.SecretNameFrom("name")
 			assert.Nil(t, err)
 
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 			secretRepo.On("Delete", ctx, tnnt, sn).Return(errors.New("error in delete"))
 			defer secretRepo.AssertExpectations(t)
 
@@ -242,7 +242,7 @@ func TestSecretService(t *testing.T) {
 			sn, err := tenant.SecretNameFrom("name")
 			assert.Nil(t, err)
 
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 			secretRepo.On("Delete", ctx, tnnt, sn).Return(nil)
 			defer secretRepo.AssertExpectations(t)
 
@@ -259,7 +259,7 @@ func TestSecretService(t *testing.T) {
 				Type:      tenant.UserDefinedSecret,
 				Namespace: "namespace",
 			}
-			secretRepo := new(SecretRepo)
+			secretRepo := new(secretRepo)
 			secretRepo.On("GetSecretsInfo", ctx, tnnt).Return([]*dto.SecretInfo{&secretInfo}, nil)
 			defer secretRepo.AssertExpectations(t)
 
@@ -272,21 +272,21 @@ func TestSecretService(t *testing.T) {
 	})
 }
 
-type SecretRepo struct {
+type secretRepo struct {
 	mock.Mock
 }
 
-func (s *SecretRepo) Save(ctx context.Context, tenant tenant.Tenant, secret *tenant.Secret) error {
+func (s *secretRepo) Save(ctx context.Context, tenant tenant.Tenant, secret *tenant.Secret) error {
 	args := s.Called(ctx, tenant, secret)
 	return args.Error(0)
 }
 
-func (s *SecretRepo) Update(ctx context.Context, tenant tenant.Tenant, secret *tenant.Secret) error {
+func (s *secretRepo) Update(ctx context.Context, tenant tenant.Tenant, secret *tenant.Secret) error {
 	args := s.Called(ctx, tenant, secret)
 	return args.Error(0)
 }
 
-func (s *SecretRepo) Get(ctx context.Context, t tenant.Tenant, name tenant.SecretName) (*tenant.Secret, error) {
+func (s *secretRepo) Get(ctx context.Context, t tenant.Tenant, name tenant.SecretName) (*tenant.Secret, error) {
 	args := s.Called(ctx, t, name)
 	var sec *tenant.Secret
 	if args.Get(0) != nil {
@@ -295,7 +295,7 @@ func (s *SecretRepo) Get(ctx context.Context, t tenant.Tenant, name tenant.Secre
 	return sec, args.Error(1)
 }
 
-func (s *SecretRepo) GetAll(ctx context.Context, t tenant.Tenant) ([]*tenant.Secret, error) {
+func (s *secretRepo) GetAll(ctx context.Context, t tenant.Tenant) ([]*tenant.Secret, error) {
 	args := s.Called(ctx, t)
 	var secrets []*tenant.Secret
 	if args.Get(0) != nil {
@@ -304,12 +304,12 @@ func (s *SecretRepo) GetAll(ctx context.Context, t tenant.Tenant) ([]*tenant.Sec
 	return secrets, args.Error(1)
 }
 
-func (s *SecretRepo) Delete(ctx context.Context, tenant tenant.Tenant, name tenant.SecretName) error {
+func (s *secretRepo) Delete(ctx context.Context, tenant tenant.Tenant, name tenant.SecretName) error {
 	args := s.Called(ctx, tenant, name)
 	return args.Error(0)
 }
 
-func (s *SecretRepo) GetSecretsInfo(ctx context.Context, t tenant.Tenant) ([]*dto.SecretInfo, error) {
+func (s *secretRepo) GetSecretsInfo(ctx context.Context, t tenant.Tenant) ([]*dto.SecretInfo, error) {
 	args := s.Called(ctx, t)
 	var secrets []*dto.SecretInfo
 	if args.Get(0) != nil {
