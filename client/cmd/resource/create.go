@@ -57,6 +57,7 @@ func (c createCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 	resourceSpecCreateSurvey := survey.NewResourceSpecCreateSurvey(resourceSpecReadWriter)
 
+	// we are using the first datastore since we want to support only one datastore for a single namespace
 	rootDirPath := selectedNamespace.Datastore[0].Path
 	resourceName, err := resourceSpecCreateSurvey.AskResourceSpecName(rootDirPath)
 	if err != nil {

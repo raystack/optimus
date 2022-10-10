@@ -49,6 +49,7 @@ func (r resourceSpecReadWriter) ReadAll(rootDirPath string) ([]*model.ResourceSp
 	return specs, nil
 }
 
+// TODO: in the future, we should make it so that we can identify the resource exist or not based on the file path
 func (r resourceSpecReadWriter) ReadByName(rootDirPath, name string) (*model.ResourceSpec, error) {
 	if name == "" {
 		return nil, errors.New("name is empty")

@@ -12,7 +12,7 @@ type SpecReader[S ValidSpec] interface {
 }
 
 type SpecWriter[S ValidSpec] interface {
-	Write(path string, spec S) error
+	Write(dirPath string, spec S) error
 }
 
 type SpecReadWriter[S ValidSpec] interface {
