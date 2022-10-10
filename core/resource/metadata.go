@@ -94,7 +94,7 @@ func (f Field) Validate() error {
 	}
 	modeLower := strings.ToLower(f.Mode)
 	if modeLower != "" && modeLower != ModeNullable && modeLower != ModeRepeated && modeLower != ModeRequired {
-		return errors.InvalidArgument(EntityResourceSchema, "unknown field mode for "+modeLower)
+		return errors.InvalidArgument(EntityResourceSchema, "unknown field mode "+modeLower+" for "+f.Name)
 	}
 	if f.Schema != nil {
 		err := f.Schema.Validate()
