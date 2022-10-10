@@ -9,6 +9,12 @@ apply.airflow: _context
 		-f airflow.values.yaml
 
 apply.optimus: _context
+	# to create placeholder plugins for internal and odpf plugins
+	echo "test" >  /tmp/colima/test
+	tar -czvf /tmp/colima/internal-plugins.tar.gz /tmp/colima/test
+	tar -czvf /tmp/colima/transformers.tar.gz /tmp/colima/test
+	rm /tmp/colima/test
+
 	helm repo add odpf https://odpf.github.io/charts/
 	helm upgrade --install optimus-dev ${OPTIMUS_ODPF_CHART} -n ${NAMESPACE} -f optimus.values.yaml --version '>0.0.2'
 

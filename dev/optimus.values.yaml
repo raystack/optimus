@@ -31,11 +31,11 @@ volumes:
       type: Directory
   - name: internal-plugins
     hostPath: 
-      path: /Users/path/to/optimus-plugins/dist/optimus-plugins_0.6.1_linux_amd64.tar.gz
-      type: FileOrCreate  # for internal plugins
+      path: /tmp/colima/internal-plugins.tar.gz  # replace this with localpath for plugin dist tar file
+      type: File
   - name: odpf-plugins
     hostPath: 
-      path: /Users/path/to/transformers/dist/transformers_0.1.1_linux_arm64.tar.gz
+      path: /tmp/colima/transformers.tar.gz  # replace this with localpath for plugin dist tar file
       type: File
 
 telegraf:
