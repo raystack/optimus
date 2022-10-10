@@ -1,17 +1,16 @@
 EXPECTED_CONTEXT=colima
 NAMESPACE=optimus-dev
+OPTIMUS_ODPF_CHART=odpf/optimus
 
-apply.airflow:
+apply.airflow: _context
 	helm repo add apache-airflow https://airflow.apache.org
 	helm upgrade --install airflow apache-airflow/airflow\
 		--namespace ${NAMESPACE} \
 		-f airflow.values.yaml
 
-apply.optimus:
-	helm install optimus-dev ~/Documents/proj/odpf/charts/stable/optimus -n ${NAMESPACE} -f optimus.values.yaml
-
-upgrade.optimus:
-	helm upgrade optimus-dev ~/Documents/proj/odpf/charts/stable/optimus -n ${NAMESPACE} -f optimus.values.yaml
+apply.optimus: _context
+	helm repo add odpf https://odpf.github.io/charts/
+	helm upgrade --install optimus-dev ${OPTIMUS_ODPF_CHART} -n ${NAMESPACE} -f optimus.values.yaml --version '>0.0.2'
 
 _context:
 	kubectl config use-context $(EXPECTED_CONTEXT)
@@ -40,5 +39,4 @@ delete: _context
 
 # -----------------------------------
 start-colima:
-	# brew install colima
 	colima start --cpu 4 --memory 8 --kubernetes
