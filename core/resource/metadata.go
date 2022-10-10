@@ -42,6 +42,21 @@ func FromStringToKind(name string) (Kind, error) {
 	}
 }
 
+type Status string
+
+const (
+	StatusUnknown  Status = "unknown"
+	StatusToCreate Status = "to_create"
+	StatusToUpdate Status = "to_update"
+
+	StatusSuccess Status = "sync_success"
+	StatusFailure Status = "sync_failure"
+)
+
+func (s Status) String() string {
+	return string(s)
+}
+
 type Metadata struct {
 	Version     int32
 	Description string

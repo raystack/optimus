@@ -115,7 +115,6 @@ func NewResource(fullName string, kind Kind, store Store, tnnt tenant.Tenant, me
 	}, nil
 }
 
-
 func (r *Resource) Validate() error {
 	switch r.kind {
 	case KindTable:
