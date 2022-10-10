@@ -10,27 +10,25 @@ import (
 
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/internal/survey"
-	"github.com/odpf/optimus/client/local"
+	"github.com/odpf/optimus/client/local/model"
+	"github.com/odpf/optimus/client/local/specio"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 )
 
 type createCommand struct {
 	logger       log.Logger
 	clientConfig *config.ClientConfig
 
-	namespaceSurvey      *survey.NamespaceSurvey
-	resourceCreateSurvey *survey.ResourceCreateSurvey
+	namespaceSurvey *survey.NamespaceSurvey
 }
 
 // NewCreateCommand initializes resource create command
 func NewCreateCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	l := logger.NewClientLogger()
 	create := &createCommand{
-		clientConfig:         clientConfig,
-		logger:               l,
-		namespaceSurvey:      survey.NewNamespaceSurvey(l),
-		resourceCreateSurvey: survey.NewResourceCreateSurvey(),
+		clientConfig:    clientConfig,
+		logger:          l,
+		namespaceSurvey: survey.NewNamespaceSurvey(l),
 	}
 
 	cmd := &cobra.Command{
@@ -42,76 +40,53 @@ func NewCreateCommand(clientConfig *config.ClientConfig) *cobra.Command {
 	return cmd
 }
 
-func (c *createCommand) RunE(_ *cobra.Command, _ []string) error {
-	namespace, err := c.namespaceSurvey.AskToSelectNamespace(c.clientConfig)
+func (c createCommand) RunE(_ *cobra.Command, _ []string) error {
+	selectedNamespace, err := c.namespaceSurvey.AskToSelectNamespace(c.clientConfig)
 	if err != nil {
 		return err
 	}
-	storerName, err := c.selectDatastorerName()
-	if err != nil {
-		return err
-	}
-	repoFS, ok := CreateDataStoreSpecFs(namespace)[storerName]
-	if !ok {
-		return fmt.Errorf("unregistered datastore, please use configuration file to set datastore path")
+	// TODO: re-check if datastore needs to be in slice, currently assuming
+	if len(selectedNamespace.Datastore) == 0 {
+		return fmt.Errorf("data store for namespace [%s] is not configured", selectedNamespace.Name)
 	}
 
-	// find requested datastorer
-	datastorer, _ := models.DatastoreRegistry.GetByName(storerName)
-	// find resource type
-	resourceType, err := c.selectDataStoreType(datastorer)
+	specFS := afero.NewOsFs()
+	resourceSpecReadWriter, err := specio.NewResourceSpecReadWriter(specFS)
 	if err != nil {
 		return err
 	}
+	resourceSpecCreateSurvey := survey.NewResourceSpecCreateSurvey(resourceSpecReadWriter)
 
-	resourceSpecRepo := local.NewResourceSpecRepository(repoFS, datastorer)
-	typeController := datastorer.Types()[models.ResourceType(resourceType)]
-
-	// find directory to store spec
-	rwd, err := survey.AskWorkingDirectory(repoFS, "")
+	// we are using the first datastore since we want to support only one datastore for a single namespace
+	rootDirPath := selectedNamespace.Datastore[0].Path
+	resourceName, err := resourceSpecCreateSurvey.AskResourceSpecName(rootDirPath)
 	if err != nil {
 		return err
 	}
-	newDirName, err := survey.AskDirectoryName(rwd)
+	resourceType, err := resourceSpecCreateSurvey.AskResourceSpecType()
 	if err != nil {
 		return err
 	}
-
-	resourceDirectory := filepath.Join(rwd, newDirName)
-	resourceName, err := c.resourceCreateSurvey.AskResourceName(resourceSpecRepo, typeController, resourceDirectory)
+	workingDirectory, err := survey.AskWorkingDirectory(specFS, rootDirPath)
+	if err != nil {
+		return err
+	}
+	resourceSpecDirectoryName, err := survey.AskDirectoryName(workingDirectory)
 	if err != nil {
 		return err
 	}
 
-	if err := resourceSpecRepo.SaveAt(models.ResourceSpec{
-		Version:   1,
-		Name:      resourceName,
-		Type:      models.ResourceType(resourceType),
-		Datastore: datastorer,
-		Assets:    typeController.DefaultAssets(),
-	}, resourceDirectory); err != nil {
+	resourceDirectory := filepath.Join(workingDirectory, resourceSpecDirectoryName)
+	if err := resourceSpecReadWriter.Write(resourceDirectory, &model.ResourceSpec{
+		Version: 1,
+		Name:    resourceName,
+		Type:    resourceType,
+	}); err != nil {
 		return err
 	}
 
-	c.logger.Info("Resource created successfully %s", resourceName)
+	c.logger.Info("Resource spec [%s] is created successfully", resourceName)
 	return nil
-}
-
-func (*createCommand) selectDatastorerName() (string, error) {
-	datastorers := []string{}
-	dsRepo := models.DatastoreRegistry
-	for _, s := range dsRepo.GetAll() {
-		datastorers = append(datastorers, s.Name())
-	}
-	return survey.AskToSelectDatastorer(datastorers)
-}
-
-func (c *createCommand) selectDataStoreType(datastorer models.Datastorer) (string, error) {
-	availableTypes := []string{}
-	for dsType := range datastorer.Types() {
-		availableTypes = append(availableTypes, dsType.String())
-	}
-	return c.resourceCreateSurvey.AskToSelectResourceType(availableTypes)
 }
 
 // CreateDataStoreSpecFs creates specFS for data store

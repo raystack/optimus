@@ -15,14 +15,13 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/multierr"
 
-	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	"github.com/odpf/optimus/client/cmd/internal/connectivity"
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/namespace"
 	"github.com/odpf/optimus/client/cmd/plugin"
 	"github.com/odpf/optimus/client/cmd/project"
 	"github.com/odpf/optimus/client/cmd/resource"
-	"github.com/odpf/optimus/client/local"
+	"github.com/odpf/optimus/client/local/specio"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
@@ -224,25 +223,22 @@ func (d *deployCommand) sendNamespaceJobRequest(
 }
 
 func (*deployCommand) getJobDeploymentRequest(projectName string, namespace *config.Namespace) (*pb.DeployJobSpecificationRequest, error) {
-	pluginRepo := models.PluginRegistry
-
-	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
-	jobSpecRepo := local.NewJobSpecRepository(
-		jobSpecFs,
-		local.NewJobSpecAdapter(pluginRepo),
-	)
-
-	jobSpecs, err := jobSpecRepo.GetAll()
+	jobSpecReadWriter, err := specio.NewJobSpecReadWriter(afero.NewOsFs(), specio.WithJobSpecParentReading())
 	if err != nil {
 		return nil, err
 	}
 
-	adaptedJobSpecs := make([]*pb.JobSpecification, len(jobSpecs))
-	for i, spec := range jobSpecs {
-		adaptedJobSpecs[i] = v1handler.ToJobSpecificationProto(spec)
+	jobSpecs, err := jobSpecReadWriter.ReadAll(namespace.Job.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	jobSpecsProto := make([]*pb.JobSpecification, len(jobSpecs))
+	for i, jobSpec := range jobSpecs {
+		jobSpecsProto[i] = jobSpec.ToProto()
 	}
 	return &pb.DeployJobSpecificationRequest{
-		Jobs:          adaptedJobSpecs,
+		Jobs:          jobSpecsProto,
 		ProjectName:   projectName,
 		NamespaceName: namespace.Name,
 	}, nil
@@ -282,9 +278,7 @@ func (d *deployCommand) deployResources(
 		progressFn := func(totalCount int) {
 			totalSpecsCount += totalCount
 		}
-		if err := d.sendNamespaceResourceRequest(
-			conn.GetContext(), stream, namespace, progressFn,
-		); err != nil {
+		if err := d.sendNamespaceResourceRequest(stream, namespace, progressFn); err != nil {
 			return err
 		}
 	}
@@ -325,13 +319,13 @@ func (d *deployCommand) processResourceDeploymentResponse(
 }
 
 func (d *deployCommand) sendNamespaceResourceRequest(
-	ctx context.Context, stream pb.ResourceService_DeployResourceSpecificationClient,
+	stream pb.ResourceService_DeployResourceSpecificationClient,
 	namespace *config.Namespace, progressFn func(totalCount int),
 ) error {
 	datastoreSpecFs := resource.CreateDataStoreSpecFs(namespace)
 	for storeName, repoFS := range datastoreSpecFs {
 		d.logger.Info("> Deploying %s resources for namespace [%s]", storeName, namespace.Name)
-		request, err := d.getResourceDeploymentRequest(ctx, namespace.Name, storeName, repoFS)
+		request, err := d.getResourceDeploymentRequest(namespace.Name, storeName, repoFS)
 		if err != nil {
 			if errors.Is(err, models.ErrNoResources) {
 				d.logger.Warn("no resource specifications are found for namespace [%s]", namespace.Name)
@@ -349,33 +343,29 @@ func (d *deployCommand) sendNamespaceResourceRequest(
 }
 
 func (d *deployCommand) getResourceDeploymentRequest(
-	ctx context.Context,
-	namespaceName, storeName string,
-	repoFS afero.Fs,
+	namespaceName, storeName string, repoFS afero.Fs,
 ) (*pb.DeployResourceSpecificationRequest, error) {
-	datastoreRepo := models.DatastoreRegistry
-
-	ds, err := datastoreRepo.GetByName(storeName)
-	if err != nil {
-		return nil, fmt.Errorf("unsupported datastore [%s] for namesapce [%s]", storeName, namespaceName)
-	}
-
-	resourceSpecRepo := local.NewResourceSpecRepository(repoFS, ds)
-	resourceSpecs, err := resourceSpecRepo.GetAll(ctx)
+	resourceSpecReadWritter, err := specio.NewResourceSpecReadWriter(repoFS)
 	if err != nil {
 		return nil, err
 	}
 
-	adaptedSpecs := make([]*pb.ResourceSpecification, len(resourceSpecs))
-	for i, spec := range resourceSpecs {
-		adapted, err := v1handler.ToResourceProto(spec)
-		if err != nil {
-			return nil, fmt.Errorf("failed to serialize [%s] for namespace [%s]: %w", spec.Name, namespaceName, err)
-		}
-		adaptedSpecs[i] = adapted
+	resourceSpecs, err := resourceSpecReadWritter.ReadAll(".")
+	if err != nil {
+		return nil, err
 	}
+
+	resourceSpecsProto := make([]*pb.ResourceSpecification, len(resourceSpecs))
+	for i, resourceSpec := range resourceSpecs {
+		resourceSpecProto, err := resourceSpec.ToProto()
+		if err != nil {
+			return nil, err
+		}
+		resourceSpecsProto[i] = resourceSpecProto
+	}
+
 	return &pb.DeployResourceSpecificationRequest{
-		Resources:     adaptedSpecs,
+		Resources:     resourceSpecsProto,
 		ProjectName:   d.clientConfig.Project.Name,
 		DatastoreName: storeName,
 		NamespaceName: namespaceName,
