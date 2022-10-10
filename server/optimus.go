@@ -1,8 +1,10 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -20,10 +22,14 @@ import (
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	jobRunCompiler "github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"
+	tHandler "github.com/odpf/optimus/core/tenant/handler/v1beta1"
+	tService "github.com/odpf/optimus/core/tenant/service"
 	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/ext/notify/pagerduty"
 	"github.com/odpf/optimus/ext/notify/slack"
+	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/store/postgres"
+	"github.com/odpf/optimus/internal/store/postgres/tenant"
 	"github.com/odpf/optimus/internal/telemetry"
 	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/job"
@@ -33,6 +39,8 @@ import (
 	"github.com/odpf/optimus/service"
 )
 
+const keyLength = 32
+
 type setupFn func() error
 
 type OptimusServer struct {
@@ -41,6 +49,7 @@ type OptimusServer struct {
 
 	appKey models.ApplicationKey
 	dbConn *gorm.DB
+	key    *[keyLength]byte
 
 	serverAddr string
 	grpcServer *grpc.Server
@@ -129,7 +138,23 @@ func (s *OptimusServer) setupAppKey() error {
 	if err != nil {
 		return fmt.Errorf("NewApplicationSecret: %w", err)
 	}
+
+	s.key, err = applicationKeyFromString(s.conf.Serve.AppKey)
+	if err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func applicationKeyFromString(appKey string) (*[keyLength]byte, error) {
+	if len(appKey) < keyLength {
+		return nil, errors.InvalidArgument("application_key", "application key should be 32 chars in length")
+	}
+
+	var key [keyLength]byte
+	_, err := io.ReadFull(bytes.NewBufferString(appKey), key[:])
+	return &key, err
 }
 
 func (s *OptimusServer) setupDB() error {
@@ -229,6 +254,15 @@ func (s *OptimusServer) setupHandlers() error {
 		return err
 	}
 	jobSourceRepository := postgres.NewJobSourceRepository(s.dbConn)
+
+	// Tenant Bounded Context Setup
+	tProjectRepo := tenant.NewProjectRepository(s.dbConn)
+	tNamespaceRepo := tenant.NewNamespaceRepository(s.dbConn)
+	tSecretRepo := tenant.NewSecretRepository(s.dbConn)
+
+	tProjectService := tService.NewProjectService(tProjectRepo)
+	tNamespaceService := tService.NewNamespaceService(tNamespaceRepo)
+	tSecretService := tService.NewSecretService(s.key, tSecretRepo)
 
 	scheduler, err := initScheduler(s.conf)
 	if err != nil {
@@ -357,8 +391,11 @@ func (s *OptimusServer) setupHandlers() error {
 		hookRunRepository,
 		taskRunRepository)
 
-	// secret service
-	pb.RegisterSecretServiceServer(s.grpcServer, v1handler.NewSecretServiceServer(s.logger, secretService))
+	// Tenant Handlers
+	pb.RegisterSecretServiceServer(s.grpcServer, tHandler.NewSecretsHandler(s.logger, tSecretService))
+	pb.RegisterProjectServiceServer(s.grpcServer, tHandler.NewProjectHandler(s.logger, tProjectService))
+	pb.RegisterNamespaceServiceServer(s.grpcServer, tHandler.NewNamespaceHandler(s.logger, tNamespaceService))
+
 	// resource service
 	pb.RegisterResourceServiceServer(s.grpcServer, v1handler.NewResourceServiceServer(s.logger,
 		dataStoreService,
@@ -371,12 +408,6 @@ func (s *OptimusServer) setupHandlers() error {
 		namespaceService,
 		projectService,
 		jobService)) // TODO: Replace with replayService after extracting
-	// project service
-	pb.RegisterProjectServiceServer(s.grpcServer, v1handler.NewProjectServiceServer(s.logger,
-		projectService))
-	// namespace service
-	pb.RegisterNamespaceServiceServer(s.grpcServer, v1handler.NewNamespaceServiceServer(s.logger,
-		namespaceService))
 	// job Spec service
 	pb.RegisterJobSpecificationServiceServer(s.grpcServer, v1handler.NewJobSpecServiceServer(s.logger,
 		jobService,

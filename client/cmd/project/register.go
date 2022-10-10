@@ -75,17 +75,16 @@ func RegisterProject(logger log.Logger, serverHost string, project config.Projec
 		Name:   project.Name,
 		Config: project.Config,
 	}
-	registerResponse, err := projectServiceClient.RegisterProject(conn.GetContext(), &pb.RegisterProjectRequest{
+	_, err = projectServiceClient.RegisterProject(conn.GetContext(), &pb.RegisterProjectRequest{
 		Project: projectSpec,
 	})
+
 	if err != nil {
 		if status.Code(err) == codes.FailedPrecondition {
 			logger.Warn(fmt.Sprintf("Ignoring project config changes: %v", err))
 			return nil
 		}
 		return fmt.Errorf("failed to register or update project: %w", err)
-	} else if !registerResponse.Success {
-		return fmt.Errorf("failed to register or update project, %s", registerResponse.Message)
 	}
 	logger.Info("Project registration finished successfully")
 	return nil

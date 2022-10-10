@@ -27,3 +27,13 @@ func AppendToMap(gmap map[string]interface{}, mp map[string]string) {
 		gmap[k] = v
 	}
 }
+
+func Contains[K comparable, V any](mp map[K]V, keys ...K) bool {
+	for _, key := range keys {
+		_, ok := mp[key]
+		if !ok {
+			return false
+		}
+	}
+	return true
+}

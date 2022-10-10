@@ -92,7 +92,7 @@ func RegisterNamespace(l log.Logger, serverHost, projectName string, namespace *
 	defer conn.Close()
 
 	namespaceServiceClient := pb.NewNamespaceServiceClient(conn.GetConnection())
-	registerResponse, err := namespaceServiceClient.RegisterProjectNamespace(conn.GetContext(), &pb.RegisterProjectNamespaceRequest{
+	_, err = namespaceServiceClient.RegisterProjectNamespace(conn.GetContext(), &pb.RegisterProjectNamespaceRequest{
 		ProjectName: projectName,
 		Namespace: &pb.NamespaceSpecification{
 			Name:   namespace.Name,
@@ -105,8 +105,6 @@ func RegisterNamespace(l log.Logger, serverHost, projectName string, namespace *
 			return nil
 		}
 		return fmt.Errorf("failed to register or update namespace [%s]: %w", namespace.Name, err)
-	} else if !registerResponse.Success {
-		return fmt.Errorf("failed to update namespace [%s]: %s", namespace.Name, registerResponse.Message)
 	}
 	l.Info("Namespace [%s] registration finished successfully", namespace.Name)
 	return nil
