@@ -481,7 +481,7 @@ func (srv *Service) GetDownstream(ctx context.Context, projectSpec models.Projec
 	return jobSpecs, nil
 }
 
-func (srv *Service) prepareJobSpecMap(ctx context.Context, projectSpec models.ProjectSpec) (JobSpec map[string]models.JobSpec, resolvedErrors error) {
+func (srv *Service) prepareJobSpecMap(ctx context.Context, projectSpec models.ProjectSpec) (jobSpec map[string]models.JobSpec, resolvedErrors error) {
 	// resolve dependency of all jobs in given project
 	jobSpecs, unknownDependencies, err := srv.dependencyResolver.GetJobSpecsWithDependencies(ctx, projectSpec.Name)
 
