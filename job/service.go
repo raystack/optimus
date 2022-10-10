@@ -162,8 +162,8 @@ func (srv *Service) bulkCreate(ctx context.Context, namespace models.NamespaceSp
 				failureModify++
 				op = "modify"
 			}
-			warnMsg := fmt.Sprintf("[%s] error '%s': failed to %s job, %s", namespace.Name, jobSpec.Name, op, err.Error())
-			logWriter.Write(writer.LogLevelWarning, warnMsg)
+			errMsg := fmt.Sprintf("[%s] error '%s': failed to %s job, %s", namespace.Name, jobSpec.Name, op, err.Error())
+			logWriter.Write(writer.LogLevelError, errMsg)
 
 			continue
 		}
@@ -360,21 +360,21 @@ func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSp
 		dependentJobNames, err := srv.getDependentJobNames(ctx, jobSpec)
 		if err != nil {
 			failure++
-			warnMsg := fmt.Sprintf("[%s] error '%s': failed to delete job, %s", namespace.Name, jobSpec.Name, err.Error())
-			logWriter.Write(writer.LogLevelWarning, warnMsg)
+			errMsg := fmt.Sprintf("[%s] error '%s': failed to delete job, %s", namespace.Name, jobSpec.Name, err.Error())
+			logWriter.Write(writer.LogLevelError, errMsg)
 			continue
 		}
 		if len(dependentJobNames) > 0 {
 			failure++
 			err = fmt.Errorf("cannot delete job %s since it's dependency of other jobs: %s", jobSpec.Name, strings.Join(dependentJobNames, ","))
-			warnMsg := fmt.Sprintf("[%s] error '%s': failed to delete job, %s", namespace.Name, jobSpec.Name, err.Error())
-			logWriter.Write(writer.LogLevelWarning, warnMsg)
+			errMsg := fmt.Sprintf("[%s] error '%s': failed to delete job, %s", namespace.Name, jobSpec.Name, err.Error())
+			logWriter.Write(writer.LogLevelError, errMsg)
 			continue
 		}
 		if err := srv.jobSpecRepository.DeleteByID(ctx, jobSpec.ID); err != nil {
 			failure++
-			warnMsg := fmt.Sprintf("[%s] error '%s': failed to delete job, %s", namespace.Name, jobSpec.Name, err.Error())
-			logWriter.Write(writer.LogLevelWarning, warnMsg)
+			errMsg := fmt.Sprintf("[%s] error '%s': failed to delete job, %s", namespace.Name, jobSpec.Name, err.Error())
+			logWriter.Write(writer.LogLevelError, errMsg)
 			continue
 		}
 
@@ -728,8 +728,8 @@ func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpe
 		jobName, namespaceName := specVal[0], specVal[1]
 		if state.Err != nil {
 			failure++
-			warnMsg := fmt.Sprintf("[%s] error '%s': failed to resolve dependency, %s", namespaceName, jobName, state.Err.Error())
-			logWriter.Write(writer.LogLevelWarning, warnMsg)
+			errMsg := fmt.Sprintf("[%s] error '%s': failed to resolve dependency, %s", namespaceName, jobName, state.Err.Error())
+			logWriter.Write(writer.LogLevelError, errMsg)
 		} else {
 			success++
 			successMsg := fmt.Sprintf("[%s] info '%s': dependency is successfully resolved", namespaceName, jobName)
@@ -738,8 +738,8 @@ func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpe
 	}
 
 	if failure > 0 {
-		warnMsg := fmt.Sprintf("Resolved dependencies of %d/%d jobs.", success, success+failure)
-		logWriter.Write(writer.LogLevelWarning, warnMsg)
+		errMsg := fmt.Sprintf("Resolved dependencies of %d/%d jobs.", success, success+failure)
+		logWriter.Write(writer.LogLevelError, errMsg)
 	} else {
 		successMsg := fmt.Sprintf("Resolved dependency of %d jobs.", success)
 		logWriter.Write(writer.LogLevelInfo, successMsg)
