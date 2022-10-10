@@ -17,18 +17,18 @@ echo "SCHEDULED_AT:$SCHEDULED_AT"
 echo "OPTIMUS_HOST:$OPTIMUS_HOST"
 echo ""
 
-# echo "-- initializing optimus assets"
-# OPTIMUS_ADMIN_ENABLED=1 optimus job run-input "$JOB_NAME" --project-name \
-# 	"$PROJECT" --output-dir "$JOB_DIR" \
-# 	--type "$INSTANCE_TYPE" --name "$INSTANCE_NAME" \
-# 	--scheduled-at "$SCHEDULED_AT" --host "$OPTIMUS_HOST"
+echo "-- initializing optimus assets"
+OPTIMUS_ADMIN_ENABLED=1 optimus job run-input "$JOB_NAME" --project-name \
+	"$PROJECT" --output-dir "$JOB_DIR" \
+	--type "$INSTANCE_TYPE" --name "$INSTANCE_NAME" \
+	--scheduled-at "$SCHEDULED_AT" --host "$OPTIMUS_HOST"
 
 # if [ $? -ne 0 ]; then
 # echo "-- job run-input failed"
 # echo "-- try to register and initializing optimus assets"
 
-OPTIMUS_ADMIN_ENABLED=1 /opt/optimus admin build instance "$JOB_NAME" --project-name \
-	"$PROJECT" --output-dir "$JOB_DIR" \
-	--type "$INSTANCE_TYPE" --name "$INSTANCE_NAME" \
-	--scheduled-at "$SCHEDULED_AT" --host "$OPTIMUS_HOST"
-# fi
+# OPTIMUS_ADMIN_ENABLED=1 /opt/optimus admin build instance "$JOB_NAME" --project-name \
+# 	"$PROJECT" --output-dir "$JOB_DIR" \
+# 	--type "$INSTANCE_TYPE" --name "$INSTANCE_NAME" \
+# 	--scheduled-at "$SCHEDULED_AT" --host "$OPTIMUS_HOST"
+# # fi
