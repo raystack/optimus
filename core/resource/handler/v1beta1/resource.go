@@ -20,7 +20,7 @@ import (
 type ResourceService interface {
 	Create(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error
 	Update(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error
-	Read(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceName resource.Name) (*resource.Resource, error)
+	Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceName resource.Name) (*resource.Resource, error)
 	GetAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error)
 	BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error
 }
@@ -71,7 +71,7 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 				errMsg := fmt.Sprintf("%s: cannot adapt resource %s", err.Error(), resourceProto.GetName())
 				rh.l.Error(errMsg)
 				responseWriter.Write(writer.LogLevelError, errMsg)
-				continue
+				break
 			}
 			resourceSpecs = append(resourceSpecs, adapted)
 		}
@@ -131,14 +131,14 @@ func (rh ResourceHandler) ListResourceSpecification(ctx context.Context, req *pb
 }
 
 func (rh ResourceHandler) CreateResource(ctx context.Context, req *pb.CreateResourceRequest) (*pb.CreateResourceResponse, error) {
-	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
+	tnnt, err := tenant.NewNamespaceTenant(req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to create resource")
 	}
 
 	store, err := resource.FromStringToStore(req.GetDatastoreName())
 	if err != nil {
-		return nil, errors.GRPCErr(err, "invalid read resource request")
+		return nil, errors.GRPCErr(err, "invalid create resource request")
 	}
 
 	res, err := fromResourceProto(req.Resource, tnnt, store)
@@ -171,7 +171,7 @@ func (rh ResourceHandler) ReadResource(ctx context.Context, req *pb.ReadResource
 		return nil, errors.GRPCErr(err, "failed to read resource "+req.GetResourceName())
 	}
 
-	response, err := rh.service.Read(ctx, tnnt, store, resName)
+	response, err := rh.service.Get(ctx, tnnt, store, resName)
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to read resource "+req.GetResourceName())
 	}
@@ -216,6 +216,15 @@ func fromResourceProto(rs *pb.ResourceSpecification, tnnt tenant.Tenant, store r
 		return nil, errors.InvalidArgument(resource.EntityResource, "empty resource")
 	}
 
+	if rs.GetSpec() == nil {
+		return nil, errors.InvalidArgument(resource.EntityResource, "empty resource spec for "+rs.Name)
+	}
+
+	kind, err := resource.FromStringToKind(rs.GetType())
+	if err != nil {
+		return nil, err
+	}
+
 	spec := rs.GetSpec().AsMap()
 
 	var description string
@@ -226,11 +235,6 @@ func fromResourceProto(rs *pb.ResourceSpecification, tnnt tenant.Tenant, store r
 		Version:     rs.Version,
 		Description: description,
 		Labels:      rs.Labels,
-	}
-
-	kind, err := resource.FromStringToKind(rs.GetType())
-	if err != nil {
-		return nil, err
 	}
 
 	return resource.NewResource(rs.Name, kind, store, tnnt, &metadata, spec)
@@ -255,4 +259,11 @@ func toResourceProto(res *resource.Resource) (*pb.ResourceSpecification, error) 
 		Assets:  nil,
 		Labels:  meta.Labels,
 	}, nil
+}
+
+func NewResourceHandler(l log.Logger, resourceService ResourceService) *ResourceHandler {
+	return &ResourceHandler{
+		l:       l,
+		service: resourceService,
+	}
 }
