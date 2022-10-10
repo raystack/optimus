@@ -728,8 +728,8 @@ func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpe
 		jobName, namespaceName := specVal[0], specVal[1]
 		if state.Err != nil {
 			failure++
-			warnMsg := fmt.Sprintf("[%s] error '%s': failed to resolve dependency, %s", namespaceName, jobName, state.Err.Error())
-			logWriter.Write(writer.LogLevelWarning, warnMsg)
+			errMsg := fmt.Sprintf("[%s] error '%s': failed to resolve dependency, %s", namespaceName, jobName, state.Err.Error())
+			logWriter.Write(writer.LogLevelError, errMsg)
 		} else {
 			success++
 			successMsg := fmt.Sprintf("[%s] info '%s': dependency is successfully resolved", namespaceName, jobName)
