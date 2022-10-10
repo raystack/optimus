@@ -9,6 +9,7 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	"github.com/odpf/optimus/client/cmd/internal/connectivity"
@@ -94,7 +95,7 @@ func (e *inspectCommand) RunE(cmd *cobra.Command, args []string) error {
 	if err := e.inspectJobSpecification(jobSpec, serverFetch); err != nil {
 		return err
 	}
-	e.logger.Info(logger.ColoredSuccess("Jobs inspected successfully, took %s", time.Since(start).Round(time.Second)))
+	e.logger.Info(logger.ColoredSuccess("\nJobs inspected successfully, took %s", time.Since(start).Round(time.Second)))
 	return nil
 }
 
@@ -157,21 +158,70 @@ func (e *inspectCommand) inspectJobSpecification(jobSpec models.JobSpec, serverF
 	return e.processJobInspectResponse(resp)
 }
 
-func (e *inspectCommand) processJobInspectResponse(resp *pb.JobInspectResponse) error {
-	e.logger.Info("\n> Job Destination:: %v", resp.Destination)
-	e.logger.Info("\n> Job Sources:: %v", resp.Sources)
-
-	for i := 0; i < len(resp.Log); i++ {
-		switch resp.Log[i].Level {
+func (e *inspectCommand) printLogs(logs []*pb.Log) {
+	for i := 0; i < len(logs); i++ {
+		switch logs[i].Level {
 		case pb.Level_LEVEL_INFO:
-			e.logger.Info(fmt.Sprintf("\n>%v", resp.Log[i].Message))
+			e.logger.Info(fmt.Sprintf("> [info] %v", logs[i].Message))
 		case pb.Level_LEVEL_WARNING:
-			e.logger.Info(logger.ColoredNotice(fmt.Sprintf("\n>%v", resp.Log[i].Message)))
+			e.logger.Info(logger.ColoredNotice(fmt.Sprintf("> [warn] %v", logs[i].Message)))
 		case pb.Level_LEVEL_ERROR:
-			e.logger.Info(logger.ColoredError(fmt.Sprintf("\n>%v", resp.Log[i].Message)))
+			e.logger.Info(logger.ColoredError(fmt.Sprintf("> [error] %v", logs[i].Message)))
 		default:
-			e.logger.Error(logger.ColoredError(fmt.Sprintf("unhandled log level::%v specified with error msg ::%v", resp.Log[i].Level, resp.Log[i].Message)))
+			e.logger.Error(logger.ColoredError(fmt.Sprintf("unhandled log level::%v specified with error msg ::%v", logs[i].Level, logs[i].Message)))
 		}
 	}
+}
+
+func (e *inspectCommand) displayUpstreamSection(Upstreams *pb.JobInspectResponse_UpstreamSection) {
+	e.logger.Info(logger.ColoredNotice("\n-----------------------------------------------------------------------------"))
+	e.logger.Info(logger.ColoredNotice("\n    * UPSTREAMS"))
+	e.logger.Info(logger.ColoredNotice("\n-----------------------------------------------------------------------------"))
+
+	e.logger.Info("\n> Internal::")
+	e.yamlPrint(Upstreams.InternalDependency)
+
+	e.logger.Info("\n> Exteranl::")
+	e.yamlPrint(Upstreams.ExternalDependency)
+
+	e.logger.Info("\n> HTTP::")
+	e.yamlPrint(Upstreams.HttpDependency)
+
+	e.logger.Info("\n> unknonw dependencies ::")
+	e.yamlPrint(Upstreams.UnknownDependencies)
+
+	e.printLogs(Upstreams.Notice)
+}
+
+func (e *inspectCommand) displayBasicInfoSection(basicInfoSection *pb.JobInspectResponse_BasicInfoSection) {
+	e.logger.Info(logger.ColoredNotice("\n-----------------------------------------------------------------------------"))
+	e.logger.Info(logger.ColoredNotice("\n    * BASIC INFO"))
+	e.logger.Info(logger.ColoredNotice("\n-----------------------------------------------------------------------------"))
+
+	e.logger.Info("\n> Job Destination:: %v", basicInfoSection.Destination)
+
+	e.logger.Info("\n> Job Sources::")
+	e.yamlPrint(basicInfoSection.Source)
+
+	e.logger.Info("\n> Job Spec::")
+	e.yamlPrint(basicInfoSection.Job)
+
+	e.printLogs(basicInfoSection.Notice)
+}
+
+func (e *inspectCommand) processJobInspectResponse(resp *pb.JobInspectResponse) error {
+	logger.InitializeColor()
+	e.displayBasicInfoSection(resp.BasicInfo)
+	e.displayUpstreamSection(resp.Upstreams)
+	e.logger.Info(logger.ColoredNotice("\n-----------------------------------------------------------------------------"))
+
 	return nil
+}
+
+func (e *inspectCommand) yamlPrint(input interface{}) {
+	marshalled, err := yaml.Marshal(input)
+	if err != nil {
+		e.logger.Error(fmt.Sprintf("\n Error marshalling %v", input))
+	}
+	e.logger.Info("%v", string(marshalled))
 }

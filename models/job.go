@@ -201,6 +201,13 @@ type JobSpecTaskDestination struct {
 	Type        DestinationType
 }
 
+type JobBasicInfo struct {
+	Spec        JobSpec
+	JobSource   []string
+	Destination string
+	Log         writer.BufferedLogger
+}
+
 func (jtd JobSpecTaskDestination) URN() string {
 	return fmt.Sprintf(DestinationURNFormat, jtd.Type, jtd.Destination)
 }
@@ -343,9 +350,8 @@ type JobService interface {
 	GetTaskDependencies(context.Context, NamespaceSpec, JobSpec) (JobSpecTaskDestination,
 		JobSpecTaskDependencies, error)
 
-	// GetJobSourceAndDestination returns job task source and destination tables
-	GetJobSourceAndDestination(context.Context, JobSpec) (
-		JobSpecTaskDestination, JobSpecTaskDependencies, error)
+	// GetJobBasicInfo returns basic job info
+	GetJobBasicInfo(context.Context, JobSpec) JobBasicInfo
 
 	// Run creates a new job run for provided job spec and schedules it to execute
 	// immediately
@@ -366,8 +372,6 @@ type JobService interface {
 	GetDeployment(ctx context.Context, deployID DeploymentID) (JobDeployment, error)
 	// GetByFilter gets the jobspec based on projectName, jobName, resourceDestination filters.
 	GetByFilter(ctx context.Context, filter JobSpecFilter) ([]JobSpec, error)
-	// IsJobDestinationDuplicate checks is already another job exists in the project with same resource Destination
-	IsJobDestinationDuplicate(ctx context.Context, jobSpec JobSpec) (string, error)
 	// EnrichUpstreamJobs adds upstream job information to a jobSpec without persisting it in database
 	EnrichUpstreamJobs(ctx context.Context, currentSpec JobSpec, jobSources []string, logWriter writer.LogWriter) (JobSpec, []UnknownDependency, error)
 	// GetDownstreamJobs reads static as well as inferred down stream dependencies

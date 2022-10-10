@@ -413,6 +413,81 @@
       },
       "title": "retry behaviour if job failed to execute for the first time"
     },
+    "JobInspectResponseBasicInfoSection": {
+      "type": "object",
+      "properties": {
+        "job": {
+          "$ref": "#/definitions/v1beta1JobSpecification"
+        },
+        "source": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "destination": {
+          "type": "string"
+        },
+        "notice": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1Log"
+          }
+        }
+      }
+    },
+    "JobInspectResponseDownstreamSection": {
+      "type": "object",
+      "properties": {
+        "downstreamJobs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1OptimusDependency"
+          }
+        },
+        "notice": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1Log"
+          }
+        }
+      }
+    },
+    "JobInspectResponseUpstreamSection": {
+      "type": "object",
+      "properties": {
+        "externalDependency": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1OptimusDependency"
+          }
+        },
+        "internalDependency": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1OptimusDependency"
+          }
+        },
+        "httpDependency": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1HttpDependency"
+          }
+        },
+        "unknownDependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/UpstreamSectionUnknownDependencies"
+          }
+        },
+        "notice": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1Log"
+          }
+        }
+      }
+    },
     "JobSpecificationBehavior": {
       "type": "object",
       "properties": {
@@ -424,6 +499,17 @@
           "items": {
             "$ref": "#/definitions/BehaviorNotifiers"
           }
+        }
+      }
+    },
+    "UpstreamSectionUnknownDependencies": {
+      "type": "object",
+      "properties": {
+        "jobName": {
+          "type": "string"
+        },
+        "projectName": {
+          "type": "string"
         }
       }
     },
@@ -659,59 +745,14 @@
     "v1beta1JobInspectResponse": {
       "type": "object",
       "properties": {
-        "spec": {
-          "$ref": "#/definitions/v1beta1JobSpecification"
+        "basicInfo": {
+          "$ref": "#/definitions/JobInspectResponseBasicInfoSection"
         },
-        "sources": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+        "upstreams": {
+          "$ref": "#/definitions/JobInspectResponseUpstreamSection"
         },
-        "destination": {
-          "type": "string"
-        },
-        "log": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1Log"
-          }
-        },
-        "upstreamJobs": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1OptimusDependency"
-          }
-        },
-        "downstreamJobs": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1OptimusDependency"
-          }
-        },
-        "externalDependency": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1OptimusDependency"
-          }
-        },
-        "httpDependency": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1HttpDependency"
-          }
-        },
-        "unknownDependencies": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1UnknownDependencies"
-          }
-        },
-        "upstreamRuns": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1UpstreamRuns"
-          }
+        "downstreams": {
+          "$ref": "#/definitions/JobInspectResponseDownstreamSection"
         }
       }
     },
@@ -723,6 +764,18 @@
         },
         "airflow": {
           "$ref": "#/definitions/v1beta1JobSpecMetadataAirflow"
+        }
+      }
+    },
+    "v1beta1JobRun": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string"
+        },
+        "scheduledAt": {
+          "type": "string",
+          "format": "date-time"
         }
       }
     },
@@ -906,25 +959,25 @@
     "v1beta1OptimusDependency": {
       "type": "object",
       "properties": {
-        "Name": {
+        "name": {
           "type": "string"
         },
-        "Host": {
+        "host": {
           "type": "string"
         },
-        "ProjectName": {
+        "projectName": {
           "type": "string"
         },
-        "NamespaceName": {
+        "namespaceName": {
           "type": "string"
         },
-        "TaskName": {
+        "taskName": {
           "type": "string"
         },
-        "Headers": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
+        "runs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1JobRun"
           }
         }
       }
@@ -937,32 +990,6 @@
         },
         "logStatus": {
           "$ref": "#/definitions/v1beta1Log"
-        }
-      }
-    },
-    "v1beta1UnknownDependencies": {
-      "type": "object",
-      "properties": {
-        "JobName": {
-          "type": "string"
-        },
-        "ProjectName": {
-          "type": "string"
-        }
-      }
-    },
-    "v1beta1UpstreamRuns": {
-      "type": "object",
-      "properties": {
-        "JobIdentifier": {
-          "type": "string"
-        },
-        "runs": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "format": "date-time"
-          }
         }
       }
     }

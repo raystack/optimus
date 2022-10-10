@@ -449,7 +449,8 @@ func TestService(t *testing.T) {
 			defer jobSpecRepo.AssertExpectations(t)
 
 			batchScheduler := new(mock.Scheduler)
-			batchScheduler.On("DeleteJobs", ctx, namespaceSpec, []string{jobSpecsBase[0].Name}, nil).Return(nil)
+			batchScheduler.On("DeleteJobs", ctx, namespaceSpec.Name, namespaceSpec, []string{jobSpecsBase[0].Name}, nil).Return(nil)
+			batchScheduler.On("DeleteJobs", ctx, namespaceSpec.ID.String(), namespaceSpec, []string{jobSpecsBase[0].Name}, nil).Return(nil)
 			defer batchScheduler.AssertExpectations(t)
 
 			svc := job.NewService(namespaceJobSpecRepoFac, batchScheduler, nil, nil, nil,
@@ -2145,15 +2146,27 @@ func TestService(t *testing.T) {
 			Destination: "project.dataset.table",
 			Type:        models.DestinationTypeBigquery,
 		}
+		jobSpec.ResourceDestination = destination.URN()
 
-		t.Run("should be able to get destination and source tables", func(t *testing.T) {
+		t.Run("should be able to get JobBasicInfo", func(t *testing.T) {
 			pluginService := new(mock.DependencyResolverPluginService)
 			defer pluginService.AssertExpectations(t)
 			pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(destination, nil)
+			pluginService.On("GenerateDependencies", ctx, jobSpec, namespaceSpec, true).Return(&models.GenerateDependenciesResponse{Dependencies: []string{"dependency1urn"}}, nil)
 			pluginService.On("GenerateDependencies", ctx, jobSpec, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: []string{"dependency1urn"}}, nil)
+
+			batchScheduler := new(mock.Scheduler)
+			defer batchScheduler.AssertExpectations(t)
+			batchScheduler.On("VerifyJob", ctx, namespaceSpec, jobSpec).Return(nil)
+
+			jobSpecRepo := new(mock.JobSpecRepository)
+			defer jobSpecRepo.AssertExpectations(t)
+			//jobSpecRepo.On("GetJobByName", ctx, jobSpec.GetName()).Return([]models.JobSpec{jobSpec}, nil)
+			jobSpecRepo.On("GetJobByResourceDestination", ctx, destination.URN()).Return(jobSpec, nil)
+
 			svc := job.NewService(
 				nil,
-				nil,
+				batchScheduler,
 				nil,
 				nil,
 				nil,
@@ -2163,41 +2176,12 @@ func TestService(t *testing.T) {
 				nil,
 				nil,
 				pluginService,
-				nil,
+				jobSpecRepo,
 				nil)
 
-			JobSpecTaskDestination, JobSpecTaskDependencies, err := svc.GetJobSourceAndDestination(ctx, jobSpec)
-			assert.Nil(t, err)
-			assert.Equal(t, JobSpecTaskDestination.Destination, "project.dataset.table")
-			assert.Equal(t, JobSpecTaskDependencies, models.JobSpecTaskDependencies{"dependency1urn"})
-		})
-		t.Run("should not exit early if GenerateDestination fails, should send both errors instead", func(t *testing.T) {
-			pluginService := new(mock.DependencyResolverPluginService)
-			defer pluginService.AssertExpectations(t)
-			pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(&models.GenerateDestinationResponse{}, fmt.Errorf("GenerateDestination Error message"))
-			pluginService.On("GenerateDependencies", ctx, jobSpec, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{}, fmt.Errorf("GenerateDependencies Error message"))
-			svc := job.NewService(
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-				pluginService,
-				nil,
-				nil)
-
-			_, _, err := svc.GetJobSourceAndDestination(ctx, jobSpec)
-
-			assert.Equal(t, `2 errors occurred:
-	* unable to generate destination err::GenerateDestination Error message
-	* failed to generate dependencies err::GenerateDependencies Error message
-
-`, err.Error())
+			jobBasicInfo := svc.GetJobBasicInfo(ctx, jobSpec)
+			assert.Equal(t, jobBasicInfo.Destination, destination.URN())
+			assert.Equal(t, jobBasicInfo.JobSource, []string{"dependency1urn"})
 		})
 	})
 }

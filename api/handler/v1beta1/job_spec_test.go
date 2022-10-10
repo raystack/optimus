@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
+	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/internal/lib/progress"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
@@ -1137,6 +1138,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				},
 				Window: window,
 			},
+			NamespaceSpec: namespaceSpec,
 			Behavior: models.JobSpecBehavior{
 				CatchUp: true,
 			},
@@ -1166,7 +1168,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				namespaceService,
 				nil,
 			)
-
 			GetJobSourceAndDestinationLog := pb.Log{
 				Level:   pb.Level_LEVEL_INFO,
 				Message: "successfully generated job destination and sources",
@@ -1175,28 +1176,33 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				Level:   pb.Level_LEVEL_WARNING,
 				Message: "Catchup is enabled",
 			}
-			expectedJobInspectResponse := &pb.JobInspectResponse{
-				Spec:        v1.ToJobSpecificationProto(jobSpec),
-				Destination: resourceDestinationUrn,
-				Sources:     []string{"bigquery://tableName"},
-				Log: []*pb.Log{
-					&GetJobSourceAndDestinationLog,
-					&catchUpWarning,
-				},
-			}
-			jobSpec.NamespaceSpec = namespaceSpec
 
 			jobDestination := models.JobSpecTaskDestination{
 				Destination: resourceDestination,
 				Type:        models.DestinationTypeBigquery,
 			}
-			//logWriter := &writer.BufferedLogger{}
-			jobService.On("GetJobSourceAndDestination", ctx, jobSpec).Return(jobDestination, models.JobSpecTaskDependencies{"bigquery://tableName"}, nil)
+			expectedJobInspectResponse := &pb.JobInspectResponse{
+				BasicInfo: v1.ToBasicInfoSectionProto(models.JobBasicInfo{
+					Log: writer.BufferedLogger{
+						Messages: []*pb.Log{
+							&GetJobSourceAndDestinationLog,
+							&catchUpWarning,
+						},
+					},
+					Spec:        jobSpec,
+					Destination: resourceDestinationUrn,
+					JobSource:   []string{"bigquery://tableName"},
+				}),
+			}
+			logWriter := &writer.BufferedLogger{}
+			jobService.On("GetJobBasicInfo", ctx, jobSpec).Return(models.JobBasicInfo{
+				Spec:        jobSpec,
+				JobSource:   models.JobSpecTaskDependencies{"bigquery://tableName"},
+				Destination: jobDestination.URN(),
+				Log:         *logWriter}, nil)
 
 			jobSpecInternal := jobSpec
 			jobSpecInternal.ResourceDestination = resourceDestinationUrn
-			jobService.On("Check", ctx, namespaceSpec, []models.JobSpec{jobSpecInternal}, mock2.Anything).Return(nil)
-			jobService.On("IsJobDestinationDuplicate", ctx, jobSpecInternal, mock2.Anything).Return("", nil)
 
 			jobInspectRequest := &pb.JobInspectRequest{
 				Spec:          v1.ToJobSpecificationProto(jobSpec),
@@ -1207,19 +1213,9 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobInspectResponse, err := jobSpecServiceServer.JobInspect(ctx, jobInspectRequest)
 
 			assert.Nil(t, err)
-			assert.Equal(t, expectedJobInspectResponse.Spec, jobInspectResponse.Spec)
-			assert.Equal(t, expectedJobInspectResponse.Destination, jobInspectResponse.Destination)
-			assert.Equal(t, expectedJobInspectResponse.Sources, jobInspectResponse.Sources)
-			for _, logExpeceted := range expectedJobInspectResponse.Log {
-				var found bool
-				for _, logActual := range jobInspectResponse.Log {
-					if logActual.Level == logExpeceted.Level && logActual.Message == logExpeceted.Message {
-						found = true
-						break
-					}
-				}
-				assert.True(t, found)
-			}
+			assert.Equal(t, expectedJobInspectResponse.BasicInfo.Job, jobInspectResponse.BasicInfo.Job)
+			assert.Equal(t, expectedJobInspectResponse.BasicInfo.Destination, jobInspectResponse.BasicInfo.Destination)
+			assert.Equal(t, expectedJobInspectResponse.BasicInfo.Source, jobInspectResponse.BasicInfo.Source)
 		})
 	})
 }

@@ -412,9 +412,9 @@ func (srv *JobService) GetTaskDependencies(ctx context.Context, namespaceSpec mo
 	return args.Get(0).(models.JobSpecTaskDestination), args.Get(1).(models.JobSpecTaskDependencies), args.Error(2)
 }
 
-func (srv *JobService) GetJobSourceAndDestination(ctx context.Context, spec models.JobSpec) (models.JobSpecTaskDestination, models.JobSpecTaskDependencies, error) {
+func (srv *JobService) GetJobBasicInfo(ctx context.Context, spec models.JobSpec) models.JobBasicInfo {
 	args := srv.Called(ctx, spec)
-	return args.Get(0).(models.JobSpecTaskDestination), args.Get(1).(models.JobSpecTaskDependencies), args.Error(2)
+	return args.Get(0).(models.JobBasicInfo)
 }
 
 func (srv *JobService) Check(ctx context.Context, namespaceSpec models.NamespaceSpec, specs []models.JobSpec, logWriter writer.LogWriter) error {
@@ -473,11 +473,6 @@ func (srv *JobService) GetByResourceDestination(ctx context.Context, resourceDes
 func (srv *JobService) CreateAndDeploy(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpec []models.JobSpec, logWriter writer.LogWriter) (models.DeploymentID, error) {
 	args := srv.Called(ctx, namespaceSpec, jobSpec, logWriter)
 	return args.Get(0).(models.DeploymentID), args.Error(1)
-}
-
-func (srv *JobService) IsJobDestinationDuplicate(ctx context.Context, jobSpec models.JobSpec) (string, error) {
-	args := srv.Called(ctx, jobSpec)
-	return args.Get(0).(string), args.Error(1)
 }
 
 func (srv *JobService) EnrichUpstreamJobs(ctx context.Context, currentSpec models.JobSpec, jobSources []string, logWriter writer.LogWriter) (models.JobSpec, []models.UnknownDependency, error) {
