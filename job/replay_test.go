@@ -95,9 +95,7 @@ func TestReplay(t *testing.T) {
 	jobSpecs = append(jobSpecs, specs[spec6])
 
 	t.Run("ReplayDryRun", func(t *testing.T) {
-
 		t.Run("should fail if unable to fetch jobSpecs from GetJobSpecsWithDependencies", func(t *testing.T) {
-
 			dependencyResolver := new(mock.DependencyResolver)
 			defer dependencyResolver.AssertExpectations(t)
 			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projSpec.Name).Return([]models.JobSpec{}, nil, errors.New("error while getting all dags"))
