@@ -30,12 +30,12 @@ func (e *ExternalTable) Validate() error {
 
 	err := e.Schema.Validate()
 	if err != nil {
-		return err
+		return errors.AddErrContext(err, EntityExternalTable, "error in schema for "+e.FullName())
 	}
 
 	err = e.Source.Validate()
 	if err != nil {
-		return err
+		return errors.AddErrContext(err, EntityExternalTable, "error in source for "+e.FullName())
 	}
 	return nil
 }

@@ -1,6 +1,10 @@
 package resource
 
-import "github.com/odpf/optimus/internal/errors"
+import (
+	"strings"
+
+	"github.com/odpf/optimus/internal/errors"
+)
 
 const (
 	EntityTable = "resource_table"
@@ -28,22 +32,22 @@ func (t *Table) URN() string {
 
 func (t *Table) Validate() error {
 	if len(t.Schema) == 0 {
-		return errors.InvalidArgument(EntityTable, "invalid schema for table "+t.FullName())
+		return errors.InvalidArgument(EntityTable, "empty schema for table "+t.FullName())
 	}
 
 	if err := t.Schema.Validate(); err != nil {
-		return err
+		return errors.AddErrContext(err, EntityTable, "invalid schema for table "+t.FullName())
 	}
 
 	if t.Partition != nil {
 		if err := t.Partition.Validate(); err != nil {
-			return err
+			return errors.AddErrContext(err, EntityTable, "invalid partition for table "+t.FullName())
 		}
 	}
 
 	if t.Cluster != nil {
 		if err := t.Cluster.Validate(); err != nil {
-			return err
+			return errors.AddErrContext(err, EntityTable, "invalid cluster for table "+t.FullName())
 		}
 	}
 
@@ -58,6 +62,12 @@ func (c Cluster) Validate() error {
 	if len(c.Using) == 0 {
 		return errors.InvalidArgument(EntityTable, "cluster config is empty")
 	}
+	for _, clause := range c.Using {
+		if clause == "" {
+			return errors.InvalidArgument(EntityTable, "cluster config has invalid value")
+		}
+	}
+
 	return nil
 }
 
@@ -72,16 +82,16 @@ type Partition struct {
 
 func (p Partition) Validate() error {
 	if p.Field == "" {
-		return errors.InvalidArgument(EntityTable, "name of field for partition is empty")
+		return errors.InvalidArgument(EntityTable, "partition field name is empty")
 	}
 
 	if p.Type == "" {
-		return errors.InvalidArgument(EntityTable, "partition type is empty")
+		return errors.InvalidArgument(EntityTable, "partition type is empty for "+p.Field)
 	}
 
-	if p.Type == "range" {
+	if strings.EqualFold(p.Type, "range") {
 		if p.Range == nil {
-			return errors.InvalidArgument(EntityTable, "partition type range have no range config")
+			return errors.InvalidArgument(EntityTable, "partition type range have no range config for "+p.Field)
 		}
 	}
 

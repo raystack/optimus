@@ -30,6 +30,21 @@ type DomainError struct {
 	WrappedErr error
 }
 
+func AddErrContext(err error, entity string, msg string) *DomainError {
+	errType := ErrInternalError
+	var de *DomainError
+	if errors.As(err, &de) {
+		errType = de.ErrorType
+	}
+
+	return &DomainError{
+		ErrorType:  errType,
+		Entity:     entity,
+		Message:    msg,
+		WrappedErr: err,
+	}
+}
+
 func NewError(errType ErrorType, entity string, msg string) *DomainError {
 	return &DomainError{
 		Entity:     entity,
@@ -75,8 +90,12 @@ func As(err error, target any) bool {
 }
 
 func (e *DomainError) Error() string {
-	return fmt.Sprintf("%v for entity %v: %v",
-		e.ErrorType.String(), e.Entity, e.Message)
+	subError := ""
+	if errors.Is(e.WrappedErr, &DomainError{}) {
+		subError = ": " + e.WrappedErr.Error()
+	}
+	return fmt.Sprintf("%v for entity %v: %v%s",
+		e.ErrorType.String(), e.Entity, e.Message, subError)
 }
 
 func (e *DomainError) Unwrap() error {
