@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/odpf/optimus/internal/lib/tree"
@@ -96,14 +95,17 @@ func TestReplay(t *testing.T) {
 	jobSpecs = append(jobSpecs, specs[spec6])
 
 	t.Run("ReplayDryRun", func(t *testing.T) {
-		t.Run("should fail if unable to fetch jobSpecs from project jobSpecRepo", func(t *testing.T) {
-			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name).Return(nil, errors.New("error while getting all dags"))
+
+		t.Run("should fail if unable to fetch jobSpecs from GetJobSpecsWithDependencies", func(t *testing.T) {
+
+			dependencyResolver := new(mock.DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
+			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projSpec.Name).Return([]models.JobSpec{}, nil, errors.New("error while getting all dags"))
 
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
-			jobSvc := job.NewService(nil, nil, nil, nil, nil, nil, nil, nil, nil, jobSpecRepository, nil)
+			jobSvc := job.NewService(nil, nil, dependencyResolver, nil, nil, nil, nil, nil, nil, nil, nil)
 			replayRequest := models.ReplayRequest{
 				Job:                         specs[spec1],
 				Start:                       replayStart,
@@ -114,39 +116,6 @@ func TestReplay(t *testing.T) {
 			_, err := jobSvc.ReplayDryRun(ctx, replayRequest)
 
 			assert.NotNil(t, err)
-		})
-
-		t.Run("should fail if unable to resolve jobs using dependency resolver", func(t *testing.T) {
-			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name).Return(jobSpecs, nil)
-
-			// resolve dependencies
-			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], nil).Return(models.JobSpec{}, errors.New("error while fetching dag1"))
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], nil).Return(jobSpecs[1], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], nil).Return(jobSpecs[2], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], nil).Return(models.JobSpec{}, errors.New("error while fetching dag3"))
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], nil).Return(models.JobSpec{}, errors.New("error while fetching dag4"))
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
-			defer depenResolver.AssertExpectations(t)
-
-			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
-			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
-
-			jobSvc := job.NewService(nil, nil, depenResolver, nil, nil, nil, nil, nil, nil, jobSpecRepository, nil)
-			replayRequest := models.ReplayRequest{
-				Job:                         specs[spec1],
-				Start:                       replayStart,
-				End:                         replayEnd,
-				Project:                     projSpec,
-				AllowedDownstreamNamespaces: []string{models.AllNamespace},
-			}
-			_, err := jobSvc.ReplayDryRun(ctx, replayRequest)
-
-			assert.NotNil(t, err)
-			var merr *multierror.Error
-			errors.As(err, &merr)
-			assert.Equal(t, 3, merr.Len())
 		})
 
 		t.Run("should fail if tree is cyclic", func(t *testing.T) {
@@ -166,8 +135,7 @@ func TestReplay(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, cyclicDagSpec[0], nil).Return(cyclicDagSpec[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, cyclicDagSpec[1], nil).Return(cyclicDagSpec[1], nil)
+			depenResolver.On("GetJobSpecsWithDependencies", ctx, projSpec.Name).Return(cyclicDagSpec, nil, nil)
 			defer depenResolver.AssertExpectations(t)
 
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
@@ -191,14 +159,8 @@ func TestReplay(t *testing.T) {
 			jobSpecRepository := mock.NewJobSpecRepository(t)
 			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name).Return(jobSpecs, nil)
 
-			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], nil).Return(jobSpecs[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], nil).Return(jobSpecs[1], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], nil).Return(jobSpecs[2], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], nil).Return(jobSpecs[3], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], nil).Return(jobSpecs[4], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
+			depenResolver.On("GetJobSpecsWithDependencies", ctx, projSpec.Name).Return(jobSpecs, nil, nil)
 			defer depenResolver.AssertExpectations(t)
 
 			jobSvc := job.NewService(nil, nil, depenResolver, nil, nil, nil, nil, nil, nil, jobSpecRepository, nil)
@@ -243,14 +205,8 @@ func TestReplay(t *testing.T) {
 			jobSpecRepository := mock.NewJobSpecRepository(t)
 			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name).Return(jobSpecs, nil)
 
-			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], nil).Return(jobSpecs[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], nil).Return(jobSpecs[1], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], nil).Return(jobSpecs[2], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], nil).Return(jobSpecs[3], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], nil).Return(jobSpecs[4], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
+			depenResolver.On("GetJobSpecsWithDependencies", ctx, projSpec.Name).Return(jobSpecs, nil, nil)
 			defer depenResolver.AssertExpectations(t)
 
 			jobSvc := job.NewService(nil, nil, depenResolver, nil, nil, nil, nil, nil, nil, jobSpecRepository, nil)
@@ -307,12 +263,7 @@ func TestReplay(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], nil).Return(jobSpecs[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], nil).Return(jobSpecs[1], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], nil).Return(jobSpecs[2], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], nil).Return(jobSpecs[3], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], nil).Return(jobSpecs[4], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
+			depenResolver.On("GetJobSpecsWithDependencies", ctx, projSpec.Name).Return(jobSpecs, nil, nil)
 			defer depenResolver.AssertExpectations(t)
 
 			jobSvc := job.NewService(nil, nil, depenResolver, nil, nil, nil, nil, nil, nil, jobSpecRepository, nil)
@@ -351,12 +302,7 @@ func TestReplay(t *testing.T) {
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], nil).Return(jobSpecs[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], nil).Return(jobSpecs[1], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], nil).Return(jobSpecs[2], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], nil).Return(jobSpecs[3], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], nil).Return(jobSpecs[4], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
+			depenResolver.On("GetJobSpecsWithDependencies", ctx, projSpec.Name).Return(jobSpecs, nil, nil)
 			defer depenResolver.AssertExpectations(t)
 
 			jobSvc := job.NewService(nil, nil, depenResolver, nil, nil, nil, nil, nil, nil, jobSpecRepository, nil)
@@ -388,14 +334,15 @@ func TestReplay(t *testing.T) {
 	})
 
 	t.Run("Replay", func(t *testing.T) {
-		t.Run("should fail if unable to fetch jobSpecs from project jobSpecRepo", func(t *testing.T) {
-			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name).Return(nil, errors.New("error while getting all dags"))
+		t.Run("should fail if unable to fetch jobSpecs from GetJobSpecsWithDependencies", func(t *testing.T) {
+			dependencyResolver := new(mock.DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
+			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projSpec.Name).Return([]models.JobSpec{}, nil, errors.New("error while getting all dags"))
 
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
 			replayEnd, _ := time.Parse(job.ReplayDateFormat, "2020-08-07")
 
-			jobSvc := job.NewService(nil, nil, nil, nil, nil, nil, nil, nil, nil, jobSpecRepository, nil)
+			jobSvc := job.NewService(nil, nil, dependencyResolver, nil, nil, nil, nil, nil, nil, nil, nil)
 			replayRequest := models.ReplayRequest{
 				Job:                         specs[spec1],
 				Start:                       replayStart,
@@ -413,12 +360,7 @@ func TestReplay(t *testing.T) {
 			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name).Return(jobSpecs, nil)
 
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], nil).Return(jobSpecs[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], nil).Return(jobSpecs[1], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], nil).Return(jobSpecs[2], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], nil).Return(jobSpecs[3], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], nil).Return(jobSpecs[4], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
+			depenResolver.On("GetJobSpecsWithDependencies", ctx, projSpec.Name).Return(jobSpecs, nil, nil)
 			defer depenResolver.AssertExpectations(t)
 
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
@@ -454,12 +396,7 @@ func TestReplay(t *testing.T) {
 			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name).Return(jobSpecs, nil)
 
 			depenResolver := new(mock.DependencyResolver)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[0], nil).Return(jobSpecs[0], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[1], nil).Return(jobSpecs[1], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[2], nil).Return(jobSpecs[2], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[3], nil).Return(jobSpecs[3], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[4], nil).Return(jobSpecs[4], nil)
-			depenResolver.On("Resolve", ctx, projSpec, jobSpecs[5], nil).Return(jobSpecs[5], nil)
+			depenResolver.On("GetJobSpecsWithDependencies", ctx, projSpec.Name).Return(jobSpecs, nil, nil)
 			defer depenResolver.AssertExpectations(t)
 
 			replayStart, _ := time.Parse(job.ReplayDateFormat, "2020-08-05")
