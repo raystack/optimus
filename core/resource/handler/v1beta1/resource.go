@@ -87,7 +87,7 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 			continue
 		}
 
-		//runtimeDeployResourceSpecificationCounter.Add(float64(len(resourceSpecs)))
+		// runtimeDeployResourceSpecificationCounter.Add(float64(len(resourceSpecs)))
 		successMsg := fmt.Sprintf("resources with namespace [%s] are deployed successfully", request.GetNamespaceName())
 		responseWriter.Write(writer.LogLevelInfo, successMsg)
 	}
@@ -150,7 +150,7 @@ func (rh ResourceHandler) CreateResource(ctx context.Context, req *pb.CreateReso
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to create resource "+res.FullName())
 	}
-	//runtimeDeployResourceSpecificationCounter.Inc()
+	// runtimeDeployResourceSpecificationCounter.Inc()
 
 	return &pb.CreateResourceResponse{}, nil
 }
@@ -207,7 +207,7 @@ func (rh ResourceHandler) UpdateResource(ctx context.Context, req *pb.UpdateReso
 		return nil, errors.GRPCErr(err, "failed to update resource "+res.FullName())
 	}
 
-	//runtimeDeployResourceSpecificationCounter.Inc()
+	// runtimeDeployResourceSpecificationCounter.Inc()
 	return &pb.UpdateResourceResponse{}, nil
 }
 

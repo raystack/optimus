@@ -45,7 +45,7 @@ type ExternalSource struct {
 	SourceURIs []string `mapstructure:"uris,omitempty"`
 
 	// Additional configs for CSV, GoogleSheets, Bigtable, and Parquet formats.
-	Config map[string]interface{} `mapstructure:",remain"`
+	Config map[string]interface{} `mapstructure:"config"`
 }
 
 func (e ExternalSource) Validate() error {

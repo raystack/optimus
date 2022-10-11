@@ -3,7 +3,6 @@ package v1beta1_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"testing"
 
@@ -73,7 +72,6 @@ func TestResourceHandler(t *testing.T) {
 			}
 
 			argMatcher := mock.MatchedBy(func(req *pb.DeployResourceSpecificationResponse) bool {
-				fmt.Println(req.LogStatus.Message)
 				return req.LogStatus.Message == "invalid store name for unknown: invalid argument for entity resource: unknown store unknown"
 			})
 			stream := new(resourceStreamMock)
@@ -247,7 +245,7 @@ func TestResourceHandler(t *testing.T) {
 		t.Run("returns error when unable to convert", func(t *testing.T) {
 			service := new(resourceService)
 			service.On("GetAll", ctx, mock.Anything, resource.BigQuery).
-				Return([]*resource.Resource{&resource.Resource{}}, nil)
+				Return([]*resource.Resource{{}}, nil)
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -772,18 +770,18 @@ func (r *resourceStreamMock) Recv() (*pb.DeployResourceSpecificationRequest, err
 	return rs, args.Error(1)
 }
 
-func (r *resourceStreamMock) SetHeader(md metadata.MD) error {
+func (*resourceStreamMock) SetHeader(metadata.MD) error {
 	panic("not supported")
 }
-func (r *resourceStreamMock) SendHeader(md metadata.MD) error {
+func (*resourceStreamMock) SendHeader(metadata.MD) error {
 	panic("not supported")
 }
-func (r *resourceStreamMock) SetTrailer(md metadata.MD) {
+func (*resourceStreamMock) SetTrailer(metadata.MD) {
 	panic("not supported")
 }
-func (r *resourceStreamMock) SendMsg(m interface{}) error {
+func (*resourceStreamMock) SendMsg(interface{}) error {
 	panic("not supported")
 }
-func (r *resourceStreamMock) RecvMsg(m interface{}) error {
+func (*resourceStreamMock) RecvMsg(interface{}) error {
 	panic("not supported")
 }
