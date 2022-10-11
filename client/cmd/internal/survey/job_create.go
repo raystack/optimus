@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
-	"gopkg.in/yaml.v2"
 
 	"github.com/odpf/optimus/client/local"
+	"github.com/odpf/optimus/client/local/model"
 	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
 )
@@ -37,16 +37,16 @@ func NewJobCreateSurvey() *JobCreateSurvey {
 }
 
 // AskToCreateJob asks questions to create job
-func (j *JobCreateSurvey) AskToCreateJob(jobSpecRepo JobSpecRepository, defaultJobName string) (local.Job, error) {
+func (j *JobCreateSurvey) AskToCreateJob(jobSpecReader local.SpecReader[*model.JobSpec], jobDir, defaultJobName string) (model.JobSpec, error) {
 	availableTaskNames := j.getAvailableTaskNames()
 	if len(availableTaskNames) == 0 {
-		return local.Job{}, errors.New("no supported task plugin found")
+		return model.JobSpec{}, errors.New("no supported task plugin found")
 	}
 
-	createQuestions := j.getCreateQuestions(jobSpecRepo, defaultJobName, availableTaskNames)
+	createQuestions := j.getCreateQuestions(jobSpecReader, jobDir, defaultJobName, availableTaskNames)
 	jobInput, err := j.askCreateQuestions(createQuestions)
 	if err != nil {
-		return local.Job{}, err
+		return model.JobSpec{}, err
 	}
 
 	cliMod, err := j.getPluginCLIMod(jobInput.Task.Name)
@@ -94,17 +94,19 @@ func (*JobCreateSurvey) getJobAsset(cliMod models.CommandLineMod, answers models
 	return asset, nil
 }
 
-func (*JobCreateSurvey) getTaskConfig(cliMod models.CommandLineMod, answers models.PluginAnswers) (yaml.MapSlice, error) {
+func (*JobCreateSurvey) getTaskConfig(cliMod models.CommandLineMod, answers models.PluginAnswers) (map[string]string, error) {
 	ctx := context.Background()
 	defaultConfigRequest := models.DefaultConfigRequest{Answers: answers}
 	generatedConfigResponse, err := cliMod.DefaultConfig(ctx, defaultConfigRequest)
 	if err != nil {
 		return nil, err
 	}
-	var taskConfig yaml.MapSlice
+	taskConfig := make(map[string]string)
 	if generatedConfigResponse.Config != nil {
 		jobSpecConfigs := generatedConfigResponse.Config.ToJobSpec()
-		taskConfig = local.JobSpecConfigToYamlSlice(jobSpecConfigs)
+		for _, conf := range []models.JobSpecConfigItem(jobSpecConfigs) {
+			taskConfig[conf.Name] = conf.Value
+		}
 	}
 	return taskConfig, nil
 }
@@ -119,7 +121,7 @@ func (*JobCreateSurvey) getAvailableTaskNames() []string {
 	return output
 }
 
-func (j *JobCreateSurvey) getCreateQuestions(jobSpecRepo JobSpecRepository, defaultJobName string, availableTaskNames []string) []*survey.Question {
+func (j *JobCreateSurvey) getCreateQuestions(jobSpecReader local.SpecReader[*model.JobSpec], jobDir, defaultJobName string, availableTaskNames []string) []*survey.Question {
 	return []*survey.Question{
 		{
 			Name: "name",
@@ -128,7 +130,7 @@ func (j *JobCreateSurvey) getCreateQuestions(jobSpecRepo JobSpecRepository, defa
 				Default: defaultJobName,
 				Help:    "It should be unique across whole optimus project",
 			},
-			Validate: survey.ComposeValidators(validateJobName, j.getValidateJobUniqueness(jobSpecRepo)),
+			Validate: survey.ComposeValidators(validateJobName, j.getValidateJobUniqueness(jobSpecReader, jobDir)),
 		},
 		{
 			Name: "owner",
@@ -179,35 +181,35 @@ this effects runtime dependencies and template macros`,
 	}
 }
 
-func (j *JobCreateSurvey) askCreateQuestions(questions []*survey.Question) (local.Job, error) {
+func (j *JobCreateSurvey) askCreateQuestions(questions []*survey.Question) (model.JobSpec, error) {
 	baseInputsRaw := make(map[string]interface{})
 	if err := survey.Ask(questions, &baseInputsRaw); err != nil {
-		return local.Job{}, err
+		return model.JobSpec{}, err
 	}
 	baseInputs, err := utils.ConvertToStringMap(baseInputsRaw)
 	if err != nil {
-		return local.Job{}, err
+		return model.JobSpec{}, err
 	}
 
-	return local.Job{
+	return model.JobSpec{
 		Version: models.JobSpecDefaultVersion,
 		Name:    baseInputs["name"],
 		Owner:   baseInputs["owner"],
-		Schedule: local.JobSchedule{
+		Schedule: model.JobSpecSchedule{
 			StartDate: baseInputs["start_date"],
 			Interval:  baseInputs["interval"],
 		},
-		Task: local.JobTask{
+		Task: model.JobSpecTask{
 			Name:   baseInputs["task"],
 			Window: j.getWindowParameters(baseInputs["window"]),
 		},
 		Asset: map[string]string{},
-		Behavior: local.JobBehavior{
+		Behavior: model.JobSpecBehavior{
 			Catchup:       false,
 			DependsOnPast: false,
 		},
-		Dependencies: []local.JobDependency{},
-		Hooks:        []local.JobHook{},
+		Dependencies: []model.JobSpecDependency{},
+		Hooks:        []model.JobSpecHook{},
 		Labels: map[string]string{
 			"orchestrator": "optimus",
 		},
@@ -243,41 +245,41 @@ func (j *JobCreateSurvey) askPluginQuestions(cliMod models.CommandLineMod, jobNa
 }
 
 // getValidateJobUniqueness return a validator that checks if the job already exists with the same name
-func (*JobCreateSurvey) getValidateJobUniqueness(repository JobSpecRepository) survey.Validator {
+func (*JobCreateSurvey) getValidateJobUniqueness(jobSpecReader local.SpecReader[*model.JobSpec], jobDir string) survey.Validator {
 	return func(val interface{}) error {
 		jobName, ok := val.(string)
 		if !ok {
 			return fmt.Errorf("invalid type of job name %v", reflect.TypeOf(val).Name())
 		}
-		if _, err := repository.GetByName(jobName); err == nil {
+		if _, err := jobSpecReader.ReadByName(jobDir, jobName); err == nil {
 			return fmt.Errorf("job with the provided name already exists")
 		}
 		return nil
 	}
 }
 
-func (*JobCreateSurvey) getWindowParameters(winName string) local.JobTaskWindow {
+func (*JobCreateSurvey) getWindowParameters(winName string) model.JobSpecTaskWindow {
 	switch winName {
 	case "hourly":
-		return local.JobTaskWindow{
+		return model.JobSpecTaskWindow{
 			Size:       "1h",
 			Offset:     "0",
 			TruncateTo: "h",
 		}
 	case "daily":
-		return local.JobTaskWindow{
+		return model.JobSpecTaskWindow{
 			Size:       "24h",
 			Offset:     "0",
 			TruncateTo: "d",
 		}
 	case "weekly":
-		return local.JobTaskWindow{
+		return model.JobSpecTaskWindow{
 			Size:       "168h",
 			Offset:     "0",
 			TruncateTo: "w",
 		}
 	case "monthly":
-		return local.JobTaskWindow{
+		return model.JobSpecTaskWindow{
 			Size:       "720h",
 			Offset:     "0",
 			TruncateTo: "M",
@@ -285,7 +287,7 @@ func (*JobCreateSurvey) getWindowParameters(winName string) local.JobTaskWindow 
 	}
 
 	// default
-	return local.JobTaskWindow{
+	return model.JobSpecTaskWindow{
 		Size:       "24h",
 		Offset:     "0",
 		TruncateTo: "h",

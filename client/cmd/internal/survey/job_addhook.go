@@ -7,6 +7,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 
+	"github.com/odpf/optimus/client/local/model"
 	"github.com/odpf/optimus/models"
 )
 
@@ -23,56 +24,64 @@ func NewJobAddHookSurvey() *JobAddHookSurvey {
 }
 
 // AskToAddHook asks questions to add hook to a job
-func (j *JobAddHookSurvey) AskToAddHook(jobSpec models.JobSpec, pluginRepo models.PluginRepository) (models.JobSpec, error) {
+func (j *JobAddHookSurvey) AskToAddHook(jobSpec *model.JobSpec) (*model.JobSpec, error) {
+	pluginRepo := models.PluginRegistry
+	newJobSpec := *jobSpec
 	availableHookNames := j.getAvailableHookNames()
 	if len(availableHookNames) == 0 {
-		return models.JobSpec{}, errors.New("no supported hook plugin found")
+		return nil, errors.New("no supported hook plugin found")
 	}
 
 	selectedHookName, err := j.askToSelectHook(availableHookNames)
 	if err != nil {
-		return models.JobSpec{}, err
+		return nil, err
 	}
 
 	if j.isSelectedHookAlreadyInJob(jobSpec, selectedHookName) {
-		return models.JobSpec{}, fmt.Errorf("hook %s already exists for this job", selectedHookName)
+		return nil, fmt.Errorf("hook %s already exists for this job", selectedHookName)
 	}
 
 	selectedHook, err := pluginRepo.GetByName(selectedHookName)
 	if err != nil {
-		return models.JobSpec{}, err
+		return nil, err
 	}
 
-	var jobSpecConfigs models.JobSpecConfigs
+	var config map[string]string
 	if cliMod := selectedHook.GetSurveyMod(); cliMod != nil {
 		ctx := context.Background()
 		hookAnswers, err := j.askHookQuestions(ctx, cliMod, jobSpec.Name)
 		if err != nil {
-			return models.JobSpec{}, err
+			return nil, err
 		}
 
-		jobSpecConfigs, err = j.getHookConfig(cliMod, hookAnswers)
+		config, err = j.getHookConfig(cliMod, hookAnswers)
 		if err != nil {
-			return models.JobSpec{}, err
+			return nil, err
 		}
 	}
-	jobSpec.Hooks = append(jobSpec.Hooks, models.JobSpecHook{
-		Unit:   selectedHook,
-		Config: jobSpecConfigs,
+	// TODO: remove the golint exception below
+	newJobSpec.Hooks = append(jobSpec.Hooks, model.JobSpecHook{ //nolint:gocritic
+		Name:   selectedHook.Info().Name,
+		Config: config,
 	})
-	return jobSpec, nil
+	return &newJobSpec, nil
 }
 
-func (*JobAddHookSurvey) getHookConfig(cliMod models.CommandLineMod, answers models.PluginAnswers) (models.JobSpecConfigs, error) {
+func (*JobAddHookSurvey) getHookConfig(cliMod models.CommandLineMod, answers models.PluginAnswers) (map[string]string, error) {
 	ctx := context.Background()
 	configRequest := models.DefaultConfigRequest{Answers: answers}
 	generatedConfigResponse, err := cliMod.DefaultConfig(ctx, configRequest)
 	if err != nil {
 		return nil, err
 	}
-	var config models.JobSpecConfigs
+	var jobSpecConfig models.JobSpecConfigs
 	if generatedConfigResponse.Config != nil {
-		config = generatedConfigResponse.Config.ToJobSpec()
+		jobSpecConfig = generatedConfigResponse.Config.ToJobSpec()
+	}
+
+	config := map[string]string{}
+	for _, cfg := range jobSpecConfig {
+		config[cfg.Name] = cfg.Value
 	}
 	return config, nil
 }
@@ -98,9 +107,9 @@ func (*JobAddHookSurvey) askToSelectHook(options []string) (string, error) {
 	return answer, nil
 }
 
-func (*JobAddHookSurvey) isSelectedHookAlreadyInJob(jobSpec models.JobSpec, selectedHookName string) bool {
+func (*JobAddHookSurvey) isSelectedHookAlreadyInJob(jobSpec *model.JobSpec, selectedHookName string) bool {
 	for _, hook := range jobSpec.Hooks {
-		if hook.Unit.Info().Name == selectedHookName {
+		if hook.Name == selectedHookName {
 			return true
 		}
 	}

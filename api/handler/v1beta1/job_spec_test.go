@@ -30,7 +30,7 @@ type JobSpecServiceServerTestSuite struct {
 	projectService   *mock.ProjectService
 	namespaceService *mock.NamespaceService
 	jobService       *mock.JobService // TODO: refactor to service package
-	pluginRepo       *mock.SupportedPluginRepo
+	pluginRepo       *mock.PluginRepository
 	log              log.Logger
 	progressObserver progress.Observer
 
@@ -43,7 +43,7 @@ type JobSpecServiceServerTestSuite struct {
 func (s *JobSpecServiceServerTestSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.namespaceService = new(mock.NamespaceService)
-	s.pluginRepo = new(mock.SupportedPluginRepo)
+	s.pluginRepo = mock.NewPluginRepository(s.T())
 	s.jobService = new(mock.JobService)
 	s.log = log.NewNoop()
 
@@ -418,7 +418,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			}, nil)
 			defer execUnit1.AssertExpectations(t)
 
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
 				Base: execUnit1,
 			}, nil)
@@ -508,7 +508,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			}, nil)
 			defer execUnit1.AssertExpectations(t)
 
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
 				Base: execUnit1,
 			}, nil)
@@ -591,7 +591,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			}, nil)
 			defer execUnit1.AssertExpectations(t)
 
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
 				Base: execUnit1,
 			}, nil)
@@ -677,7 +677,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			}, nil)
 			defer execUnit1.AssertExpectations(t)
 
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
 				Base: execUnit1,
 			}, nil)
@@ -741,7 +741,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 		t.Run("should delete the job", func(t *testing.T) {
 			projectName := "a-data-project"
 			jobName1 := "a-data-job"
-			taskName := "a-data-task"
 
 			projectSpec := models.ProjectSpec{
 				ID:   models.ProjectID(uuid.New()),
@@ -787,10 +786,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				},
 			}
 
-			pluginRepo := new(mock.SupportedPluginRepo)
-			pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
-				Base: execUnit1,
-			}, nil)
+			pluginRepo := mock.NewPluginRepository(t)
 
 			namespaceService := new(mock.NamespaceService)
 			namespaceService.On("Get", ctx, projectSpec.Name, namespaceSpec.Name).
@@ -840,22 +836,10 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			}
 			namespaceNames := []string{namespaceSpec.Name}
 
-			namespaceJobSpecRepository := new(mock.NamespaceJobSpecRepository)
-			defer namespaceJobSpecRepository.AssertExpectations(t)
-
-			namespaceJobSpecRepoFactory := new(mock.NamespaceJobSpecRepoFactory)
-			defer namespaceJobSpecRepoFactory.AssertExpectations(t)
-
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 
 			nsService := new(mock.NamespaceService)
 			defer nsService.AssertExpectations(t)
-
-			projectJobSpecRepository := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepository.AssertExpectations(t)
-
-			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
-			defer projectJobSpecRepoFactory.AssertExpectations(t)
 
 			projectService := new(mock.ProjectService)
 			defer projectService.AssertExpectations(t)
@@ -901,22 +885,10 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			}
 			namespaceNames := []string{namespaceSpec.Name}
 
-			namespaceJobSpecRepository := new(mock.NamespaceJobSpecRepository)
-			defer namespaceJobSpecRepository.AssertExpectations(t)
-
-			namespaceJobSpecRepoFactory := new(mock.NamespaceJobSpecRepoFactory)
-			defer namespaceJobSpecRepoFactory.AssertExpectations(t)
-
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 
 			nsService := new(mock.NamespaceService)
 			defer nsService.AssertExpectations(t)
-
-			projectJobSpecRepository := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepository.AssertExpectations(t)
-
-			projectJobSpecRepoFactory := new(mock.ProjectJobSpecRepoFactory)
-			defer projectJobSpecRepoFactory.AssertExpectations(t)
 
 			projectService := new(mock.ProjectService)
 			defer projectService.AssertExpectations(t)
@@ -1121,7 +1093,8 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			Name:  taskName,
 			Image: "random-image",
 		}, nil)
-		pluginRepo := new(mock.SupportedPluginRepo)
+
+		pluginRepo := mock.NewPluginRepository(t)
 		pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
 			Base: execUnit1,
 		}, nil)

@@ -44,9 +44,7 @@ func TestIntegrationTaskRunRepository(t *testing.T) {
 		Name: tTask,
 	}, nil)
 
-	pluginRepo := new(mock.SupportedPluginRepo)
-	pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1}, nil)
-	pluginRepo.On("GetByName", tTask).Return(&models.Plugin{Base: execUnit2}, nil)
+	pluginRepo := mock.NewPluginRepository(t)
 	adapter := postgres.NewAdapter(pluginRepo)
 
 	window, err := models.NewWindow(1, "", "", "")
@@ -110,13 +108,36 @@ func TestIntegrationTaskRunRepository(t *testing.T) {
 		dbConn := setupDB()
 		truncateTables(dbConn)
 		hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
-		prepo := postgres.NewProjectRepository(dbConn, hash)
-		assert.Nil(t, prepo.Save(ctx, projectSpec))
 
-		projectJobSpecRepo := postgres.NewProjectJobSpecRepository(dbConn, projectSpec, adapter)
-		jrepo := postgres.NewNamespaceJobSpecRepository(dbConn, namespaceSpec, projectJobSpecRepo, adapter)
-		assert.Nil(t, jrepo.Save(ctx, jobConfigs[0], jobDestination))
-		assert.Equal(t, "task unit cannot be empty", jrepo.Save(ctx, jobConfigs[1], jobDestination).Error())
+		projectRepository := postgres.NewProjectRepository(dbConn, hash)
+		err := projectRepository.Save(ctx, projectSpec)
+		assert.NoError(t, err)
+
+		storedProjects := readStoredRecordsByFilter[*postgres.Project](dbConn, map[string]interface{}{
+			"name": projectSpec.Name,
+		})
+		projectSpec.ID = models.ProjectID(storedProjects[0].ID)
+
+		namespaceRepository := postgres.NewNamespaceRepository(dbConn, hash)
+		err = namespaceRepository.Save(ctx, projectSpec, namespaceSpec)
+		assert.NoError(t, err)
+
+		storedNamespaces := readStoredRecordsByFilter[*postgres.Namespace](dbConn, map[string]interface{}{
+			"project_id": projectSpec.ID.UUID(),
+			"name":       namespaceSpec.Name,
+		})
+		namespaceSpec.ID = storedNamespaces[0].ID
+
+		for i := 0; i < len(jobConfigs); i++ {
+			jobConfigs[i].NamespaceSpec = namespaceSpec
+		}
+
+		jobSpecRepository, err := postgres.NewJobSpecRepository(dbConn, adapter)
+		assert.NoError(t, err)
+		err = jobSpecRepository.Save(ctx, jobConfigs[0])
+		assert.NoError(t, err)
+		err = jobSpecRepository.Save(ctx, jobConfigs[1])
+		assert.EqualError(t, err, "task unit cannot be empty")
 		return dbConn
 	}
 	//

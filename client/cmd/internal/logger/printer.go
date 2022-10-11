@@ -6,7 +6,7 @@ import (
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
-func PrintLogStatus(logger log.Logger, logStatus *pb.Log) {
+func PrintLogStatusVerbose(logger log.Logger, logStatus *pb.Log) {
 	switch logStatus.GetLevel() {
 	case pb.Level_LEVEL_INFO:
 		logger.Info(logStatus.GetMessage())
@@ -16,5 +16,11 @@ func PrintLogStatus(logger log.Logger, logStatus *pb.Log) {
 		logger.Error(logStatus.GetMessage())
 	default:
 		logger.Debug(logStatus.GetMessage())
+	}
+}
+
+func PrintLogStatus(logger log.Logger, logStatus *pb.Log) {
+	if logStatus.GetLevel() == pb.Level_LEVEL_ERROR {
+		logger.Error(logStatus.GetMessage())
 	}
 }

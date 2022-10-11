@@ -11,12 +11,11 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
-	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	"github.com/odpf/optimus/client/cmd/internal/connectivity"
 	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/client/local"
+	"github.com/odpf/optimus/client/local/model"
+	"github.com/odpf/optimus/client/local/specio"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
@@ -69,17 +68,15 @@ func (v *validateCommand) RunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	pluginRepo := models.PluginRegistry
-	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespace.Job.Path)
-	jobSpecRepo := local.NewJobSpecRepository(
-		jobSpecFs,
-		local.NewJobSpecAdapter(pluginRepo),
-	)
+	jobSpecReadWriter, err := specio.NewJobSpecReadWriter(afero.NewOsFs())
+	if err != nil {
+		return err
+	}
 
 	start := time.Now()
 	projectName := v.clientConfig.Project.Name
 	v.logger.Info("Validating job specifications for project: %s, namespace: %s", projectName, namespace.Name)
-	jobSpecs, err := jobSpecRepo.GetAll()
+	jobSpecs, err := jobSpecReadWriter.ReadAll(namespace.Job.Path)
 	if err != nil {
 		return fmt.Errorf("directory '%s': %w", namespace.Job.Path, err)
 	}
@@ -90,22 +87,21 @@ func (v *validateCommand) RunE(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func (v *validateCommand) validateJobSpecificationRequest(jobSpecs []models.JobSpec) error {
+func (v *validateCommand) validateJobSpecificationRequest(jobSpecs []*model.JobSpec) error {
 	conn, err := connectivity.NewConnectivity(v.clientConfig.Host, validateTimeout)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	adaptedJobSpecs := []*pb.JobSpecification{}
-	for _, spec := range jobSpecs {
-		adaptedSpec := v1handler.ToJobSpecificationProto(spec)
-		adaptedJobSpecs = append(adaptedJobSpecs, adaptedSpec)
+	jobSpecsProto := []*pb.JobSpecification{}
+	for _, jobSpec := range jobSpecs {
+		jobSpecsProto = append(jobSpecsProto, jobSpec.ToProto())
 	}
 
 	checkJobSpecRequest := &pb.CheckJobSpecificationsRequest{
 		ProjectName:   v.clientConfig.Project.Name,
-		Jobs:          adaptedJobSpecs,
+		Jobs:          jobSpecsProto,
 		NamespaceName: v.namespaceName,
 	}
 	job := pb.NewJobSpecificationServiceClient(conn.GetConnection())
@@ -129,8 +125,12 @@ func (v *validateCommand) getCheckJobSpecificationsResponse(stream pb.JobSpecifi
 			return err
 		}
 
-		if logStatus := resp.GetLogStatus(); logStatus != nil && v.verbose {
-			logger.PrintLogStatus(v.logger, logStatus)
+		if logStatus := resp.GetLogStatus(); logStatus != nil {
+			if v.verbose {
+				logger.PrintLogStatusVerbose(v.logger, logStatus)
+			} else {
+				logger.PrintLogStatus(v.logger, logStatus)
+			}
 			continue
 		}
 	}
