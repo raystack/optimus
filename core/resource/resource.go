@@ -53,10 +53,16 @@ func (r *Resource) Name() Name {
 }
 
 func (r *Resource) FullName() string {
+	if r.kind == KindDataset {
+		return r.dataset.FullName()
+	}
 	return r.dataset.FullName() + "." + r.name.String()
 }
 
 func (r *Resource) URN() string {
+	if r.kind == KindDataset {
+		return r.dataset.URN()
+	}
 	return r.dataset.URN() + "." + r.name.String()
 }
 
@@ -96,6 +102,10 @@ func NewResource(fullName string, kind Kind, store Store, tnnt tenant.Tenant, me
 		return nil, err
 	}
 
+	if len(spec) == 0 {
+		return nil, errors.InvalidArgument(EntityResource, "invalid resource spec for "+fullName)
+	}
+
 	dataset, err := DataSetFrom(store, sections[0], sections[1])
 	if err != nil {
 		return nil, err
@@ -122,6 +132,8 @@ func (r *Resource) Validate() error {
 		if err := mapstructure.Decode(r.spec, &table); err != nil {
 			return errors.InvalidArgument(EntityResource, "not able to decode table spec for "+r.FullName())
 		}
+		table.Name = r.name
+		table.Dataset = r.dataset
 		return table.Validate()
 
 	case KindExternalTable:
@@ -129,6 +141,8 @@ func (r *Resource) Validate() error {
 		if err := mapstructure.Decode(r.spec, &externalTable); err != nil {
 			return errors.InvalidArgument(EntityResource, "not able to decode external spec for "+r.FullName())
 		}
+		externalTable.Name = r.name
+		externalTable.Dataset = r.dataset
 		return externalTable.Validate()
 
 	case KindView:
@@ -136,6 +150,8 @@ func (r *Resource) Validate() error {
 		if err := mapstructure.Decode(r.spec, &view); err != nil {
 			return errors.InvalidArgument(EntityResource, "not able to decode view spec for "+r.FullName())
 		}
+		view.Name = r.name
+		view.Dataset = r.dataset
 		return view.Validate()
 
 	case KindDataset:
@@ -143,6 +159,7 @@ func (r *Resource) Validate() error {
 		if err := mapstructure.Decode(r.spec, &dataset); err != nil {
 			return errors.InvalidArgument(EntityResource, "not able to decode dataset spec for "+r.FullName())
 		}
+		dataset.Dataset = r.dataset
 		return dataset.Validate()
 
 	default:

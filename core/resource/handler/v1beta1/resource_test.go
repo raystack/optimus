@@ -264,8 +264,9 @@ func TestResourceHandler(t *testing.T) {
 				"resource: missing resource metadata: failed to parse resource ..")
 		})
 		t.Run("lists the resources successfully", func(t *testing.T) {
+			spec := map[string]any{"a": "b"}
 			dbRes, err := resource.NewResource("proj.set.table", resource.KindTable, resource.BigQuery, tnnt,
-				&resource.Metadata{}, nil)
+				&resource.Metadata{}, spec)
 			assert.Nil(t, err)
 
 			service := new(resourceService)
@@ -564,8 +565,9 @@ func TestResourceHandler(t *testing.T) {
 				"resource: unable to convert spec to proto struct: failed to read resource proj.set.table")
 		})
 		t.Run("returns the resource successfully", func(t *testing.T) {
+			spec := map[string]any{"a": "b"}
 			dbRes, err := resource.NewResource("proj.set.table", resource.KindTable, resource.BigQuery, tnnt,
-				&resource.Metadata{}, nil)
+				&resource.Metadata{}, spec)
 			assert.Nil(t, err)
 
 			service := new(resourceService)
