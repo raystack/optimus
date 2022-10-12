@@ -94,14 +94,14 @@ func (_m *JobSpecRepository) GetByNameAndProjectName(ctx context.Context, name s
 }
 
 // GetByResourceDestinationURN provides a mock function with given fields: ctx, resourceDestinationURN
-func (_m *JobSpecRepository) GetByResourceDestinationURN(ctx context.Context, resourceDestinationURN string) (models.JobSpec, error) {
+func (_m *JobSpecRepository) GetByResourceDestinationURN(ctx context.Context, resourceDestinationURN string) ([]models.JobSpec, error) {
 	ret := _m.Called(ctx, resourceDestinationURN)
 
-	var r0 models.JobSpec
-	if rf, ok := ret.Get(0).(func(context.Context, string) models.JobSpec); ok {
+	var r0 []models.JobSpec
+	if rf, ok := ret.Get(0).(func(context.Context, string) []models.JobSpec); ok {
 		r0 = rf(ctx, resourceDestinationURN)
 	} else {
-		r0 = ret.Get(0).(models.JobSpec)
+		r0 = ret.Get(0).([]models.JobSpec)
 	}
 
 	var r1 error

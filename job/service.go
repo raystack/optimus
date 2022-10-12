@@ -15,7 +15,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/internal/lib/progress"
@@ -213,14 +212,14 @@ func (srv *Service) GetByName(ctx context.Context, name string, namespace models
 
 func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter) ([]models.JobSpec, error) {
 	if filter.ResourceDestination != "" {
-		jobSpec, err := srv.jobSpecRepository.GetByResourceDestinationURN(ctx, filter.ResourceDestination)
+		jobSpecs, err := srv.jobSpecRepository.GetByResourceDestinationURN(ctx, filter.ResourceDestination)
 		if err != nil {
 			if errors.Is(err, store.ErrResourceNotFound) {
 				return []models.JobSpec{}, nil
 			}
 			return nil, err
 		}
-		return []models.JobSpec{jobSpec}, nil
+		return jobSpecs, nil
 	}
 	if filter.ProjectName != "" {
 		if filter.JobName == "" {
@@ -308,7 +307,7 @@ func (srv *Service) GetJobBasicInfo(ctx context.Context, jobSpec models.JobSpec)
 
 	dest, err := srv.pluginService.GenerateDestination(ctx, jobSpec, jobSpec.NamespaceSpec)
 	if err != nil {
-		jobBasicInfo.Log.Write(writer.LogLevelError, fmt.Sprintf("unable to generate destination, err:%v", err))
+		jobBasicInfo.Log.Write(writer.LogLevelError, fmt.Sprintf("unable to generate destination, err: %v", err))
 	}
 	if dest != nil {
 		destination := models.JobSpecTaskDestination{
@@ -320,23 +319,24 @@ func (srv *Service) GetJobBasicInfo(ctx context.Context, jobSpec models.JobSpec)
 
 	deps, err := srv.pluginService.GenerateDependencies(ctx, jobSpec, jobSpec.NamespaceSpec, false)
 	if err != nil {
-		jobBasicInfo.Log.Write(writer.LogLevelError, fmt.Sprintf("failed to generate dependencies, err:%v", err))
+		jobBasicInfo.Log.Write(writer.LogLevelError, fmt.Sprintf("failed to generate dependencies, err: %v", err))
 	} else {
 		if deps != nil {
 			jobBasicInfo.JobSource = deps.Dependencies
 		} else {
-			jobBasicInfo.Log.Write(writer.LogLevelWarning, "no dependencies detected")
+			jobBasicInfo.Log.Write(writer.LogLevelInfo, "no dependencies detected")
 		}
 	}
 	srv.Check(ctx, jobSpec.NamespaceSpec, []models.JobSpec{jobSpec}, &jobBasicInfo.Log)
 
 	if jobSpec.Behavior.CatchUp {
-		jobBasicInfo.Log.Write(writer.LogLevelWarning, "Catchup is enabled")
+		jobBasicInfo.Log.Write(writer.LogLevelWarning, "catchup is enabled")
 	}
-	if dupDestJobName, err := srv.IsJobDestinationDuplicate(ctx, jobSpec); err != nil {
-		jobBasicInfo.Log.Write(writer.LogLevelError, " could not perform duplicate job destination check, err:"+err.Error())
-	} else if dupDestJobName != "" {
-		jobBasicInfo.Log.Write(writer.LogLevelWarning, " already a job already exists with same Destination:"+jobSpec.ResourceDestination+" existing jobName:"+dupDestJobName)
+	if dupDestJobNames, err := srv.IsJobDestinationDuplicate(ctx, jobSpec); err != nil {
+		// todo : check on this
+		jobBasicInfo.Log.Write(writer.LogLevelError, "could not perform duplicate job destination check, err: "+err.Error())
+	} else if dupDestJobNames != "" {
+		jobBasicInfo.Log.Write(writer.LogLevelWarning, "job already exists with same Destination: "+jobSpec.ResourceDestination+" existing jobNames: "+dupDestJobNames)
 	}
 
 	return jobBasicInfo
@@ -487,12 +487,14 @@ func (srv *Service) getDependentJobNames(ctx context.Context, jobSpec models.Job
 
 func (srv *Service) GetByDestination(ctx context.Context, projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
 	// generate job spec using datastore destination. if a destination can be owned by multiple jobs, need to change to list
-	jobSpec, err := srv.jobSpecRepository.GetByResourceDestinationURN(ctx, destination)
+	jobSpecs, err := srv.jobSpecRepository.GetByResourceDestinationURN(ctx, destination)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
-	if jobSpec.NamespaceSpec.ProjectSpec.Name == projectSpec.Name {
-		return jobSpec, nil
+	for _, jobSpec := range jobSpecs {
+		if jobSpec.NamespaceSpec.ProjectSpec.Name == projectSpec.Name {
+			return jobSpec, nil
+		}
 	}
 	return models.JobSpec{}, store.ErrResourceNotFound
 }
@@ -739,18 +741,22 @@ func (srv *Service) fetchSpecsForGivenJobNames(ctx context.Context, projectSpec 
 }
 
 func (srv *Service) IsJobDestinationDuplicate(ctx context.Context, jobSpec models.JobSpec) (string, error) {
-	jobWithSameDestination, err := srv.jobSpecRepository.GetByResourceDestinationURN(ctx, jobSpec.ResourceDestination)
+	jobsWithSameDestination, err := srv.jobSpecRepository.GetByResourceDestinationURN(ctx, jobSpec.ResourceDestination)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, store.ErrResourceNotFound) {
 			return "", nil
 		}
 		return "", err
 	}
-	if jobWithSameDestination.Name == jobSpec.Name && jobWithSameDestination.NamespaceSpec.ProjectSpec.Name == jobSpec.NamespaceSpec.ProjectSpec.Name {
-		// this is the same job from the DB. hence not an issues
-		return "", nil
+	var duplicateJobNames []string
+	for _, dupJobSpec := range jobsWithSameDestination {
+		if dupJobSpec.GetFullName() == jobSpec.GetFullName() {
+			// this is the same job from the DB. hence not an issues
+			continue
+		}
+		duplicateJobNames = append(duplicateJobNames, dupJobSpec.GetFullName())
 	}
-	return jobWithSameDestination.Name, nil
+	return strings.Join(duplicateJobNames, ", "), nil
 }
 
 func (srv *Service) identifyAndPersistJobSources(ctx context.Context, projectSpec models.ProjectSpec,

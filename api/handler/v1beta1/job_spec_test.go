@@ -1176,8 +1176,6 @@ func TestJobSpecificationOnServer(t *testing.T) {
 
 			jobSpecInternal := jobSpec
 			jobSpecInternal.ResourceDestination = resourceDestinationUrn
-			//jobService.On("Check", ctx, namespaceSpec, []models.JobSpec{jobSpecInternal}, mock2.Anything).Return(nil)
-			//jobService.On("IsJobDestinationDuplicate", ctx, jobSpecInternal, mock2.Anything).Return("", nil)
 
 			jobInspectRequest := &pb.JobInspectRequest{
 				Spec:          v1.ToJobSpecificationProto(jobSpec),

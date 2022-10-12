@@ -46,8 +46,8 @@ func NewInspectCommand() *cobra.Command {
 	}
 	cmd := &cobra.Command{
 		Use:     "inspect",
-		Short:   "inspect optimus job specification using local and server spec",
-		Long:    "inspect optimus job specification using local and server spec",
+		Short:   "Inspect optimus job specification using local or server spec",
+		Long:    "Inspect optimus job specification using local or server spec, Inspect provides dependency run informations and basic validations on Job config",
 		Example: "optimus job inspect [<job_name>] [--server]",
 		Args:    cobra.MinimumNArgs(1),
 		RunE:    inspect.RunE,
@@ -55,7 +55,7 @@ func NewInspectCommand() *cobra.Command {
 	}
 	cmd.Flags().StringVarP(&inspect.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
 	cmd.Flags().StringVar(&inspect.host, "host", "", "Optimus service endpoint url")
-	cmd.Flags().Bool(optimusServerFetchFlag, false, "fetch jobSpec from server")
+	cmd.Flags().Bool(optimusServerFetchFlag, false, "Fetch jobSpec from server")
 	return cmd
 }
 
