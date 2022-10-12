@@ -161,7 +161,6 @@ func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspe
 	if err != nil {
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
-
 	var jobSpec models.JobSpec
 
 	if req.GetJobName() != "" {

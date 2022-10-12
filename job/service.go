@@ -303,8 +303,6 @@ func (srv *Service) Check(ctx context.Context, namespace models.NamespaceSpec, j
 
 func (srv *Service) GetJobBasicInfo(ctx context.Context, jobSpec models.JobSpec) models.JobBasicInfo {
 	var jobBasicInfo models.JobBasicInfo
-	jobBasicInfo.Spec = jobSpec
-
 	dest, err := srv.pluginService.GenerateDestination(ctx, jobSpec, jobSpec.NamespaceSpec)
 	if err != nil {
 		jobBasicInfo.Log.Write(writer.LogLevelError, fmt.Sprintf("unable to generate destination, err: %v", err))
@@ -314,9 +312,9 @@ func (srv *Service) GetJobBasicInfo(ctx context.Context, jobSpec models.JobSpec)
 			Destination: dest.Destination,
 			Type:        dest.Type,
 		}
+		jobSpec.ResourceDestination = destination.URN()
 		jobBasicInfo.Destination = destination.URN()
 	}
-
 	deps, err := srv.pluginService.GenerateDependencies(ctx, jobSpec, jobSpec.NamespaceSpec, false)
 	if err != nil {
 		jobBasicInfo.Log.Write(writer.LogLevelError, fmt.Sprintf("failed to generate job sources, err: %v", err))
@@ -338,6 +336,7 @@ func (srv *Service) GetJobBasicInfo(ctx context.Context, jobSpec models.JobSpec)
 	} else if dupDestJobNames != "" {
 		jobBasicInfo.Log.Write(writer.LogLevelWarning, "job already exists with same Destination: "+jobSpec.ResourceDestination+" existing jobNames: "+dupDestJobNames)
 	}
+	jobBasicInfo.Spec = jobSpec
 
 	return jobBasicInfo
 }

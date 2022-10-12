@@ -23,6 +23,7 @@ import (
 const (
 	inspectTimeout         = time.Minute * 1
 	optimusServerFetchFlag = "server"
+	MASKED                 = "<masked>"
 )
 
 type inspectCommand struct {
@@ -182,6 +183,9 @@ func (e *inspectCommand) displayBasicInfoSection(basicInfoSection *pb.JobInspect
 	e.yamlPrint(basicInfoSection.Source)
 
 	e.logger.Info("\n> Job Spec::")
+	for key, _ := range basicInfoSection.Job.Assets {
+		basicInfoSection.Job.Assets[key] = MASKED
+	}
 	e.yamlPrint(basicInfoSection.Job)
 
 	e.printLogs(basicInfoSection.Notice)
