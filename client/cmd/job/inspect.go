@@ -183,7 +183,7 @@ func (e *inspectCommand) displayBasicInfoSection(basicInfoSection *pb.JobInspect
 	e.yamlPrint(basicInfoSection.Source)
 
 	e.logger.Info("\n> Job Spec::")
-	for key, _ := range basicInfoSection.Job.Assets {
+	for key := range basicInfoSection.Job.Assets {
 		basicInfoSection.Job.Assets[key] = MASKED
 	}
 	e.yamlPrint(basicInfoSection.Job)
