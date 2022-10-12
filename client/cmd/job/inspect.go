@@ -94,7 +94,7 @@ func (e *inspectCommand) RunE(cmd *cobra.Command, args []string) error {
 	if err := e.inspectJobSpecification(jobSpec, serverFetch); err != nil {
 		return err
 	}
-	e.logger.Info(logger.ColoredSuccess("\nJobs inspected successfully, took %s", time.Since(start).Round(time.Second)))
+	e.logger.Info("\nJobs inspected successfully, took %s", time.Since(start).Round(time.Second))
 	return nil
 }
 
@@ -162,19 +162,19 @@ func (e *inspectCommand) printLogs(logs []*pb.Log) {
 		case pb.Level_LEVEL_INFO:
 			e.logger.Info(fmt.Sprintf("> [info] %v", logs[i].Message))
 		case pb.Level_LEVEL_WARNING:
-			e.logger.Info(logger.ColoredNotice(fmt.Sprintf("> [warn] %v", logs[i].Message)))
+			e.logger.Warn(fmt.Sprintf("> [warn] %v", logs[i].Message))
 		case pb.Level_LEVEL_ERROR:
-			e.logger.Info(logger.ColoredError(fmt.Sprintf("> [error] %v", logs[i].Message)))
+			e.logger.Error(fmt.Sprintf("> [error] %v", logs[i].Message))
 		default:
-			e.logger.Error(logger.ColoredError(fmt.Sprintf("unhandled log level::%v specified with error msg ::%v", logs[i].Level, logs[i].Message)))
+			e.logger.Error(fmt.Sprintf("unhandled log level::%v specified with error msg ::%v", logs[i].Level, logs[i].Message))
 		}
 	}
 }
 
 func (e *inspectCommand) displayBasicInfoSection(basicInfoSection *pb.JobInspectResponse_BasicInfoSection) {
-	e.logger.Info(logger.ColoredNotice("\n-----------------------------------------------------------------------------"))
-	e.logger.Info(logger.ColoredNotice("\n    * BASIC INFO"))
-	e.logger.Info(logger.ColoredNotice("\n-----------------------------------------------------------------------------"))
+	e.logger.Warn("\n-----------------------------------------------------------------------------")
+	e.logger.Warn("\n    * BASIC INFO")
+	e.logger.Warn("\n-----------------------------------------------------------------------------")
 
 	e.logger.Info("\n> Job Destination:: %v", basicInfoSection.Destination)
 
@@ -188,9 +188,8 @@ func (e *inspectCommand) displayBasicInfoSection(basicInfoSection *pb.JobInspect
 }
 
 func (e *inspectCommand) processJobInspectResponse(resp *pb.JobInspectResponse) error {
-	logger.InitializeColor()
 	e.displayBasicInfoSection(resp.BasicInfo)
-	e.logger.Info(logger.ColoredNotice("\n-----------------------------------------------------------------------------"))
+	e.logger.Warn("\n-----------------------------------------------------------------------------")
 
 	return nil
 }

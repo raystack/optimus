@@ -726,7 +726,7 @@ func TestService(t *testing.T) {
 				ResourceDestination: "destination_test",
 			}
 
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, filter.ResourceDestination).Return([]models.JobSpec{models.JobSpec{}}, nil)
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, filter.ResourceDestination).Return([]models.JobSpec{{}}, nil)
 
 			actualJobSpecs, actualError := service.GetByFilter(ctx, filter)
 
