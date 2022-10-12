@@ -107,9 +107,8 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 		}
 
 		t.Run("returns error when error while getting plugin", func(t *testing.T) {
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", "bq").Return(plugin, errors.New("error"))
-			defer pluginRepo.AssertExpectations(t)
 
 			assetsCompiler := compiler.NewJobAssetsCompiler(nil, pluginRepo)
 			_, err := assetsCompiler.CompileJobRunAssets(ctx, jobRun.Spec, instanceSpec.Data, jobRun.ScheduledAt, templateContext)
@@ -118,9 +117,8 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 			assert.Equal(t, "error", err.Error())
 		})
 		t.Run("compiles the assets when plugin has no cliMod", func(t *testing.T) {
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", "bq").Return(&models.Plugin{}, nil)
-			defer pluginRepo.AssertExpectations(t)
 
 			assetsCompiler := compiler.NewJobAssetsCompiler(engine, pluginRepo)
 			assets, err := assetsCompiler.CompileJobRunAssets(ctx, jobRun.Spec, instanceSpec.Data, jobRun.ScheduledAt, templateContext)
@@ -143,9 +141,8 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 					Value: "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}' and name = '{{.secret.table_name}}'",
 				},
 			}}, nil)
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
-			defer pluginRepo.AssertExpectations(t)
 
 			assetsCompiler := compiler.NewJobAssetsCompiler(engine, pluginRepo)
 			assets, err := assetsCompiler.CompileJobRunAssets(ctx, jobRun.Spec, instanceSpec.Data, jobRun.ScheduledAt, templateContext)

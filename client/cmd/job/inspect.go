@@ -11,13 +11,12 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
-	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	"github.com/odpf/optimus/client/cmd/internal/connectivity"
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/internal/survey"
-	"github.com/odpf/optimus/client/local"
+	"github.com/odpf/optimus/client/local/model"
+	"github.com/odpf/optimus/client/local/specio"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
@@ -79,7 +78,7 @@ func (e *inspectCommand) RunE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var jobSpec models.JobSpec
+	var jobSpec *model.JobSpec
 
 	serverFetch, _ := cmd.Flags().GetBool(optimusServerFetchFlag)
 	if !serverFetch {
@@ -99,22 +98,21 @@ func (e *inspectCommand) RunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (e *inspectCommand) getJobSpecByName(args []string, namespaceJobPath string) (models.JobSpec, error) {
-	pluginRepo := models.PluginRegistry
-	jobSpecFs := afero.NewBasePathFs(afero.NewOsFs(), namespaceJobPath)
-	jobSpecRepo := local.NewJobSpecRepository(jobSpecFs, local.NewJobSpecAdapter(pluginRepo))
-
+func (e *inspectCommand) getJobSpecByName(args []string, namespaceJobPath string) (*model.JobSpec, error) {
+	jobSpecReadWriter, err := specio.NewJobSpecReadWriter(afero.NewOsFs(), specio.WithJobSpecParentReading())
+	if err != nil {
+		return nil, err
+	}
 	var jobName string
-	var err error
 	if len(args) == 0 {
-		jobName, err = e.jobSurvey.AskToSelectJobName(jobSpecRepo)
+		jobName, err = e.jobSurvey.AskToSelectJobName(jobSpecReadWriter, namespaceJobPath)
 		if err != nil {
-			return models.JobSpec{}, err
+			return nil, err
 		}
 	} else {
 		jobName = args[0]
 	}
-	return jobSpecRepo.GetByName(jobName)
+	return jobSpecReadWriter.ReadByName(namespaceJobPath, jobName)
 }
 
 func (e *inspectCommand) loadConfig() error {
@@ -126,7 +124,7 @@ func (e *inspectCommand) loadConfig() error {
 	return nil
 }
 
-func (e *inspectCommand) inspectJobSpecification(jobSpec models.JobSpec, serverFetch bool) error {
+func (e *inspectCommand) inspectJobSpecification(jobSpec *model.JobSpec, serverFetch bool) error {
 	conn, err := connectivity.NewConnectivity(e.clientConfig.Host, inspectTimeout)
 	if err != nil {
 		return err
@@ -136,7 +134,7 @@ func (e *inspectCommand) inspectJobSpecification(jobSpec models.JobSpec, serverF
 	var adaptedSpec *pb.JobSpecification
 	var jobName string
 	if !serverFetch {
-		adaptedSpec = v1handler.ToJobSpecificationProto(jobSpec)
+		adaptedSpec = jobSpec.ToProto()
 	} else {
 		jobName = jobSpec.Name
 	}
@@ -173,24 +171,24 @@ func (e *inspectCommand) printLogs(logs []*pb.Log) {
 	}
 }
 
-func (e *inspectCommand) displayUpstreamSection(Upstreams *pb.JobInspectResponse_UpstreamSection) {
+func (e *inspectCommand) displayUpstreamSection(upstreams *pb.JobInspectResponse_UpstreamSection) {
 	e.logger.Info(logger.ColoredNotice("\n-----------------------------------------------------------------------------"))
 	e.logger.Info(logger.ColoredNotice("\n    * UPSTREAMS"))
 	e.logger.Info(logger.ColoredNotice("\n-----------------------------------------------------------------------------"))
 
 	e.logger.Info("\n> Internal::")
-	e.yamlPrint(Upstreams.InternalDependency)
+	e.yamlPrint(upstreams.InternalDependency)
 
 	e.logger.Info("\n> Exteranl::")
-	e.yamlPrint(Upstreams.ExternalDependency)
+	e.yamlPrint(upstreams.ExternalDependency)
 
 	e.logger.Info("\n> HTTP::")
-	e.yamlPrint(Upstreams.HttpDependency)
+	e.yamlPrint(upstreams.HttpDependency)
 
 	e.logger.Info("\n> unknonw dependencies ::")
-	e.yamlPrint(Upstreams.UnknownDependencies)
+	e.yamlPrint(upstreams.UnknownDependencies)
 
-	e.printLogs(Upstreams.Notice)
+	e.printLogs(upstreams.Notice)
 }
 
 func (e *inspectCommand) displayBasicInfoSection(basicInfoSection *pb.JobInspectResponse_BasicInfoSection) {

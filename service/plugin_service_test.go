@@ -64,9 +64,8 @@ func TestPluginService(t *testing.T) {
 
 	t.Run("GenerateDestination", func(t *testing.T) {
 		t.Run("return error when not able to get plugin", func(t *testing.T) {
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", "bq").Return(&models.Plugin{}, errors.New("plugin not found"))
-			defer pluginRepo.AssertExpectations(t)
 
 			jobSpec := models.JobSpec{
 				Version: 1,
@@ -88,9 +87,8 @@ func TestPluginService(t *testing.T) {
 			assert.EqualError(t, err, "plugin not found")
 		})
 		t.Run("return err when not no dependency mod in plugin", func(t *testing.T) {
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", "bq").Return(&models.Plugin{Base: baseUnit}, nil)
-			defer pluginRepo.AssertExpectations(t)
 
 			jobSpec := models.JobSpec{
 				Version: 1,
@@ -112,9 +110,8 @@ func TestPluginService(t *testing.T) {
 			assert.EqualError(t, err, "dependency mod not found for plugin")
 		})
 		t.Run("return error when not not able to compile configs", func(t *testing.T) {
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
-			defer pluginRepo.AssertExpectations(t)
 
 			secretService := new(mock.SecretService)
 			secretService.On("GetSecrets", ctx, namespaceSpec).Return([]models.ProjectSecretItem{}, errors.New("error"))
@@ -140,9 +137,8 @@ func TestPluginService(t *testing.T) {
 			assert.EqualError(t, err, "error")
 		})
 		t.Run("return destination successfully", func(t *testing.T) {
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
-			defer pluginRepo.AssertExpectations(t)
 
 			secretService := new(mock.SecretService)
 			secretService.On("GetSecrets", ctx, namespaceSpec).Return(secrets, nil)
@@ -196,9 +192,8 @@ func TestPluginService(t *testing.T) {
 
 	t.Run("GenerateDependencies", func(t *testing.T) {
 		t.Run("return error when not able to get plugin", func(t *testing.T) {
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", "bq").Return(&models.Plugin{}, errors.New("plugin not found"))
-			defer pluginRepo.AssertExpectations(t)
 
 			jobSpec := models.JobSpec{
 				Version: 1,
@@ -220,9 +215,8 @@ func TestPluginService(t *testing.T) {
 			assert.EqualError(t, err, "plugin not found")
 		})
 		t.Run("return err when no dependency mod in plugin", func(t *testing.T) {
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", "bq").Return(&models.Plugin{Base: baseUnit}, nil)
-			defer pluginRepo.AssertExpectations(t)
 
 			jobSpec := models.JobSpec{
 				Version: 1,
@@ -244,9 +238,8 @@ func TestPluginService(t *testing.T) {
 			assert.EqualError(t, err, "dependency mod not found for plugin")
 		})
 		t.Run("return error when not not able to compile configs", func(t *testing.T) {
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
-			defer pluginRepo.AssertExpectations(t)
 
 			secretService := new(mock.SecretService)
 			secretService.On("GetSecrets", ctx, namespaceSpec).Return([]models.ProjectSecretItem{}, errors.New("error"))
@@ -272,9 +265,8 @@ func TestPluginService(t *testing.T) {
 			assert.EqualError(t, err, "error")
 		})
 		t.Run("return dependencies successfully", func(t *testing.T) {
-			pluginRepo := new(mock.SupportedPluginRepo)
+			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
-			defer pluginRepo.AssertExpectations(t)
 
 			secretService := new(mock.SecretService)
 			secretService.On("GetSecrets", ctx, namespaceSpec).Return(secrets, nil)

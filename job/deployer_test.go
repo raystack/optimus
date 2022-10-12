@@ -63,12 +63,6 @@ func TestDeployer(t *testing.T) {
 			priorityResolver := new(mock.PriorityResolver)
 			defer priorityResolver.AssertExpectations(t)
 
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
 			batchScheduler := new(mock.Scheduler)
 			defer batchScheduler.AssertExpectations(t)
 
@@ -81,7 +75,7 @@ func TestDeployer(t *testing.T) {
 			namespaceService := new(mock.NamespaceService)
 			defer namespaceService.AssertExpectations(t)
 
-			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.ID).Return([]models.JobSpec{}, nil, errors.New(errorMsg))
+			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.Name).Return([]models.JobSpec{}, nil, errors.New(errorMsg))
 
 			deployer := job.NewDeployer(log, dependencyResolver, priorityResolver, namespaceService, jobDeploymentRepo, batchScheduler)
 			err := deployer.Deploy(ctx, jobDeployment)
@@ -108,15 +102,9 @@ func TestDeployer(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			defer jobSourceRepo.AssertExpectations(t)
 
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
 			jobSpecs := []models.JobSpec{}
 
-			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.ID).Return(jobSpecs, nil, nil)
+			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.Name).Return(jobSpecs, nil, nil)
 
 			priorityResolver.On("Resolve", ctx, jobSpecs, nil).Return(jobSpecs, errors.New(errorMsg))
 
@@ -145,12 +133,6 @@ func TestDeployer(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			defer jobSourceRepo.AssertExpectations(t)
 
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
 			jobID1 := uuid.New()
 			jobSpecs := []models.JobSpec{
 				{
@@ -170,7 +152,7 @@ func TestDeployer(t *testing.T) {
 			jobSpecsWithPriorityWeight := jobSpecs
 			jobSpecsWithPriorityWeight[0].Task = models.JobSpecTask{Priority: 1000}
 
-			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.ID).Return(jobSpecs, nil, nil)
+			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.Name).Return(jobSpecs, nil, nil)
 
 			priorityResolver.On("Resolve", ctx, jobSpecs, nil).Return(jobSpecsWithPriorityWeight, nil)
 
@@ -203,12 +185,6 @@ func TestDeployer(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			defer jobSourceRepo.AssertExpectations(t)
 
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
 			jobID1 := uuid.New()
 			jobSpecs := []models.JobSpec{
 				{
@@ -229,7 +205,7 @@ func TestDeployer(t *testing.T) {
 			jobSpecsWithPriorityWeight := jobSpecs
 			jobSpecsWithPriorityWeight[0].Task = models.JobSpecTask{Priority: 1000}
 
-			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.ID).Return(jobSpecs, nil, nil)
+			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.Name).Return(jobSpecs, nil, nil)
 
 			priorityResolver.On("Resolve", ctx, jobSpecs, nil).Return(jobSpecsWithPriorityWeight, nil)
 
@@ -264,12 +240,6 @@ func TestDeployer(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			defer jobSourceRepo.AssertExpectations(t)
 
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
 			jobID1 := uuid.New()
 			jobSpecs := []models.JobSpec{
 				{
@@ -294,7 +264,7 @@ func TestDeployer(t *testing.T) {
 			jobSpecsWithPriorityWeight := jobSpecs
 			jobSpecsWithPriorityWeight[0].Task = models.JobSpecTask{Priority: 1000}
 
-			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.ID).Return(jobSpecs, nil, nil)
+			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.Name).Return(jobSpecs, nil, nil)
 
 			priorityResolver.On("Resolve", ctx, jobSpecs, nil).Return(jobSpecsWithPriorityWeight, nil)
 
@@ -319,12 +289,6 @@ func TestDeployer(t *testing.T) {
 
 			priorityResolver := new(mock.PriorityResolver)
 			defer priorityResolver.AssertExpectations(t)
-
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			defer projJobSpecRepoFac.AssertExpectations(t)
 
 			batchScheduler := new(mock.Scheduler)
 			defer batchScheduler.AssertExpectations(t)
@@ -440,7 +404,7 @@ func TestDeployer(t *testing.T) {
 				{Name: jobSpecsWithPriorityWeight[1].Name},
 			}
 
-			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.ID).Return(jobSpecsWithDependency, nil, nil)
+			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.Name).Return(jobSpecsWithDependency, nil, nil)
 
 			priorityResolver.On("Resolve", ctx, jobSpecsWithDependency, nil).Return(jobSpecsWithPriorityWeight, nil)
 
@@ -468,12 +432,6 @@ func TestDeployer(t *testing.T) {
 
 			priorityResolver := new(mock.PriorityResolver)
 			defer priorityResolver.AssertExpectations(t)
-
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			defer projJobSpecRepoFac.AssertExpectations(t)
 
 			batchScheduler := new(mock.Scheduler)
 			defer batchScheduler.AssertExpectations(t)
@@ -591,7 +549,7 @@ func TestDeployer(t *testing.T) {
 				{Name: unusedFileName},
 			}
 
-			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.ID).Return(jobSpecsWithDependency, nil, nil)
+			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.Name).Return(jobSpecsWithDependency, nil, nil)
 
 			priorityResolver.On("Resolve", ctx, jobSpecsWithDependency, nil).Return(jobSpecsWithPriorityWeight, nil)
 
@@ -622,12 +580,6 @@ func TestDeployer(t *testing.T) {
 			priorityResolver := new(mock.PriorityResolver)
 			defer priorityResolver.AssertExpectations(t)
 
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			defer projJobSpecRepoFac.AssertExpectations(t)
-
 			batchScheduler := new(mock.Scheduler)
 			defer batchScheduler.AssertExpectations(t)
 
@@ -742,7 +694,7 @@ func TestDeployer(t *testing.T) {
 				{Name: jobSpecsWithPriorityWeight[1].Name},
 			}
 
-			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.ID).Return(jobSpecsWithDependency, nil, nil)
+			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.Name).Return(jobSpecsWithDependency, nil, nil)
 
 			priorityResolver.On("Resolve", ctx, jobSpecsWithDependency, nil).Return(jobSpecsWithPriorityWeight, nil)
 
@@ -770,12 +722,6 @@ func TestDeployer(t *testing.T) {
 
 			priorityResolver := new(mock.PriorityResolver)
 			defer priorityResolver.AssertExpectations(t)
-
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			defer projJobSpecRepoFac.AssertExpectations(t)
 
 			batchScheduler := new(mock.Scheduler)
 			defer batchScheduler.AssertExpectations(t)
@@ -893,7 +839,7 @@ func TestDeployer(t *testing.T) {
 				{Name: unusedFileName},
 			}
 
-			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.ID).Return(jobSpecsWithDependency, nil, nil)
+			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.Name).Return(jobSpecsWithDependency, nil, nil)
 
 			priorityResolver.On("Resolve", ctx, jobSpecsWithDependency, nil).Return(jobSpecsWithPriorityWeight, nil)
 
@@ -924,12 +870,6 @@ func TestDeployer(t *testing.T) {
 
 			priorityResolver := new(mock.PriorityResolver)
 			defer priorityResolver.AssertExpectations(t)
-
-			projectJobSpecRepo := new(mock.ProjectJobSpecRepository)
-			defer projectJobSpecRepo.AssertExpectations(t)
-
-			projJobSpecRepoFac := new(mock.ProjectJobSpecRepoFactory)
-			defer projJobSpecRepoFac.AssertExpectations(t)
 
 			batchScheduler := new(mock.Scheduler)
 			defer batchScheduler.AssertExpectations(t)
@@ -1057,7 +997,7 @@ func TestDeployer(t *testing.T) {
 				{Name: jobSpecsWithPriorityWeight[1].Name},
 			}
 
-			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.ID).Return(jobSpecsWithDependency, unknownDependencies, nil)
+			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.Name).Return(jobSpecsWithDependency, unknownDependencies, nil)
 
 			priorityResolver.On("Resolve", ctx, jobSpecsWithDependency, nil).Return(jobSpecsWithPriorityWeight, nil)
 

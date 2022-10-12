@@ -44,7 +44,7 @@ func NewDeployer(
 }
 
 func (d *deployer) Deploy(ctx context.Context, jobDeployment models.JobDeployment) error {
-	jobSpecs, unknownDependencies, err := d.dependencyResolver.GetJobSpecsWithDependencies(ctx, jobDeployment.Project.ID)
+	jobSpecs, unknownDependencies, err := d.dependencyResolver.GetJobSpecsWithDependencies(ctx, jobDeployment.Project.Name)
 	if err != nil {
 		return err
 	}

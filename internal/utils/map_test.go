@@ -80,4 +80,22 @@ func TestMapHelper(t *testing.T) {
 			assert.Equal(t, "Value2", orig["Key2"])
 		})
 	})
+	t.Run("Contains", func(t *testing.T) {
+		t.Run("returns false when map is nil", func(t *testing.T) {
+			result := utils.Contains[string, string](nil, "a")
+			assert.False(t, result)
+		})
+		t.Run("returns false when some value not found", func(t *testing.T) {
+			mp := map[string]string{"a": "b", "c": "d", "e": "f"}
+
+			result := utils.Contains(mp, "a", "c", "g")
+			assert.False(t, result)
+		})
+		t.Run("returns true when all values found", func(t *testing.T) {
+			mp := map[string]string{"a": "b", "c": "d", "e": "f"}
+
+			result := utils.Contains(mp, "a", "c", "e")
+			assert.True(t, result)
+		})
+	})
 }

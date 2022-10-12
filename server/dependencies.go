@@ -26,15 +26,6 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-// projectJobSpecRepoFactory stores raw specifications
-type projectJobSpecRepoFactory struct {
-	db *gorm.DB
-}
-
-func (fac *projectJobSpecRepoFactory) New(project models.ProjectSpec) store.ProjectJobSpecRepository {
-	return postgres.NewProjectJobSpecRepository(fac.db, project, postgres.NewAdapter(models.PluginRegistry))
-}
-
 type replayWorkerFact struct {
 	replaySpecRepoFac store.ReplaySpecRepository
 	scheduler         models.SchedulerUnit
@@ -43,21 +34,6 @@ type replayWorkerFact struct {
 
 func (fac *replayWorkerFact) New() job.ReplayWorker {
 	return job.NewReplayWorker(fac.logger, fac.replaySpecRepoFac, fac.scheduler)
-}
-
-// namespaceJobSpecRepoFactory stores raw specifications
-type namespaceJobSpecRepoFactory struct {
-	db                    *gorm.DB
-	projectJobSpecRepoFac projectJobSpecRepoFactory
-}
-
-func (fac *namespaceJobSpecRepoFactory) New(namespace models.NamespaceSpec) store.NamespaceJobSpecRepository {
-	return postgres.NewNamespaceJobSpecRepository(
-		fac.db,
-		namespace,
-		fac.projectJobSpecRepoFac.New(namespace.ProjectSpec),
-		postgres.NewAdapter(models.PluginRegistry),
-	)
 }
 
 // projectResourceSpecRepoFactory stores raw resource specifications at a project level

@@ -35,6 +35,9 @@ unit-test-ci:
 integration-test:
 	go test -count 1 -cover -race -timeout 1m ./... -run TestIntegration
 
+repository-test:
+	go test -count 1 -cover -race -timeout 1m ./... -run TestPostgres
+
 vet: ## run go vet
 	go vet ./...
 

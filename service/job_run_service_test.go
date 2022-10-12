@@ -39,7 +39,7 @@ func TestJobRunService(t *testing.T) {
 		ExecutedAt:  mockedTimeNow,
 	}
 	jobDestination := "project.dataset.table"
-	pluginService := new(mock.DependencyResolverPluginService)
+	pluginService := mock.NewPluginService(t)
 	pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(
 		&models.GenerateDestinationResponse{Destination: jobDestination}, nil)
 
@@ -291,7 +291,7 @@ func TestJobRunService(t *testing.T) {
 			}, jobDestination).Return(nil)
 			defer runRepo.AssertExpectations(t)
 
-			noDepModpluginService := new(mock.DependencyResolverPluginService)
+			noDepModpluginService := mock.NewPluginService(t)
 			noDepModpluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(
 				&models.GenerateDestinationResponse{}, service.ErrDependencyModNotFound)
 

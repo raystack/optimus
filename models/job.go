@@ -372,10 +372,10 @@ type JobService interface {
 	GetDeployment(ctx context.Context, deployID DeploymentID) (JobDeployment, error)
 	// GetByFilter gets the jobspec based on projectName, jobName, resourceDestination filters.
 	GetByFilter(ctx context.Context, filter JobSpecFilter) ([]JobSpec, error)
-	// EnrichUpstreamJobs adds upstream job information to a jobSpec without persisting it in database
-	EnrichUpstreamJobs(ctx context.Context, currentSpec JobSpec, jobSources []string, logWriter writer.LogWriter) (JobSpec, []UnknownDependency, error)
+	// GetEnrichedUpstreamJobSpec adds upstream job information to a jobSpec without persisting it in database
+	GetEnrichedUpstreamJobSpec(ctx context.Context, currentSpec JobSpec, jobSources []string, logWriter writer.LogWriter) (JobSpec, []UnknownDependency, error)
 	// GetDownstreamJobs reads static as well as inferred down stream dependencies
-	GetDownstreamJobs(ctx context.Context, jobSpec JobSpec) ([]JobSpec, error)
+	GetDownstreamJobs(ctx context.Context, jobName, resourceDestinationURN, projectName string) ([]JobSpec, error)
 }
 
 // JobCompiler takes template file of a scheduler and after applying

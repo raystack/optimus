@@ -1,6 +1,7 @@
 package job
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -10,9 +11,8 @@ import (
 
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/internal/survey"
-	"github.com/odpf/optimus/client/local"
+	"github.com/odpf/optimus/client/local/specio"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 )
 
 type createCommand struct {
@@ -75,22 +75,19 @@ func (c *createCommand) RunE(_ *cobra.Command, _ []string) error {
 	jobDirectory := filepath.Join(jwd, newDirName)
 	defaultJobName := strings.ReplaceAll(strings.ReplaceAll(jobDirectory, "/", "."), "\\", ".")
 
-	pluginRepo := models.PluginRegistry
-	jobSpecAdapter := local.NewJobSpecAdapter(pluginRepo)
-	jobSpecRepo := local.NewJobSpecRepository(jobSpecFs, jobSpecAdapter)
-	jobInput, err := c.jobCreateSurvey.AskToCreateJob(jobSpecRepo, defaultJobName)
+	jobSpecReadWriter, err := specio.NewJobSpecReadWriter(jobSpecFs)
+	if err != nil {
+		return err
+	}
+	jobSpec, err := c.jobCreateSurvey.AskToCreateJob(jobSpecReadWriter, jobDirectory, defaultJobName)
 	if err != nil {
 		return err
 	}
 
-	spec, err := jobSpecAdapter.ToSpec(jobInput)
-	if err != nil {
-		return err
+	if err := jobSpecReadWriter.Write(jobDirectory, &jobSpec); err != nil {
+		return fmt.Errorf("error di folder ini %s %w", jobDirectory, err)
 	}
 
-	if err := jobSpecRepo.SaveAt(spec, jobDirectory); err != nil {
-		return err
-	}
 	c.logger.Info("Job successfully created at %s", jobDirectory)
 	return nil
 }

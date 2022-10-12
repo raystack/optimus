@@ -17,7 +17,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/odpf/optimus/api/writer"
-	"github.com/odpf/optimus/internal/lib/cron"
 	"github.com/odpf/optimus/internal/lib/progress"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
@@ -203,32 +202,6 @@ func (sv *JobSpecServiceServer) getDpendencyRunInfo(ctx context.Context, jobSpec
 		})
 	}
 	for _, dependency := range jobSpec.ExternalDependencies.OptimusDependencies {
-		//conn, err := connectivity.NewConnectivity(j.host, jobRunInputCompileAssetsTimeout)
-		//if err != nil {
-		//	return nil, err
-		//}
-		//defer conn.Close()
-		//
-		//// fetch Instance by calling the optimus API
-		//jobRunServiceClient := pb.NewJobRunServiceClient(conn.GetConnection())
-		//request := &pb.JobRunInputRequest{
-		//	ProjectName:  j.projectName,
-		//	JobName:      jobName,
-		//	ScheduledAt:  jobScheduledTimeProto,
-		//	InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[utils.ToEnumProto(j.runType, "type")]),
-		//	InstanceName: j.runName,
-		//}
-		//
-		//return jobRunServiceClient.JobRunInput(conn.GetContext(), request)
-		//
-		//expectedRuns, err := sv.jobRunService.GetJobRunList(ctx, *dependency.Project, *dependency.Job, &models.JobQuery{
-		//	Name:      dependency.Job.Name,
-		//	StartDate: windowStartTime,
-		//	EndDate:   windowEndTime,
-		//})
-		//if err != nil {
-		//	logWriter.Write(writer.LogLevelError, fmt.Sprintf("error in fetching job run list for %s/%s, err::%s", dependency.Project.Name, dependency.Job.Name, err.Error()))
-		//}
 		externalDependencies = append(externalDependencies, &pb.OptimusDependency{
 			Name:          dependency.JobName,
 			Host:          dependency.Host,
@@ -246,20 +219,6 @@ func (sv *JobSpecServiceServer) getDpendencyRunInfo(ctx context.Context, jobSpec
 		})
 	}
 	return internalDependencies, externalDependencies, httpDependency
-}
-
-func getExpectedRunsByWindow(job models.JobSpec, windowStartTime time.Time, windowEndTime time.Time, logWriter writer.LogWriter) []*timestamppb.Timestamp {
-	jobIdentifier := fmt.Sprintf("%s/%s", job.GetProjectSpec().Name, job.Name)
-	jobCron, err := cron.ParseCronSchedule(job.Schedule.Interval)
-	if err != nil {
-		logWriter.Write(writer.LogLevelError, fmt.Sprintf("unable to Parse Cron Schedule for %s", jobIdentifier))
-	}
-	expectedRuns := jobCron.GetExpectedRuns(windowStartTime, windowEndTime)
-	var expectedRunsPb []*timestamppb.Timestamp
-	for _, runTimestamp := range expectedRuns {
-		expectedRunsPb = append(expectedRunsPb, timestamppb.New(runTimestamp))
-	}
-	return expectedRunsPb
 }
 
 func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspectRequest) (*pb.JobInspectResponse, error) {
@@ -288,12 +247,11 @@ func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspe
 	jobBasicInfo := sv.jobSvc.GetJobBasicInfo(ctx, jobSpec)
 
 	upstreamLogs := &writer.BufferedLogger{}
-	upstreamLogs.Write(writer.LogLevelInfo, fmt.Sprintf("using schedule time as %v, 0val %v", scheduleTime, time.Unix(0, 0)))
 	if scheduleTime.Unix() == time.Unix(0, 0).Unix() {
 		scheduleTime = time.Now()
 		upstreamLogs.Write(writer.LogLevelInfo, fmt.Sprintf("schedule time not provided, using schedule time as current time::%v", scheduleTime))
 	}
-	jobSpec, unknownDependency, err := sv.jobSvc.EnrichUpstreamJobs(ctx, jobSpec, jobBasicInfo.JobSource, upstreamLogs)
+	jobSpec, unknownDependency, err := sv.jobSvc.GetEnrichedUpstreamJobSpec(ctx, jobSpec, jobBasicInfo.JobSource, upstreamLogs)
 	if err != nil {
 		upstreamLogs.Write(writer.LogLevelError, fmt.Sprintf("error while enriching upstreams dependeincies %v", err.Error()))
 	}
@@ -310,7 +268,7 @@ func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspe
 	intenralDepsProto, externalDepsProto, httpDepsProto := sv.getDpendencyRunInfo(ctx, jobSpec, scheduleTime, upstreamLogs)
 
 	downstreamLogs := &writer.BufferedLogger{}
-	downStreamJobs, err := sv.jobSvc.GetDownstreamJobs(ctx, jobSpec)
+	downStreamJobs, err := sv.jobSvc.GetDownstreamJobs(ctx, jobSpec.Name, jobSpec.ResourceDestination, jobSpec.GetProjectSpec().Name)
 	if err != nil {
 		downstreamLogs.Write(writer.LogLevelError, fmt.Sprintf("unable to get downstream jobs %v", err.Error()))
 	}
