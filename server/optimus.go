@@ -248,7 +248,6 @@ func (s *OptimusServer) setupHandlers() error {
 
 	dbAdapter := postgres.NewAdapter(models.PluginRegistry)
 	replaySpecRepo := postgres.NewReplayRepository(s.dbConn, dbAdapter)
-	jobRunRepo := postgres.NewJobRunRepository(s.dbConn, dbAdapter)
 	jobSpecRepo, err := postgres.NewJobSpecRepository(s.dbConn, dbAdapter)
 	if err != nil {
 		return err
@@ -355,12 +354,7 @@ func (s *OptimusServer) setupHandlers() error {
 
 	// job run service
 	jobRunService := service.NewJobRunService(
-		jobRunRepo,
-		func() time.Time {
-			return time.Now().UTC()
-		},
 		models.BatchScheduler,
-		pluginService,
 	)
 
 	progressObs := &pipelineLogObserver{
