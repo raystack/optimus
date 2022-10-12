@@ -319,12 +319,12 @@ func (srv *Service) GetJobBasicInfo(ctx context.Context, jobSpec models.JobSpec)
 
 	deps, err := srv.pluginService.GenerateDependencies(ctx, jobSpec, jobSpec.NamespaceSpec, false)
 	if err != nil {
-		jobBasicInfo.Log.Write(writer.LogLevelError, fmt.Sprintf("failed to generate dependencies, err: %v", err))
+		jobBasicInfo.Log.Write(writer.LogLevelError, fmt.Sprintf("failed to generate job sources, err: %v", err))
 	} else {
 		if deps != nil {
 			jobBasicInfo.JobSource = deps.Dependencies
 		} else {
-			jobBasicInfo.Log.Write(writer.LogLevelInfo, "no dependencies detected")
+			jobBasicInfo.Log.Write(writer.LogLevelInfo, "no job sources detected")
 		}
 	}
 	srv.Check(ctx, jobSpec.NamespaceSpec, []models.JobSpec{jobSpec}, &jobBasicInfo.Log)
