@@ -216,7 +216,7 @@ func (j *JobSpecRepositoryTestSuite) TestGetByResourceDestinationURN() {
 		actualJobSpec, actualError := repository.GetByResourceDestinationURN(ctx, destination)
 
 		j.NoError(actualError)
-		j.Equal(storedJob.Name, actualJobSpec.Name)
+		j.Equal(storedJob.Name, actualJobSpec[0].Name)
 	})
 }
 
