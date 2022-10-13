@@ -45,12 +45,13 @@ func FromStringToKind(name string) (Kind, error) {
 type Status string
 
 const (
-	StatusUnknown  Status = "unknown"
+	StatusUnknown Status = "unknown"
+
 	StatusToCreate Status = "to_create"
 	StatusToUpdate Status = "to_update"
 
-	StatusSuccess Status = "sync_success"
-	StatusFailure Status = "sync_failure"
+	StatusSyncSuccess Status = "sync_success"
+	StatusSyncFailure Status = "sync_failure"
 )
 
 func (s Status) String() string {

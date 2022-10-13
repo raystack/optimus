@@ -19,51 +19,64 @@ type ResourceBatchRepo interface {
 	UpdateAll(ctx context.Context, tnnt tenant.Tenant, resources []*resource.Resource) error
 }
 
+type ResourceManager interface {
+	SyncToStore(context.Context, tenant.Tenant, resource.Name) error
+}
+
 type ResourceService struct {
 	repo  ResourceRepository
 	batch ResourceBatchRepo
+	mgr   ResourceManager
+}
+
+func NewResourceService(repo ResourceRepository, batch ResourceBatchRepo, mgr ResourceManager) *ResourceService {
+	return &ResourceService{
+		repo:  repo,
+		batch: batch,
+		mgr:   mgr,
+	}
 }
 
 func (rs ResourceService) Create(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error {
-	if res == nil {
-		return errors.InvalidArgument(resource.EntityResource, "invalid resource to create")
-	}
-
 	if err := res.Validate(); err != nil {
 		return err
 	}
-	// Save, will add the status as to_create, find if not already exists
 
-	// If we keep it sync then call manager.Create() to create on datastore
-	// and call repo.UpdateStatus(ctx, tnnt, res.Name, "success")
-	// or res.SyncSuccess() and do a repo.update(...)
-	return rs.repo.Create(ctx, tnnt, res)
+	createRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToCreate))
+	if err := rs.repo.Create(ctx, tnnt, createRequest); err != nil {
+		return err
+	}
+	return rs.mgr.SyncToStore(ctx, tnnt, res.Name())
 }
 
 func (rs ResourceService) Update(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error {
-	if res == nil {
-		return errors.InvalidArgument(resource.EntityResource, "invalid resource to update")
-	}
-
 	if err := res.Validate(); err != nil {
 		return err
 	}
 
-	// here do something like
-	// dbRes := repo.Get(...)
-	// res.isEqual(incoming) -- If status not success return false.
-	//   return
-	//
+	existing, err := rs.repo.Get(ctx, tnnt, res.Dataset().Store, res.Name())
+	if err != nil {
+		return err
+	}
 
-	// Check in repo if the spec is same, then return.
-	return rs.repo.Update(ctx, tnnt, res)
+	updateRequest := resource.FromExisting(existing,
+		resource.ReplaceKind(res.Kind()),
+		resource.ReplaceDataset(res.Dataset()),
+		resource.ReplaceTenant(res.Tenant()),
+		resource.ReplaceSpec(res.Spec()),
+		resource.ReplaceMetadata(res.Metadata()),
+		resource.ReplaceStatus(resource.StatusToUpdate),
+	)
+	if err := rs.repo.Update(ctx, tnnt, updateRequest); err != nil {
+		return err
+	}
+	return rs.mgr.SyncToStore(ctx, tnnt, res.Name())
 }
 
 func (rs ResourceService) Read(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceName resource.Name) (*resource.Resource, error) {
 	if resourceName == "" {
 		return nil, errors.InvalidArgument(resource.EntityResource, "empty resource name")
 	}
-
 	return rs.repo.Get(ctx, tnnt, store, resourceName)
 }
 

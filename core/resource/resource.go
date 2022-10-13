@@ -39,46 +39,56 @@ func (n Name) String() string {
 type Resource struct {
 	name Name
 
-	dataset Dataset
 	kind    Kind
+	dataset Dataset
 
 	tenant tenant.Tenant
 
 	spec     map[string]any
 	metadata *Metadata
+
+	status Status
 }
 
-func (r *Resource) Name() Name {
+func (r Resource) Name() Name {
 	return r.name
 }
 
-func (r *Resource) FullName() string {
+func (r Resource) FullName() string {
 	if r.kind == KindDataset {
 		return r.dataset.FullName()
 	}
 	return r.dataset.FullName() + "." + r.name.String()
 }
 
-func (r *Resource) URN() string {
+func (r Resource) URN() string {
 	if r.kind == KindDataset {
 		return r.dataset.URN()
 	}
 	return r.dataset.URN() + "." + r.name.String()
 }
 
-func (r *Resource) Metadata() *Metadata {
+func (r Resource) Metadata() *Metadata {
 	return r.metadata
 }
 
-func (r *Resource) Kind() Kind {
+func (r Resource) Kind() Kind {
 	return r.kind
 }
 
-func (r *Resource) Tenant() tenant.Tenant {
+func (r Resource) Tenant() tenant.Tenant {
 	return r.tenant
 }
 
-func (r *Resource) Spec() map[string]any {
+func (r Resource) Dataset() Dataset {
+	return r.dataset
+}
+
+func (r Resource) Status() Status {
+	return r.status
+}
+
+func (r Resource) Spec() map[string]any {
 	return r.spec
 }
 
@@ -117,8 +127,8 @@ func NewResource(fullName string, kind Kind, store Store, tnnt tenant.Tenant, me
 
 	return &Resource{
 		name:     name,
-		dataset:  dataset,
 		kind:     kind,
+		dataset:  dataset,
 		tenant:   tnnt,
 		spec:     spec,
 		metadata: meta,
@@ -165,4 +175,58 @@ func (r *Resource) Validate() error {
 	default:
 		return errors.InvalidArgument(EntityResource, "unknown kind")
 	}
+}
+
+type FromExistingOpt func(r *Resource)
+
+func ReplaceKind(kind Kind) FromExistingOpt {
+	return func(r *Resource) {
+		r.kind = kind
+	}
+}
+
+func ReplaceDataset(dataset Dataset) FromExistingOpt {
+	return func(r *Resource) {
+		r.dataset = dataset
+	}
+}
+
+func ReplaceTenant(tnnt tenant.Tenant) FromExistingOpt {
+	return func(r *Resource) {
+		r.tenant = tnnt
+	}
+}
+
+func ReplaceSpec(spec map[string]any) FromExistingOpt {
+	return func(r *Resource) {
+		r.spec = spec
+	}
+}
+
+func ReplaceMetadata(metadata *Metadata) FromExistingOpt {
+	return func(r *Resource) {
+		r.metadata = metadata
+	}
+}
+
+func ReplaceStatus(status Status) FromExistingOpt {
+	return func(r *Resource) {
+		r.status = status
+	}
+}
+
+func FromExisting(existing *Resource, opts ...FromExistingOpt) *Resource {
+	output := &Resource{
+		name:     existing.name,
+		kind:     existing.kind,
+		dataset:  existing.dataset,
+		tenant:   existing.tenant,
+		spec:     existing.spec,
+		metadata: existing.metadata,
+		status:   existing.status,
+	}
+	for _, opt := range opts {
+		opt(output)
+	}
+	return output
 }
