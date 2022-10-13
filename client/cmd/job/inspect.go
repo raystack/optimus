@@ -80,7 +80,6 @@ func (e *inspectCommand) RunE(cmd *cobra.Command, args []string) error {
 	}
 
 	var jobSpec *model.JobSpec
-
 	serverFetch, _ := cmd.Flags().GetBool(optimusServerFetchFlag)
 	if !serverFetch {
 		jobSpec, err = e.getJobSpecByName(args, namespace.Job.Path)
@@ -88,7 +87,9 @@ func (e *inspectCommand) RunE(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		jobSpec.Name = args[0]
+		jobSpec = &model.JobSpec{
+			Name:args[0],
+		}
 	}
 
 	start := time.Now()
