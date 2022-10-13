@@ -177,13 +177,19 @@ func (sv *JobSpecServiceServer) getDpendencyRunInfo(ctx context.Context, jobSpec
 
 	for _, dependency := range jobSpec.Dependencies {
 		logWriter.Write(writer.LogLevelInfo, fmt.Sprintf("%#v", *dependency.Project))
-		jobRunList, err := sv.jobRunService.GetJobRunList(ctx, *dependency.Project, *dependency.Job, &models.JobQuery{
+		dependencyProjectSpec, err := sv.projectService.Get(ctx, dependency.Job.GetProjectSpec().Name)
+		if err != nil {
+			logWriter.Write(writer.LogLevelError, fmt.Sprintf("error in fetching project Spec for %s, err::%s", dependency.Job.GetFullName(), err.Error()))
+			continue
+		}
+		jobRunList, err := sv.jobRunService.GetJobRunList(ctx, dependencyProjectSpec, *dependency.Job, &models.JobQuery{
 			Name:      dependency.Job.Name,
 			StartDate: windowStartTime,
 			EndDate:   windowEndTime,
 		})
 		if err != nil {
-			logWriter.Write(writer.LogLevelError, fmt.Sprintf("error in fetching job run list for %s/%s, err::%s", dependency.Project.Name, dependency.Job.Name, err.Error()))
+			logWriter.Write(writer.LogLevelError, fmt.Sprintf("error in fetching job run list for %s, err::%s", dependency.Job.GetFullName(), err.Error()))
+			continue
 		}
 		var runsProto []*pb.JobRun
 		for _, run := range jobRunList {
