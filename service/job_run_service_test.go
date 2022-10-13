@@ -329,47 +329,6 @@ func TestJobRunService(t *testing.T) {
 	})
 }
 
-func getCopy(original models.JobRun) models.JobRun {
-	return models.JobRun{
-		ID:      original.ID,
-		Spec:    original.Spec,
-		Trigger: original.Trigger,
-		Status:  original.Status,
-		// skip Instances as they are not in the original top level
-		ScheduledAt: original.ExecutedAt,
-		ExecutedAt:  original.ExecutedAt,
-	}
-}
-
-func getJobSpec(namespaceSpec models.NamespaceSpec) models.JobSpec {
-	execUnit := new(mock.BasePlugin)
-	execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "bq"}, nil)
-	window, err := models.NewWindow(1, "d", "0", "1h")
-	if err != nil {
-		panic(err)
-	}
-	return models.JobSpec{
-		Version: 1,
-		Name:    "foo",
-		Owner:   "mee@mee",
-		Behavior: models.JobSpecBehavior{
-			CatchUp:       true,
-			DependsOnPast: false,
-		},
-		Schedule: models.JobSpecSchedule{
-			StartDate: time.Date(2000, 11, 11, 0, 0, 0, 0, time.UTC),
-			Interval:  "* * * * *",
-		},
-		Task: models.JobSpecTask{
-			Unit:     &models.Plugin{Base: execUnit},
-			Priority: 2000,
-			Window:   window,
-		},
-		Dependencies:  map[string]models.JobSpecDependency{},
-		NamespaceSpec: namespaceSpec,
-	}
-}
-
 func mockGetJobRuns(afterDays int, date time.Time, interval, status string) ([]models.JobRun, error) {
 	var expRuns []models.JobRun
 	schSpec, err := cron.ParseCronSchedule(interval)
