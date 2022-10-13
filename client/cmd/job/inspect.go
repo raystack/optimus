@@ -88,7 +88,7 @@ func (e *inspectCommand) RunE(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		jobSpec = &model.JobSpec{
-			Name:args[0],
+			Name: args[0],
 		}
 	}
 
