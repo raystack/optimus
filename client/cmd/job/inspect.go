@@ -173,24 +173,70 @@ func (e *inspectCommand) printLogs(logs []*pb.Log) {
 	}
 }
 
+func getRunsDateArray(jobRunProtos []*pb.JobRun) []string {
+	var runsDateArray []string
+	for _, run := range jobRunProtos {
+		runsDateArray = append(runsDateArray, fmt.Sprintf("%s : %s", run.ScheduledAt.AsTime().String(), run.State))
+	}
+	return runsDateArray
+}
+
 func (e *inspectCommand) displayUpstreamSection(upstreams *pb.JobInspectResponse_UpstreamSection) {
 	e.logger.Warn("\n-----------------------------------------------------------------------------")
 	e.logger.Warn("\n    * UPSTREAMS")
 	e.logger.Warn("\n-----------------------------------------------------------------------------")
 
 	e.logger.Info("\n> Internal::")
-	e.yamlPrint(upstreams.InternalDependency)
+	var internalDepsArray []map[string]interface{}
+	for _, dependency := range upstreams.InternalDependency {
+		internalDepsArray = append(internalDepsArray, map[string]interface{}{
+			"Job":       fmt.Sprintf("%s/%s", dependency.ProjectName, dependency.Name),
+			"Namespace": dependency.NamespaceName,
+			"Runs":      getRunsDateArray(dependency.Runs),
+			"Task":      dependency.TaskName,
+		})
+	}
+	e.yamlPrint(internalDepsArray)
 
-	e.logger.Info("\n> Exteranl::")
-	e.yamlPrint(upstreams.ExternalDependency)
+	e.logger.Info("\n> External::")
+	var externalDepsArray []map[string]interface{}
+	for _, dependency := range upstreams.ExternalDependency {
+		externalDepsArray = append(externalDepsArray, map[string]interface{}{
+			"Job":       fmt.Sprintf("%s/%s", dependency.ProjectName, dependency.Name),
+			"Host":      dependency.Host,
+			"Namespace": dependency.NamespaceName,
+			"Runs":      getRunsDateArray(dependency.Runs),
+			"Task":      dependency.TaskName,
+		})
+	}
+	e.yamlPrint(externalDepsArray)
 
 	e.logger.Info("\n> HTTP::")
 	e.yamlPrint(upstreams.HttpDependency)
 
-	e.logger.Info("\n> unknonw dependencies ::")
+	e.logger.Info("\n> Unknown dependencies ::")
 	e.yamlPrint(upstreams.UnknownDependencies)
 
 	e.printLogs(upstreams.Notice)
+}
+
+func (e *inspectCommand) displayDownstreamSection(downStreams *pb.JobInspectResponse_DownstreamSection) {
+	e.logger.Warn("\n-----------------------------------------------------------------------------")
+	e.logger.Warn("\n    * DownStream Jobs")
+	e.logger.Warn("\n-----------------------------------------------------------------------------")
+
+	e.logger.Info("\n> DownstreamJobs::")
+	var downstreamList []map[string]interface{}
+	for _, dependency := range downStreams.DownstreamJobs {
+		downstreamList = append(downstreamList, map[string]interface{}{
+			"Job":       fmt.Sprintf("%s/%s", dependency.ProjectName, dependency.Name),
+			"Namespace": dependency.NamespaceName,
+			"Task":      dependency.TaskName,
+		})
+	}
+	e.yamlPrint(downstreamList)
+
+	e.printLogs(downStreams.Notice)
 }
 
 func (e *inspectCommand) displayBasicInfoSection(basicInfoSection *pb.JobInspectResponse_BasicInfoSection) {
@@ -215,7 +261,7 @@ func (e *inspectCommand) displayBasicInfoSection(basicInfoSection *pb.JobInspect
 func (e *inspectCommand) processJobInspectResponse(resp *pb.JobInspectResponse) error {
 	e.displayBasicInfoSection(resp.BasicInfo)
 	e.displayUpstreamSection(resp.Upstreams)
-
+	e.displayDownstreamSection(resp.Downstreams)
 	e.logger.Warn("\n-----------------------------------------------------------------------------")
 	return nil
 }

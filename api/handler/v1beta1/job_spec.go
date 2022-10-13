@@ -176,7 +176,6 @@ func (sv *JobSpecServiceServer) getDpendencyRunInfo(ctx context.Context, jobSpec
 	}
 
 	for _, dependency := range jobSpec.Dependencies {
-		logWriter.Write(writer.LogLevelInfo, fmt.Sprintf("%#v", *dependency.Project))
 		dependencyProjectSpec, err := sv.projectService.Get(ctx, dependency.Job.GetProjectSpec().Name)
 		if err != nil {
 			logWriter.Write(writer.LogLevelError, fmt.Sprintf("error in fetching project Spec for %s, err::%s", dependency.Job.GetFullName(), err.Error()))
