@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"reflect"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
@@ -135,7 +136,7 @@ func NewResource(fullName string, kind Kind, store Store, tnnt tenant.Tenant, me
 	}, nil
 }
 
-func (r *Resource) Validate() error {
+func (r Resource) Validate() error {
 	switch r.kind {
 	case KindTable:
 		var table Table
@@ -177,35 +178,15 @@ func (r *Resource) Validate() error {
 	}
 }
 
-type FromExistingOpt func(r *Resource)
-
-func ReplaceKind(kind Kind) FromExistingOpt {
-	return func(r *Resource) {
-		r.kind = kind
-	}
+func (r Resource) Equal(incoming *Resource) bool {
+	return reflect.DeepEqual(&r, incoming)
 }
+
+type FromExistingOpt func(r *Resource)
 
 func ReplaceDataset(dataset Dataset) FromExistingOpt {
 	return func(r *Resource) {
 		r.dataset = dataset
-	}
-}
-
-func ReplaceTenant(tnnt tenant.Tenant) FromExistingOpt {
-	return func(r *Resource) {
-		r.tenant = tnnt
-	}
-}
-
-func ReplaceSpec(spec map[string]any) FromExistingOpt {
-	return func(r *Resource) {
-		r.spec = spec
-	}
-}
-
-func ReplaceMetadata(metadata *Metadata) FromExistingOpt {
-	return func(r *Resource) {
-		r.metadata = metadata
 	}
 }
 

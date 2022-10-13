@@ -11,7 +11,7 @@ import (
 type ResourceRepository interface {
 	Create(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error
 	Update(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error
-	ReadByName(ctx context.Context, tnnt tenant.Tenant, store resource.Store, name resource.Name) (*resource.Resource, error)
+	ReadByFullName(ctx context.Context, tnnt tenant.Tenant, store resource.Store, fullName string) (*resource.Resource, error)
 	ReadAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error)
 }
 
@@ -20,7 +20,7 @@ type ResourceBatchRepo interface {
 }
 
 type ResourceManager interface {
-	SyncToStore(context.Context, tenant.Tenant, resource.Name) error
+	SyncToStore(ctx context.Context, tnnt tenant.Tenant, fullNames ...string) error
 }
 
 type ResourceService struct {
@@ -46,7 +46,7 @@ func (rs ResourceService) Create(ctx context.Context, tnnt tenant.Tenant, res *r
 	if err := rs.repo.Create(ctx, tnnt, createRequest); err != nil {
 		return err
 	}
-	return rs.mgr.SyncToStore(ctx, tnnt, res.Name())
+	return rs.mgr.SyncToStore(ctx, tnnt, res.FullName())
 }
 
 func (rs ResourceService) Update(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error {
@@ -54,30 +54,23 @@ func (rs ResourceService) Update(ctx context.Context, tnnt tenant.Tenant, res *r
 		return err
 	}
 
-	existing, err := rs.repo.ReadByName(ctx, tnnt, res.Dataset().Store, res.Name())
+	existing, err := rs.repo.ReadByFullName(ctx, tnnt, res.Dataset().Store, res.FullName())
 	if err != nil {
 		return err
 	}
 
-	updateRequest := resource.FromExisting(existing,
-		resource.ReplaceKind(res.Kind()),
-		resource.ReplaceDataset(res.Dataset()),
-		resource.ReplaceTenant(res.Tenant()),
-		resource.ReplaceSpec(res.Spec()),
-		resource.ReplaceMetadata(res.Metadata()),
-		resource.ReplaceStatus(resource.StatusToUpdate),
-	)
+	updateRequest := resource.FromExisting(existing, resource.ReplaceStatus(resource.StatusToUpdate))
 	if err := rs.repo.Update(ctx, tnnt, updateRequest); err != nil {
 		return err
 	}
-	return rs.mgr.SyncToStore(ctx, tnnt, res.Name())
+	return rs.mgr.SyncToStore(ctx, tnnt, res.FullName())
 }
 
-func (rs ResourceService) Read(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceName resource.Name) (*resource.Resource, error) {
-	if resourceName == "" {
-		return nil, errors.InvalidArgument(resource.EntityResource, "empty resource name")
+func (rs ResourceService) Read(ctx context.Context, tnnt tenant.Tenant, store resource.Store, fullName string) (*resource.Resource, error) {
+	if fullName == "" {
+		return nil, errors.InvalidArgument(resource.EntityResource, "empty resource full name")
 	}
-	return rs.repo.ReadByName(ctx, tnnt, store, resourceName)
+	return rs.repo.ReadByFullName(ctx, tnnt, store, fullName)
 }
 
 func (rs ResourceService) GetAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error) {
@@ -85,17 +78,59 @@ func (rs ResourceService) GetAll(ctx context.Context, tnnt tenant.Tenant, store 
 }
 
 func (rs ResourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
-	// Here query all the resource for tenant and do the matches.
-	_, err := rs.repo.ReadAll(ctx, tnnt, store)
+	for _, r := range resources {
+		if err := r.Validate(); err != nil {
+			return err
+		}
+	}
+
+	existingResources, err := rs.repo.ReadAll(ctx, tnnt, store)
 	if err != nil {
 		return err
 	}
-	// do a loop over all the received resources, and find the one with same name or urn from db ones
 
-	// Once identified all resources for create/update
-	// Do a batch insert/update
+	existingMappedByFullName := rs.getResourcesMappedByFullName(existingResources)
+	resourcesToBatchUpdate := rs.getResourcesToBatchUpdate(resources, existingMappedByFullName)
+	if len(resourcesToBatchUpdate) == 0 {
+		return nil
+	}
 
-	return rs.batch.UpdateAll(ctx, tnnt, resources)
+	if err := rs.batch.UpdateAll(ctx, tnnt, resourcesToBatchUpdate); err != nil {
+		return err
+	}
 
-	// resource manager -> will need to use rate limit
+	batchUpdatedFullNames := rs.getFullNames(resourcesToBatchUpdate)
+	return rs.mgr.SyncToStore(ctx, tnnt, batchUpdatedFullNames...)
+}
+
+func (ResourceService) getFullNames(resources []*resource.Resource) []string {
+	output := make([]string, len(resources))
+	for i, r := range resources {
+		output[i] = r.FullName()
+	}
+	return output
+}
+
+func (ResourceService) getResourcesToBatchUpdate(incomings []*resource.Resource, existingMappedByFullName map[string]*resource.Resource) []*resource.Resource {
+	var output []*resource.Resource
+	for _, incoming := range incomings {
+		if existing, ok := existingMappedByFullName[incoming.FullName()]; ok {
+			if !incoming.Equal(existing) {
+				resourceToUpdate := resource.FromExisting(incoming, resource.ReplaceStatus(resource.StatusToUpdate))
+				output = append(output, resourceToUpdate)
+			}
+		} else {
+			resourceToCreate := resource.FromExisting(incoming, resource.ReplaceStatus(resource.StatusToCreate))
+			output = append(output, resourceToCreate)
+		}
+	}
+	return output
+}
+
+func (ResourceService) getResourcesMappedByFullName(resources []*resource.Resource) map[string]*resource.Resource {
+	output := make(map[string]*resource.Resource, len(resources))
+	for _, r := range resources {
+		output[r.FullName()] = r
+	}
+	return output
 }

@@ -14,9 +14,9 @@ type Resource struct {
 	ProjectName   string `json:"project_name"`
 	NamespaceName string `json:"namespace_name"`
 
-	Type      string `gorm:"not null"`
-	Datastore string `gorm:"not null"`
-	URN       string `gorm:"not null"`
+	Store string `gorm:"not null"`
+	Type  string `gorm:"not null"`
+	URN   string `gorm:"not null"`
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
