@@ -11,8 +11,8 @@ import (
 type ResourceRepository interface {
 	Create(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error
 	Update(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error
-	Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, name resource.Name) (*resource.Resource, error)
-	GetAllFor(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error)
+	ReadByName(ctx context.Context, tnnt tenant.Tenant, store resource.Store, name resource.Name) (*resource.Resource, error)
+	ReadAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error)
 }
 
 type ResourceBatchRepo interface {
@@ -54,7 +54,7 @@ func (rs ResourceService) Update(ctx context.Context, tnnt tenant.Tenant, res *r
 		return err
 	}
 
-	existing, err := rs.repo.Get(ctx, tnnt, res.Dataset().Store, res.Name())
+	existing, err := rs.repo.ReadByName(ctx, tnnt, res.Dataset().Store, res.Name())
 	if err != nil {
 		return err
 	}
@@ -77,16 +77,16 @@ func (rs ResourceService) Read(ctx context.Context, tnnt tenant.Tenant, store re
 	if resourceName == "" {
 		return nil, errors.InvalidArgument(resource.EntityResource, "empty resource name")
 	}
-	return rs.repo.Get(ctx, tnnt, store, resourceName)
+	return rs.repo.ReadByName(ctx, tnnt, store, resourceName)
 }
 
 func (rs ResourceService) GetAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error) {
-	return rs.repo.GetAllFor(ctx, tnnt, store)
+	return rs.repo.ReadAll(ctx, tnnt, store)
 }
 
 func (rs ResourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
 	// Here query all the resource for tenant and do the matches.
-	_, err := rs.repo.GetAllFor(ctx, tnnt, store)
+	_, err := rs.repo.ReadAll(ctx, tnnt, store)
 	if err != nil {
 		return err
 	}

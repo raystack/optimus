@@ -140,7 +140,7 @@ func TestResourceService(t *testing.T) {
 				panic(err)
 			}
 
-			repo.On("Get", ctx, tnnt, resource.BigQuery, mock.Anything).Return(nil, errors.New("unknown error"))
+			repo.On("ReadByName", ctx, tnnt, resource.BigQuery, mock.Anything).Return(nil, errors.New("unknown error"))
 
 			actualError := rscService.Update(ctx, tnnt, resourceToUpdate)
 
@@ -168,7 +168,7 @@ func TestResourceService(t *testing.T) {
 				panic(err)
 			}
 
-			repo.On("Get", ctx, tnnt, resource.BigQuery, mock.Anything).Return(existingResource, nil)
+			repo.On("ReadByName", ctx, tnnt, resource.BigQuery, mock.Anything).Return(existingResource, nil)
 			repo.On("Update", ctx, tnnt, mock.Anything).Return(errors.New("unknown error"))
 
 			actualError := rscService.Update(ctx, tnnt, resourceToUpdate)
@@ -197,7 +197,7 @@ func TestResourceService(t *testing.T) {
 				panic(err)
 			}
 
-			repo.On("Get", ctx, tnnt, resource.BigQuery, mock.Anything).Return(existingResource, nil)
+			repo.On("ReadByName", ctx, tnnt, resource.BigQuery, mock.Anything).Return(existingResource, nil)
 			repo.On("Update", ctx, tnnt, mock.Anything).Return(nil)
 
 			mgr.On("SyncToStore", ctx, tnnt, mock.Anything).Return(errors.New("unknown error"))
@@ -228,7 +228,7 @@ func TestResourceService(t *testing.T) {
 				panic(err)
 			}
 
-			repo.On("Get", ctx, tnnt, resource.BigQuery, mock.Anything).Return(existingResource, nil)
+			repo.On("ReadByName", ctx, tnnt, resource.BigQuery, mock.Anything).Return(existingResource, nil)
 			repo.On("Update", ctx, tnnt, mock.Anything).Return(nil)
 
 			mgr.On("SyncToStore", ctx, tnnt, mock.Anything).Return(nil)
@@ -268,7 +268,7 @@ func TestResourceService(t *testing.T) {
 			store := resource.BigQuery
 			var resourceName resource.Name = "project.dataset"
 
-			repo.On("Get", ctx, tnnt, resource.BigQuery, mock.Anything).Return(nil, errors.New("unknown error"))
+			repo.On("ReadByName", ctx, tnnt, resource.BigQuery, mock.Anything).Return(nil, errors.New("unknown error"))
 
 			actualResource, actualError := rscService.Read(ctx, tnnt, store, resourceName)
 
@@ -295,7 +295,7 @@ func TestResourceService(t *testing.T) {
 				panic(err)
 			}
 
-			repo.On("Get", ctx, tnnt, resource.BigQuery, mock.Anything).Return(existingResource, nil)
+			repo.On("ReadByName", ctx, tnnt, resource.BigQuery, mock.Anything).Return(existingResource, nil)
 
 			actualResource, actualError := rscService.Read(ctx, tnnt, store, resourceName)
 
@@ -315,7 +315,7 @@ func TestResourceService(t *testing.T) {
 			tnnt := tenant.Tenant{}
 			store := resource.BigQuery
 
-			repo.On("GetAllFor", ctx, tnnt, resource.BigQuery).Return(nil, errors.New("unknown error"))
+			repo.On("ReadAll", ctx, tnnt, resource.BigQuery).Return(nil, errors.New("unknown error"))
 
 			actualResource, actualError := rscService.GetAll(ctx, tnnt, store)
 
@@ -341,7 +341,7 @@ func TestResourceService(t *testing.T) {
 				panic(err)
 			}
 
-			repo.On("GetAllFor", ctx, tnnt, resource.BigQuery).Return([]*resource.Resource{existingResource}, nil)
+			repo.On("ReadAll", ctx, tnnt, resource.BigQuery).Return([]*resource.Resource{existingResource}, nil)
 
 			actualResource, actualError := rscService.GetAll(ctx, tnnt, store)
 
@@ -368,29 +368,7 @@ func (_m *ResourceRepository) Create(ctx context.Context, tnnt tenant.Tenant, re
 	return r0
 }
 
-func (_m *ResourceRepository) Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, name resource.Name) (*resource.Resource, error) {
-	ret := _m.Called(ctx, tnnt, store, name)
-
-	var r0 *resource.Resource
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, resource.Store, resource.Name) *resource.Resource); ok {
-		r0 = rf(ctx, tnnt, store, name)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*resource.Resource)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, tenant.Tenant, resource.Store, resource.Name) error); ok {
-		r1 = rf(ctx, tnnt, store, name)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-func (_m *ResourceRepository) GetAllFor(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error) {
+func (_m *ResourceRepository) ReadAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error) {
 	ret := _m.Called(ctx, tnnt, store)
 
 	var r0 []*resource.Resource
@@ -405,6 +383,28 @@ func (_m *ResourceRepository) GetAllFor(ctx context.Context, tnnt tenant.Tenant,
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, tenant.Tenant, resource.Store) error); ok {
 		r1 = rf(ctx, tnnt, store)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+func (_m *ResourceRepository) ReadByName(ctx context.Context, tnnt tenant.Tenant, store resource.Store, name resource.Name) (*resource.Resource, error) {
+	ret := _m.Called(ctx, tnnt, store, name)
+
+	var r0 *resource.Resource
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, resource.Store, resource.Name) *resource.Resource); ok {
+		r0 = rf(ctx, tnnt, store, name)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*resource.Resource)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.Tenant, resource.Store, resource.Name) error); ok {
+		r1 = rf(ctx, tnnt, store, name)
 	} else {
 		r1 = ret.Error(1)
 	}
