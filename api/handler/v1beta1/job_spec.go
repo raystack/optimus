@@ -227,7 +227,6 @@ func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspe
 		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
 	}
 	scheduleTime := req.GetScheduledAt().AsTime()
-
 	var jobSpec models.JobSpec
 	if req.GetJobName() != "" {
 		// get job spec from DB

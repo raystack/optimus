@@ -23,6 +23,7 @@ import (
 const (
 	inspectTimeout         = time.Minute * 1
 	optimusServerFetchFlag = "server"
+	MASKED                 = "<masked>"
 )
 
 type inspectCommand struct {
@@ -79,7 +80,6 @@ func (e *inspectCommand) RunE(cmd *cobra.Command, args []string) error {
 	}
 
 	var jobSpec *model.JobSpec
-
 	serverFetch, _ := cmd.Flags().GetBool(optimusServerFetchFlag)
 	if !serverFetch {
 		jobSpec, err = e.getJobSpecByName(args, namespace.Job.Path)
@@ -87,7 +87,9 @@ func (e *inspectCommand) RunE(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		jobSpec.Name = args[0]
+		jobSpec = &model.JobSpec{
+			Name:args[0],
+		}
 	}
 
 	start := time.Now()
@@ -202,6 +204,9 @@ func (e *inspectCommand) displayBasicInfoSection(basicInfoSection *pb.JobInspect
 	e.yamlPrint(basicInfoSection.Source)
 
 	e.logger.Info("\n> Job Spec::")
+	for key := range basicInfoSection.Job.Assets {
+		basicInfoSection.Job.Assets[key] = MASKED
+	}
 	e.yamlPrint(basicInfoSection.Job)
 
 	e.printLogs(basicInfoSection.Notice)
