@@ -10,6 +10,15 @@ type jobSpecificationResponse struct {
 	Job           jobSpecification `json:"job"`
 }
 
+type getJobRunResponse struct {
+	JobRunResponse []jobRunResponse `json:"jobRunResponses"`
+}
+
+type jobRunResponse struct {
+	State       string `json:"state"`
+	ScheduledAt string `json:"scheduledAt"`
+}
+
 type jobSpecification struct {
 	Version          int                      `json:"version"`
 	Name             string                   `json:"name"`

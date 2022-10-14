@@ -376,6 +376,8 @@ type JobService interface {
 	GetEnrichedUpstreamJobSpec(ctx context.Context, currentSpec JobSpec, jobSources []string, logWriter writer.LogWriter) (JobSpec, []UnknownDependency, error)
 	// GetDownstreamJobs reads static as well as inferred down stream dependencies
 	GetDownstreamJobs(ctx context.Context, jobName, resourceDestinationURN, projectName string) ([]JobSpec, error)
+	// GetExternalJobRuns get run information of jobs deployed on external optimus
+	GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time, filter []string) ([]JobRun, error)
 }
 
 // JobCompiler takes template file of a scheduler and after applying

@@ -168,7 +168,6 @@ func (sv *JobSpecServiceServer) getDpendencyRunInfo(ctx context.Context, jobSpec
 		logWriter.Write(writer.LogLevelError, fmt.Sprintf("unable to get Window start time for %s/%s", jobSpec.GetProjectSpec().Name, jobSpec.Name))
 		return internalDependencies, externalDependencies, httpDependency
 	}
-
 	windowEndTime, err := jobSpec.Task.Window.GetEndTime(scheduleTime)
 	if err != nil {
 		logWriter.Write(writer.LogLevelError, fmt.Sprintf("unable to get Window end time for %s/%s", jobSpec.GetProjectSpec().Name, jobSpec.Name))
@@ -206,13 +205,27 @@ func (sv *JobSpecServiceServer) getDpendencyRunInfo(ctx context.Context, jobSpec
 			Runs:          runsProto,
 		})
 	}
+
 	for _, dependency := range jobSpec.ExternalDependencies.OptimusDependencies {
+		jobRunList, err := sv.jobSvc.GetExternalJobRuns(ctx, dependency.Host, dependency.JobName, dependency.ProjectName, windowStartTime, windowEndTime, []string{})
+		if err != nil {
+			logWriter.Write(writer.LogLevelError, fmt.Sprintf("error in fetching job run list for External job %s::%s/%s, err::%s", dependency.Host, dependency.ProjectName, dependency.JobName, err.Error()))
+			continue
+		}
+		var runsProto []*pb.JobRun
+		for _, run := range jobRunList {
+			runsProto = append(runsProto, &pb.JobRun{
+				State:       run.Status.String(),
+				ScheduledAt: timestamppb.New(run.ScheduledAt),
+			})
+		}
 		externalDependencies = append(externalDependencies, &pb.OptimusDependency{
 			Name:          dependency.JobName,
 			Host:          dependency.Host,
 			ProjectName:   dependency.ProjectName,
 			NamespaceName: dependency.NamespaceName,
 			TaskName:      dependency.TaskName,
+			Runs:          runsProto,
 		})
 	}
 	for _, dependency := range jobSpec.ExternalDependencies.HTTPDependencies {

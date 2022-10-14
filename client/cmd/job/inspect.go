@@ -176,7 +176,7 @@ func (e *inspectCommand) printLogs(logs []*pb.Log) {
 func getRunsDateArray(jobRunProtos []*pb.JobRun) []string {
 	var runsDateArray []string
 	for _, run := range jobRunProtos {
-		runsDateArray = append(runsDateArray, fmt.Sprintf("%s : %s", run.ScheduledAt.AsTime().String(), run.State))
+		runsDateArray = append(runsDateArray, fmt.Sprintf("%s : %s", run.ScheduledAt.AsTime().Format(time.RFC3339), run.State))
 	}
 	return runsDateArray
 }
@@ -198,7 +198,7 @@ func (e *inspectCommand) displayUpstreamSection(upstreams *pb.JobInspectResponse
 	}
 	e.yamlPrint(internalDepsArray)
 
-	e.logger.Info("\n> External::")
+	e.logger.Info("> External::")
 	var externalDepsArray []map[string]interface{}
 	for _, dependency := range upstreams.ExternalDependency {
 		externalDepsArray = append(externalDepsArray, map[string]interface{}{
@@ -211,10 +211,10 @@ func (e *inspectCommand) displayUpstreamSection(upstreams *pb.JobInspectResponse
 	}
 	e.yamlPrint(externalDepsArray)
 
-	e.logger.Info("\n> HTTP::")
+	e.logger.Info("> HTTP::")
 	e.yamlPrint(upstreams.HttpDependency)
 
-	e.logger.Info("\n> Unknown dependencies ::")
+	e.logger.Info("> Unknown dependencies ::")
 	e.yamlPrint(upstreams.UnknownDependencies)
 
 	e.printLogs(upstreams.Notice)

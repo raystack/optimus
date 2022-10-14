@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -445,6 +446,10 @@ func (d *dependencyResolver) getUnresolvedInferredDependencies(ctx context.Conte
 		}
 	}
 	return unresolvedInferredDependenciesPerJobName, nil
+}
+
+func (d *dependencyResolver) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time, filter []string) ([]models.JobRun, error) {
+	return d.externalDependencyResolver.GetExternalJobRuns(ctx, host, jobName, projectName, startDate, endDate, filter)
 }
 
 func (*dependencyResolver) identifyUnresolvedInferredDependencies(inferredDependencies []string, resolvedDependencies []models.JobSpec) []models.UnresolvedJobDependency {

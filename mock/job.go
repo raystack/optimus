@@ -2,6 +2,7 @@ package mock
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
@@ -215,6 +216,12 @@ func (srv *JobService) GetByFilter(ctx context.Context, filter models.JobSpecFil
 	return args.Get(0).([]models.JobSpec), args.Error(1)
 }
 
+// GetExternalJobRuns provides a mock function with given fields: ctx,  host, jobName, projectName, startDate, endDate,filter
+func (srv *JobService) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time, filter []string) ([]models.JobRun, error) {
+	args := srv.Called(ctx, host, jobName, projectName, startDate, endDate, filter)
+	return args.Get(0).([]models.JobRun), args.Error(1)
+}
+
 func (srv *JobService) Create(ctx context.Context, namespaceSpec models.NamespaceSpec, jobSpec models.JobSpec) (models.JobSpec, error) {
 	args := srv.Called(ctx, namespaceSpec, jobSpec)
 	return args.Get(0).(models.JobSpec), args.Error(1)
@@ -340,6 +347,12 @@ func (_m *ExternalDependencyResolver) FetchInferredExternalDependenciesPerJobNam
 	return r0, r1
 }
 
+// GetExternalJobRuns provides a mock function with given fields: ctx,  host, jobName, projectName, startDate, endDate,filter
+func (_m *ExternalDependencyResolver) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time, filter []string) ([]models.JobRun, error) {
+	args := _m.Called(ctx, host, jobName, projectName, startDate, endDate, filter)
+	return args.Get(0).([]models.JobRun), args.Error(1)
+}
+
 // FetchStaticExternalDependenciesPerJobName provides a mock function with given fields: ctx, unresolvedDependenciesPerJobName
 func (_m *ExternalDependencyResolver) FetchStaticExternalDependenciesPerJobName(ctx context.Context, unresolvedDependenciesPerJobName map[string][]models.UnresolvedJobDependency) (map[string]models.ExternalDependency, []models.UnknownDependency, error) {
 	ret := _m.Called(ctx, unresolvedDependenciesPerJobName)
@@ -384,6 +397,12 @@ func (_m *DependencyResolver) GetEnrichedUpstreamJobSpec(ctx context.Context, su
 func (_m *DependencyResolver) GetStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec) (map[string]models.JobSpecDependency, error) {
 	args := _m.Called(ctx, jobSpec, projectSpec)
 	return args.Get(0).(map[string]models.JobSpecDependency), args.Error(1)
+}
+
+// GetExternalJobRuns provides a mock function with given fields: ctx,  host, jobName, projectName, startDate, endDate,filter
+func (_m *DependencyResolver) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time, filter []string) ([]models.JobRun, error) {
+	args := _m.Called(ctx, host, jobName, projectName, startDate, endDate, filter)
+	return args.Get(0).([]models.JobRun), args.Error(1)
 }
 
 // GetJobSpecsWithDependencies provides a mock function with given fields: ctx, projectName
@@ -702,6 +721,18 @@ func (_m *ResourceManager) GetOptimusDependencies(_a0 context.Context, _a1 model
 	}
 
 	return r0, r1
+}
+
+// GetExternalJobRuns provides a mock function with given fields: ctx,  host, jobName, projectName, startDate, endDate,filter
+func (_m *ResourceManager) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time, filter []string) ([]models.JobRun, error) {
+	args := _m.Called(ctx, host, jobName, projectName, startDate, endDate, filter)
+	return args.Get(0).([]models.JobRun), args.Error(1)
+}
+
+// GetHost provides a mock function
+func (_m *ResourceManager) GetHost() string {
+	args := _m.Called()
+	return args.Get(0).(string)
 }
 
 type mockConstructorTestingTNewResourceManager interface {
