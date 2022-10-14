@@ -330,8 +330,7 @@ func (srv *Service) GetJobBasicInfo(ctx context.Context, jobSpec models.JobSpec)
 	if jobSpec.Behavior.CatchUp {
 		jobBasicInfo.Log.Write(writer.LogLevelWarning, "catchup is enabled")
 	}
-	if dupDestJobNames, err := srv.IsJobDestinationDuplicate(ctx, jobSpec); err != nil {
-		// todo : check on this
+	if dupDestJobNames, err := srv.GetJobNamesWithDuplicateDestination(ctx, jobSpec.GetFullName(), jobSpec.ResourceDestination); err != nil {
 		jobBasicInfo.Log.Write(writer.LogLevelError, "could not perform duplicate job destination check, err: "+err.Error())
 	} else if dupDestJobNames != "" {
 		jobBasicInfo.Log.Write(writer.LogLevelWarning, "job already exists with same Destination: "+jobSpec.ResourceDestination+" existing jobNames: "+dupDestJobNames)
@@ -739,8 +738,8 @@ func (srv *Service) fetchSpecsForGivenJobNames(ctx context.Context, projectSpec 
 	return jobSpecs, nil
 }
 
-func (srv *Service) IsJobDestinationDuplicate(ctx context.Context, jobSpec models.JobSpec) (string, error) {
-	jobsWithSameDestination, err := srv.jobSpecRepository.GetByResourceDestinationURN(ctx, jobSpec.ResourceDestination)
+func (srv *Service) GetJobNamesWithDuplicateDestination(ctx context.Context, jobFullName, resourceDestination string) (string, error) {
+	jobsWithSameDestination, err := srv.jobSpecRepository.GetByResourceDestinationURN(ctx, resourceDestination)
 	if err != nil {
 		if errors.Is(err, store.ErrResourceNotFound) {
 			return "", nil
@@ -749,8 +748,8 @@ func (srv *Service) IsJobDestinationDuplicate(ctx context.Context, jobSpec model
 	}
 	var duplicateJobNames []string
 	for _, dupJobSpec := range jobsWithSameDestination {
-		if dupJobSpec.GetFullName() == jobSpec.GetFullName() {
-			// this is the same job from the DB. hence not an issues
+		if dupJobSpec.GetFullName() == jobFullName {
+			// this is the same job from the DB. hence not an issue
 			continue
 		}
 		duplicateJobNames = append(duplicateJobNames, dupJobSpec.GetFullName())

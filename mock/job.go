@@ -304,8 +304,8 @@ func (srv *JobService) CreateAndDeploy(ctx context.Context, namespaceSpec models
 	return args.Get(0).(models.DeploymentID), args.Error(1)
 }
 
-func (srv *JobService) IsJobDestinationDuplicate(ctx context.Context, jobSpec models.JobSpec) (string, error) {
-	args := srv.Called(ctx, jobSpec)
+func (srv *JobService) GetJobNamesWithDuplicateDestination(ctx context.Context, jobFullName, resourceDestination string) (string, error) {
+	args := srv.Called(ctx, jobFullName, resourceDestination)
 	return args.Get(0).(string), args.Error(1)
 }
 

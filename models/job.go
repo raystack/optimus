@@ -372,8 +372,8 @@ type JobService interface {
 	GetDeployment(ctx context.Context, deployID DeploymentID) (JobDeployment, error)
 	// GetByFilter gets the jobspec based on projectName, jobName, resourceDestination filters.
 	GetByFilter(ctx context.Context, filter JobSpecFilter) ([]JobSpec, error)
-	// IsJobDestinationDuplicate checks is already another job exists in the project with same resource Destination
-	IsJobDestinationDuplicate(ctx context.Context, jobSpec JobSpec) (string, error)
+	// GetJobNamesWithDuplicateDestination checks is already another job exists in the project with same resource Destination
+	GetJobNamesWithDuplicateDestination(ctx context.Context, jobFullName, resourceDestination string) (string, error)
 }
 
 // JobCompiler takes template file of a scheduler and after applying
