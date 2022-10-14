@@ -9,18 +9,18 @@ import (
 )
 
 type ResourceRepository interface {
-	Create(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error
-	Update(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error
+	Create(ctx context.Context, res *resource.Resource) error
+	Update(ctx context.Context, res *resource.Resource) error
 	ReadByFullName(ctx context.Context, tnnt tenant.Tenant, store resource.Store, fullName string) (*resource.Resource, error)
 	ReadAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error)
 }
 
 type ResourceBatchRepo interface {
-	UpdateAll(ctx context.Context, tnnt tenant.Tenant, resources []*resource.Resource) error
+	UpdateAll(ctx context.Context, resources []*resource.Resource) error
 }
 
 type ResourceManager interface {
-	SyncToStore(ctx context.Context, tnnt tenant.Tenant, fullNames ...string) error
+	SyncToStore(ctx context.Context, resources []*resource.Resource) error
 }
 
 type ResourceService struct {
@@ -42,11 +42,15 @@ func (rs ResourceService) Create(ctx context.Context, tnnt tenant.Tenant, res *r
 		return err
 	}
 
-	createRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToCreate))
-	if err := rs.repo.Create(ctx, tnnt, createRequest); err != nil {
+	createRequest := resource.FromExisting(res,
+		resource.ReplaceTenant(tnnt),
+		resource.ReplaceStatus(resource.StatusToCreate),
+	)
+	if err := rs.repo.Create(ctx, createRequest); err != nil {
 		return err
 	}
-	return rs.mgr.SyncToStore(ctx, tnnt, res.FullName())
+
+	return rs.mgr.SyncToStore(ctx, []*resource.Resource{createRequest})
 }
 
 func (rs ResourceService) Update(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error {
@@ -60,10 +64,11 @@ func (rs ResourceService) Update(ctx context.Context, tnnt tenant.Tenant, res *r
 	}
 
 	updateRequest := resource.FromExisting(existing, resource.ReplaceStatus(resource.StatusToUpdate))
-	if err := rs.repo.Update(ctx, tnnt, updateRequest); err != nil {
+	if err := rs.repo.Update(ctx, updateRequest); err != nil {
 		return err
 	}
-	return rs.mgr.SyncToStore(ctx, tnnt, res.FullName())
+
+	return rs.mgr.SyncToStore(ctx, []*resource.Resource{updateRequest})
 }
 
 func (rs ResourceService) Read(ctx context.Context, tnnt tenant.Tenant, store resource.Store, fullName string) (*resource.Resource, error) {
@@ -95,32 +100,25 @@ func (rs ResourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, s
 		return nil
 	}
 
-	if err := rs.batch.UpdateAll(ctx, tnnt, resourcesToBatchUpdate); err != nil {
+	if err := rs.batch.UpdateAll(ctx, resourcesToBatchUpdate); err != nil {
 		return err
 	}
 
-	batchUpdatedFullNames := rs.getFullNames(resourcesToBatchUpdate)
-	return rs.mgr.SyncToStore(ctx, tnnt, batchUpdatedFullNames...)
-}
-
-func (ResourceService) getFullNames(resources []*resource.Resource) []string {
-	output := make([]string, len(resources))
-	for i, r := range resources {
-		output[i] = r.FullName()
-	}
-	return output
+	return rs.mgr.SyncToStore(ctx, resourcesToBatchUpdate)
 }
 
 func (ResourceService) getResourcesToBatchUpdate(incomings []*resource.Resource, existingMappedByFullName map[string]*resource.Resource) []*resource.Resource {
 	var output []*resource.Resource
-	for _, incoming := range incomings {
-		if existing, ok := existingMappedByFullName[incoming.FullName()]; ok {
+	for _, in := range incomings {
+		if existing, ok := existingMappedByFullName[in.FullName()]; ok {
+			existingStatus := existing.Status()
+			incoming := resource.FromExisting(in, resource.ReplaceStatus(existingStatus))
 			if !incoming.Equal(existing) {
 				resourceToUpdate := resource.FromExisting(incoming, resource.ReplaceStatus(resource.StatusToUpdate))
 				output = append(output, resourceToUpdate)
 			}
 		} else {
-			resourceToCreate := resource.FromExisting(incoming, resource.ReplaceStatus(resource.StatusToCreate))
+			resourceToCreate := resource.FromExisting(in, resource.ReplaceStatus(resource.StatusToCreate))
 			output = append(output, resourceToCreate)
 		}
 	}

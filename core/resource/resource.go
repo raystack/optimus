@@ -133,6 +133,7 @@ func NewResource(fullName string, kind Kind, store Store, tnnt tenant.Tenant, me
 		tenant:   tnnt,
 		spec:     spec,
 		metadata: meta,
+		status:   StatusUnknown,
 	}, nil
 }
 
@@ -187,6 +188,12 @@ type FromExistingOpt func(r *Resource)
 func ReplaceDataset(dataset Dataset) FromExistingOpt {
 	return func(r *Resource) {
 		r.dataset = dataset
+	}
+}
+
+func ReplaceTenant(tnnt tenant.Tenant) FromExistingOpt {
+	return func(r *Resource) {
+		r.tenant = tnnt
 	}
 }
 

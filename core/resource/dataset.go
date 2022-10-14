@@ -9,6 +9,10 @@ const (
 // Store represents the type of datasource, resource corresponds to
 type Store string
 
+func (s Store) String() string {
+	return string(s)
+}
+
 func FromStringToStore(name string) (Store, error) {
 	switch name {
 	case string(BigQuery):

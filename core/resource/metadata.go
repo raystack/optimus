@@ -50,8 +50,10 @@ const (
 	StatusToCreate Status = "to_create"
 	StatusToUpdate Status = "to_update"
 
-	StatusSyncSuccess Status = "sync_success"
-	StatusSyncFailure Status = "sync_failure"
+	StatusCreateFailure Status = "create_failure"
+	StatusUpdateFailure Status = "update_failure"
+
+	StatusSuccess Status = "success"
 )
 
 func (s Status) String() string {

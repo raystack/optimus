@@ -47,7 +47,7 @@ func TestResourceService(t *testing.T) {
 				panic(err)
 			}
 
-			repo.On("Create", ctx, tnnt, mock.Anything).Return(errors.New("unknown error"))
+			repo.On("Create", ctx, mock.Anything).Return(errors.New("unknown error"))
 
 			actualError := rscService.Create(ctx, tnnt, rsc)
 
@@ -72,9 +72,9 @@ func TestResourceService(t *testing.T) {
 				panic(err)
 			}
 
-			repo.On("Create", ctx, tnnt, mock.Anything).Return(nil)
+			repo.On("Create", ctx, mock.Anything).Return(nil)
 
-			mgr.On("SyncToStore", ctx, tnnt, fullName).Return(errors.New("unknown error"))
+			mgr.On("SyncToStore", ctx, mock.Anything).Return(errors.New("unknown error"))
 
 			actualError := rscService.Create(ctx, tnnt, rsc)
 
@@ -99,9 +99,9 @@ func TestResourceService(t *testing.T) {
 				panic(err)
 			}
 
-			repo.On("Create", ctx, tnnt, mock.Anything).Return(nil)
+			repo.On("Create", ctx, mock.Anything).Return(nil)
 
-			mgr.On("SyncToStore", ctx, tnnt, fullName).Return(nil)
+			mgr.On("SyncToStore", ctx, mock.Anything).Return(nil)
 
 			actualError := rscService.Create(ctx, tnnt, rsc)
 
@@ -173,7 +173,7 @@ func TestResourceService(t *testing.T) {
 			}
 
 			repo.On("ReadByFullName", ctx, tnnt, resource.BigQuery, fullName).Return(existingResource, nil)
-			repo.On("Update", ctx, tnnt, mock.Anything).Return(errors.New("unknown error"))
+			repo.On("Update", ctx, mock.Anything).Return(errors.New("unknown error"))
 
 			actualError := rscService.Update(ctx, tnnt, resourceToUpdate)
 
@@ -203,9 +203,9 @@ func TestResourceService(t *testing.T) {
 			}
 
 			repo.On("ReadByFullName", ctx, tnnt, resource.BigQuery, fullName).Return(existingResource, nil)
-			repo.On("Update", ctx, tnnt, mock.Anything).Return(nil)
+			repo.On("Update", ctx, mock.Anything).Return(nil)
 
-			mgr.On("SyncToStore", ctx, tnnt, fullName).Return(errors.New("unknown error"))
+			mgr.On("SyncToStore", ctx, mock.Anything).Return(errors.New("unknown error"))
 
 			actualError := rscService.Update(ctx, tnnt, resourceToUpdate)
 
@@ -235,9 +235,9 @@ func TestResourceService(t *testing.T) {
 			}
 
 			repo.On("ReadByFullName", ctx, tnnt, resource.BigQuery, fullName).Return(existingResource, nil)
-			repo.On("Update", ctx, tnnt, mock.Anything).Return(nil)
+			repo.On("Update", ctx, mock.Anything).Return(nil)
 
-			mgr.On("SyncToStore", ctx, tnnt, fullName).Return(nil)
+			mgr.On("SyncToStore", ctx, mock.Anything).Return(nil)
 
 			actualError := rscService.Update(ctx, tnnt, resourceToUpdate)
 
@@ -469,7 +469,7 @@ func TestResourceService(t *testing.T) {
 
 			repo.On("ReadAll", ctx, tnnt, resource.BigQuery).Return([]*resource.Resource{existingResource}, nil)
 
-			batch.On("UpdateAll", ctx, tnnt, mock.Anything).Return(errors.New("unknown error"))
+			batch.On("UpdateAll", ctx, mock.Anything).Return(errors.New("unknown error"))
 
 			actualError := rscService.BatchUpdate(ctx, tnnt, store, []*resource.Resource{incomingResourceToUpdate})
 
@@ -506,9 +506,9 @@ func TestResourceService(t *testing.T) {
 
 			repo.On("ReadAll", ctx, tnnt, resource.BigQuery).Return([]*resource.Resource{existingResource}, nil)
 
-			batch.On("UpdateAll", ctx, tnnt, mock.Anything).Return(nil)
+			batch.On("UpdateAll", ctx, mock.Anything).Return(nil)
 
-			mgr.On("SyncToStore", ctx, tnnt, fullName).Return(errors.New("unknown error"))
+			mgr.On("SyncToStore", ctx, mock.Anything).Return(errors.New("unknown error"))
 
 			actualError := rscService.BatchUpdate(ctx, tnnt, store, []*resource.Resource{incomingResourceToUpdate})
 
@@ -545,9 +545,9 @@ func TestResourceService(t *testing.T) {
 
 			repo.On("ReadAll", ctx, tnnt, resource.BigQuery).Return([]*resource.Resource{existingResource}, nil)
 
-			batch.On("UpdateAll", ctx, tnnt, mock.Anything).Return(nil)
+			batch.On("UpdateAll", ctx, mock.Anything).Return(nil)
 
-			mgr.On("SyncToStore", ctx, tnnt, fullName).Return(nil)
+			mgr.On("SyncToStore", ctx, mock.Anything).Return(nil)
 
 			actualError := rscService.BatchUpdate(ctx, tnnt, store, []*resource.Resource{incomingResourceToUpdate})
 
@@ -560,12 +560,12 @@ type ResourceRepository struct {
 	mock.Mock
 }
 
-func (_m *ResourceRepository) Create(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error {
-	ret := _m.Called(ctx, tnnt, res)
+func (_m *ResourceRepository) Create(ctx context.Context, res *resource.Resource) error {
+	ret := _m.Called(ctx, res)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, *resource.Resource) error); ok {
-		r0 = rf(ctx, tnnt, res)
+	if rf, ok := ret.Get(0).(func(context.Context, *resource.Resource) error); ok {
+		r0 = rf(ctx, res)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -617,12 +617,12 @@ func (_m *ResourceRepository) ReadByFullName(ctx context.Context, tnnt tenant.Te
 	return r0, r1
 }
 
-func (_m *ResourceRepository) Update(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error {
-	ret := _m.Called(ctx, tnnt, res)
+func (_m *ResourceRepository) Update(ctx context.Context, res *resource.Resource) error {
+	ret := _m.Called(ctx, res)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, *resource.Resource) error); ok {
-		r0 = rf(ctx, tnnt, res)
+	if rf, ok := ret.Get(0).(func(context.Context, *resource.Resource) error); ok {
+		r0 = rf(ctx, res)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -648,12 +648,12 @@ type ResourceBatchRepo struct {
 	mock.Mock
 }
 
-func (_m *ResourceBatchRepo) UpdateAll(ctx context.Context, tnnt tenant.Tenant, resources []*resource.Resource) error {
-	ret := _m.Called(ctx, tnnt, resources)
+func (_m *ResourceBatchRepo) UpdateAll(ctx context.Context, resources []*resource.Resource) error {
+	ret := _m.Called(ctx, resources)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []*resource.Resource) error); ok {
-		r0 = rf(ctx, tnnt, resources)
+	if rf, ok := ret.Get(0).(func(context.Context, []*resource.Resource) error); ok {
+		r0 = rf(ctx, resources)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -679,19 +679,12 @@ type ResourceManager struct {
 	mock.Mock
 }
 
-func (_m *ResourceManager) SyncToStore(ctx context.Context, tnnt tenant.Tenant, fullNames ...string) error {
-	_va := make([]interface{}, len(fullNames))
-	for _i := range fullNames {
-		_va[_i] = fullNames[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx, tnnt)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
+func (_m *ResourceManager) SyncToStore(ctx context.Context, resources []*resource.Resource) error {
+	ret := _m.Called(ctx, resources)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, ...string) error); ok {
-		r0 = rf(ctx, tnnt, fullNames...)
+	if rf, ok := ret.Get(0).(func(context.Context, []*resource.Resource) error); ok {
+		r0 = rf(ctx, resources)
 	} else {
 		r0 = ret.Error(0)
 	}
