@@ -154,15 +154,15 @@ func (o *optimusResourceManager) GetExternalJobRuns(ctx context.Context, host, j
 
 func (o *optimusResourceManager) constructGetJobRunRequest(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time, filter []string) (*http.Request, error) {
 	var queryParams []string
-	queryParams = append(queryParams, fmt.Sprintf("start_date=%s", startDate))
-	queryParams = append(queryParams, fmt.Sprintf("end_date=%s", endDate))
+	queryParams = append(queryParams, fmt.Sprintf("start_date=%s", startDate.Format(models.InstanceScheduledAtTimeLayout)))
+	queryParams = append(queryParams, fmt.Sprintf("end_date=%s", endDate.Format(models.InstanceScheduledAtTimeLayout)))
 
 	if len(filter) > 0 {
 		//todo: manage queryParams later
 		queryParams = append(queryParams, fmt.Sprintf("filter=%s", filter))
 	}
 
-	path := fmt.Sprintf("/v1beta1/project/%s/job/%s/run", projectName, jobName)
+	path := fmt.Sprintf("/api/v1beta1/project/%s/job/%s/run", projectName, jobName)
 	url := host + path + "?" + strings.Join(queryParams, "&")
 
 	request, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
@@ -191,6 +191,7 @@ func toOptimusJobRuns(responses []jobRunResponse) ([]models.JobRun, error) {
 
 func toOptimusJobRun(response jobRunResponse) (models.JobRun, error) {
 	parsedScheduleTime, err := time.Parse(models.InstanceScheduledAtTimeLayout, response.ScheduledAt)
+
 	if err != nil {
 		return models.JobRun{}, err
 	}

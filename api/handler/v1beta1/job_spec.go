@@ -173,15 +173,21 @@ func (sv *JobSpecServiceServer) getDpendencyRunInfo(ctx context.Context, jobSpec
 		logWriter.Write(writer.LogLevelError, fmt.Sprintf("unable to get Window end time for %s/%s", jobSpec.GetProjectSpec().Name, jobSpec.Name))
 		return internalDependencies, externalDependencies, httpDependency
 	}
+	//todo: handle http dependencies
 
-	for _, dependency := range jobSpec.Dependencies {
+	for dependencyName, dependency := range jobSpec.Dependencies {
+		if dependency.Job == nil {
+			delete(jobSpec.Dependencies, dependencyName)
+			continue
+		}
+
 		dependencyProjectSpec, err := sv.projectService.Get(ctx, dependency.Job.GetProjectSpec().Name)
 		if err != nil {
 			logWriter.Write(writer.LogLevelError, fmt.Sprintf("error in fetching project Spec for %s, err::%s", dependency.Job.GetFullName(), err.Error()))
 			continue
 		}
 		jobRunList, err := sv.jobRunService.GetJobRunList(ctx, dependencyProjectSpec, *dependency.Job, &models.JobQuery{
-			Name:      dependency.Job.Name,
+			Name:      dependencyName,
 			StartDate: windowStartTime,
 			EndDate:   windowEndTime,
 		})
@@ -210,7 +216,6 @@ func (sv *JobSpecServiceServer) getDpendencyRunInfo(ctx context.Context, jobSpec
 		jobRunList, err := sv.jobSvc.GetExternalJobRuns(ctx, dependency.Host, dependency.JobName, dependency.ProjectName, windowStartTime, windowEndTime, []string{})
 		if err != nil {
 			logWriter.Write(writer.LogLevelError, fmt.Sprintf("error in fetching job run list for External job %s::%s/%s, err::%s", dependency.Host, dependency.ProjectName, dependency.JobName, err.Error()))
-			continue
 		}
 		var runsProto []*pb.JobRun
 		for _, run := range jobRunList {
@@ -272,19 +277,18 @@ func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspe
 	if err != nil {
 		upstreamLogs.Write(writer.LogLevelError, fmt.Sprintf("error while enriching upstreams dependeincies %v", err.Error()))
 	}
-	if len(unknownDependency) > 0 {
-		upstreamLogs.Write(writer.LogLevelInfo, fmt.Sprintf("following unknown dependencies have been detected %v", unknownDependency))
-	}
 	var unknownDependencyProto []*pb.JobInspectResponse_UpstreamSection_UnknownDependencies
 	for _, dependency := range unknownDependency {
 		unknownDependencyProto = append(unknownDependencyProto, &pb.JobInspectResponse_UpstreamSection_UnknownDependencies{
-			JobName:     dependency.JobName,
+			JobName:     dependency.DependencyJobName,
 			ProjectName: dependency.DependencyProjectName,
 		})
 	}
-	intenralDepsProto, externalDepsProto, httpDepsProto := sv.getDpendencyRunInfo(ctx, jobSpec, scheduleTime, upstreamLogs)
+
+	internalDepsProto, externalDepsProto, httpDepsProto := sv.getDpendencyRunInfo(ctx, jobSpec, scheduleTime, upstreamLogs)
 
 	downstreamLogs := &writer.BufferedLogger{}
+
 	downStreamJobs, err := sv.jobSvc.GetDownstreamJobs(ctx, jobSpec.Name, jobSpec.ResourceDestination, jobSpec.GetProjectSpec().Name)
 	if err != nil {
 		downstreamLogs.Write(writer.LogLevelError, fmt.Sprintf("unable to get downstream jobs %v", err.Error()))
@@ -303,7 +307,7 @@ func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspe
 		BasicInfo: ToBasicInfoSectionProto(jobBasicInfo),
 		Upstreams: &pb.JobInspectResponse_UpstreamSection{
 			ExternalDependency:  externalDepsProto,
-			InternalDependency:  intenralDepsProto,
+			InternalDependency:  internalDepsProto,
 			HttpDependency:      httpDepsProto,
 			UnknownDependencies: unknownDependencyProto,
 			Notice:              upstreamLogs.Messages,

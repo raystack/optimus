@@ -122,6 +122,7 @@ func (e *externalDependencyResolver) fetchStaticOptimusDependencies(ctx context.
 
 func (e *externalDependencyResolver) fetchOptimusDependencies(ctx context.Context, unresolvedDependency models.UnresolvedJobDependency) []models.OptimusDependency {
 	var dependencies []models.OptimusDependency
+
 	for _, manager := range e.optimusResourceManagers {
 		deps, err := manager.GetOptimusDependencies(ctx, unresolvedDependency)
 		if err != nil {

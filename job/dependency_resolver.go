@@ -121,7 +121,6 @@ func (d *dependencyResolver) GetStaticDependencies(ctx context.Context, jobSpec 
 				projectName := depParts[0]
 				jobName := depParts[1]
 				job, err := d.jobSpecRepo.GetByNameAndProjectName(ctx, jobName, projectName)
-
 				if err != nil {
 					return nil, fmt.Errorf("%s for job %s: %w", ErrUnknownCrossProjectDependency, depName, err)
 				}
@@ -294,7 +293,6 @@ func (d *dependencyResolver) getJobsByResourceDestinations(ctx context.Context, 
 func (d *dependencyResolver) GetEnrichedUpstreamJobSpec(ctx context.Context, subjectJobSpec models.JobSpec,
 	upstreamDestinations []string, logWriter writer.LogWriter) (models.JobSpec, []models.UnknownDependency, error) {
 	var unknownDependencies []models.UnknownDependency
-
 	inferredInternalUpstreams, err := d.getJobsByResourceDestinations(ctx,
 		upstreamDestinations,
 		subjectJobSpec.Name,

@@ -11,7 +11,7 @@ type jobSpecificationResponse struct {
 }
 
 type getJobRunResponse struct {
-	JobRunResponse []jobRunResponse `json:"jobRunResponses"`
+	JobRunResponse []jobRunResponse `json:"jobRuns"`
 }
 
 type jobRunResponse struct {
