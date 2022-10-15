@@ -23,7 +23,6 @@ func TestNewSecretsHandler(t *testing.T) {
 	proj, _ := tenant.ProjectNameFrom("test-Proj")
 	ns, _ := tenant.ProjectNameFrom("test-NS")
 	base64Val := base64.StdEncoding.EncodeToString([]byte("secret_val"))
-	tnnt, _ := tenant.NewTenant(proj.String(), ns.String())
 
 	t.Run("RegisterSecret", func(t *testing.T) {
 		t.Run("returns error when invalid tenant", func(t *testing.T) {
@@ -92,7 +91,7 @@ func TestNewSecretsHandler(t *testing.T) {
 		})
 		t.Run("returns error when error is returned from service", func(t *testing.T) {
 			secretService := new(secretService)
-			secretService.On("Save", ctx, mock.Anything, mock.Anything).
+			secretService.On("Save", ctx, proj, ns.String(), mock.Anything).
 				Return(errors.New("error in saving"))
 			defer secretService.AssertExpectations(t)
 
@@ -112,7 +111,7 @@ func TestNewSecretsHandler(t *testing.T) {
 		})
 		t.Run("saves the secret", func(t *testing.T) {
 			secretService := new(secretService)
-			secretService.On("Save", ctx, tnnt, mock.Anything).Return(nil)
+			secretService.On("Save", ctx, proj, ns.String(), mock.Anything).Return(nil)
 			defer secretService.AssertExpectations(t)
 
 			handler := v1beta1.NewSecretsHandler(logger, secretService)
@@ -179,7 +178,7 @@ func TestNewSecretsHandler(t *testing.T) {
 		})
 		t.Run("returns error when error is returned from service", func(t *testing.T) {
 			secretService := new(secretService)
-			secretService.On("Update", ctx, tnnt, mock.Anything).Return(errors.New("error in update"))
+			secretService.On("Update", ctx, proj, ns.String(), mock.Anything).Return(errors.New("error in update"))
 			defer secretService.AssertExpectations(t)
 
 			handler := v1beta1.NewSecretsHandler(logger, secretService)
@@ -198,7 +197,7 @@ func TestNewSecretsHandler(t *testing.T) {
 		})
 		t.Run("updates the secret", func(t *testing.T) {
 			secretService := new(secretService)
-			secretService.On("Update", ctx, tnnt, mock.Anything).Return(nil)
+			secretService.On("Update", ctx, proj, ns.String(), mock.Anything).Return(nil)
 			defer secretService.AssertExpectations(t)
 
 			handler := v1beta1.NewSecretsHandler(logger, secretService)
@@ -230,8 +229,7 @@ func TestNewSecretsHandler(t *testing.T) {
 		})
 		t.Run("returns error when error is returned from service", func(t *testing.T) {
 			secretService := new(secretService)
-			projectTenant, _ := tenant.NewTenant(proj.String(), "")
-			secretService.On("GetSecretsInfo", ctx, projectTenant).
+			secretService.On("GetSecretsInfo", ctx, proj).
 				Return(nil, errors.New("error in list"))
 			defer secretService.AssertExpectations(t)
 
@@ -253,9 +251,8 @@ func TestNewSecretsHandler(t *testing.T) {
 				Namespace: ns.String(),
 				UpdatedAt: time.Date(2022, 9, 22, 0, 0, 0, 0, time.UTC),
 			}
-			projectTenant, _ := tenant.NewTenant(proj.String(), "")
 			secretService := new(secretService)
-			secretService.On("GetSecretsInfo", ctx, projectTenant).
+			secretService.On("GetSecretsInfo", ctx, proj).
 				Return([]*dto.SecretInfo{&secretInfo}, nil)
 			defer secretService.AssertExpectations(t)
 
@@ -307,7 +304,7 @@ func TestNewSecretsHandler(t *testing.T) {
 			sn, err := tenant.SecretNameFrom("name")
 			assert.Nil(t, err)
 
-			secretService.On("Delete", ctx, tnnt, sn).
+			secretService.On("Delete", ctx, proj, ns.String(), sn).
 				Return(errors.New("error in delete"))
 			handler := v1beta1.NewSecretsHandler(logger, secretService)
 
@@ -328,7 +325,7 @@ func TestNewSecretsHandler(t *testing.T) {
 			sn, err := tenant.SecretNameFrom("name")
 			assert.Nil(t, err)
 
-			secretService.On("Delete", ctx, tnnt, sn).Return(nil)
+			secretService.On("Delete", ctx, proj, ns.String(), sn).Return(nil)
 			handler := v1beta1.NewSecretsHandler(logger, secretService)
 
 			deleteRequest := pb.DeleteSecretRequest{
@@ -347,23 +344,23 @@ type secretService struct {
 	mock.Mock
 }
 
-func (s *secretService) Save(ctx context.Context, tenant tenant.Tenant, secret *tenant.PlainTextSecret) error {
-	args := s.Called(ctx, tenant, secret)
+func (s *secretService) Save(ctx context.Context, projName tenant.ProjectName, nsName string, pts *tenant.PlainTextSecret) error {
+	args := s.Called(ctx, projName, nsName, pts)
 	return args.Error(0)
 }
 
-func (s *secretService) Update(ctx context.Context, tenant tenant.Tenant, secret *tenant.PlainTextSecret) error {
-	args := s.Called(ctx, tenant, secret)
+func (s *secretService) Update(ctx context.Context, projName tenant.ProjectName, nsName string, pts *tenant.PlainTextSecret) error {
+	args := s.Called(ctx, projName, nsName, pts)
 	return args.Error(0)
 }
 
-func (s *secretService) Delete(ctx context.Context, tenant tenant.Tenant, name tenant.SecretName) error {
-	args := s.Called(ctx, tenant, name)
+func (s *secretService) Delete(ctx context.Context, projName tenant.ProjectName, nsName string, secretName tenant.SecretName) error {
+	args := s.Called(ctx, projName, nsName, secretName)
 	return args.Error(0)
 }
 
-func (s *secretService) GetSecretsInfo(ctx context.Context, tenant tenant.Tenant) ([]*dto.SecretInfo, error) {
-	args := s.Called(ctx, tenant)
+func (s *secretService) GetSecretsInfo(ctx context.Context, projName tenant.ProjectName) ([]*dto.SecretInfo, error) {
+	args := s.Called(ctx, projName)
 	var secrets []*dto.SecretInfo
 	if args.Get(0) != nil {
 		secrets = args.Get(0).([]*dto.SecretInfo)
