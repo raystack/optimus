@@ -12,6 +12,8 @@ type View struct {
 
 	Description string `mapstructure:"description,omitempty"`
 	ViewQuery   string `mapstructure:"view_query,omitempty"`
+
+	ExtraConfig map[string]interface{} `mapstructure:",remain"`
 }
 
 func (v *View) FullName() string {

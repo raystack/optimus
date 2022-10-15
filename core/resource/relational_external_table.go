@@ -13,6 +13,8 @@ type ExternalTable struct {
 	Description string         `mapstructure:"description,omitempty"`
 	Schema      Schema         `mapstructure:"schema,omitempty"`
 	Source      ExternalSource `mapstructure:"source,omitempty"`
+
+	ExtraConfig map[string]interface{} `mapstructure:",remain"`
 }
 
 func (e *ExternalTable) FullName() string {

@@ -4,6 +4,8 @@ import "github.com/odpf/optimus/internal/errors"
 
 const (
 	BigQuery Store = "bigquery"
+
+	EntityDataset = "resource_dataset"
 )
 
 // Store represents the type of datasource, resource corresponds to
@@ -22,6 +24,10 @@ func FromStringToStore(name string) (Store, error) {
 	}
 }
 
+func (s Store) String() string {
+	return string(s)
+}
+
 type Dataset struct {
 	Store Store
 
@@ -31,11 +37,11 @@ type Dataset struct {
 
 func DataSetFrom(store Store, database string, schema string) (Dataset, error) {
 	if database == "" {
-		return Dataset{}, errors.InvalidArgument(EntityResource, "database/project name is empty")
+		return Dataset{}, errors.InvalidArgument(EntityDataset, "database/project name is empty")
 	}
 
 	if schema == "" {
-		return Dataset{}, errors.InvalidArgument(EntityResource, "schema/dataset name is empty")
+		return Dataset{}, errors.InvalidArgument(EntityDataset, "schema/dataset name is empty")
 	}
 
 	return Dataset{

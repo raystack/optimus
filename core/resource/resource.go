@@ -137,42 +137,42 @@ func NewResource(fullName string, kind Kind, store Store, tnnt tenant.Tenant, me
 	}, nil
 }
 
-func (r Resource) Validate() error {
+func (r *Resource) Validate() error {
 	switch r.kind {
 	case KindTable:
-		var table Table
-		if err := mapstructure.Decode(r.spec, &table); err != nil {
-			return errors.InvalidArgument(EntityResource, "not able to decode table spec for "+r.FullName())
+		table, err := ConvertSpecTo[Table](r)
+		if err != nil {
+			return err
 		}
 		table.Name = r.name
 		table.Dataset = r.dataset
 		return table.Validate()
 
 	case KindExternalTable:
-		var externalTable ExternalTable
-		if err := mapstructure.Decode(r.spec, &externalTable); err != nil {
-			return errors.InvalidArgument(EntityResource, "not able to decode external spec for "+r.FullName())
+		externalTable, err := ConvertSpecTo[ExternalTable](r)
+		if err != nil {
+			return err
 		}
 		externalTable.Name = r.name
 		externalTable.Dataset = r.dataset
 		return externalTable.Validate()
 
 	case KindView:
-		var view View
-		if err := mapstructure.Decode(r.spec, &view); err != nil {
-			return errors.InvalidArgument(EntityResource, "not able to decode view spec for "+r.FullName())
+		view, err := ConvertSpecTo[View](r)
+		if err != nil {
+			return err
 		}
 		view.Name = r.name
 		view.Dataset = r.dataset
 		return view.Validate()
 
 	case KindDataset:
-		var dataset DatasetDetails
-		if err := mapstructure.Decode(r.spec, &dataset); err != nil {
-			return errors.InvalidArgument(EntityResource, "not able to decode dataset spec for "+r.FullName())
+		ds, err := ConvertSpecTo[DatasetDetails](r)
+		if err != nil {
+			return err
 		}
-		dataset.Dataset = r.dataset
-		return dataset.Validate()
+		ds.Dataset = r.dataset
+		return ds.Validate()
 
 	default:
 		return errors.InvalidArgument(EntityResource, "unknown kind")
@@ -217,4 +217,13 @@ func FromExisting(existing *Resource, opts ...FromExistingOpt) *Resource {
 		opt(output)
 	}
 	return output
+}
+
+func ConvertSpecTo[T DatasetDetails | Table | View | ExternalTable](res *Resource) (*T, error) {
+	var spec T
+	if err := mapstructure.Decode(res.spec, &spec); err != nil {
+		return nil, errors.InvalidArgument(EntityResource, "not able to decode spec for "+res.FullName())
+	}
+
+	return &spec, nil
 }
