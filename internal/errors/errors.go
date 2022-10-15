@@ -72,6 +72,15 @@ func InvalidArgument(entity string, msg string) *DomainError {
 	}
 }
 
+func AlreadyExists(entity string, msg string) *DomainError {
+	return &DomainError{
+		ErrorType:  ErrAlreadyExists,
+		Entity:     entity,
+		Message:    msg,
+		WrappedErr: nil,
+	}
+}
+
 func NotFound(entity string, msg string) *DomainError {
 	return &DomainError{
 		ErrorType:  ErrNotFound,
