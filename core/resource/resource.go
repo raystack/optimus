@@ -51,45 +51,45 @@ type Resource struct {
 	status Status
 }
 
-func (r Resource) Name() Name {
+func (r *Resource) Name() Name {
 	return r.name
 }
 
-func (r Resource) FullName() string {
+func (r *Resource) FullName() string {
 	if r.kind == KindDataset {
 		return r.dataset.FullName()
 	}
 	return r.dataset.FullName() + "." + r.name.String()
 }
 
-func (r Resource) URN() string {
+func (r *Resource) URN() string {
 	if r.kind == KindDataset {
 		return r.dataset.URN()
 	}
 	return r.dataset.URN() + "." + r.name.String()
 }
 
-func (r Resource) Metadata() *Metadata {
+func (r *Resource) Metadata() *Metadata {
 	return r.metadata
 }
 
-func (r Resource) Kind() Kind {
+func (r *Resource) Kind() Kind {
 	return r.kind
 }
 
-func (r Resource) Tenant() tenant.Tenant {
+func (r *Resource) Tenant() tenant.Tenant {
 	return r.tenant
 }
 
-func (r Resource) Dataset() Dataset {
+func (r *Resource) Dataset() Dataset {
 	return r.dataset
 }
 
-func (r Resource) Status() Status {
+func (r *Resource) Status() Status {
 	return r.status
 }
 
-func (r Resource) Spec() map[string]any {
+func (r *Resource) Spec() map[string]any {
 	return r.spec
 }
 
@@ -179,7 +179,7 @@ func (r *Resource) Validate() error {
 	}
 }
 
-func (r Resource) Equal(incoming *Resource) bool {
+func (r *Resource) Equal(incoming *Resource) bool {
 	return reflect.DeepEqual(&r, incoming)
 }
 
