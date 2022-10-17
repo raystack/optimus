@@ -10,6 +10,6 @@ CREATE TABLE "instance" (
 	updated_at timestamptz NOT NULL,
 	CONSTRAINT instance_pkey PRIMARY KEY (id)
 );
-CREATE INDEX instance_job_run_id_idx ON instance USING btree (job_run_id);
+CREATE INDEX instance_job_run_id_idx ON instance (job_run_id);
 
 ALTER TABLE "instance" ADD CONSTRAINT instance_job_run_id_fkey FOREIGN KEY (job_run_id) REFERENCES job_run_old(id) ON DELETE CASCADE;

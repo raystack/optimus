@@ -11,7 +11,7 @@ CREATE TABLE job_run_old (
 	updated_at timestamptz NOT NULL,
 	CONSTRAINT job_run_pkey PRIMARY KEY (id)
 );
-CREATE INDEX job_run_job_id_idx ON job_run_old USING btree (job_id);
-CREATE INDEX job_run_namespace_id_idx ON job_run_old USING btree (namespace_id);
-CREATE INDEX job_run_status_idx ON job_run_old USING btree (status);
-CREATE INDEX job_run_trigger_idx ON job_run_old USING btree (trigger);
+CREATE INDEX job_run_job_id_idx ON job_run_old (job_id);
+CREATE INDEX job_run_namespace_id_idx ON job_run_old (namespace_id);
+CREATE INDEX job_run_status_idx ON job_run_old (status);
+CREATE INDEX job_run_trigger_idx ON job_run_old (trigger);
