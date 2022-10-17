@@ -36,7 +36,8 @@ func TestJobRunInputCompiler(t *testing.T) {
 		Name: "bq",
 	}, nil)
 	cliMod := new(mock.CLIMod)
-	plugin := &models.Plugin{Base: execUnit, CLIMod: cliMod}
+	depResMod := new(mock.DependencyResolverMod)
+	plugin := &models.Plugin{Base: execUnit, CLIMod: cliMod, DependencyMod: depResMod}
 
 	behavior := models.JobSpecBehavior{
 		CatchUp:       false,
@@ -156,7 +157,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 				Data:   instanceSpecData,
 			}
 
-			cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
+			depResMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
 				Config:       models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 				Assets:       models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 				InstanceData: instanceSpecData,
@@ -168,7 +169,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 					Value: "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}'",
 				},
 			}}, nil)
-			defer cliMod.AssertExpectations(t)
+			defer depResMod.AssertExpectations(t)
 
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
 
@@ -263,7 +264,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 				Status: models.RunStateRunning,
 				Data:   instanceSpecData,
 			}
-			cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
+			depResMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
 				Config:       models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 				Assets:       models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 				InstanceData: instanceSpecData,
@@ -275,7 +276,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 					Value: "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}'",
 				},
 			}}, nil)
-			defer cliMod.AssertExpectations(t)
+			defer depResMod.AssertExpectations(t)
 
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
 
@@ -369,7 +370,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 				Data:   instanceSpecData,
 			}
 
-			cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
+			depResMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
 				Config:       models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 				Assets:       models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 				InstanceData: instanceSpecData,
@@ -381,7 +382,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 					Value: "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}'",
 				},
 			}}, nil)
-			defer cliMod.AssertExpectations(t)
+			defer depResMod.AssertExpectations(t)
 
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
 
@@ -452,7 +453,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 				UpdatedAt:  time.Time{},
 			}
 
-			cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
+			depResMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
 				Config:       models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 				Assets:       models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 				InstanceData: instanceSpecData,
@@ -464,7 +465,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 					Value: "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}' and name = '{{.secret.table_name}}'",
 				},
 			}}, nil)
-			defer cliMod.AssertExpectations(t)
+			defer depResMod.AssertExpectations(t)
 
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
 
@@ -543,7 +544,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 		instanceName := "bq"
 		instanceType := models.InstanceTypeTask
 
-		cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
+		depResMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
 			StartTime:    startTime,
 			EndTime:      endTime,
 			Config:       models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
@@ -555,7 +556,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 				Value: "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}'",
 			},
 		}}, nil)
-		defer cliMod.AssertExpectations(t)
+		defer depResMod.AssertExpectations(t)
 
 		pluginRepo.On("GetByName", "bq").Return(plugin, nil)
 
@@ -652,13 +653,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 		instanceName := transporterHook
 		instanceType := models.InstanceTypeHook
 
-		// instanceSpec := models.InstanceSpec{
-		// 	Name:   transporterHook,
-		// 	Type:   models.InstanceTypeHook,
-		// 	Status: models.RunStateRunning,
-		// 	Data:   instanceSpecData,
-		// }
-		cliMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
+		depResMod.On("CompileAssets", context.TODO(), models.CompileAssetsRequest{
 			StartTime:    startTime,
 			EndTime:      endTime,
 			Config:       models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
@@ -670,7 +665,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 				Value: "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}'",
 			},
 		}}, nil)
-		defer cliMod.AssertExpectations(t)
+		defer depResMod.AssertExpectations(t)
 
 		pluginRepo.On("GetByName", "bq").Return(plugin, nil)
 

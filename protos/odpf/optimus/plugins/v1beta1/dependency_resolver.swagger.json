@@ -91,6 +91,14 @@
         }
       }
     },
+    "v1beta1CompileAssetsResponse": {
+      "type": "object",
+      "properties": {
+        "assets": {
+          "$ref": "#/definitions/v1beta1Assets"
+        }
+      }
+    },
     "v1beta1Configs": {
       "type": "object",
       "properties": {
@@ -124,6 +132,30 @@
         }
       }
     },
+    "v1beta1InstanceSpecData": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/v1beta1InstanceSpecDataType"
+        }
+      }
+    },
+    "v1beta1InstanceSpecDataType": {
+      "type": "string",
+      "enum": [
+        "TYPE_UNSPECIFIED",
+        "TYPE_ENV",
+        "TYPE_FILE"
+      ],
+      "default": "TYPE_UNSPECIFIED",
+      "title": "type of data, could be an env var or file"
+    },
     "v1beta1PluginOptions": {
       "type": "object",
       "properties": {
@@ -149,6 +181,20 @@
           "items": {
             "$ref": "#/definitions/ProjectSpecificationProjectSecret"
           }
+        }
+      }
+    },
+    "v1beta1TaskWindow": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "string"
+        },
+        "offset": {
+          "type": "string"
+        },
+        "truncateTo": {
+          "type": "string"
         }
       }
     }

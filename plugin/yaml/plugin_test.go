@@ -136,13 +136,6 @@ func TestYamlPlugin(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, expectedAssets, actual)
 		})
-		t.Run("CompileAssets", func(t *testing.T) {
-			ctx := context.Background()
-			req := models.CompileAssetsRequest{}
-			actual, err := plugin.CompileAssets(ctx, req)
-			assert.Nil(t, err)
-			assert.Empty(t, actual.Assets)
-		})
 	})
 
 	t.Run("PluginsInitialization", func(t *testing.T) {

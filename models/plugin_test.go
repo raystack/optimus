@@ -77,10 +77,6 @@ func (*MockCLIMod) DefaultAssets(context.Context, models.DefaultAssetsRequest) (
 	return &models.DefaultAssetsResponse{Assets: models.PluginAssets{}}, nil
 }
 
-func (MockCLIMod) CompileAssets(_ context.Context, req models.CompileAssetsRequest) (*models.CompileAssetsResponse, error) {
-	return &models.CompileAssetsResponse{Assets: req.Assets}, nil
-}
-
 func TestPluginModels(t *testing.T) {
 	t.Run("Plugin", func(t *testing.T) {
 		t.Run("IsYamlPlugin", func(t *testing.T) {

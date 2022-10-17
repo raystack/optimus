@@ -103,9 +103,6 @@ type CommandLineMod interface {
 	// DefaultAssets will be passed down to execution unit as files
 	// if DryRun is true in PluginOptions, should not throw error for missing inputs
 	DefaultAssets(context.Context, DefaultAssetsRequest) (*DefaultAssetsResponse, error)
-
-	// CompileAssets overrides default asset compilation
-	CompileAssets(context.Context, CompileAssetsRequest) (*CompileAssetsResponse, error)
 }
 
 // DependencyResolverMod needs to be implemented for automatic dependency resolution of tasks
@@ -117,6 +114,9 @@ type DependencyResolverMod interface {
 
 	// GenerateDependencies returns names of job destination on which this unit is dependent on
 	GenerateDependencies(context.Context, GenerateDependenciesRequest) (*GenerateDependenciesResponse, error)
+
+	// CompileAssets overrides default asset compilation
+	CompileAssets(context.Context, CompileAssetsRequest) (*CompileAssetsResponse, error)
 }
 
 type YamlMod interface {

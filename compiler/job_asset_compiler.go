@@ -44,9 +44,9 @@ func (c *JobRunAssetsCompiler) CompileJobRunAssets(ctx context.Context, jobSpec 
 
 	inputFiles := utils.MergeMaps(instanceFileMap, jobSpec.Assets.ToMap())
 
-	if plugin.CLIMod != nil {
+	if plugin.DependencyMod != nil {
 		// check if task needs to override the compilation behaviour
-		compiledAssetResponse, err := plugin.CLIMod.CompileAssets(ctx, models.CompileAssetsRequest{
+		compiledAssetResponse, err := plugin.DependencyMod.CompileAssets(ctx, models.CompileAssetsRequest{
 			StartTime:    startTime,
 			EndTime:      endTime,
 			Config:       models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),

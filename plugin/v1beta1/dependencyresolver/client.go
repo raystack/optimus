@@ -7,11 +7,14 @@ import (
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
+	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin/v1beta1/base"
 	"github.com/odpf/optimus/plugin/v1beta1/cli"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 	pbp "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
 )
 
@@ -80,6 +83,37 @@ func (m *GRPCClient) GenerateDependencies(ctx context.Context, request models.Ge
 	}
 	return &models.GenerateDependenciesResponse{
 		Dependencies: resp.Dependencies,
+	}, nil
+}
+
+func (m *GRPCClient) CompileAssets(ctx context.Context, request models.CompileAssetsRequest) (*models.CompileAssetsResponse, error) {
+	_, span := base.Tracer.Start(ctx, "CompileAssets")
+	defer span.End()
+
+	var instanceData []*pb.InstanceSpecData
+	for _, inst := range request.InstanceData {
+		instanceData = append(instanceData, &pb.InstanceSpecData{
+			Name:  inst.Name,
+			Value: inst.Value,
+			Type:  pb.InstanceSpecData_Type(pb.InstanceSpecData_Type_value[utils.ToEnumProto(inst.Type, "type")]),
+		})
+	}
+
+	resp, err := m.client.CompileAssets(ctx, &pbp.CompileAssetsRequest{
+		Configs:      cli.AdaptConfigsToProto(request.Config),
+		Assets:       cli.AdaptAssetsToProto(request.Assets),
+		InstanceData: instanceData,
+		Options:      &pbp.PluginOptions{DryRun: request.DryRun},
+		StartTime:    timestamppb.New(request.StartTime),
+		EndTime:      timestamppb.New(request.EndTime),
+	}, grpc_retry.WithBackoff(grpc_retry.BackoffExponential(BackoffDuration)),
+		grpc_retry.WithMax(PluginGRPCMaxRetry))
+	if err != nil {
+		m.baseClient.MakeFatalOnConnErr(err)
+		return nil, err
+	}
+	return &models.CompileAssetsResponse{
+		Assets: cli.AdaptAssetsFromProto(resp.Assets),
 	}, nil
 }
 

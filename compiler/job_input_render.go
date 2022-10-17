@@ -38,7 +38,7 @@ func DumpAssets(ctx context.Context, jobSpec models.JobSpec, scheduledAt time.Ti
 
 	if allowOverride {
 		// check if task needs to override the compilation behaviour
-		compiledAssetResponse, err := jobSpec.Task.Unit.CLIMod.CompileAssets(ctx, models.CompileAssetsRequest{
+		compiledAssetResponse, err := jobSpec.Task.Unit.DependencyMod.CompileAssets(ctx, models.CompileAssetsRequest{
 			StartTime: startTime,
 			EndTime:   endTime,
 			Config:    models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),

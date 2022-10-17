@@ -38,6 +38,7 @@ type CLIModServiceClient interface {
 	// docker container before execution.
 	// if DryRun is true in PluginOptions, should not throw error for missing inputs
 	DefaultAssets(ctx context.Context, in *DefaultAssetsRequest, opts ...grpc.CallOption) (*DefaultAssetsResponse, error)
+	// Deprecated: Do not use.
 	// CompileAssets overrides the default asset compilation behaviour
 	CompileAssets(ctx context.Context, in *CompileAssetsRequest, opts ...grpc.CallOption) (*CompileAssetsResponse, error)
 }
@@ -86,6 +87,7 @@ func (c *cLIModServiceClient) DefaultAssets(ctx context.Context, in *DefaultAsse
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *cLIModServiceClient) CompileAssets(ctx context.Context, in *CompileAssetsRequest, opts ...grpc.CallOption) (*CompileAssetsResponse, error) {
 	out := new(CompileAssetsResponse)
 	err := c.cc.Invoke(ctx, "/odpf.optimus.plugins.v1beta1.CLIModService/CompileAssets", in, out, opts...)
@@ -115,6 +117,7 @@ type CLIModServiceServer interface {
 	// docker container before execution.
 	// if DryRun is true in PluginOptions, should not throw error for missing inputs
 	DefaultAssets(context.Context, *DefaultAssetsRequest) (*DefaultAssetsResponse, error)
+	// Deprecated: Do not use.
 	// CompileAssets overrides the default asset compilation behaviour
 	CompileAssets(context.Context, *CompileAssetsRequest) (*CompileAssetsResponse, error)
 	mustEmbedUnimplementedCLIModServiceServer()

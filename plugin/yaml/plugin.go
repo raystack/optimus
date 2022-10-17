@@ -85,12 +85,6 @@ func (p *PluginSpec) DefaultAssets(context.Context, models.DefaultAssetsRequest)
 	}, nil
 }
 
-func (PluginSpec) CompileAssets(_ context.Context, req models.CompileAssetsRequest) (*models.CompileAssetsResponse, error) {
-	return &models.CompileAssetsResponse{
-		Assets: req.Assets,
-	}, nil
-}
-
 func NewPluginSpec(pluginPath string) (*PluginSpec, error) {
 	fs := afero.NewOsFs()
 	fd, err := fs.Open(pluginPath)

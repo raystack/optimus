@@ -20,7 +20,8 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 		engine := compiler.NewGoEngine()
 		execUnit := new(mock.BasePlugin)
 		cliMod := new(mock.CLIMod)
-		plugin := &models.Plugin{Base: execUnit, CLIMod: cliMod}
+		depResMod := new(mock.DependencyResolverMod)
+		plugin := &models.Plugin{Base: execUnit, CLIMod: cliMod, DependencyMod: depResMod}
 
 		execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "bq"}, nil)
 
@@ -129,7 +130,7 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 			assert.Equal(t, expectedQuery, assets["query.sql"])
 		})
 		t.Run("compiles the assets successfully", func(t *testing.T) {
-			cliMod.On("CompileAssets", context.Background(), models.CompileAssetsRequest{
+			depResMod.On("CompileAssets", context.Background(), models.CompileAssetsRequest{
 				Config:       models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 				Assets:       models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 				InstanceData: instanceSpec.Data,
@@ -141,6 +142,8 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 					Value: "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}' and name = '{{.secret.table_name}}'",
 				},
 			}}, nil)
+			defer depResMod.AssertExpectations(t)
+
 			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
 

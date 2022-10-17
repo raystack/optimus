@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 
-	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin/v1beta1/base"
 	pbp "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
@@ -91,32 +90,6 @@ func (s *GRPCServer) DefaultAssets(ctx context.Context, req *pbp.DefaultAssetsRe
 		return nil, err
 	}
 	return &pbp.DefaultAssetsResponse{
-		Assets: AdaptAssetsToProto(resp.Assets),
-	}, nil
-}
-
-func (s *GRPCServer) CompileAssets(ctx context.Context, req *pbp.CompileAssetsRequest) (*pbp.CompileAssetsResponse, error) {
-	var instanceData []models.JobRunSpecData
-	for _, inst := range req.InstanceData {
-		instanceData = append(instanceData, models.JobRunSpecData{
-			Name:  inst.Name,
-			Value: inst.Value,
-			Type:  utils.FromEnumProto(inst.Type.String(), "type"),
-		})
-	}
-
-	resp, err := s.Impl.CompileAssets(ctx, models.CompileAssetsRequest{
-		PluginOptions: models.PluginOptions{DryRun: req.Options.DryRun},
-		Config:        AdaptConfigsFromProto(req.Configs),
-		Assets:        AdaptAssetsFromProto(req.Assets),
-		InstanceData:  instanceData,
-		StartTime:     req.StartTime.AsTime(),
-		EndTime:       req.EndTime.AsTime(),
-	})
-	if err != nil {
-		return nil, err
-	}
-	return &pbp.CompileAssetsResponse{
 		Assets: AdaptAssetsToProto(resp.Assets),
 	}, nil
 }

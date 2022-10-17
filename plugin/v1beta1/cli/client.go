@@ -4,13 +4,8 @@ import (
 	"context"
 	"time"
 
-	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
-	"google.golang.org/protobuf/types/known/timestamppb"
-
-	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin/v1beta1/base"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 	pbp "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
 )
 
@@ -100,37 +95,6 @@ func (m *GRPCClient) DefaultAssets(ctx context.Context, request models.DefaultAs
 		return nil, err
 	}
 	return &models.DefaultAssetsResponse{
-		Assets: AdaptAssetsFromProto(resp.Assets),
-	}, nil
-}
-
-func (m *GRPCClient) CompileAssets(ctx context.Context, request models.CompileAssetsRequest) (*models.CompileAssetsResponse, error) {
-	_, span := base.Tracer.Start(ctx, "CompileAssets")
-	defer span.End()
-
-	var instanceData []*pb.InstanceSpecData
-	for _, inst := range request.InstanceData {
-		instanceData = append(instanceData, &pb.InstanceSpecData{
-			Name:  inst.Name,
-			Value: inst.Value,
-			Type:  pb.InstanceSpecData_Type(pb.InstanceSpecData_Type_value[utils.ToEnumProto(inst.Type, "type")]),
-		})
-	}
-
-	resp, err := m.client.CompileAssets(ctx, &pbp.CompileAssetsRequest{
-		Configs:      AdaptConfigsToProto(request.Config),
-		Assets:       AdaptAssetsToProto(request.Assets),
-		InstanceData: instanceData,
-		Options:      &pbp.PluginOptions{DryRun: request.DryRun},
-		StartTime:    timestamppb.New(request.StartTime),
-		EndTime:      timestamppb.New(request.EndTime),
-	}, grpc_retry.WithBackoff(grpc_retry.BackoffExponential(BackoffDuration)),
-		grpc_retry.WithMax(PluginGRPCMaxRetry))
-	if err != nil {
-		m.baseClient.MakeFatalOnConnErr(err)
-		return nil, err
-	}
-	return &models.CompileAssetsResponse{
 		Assets: AdaptAssetsFromProto(resp.Assets),
 	}, nil
 }
