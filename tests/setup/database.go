@@ -82,6 +82,7 @@ func dropTables(db *gorm.DB) error {
 		"schema_migrations",
 		"job",
 		"resource",
+		"resource_old",
 		"namespace",
 		"project",
 		"migration_steps",
