@@ -118,6 +118,21 @@ func (j *JobSpecReadWriterTestSuite) TestReadAll() {
 		}
 		j.Assert().Equal(expectedTaskConfig, jobSpecs[0].Task.Config)
 	})
+
+	j.Run("return job specs and nil if there is job which does not have asset", func() {
+		specFS := j.createValidSpecFS("root/ns1/jobs/example1")
+		err := specFS.RemoveAll("root/ns1/jobs/example1/assets")
+		j.Require().NoError(err)
+
+		jobSpecReadWriter := specio.NewTestJobSpecReadWriter(specFS)
+
+		rootDirPath := "root"
+
+		jobSpecs, err := jobSpecReadWriter.ReadAll(rootDirPath)
+
+		j.Assert().NoError(err)
+		j.Assert().Len(jobSpecs, 1)
+	})
 }
 
 func (j *JobSpecReadWriterTestSuite) TestReadByName() {

@@ -168,12 +168,18 @@ func (j jobSpecReadWriter) readJobSpec(dirPath string) (*model.JobSpec, error) {
 
 func (j jobSpecReadWriter) readJobSpecAssetsMappedByFileName(dirPath string) (map[string]string, error) {
 	assetDirPath := filepath.Join(dirPath, j.referenceAssetDirName)
+	assetsMap := make(map[string]string)
+	if isExist, err := internal.PathExist(j.specFS, assetDirPath); !isExist && err == nil {
+		return assetsMap, nil
+	} else if err != nil {
+		return nil, err
+	}
+
 	assetFilePaths, err := internal.DiscoverFilePaths(j.specFS, assetDirPath)
 	if err != nil {
 		return nil, fmt.Errorf("error discovering asset file paths under [%s]: %w", assetDirPath, err)
 	}
 
-	assetsMap := make(map[string]string)
 	for _, assetFilePath := range assetFilePaths {
 		assetContent, err := j.readJobSpecAssetFile(assetFilePath)
 		if err != nil {
