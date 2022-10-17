@@ -24,10 +24,6 @@ func FromStringToStore(name string) (Store, error) {
 	}
 }
 
-func (s Store) String() string {
-	return string(s)
-}
-
 type Dataset struct {
 	Store Store
 

@@ -22,7 +22,7 @@ func TestDatasetHandle(t *testing.T) {
 	metadata := resource.Metadata{
 		Version:     1,
 		Description: "resource description",
-		Labels:      nil,
+		Labels:      map[string]string{"owner": "optimus"},
 	}
 
 	t.Run("Create", func(t *testing.T) {
@@ -36,8 +36,9 @@ func TestDatasetHandle(t *testing.T) {
 
 			err = dsHandle.Create(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource: not able to decode spec "+
-				"for proj.dataset")
+			assert.EqualError(t, err, "invalid argument for entity resource: 1 error(s) decoding:\n\n* "+
+				"'description' expected type 'string', got unconvertible type '[]string', value: '[a b]': not able to "+
+				"decode spec for proj.dataset")
 		})
 		t.Run("returns error when dataset already present on bigquery", func(t *testing.T) {
 			bqErr := &googleapi.Error{Code: 409, Message: "Already Exists project.dataset"}
@@ -79,7 +80,11 @@ func TestDatasetHandle(t *testing.T) {
 
 			dsHandle := bigquery.NewDatasetHandle(ds)
 
-			spec := map[string]any{"description": "test create"}
+			spec := map[string]any{
+				"description":      "test create",
+				"location":         "asia-southeast2",
+				"table_expiration": 2,
+			}
 			res, err := resource.NewResource("proj.dataset", resource.KindDataset, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
@@ -98,8 +103,9 @@ func TestDatasetHandle(t *testing.T) {
 
 			err = dsHandle.Update(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource: not able to decode spec "+
-				"for proj.dataset")
+			assert.EqualError(t, err, "invalid argument for entity resource: 1 error(s) decoding:\n\n* "+
+				"'description' expected type 'string', got unconvertible type '[]string', value: '[a b]': not able to "+
+				"decode spec for proj.dataset")
 		})
 		t.Run("returns error when dataset not present on bigquery", func(t *testing.T) {
 			bqErr := &googleapi.Error{Code: 404}
@@ -144,7 +150,11 @@ func TestDatasetHandle(t *testing.T) {
 
 			dsHandle := bigquery.NewDatasetHandle(ds)
 
-			spec := map[string]any{"description": "test update"}
+			spec := map[string]any{
+				"description":      "test update",
+				"location":         "asia-southeast2",
+				"table_expiration": 2,
+			}
 			res, err := resource.NewResource("proj.dataset", resource.KindDataset, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 

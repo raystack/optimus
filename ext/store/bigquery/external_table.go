@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"strings"
-	"time"
 
 	"cloud.google.com/go/bigquery"
 	"google.golang.org/api/googleapi"
@@ -27,18 +26,18 @@ func (et ExternalTableHandle) Create(ctx context.Context, res *resource.Resource
 		return err
 	}
 
-	meta := &bigquery.TableMetadata{
-		Description: externalTable.Description,
-		Labels:      res.Metadata().Labels,
+	meta, err := getMetadataToCreate(externalTable.Description, externalTable.ExtraConfig, res.Metadata().Labels)
+	if err != nil {
+		return errors.AddErrContext(err, resource.EntityExternalTable, "failed to get metadata to create for "+res.FullName())
 	}
 
-	expiration := ConfigAs[string](externalTable.ExtraConfig, expirationTimeKey)
-	if expiration != "" {
-		expiryTime, err := time.Parse(time.RFC3339, expiration)
+	meta.Schema = toBQSchema(externalTable.Schema)
+
+	if externalTable.Source != nil {
+		meta.ExternalDataConfig, err = bqExternalDataConfigTo(externalTable.Source)
 		if err != nil {
-			return errors.InvalidArgument(resource.EntityExternalTable, "unable to parse timestamp "+externalTable.FullName())
+			return err
 		}
-		meta.ExpirationTime = expiryTime
 	}
 
 	err = et.bqExternalTable.Create(ctx, meta)
@@ -59,23 +58,12 @@ func (et ExternalTableHandle) Update(ctx context.Context, res *resource.Resource
 		return err
 	}
 
-	metadataToUpdate := bigquery.TableMetadataToUpdate{
-		Description: externalTable.Description,
+	meta, err := getMetadataToUpdate(externalTable.Description, externalTable.ExtraConfig, res.Metadata().Labels)
+	if err != nil {
+		return errors.AddErrContext(err, resource.EntityExternalTable, "failed to get metadata to update for "+res.FullName())
 	}
 
-	expiration := ConfigAs[string](externalTable.ExtraConfig, expirationTimeKey)
-	if expiration != "" {
-		expiryTime, err := time.Parse(time.RFC3339, expiration)
-		if err != nil {
-			return errors.InvalidArgument(resource.EntityExternalTable, "unable to parse timestamp "+externalTable.FullName())
-		}
-		metadataToUpdate.ExpirationTime = expiryTime
-	}
-	for k, v := range res.Metadata().Labels {
-		metadataToUpdate.SetLabel(k, v)
-	}
-
-	_, err = et.bqExternalTable.Update(ctx, metadataToUpdate, "")
+	_, err = et.bqExternalTable.Update(ctx, meta, "")
 	if err != nil {
 		var metaErr *googleapi.Error
 		if errors.As(err, &metaErr) && metaErr.Code == http.StatusNotFound {
@@ -89,4 +77,61 @@ func (et ExternalTableHandle) Update(ctx context.Context, res *resource.Resource
 
 func NewExternalTableHandle(bq BqTable) *ExternalTableHandle {
 	return &ExternalTableHandle{bqExternalTable: bq}
+}
+
+func bqExternalDataConfigTo(es *resource.ExternalSource) (*bigquery.ExternalDataConfig, error) {
+	var option bigquery.ExternalDataConfigOptions
+	var sourceType bigquery.DataFormat
+	switch bigquery.DataFormat(strings.ToUpper(es.SourceType)) {
+	case bigquery.GoogleSheets:
+		option = bqGoogleSheetsOptionsTo(es.Config)
+		sourceType = bigquery.GoogleSheets
+	default:
+		return nil, errors.InvalidArgument(resource.EntityExternalTable, "source format not yet implemented "+es.SourceType)
+	}
+
+	externalConfig := &bigquery.ExternalDataConfig{
+		SourceFormat: sourceType,
+		SourceURIs:   es.SourceURIs,
+		Options:      option,
+	}
+	return externalConfig, nil
+}
+
+func bqGoogleSheetsOptionsTo(m map[string]any) *bigquery.GoogleSheetsOptions {
+	var skipLeadingRows int64
+	var sheetRange string
+
+	if val, ok := m["skip_leading_rows"]; ok {
+		if rows, ok := val.(int); ok {
+			skipLeadingRows = int64(rows)
+		}
+	}
+	if val, ok := m["range"]; ok {
+		if ran, ok := val.(string); ok {
+			sheetRange = ran
+		}
+	}
+	return &bigquery.GoogleSheetsOptions{
+		SkipLeadingRows: skipLeadingRows,
+		Range:           sheetRange,
+	}
+}
+
+func toBQSchema(schema resource.Schema) bigquery.Schema {
+	var rv bigquery.Schema
+	for _, field := range schema {
+		s := &bigquery.FieldSchema{
+			Name:        field.Name,
+			Description: field.Description,
+			Type:        bigquery.FieldType(strings.ToUpper(field.Type)),
+			Required:    strings.EqualFold(resource.ModeRequired, field.Mode),
+			Repeated:    strings.EqualFold(resource.ModeRepeated, field.Mode),
+		}
+		if len(field.Schema) > 0 {
+			s.Schema = toBQSchema(field.Schema)
+		}
+		rv = append(rv, s)
+	}
+	return rv
 }

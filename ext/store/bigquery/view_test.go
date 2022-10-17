@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	bq "cloud.google.com/go/bigquery"
 	"github.com/stretchr/testify/assert"
@@ -36,8 +37,26 @@ func TestViewHandle(t *testing.T) {
 
 			err = vHandle.Create(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource: not able to decode "+
-				"spec for proj.dataset.view1")
+			assert.EqualError(t, err, "invalid argument for entity resource: 1 error(s) decoding:\n\n* "+
+				"'description' expected type 'string', got unconvertible type '[]string', value: '[a b]': not able to "+
+				"decode spec for proj.dataset.view1")
+		})
+		t.Run("returns error when cannot cannot get matadata", func(t *testing.T) {
+			v := new(mockBigQueryTable)
+			vHandle := bigquery.NewViewHandle(v)
+
+			spec := map[string]any{
+				"description":     "test create",
+				"expiration_time": "invalid_date",
+				"view_query":      "select * from dummy",
+			}
+			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			assert.Nil(t, err)
+
+			err = vHandle.Create(ctx, res)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "invalid argument for entity resource_view: failed to get "+
+				"metadata to update for proj.dataset.view1")
 		})
 		t.Run("returns error when view already present on bigquery", func(t *testing.T) {
 			bqErr := &googleapi.Error{Code: 409, Message: "Already Exists project.dataset.view1"}
@@ -79,7 +98,11 @@ func TestViewHandle(t *testing.T) {
 
 			vHandle := bigquery.NewViewHandle(v)
 
-			spec := map[string]any{"description": "test create"}
+			spec := map[string]any{
+				"description":     "test create",
+				"expiration_time": time.Now().Format(time.RFC3339),
+				"view_query":      "select * from dummy",
+			}
 			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
@@ -98,8 +121,26 @@ func TestViewHandle(t *testing.T) {
 
 			err = vHandle.Update(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource: not able to decode spec "+
-				"for proj.dataset.view1")
+			assert.EqualError(t, err, "invalid argument for entity resource: 1 error(s) decoding:\n\n* "+
+				"'description' expected type 'string', got unconvertible type '[]string', value: '[a b]': not able to "+
+				"decode spec for proj.dataset.view1")
+		})
+		t.Run("returns error when creating metadata fails", func(t *testing.T) {
+			v := new(mockBigQueryTable)
+			vHandle := bigquery.NewViewHandle(v)
+
+			spec := map[string]any{
+				"description":     "test update",
+				"expiration_time": "invalid_date",
+				"view_query":      "select * from dummy",
+			}
+			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			assert.Nil(t, err)
+
+			err = vHandle.Update(ctx, res)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "invalid argument for entity resource_view: failed to get metadata "+
+				"to update for proj.dataset.view1")
 		})
 		t.Run("returns error when view not present on bigquery", func(t *testing.T) {
 			bqErr := &googleapi.Error{Code: 404}
@@ -144,7 +185,11 @@ func TestViewHandle(t *testing.T) {
 
 			vHandle := bigquery.NewViewHandle(v)
 
-			spec := map[string]any{"description": "test update"}
+			spec := map[string]any{
+				"description":     "test update",
+				"expiration_time": time.Now().Format(time.RFC3339),
+				"view_query":      "select * from dummy",
+			}
 			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 

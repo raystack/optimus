@@ -51,11 +51,12 @@ func (d DatasetHandle) Update(ctx context.Context, res *resource.Resource) error
 		return err
 	}
 
-	metadataToUpdate := bigquery.DatasetMetadataToUpdate{
-		Description: details.Description,
+	metadataToUpdate := bigquery.DatasetMetadataToUpdate{}
+	if len(details.Description) > 0 {
+		metadataToUpdate.Description = details.Description
 	}
 
-	expirationAsInt := ConfigAs[int64](details.ExtraConfig, tableExpirationKey)
+	expirationAsInt := ConfigAs[int](details.ExtraConfig, tableExpirationKey)
 	if expirationAsInt > 0 {
 		metadataToUpdate.DefaultTableExpiration = time.Hour * time.Duration(expirationAsInt)
 	}
@@ -81,20 +82,22 @@ func NewDatasetHandle(ds BqDataset) *DatasetHandle {
 }
 
 func toBQDatasetMetadata(details *resource.DatasetDetails, res *resource.Resource) *bigquery.DatasetMetadata {
+	meta := &bigquery.DatasetMetadata{
+		Description: details.Description,
+		Labels:      res.Metadata().Labels,
+	}
+
 	location := ConfigAs[string](details.ExtraConfig, locationKey)
+	if location != "" {
+		meta.Location = location
+	}
 
-	var tableExpiration time.Duration = 0
-	expirationAsInt := ConfigAs[int64](details.ExtraConfig, tableExpirationKey)
+	expirationAsInt := ConfigAs[int](details.ExtraConfig, tableExpirationKey)
 	if expirationAsInt > 0 {
-		tableExpiration = time.Hour * time.Duration(expirationAsInt)
+		meta.DefaultTableExpiration = time.Hour * time.Duration(expirationAsInt)
 	}
 
-	return &bigquery.DatasetMetadata{
-		Description:            details.Description,
-		Location:               location,
-		DefaultTableExpiration: tableExpiration,
-		Labels:                 res.Metadata().Labels,
-	}
+	return meta
 }
 
 func ConfigAs[T any](mapping map[string]any, key string) T {

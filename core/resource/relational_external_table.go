@@ -10,9 +10,9 @@ type ExternalTable struct {
 	Name    Name
 	Dataset Dataset
 
-	Description string         `mapstructure:"description,omitempty"`
-	Schema      Schema         `mapstructure:"schema,omitempty"`
-	Source      ExternalSource `mapstructure:"source,omitempty"`
+	Description string          `mapstructure:"description,omitempty"`
+	Schema      Schema          `mapstructure:"schema,omitempty"`
+	Source      *ExternalSource `mapstructure:"source,omitempty"`
 
 	ExtraConfig map[string]interface{} `mapstructure:",remain"`
 }

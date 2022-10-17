@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -222,7 +223,8 @@ func FromExisting(existing *Resource, opts ...FromExistingOpt) *Resource {
 func ConvertSpecTo[T DatasetDetails | Table | View | ExternalTable](res *Resource) (*T, error) {
 	var spec T
 	if err := mapstructure.Decode(res.spec, &spec); err != nil {
-		return nil, errors.InvalidArgument(EntityResource, "not able to decode spec for "+res.FullName())
+		msg := fmt.Sprintf("%s: not able to decode spec for %s", err, res.FullName())
+		return nil, errors.InvalidArgument(EntityResource, msg)
 	}
 
 	return &spec, nil

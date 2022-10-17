@@ -23,19 +23,11 @@ func (v ViewHandle) Create(ctx context.Context, res *resource.Resource) error {
 		return err
 	}
 
-	meta := &bigquery.TableMetadata{
-		ViewQuery:   view.ViewQuery,
-		Description: view.Description,
-		Labels:      res.Metadata().Labels,
+	meta, err := getMetadataToCreate(view.Description, view.ExtraConfig, res.Metadata().Labels)
+	if err != nil {
+		return errors.AddErrContext(err, resource.EntityView, "failed to get metadata to update for "+res.FullName())
 	}
-	expiration := ConfigAs[string](view.ExtraConfig, expirationTimeKey)
-	if expiration != "" {
-		expiryTime, err := time.Parse(time.RFC3339, expiration)
-		if err != nil {
-			return errors.InvalidArgument(resource.EntityView, "unable to parse timestamp "+view.FullName())
-		}
-		meta.ExpirationTime = expiryTime
-	}
+	meta.ViewQuery = view.ViewQuery
 
 	err = v.bqView.Create(ctx, meta)
 	if err != nil {
@@ -55,25 +47,13 @@ func (v ViewHandle) Update(ctx context.Context, res *resource.Resource) error {
 		return err
 	}
 
-	metadataToUpdate := bigquery.TableMetadataToUpdate{
-		Description: view.Description,
-		ViewQuery:   view.ViewQuery,
+	meta, err := getMetadataToUpdate(view.Description, view.ExtraConfig, res.Metadata().Labels)
+	if err != nil {
+		return errors.AddErrContext(err, resource.EntityView, "failed to get metadata to update for "+res.FullName())
 	}
+	meta.ViewQuery = view.ViewQuery
 
-	expiration := ConfigAs[string](view.ExtraConfig, expirationTimeKey)
-	if expiration != "" {
-		expiryTime, err := time.Parse(time.RFC3339, expiration)
-		if err != nil {
-			return errors.InvalidArgument(resource.EntityView, "unable to parse timestamp "+view.FullName())
-		}
-		metadataToUpdate.ExpirationTime = expiryTime
-	}
-
-	for k, val := range res.Metadata().Labels {
-		metadataToUpdate.SetLabel(k, val)
-	}
-
-	_, err = v.bqView.Update(ctx, metadataToUpdate, "")
+	_, err = v.bqView.Update(ctx, meta, "")
 	if err != nil {
 		var metaErr *googleapi.Error
 		if errors.As(err, &metaErr) && metaErr.Code == http.StatusNotFound {
@@ -87,4 +67,42 @@ func (v ViewHandle) Update(ctx context.Context, res *resource.Resource) error {
 
 func NewViewHandle(bq BqTable) *ViewHandle {
 	return &ViewHandle{bqView: bq}
+}
+
+func getMetadataToCreate(desc string, extraConf map[string]any, labels map[string]string) (*bigquery.TableMetadata, error) {
+	meta := &bigquery.TableMetadata{
+		Description: desc,
+		Labels:      labels,
+	}
+	expiration := ConfigAs[string](extraConf, expirationTimeKey)
+	if expiration != "" {
+		expiryTime, err := time.Parse(time.RFC3339, expiration)
+		if err != nil {
+			return nil, errors.InvalidArgument(resource.EntityResource, "unable to parse timestamp ")
+		}
+		meta.ExpirationTime = expiryTime
+	}
+	return meta, nil
+}
+
+func getMetadataToUpdate(description string, extraConf map[string]any, labels map[string]string) (bigquery.TableMetadataToUpdate, error) {
+	metadataToUpdate := bigquery.TableMetadataToUpdate{}
+	if len(description) > 0 {
+		metadataToUpdate.Description = description
+	}
+
+	expiration := ConfigAs[string](extraConf, expirationTimeKey)
+	if expiration != "" {
+		expiryTime, err := time.Parse(time.RFC3339, expiration)
+		if err != nil {
+			return bigquery.TableMetadataToUpdate{}, errors.InvalidArgument(resource.EntityResource, "unable to parse timestamp")
+		}
+		metadataToUpdate.ExpirationTime = expiryTime
+	}
+
+	for k, val := range labels {
+		metadataToUpdate.SetLabel(k, val)
+	}
+
+	return metadataToUpdate, nil
 }

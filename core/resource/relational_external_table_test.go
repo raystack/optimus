@@ -52,7 +52,7 @@ func TestRelationalExternalTable(t *testing.T) {
 				Schema: resource.Schema{
 					{Name: "id", Type: "string", Mode: "nullable"},
 				},
-				Source: resource.ExternalSource{SourceType: ""},
+				Source: &resource.ExternalSource{SourceType: ""},
 			}
 			err = et.Validate()
 			assert.NotNil(t, err)
@@ -71,7 +71,7 @@ func TestRelationalExternalTable(t *testing.T) {
 			Schema: resource.Schema{
 				{Name: "id", Type: "string", Mode: "nullable"},
 			},
-			Source: resource.ExternalSource{
+			Source: &resource.ExternalSource{
 				SourceType: "GOOGLE_SHEETS",
 				SourceURIs: []string{"https://google.com/sheets"},
 				Config:     nil,
