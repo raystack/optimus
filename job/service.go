@@ -524,13 +524,6 @@ func listIgnoredJobs(rootInstance, rootFilteredTree *tree.TreeNode) []string {
 	return ignoredJobs
 }
 
-func (*Service) notifyProgress(po progress.Observer, event progress.Event) {
-	if po == nil {
-		return
-	}
-	po.Notify(event)
-}
-
 // remove items present in from
 func setSubtract(from, remove []string) []string {
 	removeMap := make(map[string]bool)
