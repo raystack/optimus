@@ -2,7 +2,6 @@ package bigquery
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -33,7 +32,6 @@ func (t TableHandle) Create(ctx context.Context, res *resource.Resource) error {
 	if err != nil {
 		return errors.AddErrContext(err, resource.EntityTable, "failed to get metadata to create for "+res.FullName())
 	}
-	fmt.Printf("%+v\n", meta)
 
 	err = t.bqTable.Create(ctx, meta)
 	if err != nil {

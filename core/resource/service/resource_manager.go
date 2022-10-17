@@ -18,13 +18,13 @@ type ResourceStatusRepo interface {
 	MarkFailed(ctx context.Context, tnnt tenant.Tenant, res ...*resource.Resource) error
 }
 
-type ResourceManager struct {
+type ResourceMgr struct {
 	datastoreMap map[resource.Store]DataStore
 
 	repo ResourceStatusRepo
 }
 
-func (m ResourceManager) CreateResource(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error {
+func (m ResourceMgr) CreateResource(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error {
 	datastore, ok := m.datastoreMap[res.Dataset().Store]
 	if !ok {
 		return nil // error about the datastore not found
@@ -43,7 +43,7 @@ func (m ResourceManager) CreateResource(ctx context.Context, tnnt tenant.Tenant,
 	return m.repo.MarkSuccess(ctx, tnnt, res)
 }
 
-func (m ResourceManager) UpdateResource(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error {
+func (m ResourceMgr) UpdateResource(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error {
 	datastore, ok := m.datastoreMap[res.Dataset().Store]
 	if !ok {
 		return nil // error about the datastore not found
@@ -61,7 +61,7 @@ func (m ResourceManager) UpdateResource(ctx context.Context, tnnt tenant.Tenant,
 	return m.repo.MarkSuccess(ctx, tnnt, res)
 }
 
-func (m ResourceManager) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
+func (m ResourceMgr) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
 	datastore, ok := m.datastoreMap[store]
 	if !ok {
 		return nil // error about the datastore not found
