@@ -68,16 +68,4 @@ func TestScheduleSpec(t *testing.T) {
 			assert.Equal(t, prevScheduleTime, expectedTime)
 		})
 	})
-	t.Run("GetExpectedRuns", func(t *testing.T) {
-		t.Run("with constant interval", func(t *testing.T) {
-			scheduleSpec, err := cron.ParseCronSchedule("@midnight")
-			assert.Nil(t, err)
-			scheduleStartTime, _ := time.Parse(time.RFC3339, "2022-03-25T02:00:00+00:00")
-			scheduleEndTime, _ := time.Parse(time.RFC3339, "2022-03-26T02:00:00+00:00")
-			scheduledRunTimes := scheduleSpec.GetExpectedRuns(scheduleStartTime, scheduleEndTime)
-			firstExpectedRun, _ := time.Parse(time.RFC3339, "2022-03-26T00:00:00+00:00")
-			expectedRunTimes := []time.Time{firstExpectedRun}
-			assert.Equal(t, expectedRunTimes, scheduledRunTimes)
-		})
-	})
 }
