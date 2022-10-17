@@ -60,6 +60,23 @@ func (s Status) String() string {
 	return string(s)
 }
 
+func FromStringToStatus(status string) Status {
+	switch status {
+	case StatusToCreate.String():
+		return StatusToCreate
+	case StatusToUpdate.String():
+		return StatusToUpdate
+	case StatusCreateFailure.String():
+		return StatusCreateFailure
+	case StatusUpdateFailure.String():
+		return StatusUpdateFailure
+	case StatusSuccess.String():
+		return StatusSuccess
+	default:
+		return StatusUnknown
+	}
+}
+
 type Metadata struct {
 	Version     int32
 	Description string
