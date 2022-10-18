@@ -44,9 +44,7 @@ func (rs ResourceService) Create(ctx context.Context, res *resource.Resource) er
 		return err
 	}
 
-	createRequest := resource.FromExisting(res,
-		resource.ReplaceStatus(resource.StatusToCreate),
-	)
+	createRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToCreate))
 	if err := rs.repo.Create(ctx, createRequest); err != nil {
 		return err
 	}
