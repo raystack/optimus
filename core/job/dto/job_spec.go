@@ -1,12 +1,15 @@
 package dto
 
-import "github.com/odpf/optimus/core/tenant"
+import (
+	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/tenant"
+)
 
 type JobSpec struct {
-	tenant tenant.Tenant
+	tenant *tenant.WithDetails
 
 	version      int
-	name         string
+	name         job.JobName
 	owner        string
 	description  string
 	labels       map[string]string
@@ -20,7 +23,7 @@ type JobSpec struct {
 	metadata     *Metadata
 }
 
-func (j JobSpec) Tenant() tenant.Tenant {
+func (j JobSpec) Tenant() *tenant.WithDetails {
 	return j.tenant
 }
 
@@ -28,7 +31,7 @@ func (j JobSpec) Version() int {
 	return j.version
 }
 
-func (j JobSpec) Name() string {
+func (j JobSpec) Name() job.JobName {
 	return j.name
 }
 
@@ -76,8 +79,18 @@ func (j JobSpec) Metadata() *Metadata {
 	return j.metadata
 }
 
-func NewJobSpec(tenant tenant.Tenant, version int, name string, owner string, description string, labels map[string]string, schedule *Schedule, window *Window, task *Task, hooks []*Hook, alerts []*Alert, dependencies *Dependencies, assets map[string]string, metadata *Metadata) *JobSpec {
-	return &JobSpec{tenant: tenant, version: version, name: name, owner: owner, description: description, labels: labels, schedule: schedule, window: window, task: task, hooks: hooks, alerts: alerts, dependencies: dependencies, assets: assets, metadata: metadata}
+func NewJobSpec(tenant *tenant.WithDetails, version int, name string, owner string, description string,
+	labels map[string]string, schedule *Schedule, window *Window, task *Task, hooks []*Hook, alerts []*Alert,
+	dependencies *Dependencies, assets map[string]string, metadata *Metadata) (*JobSpec, error) {
+
+	jobName, err := job.JobNameFrom(name)
+	if err != nil {
+		return nil, err
+	}
+
+	return &JobSpec{tenant: tenant, version: version, name: jobName, owner: owner, description: description,
+		labels: labels, schedule: schedule, window: window, task: task, hooks: hooks, alerts: alerts,
+		dependencies: dependencies, assets: assets, metadata: metadata}, nil
 }
 
 /*
