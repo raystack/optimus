@@ -9,20 +9,27 @@ import (
 	"github.com/odpf/optimus/core/tenant"
 )
 
-func TestResource(t *testing.T) {
+func TestName(t *testing.T) {
+	t.Run("NameFrom", func(t *testing.T) {
+		t.Run("returns empty and error if name is empty", func(t *testing.T) {
+			name, err := resource.NameFrom("")
+			assert.Empty(t, name.String())
+			assert.Error(t, err)
+			assert.EqualError(t, err, "invalid argument for entity resource: resource name is empty")
+		})
+
+		t.Run("returns name and nil if name is proper", func(t *testing.T) {
+			name, err := resource.NameFrom("resource_name")
+			assert.Equal(t, "resource_name", name.String())
+			assert.NoError(t, err)
+		})
+	})
+}
+
+func TestNewResource(t *testing.T) {
 	tnnt, tnntErr := tenant.NewTenant("proj", "ns")
 	assert.Nil(t, tnntErr)
 
-	t.Run("returns error when name is empty", func(t *testing.T) {
-		_, err := resource.NameFrom("")
-		assert.NotNil(t, err)
-		assert.EqualError(t, err, "invalid argument for entity resource: resource name is empty")
-	})
-	t.Run("returns name when name is proper", func(t *testing.T) {
-		name, err := resource.NameFrom("resource_name")
-		assert.Nil(t, err)
-		assert.Equal(t, "resource_name", name.String())
-	})
 	t.Run("when invalid resource", func(t *testing.T) {
 		t.Run("returns error when name is empty", func(t *testing.T) {
 			_, err := resource.NewResource("", resource.KindTable, resource.BigQuery, tnnt, nil, nil)
@@ -69,38 +76,55 @@ func TestResource(t *testing.T) {
 		})
 	})
 	t.Run("creates table resource successfully", func(t *testing.T) {
-		meta := resource.Metadata{
+		meta := &resource.Metadata{
 			Version:     1,
 			Description: "description",
 		}
 		spec := map[string]any{"a": "b"}
 		res, err := resource.NewResource("proj.set.res_name", resource.KindTable,
-			resource.BigQuery, tnnt, &meta, spec)
+			resource.BigQuery, tnnt, meta, spec)
 		assert.Nil(t, err)
 
+		assert.Equal(t, "res_name", res.Name().String())
 		assert.Equal(t, "proj.set.res_name", res.FullName())
 		assert.Equal(t, "bigquery://proj:set.res_name", res.URN())
-		assert.Equal(t, "res_name", res.Name().String())
+		assert.EqualValues(t, meta, res.Metadata())
 		assert.Equal(t, "table", res.Kind().String())
-		assert.Equal(t, "proj", res.Tenant().ProjectName().String())
-		assert.Equal(t, "description", res.Metadata().Description)
-		assert.Equal(t, "b", res.Spec()["a"])
+		assert.EqualValues(t, tnnt, res.Tenant())
+		dataset, err := resource.DataSetFrom(resource.BigQuery, "proj", "set")
+		assert.NoError(t, err)
+		assert.EqualValues(t, dataset, res.Dataset())
+		assert.Equal(t, resource.StatusUnknown, res.Status())
+		assert.EqualValues(t, spec, res.Spec())
 	})
 	t.Run("creates dataset object successfully", func(t *testing.T) {
-		meta := resource.Metadata{
+		meta := &resource.Metadata{
 			Version:     1,
 			Description: "description",
 		}
 		spec := map[string]any{"a": "b"}
 		res, err := resource.NewResource("proj.dataset", resource.KindDataset,
-			resource.BigQuery, tnnt, &meta, spec)
+			resource.BigQuery, tnnt, meta, spec)
 		assert.Nil(t, err)
 
+		assert.Equal(t, "dataset", res.Name().String())
 		assert.Equal(t, "proj.dataset", res.FullName())
 		assert.Equal(t, "bigquery://proj:dataset", res.URN())
-		assert.Equal(t, "dataset", res.Name().String())
+		assert.EqualValues(t, meta, res.Metadata())
 		assert.Equal(t, "dataset", res.Kind().String())
+		assert.EqualValues(t, tnnt, res.Tenant())
+		dataset, err := resource.DataSetFrom(resource.BigQuery, "proj", "dataset")
+		assert.NoError(t, err)
+		assert.EqualValues(t, dataset, res.Dataset())
+		assert.Equal(t, resource.StatusUnknown, res.Status())
+		assert.EqualValues(t, spec, res.Spec())
 	})
+}
+
+func TestResource(t *testing.T) {
+	tnnt, tnntErr := tenant.NewTenant("proj", "ns")
+	assert.Nil(t, tnntErr)
+
 	t.Run("Validate", func(t *testing.T) {
 		invalidSpec := map[string]any{
 			"description": map[string]any{"some": "desc"},
@@ -212,6 +236,234 @@ func TestResource(t *testing.T) {
 				err = res.Validate()
 				assert.Nil(t, err)
 			})
+		})
+	})
+
+	t.Run("Equal", func(t *testing.T) {
+		t.Run("returns false if current resource is nil", func(t *testing.T) {
+			metadata := &resource.Metadata{
+				Version:     1,
+				Description: "metadata for unit test",
+				Labels: map[string]string{
+					"orcherstrator": "optimus",
+				},
+			}
+			spec := map[string]any{
+				"description": "spec for unit test",
+			}
+			validResource, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			assert.NoError(t, err)
+			var nilResource *resource.Resource
+
+			actualEquality := nilResource.Equal(validResource)
+			assert.False(t, actualEquality)
+		})
+		t.Run("returns false if incoming resource is nil", func(t *testing.T) {
+			metadata := &resource.Metadata{
+				Version:     1,
+				Description: "metadata for unit test",
+				Labels: map[string]string{
+					"orcherstrator": "optimus",
+				},
+			}
+			spec := map[string]any{
+				"description": "spec for unit test",
+			}
+			validResource, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			assert.NoError(t, err)
+			var nilResource *resource.Resource
+
+			actualEquality := validResource.Equal(nilResource)
+			assert.False(t, actualEquality)
+		})
+		t.Run("returns false if current resource is invalid", func(t *testing.T) {
+			metadata := &resource.Metadata{
+				Version:     1,
+				Description: "metadata for unit test",
+				Labels: map[string]string{
+					"orcherstrator": "optimus",
+				},
+			}
+			spec := map[string]any{
+				"description": "spec for unit test",
+			}
+			validResource, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			assert.NoError(t, err)
+			invalidResource := &resource.Resource{}
+
+			actualEquality := invalidResource.Equal(validResource)
+			assert.False(t, actualEquality)
+		})
+		t.Run("returns false if incoming resource is invalid", func(t *testing.T) {
+			metadata := &resource.Metadata{
+				Version:     1,
+				Description: "metadata for unit test",
+				Labels: map[string]string{
+					"orcherstrator": "optimus",
+				},
+			}
+			spec := map[string]any{
+				"description": "spec for unit test",
+			}
+			validResource, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			assert.NoError(t, err)
+			invalidResource := &resource.Resource{}
+
+			actualEquality := validResource.Equal(invalidResource)
+			assert.False(t, actualEquality)
+		})
+		t.Run("returns false if name is not the same", func(t *testing.T) {
+			metadata := &resource.Metadata{
+				Version:     1,
+				Description: "metadata for unit test",
+				Labels: map[string]string{
+					"orcherstrator": "optimus",
+				},
+			}
+			spec := map[string]any{
+				"description": "spec for unit test",
+			}
+			resource1, err := resource.NewResource("project.dataset.table1", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			assert.NoError(t, err)
+			resource2, err := resource.NewResource("project.dataset.table2", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			assert.NoError(t, err)
+
+			actualEquality := resource1.Equal(resource2)
+			assert.False(t, actualEquality)
+		})
+		t.Run("returns false if full name is not the same", func(t *testing.T) {
+			metadata := &resource.Metadata{
+				Version:     1,
+				Description: "metadata for unit test",
+				Labels: map[string]string{
+					"orcherstrator": "optimus",
+				},
+			}
+			spec := map[string]any{
+				"description": "spec for unit test",
+			}
+			resource1, err := resource.NewResource("project.dataset1.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			assert.NoError(t, err)
+			resource2, err := resource.NewResource("project.dataset2.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			assert.NoError(t, err)
+
+			actualEquality := resource1.Equal(resource2)
+			assert.False(t, actualEquality)
+		})
+		t.Run("returns false if urn or dataset is not the same", func(t *testing.T) {
+			metadata := &resource.Metadata{
+				Version:     1,
+				Description: "metadata for unit test",
+				Labels: map[string]string{
+					"orcherstrator": "optimus",
+				},
+			}
+			spec := map[string]any{
+				"description": "spec for unit test",
+			}
+			resource1, err := resource.NewResource("project.dataset1.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			assert.NoError(t, err)
+			resource2, err := resource.NewResource("project.dataset2.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			assert.NoError(t, err)
+			// current implementation does not provide different kind of store to explicitly produce such inequality
+
+			actualEquality := resource1.Equal(resource2)
+			assert.False(t, actualEquality)
+		})
+		t.Run("returns false if metadata is not the same", func(t *testing.T) {
+			metadata1 := &resource.Metadata{
+				Version:     1,
+				Description: "metadata 1 for unit test",
+				Labels: map[string]string{
+					"orcherstrator": "optimus",
+				},
+			}
+			metadata2 := &resource.Metadata{
+				Version:     1,
+				Description: "metadata 2 for unit test",
+				Labels: map[string]string{
+					"orcherstrator": "optimus",
+				},
+			}
+			spec := map[string]any{
+				"description": "spec for unit test",
+			}
+			resource1, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata1, spec)
+			assert.NoError(t, err)
+			resource2, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata2, spec)
+			assert.NoError(t, err)
+
+			actualEquality := resource1.Equal(resource2)
+			assert.False(t, actualEquality)
+		})
+		t.Run("returns false if status is not the same", func(t *testing.T) {
+			metadata := &resource.Metadata{
+				Version:     1,
+				Description: "metadata for unit test",
+				Labels: map[string]string{
+					"orcherstrator": "optimus",
+				},
+			}
+			spec := map[string]any{
+				"description": "spec for unit test",
+			}
+			resource1, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			assert.NoError(t, err)
+			resource1 = resource.FromExisting(resource1, resource.ReplaceStatus(resource.StatusSuccess))
+			resource2, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			assert.NoError(t, err)
+
+			actualEquality := resource1.Equal(resource2)
+			assert.False(t, actualEquality)
+		})
+		t.Run("returns false if spec is not the same", func(t *testing.T) {
+			metadata := &resource.Metadata{
+				Version:     1,
+				Description: "metadata for unit test",
+				Labels: map[string]string{
+					"orcherstrator": "optimus",
+				},
+			}
+			spec1 := map[string]any{
+				"description": "spec 1 for unit test",
+			}
+			spec2 := map[string]any{
+				"description": "spec 2 for unit test",
+			}
+			resource1, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec1)
+			assert.NoError(t, err)
+			resource2, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec2)
+			assert.NoError(t, err)
+
+			actualEquality := resource1.Equal(resource2)
+			assert.False(t, actualEquality)
+		})
+		t.Run("returns true if both current and incoming resources are nil", func(t *testing.T) {
+			var resource1, resource2 *resource.Resource
+
+			actualEquality1 := resource1.Equal(resource2)
+			assert.True(t, actualEquality1)
+			actualEquality2 := resource2.Equal(resource1)
+			assert.True(t, actualEquality2)
+		})
+		t.Run("returns true if no additional difference is found", func(t *testing.T) {
+			metadata := &resource.Metadata{
+				Version:     1,
+				Description: "metadata for unit test",
+				Labels: map[string]string{
+					"orcherstrator": "optimus",
+				},
+			}
+			spec := map[string]any{
+				"description": "spec for unit test",
+			}
+			resource1, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			assert.NoError(t, err)
+			resource2, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			assert.NoError(t, err)
+
+			actualEquality := resource1.Equal(resource2)
+			assert.True(t, actualEquality)
 		})
 	})
 }

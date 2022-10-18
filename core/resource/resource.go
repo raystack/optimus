@@ -52,48 +52,6 @@ type Resource struct {
 	status Status
 }
 
-func (r *Resource) Name() Name {
-	return r.name
-}
-
-func (r *Resource) FullName() string {
-	if r.kind == KindDataset {
-		return r.dataset.FullName()
-	}
-	return r.dataset.FullName() + "." + r.name.String()
-}
-
-func (r *Resource) URN() string {
-	if r.kind == KindDataset {
-		return r.dataset.URN()
-	}
-	return r.dataset.URN() + "." + r.name.String()
-}
-
-func (r *Resource) Metadata() *Metadata {
-	return r.metadata
-}
-
-func (r *Resource) Kind() Kind {
-	return r.kind
-}
-
-func (r *Resource) Tenant() tenant.Tenant {
-	return r.tenant
-}
-
-func (r *Resource) Dataset() Dataset {
-	return r.dataset
-}
-
-func (r *Resource) Status() Status {
-	return r.status
-}
-
-func (r *Resource) Spec() map[string]any {
-	return r.spec
-}
-
 func NewResource(fullName string, kind Kind, store Store, tnnt tenant.Tenant, meta *Metadata, spec map[string]any) (*Resource, error) {
 	sections := strings.Split(fullName, nameSectionSeparator)
 	var strName string
@@ -136,6 +94,48 @@ func NewResource(fullName string, kind Kind, store Store, tnnt tenant.Tenant, me
 		metadata: meta,
 		status:   StatusUnknown,
 	}, nil
+}
+
+func (r *Resource) Name() Name {
+	return r.name
+}
+
+func (r *Resource) FullName() string {
+	if r.kind == KindDataset {
+		return r.dataset.FullName()
+	}
+	return r.dataset.FullName() + "." + r.name.String()
+}
+
+func (r *Resource) URN() string {
+	if r.kind == KindDataset {
+		return r.dataset.URN()
+	}
+	return r.dataset.URN() + "." + r.name.String()
+}
+
+func (r *Resource) Metadata() *Metadata {
+	return r.metadata
+}
+
+func (r *Resource) Kind() Kind {
+	return r.kind
+}
+
+func (r *Resource) Tenant() tenant.Tenant {
+	return r.tenant
+}
+
+func (r *Resource) Dataset() Dataset {
+	return r.dataset
+}
+
+func (r *Resource) Status() Status {
+	return r.status
+}
+
+func (r *Resource) Spec() map[string]any {
+	return r.spec
 }
 
 func (r *Resource) Validate() error {
@@ -181,7 +181,28 @@ func (r *Resource) Validate() error {
 }
 
 func (r *Resource) Equal(incoming *Resource) bool {
-	return reflect.DeepEqual(&r, incoming)
+	if r == nil || incoming == nil {
+		return r == nil && incoming == nil
+	}
+	if r.name != incoming.name {
+		return false
+	}
+	if r.kind != incoming.kind {
+		return false
+	}
+	if r.dataset != incoming.dataset {
+		return false
+	}
+	if r.tenant != incoming.tenant {
+		return false
+	}
+	if !reflect.DeepEqual(r.spec, incoming.spec) {
+		return false
+	}
+	if !reflect.DeepEqual(r.metadata, incoming.metadata) {
+		return false
+	}
+	return r.status == incoming.status
 }
 
 type FromExistingOpt func(r *Resource)
