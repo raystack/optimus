@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -169,7 +170,7 @@ func (j jobSpecReadWriter) readJobSpec(dirPath string) (*model.JobSpec, error) {
 func (j jobSpecReadWriter) readJobSpecAssetsMappedByFileName(dirPath string) (map[string]string, error) {
 	assetDirPath := filepath.Join(dirPath, j.referenceAssetDirName)
 	assetsMap := make(map[string]string)
-	if isExist, err := internal.PathExist(j.specFS, assetDirPath); !isExist && err == nil {
+	if _, err := j.specFS.Stat(assetDirPath); errors.Is(err, fs.ErrNotExist) {
 		return assetsMap, nil
 	} else if err != nil {
 		return nil, err

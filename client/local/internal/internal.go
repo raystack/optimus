@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -13,17 +12,6 @@ import (
 
 	"github.com/odpf/optimus/client/local"
 )
-
-func PathExist(specFS afero.Fs, path string) (bool, error) {
-	_, err := specFS.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if errors.Is(err, fs.ErrNotExist) {
-		return false, nil
-	}
-	return false, err
-}
 
 func DiscoverSpecDirPaths(specFS afero.Fs, rootSpecDir, referenceFileName string) ([]string, error) {
 	return discoverPathsUsingSelector(specFS, rootSpecDir, func(path string, info fs.FileInfo) (string, bool) {
