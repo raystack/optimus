@@ -54,7 +54,7 @@ var (
 type DependencyResolver interface {
 	Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error)
 
-	GetStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec) (map[string]models.JobSpecDependency, error)
+	GetStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec) (map[string]models.JobSpecDependency, []models.OptimusDependency, error)
 	// GetEnrichedUpstreamJobSpec adds upstream jobs(inferred, static, external) in jobSpec
 	GetEnrichedUpstreamJobSpec(ctx context.Context, subjectJobSpec models.JobSpec, upstreamDestinations []string, logWriter writer.LogWriter) (models.JobSpec, []models.UnknownDependency, error)
 	GetJobSpecsWithDependencies(ctx context.Context, projectName string) ([]models.JobSpec, []models.UnknownDependency, error)
@@ -489,12 +489,13 @@ func (srv *Service) getDependentJobNames(ctx context.Context, jobSpec models.Job
 }
 
 func (srv *Service) GetEnrichedUpstreamJobSpec(ctx context.Context, jobSpec models.JobSpec, jobSource []string, logWriter writer.LogWriter) (models.JobSpec, []models.UnknownDependency, error) {
-	staticDependencies, err := srv.dependencyResolver.GetStaticDependencies(ctx, jobSpec, jobSpec.GetProjectSpec())
+	staticDependencies, externalOptimusDependencies, err := srv.dependencyResolver.GetStaticDependencies(ctx, jobSpec, jobSpec.GetProjectSpec())
 	if err != nil {
 		logWriter.Write(writer.LogLevelError, fmt.Sprintf("failed to resolve static dependeincies, err:%v", err.Error()))
-	} else {
-		jobSpec.Dependencies = staticDependencies
 	}
+	jobSpec.Dependencies = staticDependencies
+	jobSpec.ExternalDependencies.OptimusDependencies = append(jobSpec.ExternalDependencies.OptimusDependencies, externalOptimusDependencies...)
+
 	jobSpec, unknownDependency, err := srv.dependencyResolver.GetEnrichedUpstreamJobSpec(ctx, jobSpec, jobSource, logWriter)
 	return jobSpec, unknownDependency, err
 }

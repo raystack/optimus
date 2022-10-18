@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/odpf/optimus/job"
@@ -490,7 +491,8 @@ func TestDependencyResolver(t *testing.T) {
 
 			resolver := job.NewDependencyResolver(jobSpecRepository, jobSourceRepo, pluginService, nil)
 			_, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
-			assert.Equal(t, "unknown local dependency for job static_dep: spec not found", err.Error())
+
+			assert.Equal(t, multierror.Append(nil, errors.New("unknown local dependency for job static_dep: spec not found")).Error(), err.Error())
 		})
 
 		t.Run("it should fail for unknown static dependency type", func(t *testing.T) {
@@ -554,7 +556,8 @@ func TestDependencyResolver(t *testing.T) {
 
 			resolver := job.NewDependencyResolver(jobSpecRepository, jobSourceRepo, pluginService, nil)
 			_, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
-			assert.Equal(t, "unsupported dependency type: bad", err.Error())
+			errExpected := multierror.Append(nil, errors.New("unsupported dependency type: bad"))
+			assert.Equal(t, errExpected.Error(), err.Error())
 		})
 
 		t.Run("it should resolve any unresolved intra static dependency", func(t *testing.T) {

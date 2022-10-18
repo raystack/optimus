@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/internal/lib/progress"
@@ -73,7 +74,7 @@ func (d *dependencyResolver) Resolve(ctx context.Context, projectSpec models.Pro
 	}
 
 	// resolve statically defined dependencies
-	staticDependencies, err := d.GetStaticDependencies(ctx, jobSpec, projectSpec)
+	staticDependencies, _, err := d.GetStaticDependencies(ctx, jobSpec, projectSpec)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
@@ -89,51 +90,74 @@ func (d *dependencyResolver) Resolve(ctx context.Context, projectSpec models.Pro
 // this is normally happen when reading specs from a store[local/postgres]
 // unresolved dependencies will no longer exist in the map
 // TODO: if we have field `projectJobFactory`, we might not need the `projectJobSpecRepository` parameter
-func (d *dependencyResolver) GetStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec) (map[string]models.JobSpecDependency, error) {
+func (d *dependencyResolver) GetStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec) (map[string]models.JobSpecDependency, []models.OptimusDependency, error) {
 	if ctx == nil {
-		return nil, errors.New("context is nil")
+		return nil, nil, errors.New("context is nil")
 	}
 	if reflect.ValueOf(jobSpec).IsZero() {
-		return nil, errors.New("job spec is empty")
+		return nil, nil, errors.New("job spec is empty")
 	}
 	if reflect.ValueOf(projectSpec).IsZero() {
-		return nil, errors.New("project spec is empty")
+		return nil, nil, errors.New("project spec is empty")
 	}
-
+	var err error
 	resolvedJobSpecDependencies := make(map[string]models.JobSpecDependency)
+	var externalOptimusDependencies []models.OptimusDependency
 	for depName, depSpec := range jobSpec.Dependencies {
+		resolvedJobSpecDependencies[depName] = depSpec
 		if depSpec.Job == nil {
 			switch depSpec.Type {
 			case models.JobSpecDependencyTypeIntra:
-				job, err := d.jobSpecRepo.GetByNameAndProjectName(ctx, depName, projectSpec.Name)
-				if err != nil {
-					return nil, fmt.Errorf("%s for job %s: %w", ErrUnknownLocalDependency, depName, err)
+				job, getJobError := d.jobSpecRepo.GetByNameAndProjectName(ctx, depName, projectSpec.Name)
+				if getJobError != nil {
+					err = multierror.Append(err, fmt.Errorf("%s for job %s: %w", ErrUnknownLocalDependency, depName, getJobError))
+				} else {
+					k := models.JobSpecDependency{
+						Job:     &job,
+						Project: &projectSpec,
+						Type:    depSpec.Type,
+					}
+					resolvedJobSpecDependencies[depName] = k
+
 				}
-				depSpec.Job = &job
-				depSpec.Project = &projectSpec
-				resolvedJobSpecDependencies[depName] = depSpec
 			case models.JobSpecDependencyTypeInter:
 				// extract project name
 				depParts := strings.SplitN(depName, "/", InterJobDependencyNameSections)
 				if len(depParts) != InterJobDependencyNameSections {
-					return nil, fmt.Errorf("%s dependency should be in 'project_name/job_name' format: %s", models.JobSpecDependencyTypeInter, depName)
+					err = multierror.Append(err, fmt.Errorf("%s dependency should be in 'project_name/job_name' format: %s", models.JobSpecDependencyTypeInter, depName))
+				} else {
+					projectName := depParts[0]
+					jobName := depParts[1]
+					job, getJobError := d.jobSpecRepo.GetByNameAndProjectName(ctx, jobName, projectName)
+					if getJobError != nil {
+						unresolvedDependency, _ := convertDependencyNamesToUnresolvedJobDependency(depName)
+
+						externalDependency, _, errExternal := d.externalDependencyResolver.FetchStaticExternalDependenciesPerJobName(ctx, map[string][]models.UnresolvedJobDependency{
+							jobSpec.Name: {unresolvedDependency},
+						})
+						if errExternal != nil {
+							err = multierror.Append(err, fmt.Errorf("%s for job %s: %w: %s", ErrUnknownCrossProjectDependency, depName, getJobError, errExternal.Error()))
+						} else {
+							// since this is known to be an external dependency
+							delete(resolvedJobSpecDependencies, depName)
+							externalOptimusDependencies = append(externalOptimusDependencies, externalDependency[jobSpec.Name].OptimusDependencies...)
+
+						}
+					} else {
+						resolvedJobSpecDependencies[depName] = models.JobSpecDependency{
+							Job:     &job,
+							Project: &job.NamespaceSpec.ProjectSpec,
+							Type:    depSpec.Type,
+						}
+					}
 				}
-				projectName := depParts[0]
-				jobName := depParts[1]
-				job, err := d.jobSpecRepo.GetByNameAndProjectName(ctx, jobName, projectName)
-				if err != nil {
-					return nil, fmt.Errorf("%s for job %s: %w", ErrUnknownCrossProjectDependency, depName, err)
-				}
-				depSpec.Job = &job
-				depSpec.Project = &job.NamespaceSpec.ProjectSpec
-				resolvedJobSpecDependencies[depName] = depSpec
 			default:
-				return nil, fmt.Errorf("unsupported dependency type: %s", depSpec.Type)
+				err = multierror.Append(err, fmt.Errorf("unsupported dependency type: %s", depSpec.Type))
 			}
 		}
 	}
 
-	return resolvedJobSpecDependencies, nil
+	return resolvedJobSpecDependencies, externalOptimusDependencies, err
 }
 
 // TODO: this method will be deprecated (should be refactored to separate responsibility)

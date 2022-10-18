@@ -398,9 +398,9 @@ func (_m *DependencyResolver) GetEnrichedUpstreamJobSpec(ctx context.Context, su
 }
 
 // GetStaticDependencies provides a mock function with given fields: ctx, projectName
-func (_m *DependencyResolver) GetStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec) (map[string]models.JobSpecDependency, error) {
+func (_m *DependencyResolver) GetStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec) (map[string]models.JobSpecDependency, []models.OptimusDependency, error) {
 	args := _m.Called(ctx, jobSpec, projectSpec)
-	return args.Get(0).(map[string]models.JobSpecDependency), args.Error(1)
+	return args.Get(0).(map[string]models.JobSpecDependency), args.Get(1).([]models.OptimusDependency), args.Error(1)
 }
 
 // GetExternalJobRuns provides a mock function with given fields: ctx,  host, jobName, projectName, startDate, endDate,filter
