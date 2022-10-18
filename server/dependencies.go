@@ -120,7 +120,7 @@ func (obs *pipelineLogObserver) Notify(evt progress.Event) {
 
 func jobSpecAssetDump(engine models.TemplateEngine) func(ctx context.Context, jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
 	return func(ctx context.Context, jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
-		aMap, err := compiler.DumpAssets(ctx, jobSpec, scheduledAt, engine, false)
+		aMap, err := compiler.DumpAssets(ctx, jobSpec, scheduledAt, engine)
 		if err != nil {
 			return models.JobAssets{}, err
 		}
