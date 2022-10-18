@@ -21,22 +21,15 @@ func NewRepository(db *gorm.DB) *Repository {
 }
 
 func (r Repository) Create(ctx context.Context, res *resource.Resource) error {
-	incomingResource, err := fromResourceToModel(res)
-	if err != nil {
-		return err
+	incomingResource := fromResourceToModel(res)
+	if err := r.db.WithContext(ctx).Create(incomingResource).Error; err != nil {
+		return errors.Wrap(resource.EntityResource, "error creating resource to database", err)
 	}
-	err = r.db.WithContext(ctx).Create(incomingResource).Error
-	if err != nil {
-		err = errors.Wrap(resource.EntityResource, "error creating resource to database", err)
-	}
-	return err
+	return nil
 }
 
 func (r Repository) Update(ctx context.Context, res *resource.Resource) error {
-	inRes, err := fromResourceToModel(res)
-	if err != nil {
-		return err
-	}
+	inRes := fromResourceToModel(res)
 	return r.update(r.db.WithContext(ctx), inRes)
 }
 
@@ -78,11 +71,7 @@ func (r Repository) ReadAll(ctx context.Context, tnnt tenant.Tenant, store resou
 func (r Repository) UpdateAll(ctx context.Context, resources []*resource.Resource) error {
 	resourceModels := make([]*Resource, len(resources))
 	for i, res := range resources {
-		m, err := fromResourceToModel(res)
-		if err != nil {
-			return err
-		}
-		resourceModels[i] = m
+		resourceModels[i] = fromResourceToModel(res)
 	}
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		for _, m := range resourceModels {

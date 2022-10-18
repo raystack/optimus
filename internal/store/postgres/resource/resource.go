@@ -12,37 +12,31 @@ import (
 )
 
 type Resource struct {
-	FullName string `gorm:"not null"`
-	Kind     string `gorm:"not null"`
-	Store    string `gorm:"not null"`
+	FullName string
+	Kind     string
+	Store    string
 
-	ProjectName   string `gorm:"not null"`
-	NamespaceName string `gorm:"not null"`
+	ProjectName   string
+	NamespaceName string
 
-	Metadata datatypes.JSON `gorm:"not null"`
-	Spec     datatypes.JSON `gorm:"not null"`
+	Metadata datatypes.JSON
+	Spec     datatypes.JSON
 
-	URN string `gorm:"not null"`
+	URN string
 
-	Status string `gorm:"not null"`
+	Status string
 
-	CreatedAt time.Time `gorm:"not null"`
-	UpdatedAt time.Time `gorm:"not null"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
-func fromResourceToModel(r *resource.Resource) (*Resource, error) {
+func fromResourceToModel(r *resource.Resource) *Resource {
 	var namespaceName string
 	if name, err := r.Tenant().NamespaceName(); err == nil {
 		namespaceName = name.String()
 	}
-	metadata, err := json.Marshal(r.Metadata())
-	if err != nil {
-		return nil, errors.Wrap(resource.EntityResource, "error marshalling metadata", err)
-	}
-	spec, err := json.Marshal(r.Spec())
-	if err != nil {
-		return nil, errors.Wrap(resource.EntityResource, "error marshalling spec", err)
-	}
+	metadata, _ := json.Marshal(r.Metadata())
+	spec, _ := json.Marshal(r.Spec())
 	return &Resource{
 		FullName:      r.FullName(),
 		Kind:          r.Kind().String(),
@@ -55,7 +49,7 @@ func fromResourceToModel(r *resource.Resource) (*Resource, error) {
 		Status:        r.Status().String(),
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
-	}, nil
+	}
 }
 
 func fromModelToResource(r *Resource) (*resource.Resource, error) {
