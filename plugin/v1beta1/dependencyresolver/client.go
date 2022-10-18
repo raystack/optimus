@@ -13,7 +13,6 @@ import (
 	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin/v1beta1/base"
-	"github.com/odpf/optimus/plugin/v1beta1/cli"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 	pbp "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
 )
@@ -47,8 +46,8 @@ func (m *GRPCClient) GenerateDestination(ctx context.Context, request models.Gen
 
 	outCtx := propagateMetadata(spanCtx)
 	resp, err := m.client.GenerateDestination(outCtx, &pbp.GenerateDestinationRequest{
-		Config:  cli.AdaptConfigsToProto(request.Config),
-		Assets:  cli.AdaptAssetsToProto(request.Assets),
+		Config:  adaptConfigsToProto(request.Config),
+		Assets:  adaptAssetsToProto(request.Assets),
 		Options: &pbp.PluginOptions{DryRun: request.DryRun},
 		// Fallback for secrets, please do not remove until secrets cleanup
 		Project: v1.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, m.name),
@@ -70,8 +69,8 @@ func (m *GRPCClient) GenerateDependencies(ctx context.Context, request models.Ge
 
 	outCtx := propagateMetadata(spanCtx)
 	resp, err := m.client.GenerateDependencies(outCtx, &pbp.GenerateDependenciesRequest{
-		Config:  cli.AdaptConfigsToProto(request.Config),
-		Assets:  cli.AdaptAssetsToProto(request.Assets),
+		Config:  adaptConfigsToProto(request.Config),
+		Assets:  adaptAssetsToProto(request.Assets),
 		Options: &pbp.PluginOptions{DryRun: request.DryRun},
 		// Fallback for secrets, please do not remove until secrets cleanup
 		Project: v1.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, m.name),
@@ -100,8 +99,8 @@ func (m *GRPCClient) CompileAssets(ctx context.Context, request models.CompileAs
 	}
 
 	resp, err := m.client.CompileAssets(ctx, &pbp.CompileAssetsRequest{
-		Configs:      cli.AdaptConfigsToProto(request.Config),
-		Assets:       cli.AdaptAssetsToProto(request.Assets),
+		Configs:      adaptConfigsToProto(request.Config),
+		Assets:       adaptAssetsToProto(request.Assets),
 		InstanceData: instanceData,
 		Options:      &pbp.PluginOptions{DryRun: request.DryRun},
 		StartTime:    timestamppb.New(request.StartTime),
@@ -113,7 +112,7 @@ func (m *GRPCClient) CompileAssets(ctx context.Context, request models.CompileAs
 		return nil, err
 	}
 	return &models.CompileAssetsResponse{
-		Assets: cli.AdaptAssetsFromProto(resp.Assets),
+		Assets: adaptAssetsFromProto(resp.Assets),
 	}, nil
 }
 

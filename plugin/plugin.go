@@ -14,7 +14,6 @@ import (
 
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin/v1beta1/base"
-	"github.com/odpf/optimus/plugin/v1beta1/cli"
 	"github.com/odpf/optimus/plugin/v1beta1/dependencyresolver"
 	"github.com/odpf/optimus/plugin/yaml"
 )
@@ -26,7 +25,6 @@ func Initialize(pluginLogger hclog.Logger, arg ...string) error {
 	// pluginMap is the map of plugins we can dispense.
 	pluginMap := map[string]plugin.Plugin{
 		models.PluginTypeBase:                     base.NewPluginClient(pluginLogger),
-		models.ModTypeCLI.String():                cli.NewPluginClient(pluginLogger),
 		models.ModTypeDependencyResolver.String(): dependencyresolver.NewPluginClient(pluginLogger),
 	}
 
@@ -48,7 +46,6 @@ func Initialize(pluginLogger hclog.Logger, arg ...string) error {
 		}
 
 		var baseClient models.BasePlugin
-		var cliClient models.CommandLineMod
 		var drClient models.DependencyResolverMod
 
 		// request plugin as base
@@ -64,14 +61,6 @@ func Initialize(pluginLogger hclog.Logger, arg ...string) error {
 		}
 		pluginLogger.Debug("plugin connection established: ", baseInfo.Name)
 
-		if modSupported(baseInfo.PluginMods, models.ModTypeCLI) {
-			// create a client with cli mod
-			if rawMod, err := rpcClient.Dispense(models.ModTypeCLI.String()); err == nil {
-				cliClient = rawMod.(models.CommandLineMod)
-				pluginLogger.Debug(fmt.Sprintf("%s mod found for: %s", models.ModTypeCLI, baseInfo.Name))
-			}
-		}
-
 		if modSupported(baseInfo.PluginMods, models.ModTypeDependencyResolver) {
 			// create a client with dependency resolver mod
 			if rawMod, err := rpcClient.Dispense(models.ModTypeDependencyResolver.String()); err == nil {
@@ -84,7 +73,7 @@ func Initialize(pluginLogger hclog.Logger, arg ...string) error {
 			}
 		}
 
-		if err := models.PluginRegistry.Add(baseClient, cliClient, drClient); err != nil {
+		if err := models.PluginRegistry.Add(baseClient, nil, drClient); err != nil {
 			return fmt.Errorf("PluginRegistry.Add: %s: %w", pluginPath, err)
 		}
 		pluginLogger.Debug("plugin ready: ", baseInfo.Name)
@@ -217,13 +206,7 @@ func Serve(f Factory) {
 func servePlugin(optimusPlugin interface{}, logger hclog.Logger) {
 	switch p := optimusPlugin.(type) {
 	case models.DependencyResolverMod:
-		if cliPlugin, ok := optimusPlugin.(models.CommandLineMod); ok {
-			dependencyresolver.ServeWithCLI(p, cliPlugin, logger)
-		} else {
-			dependencyresolver.Serve(p, logger)
-		}
-	case models.CommandLineMod:
-		cli.Serve(p, logger)
+		dependencyresolver.Serve(p, logger)
 	case models.BasePlugin:
 		base.Serve(p, logger)
 	default:
