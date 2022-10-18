@@ -401,7 +401,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("Create", ctx, tnnt, mock.Anything).Return(errors.New("validation failure"))
+			service.On("Create", ctx, mock.Anything).Return(errors.New("validation failure"))
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -426,7 +426,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("creates the resource successfully", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("Create", ctx, tnnt, mock.Anything).Return(nil)
+			service.On("Create", ctx, mock.Anything).Return(nil)
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -463,7 +463,7 @@ func TestResourceHandler(t *testing.T) {
 			_, err := handler.ReadResource(ctx, req)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
-				"resource: resource name is empty: invalid read resource request")
+				"resource: empty resource name: invalid read resource request")
 		})
 		t.Run("returns error when store is invalid", func(t *testing.T) {
 			service := new(resourceService)
@@ -499,7 +499,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			service := new(resourceService)
-			name, _ := resource.NameFrom("proj.set.table")
+			name := "proj.set.table"
 			service.On("Get", ctx, mock.Anything, resource.BigQuery, name).Return(nil, errors.New("failure"))
 			defer service.AssertExpectations(t)
 
@@ -508,7 +508,7 @@ func TestResourceHandler(t *testing.T) {
 			req := &pb.ReadResourceRequest{
 				ProjectName:   "proj",
 				DatastoreName: "bigquery",
-				ResourceName:  "proj.set.table",
+				ResourceName:  name,
 				NamespaceName: "ns",
 			}
 
@@ -519,7 +519,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("returns error when metadata missing in db resource", func(t *testing.T) {
 			service := new(resourceService)
-			name, _ := resource.NameFrom("proj.set.table")
+			name := "proj.set.table"
 			service.On("Get", ctx, mock.Anything, resource.BigQuery, name).Return(&resource.Resource{}, nil)
 			defer service.AssertExpectations(t)
 
@@ -544,7 +544,7 @@ func TestResourceHandler(t *testing.T) {
 				&resource.Metadata{}, specWithInvalidUTF)
 			assert.Nil(t, err)
 			service := new(resourceService)
-			name, _ := resource.NameFrom("proj.set.table")
+			name := "proj.set.table"
 			service.On("Get", ctx, mock.Anything, resource.BigQuery, name).Return(dbRes, nil)
 			defer service.AssertExpectations(t)
 
@@ -569,7 +569,7 @@ func TestResourceHandler(t *testing.T) {
 			assert.Nil(t, err)
 
 			service := new(resourceService)
-			name, _ := resource.NameFrom("proj.set.table")
+			name := "proj.set.table"
 			service.On("Get", ctx, mock.Anything, resource.BigQuery, name).Return(dbRes, nil)
 			defer service.AssertExpectations(t)
 
@@ -661,7 +661,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("Update", ctx, tnnt, mock.Anything).Return(errors.New("validation failure"))
+			service.On("Update", ctx, mock.Anything).Return(errors.New("validation failure"))
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -686,7 +686,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("updates the resource successfully", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("Update", ctx, tnnt, mock.Anything).Return(nil)
+			service.On("Update", ctx, mock.Anything).Return(nil)
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -714,17 +714,17 @@ type resourceService struct {
 	mock.Mock
 }
 
-func (r *resourceService) Create(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error {
-	args := r.Called(ctx, tnnt, res)
+func (r *resourceService) Create(ctx context.Context, res *resource.Resource) error {
+	args := r.Called(ctx, res)
 	return args.Error(0)
 }
 
-func (r *resourceService) Update(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error {
-	args := r.Called(ctx, tnnt, res)
+func (r *resourceService) Update(ctx context.Context, res *resource.Resource) error {
+	args := r.Called(ctx, res)
 	return args.Error(0)
 }
 
-func (r *resourceService) Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceName resource.Name) (*resource.Resource, error) {
+func (r *resourceService) Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceName string) (*resource.Resource, error) {
 	args := r.Called(ctx, tnnt, store, resourceName)
 	var rs *resource.Resource
 	if args.Get(0) != nil {

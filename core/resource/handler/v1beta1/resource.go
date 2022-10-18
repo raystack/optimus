@@ -18,9 +18,9 @@ import (
 )
 
 type ResourceService interface {
-	Create(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error
-	Update(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error
-	Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceName resource.Name) (*resource.Resource, error)
+	Create(ctx context.Context, res *resource.Resource) error
+	Update(ctx context.Context, res *resource.Resource) error
+	Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceName string) (*resource.Resource, error)
 	GetAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error)
 	BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error
 }
@@ -146,7 +146,7 @@ func (rh ResourceHandler) CreateResource(ctx context.Context, req *pb.CreateReso
 		return nil, errors.GRPCErr(err, "failed to create resource")
 	}
 
-	err = rh.service.Create(ctx, tnnt, res)
+	err = rh.service.Create(ctx, res)
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to create resource "+res.FullName())
 	}
@@ -156,9 +156,8 @@ func (rh ResourceHandler) CreateResource(ctx context.Context, req *pb.CreateReso
 }
 
 func (rh ResourceHandler) ReadResource(ctx context.Context, req *pb.ReadResourceRequest) (*pb.ReadResourceResponse, error) {
-	resName, err := resource.NameFrom(req.GetResourceName())
-	if err != nil {
-		return nil, errors.GRPCErr(err, "invalid read resource request")
+	if req.GetResourceName() == "" {
+		return nil, errors.GRPCErr(errors.InvalidArgument(resource.EntityResource, "empty resource name"), "invalid read resource request")
 	}
 
 	store, err := resource.FromStringToStore(req.GetDatastoreName())
@@ -171,7 +170,7 @@ func (rh ResourceHandler) ReadResource(ctx context.Context, req *pb.ReadResource
 		return nil, errors.GRPCErr(err, "failed to read resource "+req.GetResourceName())
 	}
 
-	response, err := rh.service.Get(ctx, tnnt, store, resName)
+	response, err := rh.service.Get(ctx, tnnt, store, req.GetResourceName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to read resource "+req.GetResourceName())
 	}
@@ -202,7 +201,7 @@ func (rh ResourceHandler) UpdateResource(ctx context.Context, req *pb.UpdateReso
 		return nil, errors.GRPCErr(err, "failed to update resource")
 	}
 
-	err = rh.service.Update(ctx, tnnt, res)
+	err = rh.service.Update(ctx, res)
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to update resource "+res.FullName())
 	}

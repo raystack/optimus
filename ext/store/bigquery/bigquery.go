@@ -42,11 +42,11 @@ type Store struct {
 	clientProvider ClientProvider
 }
 
-func (s Store) Create(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error {
+func (s Store) Create(ctx context.Context, res *resource.Resource) error {
 	spanCtx, span := startChildSpan(ctx, "bigquery/CreateResource")
 	defer span.End()
 
-	account, err := s.secretProvider.GetSecret(spanCtx, tnnt, accountKey)
+	account, err := s.secretProvider.GetSecret(spanCtx, res.Tenant(), accountKey)
 	if err != nil {
 		return err
 	}
@@ -79,11 +79,11 @@ func (s Store) Create(ctx context.Context, tnnt tenant.Tenant, res *resource.Res
 	}
 }
 
-func (s Store) Update(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error {
+func (s Store) Update(ctx context.Context, res *resource.Resource) error {
 	spanCtx, span := startChildSpan(ctx, "bigquery/UpdateResource")
 	defer span.End()
 
-	account, err := s.secretProvider.GetSecret(spanCtx, tnnt, accountKey)
+	account, err := s.secretProvider.GetSecret(spanCtx, res.Tenant(), accountKey)
 	if err != nil {
 		return err
 	}

@@ -4,18 +4,17 @@ import (
 	"context"
 
 	"github.com/odpf/optimus/core/resource"
-	"github.com/odpf/optimus/core/tenant"
 )
 
 type DataStore interface {
-	Create(context.Context, tenant.Tenant, *resource.Resource) error
-	Update(context.Context, tenant.Tenant, *resource.Resource) error
-	BatchUpdate(context.Context, tenant.Tenant, []*resource.Resource) error
+	Create(context.Context, *resource.Resource) error
+	Update(context.Context, *resource.Resource) error
+	BatchUpdate(context.Context, []*resource.Resource) error
 }
 
 type ResourceStatusRepo interface {
-	MarkSuccess(ctx context.Context, tnnt tenant.Tenant, res ...*resource.Resource) error
-	MarkFailed(ctx context.Context, tnnt tenant.Tenant, res ...*resource.Resource) error
+	MarkSuccess(ctx context.Context, res ...*resource.Resource) error
+	MarkFailed(ctx context.Context, res ...*resource.Resource) error
 }
 
 type ResourceMgr struct {
@@ -24,50 +23,50 @@ type ResourceMgr struct {
 	repo ResourceStatusRepo
 }
 
-func (m ResourceMgr) CreateResource(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error {
+func (m ResourceMgr) CreateResource(ctx context.Context, res *resource.Resource) error {
 	datastore, ok := m.datastoreMap[res.Dataset().Store]
 	if !ok {
 		return nil // error about the datastore not found
 	}
 
-	err := datastore.Create(ctx, tnnt, res)
+	err := datastore.Create(ctx, res)
 	if err != nil {
 		// if error is AlreadyExists mark as success
-		statusErr := m.repo.MarkFailed(ctx, tnnt, res)
+		statusErr := m.repo.MarkFailed(ctx, res)
 		if statusErr != nil {
 			return statusErr // Tell failed to mark as failed
 		}
 		return err
 	}
 
-	return m.repo.MarkSuccess(ctx, tnnt, res)
+	return m.repo.MarkSuccess(ctx, res)
 }
 
-func (m ResourceMgr) UpdateResource(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error {
+func (m ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource) error {
 	datastore, ok := m.datastoreMap[res.Dataset().Store]
 	if !ok {
 		return nil // error about the datastore not found
 	}
 
-	err := datastore.Update(ctx, tnnt, res)
+	err := datastore.Update(ctx, res)
 	if err != nil {
-		statusErr := m.repo.MarkFailed(ctx, tnnt, res)
+		statusErr := m.repo.MarkFailed(ctx, res)
 		if statusErr != nil {
 			return statusErr // Tell failed to mark as failed
 		}
 		return err
 	}
 
-	return m.repo.MarkSuccess(ctx, tnnt, res)
+	return m.repo.MarkSuccess(ctx, res)
 }
 
-func (m ResourceMgr) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
+func (m ResourceMgr) BatchUpdate(ctx context.Context, store resource.Store, resources []*resource.Resource) error {
 	datastore, ok := m.datastoreMap[store]
 	if !ok {
 		return nil // error about the datastore not found
 	}
 
-	_ = datastore.BatchUpdate(ctx, tnnt, resources)
+	_ = datastore.BatchUpdate(ctx, resources)
 
-	return m.repo.MarkSuccess(ctx, tnnt, resources...)
+	return m.repo.MarkSuccess(ctx, resources...)
 }

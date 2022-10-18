@@ -97,4 +97,12 @@ func TestBqClient(t *testing.T) {
 			assert.NotNil(t, handle)
 		})
 	})
+	t.Run("Close", func(t *testing.T) {
+		t.Run("calls close on bq client", func(t *testing.T) {
+			c, err := bigquery.NewClient(ctx, testCredJson)
+			assert.Nil(t, err)
+
+			c.Close()
+		})
+	})
 }

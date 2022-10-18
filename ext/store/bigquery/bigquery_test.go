@@ -30,8 +30,10 @@ func TestBigqueryStore(t *testing.T) {
 			clientProvider := new(mockClientProvider)
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			err := bqStore.Create(ctx, tnnt, nil)
+			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, bq, tnnt, &metadata, spec)
+			assert.Nil(t, err)
 
+			err = bqStore.Create(ctx, dataset)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "not found secret")
 		})
@@ -47,8 +49,10 @@ func TestBigqueryStore(t *testing.T) {
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			err := bqStore.Create(ctx, tnnt, nil)
+			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, bq, tnnt, &metadata, spec)
+			assert.Nil(t, err)
 
+			err = bqStore.Create(ctx, dataset)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "error in client")
 
@@ -66,10 +70,12 @@ func TestBigqueryStore(t *testing.T) {
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			err := bqStore.Create(ctx, tnnt, &resource.Resource{})
+			dataset, err := resource.NewResource("proj.dataset.name", "unknown", bq, tnnt, &metadata, spec)
+			assert.Nil(t, err)
 
+			err = bqStore.Create(ctx, dataset)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity BigqueryStore: invalid kind for bigquery resource ")
+			assert.EqualError(t, err, "invalid argument for entity BigqueryStore: invalid kind for bigquery resource unknown")
 		})
 		t.Run("calls appropriate handler for each dataset", func(t *testing.T) {
 			pts, _ := tenant.NewPlainTextSecret("secret_name", "secret_value")
@@ -95,7 +101,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			err = bqStore.Create(ctx, tnnt, dataset)
+			err = bqStore.Create(ctx, dataset)
 			assert.Nil(t, err)
 		})
 		t.Run("calls appropriate handler for dataset", func(t *testing.T) {
@@ -122,7 +128,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			err = bqStore.Create(ctx, tnnt, dataset)
+			err = bqStore.Create(ctx, dataset)
 			assert.Nil(t, err)
 		})
 		t.Run("calls appropriate handler for table", func(t *testing.T) {
@@ -149,7 +155,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			err = bqStore.Create(ctx, tnnt, table)
+			err = bqStore.Create(ctx, table)
 			assert.Nil(t, err)
 		})
 		t.Run("calls appropriate handler for view", func(t *testing.T) {
@@ -176,7 +182,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			err = bqStore.Create(ctx, tnnt, view)
+			err = bqStore.Create(ctx, view)
 			assert.Nil(t, err)
 		})
 		t.Run("calls appropriate handler for each dataset", func(t *testing.T) {
@@ -203,7 +209,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			err = bqStore.Create(ctx, tnnt, extTable)
+			err = bqStore.Create(ctx, extTable)
 			assert.Nil(t, err)
 		})
 	})
@@ -217,8 +223,10 @@ func TestBigqueryStore(t *testing.T) {
 			clientProvider := new(mockClientProvider)
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			err := bqStore.Update(ctx, tnnt, nil)
+			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, bq, tnnt, &metadata, spec)
+			assert.Nil(t, err)
 
+			err = bqStore.Update(ctx, dataset)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "not found secret")
 		})
@@ -234,8 +242,10 @@ func TestBigqueryStore(t *testing.T) {
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			err := bqStore.Update(ctx, tnnt, nil)
+			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, bq, tnnt, &metadata, spec)
+			assert.Nil(t, err)
 
+			err = bqStore.Update(ctx, dataset)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "error in client")
 
@@ -253,10 +263,12 @@ func TestBigqueryStore(t *testing.T) {
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			err := bqStore.Update(ctx, tnnt, &resource.Resource{})
+			dataset, err := resource.NewResource("proj.dataset.name1", "unknown", bq, tnnt, &metadata, spec)
+			assert.Nil(t, err)
 
+			err = bqStore.Update(ctx, dataset)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity BigqueryStore: invalid kind for bigquery resource ")
+			assert.EqualError(t, err, "invalid argument for entity BigqueryStore: invalid kind for bigquery resource unknown")
 		})
 		t.Run("calls appropriate handler for each dataset", func(t *testing.T) {
 			pts, _ := tenant.NewPlainTextSecret("secret_name", "secret_value")
@@ -282,7 +294,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			err = bqStore.Update(ctx, tnnt, dataset)
+			err = bqStore.Update(ctx, dataset)
 			assert.Nil(t, err)
 		})
 		t.Run("calls appropriate handler for dataset", func(t *testing.T) {
@@ -309,7 +321,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			err = bqStore.Update(ctx, tnnt, dataset)
+			err = bqStore.Update(ctx, dataset)
 			assert.Nil(t, err)
 		})
 		t.Run("calls appropriate handler for table", func(t *testing.T) {
@@ -336,7 +348,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			err = bqStore.Update(ctx, tnnt, table)
+			err = bqStore.Update(ctx, table)
 			assert.Nil(t, err)
 		})
 		t.Run("calls appropriate handler for view", func(t *testing.T) {
@@ -363,7 +375,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			err = bqStore.Update(ctx, tnnt, view)
+			err = bqStore.Update(ctx, view)
 			assert.Nil(t, err)
 		})
 		t.Run("calls appropriate handler for each dataset", func(t *testing.T) {
@@ -390,7 +402,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			err = bqStore.Update(ctx, tnnt, extTable)
+			err = bqStore.Update(ctx, extTable)
 			assert.Nil(t, err)
 		})
 	})

@@ -20,7 +20,9 @@ type ResourceBatchRepo interface {
 }
 
 type ResourceManager interface {
-	SyncToStore(ctx context.Context, resources []*resource.Resource) error
+	CreateResource(ctx context.Context, res *resource.Resource) error
+	UpdateResource(ctx context.Context, res *resource.Resource) error
+	BatchUpdate(ctx context.Context, store resource.Store, resources []*resource.Resource) error
 }
 
 type ResourceService struct {
@@ -37,28 +39,27 @@ func NewResourceService(repo ResourceRepository, batch ResourceBatchRepo, mgr Re
 	}
 }
 
-func (rs ResourceService) Create(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error {
+func (rs ResourceService) Create(ctx context.Context, res *resource.Resource) error {
 	if err := res.Validate(); err != nil {
 		return err
 	}
 
 	createRequest := resource.FromExisting(res,
-		resource.ReplaceTenant(tnnt),
 		resource.ReplaceStatus(resource.StatusToCreate),
 	)
 	if err := rs.repo.Create(ctx, createRequest); err != nil {
 		return err
 	}
 
-	return rs.mgr.SyncToStore(ctx, []*resource.Resource{createRequest})
+	return rs.mgr.CreateResource(ctx, createRequest)
 }
 
-func (rs ResourceService) Update(ctx context.Context, tnnt tenant.Tenant, res *resource.Resource) error {
+func (rs ResourceService) Update(ctx context.Context, res *resource.Resource) error {
 	if err := res.Validate(); err != nil {
 		return err
 	}
 
-	existing, err := rs.repo.ReadByFullName(ctx, tnnt, res.Dataset().Store, res.FullName())
+	existing, err := rs.repo.ReadByFullName(ctx, res.Tenant(), res.Dataset().Store, res.FullName())
 	if err != nil {
 		return err
 	}
@@ -68,14 +69,14 @@ func (rs ResourceService) Update(ctx context.Context, tnnt tenant.Tenant, res *r
 		return err
 	}
 
-	return rs.mgr.SyncToStore(ctx, []*resource.Resource{updateRequest})
+	return rs.mgr.UpdateResource(ctx, updateRequest)
 }
 
-func (rs ResourceService) Read(ctx context.Context, tnnt tenant.Tenant, store resource.Store, fullName string) (*resource.Resource, error) {
-	if fullName == "" {
+func (rs ResourceService) Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceName string) (*resource.Resource, error) {
+	if resourceName == "" {
 		return nil, errors.InvalidArgument(resource.EntityResource, "empty resource full name")
 	}
-	return rs.repo.ReadByFullName(ctx, tnnt, store, fullName)
+	return rs.repo.ReadByFullName(ctx, tnnt, store, resourceName)
 }
 
 func (rs ResourceService) GetAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error) {
@@ -104,7 +105,7 @@ func (rs ResourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, s
 		return err
 	}
 
-	return rs.mgr.SyncToStore(ctx, resourcesToBatchUpdate)
+	return rs.mgr.BatchUpdate(ctx, store, resourcesToBatchUpdate)
 }
 
 func (ResourceService) getResourcesToBatchUpdate(incomings []*resource.Resource, existingMappedByFullName map[string]*resource.Resource) []*resource.Resource {
