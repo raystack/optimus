@@ -76,66 +76,66 @@ type Hook struct {
 	Config datatypes.JSON
 }
 
-func toStorageSpec(jobSpec *dto.JobSpec) (Spec, error) {
+func toStorageSpec(jobSpec *dto.JobSpec) (*Spec, error) {
 	labelsBytes, err := json.Marshal(jobSpec.Labels())
 	if err != nil {
-		return Spec{}, err
+		return nil, err
 	}
 
 	startDate, err := time.Parse(jobDatetimeLayout, jobSpec.Schedule().StartDate())
 	if err != nil {
-		return Spec{}, err
+		return nil, err
 	}
 
 	var endDate time.Time
 	if jobSpec.Schedule().EndDate() != "" {
 		endDate, err = time.Parse(jobDatetimeLayout, jobSpec.Schedule().EndDate())
 		if err != nil {
-			return Spec{}, err
+			return nil, err
 		}
 	}
 
 	retryBytes, err := json.Marshal(jobSpec.Schedule().Retry())
 	if err != nil {
-		return Spec{}, err
+		return nil, err
 	}
 
 	alertsBytes, err := toStorageAlerts(jobSpec.Alerts())
 	if err != nil {
-		return Spec{}, err
+		return nil, err
 	}
 
 	taskConfigBytes, err := json.Marshal(jobSpec.Task().Config())
 	if err != nil {
-		return Spec{}, err
+		return nil, err
 	}
 
 	assetsBytes, err := toStorageAsset(jobSpec.Assets())
 	if err != nil {
-		return Spec{}, err
+		return nil, err
 	}
 
 	hooksBytes, err := toStorageHooks(jobSpec.Hooks())
 	if err != nil {
-		return Spec{}, err
+		return nil, err
 	}
 
 	metadataBytes, err := json.Marshal(jobSpec.Metadata())
 	if err != nil {
-		return Spec{}, err
+		return nil, err
 	}
 
 	httpDependenciesBytes, err := json.Marshal(jobSpec.Dependencies().HttpDependencies())
 	if err != nil {
-		return Spec{}, err
+		return nil, err
 	}
 
 	nsName := ""
-	if ns, err := jobSpec.Tenant().NamespaceName(); err == nil {
-		nsName = ns.String()
+	if ns, err := jobSpec.Tenant().Namespace(); err == nil {
+		nsName = ns.Name().String()
 	}
 
-	return Spec{
+	return &Spec{
 		Name:        jobSpec.Name(),
 		Version:     jobSpec.Version(),
 		Owner:       jobSpec.Owner(),
@@ -166,7 +166,7 @@ func toStorageSpec(jobSpec *dto.JobSpec) (Spec, error) {
 		HTTPDependencies:   httpDependenciesBytes,
 
 		NamespaceName: nsName,
-		ProjectName:   jobSpec.Tenant().ProjectName().String(),
+		ProjectName:   jobSpec.Tenant().Project().Name().String(),
 	}, nil
 }
 

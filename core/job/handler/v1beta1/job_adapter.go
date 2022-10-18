@@ -7,7 +7,7 @@ import (
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
-func fromJobProto(tnnt tenant.Tenant, js *pb.JobSpecification) (*dto.JobSpec, error) {
+func fromJobProto(tnnt *tenant.WithDetails, js *pb.JobSpecification) (*dto.JobSpec, error) {
 	retryProto := js.Behavior.Retry
 	retry := dto.NewRetry(int(retryProto.Count), retryProto.Delay.GetNanos(), retryProto.ExponentialBackoff)
 
@@ -27,7 +27,7 @@ func fromJobProto(tnnt tenant.Tenant, js *pb.JobSpecification) (*dto.JobSpec, er
 	metadata := toMetadata(js.Metadata)
 
 	return dto.NewJobSpec(tnnt, int(js.Version), js.Name, js.Owner, js.Description, js.Labels,
-		schedule, window, task, hooks, alerts, dependencies, js.Assets, metadata), nil
+		schedule, window, task, hooks, alerts, dependencies, js.Assets, metadata)
 }
 
 func toHooks(hooksProto []*pb.JobSpecHook) []*dto.Hook {

@@ -3,6 +3,7 @@ package v1beta1
 import (
 	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/tenant"
+	tenantSvc "github.com/odpf/optimus/core/tenant/service"
 	"github.com/odpf/optimus/internal/errors"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 	"golang.org/x/net/context"
@@ -11,7 +12,9 @@ import (
 )
 
 type JobHandler struct {
-	jobService JobService
+	jobService    JobService
+	tenantService tenantSvc.TenantService
+
 	pb.UnimplementedJobSpecificationServiceServer
 }
 
@@ -43,9 +46,14 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 		return nil, errors.GRPCErr(err, "failed to add job specifications")
 	}
 
+	detailedTenant, err := jh.tenantService.GetDetails(ctx, tnnt)
+	if err != nil {
+		return nil, errors.GRPCErr(err, "failed to add job specifications")
+	}
+
 	var jobs []*dto.JobSpec
 	for _, jobProto := range jobSpecRequest.Specs {
-		jobEntity, err := fromJobProto(tnnt, jobProto)
+		jobEntity, err := fromJobProto(detailedTenant, jobProto)
 		if err != nil {
 			return nil, errors.GRPCErr(err, "failed to add job specifications")
 		}

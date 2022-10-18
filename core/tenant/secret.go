@@ -56,6 +56,16 @@ func (p *PlainTextSecret) Name() SecretName {
 	return p.name
 }
 
+type PlainTextSecrets []*PlainTextSecret
+
+func (p PlainTextSecrets) ToMap() map[string]string {
+	secretMap := map[string]string{}
+	for _, item := range p {
+		secretMap[item.Name().String()] = item.Value()
+	}
+	return secretMap
+}
+
 type SecretType string
 
 func SecretTypeFromString(str string) (SecretType, error) {
