@@ -73,7 +73,7 @@ func Initialize(pluginLogger hclog.Logger, arg ...string) error {
 			}
 		}
 
-		if err := models.PluginRegistry.Add(baseClient, nil, drClient); err != nil {
+		if err := models.PluginRegistry.Add(baseClient, drClient); err != nil {
 			return fmt.Errorf("PluginRegistry.Add: %s: %w", pluginPath, err)
 		}
 		pluginLogger.Debug("plugin ready: ", baseInfo.Name)

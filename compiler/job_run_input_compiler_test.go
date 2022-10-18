@@ -35,9 +35,8 @@ func TestJobRunInputCompiler(t *testing.T) {
 	execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name: "bq",
 	}, nil)
-	cliMod := new(mock.CLIMod)
 	depResMod := new(mock.DependencyResolverMod)
-	plugin := &models.Plugin{Base: execUnit, CLIMod: cliMod, DependencyMod: depResMod}
+	plugin := &models.Plugin{Base: execUnit, DependencyMod: depResMod}
 
 	behavior := models.JobSpecBehavior{
 		CatchUp:       false,
@@ -206,7 +205,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 				Behavior: behavior,
 				Schedule: schedule,
 				Task: models.JobSpecTask{
-					Unit:     &models.Plugin{Base: execUnit, CLIMod: cliMod},
+					Unit:     &models.Plugin{Base: execUnit},
 					Priority: 2000,
 					Window:   window,
 					Config: models.JobSpecConfigs{
@@ -326,7 +325,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 				Behavior: behavior,
 				Schedule: schedule,
 				Task: models.JobSpecTask{
-					Unit:     &models.Plugin{Base: execUnit, CLIMod: cliMod},
+					Unit:     &models.Plugin{Base: execUnit},
 					Priority: 2000,
 					Window:   window,
 					Config: models.JobSpecConfigs{
@@ -411,7 +410,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 				Behavior: behavior,
 				Schedule: schedule,
 				Task: models.JobSpecTask{
-					Unit:     &models.Plugin{Base: execUnit, CLIMod: cliMod},
+					Unit:     &models.Plugin{Base: execUnit},
 					Priority: 2000,
 					Window:   window,
 					Config: models.JobSpecConfigs{
@@ -592,7 +591,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 			Behavior: behavior,
 			Schedule: schedule,
 			Task: models.JobSpecTask{
-				Unit:     &models.Plugin{Base: execUnit, CLIMod: cliMod},
+				Unit:     &models.Plugin{Base: execUnit},
 				Priority: 2000,
 				Window:   window,
 				Config: models.JobSpecConfigs{
