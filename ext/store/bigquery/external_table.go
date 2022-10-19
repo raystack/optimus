@@ -75,6 +75,15 @@ func (et ExternalTableHandle) Update(ctx context.Context, res *resource.Resource
 	return nil
 }
 
+func (et ExternalTableHandle) Exists(ctx context.Context) bool {
+	_, err := et.bqExternalTable.Metadata(ctx)
+	if err == nil {
+		return true
+	}
+	// There can be connection issue, we return false for now
+	return false
+}
+
 func NewExternalTableHandle(bq BqTable) *ExternalTableHandle {
 	return &ExternalTableHandle{bqExternalTable: bq}
 }

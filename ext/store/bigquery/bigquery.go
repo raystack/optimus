@@ -19,6 +19,7 @@ const (
 type ResourceHandle interface {
 	Create(ctx context.Context, res *resource.Resource) error
 	Update(ctx context.Context, res *resource.Resource) error
+	Exists(ctx context.Context) bool
 }
 
 type Client interface {

@@ -474,3 +474,8 @@ func (m *mockResourceHandle) Update(ctx context.Context, res *resource.Resource)
 	args := m.Called(ctx, res)
 	return args.Error(0)
 }
+
+func (m *mockResourceHandle) Exists(ctx context.Context) bool {
+	args := m.Called(ctx)
+	return args.Get(0).(bool)
+}

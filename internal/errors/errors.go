@@ -21,6 +21,8 @@ const (
 	ErrAlreadyExists   ErrorType = "Resource Already Exists"
 	ErrInvalidArgument ErrorType = "Invalid Argument"
 	ErrFailedPrecond   ErrorType = "Failed Precondition"
+
+	ErrInvalidState ErrorType = "Invalid State"
 )
 
 type DomainError struct {
@@ -45,6 +47,16 @@ func AddErrContext(err error, entity string, msg string) *DomainError {
 	}
 }
 
+func IsErrorType(err error, errType ErrorType) bool {
+	var de *DomainError
+	if errors.As(err, &de) {
+		if de.ErrorType == errType {
+			return true
+		}
+	}
+	return false
+}
+
 func NewError(errType ErrorType, entity string, msg string) *DomainError {
 	return &DomainError{
 		Entity:     entity,
@@ -60,6 +72,15 @@ func InternalError(entity string, msg string, err error) *DomainError {
 		ErrorType:  ErrInternalError,
 		Message:    msg,
 		WrappedErr: err,
+	}
+}
+
+func InvalidStateTransition(entity string, msg string) *DomainError {
+	return &DomainError{
+		ErrorType:  ErrInvalidState,
+		Entity:     entity,
+		Message:    msg,
+		WrappedErr: nil,
 	}
 }
 

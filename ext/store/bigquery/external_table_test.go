@@ -248,4 +248,29 @@ func TestExternalTableHandle(t *testing.T) {
 			assert.Nil(t, err)
 		})
 	})
+	t.Run("Exists", func(t *testing.T) {
+		t.Run("returns false when error in getting metadata", func(t *testing.T) {
+			extTable := new(mockBigQueryTable)
+			extTable.On("Metadata", ctx).Return(nil, errors.New("error in get"))
+			defer extTable.AssertExpectations(t)
+
+			etHandle := bigquery.NewExternalTableHandle(extTable)
+
+			exists := etHandle.Exists(ctx)
+			assert.False(t, exists)
+		})
+		t.Run("returns true when gets metadata", func(t *testing.T) {
+			meta := &bq.TableMetadata{
+				Description: "test update",
+			}
+			extTable := new(mockBigQueryTable)
+			extTable.On("Metadata", ctx).Return(meta, nil)
+			defer extTable.AssertExpectations(t)
+
+			etHandle := bigquery.NewExternalTableHandle(extTable)
+
+			exists := etHandle.Exists(ctx)
+			assert.True(t, exists)
+		})
+	})
 }

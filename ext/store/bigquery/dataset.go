@@ -21,6 +21,7 @@ const (
 type BqDataset interface {
 	Create(context.Context, *bigquery.DatasetMetadata) error
 	Update(context.Context, bigquery.DatasetMetadataToUpdate, string) (*bigquery.DatasetMetadata, error)
+	Metadata(context.Context) (*bigquery.DatasetMetadata, error)
 }
 
 type DatasetHandle struct {
@@ -75,6 +76,15 @@ func (d DatasetHandle) Update(ctx context.Context, res *resource.Resource) error
 	}
 
 	return nil
+}
+
+func (d DatasetHandle) Exists(ctx context.Context) bool {
+	_, err := d.bqDataset.Metadata(ctx)
+	if err == nil {
+		return true
+	}
+	// There can be connection issue, we return false for now
+	return false
 }
 
 func NewDatasetHandle(ds BqDataset) *DatasetHandle {

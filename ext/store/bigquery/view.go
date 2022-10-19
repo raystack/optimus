@@ -65,6 +65,15 @@ func (v ViewHandle) Update(ctx context.Context, res *resource.Resource) error {
 	return nil
 }
 
+func (v ViewHandle) Exists(ctx context.Context) bool {
+	_, err := v.bqView.Metadata(ctx)
+	if err == nil {
+		return true
+	}
+	// There can be connection issue, we return false for now
+	return false
+}
+
 func NewViewHandle(bq BqTable) *ViewHandle {
 	return &ViewHandle{bqView: bq}
 }

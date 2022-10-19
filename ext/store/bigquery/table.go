@@ -16,11 +16,17 @@ import (
 type BqTable interface {
 	Create(context.Context, *bigquery.TableMetadata) error
 	Update(context.Context, bigquery.TableMetadataToUpdate, string) (*bigquery.TableMetadata, error)
+	Metadata(ctx context.Context) (*bigquery.TableMetadata, error)
 }
 
 type TableHandle struct {
 	bqTable BqTable
 }
+
+// Limits
+//
+// Maximum length of a column description 	1,024 characters
+// Maximum rate of table metadata update operations per table 	5 operations per 10 seconds
 
 func (t TableHandle) Create(ctx context.Context, res *resource.Resource) error {
 	table, err := resource.ConvertSpecTo[resource.Table](res)
@@ -75,6 +81,15 @@ func (t TableHandle) Update(ctx context.Context, res *resource.Resource) error {
 	}
 
 	return nil
+}
+
+func (t TableHandle) Exists(ctx context.Context) bool {
+	_, err := t.bqTable.Metadata(ctx)
+	if err == nil {
+		return true
+	}
+	// There can be connection issue, we return false for now
+	return false
 }
 
 func NewTableHandle(bq BqTable) *TableHandle {

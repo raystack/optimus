@@ -162,6 +162,31 @@ func TestDatasetHandle(t *testing.T) {
 			assert.Nil(t, err)
 		})
 	})
+	t.Run("Exists", func(t *testing.T) {
+		t.Run("returns false when error in getting metadata", func(t *testing.T) {
+			ds := new(mockBigQueryDataset)
+			ds.On("Metadata", ctx).Return(nil, errors.New("error in get"))
+			defer ds.AssertExpectations(t)
+
+			dsHandle := bigquery.NewDatasetHandle(ds)
+
+			exists := dsHandle.Exists(ctx)
+			assert.False(t, exists)
+		})
+		t.Run("returns true when gets metadata", func(t *testing.T) {
+			meta := &bq.DatasetMetadata{
+				Description: "test update",
+			}
+			ds := new(mockBigQueryDataset)
+			ds.On("Metadata", ctx).Return(meta, nil)
+			defer ds.AssertExpectations(t)
+
+			dsHandle := bigquery.NewDatasetHandle(ds)
+
+			exists := dsHandle.Exists(ctx)
+			assert.True(t, exists)
+		})
+	})
 }
 
 type mockBigQueryDataset struct {
@@ -175,6 +200,15 @@ func (bqDS *mockBigQueryDataset) Create(ctx context.Context, metadata *bq.Datase
 
 func (bqDS *mockBigQueryDataset) Update(ctx context.Context, update bq.DatasetMetadataToUpdate, etag string) (*bq.DatasetMetadata, error) {
 	args := bqDS.Called(ctx, update, etag)
+	var rs *bq.DatasetMetadata
+	if args.Get(0) != nil {
+		rs = args.Get(0).(*bq.DatasetMetadata)
+	}
+	return rs, args.Error(1)
+}
+
+func (bqDS *mockBigQueryDataset) Metadata(ctx context.Context) (*bq.DatasetMetadata, error) {
+	args := bqDS.Called(ctx)
 	var rs *bq.DatasetMetadata
 	if args.Get(0) != nil {
 		rs = args.Get(0).(*bq.DatasetMetadata)

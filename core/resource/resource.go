@@ -205,6 +205,24 @@ func (r *Resource) Equal(incoming *Resource) bool {
 	return r.status == incoming.status
 }
 
+func (r *Resource) MarkSuccess() error {
+	if r.status == StatusToCreate || r.status == StatusToUpdate {
+		r.status = StatusSuccess
+	}
+	msg := fmt.Sprintf("invalid transition from %s to %s for %s", r.status, StatusSuccess, r.FullName())
+	return errors.InvalidStateTransition(EntityResource, msg)
+}
+
+func (r *Resource) MarkFailed() error {
+	if r.status == StatusToCreate {
+		r.status = StatusCreateFailure
+	} else if r.status == StatusToUpdate {
+		r.status = StatusUpdateFailure
+	}
+	msg := fmt.Sprintf("invalid transition from %s to failure for %s", r.status, r.FullName())
+	return errors.InvalidStateTransition(EntityResource, msg)
+}
+
 type FromExistingOpt func(r *Resource)
 
 func ReplaceDataset(dataset Dataset) FromExistingOpt {
