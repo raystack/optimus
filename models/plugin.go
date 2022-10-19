@@ -51,11 +51,6 @@ func (ht HookType) String() string {
 	return string(ht)
 }
 
-// BasePlugin needs to be implemented by all the plugins
-type BasePlugin interface {
-	PluginInfo() (*PluginInfoResponse, error)
-}
-
 type PluginInfoRequest struct{}
 
 type PluginInfoResponse struct {
@@ -105,8 +100,6 @@ type CommandLineMod interface {
 
 // DependencyResolverMod needs to be implemented for automatic dependency resolution of tasks
 type DependencyResolverMod interface {
-	BasePlugin
-
 	// GenerateDestination derive destination from config and assets
 	GenerateDestination(context.Context, GenerateDestinationRequest) (*GenerateDestinationResponse, error)
 
@@ -118,21 +111,8 @@ type DependencyResolverMod interface {
 }
 
 type YamlMod interface {
-	BasePlugin
-
-	// GetQuestions list down all the cli inputs required to generate spec files
-	// name used for question will be directly mapped to DefaultConfig() parameters
-	GetQuestions(context.Context, GetQuestionsRequest) (*GetQuestionsResponse, error)
-	ValidateQuestion(context.Context, ValidateQuestionRequest) (*ValidateQuestionResponse, error)
-
-	// DefaultConfig will be passed down to execution unit as env vars
-	// they will be generated based on results of AskQuestions
-	// if DryRun is true in PluginOptions, should not throw error for missing inputs
-	DefaultConfig(context.Context, DefaultConfigRequest) (*DefaultConfigResponse, error)
-
-	// DefaultAssets will be passed down to execution unit as files
-	// if DryRun is true in PluginOptions, should not throw error for missing inputs
-	DefaultAssets(context.Context, DefaultAssetsRequest) (*DefaultAssetsResponse, error)
+	PluginInfo() (*PluginInfoResponse, error)
+	CommandLineMod
 }
 
 type PluginOptions struct {
@@ -401,8 +381,8 @@ var (
 )
 
 type PluginRepository interface {
-	AddYaml(YamlMod) error                       // yaml plugin
-	Add(BasePlugin, DependencyResolverMod) error // binary plugin
+	AddYaml(YamlMod) error           // yaml plugin
+	Add(DependencyResolverMod) error // binary plugin
 	GetByName(string) (*Plugin, error)
 	GetAll() []*Plugin
 	GetTasks() []*Plugin
@@ -411,9 +391,6 @@ type PluginRepository interface {
 
 // Plugin is an extensible module implemented outside the core optimus boundaries
 type Plugin struct {
-	// Base is implemented by all the plugins
-	Base BasePlugin
-
 	// Mods apply multiple modifications to existing registered plugins which
 	// can be used in different circumstances
 	DependencyMod DependencyResolverMod
@@ -433,8 +410,7 @@ func (p *Plugin) Info() *PluginInfoResponse {
 		resp, _ := p.YamlMod.PluginInfo()
 		return resp
 	}
-	resp, _ := p.Base.PluginInfo()
-	return resp
+	return &PluginInfoResponse{}
 }
 
 type registeredPlugins struct {
@@ -496,24 +472,19 @@ func (s *registeredPlugins) GetHooks() []*Plugin {
 
 // for addin yaml plugins
 func (s *registeredPlugins) AddYaml(yamlMod YamlMod) error {
-	return s.add(nil, nil, yamlMod)
+	return s.add(nil, yamlMod)
 }
 
 // for addin binary plugins
-func (s *registeredPlugins) Add(baseMod BasePlugin, drMod DependencyResolverMod) error {
-	return s.add(baseMod, drMod, nil)
+func (s *registeredPlugins) Add(drMod DependencyResolverMod) error {
+	return s.add(drMod, nil)
 }
 
-func (s *registeredPlugins) add(baseMod BasePlugin, drMod DependencyResolverMod, yamlMod YamlMod) error {
-	var info *PluginInfoResponse
+func (s *registeredPlugins) add(drMod DependencyResolverMod, yamlMod YamlMod) error {
+	info := &PluginInfoResponse{}
 	var err error
 	if yamlMod != nil {
 		info, err = yamlMod.PluginInfo()
-		if err != nil {
-			return err
-		}
-	} else {
-		info, err = baseMod.PluginInfo()
 		if err != nil {
 			return err
 		}
@@ -554,7 +525,6 @@ func (s *registeredPlugins) add(baseMod BasePlugin, drMod DependencyResolverMod,
 
 	// creating new plugin
 	s.data[info.Name] = &Plugin{
-		Base:          baseMod,
 		DependencyMod: drMod,
 		YamlMod:       yamlMod,
 	}
