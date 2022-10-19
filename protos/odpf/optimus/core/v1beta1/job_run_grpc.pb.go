@@ -24,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 type JobRunServiceClient interface {
 	// GetJobTask provides task details specific to plugin used in a job
 	GetJobTask(ctx context.Context, in *GetJobTaskRequest, opts ...grpc.CallOption) (*GetJobTaskResponse, error)
+	// Deprecated: Do not use.
 	// RegisterInstance is an internal admin command used during task/hook execution
 	// to pull task/hook compiled configuration and assets.
 	RegisterInstance(ctx context.Context, in *RegisterInstanceRequest, opts ...grpc.CallOption) (*RegisterInstanceResponse, error)
@@ -58,6 +59,7 @@ func (c *jobRunServiceClient) GetJobTask(ctx context.Context, in *GetJobTaskRequ
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *jobRunServiceClient) RegisterInstance(ctx context.Context, in *RegisterInstanceRequest, opts ...grpc.CallOption) (*RegisterInstanceResponse, error) {
 	out := new(RegisterInstanceResponse)
 	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobRunService/RegisterInstance", in, out, opts...)
@@ -118,6 +120,7 @@ func (c *jobRunServiceClient) RunJob(ctx context.Context, in *RunJobRequest, opt
 type JobRunServiceServer interface {
 	// GetJobTask provides task details specific to plugin used in a job
 	GetJobTask(context.Context, *GetJobTaskRequest) (*GetJobTaskResponse, error)
+	// Deprecated: Do not use.
 	// RegisterInstance is an internal admin command used during task/hook execution
 	// to pull task/hook compiled configuration and assets.
 	RegisterInstance(context.Context, *RegisterInstanceRequest) (*RegisterInstanceResponse, error)
