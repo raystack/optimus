@@ -106,3 +106,33 @@ func (Repository) readByFullName(db *gorm.DB, projectName, namespaceName, store,
 	}
 	return res, nil
 }
+
+func (r Repository) UpdateStatus(ctx context.Context, store resource.Store, resources ...*resource.Resource) error {
+	err := errors.NewMultiError("errors during resource status update")
+
+	err.Append(r.updateColumn(ctx, store, resource.StatusUpdateFailure, resources...))
+	err.Append(r.updateColumn(ctx, store, resource.StatusCreateFailure, resources...))
+	err.Append(r.updateColumn(ctx, store, resource.StatusSuccess, resources...))
+	return err
+}
+
+func (r Repository) updateColumn(ctx context.Context, store resource.Store, status resource.Status, resources ...*resource.Resource) error {
+	var resourceNames []string
+
+	for _, res := range resources {
+		if res.Status() == status {
+			resourceNames = append(resourceNames, res.FullName())
+		}
+	}
+	if len(resourceNames) == 0 {
+		return nil
+	}
+
+	err := r.db.WithContext(ctx).Model(Resource{}).Where("store = ?", store.String()).
+		Where("full_name IN ?", resourceNames).
+		UpdateColumn("status", status.String()).Error
+	if err != nil {
+		err = errors.Wrap(resource.EntityResource, "error updating resource to database", err)
+	}
+	return nil
+}

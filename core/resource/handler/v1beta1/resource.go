@@ -80,9 +80,18 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 			continue
 		}
 
-		if err := rh.service.BatchUpdate(stream.Context(), tnnt, store, resourceSpecs); err != nil {
-			errMsg := fmt.Sprintf("failed to update resources: %s", err.Error())
-			responseWriter.Write(writer.LogLevelError, errMsg)
+		if err = rh.service.BatchUpdate(stream.Context(), tnnt, store, resourceSpecs); err != nil {
+			var me *errors.MultiError
+			if errors.As(err, &me) {
+				for _, batchErr := range me.Errors {
+					errMsg := fmt.Sprintf("failed to update resources: %s", batchErr.Error())
+					responseWriter.Write(writer.LogLevelError, errMsg)
+				}
+			} else {
+				errMsg := fmt.Sprintf("failed to update resources: %s", err.Error())
+				responseWriter.Write(writer.LogLevelError, errMsg)
+			}
+
 			errNamespaces = append(errNamespaces, request.GetNamespaceName())
 			continue
 		}

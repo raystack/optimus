@@ -4,7 +4,7 @@ import "errors"
 
 type MultiError struct {
 	msg    string
-	errors []error
+	Errors []error
 }
 
 func NewMultiError(msg string) *MultiError {
@@ -14,22 +14,21 @@ func NewMultiError(msg string) *MultiError {
 }
 
 func (m *MultiError) Append(err error) {
-	if err != nil {
-		m.errors = append(m.errors, err)
+	if err == nil {
+		return
 	}
-}
 
-func IsEmptyError(err error) bool {
 	var me *MultiError
-	if errors.As(err, &me) {
-		return len(me.errors) == 0
+	if errors.As(err, &me) { // Flatten the multi error
+		m.Errors = append(m.Errors, me.Errors...)
 	}
-	return false
+
+	m.Errors = append(m.Errors, err)
 }
 
 func (m *MultiError) Error() string {
 	errStr := m.msg + ": "
-	for _, err := range m.errors {
+	for _, err := range m.Errors {
 		errStr = errStr + ": " + err.Error() + "\n"
 	}
 	return errStr

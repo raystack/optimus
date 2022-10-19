@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/odpf/optimus/core/resource"
+	"github.com/odpf/optimus/internal/errors"
 )
 
 type DataStore interface {
@@ -13,8 +14,7 @@ type DataStore interface {
 }
 
 type ResourceStatusRepo interface {
-	MarkSuccess(ctx context.Context, res ...*resource.Resource) error
-	MarkFailed(ctx context.Context, res ...*resource.Resource) error
+	UpdateStatus(ctx context.Context, store resource.Store, res ...*resource.Resource) error
 }
 
 type ResourceMgr struct {
@@ -24,49 +24,46 @@ type ResourceMgr struct {
 }
 
 func (m ResourceMgr) CreateResource(ctx context.Context, res *resource.Resource) error {
-	datastore, ok := m.datastoreMap[res.Dataset().Store]
+	store := res.Dataset().Store
+	datastore, ok := m.datastoreMap[store]
 	if !ok {
-		return nil // error about the datastore not found
+		return errors.InvalidArgument(resource.EntityResource, "data store service not found for "+store.String())
 	}
 
 	err := datastore.Create(ctx, res)
-	if err != nil {
-		// if error is AlreadyExists mark as success
-		statusErr := m.repo.MarkFailed(ctx, res)
-		if statusErr != nil {
-			return statusErr // Tell failed to mark as failed
-		}
-		return err
+	if !errors.IsErrorType(err, errors.ErrAlreadyExists) {
+		res.MarkFailed()
 	}
+	res.MarkSuccess()
 
-	return m.repo.MarkSuccess(ctx, res)
+	return m.repo.UpdateStatus(ctx, store, res)
 }
 
 func (m ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource) error {
-	datastore, ok := m.datastoreMap[res.Dataset().Store]
+	store := res.Dataset().Store
+	datastore, ok := m.datastoreMap[store]
 	if !ok {
-		return nil // error about the datastore not found
+		return errors.InvalidArgument(resource.EntityResource, "data store service not found for "+store.String())
 	}
 
 	err := datastore.Update(ctx, res)
 	if err != nil {
-		statusErr := m.repo.MarkFailed(ctx, res)
-		if statusErr != nil {
-			return statusErr // Tell failed to mark as failed
-		}
-		return err
+		res.MarkFailed()
 	}
+	res.MarkSuccess()
 
-	return m.repo.MarkSuccess(ctx, res)
+	return m.repo.UpdateStatus(ctx, store, res)
 }
 
 func (m ResourceMgr) BatchUpdate(ctx context.Context, store resource.Store, resources []*resource.Resource) error {
 	datastore, ok := m.datastoreMap[store]
 	if !ok {
-		return nil // error about the datastore not found
+		return errors.InvalidArgument(resource.EntityResource, "data store service not found for "+store.String())
 	}
 
-	_ = datastore.BatchUpdate(ctx, resources)
+	err := errors.NewMultiError("error in batch update")
+	err.Append(datastore.BatchUpdate(ctx, resources))
+	err.Append(m.repo.UpdateStatus(ctx, store, resources...))
 
-	return m.repo.MarkSuccess(ctx, resources...)
+	return err
 }
