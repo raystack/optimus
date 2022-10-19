@@ -19,9 +19,10 @@ CREATE TABLE IF NOT EXISTS resource (
 
     status VARCHAR(32) NOT NULL,
 
-    UNIQUE(project_name, namespace_name, full_name),
+    UNIQUE(project_name, namespace_name, store, full_name),
     UNIQUE(project_name, namespace_name, urn)
 );
 
+CREATE INDEX IF NOT EXISTS resource_project_name_namespace_name_idx on resource(project_name, namespace_name);
 CREATE INDEX IF NOT EXISTS resource_full_name_idx on resource(full_name);
 CREATE INDEX IF NOT EXISTS resource_urn_idx on resource(urn);
