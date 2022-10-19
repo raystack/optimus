@@ -3,6 +3,7 @@ package bigquery
 import (
 	"context"
 
+	"github.com/kushsharma/parallel"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
@@ -14,6 +15,9 @@ import (
 const (
 	accountKey = "DATASTORE_BIGQUERY"
 	store      = "BigqueryStore"
+
+	ConcurrentTicketPerSec = 5
+	ConcurrentLimit        = 20
 )
 
 type ResourceHandle interface {
@@ -117,8 +121,31 @@ func (s Store) Update(ctx context.Context, res *resource.Resource) error {
 	}
 }
 
-func (Store) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, resources []*resource.Resource) error {
-	panic("implement me")
+func (s Store) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, resources []*resource.Resource) error {
+	spanCtx, span := startChildSpan(ctx, "bigquery/BatchUpdate")
+	defer span.End()
+
+	account, err := s.secretProvider.GetSecret(spanCtx, tnnt, accountKey)
+	if err != nil {
+		return err
+	}
+
+	batches := BatchesFrom(resources, s.clientProvider)
+	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
+	for _, batch := range batches {
+		err = batch.QueueJobs(ctx, account.Value(), runner)
+		if err != nil {
+			return err
+		}
+	}
+
+	states := runner.Run()
+	me := errors.NewMultiError("error while resource batch update")
+	for _, s := range states {
+		me.Append(s.Err)
+	}
+
+	return me
 }
 
 func startChildSpan(ctx context.Context, name string) (context.Context, trace.Span) {
