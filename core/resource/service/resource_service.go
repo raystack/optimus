@@ -25,22 +25,32 @@ type ResourceManager interface {
 	BatchUpdate(ctx context.Context, store resource.Store, resources []*resource.Resource) error
 }
 
-type ResourceService struct {
-	repo  ResourceRepository
-	batch ResourceBatchRepo
-	mgr   ResourceManager
+type TenantDetailsGetter interface {
+	GetDetails(ctx context.Context, tnnt tenant.Tenant) (*tenant.WithDetails, error)
 }
 
-func NewResourceService(repo ResourceRepository, batch ResourceBatchRepo, mgr ResourceManager) *ResourceService {
+type ResourceService struct {
+	repo              ResourceRepository
+	batch             ResourceBatchRepo
+	mgr               ResourceManager
+	tnntDetailsGetter TenantDetailsGetter
+}
+
+func NewResourceService(repo ResourceRepository, batch ResourceBatchRepo, mgr ResourceManager, tnntDetailsGetter TenantDetailsGetter) *ResourceService {
 	return &ResourceService{
-		repo:  repo,
-		batch: batch,
-		mgr:   mgr,
+		repo:              repo,
+		batch:             batch,
+		mgr:               mgr,
+		tnntDetailsGetter: tnntDetailsGetter,
 	}
 }
 
 func (rs ResourceService) Create(ctx context.Context, res *resource.Resource) error {
 	if err := res.Validate(); err != nil {
+		return err
+	}
+
+	if _, err := rs.tnntDetailsGetter.GetDetails(ctx, res.Tenant()); err != nil {
 		return err
 	}
 
