@@ -14,9 +14,6 @@ import (
 )
 
 const (
-	// plugin interfaces and mods exposed to users
-	PluginTypeBase = "base"
-
 	// plugin modes are optional and implemented as needed
 	ModTypeYaml               PluginMod = "yaml"
 	ModTypeDependencyResolver PluginMod = "dependencyresolver"
@@ -485,6 +482,15 @@ func (s *registeredPlugins) AddYaml(yamlMod YamlMod) error {
 	// version is a required field
 	if info.PluginVersion == "" {
 		return errors.New("plugin version cannot be empty")
+	}
+
+	for _, mod := range info.PluginMods {
+		switch mod {
+		case ModTypeCLI:
+		case ModTypeDependencyResolver:
+		default:
+			return ErrUnsupportedPlugin
+		}
 	}
 
 	switch info.PluginType {
