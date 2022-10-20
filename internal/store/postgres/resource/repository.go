@@ -132,7 +132,7 @@ func (r Repository) updateColumn(ctx context.Context, store resource.Store, stat
 		Where("full_name IN ?", resourceNames).
 		UpdateColumn("status", status.String()).Error
 	if err != nil {
-		err = errors.Wrap(resource.EntityResource, "error updating resource to database", err)
+		return errors.Wrap(resource.EntityResource, "error updating resource to database", err)
 	}
 	return nil
 }

@@ -18,7 +18,7 @@ import (
 	"github.com/odpf/optimus/tests/setup"
 )
 
-func TestIntegrationResource(t *testing.T) {
+func TestPostgresResourceRepository(t *testing.T) {
 	ctx := context.Background()
 	tnnt, err := tenant.NewTenant("project_test", "namespace_test")
 	assert.NoError(t, err)
