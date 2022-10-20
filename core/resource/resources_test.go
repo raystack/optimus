@@ -466,4 +466,63 @@ func TestResource(t *testing.T) {
 			assert.True(t, actualEquality)
 		})
 	})
+
+	t.Run("MarkSuccess", func(t *testing.T) {
+		meta := &resource.Metadata{Version: 1}
+		spec := map[string]any{"abc": "def"}
+		res, resErr := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
+		assert.Nil(t, resErr)
+
+		t.Run("changes the status to success for create", func(t *testing.T) {
+			createRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToCreate))
+
+			err := createRequest.MarkSuccess()
+			assert.Nil(t, err)
+			assert.Equal(t, resource.StatusSuccess, createRequest.Status())
+		})
+		t.Run("changes the status to success for update", func(t *testing.T) {
+			updateRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToUpdate))
+
+			err := updateRequest.MarkSuccess()
+			assert.Nil(t, err)
+			assert.Equal(t, resource.StatusSuccess, updateRequest.Status())
+		})
+		t.Run("returns error when other status", func(t *testing.T) {
+			failedRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusUpdateFailure))
+
+			err := failedRequest.MarkSuccess()
+			assert.NotNil(t, err)
+			assert.Equal(t, resource.StatusUpdateFailure, failedRequest.Status())
+		})
+	})
+	t.Run("MarkFailed", func(t *testing.T) {
+		meta := &resource.Metadata{Version: 1}
+		spec := map[string]any{"abc": "def"}
+		res, resErr := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
+		assert.Nil(t, resErr)
+
+		t.Run("changes the status to failure for create", func(t *testing.T) {
+			createRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToCreate))
+
+			err := createRequest.MarkFailed()
+			assert.Nil(t, err)
+			assert.Equal(t, resource.StatusCreateFailure, createRequest.Status())
+		})
+		t.Run("changes the status to failure for update", func(t *testing.T) {
+			updateRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToUpdate))
+
+			err := updateRequest.MarkFailed()
+			assert.Nil(t, err)
+			assert.Equal(t, resource.StatusUpdateFailure, updateRequest.Status())
+		})
+		t.Run("returns error when other status", func(t *testing.T) {
+			failedRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusUpdateFailure))
+
+			err := failedRequest.MarkFailed()
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "invalid state for entity resource: invalid transition from "+
+				"update_failure to failure for proj.ds.name1")
+			assert.Equal(t, resource.StatusUpdateFailure, failedRequest.Status())
+		})
+	})
 }

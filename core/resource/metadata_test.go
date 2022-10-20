@@ -26,6 +26,23 @@ func TestKind(t *testing.T) {
 	})
 }
 
+func TestStatus(t *testing.T) {
+	t.Run("returns unknown on invalid status", func(t *testing.T) {
+		status := resource.FromStringToStatus("invalid")
+		assert.Equal(t, status.String(), "unknown")
+	})
+	t.Run("returns correct status", func(t *testing.T) {
+		statuses := []string{
+			"to_create", "to_update", "create_failure", "update_failure", "success",
+		}
+		for _, typ := range statuses {
+			status := resource.FromStringToStatus(typ)
+			assert.Equal(t, status.String(), typ)
+		}
+	})
+
+}
+
 func TestFieldValidate(t *testing.T) {
 	t.Run("when invalid", func(t *testing.T) {
 		t.Run("returns error when name is empty", func(t *testing.T) {

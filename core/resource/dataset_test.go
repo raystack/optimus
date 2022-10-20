@@ -17,7 +17,7 @@ func TestDataStore(t *testing.T) {
 	t.Run("converts a string to store when correct", func(t *testing.T) {
 		bq, err := resource.FromStringToStore("bigquery")
 		assert.Nil(t, err)
-		assert.Equal(t, "bigquery", string(bq))
+		assert.Equal(t, "bigquery", bq.String())
 	})
 }
 
