@@ -33,15 +33,15 @@ func (m *ResourceMgr) CreateResource(ctx context.Context, res *resource.Resource
 	me := errors.NewMultiError("error in create resource")
 
 	err := datastore.Create(ctx, res)
-	me.Append(err)
-	if !errors.IsErrorType(err, errors.ErrAlreadyExists) {
+	if err != nil && !errors.IsErrorType(err, errors.ErrAlreadyExists) {
+		me.Append(err)
 		me.Append(res.MarkFailed())
 	} else {
 		me.Append(res.MarkSuccess())
 	}
 
 	me.Append(m.repo.UpdateStatus(ctx, res))
-	return me
+	return errors.MultiToError(me)
 }
 
 func (m *ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource) error {
@@ -54,15 +54,15 @@ func (m *ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource
 	me := errors.NewMultiError("error in update resource")
 
 	err := datastore.Update(ctx, res)
-	me.Append(err)
 	if err != nil {
+		me.Append(err)
 		me.Append(res.MarkFailed())
 	} else {
 		me.Append(res.MarkSuccess())
 	}
 
 	me.Append(m.repo.UpdateStatus(ctx, res))
-	return me
+	return errors.MultiToError(me)
 }
 
 func (m *ResourceMgr) BatchUpdate(ctx context.Context, store resource.Store, resources []*resource.Resource) error {

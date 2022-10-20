@@ -21,15 +21,16 @@ func (m *MultiError) Append(err error) {
 	var me *MultiError
 	if errors.As(err, &me) { // Flatten the multi error
 		m.Errors = append(m.Errors, me.Errors...)
+		return
 	}
 
 	m.Errors = append(m.Errors, err)
 }
 
 func (m *MultiError) Error() string {
-	errStr := m.msg + ": "
+	errStr := m.msg
 	for _, err := range m.Errors {
-		errStr = errStr + ": " + err.Error() + "\n"
+		errStr = errStr + ":\n " + err.Error()
 	}
 	return errStr
 }
