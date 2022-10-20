@@ -1,0 +1,64 @@
+app:
+  labels:
+    environment: dev
+
+image:
+  repository: odpf/optimus
+  tag: "0.4.1"
+  pullPolicy: IfNotPresent
+
+container:
+  command:
+    - optimus
+  args:
+    - serve
+    - --install-plugins
+    - -c
+    - /etc/optimus/config.yaml  # mounted as per helm chart
+  volumeMounts:
+    - mountPath: /airflow-dags/dags
+      name: dags-path
+    - mountPath: /app/optimus-plugins.tar.gz
+      name: internal-plugins
+    - mountPath: /app/transformers.tar.gz
+      name: odpf-plugins
+    
+
+volumes:
+  - name: dags-path
+    hostPath: 
+      path: /tmp/colima/dags
+      type: Directory
+  - name: internal-plugins
+    hostPath: 
+      path: /tmp/colima/internal-plugins.tar.gz  # replace this with localpath for plugin dist tar file
+      type: File
+  - name: odpf-plugins
+    hostPath: 
+      path: /tmp/colima/transformers.tar.gz  # replace this with localpath for plugin dist tar file
+      type: File
+
+telegraf:
+  enabled: false
+ingress:
+  enabled: false
+
+configYaml: |-
+  version: 1
+  log:
+    level: DEBUG
+  serve:
+    port: 9100
+    ingress_host: optimus.optimus.svc.cluster.local
+  scheduler:
+    name: airflow2
+  plugin:
+    artifacts:
+      - https://raw.githubusercontent.com/odpf/transformers/v0.1.7/task/bq2bq/optimus-plugin-bq2bq.yaml
+      - /app/optimus-plugins.tar.gz
+      - /app/transformers.tar.gz
+
+
+config:
+  OPTIMUS_SERVE_DB_DSN: postgres://optimus:optimus@database-service/optimus?sslmode=disable
+  OPTIMUS_SERVE_APP_KEY: hgfhjsdfhsdhjsdfgjhfhdf
