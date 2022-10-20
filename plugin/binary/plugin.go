@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
+
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin/v1beta1/dependencyresolver"
 )
@@ -46,20 +47,20 @@ func Init(pluginsRepo models.PluginRepository, discoveredBinaryPlugins []string,
 
 		var drClient models.DependencyResolverMod
 		// create a client with dependency resolver mod
-		if rawMod, err := rpcClient.Dispense(models.ModTypeDependencyResolver.String()); err != nil {
+		rawMod, err := rpcClient.Dispense(models.ModTypeDependencyResolver.String())
+		if err != nil {
 			return fmt.Errorf("rpcClient.Dispense(): %s: %w", pluginName, err)
-		} else {
-			drClient = rawMod.(models.DependencyResolverMod)
-			pluginLogger.Debug(fmt.Sprintf("%s mod found for: %s", models.ModTypeDependencyResolver, pluginName))
-
-			drGRPCClient := rawMod.(*dependencyresolver.GRPCClient)
-			drGRPCClient.SetName(pluginName)
-
-			if err := models.PluginRegistry.AddBinary(pluginName, drClient); err != nil {
-				return fmt.Errorf("PluginRegistry.Add: %s: %w", pluginName, err)
-			}
-			pluginLogger.Debug("plugin ready: ", pluginPath)
 		}
+		drClient = rawMod.(models.DependencyResolverMod)
+		pluginLogger.Debug(fmt.Sprintf("%s mod found for: %s", models.ModTypeDependencyResolver, pluginName))
+
+		drGRPCClient := rawMod.(*dependencyresolver.GRPCClient)
+		drGRPCClient.SetName(pluginName)
+
+		if err := pluginsRepo.AddBinary(pluginName, drClient); err != nil {
+			return fmt.Errorf("PluginRegistry.Add: %s: %w", pluginName, err)
+		}
+		pluginLogger.Debug("plugin ready: ", pluginPath)
 	}
 
 	return nil

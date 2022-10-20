@@ -134,7 +134,6 @@ func TestPluginModels(t *testing.T) {
 			if plugin.DependencyMod != nil {
 				repo.AddBinary(name, plugin.DependencyMod)
 			}
-
 		}
 		t.Run("should allow both yaml and bin implementations in plugin", func(t *testing.T) {
 			plugin, _ := repo.GetByName("a")
