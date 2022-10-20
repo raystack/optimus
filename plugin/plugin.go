@@ -17,17 +17,17 @@ import (
 
 func Initialize(pluginLogger hclog.Logger, arg ...string) error {
 	// fetch yaml plugins first, it holds detailed information about the plugin
-	discoveredYamlPlugins := DiscoverPluginsGivenFilePattern(pluginLogger, yaml.Prefix, yaml.Suffix)
+	discoveredYamlPlugins := discoverPluginsGivenFilePattern(pluginLogger, yaml.Prefix, yaml.Suffix)
 	pluginLogger.Debug(fmt.Sprintf("discovering yaml   plugins(%d)...", len(discoveredYamlPlugins)))
 	yaml.Init(models.PluginRegistry, discoveredYamlPlugins, pluginLogger)
 
-	// fetch binary plugins. Any binary plugin which doesn't have its yaml will be failed
-	discoveredBinaryPlugins := DiscoverPluginsGivenFilePattern(pluginLogger, binary.Prefix, binary.Suffix)
-	pluginLogger.Debug(fmt.Sprintf("discovering yaml   plugins(%d)...", len(discoveredBinaryPlugins)))
+	// fetch binary plugins. Any binary plugin which doesn't have its yaml version will be failed
+	discoveredBinaryPlugins := discoverPluginsGivenFilePattern(pluginLogger, binary.Prefix, binary.Suffix)
+	pluginLogger.Debug(fmt.Sprintf("discovering binary   plugins(%d)...", len(discoveredBinaryPlugins)))
 	return binary.Init(models.PluginRegistry, discoveredBinaryPlugins, pluginLogger, arg...)
 }
 
-// DiscoverPluginsGivenFilePattern look for plugin with the specific pattern in following folders
+// discoverPluginsGivenFilePattern look for plugin with the specific pattern in following folders
 // order to search is top to down
 // ./
 // <exec>/
@@ -40,7 +40,7 @@ func Initialize(pluginLogger hclog.Logger, arg ...string) error {
 // sample plugin name:
 // - optimus-myplugin_linux_amd64 | with suffix: optimus- and prefix: _linux_amd64
 // - optimus-plugin-myplugin.yaml | with suffix: optimus-plugin and prefix: .yaml
-func DiscoverPluginsGivenFilePattern(pluginLogger hclog.Logger, prefix, suffix string) []string {
+func discoverPluginsGivenFilePattern(pluginLogger hclog.Logger, prefix, suffix string) []string {
 	var discoveredPlugins, dirs []string
 
 	if p, err := os.Getwd(); err == nil {
