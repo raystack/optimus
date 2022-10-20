@@ -18,7 +18,7 @@ const (
 	PluginTypeBase = "base"
 
 	// plugin modes are optional and implemented as needed
-	ModTypeYaml               PluginMod = "yaml"
+	ModTypeYaml               PluginMod = "cli"
 	ModTypeDependencyResolver PluginMod = "dependencyresolver"
 
 	HookTypePre  HookType = "pre"
