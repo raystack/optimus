@@ -107,7 +107,7 @@ func NewPluginSpec(pluginPath string) (*PluginSpec, error) {
 }
 
 // if error in loading, initializing or adding to pluginsrepo , skipping that particular plugin
-// NOTE: binary plugins are loaded prior to yaml plugins
+// NOTE: binary plugins are loaded after yaml plugins loaded
 func Init(pluginsRepo models.PluginRepository, discoveredYamlPlugins []string, pluginLogger hclog.Logger) {
 	for _, yamlPluginPath := range discoveredYamlPlugins {
 		yamlPluginSpec, err := NewPluginSpec(yamlPluginPath)

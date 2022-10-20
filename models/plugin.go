@@ -381,8 +381,8 @@ var (
 )
 
 type PluginRepository interface {
-	AddYaml(YamlMod) error           // yaml plugin
-	Add(DependencyResolverMod) error // binary plugin
+	AddYaml(YamlMod) error                         // yaml plugin
+	AddBinary(string, DependencyResolverMod) error // binary plugin
 	GetByName(string) (*Plugin, error)
 	GetAll() []*Plugin
 	GetTasks() []*Plugin
@@ -410,7 +410,7 @@ func (p *Plugin) Info() *PluginInfoResponse {
 		resp, _ := p.YamlMod.PluginInfo()
 		return resp
 	}
-	return &PluginInfoResponse{}
+	return nil
 }
 
 type registeredPlugins struct {
@@ -472,62 +472,21 @@ func (s *registeredPlugins) GetHooks() []*Plugin {
 
 // for addin yaml plugins
 func (s *registeredPlugins) AddYaml(yamlMod YamlMod) error {
-	return s.add(nil, yamlMod)
+	info, err := yamlMod.PluginInfo()
+	if err != nil {
+		return err
+	}
+	s.data[info.Name] = &Plugin{YamlMod: yamlMod}
+	return nil
 }
 
 // for addin binary plugins
-func (s *registeredPlugins) Add(drMod DependencyResolverMod) error {
-	return s.add(drMod, nil)
-}
-
-func (s *registeredPlugins) add(drMod DependencyResolverMod, yamlMod YamlMod) error {
-	info := &PluginInfoResponse{}
-	var err error
-	if yamlMod != nil {
-		info, err = yamlMod.PluginInfo()
-		if err != nil {
-			return err
-		}
+func (s *registeredPlugins) AddBinary(name string, drMod DependencyResolverMod) error {
+	if _, ok := s.data[name]; !ok {
+		// any binary plugin should have its yaml version (for the plugin information)
+		return fmt.Errorf("please provide yaml version of the plugin %s", name)
 	}
-
-	if info.Name == "" {
-		return errors.New("plugin name cannot be empty")
-	}
-
-	// image is a required field
-	if info.Image == "" {
-		return errors.New("plugin image cannot be empty")
-	}
-
-	// version is a required field
-	if info.PluginVersion == "" {
-		return errors.New("plugin version cannot be empty")
-	}
-
-	switch info.PluginType {
-	case PluginTypeTask:
-	case PluginTypeHook:
-	default:
-		return ErrUnsupportedPlugin
-	}
-
-	isCandidatePluginYaml := yamlMod != nil
-	existingPlugin, alreadyPresent := s.data[info.Name]
-	if alreadyPresent {
-		if existingPlugin.IsYamlPlugin() == isCandidatePluginYaml {
-			return fmt.Errorf("plugin name already in use %s", info.Name)
-		}
-		// merge plugin case : existing plugin is binary and candidate is yaml
-		// (as binaries are loaded first)
-		s.data[info.Name].YamlMod = yamlMod
-		return nil
-	}
-
-	// creating new plugin
-	s.data[info.Name] = &Plugin{
-		DependencyMod: drMod,
-		YamlMod:       yamlMod,
-	}
+	s.data[name].DependencyMod = drMod
 	return nil
 }
 
