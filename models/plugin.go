@@ -259,6 +259,17 @@ func (PluginConfigs) FromJobSpec(jobSpecConfig JobSpecConfigs) PluginConfigs {
 	return taskPluginConfigs
 }
 
+func (PluginConfigs) FromMap(configMap map[string]string) PluginConfigs {
+	taskPluginConfigs := PluginConfigs{}
+	for key, value := range configMap {
+		taskPluginConfigs = append(taskPluginConfigs, PluginConfig{
+			Name:  key,
+			Value: value,
+		})
+	}
+	return taskPluginConfigs
+}
+
 func (c PluginConfigs) ToJobSpec() JobSpecConfigs {
 	jsConfigs := JobSpecConfigs{}
 	for _, c := range c {
@@ -301,12 +312,31 @@ func (PluginAssets) FromJobSpec(jobSpecAssets JobAssets) PluginAssets {
 	return taskPluginAssets
 }
 
+func (PluginAssets) FromMap(assetsMap map[string]string) PluginAssets {
+	taskPluginAssets := PluginAssets{}
+	for key, value := range assetsMap {
+		taskPluginAssets = append(taskPluginAssets, PluginAsset{
+			Name:  key,
+			Value: value,
+		})
+	}
+	return taskPluginAssets
+}
+
 func (c PluginAssets) ToJobSpec() *JobAssets {
 	jsAssets := []JobSpecAsset{}
 	for _, c := range c {
 		jsAssets = append(jsAssets, JobSpecAsset(c))
 	}
 	return JobAssets{}.New(jsAssets)
+}
+
+func (c PluginAssets) ToMap() map[string]string {
+	assetsMap := make(map[string]string)
+	for _, asset := range c {
+		assetsMap[asset.Name] = asset.Value
+	}
+	return assetsMap
 }
 
 type DefaultAssetsRequest struct {

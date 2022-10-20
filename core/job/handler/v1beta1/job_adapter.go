@@ -4,6 +4,7 @@ import (
 	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/utils"
+	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
@@ -13,7 +14,13 @@ func fromJobProto(tnnt *tenant.WithDetails, js *pb.JobSpecification) (*dto.JobSp
 
 	schedule := dto.NewSchedule(js.StartDate, js.EndDate, js.Interval, js.DependsOnPast, js.CatchUp, retry)
 
-	window := dto.NewWindow(js.WindowSize, js.WindowOffset, js.WindowTruncateTo)
+	window, err := models.NewWindow(int(js.Version), js.WindowTruncateTo, js.WindowOffset, js.WindowSize)
+	if err != nil {
+		return nil, err
+	}
+	if err := window.Validate(); err != nil {
+		return nil, err
+	}
 
 	taskConfig := toConfig(js.Config)
 	task := dto.NewTask(js.TaskName, taskConfig)
