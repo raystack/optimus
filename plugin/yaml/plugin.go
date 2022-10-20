@@ -25,7 +25,7 @@ type PluginSpec struct {
 	models.DefaultConfigResponse `yaml:",inline,omitempty"`
 }
 
-func (p *PluginSpec) PluginInfo() (*models.PluginInfoResponse, error) { // nolint
+func (p *PluginSpec) PluginInfo() *models.PluginInfoResponse {
 	return &models.PluginInfoResponse{
 		Name:          p.Name,
 		Description:   p.Description,
@@ -37,7 +37,7 @@ func (p *PluginSpec) PluginInfo() (*models.PluginInfoResponse, error) { // nolin
 		HookType:      p.HookType,
 		DependsOn:     p.DependsOn,
 		APIVersion:    p.APIVersion,
-	}, nil
+	}
 }
 
 func (p *PluginSpec) GetQuestions(context.Context, models.GetQuestionsRequest) (*models.GetQuestionsResponse, error) {
@@ -115,7 +115,7 @@ func Init(pluginsRepo models.PluginRepository, discoveredYamlPlugins []string, p
 			pluginLogger.Error(fmt.Sprintf("plugin Init: %s", yamlPluginPath), err)
 			continue
 		}
-		pluginInfo, _ := yamlPluginSpec.PluginInfo()
+		pluginInfo := yamlPluginSpec.PluginInfo()
 		if err := pluginsRepo.AddYaml(yamlPluginSpec); err != nil {
 			pluginLogger.Error(fmt.Sprintf("PluginRegistry.Add: %s", yamlPluginPath), err)
 			continue

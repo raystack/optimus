@@ -326,15 +326,14 @@ func TestService(t *testing.T) {
 		}
 
 		t.Run("should successfully generate destination and dependencies for job task", func(t *testing.T) {
-			execUnit1 := new(mock.DependencyResolverMod)
+			execUnit1 := new(mock.YamlMod)
 			defer execUnit1.AssertExpectations(t)
 			jobSpec := models.JobSpec{
 				Version: 1,
 				Name:    "test",
 				Task: models.JobSpecTask{
 					Unit: &models.Plugin{
-						Base:          execUnit1,
-						DependencyMod: execUnit1,
+						YamlMod: execUnit1,
 					},
 					Config: models.JobSpecConfigs{
 						{

@@ -111,7 +111,7 @@ type DependencyResolverMod interface {
 }
 
 type YamlMod interface {
-	PluginInfo() (*PluginInfoResponse, error)
+	PluginInfo() *PluginInfoResponse
 	CommandLineMod
 }
 
@@ -406,9 +406,8 @@ func (p *Plugin) GetSurveyMod() YamlMod {
 }
 
 func (p *Plugin) Info() *PluginInfoResponse {
-	if p.IsYamlPlugin() {
-		resp, _ := p.YamlMod.PluginInfo()
-		return resp
+	if p.YamlMod != nil {
+		return p.YamlMod.PluginInfo()
 	}
 	return nil
 }
@@ -472,10 +471,29 @@ func (s *registeredPlugins) GetHooks() []*Plugin {
 
 // for addin yaml plugins
 func (s *registeredPlugins) AddYaml(yamlMod YamlMod) error {
-	info, err := yamlMod.PluginInfo()
-	if err != nil {
-		return err
+	info := yamlMod.PluginInfo()
+
+	if info.Name == "" {
+		return errors.New("plugin name cannot be empty")
 	}
+
+	// image is a required field
+	if info.Image == "" {
+		return errors.New("plugin image cannot be empty")
+	}
+
+	// version is a required field
+	if info.PluginVersion == "" {
+		return errors.New("plugin version cannot be empty")
+	}
+
+	switch info.PluginType {
+	case PluginTypeTask:
+	case PluginTypeHook:
+	default:
+		return ErrUnsupportedPlugin
+	}
+
 	s.data[info.Name] = &Plugin{YamlMod: yamlMod}
 	return nil
 }

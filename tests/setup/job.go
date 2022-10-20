@@ -7,7 +7,7 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-func Job(i int, namespace models.NamespaceSpec, bq2bq models.DependencyResolverMod, hookUnit models.BasePlugin) models.JobSpec { //nolint:unparam
+func Job(i int, namespace models.NamespaceSpec, bq2bq models.DependencyResolverMod, hookUnit models.YamlMod) models.JobSpec { //nolint:unparam
 	jobConfig := []models.JobSpecConfigItem{
 		{Name: "DATASET", Value: "playground"},
 		{Name: "JOB_LABELS", Value: "owner=optimus"},
@@ -40,7 +40,7 @@ func Job(i int, namespace models.NamespaceSpec, bq2bq models.DependencyResolverM
 					Value: "event_timestamp > 10000",
 				},
 			},
-			Unit: &models.Plugin{Base: hookUnit},
+			Unit: &models.Plugin{YamlMod: hookUnit},
 		})
 	}
 
@@ -67,7 +67,7 @@ func Job(i int, namespace models.NamespaceSpec, bq2bq models.DependencyResolverM
 		},
 		Task: models.JobSpecTask{
 			Unit: &models.Plugin{
-				Base:          bq2bq,
+				YamlMod:       hookUnit,
 				DependencyMod: bq2bq,
 			},
 			Priority: 2000,

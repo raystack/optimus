@@ -14,11 +14,11 @@ type PluginRepository struct {
 }
 
 // Add provides a mock function with given fields: _a0, _a1
-func (_m *PluginRepository) Add(_a0 models.BasePlugin, _a1 models.DependencyResolverMod) error {
-	ret := _m.Called(_a0, _a1)
+func (_m *PluginRepository) AddBinary(_a0 string, _a1 models.DependencyResolverMod) error {
+	ret := _m.Called(_a0)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(models.BasePlugin, models.DependencyResolverMod) error); ok {
+	if rf, ok := ret.Get(0).(func(string, models.DependencyResolverMod) error); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Error(0)
@@ -119,22 +119,13 @@ func NewPluginRepository(t mockConstructorTestingTNewPluginRepository) *PluginRe
 	return mock
 }
 
-type BasePlugin struct {
-	mock.Mock `hash:"-"`
-}
-
-func (repo *BasePlugin) PluginInfo() (*models.PluginInfoResponse, error) {
-	args := repo.Called()
-	return args.Get(0).(*models.PluginInfoResponse), args.Error(1)
-}
-
 type YamlMod struct {
 	mock.Mock `hash:"-"`
 }
 
-func (repo *YamlMod) PluginInfo() (*models.PluginInfoResponse, error) {
+func (repo *YamlMod) PluginInfo() *models.PluginInfoResponse {
 	args := repo.Called()
-	return args.Get(0).(*models.PluginInfoResponse), args.Error(1)
+	return args.Get(0).(*models.PluginInfoResponse)
 }
 
 func (repo *YamlMod) DefaultConfig(ctx context.Context, inp models.DefaultConfigRequest) (*models.DefaultConfigResponse, error) {
@@ -159,11 +150,6 @@ func (repo *YamlMod) ValidateQuestion(ctx context.Context, inp models.ValidateQu
 
 type DependencyResolverMod struct {
 	mock.Mock `hash:"-"`
-}
-
-func (repo *DependencyResolverMod) PluginInfo() (*models.PluginInfoResponse, error) {
-	args := repo.Called()
-	return args.Get(0).(*models.PluginInfoResponse), args.Error(1)
 }
 
 func (repo *DependencyResolverMod) GenerateDestination(ctx context.Context, inp models.GenerateDestinationRequest) (*models.GenerateDestinationResponse, error) {

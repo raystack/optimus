@@ -31,12 +31,12 @@ func TestJobRunInputCompiler(t *testing.T) {
 		Config:      map[string]string{},
 		ProjectSpec: projectSpec,
 	}
-	execUnit := new(mock.BasePlugin)
+	execUnit := new(mock.YamlMod)
 	execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name: "bq",
 	}, nil)
 	depResMod := new(mock.DependencyResolverMod)
-	plugin := &models.Plugin{Base: execUnit, DependencyMod: depResMod}
+	plugin := &models.Plugin{YamlMod: execUnit, DependencyMod: depResMod}
 
 	behavior := models.JobSpecBehavior{
 		CatchUp:       false,
@@ -193,7 +193,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 		})
 		t.Run("should return valid compiled instanceSpec config for task type hook", func(t *testing.T) {
 			transporterHook := "transporter"
-			hookUnit := new(mock.BasePlugin)
+			hookUnit := new(mock.YamlMod)
 			hookUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name:       transporterHook,
 				PluginType: models.PluginTypeHook,
@@ -205,7 +205,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 				Behavior: behavior,
 				Schedule: schedule,
 				Task: models.JobSpecTask{
-					Unit:     &models.Plugin{Base: execUnit},
+					Unit:     &models.Plugin{YamlMod: execUnit},
 					Priority: 2000,
 					Window:   window,
 					Config: models.JobSpecConfigs{
@@ -252,7 +252,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 								Value: `{{.GLOBAL__transporterKafkaBroker}}`,
 							},
 						},
-						Unit: &models.Plugin{Base: hookUnit},
+						Unit: &models.Plugin{YamlMod: hookUnit},
 					},
 				},
 			}
@@ -325,7 +325,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 				Behavior: behavior,
 				Schedule: schedule,
 				Task: models.JobSpecTask{
-					Unit:     &models.Plugin{Base: execUnit},
+					Unit:     &models.Plugin{YamlMod: execUnit},
 					Priority: 2000,
 					Window:   window,
 					Config: models.JobSpecConfigs{
@@ -410,7 +410,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 				Behavior: behavior,
 				Schedule: schedule,
 				Task: models.JobSpecTask{
-					Unit:     &models.Plugin{Base: execUnit},
+					Unit:     &models.Plugin{YamlMod: execUnit},
 					Priority: 2000,
 					Window:   window,
 					Config: models.JobSpecConfigs{
@@ -579,7 +579,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 	})
 	t.Run("CompileNewJobSpec return compiled task config for hook", func(t *testing.T) {
 		transporterHook := "transporter"
-		hookUnit := new(mock.BasePlugin)
+		hookUnit := new(mock.YamlMod)
 		hookUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 			Name:       transporterHook,
 			PluginType: models.PluginTypeHook,
@@ -591,7 +591,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 			Behavior: behavior,
 			Schedule: schedule,
 			Task: models.JobSpecTask{
-				Unit:     &models.Plugin{Base: execUnit},
+				Unit:     &models.Plugin{YamlMod: execUnit},
 				Priority: 2000,
 				Window:   window,
 				Config: models.JobSpecConfigs{
@@ -638,7 +638,7 @@ func TestJobRunInputCompiler(t *testing.T) {
 							Value: `{{.GLOBAL__transporterKafkaBroker}}`,
 						},
 					},
-					Unit: &models.Plugin{Base: hookUnit},
+					Unit: &models.Plugin{YamlMod: hookUnit},
 				},
 			},
 		}

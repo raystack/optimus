@@ -35,14 +35,16 @@ func TestIntegrationJobRunMetricsRepository(t *testing.T) {
 	jobDestination := "p.d.t"
 	gTask := "g-task"
 	tTask := "t-task"
-	execUnit1 := new(mock.BasePlugin)
+	execUnit1 := new(mock.YamlMod)
 	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name: gTask,
 	}, nil)
-	execUnit2 := new(mock.BasePlugin)
-	execUnit2.On("PluginInfo").Return(&models.PluginInfoResponse{
+	execUnit2 := new(mock.DependencyResolverMod)
+	execUnit3 := new(mock.YamlMod)
+	execUnit3.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name: tTask,
 	}, nil)
+	execUnit4 := new(mock.DependencyResolverMod)
 
 	pluginRepo := mock.NewPluginRepository(t)
 	adapter := postgres.NewAdapter(pluginRepo)
@@ -57,7 +59,7 @@ func TestIntegrationJobRunMetricsRepository(t *testing.T) {
 			ID:   uuid.New(),
 			Name: "g-optimus-id",
 			Task: models.JobSpecTask{
-				Unit: &models.Plugin{Base: execUnit1},
+				Unit: &models.Plugin{YamlMod: execUnit1, DependencyMod: execUnit2},
 				Config: []models.JobSpecConfigItem{
 					{
 						Name: "do", Value: "this",
@@ -82,7 +84,7 @@ func TestIntegrationJobRunMetricsRepository(t *testing.T) {
 			ID:   uuid.New(),
 			Name: "t-optimus-id",
 			Task: models.JobSpecTask{
-				Unit: &models.Plugin{Base: execUnit2},
+				Unit: &models.Plugin{YamlMod: execUnit3, DependencyMod: execUnit4},
 				Config: []models.JobSpecConfigItem{
 					{
 						Name: "do", Value: "this",
@@ -96,12 +98,12 @@ func TestIntegrationJobRunMetricsRepository(t *testing.T) {
 		Config: models.PluginConfigs{}.FromJobSpec(jobConfigs[0].Task.Config),
 		Assets: models.PluginAssets{}.FromJobSpec(jobConfigs[0].Assets),
 	}
-	execUnit1.On("GenerateDestination", context.TODO(), unitData).Return(models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
+	execUnit2.On("GenerateDestination", context.TODO(), unitData).Return(models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
 	unitData2 := models.GenerateDestinationRequest{
 		Config: models.PluginConfigs{}.FromJobSpec(jobConfigs[1].Task.Config),
 		Assets: models.PluginAssets{}.FromJobSpec(jobConfigs[1].Assets),
 	}
-	execUnit2.On("GenerateDestination", context.TODO(), unitData2).Return(models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
+	execUnit4.On("GenerateDestination", context.TODO(), unitData2).Return(models.GenerateDestinationResponse{Destination: "p.d.t"}, nil)
 
 	DBSetup := func() *gorm.DB {
 		dbConn := setupDB()

@@ -126,19 +126,23 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_TwoJo
 		})
 
 	taskName := "bq2bq"
-	execUnit1 := new(mock.BasePlugin)
+	execUnit1 := new(mock.YamlMod)
 	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name:  taskName,
 		Image: "random-image",
 	}, nil)
+	execUnit2 := new(mock.DependencyResolverMod)
 	defer execUnit1.AssertExpectations(s.T())
+	defer execUnit2.AssertExpectations(s.T())
 
 	s.pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
-		Base: execUnit1,
+		YamlMod:       execUnit1,
+		DependencyMod: execUnit2,
 	}, nil)
 	jobTask := models.JobSpecTask{
 		Unit: &models.Plugin{
-			Base: execUnit1,
+			YamlMod:       execUnit1,
+			DependencyMod: execUnit2,
 		},
 		Config: jobConfig,
 		Window: jobWindow,
@@ -204,19 +208,23 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Success_Adapt
 		})
 
 	taskName := "bq2bq"
-	execUnit1 := new(mock.BasePlugin)
+	execUnit1 := new(mock.YamlMod)
 	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name:  taskName,
 		Image: "random-image",
 	}, nil)
+	execUnit2 := new(mock.DependencyResolverMod)
 	defer execUnit1.AssertExpectations(s.T())
+	defer execUnit2.AssertExpectations(s.T())
 
 	s.pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
-		Base: execUnit1,
+		YamlMod:       execUnit1,
+		DependencyMod: execUnit2,
 	}, nil)
 	jobTask := models.JobSpecTask{
 		Unit: &models.Plugin{
-			Base: execUnit1,
+			YamlMod:       execUnit1,
+			DependencyMod: execUnit2,
 		},
 		Config: jobConfig,
 		Window: jobWindow,
@@ -269,19 +277,23 @@ func (s *JobSpecServiceServerTestSuite) TestDeployJobSpecification_Continue_Depl
 		})
 
 	taskName := "bq2bq"
-	execUnit1 := new(mock.BasePlugin)
+	execUnit1 := new(mock.YamlMod)
 	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name:  taskName,
 		Image: "random-image",
 	}, nil)
+	execUnit2 := new(mock.DependencyResolverMod)
 	defer execUnit1.AssertExpectations(s.T())
+	defer execUnit2.AssertExpectations(s.T())
 
 	s.pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
-		Base: execUnit1,
+		YamlMod:       execUnit1,
+		DependencyMod: execUnit2,
 	}, nil)
 	jobTask := models.JobSpecTask{
 		Unit: &models.Plugin{
-			Base: execUnit1,
+			YamlMod:       execUnit1,
+			DependencyMod: execUnit2,
 		},
 		Config: jobConfig,
 		Window: jobWindow,
@@ -317,9 +329,9 @@ func (s *JobSpecServiceServerTestSuite) TestGetJobSpecification_Success() {
 	req.NamespaceName = s.namespaceSpec.Name
 	req.JobName = "job-1"
 
-	execUnit1 := new(mock.BasePlugin)
+	execUnit1 := new(mock.YamlMod)
 	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "task"}, nil)
-	jobSpec := models.JobSpec{Version: 1, Name: req.JobName, Task: models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}}
+	jobSpec := models.JobSpec{Version: 1, Name: req.JobName, Task: models.JobSpecTask{Unit: &models.Plugin{YamlMod: execUnit1}}}
 
 	s.namespaceService.On("Get", s.ctx, req.ProjectName, req.NamespaceName).Return(s.namespaceSpec, nil).Once()
 	s.jobService.On("GetByName", s.ctx, req.JobName, s.namespaceSpec).Return(jobSpec, nil).Once()
@@ -366,9 +378,9 @@ func (s *JobSpecServiceServerTestSuite) TestGetJobSpecifications_Success() {
 	req := &pb.GetJobSpecificationsRequest{JobName: "job-1"}
 	jobSpecFilter := models.JobSpecFilter{JobName: req.GetJobName()}
 
-	execUnit1 := new(mock.BasePlugin)
+	execUnit1 := new(mock.YamlMod)
 	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "task"}, nil)
-	jobSpec := models.JobSpec{Version: 1, Name: req.JobName, Task: models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}}
+	jobSpec := models.JobSpec{Version: 1, Name: req.JobName, Task: models.JobSpecTask{Unit: &models.Plugin{YamlMod: execUnit1}}}
 	s.jobService.On("GetByFilter", s.ctx, jobSpecFilter).Return([]models.JobSpec{jobSpec}, nil).Once()
 
 	runtimeServiceServer := s.newJobSpecServiceServer()
@@ -413,16 +425,19 @@ func TestJobSpecificationOnServer(t *testing.T) {
 
 			jobName := "my-job"
 			taskName := "bq2bq"
-			execUnit1 := new(mock.BasePlugin)
+			execUnit1 := new(mock.YamlMod)
 			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name:  taskName,
 				Image: "random-image",
 			}, nil)
+			execUnit2 := new(mock.DependencyResolverMod)
 			defer execUnit1.AssertExpectations(t)
+			defer execUnit2.AssertExpectations(t)
 
 			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
-				Base: execUnit1,
+				YamlMod:       execUnit1,
+				DependencyMod: execUnit2,
 			}, nil)
 
 			deploymentID := models.DeploymentID(uuid.New())
@@ -435,7 +450,8 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				Name:    jobName,
 				Task: models.JobSpecTask{
 					Unit: &models.Plugin{
-						Base: execUnit1,
+						YamlMod:       execUnit1,
+						DependencyMod: execUnit2,
 					},
 					Config: models.JobSpecConfigs{
 						{
@@ -504,16 +520,19 @@ func TestJobSpecificationOnServer(t *testing.T) {
 
 			jobName := "my-job"
 			taskName := "bq2bq"
-			execUnit1 := new(mock.BasePlugin)
+			execUnit1 := new(mock.YamlMod)
 			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name:  taskName,
 				Image: "random-image",
 			}, nil)
+			execUnit2 := new(mock.DependencyResolverMod)
 			defer execUnit1.AssertExpectations(t)
+			defer execUnit2.AssertExpectations(t)
 
 			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
-				Base: execUnit1,
+				YamlMod:       execUnit1,
+				DependencyMod: execUnit2,
 			}, nil)
 			window, _ := models.NewWindow(1, "d", "0", "1h")
 			jobSpec := models.JobSpec{
@@ -521,7 +540,8 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				Name:    jobName,
 				Task: models.JobSpecTask{
 					Unit: &models.Plugin{
-						Base: execUnit1,
+						YamlMod:       execUnit1,
+						DependencyMod: execUnit2,
 					},
 					Config: models.JobSpecConfigs{
 						{
@@ -588,16 +608,19 @@ func TestJobSpecificationOnServer(t *testing.T) {
 
 			jobName := "my-job"
 			taskName := "bq2bq"
-			execUnit1 := new(mock.BasePlugin)
+			execUnit1 := new(mock.YamlMod)
 			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name:  taskName,
 				Image: "random-image",
 			}, nil)
+			execUnit2 := new(mock.DependencyResolverMod)
 			defer execUnit1.AssertExpectations(t)
+			defer execUnit2.AssertExpectations(t)
 
 			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
-				Base: execUnit1,
+				YamlMod:       execUnit1,
+				DependencyMod: execUnit2,
 			}, nil)
 
 			deploymentID := models.DeploymentID(uuid.New())
@@ -607,7 +630,8 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				Name:    jobName,
 				Task: models.JobSpecTask{
 					Unit: &models.Plugin{
-						Base: execUnit1,
+						YamlMod:       execUnit1,
+						DependencyMod: execUnit2,
 					},
 					Config: models.JobSpecConfigs{
 						{
@@ -675,16 +699,19 @@ func TestJobSpecificationOnServer(t *testing.T) {
 
 			jobName := "my-job"
 			taskName := "bq2bq"
-			execUnit1 := new(mock.BasePlugin)
+			execUnit1 := new(mock.YamlMod)
 			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name:  taskName,
 				Image: "random-image",
 			}, nil)
+			execUnit2 := new(mock.DependencyResolverMod)
 			defer execUnit1.AssertExpectations(t)
+			defer execUnit2.AssertExpectations(t)
 
 			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
-				Base: execUnit1,
+				YamlMod:       execUnit1,
+				DependencyMod: execUnit2,
 			}, nil)
 			window, _ := models.NewWindow(1, "d", "0", "1h")
 			jobSpec := models.JobSpec{
@@ -692,7 +719,8 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				Name:    jobName,
 				Task: models.JobSpecTask{
 					Unit: &models.Plugin{
-						Base: execUnit1,
+						YamlMod:       execUnit1,
+						DependencyMod: execUnit2,
 					},
 					Config: models.JobSpecConfigs{
 						{
@@ -765,7 +793,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				ProjectSpec: projectSpec,
 			}
 
-			execUnit1 := new(mock.BasePlugin)
+			execUnit1 := new(mock.YamlMod)
 			defer execUnit1.AssertExpectations(t)
 
 			jobSpecs := []models.JobSpec{
@@ -773,7 +801,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 					Name: jobName1,
 					Task: models.JobSpecTask{
 						Unit: &models.Plugin{
-							Base: execUnit1,
+							YamlMod: execUnit1,
 						},
 						Config: models.JobSpecConfigs{
 							{

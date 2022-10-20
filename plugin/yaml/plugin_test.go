@@ -12,20 +12,36 @@ import (
 	"github.com/odpf/optimus/plugin/yaml"
 )
 
-type mockBasePlugin struct {
+type mockYamlMod struct {
 	Name          string
 	Image         string
 	PluginVersion string
 	PluginType    string
 }
 
-func (p *mockBasePlugin) PluginInfo() (*models.PluginInfoResponse, error) {
+func (p *mockYamlMod) PluginInfo() *models.PluginInfoResponse {
 	return &models.PluginInfoResponse{
 		Name:          p.Name,
 		Image:         p.Image,
 		PluginVersion: p.PluginVersion,
 		PluginType:    models.PluginType(p.PluginType),
-	}, nil
+	}
+}
+
+func (*mockYamlMod) GetQuestions(context.Context, models.GetQuestionsRequest) (*models.GetQuestionsResponse, error) {
+	return &models.GetQuestionsResponse{Questions: models.PluginQuestions{}}, nil
+}
+
+func (*mockYamlMod) ValidateQuestion(context.Context, models.ValidateQuestionRequest) (*models.ValidateQuestionResponse, error) {
+	return &models.ValidateQuestionResponse{Success: true}, nil
+}
+
+func (*mockYamlMod) DefaultConfig(context.Context, models.DefaultConfigRequest) (*models.DefaultConfigResponse, error) {
+	return &models.DefaultConfigResponse{Config: models.PluginConfigs{}}, nil
+}
+
+func (*mockYamlMod) DefaultAssets(context.Context, models.DefaultAssetsRequest) (*models.DefaultAssetsResponse, error) {
+	return &models.DefaultAssetsResponse{Assets: models.PluginAssets{}}, nil
 }
 
 func TestYamlPlugin(t *testing.T) {
@@ -66,7 +82,7 @@ func TestYamlPlugin(t *testing.T) {
 	t.Run("PluginSpec", func(t *testing.T) {
 		plugin, _ := yaml.NewPluginSpec(testYamlPluginPath)
 		t.Run("PluginInfo", func(t *testing.T) {
-			actual, _ := plugin.PluginInfo()
+			actual := plugin.PluginInfo()
 			assert.Equal(t, expectedInfo, actual)
 		})
 		t.Run("GetQuestions", func(t *testing.T) {
@@ -150,12 +166,12 @@ func TestYamlPlugin(t *testing.T) {
 		})
 		t.Run("should load yaml even when binary plugin with same name exists", func(t *testing.T) {
 			repoWithBinayPlugin := models.NewPluginRepository()
-			err := repoWithBinayPlugin.Add(&mockBasePlugin{
+			err := repoWithBinayPlugin.AddYaml(&mockYamlMod{
 				Name:          testYamlPluginName,
 				Image:         "sdsd",
 				PluginVersion: "asdasd",
 				PluginType:    string(models.PluginTypeTask),
-			}, nil)
+			})
 			assert.Nil(t, err)
 			assert.Len(t, repoWithBinayPlugin.GetAll(), 1)
 

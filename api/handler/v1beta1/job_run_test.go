@@ -52,7 +52,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				ProjectSpec: projectSpec,
 			}
 
-			execUnit1 := new(mock.DependencyResolverMod)
+			execUnit1 := new(mock.YamlMod)
 			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name:        taskName,
 				Description: "plugin description",
@@ -65,8 +65,7 @@ func TestJobRunServiceServer(t *testing.T) {
 					Name: jobName1,
 					Task: models.JobSpecTask{
 						Unit: &models.Plugin{
-							Base:          execUnit1,
-							DependencyMod: execUnit1,
+							YamlMod: execUnit1,
 						},
 						Config: models.JobSpecConfigs{
 							{
@@ -155,7 +154,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				ProjectSpec: projectSpec,
 			}
 
-			execUnit1 := new(mock.BasePlugin)
+			execUnit1 := new(mock.YamlMod)
 			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name:        taskName,
 				Description: "plugin description",
@@ -168,7 +167,7 @@ func TestJobRunServiceServer(t *testing.T) {
 					Name: jobName1,
 					Task: models.JobSpecTask{
 						Unit: &models.Plugin{
-							Base: execUnit1,
+							YamlMod: execUnit1,
 						},
 						Config: models.JobSpecConfigs{
 							{
@@ -768,7 +767,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			ProjectSpec: projectSpec,
 		}
 
-		basePlugin1 := new(mock.BasePlugin)
+		yamlPlugin1 := new(mock.YamlMod)
 
 		window, err := models.NewWindow(1, "h", "24h", "24h")
 		assert.Nil(t, err)
@@ -778,7 +777,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			Task: models.JobSpecTask{
 				Window: window,
 				Unit: &models.Plugin{
-					Base: basePlugin1,
+					YamlMod: yamlPlugin1,
 				},
 				Config: models.JobSpecConfigs{
 					{

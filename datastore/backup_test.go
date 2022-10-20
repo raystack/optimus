@@ -66,7 +66,7 @@ func TestBackupService(t *testing.T) {
 			dsRepo := new(mock.SupportedDatastoreRepo)
 			defer dsRepo.AssertExpectations(t)
 
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -84,7 +84,7 @@ func TestBackupService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepo.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobSpec := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-1",
@@ -122,7 +122,7 @@ func TestBackupService(t *testing.T) {
 			assert.Nil(t, resp.IgnoredResources)
 		})
 		t.Run("should return list of resources with dependents to be backed up", func(t *testing.T) {
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -146,7 +146,7 @@ func TestBackupService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepo.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobDownstream := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-2",
@@ -222,7 +222,7 @@ func TestBackupService(t *testing.T) {
 			assert.Nil(t, resp.IgnoredResources)
 		})
 		t.Run("should return error when unable to generate destination", func(t *testing.T) {
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -231,7 +231,7 @@ func TestBackupService(t *testing.T) {
 			dsRepo := new(mock.SupportedDatastoreRepo)
 			defer dsRepo.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobSpec := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-1",
@@ -254,7 +254,7 @@ func TestBackupService(t *testing.T) {
 			assert.Equal(t, models.BackupPlan{}, resp)
 		})
 		t.Run("should return error when unable to get datastorer", func(t *testing.T) {
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -266,7 +266,7 @@ func TestBackupService(t *testing.T) {
 			dsRepo := new(mock.SupportedDatastoreRepo)
 			defer dsRepo.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobSpec := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-1",
@@ -291,7 +291,7 @@ func TestBackupService(t *testing.T) {
 			assert.Equal(t, models.BackupPlan{}, resp)
 		})
 		t.Run("should return error when unable to do backup dry run", func(t *testing.T) {
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -315,7 +315,7 @@ func TestBackupService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepo.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobSpec := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-1",
@@ -355,7 +355,7 @@ func TestBackupService(t *testing.T) {
 			assert.Equal(t, models.BackupPlan{}, resp)
 		})
 		t.Run("should return error when unable to get resource", func(t *testing.T) {
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -379,7 +379,7 @@ func TestBackupService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepo.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobSpec := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-1",
@@ -407,7 +407,7 @@ func TestBackupService(t *testing.T) {
 			assert.Equal(t, models.BackupPlan{}, resp)
 		})
 		t.Run("should return error when unable to generate destination for downstream", func(t *testing.T) {
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -431,7 +431,7 @@ func TestBackupService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepo.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobDownstream := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-2",
@@ -487,7 +487,7 @@ func TestBackupService(t *testing.T) {
 			assert.Equal(t, models.BackupPlan{}, resp)
 		})
 		t.Run("should not return error when one of the resources is not found", func(t *testing.T) {
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -513,7 +513,7 @@ func TestBackupService(t *testing.T) {
 
 			dsRepo.On("GetByName", models.DestinationTypeBigquery.String()).Return(datastorer, nil)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobDownstream := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-2",
@@ -575,7 +575,7 @@ func TestBackupService(t *testing.T) {
 			assert.Nil(t, resp.IgnoredResources)
 		})
 		t.Run("should not return error when one of the resources is not supported", func(t *testing.T) {
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -599,7 +599,7 @@ func TestBackupService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepo.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobDownstream := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-2",
@@ -672,7 +672,7 @@ func TestBackupService(t *testing.T) {
 			assert.Nil(t, resp.IgnoredResources)
 		})
 		t.Run("should return list of resources with dependents of only same namespace to be backed up", func(t *testing.T) {
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -696,7 +696,7 @@ func TestBackupService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepo.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobDownstream := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-2",
@@ -772,7 +772,7 @@ func TestBackupService(t *testing.T) {
 			assert.Equal(t, []string{destinationDownstream.Destination}, resp.IgnoredResources)
 		})
 		t.Run("should return list of resources without dependents to be backed up if downstream is ignored", func(t *testing.T) {
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -796,7 +796,7 @@ func TestBackupService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepo.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobDownstream := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-2",
@@ -901,7 +901,7 @@ func TestBackupService(t *testing.T) {
 			dsRepo := new(mock.SupportedDatastoreRepo)
 			defer dsRepo.AssertExpectations(t)
 
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -925,7 +925,7 @@ func TestBackupService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepo.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobSpec := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-1",
@@ -980,7 +980,7 @@ func TestBackupService(t *testing.T) {
 			assert.Nil(t, resp.IgnoredResources)
 		})
 		t.Run("should able to do backup with downstream", func(t *testing.T) {
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -1010,7 +1010,7 @@ func TestBackupService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepo.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobDownstream := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-2",
@@ -1122,7 +1122,7 @@ func TestBackupService(t *testing.T) {
 			assert.Nil(t, resp.IgnoredResources)
 		})
 		t.Run("should able to do backup with only same namespace downstream", func(t *testing.T) {
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -1152,7 +1152,7 @@ func TestBackupService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepo.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobDownstream := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-2",
@@ -1253,7 +1253,7 @@ func TestBackupService(t *testing.T) {
 			assert.Equal(t, []string{destinationDownstream.Destination}, resp.IgnoredResources)
 		})
 		t.Run("should return error when unable to generate destination", func(t *testing.T) {
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -1265,7 +1265,7 @@ func TestBackupService(t *testing.T) {
 			uuidProvider := new(mock.UUIDProvider)
 			defer uuidProvider.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobSpec := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-1",
@@ -1290,7 +1290,7 @@ func TestBackupService(t *testing.T) {
 			assert.Equal(t, models.BackupResult{}, resp)
 		})
 		t.Run("should return error when unable to get datastorer", func(t *testing.T) {
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -1305,7 +1305,7 @@ func TestBackupService(t *testing.T) {
 			uuidProvider := new(mock.UUIDProvider)
 			defer uuidProvider.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobSpec := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-1",
@@ -1331,7 +1331,7 @@ func TestBackupService(t *testing.T) {
 			assert.Equal(t, models.BackupResult{}, resp)
 		})
 		t.Run("should return error when unable to get resource", func(t *testing.T) {
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -1358,7 +1358,7 @@ func TestBackupService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepo.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobSpec := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-1",
@@ -1386,7 +1386,7 @@ func TestBackupService(t *testing.T) {
 			assert.Equal(t, models.BackupResult{}, resp)
 		})
 		t.Run("should return error when unable to do backup", func(t *testing.T) {
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -1413,7 +1413,7 @@ func TestBackupService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepo.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobSpec := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-1",
@@ -1455,7 +1455,7 @@ func TestBackupService(t *testing.T) {
 			assert.Equal(t, models.BackupResult{}, resp)
 		})
 		t.Run("should return error when unable to generate destination for downstream", func(t *testing.T) {
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -1482,7 +1482,7 @@ func TestBackupService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepo.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobDownstream := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-2",
@@ -1540,7 +1540,7 @@ func TestBackupService(t *testing.T) {
 			assert.Equal(t, models.BackupResult{}, resp)
 		})
 		t.Run("should not return error when one of the resources is not found", func(t *testing.T) {
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -1570,7 +1570,7 @@ func TestBackupService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepo.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobDownstream := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-2",
@@ -1657,7 +1657,7 @@ func TestBackupService(t *testing.T) {
 			assert.Nil(t, resp.IgnoredResources)
 		})
 		t.Run("should not return error when one of the resources is not supported", func(t *testing.T) {
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -1687,7 +1687,7 @@ func TestBackupService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepo.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobDownstream := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-2",
@@ -1784,7 +1784,7 @@ func TestBackupService(t *testing.T) {
 			assert.Nil(t, resp.IgnoredResources)
 		})
 		t.Run("should able to do backup without downstream if the downstream is ignored", func(t *testing.T) {
-			execUnit := new(mock.BasePlugin)
+			execUnit := new(mock.YamlMod)
 			defer execUnit.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -1814,7 +1814,7 @@ func TestBackupService(t *testing.T) {
 			projectResourceRepoFac := new(mock.ProjectResourceSpecRepoFactory)
 			defer projectResourceRepo.AssertExpectations(t)
 
-			jobTask.Unit = &models.Plugin{Base: execUnit}
+			jobTask.Unit = &models.Plugin{YamlMod: execUnit}
 			jobDownstream := models.JobSpec{
 				ID:     uuid.New(),
 				Name:   "job-2",

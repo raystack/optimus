@@ -52,9 +52,9 @@ func TestDependencyResolver(t *testing.T) {
 			execUnit1 := new(mock.DependencyResolverMod)
 			defer execUnit1.AssertExpectations(t)
 
-			hookUnit1 := new(mock.BasePlugin)
+			hookUnit1 := new(mock.YamlMod)
 			defer hookUnit1.AssertExpectations(t)
-			hookUnit2 := new(mock.BasePlugin)
+			hookUnit2 := new(mock.YamlMod)
 			defer hookUnit2.AssertExpectations(t)
 
 			jobSpec1 := models.JobSpec{
@@ -78,12 +78,12 @@ func TestDependencyResolver(t *testing.T) {
 				Hooks: []models.JobSpecHook{
 					{
 						Config:    nil,
-						Unit:      &models.Plugin{Base: hookUnit1},
+						Unit:      &models.Plugin{YamlMod: hookUnit1},
 						DependsOn: nil,
 					},
 					{
 						Config:    nil,
-						Unit:      &models.Plugin{Base: hookUnit2},
+						Unit:      &models.Plugin{YamlMod: hookUnit2},
 						DependsOn: nil,
 					},
 				},
@@ -860,7 +860,7 @@ func TestDependencyResolver(t *testing.T) {
 			externalDependencyResolver := new(mock.ExternalDependencyResolver)
 			externalDependencyResolver.AssertExpectations(t)
 
-			basePlugin := &mock.BasePlugin{}
+			yamlPlugin := &mock.YamlMod{}
 			jobSpecRepo := mock.NewJobSpecRepository(t)
 			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, nil, nil, externalDependencyResolver)
 
@@ -880,7 +880,7 @@ func TestDependencyResolver(t *testing.T) {
 				Hooks: []models.JobSpecHook{
 					{
 						Unit: &models.Plugin{
-							Base: basePlugin,
+							YamlMod: yamlPlugin,
 						},
 					},
 				},
@@ -906,7 +906,7 @@ func TestDependencyResolver(t *testing.T) {
 				},
 			}
 
-			basePlugin.On("PluginInfo").Return(&models.PluginInfoResponse{
+			yamlPlugin.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name:      "plugin-c",
 				DependsOn: []string{"plugin-c"},
 			}, nil)
@@ -938,7 +938,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			jobSourceRepo.AssertExpectations(t)
 
-			basePlugin := &mock.BasePlugin{}
+			yamlPlugin := &mock.YamlMod{}
 			jobSpecRepo := mock.NewJobSpecRepository(t)
 			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, jobSourceRepo, nil, externalDependencyResolver)
 
@@ -958,7 +958,7 @@ func TestDependencyResolver(t *testing.T) {
 				Hooks: []models.JobSpecHook{
 					{
 						Unit: &models.Plugin{
-							Base: basePlugin,
+							YamlMod: yamlPlugin,
 						},
 					},
 				},
@@ -980,7 +980,7 @@ func TestDependencyResolver(t *testing.T) {
 				},
 			}
 
-			basePlugin.On("PluginInfo").Return(&models.PluginInfoResponse{
+			yamlPlugin.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name:      "plugin-c",
 				DependsOn: []string{"plugin-c"},
 			}, nil)
@@ -1009,7 +1009,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			jobSourceRepo.AssertExpectations(t)
 
-			basePlugin := &mock.BasePlugin{}
+			yamlPlugin := &mock.YamlMod{}
 			jobSpecRepo := mock.NewJobSpecRepository(t)
 			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, jobSourceRepo, nil, externalDependencyResolver)
 
@@ -1029,7 +1029,7 @@ func TestDependencyResolver(t *testing.T) {
 				Hooks: []models.JobSpecHook{
 					{
 						Unit: &models.Plugin{
-							Base: basePlugin,
+							YamlMod: yamlPlugin,
 						},
 					},
 				},
@@ -1055,7 +1055,7 @@ func TestDependencyResolver(t *testing.T) {
 				jobSpec.ID: {"resource-b", "resource-external"},
 			}
 
-			basePlugin.On("PluginInfo").Return(&models.PluginInfoResponse{
+			yamlPlugin.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name:      "plugin-c",
 				DependsOn: []string{"plugin-c"},
 			}, nil)
@@ -1088,7 +1088,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			jobSourceRepo.AssertExpectations(t)
 
-			basePlugin := &mock.BasePlugin{}
+			yamlPlugin := &mock.YamlMod{}
 			jobSpecRepo := mock.NewJobSpecRepository(t)
 			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, jobSourceRepo, nil, externalDependencyResolver)
 
@@ -1108,7 +1108,7 @@ func TestDependencyResolver(t *testing.T) {
 				Hooks: []models.JobSpecHook{
 					{
 						Unit: &models.Plugin{
-							Base: basePlugin,
+							YamlMod: yamlPlugin,
 						},
 					},
 				},
@@ -1118,7 +1118,7 @@ func TestDependencyResolver(t *testing.T) {
 				},
 				NamespaceSpec: namespaceSpec,
 			}
-			basePlugin.On("PluginInfo").Return(&models.PluginInfoResponse{
+			yamlPlugin.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name:      "plugin-c",
 				DependsOn: []string{"plugin-c"},
 			}, nil)
@@ -1181,12 +1181,12 @@ func TestDependencyResolver(t *testing.T) {
 					Hooks: []models.JobSpecHook{
 						{
 							Unit: &models.Plugin{
-								Base: basePlugin,
+								YamlMod: yamlPlugin,
 							},
 							DependsOn: []*models.JobSpecHook{
 								{
 									Unit: &models.Plugin{
-										Base: basePlugin,
+										YamlMod: yamlPlugin,
 									},
 								},
 							},
@@ -1215,7 +1215,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			jobSourceRepo.AssertExpectations(t)
 
-			basePlugin := &mock.BasePlugin{}
+			yamlPlugin := &mock.YamlMod{}
 			jobSpecRepo := mock.NewJobSpecRepository(t)
 			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, jobSourceRepo, nil, externalDependencyResolver)
 
@@ -1235,7 +1235,7 @@ func TestDependencyResolver(t *testing.T) {
 				Hooks: []models.JobSpecHook{
 					{
 						Unit: &models.Plugin{
-							Base: basePlugin,
+							YamlMod: yamlPlugin,
 						},
 					},
 				},
@@ -1243,7 +1243,7 @@ func TestDependencyResolver(t *testing.T) {
 					"unknown-project-1/unknown-job-1": {},
 				},
 			}
-			basePlugin.On("PluginInfo").Return(&models.PluginInfoResponse{
+			yamlPlugin.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name:      "plugin-c",
 				DependsOn: []string{"plugin-c"},
 			}, nil)
@@ -1296,12 +1296,12 @@ func TestDependencyResolver(t *testing.T) {
 					Hooks: []models.JobSpecHook{
 						{
 							Unit: &models.Plugin{
-								Base: basePlugin,
+								YamlMod: yamlPlugin,
 							},
 							DependsOn: []*models.JobSpecHook{
 								{
 									Unit: &models.Plugin{
-										Base: basePlugin,
+										YamlMod: yamlPlugin,
 									},
 								},
 							},
@@ -1328,7 +1328,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSourceRepo := new(mock.JobSourceRepository)
 			jobSourceRepo.AssertExpectations(t)
 
-			basePlugin := &mock.BasePlugin{}
+			yamlPlugin := &mock.YamlMod{}
 			jobSpecRepo := mock.NewJobSpecRepository(t)
 			dependencyResolver := job.NewDependencyResolver(jobSpecRepo, jobSourceRepo, nil, externalDependencyResolver)
 
@@ -1348,13 +1348,13 @@ func TestDependencyResolver(t *testing.T) {
 				Hooks: []models.JobSpecHook{
 					{
 						Unit: &models.Plugin{
-							Base: basePlugin,
+							YamlMod: yamlPlugin,
 						},
 					},
 				},
 				NamespaceSpec: namespaceSpec,
 			}
-			basePlugin.On("PluginInfo").Return(&models.PluginInfoResponse{
+			yamlPlugin.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name:      "plugin-c",
 				DependsOn: []string{"plugin-c"},
 			}, nil)
@@ -1395,12 +1395,12 @@ func TestDependencyResolver(t *testing.T) {
 					Hooks: []models.JobSpecHook{
 						{
 							Unit: &models.Plugin{
-								Base: basePlugin,
+								YamlMod: yamlPlugin,
 							},
 							DependsOn: []*models.JobSpecHook{
 								{
 									Unit: &models.Plugin{
-										Base: basePlugin,
+										YamlMod: yamlPlugin,
 									},
 								},
 							},

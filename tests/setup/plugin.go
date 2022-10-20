@@ -53,7 +53,7 @@ func InMemoryPluginRegistry() models.PluginRepository {
 	bq2bq := MockPluginBQ{}
 
 	transporterHook := "transporter"
-	hookUnit := new(mock.BasePlugin)
+	hookUnit := new(mock.YamlMod)
 	hookUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name:       transporterHook,
 		HookType:   models.HookTypePre,
@@ -63,11 +63,11 @@ func InMemoryPluginRegistry() models.PluginRepository {
 
 	pluginRepo := new(mock.PluginRepository)
 	pluginRepo.On("GetByName", "bq2bq").Return(&models.Plugin{
-		Base:          bq2bq,
+		YamlMod:       hookUnit,
 		DependencyMod: bq2bq,
 	}, nil)
 	pluginRepo.On("GetByName", "transporter").Return(&models.Plugin{
-		Base: hookUnit,
+		YamlMod: hookUnit,
 	}, nil)
 	return pluginRepo
 }
