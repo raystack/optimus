@@ -10,7 +10,7 @@ import (
 
 func TestRelationalView(t *testing.T) {
 	t.Run("return validation error when query is empty", func(t *testing.T) {
-		ds, err := resource.DataSetFrom(resource.BigQuery, "t-optimus", "playground")
+		ds, err := resource.DataSetFrom(resource.Bigquery, "t-optimus", "playground")
 		assert.Nil(t, err)
 
 		view := resource.View{
@@ -25,7 +25,7 @@ func TestRelationalView(t *testing.T) {
 			"for t-optimus.playground.customer")
 	})
 	t.Run("has no validation error for correct view", func(t *testing.T) {
-		ds, err := resource.DataSetFrom(resource.BigQuery, "t-optimus", "playground")
+		ds, err := resource.DataSetFrom(resource.Bigquery, "t-optimus", "playground")
 		assert.Nil(t, err)
 
 		view := resource.View{

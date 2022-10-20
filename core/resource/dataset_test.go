@@ -24,38 +24,38 @@ func TestDataStore(t *testing.T) {
 func TestDataSet(t *testing.T) {
 	t.Run("when invalid", func(t *testing.T) {
 		t.Run("returns error on empty database/project name", func(t *testing.T) {
-			_, err := resource.DataSetFrom(resource.BigQuery, "", "schema")
+			_, err := resource.DataSetFrom(resource.Bigquery, "", "schema")
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity resource_dataset: database/project name is empty")
 		})
 		t.Run("returns error on empty schema/dataset name", func(t *testing.T) {
-			_, err := resource.DataSetFrom(resource.BigQuery, "t-optimus", "")
+			_, err := resource.DataSetFrom(resource.Bigquery, "t-optimus", "")
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity resource_dataset: schema/dataset name is empty")
 		})
 	})
 	t.Run("when invalid", func(t *testing.T) {
 		t.Run("creates dataset", func(t *testing.T) {
-			ds, err := resource.DataSetFrom(resource.BigQuery, "t-optimus", "playground")
+			ds, err := resource.DataSetFrom(resource.Bigquery, "t-optimus", "playground")
 			assert.Nil(t, err)
 
 			assert.Equal(t, "t-optimus.playground", ds.FullName())
 			assert.Equal(t, "bigquery://t-optimus:playground", ds.URN())
 		})
 		t.Run("can be compared for equality", func(t *testing.T) {
-			ds1, err := resource.DataSetFrom(resource.BigQuery, "t-optimus", "playground")
+			ds1, err := resource.DataSetFrom(resource.Bigquery, "t-optimus", "playground")
 			assert.Nil(t, err)
 
-			ds2, err := resource.DataSetFrom(resource.BigQuery, "t-optimus", "playground")
+			ds2, err := resource.DataSetFrom(resource.Bigquery, "t-optimus", "playground")
 			assert.Nil(t, err)
 
 			assert.True(t, ds1.IsSame(ds2))
 		})
 		t.Run("is not same when values are different", func(t *testing.T) {
-			ds1, err := resource.DataSetFrom(resource.BigQuery, "t-optimus", "playground")
+			ds1, err := resource.DataSetFrom(resource.Bigquery, "t-optimus", "playground")
 			assert.Nil(t, err)
 
-			ds2, err := resource.DataSetFrom(resource.BigQuery, "t-optimus-1", "playground")
+			ds2, err := resource.DataSetFrom(resource.Bigquery, "t-optimus-1", "playground")
 			assert.Nil(t, err)
 
 			assert.False(t, ds1.IsSame(ds2))
@@ -65,7 +65,7 @@ func TestDataSet(t *testing.T) {
 
 func TestDatasetDetails(t *testing.T) {
 	t.Run("returns dataset details", func(t *testing.T) {
-		ds, err := resource.DataSetFrom(resource.BigQuery, "t-optimus", "playground")
+		ds, err := resource.DataSetFrom(resource.Bigquery, "t-optimus", "playground")
 		assert.Nil(t, err)
 
 		datasetDetails := resource.DatasetDetails{

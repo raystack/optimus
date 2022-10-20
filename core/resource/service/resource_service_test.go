@@ -47,7 +47,7 @@ func TestResourceService(t *testing.T) {
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
 
-			incomingResource, err := resource.NewResource("project.dataset", resource.KindDataset, resource.BigQuery, tnnt, meta, spec)
+			incomingResource, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
 
 			tnntDetailsGetter.On("GetDetails", ctx, tnnt).Return(nil, errors.New("unknown error"))
@@ -63,7 +63,7 @@ func TestResourceService(t *testing.T) {
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
 
-			incomingResource, err := resource.NewResource("project.dataset", resource.KindDataset, resource.BigQuery, tnnt, meta, spec)
+			incomingResource, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
 
 			tnntDetailsGetter.On("GetDetails", ctx, tnnt).Return(nil, nil)
@@ -81,7 +81,7 @@ func TestResourceService(t *testing.T) {
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
 
-			incomingResource, err := resource.NewResource("project.dataset", resource.KindDataset, resource.BigQuery, tnnt, meta, spec)
+			incomingResource, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
 
 			tnntDetailsGetter.On("GetDetails", ctx, tnnt).Return(nil, nil)
@@ -101,7 +101,7 @@ func TestResourceService(t *testing.T) {
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
 
-			rsc, err := resource.NewResource("project.dataset", resource.KindDataset, resource.BigQuery, tnnt, meta, spec)
+			rsc, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
 
 			tnntDetailsGetter.On("GetDetails", ctx, tnnt).Return(nil, nil)
@@ -137,10 +137,10 @@ func TestResourceService(t *testing.T) {
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
 
 			fullName := "project.dataset"
-			resourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.BigQuery, tnnt, meta, spec)
+			resourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
 
-			repo.On("ReadByFullName", ctx, tnnt, resource.BigQuery, fullName).Return(nil, errors.New("unknown error"))
+			repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, fullName).Return(nil, errors.New("unknown error"))
 
 			actualError := rscService.Update(ctx, resourceToUpdate)
 			assert.ErrorContains(t, actualError, "unknown error")
@@ -154,12 +154,12 @@ func TestResourceService(t *testing.T) {
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
 
 			fullName := "project.dataset"
-			resourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.BigQuery, tnnt, meta, spec)
+			resourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
-			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.BigQuery, tnnt, meta, spec)
+			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
 
-			repo.On("ReadByFullName", ctx, tnnt, resource.BigQuery, fullName).Return(existingResource, nil)
+			repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, fullName).Return(existingResource, nil)
 			repo.On("Update", ctx, mock.Anything).Return(errors.New("unknown error"))
 
 			actualError := rscService.Update(ctx, resourceToUpdate)
@@ -174,12 +174,12 @@ func TestResourceService(t *testing.T) {
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
 
 			fullName := "project.dataset"
-			resourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.BigQuery, tnnt, meta, spec)
+			resourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
-			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.BigQuery, tnnt, meta, spec)
+			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
 
-			repo.On("ReadByFullName", ctx, tnnt, resource.BigQuery, fullName).Return(existingResource, nil)
+			repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, fullName).Return(existingResource, nil)
 			repo.On("Update", ctx, mock.Anything).Return(nil)
 
 			mgr.On("UpdateResource", ctx, mock.Anything).Return(errors.New("unknown error"))
@@ -196,12 +196,12 @@ func TestResourceService(t *testing.T) {
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
 
 			fullName := "project.dataset"
-			resourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.BigQuery, tnnt, meta, spec)
+			resourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
-			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.BigQuery, tnnt, meta, spec)
+			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
 
-			repo.On("ReadByFullName", ctx, tnnt, resource.BigQuery, fullName).Return(existingResource, nil)
+			repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, fullName).Return(existingResource, nil)
 			repo.On("Update", ctx, mock.Anything).Return(nil)
 
 			mgr.On("UpdateResource", ctx, mock.Anything).Return(nil)
@@ -219,7 +219,7 @@ func TestResourceService(t *testing.T) {
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
 
-			store := resource.BigQuery
+			store := resource.Bigquery
 			fullName := ""
 
 			actualResource, actualError := rscService.Get(ctx, tnnt, store, fullName)
@@ -236,9 +236,9 @@ func TestResourceService(t *testing.T) {
 
 			fullName := "project.dataset"
 
-			repo.On("ReadByFullName", ctx, tnnt, resource.BigQuery, fullName).Return(nil, errors.New("unknown error"))
+			repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, fullName).Return(nil, errors.New("unknown error"))
 
-			actualResource, actualError := rscService.Get(ctx, tnnt, resource.BigQuery, fullName)
+			actualResource, actualError := rscService.Get(ctx, tnnt, resource.Bigquery, fullName)
 			assert.Nil(t, actualResource)
 			assert.ErrorContains(t, actualError, "unknown error")
 		})
@@ -251,12 +251,12 @@ func TestResourceService(t *testing.T) {
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
 
 			fullName := "project.dataset"
-			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.BigQuery, tnnt, meta, spec)
+			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
 
-			repo.On("ReadByFullName", ctx, tnnt, resource.BigQuery, fullName).Return(existingResource, nil)
+			repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, fullName).Return(existingResource, nil)
 
-			actualResource, actualError := rscService.Get(ctx, tnnt, resource.BigQuery, fullName)
+			actualResource, actualError := rscService.Get(ctx, tnnt, resource.Bigquery, fullName)
 			assert.EqualValues(t, existingResource, actualResource)
 			assert.NoError(t, actualError)
 		})
@@ -270,9 +270,9 @@ func TestResourceService(t *testing.T) {
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
 
-			repo.On("ReadAll", ctx, tnnt, resource.BigQuery).Return(nil, errors.New("unknown error"))
+			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return(nil, errors.New("unknown error"))
 
-			actualResources, actualError := rscService.GetAll(ctx, tnnt, resource.BigQuery)
+			actualResources, actualError := rscService.GetAll(ctx, tnnt, resource.Bigquery)
 			assert.Nil(t, actualResources)
 			assert.ErrorContains(t, actualError, "unknown error")
 		})
@@ -284,12 +284,12 @@ func TestResourceService(t *testing.T) {
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
 
-			existingResource, err := resource.NewResource("project.dataset", resource.KindDataset, resource.BigQuery, tnnt, meta, spec)
+			existingResource, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
 
-			repo.On("ReadAll", ctx, tnnt, resource.BigQuery).Return([]*resource.Resource{existingResource}, nil)
+			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{existingResource}, nil)
 
-			actualResources, actualError := rscService.GetAll(ctx, tnnt, resource.BigQuery)
+			actualResources, actualError := rscService.GetAll(ctx, tnnt, resource.Bigquery)
 			assert.EqualValues(t, []*resource.Resource{existingResource}, actualResources)
 			assert.NoError(t, actualError)
 		})
@@ -303,12 +303,12 @@ func TestResourceService(t *testing.T) {
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
 
-			validResourceToUpdate, err := resource.NewResource("project.dataset", resource.KindDataset, resource.BigQuery, tnnt, meta, spec)
+			validResourceToUpdate, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
 			invalidResourceToUpdate := &resource.Resource{}
 			resourcesToUpdate := []*resource.Resource{validResourceToUpdate, invalidResourceToUpdate}
 
-			actualError := rscService.BatchUpdate(ctx, tnnt, resource.BigQuery, resourcesToUpdate)
+			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, resourcesToUpdate)
 			assert.Error(t, actualError)
 		})
 
@@ -319,12 +319,12 @@ func TestResourceService(t *testing.T) {
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
 
-			incomingResourceToUpdate, err := resource.NewResource("project.dataset", resource.KindDataset, resource.BigQuery, tnnt, meta, spec)
+			incomingResourceToUpdate, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
 
-			repo.On("ReadAll", ctx, tnnt, resource.BigQuery).Return(nil, errors.New("unknown error"))
+			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return(nil, errors.New("unknown error"))
 
-			actualError := rscService.BatchUpdate(ctx, tnnt, resource.BigQuery, []*resource.Resource{incomingResourceToUpdate})
+			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
 			assert.ErrorContains(t, actualError, "unknown error")
 		})
 
@@ -336,14 +336,14 @@ func TestResourceService(t *testing.T) {
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
 
 			fullName := "project.dataset"
-			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.BigQuery, tnnt, meta, spec)
+			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
-			incomingResourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.BigQuery, tnnt, meta, spec)
+			incomingResourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
 
-			repo.On("ReadAll", ctx, tnnt, resource.BigQuery).Return([]*resource.Resource{existingResource}, nil)
+			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{existingResource}, nil)
 
-			actualError := rscService.BatchUpdate(ctx, tnnt, resource.BigQuery, []*resource.Resource{incomingResourceToUpdate})
+			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
 			assert.NoError(t, actualError)
 		})
 
@@ -358,19 +358,19 @@ func TestResourceService(t *testing.T) {
 			existingMetadata := &resource.Metadata{
 				Description: "existing resource metadata",
 			}
-			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.BigQuery, tnnt, existingMetadata, spec)
+			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, existingMetadata, spec)
 			assert.NoError(t, err)
 			incomingMetadata := &resource.Metadata{
 				Description: "incoming resource metadata",
 			}
-			incomingResourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.BigQuery, tnnt, incomingMetadata, spec)
+			incomingResourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, incomingMetadata, spec)
 			assert.NoError(t, err)
 
-			repo.On("ReadAll", ctx, tnnt, resource.BigQuery).Return([]*resource.Resource{existingResource}, nil)
+			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{existingResource}, nil)
 
 			batch.On("UpdateAll", ctx, mock.Anything).Return(errors.New("unknown error"))
 
-			actualError := rscService.BatchUpdate(ctx, tnnt, resource.BigQuery, []*resource.Resource{incomingResourceToUpdate})
+			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
 			assert.ErrorContains(t, actualError, "unknown error")
 		})
 
@@ -385,21 +385,21 @@ func TestResourceService(t *testing.T) {
 			existingMetadata := &resource.Metadata{
 				Description: "existing resource metadata",
 			}
-			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.BigQuery, tnnt, existingMetadata, spec)
+			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, existingMetadata, spec)
 			assert.NoError(t, err)
 			incomingMetadata := &resource.Metadata{
 				Description: "incoming resource metadata",
 			}
-			incomingResourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.BigQuery, tnnt, incomingMetadata, spec)
+			incomingResourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, incomingMetadata, spec)
 			assert.NoError(t, err)
 
-			repo.On("ReadAll", ctx, tnnt, resource.BigQuery).Return([]*resource.Resource{existingResource}, nil)
+			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{existingResource}, nil)
 
 			batch.On("UpdateAll", ctx, mock.Anything).Return(nil)
 
-			mgr.On("BatchUpdate", ctx, resource.BigQuery, mock.Anything).Return(errors.New("unknown error"))
+			mgr.On("BatchUpdate", ctx, resource.Bigquery, mock.Anything).Return(errors.New("unknown error"))
 
-			actualError := rscService.BatchUpdate(ctx, tnnt, resource.BigQuery, []*resource.Resource{incomingResourceToUpdate})
+			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
 
 			assert.ErrorContains(t, actualError, "unknown error")
 		})
@@ -415,21 +415,21 @@ func TestResourceService(t *testing.T) {
 			existingMetadata := &resource.Metadata{
 				Description: "existing resource metadata",
 			}
-			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.BigQuery, tnnt, existingMetadata, spec)
+			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, existingMetadata, spec)
 			assert.NoError(t, err)
 			incomingMetadata := &resource.Metadata{
 				Description: "incoming resource metadata",
 			}
-			incomingResourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.BigQuery, tnnt, incomingMetadata, spec)
+			incomingResourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, incomingMetadata, spec)
 			assert.NoError(t, err)
 
-			repo.On("ReadAll", ctx, tnnt, resource.BigQuery).Return([]*resource.Resource{existingResource}, nil)
+			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{existingResource}, nil)
 
 			batch.On("UpdateAll", ctx, mock.Anything).Return(nil)
 
-			mgr.On("BatchUpdate", ctx, resource.BigQuery, mock.Anything).Return(nil)
+			mgr.On("BatchUpdate", ctx, resource.Bigquery, mock.Anything).Return(nil)
 
-			actualError := rscService.BatchUpdate(ctx, tnnt, resource.BigQuery, []*resource.Resource{incomingResourceToUpdate})
+			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
 
 			assert.NoError(t, actualError)
 		})

@@ -32,34 +32,34 @@ func TestNewResource(t *testing.T) {
 
 	t.Run("when invalid resource", func(t *testing.T) {
 		t.Run("returns error when name is empty", func(t *testing.T) {
-			_, err := resource.NewResource("", resource.KindTable, resource.BigQuery, tnnt, nil, nil)
+			_, err := resource.NewResource("", resource.KindTable, resource.Bigquery, tnnt, nil, nil)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity resource: invalid resource name: ")
 		})
 		t.Run("returns error when dataset name is empty", func(t *testing.T) {
-			_, err := resource.NewResource("", resource.KindDataset, resource.BigQuery, tnnt, nil, nil)
+			_, err := resource.NewResource("", resource.KindDataset, resource.Bigquery, tnnt, nil, nil)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity resource: invalid dataset name: ")
 		})
 		t.Run("returns error when invalid resource name", func(t *testing.T) {
-			_, err := resource.NewResource("proj.set.", resource.KindTable, resource.BigQuery, tnnt, nil, nil)
+			_, err := resource.NewResource("proj.set.", resource.KindTable, resource.Bigquery, tnnt, nil, nil)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity resource: resource name is empty")
 		})
 		t.Run("returns error when invalid dataset name", func(t *testing.T) {
-			_, err := resource.NewResource("proj.", resource.KindDataset, resource.BigQuery, tnnt, nil, nil)
+			_, err := resource.NewResource("proj.", resource.KindDataset, resource.Bigquery, tnnt, nil, nil)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity resource: resource name is empty")
 		})
 		t.Run("returns error when resource has invalid dataset name", func(t *testing.T) {
 			spec := map[string]any{"a": "b"}
-			_, err := resource.NewResource("proj..name1", resource.KindTable, resource.BigQuery, tnnt, nil, spec)
+			_, err := resource.NewResource("proj..name1", resource.KindTable, resource.Bigquery, tnnt, nil, spec)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity resource_dataset: schema/dataset name is empty")
 		})
 		t.Run("returns error when invalid resource metadata", func(t *testing.T) {
 			spec := map[string]any{"a": "b"}
-			_, err := resource.NewResource("proj.set.res_name", resource.KindTable, resource.BigQuery, tnnt, nil, spec)
+			_, err := resource.NewResource("proj.set.res_name", resource.KindTable, resource.Bigquery, tnnt, nil, spec)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity resource: invalid resource metadata")
 		})
@@ -69,7 +69,7 @@ func TestNewResource(t *testing.T) {
 				Description: "description",
 			}
 			_, err := resource.NewResource("proj.set.res_name", resource.KindTable,
-				resource.BigQuery, tnnt, &meta, nil)
+				resource.Bigquery, tnnt, &meta, nil)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity resource: invalid resource spec "+
 				"for proj.set.res_name")
@@ -82,7 +82,7 @@ func TestNewResource(t *testing.T) {
 		}
 		spec := map[string]any{"a": "b"}
 		res, err := resource.NewResource("proj.set.res_name", resource.KindTable,
-			resource.BigQuery, tnnt, meta, spec)
+			resource.Bigquery, tnnt, meta, spec)
 		assert.Nil(t, err)
 
 		assert.Equal(t, "res_name", res.Name().String())
@@ -91,7 +91,7 @@ func TestNewResource(t *testing.T) {
 		assert.EqualValues(t, meta, res.Metadata())
 		assert.Equal(t, "table", res.Kind().String())
 		assert.EqualValues(t, tnnt, res.Tenant())
-		dataset, err := resource.DataSetFrom(resource.BigQuery, "proj", "set")
+		dataset, err := resource.DataSetFrom(resource.Bigquery, "proj", "set")
 		assert.NoError(t, err)
 		assert.EqualValues(t, dataset, res.Dataset())
 		assert.Equal(t, resource.StatusUnknown, res.Status())
@@ -104,7 +104,7 @@ func TestNewResource(t *testing.T) {
 		}
 		spec := map[string]any{"a": "b"}
 		res, err := resource.NewResource("proj.dataset", resource.KindDataset,
-			resource.BigQuery, tnnt, meta, spec)
+			resource.Bigquery, tnnt, meta, spec)
 		assert.Nil(t, err)
 
 		assert.Equal(t, "dataset", res.Name().String())
@@ -113,7 +113,7 @@ func TestNewResource(t *testing.T) {
 		assert.EqualValues(t, meta, res.Metadata())
 		assert.Equal(t, "dataset", res.Kind().String())
 		assert.EqualValues(t, tnnt, res.Tenant())
-		dataset, err := resource.DataSetFrom(resource.BigQuery, "proj", "dataset")
+		dataset, err := resource.DataSetFrom(resource.Bigquery, "proj", "dataset")
 		assert.NoError(t, err)
 		assert.EqualValues(t, dataset, res.Dataset())
 		assert.Equal(t, resource.StatusUnknown, res.Status())
@@ -138,7 +138,7 @@ func TestResource(t *testing.T) {
 		})
 		t.Run("for view", func(t *testing.T) {
 			t.Run("returns error when cannot decode view spec", func(t *testing.T) {
-				res, err := resource.NewResource("proj.set.view_name1", resource.KindView, resource.BigQuery,
+				res, err := resource.NewResource("proj.set.view_name1", resource.KindView, resource.Bigquery,
 					tnnt, &resource.Metadata{}, invalidSpec)
 				assert.Nil(t, err)
 
@@ -151,7 +151,7 @@ func TestResource(t *testing.T) {
 					"'map[some:desc]': not able to decode spec for proj.set.view_name1")
 			})
 			t.Run("returns error for validation failure", func(t *testing.T) {
-				res, err := resource.NewResource("proj.set.view_name1", resource.KindView, resource.BigQuery,
+				res, err := resource.NewResource("proj.set.view_name1", resource.KindView, resource.Bigquery,
 					tnnt, &resource.Metadata{}, specWithoutValues)
 				assert.Nil(t, err)
 
@@ -165,7 +165,7 @@ func TestResource(t *testing.T) {
 		})
 		t.Run("for external_table", func(t *testing.T) {
 			t.Run("returns error when cannot decode spec", func(t *testing.T) {
-				res, err := resource.NewResource("proj.set.external_name1", resource.KindExternalTable, resource.BigQuery,
+				res, err := resource.NewResource("proj.set.external_name1", resource.KindExternalTable, resource.Bigquery,
 					tnnt, &resource.Metadata{}, invalidSpec)
 				assert.Nil(t, err)
 
@@ -178,7 +178,7 @@ func TestResource(t *testing.T) {
 					"'map[some:desc]': not able to decode spec for proj.set.external_name1")
 			})
 			t.Run("returns error when external_table spec is invalid", func(t *testing.T) {
-				res, err := resource.NewResource("proj.set.external_name1", resource.KindExternalTable, resource.BigQuery,
+				res, err := resource.NewResource("proj.set.external_name1", resource.KindExternalTable, resource.Bigquery,
 					tnnt, &resource.Metadata{}, specWithoutValues)
 				assert.Nil(t, err)
 
@@ -192,7 +192,7 @@ func TestResource(t *testing.T) {
 		})
 		t.Run("for table", func(t *testing.T) {
 			t.Run("returns error when cannot decode table", func(t *testing.T) {
-				res, err := resource.NewResource("proj.set.table_name1", resource.KindTable, resource.BigQuery,
+				res, err := resource.NewResource("proj.set.table_name1", resource.KindTable, resource.Bigquery,
 					tnnt, &resource.Metadata{}, invalidSpec)
 				assert.Nil(t, err)
 
@@ -205,7 +205,7 @@ func TestResource(t *testing.T) {
 					"'map[some:desc]': not able to decode spec for proj.set.table_name1")
 			})
 			t.Run("returns error when cannot decode table", func(t *testing.T) {
-				res, err := resource.NewResource("proj.set.table_name1", resource.KindTable, resource.BigQuery,
+				res, err := resource.NewResource("proj.set.table_name1", resource.KindTable, resource.Bigquery,
 					tnnt, &resource.Metadata{}, specWithoutValues)
 				assert.Nil(t, err)
 
@@ -218,7 +218,7 @@ func TestResource(t *testing.T) {
 		})
 		t.Run("for dataset", func(t *testing.T) {
 			t.Run("returns error when cannot decode dataset", func(t *testing.T) {
-				res, err := resource.NewResource("proj.set_name1", resource.KindDataset, resource.BigQuery,
+				res, err := resource.NewResource("proj.set_name1", resource.KindDataset, resource.Bigquery,
 					tnnt, &resource.Metadata{}, invalidSpec)
 				assert.Nil(t, err)
 
@@ -229,7 +229,7 @@ func TestResource(t *testing.T) {
 					"'map[some:desc]': not able to decode spec for proj.set_name1")
 			})
 			t.Run("returns no error when validation passes", func(t *testing.T) {
-				res, err := resource.NewResource("proj.set_name1", resource.KindDataset, resource.BigQuery,
+				res, err := resource.NewResource("proj.set_name1", resource.KindDataset, resource.Bigquery,
 					tnnt, &resource.Metadata{}, specWithoutValues)
 				assert.Nil(t, err)
 
@@ -251,7 +251,7 @@ func TestResource(t *testing.T) {
 			spec := map[string]any{
 				"description": "spec for unit test",
 			}
-			validResource, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			validResource, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.Bigquery, tnnt, metadata, spec)
 			assert.NoError(t, err)
 			var nilResource *resource.Resource
 
@@ -269,7 +269,7 @@ func TestResource(t *testing.T) {
 			spec := map[string]any{
 				"description": "spec for unit test",
 			}
-			validResource, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			validResource, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.Bigquery, tnnt, metadata, spec)
 			assert.NoError(t, err)
 			var nilResource *resource.Resource
 
@@ -287,7 +287,7 @@ func TestResource(t *testing.T) {
 			spec := map[string]any{
 				"description": "spec for unit test",
 			}
-			validResource, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			validResource, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.Bigquery, tnnt, metadata, spec)
 			assert.NoError(t, err)
 			invalidResource := &resource.Resource{}
 
@@ -305,7 +305,7 @@ func TestResource(t *testing.T) {
 			spec := map[string]any{
 				"description": "spec for unit test",
 			}
-			validResource, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			validResource, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.Bigquery, tnnt, metadata, spec)
 			assert.NoError(t, err)
 			invalidResource := &resource.Resource{}
 
@@ -323,9 +323,9 @@ func TestResource(t *testing.T) {
 			spec := map[string]any{
 				"description": "spec for unit test",
 			}
-			resource1, err := resource.NewResource("project.dataset.table1", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			resource1, err := resource.NewResource("project.dataset.table1", resource.KindTable, resource.Bigquery, tnnt, metadata, spec)
 			assert.NoError(t, err)
-			resource2, err := resource.NewResource("project.dataset.table2", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			resource2, err := resource.NewResource("project.dataset.table2", resource.KindTable, resource.Bigquery, tnnt, metadata, spec)
 			assert.NoError(t, err)
 
 			actualEquality := resource1.Equal(resource2)
@@ -342,9 +342,9 @@ func TestResource(t *testing.T) {
 			spec := map[string]any{
 				"description": "spec for unit test",
 			}
-			resource1, err := resource.NewResource("project.dataset1.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			resource1, err := resource.NewResource("project.dataset1.table", resource.KindTable, resource.Bigquery, tnnt, metadata, spec)
 			assert.NoError(t, err)
-			resource2, err := resource.NewResource("project.dataset2.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			resource2, err := resource.NewResource("project.dataset2.table", resource.KindTable, resource.Bigquery, tnnt, metadata, spec)
 			assert.NoError(t, err)
 
 			actualEquality := resource1.Equal(resource2)
@@ -361,9 +361,9 @@ func TestResource(t *testing.T) {
 			spec := map[string]any{
 				"description": "spec for unit test",
 			}
-			resource1, err := resource.NewResource("project.dataset1.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			resource1, err := resource.NewResource("project.dataset1.table", resource.KindTable, resource.Bigquery, tnnt, metadata, spec)
 			assert.NoError(t, err)
-			resource2, err := resource.NewResource("project.dataset2.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			resource2, err := resource.NewResource("project.dataset2.table", resource.KindTable, resource.Bigquery, tnnt, metadata, spec)
 			assert.NoError(t, err)
 			// current implementation does not provide different kind of store to explicitly produce such inequality
 
@@ -388,9 +388,9 @@ func TestResource(t *testing.T) {
 			spec := map[string]any{
 				"description": "spec for unit test",
 			}
-			resource1, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata1, spec)
+			resource1, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.Bigquery, tnnt, metadata1, spec)
 			assert.NoError(t, err)
-			resource2, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata2, spec)
+			resource2, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.Bigquery, tnnt, metadata2, spec)
 			assert.NoError(t, err)
 
 			actualEquality := resource1.Equal(resource2)
@@ -407,10 +407,10 @@ func TestResource(t *testing.T) {
 			spec := map[string]any{
 				"description": "spec for unit test",
 			}
-			resource1, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			resource1, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.Bigquery, tnnt, metadata, spec)
 			assert.NoError(t, err)
 			resource1 = resource.FromExisting(resource1, resource.ReplaceStatus(resource.StatusSuccess))
-			resource2, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			resource2, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.Bigquery, tnnt, metadata, spec)
 			assert.NoError(t, err)
 
 			actualEquality := resource1.Equal(resource2)
@@ -430,9 +430,9 @@ func TestResource(t *testing.T) {
 			spec2 := map[string]any{
 				"description": "spec 2 for unit test",
 			}
-			resource1, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec1)
+			resource1, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.Bigquery, tnnt, metadata, spec1)
 			assert.NoError(t, err)
-			resource2, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec2)
+			resource2, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.Bigquery, tnnt, metadata, spec2)
 			assert.NoError(t, err)
 
 			actualEquality := resource1.Equal(resource2)
@@ -457,9 +457,9 @@ func TestResource(t *testing.T) {
 			spec := map[string]any{
 				"description": "spec for unit test",
 			}
-			resource1, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			resource1, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.Bigquery, tnnt, metadata, spec)
 			assert.NoError(t, err)
-			resource2, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.BigQuery, tnnt, metadata, spec)
+			resource2, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.Bigquery, tnnt, metadata, spec)
 			assert.NoError(t, err)
 
 			actualEquality := resource1.Equal(resource2)

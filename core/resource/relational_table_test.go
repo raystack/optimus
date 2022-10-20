@@ -11,7 +11,7 @@ import (
 func TestRelationalTable(t *testing.T) {
 	t.Run("when invalid", func(t *testing.T) {
 		t.Run("returns validation error for empty schema", func(t *testing.T) {
-			ds, err := resource.DataSetFrom(resource.BigQuery, "t-optimus", "playground")
+			ds, err := resource.DataSetFrom(resource.Bigquery, "t-optimus", "playground")
 			assert.Nil(t, err)
 
 			table := resource.Table{
@@ -28,7 +28,7 @@ func TestRelationalTable(t *testing.T) {
 				"table t-optimus.playground.characters")
 		})
 		t.Run("returns validation error for invalid schema", func(t *testing.T) {
-			ds, err := resource.DataSetFrom(resource.BigQuery, "t-optimus", "playground")
+			ds, err := resource.DataSetFrom(resource.Bigquery, "t-optimus", "playground")
 			assert.Nil(t, err)
 
 			table := resource.Table{
@@ -45,7 +45,7 @@ func TestRelationalTable(t *testing.T) {
 				"invalid schema for table t-optimus.playground.characters")
 		})
 		t.Run("returns validation error for invalid partition", func(t *testing.T) {
-			ds, err := resource.DataSetFrom(resource.BigQuery, "t-optimus", "playground")
+			ds, err := resource.DataSetFrom(resource.Bigquery, "t-optimus", "playground")
 			assert.Nil(t, err)
 
 			table := resource.Table{
@@ -62,7 +62,7 @@ func TestRelationalTable(t *testing.T) {
 				"table t-optimus.playground.characters")
 		})
 		t.Run("returns validation error for invalid cluster", func(t *testing.T) {
-			ds, err := resource.DataSetFrom(resource.BigQuery, "t-optimus", "playground")
+			ds, err := resource.DataSetFrom(resource.Bigquery, "t-optimus", "playground")
 			assert.Nil(t, err)
 
 			table := resource.Table{
@@ -80,7 +80,7 @@ func TestRelationalTable(t *testing.T) {
 		})
 	})
 	t.Run("returns no validation error when correct", func(t *testing.T) {
-		ds, err := resource.DataSetFrom(resource.BigQuery, "t-optimus", "playground")
+		ds, err := resource.DataSetFrom(resource.Bigquery, "t-optimus", "playground")
 		assert.Nil(t, err)
 
 		table := resource.Table{

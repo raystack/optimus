@@ -13,7 +13,7 @@ import (
 
 func TestBqClient(t *testing.T) {
 	ctx := context.Background()
-	bq := resource.BigQuery
+	bq := resource.Bigquery
 	tnnt, _ := tenant.NewTenant("proj", "ns")
 	metadata := resource.Metadata{Description: "meta"}
 	spec := map[string]any{"description": "resource"}

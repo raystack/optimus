@@ -17,7 +17,7 @@ import (
 
 func TestDatasetHandle(t *testing.T) {
 	ctx := context.Background()
-	bqStore := resource.BigQuery
+	bqStore := resource.Bigquery
 	tnnt, _ := tenant.NewTenant("proj", "ns")
 	metadata := resource.Metadata{
 		Version:     1,

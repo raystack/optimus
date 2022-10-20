@@ -3,7 +3,7 @@ package resource
 import "github.com/odpf/optimus/internal/errors"
 
 const (
-	BigQuery Store = "bigquery"
+	Bigquery Store = "bigquery"
 
 	EntityDataset = "resource_dataset"
 )
@@ -17,8 +17,8 @@ func (s Store) String() string {
 
 func FromStringToStore(name string) (Store, error) {
 	switch name {
-	case string(BigQuery):
-		return BigQuery, nil
+	case string(Bigquery):
+		return Bigquery, nil
 	default:
 		return "", errors.InvalidArgument(EntityResource, "unknown store "+name)
 	}

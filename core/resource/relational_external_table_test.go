@@ -11,7 +11,7 @@ import (
 func TestRelationalExternalTable(t *testing.T) {
 	t.Run("when invalid", func(t *testing.T) {
 		t.Run("fails validation when schema is empty", func(t *testing.T) {
-			ds, err := resource.DataSetFrom(resource.BigQuery, "t-optimus", "playground")
+			ds, err := resource.DataSetFrom(resource.Bigquery, "t-optimus", "playground")
 			assert.Nil(t, err)
 
 			et := resource.ExternalTable{
@@ -26,7 +26,7 @@ func TestRelationalExternalTable(t *testing.T) {
 				"for t-optimus.playground.test-sheet")
 		})
 		t.Run("fails validation when schema is invalid", func(t *testing.T) {
-			ds, err := resource.DataSetFrom(resource.BigQuery, "t-optimus", "playground")
+			ds, err := resource.DataSetFrom(resource.Bigquery, "t-optimus", "playground")
 			assert.Nil(t, err)
 
 			et := resource.ExternalTable{
@@ -42,7 +42,7 @@ func TestRelationalExternalTable(t *testing.T) {
 				"for t-optimus.playground.test-sheet")
 		})
 		t.Run("fails validation when source is invalid", func(t *testing.T) {
-			ds, err := resource.DataSetFrom(resource.BigQuery, "t-optimus", "playground")
+			ds, err := resource.DataSetFrom(resource.Bigquery, "t-optimus", "playground")
 			assert.Nil(t, err)
 
 			et := resource.ExternalTable{
@@ -61,7 +61,7 @@ func TestRelationalExternalTable(t *testing.T) {
 		})
 	})
 	t.Run("passes validations for valid configuration", func(t *testing.T) {
-		ds, err := resource.DataSetFrom(resource.BigQuery, "t-optimus", "playground")
+		ds, err := resource.DataSetFrom(resource.Bigquery, "t-optimus", "playground")
 		assert.Nil(t, err)
 
 		et := resource.ExternalTable{

@@ -16,7 +16,7 @@ import (
 func TestBigqueryStore(t *testing.T) {
 	ctx := context.Background()
 	tnnt, _ := tenant.NewTenant("proj", "ns")
-	bq := resource.BigQuery
+	bq := resource.Bigquery
 	metadata := resource.Metadata{Description: "meta"}
 	spec := map[string]any{"description": "resource"}
 
