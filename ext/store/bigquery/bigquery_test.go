@@ -93,7 +93,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			client := new(mockClient)
 			client.On("Close")
-			client.On("DatasetHandleFrom", dataset.Dataset()).Return(datasetHandle)
+			client.On("DatasetHandleFrom", dataset).Return(datasetHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -120,7 +120,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			client := new(mockClient)
 			client.On("Close")
-			client.On("DatasetHandleFrom", dataset.Dataset()).Return(datasetHandle)
+			client.On("DatasetHandleFrom", dataset).Return(datasetHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -147,7 +147,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			client := new(mockClient)
 			client.On("Close")
-			client.On("TableHandleFrom", table.Dataset(), table.Name()).Return(tableHandle)
+			client.On("TableHandleFrom", table).Return(tableHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -174,7 +174,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			client := new(mockClient)
 			client.On("Close")
-			client.On("ViewHandleFrom", view.Dataset(), view.Name()).Return(viewHandle)
+			client.On("ViewHandleFrom", view).Return(viewHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -201,7 +201,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			client := new(mockClient)
 			client.On("Close")
-			client.On("ExternalTableHandleFrom", extTable.Dataset(), extTable.Name()).Return(extTableHandle)
+			client.On("ExternalTableHandleFrom", extTable).Return(extTableHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -286,7 +286,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			client := new(mockClient)
 			client.On("Close")
-			client.On("DatasetHandleFrom", dataset.Dataset()).Return(datasetHandle)
+			client.On("DatasetHandleFrom", dataset).Return(datasetHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -313,7 +313,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			client := new(mockClient)
 			client.On("Close")
-			client.On("DatasetHandleFrom", dataset.Dataset()).Return(datasetHandle)
+			client.On("DatasetHandleFrom", dataset).Return(datasetHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -340,7 +340,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			client := new(mockClient)
 			client.On("Close")
-			client.On("TableHandleFrom", table.Dataset(), table.Name()).Return(tableHandle)
+			client.On("TableHandleFrom", table).Return(tableHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -367,7 +367,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			client := new(mockClient)
 			client.On("Close")
-			client.On("ViewHandleFrom", view.Dataset(), view.Name()).Return(viewHandle)
+			client.On("ViewHandleFrom", view).Return(viewHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -394,7 +394,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			client := new(mockClient)
 			client.On("Close")
-			client.On("ExternalTableHandleFrom", extTable.Dataset(), extTable.Name()).Return(extTableHandle)
+			client.On("ExternalTableHandleFrom", extTable).Return(extTableHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -437,23 +437,23 @@ type mockClient struct {
 	mock.Mock
 }
 
-func (m *mockClient) DatasetHandleFrom(dataset resource.Dataset) bigquery.ResourceHandle {
-	args := m.Called(dataset)
+func (m *mockClient) DatasetHandleFrom(res *resource.Resource) bigquery.ResourceHandle {
+	args := m.Called(res)
 	return args.Get(0).(bigquery.ResourceHandle)
 }
 
-func (m *mockClient) ExternalTableHandleFrom(dataset resource.Dataset, name resource.Name) bigquery.ResourceHandle {
-	args := m.Called(dataset, name)
+func (m *mockClient) ExternalTableHandleFrom(res *resource.Resource) bigquery.ResourceHandle {
+	args := m.Called(res)
 	return args.Get(0).(bigquery.ResourceHandle)
 }
 
-func (m *mockClient) TableHandleFrom(dataset resource.Dataset, name resource.Name) bigquery.ResourceHandle {
-	args := m.Called(dataset, name)
+func (m *mockClient) TableHandleFrom(res *resource.Resource) bigquery.ResourceHandle {
+	args := m.Called(res)
 	return args.Get(0).(bigquery.ResourceHandle)
 }
 
-func (m *mockClient) ViewHandleFrom(dataset resource.Dataset, name resource.Name) bigquery.ResourceHandle {
-	args := m.Called(dataset, name)
+func (m *mockClient) ViewHandleFrom(res *resource.Resource) bigquery.ResourceHandle {
+	args := m.Called(res)
 	return args.Get(0).(bigquery.ResourceHandle)
 }
 

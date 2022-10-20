@@ -54,7 +54,7 @@ func TestBqClient(t *testing.T) {
 			dataset, err := resource.NewResource(fullName, resource.KindDataset, bq, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
-			handle := c.DatasetHandleFrom(dataset.Dataset())
+			handle := c.DatasetHandleFrom(dataset)
 			assert.NotNil(t, handle)
 		})
 	})
@@ -67,7 +67,7 @@ func TestBqClient(t *testing.T) {
 			table, err := resource.NewResource(fullName, resource.KindTable, bq, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
-			handle := c.TableHandleFrom(table.Dataset(), table.Name())
+			handle := c.TableHandleFrom(table)
 			assert.NotNil(t, handle)
 		})
 	})

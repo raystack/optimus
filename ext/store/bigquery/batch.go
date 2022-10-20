@@ -34,7 +34,7 @@ func (b *Batch) QueueJobs(ctx context.Context, account string, runner *parallel.
 
 	runner.Add(func(res *resource.Resource) func() (interface{}, error) {
 		return func() (interface{}, error) {
-			dsHandle := client.DatasetHandleFrom(res.Dataset())
+			dsHandle := client.DatasetHandleFrom(res)
 			err = checkOrCreateDataset(ctx, dsHandle, res)
 			return nil, err
 		}
@@ -43,7 +43,7 @@ func (b *Batch) QueueJobs(ctx context.Context, account string, runner *parallel.
 	for _, table := range b.tables {
 		runner.Add(func(res *resource.Resource) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				handle := client.TableHandleFrom(res.Dataset(), res.Name())
+				handle := client.TableHandleFrom(res)
 				err = createOrUpdate(ctx, handle, res)
 				return nil, err
 			}
@@ -53,7 +53,7 @@ func (b *Batch) QueueJobs(ctx context.Context, account string, runner *parallel.
 	for _, extTables := range b.externalTables {
 		runner.Add(func(res *resource.Resource) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				handle := client.TableHandleFrom(res.Dataset(), res.Name())
+				handle := client.TableHandleFrom(res)
 				err = createOrUpdate(ctx, handle, res)
 				return nil, err
 			}
@@ -63,7 +63,7 @@ func (b *Batch) QueueJobs(ctx context.Context, account string, runner *parallel.
 	for _, view := range b.views {
 		runner.Add(func(res *resource.Resource) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				handle := client.TableHandleFrom(res.Dataset(), res.Name())
+				handle := client.TableHandleFrom(res)
 				err = createOrUpdate(ctx, handle, res)
 				return nil, err
 			}
@@ -122,7 +122,7 @@ func (b *Batch) DatasetOrDefault() (*resource.Resource, error) {
 		Labels:      map[string]string{"created_by": "optimus"},
 	}
 	spec := map[string]any{}
-	r, err := resource.NewResource(b.dataset.FullName(), resource.KindDataset, resource.BigQuery, fakeTnnt, fakeMeta, spec)
+	r, err := resource.NewResource(b.dataset.FullName(), resource.KindDataset, resource.Bigquery, fakeTnnt, fakeMeta, spec)
 	if err != nil {
 		return nil, err
 	}
