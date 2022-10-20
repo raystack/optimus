@@ -146,7 +146,7 @@ func (s Store) BatchUpdate(ctx context.Context, resources []*resource.Resource) 
 		me.Append(s.Err)
 	}
 
-	return me
+	return errors.MultiToError(me)
 }
 
 func startChildSpan(ctx context.Context, name string) (context.Context, trace.Span) {

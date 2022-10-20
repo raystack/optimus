@@ -65,7 +65,7 @@ func (m *ResourceMgr) BatchUpdate(ctx context.Context, store resource.Store, res
 	err.Append(datastore.BatchUpdate(ctx, resources))
 	err.Append(m.repo.UpdateStatus(ctx, store, resources...))
 
-	return err
+	return errors.MultiToError(err)
 }
 
 func NewResourceManager(repo ResourceStatusRepo) *ResourceMgr {
