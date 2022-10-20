@@ -204,6 +204,66 @@ func TestPostgresResourceRepository(t *testing.T) {
 			assert.EqualValues(t, resourcesToUpdate[1], storedResources[1])
 		})
 	})
+
+	t.Run("UpdateStatus", func(t *testing.T) {
+		t.Run("updates status and return error for partial update success", func(t *testing.T) {
+			db := dbSetup()
+			repository := repoResource.NewRepository(db)
+
+			existingResource, err := serviceResource.NewResource("project.dataset1", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			assert.NoError(t, err)
+			err = insertAllToDB(db, []*serviceResource.Resource{existingResource})
+			assert.NoError(t, err)
+			nonExistingResource, err := serviceResource.NewResource("project.dataset2", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			assert.NoError(t, err)
+
+			resourcesToUpdate := []*serviceResource.Resource{
+				serviceResource.FromExisting(existingResource, serviceResource.ReplaceStatus(serviceResource.StatusSuccess)),
+				serviceResource.FromExisting(nonExistingResource, serviceResource.ReplaceStatus(serviceResource.StatusSuccess)),
+			}
+			actualError := repository.UpdateStatus(ctx, resourcesToUpdate...)
+			assert.Error(t, actualError)
+
+			storedResources, err := readAllFromDb(db)
+			assert.NoError(t, err)
+			assert.Len(t, storedResources, 1)
+			assert.EqualValues(t, serviceResource.StatusSuccess, storedResources[0].Status())
+		})
+
+		t.Run("updates only status and returns nil if no error is encountered", func(t *testing.T) {
+			db := dbSetup()
+			repository := repoResource.NewRepository(db)
+
+			existingResource1, err := serviceResource.NewResource("project.dataset1", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			assert.NoError(t, err)
+			existingResource2, err := serviceResource.NewResource("project.dataset2", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			assert.NoError(t, err)
+			err = insertAllToDB(db, []*serviceResource.Resource{existingResource1, existingResource2})
+			assert.NoError(t, err)
+
+			newSpec := map[string]any{
+				"Description": "spec for testing update status",
+			}
+			modifiedResource1, err := serviceResource.NewResource("project.dataset1", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, newSpec)
+			assert.NoError(t, err)
+			modifiedResource2, err := serviceResource.NewResource("project.dataset2", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, newSpec)
+			assert.NoError(t, err)
+			resourcesToUpdate := []*serviceResource.Resource{
+				serviceResource.FromExisting(modifiedResource1, serviceResource.ReplaceStatus(serviceResource.StatusSuccess)),
+				serviceResource.FromExisting(modifiedResource2, serviceResource.ReplaceStatus(serviceResource.StatusSuccess)),
+			}
+			actualError := repository.UpdateStatus(ctx, resourcesToUpdate...)
+			assert.NoError(t, actualError)
+
+			storedResources, err := readAllFromDb(db)
+			assert.NoError(t, err)
+			assert.Len(t, storedResources, 2)
+			assert.EqualValues(t, existingResource1.Spec(), storedResources[0].Spec())
+			assert.EqualValues(t, serviceResource.StatusSuccess, storedResources[0].Status())
+			assert.EqualValues(t, existingResource2.Spec(), storedResources[1].Spec())
+			assert.EqualValues(t, serviceResource.StatusSuccess, storedResources[1].Status())
+		})
+	})
 }
 
 func readAllFromDb(db *gorm.DB) ([]*serviceResource.Resource, error) {

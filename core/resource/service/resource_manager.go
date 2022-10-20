@@ -14,7 +14,7 @@ type DataStore interface {
 }
 
 type ResourceStatusRepo interface {
-	UpdateStatus(ctx context.Context, store resource.Store, res ...*resource.Resource) error
+	UpdateStatus(ctx context.Context, res ...*resource.Resource) error
 }
 
 type ResourceMgr struct {
@@ -36,7 +36,7 @@ func (m *ResourceMgr) CreateResource(ctx context.Context, res *resource.Resource
 	}
 	res.MarkSuccess()
 
-	return m.repo.UpdateStatus(ctx, store, res)
+	return m.repo.UpdateStatus(ctx, res)
 }
 
 func (m *ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource) error {
@@ -52,7 +52,7 @@ func (m *ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource
 	}
 	res.MarkSuccess()
 
-	return m.repo.UpdateStatus(ctx, store, res)
+	return m.repo.UpdateStatus(ctx, res)
 }
 
 func (m *ResourceMgr) BatchUpdate(ctx context.Context, store resource.Store, resources []*resource.Resource) error {
@@ -63,7 +63,7 @@ func (m *ResourceMgr) BatchUpdate(ctx context.Context, store resource.Store, res
 
 	err := errors.NewMultiError("error in batch update")
 	err.Append(datastore.BatchUpdate(ctx, resources))
-	err.Append(m.repo.UpdateStatus(ctx, store, resources...))
+	err.Append(m.repo.UpdateStatus(ctx, resources...))
 
 	return errors.MultiToError(err)
 }
