@@ -3,24 +3,29 @@ package dto
 import (
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/models"
 )
 
 type JobSpec struct {
 	tenant *tenant.WithDetails
 
 	version      int
-	name         job.JobName
+	name         job.Name
 	owner        string
 	description  string
 	labels       map[string]string
 	schedule     *Schedule
-	window       *Window
+	window       models.Window
 	task         *Task
 	hooks        []*Hook
 	alerts       []*Alert
 	dependencies *Dependencies
 	assets       map[string]string
 	metadata     *Metadata
+}
+
+func (j JobSpec) Window() models.Window {
+	return j.window
 }
 
 func (j JobSpec) Tenant() *tenant.WithDetails {
@@ -31,7 +36,7 @@ func (j JobSpec) Version() int {
 	return j.version
 }
 
-func (j JobSpec) Name() job.JobName {
+func (j JobSpec) Name() job.Name {
 	return j.name
 }
 
@@ -49,10 +54,6 @@ func (j JobSpec) Labels() map[string]string {
 
 func (j JobSpec) Schedule() *Schedule {
 	return j.schedule
-}
-
-func (j JobSpec) Window() *Window {
-	return j.window
 }
 
 func (j JobSpec) Task() *Task {
@@ -79,11 +80,17 @@ func (j JobSpec) Metadata() *Metadata {
 	return j.metadata
 }
 
+func (j JobSpec) Validate() error {
+	// - if 1 job is failed to be validated/saved, should we fail them all? -> will proceed with what succeed, and notify the failed ones.
+
+	panic("to do")
+}
+
 func NewJobSpec(tenant *tenant.WithDetails, version int, name string, owner string, description string,
-	labels map[string]string, schedule *Schedule, window *Window, task *Task, hooks []*Hook, alerts []*Alert,
+	labels map[string]string, schedule *Schedule, window models.Window, task *Task, hooks []*Hook, alerts []*Alert,
 	dependencies *Dependencies, assets map[string]string, metadata *Metadata) (*JobSpec, error) {
 
-	jobName, err := job.JobNameFrom(name)
+	jobName, err := job.NameFrom(name)
 	if err != nil {
 		return nil, err
 	}
@@ -92,13 +99,6 @@ func NewJobSpec(tenant *tenant.WithDetails, version int, name string, owner stri
 		labels: labels, schedule: schedule, window: window, task: task, hooks: hooks, alerts: alerts,
 		dependencies: dependencies, assets: assets, metadata: metadata}, nil
 }
-
-/*
-behavior:
-- validate
-- get dstart dend of window
-- diff?
-*/
 
 type Window struct {
 	size       string
@@ -116,10 +116,6 @@ func (w Window) Offset() string {
 
 func (w Window) TruncateTo() string {
 	return w.truncateTo
-}
-
-func NewWindow(size string, offset string, truncateTo string) *Window {
-	return &Window{size: size, offset: offset, truncateTo: truncateTo}
 }
 
 type Config struct {

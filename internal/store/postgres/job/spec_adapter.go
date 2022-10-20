@@ -3,6 +3,7 @@ package job
 import (
 	"encoding/json"
 	"github.com/google/uuid"
+	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -46,6 +47,9 @@ type Spec struct {
 	Hooks    datatypes.JSON
 	Metadata datatypes.JSON
 
+	Destination string
+	Sources     []string
+
 	ProjectName   string `json:"project_name"`
 	NamespaceName string `json:"namespace_name"`
 
@@ -76,7 +80,9 @@ type Hook struct {
 	Config datatypes.JSON
 }
 
-func toStorageSpec(jobSpec *dto.JobSpec) (*Spec, error) {
+func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
+	jobSpec := jobEntity.JobSpec()
+
 	labelsBytes, err := json.Marshal(jobSpec.Labels())
 	if err != nil {
 		return nil, err
@@ -135,8 +141,13 @@ func toStorageSpec(jobSpec *dto.JobSpec) (*Spec, error) {
 		nsName = ns.Name().String()
 	}
 
+	sources := make([]string, len(jobEntity.Sources()))
+	for i, source := range jobEntity.Sources() {
+		sources[i] = source
+	}
+
 	return &Spec{
-		Name:        jobSpec.Name(),
+		Name:        jobSpec.Name().String(),
 		Version:     jobSpec.Version(),
 		Owner:       jobSpec.Owner(),
 		Description: jobSpec.Description(),
@@ -148,7 +159,7 @@ func toStorageSpec(jobSpec *dto.JobSpec) (*Spec, error) {
 		EndDate:   &endDate,
 		Interval:  jobSpec.Schedule().Interval(),
 
-		TaskName:   jobSpec.Name(),
+		TaskName:   jobSpec.Name().String(),
 		TaskConfig: taskConfigBytes,
 
 		Hooks: hooksBytes,
@@ -164,6 +175,9 @@ func toStorageSpec(jobSpec *dto.JobSpec) (*Spec, error) {
 
 		StaticDependencies: jobSpec.Dependencies().JobDependencies(),
 		HTTPDependencies:   httpDependenciesBytes,
+
+		Destination: jobEntity.Destination(),
+		Sources:     sources,
 
 		NamespaceName: nsName,
 		ProjectName:   jobSpec.Tenant().Project().Name().String(),
