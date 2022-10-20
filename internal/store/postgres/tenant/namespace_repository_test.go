@@ -105,7 +105,7 @@ func TestPostgresNamespaceRepository(t *testing.T) {
 
 			err = repo.Save(ctx, ns2)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "empty config")
+			assert.EqualError(t, err, "failed precondition for entity namespace: empty config")
 		})
 	})
 	t.Run("GetAll", func(t *testing.T) {

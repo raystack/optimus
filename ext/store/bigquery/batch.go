@@ -122,7 +122,12 @@ func (b *Batch) DatasetOrDefault() (*resource.Resource, error) {
 		Labels:      map[string]string{"created_by": "optimus"},
 	}
 	spec := map[string]any{}
-	return resource.NewResource(b.dataset.FullName(), resource.KindDataset, resource.BigQuery, fakeTnnt, fakeMeta, spec)
+	r, err := resource.NewResource(b.dataset.FullName(), resource.KindDataset, resource.BigQuery, fakeTnnt, fakeMeta, spec)
+	if err != nil {
+		return nil, err
+	}
+	resToCreate := resource.FromExisting(r, resource.ReplaceStatus(resource.StatusToCreate))
+	return resToCreate, nil
 }
 
 func BatchesFrom(resources []*resource.Resource, provider ClientProvider) map[string]Batch {
