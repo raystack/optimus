@@ -208,6 +208,7 @@ func (r *Resource) Equal(incoming *Resource) bool {
 func (r *Resource) MarkSuccess() error {
 	if r.status == StatusToCreate || r.status == StatusToUpdate {
 		r.status = StatusSuccess
+		return nil
 	}
 	msg := fmt.Sprintf("invalid transition from %s to %s for %s", r.status, StatusSuccess, r.FullName())
 	return errors.InvalidStateTransition(EntityResource, msg)
@@ -218,9 +219,11 @@ func (r *Resource) MarkFailed() error {
 		r.status = StatusCreateFailure
 	} else if r.status == StatusToUpdate {
 		r.status = StatusUpdateFailure
+	} else {
+		msg := fmt.Sprintf("invalid transition from %s to failure for %s", r.status, r.FullName())
+		return errors.InvalidStateTransition(EntityResource, msg)
 	}
-	msg := fmt.Sprintf("invalid transition from %s to failure for %s", r.status, r.FullName())
-	return errors.InvalidStateTransition(EntityResource, msg)
+	return nil
 }
 
 type FromExistingOpt func(r *Resource)

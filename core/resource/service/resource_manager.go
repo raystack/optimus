@@ -30,13 +30,18 @@ func (m *ResourceMgr) CreateResource(ctx context.Context, res *resource.Resource
 		return errors.InvalidArgument(resource.EntityResource, "data store service not found for "+store.String())
 	}
 
-	err := datastore.Create(ctx, res)
-	if !errors.IsErrorType(err, errors.ErrAlreadyExists) {
-		res.MarkFailed()
-	}
-	res.MarkSuccess()
+	me := errors.NewMultiError("error in create resource")
 
-	return m.repo.UpdateStatus(ctx, res)
+	err := datastore.Create(ctx, res)
+	me.Append(err)
+	if !errors.IsErrorType(err, errors.ErrAlreadyExists) {
+		me.Append(res.MarkFailed())
+	} else {
+		me.Append(res.MarkSuccess())
+	}
+
+	me.Append(m.repo.UpdateStatus(ctx, res))
+	return me
 }
 
 func (m *ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource) error {
@@ -46,13 +51,18 @@ func (m *ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource
 		return errors.InvalidArgument(resource.EntityResource, "data store service not found for "+store.String())
 	}
 
-	err := datastore.Update(ctx, res)
-	if err != nil {
-		res.MarkFailed()
-	}
-	res.MarkSuccess()
+	me := errors.NewMultiError("error in update resource")
 
-	return m.repo.UpdateStatus(ctx, res)
+	err := datastore.Update(ctx, res)
+	me.Append(err)
+	if err != nil {
+		me.Append(res.MarkFailed())
+	} else {
+		me.Append(res.MarkSuccess())
+	}
+
+	me.Append(m.repo.UpdateStatus(ctx, res))
+	return me
 }
 
 func (m *ResourceMgr) BatchUpdate(ctx context.Context, store resource.Store, resources []*resource.Resource) error {
