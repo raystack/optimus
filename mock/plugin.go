@@ -77,14 +77,14 @@ func (_m *PluginRepository) GetByName(_a0 string) (*models.Plugin, error) {
 }
 
 // GetCommandLines provides a mock function with given fields:
-func (_m *PluginRepository) GetCommandLines() []models.CommandLineMod {
+func (_m *PluginRepository) GetCommandLines() []models.YamlMod {
 	ret := _m.Called()
 
-	var r0 []models.CommandLineMod
-	if rf, ok := ret.Get(0).(func() []models.CommandLineMod); ok {
+	var r0 []models.YamlMod
+	if rf, ok := ret.Get(0).(func() []models.YamlMod); ok {
 		r0 = rf()
 	} else if ret.Get(0) != nil {
-		r0 = ret.Get(0).([]models.CommandLineMod)
+		r0 = ret.Get(0).([]models.YamlMod)
 	}
 
 	return r0
@@ -156,31 +156,31 @@ func (repo *BasePlugin) PluginInfo() (*models.PluginInfoResponse, error) {
 	return args.Get(0).(*models.PluginInfoResponse), args.Error(1)
 }
 
-type CLIMod struct {
+type YamlMod struct {
 	mock.Mock `hash:"-"`
 }
 
-func (repo *CLIMod) PluginInfo() (*models.PluginInfoResponse, error) {
+func (repo *YamlMod) PluginInfo() (*models.PluginInfoResponse, error) {
 	args := repo.Called()
 	return args.Get(0).(*models.PluginInfoResponse), args.Error(1)
 }
 
-func (repo *CLIMod) DefaultConfig(ctx context.Context, inp models.DefaultConfigRequest) (*models.DefaultConfigResponse, error) {
+func (repo *YamlMod) DefaultConfig(ctx context.Context, inp models.DefaultConfigRequest) (*models.DefaultConfigResponse, error) {
 	args := repo.Called(ctx, inp)
 	return args.Get(0).(*models.DefaultConfigResponse), args.Error(1)
 }
 
-func (repo *CLIMod) DefaultAssets(ctx context.Context, inp models.DefaultAssetsRequest) (*models.DefaultAssetsResponse, error) {
+func (repo *YamlMod) DefaultAssets(ctx context.Context, inp models.DefaultAssetsRequest) (*models.DefaultAssetsResponse, error) {
 	args := repo.Called(ctx, inp)
 	return args.Get(0).(*models.DefaultAssetsResponse), args.Error(1)
 }
 
-func (repo *CLIMod) GetQuestions(ctx context.Context, inp models.GetQuestionsRequest) (*models.GetQuestionsResponse, error) {
+func (repo *YamlMod) GetQuestions(ctx context.Context, inp models.GetQuestionsRequest) (*models.GetQuestionsResponse, error) {
 	args := repo.Called(ctx, inp)
 	return args.Get(0).(*models.GetQuestionsResponse), args.Error(1)
 }
 
-func (repo *CLIMod) ValidateQuestion(ctx context.Context, inp models.ValidateQuestionRequest) (*models.ValidateQuestionResponse, error) {
+func (repo *YamlMod) ValidateQuestion(ctx context.Context, inp models.ValidateQuestionRequest) (*models.ValidateQuestionResponse, error) {
 	args := repo.Called(ctx, inp)
 	return args.Get(0).(*models.ValidateQuestionResponse), args.Error(1)
 }
