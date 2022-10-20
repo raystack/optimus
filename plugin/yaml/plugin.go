@@ -32,7 +32,7 @@ func (p *PluginSpec) PluginInfo() (*models.PluginInfoResponse, error) { // nolin
 		Image:         fmt.Sprintf("%s:%s", p.Image, p.PluginVersion),
 		SecretPath:    p.SecretPath,
 		PluginType:    p.PluginType,
-		PluginMods:    []models.PluginMod{models.ModTypeCLI},
+		PluginMods:    []models.PluginMod{models.ModTypeYaml},
 		PluginVersion: p.PluginVersion,
 		HookType:      p.HookType,
 		DependsOn:     p.DependsOn,
