@@ -23,7 +23,7 @@ type ResourceMgr struct {
 	repo ResourceStatusRepo
 }
 
-func (m ResourceMgr) CreateResource(ctx context.Context, res *resource.Resource) error {
+func (m *ResourceMgr) CreateResource(ctx context.Context, res *resource.Resource) error {
 	store := res.Dataset().Store
 	datastore, ok := m.datastoreMap[store]
 	if !ok {
@@ -39,7 +39,7 @@ func (m ResourceMgr) CreateResource(ctx context.Context, res *resource.Resource)
 	return m.repo.UpdateStatus(ctx, store, res)
 }
 
-func (m ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource) error {
+func (m *ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource) error {
 	store := res.Dataset().Store
 	datastore, ok := m.datastoreMap[store]
 	if !ok {
@@ -55,7 +55,7 @@ func (m ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource)
 	return m.repo.UpdateStatus(ctx, store, res)
 }
 
-func (m ResourceMgr) BatchUpdate(ctx context.Context, store resource.Store, resources []*resource.Resource) error {
+func (m *ResourceMgr) BatchUpdate(ctx context.Context, store resource.Store, resources []*resource.Resource) error {
 	datastore, ok := m.datastoreMap[store]
 	if !ok {
 		return errors.InvalidArgument(resource.EntityResource, "data store service not found for "+store.String())
@@ -66,4 +66,15 @@ func (m ResourceMgr) BatchUpdate(ctx context.Context, store resource.Store, reso
 	err.Append(m.repo.UpdateStatus(ctx, store, resources...))
 
 	return err
+}
+
+func NewResourceManager(repo ResourceStatusRepo) *ResourceMgr {
+	return &ResourceMgr{
+		repo:         repo,
+		datastoreMap: map[resource.Store]DataStore{},
+	}
+}
+
+func (m *ResourceMgr) RegisterDatastore(store resource.Store, dataStore DataStore) {
+	m.datastoreMap[store] = dataStore
 }

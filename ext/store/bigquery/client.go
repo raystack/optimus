@@ -11,6 +11,16 @@ import (
 	"github.com/odpf/optimus/internal/errors"
 )
 
+type BqClientProvider struct{}
+
+func NewClientProvider() *BqClientProvider {
+	return &BqClientProvider{}
+}
+
+func (b BqClientProvider) Get(ctx context.Context, account string) (Client, error) {
+	return NewClient(ctx, account)
+}
+
 type BqClient struct {
 	bq *bigquery.Client
 }
