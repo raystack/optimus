@@ -47,11 +47,11 @@ func TestResourceManager(t *testing.T) {
 				return res[0].Name() == createRequest.Name() && res[0].Status() == resource.StatusCreateFailure
 			})
 			repo := new(mockRepo)
-			repo.On("UpdateStatus", ctx, argMatcher).Return(nil)
+			repo.On("UpdateStatus", mock.Anything, argMatcher).Return(nil)
 			manager := service.NewResourceManager(repo)
 
 			storeService := new(mockDataStore)
-			storeService.On("Create", ctx, createRequest).Return(errors.InternalError("resource", "error in create", nil))
+			storeService.On("Create", mock.Anything, createRequest).Return(errors.InternalError("resource", "error in create", nil))
 			defer storeService.AssertExpectations(t)
 
 			manager.RegisterDatastore(store, storeService)
@@ -73,12 +73,12 @@ func TestResourceManager(t *testing.T) {
 				return res[0].Name() == createRequest.Name() && res[0].Status() == resource.StatusCreateFailure
 			})
 			repo := new(mockRepo)
-			repo.On("UpdateStatus", ctx, argMatcher).
+			repo.On("UpdateStatus", mock.Anything, argMatcher).
 				Return(errors.NotFound("resource", "error in update"))
 			manager := service.NewResourceManager(repo)
 
 			storeService := new(mockDataStore)
-			storeService.On("Create", ctx, createRequest).Return(errors.InvalidArgument("res", "error in create"))
+			storeService.On("Create", mock.Anything, createRequest).Return(errors.InvalidArgument("res", "error in create"))
 			defer storeService.AssertExpectations(t)
 
 			manager.RegisterDatastore(store, storeService)
@@ -101,11 +101,11 @@ func TestResourceManager(t *testing.T) {
 				return res[0].Name() == createRequest.Name() && res[0].Status() == resource.StatusSuccess
 			})
 			repo := new(mockRepo)
-			repo.On("UpdateStatus", ctx, argMatcher).Return(nil)
+			repo.On("UpdateStatus", mock.Anything, argMatcher).Return(nil)
 			manager := service.NewResourceManager(repo)
 
 			storeService := new(mockDataStore)
-			storeService.On("Create", ctx, createRequest).Return(errors.AlreadyExists("resource", "error in create"))
+			storeService.On("Create", mock.Anything, createRequest).Return(errors.AlreadyExists("resource", "error in create"))
 			defer storeService.AssertExpectations(t)
 
 			manager.RegisterDatastore(store, storeService)
@@ -126,11 +126,11 @@ func TestResourceManager(t *testing.T) {
 				return res[0].Name() == createRequest.Name() && res[0].Status() == resource.StatusSuccess
 			})
 			repo := new(mockRepo)
-			repo.On("UpdateStatus", ctx, argMatcher).Return(nil)
+			repo.On("UpdateStatus", mock.Anything, argMatcher).Return(nil)
 			manager := service.NewResourceManager(repo)
 
 			storeService := new(mockDataStore)
-			storeService.On("Create", ctx, createRequest).Return(nil)
+			storeService.On("Create", mock.Anything, createRequest).Return(nil)
 			defer storeService.AssertExpectations(t)
 
 			manager.RegisterDatastore(store, storeService)
@@ -166,11 +166,11 @@ func TestResourceManager(t *testing.T) {
 				return res[0].Name() == updateRequest.Name() && res[0].Status() == resource.StatusUpdateFailure
 			})
 			repo := new(mockRepo)
-			repo.On("UpdateStatus", ctx, argMatcher).Return(nil)
+			repo.On("UpdateStatus", mock.Anything, argMatcher).Return(nil)
 			manager := service.NewResourceManager(repo)
 
 			storeService := new(mockDataStore)
-			storeService.On("Update", ctx, updateRequest).Return(errors.InternalError("resource", "error in update", nil))
+			storeService.On("Update", mock.Anything, updateRequest).Return(errors.InternalError("resource", "error in update", nil))
 			defer storeService.AssertExpectations(t)
 
 			manager.RegisterDatastore(store, storeService)
@@ -192,13 +192,13 @@ func TestResourceManager(t *testing.T) {
 				return res[0].Name() == updateRequest.Name() && res[0].Status() == resource.StatusUpdateFailure
 			})
 			repo := new(mockRepo)
-			repo.On("UpdateStatus", ctx, argMatcher).
+			repo.On("UpdateStatus", mock.Anything, argMatcher).
 				Return(errors.NotFound("resource", "error in update"))
 			defer repo.AssertExpectations(t)
 			manager := service.NewResourceManager(repo)
 
 			storeService := new(mockDataStore)
-			storeService.On("Update", ctx, updateRequest).Return(errors.InvalidArgument("res", "error in update"))
+			storeService.On("Update", mock.Anything, updateRequest).Return(errors.InvalidArgument("res", "error in update"))
 			defer storeService.AssertExpectations(t)
 
 			manager.RegisterDatastore(store, storeService)
@@ -221,11 +221,11 @@ func TestResourceManager(t *testing.T) {
 				return res[0].Name() == updateRequest.Name() && res[0].Status() == resource.StatusSuccess
 			})
 			repo := new(mockRepo)
-			repo.On("UpdateStatus", ctx, argMatcher).Return(nil)
+			repo.On("UpdateStatus", mock.Anything, argMatcher).Return(nil)
 			manager := service.NewResourceManager(repo)
 
 			storeService := new(mockDataStore)
-			storeService.On("Update", ctx, updateRequest).Return(nil)
+			storeService.On("Update", mock.Anything, updateRequest).Return(nil)
 			defer storeService.AssertExpectations(t)
 
 			manager.RegisterDatastore(store, storeService)
@@ -266,7 +266,7 @@ func TestResourceManager(t *testing.T) {
 			repo := new(mockRepo)
 			me := errors.NewMultiError("error in batch")
 			me.Append(errors.InternalError("resource", "enable to update in data store", nil))
-			repo.On("UpdateStatus", ctx, argMatcher).Return(me)
+			repo.On("UpdateStatus", mock.Anything, argMatcher).Return(me)
 			defer repo.AssertExpectations(t)
 
 			manager := service.NewResourceManager(repo)
@@ -281,7 +281,7 @@ func TestResourceManager(t *testing.T) {
 			me2 := errors.NewMultiError("error in db update")
 			me.Append(errors.InternalError("resource", "enable to update state in db", nil))
 			storeService := new(mockDataStore)
-			storeService.On("BatchUpdate", ctx, matcher).Return(me2)
+			storeService.On("BatchUpdate", mock.Anything, matcher).Return(me2)
 			defer storeService.AssertExpectations(t)
 
 			manager.RegisterDatastore(store, storeService)
@@ -306,7 +306,7 @@ func TestResourceManager(t *testing.T) {
 				return res[0].Name() == updateRequest.Name() && res[0].Status() == resource.StatusSuccess
 			})
 			repo := new(mockRepo)
-			repo.On("UpdateStatus", ctx, argMatcher).Return(nil)
+			repo.On("UpdateStatus", mock.Anything, argMatcher).Return(nil)
 			manager := service.NewResourceManager(repo)
 
 			matcher := mock.MatchedBy(func(res []*resource.Resource) bool {
@@ -317,7 +317,7 @@ func TestResourceManager(t *testing.T) {
 				return false
 			})
 			storeService := new(mockDataStore)
-			storeService.On("BatchUpdate", ctx, matcher).Return(nil)
+			storeService.On("BatchUpdate", mock.Anything, matcher).Return(nil)
 			defer storeService.AssertExpectations(t)
 
 			manager.RegisterDatastore(store, storeService)

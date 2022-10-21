@@ -3,6 +3,9 @@ package service
 import (
 	"context"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/odpf/optimus/core/resource"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
@@ -34,6 +37,8 @@ type ResourceService struct {
 	batch             ResourceBatchRepo
 	mgr               ResourceManager
 	tnntDetailsGetter TenantDetailsGetter
+
+	tracer trace.Tracer
 }
 
 func NewResourceService(repo ResourceRepository, batch ResourceBatchRepo, mgr ResourceManager, tnntDetailsGetter TenantDetailsGetter) *ResourceService {
@@ -42,38 +47,45 @@ func NewResourceService(repo ResourceRepository, batch ResourceBatchRepo, mgr Re
 		batch:             batch,
 		mgr:               mgr,
 		tnntDetailsGetter: tnntDetailsGetter,
+		tracer:            otel.Tracer("core.resource.service.ResourceService{}"),
 	}
 }
 
 func (rs ResourceService) Create(ctx context.Context, res *resource.Resource) error {
+	spanCtx, span := rs.tracer.Start(ctx, "Create()")
+	defer span.End()
+
 	if err := res.Validate(); err != nil {
 		return err
 	}
 
-	if _, err := rs.tnntDetailsGetter.GetDetails(ctx, res.Tenant()); err != nil {
+	if _, err := rs.tnntDetailsGetter.GetDetails(spanCtx, res.Tenant()); err != nil {
 		return err
 	}
 
 	createRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToCreate))
-	if err := rs.repo.Create(ctx, createRequest); err != nil {
+	if err := rs.repo.Create(spanCtx, createRequest); err != nil {
 		return err
 	}
 
-	return rs.mgr.CreateResource(ctx, createRequest)
+	return rs.mgr.CreateResource(spanCtx, createRequest)
 }
 
 func (rs ResourceService) Update(ctx context.Context, res *resource.Resource) error {
+	spanCtx, span := rs.tracer.Start(ctx, "Update()")
+	defer span.End()
+
 	if err := res.Validate(); err != nil {
 		return err
 	}
 
-	existing, err := rs.repo.ReadByFullName(ctx, res.Tenant(), res.Dataset().Store, res.FullName())
+	existing, err := rs.repo.ReadByFullName(spanCtx, res.Tenant(), res.Dataset().Store, res.FullName())
 	if err != nil {
 		return err
 	}
 
 	updateRequest := resource.FromExisting(existing, resource.ReplaceStatus(resource.StatusToUpdate))
-	if err := rs.repo.Update(ctx, updateRequest); err != nil {
+	if err := rs.repo.Update(spanCtx, updateRequest); err != nil {
 		return err
 	}
 
@@ -81,24 +93,33 @@ func (rs ResourceService) Update(ctx context.Context, res *resource.Resource) er
 }
 
 func (rs ResourceService) Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceName string) (*resource.Resource, error) {
+	spanCtx, span := rs.tracer.Start(ctx, "Get()")
+	defer span.End()
+
 	if resourceName == "" {
 		return nil, errors.InvalidArgument(resource.EntityResource, "empty resource full name")
 	}
-	return rs.repo.ReadByFullName(ctx, tnnt, store, resourceName)
+	return rs.repo.ReadByFullName(spanCtx, tnnt, store, resourceName)
 }
 
 func (rs ResourceService) GetAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error) {
-	return rs.repo.ReadAll(ctx, tnnt, store)
+	spanCtx, span := rs.tracer.Start(ctx, "GetAll()")
+	defer span.End()
+
+	return rs.repo.ReadAll(spanCtx, tnnt, store)
 }
 
 func (rs ResourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
+	spanCtx, span := rs.tracer.Start(ctx, "BatchUpdate()")
+	defer span.End()
+
 	for _, r := range resources {
 		if err := r.Validate(); err != nil {
 			return err
 		}
 	}
 
-	existingResources, err := rs.repo.ReadAll(ctx, tnnt, store)
+	existingResources, err := rs.repo.ReadAll(spanCtx, tnnt, store)
 	if err != nil {
 		return err
 	}
@@ -109,11 +130,11 @@ func (rs ResourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, s
 		return nil
 	}
 
-	if err := rs.batch.CreateOrUpdateAll(ctx, resourcesToBatchUpdate); err != nil {
+	if err := rs.batch.CreateOrUpdateAll(spanCtx, resourcesToBatchUpdate); err != nil {
 		return err
 	}
 
-	return rs.mgr.BatchUpdate(ctx, store, resourcesToBatchUpdate)
+	return rs.mgr.BatchUpdate(spanCtx, store, resourcesToBatchUpdate)
 }
 
 func (ResourceService) getResourcesToBatchUpdate(incomings []*resource.Resource, existingMappedByFullName map[string]*resource.Resource) []*resource.Resource {
