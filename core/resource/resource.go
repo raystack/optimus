@@ -231,18 +231,6 @@ func (r *Resource) MarkFailed() error {
 
 type FromExistingOpt func(r *Resource)
 
-func ReplaceDataset(dataset Dataset) FromExistingOpt {
-	return func(r *Resource) {
-		r.dataset = dataset
-	}
-}
-
-func ReplaceTenant(tnnt tenant.Tenant) FromExistingOpt {
-	return func(r *Resource) {
-		r.tenant = tnnt
-	}
-}
-
 func ReplaceStatus(status Status) FromExistingOpt {
 	return func(r *Resource) {
 		r.status = status
