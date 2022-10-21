@@ -35,7 +35,7 @@ func (b *Batch) QueueJobs(ctx context.Context, account string, runner *parallel.
 	runner.Add(func(res *resource.Resource) func() (interface{}, error) {
 		return func() (interface{}, error) {
 			dsHandle := client.DatasetHandleFrom(res)
-			err = checkOrCreateDataset(ctx, dsHandle, res)
+			err = createOrUpdate(ctx, dsHandle, res)
 			return res, err
 		}
 	}(dataset))
@@ -72,14 +72,6 @@ func (b *Batch) QueueJobs(ctx context.Context, account string, runner *parallel.
 	return nil
 }
 
-func checkOrCreateDataset(ctx context.Context, handle ResourceHandle, res *resource.Resource) error {
-	if res.Status() == resource.StatusToUpdate {
-		return update(ctx, handle, res)
-	}
-	// Can be to create or status unknown
-	return create(ctx, handle, res)
-}
-
 func createOrUpdate(ctx context.Context, handle ResourceHandle, res *resource.Resource) error {
 	if res.Status() == resource.StatusToUpdate {
 		return update(ctx, handle, res)
@@ -96,7 +88,8 @@ func create(ctx context.Context, handle ResourceHandle, res *resource.Resource) 
 
 	err := handle.Create(ctx, res)
 	if err != nil && !errors.IsErrorType(err, errors.ErrAlreadyExists) {
-		return res.MarkFailed()
+		res.MarkFailed()
+		return err
 	}
 
 	return res.MarkSuccess()

@@ -46,6 +46,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			clientProvider := new(mockClientProvider)
 			clientProvider.On("Get", mock.Anything, "secret_value").Return(nil, errors.New("error in client"))
+			defer clientProvider.AssertExpectations(t)
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
@@ -63,10 +64,14 @@ func TestBigqueryStore(t *testing.T) {
 			secretProvider.On("GetSecret", mock.Anything, tnnt, "DATASTORE_BIGQUERY").
 				Return(pts, nil)
 			defer secretProvider.AssertExpectations(t)
+
 			client := new(mockClient)
 			client.On("Close")
+			defer client.AssertExpectations(t)
+
 			clientProvider := new(mockClientProvider)
 			clientProvider.On("Get", mock.Anything, "secret_value").Return(client, nil)
+			defer clientProvider.AssertExpectations(t)
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
@@ -98,6 +103,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			clientProvider := new(mockClientProvider)
 			clientProvider.On("Get", mock.Anything, "secret_value").Return(client, nil)
+			defer clientProvider.AssertExpectations(t)
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
@@ -125,6 +131,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			clientProvider := new(mockClientProvider)
 			clientProvider.On("Get", mock.Anything, "secret_value").Return(client, nil)
+			defer clientProvider.AssertExpectations(t)
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
@@ -152,6 +159,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			clientProvider := new(mockClientProvider)
 			clientProvider.On("Get", mock.Anything, "secret_value").Return(client, nil)
+			defer clientProvider.AssertExpectations(t)
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
@@ -179,6 +187,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			clientProvider := new(mockClientProvider)
 			clientProvider.On("Get", mock.Anything, "secret_value").Return(client, nil)
+			defer clientProvider.AssertExpectations(t)
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
@@ -206,6 +215,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			clientProvider := new(mockClientProvider)
 			clientProvider.On("Get", mock.Anything, "secret_value").Return(client, nil)
+			defer clientProvider.AssertExpectations(t)
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
@@ -239,6 +249,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			clientProvider := new(mockClientProvider)
 			clientProvider.On("Get", mock.Anything, "secret_value").Return(nil, errors.New("error in client"))
+			defer clientProvider.AssertExpectations(t)
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
@@ -258,8 +269,11 @@ func TestBigqueryStore(t *testing.T) {
 			defer secretProvider.AssertExpectations(t)
 			client := new(mockClient)
 			client.On("Close")
+			defer client.AssertExpectations(t)
+
 			clientProvider := new(mockClientProvider)
 			clientProvider.On("Get", mock.Anything, "secret_value").Return(client, nil)
+			defer clientProvider.AssertExpectations(t)
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
@@ -372,6 +386,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			clientProvider := new(mockClientProvider)
 			clientProvider.On("Get", mock.Anything, "secret_value").Return(client, nil)
+			defer clientProvider.AssertExpectations(t)
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
@@ -403,6 +418,100 @@ func TestBigqueryStore(t *testing.T) {
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
 			err = bqStore.Update(ctx, extTable)
+			assert.Nil(t, err)
+		})
+	})
+	t.Run("BatchUpdate", func(t *testing.T) {
+		t.Run("returns error when cannot get secret", func(t *testing.T) {
+			secretProvider := new(mockSecretProvider)
+			secretProvider.On("GetSecret", mock.Anything, tnnt, "DATASTORE_BIGQUERY").
+				Return(nil, errors.New("not found secret"))
+			defer secretProvider.AssertExpectations(t)
+
+			clientProvider := new(mockClientProvider)
+			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
+
+			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, bq, tnnt, &metadata, spec)
+			assert.Nil(t, err)
+
+			err = bqStore.BatchUpdate(ctx, []*resource.Resource{dataset})
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "not found secret")
+		})
+		t.Run("returns error when cannot create client", func(t *testing.T) {
+			pts, _ := tenant.NewPlainTextSecret("secret_name", "secret_value")
+			secretProvider := new(mockSecretProvider)
+			secretProvider.On("GetSecret", mock.Anything, tnnt, "DATASTORE_BIGQUERY").
+				Return(pts, nil)
+			defer secretProvider.AssertExpectations(t)
+
+			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, bq, tnnt, &metadata, spec)
+			assert.Nil(t, err)
+			updateDS := resource.FromExisting(dataset, resource.ReplaceStatus(resource.StatusToUpdate))
+
+			clientProvider := new(mockClientProvider)
+			clientProvider.On("Get", mock.Anything, "secret_value").
+				Return(nil, errors.New("some error"))
+
+			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
+
+			err = bqStore.BatchUpdate(ctx, []*resource.Resource{updateDS})
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "some error")
+		})
+		t.Run("returns error when one or more job fails", func(t *testing.T) {
+			pts, _ := tenant.NewPlainTextSecret("secret_name", "secret_value")
+			secretProvider := new(mockSecretProvider)
+			secretProvider.On("GetSecret", mock.Anything, tnnt, "DATASTORE_BIGQUERY").
+				Return(pts, nil)
+			defer secretProvider.AssertExpectations(t)
+
+			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, bq, tnnt, &metadata, spec)
+			assert.Nil(t, err)
+			updateDS := resource.FromExisting(dataset, resource.ReplaceStatus(resource.StatusToUpdate))
+
+			datasetHandle := new(mockResourceHandle)
+			datasetHandle.On("Update", mock.Anything, updateDS).Return(errors.New("failed to update"))
+			defer datasetHandle.AssertExpectations(t)
+
+			client := new(mockClient)
+			client.On("DatasetHandleFrom", updateDS).Return(datasetHandle)
+			defer client.AssertExpectations(t)
+
+			clientProvider := new(mockClientProvider)
+			clientProvider.On("Get", mock.Anything, "secret_value").Return(client, nil)
+
+			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
+
+			err = bqStore.BatchUpdate(ctx, []*resource.Resource{updateDS})
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "error while resource batch update:\n failed to update")
+		})
+		t.Run("returns no error when successfully updates", func(t *testing.T) {
+			pts, _ := tenant.NewPlainTextSecret("secret_name", "secret_value")
+			secretProvider := new(mockSecretProvider)
+			secretProvider.On("GetSecret", mock.Anything, tnnt, "DATASTORE_BIGQUERY").
+				Return(pts, nil)
+			defer secretProvider.AssertExpectations(t)
+
+			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, bq, tnnt, &metadata, spec)
+			assert.Nil(t, err)
+			updateDS := resource.FromExisting(dataset, resource.ReplaceStatus(resource.StatusToUpdate))
+
+			datasetHandle := new(mockResourceHandle)
+			datasetHandle.On("Update", mock.Anything, updateDS).Return(nil)
+			defer datasetHandle.AssertExpectations(t)
+
+			client := new(mockClient)
+			client.On("DatasetHandleFrom", updateDS).Return(datasetHandle)
+			defer client.AssertExpectations(t)
+
+			clientProvider := new(mockClientProvider)
+			clientProvider.On("Get", mock.Anything, "secret_value").Return(client, nil)
+
+			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
+
+			err = bqStore.BatchUpdate(ctx, []*resource.Resource{updateDS})
 			assert.Nil(t, err)
 		})
 	})
