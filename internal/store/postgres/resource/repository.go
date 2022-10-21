@@ -22,15 +22,12 @@ func NewRepository(db *gorm.DB) *Repository {
 
 func (r Repository) Create(ctx context.Context, res *resource.Resource) error {
 	incomingResource := fromResourceToModel(res)
-	if err := r.db.WithContext(ctx).Create(incomingResource).Error; err != nil {
-		return errors.Wrap(resource.EntityResource, "error creating resource to database", err)
-	}
-	return nil
+	return r.create(r.db.WithContext(ctx), incomingResource)
 }
 
 func (r Repository) Update(ctx context.Context, res *resource.Resource) error {
-	inRes := fromResourceToModel(res)
-	return r.update(r.db.WithContext(ctx), inRes)
+	incomingResource := fromResourceToModel(res)
+	return r.update(r.db.WithContext(ctx), incomingResource)
 }
 
 func (r Repository) ReadByFullName(ctx context.Context, tnnt tenant.Tenant, store resource.Store, fullName string) (*resource.Resource, error) {
@@ -68,18 +65,25 @@ func (r Repository) ReadAll(ctx context.Context, tnnt tenant.Tenant, store resou
 	return output, nil
 }
 
-func (r Repository) UpdateAll(ctx context.Context, resources []*resource.Resource) error {
+func (r Repository) CreateOrUpdateAll(ctx context.Context, resources []*resource.Resource) error {
 	resourceModels := make([]*Resource, len(resources))
 	for i, res := range resources {
 		resourceModels[i] = fromResourceToModel(res)
 	}
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		multiErr := errors.NewMultiError("error updating resources status")
 		for _, m := range resourceModels {
-			if err := r.update(tx, m); err != nil {
-				return errors.Wrap(resource.EntityResource, "error updating resource to database", err)
+			if m.Status == resource.StatusToCreate.String() {
+				if err := r.create(tx, m); err != nil {
+					multiErr.Append(errors.Wrap(resource.EntityResource, "error creating resource to database", err))
+				}
+			} else if m.Status == resource.StatusToUpdate.String() {
+				if err := r.update(tx, m); err != nil {
+					multiErr.Append(errors.Wrap(resource.EntityResource, "error updating resource to database", err))
+				}
 			}
 		}
-		return nil
+		return errors.MultiToError(multiErr)
 	})
 }
 
@@ -129,4 +133,11 @@ func (Repository) readByFullName(db *gorm.DB, projectName, namespaceName, store,
 		return nil, errors.Wrap(resource.EntityResource, "error reading from database", err)
 	}
 	return res, nil
+}
+
+func (r Repository) create(db *gorm.DB, m *Resource) error {
+	if err := db.Create(m).Error; err != nil {
+		return errors.Wrap(resource.EntityResource, "error creating resource to database", err)
+	}
+	return nil
 }

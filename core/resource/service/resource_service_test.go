@@ -368,7 +368,7 @@ func TestResourceService(t *testing.T) {
 
 			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{existingResource}, nil)
 
-			batch.On("UpdateAll", ctx, mock.Anything).Return(errors.New("unknown error"))
+			batch.On("CreateOrUpdateAll", ctx, mock.Anything).Return(errors.New("unknown error"))
 
 			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
 			assert.ErrorContains(t, actualError, "unknown error")
@@ -395,7 +395,7 @@ func TestResourceService(t *testing.T) {
 
 			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{existingResource}, nil)
 
-			batch.On("UpdateAll", ctx, mock.Anything).Return(nil)
+			batch.On("CreateOrUpdateAll", ctx, mock.Anything).Return(nil)
 
 			mgr.On("BatchUpdate", ctx, resource.Bigquery, mock.Anything).Return(errors.New("unknown error"))
 
@@ -425,7 +425,7 @@ func TestResourceService(t *testing.T) {
 
 			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{existingResource}, nil)
 
-			batch.On("UpdateAll", ctx, mock.Anything).Return(nil)
+			batch.On("CreateOrUpdateAll", ctx, mock.Anything).Return(nil)
 
 			mgr.On("BatchUpdate", ctx, resource.Bigquery, mock.Anything).Return(nil)
 
@@ -528,7 +528,7 @@ type ResourceBatchRepo struct {
 	mock.Mock
 }
 
-func (_m *ResourceBatchRepo) UpdateAll(ctx context.Context, resources []*resource.Resource) error {
+func (_m *ResourceBatchRepo) CreateOrUpdateAll(ctx context.Context, resources []*resource.Resource) error {
 	ret := _m.Called(ctx, resources)
 
 	var r0 error

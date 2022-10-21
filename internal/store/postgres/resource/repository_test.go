@@ -152,8 +152,8 @@ func TestPostgresResourceRepository(t *testing.T) {
 		})
 	})
 
-	t.Run("UpdateAll", func(t *testing.T) {
-		t.Run("does not do any update and returns error if error is encountered when updating one or more resources", func(t *testing.T) {
+	t.Run("CreateOrUpdateAll", func(t *testing.T) {
+		t.Run("does not do any create nor update and returns error if error is encountered", func(t *testing.T) {
 			db := dbSetup()
 			repository := repoResource.NewRepository(db)
 
@@ -165,36 +165,34 @@ func TestPostgresResourceRepository(t *testing.T) {
 			assert.NoError(t, err)
 
 			resourcesToUpdate := []*serviceResource.Resource{
-				serviceResource.FromExisting(existingResource, serviceResource.ReplaceStatus(serviceResource.StatusSuccess)),
-				serviceResource.FromExisting(nonExistingResource, serviceResource.ReplaceStatus(serviceResource.StatusSuccess)),
+				serviceResource.FromExisting(existingResource, serviceResource.ReplaceStatus(serviceResource.StatusToUpdate)),
+				serviceResource.FromExisting(nonExistingResource, serviceResource.ReplaceStatus(serviceResource.StatusToUpdate)), // should be to create, but failing it purposely
 			}
-			actualError := repository.UpdateAll(ctx, resourcesToUpdate)
+			actualError := repository.CreateOrUpdateAll(ctx, resourcesToUpdate)
 			assert.Error(t, actualError)
 
 			storedResources, err := readAllFromDb(db)
 			assert.NoError(t, err)
 			assert.Len(t, storedResources, 1)
-			assert.EqualValues(t, existingResource, storedResources[0])
+			assert.EqualValues(t, serviceResource.StatusUnknown, storedResources[0].Status())
 		})
 
 		t.Run("returns nil if no error is encountered", func(t *testing.T) {
 			db := dbSetup()
 			repository := repoResource.NewRepository(db)
 
-			existingResource1, err := serviceResource.NewResource("project.dataset1", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			existingResource, err := serviceResource.NewResource("project.dataset1", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
-			existingResource2, err := serviceResource.NewResource("project.dataset2", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			err = insertAllToDB(db, []*serviceResource.Resource{existingResource})
 			assert.NoError(t, err)
-
-			resourcesToCreate := []*serviceResource.Resource{existingResource1, existingResource2}
-			err = insertAllToDB(db, resourcesToCreate)
+			nonExistingResource, err := serviceResource.NewResource("project.dataset2", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
 
 			resourcesToUpdate := []*serviceResource.Resource{
-				serviceResource.FromExisting(existingResource1, serviceResource.ReplaceStatus(serviceResource.StatusSuccess)),
-				serviceResource.FromExisting(existingResource2, serviceResource.ReplaceStatus(serviceResource.StatusSuccess)),
+				serviceResource.FromExisting(existingResource, serviceResource.ReplaceStatus(serviceResource.StatusToUpdate)),
+				serviceResource.FromExisting(nonExistingResource, serviceResource.ReplaceStatus(serviceResource.StatusToCreate)),
 			}
-			actualError := repository.UpdateAll(ctx, resourcesToUpdate)
+			actualError := repository.CreateOrUpdateAll(ctx, resourcesToUpdate)
 			assert.NoError(t, actualError)
 
 			storedResources, err := readAllFromDb(db)

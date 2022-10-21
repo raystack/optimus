@@ -16,7 +16,7 @@ type ResourceRepository interface {
 }
 
 type ResourceBatchRepo interface {
-	UpdateAll(ctx context.Context, resources []*resource.Resource) error
+	CreateOrUpdateAll(ctx context.Context, resources []*resource.Resource) error
 }
 
 type ResourceManager interface {
@@ -109,7 +109,7 @@ func (rs ResourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, s
 		return nil
 	}
 
-	if err := rs.batch.UpdateAll(ctx, resourcesToBatchUpdate); err != nil {
+	if err := rs.batch.CreateOrUpdateAll(ctx, resourcesToBatchUpdate); err != nil {
 		return err
 	}
 
@@ -131,6 +131,7 @@ func (ResourceService) getResourcesToBatchUpdate(incomings []*resource.Resource,
 			output = append(output, resourceToCreate)
 		}
 	}
+
 	return output
 }
 
