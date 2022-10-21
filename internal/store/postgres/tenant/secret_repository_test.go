@@ -191,6 +191,28 @@ func TestPostgresSecretRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, namespace.Name().String(), ns.String())
 		})
+		t.Run("should get all the secrets info for a project", func(t *testing.T) {
+			db := dbSetup()
+
+			repo := postgres.NewSecretRepository(db)
+
+			tnnt1, _ := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
+			secret1, err := tenant.NewSecret("secret_name1", tenant.UserDefinedSecret, "abcd", tnnt1)
+			assert.Nil(t, err)
+			err = repo.Save(ctx, tnnt1, secret1)
+			assert.Nil(t, err)
+
+			projectScope, _ := tenant.NewTenant(proj.Name().String(), "")
+			secret2, err := tenant.NewSecret("secret_name3", tenant.UserDefinedSecret, "abcd", projectScope)
+			assert.Nil(t, err)
+			err = repo.Save(ctx, projectScope, secret2)
+			assert.Nil(t, err)
+
+			secret, err := repo.Get(ctx, tnnt1, "secret_name3")
+			assert.NoError(t, err)
+			assert.NotNil(t, secret)
+			assert.Equal(t, "secret_name3", secret.Name().String())
+		})
 	})
 	t.Run("GetAll", func(t *testing.T) {
 		t.Run("returns all the secrets for a project", func(t *testing.T) {

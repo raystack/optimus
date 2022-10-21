@@ -178,7 +178,7 @@ func (s SecretRepository) Get(ctx context.Context, t tenant.Tenant, name tenant.
 FROM secret s
     JOIN cte_tenant t
         ON t.project_id = s.project_id
-        AND (t.namespace_id IS NULL OR t.namespace_id = s.namespace_id )
+        AND (t.namespace_id IS NULL OR s.namespace_id IS NULL OR t.namespace_id = s.namespace_id )
 WHERE s.name = ?`
 	err := s.db.WithContext(ctx).Raw(getSecretByNameQuery, namespaceName, t.ProjectName().String(), name).
 		First(&secret).Error
