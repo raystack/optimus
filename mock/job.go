@@ -217,8 +217,8 @@ func (srv *JobService) GetByFilter(ctx context.Context, filter models.JobSpecFil
 }
 
 // GetExternalJobRuns provides a mock function with given fields: ctx,  host, jobName, projectName, startDate, endDate,filter
-func (srv *JobService) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time, filter []string) ([]models.JobRun, error) {
-	args := srv.Called(ctx, host, jobName, projectName, startDate, endDate, filter)
+func (srv *JobService) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time) ([]models.JobRun, error) {
+	args := srv.Called(ctx, host, jobName, projectName, startDate, endDate)
 	return args.Get(0).([]models.JobRun), args.Error(1)
 }
 
@@ -352,8 +352,8 @@ func (_m *ExternalDependencyResolver) FetchInferredExternalDependenciesPerJobNam
 }
 
 // GetExternalJobRuns provides a mock function with given fields: ctx,  host, jobName, projectName, startDate, endDate,filter
-func (_m *ExternalDependencyResolver) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time, filter []string) ([]models.JobRun, error) {
-	args := _m.Called(ctx, host, jobName, projectName, startDate, endDate, filter)
+func (_m *ExternalDependencyResolver) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time) ([]models.JobRun, error) {
+	args := _m.Called(ctx, host, jobName, projectName, startDate, endDate)
 	return args.Get(0).([]models.JobRun), args.Error(1)
 }
 
@@ -404,8 +404,8 @@ func (_m *DependencyResolver) GetStaticDependencies(ctx context.Context, jobSpec
 }
 
 // GetExternalJobRuns provides a mock function with given fields: ctx,  host, jobName, projectName, startDate, endDate,filter
-func (_m *DependencyResolver) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time, filter []string) ([]models.JobRun, error) {
-	args := _m.Called(ctx, host, jobName, projectName, startDate, endDate, filter)
+func (_m *DependencyResolver) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time) ([]models.JobRun, error) {
+	args := _m.Called(ctx, host, jobName, projectName, startDate, endDate)
 	return args.Get(0).([]models.JobRun), args.Error(1)
 }
 
@@ -728,8 +728,8 @@ func (_m *ResourceManager) GetOptimusDependencies(_a0 context.Context, _a1 model
 }
 
 // GetExternalJobRuns provides a mock function with given fields: ctx,  host, jobName, projectName, startDate, endDate,filter
-func (_m *ResourceManager) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time, filter []string) ([]models.JobRun, error) {
-	args := _m.Called(ctx, host, jobName, projectName, startDate, endDate, filter)
+func (_m *ResourceManager) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time) ([]models.JobRun, error) {
+	args := _m.Called(ctx, host, jobName, projectName, startDate, endDate)
 	return args.Get(0).([]models.JobRun), args.Error(1)
 }
 

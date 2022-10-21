@@ -378,7 +378,7 @@ type JobService interface {
 	// GetDownstreamJobs reads static as well as inferred down stream dependencies
 	GetDownstreamJobs(ctx context.Context, jobName, resourceDestinationURN, projectName string) ([]JobSpec, error)
 	// GetExternalJobRuns get run information of jobs deployed on external optimus
-	GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time, filter []string) ([]JobRun, error)
+	GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time) ([]JobRun, error)
 
 	// GetJobNamesWithDuplicateDestination checks is already another job exists in the project with same resource Destination
 	GetJobNamesWithDuplicateDestination(ctx context.Context, jobFullName, resourceDestination string) (string, error)

@@ -14,7 +14,7 @@ import (
 type ExternalDependencyResolver interface {
 	FetchInferredExternalDependenciesPerJobName(ctx context.Context, unresolvedDependenciesPerJobName map[string][]models.UnresolvedJobDependency) (map[string]models.ExternalDependency, error)
 	FetchStaticExternalDependenciesPerJobName(ctx context.Context, unresolvedDependenciesPerJobName map[string][]models.UnresolvedJobDependency) (map[string]models.ExternalDependency, []models.UnknownDependency, error)
-	GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time, filter []string) ([]models.JobRun, error)
+	GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time) ([]models.JobRun, error)
 }
 
 type externalDependencyResolver struct {
@@ -97,10 +97,10 @@ func (e *externalDependencyResolver) fetchInferredOptimusDependencies(ctx contex
 	return optimusDependencies
 }
 
-func (e *externalDependencyResolver) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time, filter []string) ([]models.JobRun, error) {
+func (e *externalDependencyResolver) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time) ([]models.JobRun, error) {
 	for _, manager := range e.optimusResourceManagers {
 		if manager.GetHost() == host {
-			return manager.GetExternalJobRuns(ctx, host, jobName, projectName, startDate, endDate, filter)
+			return manager.GetExternalJobRuns(ctx, host, jobName, projectName, startDate, endDate)
 		}
 	}
 	return []models.JobRun{}, fmt.Errorf("could not find optimus external resoruce manager with host:%s", host)
@@ -122,7 +122,6 @@ func (e *externalDependencyResolver) fetchStaticOptimusDependencies(ctx context.
 
 func (e *externalDependencyResolver) fetchOptimusDependencies(ctx context.Context, unresolvedDependency models.UnresolvedJobDependency) []models.OptimusDependency {
 	var dependencies []models.OptimusDependency
-
 	for _, manager := range e.optimusResourceManagers {
 		deps, err := manager.GetOptimusDependencies(ctx, unresolvedDependency)
 		if err != nil {

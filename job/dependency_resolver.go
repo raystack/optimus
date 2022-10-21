@@ -89,7 +89,6 @@ func (d *dependencyResolver) Resolve(ctx context.Context, projectSpec models.Pro
 // GetStaticDependencies return named (explicit/static) dependencies that unresolved with its spec model
 // this is normally happen when reading specs from a store[local/postgres]
 // unresolved dependencies will no longer exist in the map
-// TODO: if we have field `projectJobFactory`, we might not need the `projectJobSpecRepository` parameter
 func (d *dependencyResolver) GetStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec) (map[string]models.JobSpecDependency, []models.OptimusDependency, error) {
 	if ctx == nil {
 		return nil, nil, errors.New("context is nil")
@@ -164,7 +163,6 @@ func (d *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 	// get destinations of dependencies, assets should be dependent on
 	namespace := jobSpec.NamespaceSpec
 	namespace.ProjectSpec = projectSpec // TODO: Temp fix to to get secrets from project
-
 	resp, err := d.pluginService.GenerateDependencies(ctx, jobSpec, namespace, false)
 	if err != nil {
 		if !errors.Is(err, service.ErrDependencyModNotFound) {
@@ -468,8 +466,8 @@ func (d *dependencyResolver) getUnresolvedInferredDependencies(ctx context.Conte
 	return unresolvedInferredDependenciesPerJobName, nil
 }
 
-func (d *dependencyResolver) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time, filter []string) ([]models.JobRun, error) {
-	return d.externalDependencyResolver.GetExternalJobRuns(ctx, host, jobName, projectName, startDate, endDate, filter)
+func (d *dependencyResolver) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time) ([]models.JobRun, error) {
+	return d.externalDependencyResolver.GetExternalJobRuns(ctx, host, jobName, projectName, startDate, endDate)
 }
 
 func (*dependencyResolver) identifyUnresolvedInferredDependencies(inferredDependencies []string, resolvedDependencies []models.JobSpec) []models.UnresolvedJobDependency {

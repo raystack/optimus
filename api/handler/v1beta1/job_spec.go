@@ -173,7 +173,6 @@ func (sv *JobSpecServiceServer) getDpendencyRunInfo(ctx context.Context, jobSpec
 		logWriter.Write(writer.LogLevelError, fmt.Sprintf("unable to get Window end time for %s/%s", jobSpec.GetProjectSpec().Name, jobSpec.Name))
 		return internalDependencies, externalDependencies, httpDependency
 	}
-	//todo: handle http dependencies
 
 	for dependencyName, dependency := range jobSpec.Dependencies {
 		if dependency.Job == nil {
@@ -213,7 +212,7 @@ func (sv *JobSpecServiceServer) getDpendencyRunInfo(ctx context.Context, jobSpec
 	}
 
 	for _, dependency := range jobSpec.ExternalDependencies.OptimusDependencies {
-		jobRunList, err := sv.jobSvc.GetExternalJobRuns(ctx, dependency.Host, dependency.JobName, dependency.ProjectName, windowStartTime, windowEndTime, []string{})
+		jobRunList, err := sv.jobSvc.GetExternalJobRuns(ctx, dependency.Host, dependency.JobName, dependency.ProjectName, windowStartTime, windowEndTime)
 		if err != nil {
 			logWriter.Write(writer.LogLevelError, fmt.Sprintf("error in fetching job run list for External job %s::%s/%s, err::%s", dependency.Host, dependency.ProjectName, dependency.JobName, err.Error()))
 		}

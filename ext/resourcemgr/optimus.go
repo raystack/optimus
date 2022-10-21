@@ -18,7 +18,7 @@ import (
 // ResourceManager is repository for external job spec
 type ResourceManager interface {
 	GetOptimusDependencies(context.Context, models.UnresolvedJobDependency) ([]models.OptimusDependency, error)
-	GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time, filter []string) ([]models.JobRun, error)
+	GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time) ([]models.JobRun, error)
 	GetHost() string
 }
 
@@ -124,11 +124,11 @@ func (o *optimusResourceManager) toOptimusDependency(response jobSpecificationRe
 	}
 }
 
-func (o *optimusResourceManager) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time, filter []string) ([]models.JobRun, error) {
+func (o *optimusResourceManager) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time) ([]models.JobRun, error) {
 	if ctx == nil {
 		return nil, errors.New("context is nil")
 	}
-	request, err := o.constructGetJobRunRequest(ctx, host, jobName, projectName, startDate, endDate, filter)
+	request, err := o.constructGetJobRunRequest(ctx, host, jobName, projectName, startDate, endDate)
 	if err != nil {
 		return nil, fmt.Errorf("error encountered when constructing request: %w", err)
 	}
@@ -152,15 +152,10 @@ func (o *optimusResourceManager) GetExternalJobRuns(ctx context.Context, host, j
 	return toOptimusJobRuns(jobRunResponse.JobRunResponse)
 }
 
-func (o *optimusResourceManager) constructGetJobRunRequest(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time, filter []string) (*http.Request, error) {
+func (o *optimusResourceManager) constructGetJobRunRequest(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time) (*http.Request, error) {
 	var queryParams []string
 	queryParams = append(queryParams, fmt.Sprintf("start_date=%s", startDate.Format(models.InstanceScheduledAtTimeLayout)))
 	queryParams = append(queryParams, fmt.Sprintf("end_date=%s", endDate.Format(models.InstanceScheduledAtTimeLayout)))
-
-	if len(filter) > 0 {
-		//todo: manage queryParams later
-		queryParams = append(queryParams, fmt.Sprintf("filter=%s", filter))
-	}
 
 	path := fmt.Sprintf("/api/v1beta1/project/%s/job/%s/run", projectName, jobName)
 	url := host + path + "?" + strings.Join(queryParams, "&")

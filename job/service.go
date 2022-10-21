@@ -59,7 +59,7 @@ type DependencyResolver interface {
 	GetEnrichedUpstreamJobSpec(ctx context.Context, subjectJobSpec models.JobSpec, upstreamDestinations []string, logWriter writer.LogWriter) (models.JobSpec, []models.UnknownDependency, error)
 	GetJobSpecsWithDependencies(ctx context.Context, projectName string) ([]models.JobSpec, []models.UnknownDependency, error)
 	// GetExternalJobRuns get run information of jobs deployed on external optimus
-	GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time, filter []string) ([]models.JobRun, error)
+	GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time) ([]models.JobRun, error)
 }
 
 type Deployer interface {
@@ -971,8 +971,8 @@ func (srv *Service) CreateAndDeploy(ctx context.Context, namespaceSpec models.Na
 	return srv.deployManager.Deploy(ctx, namespaceSpec.ProjectSpec)
 }
 
-func (srv *Service) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time, filter []string) ([]models.JobRun, error) {
-	return srv.dependencyResolver.GetExternalJobRuns(ctx, host, jobName, projectName, startDate, endDate, filter)
+func (srv *Service) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time) ([]models.JobRun, error) {
+	return srv.dependencyResolver.GetExternalJobRuns(ctx, host, jobName, projectName, startDate, endDate)
 }
 
 func (*Service) getMappedJobNameToNamespaceName(jobSpecs []models.JobSpec) map[string]string {
