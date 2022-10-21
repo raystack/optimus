@@ -40,7 +40,6 @@ func TestStatus(t *testing.T) {
 			assert.Equal(t, status.String(), typ)
 		}
 	})
-
 }
 
 func TestFieldValidate(t *testing.T) {

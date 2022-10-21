@@ -158,7 +158,7 @@ func (Repository) readByFullName(db *gorm.DB, projectName, namespaceName, store,
 	return res, nil
 }
 
-func (r Repository) create(db *gorm.DB, m *Resource) error {
+func (Repository) create(db *gorm.DB, m *Resource) error {
 	if err := db.Create(m).Error; err != nil {
 		return errors.Wrap(resource.EntityResource, "error creating resource to database", err)
 	}

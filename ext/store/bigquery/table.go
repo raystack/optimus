@@ -23,11 +23,6 @@ type TableHandle struct {
 	bqTable BqTable
 }
 
-// Limits
-//
-// Maximum length of a column description 	1,024 characters
-// Maximum rate of table metadata update operations per table 	5 operations per 10 seconds
-
 func (t TableHandle) Create(ctx context.Context, res *resource.Resource) error {
 	table, err := resource.ConvertSpecTo[resource.Table](res)
 	if err != nil {
@@ -85,11 +80,8 @@ func (t TableHandle) Update(ctx context.Context, res *resource.Resource) error {
 
 func (t TableHandle) Exists(ctx context.Context) bool {
 	_, err := t.bqTable.Metadata(ctx)
-	if err == nil {
-		return true
-	}
 	// There can be connection issue, we return false for now
-	return false
+	return err == nil
 }
 
 func NewTableHandle(bq BqTable) *TableHandle {

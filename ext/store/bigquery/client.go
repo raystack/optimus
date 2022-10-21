@@ -17,7 +17,7 @@ func NewClientProvider() *BqClientProvider {
 	return &BqClientProvider{}
 }
 
-func (b BqClientProvider) Get(ctx context.Context, account string) (Client, error) {
+func (BqClientProvider) Get(ctx context.Context, account string) (Client, error) {
 	return NewClient(ctx, account)
 }
 

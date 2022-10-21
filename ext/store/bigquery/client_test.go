@@ -17,7 +17,7 @@ func TestBqClient(t *testing.T) {
 	tnnt, _ := tenant.NewTenant("proj", "ns")
 	metadata := resource.Metadata{Description: "meta"}
 	spec := map[string]any{"description": "resource"}
-	testCredJson := `
+	testCredJSON := `
 {
   "type": "service_account",
   "project_id": "test-bigquery",
@@ -39,7 +39,7 @@ func TestBqClient(t *testing.T) {
 			assert.EqualError(t, err, "internal error for entity BigqueryStore: failed to read account")
 		})
 		t.Run("returns client on creds", func(t *testing.T) {
-			client, err := bigquery.NewClient(ctx, testCredJson)
+			client, err := bigquery.NewClient(ctx, testCredJSON)
 			assert.Nil(t, err)
 
 			assert.NotNil(t, client)
@@ -47,7 +47,7 @@ func TestBqClient(t *testing.T) {
 	})
 	t.Run("DatasetHandleFrom", func(t *testing.T) {
 		t.Run("returns the dataset handle", func(t *testing.T) {
-			c, err := bigquery.NewClient(ctx, testCredJson)
+			c, err := bigquery.NewClient(ctx, testCredJSON)
 			assert.Nil(t, err)
 
 			fullName := "project.dataset"
@@ -60,7 +60,7 @@ func TestBqClient(t *testing.T) {
 	})
 	t.Run("TableHandleFrom", func(t *testing.T) {
 		t.Run("returns the table handle", func(t *testing.T) {
-			c, err := bigquery.NewClient(ctx, testCredJson)
+			c, err := bigquery.NewClient(ctx, testCredJSON)
 			assert.Nil(t, err)
 
 			fullName := "project.dataset.table"
@@ -73,7 +73,7 @@ func TestBqClient(t *testing.T) {
 	})
 	t.Run("ExternalTableHandleFrom", func(t *testing.T) {
 		t.Run("returns the external_table handle", func(t *testing.T) {
-			c, err := bigquery.NewClient(ctx, testCredJson)
+			c, err := bigquery.NewClient(ctx, testCredJSON)
 			assert.Nil(t, err)
 
 			fullName := "project.dataset.external_table"
@@ -86,7 +86,7 @@ func TestBqClient(t *testing.T) {
 	})
 	t.Run("ViewHandleFrom", func(t *testing.T) {
 		t.Run("returns the view handle", func(t *testing.T) {
-			c, err := bigquery.NewClient(ctx, testCredJson)
+			c, err := bigquery.NewClient(ctx, testCredJSON)
 			assert.Nil(t, err)
 
 			fullName := "project.dataset.view"
@@ -99,7 +99,7 @@ func TestBqClient(t *testing.T) {
 	})
 	t.Run("Close", func(t *testing.T) {
 		t.Run("calls close on bq client", func(t *testing.T) {
-			c, err := bigquery.NewClient(ctx, testCredJson)
+			c, err := bigquery.NewClient(ctx, testCredJSON)
 			assert.Nil(t, err)
 
 			c.Close()
@@ -109,7 +109,7 @@ func TestBqClient(t *testing.T) {
 
 func TestClientProvider(t *testing.T) {
 	ctx := context.Background()
-	testCredJson := `
+	testCredJSON := `
 {
   "type": "service_account",
   "project_id": "test-bigquery",
@@ -134,7 +134,7 @@ func TestClientProvider(t *testing.T) {
 	t.Run("creates a new client with json", func(t *testing.T) {
 		provider := bigquery.NewClientProvider()
 
-		client, err := provider.Get(ctx, testCredJson)
+		client, err := provider.Get(ctx, testCredJSON)
 		assert.Nil(t, err)
 		assert.NotNil(t, client)
 	})

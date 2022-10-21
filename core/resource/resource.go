@@ -14,6 +14,9 @@ import (
 const (
 	EntityResource       = "resource"
 	nameSectionSeparator = "."
+
+	DatesetNameSections = 2
+	TableNameSections   = 3
 )
 
 type ValidateResource interface {
@@ -56,12 +59,12 @@ func NewResource(fullName string, kind Kind, store Store, tnnt tenant.Tenant, me
 	sections := strings.Split(fullName, nameSectionSeparator)
 	var strName string
 	if kind == KindDataset {
-		if len(sections) != 2 {
+		if len(sections) != DatesetNameSections {
 			return nil, errors.InvalidArgument(EntityResource, "invalid dataset name: "+fullName)
 		}
 		strName = sections[1]
 	} else {
-		if len(sections) != 3 {
+		if len(sections) != TableNameSections {
 			return nil, errors.InvalidArgument(EntityResource, "invalid resource name: "+fullName)
 		}
 		strName = sections[2]
@@ -217,13 +220,13 @@ func (r *Resource) MarkSuccess() error {
 func (r *Resource) MarkFailed() error {
 	if r.status == StatusToCreate {
 		r.status = StatusCreateFailure
+		return nil
 	} else if r.status == StatusToUpdate {
 		r.status = StatusUpdateFailure
-	} else {
-		msg := fmt.Sprintf("invalid transition from %s to failure for %s", r.status, r.FullName())
-		return errors.InvalidStateTransition(EntityResource, msg)
+		return nil
 	}
-	return nil
+	msg := fmt.Sprintf("invalid transition from %s to failure for %s", r.status, r.FullName())
+	return errors.InvalidStateTransition(EntityResource, msg)
 }
 
 type FromExistingOpt func(r *Resource)

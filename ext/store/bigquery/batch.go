@@ -96,8 +96,7 @@ func create(ctx context.Context, handle ResourceHandle, res *resource.Resource) 
 }
 
 func update(ctx context.Context, handle ResourceHandle, res *resource.Resource) error {
-	err := handle.Update(ctx, res)
-	if err != nil {
+	if err := handle.Update(ctx, res); err != nil {
 		res.MarkFailed()
 		return err
 	}

@@ -2,7 +2,6 @@ package service_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -257,7 +256,6 @@ func TestResourceManager(t *testing.T) {
 			batchReq := []*resource.Resource{updateRequest}
 
 			argMatcher := mock.MatchedBy(func(res []*resource.Resource) bool {
-				fmt.Printf("%+v", res[0])
 				if len(res) != 1 {
 					return false
 				}
@@ -299,7 +297,6 @@ func TestResourceManager(t *testing.T) {
 			updateRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToUpdate))
 			batchReq := []*resource.Resource{updateRequest}
 			argMatcher := mock.MatchedBy(func(res []*resource.Resource) bool {
-				fmt.Printf("%+v", res[0])
 				if len(res) != 1 {
 					return false
 				}

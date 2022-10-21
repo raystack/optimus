@@ -80,11 +80,8 @@ func (d DatasetHandle) Update(ctx context.Context, res *resource.Resource) error
 
 func (d DatasetHandle) Exists(ctx context.Context) bool {
 	_, err := d.bqDataset.Metadata(ctx)
-	if err == nil {
-		return true
-	}
 	// There can be connection issue, we return false for now
-	return false
+	return err == nil
 }
 
 func NewDatasetHandle(ds BqDataset) *DatasetHandle {

@@ -56,7 +56,6 @@ func TestBigqueryStore(t *testing.T) {
 			err = bqStore.Create(ctx, dataset)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "error in client")
-
 		})
 		t.Run("returns error when kind is invalid", func(t *testing.T) {
 			pts, _ := tenant.NewPlainTextSecret("secret_name", "secret_value")
@@ -259,7 +258,6 @@ func TestBigqueryStore(t *testing.T) {
 			err = bqStore.Update(ctx, dataset)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "error in client")
-
 		})
 		t.Run("returns error when kind is invalid", func(t *testing.T) {
 			pts, _ := tenant.NewPlainTextSecret("secret_name", "secret_value")
