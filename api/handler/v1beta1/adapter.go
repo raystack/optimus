@@ -246,24 +246,6 @@ func ToJobSpecificationProto(spec models.JobSpec) *pb.JobSpecification {
 	return conf
 }
 
-func ToProjectProto(spec models.ProjectSpec) *pb.ProjectSpecification {
-	return &pb.ProjectSpecification{
-		Name:   spec.Name,
-		Config: spec.Config,
-	}
-}
-
-func FromProjectProto(conf *pb.ProjectSpecification) models.ProjectSpec {
-	pConf := map[string]string{}
-	for key, val := range conf.GetConfig() {
-		pConf[strings.ToUpper(key)] = val
-	}
-	return models.ProjectSpec{
-		Name:   conf.GetName(),
-		Config: pConf,
-	}
-}
-
 func FromProjectProtoWithSecrets(conf *pb.ProjectSpecification) models.ProjectSpec {
 	if conf == nil {
 		return models.ProjectSpec{}
@@ -306,25 +288,6 @@ func ToProjectProtoWithSecret(spec models.ProjectSpec, pluginType models.Instanc
 		Name:    spec.Name,
 		Config:  spec.Config,
 		Secrets: secrets,
-	}
-}
-
-func ToNamespaceProto(spec models.NamespaceSpec) *pb.NamespaceSpecification {
-	return &pb.NamespaceSpecification{
-		Name:   spec.Name,
-		Config: spec.Config,
-	}
-}
-
-func FromNamespaceProto(conf *pb.NamespaceSpecification) models.NamespaceSpec {
-	namespaceConf := map[string]string{}
-	for key, val := range conf.GetConfig() {
-		namespaceConf[strings.ToUpper(key)] = val
-	}
-
-	return models.NamespaceSpec{
-		Name:   conf.GetName(),
-		Config: namespaceConf,
 	}
 }
 

@@ -158,9 +158,9 @@ func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 	return nil
 }
 
-func (sv *JobSpecServiceServer) getDpendencyRunInfo(ctx context.Context, jobSpec models.JobSpec, scheduleTime time.Time, logWriter writer.LogWriter) ([]*pb.OptimusDependency, []*pb.OptimusDependency, []*pb.HttpDependency) {
-	var internalDependencies []*pb.OptimusDependency
-	var externalDependencies []*pb.OptimusDependency
+func (sv *JobSpecServiceServer) getDpendencyRunInfo(ctx context.Context, jobSpec models.JobSpec, scheduleTime time.Time, logWriter writer.LogWriter) ([]*pb.JobInspectResponse_JobDependency, []*pb.JobInspectResponse_JobDependency, []*pb.HttpDependency) {
+	var internalDependencies []*pb.JobInspectResponse_JobDependency
+	var externalDependencies []*pb.JobInspectResponse_JobDependency
 	var httpDependency []*pb.HttpDependency
 
 	windowStartTime, err := jobSpec.Task.Window.GetStartTime(scheduleTime)
@@ -202,7 +202,7 @@ func (sv *JobSpecServiceServer) getDpendencyRunInfo(ctx context.Context, jobSpec
 				ScheduledAt: timestamppb.New(run.ScheduledAt),
 			})
 		}
-		internalDependencies = append(internalDependencies, &pb.OptimusDependency{
+		internalDependencies = append(internalDependencies, &pb.JobInspectResponse_JobDependency{
 			Name:          dependency.Job.Name,
 			Host:          "internal",
 			ProjectName:   dependency.Job.GetProjectSpec().Name,
@@ -224,7 +224,7 @@ func (sv *JobSpecServiceServer) getDpendencyRunInfo(ctx context.Context, jobSpec
 				ScheduledAt: timestamppb.New(run.ScheduledAt),
 			})
 		}
-		externalDependencies = append(externalDependencies, &pb.OptimusDependency{
+		externalDependencies = append(externalDependencies, &pb.JobInspectResponse_JobDependency{
 			Name:          dependency.JobName,
 			Host:          dependency.Host,
 			ProjectName:   dependency.ProjectName,
@@ -293,9 +293,9 @@ func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspe
 	if err != nil {
 		downstreamLogs.Write(writer.LogLevelError, fmt.Sprintf("unable to get downstream jobs %v", err.Error()))
 	}
-	var downStreamJobsProtoSpecArray []*pb.OptimusDependency
+	var downStreamJobsProtoSpecArray []*pb.JobInspectResponse_JobDependency
 	for _, job := range downStreamJobs {
-		downStreamJobsProtoSpecArray = append(downStreamJobsProtoSpecArray, &pb.OptimusDependency{
+		downStreamJobsProtoSpecArray = append(downStreamJobsProtoSpecArray, &pb.JobInspectResponse_JobDependency{
 			Name:          job.Name,
 			ProjectName:   job.GetProjectSpec().Name,
 			NamespaceName: job.NamespaceSpec.Name,

@@ -118,7 +118,6 @@ func (d *dependencyResolver) GetStaticDependencies(ctx context.Context, jobSpec 
 						Type:    depSpec.Type,
 					}
 					resolvedJobSpecDependencies[depName] = k
-
 				}
 			case models.JobSpecDependencyTypeInter:
 				// extract project name
@@ -141,7 +140,6 @@ func (d *dependencyResolver) GetStaticDependencies(ctx context.Context, jobSpec 
 							// since this is known to be an external dependency
 							delete(resolvedJobSpecDependencies, depName)
 							externalOptimusDependencies = append(externalOptimusDependencies, externalDependency[jobSpec.Name].OptimusDependencies...)
-
 						}
 					} else {
 						resolvedJobSpecDependencies[depName] = models.JobSpecDependency{

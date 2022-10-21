@@ -1,0 +1,25 @@
+
+# airflow logs ...
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: airflowlogs-pvc
+spec:
+  accessModes:
+   - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi 
+
+---
+# optimus db 
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: optimus-db-pvc
+spec:
+  accessModes:
+   - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi 

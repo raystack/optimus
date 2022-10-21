@@ -345,6 +345,7 @@ func (srv *Service) GetJobBasicInfo(ctx context.Context, jobSpec models.JobSpec)
 
 	return jobBasicInfo
 }
+
 func (srv *Service) GetTaskDependencies(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec) (models.JobSpecTaskDestination,
 	models.JobSpecTaskDependencies, error) {
 	destination := models.JobSpecTaskDestination{}

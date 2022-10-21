@@ -5,7 +5,7 @@ NAME = "github.com/odpf/optimus"
 LAST_COMMIT := $(shell git rev-parse --short HEAD)
 LAST_TAG := "$(shell git rev-list --tags --max-count=1)"
 OPMS_VERSION := "$(shell git describe --tags ${LAST_TAG})-next"
-PROTON_COMMIT := "74ae645ff48b5664f6c17d0f79ffd1864b512c32"
+PROTON_COMMIT := "0113e40d8a0ddf6cfef5b2f545fad3f09d6d6f28"
 
 .PHONY: build test test-ci generate-proto unit-test-ci integration-test vet coverage clean install lint
 
@@ -26,7 +26,6 @@ generate-proto: ## regenerate protos
 	@echo " > generating protobuf from odpf/proton"
 	@echo " > [info] make sure correct version of dependencies are installed using 'make install'"
 	@buf generate https://github.com/odpf/proton/archive/${PROTON_COMMIT}.zip#strip_components=1 --template buf.gen.yaml --path odpf/optimus
-	# @buf generate proton --template buf.gen.yaml --path proton/odpf/optimus
 	@echo " > protobuf compilation finished"
 
 unit-test-ci:

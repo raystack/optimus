@@ -456,6 +456,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			}
 
 			jobSvc := new(mock.JobService)
+
 			jobSvc.On("CreateAndDeploy", ctx, namespaceSpec, []models.JobSpec{jobSpec}, mock2.Anything).Return(deploymentID, nil)
 			defer jobSvc.AssertExpectations(t)
 

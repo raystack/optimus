@@ -478,6 +478,20 @@
         }
       }
     },
+    "corev1beta1JobDependency": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "httpDependency": {
+          "$ref": "#/definitions/v1beta1HttpDependency"
+        }
+      }
+    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -617,20 +631,6 @@
         },
         "value": {
           "type": "string"
-        }
-      }
-    },
-    "v1beta1JobDependency": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "type": {
-          "type": "string"
-        },
-        "httpDependency": {
-          "$ref": "#/definitions/v1beta1HttpDependency"
         }
       }
     },
@@ -813,7 +813,7 @@
         "dependencies": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/v1beta1JobDependency"
+            "$ref": "#/definitions/corev1beta1JobDependency"
           }
         },
         "assets": {
