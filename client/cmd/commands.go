@@ -5,7 +5,6 @@ import (
 	"github.com/odpf/salt/cmdx"
 	cli "github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/admin"
 	"github.com/odpf/optimus/client/cmd/backup"
 	"github.com/odpf/optimus/client/cmd/deploy"
 	"github.com/odpf/optimus/client/cmd/extension"
@@ -60,7 +59,6 @@ func New() *cli.Command {
 
 	// Client related commands
 	cmd.AddCommand(
-		admin.NewAdminCommand(),
 		backup.NewBackupCommand(),
 		deploy.NewDeployCommand(),
 		initialize.NewInitializeCommand(),
