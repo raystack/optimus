@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"github.com/odpf/salt/log"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
@@ -26,6 +27,7 @@ type ResourceMgr struct {
 	repo ResourceStatusRepo
 
 	tracer trace.Tracer
+	logger log.Logger
 }
 
 func (m *ResourceMgr) CreateResource(ctx context.Context, res *resource.Resource) error {
@@ -35,6 +37,7 @@ func (m *ResourceMgr) CreateResource(ctx context.Context, res *resource.Resource
 	store := res.Dataset().Store
 	datastore, ok := m.datastoreMap[store]
 	if !ok {
+		m.logger.Error("datastore [%s] for resource [%s] is not found", res.Dataset().Store.String(), res.FullName())
 		return errors.InvalidArgument(resource.EntityResource, "data store service not found for "+store.String())
 	}
 
@@ -44,6 +47,7 @@ func (m *ResourceMgr) CreateResource(ctx context.Context, res *resource.Resource
 	if err != nil && !errors.IsErrorType(err, errors.ErrAlreadyExists) {
 		me.Append(err)
 		me.Append(res.MarkFailed())
+		m.logger.Error("error creating resource [%s] to datastore [%s]: %s", res.FullName(), res.Dataset().Store.String(), err)
 	} else {
 		me.Append(res.MarkSuccess())
 	}
@@ -59,6 +63,7 @@ func (m *ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource
 	store := res.Dataset().Store
 	datastore, ok := m.datastoreMap[store]
 	if !ok {
+		m.logger.Error("datastore [%s] for resource [%s] is not found", res.Dataset().Store.String(), res.FullName())
 		return errors.InvalidArgument(resource.EntityResource, "data store service not found for "+store.String())
 	}
 
@@ -68,6 +73,7 @@ func (m *ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource
 	if err != nil {
 		me.Append(err)
 		me.Append(res.MarkFailed())
+		m.logger.Error("error updating resource [%s] to datastore [%s]: %s", res.FullName(), res.Dataset().Store.String(), err)
 	} else {
 		me.Append(res.MarkSuccess())
 	}
@@ -82,6 +88,7 @@ func (m *ResourceMgr) BatchUpdate(ctx context.Context, store resource.Store, res
 
 	datastore, ok := m.datastoreMap[store]
 	if !ok {
+		m.logger.Error("datastore [%s]  is not found", store.String())
 		return errors.InvalidArgument(resource.EntityResource, "data store service not found for "+store.String())
 	}
 
@@ -92,14 +99,15 @@ func (m *ResourceMgr) BatchUpdate(ctx context.Context, store resource.Store, res
 	return errors.MultiToError(err)
 }
 
-func NewResourceManager(repo ResourceStatusRepo) *ResourceMgr {
+func (m *ResourceMgr) RegisterDatastore(store resource.Store, dataStore DataStore) {
+	m.datastoreMap[store] = dataStore
+}
+
+func NewResourceManager(repo ResourceStatusRepo, logger log.Logger) *ResourceMgr {
 	return &ResourceMgr{
 		repo:         repo,
 		datastoreMap: map[resource.Store]DataStore{},
 		tracer:       otel.Tracer("core.resource.service"),
+		logger:       logger,
 	}
-}
-
-func (m *ResourceMgr) RegisterDatastore(store resource.Store, dataStore DataStore) {
-	m.datastoreMap[store] = dataStore
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -22,7 +23,8 @@ func TestResourceManager(t *testing.T) {
 	t.Run("CreateResource", func(t *testing.T) {
 		t.Run("return error when service not found for datastore", func(t *testing.T) {
 			repo := new(mockRepo)
-			manager := service.NewResourceManager(repo)
+			logger := log.NewLogrus()
+			manager := service.NewResourceManager(repo, logger)
 
 			spec := map[string]any{"description": "test spec"}
 			res, err := resource.NewResource("proj.ds.name1", resource.KindTable, store, tnnt, meta, spec)
@@ -47,7 +49,8 @@ func TestResourceManager(t *testing.T) {
 			})
 			repo := new(mockRepo)
 			repo.On("UpdateStatus", mock.Anything, argMatcher).Return(nil)
-			manager := service.NewResourceManager(repo)
+			logger := log.NewLogrus()
+			manager := service.NewResourceManager(repo, logger)
 
 			storeService := new(mockDataStore)
 			storeService.On("Create", mock.Anything, createRequest).Return(errors.InternalError("resource", "error in create", nil))
@@ -74,7 +77,8 @@ func TestResourceManager(t *testing.T) {
 			repo := new(mockRepo)
 			repo.On("UpdateStatus", mock.Anything, argMatcher).
 				Return(errors.NotFound("resource", "error in update"))
-			manager := service.NewResourceManager(repo)
+			logger := log.NewLogrus()
+			manager := service.NewResourceManager(repo, logger)
 
 			storeService := new(mockDataStore)
 			storeService.On("Create", mock.Anything, createRequest).Return(errors.InvalidArgument("res", "error in create"))
@@ -101,7 +105,8 @@ func TestResourceManager(t *testing.T) {
 			})
 			repo := new(mockRepo)
 			repo.On("UpdateStatus", mock.Anything, argMatcher).Return(nil)
-			manager := service.NewResourceManager(repo)
+			logger := log.NewLogrus()
+			manager := service.NewResourceManager(repo, logger)
 
 			storeService := new(mockDataStore)
 			storeService.On("Create", mock.Anything, createRequest).Return(errors.AlreadyExists("resource", "error in create"))
@@ -126,7 +131,8 @@ func TestResourceManager(t *testing.T) {
 			})
 			repo := new(mockRepo)
 			repo.On("UpdateStatus", mock.Anything, argMatcher).Return(nil)
-			manager := service.NewResourceManager(repo)
+			logger := log.NewLogrus()
+			manager := service.NewResourceManager(repo, logger)
 
 			storeService := new(mockDataStore)
 			storeService.On("Create", mock.Anything, createRequest).Return(nil)
@@ -141,7 +147,8 @@ func TestResourceManager(t *testing.T) {
 	t.Run("UpdateResource", func(t *testing.T) {
 		t.Run("return error when service not found for datastore", func(t *testing.T) {
 			repo := new(mockRepo)
-			manager := service.NewResourceManager(repo)
+			logger := log.NewLogrus()
+			manager := service.NewResourceManager(repo, logger)
 
 			spec := map[string]any{"description": "test spec"}
 			res, err := resource.NewResource("proj.ds.name1", resource.KindTable, store, tnnt, meta, spec)
@@ -166,7 +173,8 @@ func TestResourceManager(t *testing.T) {
 			})
 			repo := new(mockRepo)
 			repo.On("UpdateStatus", mock.Anything, argMatcher).Return(nil)
-			manager := service.NewResourceManager(repo)
+			logger := log.NewLogrus()
+			manager := service.NewResourceManager(repo, logger)
 
 			storeService := new(mockDataStore)
 			storeService.On("Update", mock.Anything, updateRequest).Return(errors.InternalError("resource", "error in update", nil))
@@ -194,7 +202,8 @@ func TestResourceManager(t *testing.T) {
 			repo.On("UpdateStatus", mock.Anything, argMatcher).
 				Return(errors.NotFound("resource", "error in update"))
 			defer repo.AssertExpectations(t)
-			manager := service.NewResourceManager(repo)
+			logger := log.NewLogrus()
+			manager := service.NewResourceManager(repo, logger)
 
 			storeService := new(mockDataStore)
 			storeService.On("Update", mock.Anything, updateRequest).Return(errors.InvalidArgument("res", "error in update"))
@@ -221,7 +230,8 @@ func TestResourceManager(t *testing.T) {
 			})
 			repo := new(mockRepo)
 			repo.On("UpdateStatus", mock.Anything, argMatcher).Return(nil)
-			manager := service.NewResourceManager(repo)
+			logger := log.NewLogrus()
+			manager := service.NewResourceManager(repo, logger)
 
 			storeService := new(mockDataStore)
 			storeService.On("Update", mock.Anything, updateRequest).Return(nil)
@@ -241,7 +251,8 @@ func TestResourceManager(t *testing.T) {
 			updateRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToUpdate))
 
 			repo := new(mockRepo)
-			manager := service.NewResourceManager(repo)
+			logger := log.NewLogrus()
+			manager := service.NewResourceManager(repo, logger)
 
 			err = manager.BatchUpdate(ctx, store, []*resource.Resource{updateRequest})
 			assert.NotNil(t, err)
@@ -267,7 +278,8 @@ func TestResourceManager(t *testing.T) {
 			repo.On("UpdateStatus", mock.Anything, argMatcher).Return(me)
 			defer repo.AssertExpectations(t)
 
-			manager := service.NewResourceManager(repo)
+			logger := log.NewLogrus()
+			manager := service.NewResourceManager(repo, logger)
 
 			matcher := mock.MatchedBy(func(res []*resource.Resource) bool {
 				if res[0].Name() == updateRequest.Name() {
@@ -304,7 +316,8 @@ func TestResourceManager(t *testing.T) {
 			})
 			repo := new(mockRepo)
 			repo.On("UpdateStatus", mock.Anything, argMatcher).Return(nil)
-			manager := service.NewResourceManager(repo)
+			logger := log.NewLogrus()
+			manager := service.NewResourceManager(repo, logger)
 
 			matcher := mock.MatchedBy(func(res []*resource.Resource) bool {
 				if res[0].Name() == updateRequest.Name() {
