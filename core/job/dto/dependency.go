@@ -5,3 +5,10 @@ type UnresolvedDependency struct {
 	JobName     string
 	ResourceURN string
 }
+
+func (u UnresolvedDependency) IsStaticDependency() bool {
+	if u.JobName != "" {
+		return true
+	}
+	return false
+}

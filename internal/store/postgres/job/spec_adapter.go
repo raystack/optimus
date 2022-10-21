@@ -164,9 +164,9 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 
 		Hooks: hooksBytes,
 
-		WindowSize:       jobSpec.Window().Size(),
-		WindowOffset:     jobSpec.Window().Offset(),
-		WindowTruncateTo: jobSpec.Window().TruncateTo(),
+		WindowSize:       jobSpec.Window().GetSize(),
+		WindowOffset:     jobSpec.Window().GetOffset(),
+		WindowTruncateTo: jobSpec.Window().GetTruncateTo(),
 
 		DependsOnPast: jobSpec.Schedule().DependsOnPast(),
 		CatchUp:       jobSpec.Schedule().CatchUp(),
