@@ -97,7 +97,7 @@ func (d *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 
 	// get job spec of these destinations and append to current jobSpec
 	for _, depDestination := range jobDependencies {
-		dependencyJobSpec, err := d.jobSpecRepo.GetByResourceDestinationURN(ctx, depDestination)
+		dependencyJobSpecs, err := d.jobSpecRepo.GetByResourceDestinationURN(ctx, depDestination)
 		if err != nil {
 			if errors.Is(err, store.ErrResourceNotFound) {
 				// should not fail for unknown dependency, its okay to not have a upstream job
@@ -107,8 +107,10 @@ func (d *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 			}
 			return jobSpec, fmt.Errorf("runtime dependency evaluation failed: %w", err)
 		}
-		dep := extractDependency(dependencyJobSpec, projectSpec)
-		jobSpec.Dependencies[dep.Job.Name] = dep
+		for _, dependencyJobSpec := range dependencyJobSpecs {
+			dep := extractDependency(dependencyJobSpec, projectSpec)
+			jobSpec.Dependencies[dep.Job.Name] = dep
+		}
 	}
 
 	return jobSpec, nil
