@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -32,7 +33,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			invalidResource := &resource.Resource{}
 
@@ -45,7 +47,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			incomingResource, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
@@ -61,7 +64,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			incomingResource, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
@@ -79,7 +83,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			incomingResource, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
@@ -99,7 +104,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			rsc, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
@@ -121,7 +127,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			invalidResource := &resource.Resource{}
 
@@ -134,7 +141,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			fullName := "project.dataset"
 			resourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
@@ -151,7 +159,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			fullName := "project.dataset"
 			resourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
@@ -171,7 +180,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			fullName := "project.dataset"
 			resourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
@@ -193,7 +203,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			fullName := "project.dataset"
 			resourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
@@ -217,7 +228,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			store := resource.Bigquery
 			fullName := ""
@@ -232,7 +244,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			fullName := "project.dataset"
 
@@ -248,7 +261,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			fullName := "project.dataset"
 			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
@@ -268,7 +282,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			repo.On("ReadAll", mock.Anything, tnnt, resource.Bigquery).Return(nil, errors.New("unknown error"))
 
@@ -282,7 +297,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			existingResource, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
@@ -301,7 +317,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			validResourceToUpdate, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
@@ -317,7 +334,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			incomingResourceToUpdate, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
@@ -333,7 +351,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			fullName := "project.dataset"
 			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
@@ -352,7 +371,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			fullName := "project.dataset"
 			existingMetadata := &resource.Metadata{
@@ -379,7 +399,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			fullName := "project.dataset"
 			existingMetadata := &resource.Metadata{
@@ -409,7 +430,8 @@ func TestResourceService(t *testing.T) {
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			fullName := "project.dataset"
 			existingMetadata := &resource.Metadata{

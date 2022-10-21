@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/odpf/salt/log"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
@@ -39,15 +41,17 @@ type ResourceService struct {
 	tnntDetailsGetter TenantDetailsGetter
 
 	tracer trace.Tracer
+	logger log.Logger
 }
 
-func NewResourceService(repo ResourceRepository, batch ResourceBatchRepo, mgr ResourceManager, tnntDetailsGetter TenantDetailsGetter) *ResourceService {
+func NewResourceService(repo ResourceRepository, batch ResourceBatchRepo, mgr ResourceManager, tnntDetailsGetter TenantDetailsGetter, logger log.Logger) *ResourceService {
 	return &ResourceService{
 		repo:              repo,
 		batch:             batch,
 		mgr:               mgr,
 		tnntDetailsGetter: tnntDetailsGetter,
 		tracer:            otel.Tracer("core.resource.service.ResourceService{}"),
+		logger:            logger,
 	}
 }
 
@@ -56,15 +60,18 @@ func (rs ResourceService) Create(ctx context.Context, res *resource.Resource) er
 	defer span.End()
 
 	if err := res.Validate(); err != nil {
+		rs.logger.Error("error validating resource [%s]: %s", res.FullName(), err)
 		return err
 	}
 
 	if _, err := rs.tnntDetailsGetter.GetDetails(spanCtx, res.Tenant()); err != nil {
+		rs.logger.Error("error getting tenant details: %s", err)
 		return err
 	}
 
 	createRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToCreate))
 	if err := rs.repo.Create(spanCtx, createRequest); err != nil {
+		rs.logger.Error("error creating resource [%s]: %s", res.FullName(), err)
 		return err
 	}
 
@@ -76,30 +83,34 @@ func (rs ResourceService) Update(ctx context.Context, res *resource.Resource) er
 	defer span.End()
 
 	if err := res.Validate(); err != nil {
+		rs.logger.Error("error validating resource [%s]: %s", res.FullName(), err)
 		return err
 	}
 
 	existing, err := rs.repo.ReadByFullName(spanCtx, res.Tenant(), res.Dataset().Store, res.FullName())
 	if err != nil {
+		rs.logger.Error("error getting stored resource [%s]: %s", res.FullName(), err)
 		return err
 	}
 
 	updateRequest := resource.FromExisting(existing, resource.ReplaceStatus(resource.StatusToUpdate))
 	if err := rs.repo.Update(spanCtx, updateRequest); err != nil {
+		rs.logger.Error("error updating stored resource [%s]: %s", res.FullName(), err)
 		return err
 	}
 
 	return rs.mgr.UpdateResource(ctx, updateRequest)
 }
 
-func (rs ResourceService) Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceName string) (*resource.Resource, error) {
+func (rs ResourceService) Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceFullName string) (*resource.Resource, error) {
 	spanCtx, span := rs.tracer.Start(ctx, "Get()")
 	defer span.End()
 
-	if resourceName == "" {
+	if resourceFullName == "" {
+		rs.logger.Error("resource full name is empty")
 		return nil, errors.InvalidArgument(resource.EntityResource, "empty resource full name")
 	}
-	return rs.repo.ReadByFullName(spanCtx, tnnt, store, resourceName)
+	return rs.repo.ReadByFullName(spanCtx, tnnt, store, resourceFullName)
 }
 
 func (rs ResourceService) GetAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error) {
@@ -113,24 +124,33 @@ func (rs ResourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, s
 	spanCtx, span := rs.tracer.Start(ctx, "BatchUpdate()")
 	defer span.End()
 
+	multiError := errors.NewMultiError("error validating resources")
 	for _, r := range resources {
 		if err := r.Validate(); err != nil {
-			return err
+			msg := fmt.Sprintf("error validating [%s]", r.FullName())
+			multiError.Append(errors.Wrap(resource.EntityResource, msg, err))
+			rs.logger.Error(msg)
 		}
+	}
+	if err := errors.MultiToError(multiError); err != nil {
+		return err
 	}
 
 	existingResources, err := rs.repo.ReadAll(spanCtx, tnnt, store)
 	if err != nil {
+		rs.logger.Error("error reading all existing resources: %s", err)
 		return err
 	}
 
 	existingMappedByFullName := rs.getResourcesMappedByFullName(existingResources)
 	resourcesToBatchUpdate := rs.getResourcesToBatchUpdate(resources, existingMappedByFullName)
 	if len(resourcesToBatchUpdate) == 0 {
+		rs.logger.Warn("no resources to be batch updated")
 		return nil
 	}
 
 	if err := rs.batch.CreateOrUpdateAll(spanCtx, resourcesToBatchUpdate); err != nil {
+		rs.logger.Error("error creating and updating incoming resources")
 		return err
 	}
 

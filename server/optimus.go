@@ -266,7 +266,7 @@ func (s *OptimusServer) setupHandlers() error {
 	// Resource Bounded Context
 	resourceRepository := resource.NewRepository(s.dbConn)
 	resourceManager := rService.NewResourceManager(resourceRepository)
-	resourceService := rService.NewResourceService(resourceRepository, resourceRepository, resourceManager, tenantService)
+	resourceService := rService.NewResourceService(resourceRepository, resourceRepository, resourceManager, tenantService, s.logger)
 
 	// Register datastore
 	bqClientProvider := bqStore.NewClientProvider()
