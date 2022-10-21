@@ -11,14 +11,14 @@ import (
 )
 
 type Batch struct {
-	dataset        resource.Dataset
-	datasetDetails *resource.Resource
+	Dataset        resource.Dataset
+	DatasetDetails *resource.Resource
 
 	provider ClientProvider
 
-	tables         []*resource.Resource
-	externalTables []*resource.Resource
-	views          []*resource.Resource
+	Tables         []*resource.Resource
+	ExternalTables []*resource.Resource
+	Views          []*resource.Resource
 }
 
 func (b *Batch) QueueJobs(ctx context.Context, account string, runner *parallel.Runner) error {
@@ -36,36 +36,36 @@ func (b *Batch) QueueJobs(ctx context.Context, account string, runner *parallel.
 		return func() (interface{}, error) {
 			dsHandle := client.DatasetHandleFrom(res)
 			err = checkOrCreateDataset(ctx, dsHandle, res)
-			return nil, err
+			return res, err
 		}
 	}(dataset))
 
-	for _, table := range b.tables {
+	for _, table := range b.Tables {
 		runner.Add(func(res *resource.Resource) func() (interface{}, error) {
 			return func() (interface{}, error) {
 				handle := client.TableHandleFrom(res)
 				err = createOrUpdate(ctx, handle, res)
-				return nil, err
+				return res, err
 			}
 		}(table))
 	}
 
-	for _, extTables := range b.externalTables {
+	for _, extTables := range b.ExternalTables {
 		runner.Add(func(res *resource.Resource) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				handle := client.TableHandleFrom(res)
+				handle := client.ExternalTableHandleFrom(res)
 				err = createOrUpdate(ctx, handle, res)
-				return nil, err
+				return res, err
 			}
 		}(extTables))
 	}
 
-	for _, view := range b.views {
+	for _, view := range b.Views {
 		runner.Add(func(res *resource.Resource) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				handle := client.TableHandleFrom(res)
+				handle := client.ViewHandleFrom(res)
 				err = createOrUpdate(ctx, handle, res)
-				return nil, err
+				return res, err
 			}
 		}(view))
 	}
@@ -95,7 +95,7 @@ func create(ctx context.Context, handle ResourceHandle, res *resource.Resource) 
 	}
 
 	err := handle.Create(ctx, res)
-	if !errors.IsErrorType(err, errors.ErrAlreadyExists) {
+	if err != nil && !errors.IsErrorType(err, errors.ErrAlreadyExists) {
 		return res.MarkFailed()
 	}
 
@@ -112,8 +112,8 @@ func update(ctx context.Context, handle ResourceHandle, res *resource.Resource) 
 }
 
 func (b *Batch) DatasetOrDefault() (*resource.Resource, error) {
-	if b.datasetDetails != nil {
-		return b.datasetDetails, nil
+	if b.DatasetDetails != nil {
+		return b.DatasetDetails, nil
 	}
 
 	fakeTnnt := tenant.Tenant{}
@@ -121,8 +121,8 @@ func (b *Batch) DatasetOrDefault() (*resource.Resource, error) {
 		Description: "dataset created by optimus",
 		Labels:      map[string]string{"created_by": "optimus"},
 	}
-	spec := map[string]any{}
-	r, err := resource.NewResource(b.dataset.FullName(), resource.KindDataset, resource.Bigquery, fakeTnnt, fakeMeta, spec)
+	spec := map[string]any{"description": fakeMeta.Description}
+	r, err := resource.NewResource(b.Dataset.FullName(), resource.KindDataset, resource.Bigquery, fakeTnnt, fakeMeta, spec)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func (b *Batch) DatasetOrDefault() (*resource.Resource, error) {
 }
 
 func BatchesFrom(resources []*resource.Resource, provider ClientProvider) map[string]Batch {
-	var mapping map[string]Batch
+	var mapping = make(map[string]Batch)
 
 	for _, res := range resources {
 		datasetName := res.Dataset().FullName()
@@ -139,20 +139,20 @@ func BatchesFrom(resources []*resource.Resource, provider ClientProvider) map[st
 		batch, ok := mapping[datasetName]
 		if !ok {
 			batch = Batch{
-				dataset:  res.Dataset(),
+				Dataset:  res.Dataset(),
 				provider: provider,
 			}
 		}
 
 		switch res.Kind() {
 		case resource.KindDataset:
-			batch.datasetDetails = res
+			batch.DatasetDetails = res
 		case resource.KindView:
-			batch.views = append(batch.views, res)
+			batch.Views = append(batch.Views, res)
 		case resource.KindExternalTable:
-			batch.externalTables = append(batch.externalTables, res)
+			batch.ExternalTables = append(batch.ExternalTables, res)
 		case resource.KindTable:
-			batch.tables = append(batch.tables, res)
+			batch.Tables = append(batch.Tables, res)
 		default:
 		}
 
