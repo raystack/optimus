@@ -168,7 +168,7 @@ func (e *inspectCommand) printLogs(logs []*pb.Log) {
 		case pb.Level_LEVEL_ERROR:
 			e.logger.Error(fmt.Sprintf("> [error] %v", logs[i].Message))
 		default:
-			e.logger.Error(fmt.Sprintf("unhandled log level::%v specified with error msg ::%v", logs[i].Level, logs[i].Message))
+			e.logger.Error(fmt.Sprintf("unhandled log level::%v specified with error msg::%v", logs[i].Level, logs[i].Message))
 		}
 	}
 }
