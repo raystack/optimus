@@ -24,7 +24,7 @@ type ResourceService interface {
 	Update(ctx context.Context, res *resource.Resource) error
 	Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceName string) (*resource.Resource, error)
 	GetAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error)
-	BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error
+	BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource, logWriter writer.LogWriter) error
 }
 
 type ResourceHandler struct {
@@ -86,7 +86,7 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 			continue
 		}
 
-		if err = rh.service.BatchUpdate(spanCtx, tnnt, store, resourceSpecs); err != nil {
+		if err = rh.service.BatchUpdate(spanCtx, tnnt, store, resourceSpecs, responseWriter); err != nil {
 			var me *errors.MultiError
 			if errors.As(err, &me) {
 				for _, batchErr := range me.Errors {

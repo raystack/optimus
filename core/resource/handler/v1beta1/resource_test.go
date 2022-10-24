@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/resource"
 	"github.com/odpf/optimus/core/resource/handler/v1beta1"
 	"github.com/odpf/optimus/core/tenant"
@@ -119,7 +120,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("returns error log when service returns error", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("BatchUpdate", mock.Anything, tnnt, resource.Bigquery, mock.Anything).
+			service.On("BatchUpdate", mock.Anything, tnnt, resource.Bigquery, mock.Anything, mock.Anything).
 				Return(errors.New("error in batch"))
 			defer service.AssertExpectations(t)
 
@@ -157,7 +158,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("successfully updates the resources", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("BatchUpdate", mock.Anything, tnnt, resource.Bigquery, mock.Anything).Return(nil)
+			service.On("BatchUpdate", mock.Anything, tnnt, resource.Bigquery, mock.Anything, mock.Anything).Return(nil)
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -742,8 +743,8 @@ func (r *resourceService) GetAll(ctx context.Context, tnnt tenant.Tenant, store 
 	return resources, args.Error(1)
 }
 
-func (r *resourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
-	args := r.Called(ctx, tnnt, store, resources)
+func (r *resourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource, logWriter writer.LogWriter) error {
+	args := r.Called(ctx, tnnt, store, resources, logWriter)
 	return args.Error(0)
 }
 
