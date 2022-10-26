@@ -89,7 +89,6 @@ func (d *dependencyResolver) Resolve(ctx context.Context, projectSpec models.Pro
 // GetStaticDependencies return named (explicit/static) dependencies that unresolved with its spec model
 // this is normally happen when reading specs from a store[local/postgres]
 // unresolved dependencies will no longer exist in the map
-// todo: check if unknonw dependecnies are even reported ion the object
 func (d *dependencyResolver) GetStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec) (map[string]models.JobSpecDependency, []models.OptimusDependency, error) {
 	if ctx == nil {
 		return nil, nil, errors.New("context is nil")
@@ -327,15 +326,18 @@ func (d *dependencyResolver) GetEnrichedUpstreamJobSpec(ctx context.Context, sub
 		subjectJobSpec.Dependencies[jobName] = dependecySpec
 	}
 
-	internalDependenciesByJobID := map[uuid.UUID][]models.JobSpec{
-		subjectJobSpec.ID: inferredInternalUpstreams,
+	var resolvedDependencies []models.JobSpec
+	for _, dependency := range subjectJobSpec.Dependencies {
+		resolvedDependencies = append(resolvedDependencies, *dependency.Job)
 	}
-	// todo: why not sending statically resolved also here
-	// what exactly is the flow for intfered external dependency if any
+	resolvedDependenciesByJobID := map[uuid.UUID][]models.JobSpec{
+		subjectJobSpec.ID: resolvedDependencies,
+	}
+
 	externalDependenciesByJobName, unknownDependencies, err := d.getExternalDependenciesByJobName(ctx,
 		subjectJobSpec.GetProjectSpec().Name,
 		[]models.JobSpec{subjectJobSpec},
-		internalDependenciesByJobID)
+		resolvedDependenciesByJobID)
 	if err != nil {
 		return subjectJobSpec, unknownDependencies, err
 	}
