@@ -18,7 +18,7 @@ func NewMockBinaryPlugin(name, pluginType string) *models.Plugin {
 
 func NewMockYamlPlugin(name, pluginType string) *models.Plugin {
 	return &models.Plugin{
-		YamlMod: &MockYamlMod{Name: name, Type: pluginType},
+		YamlMod: &MockCLIMod{Name: name, Type: pluginType},
 	}
 }
 
@@ -41,12 +41,12 @@ func (p *MockBasePlugin) PluginInfo() (*models.PluginInfoResponse, error) {
 	}, nil
 }
 
-type MockYamlMod struct {
+type MockCLIMod struct {
 	Name string
 	Type string
 }
 
-func (p *MockYamlMod) PluginInfo() (*models.PluginInfoResponse, error) {
+func (p *MockCLIMod) PluginInfo() (*models.PluginInfoResponse, error) {
 	return &models.PluginInfoResponse{
 		Name:          p.Name,
 		Description:   "Yaml Test Desc",
@@ -57,23 +57,23 @@ func (p *MockYamlMod) PluginInfo() (*models.PluginInfoResponse, error) {
 		HookType:      "",
 		Image:         "gcr.io/bq-plugin:dev",
 		SecretPath:    "/tmp/auth.json",
-		PluginMods:    []models.PluginMod{models.ModTypeYaml},
+		PluginMods:    []models.PluginMod{models.ModTypeCLI},
 	}, nil
 }
 
-func (*MockYamlMod) GetQuestions(context.Context, models.GetQuestionsRequest) (*models.GetQuestionsResponse, error) {
+func (*MockCLIMod) GetQuestions(context.Context, models.GetQuestionsRequest) (*models.GetQuestionsResponse, error) {
 	return &models.GetQuestionsResponse{Questions: models.PluginQuestions{}}, nil
 }
 
-func (*MockYamlMod) ValidateQuestion(context.Context, models.ValidateQuestionRequest) (*models.ValidateQuestionResponse, error) {
+func (*MockCLIMod) ValidateQuestion(context.Context, models.ValidateQuestionRequest) (*models.ValidateQuestionResponse, error) {
 	return &models.ValidateQuestionResponse{Success: true}, nil
 }
 
-func (*MockYamlMod) DefaultConfig(context.Context, models.DefaultConfigRequest) (*models.DefaultConfigResponse, error) {
+func (*MockCLIMod) DefaultConfig(context.Context, models.DefaultConfigRequest) (*models.DefaultConfigResponse, error) {
 	return &models.DefaultConfigResponse{Config: models.PluginConfigs{}}, nil
 }
 
-func (*MockYamlMod) DefaultAssets(context.Context, models.DefaultAssetsRequest) (*models.DefaultAssetsResponse, error) {
+func (*MockCLIMod) DefaultAssets(context.Context, models.DefaultAssetsRequest) (*models.DefaultAssetsResponse, error) {
 	return &models.DefaultAssetsResponse{Assets: models.PluginAssets{}}, nil
 }
 

@@ -51,14 +51,14 @@ func (*JobSurvey) AskToSelectJobName(jobSpecReader local.SpecReader[*model.JobSp
 	return selectedJobName, nil
 }
 
-func (j *JobSurvey) askYamlModSurveyQuestion(ctx context.Context, yamlMod models.YamlMod, question models.PluginQuestion) (models.PluginAnswers, error) {
+func (j *JobSurvey) askCLIModSurveyQuestion(ctx context.Context, cliMod models.CommandLineMod, question models.PluginQuestion) (models.PluginAnswers, error) {
 	surveyPrompt := j.getSurveyPromptFromPluginQuestion(question)
 
 	var responseStr string
 	if err := survey.AskOne(
 		surveyPrompt,
 		&responseStr,
-		survey.WithValidator(j.getValidatePluginQuestion(ctx, yamlMod, question)),
+		survey.WithValidator(j.getValidatePluginQuestion(ctx, cliMod, question)),
 	); err != nil {
 		return nil, fmt.Errorf("AskSurveyQuestion: %w", err)
 	}
@@ -74,7 +74,7 @@ func (j *JobSurvey) askYamlModSurveyQuestion(ctx context.Context, yamlMod models
 	for _, subQues := range question.SubQuestions {
 		if responseStr == subQues.IfValue {
 			for _, subQuestion := range subQues.Questions {
-				subQuestionAnswers, err := j.askYamlModSurveyQuestion(ctx, yamlMod, subQuestion)
+				subQuestionAnswers, err := j.askCLIModSurveyQuestion(ctx, cliMod, subQuestion)
 				if err != nil {
 					return nil, err
 				}
@@ -111,13 +111,13 @@ func (*JobSurvey) getSurveyPromptFromPluginQuestion(question models.PluginQuesti
 	return surveyPrompt
 }
 
-func (j *JobSurvey) getValidatePluginQuestion(ctx context.Context, yamlMod models.YamlMod, question models.PluginQuestion) survey.Validator {
+func (j *JobSurvey) getValidatePluginQuestion(ctx context.Context, cliMod models.CommandLineMod, question models.PluginQuestion) survey.Validator {
 	return func(val interface{}) error {
 		str, err := j.convertUserInputPluginToString(val)
 		if err != nil {
 			return err
 		}
-		resp, err := yamlMod.ValidateQuestion(ctx, models.ValidateQuestionRequest{
+		resp, err := cliMod.ValidateQuestion(ctx, models.ValidateQuestionRequest{
 			Answer: models.PluginAnswer{
 				Question: question,
 				Value:    str,
