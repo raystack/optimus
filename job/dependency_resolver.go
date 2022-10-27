@@ -130,15 +130,25 @@ func (d *dependencyResolver) GetStaticDependencies(ctx context.Context, jobSpec 
 					if getJobError != nil {
 						unresolvedDependency, _ := convertDependencyNamesToUnresolvedJobDependency(depName)
 
-						externalDependency, _, errExternal := d.externalDependencyResolver.FetchStaticExternalDependenciesPerJobName(ctx, map[string][]models.UnresolvedJobDependency{
+						externalDependency, unresolved, errExternal := d.externalDependencyResolver.FetchStaticExternalDependenciesPerJobName(ctx, map[string][]models.UnresolvedJobDependency{
 							jobSpec.Name: {unresolvedDependency},
 						})
 						if errExternal != nil {
 							err = multierror.Append(err, fmt.Errorf("%s for job %s: %w: %s", ErrUnknownCrossProjectDependency, depName, getJobError, errExternal.Error()))
 						} else {
-							// since this is known to be an external dependency
-							delete(resolvedJobSpecDependencies, depName)
-							externalOptimusDependencies = append(externalOptimusDependencies, externalDependency[jobSpec.Name].OptimusDependencies...)
+							dependencyResolvedFlag := true
+							for _, dependency := range unresolved {
+								if unresolvedDependency.JobName == fmt.Sprintf("%s/%s", dependency.DependencyProjectName, dependency.JobName) {
+									// dependency could not be resolved
+									err = multierror.Append(err, fmt.Errorf("%w for job %s", ErrUnknownCrossProjectDependency, unresolvedDependency.JobName))
+									dependencyResolvedFlag = false
+									continue
+								}
+							}
+							if dependencyResolvedFlag {
+								delete(resolvedJobSpecDependencies, depName)
+								externalOptimusDependencies = append(externalOptimusDependencies, externalDependency[jobSpec.Name].OptimusDependencies...)
+							}
 						}
 					} else {
 						resolvedJobSpecDependencies[depName] = models.JobSpecDependency{
@@ -328,7 +338,9 @@ func (d *dependencyResolver) GetEnrichedUpstreamJobSpec(ctx context.Context, sub
 
 	var resolvedDependencies []models.JobSpec
 	for _, dependency := range subjectJobSpec.Dependencies {
-		resolvedDependencies = append(resolvedDependencies, *dependency.Job)
+		if dependency.Job != nil {
+			resolvedDependencies = append(resolvedDependencies, *dependency.Job)
+		}
 	}
 	resolvedDependenciesByJobID := map[uuid.UUID][]models.JobSpec{
 		subjectJobSpec.ID: resolvedDependencies,
