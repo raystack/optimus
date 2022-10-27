@@ -30,7 +30,7 @@ func (s *GRPCServer) PluginInfo(_ context.Context, _ *pbp.PluginInfoRequest) (*p
 	var mtype []pbp.PluginMod
 	for _, mod := range n.PluginMods {
 		switch mod {
-		case models.ModTypeYaml:
+		case models.ModTypeCLI:
 			mtype = append(mtype, pbp.PluginMod_PLUGIN_MOD_CLI)
 		case models.ModTypeDependencyResolver:
 			mtype = append(mtype, pbp.PluginMod_PLUGIN_MOD_DEPENDENCYRESOLVER)

@@ -116,7 +116,7 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.Equal(t, "error", err.Error())
 		})
-		t.Run("compiles the assets when plugin has no yamlMod", func(t *testing.T) {
+		t.Run("compiles the assets when plugin has no cliMod", func(t *testing.T) {
 			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", "bq").Return(&models.Plugin{}, nil)
 
