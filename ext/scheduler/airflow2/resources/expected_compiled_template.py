@@ -78,7 +78,7 @@ publish_job_end_event = PythonOperator(
 
 
 JOB_DIR = "/data"
-IMAGE_PULL_POLICY="Always"
+IMAGE_PULL_POLICY="IfNotPresent"
 INIT_CONTAINER_IMAGE="odpf/optimus:dev"
 INIT_CONTAINER_ENTRYPOINT = "/opt/entrypoint_init_container.sh"
 

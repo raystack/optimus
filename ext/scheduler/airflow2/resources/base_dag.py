@@ -116,7 +116,7 @@ resources = k8s.V1ResourceRequirements (
 )
 {{- end }}
 JOB_DIR = "/data"
-IMAGE_PULL_POLICY="Always"
+IMAGE_PULL_POLICY="IfNotPresent"
 INIT_CONTAINER_IMAGE="odpf/optimus:{{.Version}}"
 INIT_CONTAINER_ENTRYPOINT = "/opt/entrypoint_init_container.sh"
 
