@@ -127,7 +127,7 @@ resources = k8s.V1ResourceRequirements (
 {{- end }}
 
 transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperKubernetesPodOperator(
-    image_pull_policy="Always",
+    image_pull_policy="IfNotPresent",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = {{ $baseTaskSchema.Image | quote}},
     cmds=[],
@@ -174,7 +174,7 @@ hook_{{$hookSchema.Name | replace "-" "_"}}_secret = Secret(
 {{- end }}
 
 hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
-    image_pull_policy="Always",
+    image_pull_policy="IfNotPresent",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "{{ $hookSchema.Image }}",
     cmds=[],

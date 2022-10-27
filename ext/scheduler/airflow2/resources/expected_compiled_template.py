@@ -85,7 +85,7 @@ transformation_secret = Secret(
 )
 
 transformation_bq = SuperKubernetesPodOperator(
-    image_pull_policy="Always",
+    image_pull_policy="IfNotPresent",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "example.io/namespace/image:latest",
     cmds=[],
@@ -123,7 +123,7 @@ hook_transporter_secret = Secret(
 )
 
 hook_transporter = SuperKubernetesPodOperator(
-    image_pull_policy="Always",
+    image_pull_policy="IfNotPresent",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "example.io/namespace/hook-image:latest",
     cmds=[],
@@ -152,7 +152,7 @@ hook_transporter = SuperKubernetesPodOperator(
 
 
 hook_predator = SuperKubernetesPodOperator(
-    image_pull_policy="Always",
+    image_pull_policy="IfNotPresent",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "example.io/namespace/predator-image:latest",
     cmds=[],
@@ -181,7 +181,7 @@ hook_predator = SuperKubernetesPodOperator(
 
 
 hook_hook__dash__for__dash__fail = SuperKubernetesPodOperator(
-    image_pull_policy="Always",
+    image_pull_policy="IfNotPresent",
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "example.io/namespace/fail-image:latest",
     cmds=[],
