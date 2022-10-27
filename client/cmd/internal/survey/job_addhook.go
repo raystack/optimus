@@ -47,14 +47,14 @@ func (j *JobAddHookSurvey) AskToAddHook(jobSpec *model.JobSpec) (*model.JobSpec,
 	}
 
 	var config map[string]string
-	if yamlMod := selectedHook.GetSurveyMod(); yamlMod != nil {
+	if cliMod := selectedHook.GetSurveyMod(); cliMod != nil {
 		ctx := context.Background()
-		hookAnswers, err := j.askHookQuestions(ctx, yamlMod, jobSpec.Name)
+		hookAnswers, err := j.askHookQuestions(ctx, cliMod, jobSpec.Name)
 		if err != nil {
 			return nil, err
 		}
 
-		config, err = j.getHookConfig(yamlMod, hookAnswers)
+		config, err = j.getHookConfig(cliMod, hookAnswers)
 		if err != nil {
 			return nil, err
 		}
@@ -67,10 +67,10 @@ func (j *JobAddHookSurvey) AskToAddHook(jobSpec *model.JobSpec) (*model.JobSpec,
 	return &newJobSpec, nil
 }
 
-func (*JobAddHookSurvey) getHookConfig(yamlMod models.YamlMod, answers models.PluginAnswers) (map[string]string, error) {
+func (*JobAddHookSurvey) getHookConfig(cliMod models.CommandLineMod, answers models.PluginAnswers) (map[string]string, error) {
 	ctx := context.Background()
 	configRequest := models.DefaultConfigRequest{Answers: answers}
-	generatedConfigResponse, err := yamlMod.DefaultConfig(ctx, configRequest)
+	generatedConfigResponse, err := cliMod.DefaultConfig(ctx, configRequest)
 	if err != nil {
 		return nil, err
 	}

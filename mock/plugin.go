@@ -128,31 +128,31 @@ func (repo *BasePlugin) PluginInfo() (*models.PluginInfoResponse, error) {
 	return args.Get(0).(*models.PluginInfoResponse), args.Error(1)
 }
 
-type YamlMod struct {
+type CLIMod struct {
 	mock.Mock `hash:"-"`
 }
 
-func (repo *YamlMod) PluginInfo() (*models.PluginInfoResponse, error) {
+func (repo *CLIMod) PluginInfo() (*models.PluginInfoResponse, error) {
 	args := repo.Called()
 	return args.Get(0).(*models.PluginInfoResponse), args.Error(1)
 }
 
-func (repo *YamlMod) DefaultConfig(ctx context.Context, inp models.DefaultConfigRequest) (*models.DefaultConfigResponse, error) {
+func (repo *CLIMod) DefaultConfig(ctx context.Context, inp models.DefaultConfigRequest) (*models.DefaultConfigResponse, error) {
 	args := repo.Called(ctx, inp)
 	return args.Get(0).(*models.DefaultConfigResponse), args.Error(1)
 }
 
-func (repo *YamlMod) DefaultAssets(ctx context.Context, inp models.DefaultAssetsRequest) (*models.DefaultAssetsResponse, error) {
+func (repo *CLIMod) DefaultAssets(ctx context.Context, inp models.DefaultAssetsRequest) (*models.DefaultAssetsResponse, error) {
 	args := repo.Called(ctx, inp)
 	return args.Get(0).(*models.DefaultAssetsResponse), args.Error(1)
 }
 
-func (repo *YamlMod) GetQuestions(ctx context.Context, inp models.GetQuestionsRequest) (*models.GetQuestionsResponse, error) {
+func (repo *CLIMod) GetQuestions(ctx context.Context, inp models.GetQuestionsRequest) (*models.GetQuestionsResponse, error) {
 	args := repo.Called(ctx, inp)
 	return args.Get(0).(*models.GetQuestionsResponse), args.Error(1)
 }
 
-func (repo *YamlMod) ValidateQuestion(ctx context.Context, inp models.ValidateQuestionRequest) (*models.ValidateQuestionResponse, error) {
+func (repo *CLIMod) ValidateQuestion(ctx context.Context, inp models.ValidateQuestionRequest) (*models.ValidateQuestionResponse, error) {
 	args := repo.Called(ctx, inp)
 	return args.Get(0).(*models.ValidateQuestionResponse), args.Error(1)
 }
