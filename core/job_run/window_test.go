@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/core/job_run"
 )
 
 func TestNewWindow(t *testing.T) {
@@ -23,7 +23,7 @@ func TestNewWindow(t *testing.T) {
 		}
 
 		for _, tCase := range testCases {
-			actualWindow, actualError := models.NewWindow(tCase.version, tCase.truncateTo, tCase.offset, tCase.size)
+			actualWindow, actualError := job_run.NewWindow(tCase.version, tCase.truncateTo, tCase.offset, tCase.size)
 
 			assert.NotNil(t, actualWindow, tCase.testMessage)
 			assert.NoError(t, actualError, tCase.testMessage)
@@ -36,7 +36,7 @@ func TestNewWindow(t *testing.T) {
 		offset := "1h"
 		size := "1h"
 
-		actualWindow, actualError := models.NewWindow(version, truncateTo, offset, size)
+		actualWindow, actualError := job_run.NewWindow(version, truncateTo, offset, size)
 
 		assert.Nil(t, actualWindow)
 		assert.Error(t, actualError)

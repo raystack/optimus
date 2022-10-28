@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/core/job_run"
 )
 
 func TestWindowV1(t *testing.T) {
@@ -15,7 +15,7 @@ func TestWindowV1(t *testing.T) {
 		t.Run("should not return error for window size which is not a positive or an instant time duration", func(t *testing.T) {
 			validWindowConfigs := []string{"24h", "2h45m", "60s", "45m24h", "", "0"}
 			for _, config := range validWindowConfigs {
-				window, err := models.NewWindow(1, "", "", config)
+				window, err := job_run.NewWindow(1, "", "", config)
 				if err != nil {
 					panic(err)
 				}
@@ -26,7 +26,7 @@ func TestWindowV1(t *testing.T) {
 		t.Run("should not return error for window offset which is a valid time duration", func(t *testing.T) {
 			validOffsetConfigs := []string{"24h", "2h45m", "60s", "45m24h", "0", ""}
 			for _, config := range validOffsetConfigs {
-				window, err := models.NewWindow(1, "", config, "")
+				window, err := job_run.NewWindow(1, "", config, "")
 				if err != nil {
 					panic(err)
 				}
@@ -37,7 +37,7 @@ func TestWindowV1(t *testing.T) {
 		t.Run("should not return error for valid window truncate configs", func(t *testing.T) {
 			validTruncateConfigs := []string{"h", "d", "w", "M", ""}
 			for _, config := range validTruncateConfigs {
-				window, err := models.NewWindow(1, config, "", "")
+				window, err := job_run.NewWindow(1, config, "", "")
 				if err != nil {
 					panic(err)
 				}
@@ -162,7 +162,7 @@ func TestWindowV1(t *testing.T) {
 				},
 			}
 			for _, sc := range cases {
-				w, err := models.NewWindow(1, sc.TruncateTo, sc.Offset, sc.Size)
+				w, err := job_run.NewWindow(1, sc.TruncateTo, sc.Offset, sc.Size)
 				if err != nil {
 					panic(err)
 				}

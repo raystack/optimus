@@ -1,11 +1,10 @@
 package job_run
 
 import (
-	"errors"
-	"fmt"
 	"strings"
 	"time"
 
+	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/utils"
 )
 
@@ -21,13 +20,13 @@ func (windowV2) GetVersion() int {
 
 func (w windowV2) Validate() error {
 	if err := w.validateTruncateTo(); err != nil {
-		return fmt.Errorf("error validating truncate_to: %w", err)
+		return err
 	}
 	if err := w.validateOffset(); err != nil {
-		return fmt.Errorf("error validating offset: %w", err)
+		return err
 	}
 	if err := w.validateSize(); err != nil {
-		return fmt.Errorf("error validating size: %w", err)
+		return err
 	}
 	return nil
 }
@@ -68,7 +67,7 @@ func (w windowV2) validateTruncateTo() error {
 	validTruncateOptions := []string{"h", "d", "w", "M"}
 	// TODO: perhaps we can avoid using util, in hope we can remove this package
 	if !utils.ContainsString(validTruncateOptions, w.truncateTo) {
-		return fmt.Errorf("invalid option provided, provide one of: %v", validTruncateOptions)
+		return errors.InvalidArgument(EntityWindow, "invalid truncate_to provided, provide one of "+strings.Join(validTruncateOptions, ", "))
 	}
 	return nil
 }
@@ -83,8 +82,8 @@ func (w windowV2) validateOffset() error {
 		return err
 	}
 	if nonMonthDuration != "" {
-		if _, err := time.ParseDuration(nonMonthDuration); err != nil {
-			return fmt.Errorf("failed to parse task window with offset %v: %w", w.offset, err)
+		if _, err = time.ParseDuration(nonMonthDuration); err != nil {
+			return errors.InvalidArgument(EntityWindow, "failed to parse non month duration "+nonMonthDuration)
 		}
 	}
 	return nil
@@ -100,15 +99,15 @@ func (w windowV2) validateSize() error {
 		return err
 	}
 	if months < 0 {
-		return errors.New("size cannot be negative")
+		return errors.InvalidArgument(EntityWindow, "size cannot be negative")
 	}
 	if nonMonthDuration != "" {
 		if _, err := time.ParseDuration(nonMonthDuration); err != nil {
-			return fmt.Errorf("failed to parse task window with size %v: %w", w.size, err)
+			return errors.InvalidArgument(EntityWindow, "failed to parse task window with size "+w.size)
 		}
 	}
 	if strings.HasPrefix(w.size, "-") {
-		return errors.New("size cannot be negative")
+		return errors.InvalidArgument(EntityWindow, "size cannot be negative")
 	}
 	return nil
 }
@@ -155,7 +154,7 @@ func (w windowV2) adjustOffset(truncatedTime time.Time) (time.Time, error) {
 
 	nonMonthDuration, err := time.ParseDuration(nonMonthDurationString)
 	if err != nil {
-		return time.Time{}, err
+		return time.Time{}, errors.InvalidArgument(EntityWindow, "failed to parse non month duration "+nonMonthDurationString)
 	}
 	return truncatedTime.Add(nonMonthDuration).AddDate(0, months, 0), nil
 }
@@ -170,7 +169,7 @@ func (w windowV2) getStartTime(endTime time.Time) (time.Time, error) {
 	}
 	nonMonthDuration, err := time.ParseDuration(nonMonthDurationString)
 	if err != nil { // not expecting this, if this happens due to bad code just return inputTime
-		return time.Time{}, err
+		return time.Time{}, errors.InvalidArgument(EntityWindow, "failed to parse non month duration "+nonMonthDurationString)
 	}
 	return endTime.Add(-nonMonthDuration).AddDate(0, -months, 0), nil
 }

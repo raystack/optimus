@@ -43,7 +43,7 @@ func GetEndRunDate(runTime time.Time, window Window) (time.Time, error) {
 
 	nonMonthDuration, err := time.ParseDuration(nonMonthDurationString)
 	if err != nil {
-		return time.Time{}, err
+		return time.Time{}, errors.InvalidArgument(EntityWindow, "unable to parse duration "+nonMonthDurationString)
 	}
 	return runTime.Add(nonMonthDuration).AddDate(0, months, 0).Add(time.Hour * -24), nil
 }
@@ -56,7 +56,7 @@ func monthsAndNonMonthExpression(durationExpression string) (int, string, error)
 	splits := strings.SplitN(durationExpression, "M", maxSubString)
 	months, err := strconv.Atoi(splits[0])
 	if err != nil {
-		return 0, "0", err
+		return 0, "0", errors.InvalidArgument(EntityWindow, "unable to convert month value to int for "+splits[0])
 	}
 	// duration contains only month
 	if len(splits) == 1 || splits[1] == "" {

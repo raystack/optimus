@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/core/job_run"
 )
 
 func TestWindowV2(t *testing.T) {
@@ -15,7 +15,7 @@ func TestWindowV2(t *testing.T) {
 		t.Run("should not throw error for window size which is not a positive or an instant time duration", func(t *testing.T) {
 			validWindowConfigs := []string{"24h", "2h45m", "60s", "45m24h", "", "0", "2M", "45M24h", "45M24h30m"}
 			for _, config := range validWindowConfigs {
-				window, err := models.NewWindow(2, "", "", config)
+				window, err := job_run.NewWindow(2, "", "", config)
 				if err != nil {
 					panic(err)
 				}
@@ -26,7 +26,7 @@ func TestWindowV2(t *testing.T) {
 		t.Run("should throw error for window size which is not a valid time duration", func(t *testing.T) {
 			inValidWindowConfigs := []string{"60S", "60", "2d", "-24h", "-45M24h30m"}
 			for _, config := range inValidWindowConfigs {
-				window, err := models.NewWindow(2, "", "", config)
+				window, err := job_run.NewWindow(2, "", "", config)
 				if err != nil {
 					panic(err)
 				}
@@ -37,7 +37,7 @@ func TestWindowV2(t *testing.T) {
 		t.Run("should not throw error for window offset which is not a time duration", func(t *testing.T) {
 			validOffsetConfigs := []string{"24h", "2h45m", "60s", "45m24h", "0", "", "2M", "45M24h", "45M24h30m", "-45M24h30m"}
 			for _, config := range validOffsetConfigs {
-				window, err := models.NewWindow(2, "", config, "")
+				window, err := job_run.NewWindow(2, "", config, "")
 				if err != nil {
 					panic(err)
 				}
@@ -48,7 +48,7 @@ func TestWindowV2(t *testing.T) {
 		t.Run("should throw error for window offset which is not a valid time duration", func(t *testing.T) {
 			inValidOffsetConfigs := []string{"60S", "60"}
 			for _, config := range inValidOffsetConfigs {
-				window, err := models.NewWindow(2, "", config, "")
+				window, err := job_run.NewWindow(2, "", config, "")
 				if err != nil {
 					panic(err)
 				}
@@ -59,7 +59,7 @@ func TestWindowV2(t *testing.T) {
 		t.Run("should not throw error for valid window truncate configs", func(t *testing.T) {
 			validTruncateConfigs := []string{"h", "d", "w", "M", ""}
 			for _, config := range validTruncateConfigs {
-				window, err := models.NewWindow(2, config, "", "")
+				window, err := job_run.NewWindow(2, config, "", "")
 				if err != nil {
 					panic(err)
 				}
@@ -70,7 +70,7 @@ func TestWindowV2(t *testing.T) {
 		t.Run("should throw error for window truncate when it is not a truncate option", func(t *testing.T) {
 			inValidTruncateConfigs := []string{"s", "a", "ms", "m", "H", "D", "W"}
 			for _, config := range inValidTruncateConfigs {
-				window, err := models.NewWindow(2, config, "", "")
+				window, err := job_run.NewWindow(2, config, "", "")
 				if err != nil {
 					panic(err)
 				}
@@ -271,7 +271,7 @@ func TestWindowV2(t *testing.T) {
 				},
 			}
 			for _, sc := range cases {
-				w, err := models.NewWindow(2, sc.TruncateTo, sc.Offset, sc.Size)
+				w, err := job_run.NewWindow(2, sc.TruncateTo, sc.Offset, sc.Size)
 				if err != nil {
 					panic(err)
 				}

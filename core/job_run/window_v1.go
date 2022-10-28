@@ -1,12 +1,13 @@
 package job_run
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/odpf/optimus/internal/errors"
 )
 
 const (
@@ -91,7 +92,7 @@ func (w *windowV1) prepareWindow() (JobSpecTaskWindow, error) {
 			// treat as normal duration
 			window.Size, err = time.ParseDuration(w.size)
 			if err != nil {
-				return window, fmt.Errorf("failed to parse task window with size %v: %w", w.size, err)
+				return window, errors.InvalidArgument(EntityWindow, "failed to parse window size "+w.size)
 			}
 		}
 	}
@@ -103,7 +104,7 @@ func (w *windowV1) prepareWindow() (JobSpecTaskWindow, error) {
 			// treat as normal duration
 			window.Offset, err = time.ParseDuration(w.offset)
 			if err != nil {
-				return window, fmt.Errorf("failed to parse task window with offset %v: %w", w.offset, err)
+				return window, errors.InvalidArgument(EntityWindow, "failed to parse offset "+w.offset)
 			}
 		}
 	}
@@ -181,7 +182,7 @@ func (windowV1) tryParsingInMonths(str string) (time.Duration, error) {
 		// replace month notation with days first, treating 1M as 30 days
 		monthsCount, err := strconv.Atoi(monthMatches[0][2])
 		if err != nil {
-			return sz, fmt.Errorf("failed to parse task configuration of %s: %w", str, err)
+			return sz, errors.InvalidArgument(EntityWindow, "failed to convert to int "+monthMatches[0][2])
 		}
 		sz = time.Hour * HoursInMonth * time.Duration(monthsCount)
 		if monthMatches[0][1] == "-" {
@@ -193,11 +194,11 @@ func (windowV1) tryParsingInMonths(str string) (time.Duration, error) {
 			// check if there is remaining time that we can still parse
 			remainingTime, err := time.ParseDuration(str)
 			if err != nil {
-				return sz, fmt.Errorf("failed to parse task configuration of %s: %w", str, err)
+				return sz, errors.InvalidArgument(EntityWindow, "failed to parse month value "+str)
 			}
 			sz += remainingTime
 		}
 		return sz, nil
 	}
-	return sz, errors.New("invalid month string")
+	return sz, errors.InvalidArgument(EntityWindow, "invalid month string "+str)
 }
