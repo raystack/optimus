@@ -1,28 +1,35 @@
 package resolver
 
 import (
+	"strings"
+
+	"golang.org/x/net/context"
+
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
-	jobStore "github.com/odpf/optimus/internal/store/postgres/job"
-	"golang.org/x/net/context"
-	"strings"
+	"github.com/odpf/optimus/core/job/service"
 )
 
 type DependencyResolver struct {
-	jobRepository              jobStore.JobRepository
+	jobRepository              service.JobRepository
 	externalDependencyResolver ExternalDependencyResolver
+}
+
+func NewDependencyResolver(jobRepository service.JobRepository, externalDependencyResolver ExternalDependencyResolver) *DependencyResolver {
+	return &DependencyResolver{jobRepository: jobRepository, externalDependencyResolver: externalDependencyResolver}
 }
 
 func (d DependencyResolver) Resolve(ctx context.Context, jobs []*job.Job) ([]*job.WithDependency, error) {
 	var jobsWithAllDependencies []*job.WithDependency
 
-	// with inferred and static dependencies
-	jobsWithInternalDependencies, err := d.jobRepository.GetJobWithDependencies(ctx, jobs)
+	// get internal inferred and static dependencies
+	projectName := jobs[0].ProjectName()
+	jobNames := job.Jobs(jobs).GetJobNames()
+	jobsWithInternalDependencies, err := d.jobRepository.GetJobWithDependencies(ctx, projectName, jobNames)
 	if err != nil {
 		return nil, err
 	}
 
-	// check for unresolved dependencies
 	resolvedJobDependencyMap := job.JobsWithDependency(jobsWithInternalDependencies).ToJobDependencyMap()
 	for _, jobEntity := range jobs {
 		// check unresolved dependencies
@@ -37,14 +44,14 @@ func (d DependencyResolver) Resolve(ctx context.Context, jobs []*job.Job) ([]*jo
 
 		// merge all dependencies
 		resolvedDependencies = append(resolvedDependencies, externalDependencies...)
-		jobWithAllDependencies := job.NewWithDependency(jobEntity.JobSpec().Name(), resolvedDependencies, unknownDependencies)
+		jobWithAllDependencies := job.NewWithDependency(jobEntity.JobSpec().Name(), jobEntity.ProjectName(), resolvedDependencies, unknownDependencies)
 		jobsWithAllDependencies = append(jobsWithAllDependencies, jobWithAllDependencies)
 	}
 
 	return jobsWithAllDependencies, nil
 }
 
-func (d DependencyResolver) identifyUnresolvedDependencies(resolvedDependencies []*job.Dependency, jobEntity *job.Job) (unresolvedDependencies []*dto.UnresolvedDependency) {
+func (d DependencyResolver) identifyUnresolvedDependencies(resolvedDependencies []*dto.Dependency, jobEntity *job.Job) (unresolvedDependencies []*dto.UnresolvedDependency) {
 	unresolvedStaticDependencies := d.identifyUnresolvedStaticDependency(resolvedDependencies, jobEntity)
 	unresolvedDependencies = append(unresolvedDependencies, unresolvedStaticDependencies...)
 
@@ -54,9 +61,9 @@ func (d DependencyResolver) identifyUnresolvedDependencies(resolvedDependencies 
 	return unresolvedDependencies
 }
 
-func (d DependencyResolver) identifyUnresolvedInferredDependencies(resolvedDependencies []*job.Dependency, jobEntity *job.Job) []*dto.UnresolvedDependency {
+func (d DependencyResolver) identifyUnresolvedInferredDependencies(resolvedDependencies []*dto.Dependency, jobEntity *job.Job) []*dto.UnresolvedDependency {
 	var unresolvedInferredDependencies []*dto.UnresolvedDependency
-	resolvedDependencyDestinationMap := job.Dependencies(resolvedDependencies).ToDependencyDestinationMap()
+	resolvedDependencyDestinationMap := dto.Dependencies(resolvedDependencies).ToDependencyDestinationMap()
 	for _, source := range jobEntity.Sources() {
 		if !resolvedDependencyDestinationMap[source] {
 			unresolvedInferredDependencies = append(unresolvedInferredDependencies, &dto.UnresolvedDependency{
@@ -67,9 +74,9 @@ func (d DependencyResolver) identifyUnresolvedInferredDependencies(resolvedDepen
 	return unresolvedInferredDependencies
 }
 
-func (d DependencyResolver) identifyUnresolvedStaticDependency(resolvedDependencies []*job.Dependency, jobEntity *job.Job) []*dto.UnresolvedDependency {
+func (d DependencyResolver) identifyUnresolvedStaticDependency(resolvedDependencies []*dto.Dependency, jobEntity *job.Job) []*dto.UnresolvedDependency {
 	var unresolvedStaticDependencies []*dto.UnresolvedDependency
-	resolvedDependencyFullNameMap := job.Dependencies(resolvedDependencies).ToDependencyFullNameMap()
+	resolvedDependencyFullNameMap := dto.Dependencies(resolvedDependencies).ToDependencyFullNameMap()
 	for _, dependencyName := range jobEntity.StaticDependencyNames() {
 		var projectDependencyName, jobDependencyName string
 

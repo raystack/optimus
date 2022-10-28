@@ -2,12 +2,14 @@ package job
 
 import (
 	"encoding/json"
+	"time"
+
 	"github.com/google/uuid"
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
+	"github.com/lib/pq"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
-	"time"
+
+	"github.com/odpf/optimus/core/job"
 )
 
 const jobDatetimeLayout = "2006-01-02"
@@ -31,7 +33,7 @@ type Spec struct {
 	Alert         datatypes.JSON
 
 	// Dependencies
-	StaticDependencies []string
+	StaticDependencies pq.StringArray `gorm:"type:varchar(220)[]" json:"static_dependencies"`
 
 	// ExternalDependencies
 	HTTPDependencies datatypes.JSON `json:"http_dependencies"`
@@ -48,7 +50,7 @@ type Spec struct {
 	Metadata datatypes.JSON
 
 	Destination string
-	Sources     []string
+	Sources     pq.StringArray `gorm:"type:varchar(300)[]"`
 
 	ProjectName   string `json:"project_name"`
 	NamespaceName string `json:"namespace_name"`
@@ -131,14 +133,19 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		return nil, err
 	}
 
-	httpDependenciesBytes, err := json.Marshal(jobSpec.Dependencies().HttpDependencies())
-	if err != nil {
-		return nil, err
+	var staticDependencies []string
+	var httpDependenciesBytes []byte
+	if jobSpec.DependencySpec() != nil {
+		staticDependencies = jobSpec.DependencySpec().JobDependencies()
+		httpDependenciesBytes, err = json.Marshal(jobSpec.DependencySpec().HTTPDependencies())
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	nsName := ""
-	if ns, err := jobSpec.Tenant().Namespace(); err == nil {
-		nsName = ns.Name().String()
+	nsName, err := jobSpec.Tenant().NamespaceName()
+	if err != nil {
+		return nil, err
 	}
 
 	sources := make([]string, len(jobEntity.Sources()))
@@ -173,19 +180,19 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		Retry:         retryBytes,
 		Alert:         alertsBytes,
 
-		StaticDependencies: jobSpec.Dependencies().JobDependencies(),
+		StaticDependencies: staticDependencies,
 		HTTPDependencies:   httpDependenciesBytes,
 
 		Destination: jobEntity.Destination(),
 		Sources:     sources,
 
-		NamespaceName: nsName,
-		ProjectName:   jobSpec.Tenant().Project().Name().String(),
+		NamespaceName: nsName.String(),
+		ProjectName:   jobSpec.Tenant().ProjectName().String(),
 	}, nil
 }
 
-func toStorageHooks(hookSpecs []*dto.Hook) ([]byte, error) {
-	hooks := make([]Hook, len(hookSpecs))
+func toStorageHooks(hookSpecs []*job.Hook) ([]byte, error) {
+	var hooks []Hook
 	for _, hookSpec := range hookSpecs {
 		hook, err := toStorageHook(hookSpec)
 		if err != nil {
@@ -200,8 +207,8 @@ func toStorageHooks(hookSpecs []*dto.Hook) ([]byte, error) {
 	return hooksJSON, nil
 }
 
-func toStorageHook(spec *dto.Hook) (Hook, error) {
-	configJSON, err := json.Marshal(spec.Config)
+func toStorageHook(spec *job.Hook) (Hook, error) {
+	configJSON, err := json.Marshal(spec.Config().Config())
 	if err != nil {
 		return Hook{}, err
 	}
@@ -212,7 +219,7 @@ func toStorageHook(spec *dto.Hook) (Hook, error) {
 }
 
 func toStorageAsset(assetSpecs map[string]string) ([]byte, error) {
-	assets := make([]Asset, len(assetSpecs))
+	var assets []Asset
 	for key, val := range assetSpecs {
 		assets = append(assets, Asset{Name: key, Value: val})
 	}
@@ -223,7 +230,7 @@ func toStorageAsset(assetSpecs map[string]string) ([]byte, error) {
 	return assetsJSON, nil
 }
 
-func toStorageAlerts(alertSpecs []*dto.Alert) ([]byte, error) {
+func toStorageAlerts(alertSpecs []*job.Alert) ([]byte, error) {
 	var alerts []Alert
 	for _, alertSpec := range alertSpecs {
 		alerts = append(alerts, Alert{

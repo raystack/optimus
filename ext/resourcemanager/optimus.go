@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
-	"github.com/odpf/optimus/core/tenant"
 	"net/http"
 	"strings"
+
+	"github.com/odpf/optimus/core/job/dto"
+	"github.com/odpf/optimus/core/tenant"
 
 	"github.com/mitchellh/mapstructure"
 
@@ -18,7 +18,7 @@ import (
 
 // ResourceManager is repository for external job spec
 type ResourceManager interface {
-	GetOptimusDependencies(context.Context, *dto.UnresolvedDependency) ([]*job.Dependency, error)
+	GetOptimusDependencies(context.Context, *dto.UnresolvedDependency) ([]*dto.Dependency, error)
 }
 
 type optimusResourceManager struct {
@@ -44,7 +44,7 @@ func NewOptimusResourceManager(resourceManagerConfig config.ResourceManager) (Re
 	}, nil
 }
 
-func (o *optimusResourceManager) GetOptimusDependencies(ctx context.Context, unresolvedDependency *dto.UnresolvedDependency) ([]*job.Dependency, error) {
+func (o *optimusResourceManager) GetOptimusDependencies(ctx context.Context, unresolvedDependency *dto.UnresolvedDependency) ([]*dto.Dependency, error) {
 	if ctx == nil {
 		return nil, errors.New("context is nil")
 	}
@@ -69,7 +69,7 @@ func (o *optimusResourceManager) GetOptimusDependencies(ctx context.Context, unr
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
 
-	return o.toOptimusDependencies(jobSpecResponse.JobSpecificationResponses)
+	return o.toOptimusDependencies(jobSpecResponse.JobSpecificationResponses, unresolvedDependency)
 }
 
 func (o *optimusResourceManager) constructGetJobSpecificationsRequest(ctx context.Context, unresolvedDependency *dto.UnresolvedDependency) (*http.Request, error) {
@@ -99,10 +99,10 @@ func (o *optimusResourceManager) constructGetJobSpecificationsRequest(ctx contex
 	return request, nil
 }
 
-func (o *optimusResourceManager) toOptimusDependencies(responses []jobSpecificationResponse) ([]*job.Dependency, error) {
-	output := make([]*job.Dependency, len(responses))
+func (o *optimusResourceManager) toOptimusDependencies(responses []jobSpecificationResponse, unresolvedDependency *dto.UnresolvedDependency) ([]*dto.Dependency, error) {
+	output := make([]*dto.Dependency, len(responses))
 	for i, r := range responses {
-		dependency, err := o.toOptimusDependency(r)
+		dependency, err := o.toOptimusDependency(r, unresolvedDependency)
 		if err != nil {
 			return nil, err
 		}
@@ -111,10 +111,10 @@ func (o *optimusResourceManager) toOptimusDependencies(responses []jobSpecificat
 	return output, nil
 }
 
-func (o *optimusResourceManager) toOptimusDependency(response jobSpecificationResponse) (*job.Dependency, error) {
+func (o *optimusResourceManager) toOptimusDependency(response jobSpecificationResponse, unresolvedDependency *dto.UnresolvedDependency) (*dto.Dependency, error) {
 	tnnt, err := tenant.NewTenant(response.ProjectName, response.NamespaceName)
 	if err != nil {
 		return nil, err
 	}
-	return job.NewDependency(response.Job.Name, tnnt, o.config.Host, ""), nil
+	return dto.NewDependency(response.Job.Name, tnnt, o.config.Host, unresolvedDependency.ResourceURN), nil
 }
