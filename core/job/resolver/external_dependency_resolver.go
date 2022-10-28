@@ -2,15 +2,16 @@ package resolver
 
 import (
 	"fmt"
+
+	"golang.org/x/net/context"
+
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/ext/resourcemanager"
-	"golang.org/x/net/context"
 )
 
 type ExternalDependencyResolver interface {
-	FetchExternalDependencies(ctx context.Context, unresolvedDependencies []*dto.UnresolvedDependency) ([]*job.Dependency, []*dto.UnresolvedDependency, error)
+	FetchExternalDependencies(ctx context.Context, unresolvedDependencies []*dto.UnresolvedDependency) ([]*dto.Dependency, []*dto.UnresolvedDependency, error)
 }
 
 type externalDependencyResolver struct {
@@ -37,9 +38,9 @@ func NewExternalDependencyResolver(resourceManagerConfigs []config.ResourceManag
 	}, nil
 }
 
-func (e *externalDependencyResolver) FetchExternalDependencies(ctx context.Context, unresolvedDependencies []*dto.UnresolvedDependency) ([]*job.Dependency, []*dto.UnresolvedDependency, error) {
+func (e *externalDependencyResolver) FetchExternalDependencies(ctx context.Context, unresolvedDependencies []*dto.UnresolvedDependency) ([]*dto.Dependency, []*dto.UnresolvedDependency, error) {
 	var unknownDependencies []*dto.UnresolvedDependency
-	var externalDependencies []*job.Dependency
+	var externalDependencies []*dto.Dependency
 	for _, toBeResolvedDependency := range unresolvedDependencies {
 		optimusDependencies := e.fetchOptimusDependencies(ctx, toBeResolvedDependency)
 		externalDependencies = append(externalDependencies, optimusDependencies...)
@@ -48,8 +49,8 @@ func (e *externalDependencyResolver) FetchExternalDependencies(ctx context.Conte
 	return externalDependencies, unknownDependencies, nil
 }
 
-func (e *externalDependencyResolver) fetchOptimusDependencies(ctx context.Context, unresolvedDependency *dto.UnresolvedDependency) []*job.Dependency {
-	var dependencies []*job.Dependency
+func (e *externalDependencyResolver) fetchOptimusDependencies(ctx context.Context, unresolvedDependency *dto.UnresolvedDependency) []*dto.Dependency {
+	var dependencies []*dto.Dependency
 	for _, manager := range e.optimusResourceManagers {
 		deps, err := manager.GetOptimusDependencies(ctx, unresolvedDependency)
 		if err != nil {

@@ -1,18 +1,22 @@
 package v1beta1
 
 import (
-	"github.com/odpf/optimus/core/job/dto"
+	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
-func fromJobProto(tnnt *tenant.WithDetails, js *pb.JobSpecification) (*dto.JobSpec, error) {
-	retryProto := js.Behavior.Retry
-	retry := dto.NewRetry(int(retryProto.Count), retryProto.Delay.GetNanos(), retryProto.ExponentialBackoff)
+func fromJobProto(jobTenant tenant.Tenant, js *pb.JobSpecification) (*job.JobSpec, error) {
+	var retry *job.Retry
+	var alerts []*job.Alert
+	if js.Behavior != nil {
+		retry = toRetry(js.Behavior.Retry)
+		alerts = toAlerts(js.Behavior.Notify)
+	}
 
-	schedule := dto.NewSchedule(js.StartDate, js.EndDate, js.Interval, js.DependsOnPast, js.CatchUp, retry)
+	schedule := job.NewSchedule(js.StartDate, js.EndDate, js.Interval, js.DependsOnPast, js.CatchUp, retry)
 
 	window, err := models.NewWindow(int(js.Version), js.WindowTruncateTo, js.WindowOffset, js.WindowSize)
 	if err != nil {
@@ -23,73 +27,81 @@ func fromJobProto(tnnt *tenant.WithDetails, js *pb.JobSpecification) (*dto.JobSp
 	}
 
 	taskConfig := toConfig(js.Config)
-	task := dto.NewTask(js.TaskName, taskConfig)
+	task := job.NewTask(js.TaskName, taskConfig)
 
 	hooks := toHooks(js.Hooks)
-
-	alerts := toAlerts(js.Behavior)
 
 	dependencies := toDependencies(js.Dependencies)
 
 	metadata := toMetadata(js.Metadata)
 
-	return dto.NewJobSpec(tnnt, int(js.Version), js.Name, js.Owner, js.Description, js.Labels,
+	return job.NewJobSpec(jobTenant, int(js.Version), js.Name, js.Owner, js.Description, js.Labels,
 		schedule, window, task, hooks, alerts, dependencies, js.Assets, metadata)
 }
 
-func toHooks(hooksProto []*pb.JobSpecHook) []*dto.Hook {
-	hooks := make([]*dto.Hook, len(hooksProto))
-	for _, hookProto := range hooksProto {
+func toRetry(protoRetry *pb.JobSpecification_Behavior_Retry) *job.Retry {
+	if protoRetry == nil {
+		return nil
+	}
+	return job.NewRetry(int(protoRetry.Count), protoRetry.Delay.GetNanos(), protoRetry.ExponentialBackoff)
+}
+
+func toHooks(hooksProto []*pb.JobSpecHook) []*job.Hook {
+	hooks := make([]*job.Hook, len(hooksProto))
+	for i, hookProto := range hooksProto {
 		hookConfig := toConfig(hookProto.Config)
-		hooks = append(hooks, dto.NewHook(hookProto.Name, hookConfig))
+		hooks[i] = job.NewHook(hookProto.Name, hookConfig)
 	}
 	return hooks
 }
 
-func toAlerts(behavior *pb.JobSpecification_Behavior) []*dto.Alert {
-	alerts := make([]*dto.Alert, len(behavior.Notify))
-	for _, notify := range behavior.Notify {
-		alertOn := dto.EventType(utils.FromEnumProto(notify.On.String(), "type"))
-		alerts = append(alerts, dto.NewAlert(alertOn, notify.Channels, notify.Config))
+func toAlerts(notifiers []*pb.JobSpecification_Behavior_Notifiers) []*job.Alert {
+	alerts := make([]*job.Alert, len(notifiers))
+	for i, notify := range notifiers {
+		alertOn := job.EventType(utils.FromEnumProto(notify.On.String(), "type"))
+		alerts[i] = job.NewAlert(alertOn, notify.Channels, notify.Config)
 	}
 	return alerts
 }
 
-func toDependencies(dependenciesProto []*pb.JobDependency) *dto.Dependencies {
+func toDependencies(dependenciesProto []*pb.JobDependency) *job.DependencySpec {
 	var jobDependencies []string
-	var httpDependencies []*dto.HttpDependency
+	var httpDependencies []*job.HTTPDependency
 	for _, dependency := range dependenciesProto {
 		if dependency.HttpDependency == nil {
 			jobDependencies = append(jobDependencies, dependency.Name)
 			continue
 		}
 		httpDependencyProto := dependency.HttpDependency
-		httpDependency := dto.NewHttpDependency(httpDependencyProto.Name, httpDependencyProto.Url, httpDependencyProto.Headers, httpDependencyProto.Params)
+		httpDependency := job.NewHTTPDependency(httpDependencyProto.Name, httpDependencyProto.Url, httpDependencyProto.Headers, httpDependencyProto.Params)
 		httpDependencies = append(httpDependencies, httpDependency)
 	}
-	dependencies := dto.NewDependencies(jobDependencies, httpDependencies)
+	dependencies := job.NewDependencySpec(jobDependencies, httpDependencies)
 	return dependencies
 }
 
-func toMetadata(jobMetadata *pb.JobMetadata) *dto.Metadata {
+func toMetadata(jobMetadata *pb.JobMetadata) *job.Metadata {
+	if jobMetadata == nil {
+		return nil
+	}
 	metadataResourceProto := jobMetadata.Resource
-	metadataResourceRequest := dto.NewResourceConfig(metadataResourceProto.Request.Cpu, metadataResourceProto.Request.Memory)
-	metadataResourceLimit := dto.NewResourceConfig(metadataResourceProto.Limit.Cpu, metadataResourceProto.Limit.Memory)
+	metadataResourceRequest := job.NewResourceConfig(metadataResourceProto.Request.Cpu, metadataResourceProto.Request.Memory)
+	metadataResourceLimit := job.NewResourceConfig(metadataResourceProto.Limit.Cpu, metadataResourceProto.Limit.Memory)
 
-	resourceMetadata := dto.NewResourceMetadata(metadataResourceRequest, metadataResourceLimit)
+	resourceMetadata := job.NewResourceMetadata(metadataResourceRequest, metadataResourceLimit)
 
 	metadataSchedulerProto := jobMetadata.Airflow
 	schedulerMetadata := make(map[string]string)
 	schedulerMetadata["pool"] = metadataSchedulerProto.Pool
 	schedulerMetadata["queue"] = metadataSchedulerProto.Queue
-	metadata := dto.NewMetadata(resourceMetadata, schedulerMetadata)
+	metadata := job.NewMetadata(resourceMetadata, schedulerMetadata)
 	return metadata
 }
 
-func toConfig(configs []*pb.JobConfigItem) *dto.Config {
+func toConfig(configs []*pb.JobConfigItem) *job.Config {
 	configMap := make(map[string]string, len(configs))
 	for _, config := range configs {
 		configMap[config.Name] = config.Value
 	}
-	return dto.NewConfig(configMap)
+	return job.NewConfig(configMap)
 }

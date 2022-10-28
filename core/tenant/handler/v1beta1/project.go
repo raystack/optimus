@@ -25,6 +25,12 @@ type ProjectService interface {
 	GetAll(context.Context) ([]*tenant.Project, error)
 }
 
+type TenantService interface {
+	GetDetails(ctx context.Context, tnnt tenant.Tenant) (*tenant.WithDetails, error)
+	GetSecrets(ctx context.Context, tnnt tenant.Tenant) ([]*tenant.PlainTextSecret, error)
+	GetSecret(ctx context.Context, tnnt tenant.Tenant, name string) (*tenant.PlainTextSecret, error)
+}
+
 func (ph *ProjectHandler) RegisterProject(ctx context.Context, req *pb.RegisterProjectRequest) (*pb.RegisterProjectResponse, error) {
 	project, err := fromProjectProto(req.GetProject())
 	if err != nil {

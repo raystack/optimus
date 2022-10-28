@@ -1,0 +1,2 @@
+ALTER TABLE job
+RENAME TO job_old;

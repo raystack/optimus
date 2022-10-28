@@ -1,4 +1,4 @@
-package resourcemanager
+package resourcemanager_test
 
 import (
 	"context"
@@ -11,8 +11,9 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/ext/resourcemgr"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/core/job/dto"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/ext/resourcemanager"
 )
 
 type OptimusResourceManager struct {
@@ -21,6 +22,7 @@ type OptimusResourceManager struct {
 
 func (o *OptimusResourceManager) TestGetJobSpecifications() {
 	apiPath := "/api/v1beta1/jobs"
+	sampleTenant, _ := tenant.NewTenant("test-proj", "test-ns")
 
 	o.Run("should return nil and error if context is nil", func() {
 		conf := config.ResourceManager{
@@ -28,13 +30,13 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 				Host: "localhost",
 			},
 		}
-		manager, err := resourcemgr.NewOptimusResourceManager(conf)
+		manager, err := resourcemanager.NewOptimusResourceManager(conf)
 		if err != nil {
 			panic(err)
 		}
 
 		var ctx context.Context
-		var unresolvedDependency models.UnresolvedJobDependency
+		var unresolvedDependency *dto.UnresolvedDependency
 
 		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
 
@@ -48,13 +50,17 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 				Host: ":invalid-url",
 			},
 		}
-		manager, err := resourcemgr.NewOptimusResourceManager(conf)
+		manager, err := resourcemanager.NewOptimusResourceManager(conf)
 		if err != nil {
 			panic(err)
 		}
 
 		ctx := context.Background()
-		var unresolvedDependency models.UnresolvedJobDependency
+		unresolvedDependency := &dto.UnresolvedDependency{
+			ProjectName: "test-proj",
+			JobName:     "job",
+			ResourceURN: "resource",
+		}
 
 		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
 
@@ -72,7 +78,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 				Host: server.URL,
 			},
 		}
-		manager, err := resourcemgr.NewOptimusResourceManager(conf)
+		manager, err := resourcemanager.NewOptimusResourceManager(conf)
 		if err != nil {
 			panic(err)
 		}
@@ -83,7 +89,11 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		})
 
 		ctx := context.Background()
-		var unresolvedDependency models.UnresolvedJobDependency
+		unresolvedDependency := &dto.UnresolvedDependency{
+			ProjectName: "test-proj",
+			JobName:     "job",
+			ResourceURN: "resource",
+		}
 
 		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
 
@@ -101,7 +111,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 				Host: server.URL,
 			},
 		}
-		manager, err := resourcemgr.NewOptimusResourceManager(conf)
+		manager, err := resourcemanager.NewOptimusResourceManager(conf)
 		if err != nil {
 			panic(err)
 		}
@@ -115,7 +125,11 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		})
 
 		ctx := context.Background()
-		var unresolvedDependency models.UnresolvedJobDependency
+		unresolvedDependency := &dto.UnresolvedDependency{
+			ProjectName: "test-proj",
+			JobName:     "job",
+			ResourceURN: "resource",
+		}
 
 		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
 
@@ -137,7 +151,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 				},
 			},
 		}
-		manager, err := resourcemgr.NewOptimusResourceManager(conf)
+		manager, err := resourcemanager.NewOptimusResourceManager(conf)
 		if err != nil {
 			panic(err)
 		}
@@ -147,7 +161,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 			actualHeaderValue := r.Header.Get("key")
 			o.EqualValues(expectedHeaderValue, actualHeaderValue)
 
-			expectedRawQuery := "job_name=job&project_name=project&resource_destination=resource"
+			expectedRawQuery := "job_name=job&project_name=test-proj&resource_destination=resource"
 			actualRawQuery := r.URL.RawQuery
 			o.EqualValues(expectedRawQuery, actualRawQuery)
 
@@ -155,8 +169,8 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 {
     "jobSpecificationResponses": [
         {
-            "projectName": "project",
-            "namespaceName": "namespace",
+            "projectName": "test-proj",
+            "namespaceName": "test-ns",
             "job": {
                 "version": 0,
                 "name": "job"
@@ -170,28 +184,18 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		})
 
 		ctx := context.Background()
-		unresolvedDependency := models.UnresolvedJobDependency{
-			ProjectName:         "project",
-			JobName:             "job",
-			ResourceDestination: "resource",
+		unresolvedDependency := &dto.UnresolvedDependency{
+			ProjectName: "test-proj",
+			JobName:     "job",
+			ResourceURN: "resource",
 		}
 
-		expectedJobSpecifications := []models.OptimusDependency{
-			{
-				Name: "other-optimus",
-				Host: server.URL,
-				Headers: map[string]string{
-					"key": "value",
-				},
-				ProjectName:   "project",
-				NamespaceName: "namespace",
-				JobName:       "job",
-			},
-		}
+		dependency := dto.NewDependency("job", sampleTenant, server.URL, "resource")
+		expectedDependencies := []*dto.Dependency{dependency}
 
 		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
 
-		o.EqualValues(expectedJobSpecifications, actualOptimusDependencies)
+		o.EqualValues(expectedDependencies, actualOptimusDependencies)
 		o.NoError(actualError)
 	})
 
@@ -209,7 +213,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 				},
 			},
 		}
-		manager, err := resourcemgr.NewOptimusResourceManager(conf)
+		manager, err := resourcemanager.NewOptimusResourceManager(conf)
 		if err != nil {
 			panic(err)
 		}
@@ -219,7 +223,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 			actualHeaderValue := r.Header.Get("key")
 			o.EqualValues(expectedHeaderValue, actualHeaderValue)
 
-			expectedRawQuery := "job_name=job&project_name=project&resource_destination=resource"
+			expectedRawQuery := "job_name=job&project_name=test-proj&resource_destination=resource"
 			actualRawQuery := r.URL.RawQuery
 			o.EqualValues(expectedRawQuery, actualRawQuery)
 
@@ -227,8 +231,8 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 {
     "jobSpecificationResponses": [
         {
-            "projectName": "project",
-            "namespaceName": "namespace",
+            "projectName": "test-proj",
+            "namespaceName": "test-ns",
             "job": {
                 "version": 0,
                 "name": "job",
@@ -250,29 +254,18 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		})
 
 		ctx := context.Background()
-		unresolvedDependency := models.UnresolvedJobDependency{
-			ProjectName:         "project",
-			JobName:             "job",
-			ResourceDestination: "resource",
+		unresolvedDependency := &dto.UnresolvedDependency{
+			ProjectName: "test-proj",
+			JobName:     "job",
+			ResourceURN: "resource",
 		}
 
-		expectedJobSpecifications := []models.OptimusDependency{
-			{
-				Name: "other-optimus",
-				Host: server.URL,
-				Headers: map[string]string{
-					"key": "value",
-				},
-				ProjectName:   "project",
-				NamespaceName: "namespace",
-				JobName:       "job",
-				TaskName:      "task-1",
-			},
-		}
+		dependency := dto.NewDependency("job", sampleTenant, server.URL, "resource")
+		expectedDependencies := []*dto.Dependency{dependency}
 
 		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
 
-		o.EqualValues(expectedJobSpecifications, actualOptimusDependencies)
+		o.EqualValues(expectedDependencies, actualOptimusDependencies)
 		o.NoError(actualError)
 	})
 }
@@ -281,7 +274,7 @@ func TestNewOptimusResourceManager(t *testing.T) {
 	t.Run("should return nil and error if config cannot be decoded", func(t *testing.T) {
 		var conf config.ResourceManager
 
-		actualResourceManager, actualError := resourcemgr.NewOptimusResourceManager(conf)
+		actualResourceManager, actualError := resourcemanager.NewOptimusResourceManager(conf)
 
 		assert.Nil(t, actualResourceManager)
 		assert.Error(t, actualError)
@@ -292,7 +285,7 @@ func TestNewOptimusResourceManager(t *testing.T) {
 			Config: config.ResourceManagerConfigOptimus{},
 		}
 
-		actualResourceManager, actualError := resourcemgr.NewOptimusResourceManager(conf)
+		actualResourceManager, actualError := resourcemanager.NewOptimusResourceManager(conf)
 
 		assert.Nil(t, actualResourceManager)
 		assert.Error(t, actualError)
@@ -305,7 +298,7 @@ func TestNewOptimusResourceManager(t *testing.T) {
 			},
 		}
 
-		actualResourceManager, actualError := resourcemgr.NewOptimusResourceManager(conf)
+		actualResourceManager, actualError := resourcemanager.NewOptimusResourceManager(conf)
 
 		assert.NotNil(t, actualResourceManager)
 		assert.NoError(t, actualError)

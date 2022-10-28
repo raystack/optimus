@@ -1,16 +1,21 @@
-package dto
+package job
 
 import (
-	"github.com/odpf/optimus/core/job"
+	"fmt"
+	"time"
+
 	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/models"
 )
 
+const DateSpecLayout = "2006-01-02"
+
 type JobSpec struct {
-	tenant *tenant.WithDetails
+	tenant tenant.Tenant
 
 	version      int
-	name         job.Name
+	name         Name
 	owner        string
 	description  string
 	labels       map[string]string
@@ -19,7 +24,7 @@ type JobSpec struct {
 	task         *Task
 	hooks        []*Hook
 	alerts       []*Alert
-	dependencies *Dependencies
+	dependencies *DependencySpec
 	assets       map[string]string
 	metadata     *Metadata
 }
@@ -28,7 +33,7 @@ func (j JobSpec) Window() models.Window {
 	return j.window
 }
 
-func (j JobSpec) Tenant() *tenant.WithDetails {
+func (j JobSpec) Tenant() tenant.Tenant {
 	return j.tenant
 }
 
@@ -36,7 +41,7 @@ func (j JobSpec) Version() int {
 	return j.version
 }
 
-func (j JobSpec) Name() job.Name {
+func (j JobSpec) Name() Name {
 	return j.name
 }
 
@@ -68,7 +73,7 @@ func (j JobSpec) Alerts() []*Alert {
 	return j.alerts
 }
 
-func (j JobSpec) Dependencies() *Dependencies {
+func (j JobSpec) DependencySpec() *DependencySpec {
 	return j.dependencies
 }
 
@@ -81,16 +86,26 @@ func (j JobSpec) Metadata() *Metadata {
 }
 
 func (j JobSpec) Validate() error {
-	// - if 1 job is failed to be validated/saved, should we fail them all? -> will proceed with what succeed, and notify the failed ones.
+	if j.Schedule().StartDate() == "" {
+		return errors.InvalidArgument(EntityJob, "start date cannot be empty")
+	}
 
-	panic("to do")
+	if _, err := time.Parse(DateSpecLayout, j.Schedule().StartDate()); err != nil {
+		return errors.InvalidArgument(EntityJob, fmt.Sprintf("start date format should be %s", DateSpecLayout))
+	}
+
+	if j.Schedule().EndDate() != "" {
+		if _, err := time.Parse(DateSpecLayout, j.Schedule().EndDate()); err != nil {
+			return errors.InvalidArgument(EntityJob, fmt.Sprintf("end date format should be %s", DateSpecLayout))
+		}
+	}
+	return nil
 }
 
-func NewJobSpec(tenant *tenant.WithDetails, version int, name string, owner string, description string,
+func NewJobSpec(tenant tenant.Tenant, version int, name string, owner string, description string,
 	labels map[string]string, schedule *Schedule, window models.Window, task *Task, hooks []*Hook, alerts []*Alert,
-	dependencies *Dependencies, assets map[string]string, metadata *Metadata) (*JobSpec, error) {
-
-	jobName, err := job.NameFrom(name)
+	dependencies *DependencySpec, assets map[string]string, metadata *Metadata) (*JobSpec, error) {
+	jobName, err := NameFrom(name)
 	if err != nil {
 		return nil, err
 	}
@@ -98,6 +113,19 @@ func NewJobSpec(tenant *tenant.WithDetails, version int, name string, owner stri
 	return &JobSpec{tenant: tenant, version: version, name: jobName, owner: owner, description: description,
 		labels: labels, schedule: schedule, window: window, task: task, hooks: hooks, alerts: alerts,
 		dependencies: dependencies, assets: assets, metadata: metadata}, nil
+}
+
+type Name string
+
+func NameFrom(urn string) (Name, error) {
+	if urn == "" {
+		return "", errors.InvalidArgument(EntityJob, "job name is empty")
+	}
+	return Name(urn), nil
+}
+
+func (j Name) String() string {
+	return string(j)
 }
 
 type Window struct {
@@ -164,48 +192,48 @@ func NewHook(name string, config *Config) *Hook {
 	return &Hook{name: name, config: config}
 }
 
-type Dependencies struct {
+type DependencySpec struct {
 	jobDependencies  []string
-	httpDependencies []*HttpDependency
+	httpDependencies []*HTTPDependency
 }
 
-func (d Dependencies) JobDependencies() []string {
+func NewDependencySpec(jobDependencies []string, httpDependencies []*HTTPDependency) *DependencySpec {
+	return &DependencySpec{jobDependencies: jobDependencies, httpDependencies: httpDependencies}
+}
+
+func (d DependencySpec) JobDependencies() []string {
 	return d.jobDependencies
 }
 
-func (d Dependencies) HttpDependencies() []*HttpDependency {
+func (d DependencySpec) HTTPDependencies() []*HTTPDependency {
 	return d.httpDependencies
 }
 
-func NewDependencies(jobDependencies []string, httpDependencies []*HttpDependency) *Dependencies {
-	return &Dependencies{jobDependencies: jobDependencies, httpDependencies: httpDependencies}
-}
-
-type HttpDependency struct {
+type HTTPDependency struct {
 	name    string
 	url     string
 	headers map[string]string
 	params  map[string]string
 }
 
-func (h HttpDependency) Name() string {
+func (h HTTPDependency) Name() string {
 	return h.name
 }
 
-func (h HttpDependency) Url() string {
+func (h HTTPDependency) URL() string {
 	return h.url
 }
 
-func (h HttpDependency) Headers() map[string]string {
+func (h HTTPDependency) Headers() map[string]string {
 	return h.headers
 }
 
-func (h HttpDependency) Params() map[string]string {
+func (h HTTPDependency) Params() map[string]string {
 	return h.params
 }
 
-func NewHttpDependency(name string, url string, headers map[string]string, params map[string]string) *HttpDependency {
-	return &HttpDependency{name: name, url: url, headers: headers, params: params}
+func NewHTTPDependency(name string, url string, headers map[string]string, params map[string]string) *HTTPDependency {
+	return &HTTPDependency{name: name, url: url, headers: headers, params: params}
 }
 
 type Schedule struct {
@@ -355,7 +383,7 @@ type ResourceConfig struct {
 	memory string
 }
 
-func (r ResourceConfig) Cpu() string {
+func (r ResourceConfig) CPU() string {
 	return r.cpu
 }
 
