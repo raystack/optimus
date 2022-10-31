@@ -161,10 +161,11 @@ func TestYamlPlugin(t *testing.T) {
 		})
 		t.Run("should load plugin for valid paths", func(t *testing.T) {
 			repo := models.NewPluginRepository()
-			yaml.Init(repo, []string{testYamlPluginPath}, pluginLogger)
+			err := yaml.Init(repo, []string{testYamlPluginPath}, pluginLogger)
+			assert.NoError(t, err)
 			assert.NotEmpty(t, repo.GetAll())
 		})
-		t.Run("should load yaml even when binary plugin with same name exists", func(t *testing.T) {
+		t.Run("should returns error when load yaml when same name exists", func(t *testing.T) {
 			repoWithBinayPlugin := models.NewPluginRepository()
 			err := repoWithBinayPlugin.AddYaml(&mockYamlMod{
 				Name:          testYamlPluginName,
@@ -175,7 +176,8 @@ func TestYamlPlugin(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Len(t, repoWithBinayPlugin.GetAll(), 1)
 
-			yaml.Init(repoWithBinayPlugin, []string{testYamlPluginPath}, pluginLogger)
+			err = yaml.Init(repoWithBinayPlugin, []string{testYamlPluginPath}, pluginLogger)
+			assert.Error(t, err)
 			repoPlugins := repoWithBinayPlugin.GetAll()
 
 			assert.Len(t, repoPlugins, 1)
@@ -184,7 +186,9 @@ func TestYamlPlugin(t *testing.T) {
 		})
 		t.Run("should not load duplicate yaml", func(t *testing.T) {
 			repoWithBinayPlugin := models.NewPluginRepository()
-			yaml.Init(repoWithBinayPlugin, []string{testYamlPluginPath, testYamlPluginPath}, pluginLogger)
+			err := yaml.Init(repoWithBinayPlugin, []string{testYamlPluginPath, testYamlPluginPath}, pluginLogger)
+			assert.Error(t, err)
+
 			repoPlugins := repoWithBinayPlugin.GetAll()
 			assert.Len(t, repoPlugins, 1)
 		})
@@ -195,7 +199,8 @@ func TestYamlPlugin(t *testing.T) {
 				"tests/sample_plugin_without_version.yaml",
 				"tests/sample_plugin_schema_invalid.yaml",
 			}
-			yaml.Init(repo, invalidPluginPaths, pluginLogger)
+			err := yaml.Init(repo, invalidPluginPaths, pluginLogger)
+			assert.Error(t, err)
 			assert.Empty(t, repo.GetAll())
 		})
 	})

@@ -108,18 +108,20 @@ func NewPluginSpec(pluginPath string) (*PluginSpec, error) {
 
 // if error in loading, initializing or adding to pluginsrepo , skipping that particular plugin
 // NOTE: binary plugins are loaded after yaml plugins loaded
-func Init(pluginsRepo models.PluginRepository, discoveredYamlPlugins []string, pluginLogger hclog.Logger) {
+func Init(pluginsRepo models.PluginRepository, discoveredYamlPlugins []string, pluginLogger hclog.Logger) error {
 	for _, yamlPluginPath := range discoveredYamlPlugins {
 		yamlPluginSpec, err := NewPluginSpec(yamlPluginPath)
 		if err != nil {
 			pluginLogger.Error(fmt.Sprintf("plugin Init: %s", yamlPluginPath), err)
-			continue
+			return err
 		}
 		pluginInfo := yamlPluginSpec.PluginInfo()
 		if err := pluginsRepo.AddYaml(yamlPluginSpec); err != nil {
 			pluginLogger.Error(fmt.Sprintf("PluginRegistry.Add: %s", yamlPluginPath), err)
-			continue
+			return err
 		}
 		pluginLogger.Debug("plugin ready: ", pluginInfo.Name)
 	}
+
+	return nil
 }

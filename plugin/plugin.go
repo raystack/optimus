@@ -19,7 +19,9 @@ func Initialize(pluginLogger hclog.Logger, arg ...string) error {
 	// fetch yaml plugins first, it holds detailed information about the plugin
 	discoveredYamlPlugins := discoverPluginsGivenFilePattern(pluginLogger, yaml.Prefix, yaml.Suffix)
 	pluginLogger.Debug(fmt.Sprintf("discovering yaml   plugins(%d)...", len(discoveredYamlPlugins)))
-	yaml.Init(models.PluginRegistry, discoveredYamlPlugins, pluginLogger)
+	if err := yaml.Init(models.PluginRegistry, discoveredYamlPlugins, pluginLogger); err != nil {
+		return err
+	}
 
 	// fetch binary plugins. Any binary plugin which doesn't have its yaml version will be failed
 	discoveredBinaryPlugins := discoverPluginsGivenFilePattern(pluginLogger, binary.Prefix, binary.Suffix)
