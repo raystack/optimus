@@ -52,7 +52,7 @@ func (m *GRPCClient) PluginInfo() (*models.PluginInfoResponse, error) {
 	for _, mod := range resp.PluginMods {
 		switch mod {
 		case pbp.PluginMod_PLUGIN_MOD_CLI:
-			mtype = append(mtype, models.ModTypeYaml)
+			mtype = append(mtype, models.ModTypeCLI)
 		case pbp.PluginMod_PLUGIN_MOD_DEPENDENCYRESOLVER:
 			mtype = append(mtype, models.ModTypeDependencyResolver)
 		default:

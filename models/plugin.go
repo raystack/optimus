@@ -18,7 +18,7 @@ const (
 	PluginTypeBase = "base"
 
 	// plugin modes are optional and implemented as needed
-	ModTypeYaml               PluginMod = "yaml"
+	ModTypeCLI                PluginMod = "cli"
 	ModTypeDependencyResolver PluginMod = "dependencyresolver"
 
 	HookTypePre  HookType = "pre"
@@ -119,20 +119,7 @@ type DependencyResolverMod interface {
 
 type YamlMod interface {
 	BasePlugin
-
-	// GetQuestions list down all the cli inputs required to generate spec files
-	// name used for question will be directly mapped to DefaultConfig() parameters
-	GetQuestions(context.Context, GetQuestionsRequest) (*GetQuestionsResponse, error)
-	ValidateQuestion(context.Context, ValidateQuestionRequest) (*ValidateQuestionResponse, error)
-
-	// DefaultConfig will be passed down to execution unit as env vars
-	// they will be generated based on results of AskQuestions
-	// if DryRun is true in PluginOptions, should not throw error for missing inputs
-	DefaultConfig(context.Context, DefaultConfigRequest) (*DefaultConfigResponse, error)
-
-	// DefaultAssets will be passed down to execution unit as files
-	// if DryRun is true in PluginOptions, should not throw error for missing inputs
-	DefaultAssets(context.Context, DefaultAssetsRequest) (*DefaultAssetsResponse, error)
+	CommandLineMod
 }
 
 type PluginOptions struct {
@@ -424,7 +411,7 @@ func (p *Plugin) IsYamlPlugin() bool {
 	return p.YamlMod != nil
 }
 
-func (p *Plugin) GetSurveyMod() YamlMod {
+func (p *Plugin) GetSurveyMod() CommandLineMod {
 	return p.YamlMod
 }
 
