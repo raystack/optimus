@@ -133,10 +133,10 @@ func TestPluginModels(t *testing.T) {
 			"z": NewMockYamlPlugin("z", string(models.PluginTypeTask)),
 			"a": NewMockBinaryPlugin("a", string(models.PluginTypeHook)),
 		}
-		for name, plugin := range plugins {
+		for _, plugin := range plugins {
 			repo.AddYaml(plugin.YamlMod)
 			if plugin.DependencyMod != nil {
-				repo.AddBinary(name, plugin.DependencyMod)
+				repo.AddBinary(plugin.DependencyMod)
 			}
 		}
 		t.Run("should allow both yaml and bin implementations in plugin", func(t *testing.T) {

@@ -13,13 +13,13 @@ type PluginRepository struct {
 	mock.Mock
 }
 
-// Add provides a mock function with given fields: _a0, _a1
-func (_m *PluginRepository) AddBinary(_a0 string, _a1 models.DependencyResolverMod) error {
+// Add provides a mock function with given fields: _a0
+func (_m *PluginRepository) AddBinary(_a0 models.DependencyResolverMod) error {
 	ret := _m.Called(_a0)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, models.DependencyResolverMod) error); ok {
-		r0 = rf(_a0, _a1)
+	if rf, ok := ret.Get(0).(func(models.DependencyResolverMod) error); ok {
+		r0 = rf(_a0)
 	} else {
 		r0 = ret.Error(0)
 	}

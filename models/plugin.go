@@ -381,8 +381,8 @@ var (
 )
 
 type PluginRepository interface {
-	AddYaml(YamlMod) error                         // yaml plugin
-	AddBinary(string, DependencyResolverMod) error // binary plugin
+	AddYaml(YamlMod) error                 // yaml plugin
+	AddBinary(DependencyResolverMod) error // binary plugin
 	GetByName(string) (*Plugin, error)
 	GetAll() []*Plugin
 	GetTasks() []*Plugin
@@ -472,7 +472,39 @@ func (s *registeredPlugins) GetHooks() []*Plugin {
 // for addin yaml plugins
 func (s *registeredPlugins) AddYaml(yamlMod YamlMod) error {
 	info := yamlMod.PluginInfo()
+	if err := validateYamlPluginInfo(info); err != nil {
+		return err
+	}
 
+	if _, ok := s.data[info.Name]; ok {
+		// duplicated yaml plugin
+		return fmt.Errorf("plugin name already in use %s", info.Name)
+	}
+
+	s.data[info.Name] = &Plugin{YamlMod: yamlMod}
+	return nil
+}
+
+// for addin binary plugins
+func (s *registeredPlugins) AddBinary(drMod DependencyResolverMod) error {
+	name, err := drMod.GetName(context.Background())
+	if err != nil {
+		return err
+	}
+
+	if _, ok := s.data[name]; !ok {
+		// any binary plugin should have its yaml version (for the plugin information)
+		return fmt.Errorf("please provide yaml version of the plugin %s", name)
+	} else if s.data[name].DependencyMod != nil {
+		// duplicated binary plugin
+		return fmt.Errorf("plugin name already in use %s", name)
+	}
+
+	s.data[name].DependencyMod = drMod
+	return nil
+}
+
+func validateYamlPluginInfo(info *PluginInfoResponse) error {
 	if info.Name == "" {
 		return errors.New("plugin name cannot be empty")
 	}
@@ -487,15 +519,6 @@ func (s *registeredPlugins) AddYaml(yamlMod YamlMod) error {
 		return errors.New("plugin version cannot be empty")
 	}
 
-	for _, mod := range info.PluginMods {
-		switch mod {
-		case ModTypeCLI:
-		case ModTypeDependencyResolver:
-		default:
-			return ErrUnsupportedPlugin
-		}
-	}
-
 	switch info.PluginType {
 	case PluginTypeTask:
 	case PluginTypeHook:
@@ -503,17 +526,6 @@ func (s *registeredPlugins) AddYaml(yamlMod YamlMod) error {
 		return ErrUnsupportedPlugin
 	}
 
-	s.data[info.Name] = &Plugin{YamlMod: yamlMod}
-	return nil
-}
-
-// for addin binary plugins
-func (s *registeredPlugins) AddBinary(name string, drMod DependencyResolverMod) error {
-	if _, ok := s.data[name]; !ok {
-		// any binary plugin should have its yaml version (for the plugin information)
-		return fmt.Errorf("please provide yaml version of the plugin %s", name)
-	}
-	s.data[name].DependencyMod = drMod
 	return nil
 }
 
