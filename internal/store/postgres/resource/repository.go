@@ -3,8 +3,6 @@ package resource
 import (
 	"context"
 
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/resource"
@@ -14,42 +12,30 @@ import (
 
 type Repository struct {
 	db *gorm.DB
-
-	tracer trace.Tracer
 }
 
 func NewRepository(db *gorm.DB) *Repository {
 	return &Repository{
-		db:     db,
-		tracer: otel.Tracer("internal.store.postgres.resource.Repository{}"),
+		db: db,
 	}
 }
 
 func (r Repository) Create(ctx context.Context, res *resource.Resource) error {
-	spanCtx, span := r.tracer.Start(ctx, "Create()")
-	defer span.End()
-
 	incomingResource := fromResourceToModel(res)
-	return r.create(r.db.WithContext(spanCtx), incomingResource)
+	return r.create(r.db.WithContext(ctx), incomingResource)
 }
 
 func (r Repository) Update(ctx context.Context, res *resource.Resource) error {
-	spanCtx, span := r.tracer.Start(ctx, "Update()")
-	defer span.End()
-
 	incomingResource := fromResourceToModel(res)
-	return r.update(r.db.WithContext(spanCtx), incomingResource)
+	return r.update(r.db.WithContext(ctx), incomingResource)
 }
 
 func (r Repository) ReadByFullName(ctx context.Context, tnnt tenant.Tenant, store resource.Store, fullName string) (*resource.Resource, error) {
-	spanCtx, span := r.tracer.Start(ctx, "ReadByFullName()")
-	defer span.End()
-
 	var namespaceName string
 	if name, err := tnnt.NamespaceName(); err == nil {
 		namespaceName = name.String()
 	}
-	res, err := r.readByFullName(r.db.WithContext(spanCtx), tnnt.ProjectName().String(), namespaceName, store.String(), fullName)
+	res, err := r.readByFullName(r.db.WithContext(ctx), tnnt.ProjectName().String(), namespaceName, store.String(), fullName)
 	if err != nil {
 		return nil, err
 	}
@@ -57,15 +43,12 @@ func (r Repository) ReadByFullName(ctx context.Context, tnnt tenant.Tenant, stor
 }
 
 func (r Repository) ReadAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error) {
-	spanCtx, span := r.tracer.Start(ctx, "ReadAll()")
-	defer span.End()
-
 	namespaceName, err := tnnt.NamespaceName()
 	if err != nil {
 		return nil, err
 	}
 	var resources []*Resource
-	if err := r.db.WithContext(spanCtx).
+	if err := r.db.WithContext(ctx).
 		Where("project_name = ? and namespace_name = ? and store = ?",
 			tnnt.ProjectName().String(), namespaceName.String(), store.String(),
 		).Find(&resources).Error; err != nil {
@@ -83,14 +66,11 @@ func (r Repository) ReadAll(ctx context.Context, tnnt tenant.Tenant, store resou
 }
 
 func (r Repository) CreateOrUpdateAll(ctx context.Context, resources []*resource.Resource) error {
-	spanCtx, span := r.tracer.Start(ctx, "CreateOrUpdateAll()")
-	defer span.End()
-
 	resourceModels := make([]*Resource, len(resources))
 	for i, res := range resources {
 		resourceModels[i] = fromResourceToModel(res)
 	}
-	return r.db.WithContext(spanCtx).Transaction(func(tx *gorm.DB) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		multiErr := errors.NewMultiError("error updating resources status")
 		for _, m := range resourceModels {
 			if m.Status == resource.StatusToCreate.String() {
@@ -108,9 +88,6 @@ func (r Repository) CreateOrUpdateAll(ctx context.Context, resources []*resource
 }
 
 func (r Repository) UpdateStatus(ctx context.Context, resources ...*resource.Resource) error {
-	spanCtx, span := r.tracer.Start(ctx, "UpdateStatus()")
-	defer span.End()
-
 	resourceModels := make([]*Resource, len(resources))
 	for i, res := range resources {
 		resourceModels[i] = fromResourceToModel(res)
@@ -118,7 +95,7 @@ func (r Repository) UpdateStatus(ctx context.Context, resources ...*resource.Res
 
 	multiErr := errors.NewMultiError("error updating resources status")
 	for _, m := range resourceModels {
-		result := r.db.WithContext(spanCtx).Model(&Resource{}).
+		result := r.db.WithContext(ctx).Model(&Resource{}).
 			Where("project_name = ?", m.ProjectName).
 			Where("namespace_name = ?", m.NamespaceName).
 			Where("store = ?", m.Store).

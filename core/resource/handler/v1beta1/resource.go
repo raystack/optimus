@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/odpf/salt/log"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/odpf/optimus/api/writer"
@@ -32,13 +30,9 @@ type ResourceHandler struct {
 	service ResourceService
 
 	pb.UnimplementedResourceServiceServer
-	tracer trace.Tracer
 }
 
 func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_DeployResourceSpecificationServer) error {
-	spanCtx, span := rh.tracer.Start(stream.Context(), "DeployResourceSpecification()")
-	defer span.End()
-
 	startTime := time.Now()
 	responseWriter := writer.NewDeployResourceSpecificationResponseWriter(stream)
 	var errNamespaces []string
@@ -86,7 +80,7 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 			continue
 		}
 
-		if err = rh.service.BatchUpdate(spanCtx, tnnt, store, resourceSpecs, responseWriter); err != nil {
+		if err = rh.service.BatchUpdate(stream.Context(), tnnt, store, resourceSpecs, responseWriter); err != nil {
 			var me *errors.MultiError
 			if errors.As(err, &me) {
 				for _, batchErr := range me.Errors {
@@ -116,9 +110,6 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 }
 
 func (rh ResourceHandler) ListResourceSpecification(ctx context.Context, req *pb.ListResourceSpecificationRequest) (*pb.ListResourceSpecificationResponse, error) {
-	spanCtx, span := rh.tracer.Start(ctx, "ListResourceSpecification()")
-	defer span.End()
-
 	store, err := resource.FromStringToStore(req.GetDatastoreName())
 	if err != nil {
 		return nil, errors.GRPCErr(errors.InvalidArgument(resource.EntityResource, "invalid datastore name"), "invalid list resource request")
@@ -129,7 +120,7 @@ func (rh ResourceHandler) ListResourceSpecification(ctx context.Context, req *pb
 		return nil, errors.GRPCErr(err, "failed to list resource for "+req.GetDatastoreName())
 	}
 
-	resources, err := rh.service.GetAll(spanCtx, tnnt, store)
+	resources, err := rh.service.GetAll(ctx, tnnt, store)
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to retrieve jobs for project "+req.GetProjectName())
 	}
@@ -149,9 +140,6 @@ func (rh ResourceHandler) ListResourceSpecification(ctx context.Context, req *pb
 }
 
 func (rh ResourceHandler) CreateResource(ctx context.Context, req *pb.CreateResourceRequest) (*pb.CreateResourceResponse, error) {
-	spanCtx, span := rh.tracer.Start(ctx, "CreateResource()")
-	defer span.End()
-
 	tnnt, err := tenant.NewNamespaceTenant(req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to create resource")
@@ -167,7 +155,7 @@ func (rh ResourceHandler) CreateResource(ctx context.Context, req *pb.CreateReso
 		return nil, errors.GRPCErr(err, "failed to create resource")
 	}
 
-	err = rh.service.Create(spanCtx, res)
+	err = rh.service.Create(ctx, res)
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to create resource "+res.FullName())
 	}
@@ -177,9 +165,6 @@ func (rh ResourceHandler) CreateResource(ctx context.Context, req *pb.CreateReso
 }
 
 func (rh ResourceHandler) ReadResource(ctx context.Context, req *pb.ReadResourceRequest) (*pb.ReadResourceResponse, error) {
-	spanCtx, span := rh.tracer.Start(ctx, "ReadResource()")
-	defer span.End()
-
 	if req.GetResourceName() == "" {
 		return nil, errors.GRPCErr(errors.InvalidArgument(resource.EntityResource, "empty resource name"), "invalid read resource request")
 	}
@@ -194,7 +179,7 @@ func (rh ResourceHandler) ReadResource(ctx context.Context, req *pb.ReadResource
 		return nil, errors.GRPCErr(err, "failed to read resource "+req.GetResourceName())
 	}
 
-	response, err := rh.service.Get(spanCtx, tnnt, store, req.GetResourceName())
+	response, err := rh.service.Get(ctx, tnnt, store, req.GetResourceName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to read resource "+req.GetResourceName())
 	}
@@ -210,9 +195,6 @@ func (rh ResourceHandler) ReadResource(ctx context.Context, req *pb.ReadResource
 }
 
 func (rh ResourceHandler) UpdateResource(ctx context.Context, req *pb.UpdateResourceRequest) (*pb.UpdateResourceResponse, error) {
-	spanCtx, span := rh.tracer.Start(ctx, "UpdateResource()")
-	defer span.End()
-
 	tnnt, err := tenant.NewNamespaceTenant(req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to update resource")
@@ -228,7 +210,7 @@ func (rh ResourceHandler) UpdateResource(ctx context.Context, req *pb.UpdateReso
 		return nil, errors.GRPCErr(err, "failed to update resource")
 	}
 
-	err = rh.service.Update(spanCtx, res)
+	err = rh.service.Update(ctx, res)
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to update resource "+res.FullName())
 	}
@@ -291,6 +273,5 @@ func NewResourceHandler(l log.Logger, resourceService ResourceService) *Resource
 	return &ResourceHandler{
 		l:       l,
 		service: resourceService,
-		tracer:  otel.Tracer("core.resource.handle.v1beta1.ResourceHandler{}"),
 	}
 }
