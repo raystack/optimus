@@ -109,7 +109,7 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 	rh.l.Info("Finished resource deployment in", "time", time.Since(startTime))
 	if len(errNamespaces) > 0 {
 		namespacesWithError := strings.Join(errNamespaces, ", ")
-		rh.l.Warn(fmt.Sprintf("Error while deploying namespaces: [%s]", namespacesWithError))
+		rh.l.Error("Error while deploying namespaces: [%s]", namespacesWithError)
 		return fmt.Errorf("error when deploying: [%s]", namespacesWithError)
 	}
 	return nil
