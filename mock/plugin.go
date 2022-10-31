@@ -76,34 +76,6 @@ func (_m *PluginRepository) GetByName(_a0 string) (*models.Plugin, error) {
 	return r0, r1
 }
 
-// GetCommandLines provides a mock function with given fields:
-func (_m *PluginRepository) GetCommandLines() []models.YamlMod {
-	ret := _m.Called()
-
-	var r0 []models.YamlMod
-	if rf, ok := ret.Get(0).(func() []models.YamlMod); ok {
-		r0 = rf()
-	} else if ret.Get(0) != nil {
-		r0 = ret.Get(0).([]models.YamlMod)
-	}
-
-	return r0
-}
-
-// GetDependencyResolvers provides a mock function with given fields:
-func (_m *PluginRepository) GetDependencyResolvers() []models.DependencyResolverMod {
-	ret := _m.Called()
-
-	var r0 []models.DependencyResolverMod
-	if rf, ok := ret.Get(0).(func() []models.DependencyResolverMod); ok {
-		r0 = rf()
-	} else if ret.Get(0) != nil {
-		r0 = ret.Get(0).([]models.DependencyResolverMod)
-	}
-
-	return r0
-}
-
 // GetHooks provides a mock function with given fields:
 func (_m *PluginRepository) GetHooks() []*models.Plugin {
 	ret := _m.Called()

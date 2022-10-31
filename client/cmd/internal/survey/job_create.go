@@ -49,7 +49,7 @@ func (j *JobCreateSurvey) AskToCreateJob(jobSpecReader local.SpecReader[*model.J
 		return model.JobSpec{}, err
 	}
 
-	yamlMod, err := j.getPluginYamlMod(jobInput.Task.Name)
+	yamlMod, err := j.getPluginCliMod(jobInput.Task.Name)
 	if err != nil {
 		return jobInput, err
 	}
@@ -80,10 +80,10 @@ func (j *JobCreateSurvey) AskToCreateJob(jobSpecReader local.SpecReader[*model.J
 	return jobInput, nil
 }
 
-func (*JobCreateSurvey) getJobAsset(yamlMod models.YamlMod, answers models.PluginAnswers) (map[string]string, error) {
+func (*JobCreateSurvey) getJobAsset(cliMod models.CommandLineMod, answers models.PluginAnswers) (map[string]string, error) {
 	ctx := context.Background()
 	defaultAssetRequest := models.DefaultAssetsRequest{Answers: answers}
-	generatedAssetResponse, err := yamlMod.DefaultAssets(ctx, defaultAssetRequest)
+	generatedAssetResponse, err := cliMod.DefaultAssets(ctx, defaultAssetRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -94,10 +94,10 @@ func (*JobCreateSurvey) getJobAsset(yamlMod models.YamlMod, answers models.Plugi
 	return asset, nil
 }
 
-func (*JobCreateSurvey) getTaskConfig(yamlMod models.YamlMod, answers models.PluginAnswers) (map[string]string, error) {
+func (*JobCreateSurvey) getTaskConfig(cliMod models.CommandLineMod, answers models.PluginAnswers) (map[string]string, error) {
 	ctx := context.Background()
 	defaultConfigRequest := models.DefaultConfigRequest{Answers: answers}
-	generatedConfigResponse, err := yamlMod.DefaultConfig(ctx, defaultConfigRequest)
+	generatedConfigResponse, err := cliMod.DefaultConfig(ctx, defaultConfigRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +216,7 @@ func (j *JobCreateSurvey) askCreateQuestions(questions []*survey.Question) (mode
 	}, nil
 }
 
-func (*JobCreateSurvey) getPluginYamlMod(taskName string) (models.YamlMod, error) {
+func (*JobCreateSurvey) getPluginCliMod(taskName string) (models.CommandLineMod, error) {
 	pluginRepo := models.PluginRegistry
 	plugin, err := pluginRepo.GetByName(taskName)
 	if err != nil {
@@ -225,17 +225,17 @@ func (*JobCreateSurvey) getPluginYamlMod(taskName string) (models.YamlMod, error
 	return plugin.GetSurveyMod(), nil
 }
 
-func (j *JobCreateSurvey) askPluginQuestions(yamlMod models.YamlMod, jobName string) (models.PluginAnswers, error) {
+func (j *JobCreateSurvey) askPluginQuestions(cliMod models.CommandLineMod, jobName string) (models.PluginAnswers, error) {
 	ctx := context.Background()
 	questionRequest := models.GetQuestionsRequest{JobName: jobName}
-	questionResponse, err := yamlMod.GetQuestions(ctx, questionRequest)
+	questionResponse, err := cliMod.GetQuestions(ctx, questionRequest)
 	if err != nil {
 		return nil, err
 	}
 
 	answers := models.PluginAnswers{}
 	for _, question := range questionResponse.Questions {
-		subAnswers, err := j.jobSurvey.askYamlModSurveyQuestion(ctx, yamlMod, question)
+		subAnswers, err := j.jobSurvey.askCliModSurveyQuestion(ctx, cliMod, question)
 		if err != nil {
 			return nil, err
 		}
