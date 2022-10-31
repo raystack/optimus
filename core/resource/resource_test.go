@@ -396,27 +396,6 @@ func TestResource(t *testing.T) {
 			actualEquality := resource1.Equal(resource2)
 			assert.False(t, actualEquality)
 		})
-		t.Run("returns false if status is not the same", func(t *testing.T) {
-			metadata := &resource.Metadata{
-				Version:     1,
-				Description: "metadata for unit test",
-				Labels: map[string]string{
-					"orcherstrator": "optimus",
-				},
-			}
-			spec := map[string]any{
-				"description": "spec for unit test",
-			}
-			resource1, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.Bigquery, tnnt, metadata, spec)
-			assert.NoError(t, err)
-			err = resource1.MarkSkipped()
-			assert.NoError(t, err)
-			resource2, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.Bigquery, tnnt, metadata, spec)
-			assert.NoError(t, err)
-
-			actualEquality := resource1.Equal(resource2)
-			assert.False(t, actualEquality)
-		})
 		t.Run("returns false if spec is not the same", func(t *testing.T) {
 			metadata := &resource.Metadata{
 				Version:     1,
@@ -447,7 +426,7 @@ func TestResource(t *testing.T) {
 			actualEquality2 := resource2.Equal(resource1)
 			assert.True(t, actualEquality2)
 		})
-		t.Run("returns true if no additional difference is found", func(t *testing.T) {
+		t.Run("returns true regardless of status if no additional difference is found", func(t *testing.T) {
 			metadata := &resource.Metadata{
 				Version:     1,
 				Description: "metadata for unit test",
@@ -460,7 +439,9 @@ func TestResource(t *testing.T) {
 			}
 			resource1, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.Bigquery, tnnt, metadata, spec)
 			assert.NoError(t, err)
+			resource1.MarkToCreate()
 			resource2, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.Bigquery, tnnt, metadata, spec)
+			resource1.MarkToUpdate()
 			assert.NoError(t, err)
 
 			actualEquality := resource1.Equal(resource2)

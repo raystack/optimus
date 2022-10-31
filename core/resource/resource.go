@@ -202,10 +202,7 @@ func (r *Resource) Equal(incoming *Resource) bool {
 	if !reflect.DeepEqual(r.spec, incoming.spec) {
 		return false
 	}
-	if !reflect.DeepEqual(r.metadata, incoming.metadata) {
-		return false
-	}
-	return r.status == incoming.status
+	return reflect.DeepEqual(r.metadata, incoming.metadata)
 }
 
 func (r *Resource) MarkToCreate() error {
