@@ -6,7 +6,6 @@ import (
 
 	"github.com/odpf/salt/log"
 
-	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/resource"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
@@ -63,13 +62,13 @@ func (rs ResourceService) Create(ctx context.Context, res *resource.Resource) er
 		return err
 	}
 
-	createRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToCreate))
-	if err := rs.repo.Create(ctx, createRequest); err != nil {
+	res.MarkToCreate()
+	if err := rs.repo.Create(ctx, res); err != nil {
 		rs.logger.Error("error creating resource [%s]: %s", res.FullName(), err)
 		return err
 	}
 
-	return rs.mgr.CreateResource(ctx, createRequest)
+	return rs.mgr.CreateResource(ctx, res)
 }
 
 func (rs ResourceService) Update(ctx context.Context, res *resource.Resource) error {
@@ -78,19 +77,18 @@ func (rs ResourceService) Update(ctx context.Context, res *resource.Resource) er
 		return err
 	}
 
-	existing, err := rs.repo.ReadByFullName(ctx, res.Tenant(), res.Dataset().Store, res.FullName())
-	if err != nil {
+	if _, err := rs.repo.ReadByFullName(ctx, res.Tenant(), res.Dataset().Store, res.FullName()); err != nil {
 		rs.logger.Error("error getting stored resource [%s]: %s", res.FullName(), err)
 		return err
 	}
 
-	updateRequest := resource.FromExisting(existing, resource.ReplaceStatus(resource.StatusToUpdate))
-	if err := rs.repo.Update(ctx, updateRequest); err != nil {
+	res.MarkToUpdate()
+	if err := rs.repo.Update(ctx, res); err != nil {
 		rs.logger.Error("error updating stored resource [%s]: %s", res.FullName(), err)
 		return err
 	}
 
-	return rs.mgr.UpdateResource(ctx, updateRequest)
+	return rs.mgr.UpdateResource(ctx, res)
 }
 
 func (rs ResourceService) Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceFullName string) (*resource.Resource, error) {
@@ -106,20 +104,14 @@ func (rs ResourceService) GetAll(ctx context.Context, tnnt tenant.Tenant, store 
 }
 
 // TODO: refactor this function in a way to utilize only one logger to handle logging to multiple places, such as server log as well as client log
-func (rs ResourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource, logWriter writer.LogWriter) error {
+func (rs ResourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
 	multiError := errors.NewMultiError("error validating resources")
 	for _, r := range resources {
 		if err := r.Validate(); err != nil {
 			msg := fmt.Sprintf("error validating [%s]: %s", r.FullName(), err)
-
 			multiError.Append(errors.Wrap(resource.EntityResource, msg, err))
-
 			rs.logger.Error(msg)
-			logWriter.Write(writer.LogLevelError, msg)
 		}
-	}
-	if err := errors.MultiToError(multiError); err != nil {
-		return err
 	}
 
 	existingResources, err := rs.repo.ReadAll(ctx, tnnt, store)
@@ -129,43 +121,35 @@ func (rs ResourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, s
 	}
 
 	existingMappedByFullName := rs.getResourcesMappedByFullName(existingResources)
-	resourcesToBatchUpdate := rs.getResourcesToBatchUpdate(resources, existingMappedByFullName, logWriter)
+	resourcesToBatchUpdate := rs.getResourcesToBatchUpdate(resources, existingMappedByFullName)
 	if len(resourcesToBatchUpdate) == 0 {
 		rs.logger.Warn("no resources to be batch updated")
-		return nil
 	}
 
-	if err := rs.batch.CreateOrUpdateAll(ctx, resourcesToBatchUpdate); err != nil {
-		msg := fmt.Sprintf("error creating or updating incoming resources: %s", err)
-		rs.logger.Error(msg)
-		logWriter.Write(writer.LogLevelError, msg)
-		return err
-	}
-
-	return rs.mgr.BatchUpdate(ctx, store, resourcesToBatchUpdate)
+	multiError.Append(rs.batch.CreateOrUpdateAll(ctx, resourcesToBatchUpdate))
+	multiError.Append(rs.mgr.BatchUpdate(ctx, store, resourcesToBatchUpdate))
+	return errors.MultiToError(multiError)
 }
 
-func (rs ResourceService) getResourcesToBatchUpdate(incomings []*resource.Resource, existingMappedByFullName map[string]*resource.Resource, logWriter writer.LogWriter) []*resource.Resource {
+func (rs ResourceService) getResourcesToBatchUpdate(incomings []*resource.Resource, existingMappedByFullName map[string]*resource.Resource) []*resource.Resource {
 	var output []*resource.Resource
-	for _, in := range incomings {
-		if existing, ok := existingMappedByFullName[in.FullName()]; ok {
-			existingStatus := existing.Status()
-			incoming := resource.FromExisting(in, resource.ReplaceStatus(existingStatus))
-			if !incoming.Equal(existing) {
-				resourceToUpdate := resource.FromExisting(incoming, resource.ReplaceStatus(resource.StatusToUpdate))
-				output = append(output, resourceToUpdate)
+	for _, incoming := range incomings {
+		if existing, ok := existingMappedByFullName[incoming.FullName()]; ok {
+			if incoming.Equal(existing) {
+				incoming.MarkSkipped()
+
+				rs.logger.Warn("resource [%s] is skipped because it has no changes", existing.FullName())
+			} else {
+				incoming.MarkToUpdate()
+				output = append(output, incoming)
 
 				rs.logger.Info("resource [%s] will be updated", existing.FullName())
-			} else {
-				msg := fmt.Sprintf("resource [%s] is skipped because it has no changes", existing.FullName())
-				rs.logger.Warn(msg)
-				logWriter.Write(writer.LogLevelWarning, msg)
 			}
 		} else {
-			resourceToCreate := resource.FromExisting(in, resource.ReplaceStatus(resource.StatusToCreate))
-			output = append(output, resourceToCreate)
+			incoming.MarkToCreate()
+			output = append(output, incoming)
 
-			rs.logger.Info("resource [%s] will be updated", resourceToCreate.FullName())
+			rs.logger.Info("resource [%s] will be created", incoming.FullName())
 		}
 	}
 	return output

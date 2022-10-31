@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/resource"
 	"github.com/odpf/optimus/core/resource/service"
 	"github.com/odpf/optimus/core/tenant"
@@ -319,7 +318,6 @@ func TestResourceService(t *testing.T) {
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
 			logger := log.NewLogrus()
-			logWriter := NewLogWriter(t)
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			validResourceToUpdate, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
@@ -327,9 +325,13 @@ func TestResourceService(t *testing.T) {
 			invalidResourceToUpdate := &resource.Resource{}
 			resourcesToUpdate := []*resource.Resource{validResourceToUpdate, invalidResourceToUpdate}
 
-			logWriter.On("Write", writer.LogLevelError, mock.Anything).Return(nil)
+			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{}, nil)
 
-			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, resourcesToUpdate, logWriter)
+			batch.On("CreateOrUpdateAll", ctx, resourcesToUpdate).Return(nil)
+
+			mgr.On("BatchUpdate", ctx, resource.Bigquery, resourcesToUpdate).Return(nil)
+
+			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, resourcesToUpdate)
 			assert.Error(t, actualError)
 		})
 
@@ -339,15 +341,15 @@ func TestResourceService(t *testing.T) {
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
 			logger := log.NewLogrus()
-			logWriter := NewLogWriter(t)
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			incomingResourceToUpdate, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
+			resourcesToUpdate := []*resource.Resource{incomingResourceToUpdate}
 
 			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return(nil, errors.New("unknown error"))
 
-			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate}, logWriter)
+			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, resourcesToUpdate)
 			assert.ErrorContains(t, actualError, "unknown error")
 		})
 
@@ -357,7 +359,6 @@ func TestResourceService(t *testing.T) {
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
 			logger := log.NewLogrus()
-			logWriter := NewLogWriter(t)
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			fullName := "project.dataset"
@@ -368,19 +369,20 @@ func TestResourceService(t *testing.T) {
 
 			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{existingResource}, nil)
 
-			logWriter.On("Write", writer.LogLevelWarning, mock.Anything).Return(nil)
+			batch.On("CreateOrUpdateAll", ctx, mock.Anything).Return(nil)
 
-			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate}, logWriter)
+			mgr.On("BatchUpdate", ctx, resource.Bigquery, mock.Anything).Return(nil)
+
+			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
 			assert.NoError(t, actualError)
 		})
 
-		t.Run("returns error if error is encountered when updating to repo", func(t *testing.T) {
+		t.Run("returns error if error is encountered when batch updating to repo", func(t *testing.T) {
 			repo := NewResourceRepository(t)
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
 			logger := log.NewLogrus()
-			logWriter := NewLogWriter(t)
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			fullName := "project.dataset"
@@ -399,9 +401,9 @@ func TestResourceService(t *testing.T) {
 
 			batch.On("CreateOrUpdateAll", ctx, mock.Anything).Return(errors.New("unknown error"))
 
-			logWriter.On("Write", writer.LogLevelError, mock.Anything).Return(nil)
+			mgr.On("BatchUpdate", ctx, resource.Bigquery, mock.Anything).Return(nil)
 
-			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate}, logWriter)
+			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
 			assert.ErrorContains(t, actualError, "unknown error")
 		})
 
@@ -411,7 +413,6 @@ func TestResourceService(t *testing.T) {
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
 			logger := log.NewLogrus()
-			logWriter := NewLogWriter(t)
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			fullName := "project.dataset"
@@ -432,7 +433,7 @@ func TestResourceService(t *testing.T) {
 
 			mgr.On("BatchUpdate", ctx, resource.Bigquery, mock.Anything).Return(errors.New("unknown error"))
 
-			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate}, logWriter)
+			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
 
 			assert.ErrorContains(t, actualError, "unknown error")
 		})
@@ -443,7 +444,6 @@ func TestResourceService(t *testing.T) {
 			mgr := NewResourceManager(t)
 			tnntDetailsGetter := NewTenantDetailsGetter(t)
 			logger := log.NewLogrus()
-			logWriter := NewLogWriter(t)
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
 			fullName := "project.dataset"
@@ -464,7 +464,7 @@ func TestResourceService(t *testing.T) {
 
 			mgr.On("BatchUpdate", ctx, resource.Bigquery, mock.Anything).Return(nil)
 
-			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate}, logWriter)
+			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
 
 			assert.NoError(t, actualError)
 		})
@@ -680,37 +680,6 @@ type mockConstructorTestingTNewTenantDetailsGetter interface {
 
 func NewTenantDetailsGetter(t mockConstructorTestingTNewTenantDetailsGetter) *TenantDetailsGetter {
 	mock := &TenantDetailsGetter{}
-	mock.Mock.Test(t)
-
-	t.Cleanup(func() { mock.AssertExpectations(t) })
-
-	return mock
-}
-
-type LogWriter struct {
-	mock.Mock
-}
-
-func (_m *LogWriter) Write(_a0 writer.LogLevel, _a1 string) error {
-	ret := _m.Called(_a0, _a1)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(writer.LogLevel, string) error); ok {
-		r0 = rf(_a0, _a1)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-type mockConstructorTestingTNewLogWriter interface {
-	mock.TestingT
-	Cleanup(func())
-}
-
-func NewLogWriter(t mockConstructorTestingTNewLogWriter) *LogWriter {
-	mock := &LogWriter{}
 	mock.Mock.Test(t)
 
 	t.Cleanup(func() { mock.AssertExpectations(t) })

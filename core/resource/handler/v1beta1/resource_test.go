@@ -12,7 +12,6 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/resource"
 	"github.com/odpf/optimus/core/resource/handler/v1beta1"
 	"github.com/odpf/optimus/core/tenant"
@@ -743,8 +742,8 @@ func (r *resourceService) GetAll(ctx context.Context, tnnt tenant.Tenant, store 
 	return resources, args.Error(1)
 }
 
-func (r *resourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource, logWriter writer.LogWriter) error {
-	args := r.Called(ctx, tnnt, store, resources, logWriter)
+func (r *resourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
+	args := r.Called(ctx, tnnt, store, resources)
 	return args.Error(0)
 }
 
