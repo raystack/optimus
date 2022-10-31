@@ -3,6 +3,7 @@ description: Testing
 plugintype: task
 pluginmods:
   - cli
+pluginversion: ""
 image: ""
 secretpath: /tmp/auth.json
 
