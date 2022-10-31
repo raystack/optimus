@@ -67,10 +67,10 @@ func (j *JobAddHookSurvey) AskToAddHook(jobSpec *model.JobSpec) (*model.JobSpec,
 	return &newJobSpec, nil
 }
 
-func (*JobAddHookSurvey) getHookConfig(yamlMod models.YamlMod, answers models.PluginAnswers) (map[string]string, error) {
+func (*JobAddHookSurvey) getHookConfig(cliMod models.CommandLineMod, answers models.PluginAnswers) (map[string]string, error) {
 	ctx := context.Background()
 	configRequest := models.DefaultConfigRequest{Answers: answers}
-	generatedConfigResponse, err := yamlMod.DefaultConfig(ctx, configRequest)
+	generatedConfigResponse, err := cliMod.DefaultConfig(ctx, configRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -116,16 +116,16 @@ func (*JobAddHookSurvey) isSelectedHookAlreadyInJob(jobSpec *model.JobSpec, sele
 	return false
 }
 
-func (j *JobAddHookSurvey) askHookQuestions(ctx context.Context, yamlMod models.YamlMod, jobName string) (models.PluginAnswers, error) {
+func (j *JobAddHookSurvey) askHookQuestions(ctx context.Context, cliMod models.CommandLineMod, jobName string) (models.PluginAnswers, error) {
 	questionRequest := models.GetQuestionsRequest{JobName: jobName}
-	questionResponse, err := yamlMod.GetQuestions(ctx, questionRequest)
+	questionResponse, err := cliMod.GetQuestions(ctx, questionRequest)
 	if err != nil {
 		return nil, err
 	}
 
 	answers := models.PluginAnswers{}
 	for _, question := range questionResponse.Questions {
-		responseAnswer, err := j.jobSurvey.askYamlModSurveyQuestion(ctx, yamlMod, question)
+		responseAnswer, err := j.jobSurvey.askCliModSurveyQuestion(ctx, cliMod, question)
 		if err != nil {
 			return nil, err
 		}

@@ -38,7 +38,7 @@ func (p *MockYamlMod) PluginInfo() *models.PluginInfoResponse {
 		HookType:      "",
 		Image:         "gcr.io/bq-plugin:dev",
 		SecretPath:    "/tmp/auth.json",
-		PluginMods:    []models.PluginMod{models.ModTypeYaml},
+		PluginMods:    []models.PluginMod{models.ModTypeCLI},
 	}
 }
 

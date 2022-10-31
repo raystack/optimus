@@ -15,7 +15,7 @@ import (
 
 const (
 	// plugin modes are optional and implemented as needed
-	ModTypeYaml               PluginMod = "yaml"
+	ModTypeCLI                PluginMod = "cli"
 	ModTypeDependencyResolver PluginMod = "dependencyresolver"
 
 	HookTypePre  HookType = "pre"
@@ -398,7 +398,7 @@ func (p *Plugin) IsYamlPlugin() bool {
 	return p.YamlMod != nil
 }
 
-func (p *Plugin) GetSurveyMod() YamlMod {
+func (p *Plugin) GetSurveyMod() CommandLineMod {
 	return p.YamlMod
 }
 
