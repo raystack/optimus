@@ -7,13 +7,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/odpf/optimus/core/job_run"
-	"github.com/odpf/optimus/core/tenant"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
 type JobRunService interface {
-	GetJob(ctx context.Context, tnnt tenant.Tenant, jobName job_run.JobName) (job_run.Job, error)
 }
 
 type Scheduler interface {
@@ -26,10 +23,10 @@ type JobRunHandler struct {
 	pb.UnimplementedJobRunServiceServer
 }
 
-func (JobRunHandler) GetJobTask(ctx context.Context, req *pb.GetJobTaskRequest) (*pb.GetJobTaskResponse, error) {
-	// GetJobTask Should be part of the job BC
-	return nil, nil
-}
+//func (JobRunHandler) GetJobTask(ctx context.Context, req *pb.GetJobTaskRequest) (*pb.GetJobTaskResponse, error) {
+//	// GetJobTask Should be part of the job BC
+//	return nil, nil
+//}
 
 func (JobRunHandler) JobRunInput(context.Context, *pb.JobRunInputRequest) (*pb.JobRunInputResponse, error) {
 	// Use project_name to get job, then use the information in tenant
@@ -47,6 +44,7 @@ func (JobRunHandler) JobRun(context.Context, *pb.JobRunRequest) (*pb.JobRunRespo
 }
 
 func (JobRunHandler) GetWindow(context.Context, *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
+	// Need to copy, paste
 	return nil, nil
 }
 
