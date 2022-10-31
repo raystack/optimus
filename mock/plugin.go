@@ -152,6 +152,11 @@ type DependencyResolverMod struct {
 	mock.Mock `hash:"-"`
 }
 
+func (repo *DependencyResolverMod) GetName(ctx context.Context) (string, error) {
+	args := repo.Called(ctx)
+	return args.Get(0).(string), args.Error(1)
+}
+
 func (repo *DependencyResolverMod) GenerateDestination(ctx context.Context, inp models.GenerateDestinationRequest) (*models.GenerateDestinationResponse, error) {
 	args := repo.Called(ctx, inp)
 	return args.Get(0).(*models.GenerateDestinationResponse), args.Error(1)

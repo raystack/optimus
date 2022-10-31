@@ -22,6 +22,8 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DependencyResolverModServiceClient interface {
+	// GetName returns name of the plugin
+	GetName(ctx context.Context, in *GetNameRequest, opts ...grpc.CallOption) (*GetNameResponse, error)
 	// GenerateDestination derive destination from config and assets
 	GenerateDestination(ctx context.Context, in *GenerateDestinationRequest, opts ...grpc.CallOption) (*GenerateDestinationResponse, error)
 	// GenerateDependencies return names of job destination on which this unit
@@ -37,6 +39,15 @@ type dependencyResolverModServiceClient struct {
 
 func NewDependencyResolverModServiceClient(cc grpc.ClientConnInterface) DependencyResolverModServiceClient {
 	return &dependencyResolverModServiceClient{cc}
+}
+
+func (c *dependencyResolverModServiceClient) GetName(ctx context.Context, in *GetNameRequest, opts ...grpc.CallOption) (*GetNameResponse, error) {
+	out := new(GetNameResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.plugins.v1beta1.DependencyResolverModService/GetName", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *dependencyResolverModServiceClient) GenerateDestination(ctx context.Context, in *GenerateDestinationRequest, opts ...grpc.CallOption) (*GenerateDestinationResponse, error) {
@@ -70,6 +81,8 @@ func (c *dependencyResolverModServiceClient) CompileAssets(ctx context.Context, 
 // All implementations must embed UnimplementedDependencyResolverModServiceServer
 // for forward compatibility
 type DependencyResolverModServiceServer interface {
+	// GetName returns name of the plugin
+	GetName(context.Context, *GetNameRequest) (*GetNameResponse, error)
 	// GenerateDestination derive destination from config and assets
 	GenerateDestination(context.Context, *GenerateDestinationRequest) (*GenerateDestinationResponse, error)
 	// GenerateDependencies return names of job destination on which this unit
@@ -84,6 +97,9 @@ type DependencyResolverModServiceServer interface {
 type UnimplementedDependencyResolverModServiceServer struct {
 }
 
+func (UnimplementedDependencyResolverModServiceServer) GetName(context.Context, *GetNameRequest) (*GetNameResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetName not implemented")
+}
 func (UnimplementedDependencyResolverModServiceServer) GenerateDestination(context.Context, *GenerateDestinationRequest) (*GenerateDestinationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GenerateDestination not implemented")
 }
@@ -105,6 +121,24 @@ type UnsafeDependencyResolverModServiceServer interface {
 
 func RegisterDependencyResolverModServiceServer(s grpc.ServiceRegistrar, srv DependencyResolverModServiceServer) {
 	s.RegisterService(&DependencyResolverModService_ServiceDesc, srv)
+}
+
+func _DependencyResolverModService_GetName_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetNameRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DependencyResolverModServiceServer).GetName(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/odpf.optimus.plugins.v1beta1.DependencyResolverModService/GetName",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DependencyResolverModServiceServer).GetName(ctx, req.(*GetNameRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _DependencyResolverModService_GenerateDestination_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -168,6 +202,10 @@ var DependencyResolverModService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "odpf.optimus.plugins.v1beta1.DependencyResolverModService",
 	HandlerType: (*DependencyResolverModServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetName",
+			Handler:    _DependencyResolverModService_GetName_Handler,
+		},
 		{
 			MethodName: "GenerateDestination",
 			Handler:    _DependencyResolverModService_GenerateDestination_Handler,

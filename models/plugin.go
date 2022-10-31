@@ -97,6 +97,9 @@ type CommandLineMod interface {
 
 // DependencyResolverMod needs to be implemented for automatic dependency resolution of tasks
 type DependencyResolverMod interface {
+	// GetName returns name of the plugin
+	GetName(context.Context) (string, error)
+
 	// GenerateDestination derive destination from config and assets
 	GenerateDestination(context.Context, GenerateDestinationRequest) (*GenerateDestinationResponse, error)
 

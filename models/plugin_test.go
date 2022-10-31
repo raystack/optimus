@@ -63,6 +63,10 @@ type MockDependencyMod struct {
 	Type string
 }
 
+func (*MockDependencyMod) GetName(context.Context) (string, error) {
+	return "", nil
+}
+
 func (*MockDependencyMod) GenerateDestination(context.Context, models.GenerateDestinationRequest) (*models.GenerateDestinationResponse, error) {
 	return &models.GenerateDestinationResponse{}, nil
 }

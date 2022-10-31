@@ -1,11 +1,10 @@
 package binary
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
-	"path/filepath"
 	"runtime"
-	"strings"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
@@ -36,23 +35,26 @@ func Init(pluginsRepo models.PluginRepository, discoveredBinaryPlugins []string,
 			Logger:           pluginLogger,
 		})
 
-		pluginName := getNameFromPluginPath(pluginPath)
-
 		// connect via GRPC
 		rpcClient, err := pluginClient.Client()
 		if err != nil {
 			return fmt.Errorf("client.Client(): %s: %w", pluginPath, err)
 		}
-		pluginLogger.Debug("plugin connection established: ", pluginName)
+		pluginLogger.Debug("plugin connection established: ", pluginPath)
 
 		var drClient models.DependencyResolverMod
 		// create a client with dependency resolver mod
 		rawMod, err := rpcClient.Dispense(models.ModTypeDependencyResolver.String())
 		if err != nil {
-			return fmt.Errorf("rpcClient.Dispense(): %s: %w", pluginName, err)
+			return fmt.Errorf("rpcClient.Dispense(): %s: %w", pluginPath, err)
 		}
 		drClient = rawMod.(models.DependencyResolverMod)
-		pluginLogger.Debug(fmt.Sprintf("%s mod found for: %s", models.ModTypeDependencyResolver, pluginName))
+		pluginLogger.Debug(fmt.Sprintf("%s mod found for: %s", models.ModTypeDependencyResolver, pluginPath))
+
+		pluginName, err := drClient.GetName(context.Background())
+		if err != nil {
+			return fmt.Errorf("drClient.GetName(): %w", err)
+		}
 
 		drGRPCClient := rawMod.(*dependencyresolver.GRPCClient)
 		drGRPCClient.SetName(pluginName)
@@ -64,9 +66,4 @@ func Init(pluginsRepo models.PluginRepository, discoveredBinaryPlugins []string,
 	}
 
 	return nil
-}
-
-func getNameFromPluginPath(pluginPath string) string {
-	fileName := filepath.Base(pluginPath)
-	return strings.TrimRight(strings.TrimLeft(fileName, Prefix), Suffix)
 }

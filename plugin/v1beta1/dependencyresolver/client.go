@@ -35,6 +35,22 @@ func (m *GRPCClient) SetName(name string) {
 	m.name = name
 }
 
+func (m *GRPCClient) GetName(ctx context.Context) (string, error) {
+	spanCtx, span := tracer.Start(ctx, "GetName")
+	defer span.End()
+
+	outCtx := propagateMetadata(spanCtx)
+	resp, err := m.client.GetName(outCtx,
+		&pbp.GetNameRequest{},
+		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(BackoffDuration)),
+		grpc_retry.WithMax(PluginGRPCMaxRetry))
+	if err != nil {
+		m.makeFatalOnConnErr(err)
+		return "", err
+	}
+	return resp.GetName(), nil
+}
+
 func (m *GRPCClient) GenerateDestination(ctx context.Context, request models.GenerateDestinationRequest) (*models.GenerateDestinationResponse, error) {
 	spanCtx, span := tracer.Start(ctx, "GenerateDestination")
 	defer span.End()

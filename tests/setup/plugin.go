@@ -11,19 +11,8 @@ import (
 
 type MockPluginBQ struct{}
 
-func (MockPluginBQ) PluginInfo() (*models.PluginInfoResponse, error) {
-	return &models.PluginInfoResponse{
-		Name:          "bq2bq",
-		Description:   "BigQuery to BigQuery transformation task",
-		PluginType:    models.PluginTypeTask,
-		PluginVersion: "dev",
-		APIVersion:    nil,
-		DependsOn:     nil,
-		HookType:      "",
-		Image:         "gcr.io/bq-plugin:dev",
-		SecretPath:    "/tmp/auth.json",
-		PluginMods:    []models.PluginMod{models.ModTypeDependencyResolver},
-	}, nil
+func (MockPluginBQ) GetName(_ context.Context) (string, error) {
+	return "bq2bq", nil
 }
 
 func (MockPluginBQ) GenerateDestination(_ context.Context, request models.GenerateDestinationRequest) (*models.GenerateDestinationResponse, error) {
