@@ -46,6 +46,7 @@ type Status string
 
 const (
 	StatusUnknown Status = "unknown"
+	StatusSkipped Status = "skipped"
 
 	StatusToCreate Status = "to_create"
 	StatusToUpdate Status = "to_update"
@@ -53,7 +54,8 @@ const (
 	StatusCreateFailure Status = "create_failure"
 	StatusUpdateFailure Status = "update_failure"
 
-	StatusSuccess Status = "success"
+	StatusSuccess           Status = "success"
+	StatusValidationFailure Status = "validation_failure"
 )
 
 func (s Status) String() string {

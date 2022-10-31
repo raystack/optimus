@@ -208,6 +208,33 @@ func (r *Resource) Equal(incoming *Resource) bool {
 	return r.status == incoming.status
 }
 
+func (r *Resource) MarkToCreate() error {
+	if r.status == StatusUnknown {
+		r.status = StatusToCreate
+		return nil
+	}
+	msg := fmt.Sprintf("invalid transition from %s to failure for %s", r.status, r.FullName())
+	return errors.InvalidStateTransition(EntityResource, msg)
+}
+
+func (r *Resource) MarkToUpdate() error {
+	if r.status == StatusUnknown || r.status == StatusSuccess {
+		r.status = StatusToUpdate
+		return nil
+	}
+	msg := fmt.Sprintf("invalid transition from %s to failure for %s", r.status, r.FullName())
+	return errors.InvalidStateTransition(EntityResource, msg)
+}
+
+func (r *Resource) MarkSkipped() error {
+	if r.status == StatusUnknown {
+		r.status = StatusSkipped
+		return nil
+	}
+	msg := fmt.Sprintf("invalid transition from %s to failure for %s", r.status, r.FullName())
+	return errors.InvalidStateTransition(EntityResource, msg)
+}
+
 func (r *Resource) MarkSuccess() error {
 	if r.status == StatusToCreate || r.status == StatusToUpdate {
 		r.status = StatusSuccess
@@ -218,10 +245,14 @@ func (r *Resource) MarkSuccess() error {
 }
 
 func (r *Resource) MarkFailed() error {
-	if r.status == StatusToCreate {
+	switch r.status {
+	case StatusUnknown:
+		r.status = StatusValidationFailure
+		return nil
+	case StatusToCreate:
 		r.status = StatusCreateFailure
 		return nil
-	} else if r.status == StatusToUpdate {
+	case StatusToUpdate:
 		r.status = StatusUpdateFailure
 		return nil
 	}
