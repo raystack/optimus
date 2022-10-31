@@ -476,8 +476,7 @@ func TestResource(t *testing.T) {
 			t.Run("returns error if current status is not unknown", func(t *testing.T) {
 				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
 				assert.NoError(t, err)
-				err = res.MarkSkipped()
-				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusSkipped))
 
 				actualError := res.MarkToCreate()
 				assert.Error(t, actualError)
@@ -507,10 +506,7 @@ func TestResource(t *testing.T) {
 			t.Run("changes status and returns nil if current status is success", func(t *testing.T) {
 				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
 				assert.NoError(t, err)
-				err = res.MarkToCreate()
-				assert.NoError(t, err)
-				err = res.MarkSuccess()
-				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusSuccess))
 
 				actualError := res.MarkToUpdate()
 				assert.NoError(t, actualError)
@@ -520,8 +516,7 @@ func TestResource(t *testing.T) {
 			t.Run("returns error if other status", func(t *testing.T) {
 				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
 				assert.NoError(t, err)
-				err = res.MarkSkipped()
-				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusSkipped))
 
 				actualError := res.MarkToUpdate()
 				assert.Error(t, actualError)
@@ -533,8 +528,7 @@ func TestResource(t *testing.T) {
 			t.Run("returns error if current status is not unknown", func(t *testing.T) {
 				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
 				assert.NoError(t, err)
-				err = res.MarkToCreate()
-				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToCreate))
 
 				actualError := res.MarkSkipped()
 				assert.Error(t, actualError)
@@ -558,8 +552,7 @@ func TestResource(t *testing.T) {
 			t.Run("changes status and return nil if current status is to_create", func(t *testing.T) {
 				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
 				assert.NoError(t, err)
-				err = res.MarkToCreate()
-				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToCreate))
 
 				actualError := res.MarkSuccess()
 				assert.NoError(t, actualError)
@@ -569,8 +562,7 @@ func TestResource(t *testing.T) {
 			t.Run("changes status and return nil if current status is to_update", func(t *testing.T) {
 				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
 				assert.NoError(t, err)
-				err = res.MarkToUpdate()
-				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToUpdate))
 
 				actualError := res.MarkSuccess()
 				assert.NoError(t, actualError)
@@ -603,8 +595,7 @@ func TestResource(t *testing.T) {
 			t.Run("changes status to create_failure and return nil if current status is to_create", func(t *testing.T) {
 				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
 				assert.NoError(t, err)
-				err = res.MarkToCreate()
-				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToCreate))
 
 				actualError := res.MarkFailed()
 				assert.NoError(t, actualError)
@@ -614,8 +605,7 @@ func TestResource(t *testing.T) {
 			t.Run("changes status to update_failure and return nil if current status is to_update", func(t *testing.T) {
 				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
 				assert.NoError(t, err)
-				err = res.MarkToUpdate()
-				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToUpdate))
 
 				actualError := res.MarkFailed()
 				assert.NoError(t, actualError)
@@ -625,8 +615,7 @@ func TestResource(t *testing.T) {
 			t.Run("returns error if other status", func(t *testing.T) {
 				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
 				assert.NoError(t, err)
-				err = res.MarkSkipped()
-				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusSkipped))
 
 				actualError := res.MarkFailed()
 				assert.Error(t, actualError)
