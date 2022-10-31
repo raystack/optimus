@@ -116,8 +116,8 @@ func (rs ResourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, s
 
 	existingResources, err := rs.repo.ReadAll(ctx, tnnt, store)
 	if err != nil {
+		multiError.Append(err)
 		rs.logger.Error("error reading all existing resources: %s", err)
-		return err
 	}
 
 	existingMappedByFullName := rs.getResourcesMappedByFullName(existingResources)

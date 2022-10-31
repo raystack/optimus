@@ -349,6 +349,10 @@ func TestResourceService(t *testing.T) {
 
 			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return(nil, errors.New("unknown error"))
 
+			batch.On("CreateOrUpdateAll", ctx, resourcesToUpdate).Return(nil)
+
+			mgr.On("BatchUpdate", ctx, resource.Bigquery, resourcesToUpdate).Return(nil)
+
 			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, resourcesToUpdate)
 			assert.ErrorContains(t, actualError, "unknown error")
 		})
