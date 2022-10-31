@@ -1128,7 +1128,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			ProjectSpec: projectSpec,
 		}
 
-		execUnit1 := new(mock.BasePlugin)
+		execUnit1 := new(mock.YamlMod)
 		defer execUnit1.AssertExpectations(t)
 		execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 			Name:  taskName,
@@ -1137,13 +1137,13 @@ func TestJobSpecificationOnServer(t *testing.T) {
 
 		pluginRepo := mock.NewPluginRepository(t)
 		pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
-			Base: execUnit1,
+			YamlMod: execUnit1,
 		}, nil)
 		jobSpec := models.JobSpec{
 			Version: 1,
 			Name:    jobName,
 			Task: models.JobSpecTask{
-				Unit: &models.Plugin{Base: execUnit1},
+				Unit: &models.Plugin{YamlMod: execUnit1},
 				Config: models.JobSpecConfigs{
 					{
 						Name:  "DO",
