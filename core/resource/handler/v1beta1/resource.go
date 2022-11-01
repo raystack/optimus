@@ -85,9 +85,18 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 		skippedResources := getResourcesByStatuses(resourceSpecs, resource.StatusSkipped)
 		failureResources := getResourcesByStatuses(resourceSpecs, resource.StatusCreateFailure, resource.StatusUpdateFailure, resource.StatusValidationFailure)
 
-		writeResourcesResponse(responseWriter, writer.LogLevelInfo, successResources)
-		writeResourcesResponse(responseWriter, writer.LogLevelWarning, skippedResources)
-		writeResourcesResponse(responseWriter, writer.LogLevelError, failureResources)
+		writeResourcesStatus(successResources, func(msg string) {
+			responseWriter.Write(writer.LogLevelInfo, msg)
+			rh.l.Info(msg)
+		})
+		writeResourcesStatus(skippedResources, func(msg string) {
+			responseWriter.Write(writer.LogLevelWarning, msg)
+			rh.l.Warn(msg)
+		})
+		writeResourcesStatus(failureResources, func(msg string) {
+			responseWriter.Write(writer.LogLevelError, msg)
+			rh.l.Error(msg)
+		})
 		writeError(responseWriter, err)
 
 		if err != nil {
@@ -237,10 +246,10 @@ func writeError(logWriter writer.LogWriter, err error) {
 	}
 }
 
-func writeResourcesResponse(logWriter writer.LogWriter, level writer.LogLevel, resources []*resource.Resource) {
+func writeResourcesStatus(resources []*resource.Resource, writeFn func(msg string)) {
 	for _, r := range resources {
-		msg := fmt.Sprintf("[%s] on resource [%s]", r.Status(), r.FullName())
-		logWriter.Write(level, msg)
+		msg := fmt.Sprintf("[%s] %s", r.Status(), r.FullName())
+		writeFn(msg)
 	}
 }
 
