@@ -259,7 +259,7 @@ func writeError(logWriter writer.LogWriter, err error) {
 	} else {
 		var de *errors.DomainError
 		if errors.As(err, &de) {
-			logWriter.Write(writer.LogLevelError, de.Error())
+			logWriter.Write(writer.LogLevelError, de.DebugString())
 		} else {
 			logWriter.Write(writer.LogLevelError, err.Error())
 		}
