@@ -125,6 +125,10 @@ func (s Store) BatchUpdate(ctx context.Context, resources []*resource.Resource) 
 	spanCtx, span := startChildSpan(ctx, "bigquery/BatchUpdate")
 	defer span.End()
 
+	if len(resources) == 0 {
+		return nil
+	}
+
 	tnnt := resources[0].Tenant()
 	account, err := s.secretProvider.GetSecret(spanCtx, tnnt, accountKey)
 	if err != nil {
