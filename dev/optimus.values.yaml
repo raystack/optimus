@@ -61,4 +61,4 @@ configYaml: |-
 
 config:
   OPTIMUS_SERVE_DB_DSN: postgres://optimus:optimus@database-service/optimus?sslmode=disable
-  OPTIMUS_SERVE_APP_KEY: hgfhjsdfhsdhjsdfgjhfhdf
+  OPTIMUS_SERVE_APP_KEY: TuMxWWp4NkqNqaes6vK9DeqgUkk8I97s
