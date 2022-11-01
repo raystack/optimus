@@ -135,7 +135,7 @@ func (rs ResourceService) getResourcesToBatchUpdate(incomings []*resource.Resour
 	var output []*resource.Resource
 	for _, incoming := range incomings {
 		if existing, ok := existingMappedByFullName[incoming.FullName()]; ok {
-			if incoming.Equal(existing) {
+			if incoming.Equal(existing) && existing.Status() == resource.StatusSuccess {
 				incoming.MarkSkipped()
 
 				rs.logger.Warn("resource [%s] is skipped because it has no changes", existing.FullName())
