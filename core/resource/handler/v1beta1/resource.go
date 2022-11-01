@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/odpf/salt/log"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/odpf/optimus/api/writer"
@@ -15,6 +17,21 @@ import (
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+)
+
+var (
+	totalSkippedBatchUpdateGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "resources_batch_update_skipped_total",
+		Help: "The total number of skipped resources in batch update",
+	})
+	totalSuccessBatchUpdateGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "resources_batch_update_success_total",
+		Help: "The total number of failure resources in batch update",
+	})
+	totalFailureBatchUpdateGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "resources_batch_update_failure_total",
+		Help: "The total number of failure resources in batch update",
+	})
 )
 
 type ResourceService interface {
@@ -104,9 +121,12 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 			continue
 		}
 
-		// runtimeDeployResourceSpecificationCounter.Add(float64(len(resourceSpecs)))
 		successMsg := fmt.Sprintf("resources with namespace [%s] are deployed successfully", request.GetNamespaceName())
 		responseWriter.Write(writer.LogLevelInfo, successMsg)
+
+		totalSuccessBatchUpdateGauge.Set(float64(len(successResources)))
+		totalSkippedBatchUpdateGauge.Set(float64(len(skippedResources)))
+		totalFailureBatchUpdateGauge.Set(float64(len(failureResources)))
 	}
 	rh.l.Info("Finished resource deployment in %v", time.Since(startTime))
 	if len(errNamespaces) > 0 {
