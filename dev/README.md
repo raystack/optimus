@@ -17,7 +17,7 @@
 +  `/tmp/colima/dags`
 
 ### Mounting plugins
-+ upadate `path`'s for `internal-plugins` and `odpf-plugins` volumes in optimus.values.yaml with the actual path to the plugins and upgrade the helm chart for optimus (`make upgrade.optimus`)
++ update `path`'s for `internal-plugins` and `odpf-plugins` volumes in optimus.values.yaml with the actual path to the plugins and upgrade the helm chart for optimus (`make upgrade.optimus`)
 
 ```yaml
 volumes:
