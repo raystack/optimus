@@ -196,7 +196,7 @@ func (r *Resource) Equal(incoming *Resource) bool {
 	if r.dataset != incoming.dataset {
 		return false
 	}
-	if r.tenant != incoming.tenant {
+	if !reflect.DeepEqual(r.tenant, incoming.tenant) {
 		return false
 	}
 	if !reflect.DeepEqual(r.spec, incoming.spec) {
