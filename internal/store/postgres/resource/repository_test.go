@@ -57,7 +57,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 			actualError := repository.Create(ctx, resourceToCreate)
 			assert.NoError(t, actualError)
 
-			storedResources, err := readAllFromDb(db)
+			storedResources, err := readAllFromDB(db)
 			assert.NoError(t, err)
 			assert.Len(t, storedResources, 1)
 			assert.EqualValues(t, resourceToCreate, storedResources[0])
@@ -90,7 +90,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 			actualError := repository.Update(ctx, resourceToUpdate)
 			assert.NoError(t, actualError)
 
-			storedResources, err := readAllFromDb(db)
+			storedResources, err := readAllFromDB(db)
 			assert.NoError(t, err)
 			assert.Len(t, storedResources, 1)
 			assert.EqualValues(t, resourceToUpdate, storedResources[0])
@@ -171,7 +171,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 			actualError := repository.CreateOrUpdateAll(ctx, resourcesToUpdate)
 			assert.Error(t, actualError)
 
-			storedResources, err := readAllFromDb(db)
+			storedResources, err := readAllFromDB(db)
 			assert.NoError(t, err)
 			assert.Len(t, storedResources, 1)
 			assert.EqualValues(t, serviceResource.StatusUnknown, storedResources[0].Status())
@@ -195,7 +195,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 			actualError := repository.CreateOrUpdateAll(ctx, resourcesToUpdate)
 			assert.NoError(t, actualError)
 
-			storedResources, err := readAllFromDb(db)
+			storedResources, err := readAllFromDB(db)
 			assert.NoError(t, err)
 			assert.Len(t, storedResources, 2)
 			assert.EqualValues(t, resourcesToUpdate[0], storedResources[0])
@@ -222,7 +222,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 			actualError := repository.UpdateStatus(ctx, resourcesToUpdate...)
 			assert.Error(t, actualError)
 
-			storedResources, err := readAllFromDb(db)
+			storedResources, err := readAllFromDB(db)
 			assert.NoError(t, err)
 			assert.Len(t, storedResources, 1)
 			assert.EqualValues(t, serviceResource.StatusSuccess, storedResources[0].Status())
@@ -253,7 +253,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 			actualError := repository.UpdateStatus(ctx, resourcesToUpdate...)
 			assert.NoError(t, actualError)
 
-			storedResources, err := readAllFromDb(db)
+			storedResources, err := readAllFromDB(db)
 			assert.NoError(t, err)
 			assert.Len(t, storedResources, 2)
 			assert.EqualValues(t, existingResource1.Spec(), storedResources[0].Spec())
@@ -264,7 +264,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 	})
 }
 
-func readAllFromDb(db *gorm.DB) ([]*serviceResource.Resource, error) {
+func readAllFromDB(db *gorm.DB) ([]*serviceResource.Resource, error) {
 	var rs []*repoResource.Resource
 	if err := db.Find(&rs).Error; err != nil {
 		return nil, err

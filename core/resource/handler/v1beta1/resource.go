@@ -187,8 +187,6 @@ func (rh ResourceHandler) CreateResource(ctx context.Context, req *pb.CreateReso
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to create resource "+res.FullName())
 	}
-	// runtimeDeployResourceSpecificationCounter.Inc()
-
 	return &pb.CreateResourceResponse{}, nil
 }
 
@@ -242,8 +240,6 @@ func (rh ResourceHandler) UpdateResource(ctx context.Context, req *pb.UpdateReso
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to update resource "+res.FullName())
 	}
-
-	// runtimeDeployResourceSpecificationCounter.Inc()
 	return &pb.UpdateResourceResponse{}, nil
 }
 
