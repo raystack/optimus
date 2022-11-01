@@ -150,6 +150,7 @@ func TestResourceHandler(t *testing.T) {
 			stream.On("Recv").Return(req, nil).Once()
 			stream.On("Recv").Return(nil, io.EOF).Once()
 			stream.On("Send", argMatcher).Return(nil).Once()
+			stream.On("Send", mock.Anything).Return(nil).Once()
 
 			err := handler.DeployResourceSpecification(stream)
 			assert.NotNil(t, err)

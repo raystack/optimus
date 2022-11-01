@@ -80,18 +80,17 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 			continue
 		}
 
-		if err = rh.service.BatchUpdate(stream.Context(), tnnt, store, resourceSpecs); err != nil {
-			var me *errors.MultiError
-			if errors.As(err, &me) {
-				for _, batchErr := range me.Errors {
-					errMsg := fmt.Sprintf("failed to update resources: %s", batchErr.Error())
-					responseWriter.Write(writer.LogLevelError, errMsg)
-				}
-			} else {
-				errMsg := fmt.Sprintf("failed to update resources: %s", err.Error())
-				responseWriter.Write(writer.LogLevelError, errMsg)
-			}
+		err = rh.service.BatchUpdate(stream.Context(), tnnt, store, resourceSpecs)
+		successResources := getResourcesByStatuses(resourceSpecs, resource.StatusSuccess)
+		skippedResources := getResourcesByStatuses(resourceSpecs, resource.StatusSkipped)
+		failureResources := getResourcesByStatuses(resourceSpecs, resource.StatusCreateFailure, resource.StatusUpdateFailure, resource.StatusValidationFailure)
 
+		writeResourcesResponse(responseWriter, writer.LogLevelInfo, successResources)
+		writeResourcesResponse(responseWriter, writer.LogLevelWarning, skippedResources)
+		writeResourcesResponse(responseWriter, writer.LogLevelError, failureResources)
+		writeError(responseWriter, err)
+
+		if err != nil {
 			errNamespaces = append(errNamespaces, request.GetNamespaceName())
 			continue
 		}
@@ -100,7 +99,7 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 		successMsg := fmt.Sprintf("resources with namespace [%s] are deployed successfully", request.GetNamespaceName())
 		responseWriter.Write(writer.LogLevelInfo, successMsg)
 	}
-	rh.l.Info("Finished resource deployment in", "time", time.Since(startTime))
+	rh.l.Info("Finished resource deployment in %v", time.Since(startTime))
 	if len(errNamespaces) > 0 {
 		namespacesWithError := strings.Join(errNamespaces, ", ")
 		rh.l.Error("Error while deploying namespaces: [%s]", namespacesWithError)
@@ -217,6 +216,46 @@ func (rh ResourceHandler) UpdateResource(ctx context.Context, req *pb.UpdateReso
 
 	// runtimeDeployResourceSpecificationCounter.Inc()
 	return &pb.UpdateResourceResponse{}, nil
+}
+
+func writeError(logWriter writer.LogWriter, err error) {
+	if err == nil {
+		return
+	}
+	var me *errors.MultiError
+	if errors.As(err, &me) {
+		for _, e := range me.Errors {
+			writeError(logWriter, e)
+		}
+	} else {
+		var de *errors.DomainError
+		if errors.As(err, &de) {
+			logWriter.Write(writer.LogLevelError, de.Error())
+		} else {
+			logWriter.Write(writer.LogLevelError, err.Error())
+		}
+	}
+}
+
+func writeResourcesResponse(logWriter writer.LogWriter, level writer.LogLevel, resources []*resource.Resource) {
+	for _, r := range resources {
+		msg := fmt.Sprintf("[%s] on resource [%s]", r.Status(), r.FullName())
+		logWriter.Write(level, msg)
+	}
+}
+
+func getResourcesByStatuses(resources []*resource.Resource, statuses ...resource.Status) []*resource.Resource {
+	acceptedStatus := make(map[resource.Status]bool)
+	for _, s := range statuses {
+		acceptedStatus[s] = true
+	}
+	var output []*resource.Resource
+	for _, r := range resources {
+		if acceptedStatus[r.Status()] {
+			output = append(output, r)
+		}
+	}
+	return output
 }
 
 func fromResourceProto(rs *pb.ResourceSpecification, tnnt tenant.Tenant, store resource.Store) (*resource.Resource, error) {
