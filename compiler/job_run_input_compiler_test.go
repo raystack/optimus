@@ -171,7 +171,6 @@ func TestJobRunInputCompiler(t *testing.T) {
 			defer cliMod.AssertExpectations(t)
 
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
-			defer pluginRepo.AssertExpectations(t)
 
 			jobRunInputCompiler := createJobRunInputCompiler()
 			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobSpec, scheduledAt, instanceSpec.Data, instanceSpec.Type, instanceSpec.Name)
@@ -279,7 +278,6 @@ func TestJobRunInputCompiler(t *testing.T) {
 			defer cliMod.AssertExpectations(t)
 
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
-			defer pluginRepo.AssertExpectations(t)
 
 			jobRunInputCompiler := createJobRunInputCompiler()
 			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobSpec, scheduledAt, instanceSpec.Data, instanceSpec.Type, instanceSpec.Name)
@@ -386,7 +384,6 @@ func TestJobRunInputCompiler(t *testing.T) {
 			defer cliMod.AssertExpectations(t)
 
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
-			defer pluginRepo.AssertExpectations(t)
 
 			jobRunInputCompiler := createJobRunInputCompiler()
 			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobSpec, scheduledAt, instanceSpec.Data, instanceSpec.Type, instanceSpec.Name)
@@ -470,7 +467,6 @@ func TestJobRunInputCompiler(t *testing.T) {
 			defer cliMod.AssertExpectations(t)
 
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
-			defer pluginRepo.AssertExpectations(t)
 
 			jobRunInputCompiler := createJobRunInputCompiler()
 			jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobSpec, scheduledAt, instanceSpec.Data, instanceSpec.Type, instanceSpec.Name)
@@ -562,7 +558,6 @@ func TestJobRunInputCompiler(t *testing.T) {
 		defer cliMod.AssertExpectations(t)
 
 		pluginRepo.On("GetByName", "bq").Return(plugin, nil)
-		defer pluginRepo.AssertExpectations(t)
 
 		jobRunInputCompiler := createJobRunInputCompiler()
 		jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobSpec, scheduledAt, jobRunSpec.Data, instanceType, instanceName)
@@ -678,7 +673,6 @@ func TestJobRunInputCompiler(t *testing.T) {
 		defer cliMod.AssertExpectations(t)
 
 		pluginRepo.On("GetByName", "bq").Return(plugin, nil)
-		defer pluginRepo.AssertExpectations(t)
 
 		jobRunInputCompiler := createJobRunInputCompiler()
 		jobRunInput, err := jobRunInputCompiler.Compile(ctx, namespaceSpec, secrets, jobSpec, scheduledAt, jobRunSpec.Data, instanceType, instanceName)

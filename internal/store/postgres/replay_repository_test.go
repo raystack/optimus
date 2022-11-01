@@ -161,7 +161,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 		defer depMod1.AssertExpectations(t)
 
 		pluginRepo := mock.NewPluginRepository(t)
-		defer pluginRepo.AssertExpectations(t)
+
 		pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 		adapter := postgres.NewAdapter(pluginRepo)
 
@@ -206,7 +206,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 		defer depMod1.AssertExpectations(t)
 
 		pluginRepo := mock.NewPluginRepository(t)
-		defer pluginRepo.AssertExpectations(t)
+
 		pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 		adapter := postgres.NewAdapter(pluginRepo)
 
@@ -260,7 +260,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			}
 
 			pluginRepo := mock.NewPluginRepository(t)
-			defer pluginRepo.AssertExpectations(t)
+
 			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 			adapter := postgres.NewAdapter(pluginRepo)
 
@@ -313,7 +313,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			}
 
 			pluginRepo := mock.NewPluginRepository(t)
-			defer pluginRepo.AssertExpectations(t)
+
 			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 			adapter := postgres.NewAdapter(pluginRepo)
 
@@ -364,7 +364,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			}
 
 			pluginRepo := mock.NewPluginRepository(t)
-			defer pluginRepo.AssertExpectations(t)
+
 			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 			adapter := postgres.NewAdapter(pluginRepo)
 
@@ -420,7 +420,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			}
 
 			pluginRepo := mock.NewPluginRepository(t)
-			defer pluginRepo.AssertExpectations(t)
+
 			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
 			adapter := postgres.NewAdapter(pluginRepo)
 
@@ -472,7 +472,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			}
 
 			pluginRepo := mock.NewPluginRepository(t)
-			defer pluginRepo.AssertExpectations(t)
+
 			adapter := postgres.NewAdapter(pluginRepo)
 
 			projectRepo := postgres.NewProjectRepository(db, hash)

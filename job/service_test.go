@@ -624,7 +624,7 @@ func TestService(t *testing.T) {
 			}
 			destination := "destination_test"
 
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, destination).Return(models.JobSpec{}, errors.New("unknown error"))
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, destination).Return([]models.JobSpec{}, errors.New("unknown error"))
 
 			actualJobSpec, actualError := svc.GetByDestination(ctx, projSpec, destination)
 
@@ -647,7 +647,7 @@ func TestService(t *testing.T) {
 			}
 			destination := "destination_test"
 
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, destination).Return(jobSpec, nil)
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, destination).Return([]models.JobSpec{jobSpec}, nil)
 
 			actualJobSpec, actualError := svc.GetByDestination(ctx, projSpec, destination)
 
@@ -673,7 +673,7 @@ func TestService(t *testing.T) {
 			}
 			destination := "destination_test"
 
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, destination).Return(jobSpec, nil)
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, destination).Return([]models.JobSpec{jobSpec}, nil)
 
 			actualJobSpec, actualError := svc.GetByDestination(ctx, projSpec2, destination)
 
@@ -692,7 +692,7 @@ func TestService(t *testing.T) {
 				ResourceDestination: "destination_test",
 			}
 
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, filter.ResourceDestination).Return(models.JobSpec{}, errors.New("unknown error"))
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, filter.ResourceDestination).Return([]models.JobSpec{}, errors.New("unknown error"))
 
 			actualJobSpecs, actualError := service.GetByFilter(ctx, filter)
 
@@ -709,7 +709,7 @@ func TestService(t *testing.T) {
 				ResourceDestination: "destination_test",
 			}
 
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, filter.ResourceDestination).Return(models.JobSpec{}, store.ErrResourceNotFound)
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, filter.ResourceDestination).Return([]models.JobSpec{}, store.ErrResourceNotFound)
 
 			actualJobSpecs, actualError := service.GetByFilter(ctx, filter)
 
@@ -726,7 +726,7 @@ func TestService(t *testing.T) {
 				ResourceDestination: "destination_test",
 			}
 
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, filter.ResourceDestination).Return(models.JobSpec{}, nil)
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, filter.ResourceDestination).Return([]models.JobSpec{{}}, nil)
 
 			actualJobSpecs, actualError := service.GetByFilter(ctx, filter)
 
@@ -1569,6 +1569,65 @@ func TestService(t *testing.T) {
 
 			assert.Nil(t, err)
 			assert.Equal(t, deployID, deploymentID)
+		})
+	})
+
+	t.Run("GetJobSourceAndDestination", func(t *testing.T) {
+		projSpec := models.ProjectSpec{
+			Name: "proj",
+		}
+		namespaceSpec := models.NamespaceSpec{
+			ID:          uuid.Must(uuid.NewRandom()),
+			Name:        "dev-team-1",
+			ProjectSpec: projSpec,
+		}
+		jobSpec := models.JobSpec{
+			Version: 1,
+			Name:    "test",
+			Owner:   "optimus",
+			Schedule: models.JobSpecSchedule{
+				StartDate: time.Date(2020, 12, 2, 0, 0, 0, 0, time.UTC),
+				Interval:  "@daily",
+			},
+			NamespaceSpec: namespaceSpec,
+			Dependencies:  map[string]models.JobSpecDependency{},
+		}
+
+		destination := &models.GenerateDestinationResponse{
+			Destination: "project.dataset.table",
+			Type:        models.DestinationTypeBigquery,
+		}
+		jobSpec.ResourceDestination = destination.URN()
+
+		t.Run("should be able to get JobBasicInfo", func(t *testing.T) {
+			pluginService := mock.NewPluginService(t)
+			pluginService.On("GenerateDestination", ctx, jobSpec, namespaceSpec).Return(destination, nil)
+			pluginService.On("GenerateDependencies", ctx, jobSpec, namespaceSpec, true).Return(&models.GenerateDependenciesResponse{Dependencies: []string{"dependency1urn"}}, nil)
+			pluginService.On("GenerateDependencies", ctx, jobSpec, namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: []string{"dependency1urn"}}, nil)
+
+			batchScheduler := new(mock.Scheduler)
+			defer batchScheduler.AssertExpectations(t)
+			batchScheduler.On("VerifyJob", ctx, namespaceSpec, jobSpec).Return(nil)
+
+			jobSpecRepo := mock.NewJobSpecRepository(t)
+			jobSpecRepo.On("GetByResourceDestinationURN", ctx, destination.URN()).Return([]models.JobSpec{jobSpec}, nil)
+
+			svc := job.NewService(
+				batchScheduler,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				pluginService,
+				jobSpecRepo,
+				nil)
+
+			jobBasicInfo := svc.GetJobBasicInfo(ctx, jobSpec)
+			assert.Equal(t, jobBasicInfo.Destination, destination.URN())
+			assert.Equal(t, jobBasicInfo.JobSource, []string{"dependency1urn"})
 		})
 	})
 }

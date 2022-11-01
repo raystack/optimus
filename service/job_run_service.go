@@ -6,76 +6,17 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/odpf/optimus/internal/lib/cron"
-	"github.com/odpf/optimus/internal/store"
 	"github.com/odpf/optimus/models"
 )
 
 type JobRunService interface {
-	// GetScheduledRun find if already present or create a new scheduled run
-	GetScheduledRun(ctx context.Context, namespace models.NamespaceSpec, JobID models.JobSpec, scheduledAt time.Time) (models.JobRun, error)
-
-	// GetByID returns job run, normally gets requested for manual runs
-	GetByID(ctx context.Context, JobRunID uuid.UUID) (models.JobRun, models.NamespaceSpec, error)
-
-	// Register creates a new instance in provided job run
-	Register(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun, instanceType models.InstanceType, instanceName string) (models.InstanceSpec, error)
-
 	// GetJobRunList returns all the job based given status and date range
 	GetJobRunList(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, jobQuery *models.JobQuery) ([]models.JobRun, error)
 }
 
 type jobRunService struct {
-	jobRunRepo    store.JobRunRepository
-	scheduler     models.SchedulerUnit
-	Now           func() time.Time
-	pluginService PluginService
-}
-
-func (s *jobRunService) GetScheduledRun(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec,
-	scheduledAt time.Time) (models.JobRun, error) {
-	newJobRun := models.JobRun{
-		Spec:        jobSpec,
-		Trigger:     models.TriggerSchedule,
-		Status:      models.RunStatePending,
-		ScheduledAt: scheduledAt,
-		ExecutedAt:  s.Now(),
-	}
-
-	jobRun, _, err := s.jobRunRepo.GetByScheduledAt(ctx, jobSpec.ID, scheduledAt)
-	if err != nil && !errors.Is(err, store.ErrResourceNotFound) {
-		// When err exists and is not "NotFound"
-		return models.JobRun{}, err
-	}
-	if err == nil {
-		// if already exists, use the same id for in place update
-		// because job spec might have changed by now, status needs to be reset
-		newJobRun.ID = jobRun.ID
-
-		// If existing job run found, use its time.
-		// This might be a retry of existing instances and whole pipeline(of instances)
-		// would like to inherit same run level variable even though it might be triggered
-		// more than once.
-		newJobRun.ExecutedAt = jobRun.ExecutedAt
-	}
-	jobDestinationResponse, err := s.pluginService.GenerateDestination(ctx, jobSpec, namespace)
-	if err != nil {
-		if !errors.Is(err, ErrDependencyModNotFound) {
-			return models.JobRun{}, fmt.Errorf("failed to GenerateDestination for job: %s: %w", jobSpec.Name, err)
-		}
-	}
-	var jobDestination string
-	if jobDestinationResponse != nil {
-		jobDestination = jobDestinationResponse.URN()
-	}
-	if err := s.jobRunRepo.Save(ctx, namespace, newJobRun, jobDestination); err != nil {
-		return models.JobRun{}, err
-	}
-
-	jobRun, _, err = s.jobRunRepo.GetByScheduledAt(ctx, jobSpec.ID, scheduledAt)
-	return jobRun, err
+	scheduler models.SchedulerUnit
 }
 
 func (s *jobRunService) GetJobRunList(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, jobQuery *models.JobQuery) ([]models.JobRun, error) {
@@ -116,97 +57,9 @@ func (s *jobRunService) GetJobRunList(ctx context.Context, projectSpec models.Pr
 	return result, nil
 }
 
-func (s *jobRunService) Register(ctx context.Context, namespace models.NamespaceSpec, jobRun models.JobRun,
-	instanceType models.InstanceType, instanceName string) (models.InstanceSpec, error) {
-	// clear old run
-	for _, instance := range jobRun.Instances {
-		if instance.Name == instanceName && instance.Type == instanceType {
-			if err := s.jobRunRepo.ClearInstance(ctx, jobRun.ID, instance.Type, instance.Name); err != nil && !errors.Is(err, store.ErrResourceNotFound) {
-				return models.InstanceSpec{}, fmt.Errorf("Register: failed to clear instance of job %s: %w", jobRun, err)
-			}
-			break
-		}
-	}
-
-	instanceToSave, err := s.prepInstance(ctx, jobRun, instanceType, instanceName, jobRun.ExecutedAt, namespace)
-	if err != nil {
-		return models.InstanceSpec{}, fmt.Errorf("Register: failed to prepare instance: %w", err)
-	}
-	if err := s.jobRunRepo.AddInstance(ctx, namespace, jobRun, instanceToSave); err != nil {
-		return models.InstanceSpec{}, err
-	}
-
-	// get whatever is saved, querying again ensures it was saved correctly
-	jobRunResult, _, err := s.jobRunRepo.GetByID(ctx, jobRun.ID)
-	if err != nil {
-		return models.InstanceSpec{}, fmt.Errorf("failed to save instance for %s of %s:%s: %w",
-			jobRun, instanceName, instanceType, err)
-	}
-	return jobRunResult.GetInstance(instanceName, instanceType)
-}
-
-func (s *jobRunService) prepInstance(ctx context.Context, jobRun models.JobRun, instanceType models.InstanceType, instanceName string, executedAt time.Time, namespace models.NamespaceSpec) (models.InstanceSpec, error) {
-	var jobDestination string
-	dest, err := s.pluginService.GenerateDestination(ctx, jobRun.Spec, namespace)
-	if err != nil {
-		if !errors.Is(err, ErrDependencyModNotFound) {
-			return models.InstanceSpec{}, fmt.Errorf("failed to generate destination for job %s: %w", jobRun.Spec.Name, err)
-		}
-	}
-	if dest != nil {
-		jobDestination = dest.Destination
-	}
-
-	startTime, err := jobRun.Spec.Task.Window.GetStartTime(jobRun.ScheduledAt)
-	if err != nil {
-		return models.InstanceSpec{}, fmt.Errorf("error getting start time: %w", err)
-	}
-	endTime, err := jobRun.Spec.Task.Window.GetEndTime(jobRun.ScheduledAt)
-	if err != nil {
-		return models.InstanceSpec{}, fmt.Errorf("error getting end time: %w", err)
-	}
-
-	return models.InstanceSpec{
-		Name:       instanceName,
-		Type:       instanceType,
-		ExecutedAt: executedAt,
-		Status:     models.RunStateRunning,
-		// append optimus configs based on the values of a specific JobRun eg, jobScheduledTime
-		Data: []models.JobRunSpecData{
-			{
-				Name:  models.ConfigKeyExecutionTime,
-				Value: executedAt.Format(models.InstanceScheduledAtTimeLayout),
-				Type:  models.InstanceDataTypeEnv,
-			},
-			{
-				Name:  models.ConfigKeyDstart,
-				Value: startTime.Format(models.InstanceScheduledAtTimeLayout),
-				Type:  models.InstanceDataTypeEnv,
-			},
-			{
-				Name:  models.ConfigKeyDend,
-				Value: endTime.Format(models.InstanceScheduledAtTimeLayout),
-				Type:  models.InstanceDataTypeEnv,
-			},
-			{
-				Name:  models.ConfigKeyDestination,
-				Value: jobDestination,
-				Type:  models.InstanceDataTypeEnv,
-			},
-		},
-	}, nil
-}
-
-func (s *jobRunService) GetByID(ctx context.Context, jobRunID uuid.UUID) (models.JobRun, models.NamespaceSpec, error) {
-	return s.jobRunRepo.GetByID(ctx, jobRunID)
-}
-
-func NewJobRunService(jobRunRepo store.JobRunRepository, timeFunc func() time.Time, scheduler models.SchedulerUnit, pluginService PluginService) *jobRunService {
+func NewJobRunService(scheduler models.SchedulerUnit) *jobRunService {
 	return &jobRunService{
-		jobRunRepo:    jobRunRepo,
-		Now:           timeFunc,
-		scheduler:     scheduler,
-		pluginService: pluginService,
+		scheduler: scheduler,
 	}
 }
 

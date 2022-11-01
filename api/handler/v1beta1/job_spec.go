@@ -156,6 +156,34 @@ func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 	return nil
 }
 
+func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspectRequest) (*pb.JobInspectResponse, error) {
+	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
+	if err != nil {
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
+	}
+	var jobSpec models.JobSpec
+
+	if req.GetJobName() != "" {
+		// get job spec from DB
+		jobSpec, err = sv.jobSvc.GetByName(ctx, req.GetJobName(), namespaceSpec)
+		if err != nil {
+			return nil, status.Errorf(codes.NotFound, "cannot obtain jobSpec from optimus server: \n%s", err.Error())
+		}
+	} else {
+		// jobSpec must be provided by client
+		jobSpec, err = FromJobProto(req.GetSpec(), sv.pluginRepo)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "cannot deserialize job: \n%s", err.Error())
+		}
+	}
+	jobSpec.NamespaceSpec = namespaceSpec
+	jobBasicInfo := sv.jobSvc.GetJobBasicInfo(ctx, jobSpec)
+
+	return &pb.JobInspectResponse{
+		BasicInfo: ToBasicInfoSectionProto(jobBasicInfo),
+	}, nil
+}
+
 func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req *pb.CreateJobSpecificationRequest) (*pb.CreateJobSpecificationResponse, error) {
 	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
 	logWriter := writer.NewLogWriter(sv.l)
