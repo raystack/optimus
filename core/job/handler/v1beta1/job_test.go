@@ -6,7 +6,6 @@ import (
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -52,7 +51,7 @@ func TestNewJobHandler(t *testing.T) {
 	}
 
 	t.Run("AddJobSpecifications", func(t *testing.T) {
-		t.Run("adds job and returns deployment ID", func(t *testing.T) {
+		t.Run("adds job", func(t *testing.T) {
 			jobService := new(JobService)
 
 			jobHandler := v1beta1.NewJobHandler(jobService)
@@ -75,14 +74,12 @@ func TestNewJobHandler(t *testing.T) {
 				Specs:         jobProtos,
 			}
 
-			deploymentID := uuid.New()
-			jobService.On("AddAndDeploy", ctx, sampleTenant, mock.Anything).Return(deploymentID, nil, nil)
+			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(nil, nil)
 
 			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.AddJobSpecificationsResponse{
-				Log:          "jobs are created and queued for deployment on project test-proj",
-				DeploymentId: deploymentID.String(),
+				Log: "jobs are created and queued for deployment on project test-proj",
 			}, resp)
 		})
 		t.Run("adds complete job and returns deployment ID", func(t *testing.T) {
@@ -111,14 +108,12 @@ func TestNewJobHandler(t *testing.T) {
 				Specs:         jobProtos,
 			}
 
-			deploymentID := uuid.New()
-			jobService.On("AddAndDeploy", ctx, sampleTenant, mock.Anything).Return(deploymentID, nil, nil)
+			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(nil, nil)
 
 			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.AddJobSpecificationsResponse{
-				Log:          "jobs are created and queued for deployment on project test-proj",
-				DeploymentId: deploymentID.String(),
+				Log: "jobs are created and queued for deployment on project test-proj",
 			}, resp)
 		})
 		t.Run("returns error when unable to create tenant", func(t *testing.T) {
@@ -169,15 +164,14 @@ func TestNewJobHandler(t *testing.T) {
 				Specs:         jobSpecProtos,
 			}
 
-			deploymentID := uuid.New()
-			jobService.On("AddAndDeploy", ctx, sampleTenant, mock.Anything).Return(deploymentID, nil, nil)
+			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(nil, nil)
 
 			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
 			assert.Nil(t, err)
 			assert.NotNil(t, resp.DeploymentId)
 			assert.Contains(t, resp.Log, "error")
 		})
-		t.Run("returns error when unable to do AddAndDeploy", func(t *testing.T) {
+		t.Run("returns error when unable to do Add", func(t *testing.T) {
 			jobService := new(JobService)
 
 			jobHandler := v1beta1.NewJobHandler(jobService)
@@ -201,8 +195,7 @@ func TestNewJobHandler(t *testing.T) {
 				Specs:         jobSpecProtos,
 			}
 
-			deploymentID := uuid.New()
-			jobService.On("AddAndDeploy", ctx, sampleTenant, mock.Anything).Return(deploymentID, nil, errors.New("internal error"))
+			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(nil, errors.New("internal error"))
 
 			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
 			assert.NotNil(t, err)
@@ -243,12 +236,10 @@ func TestNewJobHandler(t *testing.T) {
 				Specs:         jobSpecProtos,
 			}
 
-			deploymentID := uuid.New()
-			jobService.On("AddAndDeploy", ctx, sampleTenant, mock.Anything).Return(deploymentID, errors.New("some jobs failed to be added"), nil)
+			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(errors.New("some jobs failed to be added"), nil)
 
 			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
 			assert.Nil(t, err)
-			assert.NotNil(t, resp.DeploymentId)
 			assert.Contains(t, resp.Log, "error")
 		})
 	})
@@ -259,17 +250,15 @@ type JobService struct {
 	mock.Mock
 }
 
-// AddAndDeploy provides a mock function with given fields: ctx, jobTenant, jobs
-func (_m *JobService) AddAndDeploy(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.JobSpec) (uuid.UUID, error, error) {
+// Add provides a mock function with given fields: ctx, jobTenant, jobs
+func (_m *JobService) Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.JobSpec) (error, error) {
 	ret := _m.Called(ctx, jobTenant, jobs)
 
-	var r0 uuid.UUID
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []*job.JobSpec) uuid.UUID); ok {
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []*job.JobSpec) error); ok {
 		r0 = rf(ctx, jobTenant, jobs)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(uuid.UUID)
-		}
+		r0 = ret.Error(0)
 	}
 
 	var r1 error
@@ -279,12 +268,5 @@ func (_m *JobService) AddAndDeploy(ctx context.Context, jobTenant tenant.Tenant,
 		r1 = ret.Error(1)
 	}
 
-	var r2 error
-	if rf, ok := ret.Get(2).(func(context.Context, tenant.Tenant, []*job.JobSpec) error); ok {
-		r2 = rf(ctx, jobTenant, jobs)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }

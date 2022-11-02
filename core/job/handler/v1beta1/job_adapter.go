@@ -35,6 +35,7 @@ func fromJobProto(jobTenant tenant.Tenant, js *pb.JobSpecification) (*job.JobSpe
 
 	metadata := toMetadata(js.Metadata)
 
+	//TODO: try explore builder. too many arguments
 	return job.NewJobSpec(jobTenant, int(js.Version), js.Name, js.Owner, js.Description, js.Labels,
 		schedule, window, task, hooks, alerts, dependencies, js.Assets, metadata)
 }

@@ -3,7 +3,6 @@ package service
 import (
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/net/context"
 
@@ -19,12 +18,10 @@ type JobService struct {
 	dependencyResolver DependencyResolver
 
 	tenantDetailsGetter TenantDetailsGetter
-
-	deployManager DeploymentManager
 }
 
-func NewJobService(repo JobRepository, pluginService PluginService, dependencyResolver DependencyResolver, tenantDetailsGetter TenantDetailsGetter, deployManager DeploymentManager) *JobService {
-	return &JobService{repo: repo, pluginService: pluginService, dependencyResolver: dependencyResolver, tenantDetailsGetter: tenantDetailsGetter, deployManager: deployManager}
+func NewJobService(repo JobRepository, pluginService PluginService, dependencyResolver DependencyResolver, tenantDetailsGetter TenantDetailsGetter) *JobService {
+	return &JobService{repo: repo, pluginService: pluginService, dependencyResolver: dependencyResolver, tenantDetailsGetter: tenantDetailsGetter}
 }
 
 type PluginService interface {
@@ -46,26 +43,19 @@ type DependencyResolver interface {
 	Resolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) (jobWithDependencies []*job.WithDependency, dependencyErrors error, err error)
 }
 
-type DeploymentManager interface {
-	Create(ctx context.Context, projectName tenant.ProjectName) (uuid.UUID, error)
-}
+func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.JobSpec) (jobErrors error, err error) {
+	// TODO: initialize jobs, with unknown state
 
-func (j JobService) AddAndDeploy(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.JobSpec) (deploymentID uuid.UUID, jobErrors error, err error) {
 	validatedJobs, jobErrors, err := j.validateSpecs(jobs)
 	if err != nil {
-		return uuid.Nil, jobErrors, err
+		return jobErrors, err
 	}
 
 	addJobErrors, err := j.add(ctx, jobTenant, validatedJobs)
 	if addJobErrors != nil {
 		jobErrors = multierror.Append(jobErrors, addJobErrors)
 	}
-	if err != nil {
-		return uuid.Nil, jobErrors, err
-	}
-
-	deploymentID, err = j.deployManager.Create(ctx, jobTenant.ProjectName())
-	return deploymentID, jobErrors, err
+	return jobErrors, err
 }
 
 func (j JobService) add(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.JobSpec) (jobErrors error, systemErr error) {
@@ -93,15 +83,18 @@ func (j JobService) add(ctx context.Context, jobTenant tenant.Tenant, jobSpecs [
 	return jobErrors, j.repo.SaveDependency(ctx, jobsWithDependencies)
 }
 
+// TODO: instead of creating another list, lets just have a status in the spec that mark whether this job is skipped, or to_create
 func (j JobService) validateSpecs(jobs []*job.JobSpec) (validatedJobs []*job.JobSpec, jobErrors error, err error) {
 	for _, spec := range jobs {
 		if err := spec.Validate(); err != nil {
 			jobErrors = multierror.Append(jobErrors, err)
 			continue
 		}
+		// TODO: mark job state
 		validatedJobs = append(validatedJobs, spec)
 	}
 
+	// TODO: if we want to keep this, we need to check for the length of jobs
 	if len(validatedJobs) == 0 {
 		return nil, jobErrors, errors.NewError(errors.ErrInternalError, job.EntityJob, "all jobs failed the validation checks")
 	}

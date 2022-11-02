@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/hashicorp/go-multierror"
 
-	"github.com/google/uuid"
 	"golang.org/x/net/context"
 
 	"github.com/odpf/optimus/core/job"
@@ -24,7 +23,8 @@ func NewJobHandler(jobService JobService) *JobHandler {
 }
 
 type JobService interface {
-	AddAndDeploy(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.JobSpec) (deploymentID uuid.UUID, jobErrors error, err error)
+	// TODO: We don't need to differentiate the error. utilize in-built multierror
+	Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.JobSpec) (jobErrors error, err error)
 }
 
 func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *pb.AddJobSpecificationsRequest) (*pb.AddJobSpecificationsResponse, error) {
@@ -34,6 +34,7 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 	}
 
 	var jobs []*job.JobSpec
+	//TODO: utilize multierror
 	var jobErrors error
 	for _, jobProto := range jobSpecRequest.Specs {
 		jobEntity, err := fromJobProto(jobTenant, jobProto)
@@ -44,7 +45,7 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 		jobs = append(jobs, jobEntity)
 	}
 
-	deploymentID, jobAddErrors, err := jh.jobService.AddAndDeploy(ctx, jobTenant, jobs)
+	jobAddErrors, err := jh.jobService.Add(ctx, jobTenant, jobs)
 	if err != nil {
 		return nil, err
 	}
@@ -57,8 +58,8 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 		responseLog = fmt.Sprintf("%s with error: %s", responseLog, jobErrors.Error())
 	}
 
+	// TODO: deprecate deployment ID field. is this api being used? if not we can deprecate deployment id, the api will be synchronous. if being used, we can still deprecate as it will be sync.
 	return &pb.AddJobSpecificationsResponse{
-		Log:          responseLog,
-		DeploymentId: deploymentID.String(),
+		Log: responseLog,
 	}, nil
 }

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -36,7 +35,7 @@ func TestJobService(t *testing.T) {
 	jobTaskConfig := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
 	jobTask := job.NewTask("bq2bq", jobTaskConfig)
 
-	t.Run("AddAndDeploy", func(t *testing.T) {
+	t.Run("Add", func(t *testing.T) {
 		t.Run("add jobs and return deployment ID", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
@@ -46,9 +45,6 @@ func TestJobService(t *testing.T) {
 
 			dependencyResolver := new(DependencyResolver)
 			defer dependencyResolver.AssertExpectations(t)
-
-			deployManager := new(DeploymentManager)
-			defer deployManager.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -75,16 +71,12 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("SaveDependency", ctx, []*job.WithDependency{jobWithDependency}).Return(nil)
 
-			deployID := uuid.New()
-			deployManager.On("Create", ctx, project.Name()).Return(deployID, nil)
-
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
-			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
 			assert.Nil(t, jobErr)
 			assert.Nil(t, sysErr)
-			assert.Equal(t, deployID, result)
 		})
-		t.Run("skip invalid job, add the rest and return deployment ID", func(t *testing.T) {
+		t.Run("skip invalid job and add the rest", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
@@ -93,9 +85,6 @@ func TestJobService(t *testing.T) {
 
 			dependencyResolver := new(DependencyResolver)
 			defer dependencyResolver.AssertExpectations(t)
-
-			deployManager := new(DeploymentManager)
-			defer deployManager.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -125,14 +114,10 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("SaveDependency", ctx, []*job.WithDependency{jobWithDependency}).Return(nil)
 
-			deployID := uuid.New()
-			deployManager.On("Create", ctx, project.Name()).Return(deployID, nil)
-
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
-			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
 			assert.NotNil(t, jobErr)
 			assert.Nil(t, sysErr)
-			assert.Equal(t, deployID, result)
 		})
 		t.Run("return error if all jobs not pass validation", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -143,9 +128,6 @@ func TestJobService(t *testing.T) {
 
 			dependencyResolver := new(DependencyResolver)
 			defer dependencyResolver.AssertExpectations(t)
-
-			deployManager := new(DeploymentManager)
-			defer deployManager.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -158,12 +140,11 @@ func TestJobService(t *testing.T) {
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
 			jobSpecs := []*job.JobSpec{jobSpecB, jobSpecA}
 
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
-			deployID, jobErrors, err := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobErrors, err := jobService.Add(ctx, sampleTenant, jobSpecs)
 
 			assert.NotNil(t, jobErrors)
 			assert.NotNil(t, err)
-			assert.Equal(t, uuid.Nil, deployID)
 		})
 		t.Run("return error if unable to get detailed tenant", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -175,9 +156,6 @@ func TestJobService(t *testing.T) {
 			dependencyResolver := new(DependencyResolver)
 			defer dependencyResolver.AssertExpectations(t)
 
-			deployManager := new(DeploymentManager)
-			defer deployManager.AssertExpectations(t)
-
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
@@ -187,12 +165,11 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(&tenant.WithDetails{}, errors.New("internal error"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
-			deployID, jobErrors, err := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobErrors, err := jobService.Add(ctx, sampleTenant, jobSpecs)
 
 			assert.Nil(t, jobErrors)
 			assert.NotNil(t, err)
-			assert.Equal(t, uuid.Nil, deployID)
 		})
 		t.Run("skip job that has issue when generating destination and dependencies and return deployment ID", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -203,9 +180,6 @@ func TestJobService(t *testing.T) {
 
 			dependencyResolver := new(DependencyResolver)
 			defer dependencyResolver.AssertExpectations(t)
-
-			deployManager := new(DeploymentManager)
-			defer deployManager.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -240,14 +214,10 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("SaveDependency", ctx, []*job.WithDependency{jobWithDependency}).Return(nil)
 
-			deployID := uuid.New()
-			deployManager.On("Create", ctx, project.Name()).Return(deployID, nil)
-
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
-			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
 			assert.NotNil(t, jobErr)
 			assert.Nil(t, sysErr)
-			assert.Equal(t, deployID, result)
 		})
 		t.Run("return error when all jobs failed to have destination and dependencies generated", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -258,9 +228,6 @@ func TestJobService(t *testing.T) {
 
 			dependencyResolver := new(DependencyResolver)
 			defer dependencyResolver.AssertExpectations(t)
-
-			deployManager := new(DeploymentManager)
-			defer deployManager.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -279,11 +246,10 @@ func TestJobService(t *testing.T) {
 
 			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecB, true).Return(nil, errors.New("generate dependencies error"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
-			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
 			assert.NotNil(t, jobErr)
 			assert.NotNil(t, sysErr)
-			assert.Equal(t, uuid.Nil, result)
 		})
 		t.Run("should not skip nor return error if jobs does not have dependency mod and encounter issue on generate destination/dependency", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -294,9 +260,6 @@ func TestJobService(t *testing.T) {
 
 			dependencyResolver := new(DependencyResolver)
 			defer dependencyResolver.AssertExpectations(t)
-
-			deployManager := new(DeploymentManager)
-			defer deployManager.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -319,14 +282,10 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("SaveDependency", ctx, []*job.WithDependency{jobWithDependency}).Return(nil)
 
-			deployID := uuid.New()
-			deployManager.On("Create", ctx, project.Name()).Return(deployID, nil)
-
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
-			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
 			assert.Nil(t, jobErr)
 			assert.Nil(t, sysErr)
-			assert.Equal(t, deployID, result)
 		})
 		t.Run("should skip and not return error if one of the job is failed to be inserted to db", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -337,9 +296,6 @@ func TestJobService(t *testing.T) {
 
 			dependencyResolver := new(DependencyResolver)
 			defer dependencyResolver.AssertExpectations(t)
-
-			deployManager := new(DeploymentManager)
-			defer deployManager.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -371,14 +327,10 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("SaveDependency", ctx, mock.Anything).Return(nil)
 
-			deployID := uuid.New()
-			deployManager.On("Create", ctx, project.Name()).Return(deployID, nil)
-
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
-			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
 			assert.NotNil(t, jobErr)
 			assert.Nil(t, sysErr)
-			assert.Equal(t, deployID, result)
 		})
 		t.Run("return error when all jobs failed to be inserted to db", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -389,9 +341,6 @@ func TestJobService(t *testing.T) {
 
 			dependencyResolver := new(DependencyResolver)
 			defer dependencyResolver.AssertExpectations(t)
-
-			deployManager := new(DeploymentManager)
-			defer deployManager.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -412,11 +361,10 @@ func TestJobService(t *testing.T) {
 			jobs := []*job.Job{jobA}
 			jobRepo.On("Add", ctx, jobs).Return([]*job.Job{}, errors.New("unable to save job A"), errors.New("all jobs failed"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
-			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
 			assert.NotNil(t, jobErr)
 			assert.NotNil(t, sysErr)
-			assert.Equal(t, uuid.Nil, result)
 		})
 		t.Run("should not return error if there is dependency errors when resolving, without critical error", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -427,9 +375,6 @@ func TestJobService(t *testing.T) {
 
 			dependencyResolver := new(DependencyResolver)
 			defer dependencyResolver.AssertExpectations(t)
-
-			deployManager := new(DeploymentManager)
-			defer deployManager.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -455,14 +400,10 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("SaveDependency", ctx, mock.Anything).Return(nil)
 
-			deployID := uuid.New()
-			deployManager.On("Create", ctx, project.Name()).Return(deployID, nil)
-
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
-			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
 			assert.NotNil(t, jobErr)
 			assert.Nil(t, sysErr)
-			assert.Equal(t, deployID, result)
 		})
 		t.Run("should return error if there is dependency errors when resolving, with critical error", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -473,9 +414,6 @@ func TestJobService(t *testing.T) {
 
 			dependencyResolver := new(DependencyResolver)
 			defer dependencyResolver.AssertExpectations(t)
-
-			deployManager := new(DeploymentManager)
-			defer deployManager.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -499,11 +437,10 @@ func TestJobService(t *testing.T) {
 			jobWithDependencyA := job.NewWithDependency(jobA, nil)
 			dependencyResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithDependency{jobWithDependencyA}, errors.New("dependency error"), errors.New("internal error"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
-			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
 			assert.NotNil(t, jobErr)
 			assert.NotNil(t, sysErr)
-			assert.Equal(t, uuid.Nil, result)
 		})
 		t.Run("should return error if failed to save dependency", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -514,9 +451,6 @@ func TestJobService(t *testing.T) {
 
 			dependencyResolver := new(DependencyResolver)
 			defer dependencyResolver.AssertExpectations(t)
-
-			deployManager := new(DeploymentManager)
-			defer deployManager.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -542,56 +476,10 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("SaveDependency", ctx, mock.Anything).Return(errors.New("internal error"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
-			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
 			assert.Nil(t, jobErr)
 			assert.NotNil(t, sysErr)
-			assert.Equal(t, uuid.Nil, result)
-		})
-		t.Run("should not return error if there is dependency errors when resolving, without critical error", func(t *testing.T) {
-			jobRepo := new(JobRepository)
-			defer jobRepo.AssertExpectations(t)
-
-			pluginService := new(PluginService)
-			defer pluginService.AssertExpectations(t)
-
-			dependencyResolver := new(DependencyResolver)
-			defer dependencyResolver.AssertExpectations(t)
-
-			deployManager := new(DeploymentManager)
-			defer deployManager.AssertExpectations(t)
-
-			tenantDetailsGetter := new(TenantDetailsGetter)
-			defer tenantDetailsGetter.AssertExpectations(t)
-
-			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			jobSpecs := []*job.JobSpec{jobSpecA}
-
-			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
-
-			resourceA := "resource-A"
-			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecA.Task()).Return(resourceA, nil).Once()
-
-			jobSourcesA := []string{"resource-B"}
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecA, true).Return(jobSourcesA, nil)
-
-			jobA := job.NewJob(jobSpecA, resourceA, jobSourcesA)
-			jobs := []*job.Job{jobA}
-			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
-
-			jobWithDependencyA := job.NewWithDependency(jobA, nil)
-			dependencyResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithDependency{jobWithDependencyA}, nil, nil)
-
-			jobRepo.On("SaveDependency", ctx, mock.Anything).Return(nil)
-
-			deployManager.On("Create", ctx, project.Name()).Return(uuid.Nil, errors.New("unable to trigger deployment"))
-
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
-			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
-			assert.Nil(t, jobErr)
-			assert.NotNil(t, sysErr)
-			assert.Equal(t, uuid.Nil, result)
 		})
 	})
 }
@@ -750,34 +638,6 @@ func (_m *DependencyResolver) Resolve(ctx context.Context, projectName tenant.Pr
 	}
 
 	return r0, r1, r2
-}
-
-// DeploymentManager is an autogenerated mock type for the DeploymentManager type
-type DeploymentManager struct {
-	mock.Mock
-}
-
-// Create provides a mock function with given fields: ctx, projectName
-func (_m *DeploymentManager) Create(ctx context.Context, projectName tenant.ProjectName) (uuid.UUID, error) {
-	ret := _m.Called(ctx, projectName)
-
-	var r0 uuid.UUID
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName) uuid.UUID); ok {
-		r0 = rf(ctx, projectName)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(uuid.UUID)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName) error); ok {
-		r1 = rf(ctx, projectName)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
 }
 
 // TenantDetailsGetter is an autogenerated mock type for the TenantDetailsGetter type
