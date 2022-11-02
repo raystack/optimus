@@ -2,23 +2,23 @@ EXPECTED_CONTEXT=colima
 NAMESPACE=optimus-dev
 OPTIMUS_ODPF_CHART=odpf/optimus
 
-DAGS_PATH?=/tmp/colima/dags
-OPTIMUS_PLUGINS_PATH?=/tmp/colima/plugins
+DAGS_PATH?=./dags
+OPTIMUS_PLUGINS_PATH?=./plugins
 OPTIMUS_SERVE_PORT?=9100
 
 apply.airflow: _context
 	helm repo add apache-airflow https://airflow.apache.org
 	helm upgrade --install airflow apache-airflow/airflow \
 		--namespace ${NAMESPACE} \
-		--set scheduler.extraVolumes[0].hostPath.path=${DAGS_PATH} \
+		--set scheduler.extraVolumes[0].hostPath.path=$(abspath ${DAGS_PATH}) \
 		-f airflow.values.yaml
 
 apply.optimus: _context
 	helm repo add odpf https://odpf.github.io/charts/
 	helm upgrade --install optimus-dev ${OPTIMUS_ODPF_CHART} \
 	-n ${NAMESPACE} \
-	--set volumes[0].hostPath.path=${DAGS_PATH} \
-	--set volumes[1].hostPath.path=${OPTIMUS_PLUGINS_PATH} \
+	--set volumes[0].hostPath.path=$(abspath ${DAGS_PATH}) \
+	--set volumes[1].hostPath.path=$(abspath ${OPTIMUS_PLUGINS_PATH}) \
 	--set config.OPTIMUS_SERVE_PORT=${OPTIMUS_SERVE_PORT} \
 	-f optimus.values.yaml --version '>0.0.2'
 
@@ -31,6 +31,8 @@ _pre: _context
 
 	kubectl apply -f postgres.yaml -n ${NAMESPACE}
 	kubectl wait --namespace=${NAMESPACE} --timeout=120s --for=condition=Available deployment/optimus-db
+
+	mkdir -p $(abspath ${DAGS_PATH})
 	
 apply: _pre apply.optimus apply.airflow
 
