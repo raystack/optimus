@@ -4,6 +4,7 @@ OPTIMUS_ODPF_CHART=odpf/optimus
 
 DAGS_PATH?=/tmp/colima/dags
 OPTIMUS_PLUGINS_PATH?=/tmp/colima/plugins
+OPTIMUS_PLUGINS_ARTIFACT?=./optimus-dummy-plugins.tar.gz
 OPTIMUS_SERVE_PORT?=9100
 
 apply.airflow: _context
@@ -19,7 +20,10 @@ apply.optimus: _context
 	-n ${NAMESPACE} \
 	--set volumes[0].hostPath.path=${DAGS_PATH} \
 	--set volumes[1].hostPath.path=${OPTIMUS_PLUGINS_PATH} \
+	--set volumes[2].hostPath.path=${OPTIMUS_PLUGINS_ARTIFACT} \
+	--set container.volumeMounts[2].mountPath=/app/$(notdir ${OPTIMUS_PLUGINS_ARTIFACT}) \
 	--set config.OPTIMUS_SERVE_PORT=${OPTIMUS_SERVE_PORT} \
+	--set config.OPTIMUS_PLUGIN_ARTIFACTS=/app/$(notdir ${OPTIMUS_PLUGINS_ARTIFACT}) \
 	-f optimus.values.yaml --version '>0.0.2'
 
 _context:

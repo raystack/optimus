@@ -1,11 +1,19 @@
 
 # Optimus Dev setup
 
-## setup
+## Setup
 + `brew install colima`
 + `make start-colima`
 + check kubernetes context
 + `make apply`
+
+Some optional variable you can set alongside with `make apply`
+```sh
+DAGS_PATH=                # default /tmp/colima/dags
+OPTIMUS_PLUGINS_PATH=     # default /tmp/colima/plugins
+OPTIMUS_PLUGINS_ARTIFACT= # default ./optimus-dummy-plugins.tar.gz
+OPTIMUS_SERVE_PORT=       # default 9100
+```
 
 ## Components
 + optimus server
@@ -13,22 +21,17 @@
 + airflow 
 + airflow db (postgres)
 
-### Dag file location on your laptop
-+  `/tmp/colima/dags`
+### Dag files and installed plugins location on your laptop
++ location of your dag files: `/tmp/colima/dags` or specified by `DAGS_PATH`
++ location of your plugins: `/tmp/colima/plugins` or specified by `OPTIMUS_PLUGINS_PATH`
 
 ### Mounting plugins
-+ update `path`'s for `internal-plugins` and `odpf-plugins` volumes in optimus.values.yaml with the actual path to the plugins and upgrade the helm chart for optimus (`make upgrade.optimus`)
++ yaml plugin and binary plugin can be directly added to [plugins folder on your laptop](#dag-files-and-installed-plugins-location-on-your-laptop)
++ plugin in artifact form can be added by specifiying the path through variable `OPTIMUS_PLUGINS_ARTIFACT`. Reapply optimus helm by specifying the artifact path.
 
-```yaml
-volumes:
-  - name: internal-plugins
-    hostPath: 
-      path: /Users/../Documents/proj/optimus-plugins/dist/optimus-plugins_0.6.1_linux_amd64.tar.gz
-      type: File
-  - name: odpf-plugins
-    hostPath: 
-      path: /Users/../Documents/proj/transformers/dist/transformers_0.1.1_linux_arm64.tar.gz
-      type: File
+```sh
+OPTIMUS_PLUGINS_ARTIFACT=/Users/../plugins.tar.gz \
+make apply.optimus
 ```
 
 ### Connect to optimus db

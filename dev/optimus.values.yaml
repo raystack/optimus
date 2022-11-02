@@ -12,6 +12,7 @@ container:
     - optimus
   args:
     - serve
+    - --install-plugins
     - -c
     - /etc/optimus/config.yaml  # mounted as per helm chart
   volumeMounts:
@@ -19,6 +20,8 @@ container:
       name: dags-path
     - mountPath: /app/.plugins
       name: plugins-path
+    - mountPath: /app/optimus-dummy-plugins.tar.gz # will be replace from makefile
+      name: plugins-artifact
 
 volumes:
   - name: dags-path
@@ -29,6 +32,10 @@ volumes:
     hostPath: 
       path: /tmp/colima/plugins
       type: Directory
+  - name: plugins-artifact
+    hostPath: 
+      path: /tmp/colima/optimus-dummy-plugins.tar.gz # will be replaced from makefile
+      type: File
 
 telegraf:
   enabled: false
