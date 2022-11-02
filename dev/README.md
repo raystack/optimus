@@ -27,6 +27,14 @@ OPTIMUS_SERVE_PORT=       # default 9100
 ### Mounting plugins
 + yaml plugin and binary plugin can be directly added to [plugins folder on your laptop](#dag-files-and-installed-plugins-location-on-your-laptop)
 
+### Load secrets
+```sh
+PROJECT=<project-name> \    # default project-a
+SECRET_NAME=<secret-name> \ # default BQ_SERVICE_ACCOUNT
+HOST=<host> \               # default localhost:9100
+./load_secret <secret-path>
+```
+
 ### Connect to optimus db
 + `psql -h localhost -U optimus`
 
