@@ -11,6 +11,7 @@ import (
 
 const DateSpecLayout = "2006-01-02"
 
+// TODO: rename to Spec
 type JobSpec struct {
 	tenant tenant.Tenant
 

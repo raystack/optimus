@@ -19,6 +19,8 @@ type Job struct {
 	jobSpec     *JobSpec
 	destination string
 	sources     []string
+
+	// TODO: add state
 }
 
 func (j Job) JobSpec() *JobSpec {
@@ -58,6 +60,7 @@ func (j Jobs) GetJobNames() []Name {
 	return jobNames
 }
 
+// TODO: no longer use dependency term, use upstream instead
 type WithDependency struct {
 	job          *Job
 	dependencies []*Dependency
