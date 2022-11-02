@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/odpf/optimus/core/job"
 	"net/http"
 	"strings"
 
@@ -16,11 +17,6 @@ import (
 	"github.com/odpf/optimus/config"
 )
 
-// ResourceManager is repository for external job spec
-type ResourceManager interface {
-	GetOptimusDependencies(context.Context, *dto.UnresolvedDependency) ([]*dto.Dependency, error)
-}
-
 type optimusResourceManager struct {
 	name   string
 	config config.ResourceManagerConfigOptimus
@@ -29,7 +25,7 @@ type optimusResourceManager struct {
 }
 
 // NewOptimusResourceManager initializes job spec repository for Optimus neighbor
-func NewOptimusResourceManager(resourceManagerConfig config.ResourceManager) (ResourceManager, error) {
+func NewOptimusResourceManager(resourceManagerConfig config.ResourceManager) (*optimusResourceManager, error) {
 	var conf config.ResourceManagerConfigOptimus
 	if err := mapstructure.Decode(resourceManagerConfig.Config, &conf); err != nil {
 		return nil, fmt.Errorf("error decoding resource manger config: %w", err)
@@ -44,7 +40,7 @@ func NewOptimusResourceManager(resourceManagerConfig config.ResourceManager) (Re
 	}, nil
 }
 
-func (o *optimusResourceManager) GetOptimusDependencies(ctx context.Context, unresolvedDependency *dto.UnresolvedDependency) ([]*dto.Dependency, error) {
+func (o *optimusResourceManager) GetOptimusDependencies(ctx context.Context, unresolvedDependency *dto.RawDependency) ([]*job.Dependency, error) {
 	if ctx == nil {
 		return nil, errors.New("context is nil")
 	}
@@ -72,7 +68,7 @@ func (o *optimusResourceManager) GetOptimusDependencies(ctx context.Context, unr
 	return o.toOptimusDependencies(jobSpecResponse.JobSpecificationResponses, unresolvedDependency)
 }
 
-func (o *optimusResourceManager) constructGetJobSpecificationsRequest(ctx context.Context, unresolvedDependency *dto.UnresolvedDependency) (*http.Request, error) {
+func (o *optimusResourceManager) constructGetJobSpecificationsRequest(ctx context.Context, unresolvedDependency *dto.RawDependency) (*http.Request, error) {
 	var filters []string
 	if unresolvedDependency.JobName != "" {
 		filters = append(filters, fmt.Sprintf("job_name=%s", unresolvedDependency.JobName))
@@ -99,8 +95,8 @@ func (o *optimusResourceManager) constructGetJobSpecificationsRequest(ctx contex
 	return request, nil
 }
 
-func (o *optimusResourceManager) toOptimusDependencies(responses []jobSpecificationResponse, unresolvedDependency *dto.UnresolvedDependency) ([]*dto.Dependency, error) {
-	output := make([]*dto.Dependency, len(responses))
+func (o *optimusResourceManager) toOptimusDependencies(responses []jobSpecificationResponse, unresolvedDependency *dto.RawDependency) ([]*job.Dependency, error) {
+	output := make([]*job.Dependency, len(responses))
 	for i, r := range responses {
 		dependency, err := o.toOptimusDependency(r, unresolvedDependency)
 		if err != nil {
@@ -111,10 +107,16 @@ func (o *optimusResourceManager) toOptimusDependencies(responses []jobSpecificat
 	return output, nil
 }
 
-func (o *optimusResourceManager) toOptimusDependency(response jobSpecificationResponse, unresolvedDependency *dto.UnresolvedDependency) (*dto.Dependency, error) {
-	tnnt, err := tenant.NewTenant(response.ProjectName, response.NamespaceName)
+func (o *optimusResourceManager) toOptimusDependency(response jobSpecificationResponse, unresolvedDependency *dto.RawDependency) (*job.Dependency, error) {
+	jobTenant, err := tenant.NewTenant(response.ProjectName, response.NamespaceName)
 	if err != nil {
 		return nil, err
 	}
-	return dto.NewDependency(response.Job.Name, tnnt, o.config.Host, unresolvedDependency.ResourceURN), nil
+	var dependencyType string
+	if unresolvedDependency.IsStaticDependency() {
+		dependencyType = "static"
+	} else {
+		dependencyType = "inferred"
+	}
+	return job.NewDependencyResolved(response.Job.Name, o.config.Host, unresolvedDependency.ResourceURN, jobTenant, dependencyType)
 }

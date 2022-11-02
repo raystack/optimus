@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/service"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/models"
@@ -37,30 +36,25 @@ func TestJobService(t *testing.T) {
 	jobTaskConfig := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
 	jobTask := job.NewTask("bq2bq", jobTaskConfig)
 
-	t.Run("Add", func(t *testing.T) {
+	t.Run("AddAndDeploy", func(t *testing.T) {
 		t.Run("add jobs and return deployment ID", func(t *testing.T) {
-			jobRepo := NewJobRepository(t)
+			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
-			jobDependencyRepo := NewJobDependencyRepository(t)
-			defer jobDependencyRepo.AssertExpectations(t)
-
-			pluginService := NewPluginService(t)
+			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
 
-			dependencyResolver := NewDependencyResolver(t)
+			dependencyResolver := new(DependencyResolver)
 			defer dependencyResolver.AssertExpectations(t)
 
-			deployManager := NewDeploymentManager(t)
+			deployManager := new(DeploymentManager)
 			defer deployManager.AssertExpectations(t)
 
-			tenantDetailsGetter := NewTenantDetailsGetter(t)
+			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			jobSpecA, err := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			assert.Nil(t, err)
-
 			jobSpecs := []*job.JobSpec{jobSpecA}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
@@ -73,54 +67,155 @@ func TestJobService(t *testing.T) {
 
 			jobA := job.NewJob(jobSpecA, jobADestination, jobADependencies)
 			jobs := []*job.Job{jobA}
-			jobRepo.On("Save", ctx, jobs).Return(nil)
+			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
 
-			dependency := dto.NewDependency("job-B", sampleTenant, "", "resource-B")
-			jobWithDependency := job.NewWithDependency("job-A", project.Name(), []*dto.Dependency{dependency}, nil)
-			dependencyResolver.On("Resolve", ctx, jobs).Return([]*job.WithDependency{jobWithDependency}, nil)
+			dependency, _ := job.NewDependencyResolved("job-B", "", "resource-B", sampleTenant, "static")
+			jobWithDependency := job.NewWithDependency(jobA, []*job.Dependency{dependency})
+			dependencyResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithDependency{jobWithDependency}, nil, nil)
 
-			jobDependencyRepo.On("Save", ctx, []*job.WithDependency{jobWithDependency}).Return(nil)
+			jobRepo.On("SaveDependency", ctx, []*job.WithDependency{jobWithDependency}).Return(nil)
 
 			deployID := uuid.New()
 			deployManager.On("Create", ctx, project.Name()).Return(deployID, nil)
 
-			jobService := service.NewJobService(jobRepo, jobDependencyRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
-			result, jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
+			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
 			assert.Nil(t, jobErr)
 			assert.Nil(t, sysErr)
 			assert.Equal(t, deployID, result)
 		})
 		t.Run("skip invalid job, add the rest and return deployment ID", func(t *testing.T) {
-			jobRepo := NewJobRepository(t)
+			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
-			jobDependencyRepo := NewJobDependencyRepository(t)
-			defer jobDependencyRepo.AssertExpectations(t)
-
-			pluginService := NewPluginService(t)
+			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
 
-			dependencyResolver := NewDependencyResolver(t)
+			dependencyResolver := new(DependencyResolver)
 			defer dependencyResolver.AssertExpectations(t)
 
-			deployManager := NewDeploymentManager(t)
+			deployManager := new(DeploymentManager)
 			defer deployManager.AssertExpectations(t)
 
-			tenantDetailsGetter := NewTenantDetailsGetter(t)
+			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			jobSpecA, err := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+			invalidJobScheduleB := job.NewSchedule("invalid", "", "", false, false, nil)
+			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			assert.Nil(t, err)
-
-			jobSpecB, err := job.NewJobSpec(sampleTenant, jobVersion, "job-B", "", "", nil, jobSchedule,
+			jobSpecB, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-B", "", "", nil, invalidJobScheduleB,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			assert.Nil(t, err)
+			jobSpecs := []*job.JobSpec{jobSpecB, jobSpecA}
 
-			jobSpecC, err := job.NewJobSpec(sampleTenant, jobVersion, "job-C", "", "", nil, jobSchedule,
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			jobADestination := "resource-A"
+			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecA.Task()).Return(jobADestination, nil).Once()
+
+			jobADependencies := []string{"job-B"}
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecA, true).Return(jobADependencies, nil)
+
+			jobA := job.NewJob(jobSpecA, jobADestination, jobADependencies)
+			jobs := []*job.Job{jobA}
+			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
+
+			dependency, _ := job.NewDependencyResolved("job-B", "", "resource-B", sampleTenant, "static")
+			jobWithDependency := job.NewWithDependency(jobA, []*job.Dependency{dependency})
+			dependencyResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithDependency{jobWithDependency}, nil, nil)
+
+			jobRepo.On("SaveDependency", ctx, []*job.WithDependency{jobWithDependency}).Return(nil)
+
+			deployID := uuid.New()
+			deployManager.On("Create", ctx, project.Name()).Return(deployID, nil)
+
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
+			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			assert.NotNil(t, jobErr)
+			assert.Nil(t, sysErr)
+			assert.Equal(t, deployID, result)
+		})
+		t.Run("return error if all jobs not pass validation", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			dependencyResolver := new(DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
+
+			deployManager := new(DeploymentManager)
+			defer deployManager.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			invalidJobScheduleA := job.NewSchedule("invalid", "", "", false, false, nil)
+			invalidJobScheduleB := job.NewSchedule("2022-11-01", "invalid", "", false, false, nil)
+			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, invalidJobScheduleA,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			assert.Nil(t, err)
+			jobSpecB, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-B", "", "", nil, invalidJobScheduleB,
+				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			jobSpecs := []*job.JobSpec{jobSpecB, jobSpecA}
 
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
+			deployID, jobErrors, err := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+
+			assert.NotNil(t, jobErrors)
+			assert.NotNil(t, err)
+			assert.Equal(t, uuid.Nil, deployID)
+		})
+		t.Run("return error if unable to get detailed tenant", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			dependencyResolver := new(DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
+
+			deployManager := new(DeploymentManager)
+			defer deployManager.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			jobSpecs := []*job.JobSpec{jobSpecA}
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(&tenant.WithDetails{}, errors.New("internal error"))
+
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
+			deployID, jobErrors, err := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+
+			assert.Nil(t, jobErrors)
+			assert.NotNil(t, err)
+			assert.Equal(t, uuid.Nil, deployID)
+		})
+		t.Run("skip job that has issue when generating destination and dependencies and return deployment ID", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			dependencyResolver := new(DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
+
+			deployManager := new(DeploymentManager)
+			defer deployManager.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			jobSpecB, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-B", "", "", nil, jobSchedule,
+				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			jobSpecC, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-C", "", "", nil, jobSchedule,
+				jobWindow, jobTask, nil, nil, nil, nil, nil)
 			jobSpecs := []*job.JobSpec{jobSpecB, jobSpecA, jobSpecC}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
@@ -137,33 +232,430 @@ func TestJobService(t *testing.T) {
 
 			jobA := job.NewJob(jobSpecA, jobADestination, jobADependencies)
 			jobs := []*job.Job{jobA}
-			jobRepo.On("Save", ctx, jobs).Return(nil)
+			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
 
-			dependency := dto.NewDependency("job-B", sampleTenant, "", "resource-B")
-			jobWithDependency := job.NewWithDependency("job-A", project.Name(), []*dto.Dependency{dependency}, nil)
-			dependencyResolver.On("Resolve", ctx, jobs).Return([]*job.WithDependency{jobWithDependency}, nil)
+			dependency, _ := job.NewDependencyResolved("job-B", "", "resource-B", sampleTenant, "static")
+			jobWithDependency := job.NewWithDependency(jobA, []*job.Dependency{dependency})
+			dependencyResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithDependency{jobWithDependency}, nil, nil)
 
-			jobDependencyRepo.On("Save", ctx, []*job.WithDependency{jobWithDependency}).Return(nil)
+			jobRepo.On("SaveDependency", ctx, []*job.WithDependency{jobWithDependency}).Return(nil)
 
 			deployID := uuid.New()
 			deployManager.On("Create", ctx, project.Name()).Return(deployID, nil)
 
-			jobService := service.NewJobService(jobRepo, jobDependencyRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
-			result, jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
+			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
 			assert.NotNil(t, jobErr)
 			assert.Nil(t, sysErr)
 			assert.Equal(t, deployID, result)
 		})
+		t.Run("return error when all jobs failed to have destination and dependencies generated", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			dependencyResolver := new(DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
+
+			deployManager := new(DeploymentManager)
+			defer deployManager.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			jobSpecB, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-B", "", "", nil, jobSchedule,
+				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			jobSpecs := []*job.JobSpec{jobSpecB, jobSpecA}
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			jobBDestination := "resource-B"
+			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecB.Task()).Return(jobBDestination, nil).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecA.Task()).Return("", errors.New("generate destination error")).Once()
+
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecB, true).Return(nil, errors.New("generate dependencies error"))
+
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
+			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			assert.NotNil(t, jobErr)
+			assert.NotNil(t, sysErr)
+			assert.Equal(t, uuid.Nil, result)
+		})
+		t.Run("should not skip nor return error if jobs does not have dependency mod and encounter issue on generate destination/dependency", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			dependencyResolver := new(DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
+
+			deployManager := new(DeploymentManager)
+			defer deployManager.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			jobSpecs := []*job.JobSpec{jobSpecA}
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecA.Task()).Return("", service.ErrDependencyModNotFound).Once()
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecA, true).Return(nil, service.ErrDependencyModNotFound)
+
+			jobA := job.NewJob(jobSpecA, "", nil)
+			jobs := []*job.Job{jobA}
+			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
+
+			jobWithDependency := job.NewWithDependency(jobA, nil)
+			dependencyResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithDependency{jobWithDependency}, nil, nil)
+
+			jobRepo.On("SaveDependency", ctx, []*job.WithDependency{jobWithDependency}).Return(nil)
+
+			deployID := uuid.New()
+			deployManager.On("Create", ctx, project.Name()).Return(deployID, nil)
+
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
+			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			assert.Nil(t, jobErr)
+			assert.Nil(t, sysErr)
+			assert.Equal(t, deployID, result)
+		})
+		t.Run("should skip and not return error if one of the job is failed to be inserted to db", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			dependencyResolver := new(DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
+
+			deployManager := new(DeploymentManager)
+			defer deployManager.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			jobSpecB, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-B", "", "", nil, jobSchedule,
+				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			jobSpecs := []*job.JobSpec{jobSpecA, jobSpecB}
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			resourceA := "resource-A"
+			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecA.Task()).Return(resourceA, nil).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecB.Task()).Return("", service.ErrDependencyModNotFound).Once()
+
+			jobSourcesA := []string{"resource-B"}
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecA, true).Return(jobSourcesA, nil)
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecB, true).Return(nil, service.ErrDependencyModNotFound)
+
+			jobA := job.NewJob(jobSpecA, resourceA, jobSourcesA)
+			jobB := job.NewJob(jobSpecB, "", nil)
+			jobs := []*job.Job{jobA, jobB}
+			savedJobs := []*job.Job{jobB}
+			jobRepo.On("Add", ctx, jobs).Return(savedJobs, errors.New("unable to save job A"), nil)
+
+			jobWithDependencyB := job.NewWithDependency(jobB, nil)
+			dependencyResolver.On("Resolve", ctx, project.Name(), savedJobs).Return([]*job.WithDependency{jobWithDependencyB}, nil, nil)
+
+			jobRepo.On("SaveDependency", ctx, mock.Anything).Return(nil)
+
+			deployID := uuid.New()
+			deployManager.On("Create", ctx, project.Name()).Return(deployID, nil)
+
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
+			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			assert.NotNil(t, jobErr)
+			assert.Nil(t, sysErr)
+			assert.Equal(t, deployID, result)
+		})
+		t.Run("return error when all jobs failed to be inserted to db", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			dependencyResolver := new(DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
+
+			deployManager := new(DeploymentManager)
+			defer deployManager.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			jobSpecs := []*job.JobSpec{jobSpecA}
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			resourceA := "resource-A"
+			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecA.Task()).Return(resourceA, nil).Once()
+
+			jobSourcesA := []string{"resource-B"}
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecA, true).Return(jobSourcesA, nil)
+
+			jobA := job.NewJob(jobSpecA, resourceA, jobSourcesA)
+			jobs := []*job.Job{jobA}
+			jobRepo.On("Add", ctx, jobs).Return([]*job.Job{}, errors.New("unable to save job A"), errors.New("all jobs failed"))
+
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
+			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			assert.NotNil(t, jobErr)
+			assert.NotNil(t, sysErr)
+			assert.Equal(t, uuid.Nil, result)
+		})
+		t.Run("should not return error if there is dependency errors when resolving, without critical error", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			dependencyResolver := new(DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
+
+			deployManager := new(DeploymentManager)
+			defer deployManager.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			jobSpecs := []*job.JobSpec{jobSpecA}
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			resourceA := "resource-A"
+			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecA.Task()).Return(resourceA, nil).Once()
+
+			jobSourcesA := []string{"resource-B"}
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecA, true).Return(jobSourcesA, nil)
+
+			jobA := job.NewJob(jobSpecA, resourceA, jobSourcesA)
+			jobs := []*job.Job{jobA}
+			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
+
+			jobWithDependencyA := job.NewWithDependency(jobA, nil)
+			dependencyResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithDependency{jobWithDependencyA}, errors.New("dependency error"), nil)
+
+			jobRepo.On("SaveDependency", ctx, mock.Anything).Return(nil)
+
+			deployID := uuid.New()
+			deployManager.On("Create", ctx, project.Name()).Return(deployID, nil)
+
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
+			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			assert.NotNil(t, jobErr)
+			assert.Nil(t, sysErr)
+			assert.Equal(t, deployID, result)
+		})
+		t.Run("should return error if there is dependency errors when resolving, with critical error", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			dependencyResolver := new(DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
+
+			deployManager := new(DeploymentManager)
+			defer deployManager.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			jobSpecs := []*job.JobSpec{jobSpecA}
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			resourceA := "resource-A"
+			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecA.Task()).Return(resourceA, nil).Once()
+
+			jobSourcesA := []string{"resource-B"}
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecA, true).Return(jobSourcesA, nil)
+
+			jobA := job.NewJob(jobSpecA, resourceA, jobSourcesA)
+			jobs := []*job.Job{jobA}
+			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
+
+			jobWithDependencyA := job.NewWithDependency(jobA, nil)
+			dependencyResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithDependency{jobWithDependencyA}, errors.New("dependency error"), errors.New("internal error"))
+
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
+			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			assert.NotNil(t, jobErr)
+			assert.NotNil(t, sysErr)
+			assert.Equal(t, uuid.Nil, result)
+		})
+		t.Run("should return error if failed to save dependency", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			dependencyResolver := new(DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
+
+			deployManager := new(DeploymentManager)
+			defer deployManager.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			jobSpecs := []*job.JobSpec{jobSpecA}
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			resourceA := "resource-A"
+			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecA.Task()).Return(resourceA, nil).Once()
+
+			jobSourcesA := []string{"resource-B"}
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecA, true).Return(jobSourcesA, nil)
+
+			jobA := job.NewJob(jobSpecA, resourceA, jobSourcesA)
+			jobs := []*job.Job{jobA}
+			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
+
+			jobWithDependencyA := job.NewWithDependency(jobA, nil)
+			dependencyResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithDependency{jobWithDependencyA}, nil, nil)
+
+			jobRepo.On("SaveDependency", ctx, mock.Anything).Return(errors.New("internal error"))
+
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
+			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			assert.Nil(t, jobErr)
+			assert.NotNil(t, sysErr)
+			assert.Equal(t, uuid.Nil, result)
+		})
+		t.Run("should not return error if there is dependency errors when resolving, without critical error", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			dependencyResolver := new(DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
+
+			deployManager := new(DeploymentManager)
+			defer deployManager.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			jobSpecs := []*job.JobSpec{jobSpecA}
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			resourceA := "resource-A"
+			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecA.Task()).Return(resourceA, nil).Once()
+
+			jobSourcesA := []string{"resource-B"}
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecA, true).Return(jobSourcesA, nil)
+
+			jobA := job.NewJob(jobSpecA, resourceA, jobSourcesA)
+			jobs := []*job.Job{jobA}
+			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
+
+			jobWithDependencyA := job.NewWithDependency(jobA, nil)
+			dependencyResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithDependency{jobWithDependencyA}, nil, nil)
+
+			jobRepo.On("SaveDependency", ctx, mock.Anything).Return(nil)
+
+			deployManager.On("Create", ctx, project.Name()).Return(uuid.Nil, errors.New("unable to trigger deployment"))
+
+			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter, deployManager)
+			result, jobErr, sysErr := jobService.AddAndDeploy(ctx, sampleTenant, jobSpecs)
+			assert.Nil(t, jobErr)
+			assert.NotNil(t, sysErr)
+			assert.Equal(t, uuid.Nil, result)
+		})
 	})
 }
 
-// JobDependencyRepository is an autogenerated mock type for the JobDependencyRepository type
-type JobDependencyRepository struct {
+// JobRepository is an autogenerated mock type for the JobRepository type
+type JobRepository struct {
 	mock.Mock
 }
 
-// Save provides a mock function with given fields: ctx, jobsWithDependencies
-func (_m *JobDependencyRepository) Save(ctx context.Context, jobsWithDependencies []*job.WithDependency) error {
+// Add provides a mock function with given fields: ctx, jobs
+func (_m *JobRepository) Add(ctx context.Context, jobs []*job.Job) ([]*job.Job, error, error) {
+	ret := _m.Called(ctx, jobs)
+
+	var r0 []*job.Job
+	if rf, ok := ret.Get(0).(func(context.Context, []*job.Job) []*job.Job); ok {
+		r0 = rf(ctx, jobs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*job.Job)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, []*job.Job) error); ok {
+		r1 = rf(ctx, jobs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	var r2 error
+	if rf, ok := ret.Get(2).(func(context.Context, []*job.Job) error); ok {
+		r2 = rf(ctx, jobs)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// GetJobNameWithDependencies provides a mock function with given fields: ctx, projectName, jobNames
+func (_m *JobRepository) GetJobNameWithInternalDependencies(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Dependency, error) {
+	ret := _m.Called(ctx, projectName, jobNames)
+
+	var r0 map[job.Name][]*job.Dependency
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, []job.Name) map[job.Name][]*job.Dependency); ok {
+		r0 = rf(ctx, projectName, jobNames)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[job.Name][]*job.Dependency)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, []job.Name) error); ok {
+		r1 = rf(ctx, projectName, jobNames)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SaveDependency provides a mock function with given fields: ctx, jobsWithDependencies
+func (_m *JobRepository) SaveDependency(ctx context.Context, jobsWithDependencies []*job.WithDependency) error {
 	ret := _m.Called(ctx, jobsWithDependencies)
 
 	var r0 error
@@ -174,21 +666,6 @@ func (_m *JobDependencyRepository) Save(ctx context.Context, jobsWithDependencie
 	}
 
 	return r0
-}
-
-type mockConstructorTestingTNewJobDependencyRepository interface {
-	mock.TestingT
-	Cleanup(func())
-}
-
-// NewJobDependencyRepository creates a new instance of JobDependencyRepository. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewJobDependencyRepository(t mockConstructorTestingTNewJobDependencyRepository) *JobDependencyRepository {
-	mock := &JobDependencyRepository{}
-	mock.Mock.Test(t)
-
-	t.Cleanup(func() { mock.AssertExpectations(t) })
-
-	return mock
 }
 
 // PluginService is an autogenerated mock type for the PluginService type
@@ -240,33 +717,18 @@ func (_m *PluginService) GenerateDestination(_a0 context.Context, _a1 *tenant.Wi
 	return r0, r1
 }
 
-type mockConstructorTestingTNewPluginService interface {
-	mock.TestingT
-	Cleanup(func())
-}
-
-// NewPluginService creates a new instance of PluginService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewPluginService(t mockConstructorTestingTNewPluginService) *PluginService {
-	mock := &PluginService{}
-	mock.Mock.Test(t)
-
-	t.Cleanup(func() { mock.AssertExpectations(t) })
-
-	return mock
-}
-
 // DependencyResolver is an autogenerated mock type for the DependencyResolver type
 type DependencyResolver struct {
 	mock.Mock
 }
 
-// Resolve provides a mock function with given fields: ctx, jobs
-func (_m *DependencyResolver) Resolve(ctx context.Context, jobs []*job.Job) ([]*job.WithDependency, error) {
-	ret := _m.Called(ctx, jobs)
+// Resolve provides a mock function with given fields: ctx, projectName, jobs
+func (_m *DependencyResolver) Resolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) ([]*job.WithDependency, error, error) {
+	ret := _m.Called(ctx, projectName, jobs)
 
 	var r0 []*job.WithDependency
-	if rf, ok := ret.Get(0).(func(context.Context, []*job.Job) []*job.WithDependency); ok {
-		r0 = rf(ctx, jobs)
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, []*job.Job) []*job.WithDependency); ok {
+		r0 = rf(ctx, projectName, jobs)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*job.WithDependency)
@@ -274,28 +736,20 @@ func (_m *DependencyResolver) Resolve(ctx context.Context, jobs []*job.Job) ([]*
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, []*job.Job) error); ok {
-		r1 = rf(ctx, jobs)
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, []*job.Job) error); ok {
+		r1 = rf(ctx, projectName, jobs)
 	} else {
 		r1 = ret.Error(1)
 	}
 
-	return r0, r1
-}
+	var r2 error
+	if rf, ok := ret.Get(2).(func(context.Context, tenant.ProjectName, []*job.Job) error); ok {
+		r2 = rf(ctx, projectName, jobs)
+	} else {
+		r2 = ret.Error(2)
+	}
 
-type mockConstructorTestingTNewDependencyResolver interface {
-	mock.TestingT
-	Cleanup(func())
-}
-
-// NewDependencyResolver creates a new instance of DependencyResolver. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewDependencyResolver(t mockConstructorTestingTNewDependencyResolver) *DependencyResolver {
-	mock := &DependencyResolver{}
-	mock.Mock.Test(t)
-
-	t.Cleanup(func() { mock.AssertExpectations(t) })
-
-	return mock
+	return r0, r1, r2
 }
 
 // DeploymentManager is an autogenerated mock type for the DeploymentManager type
@@ -326,21 +780,6 @@ func (_m *DeploymentManager) Create(ctx context.Context, projectName tenant.Proj
 	return r0, r1
 }
 
-type mockConstructorTestingTNewDeploymentManager interface {
-	mock.TestingT
-	Cleanup(func())
-}
-
-// NewDeploymentManager creates a new instance of DeploymentManager. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewDeploymentManager(t mockConstructorTestingTNewDeploymentManager) *DeploymentManager {
-	mock := &DeploymentManager{}
-	mock.Mock.Test(t)
-
-	t.Cleanup(func() { mock.AssertExpectations(t) })
-
-	return mock
-}
-
 // TenantDetailsGetter is an autogenerated mock type for the TenantDetailsGetter type
 type TenantDetailsGetter struct {
 	mock.Mock
@@ -367,76 +806,4 @@ func (_m *TenantDetailsGetter) GetDetails(ctx context.Context, jobTenant tenant.
 	}
 
 	return r0, r1
-}
-
-type mockConstructorTestingTNewTenantDetailsGetter interface {
-	mock.TestingT
-	Cleanup(func())
-}
-
-// NewTenantDetailsGetter creates a new instance of TenantDetailsGetter. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewTenantDetailsGetter(t mockConstructorTestingTNewTenantDetailsGetter) *TenantDetailsGetter {
-	mock := &TenantDetailsGetter{}
-	mock.Mock.Test(t)
-
-	t.Cleanup(func() { mock.AssertExpectations(t) })
-
-	return mock
-}
-
-// JobRepository is an autogenerated mock type for the JobRepository type
-type JobRepository struct {
-	mock.Mock
-}
-
-// GetJobWithDependencies provides a mock function with given fields: ctx, projectName, jobNames
-func (_m *JobRepository) GetJobWithDependencies(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) ([]*job.WithDependency, error) {
-	ret := _m.Called(ctx, projectName, jobNames)
-
-	var r0 []*job.WithDependency
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, []job.Name) []*job.WithDependency); ok {
-		r0 = rf(ctx, projectName, jobNames)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*job.WithDependency)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, []job.Name) error); ok {
-		r1 = rf(ctx, projectName, jobNames)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// Save provides a mock function with given fields: ctx, jobs
-func (_m *JobRepository) Save(ctx context.Context, jobs []*job.Job) error {
-	ret := _m.Called(ctx, jobs)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []*job.Job) error); ok {
-		r0 = rf(ctx, jobs)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-type mockConstructorTestingTNewJobRepository interface {
-	mock.TestingT
-	Cleanup(func())
-}
-
-// NewJobRepository creates a new instance of JobRepository. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewJobRepository(t mockConstructorTestingTNewJobRepository) *JobRepository {
-	mock := &JobRepository{}
-	mock.Mock.Test(t)
-
-	t.Cleanup(func() { mock.AssertExpectations(t) })
-
-	return mock
 }

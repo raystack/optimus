@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"fmt"
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/google/uuid"
 	"golang.org/x/net/context"
@@ -23,8 +24,7 @@ func NewJobHandler(jobService JobService) *JobHandler {
 }
 
 type JobService interface {
-	Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.JobSpec) (deploymentID uuid.UUID, jobErr error, systemErr error)
-	Validate(ctx context.Context, jobs []*job.JobSpec) ([]*job.JobSpec, error)
+	AddAndDeploy(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.JobSpec) (deploymentID uuid.UUID, jobErrors error, err error)
 }
 
 func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *pb.AddJobSpecificationsRequest) (*pb.AddJobSpecificationsResponse, error) {
@@ -34,25 +34,27 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 	}
 
 	var jobs []*job.JobSpec
+	var jobErrors error
 	for _, jobProto := range jobSpecRequest.Specs {
 		jobEntity, err := fromJobProto(jobTenant, jobProto)
 		if err != nil {
-			return nil, errors.GRPCErr(err, "failed to add job specifications")
+			jobErrors = multierror.Append(jobErrors, err)
+			continue
 		}
 		jobs = append(jobs, jobEntity)
 	}
 
-	deploymentID, jobErr, err := jh.jobService.Add(ctx, jobTenant, jobs)
+	deploymentID, jobAddErrors, err := jh.jobService.AddAndDeploy(ctx, jobTenant, jobs)
 	if err != nil {
-		if jobErr != nil {
-			return nil, errors.GRPCErr(err, fmt.Sprintf("failed to add job specifications: %s", jobErr.Error()))
-		}
-		return nil, errors.GRPCErr(err, "failed to add job specifications %s")
+		return nil, err
+	}
+	if jobAddErrors != nil {
+		jobErrors = multierror.Append(jobErrors, jobAddErrors)
 	}
 
 	responseLog := fmt.Sprintf("jobs are created and queued for deployment on project %s", jobSpecRequest.GetProjectName())
-	if jobErr != nil {
-		responseLog = fmt.Sprintf("%s with error: %s", responseLog, jobErr.Error())
+	if jobErrors != nil {
+		responseLog = fmt.Sprintf("%s with error: %s", responseLog, jobErrors.Error())
 	}
 
 	return &pb.AddJobSpecificationsResponse{
