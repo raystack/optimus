@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/odpf/salt/log"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
@@ -33,22 +31,26 @@ func (JobRunHandler) JobRunInput(context.Context, *pb.JobRunInputRequest) (*pb.J
 	return nil, nil
 }
 
-func (JobRunHandler) JobStatus(context.Context, *pb.JobStatusRequest) (*pb.JobStatusResponse, error) {
-	// Old api, replaced by JobRun, Remove
-	return nil, nil
-}
+//func (JobRunHandler) JobStatus(context.Context, *pb.JobStatusRequest) (*pb.JobStatusResponse, error) {
+//	// Old api, replaced by JobRun, Remove
+//	return nil, nil
+//}
 
 func (JobRunHandler) JobRun(context.Context, *pb.JobRunRequest) (*pb.JobRunResponse, error) {
 	// This should be using optimus to look in job run information for upstream check
 	return nil, nil
 }
 
-func (JobRunHandler) GetWindow(context.Context, *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
-	// Need to copy, paste
-	return nil, nil
+func (h JobRunHandler) UploadToScheduler(ctx context.Context) error {
+	return nil
 }
 
-func (JobRunHandler) RunJob(context.Context, *pb.RunJobRequest) (*pb.RunJobResponse, error) {
-	// Remove
-	return nil, status.Errorf(codes.Unimplemented, "run job api is deprecated")
-}
+//func (JobRunHandler) GetWindow(context.Context, *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
+//	// Need to copy, paste
+//	return nil, nil
+//}
+
+//func (JobRunHandler) RunJob(context.Context, *pb.RunJobRequest) (*pb.RunJobResponse, error) {
+//	// Remove
+//	return nil, status.Errorf(codes.Unimplemented, "run job api is deprecated")
+//}
