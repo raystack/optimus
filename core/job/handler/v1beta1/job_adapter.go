@@ -84,16 +84,21 @@ func toMetadata(jobMetadata *pb.JobMetadata) *job.Metadata {
 	if jobMetadata == nil {
 		return nil
 	}
-	metadataResourceProto := jobMetadata.Resource
-	metadataResourceRequest := job.NewResourceConfig(metadataResourceProto.Request.Cpu, metadataResourceProto.Request.Memory)
-	metadataResourceLimit := job.NewResourceConfig(metadataResourceProto.Limit.Cpu, metadataResourceProto.Limit.Memory)
 
-	resourceMetadata := job.NewResourceMetadata(metadataResourceRequest, metadataResourceLimit)
+	var resourceMetadata *job.ResourceMetadata
+	if jobMetadata.Resource != nil {
+		metadataResourceProto := jobMetadata.Resource
+		metadataResourceRequest := job.NewResourceConfig(metadataResourceProto.Request.Cpu, metadataResourceProto.Request.Memory)
+		metadataResourceLimit := job.NewResourceConfig(metadataResourceProto.Limit.Cpu, metadataResourceProto.Limit.Memory)
+		resourceMetadata = job.NewResourceMetadata(metadataResourceRequest, metadataResourceLimit)
+	}
 
-	metadataSchedulerProto := jobMetadata.Airflow
 	schedulerMetadata := make(map[string]string)
-	schedulerMetadata["pool"] = metadataSchedulerProto.Pool
-	schedulerMetadata["queue"] = metadataSchedulerProto.Queue
+	if jobMetadata.Airflow != nil {
+		metadataSchedulerProto := jobMetadata.Airflow
+		schedulerMetadata["pool"] = metadataSchedulerProto.Pool
+		schedulerMetadata["queue"] = metadataSchedulerProto.Queue
+	}
 	metadata := job.NewMetadata(resourceMetadata, schedulerMetadata)
 	return metadata
 }

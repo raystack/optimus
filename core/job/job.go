@@ -1,11 +1,19 @@
 package job
 
 import (
-	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
 )
 
-const EntityJob = "job"
+const (
+	EntityJob = "job"
+
+	DependencyTypeStatic   DependencyType = "static"
+	DependencyTypeInferred DependencyType = "inferred"
+
+	DependencyStateResolved   DependencyState = "resolved"
+	DependencyStateUnresolved DependencyState = "unresolved"
+)
 
 type Job struct {
 	jobSpec     *JobSpec
@@ -51,38 +59,145 @@ func (j Jobs) GetJobNames() []Name {
 }
 
 type WithDependency struct {
-	name                   Name
-	projectName            tenant.ProjectName
-	dependencies           []*dto.Dependency
-	unresolvedDependencies []*dto.UnresolvedDependency
+	job          *Job
+	dependencies []*Dependency
 }
 
-func NewWithDependency(name Name, projectName tenant.ProjectName, dependencies []*dto.Dependency, unresolvedDependencies []*dto.UnresolvedDependency) *WithDependency {
-	return &WithDependency{name: name, projectName: projectName, dependencies: dependencies, unresolvedDependencies: unresolvedDependencies}
+func NewWithDependency(job *Job, dependencies []*Dependency) *WithDependency {
+	return &WithDependency{job: job, dependencies: dependencies}
 }
 
-func (w WithDependency) Name() Name {
-	return w.name
+func (w WithDependency) Job() *Job {
+	return w.job
 }
 
-func (w WithDependency) ProjectName() tenant.ProjectName {
-	return w.projectName
-}
-
-func (w WithDependency) Dependencies() []*dto.Dependency {
+func (w WithDependency) Dependencies() []*Dependency {
 	return w.dependencies
 }
 
-func (w WithDependency) UnresolvedDependencies() []*dto.UnresolvedDependency {
-	return w.unresolvedDependencies
+func (w WithDependency) Name() Name {
+	return w.job.jobSpec.Name()
 }
 
-type JobsWithDependency []*WithDependency
-
-func (j JobsWithDependency) ToJobDependencyMap() map[Name][]*dto.Dependency {
-	jobDependencyMap := make(map[Name][]*dto.Dependency)
-	for _, jobWithDependency := range j {
-		jobDependencyMap[jobWithDependency.name] = jobWithDependency.dependencies
+func (w WithDependency) GetUnresolvedDependencies() []*Dependency {
+	var unresolvedDependencies []*Dependency
+	for _, dependency := range w.dependencies {
+		if dependency.dependencyState == DependencyStateUnresolved {
+			unresolvedDependencies = append(unresolvedDependencies, dependency)
+		}
 	}
-	return jobDependencyMap
+	return unresolvedDependencies
+}
+
+type Dependency struct {
+	name             string
+	host             string
+	resource         string
+	dependencyTenant tenant.Tenant
+	dependencyType   DependencyType
+	dependencyState  DependencyState
+}
+
+func NewDependencyResolved(name string, host string, resource string, dependencyTenant tenant.Tenant, dependencyTypeStr string) (*Dependency, error) {
+	dependencyType, err := dependencyTypeFrom(dependencyTypeStr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Dependency{name: name, host: host, resource: resource, dependencyTenant: dependencyTenant,
+		dependencyType: dependencyType, dependencyState: DependencyStateResolved}, nil
+}
+
+func NewDependencyUnresolved(name string, resource string, projectName string) *Dependency {
+	var dependencyType DependencyType
+	if name != "" {
+		dependencyType = DependencyTypeStatic
+	} else {
+		dependencyType = DependencyTypeInferred
+	}
+
+	var dependencyTenant tenant.Tenant
+	if projectName != "" {
+		dependencyTenant, _ = tenant.NewTenant(projectName, "")
+	}
+
+	return &Dependency{name: name, resource: resource, dependencyTenant: dependencyTenant, dependencyType: dependencyType,
+		dependencyState: DependencyStateUnresolved}
+}
+
+func (d Dependency) Name() string {
+	return d.name
+}
+
+func (d Dependency) Tenant() tenant.Tenant {
+	return d.dependencyTenant
+}
+
+func (d Dependency) Host() string {
+	return d.host
+}
+
+func (d Dependency) Resource() string {
+	return d.resource
+}
+
+func (d Dependency) DependencyType() DependencyType {
+	return d.dependencyType
+}
+
+func (d Dependency) DependencyState() DependencyState {
+	return d.dependencyState
+}
+
+type DependencyType string
+
+func (d DependencyType) String() string {
+	return string(d)
+}
+
+func dependencyTypeFrom(str string) (DependencyType, error) {
+	switch str {
+	case DependencyTypeStatic.String():
+		return DependencyTypeStatic, nil
+	case DependencyTypeInferred.String():
+		return DependencyTypeInferred, nil
+	default:
+		return "", errors.InvalidArgument(EntityJob, "unknown type for dependency: "+str)
+	}
+}
+
+type DependencyState string
+
+func (d DependencyState) String() string {
+	return string(d)
+}
+
+func DependencyStateFrom(str string) (DependencyState, error) {
+	switch str {
+	case DependencyStateResolved.String():
+		return DependencyStateResolved, nil
+	case DependencyStateUnresolved.String():
+		return DependencyStateUnresolved, nil
+	default:
+		return "", errors.InvalidArgument(EntityJob, "unknown state for dependency: "+str)
+	}
+}
+
+type Dependencies []*Dependency
+
+func (d Dependencies) ToDependencyFullNameMap() map[string]bool {
+	fullNameDependencyMap := make(map[string]bool)
+	for _, dependency := range d {
+		fullName := dependency.dependencyTenant.ProjectName().String() + "/" + dependency.name
+		fullNameDependencyMap[fullName] = true
+	}
+	return fullNameDependencyMap
+}
+
+func (d Dependencies) ToDependencyDestinationMap() map[string]bool {
+	dependencyDestinationMap := make(map[string]bool)
+	for _, dependency := range d {
+		dependencyDestinationMap[dependency.resource] = true
+	}
+	return dependencyDestinationMap
 }

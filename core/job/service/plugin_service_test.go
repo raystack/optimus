@@ -45,7 +45,7 @@ func TestPluginService(t *testing.T) {
 		t.Run("returns destination", func(t *testing.T) {
 			logger := log.NewLogrus()
 
-			secretsGetter := NewSecretsGetter(t)
+			secretsGetter := new(SecretsGetter)
 			defer secretsGetter.AssertExpectations(t)
 
 			pluginRepo := mockOpt.NewPluginRepository(t)
@@ -82,7 +82,7 @@ func TestPluginService(t *testing.T) {
 		t.Run("returns dependencies", func(t *testing.T) {
 			logger := log.NewLogrus()
 
-			secretsGetter := NewSecretsGetter(t)
+			secretsGetter := new(SecretsGetter)
 			defer secretsGetter.AssertExpectations(t)
 
 			pluginRepo := mockOpt.NewPluginRepository(t)
@@ -167,19 +167,4 @@ func (_m *SecretsGetter) GetAll(ctx context.Context, ten tenant.Tenant) ([]*tena
 	}
 
 	return r0, r1
-}
-
-type mockConstructorTestingTNewSecretsGetter interface {
-	mock.TestingT
-	Cleanup(func())
-}
-
-// NewSecretsGetter creates a new instance of SecretsGetter. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewSecretsGetter(t mockConstructorTestingTNewSecretsGetter) *SecretsGetter {
-	mock := &SecretsGetter{}
-	mock.Mock.Test(t)
-
-	t.Cleanup(func() { mock.AssertExpectations(t) })
-
-	return mock
 }

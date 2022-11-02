@@ -1,11 +1,11 @@
 package job
 
 import (
+	"github.com/hashicorp/go-multierror"
 	"golang.org/x/net/context"
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 )
@@ -18,14 +18,20 @@ func NewJobRepository(db *gorm.DB) *JobRepository {
 	return &JobRepository{db: db}
 }
 
-func (j JobRepository) Save(ctx context.Context, jobs []*job.Job) error {
-	// todo: add transaction
+func (j JobRepository) Add(ctx context.Context, jobs []*job.Job) (savedJobs []*job.Job, jobErrors error, err error) {
 	for _, jobEntity := range jobs {
 		if err := j.insertJobSpec(ctx, jobEntity); err != nil {
-			return err
+			jobErrors = multierror.Append(jobErrors, err)
+			continue
 		}
+		savedJobs = append(savedJobs, jobEntity)
 	}
-	return nil
+
+	if len(savedJobs) == 0 {
+		return nil, jobErrors, errors.NewError(errors.ErrInternalError, job.EntityJob, "no jobs to create")
+	}
+
+	return savedJobs, jobErrors, nil
 }
 
 func (j JobRepository) insertJobSpec(ctx context.Context, jobEntity *job.Job) error {
@@ -98,7 +104,7 @@ AND project_name = ?
 	return spec, err
 }
 
-func (j JobRepository) GetJobWithDependencies(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) ([]*job.WithDependency, error) {
+func (j JobRepository) GetJobNameWithInternalDependencies(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Dependency, error) {
 	query := `
 WITH static_dependencies AS (
 	SELECT j.name, j.project_name, d.static_dependency
@@ -122,7 +128,8 @@ SELECT
 	j.name AS dependency_job_name,
 	j.project_name AS dependency_project_name,
 	j.namespace_name AS dependency_namespace_name,
-	j.destination AS dependency_resource
+	j.destination AS dependency_resource_urn,
+	'static' AS dependency_type
 FROM static_dependencies sd
 JOIN job j ON 
 	(sd.static_dependency = j.name and sd.project_name = j.project_name) OR 
@@ -136,7 +143,8 @@ SELECT
 	j.name AS dependency_job_name,
 	j.project_name AS dependency_project_name,
 	j.namespace_name AS dependency_namespace_name,
-	j.destination AS dependency_resource
+	j.destination AS dependency_resource_urn,
+	'inferred' AS dependency_type
 FROM inferred_dependencies id
 JOIN job j ON id.source = j.destination;
 `
@@ -153,11 +161,11 @@ JOIN job j ON id.source = j.destination;
 		return nil, errors.Wrap(job.EntityJob, "error while getting job with dependencies", err)
 	}
 
-	return j.toJobWithDependencies(storeJobsWithDependencies)
+	return j.toJobNameWithDependencies(storeJobsWithDependencies)
 }
 
-func (j JobRepository) toJobWithDependencies(storeJobsWithDependencies []JobWithDependency) ([]*job.WithDependency, error) {
-	var jobWithDependencies []*job.WithDependency
+func (j JobRepository) toJobNameWithDependencies(storeJobsWithDependencies []JobWithDependency) (map[job.Name][]*job.Dependency, error) {
+	jobNameWithDependencies := make(map[job.Name][]*job.Dependency)
 
 	dependenciesPerJobName := groupDependenciesPerJobFullName(storeJobsWithDependencies)
 	for _, storeDependencies := range dependenciesPerJobName {
@@ -169,13 +177,9 @@ func (j JobRepository) toJobWithDependencies(storeJobsWithDependencies []JobWith
 		if err != nil {
 			return nil, err
 		}
-		projectName, err := tenant.ProjectNameFrom(storeDependencies[0].ProjectName)
-		if err != nil {
-			return nil, err
-		}
-		jobWithDependencies = append(jobWithDependencies, job.NewWithDependency(name, projectName, dependencies, nil))
+		jobNameWithDependencies[name] = dependencies
 	}
-	return jobWithDependencies, nil
+	return jobNameWithDependencies, nil
 }
 
 func groupDependenciesPerJobFullName(dependencies []JobWithDependency) map[string][]JobWithDependency {
@@ -186,8 +190,8 @@ func groupDependenciesPerJobFullName(dependencies []JobWithDependency) map[strin
 	return dependenciesMap
 }
 
-func (j JobRepository) toDependencies(storeDependencies []JobWithDependency) ([]*dto.Dependency, error) {
-	var dependencies []*dto.Dependency
+func (j JobRepository) toDependencies(storeDependencies []JobWithDependency) ([]*job.Dependency, error) {
+	var dependencies []*job.Dependency
 	for _, storeDependency := range storeDependencies {
 		if storeDependency.DependencyJobName == "" {
 			continue
@@ -196,8 +200,126 @@ func (j JobRepository) toDependencies(storeDependencies []JobWithDependency) ([]
 		if err != nil {
 			return nil, err
 		}
-		dependency := dto.NewDependency(storeDependency.DependencyJobName, dependencyTenant, "", storeDependency.DependencyResource)
+		dependency, err := job.NewDependencyResolved(storeDependency.DependencyJobName, "", storeDependency.DependencyResourceURN, dependencyTenant, storeDependency.DependencyType)
 		dependencies = append(dependencies, dependency)
 	}
 	return dependencies, nil
+}
+
+type JobWithDependency struct {
+	JobName                 string `json:"job_name"`
+	ProjectName             string `json:"project_name"`
+	DependencyJobName       string `json:"dependency_job_name"`
+	DependencyResourceURN   string `json:"dependency_resource_urn"`
+	DependencyProjectName   string `json:"dependency_project_name"`
+	DependencyNamespaceName string `json:"dependency_namespace_name"`
+	DependencyHost          string `json:"dependency_host"`
+	DependencyType          string `json:"dependency_type"`
+	DependencyState         string `json:"dependency_state"`
+}
+
+func (j JobWithDependency) getJobFullName() string {
+	return j.ProjectName + "/" + j.JobName
+}
+
+func (j JobRepository) SaveDependency(ctx context.Context, jobsWithDependencies []*job.WithDependency) error {
+	var storageJobDependencies []*JobWithDependency
+	for _, jobWithDependencies := range jobsWithDependencies {
+		dependencies, err := toJobDependency(jobWithDependencies)
+		if err != nil {
+			return err
+		}
+		storageJobDependencies = append(storageJobDependencies, dependencies...)
+	}
+
+	return j.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := deleteDependencies(ctx, tx, storageJobDependencies); err != nil {
+			return err
+		}
+
+		return insertDependencies(ctx, tx, storageJobDependencies)
+	})
+}
+
+func insertDependencies(ctx context.Context, tx *gorm.DB, storageJobDependencies []*JobWithDependency) error {
+	insertJobDependencyQuery := `
+INSERT INTO job_dependency (
+	job_name, project_name, dependency_job_name, dependency_resource_urn, 
+	dependency_project_name, dependency_namespace_name, dependency_host, 
+	dependency_type, dependency_state,
+	created_at, updated_at
+)
+VALUES (
+	?, ?, ?, ?,
+	?, ?, ?, 
+	?, ?, 
+	NOW(), NOW()
+);
+`
+
+	for _, dependency := range storageJobDependencies {
+		result := tx.WithContext(ctx).Exec(insertJobDependencyQuery,
+			dependency.JobName, dependency.ProjectName,
+			dependency.DependencyJobName, dependency.DependencyResourceURN,
+			dependency.DependencyProjectName, dependency.DependencyNamespaceName,
+			dependency.DependencyHost, dependency.DependencyType, dependency.DependencyState)
+
+		if result.Error != nil {
+			return errors.Wrap(job.EntityJob, "unable to save job dependency", result.Error)
+		}
+
+		if result.RowsAffected == 0 {
+			return errors.InternalError(job.EntityJob, "unable to save job dependency, rows affected 0", nil)
+		}
+	}
+	return nil
+}
+
+func deleteDependencies(ctx context.Context, tx *gorm.DB, jobDependencies []*JobWithDependency) error {
+	var result *gorm.DB
+
+	var jobFullName []string
+	for _, dependency := range jobDependencies {
+		jobFullName = append(jobFullName, dependency.getJobFullName())
+	}
+
+	deleteForProjectScope := `DELETE
+FROM job_dependency
+WHERE project_name || '/' || job_name in (?);
+`
+
+	result = tx.WithContext(ctx).Exec(deleteForProjectScope, jobFullName)
+
+	if result.Error != nil {
+		return errors.Wrap(job.EntityJob, "error during delete of job dependency", result.Error)
+	}
+
+	return nil
+}
+
+func toJobDependency(jobWithDependency *job.WithDependency) ([]*JobWithDependency, error) {
+	var jobDependencies []*JobWithDependency
+	for _, dependency := range jobWithDependency.Dependencies() {
+		var dependencyProjectName, dependencyNamespaceName string
+		if dependency.Tenant().ProjectName() != "" {
+			dependencyProjectName = dependency.Tenant().ProjectName().String()
+		}
+		namespaceName, err := dependency.Tenant().NamespaceName()
+		if err != nil {
+			dependencyNamespaceName = namespaceName.String()
+		}
+
+		jobDependencies = append(jobDependencies, &JobWithDependency{
+			JobName:                 jobWithDependency.Name().String(),
+			ProjectName:             jobWithDependency.Job().ProjectName().String(),
+			DependencyJobName:       dependency.Name(),
+			DependencyResourceURN:   dependency.Resource(),
+			DependencyProjectName:   dependencyProjectName,
+			DependencyNamespaceName: dependencyNamespaceName,
+			DependencyHost:          dependency.Host(),
+			DependencyType:          dependency.DependencyType().String(),
+			DependencyState:         dependency.DependencyState().String(),
+		})
+	}
+	return jobDependencies, nil
 }

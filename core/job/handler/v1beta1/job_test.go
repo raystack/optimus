@@ -2,6 +2,7 @@ package v1beta1_test
 
 import (
 	"context"
+	"errors"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 	"testing"
 
@@ -33,10 +34,26 @@ func TestNewJobHandler(t *testing.T) {
 	jobWindow, _ := models.NewWindow(jobVersion, "d", "24h", "24h")
 	jobTaskConfig := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
 	jobTask := job.NewTask("bq2bq", jobTaskConfig)
+	jobBehavior := &pb.JobSpecification_Behavior{
+		Retry: &pb.JobSpecification_Behavior_Retry{ExponentialBackoff: false},
+		Notify: []*pb.JobSpecification_Behavior_Notifiers{
+			{On: 0, Channels: []string{"sample"}},
+		},
+	}
+	jobDependencies := []*pb.JobDependency{
+		{Name: "job-B", Type: "static"},
+	}
+	jobMetadata := &pb.JobMetadata{
+		Resource: &pb.JobSpecMetadataResource{
+			Request: &pb.JobSpecMetadataResourceConfig{Cpu: "1", Memory: "8"},
+			Limit:   &pb.JobSpecMetadataResourceConfig{Cpu: ".5", Memory: "4"},
+		},
+		Airflow: &pb.JobSpecMetadataAirflow{Pool: "100", Queue: "50"},
+	}
 
 	t.Run("AddJobSpecifications", func(t *testing.T) {
 		t.Run("adds job and returns deployment ID", func(t *testing.T) {
-			jobService := NewJobService(t)
+			jobService := new(JobService)
 
 			jobHandler := v1beta1.NewJobHandler(jobService)
 
@@ -59,7 +76,7 @@ func TestNewJobHandler(t *testing.T) {
 			}
 
 			deploymentID := uuid.New()
-			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(deploymentID, nil, nil)
+			jobService.On("AddAndDeploy", ctx, sampleTenant, mock.Anything).Return(deploymentID, nil, nil)
 
 			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
 			assert.Nil(t, err)
@@ -67,6 +84,172 @@ func TestNewJobHandler(t *testing.T) {
 				Log:          "jobs are created and queued for deployment on project test-proj",
 				DeploymentId: deploymentID.String(),
 			}, resp)
+		})
+		t.Run("adds complete job and returns deployment ID", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobHandler := v1beta1.NewJobHandler(jobService)
+
+			jobSpecProto := &pb.JobSpecification{
+				Version:          int32(jobVersion),
+				Name:             "job-A",
+				StartDate:        jobSchedule.StartDate(),
+				EndDate:          jobSchedule.EndDate(),
+				Interval:         jobSchedule.Interval(),
+				TaskName:         jobTask.Name(),
+				WindowSize:       jobWindow.GetSize(),
+				WindowOffset:     jobWindow.GetOffset(),
+				WindowTruncateTo: jobWindow.GetTruncateTo(),
+				Behavior:         jobBehavior,
+				Dependencies:     jobDependencies,
+				Metadata:         jobMetadata,
+			}
+			jobProtos := []*pb.JobSpecification{jobSpecProto}
+			request := pb.AddJobSpecificationsRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: namespace.Name().String(),
+				Specs:         jobProtos,
+			}
+
+			deploymentID := uuid.New()
+			jobService.On("AddAndDeploy", ctx, sampleTenant, mock.Anything).Return(deploymentID, nil, nil)
+
+			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
+			assert.Nil(t, err)
+			assert.Equal(t, &pb.AddJobSpecificationsResponse{
+				Log:          "jobs are created and queued for deployment on project test-proj",
+				DeploymentId: deploymentID.String(),
+			}, resp)
+		})
+		t.Run("returns error when unable to create tenant", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobHandler := v1beta1.NewJobHandler(jobService)
+
+			request := pb.AddJobSpecificationsRequest{
+				NamespaceName: namespace.Name().String(),
+			}
+
+			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
+			assert.NotNil(t, err)
+			assert.Nil(t, resp)
+		})
+		t.Run("skips job if unable to parse from proto", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobHandler := v1beta1.NewJobHandler(jobService)
+
+			jobSpecProtos := []*pb.JobSpecification{
+				{
+					Version:          int32(0),
+					Name:             "job-A",
+					StartDate:        jobSchedule.StartDate(),
+					EndDate:          jobSchedule.EndDate(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+				{
+					Version:          int32(jobVersion),
+					Name:             "job-B",
+					StartDate:        jobSchedule.StartDate(),
+					EndDate:          jobSchedule.EndDate(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+			}
+			request := pb.AddJobSpecificationsRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: namespace.Name().String(),
+				Specs:         jobSpecProtos,
+			}
+
+			deploymentID := uuid.New()
+			jobService.On("AddAndDeploy", ctx, sampleTenant, mock.Anything).Return(deploymentID, nil, nil)
+
+			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
+			assert.Nil(t, err)
+			assert.NotNil(t, resp.DeploymentId)
+			assert.Contains(t, resp.Log, "error")
+		})
+		t.Run("returns error when unable to do AddAndDeploy", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobHandler := v1beta1.NewJobHandler(jobService)
+
+			jobSpecProtos := []*pb.JobSpecification{
+				{
+					Version:          int32(0),
+					Name:             "job-A",
+					StartDate:        jobSchedule.StartDate(),
+					EndDate:          jobSchedule.EndDate(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+			}
+			request := pb.AddJobSpecificationsRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: namespace.Name().String(),
+				Specs:         jobSpecProtos,
+			}
+
+			deploymentID := uuid.New()
+			jobService.On("AddAndDeploy", ctx, sampleTenant, mock.Anything).Return(deploymentID, nil, errors.New("internal error"))
+
+			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
+			assert.NotNil(t, err)
+			assert.Nil(t, resp)
+		})
+		t.Run("returns response with job errors log when some jobs failed to be added", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobHandler := v1beta1.NewJobHandler(jobService)
+
+			jobSpecProtos := []*pb.JobSpecification{
+				{
+					Version:          int32(jobVersion),
+					Name:             "job-A",
+					StartDate:        jobSchedule.StartDate(),
+					EndDate:          jobSchedule.EndDate(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+				{
+					Version:          int32(jobVersion),
+					Name:             "job-B",
+					StartDate:        jobSchedule.StartDate(),
+					EndDate:          jobSchedule.EndDate(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+			}
+			request := pb.AddJobSpecificationsRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: namespace.Name().String(),
+				Specs:         jobSpecProtos,
+			}
+
+			deploymentID := uuid.New()
+			jobService.On("AddAndDeploy", ctx, sampleTenant, mock.Anything).Return(deploymentID, errors.New("some jobs failed to be added"), nil)
+
+			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
+			assert.Nil(t, err)
+			assert.NotNil(t, resp.DeploymentId)
+			assert.Contains(t, resp.Log, "error")
 		})
 	})
 }
@@ -76,8 +259,8 @@ type JobService struct {
 	mock.Mock
 }
 
-// Add provides a mock function with given fields: ctx, jobTenant, jobs
-func (_m *JobService) Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.JobSpec) (uuid.UUID, error, error) {
+// AddAndDeploy provides a mock function with given fields: ctx, jobTenant, jobs
+func (_m *JobService) AddAndDeploy(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.JobSpec) (uuid.UUID, error, error) {
 	ret := _m.Called(ctx, jobTenant, jobs)
 
 	var r0 uuid.UUID
@@ -104,42 +287,4 @@ func (_m *JobService) Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*
 	}
 
 	return r0, r1, r2
-}
-
-// Validate provides a mock function with given fields: ctx, jobs
-func (_m *JobService) Validate(ctx context.Context, jobs []*job.JobSpec) ([]*job.JobSpec, error) {
-	ret := _m.Called(ctx, jobs)
-
-	var r0 []*job.JobSpec
-	if rf, ok := ret.Get(0).(func(context.Context, []*job.JobSpec) []*job.JobSpec); ok {
-		r0 = rf(ctx, jobs)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*job.JobSpec)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, []*job.JobSpec) error); ok {
-		r1 = rf(ctx, jobs)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-type mockConstructorTestingTNewJobService interface {
-	mock.TestingT
-	Cleanup(func())
-}
-
-// NewJobService creates a new instance of JobService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewJobService(t mockConstructorTestingTNewJobService) *JobService {
-	mock := &JobService{}
-	mock.Mock.Test(t)
-
-	t.Cleanup(func() { mock.AssertExpectations(t) })
-
-	return mock
 }

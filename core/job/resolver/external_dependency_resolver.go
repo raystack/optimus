@@ -1,62 +1,56 @@
 package resolver
 
 import (
-	"fmt"
+	"github.com/hashicorp/go-multierror"
+	"github.com/odpf/optimus/core/job"
 
 	"golang.org/x/net/context"
 
-	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/job/dto"
-	"github.com/odpf/optimus/ext/resourcemanager"
 )
 
-type ExternalDependencyResolver interface {
-	FetchExternalDependencies(ctx context.Context, unresolvedDependencies []*dto.UnresolvedDependency) ([]*dto.Dependency, []*dto.UnresolvedDependency, error)
+type ExtDependencyResolver struct {
+	optimusResourceManagers []ResourceManager
 }
 
-type externalDependencyResolver struct {
-	optimusResourceManagers []resourcemanager.ResourceManager
+// ResourceManager is repository for external job spec
+type ResourceManager interface {
+	GetOptimusDependencies(context.Context, *dto.RawDependency) ([]*job.Dependency, error)
 }
 
 // NewExternalDependencyResolver creates a new instance of externalDependencyResolver
-func NewExternalDependencyResolver(resourceManagerConfigs []config.ResourceManager) (ExternalDependencyResolver, error) {
-	var optimusResourceManagers []resourcemanager.ResourceManager
-	for _, conf := range resourceManagerConfigs {
-		switch conf.Type {
-		case "optimus":
-			getter, err := resourcemanager.NewOptimusResourceManager(conf)
-			if err != nil {
-				return nil, err
-			}
-			optimusResourceManagers = append(optimusResourceManagers, getter)
-		default:
-			return nil, fmt.Errorf("resource manager [%s] is not recognized", conf.Type)
-		}
+func NewExternalDependencyResolver(resourceManagers []ResourceManager) *ExtDependencyResolver {
+	return &ExtDependencyResolver{
+		optimusResourceManagers: resourceManagers,
 	}
-	return &externalDependencyResolver{
-		optimusResourceManagers: optimusResourceManagers,
-	}, nil
 }
 
-func (e *externalDependencyResolver) FetchExternalDependencies(ctx context.Context, unresolvedDependencies []*dto.UnresolvedDependency) ([]*dto.Dependency, []*dto.UnresolvedDependency, error) {
-	var unknownDependencies []*dto.UnresolvedDependency
-	var externalDependencies []*dto.Dependency
+func (e *ExtDependencyResolver) FetchExternalDependencies(ctx context.Context, unresolvedDependencies []*dto.RawDependency) ([]*job.Dependency, []*dto.RawDependency, error) {
+	var unknownDependencies []*dto.RawDependency
+	var externalDependencies []*job.Dependency
+	var allErrors error
 	for _, toBeResolvedDependency := range unresolvedDependencies {
-		optimusDependencies := e.fetchOptimusDependencies(ctx, toBeResolvedDependency)
+		optimusDependencies, err := e.fetchOptimusDependencies(ctx, toBeResolvedDependency)
+		if err != nil {
+			unknownDependencies = append(unknownDependencies, toBeResolvedDependency)
+			allErrors = multierror.Append(allErrors, err)
+			continue
+		}
 		externalDependencies = append(externalDependencies, optimusDependencies...)
-		unknownDependencies = append(unknownDependencies, toBeResolvedDependency)
 	}
-	return externalDependencies, unknownDependencies, nil
+	return externalDependencies, unknownDependencies, allErrors
 }
 
-func (e *externalDependencyResolver) fetchOptimusDependencies(ctx context.Context, unresolvedDependency *dto.UnresolvedDependency) []*dto.Dependency {
-	var dependencies []*dto.Dependency
+func (e *ExtDependencyResolver) fetchOptimusDependencies(ctx context.Context, unresolvedDependency *dto.RawDependency) ([]*job.Dependency, error) {
+	var dependencies []*job.Dependency
+	var allErrors error
 	for _, manager := range e.optimusResourceManagers {
 		deps, err := manager.GetOptimusDependencies(ctx, unresolvedDependency)
 		if err != nil {
+			allErrors = multierror.Append(allErrors, err)
 			continue
 		}
 		dependencies = append(dependencies, deps...)
 	}
-	return dependencies
+	return dependencies, allErrors
 }
