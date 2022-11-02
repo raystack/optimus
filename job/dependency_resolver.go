@@ -138,7 +138,7 @@ func (d *dependencyResolver) GetStaticDependencies(ctx context.Context, jobSpec 
 						} else {
 							dependencyResolvedFlag := true
 							for _, dependency := range unresolved {
-								if unresolvedDependency.JobName == fmt.Sprintf("%s/%s", dependency.DependencyProjectName, dependency.JobName) {
+								if fmt.Sprintf("%s/%s", unresolvedDependency.ProjectName, unresolvedDependency.JobName) == fmt.Sprintf("%s/%s", dependency.DependencyProjectName, dependency.DependencyJobName) {
 									// dependency could not be resolved
 									err = multierror.Append(err, fmt.Errorf("%w for job %s", ErrUnknownCrossProjectDependency, unresolvedDependency.JobName))
 									dependencyResolvedFlag = false
