@@ -56,6 +56,7 @@ func (rs ResourceService) Create(ctx context.Context, res *resource.Resource) er
 		rs.logger.Error("error validating resource [%s]: %s", res.FullName(), err)
 		return err
 	}
+	res.MarkValidationSuccess()
 
 	if _, err := rs.tnntDetailsGetter.GetDetails(ctx, res.Tenant()); err != nil {
 		rs.logger.Error("error getting tenant details: %s", err)
@@ -76,6 +77,7 @@ func (rs ResourceService) Update(ctx context.Context, res *resource.Resource) er
 		rs.logger.Error("error validating resource [%s]: %s", res.FullName(), err)
 		return err
 	}
+	res.MarkValidationSuccess()
 
 	if _, err := rs.repo.ReadByFullName(ctx, res.Tenant(), res.Dataset().Store, res.FullName()); err != nil {
 		rs.logger.Error("error getting stored resource [%s]: %s", res.FullName(), err)
@@ -103,14 +105,16 @@ func (rs ResourceService) GetAll(ctx context.Context, tnnt tenant.Tenant, store 
 	return rs.repo.ReadAll(ctx, tnnt, store)
 }
 
-// TODO: refactor this function in a way to utilize only one logger to handle logging to multiple places, such as server log as well as client log
 func (rs ResourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
-	multiError := errors.NewMultiError("error validating resources")
+	multiError := errors.NewMultiError("error batch updating resources")
 	for _, r := range resources {
 		if err := r.Validate(); err != nil {
 			msg := fmt.Sprintf("error validating [%s]: %s", r.FullName(), err)
 			multiError.Append(errors.Wrap(resource.EntityResource, msg, err))
+
 			rs.logger.Error(msg)
+		} else {
+			r.MarkValidationSuccess()
 		}
 	}
 
@@ -134,6 +138,9 @@ func (rs ResourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, s
 func (rs ResourceService) getResourcesToBatchUpdate(incomings []*resource.Resource, existingMappedByFullName map[string]*resource.Resource) []*resource.Resource {
 	var output []*resource.Resource
 	for _, incoming := range incomings {
+		if incoming.Status() != resource.StatusValidationSuccess {
+			continue
+		}
 		if existing, ok := existingMappedByFullName[incoming.FullName()]; ok {
 			if incoming.Equal(existing) && existing.Status() == resource.StatusSuccess {
 				incoming.MarkSkipped()

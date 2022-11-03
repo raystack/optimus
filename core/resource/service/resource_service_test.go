@@ -327,9 +327,9 @@ func TestResourceService(t *testing.T) {
 
 			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{}, nil)
 
-			batch.On("CreateOrUpdateAll", ctx, resourcesToUpdate).Return(nil)
+			batch.On("CreateOrUpdateAll", ctx, []*resource.Resource{validResourceToUpdate}).Return(nil)
 
-			mgr.On("BatchUpdate", ctx, resource.Bigquery, resourcesToUpdate).Return(nil)
+			mgr.On("BatchUpdate", ctx, resource.Bigquery, []*resource.Resource{validResourceToUpdate}).Return(nil)
 
 			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, resourcesToUpdate)
 			assert.Error(t, actualError)
