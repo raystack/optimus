@@ -28,11 +28,19 @@ OPTIMUS_SERVE_PORT=       # default 9100
 + yaml plugin and binary plugin can be directly added to [plugins folder on your laptop](#dag-files-and-installed-plugins-location-on-your-laptop)
 
 ### Load secrets
++ provide file contains key value pair of secret name and secret value
++ multiple secret separated by new line. eg:
+
+```
+BQ_SERVICE_ACCOUNT="ZXhhbXBsZQ=="
+EXAMPLE="ZXhhbXBsZTI="
+```
+
++ load the secrets by specifying that file
 ```sh
 PROJECT=<project-name> \    # default project-a
-SECRET_NAME=<secret-name> \ # default BQ_SERVICE_ACCOUNT
 HOST=<host> \               # default localhost:9100
-./load_secret <secret-path>
+./load_secrets.sh <secret-path>
 ```
 
 ### Connect to optimus db
