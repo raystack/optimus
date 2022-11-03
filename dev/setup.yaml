@@ -1,0 +1,18 @@
+plugins:
+  - https://raw.githubusercontent.com/odpf/transformers/main/task/bq2bq/optimus-plugin-bq2bq.yaml
+  - ./plugins/optimus-plugin-echo.yaml
+secrets:
+  - name: BQ_SERVICE_ACCOUNT
+    value: >
+      {
+        "type": "service_account",
+        "project_id": "default",
+        "private_key": "-----BEGIN PRIVATE KEY-----\nEXAMPLE==\n-----END PRIVATE KEY-----\n",
+      }
+  - name: EXAMPLE
+    value: >
+      {
+        "type": "service_account",
+        "project_id": "default",
+        "private_key": "-----BEGIN PRIVATE KEY-----\nEXAMPLE==\n-----END PRIVATE KEY-----\n",
+      }

@@ -9,9 +9,8 @@
 
 Some optional variable you can set alongside with `make apply`
 ```sh
-DAGS_PATH=                # default ./dags
-OPTIMUS_PLUGINS_PATH=     # default ./plugins
-OPTIMUS_SERVE_PORT=       # default 9100
+DAGS_PATH=          # default /tmp/colima/dags
+OPTIMUS_SERVE_PORT= # default 9100
 ```
 
 ## Components
@@ -20,27 +19,24 @@ OPTIMUS_SERVE_PORT=       # default 9100
 + airflow 
 + airflow db (postgres)
 
-### Dag files and installed plugins location on your laptop
-+ location of your dag files: `./dags` or specified by `DAGS_PATH`
-+ location of your plugins: `./plugins` or specified by `OPTIMUS_PLUGINS_PATH`
+### Dag file location on your laptop
++ `/tmp/colima/dags` or specified by `DAGS_PATH`
 
-### Mounting plugins
-+ yaml plugin and binary plugin can be directly added to [plugins folder on your laptop](#dag-files-and-installed-plugins-location-on-your-laptop)
+### Spinning up the project
++ `mkdir project-a`
++ `cd project-a`
++ `optimus init`
 
-### Load secrets
-+ provide file contains key value pair of secret name and secret value
-+ multiple secret separated by new line. eg:
+### Mounting plugins and load secrets
++ define plugin locations on `setup.yaml` under section `plugins`
++ define key value pair secrets on `setup.yaml` under section `secrets`
++ `make _setup`
 
-```
-BQ_SERVICE_ACCOUNT="ZXhhbXBsZQ=="
-EXAMPLE="ZXhhbXBsZTI="
-```
-
-+ load the secrets by specifying that file
+Some optional variable you can set alongside with `make _setup`
 ```sh
-PROJECT=<project-name> \    # default project-a
-HOST=<host> \               # default localhost:9100
-./load_secrets.sh <secret-path>
+SETUP_FILE_PATH= # default ./setup.yaml
+PROJECT=         # default project-a
+HOST=            # default localhost:9100
 ```
 
 ### Connect to optimus db
