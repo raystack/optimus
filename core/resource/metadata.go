@@ -48,14 +48,16 @@ const (
 	StatusUnknown Status = "unknown"
 	StatusSkipped Status = "skipped"
 
+	StatusValidationFailure Status = "validation_failure"
+	StatusValidationSuccess Status = "validation_success"
+
 	StatusToCreate Status = "to_create"
 	StatusToUpdate Status = "to_update"
 
 	StatusCreateFailure Status = "create_failure"
 	StatusUpdateFailure Status = "update_failure"
 
-	StatusSuccess           Status = "success"
-	StatusValidationFailure Status = "validation_failure"
+	StatusSuccess Status = "success"
 )
 
 func (s Status) String() string {

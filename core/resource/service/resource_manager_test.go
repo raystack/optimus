@@ -283,7 +283,7 @@ func TestResourceManager(t *testing.T) {
 
 			matcher := mock.MatchedBy(func(res []*resource.Resource) bool {
 				if res[0].Name() == updateRequest.Name() {
-					res[0].MarkFailed()
+					res[0].MarkFailure()
 					return true
 				}
 				return false
