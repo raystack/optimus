@@ -12,12 +12,12 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-type JobRunMetrics struct {
+type JobRunMetrics struct { // will have multiple rows for each retry 
 	JobRunID uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
 
-	JobID uuid.UUID
+	JobID uuid.UUID // will become job name 
 
-	NamespaceID uuid.UUID
+	NamespaceID uuid.UUID // will become namespace name 
 
 	ProjectID uuid.UUID
 
@@ -27,8 +27,11 @@ type JobRunMetrics struct {
 	EndTime   time.Time
 
 	Status        string
-	Attempt       int
-	SLAMissDelay  int
+	
+	Attempt       int // needed for ordering // this can be done using created at too// start time 
+	// hence this can go away 
+
+	// SLAMissDelay  int // not needed 
 	Duration      int64
 	SLADefinition int64
 

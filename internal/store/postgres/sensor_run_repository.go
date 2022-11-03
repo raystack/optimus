@@ -17,6 +17,7 @@ type SensorRun struct {
 	SensorRunID uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
 
 	JobRunID uuid.UUID
+	sensor_name  //  add sensor names 
 
 	StartTime time.Time `gorm:"not null"`
 	EndTime   time.Time

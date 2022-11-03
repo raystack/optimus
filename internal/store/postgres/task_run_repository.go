@@ -13,7 +13,10 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-type TaskRun struct {
+type TaskRun struct { // will have mltiple rows
+	// for each retry / instead we incriment the 
+	// attempt column 
+
 	TaskRunID uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
 
 	JobRunID uuid.UUID
@@ -22,8 +25,8 @@ type TaskRun struct {
 	EndTime   time.Time
 
 	Status        string
-	Attempt       int
-	JobRunAttempt int
+	Attempt       int  // not needed
+	JobRunAttempt int  // not needed
 	Duration      int64
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
