@@ -405,6 +405,7 @@ func (s *OptimusServer) setupHandlers() error {
 	// job Spec service
 	pb.RegisterJobSpecificationServiceServer(s.grpcServer, v1handler.NewJobSpecServiceServer(s.logger,
 		jobService,
+		jobRunService,
 		pluginRepo,
 		projectService,
 		namespaceService,
