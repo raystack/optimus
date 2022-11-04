@@ -1,6 +1,9 @@
 package job_run
 
-import "github.com/odpf/optimus/internal/errors"
+import (
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
+)
 
 const EntityJobRun = "jobRun"
 
@@ -19,6 +22,12 @@ func (n JobName) String() string {
 }
 
 type Job struct {
+	JobName JobName
+	tenant  tenant.Tenant
+}
+
+func (j *Job) Tenant() tenant.Tenant {
+	return j.tenant
 }
 
 type JobWithDetails struct {
