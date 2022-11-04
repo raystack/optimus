@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/mitchellh/mapstructure"
 
@@ -17,6 +18,8 @@ import (
 // ResourceManager is repository for external job spec
 type ResourceManager interface {
 	GetOptimusDependencies(context.Context, models.UnresolvedJobDependency) ([]models.OptimusDependency, error)
+	GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time) ([]models.JobRun, error)
+	GetHost() string
 }
 
 type optimusResourceManager struct {
@@ -40,6 +43,10 @@ func NewOptimusResourceManager(resourceManagerConfig config.ResourceManager) (Re
 		config:     conf,
 		httpClient: http.DefaultClient,
 	}, nil
+}
+
+func (o *optimusResourceManager) GetHost() string {
+	return o.config.Host
 }
 
 func (o *optimusResourceManager) GetOptimusDependencies(ctx context.Context, unresolvedDependency models.UnresolvedJobDependency) ([]models.OptimusDependency, error) {
@@ -115,4 +122,76 @@ func (o *optimusResourceManager) toOptimusDependency(response jobSpecificationRe
 		JobName:       response.Job.Name,
 		TaskName:      response.Job.TaskName,
 	}
+}
+
+func (o *optimusResourceManager) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time) ([]models.JobRun, error) {
+	if ctx == nil {
+		return nil, errors.New("context is nil")
+	}
+	request, err := o.constructGetJobRunRequest(ctx, host, jobName, projectName, startDate, endDate)
+	if err != nil {
+		return nil, fmt.Errorf("error encountered when constructing request: %w", err)
+	}
+
+	response, err := o.httpClient.Do(request)
+	if err != nil {
+		return nil, fmt.Errorf("error encountered when sending request: %w", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status response: %s", response.Status)
+	}
+
+	var jobRunResponse getJobRunResponse
+	decoder := json.NewDecoder(response.Body)
+	if err := decoder.Decode(&jobRunResponse); err != nil {
+		return nil, fmt.Errorf("error decoding response: %w", err)
+	}
+
+	return toOptimusJobRuns(jobRunResponse.JobRunResponse)
+}
+
+func (o *optimusResourceManager) constructGetJobRunRequest(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time) (*http.Request, error) {
+	var queryParams []string
+	queryParams = append(queryParams, fmt.Sprintf("start_date=%s", startDate.Format(models.InstanceScheduledAtTimeLayout)))
+	queryParams = append(queryParams, fmt.Sprintf("end_date=%s", endDate.Format(models.InstanceScheduledAtTimeLayout)))
+
+	path := fmt.Sprintf("/api/v1beta1/project/%s/job/%s/run", projectName, jobName)
+	url := host + path + "?" + strings.Join(queryParams, "&")
+
+	request, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
+	if err != nil {
+		return nil, err
+	}
+
+	request.Header.Set("Accept", "application/json")
+	for key, value := range o.config.Headers {
+		request.Header.Set(key, value)
+	}
+	return request, nil
+}
+
+func toOptimusJobRuns(responses []jobRunResponse) ([]models.JobRun, error) {
+	output := make([]models.JobRun, len(responses))
+	for i, r := range responses {
+		jobRun, err := toOptimusJobRun(r)
+		if err != nil {
+			return output, err
+		}
+		output[i] = jobRun
+	}
+	return output, nil
+}
+
+func toOptimusJobRun(response jobRunResponse) (models.JobRun, error) {
+	parsedScheduleTime, err := time.Parse(models.InstanceScheduledAtTimeLayout, response.ScheduledAt)
+
+	if err != nil {
+		return models.JobRun{}, err
+	}
+	return models.JobRun{
+		Status:      models.JobRunState(response.State),
+		ScheduledAt: parsedScheduleTime,
+	}, err
 }

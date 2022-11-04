@@ -31,6 +31,7 @@ type JobSpecServiceServerTestSuite struct {
 	namespaceService *mock.NamespaceService
 	jobService       *mock.JobService // TODO: refactor to service package
 	pluginRepo       *mock.PluginRepository
+	jobRunService    *mock.JobRunService
 	log              log.Logger
 	progressObserver progress.Observer
 
@@ -69,6 +70,7 @@ func (s *JobSpecServiceServerTestSuite) newJobSpecServiceServer() *v1.JobSpecSer
 	return v1.NewJobSpecServiceServer(
 		s.log,
 		s.jobService,
+		s.jobRunService,
 		s.pluginRepo,
 		s.projectService,
 		s.namespaceService,
@@ -465,6 +467,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobSvc,
+				nil,
 				pluginRepo,
 				nil,
 				namespaceService,
@@ -550,6 +553,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobSvc,
+				nil,
 				pluginRepo,
 				nil,
 				namespaceService,
@@ -634,6 +638,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobSvc,
+				nil,
 				pluginRepo,
 				nil,
 				namespaceService,
@@ -719,6 +724,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobSvc,
+				nil,
 				pluginRepo,
 				nil,
 				namespaceService,
@@ -803,6 +809,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobService,
+				nil,
 				pluginRepo,
 				nil,
 				namespaceService,
@@ -857,6 +864,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobService,
+				nil,
 				pluginRepo,
 				projectService,
 				nsService,
@@ -907,6 +915,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobService,
+				nil,
 				pluginRepo,
 				projectService,
 				nsService,
@@ -934,6 +943,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobService,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -969,6 +979,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 			deployID := uuid.New()
 			jobDeployment := models.JobDeployment{
@@ -999,6 +1010,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobService,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -1047,6 +1059,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobService,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -1136,6 +1149,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobService,
+				nil,
 				pluginRepo,
 				nil,
 				namespaceService,
@@ -1174,6 +1188,8 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				Destination: jobDestination.URN(),
 				Log:         *logWriter}, nil)
 
+			jobService.On("GetEnrichedUpstreamJobSpec", ctx, jobSpec, []string{"bigquery://tableName"}, mock2.Anything).Return(jobSpec, []models.UnknownDependency{}, nil)
+			jobService.On("GetDownstreamJobs", ctx, jobName, "", jobSpec.GetProjectSpec().Name).Return([]models.JobSpec{}, nil)
 			jobSpecInternal := jobSpec
 			jobSpecInternal.ResourceDestination = resourceDestinationUrn
 

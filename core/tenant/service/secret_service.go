@@ -13,12 +13,12 @@ import (
 const keyLength = 32
 
 type SecretRepository interface {
-	Save(context.Context, tenant.Tenant, *tenant.Secret) error
-	Update(context.Context, tenant.Tenant, *tenant.Secret) error
-	Get(context.Context, tenant.Tenant, tenant.SecretName) (*tenant.Secret, error)
-	GetAll(context.Context, tenant.Tenant) ([]*tenant.Secret, error)
-	Delete(context.Context, tenant.Tenant, tenant.SecretName) error
-	GetSecretsInfo(context.Context, tenant.Tenant) ([]*dto.SecretInfo, error)
+	Save(ctx context.Context, secret *tenant.Secret) error
+	Update(ctx context.Context, secret *tenant.Secret) error
+	Get(ctx context.Context, projName tenant.ProjectName, nsName string, name tenant.SecretName) (*tenant.Secret, error)
+	GetAll(ctx context.Context, projName tenant.ProjectName, nsName string) ([]*tenant.Secret, error)
+	Delete(ctx context.Context, projName tenant.ProjectName, nsName string, name tenant.SecretName) error
+	GetSecretsInfo(ctx context.Context, projName tenant.ProjectName) ([]*dto.SecretInfo, error)
 }
 
 type SecretService struct {
@@ -26,7 +26,7 @@ type SecretService struct {
 	repo   SecretRepository
 }
 
-func (s SecretService) Save(ctx context.Context, t tenant.Tenant, secret *tenant.PlainTextSecret) error {
+func (s SecretService) Save(ctx context.Context, projName tenant.ProjectName, nsName string, secret *tenant.PlainTextSecret) error {
 	if secret == nil {
 		return errors.InvalidArgument(tenant.EntitySecret, "secret is not valid")
 	}
@@ -36,15 +36,15 @@ func (s SecretService) Save(ctx context.Context, t tenant.Tenant, secret *tenant
 		return errors.InternalError(tenant.EntitySecret, "unable to encrypt the secret", err)
 	}
 
-	item, err := tenant.NewSecret(secret.Name().String(), tenant.UserDefinedSecret, string(encoded), t)
+	item, err := tenant.NewSecret(secret.Name().String(), tenant.UserDefinedSecret, string(encoded), projName, nsName)
 	if err != nil {
 		return err
 	}
 
-	return s.repo.Save(ctx, t, item)
+	return s.repo.Save(ctx, item)
 }
 
-func (s SecretService) Update(ctx context.Context, t tenant.Tenant, secret *tenant.PlainTextSecret) error {
+func (s SecretService) Update(ctx context.Context, projName tenant.ProjectName, nsName string, secret *tenant.PlainTextSecret) error {
 	if secret == nil {
 		return errors.InvalidArgument(tenant.EntitySecret, "secret is not valid")
 	}
@@ -54,25 +54,25 @@ func (s SecretService) Update(ctx context.Context, t tenant.Tenant, secret *tena
 		return errors.InternalError(tenant.EntitySecret, "unable to encrypt the secret", err)
 	}
 
-	item, err := tenant.NewSecret(secret.Name().String(), tenant.UserDefinedSecret, string(encoded), t)
+	item, err := tenant.NewSecret(secret.Name().String(), tenant.UserDefinedSecret, string(encoded), projName, nsName)
 	if err != nil {
 		return err
 	}
 
-	return s.repo.Update(ctx, t, item)
+	return s.repo.Update(ctx, item)
 }
 
-func (s SecretService) Get(ctx context.Context, ten tenant.Tenant, name string) (*tenant.PlainTextSecret, error) {
+func (s SecretService) Get(ctx context.Context, projName tenant.ProjectName, namespaceName, name string) (*tenant.PlainTextSecret, error) {
 	secretName, err := tenant.SecretNameFrom(name)
 	if err != nil {
 		return nil, errors.InvalidArgument(tenant.EntitySecret, "secret name is not valid")
 	}
 
-	if ten.ProjectName() == "" {
+	if projName == "" {
 		return nil, errors.InvalidArgument(tenant.EntitySecret, "tenant is not valid")
 	}
 
-	secret, err := s.repo.Get(ctx, ten, secretName)
+	secret, err := s.repo.Get(ctx, projName, namespaceName, secretName)
 	if err != nil {
 		return nil, err
 	}
@@ -85,12 +85,12 @@ func (s SecretService) Get(ctx context.Context, ten tenant.Tenant, name string) 
 	return tenant.NewPlainTextSecret(name, string(cleartext))
 }
 
-func (s SecretService) GetAll(ctx context.Context, ten tenant.Tenant) ([]*tenant.PlainTextSecret, error) {
-	if ten.ProjectName() == "" {
-		return nil, errors.InvalidArgument(tenant.EntitySecret, "tenant is not valid")
+func (s SecretService) GetAll(ctx context.Context, projName tenant.ProjectName, namespaceName string) ([]*tenant.PlainTextSecret, error) {
+	if projName == "" {
+		return nil, errors.InvalidArgument(tenant.EntitySecret, "project name is not valid")
 	}
 
-	secrets, err := s.repo.GetAll(ctx, ten)
+	secrets, err := s.repo.GetAll(ctx, projName, namespaceName)
 	if err != nil {
 		return nil, err
 	}
@@ -112,16 +112,16 @@ func (s SecretService) GetAll(ctx context.Context, ten tenant.Tenant) ([]*tenant
 	return ptsecrets, nil
 }
 
-func (s SecretService) Delete(ctx context.Context, t tenant.Tenant, name tenant.SecretName) error {
+func (s SecretService) Delete(ctx context.Context, projName tenant.ProjectName, nsName string, name tenant.SecretName) error {
 	if name == "" {
 		return errors.InvalidArgument(tenant.EntitySecret, "secret name is not valid")
 	}
 
-	return s.repo.Delete(ctx, t, name)
+	return s.repo.Delete(ctx, projName, nsName, name)
 }
 
-func (s SecretService) GetSecretsInfo(ctx context.Context, t tenant.Tenant) ([]*dto.SecretInfo, error) {
-	return s.repo.GetSecretsInfo(ctx, t)
+func (s SecretService) GetSecretsInfo(ctx context.Context, projName tenant.ProjectName) ([]*dto.SecretInfo, error) {
+	return s.repo.GetSecretsInfo(ctx, projName)
 }
 
 func NewSecretService(appKey *[32]byte, repo SecretRepository) *SecretService {

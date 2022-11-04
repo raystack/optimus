@@ -15,56 +15,18 @@ func TestAggregateRootTenant(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity project: project name is empty")
 		})
-		t.Run("creates tenant with project name", func(t *testing.T) {
-			tnnt, err := tenant.NewTenant("t-optimus", "")
-			assert.Nil(t, err)
-			assert.Equal(t, "t-optimus", tnnt.ProjectName().String())
-
-			_, err = tnnt.NamespaceName()
+		t.Run("returns error when namespace name is missing", func(t *testing.T) {
+			_, err := tenant.NewTenant("t-optimus", "")
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "not found for entity tenant: namespace name is not present")
+			assert.EqualError(t, err, "invalid argument for entity namespace: namespace name is empty")
 		})
 		t.Run("creates tenant with both project name and namespace name", func(t *testing.T) {
 			tnnt, err := tenant.NewTenant("t-optimus", "n-optimus")
 			assert.Nil(t, err)
 			assert.Equal(t, "t-optimus", tnnt.ProjectName().String())
 
-			namespaceName, err := tnnt.NamespaceName()
-			assert.Nil(t, err)
+			namespaceName := tnnt.NamespaceName()
 			assert.Equal(t, "n-optimus", namespaceName.String())
-		})
-		t.Run("converts tenant to only project scope tenant", func(t *testing.T) {
-			tnnt, err := tenant.NewTenant("t-optimus", "n-optimus")
-			assert.Nil(t, err)
-
-			scope := tnnt.ToProjectScope()
-			assert.Nil(t, err)
-			assert.Equal(t, "t-optimus", scope.ProjectName().String())
-
-			_, err = scope.NamespaceName()
-			assert.NotNil(t, err)
-			assert.EqualError(t, err, "not found for entity tenant: namespace name is not present")
-		})
-		t.Run("NewNamespaceScopeTenant", func(t *testing.T) {
-			t.Run("returns error when project name is missing", func(t *testing.T) {
-				_, err := tenant.NewNamespaceTenant("", "")
-				assert.NotNil(t, err)
-				assert.EqualError(t, err, "invalid argument for entity project: project name is empty")
-			})
-			t.Run("returns error when namespace name is missing", func(t *testing.T) {
-				_, err := tenant.NewNamespaceTenant("t-optimus", "")
-				assert.NotNil(t, err)
-				assert.EqualError(t, err, "invalid argument for entity namespace: namespace name is empty")
-			})
-			t.Run("creates tenant scoped to namespace", func(t *testing.T) {
-				tnnt, err := tenant.NewNamespaceTenant("t-optimus", "n-optimus")
-				assert.Nil(t, err)
-				assert.Equal(t, "t-optimus", tnnt.ProjectName().String())
-
-				namespaceName, err := tnnt.NamespaceName()
-				assert.Nil(t, err)
-				assert.Equal(t, "n-optimus", namespaceName.String())
-			})
 		})
 	})
 	t.Run("WithDetails", func(t *testing.T) {
@@ -85,51 +47,10 @@ func TestAggregateRootTenant(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity tenant: project is nil")
 		})
-		t.Run("when only project is present and namespace is missing", func(t *testing.T) {
-			t.Run("return withDetails with project", func(t *testing.T) {
-				details, err := tenant.NewTenantDetails(project, nil)
-				assert.Nil(t, err)
-
-				p := details.Project()
-				assert.NotNil(t, p)
-
-				_, err = details.Namespace()
-				assert.NotNil(t, err)
-				assert.EqualError(t, err, "not found for entity tenant: namespace is not present")
-			})
-			t.Run("returns configs from project", func(t *testing.T) {
-				details, err := tenant.NewTenantDetails(project, nil)
-				assert.Nil(t, err)
-
-				assert.Equal(t, 3, len(details.GetConfigs()))
-			})
-			t.Run("returns an error when key not present", func(t *testing.T) {
-				details, err := tenant.NewTenantDetails(project, nil)
-				assert.Nil(t, err)
-
-				_, err = details.GetConfig("NON-EXISTENT")
-				assert.NotNil(t, err)
-				assert.EqualError(t, err, "not found for entity tenant: config not present in tenant NON-EXISTENT")
-			})
-			t.Run("returns a config from project", func(t *testing.T) {
-				details, err := tenant.NewTenantDetails(project, nil)
-				assert.Nil(t, err)
-
-				val, err := details.GetConfig("BUCKET")
-				assert.Nil(t, err)
-				assert.Equal(t, "gs://some_folder", val)
-			})
-			t.Run("returns tenant", func(t *testing.T) {
-				details, err := tenant.NewTenantDetails(project, nil)
-				assert.Nil(t, err)
-
-				tnnt := details.ToTenant()
-				assert.Equal(t, "test-project", tnnt.ProjectName().String())
-
-				_, err = tnnt.NamespaceName()
-				assert.NotNil(t, err)
-				assert.EqualError(t, err, "not found for entity tenant: namespace name is not present")
-			})
+		t.Run("return error when namespace not present", func(t *testing.T) {
+			_, err := tenant.NewTenantDetails(project, nil)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "invalid argument for entity tenant: namespace is nil")
 		})
 		t.Run("when both project and namespace are present", func(t *testing.T) {
 			t.Run("return withDetails with project and namespace", func(t *testing.T) {
@@ -140,8 +61,7 @@ func TestAggregateRootTenant(t *testing.T) {
 				assert.NotNil(t, p)
 				assert.Equal(t, "test-project", p.Name().String())
 
-				ns, err := tnnt.Namespace()
-				assert.Nil(t, err)
+				ns := tnnt.Namespace()
 				assert.NotNil(t, ns)
 				assert.Equal(t, "test-ns", ns.Name().String())
 			})
@@ -167,6 +87,14 @@ func TestAggregateRootTenant(t *testing.T) {
 				assert.Nil(t, err)
 				assert.Equal(t, "gs://ns_folder", val)
 			})
+			t.Run("returns a config from project", func(t *testing.T) {
+				details, err := tenant.NewTenantDetails(project, namespace)
+				assert.Nil(t, err)
+
+				val, err := details.GetConfig(tenant.ProjectStoragePathKey)
+				assert.Nil(t, err)
+				assert.Equal(t, "gs://location", val)
+			})
 			t.Run("returns tenant", func(t *testing.T) {
 				details, err := tenant.NewTenantDetails(project, namespace)
 				assert.Nil(t, err)
@@ -174,8 +102,7 @@ func TestAggregateRootTenant(t *testing.T) {
 				tnnt := details.ToTenant()
 				assert.Equal(t, "test-project", tnnt.ProjectName().String())
 
-				ns, err := tnnt.NamespaceName()
-				assert.Nil(t, err)
+				ns := tnnt.NamespaceName()
 				assert.Equal(t, "test-ns", ns.String())
 			})
 		})

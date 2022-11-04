@@ -63,7 +63,7 @@ func New(conf config.ServerConfig) (*OptimusServer, error) {
 	server := &OptimusServer{
 		conf:       conf,
 		serverAddr: addr,
-		logger:     createLogger(conf),
+		logger:     NewLogger(conf.Log.Level.String()),
 	}
 
 	if err := checkRequiredConfigs(conf.Serve); err != nil {
@@ -91,13 +91,6 @@ func New(conf config.ServerConfig) (*OptimusServer, error) {
 	server.startListening()
 
 	return server, nil
-}
-
-func createLogger(conf config.ServerConfig) *log.Logrus {
-	return log.NewLogrus(
-		log.LogrusWithLevel(conf.Log.Level.String()),
-		log.LogrusWithWriter(os.Stderr),
-	)
 }
 
 func (s *OptimusServer) setupPlugins() error {
@@ -405,6 +398,7 @@ func (s *OptimusServer) setupHandlers() error {
 	// job Spec service
 	pb.RegisterJobSpecificationServiceServer(s.grpcServer, v1handler.NewJobSpecServiceServer(s.logger,
 		jobService,
+		jobRunService,
 		pluginRepo,
 		projectService,
 		namespaceService,

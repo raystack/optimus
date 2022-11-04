@@ -53,7 +53,13 @@ var (
 // TODO: when refactoring, we need to rethink about renaming it
 type DependencyResolver interface {
 	Resolve(ctx context.Context, projectSpec models.ProjectSpec, jobSpec models.JobSpec, observer progress.Observer) (models.JobSpec, error)
+
+	GetStaticDependencies(ctx context.Context, jobSpec models.JobSpec, projectSpec models.ProjectSpec) (map[string]models.JobSpecDependency, []models.OptimusDependency, error)
+	// GetEnrichedUpstreamJobSpec adds upstream jobs(inferred, static, external) in jobSpec
+	GetEnrichedUpstreamJobSpec(ctx context.Context, subjectJobSpec models.JobSpec, upstreamDestinations []string, logWriter writer.LogWriter) (models.JobSpec, []models.UnknownDependency, error)
 	GetJobSpecsWithDependencies(ctx context.Context, projectName string) ([]models.JobSpec, []models.UnknownDependency, error)
+	// GetExternalJobRuns get run information of jobs deployed on external optimus
+	GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time) ([]models.JobRun, error)
 }
 
 type Deployer interface {
@@ -483,6 +489,22 @@ func (srv *Service) getDependentJobNames(ctx context.Context, jobSpec models.Job
 	return jobNames, nil
 }
 
+func (srv *Service) GetEnrichedUpstreamJobSpec(ctx context.Context, jobSpec models.JobSpec, jobSource []string, logWriter writer.LogWriter) (models.JobSpec, []models.UnknownDependency, error) {
+	staticDependencies, externalOptimusDependencies, err := srv.dependencyResolver.GetStaticDependencies(ctx, jobSpec, jobSpec.GetProjectSpec())
+	if err != nil {
+		logWriter.Write(writer.LogLevelError, fmt.Sprintf("failed to resolve static dependeincies, err:%v", err.Error()))
+	}
+	jobSpec.Dependencies = staticDependencies
+	jobSpec.ExternalDependencies.OptimusDependencies = append(jobSpec.ExternalDependencies.OptimusDependencies, externalOptimusDependencies...)
+
+	jobSpec, unknownDependency, err := srv.dependencyResolver.GetEnrichedUpstreamJobSpec(ctx, jobSpec, jobSource, logWriter)
+	return jobSpec, unknownDependency, err
+}
+
+func (srv *Service) GetDownstreamJobs(ctx context.Context, jobName, resourceDestinationURN, projectName string) ([]models.JobSpec, error) {
+	return srv.jobSpecRepository.GetDependentJobs(ctx, jobName, resourceDestinationURN, projectName)
+}
+
 func (srv *Service) GetByDestination(ctx context.Context, projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
 	// generate job spec using datastore destination. if a destination can be owned by multiple jobs, need to change to list
 	jobSpecs, err := srv.jobSpecRepository.GetByResourceDestinationURN(ctx, destination)
@@ -490,7 +512,7 @@ func (srv *Service) GetByDestination(ctx context.Context, projectSpec models.Pro
 		return models.JobSpec{}, err
 	}
 	for _, jobSpec := range jobSpecs {
-		if jobSpec.NamespaceSpec.ProjectSpec.Name == projectSpec.Name {
+		if jobSpec.GetProjectSpec().Name == projectSpec.Name {
 			return jobSpec, nil
 		}
 	}
@@ -947,6 +969,10 @@ func (srv *Service) CreateAndDeploy(ctx context.Context, namespaceSpec models.Na
 	logWriter.Write(writer.LogLevelInfo, "info: dependencies resolved")
 
 	return srv.deployManager.Deploy(ctx, namespaceSpec.ProjectSpec)
+}
+
+func (srv *Service) GetExternalJobRuns(ctx context.Context, host, jobName, projectName string, startDate, endDate time.Time) ([]models.JobRun, error) {
+	return srv.dependencyResolver.GetExternalJobRuns(ctx, host, jobName, projectName, startDate, endDate)
 }
 
 func (*Service) getMappedJobNameToNamespaceName(jobSpecs []models.JobSpec) map[string]string {
