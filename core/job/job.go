@@ -8,11 +8,11 @@ import (
 const (
 	EntityJob = "job"
 
-	DependencyTypeStatic   DependencyType = "static"
-	DependencyTypeInferred DependencyType = "inferred"
+	UpstreamTypeStatic   UpstreamType = "static"
+	UpstreamTypeInferred UpstreamType = "inferred"
 
-	DependencyStateResolved   DependencyState = "resolved"
-	DependencyStateUnresolved DependencyState = "unresolved"
+	UpstreamStateResolved   UpstreamState = "resolved"
+	UpstreamStateUnresolved UpstreamState = "unresolved"
 )
 
 type Job struct {
@@ -35,11 +35,11 @@ func (j Job) Sources() []string {
 	return j.sources
 }
 
-func (j Job) StaticDependencyNames() []string {
-	if j.spec.dependencies == nil {
+func (j Job) StaticUpstreamNames() []string {
+	if j.spec.upstream == nil {
 		return nil
 	}
-	return j.spec.dependencies.JobDependencies()
+	return j.spec.upstream.UpstreamNames()
 }
 
 func (j Job) ProjectName() tenant.ProjectName {
@@ -60,147 +60,146 @@ func (j Jobs) GetJobNames() []Name {
 	return jobNames
 }
 
-// TODO: no longer use dependency term, use upstream instead
-type WithDependency struct {
-	job          *Job
-	dependencies []*Dependency
+type WithUpstream struct {
+	job       *Job
+	upstreams []*Upstream
 }
 
-func NewWithDependency(job *Job, dependencies []*Dependency) *WithDependency {
-	return &WithDependency{job: job, dependencies: dependencies}
+func NewWithUpstream(job *Job, upstreams []*Upstream) *WithUpstream {
+	return &WithUpstream{job: job, upstreams: upstreams}
 }
 
-func (w WithDependency) Job() *Job {
+func (w WithUpstream) Job() *Job {
 	return w.job
 }
 
-func (w WithDependency) Dependencies() []*Dependency {
-	return w.dependencies
+func (w WithUpstream) Upstreams() []*Upstream {
+	return w.upstreams
 }
 
-func (w WithDependency) Name() Name {
+func (w WithUpstream) Name() Name {
 	return w.job.spec.Name()
 }
 
-func (w WithDependency) GetUnresolvedDependencies() []*Dependency {
-	var unresolvedDependencies []*Dependency
-	for _, dependency := range w.dependencies {
-		if dependency.dependencyState == DependencyStateUnresolved {
-			unresolvedDependencies = append(unresolvedDependencies, dependency)
+func (w WithUpstream) GetUnresolvedUpstreams() []*Upstream {
+	var unresolvedUpstreams []*Upstream
+	for _, upstream := range w.upstreams {
+		if upstream.state == UpstreamStateUnresolved {
+			unresolvedUpstreams = append(unresolvedUpstreams, upstream)
 		}
 	}
-	return unresolvedDependencies
+	return unresolvedUpstreams
 }
 
-type Dependency struct {
-	name             string
-	host             string
-	resource         string
-	dependencyTenant tenant.Tenant
-	dependencyType   DependencyType
-	dependencyState  DependencyState
+type Upstream struct {
+	name     string
+	host     string
+	resource string
+	tenant   tenant.Tenant
+	_type    UpstreamType
+	state    UpstreamState
 }
 
-func NewDependencyResolved(name string, host string, resource string, dependencyTenant tenant.Tenant, dependencyTypeStr string) (*Dependency, error) {
-	dependencyType, err := dependencyTypeFrom(dependencyTypeStr)
+func NewUpstreamResolved(name string, host string, resource string, tnnt tenant.Tenant, typeStr string) (*Upstream, error) {
+	upstreamType, err := upstreamTypeFrom(typeStr)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Dependency{name: name, host: host, resource: resource, dependencyTenant: dependencyTenant,
-		dependencyType: dependencyType, dependencyState: DependencyStateResolved}, nil
+	return &Upstream{name: name, host: host, resource: resource, tenant: tnnt,
+		_type: upstreamType, state: UpstreamStateResolved}, nil
 }
 
-func NewDependencyUnresolved(name string, resource string, projectName string) *Dependency {
-	var dependencyType DependencyType
+func NewUpstreamUnresolved(name string, resource string, projectName string) *Upstream {
+	var _type UpstreamType
 	if name != "" {
-		dependencyType = DependencyTypeStatic
+		_type = UpstreamTypeStatic
 	} else {
-		dependencyType = DependencyTypeInferred
+		_type = UpstreamTypeInferred
 	}
 
-	var dependencyTenant tenant.Tenant
+	var tnnt tenant.Tenant
 	if projectName != "" {
-		dependencyTenant, _ = tenant.NewTenant(projectName, "")
+		tnnt, _ = tenant.NewTenant(projectName, "")
 	}
 
-	return &Dependency{name: name, resource: resource, dependencyTenant: dependencyTenant, dependencyType: dependencyType,
-		dependencyState: DependencyStateUnresolved}
+	return &Upstream{name: name, resource: resource, tenant: tnnt, _type: _type,
+		state: UpstreamStateUnresolved}
 }
 
-func (d Dependency) Name() string {
-	return d.name
+func (u Upstream) Name() string {
+	return u.name
 }
 
-func (d Dependency) Tenant() tenant.Tenant {
-	return d.dependencyTenant
+func (u Upstream) Tenant() tenant.Tenant {
+	return u.tenant
 }
 
-func (d Dependency) Host() string {
-	return d.host
+func (u Upstream) Host() string {
+	return u.host
 }
 
-func (d Dependency) Resource() string {
-	return d.resource
+func (u Upstream) Resource() string {
+	return u.resource
 }
 
-func (d Dependency) DependencyType() DependencyType {
-	return d.dependencyType
+func (u Upstream) Type() UpstreamType {
+	return u._type
 }
 
-func (d Dependency) DependencyState() DependencyState {
-	return d.dependencyState
+func (u Upstream) State() UpstreamState {
+	return u.state
 }
 
-type DependencyType string
+type UpstreamType string
 
-func (d DependencyType) String() string {
+func (d UpstreamType) String() string {
 	return string(d)
 }
 
-func dependencyTypeFrom(str string) (DependencyType, error) {
+func upstreamTypeFrom(str string) (UpstreamType, error) {
 	switch str {
-	case DependencyTypeStatic.String():
-		return DependencyTypeStatic, nil
-	case DependencyTypeInferred.String():
-		return DependencyTypeInferred, nil
+	case UpstreamTypeStatic.String():
+		return UpstreamTypeStatic, nil
+	case UpstreamTypeInferred.String():
+		return UpstreamTypeInferred, nil
 	default:
-		return "", errors.InvalidArgument(EntityJob, "unknown type for dependency: "+str)
+		return "", errors.InvalidArgument(EntityJob, "unknown type for upstream: "+str)
 	}
 }
 
-type DependencyState string
+type UpstreamState string
 
-func (d DependencyState) String() string {
+func (d UpstreamState) String() string {
 	return string(d)
 }
 
-func DependencyStateFrom(str string) (DependencyState, error) {
+func UpstreamStateFrom(str string) (UpstreamState, error) {
 	switch str {
-	case DependencyStateResolved.String():
-		return DependencyStateResolved, nil
-	case DependencyStateUnresolved.String():
-		return DependencyStateUnresolved, nil
+	case UpstreamStateResolved.String():
+		return UpstreamStateResolved, nil
+	case UpstreamStateUnresolved.String():
+		return UpstreamStateUnresolved, nil
 	default:
-		return "", errors.InvalidArgument(EntityJob, "unknown state for dependency: "+str)
+		return "", errors.InvalidArgument(EntityJob, "unknown state for upstream: "+str)
 	}
 }
 
-type Dependencies []*Dependency
+type Upstreams []*Upstream
 
-func (d Dependencies) ToDependencyFullNameMap() map[string]bool {
-	fullNameDependencyMap := make(map[string]bool)
-	for _, dependency := range d {
-		fullName := dependency.dependencyTenant.ProjectName().String() + "/" + dependency.name
-		fullNameDependencyMap[fullName] = true
+func (u Upstreams) ToUpstreamFullNameMap() map[string]bool {
+	fullNameUpstreamMap := make(map[string]bool)
+	for _, upstream := range u {
+		fullName := upstream.tenant.ProjectName().String() + "/" + upstream.name
+		fullNameUpstreamMap[fullName] = true
 	}
-	return fullNameDependencyMap
+	return fullNameUpstreamMap
 }
 
-func (d Dependencies) ToDependencyDestinationMap() map[string]bool {
-	dependencyDestinationMap := make(map[string]bool)
-	for _, dependency := range d {
-		dependencyDestinationMap[dependency.resource] = true
+func (u Upstreams) ToUpstreamDestinationMap() map[string]bool {
+	upstreamDestinationMap := make(map[string]bool)
+	for _, upstream := range u {
+		upstreamDestinationMap[upstream.resource] = true
 	}
-	return dependencyDestinationMap
+	return upstreamDestinationMap
 }

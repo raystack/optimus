@@ -14,19 +14,19 @@ const DateSpecLayout = "2006-01-02"
 type Spec struct {
 	tenant tenant.Tenant
 
-	version      int
-	name         Name
-	owner        string
-	description  string
-	labels       map[string]string
-	schedule     *Schedule
-	window       models.Window
-	task         *Task
-	hooks        []*Hook
-	alerts       []*Alert
-	dependencies *DependencySpec
-	assets       map[string]string
-	metadata     *Metadata
+	version     int
+	name        Name
+	owner       string
+	description string
+	labels      map[string]string
+	schedule    *Schedule
+	window      models.Window
+	task        *Task
+	hooks       []*Hook
+	alerts      []*Alert
+	upstream    *SpecUpstream
+	assets      map[string]string
+	metadata    *Metadata
 }
 
 func (s Spec) Window() models.Window {
@@ -73,8 +73,8 @@ func (s Spec) Alerts() []*Alert {
 	return s.alerts
 }
 
-func (s Spec) DependencySpec() *DependencySpec {
-	return s.dependencies
+func (s Spec) Upstream() *SpecUpstream {
+	return s.upstream
 }
 
 func (s Spec) Assets() map[string]string {
@@ -104,7 +104,7 @@ func (s Spec) Validate() error {
 
 func NewSpec(tenant tenant.Tenant, version int, name string, owner string, description string,
 	labels map[string]string, schedule *Schedule, window models.Window, task *Task, hooks []*Hook, alerts []*Alert,
-	dependencies *DependencySpec, assets map[string]string, metadata *Metadata) (*Spec, error) {
+	specUpstreams *SpecUpstream, assets map[string]string, metadata *Metadata) (*Spec, error) {
 	jobName, err := NameFrom(name)
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func NewSpec(tenant tenant.Tenant, version int, name string, owner string, descr
 
 	return &Spec{tenant: tenant, version: version, name: jobName, owner: owner, description: description,
 		labels: labels, schedule: schedule, window: window, task: task, hooks: hooks, alerts: alerts,
-		dependencies: dependencies, assets: assets, metadata: metadata}, nil
+		upstream: specUpstreams, assets: assets, metadata: metadata}, nil
 }
 
 type Name string
@@ -192,48 +192,48 @@ func NewHook(name string, config *Config) *Hook {
 	return &Hook{name: name, config: config}
 }
 
-type DependencySpec struct {
-	jobDependencies  []string
-	httpDependencies []*HTTPDependency
+type SpecUpstream struct {
+	upstreamNames []string
+	httpUpstreams []*HTTPUpstreams
 }
 
-func NewDependencySpec(jobDependencies []string, httpDependencies []*HTTPDependency) *DependencySpec {
-	return &DependencySpec{jobDependencies: jobDependencies, httpDependencies: httpDependencies}
+func NewSpecUpstream(upstreamNames []string, httpUpstreams []*HTTPUpstreams) *SpecUpstream {
+	return &SpecUpstream{upstreamNames: upstreamNames, httpUpstreams: httpUpstreams}
 }
 
-func (d DependencySpec) JobDependencies() []string {
-	return d.jobDependencies
+func (s SpecUpstream) UpstreamNames() []string {
+	return s.upstreamNames
 }
 
-func (d DependencySpec) HTTPDependencies() []*HTTPDependency {
-	return d.httpDependencies
+func (s SpecUpstream) HTTPUpstreams() []*HTTPUpstreams {
+	return s.httpUpstreams
 }
 
-type HTTPDependency struct {
+type HTTPUpstreams struct {
 	name    string
 	url     string
 	headers map[string]string
 	params  map[string]string
 }
 
-func (h HTTPDependency) Name() string {
+func (h HTTPUpstreams) Name() string {
 	return h.name
 }
 
-func (h HTTPDependency) URL() string {
+func (h HTTPUpstreams) URL() string {
 	return h.url
 }
 
-func (h HTTPDependency) Headers() map[string]string {
+func (h HTTPUpstreams) Headers() map[string]string {
 	return h.headers
 }
 
-func (h HTTPDependency) Params() map[string]string {
+func (h HTTPUpstreams) Params() map[string]string {
 	return h.params
 }
 
-func NewHTTPDependency(name string, url string, headers map[string]string, params map[string]string) *HTTPDependency {
-	return &HTTPDependency{name: name, url: url, headers: headers, params: params}
+func NewHTTPUpstream(name string, url string, headers map[string]string, params map[string]string) *HTTPUpstreams {
+	return &HTTPUpstreams{name: name, url: url, headers: headers, params: params}
 }
 
 type Schedule struct {

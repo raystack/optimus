@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	ErrDependencyModNotFound = errors.New("dependency mod not found for plugin")
+	ErrUpstreamModNotFound = errors.New("upstream mod not found for plugin")
 )
 
 type JobPluginService struct {
@@ -46,7 +46,7 @@ func (p JobPluginService) GenerateDestination(ctx context.Context, tnnt *tenant.
 	}
 
 	if plugin.DependencyMod == nil {
-		return "", ErrDependencyModNotFound
+		return "", ErrUpstreamModNotFound
 	}
 
 	compiledConfig, err := p.compileConfig(ctx, task.Config(), tnnt)
@@ -65,14 +65,14 @@ func (p JobPluginService) GenerateDestination(ctx context.Context, tnnt *tenant.
 	return destination.URN(), nil
 }
 
-func (p JobPluginService) GenerateDependencies(ctx context.Context, jobTenant *tenant.WithDetails, spec *job.Spec, dryRun bool) ([]string, error) {
+func (p JobPluginService) GenerateUpstreamNames(ctx context.Context, jobTenant *tenant.WithDetails, spec *job.Spec, dryRun bool) ([]string, error) {
 	plugin, err := p.pluginRepo.GetByName(spec.Task().Name())
 	if err != nil {
 		return nil, err
 	}
 
 	if plugin.DependencyMod == nil {
-		return nil, ErrDependencyModNotFound
+		return nil, ErrUpstreamModNotFound
 	}
 
 	assets, err := p.compileAsset(ctx, plugin, spec, p.now(), false)

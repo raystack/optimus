@@ -15,7 +15,7 @@ type ExtDependencyResolver struct {
 
 // ResourceManager is repository for external job spec
 type ResourceManager interface {
-	GetOptimusDependencies(context.Context, *dto.RawDependency) ([]*job.Dependency, error)
+	GetOptimusDependencies(context.Context, *dto.RawUpstream) ([]*job.Upstream, error)
 }
 
 // NewExternalDependencyResolver creates a new instance of externalDependencyResolver
@@ -25,9 +25,9 @@ func NewExternalDependencyResolver(resourceManagers []ResourceManager) *ExtDepen
 	}
 }
 
-func (e *ExtDependencyResolver) FetchExternalDependencies(ctx context.Context, unresolvedDependencies []*dto.RawDependency) ([]*job.Dependency, []*dto.RawDependency, error) {
-	var unknownDependencies []*dto.RawDependency
-	var externalDependencies []*job.Dependency
+func (e *ExtDependencyResolver) FetchExternalDependencies(ctx context.Context, unresolvedDependencies []*dto.RawUpstream) ([]*job.Upstream, []*dto.RawUpstream, error) {
+	var unknownDependencies []*dto.RawUpstream
+	var externalDependencies []*job.Upstream
 	var allErrors error
 	for _, toBeResolvedDependency := range unresolvedDependencies {
 		optimusDependencies, err := e.fetchOptimusDependencies(ctx, toBeResolvedDependency)
@@ -41,8 +41,8 @@ func (e *ExtDependencyResolver) FetchExternalDependencies(ctx context.Context, u
 	return externalDependencies, unknownDependencies, allErrors
 }
 
-func (e *ExtDependencyResolver) fetchOptimusDependencies(ctx context.Context, unresolvedDependency *dto.RawDependency) ([]*job.Dependency, error) {
-	var dependencies []*job.Dependency
+func (e *ExtDependencyResolver) fetchOptimusDependencies(ctx context.Context, unresolvedDependency *dto.RawUpstream) ([]*job.Upstream, error) {
+	var dependencies []*job.Upstream
 	var allErrors error
 	for _, manager := range e.optimusResourceManagers {
 		deps, err := manager.GetOptimusDependencies(ctx, unresolvedDependency)

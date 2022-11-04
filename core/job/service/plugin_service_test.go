@@ -79,7 +79,7 @@ func TestPluginService(t *testing.T) {
 	})
 
 	t.Run("GenerateDependencies", func(t *testing.T) {
-		t.Run("returns dependencies", func(t *testing.T) {
+		t.Run("returns upstreams", func(t *testing.T) {
 			logger := log.NewLogrus()
 
 			secretsGetter := new(SecretsGetter)
@@ -111,7 +111,7 @@ func TestPluginService(t *testing.T) {
 			assert.Nil(t, err)
 
 			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
-			result, err := pluginService.GenerateDependencies(ctx, tenantDetails, specA, false)
+			result, err := pluginService.GenerateUpstreamNames(ctx, tenantDetails, specA, false)
 			assert.Nil(t, err)
 			assert.Equal(t, []string{jobSource}, result)
 		})

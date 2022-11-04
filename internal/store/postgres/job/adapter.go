@@ -135,9 +135,9 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 
 	var staticDependencies []string
 	var httpDependenciesBytes []byte
-	if jobSpec.DependencySpec() != nil {
-		staticDependencies = jobSpec.DependencySpec().JobDependencies()
-		httpDependenciesBytes, err = json.Marshal(jobSpec.DependencySpec().HTTPDependencies())
+	if jobSpec.Upstream() != nil {
+		staticDependencies = jobSpec.Upstream().UpstreamNames()
+		httpDependenciesBytes, err = json.Marshal(jobSpec.Upstream().HTTPUpstreams())
 		if err != nil {
 			return nil, err
 		}

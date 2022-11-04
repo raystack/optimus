@@ -24,15 +24,15 @@ func NewDependencyResolver(jobRepository JobRepository, externalDependencyResolv
 }
 
 type ExternalDependencyResolver interface {
-	FetchExternalDependencies(ctx context.Context, unresolvedDependencies []*dto.RawDependency) ([]*job.Dependency, []*dto.RawDependency, error)
+	FetchExternalDependencies(ctx context.Context, unresolvedDependencies []*dto.RawUpstream) ([]*job.Upstream, []*dto.RawUpstream, error)
 }
 
 type JobRepository interface {
 	Add(ctx context.Context, jobs []*job.Job) (savedJobs []*job.Job, jobErrors error, err error)
-	GetJobNameWithInternalDependencies(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Dependency, error)
+	GetJobNameWithInternalDependencies(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error)
 }
 
-func (d DependencyResolver) Resolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) (jobsWithAllDependencies []*job.WithDependency, dependencyErrors error, err error) {
+func (d DependencyResolver) Resolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) (jobsWithAllDependencies []*job.WithUpstream, dependencyErrors error, err error) {
 	// get internal inferred and static dependencies
 	jobNames := job.Jobs(jobs).GetJobNames()
 	jobsWithInternalDependencies, err := d.jobRepository.GetJobNameWithInternalDependencies(ctx, projectName, jobNames)
@@ -51,12 +51,12 @@ func (d DependencyResolver) Resolve(ctx context.Context, projectName tenant.Proj
 	return jobsWithAllDependencies, dependencyErrors, nil
 }
 
-func (d DependencyResolver) getJobsWithAllDependencies(ctx context.Context, jobs []*job.Job, jobsWithInternalDependencies map[job.Name][]*job.Dependency) ([]*job.WithDependency, error) {
-	var jobsWithAllDependencies []*job.WithDependency
+func (d DependencyResolver) getJobsWithAllDependencies(ctx context.Context, jobs []*job.Job, jobsWithInternalDependencies map[job.Name][]*job.Upstream) ([]*job.WithUpstream, error) {
+	var jobsWithAllDependencies []*job.WithUpstream
 	var allErrors error
 
 	for _, jobEntity := range jobs {
-		var allDependencies []*job.Dependency
+		var allDependencies []*job.Upstream
 
 		// get internal dependencies
 		internalDependencies := jobsWithInternalDependencies[jobEntity.Spec().Name()]
@@ -72,16 +72,16 @@ func (d DependencyResolver) getJobsWithAllDependencies(ctx context.Context, jobs
 
 		// include unresolved dependencies
 		for _, dep := range unresolvedDependencies {
-			allDependencies = append(allDependencies, job.NewDependencyUnresolved(dep.JobName, dep.ResourceURN, dep.ProjectName))
+			allDependencies = append(allDependencies, job.NewUpstreamUnresolved(dep.JobName, dep.ResourceURN, dep.ProjectName))
 		}
 
-		jobWithAllDependencies := job.NewWithDependency(jobEntity, allDependencies)
+		jobWithAllDependencies := job.NewWithUpstream(jobEntity, allDependencies)
 		jobsWithAllDependencies = append(jobsWithAllDependencies, jobWithAllDependencies)
 	}
 	return jobsWithAllDependencies, allErrors
 }
 
-func (d DependencyResolver) identifyUnresolvedDependencies(resolvedDependencies []*job.Dependency, jobEntity *job.Job) (unresolvedDependencies []*dto.RawDependency) {
+func (d DependencyResolver) identifyUnresolvedDependencies(resolvedDependencies []*job.Upstream, jobEntity *job.Job) (unresolvedDependencies []*dto.RawUpstream) {
 	unresolvedStaticDependencies := d.identifyUnresolvedStaticDependency(resolvedDependencies, jobEntity)
 	unresolvedDependencies = append(unresolvedDependencies, unresolvedStaticDependencies...)
 
@@ -91,12 +91,12 @@ func (d DependencyResolver) identifyUnresolvedDependencies(resolvedDependencies 
 	return unresolvedDependencies
 }
 
-func (d DependencyResolver) identifyUnresolvedInferredDependencies(resolvedDependencies []*job.Dependency, jobEntity *job.Job) []*dto.RawDependency {
-	var unresolvedInferredDependencies []*dto.RawDependency
-	resolvedDependencyDestinationMap := job.Dependencies(resolvedDependencies).ToDependencyDestinationMap()
+func (d DependencyResolver) identifyUnresolvedInferredDependencies(resolvedDependencies []*job.Upstream, jobEntity *job.Job) []*dto.RawUpstream {
+	var unresolvedInferredDependencies []*dto.RawUpstream
+	resolvedDependencyDestinationMap := job.Upstreams(resolvedDependencies).ToUpstreamDestinationMap()
 	for _, source := range jobEntity.Sources() {
 		if !resolvedDependencyDestinationMap[source] {
-			unresolvedInferredDependencies = append(unresolvedInferredDependencies, &dto.RawDependency{
+			unresolvedInferredDependencies = append(unresolvedInferredDependencies, &dto.RawUpstream{
 				ResourceURN: source,
 			})
 		}
@@ -104,10 +104,10 @@ func (d DependencyResolver) identifyUnresolvedInferredDependencies(resolvedDepen
 	return unresolvedInferredDependencies
 }
 
-func (d DependencyResolver) identifyUnresolvedStaticDependency(resolvedDependencies []*job.Dependency, jobEntity *job.Job) []*dto.RawDependency {
-	var unresolvedStaticDependencies []*dto.RawDependency
-	resolvedDependencyFullNameMap := job.Dependencies(resolvedDependencies).ToDependencyFullNameMap()
-	for _, dependencyName := range jobEntity.StaticDependencyNames() {
+func (d DependencyResolver) identifyUnresolvedStaticDependency(resolvedDependencies []*job.Upstream, jobEntity *job.Job) []*dto.RawUpstream {
+	var unresolvedStaticDependencies []*dto.RawUpstream
+	resolvedDependencyFullNameMap := job.Upstreams(resolvedDependencies).ToUpstreamFullNameMap()
+	for _, dependencyName := range jobEntity.StaticUpstreamNames() {
 		var projectDependencyName, jobDependencyName string
 
 		if strings.Contains(dependencyName, "/") {
@@ -120,7 +120,7 @@ func (d DependencyResolver) identifyUnresolvedStaticDependency(resolvedDependenc
 
 		fullDependencyName := jobEntity.ProjectName().String() + "/" + dependencyName
 		if !resolvedDependencyFullNameMap[fullDependencyName] {
-			unresolvedStaticDependencies = append(unresolvedStaticDependencies, &dto.RawDependency{
+			unresolvedStaticDependencies = append(unresolvedStaticDependencies, &dto.RawUpstream{
 				ProjectName: projectDependencyName,
 				JobName:     jobDependencyName,
 			})
@@ -129,11 +129,11 @@ func (d DependencyResolver) identifyUnresolvedStaticDependency(resolvedDependenc
 	return unresolvedStaticDependencies
 }
 
-func (DependencyResolver) getUnresolvedDependencyErrors(jobsWithDependencies []*job.WithDependency) error {
+func (DependencyResolver) getUnresolvedDependencyErrors(jobsWithDependencies []*job.WithUpstream) error {
 	var dependencyErr error
 	for _, jobWithDependencies := range jobsWithDependencies {
-		for _, unresolvedDependency := range jobWithDependencies.GetUnresolvedDependencies() {
-			if unresolvedDependency.DependencyType() == job.DependencyTypeStatic {
+		for _, unresolvedDependency := range jobWithDependencies.GetUnresolvedUpstreams() {
+			if unresolvedDependency.Type() == job.UpstreamTypeStatic {
 				errMsg := fmt.Sprintf("[%s] error: %s unknown dependency", jobWithDependencies.Name().String(), unresolvedDependency.Name())
 				dependencyErr = multierror.Append(dependencyErr, errors.NewError(errors.ErrNotFound, job.EntityJob, errMsg))
 			}
