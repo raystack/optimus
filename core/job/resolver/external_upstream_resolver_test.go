@@ -2,10 +2,11 @@ package resolver_test
 
 import (
 	"errors"
+	"testing"
+
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
 	"github.com/stretchr/testify/mock"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -22,37 +23,37 @@ func TestExternalDependencyResolver(t *testing.T) {
 		t.Run("resolves dependency externally", func(t *testing.T) {
 			resourceManager := new(ResourceManager)
 
-			rawDependencies := []*dto.RawDependency{
+			rawDependencies := []*dto.RawUpstream{
 				{JobName: "job-B", ProjectName: externalTenant.ProjectName().String()},
 				{ResourceURN: "resource-C"},
 			}
-			dependencyB, _ := job.NewDependencyResolved("job-B", "external-host", "resource-B", externalTenant, "static")
-			dependencyC, _ := job.NewDependencyResolved("job-C", "external-host", "resource-C", externalTenant, "inferred")
-			resourceManager.On("GetOptimusDependencies", ctx, rawDependencies[0]).Return([]*job.Dependency{dependencyB}, nil).Once()
-			resourceManager.On("GetOptimusDependencies", ctx, rawDependencies[1]).Return([]*job.Dependency{dependencyC}, nil).Once()
+			dependencyB, _ := job.NewUpstreamResolved("job-B", "external-host", "resource-B", externalTenant, "static")
+			dependencyC, _ := job.NewUpstreamResolved("job-C", "external-host", "resource-C", externalTenant, "inferred")
+			resourceManager.On("GetOptimusDependencies", ctx, rawDependencies[0]).Return([]*job.Upstream{dependencyB}, nil).Once()
+			resourceManager.On("GetOptimusDependencies", ctx, rawDependencies[1]).Return([]*job.Upstream{dependencyC}, nil).Once()
 
 			extDependencyResolver := resolver.NewExternalDependencyResolver([]resolver.ResourceManager{resourceManager})
 			result, unresolvedDep, err := extDependencyResolver.FetchExternalDependencies(ctx, rawDependencies)
 			assert.Nil(t, unresolvedDep)
 			assert.Nil(t, err)
-			assert.EqualValues(t, []*job.Dependency{dependencyB, dependencyC}, result)
+			assert.EqualValues(t, []*job.Upstream{dependencyB, dependencyC}, result)
 		})
 		t.Run("returns unresolved dependency and dependency error if unable to fetch dependencies from external", func(t *testing.T) {
 			resourceManager := new(ResourceManager)
 
-			rawDependencies := []*dto.RawDependency{
+			rawDependencies := []*dto.RawUpstream{
 				{JobName: "job-B", ProjectName: externalTenant.ProjectName().String()},
 				{ResourceURN: "resource-C"},
 			}
-			dependencyB, _ := job.NewDependencyResolved("job-B", "external-host", "resource-B", externalTenant, "static")
-			resourceManager.On("GetOptimusDependencies", ctx, rawDependencies[0]).Return([]*job.Dependency{dependencyB}, nil).Once()
-			resourceManager.On("GetOptimusDependencies", ctx, rawDependencies[1]).Return([]*job.Dependency{}, errors.New("connection error")).Once()
+			dependencyB, _ := job.NewUpstreamResolved("job-B", "external-host", "resource-B", externalTenant, "static")
+			resourceManager.On("GetOptimusDependencies", ctx, rawDependencies[0]).Return([]*job.Upstream{dependencyB}, nil).Once()
+			resourceManager.On("GetOptimusDependencies", ctx, rawDependencies[1]).Return([]*job.Upstream{}, errors.New("connection error")).Once()
 
 			extDependencyResolver := resolver.NewExternalDependencyResolver([]resolver.ResourceManager{resourceManager})
 			result, unresolvedDep, err := extDependencyResolver.FetchExternalDependencies(ctx, rawDependencies)
-			assert.Equal(t, []*dto.RawDependency{rawDependencies[1]}, unresolvedDep)
+			assert.Equal(t, []*dto.RawUpstream{rawDependencies[1]}, unresolvedDep)
 			assert.NotNil(t, err)
-			assert.Equal(t, []*job.Dependency{dependencyB}, result)
+			assert.Equal(t, []*job.Upstream{dependencyB}, result)
 		})
 	})
 }
@@ -63,20 +64,20 @@ type ResourceManager struct {
 }
 
 // GetOptimusDependencies provides a mock function with given fields: _a0, _a1
-func (_m *ResourceManager) GetOptimusDependencies(_a0 context.Context, _a1 *dto.RawDependency) ([]*job.Dependency, error) {
+func (_m *ResourceManager) GetOptimusDependencies(_a0 context.Context, _a1 *dto.RawUpstream) ([]*job.Upstream, error) {
 	ret := _m.Called(_a0, _a1)
 
-	var r0 []*job.Dependency
-	if rf, ok := ret.Get(0).(func(context.Context, *dto.RawDependency) []*job.Dependency); ok {
+	var r0 []*job.Upstream
+	if rf, ok := ret.Get(0).(func(context.Context, *dto.RawUpstream) []*job.Upstream); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*job.Dependency)
+			r0 = ret.Get(0).([]*job.Upstream)
 		}
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *dto.RawDependency) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *dto.RawUpstream) error); ok {
 		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)

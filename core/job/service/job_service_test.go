@@ -43,8 +43,8 @@ func TestJobService(t *testing.T) {
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
 
-			dependencyResolver := new(DependencyResolver)
-			defer dependencyResolver.AssertExpectations(t)
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -58,20 +58,20 @@ func TestJobService(t *testing.T) {
 			jobADestination := "resource-A"
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil)
 
-			jobADependencies := []string{"job-B"}
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, specA, true).Return(jobADependencies, nil)
+			jobAUpstreamName := []string{"job-B"}
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobAUpstreamName, nil)
 
-			jobA := job.NewJob(specA, jobADestination, jobADependencies)
+			jobA := job.NewJob(specA, jobADestination, jobAUpstreamName)
 			jobs := []*job.Job{jobA}
 			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
 
-			dependency, _ := job.NewDependencyResolved("job-B", "", "resource-B", sampleTenant, "static")
-			jobWithDependency := job.NewWithDependency(jobA, []*job.Dependency{dependency})
-			dependencyResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithDependency{jobWithDependency}, nil, nil)
+			upstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
+			jobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstream})
+			upstreamResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
 
-			jobRepo.On("SaveDependency", ctx, []*job.WithDependency{jobWithDependency}).Return(nil)
+			jobRepo.On("SaveUpstream", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
 			jobErr, sysErr := jobService.Add(ctx, sampleTenant, specs)
 			assert.Nil(t, jobErr)
 			assert.Nil(t, sysErr)
@@ -83,8 +83,8 @@ func TestJobService(t *testing.T) {
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
 
-			dependencyResolver := new(DependencyResolver)
-			defer dependencyResolver.AssertExpectations(t)
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -101,20 +101,20 @@ func TestJobService(t *testing.T) {
 			jobADestination := "resource-A"
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
 
-			jobADependencies := []string{"job-B"}
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, specA, true).Return(jobADependencies, nil)
+			jobAUpstreamName := []string{"job-B"}
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobAUpstreamName, nil)
 
-			jobA := job.NewJob(specA, jobADestination, jobADependencies)
+			jobA := job.NewJob(specA, jobADestination, jobAUpstreamName)
 			jobs := []*job.Job{jobA}
 			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
 
-			dependency, _ := job.NewDependencyResolved("job-B", "", "resource-B", sampleTenant, "static")
-			jobWithDependency := job.NewWithDependency(jobA, []*job.Dependency{dependency})
-			dependencyResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithDependency{jobWithDependency}, nil, nil)
+			upstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
+			jobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstream})
+			upstreamResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
 
-			jobRepo.On("SaveDependency", ctx, []*job.WithDependency{jobWithDependency}).Return(nil)
+			jobRepo.On("SaveUpstream", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
 			jobErr, sysErr := jobService.Add(ctx, sampleTenant, specs)
 			assert.NotNil(t, jobErr)
 			assert.Nil(t, sysErr)
@@ -126,8 +126,8 @@ func TestJobService(t *testing.T) {
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
 
-			dependencyResolver := new(DependencyResolver)
-			defer dependencyResolver.AssertExpectations(t)
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -140,7 +140,7 @@ func TestJobService(t *testing.T) {
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
 			specs := []*job.Spec{specB, specA}
 
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
 			jobErrors, err := jobService.Add(ctx, sampleTenant, specs)
 
 			assert.NotNil(t, jobErrors)
@@ -153,8 +153,8 @@ func TestJobService(t *testing.T) {
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
 
-			dependencyResolver := new(DependencyResolver)
-			defer dependencyResolver.AssertExpectations(t)
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -165,21 +165,21 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(&tenant.WithDetails{}, errors.New("internal error"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
 			jobErrors, err := jobService.Add(ctx, sampleTenant, specs)
 
 			assert.Nil(t, jobErrors)
 			assert.NotNil(t, err)
 		})
-		t.Run("skip job that has issue when generating destination and dependencies and return deployment ID", func(t *testing.T) {
+		t.Run("skip job that has issue when generating destination and upstream and return deployment ID", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
 
-			dependencyResolver := new(DependencyResolver)
-			defer dependencyResolver.AssertExpectations(t)
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -200,34 +200,34 @@ func TestJobService(t *testing.T) {
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specC.Task()).Return("", errors.New("generate destination error")).Once()
 
-			jobADependencies := []string{"job-B"}
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, specB, true).Return(nil, errors.New("generate dependencies error"))
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, specA, true).Return(jobADependencies, nil)
+			jobAUpstreamName := []string{"job-B"}
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specB, true).Return(nil, errors.New("generate upstream error"))
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobAUpstreamName, nil)
 
-			jobA := job.NewJob(specA, jobADestination, jobADependencies)
+			jobA := job.NewJob(specA, jobADestination, jobAUpstreamName)
 			jobs := []*job.Job{jobA}
 			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
 
-			dependency, _ := job.NewDependencyResolved("job-B", "", "resource-B", sampleTenant, "static")
-			jobWithDependency := job.NewWithDependency(jobA, []*job.Dependency{dependency})
-			dependencyResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithDependency{jobWithDependency}, nil, nil)
+			upstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
+			jobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstream})
+			upstreamResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
 
-			jobRepo.On("SaveDependency", ctx, []*job.WithDependency{jobWithDependency}).Return(nil)
+			jobRepo.On("SaveUpstream", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
 			jobErr, sysErr := jobService.Add(ctx, sampleTenant, specs)
 			assert.NotNil(t, jobErr)
 			assert.Nil(t, sysErr)
 		})
-		t.Run("return error when all jobs failed to have destination and dependencies generated", func(t *testing.T) {
+		t.Run("return error when all jobs failed to have destination and upstream generated", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
 
-			dependencyResolver := new(DependencyResolver)
-			defer dependencyResolver.AssertExpectations(t)
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -244,22 +244,22 @@ func TestJobService(t *testing.T) {
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return(jobBDestination, nil).Once()
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return("", errors.New("generate destination error")).Once()
 
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, specB, true).Return(nil, errors.New("generate dependencies error"))
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specB, true).Return(nil, errors.New("generate upstream error"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
 			jobErr, sysErr := jobService.Add(ctx, sampleTenant, specs)
 			assert.NotNil(t, jobErr)
 			assert.NotNil(t, sysErr)
 		})
-		t.Run("should not skip nor return error if jobs does not have dependency mod and encounter issue on generate destination/dependency", func(t *testing.T) {
+		t.Run("should not skip nor return error if jobs does not have upstream mod and encounter issue on generate destination/upstream", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
 
-			dependencyResolver := new(DependencyResolver)
-			defer dependencyResolver.AssertExpectations(t)
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -270,19 +270,19 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return("", service.ErrDependencyModNotFound).Once()
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, specA, true).Return(nil, service.ErrDependencyModNotFound)
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return("", service.ErrUpstreamModNotFound).Once()
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(nil, service.ErrUpstreamModNotFound)
 
 			jobA := job.NewJob(specA, "", nil)
 			jobs := []*job.Job{jobA}
 			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
 
-			jobWithDependency := job.NewWithDependency(jobA, nil)
-			dependencyResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithDependency{jobWithDependency}, nil, nil)
+			jobWithUpstream := job.NewWithUpstream(jobA, nil)
+			upstreamResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
 
-			jobRepo.On("SaveDependency", ctx, []*job.WithDependency{jobWithDependency}).Return(nil)
+			jobRepo.On("SaveUpstream", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
 			jobErr, sysErr := jobService.Add(ctx, sampleTenant, specs)
 			assert.Nil(t, jobErr)
 			assert.Nil(t, sysErr)
@@ -294,8 +294,8 @@ func TestJobService(t *testing.T) {
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
 
-			dependencyResolver := new(DependencyResolver)
-			defer dependencyResolver.AssertExpectations(t)
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -310,11 +310,11 @@ func TestJobService(t *testing.T) {
 
 			resourceA := "resource-A"
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
-			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return("", service.ErrDependencyModNotFound).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return("", service.ErrUpstreamModNotFound).Once()
 
 			jobSourcesA := []string{"resource-B"}
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, specB, true).Return(nil, service.ErrDependencyModNotFound)
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specB, true).Return(nil, service.ErrUpstreamModNotFound)
 
 			jobA := job.NewJob(specA, resourceA, jobSourcesA)
 			jobB := job.NewJob(specB, "", nil)
@@ -322,12 +322,12 @@ func TestJobService(t *testing.T) {
 			savedJobs := []*job.Job{jobB}
 			jobRepo.On("Add", ctx, jobs).Return(savedJobs, errors.New("unable to save job A"), nil)
 
-			jobWithDependencyB := job.NewWithDependency(jobB, nil)
-			dependencyResolver.On("Resolve", ctx, project.Name(), savedJobs).Return([]*job.WithDependency{jobWithDependencyB}, nil, nil)
+			jobWithUpstreamB := job.NewWithUpstream(jobB, nil)
+			upstreamResolver.On("Resolve", ctx, project.Name(), savedJobs).Return([]*job.WithUpstream{jobWithUpstreamB}, nil, nil)
 
-			jobRepo.On("SaveDependency", ctx, mock.Anything).Return(nil)
+			jobRepo.On("SaveUpstream", ctx, mock.Anything).Return(nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
 			jobErr, sysErr := jobService.Add(ctx, sampleTenant, specs)
 			assert.NotNil(t, jobErr)
 			assert.Nil(t, sysErr)
@@ -339,8 +339,8 @@ func TestJobService(t *testing.T) {
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
 
-			dependencyResolver := new(DependencyResolver)
-			defer dependencyResolver.AssertExpectations(t)
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -355,26 +355,26 @@ func TestJobService(t *testing.T) {
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
 
 			jobSourcesA := []string{"resource-B"}
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
 
 			jobA := job.NewJob(specA, resourceA, jobSourcesA)
 			jobs := []*job.Job{jobA}
 			jobRepo.On("Add", ctx, jobs).Return([]*job.Job{}, errors.New("unable to save job A"), errors.New("all jobs failed"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
 			jobErr, sysErr := jobService.Add(ctx, sampleTenant, specs)
 			assert.NotNil(t, jobErr)
 			assert.NotNil(t, sysErr)
 		})
-		t.Run("should not return error if there is dependency errors when resolving, without critical error", func(t *testing.T) {
+		t.Run("should not return error if there is upstream errors when resolving, without critical error", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
 
-			dependencyResolver := new(DependencyResolver)
-			defer dependencyResolver.AssertExpectations(t)
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -389,31 +389,31 @@ func TestJobService(t *testing.T) {
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
 
 			jobSourcesA := []string{"resource-B"}
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
 
 			jobA := job.NewJob(specA, resourceA, jobSourcesA)
 			jobs := []*job.Job{jobA}
 			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
 
-			jobWithDependencyA := job.NewWithDependency(jobA, nil)
-			dependencyResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithDependency{jobWithDependencyA}, errors.New("dependency error"), nil)
+			jobWithUpstreamA := job.NewWithUpstream(jobA, nil)
+			upstreamResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithUpstream{jobWithUpstreamA}, errors.New("upstream error"), nil)
 
-			jobRepo.On("SaveDependency", ctx, mock.Anything).Return(nil)
+			jobRepo.On("SaveUpstream", ctx, mock.Anything).Return(nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
 			jobErr, sysErr := jobService.Add(ctx, sampleTenant, specs)
 			assert.NotNil(t, jobErr)
 			assert.Nil(t, sysErr)
 		})
-		t.Run("should return error if there is dependency errors when resolving, with critical error", func(t *testing.T) {
+		t.Run("should return error if there is upstream errors when resolving, with critical error", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
 
-			dependencyResolver := new(DependencyResolver)
-			defer dependencyResolver.AssertExpectations(t)
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -428,29 +428,29 @@ func TestJobService(t *testing.T) {
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
 
 			jobSourcesA := []string{"resource-B"}
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
 
 			jobA := job.NewJob(specA, resourceA, jobSourcesA)
 			jobs := []*job.Job{jobA}
 			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
 
-			jobWithDependencyA := job.NewWithDependency(jobA, nil)
-			dependencyResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithDependency{jobWithDependencyA}, errors.New("dependency error"), errors.New("internal error"))
+			jobWithUpstreamA := job.NewWithUpstream(jobA, nil)
+			upstreamResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithUpstream{jobWithUpstreamA}, errors.New("upstream error"), errors.New("internal error"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
 			jobErr, sysErr := jobService.Add(ctx, sampleTenant, specs)
 			assert.NotNil(t, jobErr)
 			assert.NotNil(t, sysErr)
 		})
-		t.Run("should return error if failed to save dependency", func(t *testing.T) {
+		t.Run("should return error if failed to save upstream", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
 
-			dependencyResolver := new(DependencyResolver)
-			defer dependencyResolver.AssertExpectations(t)
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -465,18 +465,18 @@ func TestJobService(t *testing.T) {
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
 
 			jobSourcesA := []string{"resource-B"}
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
 
 			jobA := job.NewJob(specA, resourceA, jobSourcesA)
 			jobs := []*job.Job{jobA}
 			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
 
-			jobWithDependencyA := job.NewWithDependency(jobA, nil)
-			dependencyResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithDependency{jobWithDependencyA}, nil, nil)
+			jobWithUpstreamA := job.NewWithUpstream(jobA, nil)
+			upstreamResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithUpstream{jobWithUpstreamA}, nil, nil)
 
-			jobRepo.On("SaveDependency", ctx, mock.Anything).Return(errors.New("internal error"))
+			jobRepo.On("SaveUpstream", ctx, mock.Anything).Return(errors.New("internal error"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
 			jobErr, sysErr := jobService.Add(ctx, sampleTenant, specs)
 			assert.Nil(t, jobErr)
 			assert.NotNil(t, sysErr)
@@ -519,16 +519,16 @@ func (_m *JobRepository) Add(ctx context.Context, jobs []*job.Job) ([]*job.Job, 
 	return r0, r1, r2
 }
 
-// GetJobNameWithDependencies provides a mock function with given fields: ctx, projectName, jobNames
-func (_m *JobRepository) GetJobNameWithInternalDependencies(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Dependency, error) {
+// GetJobNameWithInternalUpstreams provides a mock function with given fields: ctx, projectName, jobNames
+func (_m *JobRepository) GetJobNameWithInternalUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error) {
 	ret := _m.Called(ctx, projectName, jobNames)
 
-	var r0 map[job.Name][]*job.Dependency
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, []job.Name) map[job.Name][]*job.Dependency); ok {
+	var r0 map[job.Name][]*job.Upstream
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, []job.Name) map[job.Name][]*job.Upstream); ok {
 		r0 = rf(ctx, projectName, jobNames)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[job.Name][]*job.Dependency)
+			r0 = ret.Get(0).(map[job.Name][]*job.Upstream)
 		}
 	}
 
@@ -542,13 +542,13 @@ func (_m *JobRepository) GetJobNameWithInternalDependencies(ctx context.Context,
 	return r0, r1
 }
 
-// SaveDependency provides a mock function with given fields: ctx, jobsWithDependencies
-func (_m *JobRepository) SaveDependency(ctx context.Context, jobsWithDependencies []*job.WithDependency) error {
-	ret := _m.Called(ctx, jobsWithDependencies)
+// SaveUpstream provides a mock function with given fields: ctx, jobsWithUpstreams
+func (_m *JobRepository) SaveUpstream(ctx context.Context, jobsWithUpstreams []*job.WithUpstream) error {
+	ret := _m.Called(ctx, jobsWithUpstreams)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []*job.WithDependency) error); ok {
-		r0 = rf(ctx, jobsWithDependencies)
+	if rf, ok := ret.Get(0).(func(context.Context, []*job.WithUpstream) error); ok {
+		r0 = rf(ctx, jobsWithUpstreams)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -561,8 +561,8 @@ type PluginService struct {
 	mock.Mock
 }
 
-// GenerateDependencies provides a mock function with given fields: ctx, jobTenant, spec, dryRun
-func (_m *PluginService) GenerateDependencies(ctx context.Context, jobTenant *tenant.WithDetails, spec *job.Spec, dryRun bool) ([]string, error) {
+// GenerateUpstreams provides a mock function with given fields: ctx, jobTenant, spec, dryRun
+func (_m *PluginService) GenerateUpstreams(ctx context.Context, jobTenant *tenant.WithDetails, spec *job.Spec, dryRun bool) ([]string, error) {
 	ret := _m.Called(ctx, jobTenant, spec, dryRun)
 
 	var r0 []string
@@ -605,21 +605,21 @@ func (_m *PluginService) GenerateDestination(_a0 context.Context, _a1 *tenant.Wi
 	return r0, r1
 }
 
-// DependencyResolver is an autogenerated mock type for the DependencyResolver type
-type DependencyResolver struct {
+// UpstreamResolver is an autogenerated mock type for the UpstreamResolver type
+type UpstreamResolver struct {
 	mock.Mock
 }
 
 // Resolve provides a mock function with given fields: ctx, projectName, jobs
-func (_m *DependencyResolver) Resolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) ([]*job.WithDependency, error, error) {
+func (_m *UpstreamResolver) Resolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) ([]*job.WithUpstream, error, error) {
 	ret := _m.Called(ctx, projectName, jobs)
 
-	var r0 []*job.WithDependency
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, []*job.Job) []*job.WithDependency); ok {
+	var r0 []*job.WithUpstream
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, []*job.Job) []*job.WithUpstream); ok {
 		r0 = rf(ctx, projectName, jobs)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*job.WithDependency)
+			r0 = ret.Get(0).([]*job.WithUpstream)
 		}
 	}
 

@@ -31,13 +31,13 @@ func fromJobProto(jobTenant tenant.Tenant, js *pb.JobSpecification) (*job.Spec, 
 
 	hooks := toHooks(js.Hooks)
 
-	dependencies := toDependencies(js.Dependencies)
+	upstreams := toSpecUpstreams(js.Dependencies)
 
 	metadata := toMetadata(js.Metadata)
 
 	//TODO: try explore builder. too many arguments
 	return job.NewSpec(jobTenant, int(js.Version), js.Name, js.Owner, js.Description, js.Labels,
-		schedule, window, task, hooks, alerts, dependencies, js.Assets, metadata)
+		schedule, window, task, hooks, alerts, upstreams, js.Assets, metadata)
 }
 
 func toRetry(protoRetry *pb.JobSpecification_Behavior_Retry) *job.Retry {
@@ -65,20 +65,20 @@ func toAlerts(notifiers []*pb.JobSpecification_Behavior_Notifiers) []*job.Alert 
 	return alerts
 }
 
-func toDependencies(dependenciesProto []*pb.JobDependency) *job.DependencySpec {
-	var jobDependencies []string
-	var httpDependencies []*job.HTTPDependency
-	for _, dependency := range dependenciesProto {
-		if dependency.HttpDependency == nil {
-			jobDependencies = append(jobDependencies, dependency.Name)
+func toSpecUpstreams(upstreamProtos []*pb.JobDependency) *job.SpecUpstream {
+	var upstreamNames []string
+	var httpUpstreams []*job.HTTPUpstreams
+	for _, upstream := range upstreamProtos {
+		if upstream.HttpDependency == nil {
+			upstreamNames = append(upstreamNames, upstream.Name)
 			continue
 		}
-		httpDependencyProto := dependency.HttpDependency
-		httpDependency := job.NewHTTPDependency(httpDependencyProto.Name, httpDependencyProto.Url, httpDependencyProto.Headers, httpDependencyProto.Params)
-		httpDependencies = append(httpDependencies, httpDependency)
+		httpUpstreamProto := upstream.HttpDependency
+		httpUpstream := job.NewHTTPUpstream(httpUpstreamProto.Name, httpUpstreamProto.Url, httpUpstreamProto.Headers, httpUpstreamProto.Params)
+		httpUpstreams = append(httpUpstreams, httpUpstream)
 	}
-	dependencies := job.NewDependencySpec(jobDependencies, httpDependencies)
-	return dependencies
+	upstreams := job.NewSpecUpstream(upstreamNames, httpUpstreams)
+	return upstreams
 }
 
 func toMetadata(jobMetadata *pb.JobMetadata) *job.Metadata {

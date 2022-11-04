@@ -5,16 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/odpf/optimus/core/job"
 	"net/http"
 	"strings"
-
-	"github.com/odpf/optimus/core/job/dto"
-	"github.com/odpf/optimus/core/tenant"
 
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/job/dto"
+	"github.com/odpf/optimus/core/tenant"
 )
 
 type optimusResourceManager struct {
@@ -40,7 +39,7 @@ func NewOptimusResourceManager(resourceManagerConfig config.ResourceManager) (*o
 	}, nil
 }
 
-func (o *optimusResourceManager) GetOptimusDependencies(ctx context.Context, unresolvedDependency *dto.RawDependency) ([]*job.Dependency, error) {
+func (o *optimusResourceManager) GetOptimusDependencies(ctx context.Context, unresolvedDependency *dto.RawUpstream) ([]*job.Upstream, error) {
 	if ctx == nil {
 		return nil, errors.New("context is nil")
 	}
@@ -68,7 +67,7 @@ func (o *optimusResourceManager) GetOptimusDependencies(ctx context.Context, unr
 	return o.toOptimusDependencies(jobSpecResponse.JobSpecificationResponses, unresolvedDependency)
 }
 
-func (o *optimusResourceManager) constructGetJobSpecificationsRequest(ctx context.Context, unresolvedDependency *dto.RawDependency) (*http.Request, error) {
+func (o *optimusResourceManager) constructGetJobSpecificationsRequest(ctx context.Context, unresolvedDependency *dto.RawUpstream) (*http.Request, error) {
 	var filters []string
 	if unresolvedDependency.JobName != "" {
 		filters = append(filters, fmt.Sprintf("job_name=%s", unresolvedDependency.JobName))
@@ -95,8 +94,8 @@ func (o *optimusResourceManager) constructGetJobSpecificationsRequest(ctx contex
 	return request, nil
 }
 
-func (o *optimusResourceManager) toOptimusDependencies(responses []jobSpecificationResponse, unresolvedDependency *dto.RawDependency) ([]*job.Dependency, error) {
-	output := make([]*job.Dependency, len(responses))
+func (o *optimusResourceManager) toOptimusDependencies(responses []jobSpecificationResponse, unresolvedDependency *dto.RawUpstream) ([]*job.Upstream, error) {
+	output := make([]*job.Upstream, len(responses))
 	for i, r := range responses {
 		dependency, err := o.toOptimusDependency(r, unresolvedDependency)
 		if err != nil {
@@ -107,7 +106,7 @@ func (o *optimusResourceManager) toOptimusDependencies(responses []jobSpecificat
 	return output, nil
 }
 
-func (o *optimusResourceManager) toOptimusDependency(response jobSpecificationResponse, unresolvedDependency *dto.RawDependency) (*job.Dependency, error) {
+func (o *optimusResourceManager) toOptimusDependency(response jobSpecificationResponse, unresolvedDependency *dto.RawUpstream) (*job.Upstream, error) {
 	jobTenant, err := tenant.NewTenant(response.ProjectName, response.NamespaceName)
 	if err != nil {
 		return nil, err
@@ -118,5 +117,5 @@ func (o *optimusResourceManager) toOptimusDependency(response jobSpecificationRe
 	} else {
 		dependencyType = "inferred"
 	}
-	return job.NewDependencyResolved(response.Job.Name, o.config.Host, unresolvedDependency.ResourceURN, jobTenant, dependencyType)
+	return job.NewUpstreamResolved(response.Job.Name, o.config.Host, unresolvedDependency.ResourceURN, jobTenant, dependencyType)
 }

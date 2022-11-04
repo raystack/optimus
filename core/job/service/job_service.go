@@ -14,19 +14,19 @@ import (
 type JobService struct {
 	repo JobRepository
 
-	pluginService      PluginService
-	dependencyResolver DependencyResolver
+	pluginService    PluginService
+	upstreamResolver UpstreamResolver
 
 	tenantDetailsGetter TenantDetailsGetter
 }
 
-func NewJobService(repo JobRepository, pluginService PluginService, dependencyResolver DependencyResolver, tenantDetailsGetter TenantDetailsGetter) *JobService {
-	return &JobService{repo: repo, pluginService: pluginService, dependencyResolver: dependencyResolver, tenantDetailsGetter: tenantDetailsGetter}
+func NewJobService(repo JobRepository, pluginService PluginService, upstreamResolver UpstreamResolver, tenantDetailsGetter TenantDetailsGetter) *JobService {
+	return &JobService{repo: repo, pluginService: pluginService, upstreamResolver: upstreamResolver, tenantDetailsGetter: tenantDetailsGetter}
 }
 
 type PluginService interface {
 	GenerateDestination(context.Context, *tenant.WithDetails, *job.Task) (string, error)
-	GenerateDependencies(ctx context.Context, jobTenant *tenant.WithDetails, spec *job.Spec, dryRun bool) ([]string, error)
+	GenerateUpstreams(ctx context.Context, jobTenant *tenant.WithDetails, spec *job.Spec, dryRun bool) ([]string, error)
 }
 
 type TenantDetailsGetter interface {
@@ -35,12 +35,12 @@ type TenantDetailsGetter interface {
 
 type JobRepository interface {
 	Add(ctx context.Context, jobs []*job.Job) (savedJobs []*job.Job, jobErrors error, err error)
-	GetJobNameWithInternalDependencies(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Dependency, error)
-	SaveDependency(ctx context.Context, jobsWithDependencies []*job.WithDependency) error
+	GetJobNameWithInternalUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error)
+	SaveUpstream(ctx context.Context, jobsWithUpsreams []*job.WithUpstream) error
 }
 
-type DependencyResolver interface {
-	Resolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) (jobWithDependencies []*job.WithDependency, dependencyErrors error, err error)
+type UpstreamResolver interface {
+	Resolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) (jobWithUpstreams []*job.WithUpstream, upstreamErrors error, err error)
 }
 
 func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) (jobErrors error, err error) {
@@ -72,15 +72,15 @@ func (j JobService) add(ctx context.Context, jobTenant tenant.Tenant, specs []*j
 		return jobErrors, err
 	}
 
-	jobsWithDependencies, dependencyErrors, err := j.dependencyResolver.Resolve(ctx, jobTenant.ProjectName(), jobs)
-	if dependencyErrors != nil {
-		jobErrors = multierror.Append(jobErrors, dependencyErrors)
+	jobsWithUpstreams, upstreamErrors, err := j.upstreamResolver.Resolve(ctx, jobTenant.ProjectName(), jobs)
+	if upstreamErrors != nil {
+		jobErrors = multierror.Append(jobErrors, upstreamErrors)
 	}
 	if err != nil {
 		return jobErrors, err
 	}
 
-	return jobErrors, j.repo.SaveDependency(ctx, jobsWithDependencies)
+	return jobErrors, j.repo.SaveUpstream(ctx, jobsWithUpstreams)
 }
 
 // TODO: instead of creating another list, lets just have a status in the spec that mark whether this job is skipped, or to_create
@@ -113,14 +113,14 @@ func (j JobService) createJobs(ctx context.Context, jobTenant tenant.Tenant, spe
 
 	for _, spec := range specs {
 		destination, err := j.pluginService.GenerateDestination(ctx, detailedJobTenant, spec.Task())
-		if err != nil && !errors.Is(err, ErrDependencyModNotFound) {
+		if err != nil && !errors.Is(err, ErrUpstreamModNotFound) {
 			errorMsg := fmt.Sprintf("unable to add %s: %s", spec.Name().String(), err.Error())
 			jobErrors = multierror.Append(jobErrors, errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg))
 			continue
 		}
 
-		sources, err := j.pluginService.GenerateDependencies(ctx, detailedJobTenant, spec, true)
-		if err != nil && !errors.Is(err, ErrDependencyModNotFound) {
+		sources, err := j.pluginService.GenerateUpstreams(ctx, detailedJobTenant, spec, true)
+		if err != nil && !errors.Is(err, ErrUpstreamModNotFound) {
 			errorMsg := fmt.Sprintf("unable to add %s: %s", spec.Name().String(), err.Error())
 			jobErrors = multierror.Append(jobErrors, errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg))
 			continue

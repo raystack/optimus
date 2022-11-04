@@ -73,7 +73,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			jobHooks := []*job.Hook{job.NewHook("sample_hook", jobHookConfig)}
 			jobAlertConfig := job.NewConfig(map[string]string{"sample_alert_key": "sample_value"})
 			jobAlerts := []*job.Alert{job.NewAlert(job.SLAMissEvent, []string{"sample-channel"}, jobAlertConfig.Config())}
-			jobDependencies := job.NewDependencySpec([]string{"job-upstream-1", "job-upstream-2"}, nil)
+			jobDependencies := job.NewSpecUpstream([]string{"job-upstream-1", "job-upstream-2"}, nil)
 			jobAssets := map[string]string{"sample-asset": "value-asset"}
 			resourceRequestConfig := job.NewResourceConfig("250m", "128Mi")
 			resourceLimitConfig := job.NewResourceConfig("500m", "1024Mi")
@@ -182,7 +182,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.Nil(t, jobErrors)
 			assert.Nil(t, err)
 
-			expectedDependency, _ := job.NewDependencyResolved(jobSpecB.Name().String(), "", jobB.Destination(), tenantDetails.ToTenant(), "inferred")
+			expectedDependency, _ := job.NewUpstreamResolved(jobSpecB.Name().String(), "", jobB.Destination(), tenantDetails.ToTenant(), "inferred")
 
 			dependencies, err := jobRepo.GetJobNameWithInternalDependencies(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
 			assert.Equal(t, expectedDependency, dependencies[jobSpecA.Name()][0])
@@ -193,7 +193,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			tenantDetails, err := tenant.NewTenantDetails(proj, namespace)
 			assert.Nil(t, err)
 
-			jobADependencies := job.NewDependencySpec([]string{"sample-job-B"}, nil)
+			jobADependencies := job.NewSpecUpstream([]string{"sample-job-B"}, nil)
 			jobSpecA, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, jobADependencies, nil, nil)
 			jobA := job.NewJob(jobSpecA, "dev.resource.sample_a", nil)
@@ -207,7 +207,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.Nil(t, jobErrors)
 			assert.Nil(t, err)
 
-			expectedDependency, _ := job.NewDependencyResolved(jobSpecB.Name().String(), "", jobB.Destination(), tenantDetails.ToTenant(), "static")
+			expectedDependency, _ := job.NewUpstreamResolved(jobSpecB.Name().String(), "", jobB.Destination(), tenantDetails.ToTenant(), "static")
 
 			dependencies, err := jobRepo.GetJobNameWithInternalDependencies(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
 			assert.Equal(t, expectedDependency, dependencies[jobSpecA.Name()][0])
@@ -218,7 +218,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			tenantDetails, err := tenant.NewTenantDetails(proj, namespace)
 			assert.Nil(t, err)
 
-			jobADependencies := job.NewDependencySpec([]string{"test-proj/sample-job-B"}, nil)
+			jobADependencies := job.NewSpecUpstream([]string{"test-proj/sample-job-B"}, nil)
 			jobSpecA, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, jobADependencies, nil, nil)
 			jobA := job.NewJob(jobSpecA, "dev.resource.sample_a", []string{"dev.resource.sample_c"})
@@ -236,10 +236,10 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.Nil(t, jobErrors)
 			assert.Nil(t, err)
 
-			dependencyB, _ := job.NewDependencyResolved(jobSpecB.Name().String(), "", jobB.Destination(), tenantDetails.ToTenant(), "static")
-			dependencyC, _ := job.NewDependencyResolved(jobSpecC.Name().String(), "", jobC.Destination(), tenantDetails.ToTenant(), "inferred")
+			dependencyB, _ := job.NewUpstreamResolved(jobSpecB.Name().String(), "", jobB.Destination(), tenantDetails.ToTenant(), "static")
+			dependencyC, _ := job.NewUpstreamResolved(jobSpecC.Name().String(), "", jobC.Destination(), tenantDetails.ToTenant(), "inferred")
 
-			expectedDependencies := []*job.Dependency{
+			expectedDependencies := []*job.Upstream{
 				dependencyB,
 				dependencyC,
 			}
@@ -257,34 +257,34 @@ func TestPostgresJobRepository(t *testing.T) {
 		t.Run("inserts job dependencies", func(t *testing.T) {
 			db := dbSetup()
 
-			dependencyB, err := job.NewDependencyResolved("jobB", host, "resource-B", sampleTenant, dependencyType)
+			dependencyB, err := job.NewUpstreamResolved("jobB", host, "resource-B", sampleTenant, dependencyType)
 			assert.Nil(t, err)
 
-			dependencyC, err := job.NewDependencyResolved("jobC", host, "resource-C", sampleTenant, dependencyType)
+			dependencyC, err := job.NewUpstreamResolved("jobC", host, "resource-C", sampleTenant, dependencyType)
 			assert.Nil(t, err)
 
-			dependencies := []*job.Dependency{dependencyB, dependencyC}
-			jobWithDependency := job.NewWithDependency(jobA, dependencies)
+			dependencies := []*job.Upstream{dependencyB, dependencyC}
+			jobWithDependency := job.NewWithUpstream(jobA, dependencies)
 
 			jobDependencyRepo := postgres.NewJobRepository(db)
-			assert.Nil(t, jobDependencyRepo.SaveDependency(ctx, []*job.WithDependency{jobWithDependency}))
+			assert.Nil(t, jobDependencyRepo.SaveDependency(ctx, []*job.WithUpstream{jobWithDependency}))
 		})
 		t.Run("inserts job dependencies including unresolved dependencies", func(t *testing.T) {
 			db := dbSetup()
 
-			dependencyB, err := job.NewDependencyResolved("jobB", host, "resource-B", sampleTenant, dependencyType)
+			dependencyB, err := job.NewUpstreamResolved("jobB", host, "resource-B", sampleTenant, dependencyType)
 			assert.Nil(t, err)
 
-			dependencyC, err := job.NewDependencyResolved("jobC", host, "resource-C", sampleTenant, dependencyType)
+			dependencyC, err := job.NewUpstreamResolved("jobC", host, "resource-C", sampleTenant, dependencyType)
 			assert.Nil(t, err)
 
-			dependencyD := job.NewDependencyUnresolved("", "resource-D", "")
+			dependencyD := job.NewUpstreamUnresolved("", "resource-D", "")
 
-			dependencies := []*job.Dependency{dependencyB, dependencyC, dependencyD}
-			jobWithDependency := job.NewWithDependency(jobA, dependencies)
+			dependencies := []*job.Upstream{dependencyB, dependencyC, dependencyD}
+			jobWithDependency := job.NewWithUpstream(jobA, dependencies)
 
 			jobDependencyRepo := postgres.NewJobRepository(db)
-			assert.Nil(t, jobDependencyRepo.SaveDependency(ctx, []*job.WithDependency{jobWithDependency}))
+			assert.Nil(t, jobDependencyRepo.SaveDependency(ctx, []*job.WithUpstream{jobWithDependency}))
 		})
 		t.Run("deletes existing job dependency and inserts", func(t *testing.T) {
 			db := dbSetup()
@@ -292,20 +292,20 @@ func TestPostgresJobRepository(t *testing.T) {
 			sampleTenant, err := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
 			assert.Nil(t, err)
 
-			dependencyB, err := job.NewDependencyResolved("jobB", host, "resource-B", sampleTenant, dependencyType)
+			dependencyB, err := job.NewUpstreamResolved("jobB", host, "resource-B", sampleTenant, dependencyType)
 			assert.Nil(t, err)
 
-			dependencies := []*job.Dependency{dependencyB}
-			jobWithDependency := job.NewWithDependency(jobA, dependencies)
+			dependencies := []*job.Upstream{dependencyB}
+			jobWithDependency := job.NewWithUpstream(jobA, dependencies)
 
 			jobDependencyRepo := postgres.NewJobRepository(db)
-			assert.Nil(t, jobDependencyRepo.SaveDependency(ctx, []*job.WithDependency{jobWithDependency}))
+			assert.Nil(t, jobDependencyRepo.SaveDependency(ctx, []*job.WithUpstream{jobWithDependency}))
 
-			dependencyC, err := job.NewDependencyResolved("jobC", host, "resource-C", sampleTenant, dependencyType)
-			dependencies = []*job.Dependency{dependencyC}
-			jobWithDependency = job.NewWithDependency(jobA, dependencies)
+			dependencyC, err := job.NewUpstreamResolved("jobC", host, "resource-C", sampleTenant, dependencyType)
+			dependencies = []*job.Upstream{dependencyC}
+			jobWithDependency = job.NewWithUpstream(jobA, dependencies)
 
-			assert.Nil(t, jobDependencyRepo.SaveDependency(ctx, []*job.WithDependency{jobWithDependency}))
+			assert.Nil(t, jobDependencyRepo.SaveDependency(ctx, []*job.WithUpstream{jobWithDependency}))
 		})
 	})
 }

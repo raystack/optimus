@@ -2,7 +2,6 @@ package resourcemanager_test
 
 import (
 	"context"
-	"github.com/odpf/optimus/core/job"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,6 +11,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/ext/resourcemanager"
@@ -37,7 +37,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		}
 
 		var ctx context.Context
-		var unresolvedDependency *dto.RawDependency
+		var unresolvedDependency *dto.RawUpstream
 
 		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
 
@@ -57,7 +57,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		}
 
 		ctx := context.Background()
-		unresolvedDependency := &dto.RawDependency{
+		unresolvedDependency := &dto.RawUpstream{
 			ProjectName: "test-proj",
 			JobName:     "job",
 			ResourceURN: "resource",
@@ -90,7 +90,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		})
 
 		ctx := context.Background()
-		unresolvedDependency := &dto.RawDependency{
+		unresolvedDependency := &dto.RawUpstream{
 			ProjectName: "test-proj",
 			JobName:     "job",
 			ResourceURN: "resource",
@@ -126,7 +126,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		})
 
 		ctx := context.Background()
-		unresolvedDependency := &dto.RawDependency{
+		unresolvedDependency := &dto.RawUpstream{
 			ProjectName: "test-proj",
 			JobName:     "job",
 			ResourceURN: "resource",
@@ -185,14 +185,14 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		})
 
 		ctx := context.Background()
-		unresolvedDependency := &dto.RawDependency{
+		unresolvedDependency := &dto.RawUpstream{
 			ProjectName: "test-proj",
 			JobName:     "job",
 			ResourceURN: "resource",
 		}
 
-		dependency, _ := job.NewDependencyResolved("job", server.URL, "resource", sampleTenant, "static")
-		expectedDependencies := []*job.Dependency{dependency}
+		dependency, _ := job.NewUpstreamResolved("job", server.URL, "resource", sampleTenant, "static")
+		expectedDependencies := []*job.Upstream{dependency}
 
 		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
 
@@ -255,14 +255,14 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		})
 
 		ctx := context.Background()
-		unresolvedDependency := &dto.RawDependency{
+		unresolvedDependency := &dto.RawUpstream{
 			ProjectName: "test-proj",
 			JobName:     "job",
 			ResourceURN: "resource",
 		}
 
-		dependency, _ := job.NewDependencyResolved("job", server.URL, "resource", sampleTenant, "static")
-		expectedDependencies := []*job.Dependency{dependency}
+		dependency, _ := job.NewUpstreamResolved("job", server.URL, "resource", sampleTenant, "static")
+		expectedDependencies := []*job.Upstream{dependency}
 
 		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
 

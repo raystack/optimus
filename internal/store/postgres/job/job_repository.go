@@ -104,7 +104,7 @@ AND project_name = ?
 	return spec, err
 }
 
-func (j JobRepository) GetJobNameWithInternalDependencies(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Dependency, error) {
+func (j JobRepository) GetJobNameWithInternalDependencies(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error) {
 	query := `
 WITH static_dependencies AS (
 	SELECT j.name, j.project_name, d.static_dependency
@@ -164,8 +164,8 @@ JOIN job j ON id.source = j.destination;
 	return j.toJobNameWithDependencies(storeJobsWithDependencies)
 }
 
-func (j JobRepository) toJobNameWithDependencies(storeJobsWithDependencies []JobWithDependency) (map[job.Name][]*job.Dependency, error) {
-	jobNameWithDependencies := make(map[job.Name][]*job.Dependency)
+func (j JobRepository) toJobNameWithDependencies(storeJobsWithDependencies []JobWithDependency) (map[job.Name][]*job.Upstream, error) {
+	jobNameWithDependencies := make(map[job.Name][]*job.Upstream)
 
 	dependenciesPerJobName := groupDependenciesPerJobFullName(storeJobsWithDependencies)
 	for _, storeDependencies := range dependenciesPerJobName {
@@ -190,8 +190,8 @@ func groupDependenciesPerJobFullName(dependencies []JobWithDependency) map[strin
 	return dependenciesMap
 }
 
-func (j JobRepository) toDependencies(storeDependencies []JobWithDependency) ([]*job.Dependency, error) {
-	var dependencies []*job.Dependency
+func (j JobRepository) toDependencies(storeDependencies []JobWithDependency) ([]*job.Upstream, error) {
+	var dependencies []*job.Upstream
 	for _, storeDependency := range storeDependencies {
 		if storeDependency.DependencyJobName == "" {
 			continue
@@ -200,7 +200,7 @@ func (j JobRepository) toDependencies(storeDependencies []JobWithDependency) ([]
 		if err != nil {
 			return nil, err
 		}
-		dependency, err := job.NewDependencyResolved(storeDependency.DependencyJobName, "", storeDependency.DependencyResourceURN, dependencyTenant, storeDependency.DependencyType)
+		dependency, err := job.NewUpstreamResolved(storeDependency.DependencyJobName, "", storeDependency.DependencyResourceURN, dependencyTenant, storeDependency.DependencyType)
 		dependencies = append(dependencies, dependency)
 	}
 	return dependencies, nil
@@ -222,7 +222,7 @@ func (j JobWithDependency) getJobFullName() string {
 	return j.ProjectName + "/" + j.JobName
 }
 
-func (j JobRepository) SaveDependency(ctx context.Context, jobsWithDependencies []*job.WithDependency) error {
+func (j JobRepository) SaveDependency(ctx context.Context, jobsWithDependencies []*job.WithUpstream) error {
 	var storageJobDependencies []*JobWithDependency
 	for _, jobWithDependencies := range jobsWithDependencies {
 		dependencies, err := toJobDependency(jobWithDependencies)
@@ -297,9 +297,9 @@ WHERE project_name || '/' || job_name in (?);
 	return nil
 }
 
-func toJobDependency(jobWithDependency *job.WithDependency) ([]*JobWithDependency, error) {
+func toJobDependency(jobWithDependency *job.WithUpstream) ([]*JobWithDependency, error) {
 	var jobDependencies []*JobWithDependency
-	for _, dependency := range jobWithDependency.Dependencies() {
+	for _, dependency := range jobWithDependency.Upstreams() {
 		var dependencyProjectName, dependencyNamespaceName string
 		if dependency.Tenant().ProjectName() != "" {
 			dependencyProjectName = dependency.Tenant().ProjectName().String()
@@ -317,8 +317,8 @@ func toJobDependency(jobWithDependency *job.WithDependency) ([]*JobWithDependenc
 			DependencyProjectName:   dependencyProjectName,
 			DependencyNamespaceName: dependencyNamespaceName,
 			DependencyHost:          dependency.Host(),
-			DependencyType:          dependency.DependencyType().String(),
-			DependencyState:         dependency.DependencyState().String(),
+			DependencyType:          dependency.Type().String(),
+			DependencyState:         dependency.State().String(),
 		})
 	}
 	return jobDependencies, nil
