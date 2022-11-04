@@ -28,8 +28,8 @@ OPTIMUS_SERVE_PORT= # default 9100
 + `optimus init`
 
 ### Mounting plugins and load secrets
-+ define plugin locations on `setup.yaml` under section `plugins`
-+ define key value pair secrets on `setup.yaml` under section `secrets`
++ define plugin artifacts on `setup.yaml` under section `plugins`
++ define key value pair of secrets on `setup.yaml` under section `secrets`
 + `make _setup`
 
 Some optional variable you can set alongside with `make _setup`
