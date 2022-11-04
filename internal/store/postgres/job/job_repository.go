@@ -301,14 +301,13 @@ func toJobDependency(jobWithDependency *job.WithUpstream) ([]*JobWithDependency,
 	var jobDependencies []*JobWithDependency
 	for _, dependency := range jobWithDependency.Upstreams() {
 		var dependencyProjectName, dependencyNamespaceName string
+		// TODO: re-check this implementation as project and namespace name is not supposed to be empty within a tenant
 		if dependency.Tenant().ProjectName() != "" {
 			dependencyProjectName = dependency.Tenant().ProjectName().String()
 		}
-		namespaceName, err := dependency.Tenant().NamespaceName()
-		if err != nil {
-			dependencyNamespaceName = namespaceName.String()
+		if dependency.Tenant().NamespaceName() != "" {
+			dependencyNamespaceName = dependency.Tenant().NamespaceName().String()
 		}
-
 		jobDependencies = append(jobDependencies, &JobWithDependency{
 			JobName:                 jobWithDependency.Name().String(),
 			ProjectName:             jobWithDependency.Job().ProjectName().String(),

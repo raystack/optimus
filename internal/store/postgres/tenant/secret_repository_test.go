@@ -253,7 +253,7 @@ func TestPostgresSecretRepository(t *testing.T) {
 			err = repo.Save(ctx, secret3)
 			assert.Nil(t, err)
 
-			secrets, err := repo.GetAll(ctx, proj.Name(), "")
+			secrets, err := repo.GetAll(ctx, proj.Name(), namespace.Name().String())
 			assert.Nil(t, err)
 
 			assert.Equal(t, 2, len(secrets))

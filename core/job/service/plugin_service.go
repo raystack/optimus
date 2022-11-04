@@ -11,13 +11,17 @@ import (
 	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/core/tenant/service"
 	"github.com/odpf/optimus/models"
 )
 
 var (
 	ErrUpstreamModNotFound = errors.New("upstream mod not found for plugin")
 )
+
+type SecretsGetter interface {
+	Get(ctx context.Context, ten tenant.Tenant, name string) (*tenant.PlainTextSecret, error)
+	GetAll(ctx context.Context, ten tenant.Tenant) ([]*tenant.PlainTextSecret, error)
+}
 
 type JobPluginService struct {
 	secretsGetter SecretsGetter
@@ -30,13 +34,8 @@ type JobPluginService struct {
 	logger log.Logger
 }
 
-func NewJobPluginService(secretsGetter service.SecretsGetter, pluginRepo models.PluginRepository, engine models.TemplateEngine, logger log.Logger) *JobPluginService {
+func NewJobPluginService(secretsGetter SecretsGetter, pluginRepo models.PluginRepository, engine models.TemplateEngine, logger log.Logger) *JobPluginService {
 	return &JobPluginService{secretsGetter: secretsGetter, pluginRepo: pluginRepo, engine: engine, logger: logger, now: time.Now}
-}
-
-type SecretsGetter interface {
-	Get(ctx context.Context, ten tenant.Tenant, name string) (*tenant.PlainTextSecret, error)
-	GetAll(ctx context.Context, ten tenant.Tenant) ([]*tenant.PlainTextSecret, error)
 }
 
 func (p JobPluginService) GenerateDestination(ctx context.Context, tnnt *tenant.WithDetails, task *job.Task) (string, error) {
