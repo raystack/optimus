@@ -52,11 +52,6 @@ type Secret struct {
 }
 
 func NewSecret(secret *tenant.Secret) Secret {
-	nsName := ""
-	if ns, err := secret.Tenant().NamespaceName(); err == nil {
-		nsName = ns.String()
-	}
-
 	// base64 for storing safely in db
 	base64cipher := base64.StdEncoding.EncodeToString([]byte(secret.EncodedValue()))
 
@@ -64,8 +59,8 @@ func NewSecret(secret *tenant.Secret) Secret {
 		Name:          secret.Name().String(),
 		Value:         base64cipher,
 		Type:          secret.Type().String(),
-		ProjectName:   secret.Tenant().ProjectName().String(),
-		NamespaceName: nsName,
+		ProjectName:   secret.ProjectName().String(),
+		NamespaceName: secret.NamespaceName(),
 	}
 }
 
@@ -76,7 +71,7 @@ func (s Secret) ToTenantSecret() (*tenant.Secret, error) {
 		return nil, err
 	}
 
-	t, err := tenant.NewTenant(s.ProjectName, s.NamespaceName)
+	projName, err := tenant.ProjectNameFrom(s.ProjectName)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +81,7 @@ func (s Secret) ToTenantSecret() (*tenant.Secret, error) {
 		return nil, err
 	}
 
-	return tenant.NewSecret(s.Name, typ, string(encrypted), t)
+	return tenant.NewSecret(s.Name, typ, string(encrypted), projName, s.NamespaceName)
 }
 
 func (s Secret) ToSecretInfo() (*dto.SecretInfo, error) {
@@ -112,10 +107,10 @@ func (s Secret) ToSecretInfo() (*dto.SecretInfo, error) {
 	}, nil
 }
 
-func (s SecretRepository) Save(ctx context.Context, t tenant.Tenant, tenantSecret *tenant.Secret) error {
+func (s SecretRepository) Save(ctx context.Context, tenantSecret *tenant.Secret) error {
 	secret := NewSecret(tenantSecret)
 
-	_, err := s.get(ctx, t, tenantSecret.Name())
+	_, err := s.get(ctx, tenantSecret.ProjectName(), tenantSecret.Name())
 	if err == nil {
 		return errors.NewError(errors.ErrAlreadyExists, tenant.EntitySecret, "secret already exists")
 	}
@@ -141,10 +136,10 @@ FROM cte_tenant t`
 	return nil
 }
 
-func (s SecretRepository) Update(ctx context.Context, t tenant.Tenant, tenantSecret *tenant.Secret) error {
+func (s SecretRepository) Update(ctx context.Context, tenantSecret *tenant.Secret) error {
 	secret := NewSecret(tenantSecret)
 
-	_, err := s.get(ctx, t, tenantSecret.Name())
+	_, err := s.get(ctx, tenantSecret.ProjectName(), tenantSecret.Name())
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.NotFound(tenant.EntitySecret, "unable to update, secret not found for "+tenantSecret.Name().String())
@@ -167,12 +162,8 @@ WHERE p.name = ? AND s.name=?`
 }
 
 // Get is scoped to the tenant provided in the argument
-func (s SecretRepository) Get(ctx context.Context, t tenant.Tenant, name tenant.SecretName) (*tenant.Secret, error) {
+func (s SecretRepository) Get(ctx context.Context, projName tenant.ProjectName, nsName string, name tenant.SecretName) (*tenant.Secret, error) {
 	var secret Secret
-	namespaceName := ""
-	if ns, err := t.NamespaceName(); err == nil {
-		namespaceName = ns.String()
-	}
 
 	getSecretByNameQuery := secretCTE + `SELECT s.id, s.name, s.value, s.type, t.project_name, t.namespace_name, s.created_at, s.updated_at
 FROM secret s
@@ -180,7 +171,7 @@ FROM secret s
         ON t.project_id = s.project_id
         AND (t.namespace_id IS NULL OR s.namespace_id IS NULL OR t.namespace_id = s.namespace_id )
 WHERE s.name = ?`
-	err := s.db.WithContext(ctx).Raw(getSecretByNameQuery, namespaceName, t.ProjectName().String(), name).
+	err := s.db.WithContext(ctx).Raw(getSecretByNameQuery, nsName, projName.String(), name).
 		First(&secret).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -193,7 +184,7 @@ WHERE s.name = ?`
 }
 
 // get is scoped only at project level, used for db operations
-func (s SecretRepository) get(ctx context.Context, t tenant.Tenant, name tenant.SecretName) (Secret, error) { // nolint: unparam
+func (s SecretRepository) get(ctx context.Context, projName tenant.ProjectName, name tenant.SecretName) (Secret, error) { // nolint: unparam
 	var secret Secret
 
 	getSecretByNameAtProject := `SELECT s.name
@@ -203,27 +194,27 @@ ON p.id = s.project_id
 WHERE s.name = ?
 AND p.name = ?
 `
-	err := s.db.WithContext(ctx).Raw(getSecretByNameAtProject, name.String(), t.ProjectName().String()).
+	err := s.db.WithContext(ctx).Raw(getSecretByNameAtProject, name.String(), projName.String()).
 		First(&secret).Error
 
 	return secret, err
 }
 
-func (s SecretRepository) GetAll(ctx context.Context, t tenant.Tenant) ([]*tenant.Secret, error) {
+func (s SecretRepository) GetAll(ctx context.Context, projName tenant.ProjectName, nsName string) ([]*tenant.Secret, error) {
 	var secrets []Secret
 	var queryErr error
 
-	if nsName, err := t.NamespaceName(); err == nil {
+	if nsName != "" {
 		getAllSecretsAvailableForNamespace := `SELECT ` + secretColumns + `
 FROM secret s
 	JOIN project p ON p.id = s.project_id
 	LEFT JOIN namespace n ON n.id = s.namespace_id
 WHERE p.name = ?
 AND (s.namespace_id IS NULL or n.name = ?)`
-		queryErr = s.db.WithContext(ctx).Raw(getAllSecretsAvailableForNamespace, t.ProjectName().String(), nsName.String()).
+		queryErr = s.db.WithContext(ctx).Raw(getAllSecretsAvailableForNamespace, projName.String(), nsName).
 			Scan(&secrets).Error
 	} else {
-		queryErr = s.db.WithContext(ctx).Raw(getAllSecretsInProject, t.ProjectName().String()).
+		queryErr = s.db.WithContext(ctx).Raw(getAllSecretsInProject, projName.String()).
 			Scan(&secrets).Error
 	}
 	if queryErr != nil {
@@ -243,16 +234,16 @@ AND (s.namespace_id IS NULL or n.name = ?)`
 }
 
 // Delete will not support soft delete, once deleted it has to be created again
-func (s SecretRepository) Delete(ctx context.Context, t tenant.Tenant, name tenant.SecretName) error {
+func (s SecretRepository) Delete(ctx context.Context, projName tenant.ProjectName, nsName string, name tenant.SecretName) error {
 	var result *gorm.DB
-	if ns, err := t.NamespaceName(); err == nil {
+	if nsName != "" {
 		deleteForNamespaceScope := secretCTE + `DELETE
 FROM secret s
 USING cte_tenant t
 WHERE s.name = ?
 AND s.project_id = t.project_id
 AND s.namespace_id = t.namespace_id`
-		result = s.db.WithContext(ctx).Exec(deleteForNamespaceScope, ns.String(), t.ProjectName().String(), name.String())
+		result = s.db.WithContext(ctx).Exec(deleteForNamespaceScope, nsName, projName.String(), name.String())
 	} else {
 		deleteForProjectScope := `DELETE
 FROM secret s
@@ -261,7 +252,7 @@ WHERE p.name = ?
 AND s.name = ?
 AND s.project_id = p.id
 AND s.namespace_id IS NULL`
-		result = s.db.WithContext(ctx).Exec(deleteForProjectScope, t.ProjectName().String(), name)
+		result = s.db.WithContext(ctx).Exec(deleteForProjectScope, projName.String(), name)
 	}
 
 	if result.Error != nil {
@@ -274,9 +265,9 @@ AND s.namespace_id IS NULL`
 	return nil
 }
 
-func (s SecretRepository) GetSecretsInfo(ctx context.Context, t tenant.Tenant) ([]*dto.SecretInfo, error) {
+func (s SecretRepository) GetSecretsInfo(ctx context.Context, projName tenant.ProjectName) ([]*dto.SecretInfo, error) {
 	var secrets []Secret
-	if err := s.db.WithContext(ctx).Raw(getAllSecretsInProject, t.ProjectName().String()).
+	if err := s.db.WithContext(ctx).Raw(getAllSecretsInProject, projName.String()).
 		Scan(&secrets).Error; err != nil {
 		return nil, errors.Wrap(tenant.EntitySecret, "unable to get information about secrets", err)
 	}

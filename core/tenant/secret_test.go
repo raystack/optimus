@@ -48,35 +48,37 @@ func TestEntitySecret(t *testing.T) {
 			})
 		})
 		t.Run("returns error when name is empty", func(t *testing.T) {
-			_, err := tenant.NewSecret("", tenant.UserDefinedSecret, "", tenant.Tenant{})
+			_, err := tenant.NewSecret("", tenant.UserDefinedSecret, "", "", "")
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity secret: secret name is empty")
 		})
 		t.Run("returns error when type is invalid", func(t *testing.T) {
-			_, err := tenant.NewSecret("name", "unknown", "", tenant.Tenant{})
+			_, err := tenant.NewSecret("name", "unknown", "", "", "")
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity secret: invalid secret type")
 		})
 		t.Run("returns error when encodedValue is empty", func(t *testing.T) {
-			_, err := tenant.NewSecret("name", tenant.UserDefinedSecret, "", tenant.Tenant{})
+			_, err := tenant.NewSecret("name", tenant.UserDefinedSecret, "", "", "")
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity secret: empty encoded secret")
 		})
 		t.Run("returns error when tenant is invalid", func(t *testing.T) {
-			_, err := tenant.NewSecret("name", tenant.UserDefinedSecret, "encoded==", tenant.Tenant{})
+			_, err := tenant.NewSecret("name", tenant.UserDefinedSecret, "encoded==", "", "")
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity secret: invalid tenant details")
 		})
 		t.Run("returns secret", func(t *testing.T) {
-			tnnt, _ := tenant.NewTenant("test-project", "test-ns")
+			projName, _ := tenant.ProjectNameFrom("test-project")
+			nsName := "test-ns"
 
-			s, err := tenant.NewSecret("name", tenant.UserDefinedSecret, "encoded==", tnnt)
+			s, err := tenant.NewSecret("name", tenant.UserDefinedSecret, "encoded==", projName, nsName)
 
 			assert.Nil(t, err)
 			assert.Equal(t, "name", s.Name().String())
 			assert.Equal(t, "user", s.Type().String())
 			assert.Equal(t, "encoded==", s.EncodedValue())
-			assert.Equal(t, tnnt, s.Tenant())
+			assert.Equal(t, projName.String(), s.ProjectName().String())
+			assert.Equal(t, nsName, s.NamespaceName())
 		})
 	})
 }

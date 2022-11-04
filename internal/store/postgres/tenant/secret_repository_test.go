@@ -49,106 +49,104 @@ func TestPostgresSecretRepository(t *testing.T) {
 	t.Run("Save", func(t *testing.T) {
 		t.Run("inserts the secret without namespace set", func(t *testing.T) {
 			db := dbSetup()
-			projectOnlyTenant, _ := tenant.NewTenant(proj.Name().String(), "")
 
-			validSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret, "abcd", projectOnlyTenant)
+			validSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret, "abcd", proj.Name(), "")
 			assert.Nil(t, err)
 
 			repo := postgres.NewSecretRepository(db)
 
-			err = repo.Save(ctx, projectOnlyTenant, validSecret)
+			err = repo.Save(ctx, validSecret)
 			assert.Nil(t, err)
 
-			secret, err := repo.Get(ctx, projectOnlyTenant, validSecret.Name())
+			secret, err := repo.Get(ctx, proj.Name(), "", validSecret.Name())
 			assert.Nil(t, err)
 			assert.Equal(t, validSecret.Name(), secret.Name())
 			assert.Equal(t, tenant.UserDefinedSecret, secret.Type())
 			assert.Equal(t, validSecret.EncodedValue(), secret.EncodedValue())
 
-			_, err = secret.Tenant().NamespaceName()
-			assert.NotNil(t, err)
+			nsName := secret.NamespaceName()
+			assert.Equal(t, "", nsName)
 		})
 		t.Run("inserts the secret with namespace set", func(t *testing.T) {
 			db := dbSetup()
-			tnnt, _ := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
 
-			validSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret, "abcd", tnnt)
+			validSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret, "abcd",
+				proj.Name(), namespace.Name().String())
 			assert.Nil(t, err)
 
 			repo := postgres.NewSecretRepository(db)
 
-			err = repo.Save(ctx, tnnt, validSecret)
+			err = repo.Save(ctx, validSecret)
 			assert.Nil(t, err)
 
-			secret, err := repo.Get(ctx, tnnt, validSecret.Name())
+			secret, err := repo.Get(ctx, proj.Name(), namespace.Name().String(), validSecret.Name())
 			assert.Nil(t, err)
 			assert.Equal(t, validSecret.Name(), secret.Name())
 			assert.Equal(t, tenant.UserDefinedSecret, secret.Type())
 			assert.Equal(t, validSecret.EncodedValue(), secret.EncodedValue())
 
-			ns, err := secret.Tenant().NamespaceName()
-			assert.Nil(t, err)
-			assert.Equal(t, namespace.Name().String(), ns.String())
+			assert.Equal(t, namespace.Name().String(), secret.NamespaceName())
 		})
 		t.Run("returns error when same secret is inserted twice", func(t *testing.T) {
 			db := dbSetup()
-			tnnt, _ := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
 
-			validSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret, "abcd", tnnt)
+			validSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret,
+				"abcd", proj.Name(), namespace.Name().String())
 			assert.Nil(t, err)
 
 			repo := postgres.NewSecretRepository(db)
 
-			err = repo.Save(ctx, tnnt, validSecret)
+			err = repo.Save(ctx, validSecret)
 			assert.Nil(t, err)
 
-			secret, err := repo.Get(ctx, tnnt, validSecret.Name())
+			secret, err := repo.Get(ctx, proj.Name(), namespace.Name().String(), validSecret.Name())
 			assert.Nil(t, err)
 			assert.Equal(t, validSecret.Name(), secret.Name())
 
-			err = repo.Save(ctx, tnnt, validSecret)
+			err = repo.Save(ctx, validSecret)
 			assert.NotNil(t, err)
 		})
 	})
 	t.Run("Update", func(t *testing.T) {
 		t.Run("updates an already existing resource", func(t *testing.T) {
 			db := dbSetup()
-			tnnt, _ := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
 
-			validSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret, "abcd", tnnt)
+			validSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret,
+				"abcd", proj.Name(), namespace.Name().String())
 			assert.Nil(t, err)
 
 			repo := postgres.NewSecretRepository(db)
 
-			err = repo.Save(ctx, tnnt, validSecret)
+			err = repo.Save(ctx, validSecret)
 			assert.Nil(t, err)
 
-			secret, err := repo.Get(ctx, tnnt, validSecret.Name())
+			secret, err := repo.Get(ctx, proj.Name(), namespace.Name().String(), validSecret.Name())
 			assert.Nil(t, err)
 			assert.Equal(t, validSecret.Name(), secret.Name())
 			assert.Equal(t, validSecret.EncodedValue(), secret.EncodedValue())
 
-			updatedSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret, "efgh", tnnt)
+			updatedSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret,
+				"efgh", proj.Name(), namespace.Name().String())
 			assert.Nil(t, err)
 
-			err = repo.Update(ctx, tnnt, updatedSecret)
+			err = repo.Update(ctx, updatedSecret)
 			assert.Nil(t, err)
 
-			updated, err := repo.Get(ctx, tnnt, validSecret.Name())
+			updated, err := repo.Get(ctx, proj.Name(), namespace.Name().String(), validSecret.Name())
 			assert.Nil(t, err)
 			assert.Equal(t, updatedSecret.Name(), updated.Name())
 			assert.Equal(t, updatedSecret.EncodedValue(), updated.EncodedValue())
 		})
 		t.Run("returns error when secret does not exist", func(t *testing.T) {
 			db := dbSetup()
-			tnnt, _ := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
 
 			repo := postgres.NewSecretRepository(db)
 
-			updatedSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret, "efgh", tnnt)
+			updatedSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret,
+				"efgh", proj.Name(), namespace.Name().String())
 			assert.Nil(t, err)
 
-			err = repo.Update(ctx, tnnt, updatedSecret)
+			err = repo.Update(ctx, updatedSecret)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "not found for entity secret: unable to update, secret not found for secret_name")
 		})
@@ -156,40 +154,37 @@ func TestPostgresSecretRepository(t *testing.T) {
 	t.Run("Get", func(t *testing.T) {
 		t.Run("returns error when record is not present", func(t *testing.T) {
 			db := dbSetup()
-			tnnt, _ := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
 
-			validSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret, "abcd", tnnt)
+			validSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret,
+				"abcd", proj.Name(), namespace.Name().String())
 			assert.Nil(t, err)
 
 			repo := postgres.NewSecretRepository(db)
 
-			_, err = repo.Get(ctx, tnnt, validSecret.Name())
+			_, err = repo.Get(ctx, proj.Name(), namespace.Name().String(), validSecret.Name())
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "not found for entity secret: no record for secret_name")
 		})
 		t.Run("returns the secret when present", func(t *testing.T) {
 			db := dbSetup()
-			tnnt, _ := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
 
-			validSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret, "abcd", tnnt)
+			validSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret,
+				"abcd", proj.Name(), namespace.Name().String())
 			assert.Nil(t, err)
 
 			repo := postgres.NewSecretRepository(db)
 
-			err = repo.Save(ctx, tnnt, validSecret)
+			err = repo.Save(ctx, validSecret)
 			assert.Nil(t, err)
 
-			secret, err := repo.Get(ctx, tnnt, validSecret.Name())
+			secret, err := repo.Get(ctx, proj.Name(), namespace.Name().String(), validSecret.Name())
 			assert.Nil(t, err)
 			assert.Equal(t, validSecret.Name(), secret.Name())
 			assert.Equal(t, tenant.UserDefinedSecret, secret.Type())
 			assert.Equal(t, validSecret.EncodedValue(), secret.EncodedValue())
 
-			assert.Equal(t, proj.Name().String(), secret.Tenant().ProjectName().String())
-
-			ns, err := secret.Tenant().NamespaceName()
-			assert.Nil(t, err)
-			assert.Equal(t, namespace.Name().String(), ns.String())
+			assert.Equal(t, proj.Name().String(), secret.ProjectName().String())
+			assert.Equal(t, namespace.Name().String(), secret.NamespaceName())
 		})
 		t.Run("should get all the secrets info for a project", func(t *testing.T) {
 			db := dbSetup()
@@ -220,25 +215,25 @@ func TestPostgresSecretRepository(t *testing.T) {
 
 			repo := postgres.NewSecretRepository(db)
 
-			tnnt1, _ := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
-			secret1, err := tenant.NewSecret("secret_name1", tenant.UserDefinedSecret, "abcd", tnnt1)
+			secret1, err := tenant.NewSecret("secret_name1", tenant.UserDefinedSecret,
+				"abcd", proj.Name(), namespace.Name().String())
 			assert.Nil(t, err)
-			err = repo.Save(ctx, tnnt1, secret1)
-			assert.Nil(t, err)
-
-			tnnt2, _ := tenant.NewTenant(proj.Name().String(), otherNamespace.Name().String())
-			secret2, err := tenant.NewSecret("secret_name2", tenant.UserDefinedSecret, "abcd", tnnt2)
-			assert.Nil(t, err)
-			err = repo.Save(ctx, tnnt2, secret2)
+			err = repo.Save(ctx, secret1)
 			assert.Nil(t, err)
 
-			projectScope, _ := tenant.NewTenant(proj.Name().String(), "")
-			secret3, err := tenant.NewSecret("secret_name3", tenant.UserDefinedSecret, "abcd", projectScope)
+			secret2, err := tenant.NewSecret("secret_name2", tenant.UserDefinedSecret,
+				"abcd", proj.Name(), otherNamespace.Name().String())
 			assert.Nil(t, err)
-			err = repo.Save(ctx, projectScope, secret3)
+			err = repo.Save(ctx, secret2)
 			assert.Nil(t, err)
 
-			secrets, err := repo.GetAll(ctx, projectScope)
+			secret3, err := tenant.NewSecret("secret_name3", tenant.UserDefinedSecret,
+				"abcd", proj.Name(), "")
+			assert.Nil(t, err)
+			err = repo.Save(ctx, secret3)
+			assert.Nil(t, err)
+
+			secrets, err := repo.GetAll(ctx, proj.Name(), "")
 			assert.Nil(t, err)
 
 			assert.Equal(t, 3, len(secrets))
@@ -252,25 +247,25 @@ func TestPostgresSecretRepository(t *testing.T) {
 
 			repo := postgres.NewSecretRepository(db)
 
-			tnnt1, _ := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
-			secret1, err := tenant.NewSecret("secret_name1", tenant.UserDefinedSecret, "abcd", tnnt1)
+			secret1, err := tenant.NewSecret("secret_name1", tenant.UserDefinedSecret,
+				"abcd", proj.Name(), namespace.Name().String())
 			assert.Nil(t, err)
-			err = repo.Save(ctx, tnnt1, secret1)
-			assert.Nil(t, err)
-
-			tnnt2, _ := tenant.NewTenant(proj.Name().String(), otherNamespace.Name().String())
-			secret2, err := tenant.NewSecret("secret_name2", tenant.UserDefinedSecret, "abcd", tnnt2)
-			assert.Nil(t, err)
-			err = repo.Save(ctx, tnnt2, secret2)
+			err = repo.Save(ctx, secret1)
 			assert.Nil(t, err)
 
-			projectScope, _ := tenant.NewTenant(proj.Name().String(), "")
-			secret3, err := tenant.NewSecret("secret_name3", tenant.UserDefinedSecret, "abcd", projectScope)
+			secret2, err := tenant.NewSecret("secret_name2", tenant.UserDefinedSecret,
+				"abcd", proj.Name(), otherNamespace.Name().String())
 			assert.Nil(t, err)
-			err = repo.Save(ctx, projectScope, secret3)
+			err = repo.Save(ctx, secret2)
 			assert.Nil(t, err)
 
-			secrets, err := repo.GetAll(ctx, tnnt1)
+			secret3, err := tenant.NewSecret("secret_name3", tenant.UserDefinedSecret,
+				"abcd", proj.Name(), "")
+			assert.Nil(t, err)
+			err = repo.Save(ctx, secret3)
+			assert.Nil(t, err)
+
+			secrets, err := repo.GetAll(ctx, proj.Name(), "")
 			assert.Nil(t, err)
 
 			assert.Equal(t, 2, len(secrets))
@@ -282,50 +277,50 @@ func TestPostgresSecretRepository(t *testing.T) {
 	t.Run("Delete", func(t *testing.T) {
 		t.Run("deletes the secret for namespace", func(t *testing.T) {
 			db := dbSetup()
-			tnnt, _ := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
 
-			validSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret, "abcd", tnnt)
+			validSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret,
+				"abcd", proj.Name(), namespace.Name().String())
 			assert.Nil(t, err)
 
 			repo := postgres.NewSecretRepository(db)
 
-			err = repo.Save(ctx, tnnt, validSecret)
+			err = repo.Save(ctx, validSecret)
 			assert.Nil(t, err)
 
-			err = repo.Delete(ctx, tnnt, validSecret.Name())
+			err = repo.Delete(ctx, proj.Name(), namespace.Name().String(), validSecret.Name())
 			assert.Nil(t, err)
 
-			_, err = repo.Get(ctx, tnnt, validSecret.Name())
+			_, err = repo.Get(ctx, proj.Name(), namespace.Name().String(), validSecret.Name())
 			assert.NotNil(t, err)
 		})
 		t.Run("deletes the secret for project", func(t *testing.T) {
 			db := dbSetup()
-			tnnt, _ := tenant.NewTenant(proj.Name().String(), "")
 
-			validSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret, "abcd", tnnt)
+			validSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret,
+				"abcd", proj.Name(), "")
 			assert.Nil(t, err)
 
 			repo := postgres.NewSecretRepository(db)
 
-			err = repo.Save(ctx, tnnt, validSecret)
+			err = repo.Save(ctx, validSecret)
 			assert.Nil(t, err)
 
-			err = repo.Delete(ctx, tnnt, validSecret.Name())
+			err = repo.Delete(ctx, proj.Name(), "", validSecret.Name())
 			assert.Nil(t, err)
 
-			_, err = repo.Get(ctx, tnnt, validSecret.Name())
+			_, err = repo.Get(ctx, proj.Name(), "", validSecret.Name())
 			assert.NotNil(t, err)
 		})
 		t.Run("returns error when non existing is deleted", func(t *testing.T) {
 			db := dbSetup()
-			tnnt, _ := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
 
-			validSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret, "abcd", tnnt)
+			validSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret,
+				"abcd", proj.Name(), namespace.Name().String())
 			assert.Nil(t, err)
 
 			repo := postgres.NewSecretRepository(db)
 
-			err = repo.Delete(ctx, tnnt, validSecret.Name())
+			err = repo.Delete(ctx, proj.Name(), namespace.Name().String(), validSecret.Name())
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "not found for entity secret: secret to delete not found secret_name")
 		})
@@ -336,30 +331,30 @@ func TestPostgresSecretRepository(t *testing.T) {
 
 			repo := postgres.NewSecretRepository(db)
 
-			tnnt1, _ := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
-			secret1, err := tenant.NewSecret("secret_name1", tenant.UserDefinedSecret, "abcd", tnnt1)
+			secret1, err := tenant.NewSecret("secret_name1", tenant.UserDefinedSecret,
+				"abcd", proj.Name(), namespace.Name().String())
 			assert.Nil(t, err)
-			err = repo.Save(ctx, tnnt1, secret1)
-			assert.Nil(t, err)
-
-			tnnt2, _ := tenant.NewTenant(proj.Name().String(), otherNamespace.Name().String())
-			secret2, err := tenant.NewSecret("secret_name2", tenant.UserDefinedSecret, "abcd", tnnt2)
-			assert.Nil(t, err)
-			err = repo.Save(ctx, tnnt2, secret2)
+			err = repo.Save(ctx, secret1)
 			assert.Nil(t, err)
 
-			projectScope, _ := tenant.NewTenant(proj.Name().String(), "")
-			secret3, err := tenant.NewSecret("secret_name3", tenant.UserDefinedSecret, "abcd", projectScope)
+			secret2, err := tenant.NewSecret("secret_name2", tenant.UserDefinedSecret,
+				"abcd", proj.Name(), otherNamespace.Name().String())
 			assert.Nil(t, err)
-			err = repo.Save(ctx, projectScope, secret3)
+			err = repo.Save(ctx, secret2)
 			assert.Nil(t, err)
 
-			projScopeSecrets, err := repo.GetSecretsInfo(ctx, projectScope)
+			secret3, err := tenant.NewSecret("secret_name3", tenant.UserDefinedSecret,
+				"abcd", proj.Name(), "")
+			assert.Nil(t, err)
+			err = repo.Save(ctx, secret3)
+			assert.Nil(t, err)
+
+			projScopeSecrets, err := repo.GetSecretsInfo(ctx, proj.Name())
 			assert.Nil(t, err)
 			assert.Equal(t, 3, len(projScopeSecrets))
 
 			// returns only at project scope, ignores the namespace
-			secretsInfo, err := repo.GetSecretsInfo(ctx, tnnt1)
+			secretsInfo, err := repo.GetSecretsInfo(ctx, proj.Name())
 			assert.Nil(t, err)
 			assert.Equal(t, 3, len(secretsInfo))
 
