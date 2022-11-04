@@ -143,11 +143,6 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		}
 	}
 
-	nsName, err := jobSpec.Tenant().NamespaceName()
-	if err != nil {
-		return nil, err
-	}
-
 	sources := make([]string, len(jobEntity.Sources()))
 	for i, source := range jobEntity.Sources() {
 		sources[i] = source
@@ -186,8 +181,8 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		Destination: jobEntity.Destination(),
 		Sources:     sources,
 
-		NamespaceName: nsName.String(),
 		ProjectName:   jobSpec.Tenant().ProjectName().String(),
+		NamespaceName: jobSpec.Tenant().NamespaceName().String(),
 	}, nil
 }
 
