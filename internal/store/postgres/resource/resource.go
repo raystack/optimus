@@ -31,10 +31,6 @@ type Resource struct {
 }
 
 func fromResourceToModel(r *resource.Resource) *Resource {
-	var namespaceName string
-	if name, err := r.Tenant().NamespaceName(); err == nil {
-		namespaceName = name.String()
-	}
 	metadata, _ := json.Marshal(r.Metadata())
 	spec, _ := json.Marshal(r.Spec())
 	return &Resource{
@@ -42,7 +38,7 @@ func fromResourceToModel(r *resource.Resource) *Resource {
 		Kind:          r.Kind().String(),
 		Store:         r.Dataset().Store.String(),
 		ProjectName:   r.Tenant().ProjectName().String(),
-		NamespaceName: namespaceName,
+		NamespaceName: r.Tenant().NamespaceName().String(),
 		Metadata:      metadata,
 		Spec:          spec,
 		URN:           r.URN(),

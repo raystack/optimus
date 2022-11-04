@@ -201,19 +201,17 @@ func TestPostgresSecretRepository(t *testing.T) {
 
 			repo := postgres.NewSecretRepository(db)
 
-			tnnt1, _ := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
-			secret1, err := tenant.NewSecret("secret_name1", tenant.UserDefinedSecret, "abcd", tnnt1)
+			secret1, err := tenant.NewSecret("secret_name1", tenant.UserDefinedSecret, "abcd", proj.Name(), namespace.Name().String())
 			assert.Nil(t, err)
-			err = repo.Save(ctx, tnnt1, secret1)
-			assert.Nil(t, err)
-
-			projectScope, _ := tenant.NewTenant(proj.Name().String(), "")
-			secret2, err := tenant.NewSecret("secret_name3", tenant.UserDefinedSecret, "abcd", projectScope)
-			assert.Nil(t, err)
-			err = repo.Save(ctx, projectScope, secret2)
+			err = repo.Save(ctx, secret1)
 			assert.Nil(t, err)
 
-			secret, err := repo.Get(ctx, tnnt1, "secret_name3")
+			secret2, err := tenant.NewSecret("secret_name3", tenant.UserDefinedSecret, "abcd", proj.Name(), namespace.Name().String())
+			assert.Nil(t, err)
+			err = repo.Save(ctx, secret2)
+			assert.Nil(t, err)
+
+			secret, err := repo.Get(ctx, proj.Name(), namespace.Name().String(), "secret_name3")
 			assert.NoError(t, err)
 			assert.NotNil(t, secret)
 			assert.Equal(t, "secret_name3", secret.Name().String())
@@ -275,7 +273,7 @@ func TestPostgresSecretRepository(t *testing.T) {
 			err = repo.Save(ctx, secret3)
 			assert.Nil(t, err)
 
-			secrets, err := repo.GetAll(ctx, proj.Name(), "")
+			secrets, err := repo.GetAll(ctx, proj.Name(), namespace.Name().String())
 			assert.Nil(t, err)
 
 			assert.Equal(t, 2, len(secrets))

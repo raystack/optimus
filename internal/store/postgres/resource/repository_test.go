@@ -291,10 +291,6 @@ func insertAllToDB(db *gorm.DB, rs []*serviceResource.Resource) error {
 }
 
 func fromResourceToModel(r *serviceResource.Resource) *repoResource.Resource {
-	var namespaceName string
-	if name, err := r.Tenant().NamespaceName(); err == nil {
-		namespaceName = name.String()
-	}
 	metadata, _ := json.Marshal(r.Metadata())
 	spec, _ := json.Marshal(r.Spec())
 	return &repoResource.Resource{
@@ -302,7 +298,7 @@ func fromResourceToModel(r *serviceResource.Resource) *repoResource.Resource {
 		Kind:          r.Kind().String(),
 		Store:         r.Dataset().Store.String(),
 		ProjectName:   r.Tenant().ProjectName().String(),
-		NamespaceName: namespaceName,
+		NamespaceName: r.Tenant().NamespaceName().String(),
 		Metadata:      metadata,
 		Spec:          spec,
 		URN:           r.URN(),

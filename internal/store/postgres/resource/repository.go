@@ -31,11 +31,7 @@ func (r Repository) Update(ctx context.Context, res *resource.Resource) error {
 }
 
 func (r Repository) ReadByFullName(ctx context.Context, tnnt tenant.Tenant, store resource.Store, fullName string) (*resource.Resource, error) {
-	var namespaceName string
-	if name, err := tnnt.NamespaceName(); err == nil {
-		namespaceName = name.String()
-	}
-	res, err := r.readByFullName(r.db.WithContext(ctx), tnnt.ProjectName().String(), namespaceName, store.String(), fullName)
+	res, err := r.readByFullName(r.db.WithContext(ctx), tnnt.ProjectName().String(), tnnt.NamespaceName().String(), store.String(), fullName)
 	if err != nil {
 		return nil, err
 	}
@@ -43,14 +39,10 @@ func (r Repository) ReadByFullName(ctx context.Context, tnnt tenant.Tenant, stor
 }
 
 func (r Repository) ReadAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error) {
-	namespaceName, err := tnnt.NamespaceName()
-	if err != nil {
-		return nil, err
-	}
 	var resources []*Resource
 	if err := r.db.WithContext(ctx).
 		Where("project_name = ? and namespace_name = ? and store = ?",
-			tnnt.ProjectName().String(), namespaceName.String(), store.String(),
+			tnnt.ProjectName().String(), tnnt.NamespaceName().String(), store.String(),
 		).Find(&resources).Error; err != nil {
 		return nil, errors.Wrap(resource.EntityResource, "error reading from database", err)
 	}
