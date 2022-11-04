@@ -27,12 +27,6 @@ const (
 type GRPCClient struct {
 	client pbp.DependencyResolverModServiceClient
 	logger hclog.Logger
-
-	name string
-}
-
-func (m *GRPCClient) SetName(name string) {
-	m.name = name
 }
 
 func (m *GRPCClient) GetName(ctx context.Context) (string, error) {
@@ -141,5 +135,5 @@ func (m *GRPCClient) makeFatalOnConnErr(err error) {
 		return
 	}
 	m.logger.Error(fmt.Sprintf("Core communication failed with plugin: \n%+v", err))
-	m.logger.Error(fmt.Sprintf("Exiting application, plugin crashed %s", m.name))
+	m.logger.Error(fmt.Sprintf("Exiting application, plugin crashed"))
 }

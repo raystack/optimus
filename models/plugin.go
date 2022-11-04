@@ -492,7 +492,7 @@ func (s *registeredPlugins) AddBinary(drMod DependencyResolverMod) error {
 		return err
 	}
 
-	if _, ok := s.data[name]; !ok {
+	if plugin, ok := s.data[name]; !ok || plugin.YamlMod == nil {
 		// any binary plugin should have its yaml version (for the plugin information)
 		return fmt.Errorf("please provide yaml version of the plugin %s", name)
 	} else if s.data[name].DependencyMod != nil {

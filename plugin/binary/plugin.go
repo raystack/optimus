@@ -56,13 +56,10 @@ func Init(pluginsRepo models.PluginRepository, discoveredBinaryPlugins []string,
 			return fmt.Errorf("drClient.GetName(): %w", err)
 		}
 
-		drGRPCClient := rawMod.(*dependencyresolver.GRPCClient)
-		drGRPCClient.SetName(pluginName)
-
 		if err := pluginsRepo.AddBinary(drClient); err != nil {
 			return fmt.Errorf("PluginRegistry.Add: %s: %w", pluginName, err)
 		}
-		pluginLogger.Debug("plugin ready: ", pluginPath)
+		pluginLogger.Debug("plugin ready: ", pluginName)
 	}
 
 	return nil
