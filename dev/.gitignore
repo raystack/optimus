@@ -1,3 +1,2 @@
-dags
 plugins/*
 !plugins/optimus-plugin-echo.yaml 

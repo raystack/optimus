@@ -31,7 +31,7 @@ while read artifact; do
 done < p.tmp && rm p.tmp
 OPTIMUS_PLUGIN_ARTIFACTS=`echo $OPTIMUS_PLUGIN_ARTIFACTS | sed 's/^,*//g'`
 
-POD_NAME=$(kubectl get pod -l app.kubernetes.io/name=optimus -n optimus-dev -o=jsonpath='{.items[0].metadata.name}') 2> /dev/null
+POD_NAME=$(kubectl get pod -l app.kubernetes.io/name=optimus -n ${OPTIMUS_NAMESPACE} -o=jsonpath='{.items[0].metadata.name}') 2> /dev/null
 if [[ ! $? -eq 0 || -z $POD_NAME ]]; then
   >&2 echo "no optimus server running, make sure \`make apply\` is executed properly"
   exit 1
