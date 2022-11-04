@@ -65,8 +65,8 @@ func (p JobPluginService) GenerateDestination(ctx context.Context, tnnt *tenant.
 	return destination.URN(), nil
 }
 
-func (p JobPluginService) GenerateDependencies(ctx context.Context, jobTenant *tenant.WithDetails, jobSpec *job.JobSpec, dryRun bool) ([]string, error) {
-	plugin, err := p.pluginRepo.GetByName(jobSpec.Task().Name())
+func (p JobPluginService) GenerateDependencies(ctx context.Context, jobTenant *tenant.WithDetails, spec *job.Spec, dryRun bool) ([]string, error) {
+	plugin, err := p.pluginRepo.GetByName(spec.Task().Name())
 	if err != nil {
 		return nil, err
 	}
@@ -75,12 +75,12 @@ func (p JobPluginService) GenerateDependencies(ctx context.Context, jobTenant *t
 		return nil, ErrDependencyModNotFound
 	}
 
-	assets, err := p.compileAsset(ctx, plugin, jobSpec, p.now(), false)
+	assets, err := p.compileAsset(ctx, plugin, spec, p.now(), false)
 	if err != nil {
 		return nil, fmt.Errorf("asset compilation failure: %w", err)
 	}
 
-	compiledConfigs, err := p.compileConfig(ctx, jobSpec.Task().Config(), jobTenant)
+	compiledConfigs, err := p.compileConfig(ctx, spec.Task().Config(), jobTenant)
 	if err != nil {
 		return nil, err
 	}
@@ -124,12 +124,12 @@ func (p JobPluginService) compileConfig(ctx context.Context, configs *job.Config
 	return pluginConfigs, nil
 }
 
-func (p JobPluginService) compileAsset(ctx context.Context, plugin *models.Plugin, jobSpec *job.JobSpec, scheduledAt time.Time, allowOverride bool) (map[string]string, error) {
+func (p JobPluginService) compileAsset(ctx context.Context, plugin *models.Plugin, spec *job.Spec, scheduledAt time.Time, allowOverride bool) (map[string]string, error) {
 	var jobDestination string
 	if plugin.DependencyMod != nil {
 		jobDestinationResponse, err := plugin.DependencyMod.GenerateDestination(ctx, models.GenerateDestinationRequest{
-			Config: models.PluginConfigs{}.FromMap(jobSpec.Task().Config().Config()),
-			Assets: models.PluginAssets{}.FromMap(jobSpec.Assets()),
+			Config: models.PluginConfigs{}.FromMap(spec.Task().Config().Config()),
+			Assets: models.PluginAssets{}.FromMap(spec.Assets()),
 			PluginOptions: models.PluginOptions{
 				DryRun: true,
 			},
@@ -140,16 +140,16 @@ func (p JobPluginService) compileAsset(ctx context.Context, plugin *models.Plugi
 		jobDestination = jobDestinationResponse.Destination
 	}
 
-	startTime, err := jobSpec.Window().GetStartTime(scheduledAt)
+	startTime, err := spec.Window().GetStartTime(scheduledAt)
 	if err != nil {
 		return nil, fmt.Errorf("error getting start time: %w", err)
 	}
-	endTime, err := jobSpec.Window().GetEndTime(scheduledAt)
+	endTime, err := spec.Window().GetEndTime(scheduledAt)
 	if err != nil {
 		return nil, fmt.Errorf("error getting end time: %w", err)
 	}
 
-	templates, err := p.engine.CompileFiles(jobSpec.Assets(), map[string]interface{}{
+	templates, err := p.engine.CompileFiles(spec.Assets(), map[string]interface{}{
 		models.ConfigKeyDstart:        startTime.Format(models.InstanceScheduledAtTimeLayout),
 		models.ConfigKeyDend:          endTime.Format(models.InstanceScheduledAtTimeLayout),
 		models.ConfigKeyExecutionTime: scheduledAt.Format(models.InstanceScheduledAtTimeLayout),

@@ -83,7 +83,7 @@ type Hook struct {
 }
 
 func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
-	jobSpec := jobEntity.JobSpec()
+	jobSpec := jobEntity.Spec()
 
 	labelsBytes, err := json.Marshal(jobSpec.Labels())
 	if err != nil {

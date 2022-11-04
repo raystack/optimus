@@ -40,7 +40,7 @@ func (j JobRepository) insertJobSpec(ctx context.Context, jobEntity *job.Job) er
 		return err
 	}
 
-	_, err = j.get(ctx, jobEntity.ProjectName(), jobEntity.JobSpec().Name())
+	_, err = j.get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name())
 	if err == nil {
 		return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, "job already exists")
 	}

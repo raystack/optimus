@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"fmt"
+
 	"github.com/hashicorp/go-multierror"
 
 	"golang.org/x/net/context"
@@ -24,7 +25,7 @@ func NewJobHandler(jobService JobService) *JobHandler {
 
 type JobService interface {
 	// TODO: We don't need to differentiate the error. utilize in-built multierror
-	Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.JobSpec) (jobErrors error, err error)
+	Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) (jobErrors error, err error)
 }
 
 func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *pb.AddJobSpecificationsRequest) (*pb.AddJobSpecificationsResponse, error) {
@@ -33,7 +34,7 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 		return nil, errors.GRPCErr(err, "failed to add job specifications")
 	}
 
-	var jobs []*job.JobSpec
+	var jobs []*job.Spec
 	//TODO: utilize multierror
 	var jobErrors error
 	for _, jobProto := range jobSpecRequest.Specs {

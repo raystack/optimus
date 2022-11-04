@@ -2,10 +2,11 @@ package resolver
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
-	"strings"
 
 	"golang.org/x/net/context"
 
@@ -58,7 +59,7 @@ func (d DependencyResolver) getJobsWithAllDependencies(ctx context.Context, jobs
 		var allDependencies []*job.Dependency
 
 		// get internal dependencies
-		internalDependencies := jobsWithInternalDependencies[jobEntity.JobSpec().Name()]
+		internalDependencies := jobsWithInternalDependencies[jobEntity.Spec().Name()]
 		allDependencies = append(allDependencies, internalDependencies...)
 
 		// try to resolve dependencies from external

@@ -80,12 +80,12 @@ func TestPostgresJobRepository(t *testing.T) {
 			resourceMetadata := job.NewResourceMetadata(resourceRequestConfig, resourceLimitConfig)
 			jobMetadata := job.NewMetadata(resourceMetadata, map[string]string{"scheduler_config_key": "value"})
 
-			jobSpecA, err := job.NewJobSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, jobLabels, jobSchedule,
+			jobSpecA, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, jobLabels, jobSchedule,
 				jobWindow, jobTask, jobHooks, jobAlerts, jobDependencies, jobAssets, jobMetadata)
 			assert.Nil(t, err)
 			jobA := job.NewJob(jobSpecA, "dev.resource.sample_a", []string{"resource-3"})
 
-			jobSpecB, err := job.NewJobSpec(sampleTenant, jobVersion, "sample-job-B", jobOwner, jobDescription, jobLabels, jobSchedule,
+			jobSpecB, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-B", jobOwner, jobDescription, jobLabels, jobSchedule,
 				jobWindow, jobTask, jobHooks, jobAlerts, nil, jobAssets, jobMetadata)
 			assert.Nil(t, err)
 			jobB := job.NewJob(jobSpecB, "dev.resource.sample_b", nil)
@@ -101,7 +101,7 @@ func TestPostgresJobRepository(t *testing.T) {
 		t.Run("inserts job spec with optional fields empty", func(t *testing.T) {
 			db := dbSetup()
 
-			jobSpecA, err := job.NewJobSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
+			jobSpecA, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
 			assert.Nil(t, err)
 			jobA := job.NewJob(jobSpecA, "dev.resource.sample_a", []string{"resource-3"})
@@ -117,7 +117,7 @@ func TestPostgresJobRepository(t *testing.T) {
 		t.Run("skip job and return job error if job already exist", func(t *testing.T) {
 			db := dbSetup()
 
-			jobSpecA, err := job.NewJobSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
+			jobSpecA, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
 			assert.Nil(t, err)
 			jobA := job.NewJob(jobSpecA, "dev.resource.sample_a", []string{"resource-3"})
@@ -126,7 +126,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			addedJobs, jobErrors, err := jobRepo.Add(ctx, []*job.Job{jobA})
 			assert.Nil(t, err)
 
-			jobSpecB, err := job.NewJobSpec(sampleTenant, jobVersion, "sample-job-B", jobOwner, jobDescription, nil, jobSchedule,
+			jobSpecB, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-B", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
 			assert.Nil(t, err)
 			jobB := job.NewJob(jobSpecB, "dev.resource.sample_b", []string{"resource-3"})
@@ -139,12 +139,12 @@ func TestPostgresJobRepository(t *testing.T) {
 		t.Run("return error if all jobs are failed to be saved", func(t *testing.T) {
 			db := dbSetup()
 
-			jobSpecA, err := job.NewJobSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
+			jobSpecA, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
 			assert.Nil(t, err)
 			jobA := job.NewJob(jobSpecA, "dev.resource.sample_a", []string{"resource-3"})
 
-			jobSpecB, err := job.NewJobSpec(sampleTenant, jobVersion, "sample-job-B", jobOwner, jobDescription, nil, jobSchedule,
+			jobSpecB, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-B", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
 			assert.Nil(t, err)
 			jobB := job.NewJob(jobSpecB, "dev.resource.sample_b", []string{"resource-3"})
@@ -167,12 +167,12 @@ func TestPostgresJobRepository(t *testing.T) {
 			tenantDetails, err := tenant.NewTenantDetails(proj, namespace)
 			assert.Nil(t, err)
 
-			jobSpecA, err := job.NewJobSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
+			jobSpecA, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
 			assert.Nil(t, err)
 			jobA := job.NewJob(jobSpecA, "dev.resource.sample_a", []string{"dev.resource.sample_b"})
 
-			jobSpecB, err := job.NewJobSpec(sampleTenant, jobVersion, "sample-job-B", jobOwner, jobDescription, nil, jobSchedule,
+			jobSpecB, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-B", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
 			assert.Nil(t, err)
 			jobB := job.NewJob(jobSpecB, "dev.resource.sample_b", nil)
@@ -194,11 +194,11 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.Nil(t, err)
 
 			jobADependencies := job.NewDependencySpec([]string{"sample-job-B"}, nil)
-			jobSpecA, err := job.NewJobSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
+			jobSpecA, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, jobADependencies, nil, nil)
 			jobA := job.NewJob(jobSpecA, "dev.resource.sample_a", nil)
 
-			jobSpecB, err := job.NewJobSpec(sampleTenant, jobVersion, "sample-job-B", jobOwner, jobDescription, nil, jobSchedule,
+			jobSpecB, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-B", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
 			jobB := job.NewJob(jobSpecB, "dev.resource.sample_b", nil)
 
@@ -219,15 +219,15 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.Nil(t, err)
 
 			jobADependencies := job.NewDependencySpec([]string{"test-proj/sample-job-B"}, nil)
-			jobSpecA, err := job.NewJobSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
+			jobSpecA, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, jobADependencies, nil, nil)
 			jobA := job.NewJob(jobSpecA, "dev.resource.sample_a", []string{"dev.resource.sample_c"})
 
-			jobSpecB, err := job.NewJobSpec(sampleTenant, jobVersion, "sample-job-B", jobOwner, jobDescription, nil, jobSchedule,
+			jobSpecB, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-B", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
 			jobB := job.NewJob(jobSpecB, "dev.resource.sample_b", nil)
 
-			jobSpecC, err := job.NewJobSpec(sampleTenant, jobVersion, "sample-job-C", jobOwner, jobDescription, nil, jobSchedule,
+			jobSpecC, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-C", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
 			jobC := job.NewJob(jobSpecC, "dev.resource.sample_c", nil)
 
@@ -251,7 +251,7 @@ func TestPostgresJobRepository(t *testing.T) {
 	})
 
 	t.Run("SaveDependency", func(t *testing.T) {
-		jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
+		jobSpecA, _ := job.NewSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
 			jobWindow, jobTask, nil, nil, nil, nil, nil)
 		jobA := job.NewJob(jobSpecA, "dev.resource.sample_a", []string{"dev.resource.sample_c"})
 		t.Run("inserts job dependencies", func(t *testing.T) {

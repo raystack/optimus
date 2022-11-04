@@ -41,23 +41,23 @@ func TestDependencyResolver(t *testing.T) {
 			externalDependencyResolver := new(ExternalDependencyResolver)
 
 			dependencySpec := job.NewDependencySpec([]string{"test-proj/job-c"}, nil)
-			jobSpecA, err := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+			specA, err := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, dependencySpec, nil, nil)
 			assert.Nil(t, err)
 			jobADestination := "resource-A"
 			jobADependencies := []string{"resource-B"}
 
-			jobA := job.NewJob(jobSpecA, jobADestination, jobADependencies)
+			jobA := job.NewJob(specA, jobADestination, jobADependencies)
 			jobs := []*job.Job{jobA}
 
 			dependencyB, _ := job.NewDependencyResolved("job-B", "", "resource-B", sampleTenant, "inferred")
 			dependencyC, _ := job.NewDependencyResolved("job-C", "", "resource-C", sampleTenant, "static")
 			dependencies := []*job.Dependency{dependencyB, dependencyC}
 			jobNameWithDependencies := map[job.Name][]*job.Dependency{
-				jobA.JobSpec().Name(): dependencies,
+				jobA.Spec().Name(): dependencies,
 			}
 
-			jobRepo.On("GetJobNameWithInternalDependencies", ctx, project.Name(), []job.Name{jobSpecA.Name()}).Return(jobNameWithDependencies, nil)
+			jobRepo.On("GetJobNameWithInternalDependencies", ctx, project.Name(), []job.Name{specA.Name()}).Return(jobNameWithDependencies, nil)
 
 			externalDependencyResolver.On("FetchExternalDependencies", ctx, mock.Anything).Return([]*job.Dependency{}, nil, nil)
 
@@ -74,21 +74,21 @@ func TestDependencyResolver(t *testing.T) {
 			externalDependencyResolver := new(ExternalDependencyResolver)
 
 			dependencySpec := job.NewDependencySpec([]string{"job-c"}, nil)
-			jobSpecA, err := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+			specA, err := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, dependencySpec, nil, nil)
 			assert.Nil(t, err)
 			jobADestination := "resource-A"
 			jobADependencies := []string{"resource-B", "resource-D"}
 
-			jobA := job.NewJob(jobSpecA, jobADestination, jobADependencies)
+			jobA := job.NewJob(specA, jobADestination, jobADependencies)
 			jobs := []*job.Job{jobA}
 
 			internalDependency, _ := job.NewDependencyResolved("job-B", "", "resource-B", sampleTenant, "static")
 			jobNameWithDependencies := map[job.Name][]*job.Dependency{
-				jobA.JobSpec().Name(): {internalDependency},
+				jobA.Spec().Name(): {internalDependency},
 			}
 
-			jobRepo.On("GetJobNameWithInternalDependencies", ctx, project.Name(), []job.Name{jobSpecA.Name()}).Return(jobNameWithDependencies, nil)
+			jobRepo.On("GetJobNameWithInternalDependencies", ctx, project.Name(), []job.Name{specA.Name()}).Return(jobNameWithDependencies, nil)
 
 			externalDependencyC, _ := job.NewDependencyResolved("job-C", "external-host", "resource-C", externalTenant, "static")
 			externalDependencyD, _ := job.NewDependencyResolved("job-D", "external-host", "resource-D", externalTenant, "inferred")
@@ -108,13 +108,13 @@ func TestDependencyResolver(t *testing.T) {
 			jobRepo := new(JobRepository)
 			externalDependencyResolver := new(ExternalDependencyResolver)
 
-			jobSpecA, err := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+			specA, err := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
 			assert.Nil(t, err)
 			jobADestination := "resource-A"
 			jobADependencies := []string{"resource-B"}
 
-			jobA := job.NewJob(jobSpecA, jobADestination, jobADependencies)
+			jobA := job.NewJob(specA, jobADestination, jobADependencies)
 			jobs := []*job.Job{jobA}
 
 			jobRepo.On("GetJobNameWithInternalDependencies", ctx, project.Name(), mock.Anything).Return(map[job.Name][]*job.Dependency{}, errors.New("internal error"))
@@ -130,21 +130,21 @@ func TestDependencyResolver(t *testing.T) {
 			externalDependencyResolver := new(ExternalDependencyResolver)
 
 			dependencySpec := job.NewDependencySpec([]string{"job-c"}, nil)
-			jobSpecA, err := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+			specA, err := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, dependencySpec, nil, nil)
 			assert.Nil(t, err)
 			jobADestination := "resource-A"
 			jobADependencies := []string{"resource-B", "resource-D"}
 
-			jobA := job.NewJob(jobSpecA, jobADestination, jobADependencies)
+			jobA := job.NewJob(specA, jobADestination, jobADependencies)
 			jobs := []*job.Job{jobA}
 
 			internalDependency, _ := job.NewDependencyResolved("job-B", "", "resource-B", sampleTenant, "static")
 			jobNameWithDependencies := map[job.Name][]*job.Dependency{
-				jobA.JobSpec().Name(): {internalDependency},
+				jobA.Spec().Name(): {internalDependency},
 			}
 
-			jobRepo.On("GetJobNameWithInternalDependencies", ctx, project.Name(), []job.Name{jobSpecA.Name()}).Return(jobNameWithDependencies, nil)
+			jobRepo.On("GetJobNameWithInternalDependencies", ctx, project.Name(), []job.Name{specA.Name()}).Return(jobNameWithDependencies, nil)
 
 			unresolvedDependencyC := &dto.RawDependency{
 				ProjectName: externalTenant.ProjectName().String(),
@@ -172,23 +172,23 @@ func TestDependencyResolver(t *testing.T) {
 			externalDependencyResolver := new(ExternalDependencyResolver)
 
 			dependencySpec := job.NewDependencySpec([]string{"job-c"}, nil)
-			jobSpecA, err := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+			specA, err := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, dependencySpec, nil, nil)
 			assert.Nil(t, err)
 			jobADestination := "resource-A"
 			jobADependencies := []string{"resource-B", "resource-D"}
 
-			jobA := job.NewJob(jobSpecA, jobADestination, jobADependencies)
+			jobA := job.NewJob(specA, jobADestination, jobADependencies)
 			jobs := []*job.Job{jobA}
 
 			internalDependency, _ := job.NewDependencyResolved("job-B", "", "resource-B", sampleTenant, "static")
 			jobNameWithDependencies := map[job.Name][]*job.Dependency{
-				jobA.JobSpec().Name(): {internalDependency},
+				jobA.Spec().Name(): {internalDependency},
 			}
 
 			externalDependencyC, _ := job.NewDependencyResolved("job-C", "external-host", "resource-C", externalTenant, "static")
 			externalDependencyD, _ := job.NewDependencyResolved("job-D", "external-host", "resource-D", externalTenant, "inferred")
-			jobRepo.On("GetJobNameWithInternalDependencies", ctx, project.Name(), []job.Name{jobSpecA.Name()}).Return(jobNameWithDependencies, nil)
+			jobRepo.On("GetJobNameWithInternalDependencies", ctx, project.Name(), []job.Name{specA.Name()}).Return(jobNameWithDependencies, nil)
 
 			externalDependencyResolver.On("FetchExternalDependencies", ctx, mock.Anything).Return([]*job.Dependency{externalDependencyC, externalDependencyD}, nil, errors.New("internal error"))
 
@@ -207,21 +207,21 @@ func TestDependencyResolver(t *testing.T) {
 			externalDependencyResolver := new(ExternalDependencyResolver)
 
 			dependencySpec := job.NewDependencySpec([]string{"job-c"}, nil)
-			jobSpecA, err := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+			specA, err := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, dependencySpec, nil, nil)
 			assert.Nil(t, err)
 			jobADestination := "resource-A"
 			jobADependencies := []string{"resource-B", "resource-D"}
 
-			jobA := job.NewJob(jobSpecA, jobADestination, jobADependencies)
+			jobA := job.NewJob(specA, jobADestination, jobADependencies)
 			jobs := []*job.Job{jobA}
 
 			internalDependency, _ := job.NewDependencyResolved("job-B", "", "resource-B", sampleTenant, "static")
 			jobNameWithDependencies := map[job.Name][]*job.Dependency{
-				jobA.JobSpec().Name(): {internalDependency},
+				jobA.Spec().Name(): {internalDependency},
 			}
 
-			jobRepo.On("GetJobNameWithInternalDependencies", ctx, project.Name(), []job.Name{jobSpecA.Name()}).Return(jobNameWithDependencies, nil)
+			jobRepo.On("GetJobNameWithInternalDependencies", ctx, project.Name(), []job.Name{specA.Name()}).Return(jobNameWithDependencies, nil)
 
 			unresolvedDependencyC := &dto.RawDependency{
 				ProjectName: externalTenant.ProjectName().String(),
