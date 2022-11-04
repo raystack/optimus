@@ -114,10 +114,15 @@ func TestPostgresSecretRepository(t *testing.T) {
 			validSecret, err := tenant.NewSecret("secret_name", tenant.UserDefinedSecret,
 				"abcd", proj.Name(), namespace.Name().String())
 			assert.Nil(t, err)
+			validSecret2, err := tenant.NewSecret("secret_name_2", tenant.UserDefinedSecret,
+				"efgh", proj.Name(), namespace.Name().String())
+			assert.Nil(t, err)
 
 			repo := postgres.NewSecretRepository(db)
 
 			err = repo.Save(ctx, validSecret)
+			assert.Nil(t, err)
+			err = repo.Save(ctx, validSecret2)
 			assert.Nil(t, err)
 
 			secret, err := repo.Get(ctx, proj.Name(), namespace.Name().String(), validSecret.Name())
@@ -136,6 +141,11 @@ func TestPostgresSecretRepository(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, updatedSecret.Name(), updated.Name())
 			assert.Equal(t, updatedSecret.EncodedValue(), updated.EncodedValue())
+
+			unUpdated, err := repo.Get(ctx, proj.Name(), namespace.Name().String(), validSecret2.Name())
+			assert.Nil(t, err)
+			assert.Equal(t, unUpdated.Name(), validSecret2.Name())
+			assert.Equal(t, unUpdated.EncodedValue(), validSecret2.EncodedValue())
 		})
 		t.Run("returns error when secret does not exist", func(t *testing.T) {
 			db := dbSetup()

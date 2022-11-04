@@ -147,12 +147,10 @@ func (s SecretRepository) Update(ctx context.Context, tenantSecret *tenant.Secre
 		return errors.Wrap(tenant.EntitySecret, "unable to update secret", err)
 	}
 
-	updateSecret := `UPDATE secret
+	updateSecret := `UPDATE secret s
 SET value=?, type=?, updated_at=NOW()
-FROM secret s
-    JOIN project p
-        ON p.id = s.project_id
-WHERE p.name = ? AND s.name=?`
+FROM project p
+WHERE p.id = s.project_id AND p.name = ? AND s.name=?`
 
 	err = s.db.WithContext(ctx).Exec(updateSecret, secret.Value, secret.Type, secret.ProjectName, secret.Name).Error
 	if err != nil {
