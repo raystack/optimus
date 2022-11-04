@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/odpf/optimus/job"
@@ -122,7 +123,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSourceRepo.On("Save", ctx, projectSpec.ID, jobSpec2.ID, nil).Return(nil)
 
 			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, jobSpec1Sources[0]).Return(jobSpec2, nil)
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, jobSpec1Sources[0]).Return([]models.JobSpec{jobSpec2}, nil)
 
 			// hook dependency
 			hookUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
@@ -211,7 +212,7 @@ func TestDependencyResolver(t *testing.T) {
 			}
 
 			jobSpecRepository := new(mock.JobSpecRepository)
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, "project.dataset.table2_destination").Return(jobSpec2, nil)
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, "project.dataset.table2_destination").Return([]models.JobSpec{jobSpec2}, nil)
 			defer jobSpecRepository.AssertExpectations(t)
 
 			jobSpec1Sources := []string{"project.dataset.table2_destination"}
@@ -238,7 +239,7 @@ func TestDependencyResolver(t *testing.T) {
 			assert.Equal(t, map[string]models.JobSpecDependency{}, resolvedJobSpec2.Dependencies)
 		})
 
-		t.Run("should fail if GetJobByResourceDestination fails", func(t *testing.T) {
+		t.Run("should fail if GetByResourceDestinationURN fails", func(t *testing.T) {
 			execUnit := new(mock.DependencyResolverMod)
 			defer execUnit.AssertExpectations(t)
 
@@ -284,7 +285,7 @@ func TestDependencyResolver(t *testing.T) {
 			}
 
 			jobSpecRepository := new(mock.JobSpecRepository)
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, "project.dataset.table2_destination").Return(jobSpec2, errors.New("random error"))
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, "project.dataset.table2_destination").Return([]models.JobSpec{jobSpec2}, errors.New("random error"))
 			defer jobSpecRepository.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -408,7 +409,7 @@ func TestDependencyResolver(t *testing.T) {
 			}
 
 			jobSpecRepository := new(mock.JobSpecRepository)
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, "project.dataset.table3_destination").Return(models.JobSpec{}, errors.New("spec not found"))
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, "project.dataset.table3_destination").Return([]models.JobSpec{}, errors.New("spec not found"))
 			defer jobSpecRepository.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -475,7 +476,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSpec1Sources := []string{"project.dataset.table1_destination"}
 
 			jobSpecRepository := new(mock.JobSpecRepository)
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, jobSpec1Sources[0]).Return(jobSpec1, nil)
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, jobSpec1Sources[0]).Return([]models.JobSpec{jobSpec1}, nil)
 			jobSpecRepository.On("GetByNameAndProjectName", ctx, "static_dep", projectName).Return(models.JobSpec{}, errors.New("spec not found"))
 			defer jobSpecRepository.AssertExpectations(t)
 
@@ -490,7 +491,8 @@ func TestDependencyResolver(t *testing.T) {
 
 			resolver := job.NewDependencyResolver(jobSpecRepository, jobSourceRepo, pluginService, nil)
 			_, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
-			assert.Equal(t, "unknown local dependency for job static_dep: spec not found", err.Error())
+
+			assert.Equal(t, multierror.Append(nil, errors.New("unknown local dependency for job static_dep: spec not found")).Error(), err.Error())
 		})
 
 		t.Run("it should fail for unknown static dependency type", func(t *testing.T) {
@@ -540,7 +542,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSpec1Sources := []string{"project.dataset.table1_destination"}
 
 			jobSpecRepository := new(mock.JobSpecRepository)
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, jobSpec1Sources[0]).Return(jobSpec1, nil)
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, jobSpec1Sources[0]).Return([]models.JobSpec{jobSpec1}, nil)
 			defer jobSpecRepository.AssertExpectations(t)
 
 			pluginService := mock.NewPluginService(t)
@@ -554,7 +556,8 @@ func TestDependencyResolver(t *testing.T) {
 
 			resolver := job.NewDependencyResolver(jobSpecRepository, jobSourceRepo, pluginService, nil)
 			_, err := resolver.Resolve(ctx, projectSpec, jobSpec2, nil)
-			assert.Equal(t, "unsupported dependency type: bad", err.Error())
+			errExpected := multierror.Append(nil, errors.New("unsupported dependency type: bad"))
+			assert.Equal(t, errExpected.Error(), err.Error())
 		})
 
 		t.Run("it should resolve any unresolved intra static dependency", func(t *testing.T) {
@@ -625,7 +628,7 @@ func TestDependencyResolver(t *testing.T) {
 			jobSpec1Sources := []string{"project.dataset.table2_destination"}
 
 			jobSpecRepository := new(mock.JobSpecRepository)
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, jobSpec1Sources[0]).Return(jobSpec2, nil)
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, jobSpec1Sources[0]).Return([]models.JobSpec{jobSpec2}, nil)
 			jobSpecRepository.On("GetByNameAndProjectName", ctx, "test3", projectName).Return(jobSpec3, nil)
 			defer jobSpecRepository.AssertExpectations(t)
 
@@ -749,8 +752,8 @@ func TestDependencyResolver(t *testing.T) {
 			}
 
 			jobSpecRepository := new(mock.JobSpecRepository)
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, jobSpec1Sources[0]).Return(jobSpec2, nil)
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, jobSpec1Sources[1]).Return(jobSpecExternal, nil)
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, jobSpec1Sources[0]).Return([]models.JobSpec{jobSpec2}, nil)
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, jobSpec1Sources[1]).Return([]models.JobSpec{jobSpecExternal}, nil)
 			jobSpecRepository.On("GetByNameAndProjectName", ctx, "test3", externalProjectName).Return(jobSpec3, nil)
 			defer jobSpecRepository.AssertExpectations(t)
 

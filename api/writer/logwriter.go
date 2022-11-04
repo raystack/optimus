@@ -1,6 +1,10 @@
 package writer
 
-import "github.com/odpf/salt/log"
+import (
+	"github.com/odpf/salt/log"
+
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+)
 
 type saltLogger struct {
 	l log.Logger
@@ -27,5 +31,15 @@ func (l *saltLogger) Write(level LogLevel, message string) error {
 	case LogLevelFatal:
 		l.l.Fatal(message)
 	}
+	return nil
+}
+
+type BufferedLogger struct {
+	Messages []*pb.Log
+}
+
+// nolint: unparam
+func (b *BufferedLogger) Write(level LogLevel, message string) error {
+	b.Messages = append(b.Messages, newLogStatusProto(level, message))
 	return nil
 }

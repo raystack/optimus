@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	v1 "github.com/odpf/optimus/api/handler/v1beta1"
+	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/internal/lib/progress"
 	"github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
@@ -30,6 +31,7 @@ type JobSpecServiceServerTestSuite struct {
 	namespaceService *mock.NamespaceService
 	jobService       *mock.JobService // TODO: refactor to service package
 	pluginRepo       *mock.PluginRepository
+	jobRunService    *mock.JobRunService
 	log              log.Logger
 	progressObserver progress.Observer
 
@@ -68,6 +70,7 @@ func (s *JobSpecServiceServerTestSuite) newJobSpecServiceServer() *v1.JobSpecSer
 	return v1.NewJobSpecServiceServer(
 		s.log,
 		s.jobService,
+		s.jobRunService,
 		s.pluginRepo,
 		s.projectService,
 		s.namespaceService,
@@ -453,6 +456,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			}
 
 			jobSvc := new(mock.JobService)
+
 			jobSvc.On("CreateAndDeploy", ctx, namespaceSpec, []models.JobSpec{jobSpec}, mock2.Anything).Return(deploymentID, nil)
 			defer jobSvc.AssertExpectations(t)
 
@@ -463,6 +467,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobSvc,
+				nil,
 				pluginRepo,
 				nil,
 				namespaceService,
@@ -548,6 +553,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobSvc,
+				nil,
 				pluginRepo,
 				nil,
 				namespaceService,
@@ -632,6 +638,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobSvc,
+				nil,
 				pluginRepo,
 				nil,
 				namespaceService,
@@ -717,6 +724,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobSvc,
+				nil,
 				pluginRepo,
 				nil,
 				namespaceService,
@@ -801,6 +809,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobService,
+				nil,
 				pluginRepo,
 				nil,
 				namespaceService,
@@ -855,6 +864,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobService,
+				nil,
 				pluginRepo,
 				projectService,
 				nsService,
@@ -905,6 +915,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobService,
+				nil,
 				pluginRepo,
 				projectService,
 				nsService,
@@ -932,6 +943,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobService,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -967,6 +979,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 			deployID := uuid.New()
 			jobDeployment := models.JobDeployment{
@@ -997,6 +1010,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
 				jobService,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -1049,6 +1063,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 			deployID := uuid.New()
 
@@ -1060,6 +1075,136 @@ func TestJobSpecificationOnServer(t *testing.T) {
 
 			assert.Nil(t, actual)
 			assert.Contains(t, err.Error(), errorMsg)
+		})
+	})
+	t.Run("JobInspect", func(t *testing.T) {
+		projectName := "a-data-project"
+		namespaceName := "a-data-namespace"
+		jobName := "a-data-job"
+		taskName := "bq2bq"
+		resourceDestination := "destination-table"
+		resourceDestinationUrn := "bigquery://destination-table"
+
+		window, _ := models.NewWindow(1, "d", "0", "1h")
+
+		projectSpec := models.ProjectSpec{
+			ID:   models.ProjectID(uuid.New()),
+			Name: projectName,
+			Config: map[string]string{
+				"bucket": "gs://some_folder",
+			},
+		}
+		namespaceSpec := models.NamespaceSpec{
+			ID:          uuid.New(),
+			Name:        namespaceName,
+			ProjectSpec: projectSpec,
+		}
+
+		execUnit1 := new(mock.BasePlugin)
+		defer execUnit1.AssertExpectations(t)
+		execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
+			Name:  taskName,
+			Image: "random-image",
+		}, nil)
+
+		pluginRepo := mock.NewPluginRepository(t)
+		pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
+			Base: execUnit1,
+		}, nil)
+		jobSpec := models.JobSpec{
+			Version: 1,
+			Name:    jobName,
+			Task: models.JobSpecTask{
+				Unit: &models.Plugin{Base: execUnit1},
+				Config: models.JobSpecConfigs{
+					{
+						Name:  "DO",
+						Value: "THIS",
+					},
+				},
+				Window: window,
+			},
+			NamespaceSpec: namespaceSpec,
+			Behavior: models.JobSpecBehavior{
+				CatchUp: true,
+			},
+			Assets: *models.JobAssets{}.New(
+				[]models.JobSpecAsset{
+					{
+						Name:  "query.sql",
+						Value: "select * from tableName",
+					},
+				}),
+			Dependencies: map[string]models.JobSpecDependency{},
+		}
+
+		t.Run("should inspect job successfully from local job spec", func(t *testing.T) {
+			jobService := new(mock.JobService)
+			defer jobService.AssertExpectations(t)
+
+			namespaceService := new(mock.NamespaceService)
+			namespaceService.On("Get", ctx, projectName, namespaceName).Return(namespaceSpec, nil).Once()
+			defer namespaceService.AssertExpectations(t)
+
+			jobSpecServiceServer := v1.NewJobSpecServiceServer(
+				log,
+				jobService,
+				nil,
+				pluginRepo,
+				nil,
+				namespaceService,
+				nil,
+			)
+			GetJobSourceAndDestinationLog := pb.Log{
+				Level:   pb.Level_LEVEL_INFO,
+				Message: "successfully generated job destination and sources",
+			}
+			catchUpWarning := pb.Log{
+				Level:   pb.Level_LEVEL_WARNING,
+				Message: "Catchup is enabled",
+			}
+
+			jobDestination := models.JobSpecTaskDestination{
+				Destination: resourceDestination,
+				Type:        models.DestinationTypeBigquery,
+			}
+			expectedJobInspectResponse := &pb.JobInspectResponse{
+				BasicInfo: v1.ToBasicInfoSectionProto(models.JobBasicInfo{
+					Log: writer.BufferedLogger{
+						Messages: []*pb.Log{
+							&GetJobSourceAndDestinationLog,
+							&catchUpWarning,
+						},
+					},
+					Spec:        jobSpec,
+					Destination: resourceDestinationUrn,
+					JobSource:   []string{"bigquery://tableName"},
+				}),
+			}
+			logWriter := &writer.BufferedLogger{}
+			jobService.On("GetJobBasicInfo", ctx, jobSpec).Return(models.JobBasicInfo{
+				Spec:        jobSpec,
+				JobSource:   models.JobSpecTaskDependencies{"bigquery://tableName"},
+				Destination: jobDestination.URN(),
+				Log:         *logWriter}, nil)
+
+			jobService.On("GetEnrichedUpstreamJobSpec", ctx, jobSpec, []string{"bigquery://tableName"}, mock2.Anything).Return(jobSpec, []models.UnknownDependency{}, nil)
+			jobService.On("GetDownstreamJobs", ctx, jobName, "", jobSpec.GetProjectSpec().Name).Return([]models.JobSpec{}, nil)
+			jobSpecInternal := jobSpec
+			jobSpecInternal.ResourceDestination = resourceDestinationUrn
+
+			jobInspectRequest := &pb.JobInspectRequest{
+				Spec:          v1.ToJobSpecificationProto(jobSpec),
+				ProjectName:   projectName,
+				NamespaceName: namespaceName,
+				JobName:       "",
+			}
+			jobInspectResponse, err := jobSpecServiceServer.JobInspect(ctx, jobInspectRequest)
+
+			assert.Nil(t, err)
+			assert.Equal(t, expectedJobInspectResponse.BasicInfo.Job, jobInspectResponse.BasicInfo.Job)
+			assert.Equal(t, expectedJobInspectResponse.BasicInfo.Destination, jobInspectResponse.BasicInfo.Destination)
+			assert.Equal(t, expectedJobInspectResponse.BasicInfo.Source, jobInspectResponse.BasicInfo.Source)
 		})
 	})
 }

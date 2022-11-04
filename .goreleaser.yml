@@ -17,8 +17,6 @@ builds:
       - windows
     goarch:
       - amd64
-      - 386
-      - arm
       - arm64
     env:
       - CGO_ENABLED=0
@@ -27,7 +25,6 @@ archives:
       darwin: macos
       linux: linux
       windows: windows
-      386: i386
       amd64: x86_64
     format_overrides:
       - goos: windows

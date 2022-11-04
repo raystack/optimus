@@ -14,6 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/internal/lib/progress"
@@ -31,6 +32,7 @@ type JobSpecServiceServer struct {
 	l                log.Logger
 	jobSvc           models.JobService
 	pluginRepo       models.PluginRepository
+	jobRunService    service.JobRunService
 	projectService   service.ProjectService
 	namespaceService service.NamespaceService
 	progressObserver progress.Observer
@@ -154,6 +156,166 @@ func (sv *JobSpecServiceServer) CheckJobSpecifications(req *pb.CheckJobSpecifica
 	}
 
 	return nil
+}
+
+func (sv *JobSpecServiceServer) getDpendencyRunInfo(ctx context.Context, jobSpec models.JobSpec, scheduleTime time.Time, logWriter writer.LogWriter) ([]*pb.JobInspectResponse_JobDependency, []*pb.JobInspectResponse_JobDependency, []*pb.HttpDependency) {
+	var internalDependencies []*pb.JobInspectResponse_JobDependency
+	var externalDependencies []*pb.JobInspectResponse_JobDependency
+	var httpDependency []*pb.HttpDependency
+
+	windowStartTime, err := jobSpec.Task.Window.GetStartTime(scheduleTime)
+	if err != nil {
+		logWriter.Write(writer.LogLevelError, fmt.Sprintf("unable to get Window start time for %s/%s", jobSpec.GetProjectSpec().Name, jobSpec.Name))
+		return internalDependencies, externalDependencies, httpDependency
+	}
+	windowEndTime, err := jobSpec.Task.Window.GetEndTime(scheduleTime)
+	if err != nil {
+		logWriter.Write(writer.LogLevelError, fmt.Sprintf("unable to get Window end time for %s/%s", jobSpec.GetProjectSpec().Name, jobSpec.Name))
+		return internalDependencies, externalDependencies, httpDependency
+	}
+
+	for dependencyName, dependency := range jobSpec.Dependencies {
+		if dependency.Job == nil {
+			delete(jobSpec.Dependencies, dependencyName)
+			continue
+		}
+
+		dependencyProjectSpec, err := sv.projectService.Get(ctx, dependency.Job.GetProjectSpec().Name)
+		if err != nil {
+			logWriter.Write(writer.LogLevelError, fmt.Sprintf("error in fetching project Spec for %s, err::%s", dependency.Job.GetFullName(), err.Error()))
+			continue
+		}
+		jobRunList, err := sv.jobRunService.GetJobRunList(ctx, dependencyProjectSpec, *dependency.Job, &models.JobQuery{
+			Name:      dependencyName,
+			StartDate: windowStartTime,
+			EndDate:   windowEndTime,
+		})
+		if err != nil {
+			logWriter.Write(writer.LogLevelError, fmt.Sprintf("error in fetching job run list for %s, err::%s", dependency.Job.GetFullName(), err.Error()))
+			continue
+		}
+		var runsProto []*pb.JobRun
+		for _, run := range jobRunList {
+			runsProto = append(runsProto, &pb.JobRun{
+				State:       run.Status.String(),
+				ScheduledAt: timestamppb.New(run.ScheduledAt),
+			})
+		}
+		internalDependencies = append(internalDependencies, &pb.JobInspectResponse_JobDependency{
+			Name:          dependency.Job.Name,
+			Host:          "internal",
+			ProjectName:   dependency.Job.GetProjectSpec().Name,
+			NamespaceName: dependency.Job.NamespaceSpec.Name,
+			TaskName:      dependency.Job.Task.Unit.Info().Name,
+			Runs:          runsProto,
+		})
+	}
+
+	for _, dependency := range jobSpec.ExternalDependencies.OptimusDependencies {
+		jobRunList, err := sv.jobSvc.GetExternalJobRuns(ctx, dependency.Host, dependency.JobName, dependency.ProjectName, windowStartTime, windowEndTime)
+		if err != nil {
+			logWriter.Write(writer.LogLevelError, fmt.Sprintf("error in fetching job run list for External job %s::%s/%s, err::%s", dependency.Host, dependency.ProjectName, dependency.JobName, err.Error()))
+		}
+		var runsProto []*pb.JobRun
+		for _, run := range jobRunList {
+			runsProto = append(runsProto, &pb.JobRun{
+				State:       run.Status.String(),
+				ScheduledAt: timestamppb.New(run.ScheduledAt),
+			})
+		}
+		externalDependencies = append(externalDependencies, &pb.JobInspectResponse_JobDependency{
+			Name:          dependency.JobName,
+			Host:          dependency.Host,
+			ProjectName:   dependency.ProjectName,
+			NamespaceName: dependency.NamespaceName,
+			TaskName:      dependency.TaskName,
+			Runs:          runsProto,
+		})
+	}
+	for _, dependency := range jobSpec.ExternalDependencies.HTTPDependencies {
+		httpDependency = append(httpDependency, &pb.HttpDependency{
+			Name:    dependency.Name,
+			Url:     dependency.URL,
+			Params:  dependency.RequestParams,
+			Headers: dependency.Headers,
+		})
+	}
+	return internalDependencies, externalDependencies, httpDependency
+}
+
+func (sv *JobSpecServiceServer) JobInspect(ctx context.Context, req *pb.JobInspectRequest) (*pb.JobInspectResponse, error) {
+	namespaceSpec, err := sv.namespaceService.Get(ctx, req.GetProjectName(), req.GetNamespaceName())
+	if err != nil {
+		return nil, mapToGRPCErr(sv.l, err, "unable to get namespace")
+	}
+	scheduleTime := req.GetScheduledAt().AsTime()
+	var jobSpec models.JobSpec
+	if req.GetJobName() != "" {
+		// get job spec from DB
+		jobSpec, err = sv.jobSvc.GetByName(ctx, req.GetJobName(), namespaceSpec)
+		if err != nil {
+			return nil, status.Errorf(codes.NotFound, "cannot obtain jobSpec from optimus server: \n%s", err.Error())
+		}
+	} else {
+		// jobSpec must be provided by client
+		jobSpec, err = FromJobProto(req.GetSpec(), sv.pluginRepo)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "cannot deserialize job: \n%s", err.Error())
+		}
+	}
+	jobSpec.NamespaceSpec = namespaceSpec
+
+	jobBasicInfo := sv.jobSvc.GetJobBasicInfo(ctx, jobSpec)
+
+	upstreamLogs := &writer.BufferedLogger{}
+	if scheduleTime.Unix() == time.Unix(0, 0).Unix() {
+		scheduleTime = time.Now()
+		upstreamLogs.Write(writer.LogLevelInfo, fmt.Sprintf("schedule time not provided, using schedule time as current time::%v", scheduleTime))
+	}
+	jobSpec, unknownDependency, err := sv.jobSvc.GetEnrichedUpstreamJobSpec(ctx, jobSpec, jobBasicInfo.JobSource, upstreamLogs)
+	if err != nil {
+		upstreamLogs.Write(writer.LogLevelError, fmt.Sprintf("error while enriching upstreams dependeincies %v", err.Error()))
+	}
+	var unknownDependencyProto []*pb.JobInspectResponse_UpstreamSection_UnknownDependencies
+	for _, dependency := range unknownDependency {
+		unknownDependencyProto = append(unknownDependencyProto, &pb.JobInspectResponse_UpstreamSection_UnknownDependencies{
+			JobName:     dependency.DependencyJobName,
+			ProjectName: dependency.DependencyProjectName,
+		})
+	}
+
+	internalDepsProto, externalDepsProto, httpDepsProto := sv.getDpendencyRunInfo(ctx, jobSpec, scheduleTime, upstreamLogs)
+
+	downstreamLogs := &writer.BufferedLogger{}
+
+	downStreamJobs, err := sv.jobSvc.GetDownstreamJobs(ctx, jobSpec.Name, jobSpec.ResourceDestination, jobSpec.GetProjectSpec().Name)
+	if err != nil {
+		downstreamLogs.Write(writer.LogLevelError, fmt.Sprintf("unable to get downstream jobs %v", err.Error()))
+	}
+	var downStreamJobsProtoSpecArray []*pb.JobInspectResponse_JobDependency
+	for _, job := range downStreamJobs {
+		downStreamJobsProtoSpecArray = append(downStreamJobsProtoSpecArray, &pb.JobInspectResponse_JobDependency{
+			Name:          job.Name,
+			ProjectName:   job.GetProjectSpec().Name,
+			NamespaceName: job.NamespaceSpec.Name,
+			TaskName:      job.Task.Unit.Info().Name,
+		})
+	}
+
+	return &pb.JobInspectResponse{
+		BasicInfo: ToBasicInfoSectionProto(jobBasicInfo),
+		Upstreams: &pb.JobInspectResponse_UpstreamSection{
+			ExternalDependency:  externalDepsProto,
+			InternalDependency:  internalDepsProto,
+			HttpDependency:      httpDepsProto,
+			UnknownDependencies: unknownDependencyProto,
+			Notice:              upstreamLogs.Messages,
+		},
+		Downstreams: &pb.JobInspectResponse_DownstreamSection{
+			DownstreamJobs: downStreamJobsProtoSpecArray,
+			Notice:         downstreamLogs.Messages,
+		},
+	}, nil
 }
 
 func (sv *JobSpecServiceServer) CreateJobSpecification(ctx context.Context, req *pb.CreateJobSpecificationRequest) (*pb.CreateJobSpecificationResponse, error) {
@@ -330,11 +492,12 @@ func (sv *JobSpecServiceServer) GetDeployJobsStatus(ctx context.Context, req *pb
 	}
 }
 
-func NewJobSpecServiceServer(l log.Logger, jobService models.JobService, pluginRepo models.PluginRepository,
+func NewJobSpecServiceServer(l log.Logger, jobService models.JobService, jobRunService service.JobRunService, pluginRepo models.PluginRepository,
 	projectService service.ProjectService, namespaceService service.NamespaceService, progressObserver progress.Observer) *JobSpecServiceServer {
 	return &JobSpecServiceServer{
 		l:                l,
 		jobSvc:           jobService,
+		jobRunService:    jobRunService,
 		pluginRepo:       pluginRepo,
 		projectService:   projectService,
 		namespaceService: namespaceService,

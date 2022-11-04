@@ -5,7 +5,7 @@ NAME = "github.com/odpf/optimus"
 LAST_COMMIT := $(shell git rev-parse --short HEAD)
 LAST_TAG := "$(shell git rev-list --tags --max-count=1)"
 OPMS_VERSION := "$(shell git describe --tags ${LAST_TAG})-next"
-PROTON_COMMIT := "1a8b127a4e8ae6a30868166d7c60839d01c24ba5"
+PROTON_COMMIT := "0113e40d8a0ddf6cfef5b2f545fad3f09d6d6f28"
 
 .PHONY: build test test-ci generate-proto unit-test-ci integration-test vet coverage clean install lint
 
@@ -35,7 +35,7 @@ integration-test:
 	go test -count 1 -cover -race -timeout 1m ./... -run TestIntegration
 
 repository-test:
-	go test -count 1 -cover -race -timeout 1m ./... -run TestPostgres
+	go test -p 1 -count 1 -cover -race -timeout 1m ./... -run TestPostgres
 
 vet: ## run go vet
 	go vet ./...
