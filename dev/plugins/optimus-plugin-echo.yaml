@@ -2,6 +2,7 @@ name: echo
 description: Echo sample plugin for optimus
 plugintype: task
 pluginversion: 0.1.0
+image: docker.io/busybox
 questions:
 - name: HELLO
   prompt: Hello World
