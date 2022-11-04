@@ -8,7 +8,7 @@ import (
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
-func fromJobProto(jobTenant tenant.Tenant, js *pb.JobSpecification) (*job.JobSpec, error) {
+func fromJobProto(jobTenant tenant.Tenant, js *pb.JobSpecification) (*job.Spec, error) {
 	var retry *job.Retry
 	var alerts []*job.Alert
 	if js.Behavior != nil {
@@ -36,7 +36,7 @@ func fromJobProto(jobTenant tenant.Tenant, js *pb.JobSpecification) (*job.JobSpe
 	metadata := toMetadata(js.Metadata)
 
 	//TODO: try explore builder. too many arguments
-	return job.NewJobSpec(jobTenant, int(js.Version), js.Name, js.Owner, js.Description, js.Labels,
+	return job.NewSpec(jobTenant, int(js.Version), js.Name, js.Owner, js.Description, js.Labels,
 		schedule, window, task, hooks, alerts, dependencies, js.Assets, metadata)
 }
 

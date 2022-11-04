@@ -11,8 +11,7 @@ import (
 
 const DateSpecLayout = "2006-01-02"
 
-// TODO: rename to Spec
-type JobSpec struct {
+type Spec struct {
 	tenant tenant.Tenant
 
 	version      int
@@ -30,88 +29,88 @@ type JobSpec struct {
 	metadata     *Metadata
 }
 
-func (j JobSpec) Window() models.Window {
-	return j.window
+func (s Spec) Window() models.Window {
+	return s.window
 }
 
-func (j JobSpec) Tenant() tenant.Tenant {
-	return j.tenant
+func (s Spec) Tenant() tenant.Tenant {
+	return s.tenant
 }
 
-func (j JobSpec) Version() int {
-	return j.version
+func (s Spec) Version() int {
+	return s.version
 }
 
-func (j JobSpec) Name() Name {
-	return j.name
+func (s Spec) Name() Name {
+	return s.name
 }
 
-func (j JobSpec) Owner() string {
-	return j.owner
+func (s Spec) Owner() string {
+	return s.owner
 }
 
-func (j JobSpec) Description() string {
-	return j.description
+func (s Spec) Description() string {
+	return s.description
 }
 
-func (j JobSpec) Labels() map[string]string {
-	return j.labels
+func (s Spec) Labels() map[string]string {
+	return s.labels
 }
 
-func (j JobSpec) Schedule() *Schedule {
-	return j.schedule
+func (s Spec) Schedule() *Schedule {
+	return s.schedule
 }
 
-func (j JobSpec) Task() *Task {
-	return j.task
+func (s Spec) Task() *Task {
+	return s.task
 }
 
-func (j JobSpec) Hooks() []*Hook {
-	return j.hooks
+func (s Spec) Hooks() []*Hook {
+	return s.hooks
 }
 
-func (j JobSpec) Alerts() []*Alert {
-	return j.alerts
+func (s Spec) Alerts() []*Alert {
+	return s.alerts
 }
 
-func (j JobSpec) DependencySpec() *DependencySpec {
-	return j.dependencies
+func (s Spec) DependencySpec() *DependencySpec {
+	return s.dependencies
 }
 
-func (j JobSpec) Assets() map[string]string {
-	return j.assets
+func (s Spec) Assets() map[string]string {
+	return s.assets
 }
 
-func (j JobSpec) Metadata() *Metadata {
-	return j.metadata
+func (s Spec) Metadata() *Metadata {
+	return s.metadata
 }
 
-func (j JobSpec) Validate() error {
-	if j.Schedule().StartDate() == "" {
+func (s Spec) Validate() error {
+	if s.Schedule().StartDate() == "" {
 		return errors.InvalidArgument(EntityJob, "start date cannot be empty")
 	}
 
-	if _, err := time.Parse(DateSpecLayout, j.Schedule().StartDate()); err != nil {
+	if _, err := time.Parse(DateSpecLayout, s.Schedule().StartDate()); err != nil {
 		return errors.InvalidArgument(EntityJob, fmt.Sprintf("start date format should be %s", DateSpecLayout))
 	}
 
-	if j.Schedule().EndDate() != "" {
-		if _, err := time.Parse(DateSpecLayout, j.Schedule().EndDate()); err != nil {
+	if s.Schedule().EndDate() != "" {
+		if _, err := time.Parse(DateSpecLayout, s.Schedule().EndDate()); err != nil {
 			return errors.InvalidArgument(EntityJob, fmt.Sprintf("end date format should be %s", DateSpecLayout))
 		}
 	}
 	return nil
 }
 
-func NewJobSpec(tenant tenant.Tenant, version int, name string, owner string, description string,
+func NewSpec(tenant tenant.Tenant, version int, name string, owner string, description string,
 	labels map[string]string, schedule *Schedule, window models.Window, task *Task, hooks []*Hook, alerts []*Alert,
-	dependencies *DependencySpec, assets map[string]string, metadata *Metadata) (*JobSpec, error) {
+	dependencies *DependencySpec, assets map[string]string, metadata *Metadata) (*Spec, error) {
 	jobName, err := NameFrom(name)
 	if err != nil {
 		return nil, err
 	}
 
-	return &JobSpec{tenant: tenant, version: version, name: jobName, owner: owner, description: description,
+	return &Spec{tenant: tenant, version: version, name: jobName, owner: owner, description: description,
 		labels: labels, schedule: schedule, window: window, task: task, hooks: hooks, alerts: alerts,
 		dependencies: dependencies, assets: assets, metadata: metadata}, nil
 }

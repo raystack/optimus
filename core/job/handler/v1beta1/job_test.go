@@ -3,8 +3,9 @@ package v1beta1_test
 import (
 	"context"
 	"errors"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 	"testing"
+
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -251,18 +252,18 @@ type JobService struct {
 }
 
 // Add provides a mock function with given fields: ctx, jobTenant, jobs
-func (_m *JobService) Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.JobSpec) (error, error) {
+func (_m *JobService) Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) (error, error) {
 	ret := _m.Called(ctx, jobTenant, jobs)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []*job.JobSpec) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []*job.Spec) error); ok {
 		r0 = rf(ctx, jobTenant, jobs)
 	} else {
 		r0 = ret.Error(0)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, tenant.Tenant, []*job.JobSpec) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.Tenant, []*job.Spec) error); ok {
 		r1 = rf(ctx, jobTenant, jobs)
 	} else {
 		r1 = ret.Error(1)

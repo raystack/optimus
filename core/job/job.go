@@ -16,15 +16,15 @@ const (
 )
 
 type Job struct {
-	jobSpec     *JobSpec
+	spec        *Spec
 	destination string
 	sources     []string
 
 	// TODO: add state
 }
 
-func (j Job) JobSpec() *JobSpec {
-	return j.jobSpec
+func (j Job) Spec() *Spec {
+	return j.spec
 }
 
 func (j Job) Destination() string {
@@ -36,18 +36,18 @@ func (j Job) Sources() []string {
 }
 
 func (j Job) StaticDependencyNames() []string {
-	if j.jobSpec.dependencies == nil {
+	if j.spec.dependencies == nil {
 		return nil
 	}
-	return j.jobSpec.dependencies.JobDependencies()
+	return j.spec.dependencies.JobDependencies()
 }
 
 func (j Job) ProjectName() tenant.ProjectName {
-	return j.jobSpec.Tenant().ProjectName()
+	return j.spec.Tenant().ProjectName()
 }
 
-func NewJob(jobSpec *JobSpec, destination string, sources []string) *Job {
-	return &Job{jobSpec: jobSpec, destination: destination, sources: sources}
+func NewJob(spec *Spec, destination string, sources []string) *Job {
+	return &Job{spec: spec, destination: destination, sources: sources}
 }
 
 type Jobs []*Job
@@ -55,7 +55,7 @@ type Jobs []*Job
 func (j Jobs) GetJobNames() []Name {
 	jobNames := make([]Name, len(j))
 	for i, job := range j {
-		jobNames[i] = job.jobSpec.Name()
+		jobNames[i] = job.spec.Name()
 	}
 	return jobNames
 }
@@ -79,7 +79,7 @@ func (w WithDependency) Dependencies() []*Dependency {
 }
 
 func (w WithDependency) Name() Name {
-	return w.job.jobSpec.Name()
+	return w.job.spec.Name()
 }
 
 func (w WithDependency) GetUnresolvedDependencies() []*Dependency {

@@ -49,19 +49,19 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			jobSpecs := []*job.JobSpec{jobSpecA}
+			specs := []*job.Spec{specA}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
 			jobADestination := "resource-A"
-			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecA.Task()).Return(jobADestination, nil)
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil)
 
 			jobADependencies := []string{"job-B"}
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecA, true).Return(jobADependencies, nil)
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, specA, true).Return(jobADependencies, nil)
 
-			jobA := job.NewJob(jobSpecA, jobADestination, jobADependencies)
+			jobA := job.NewJob(specA, jobADestination, jobADependencies)
 			jobs := []*job.Job{jobA}
 			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
 
@@ -72,7 +72,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("SaveDependency", ctx, []*job.WithDependency{jobWithDependency}).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
-			jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
+			jobErr, sysErr := jobService.Add(ctx, sampleTenant, specs)
 			assert.Nil(t, jobErr)
 			assert.Nil(t, sysErr)
 		})
@@ -90,21 +90,21 @@ func TestJobService(t *testing.T) {
 			defer tenantDetailsGetter.AssertExpectations(t)
 
 			invalidJobScheduleB := job.NewSchedule("invalid", "", "", false, false, nil)
-			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			jobSpecB, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-B", "", "", nil, invalidJobScheduleB,
+			specB, _ := job.NewSpec(sampleTenant, jobVersion, "job-B", "", "", nil, invalidJobScheduleB,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			jobSpecs := []*job.JobSpec{jobSpecB, jobSpecA}
+			specs := []*job.Spec{specB, specA}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
 			jobADestination := "resource-A"
-			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecA.Task()).Return(jobADestination, nil).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
 
 			jobADependencies := []string{"job-B"}
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecA, true).Return(jobADependencies, nil)
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, specA, true).Return(jobADependencies, nil)
 
-			jobA := job.NewJob(jobSpecA, jobADestination, jobADependencies)
+			jobA := job.NewJob(specA, jobADestination, jobADependencies)
 			jobs := []*job.Job{jobA}
 			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
 
@@ -115,7 +115,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("SaveDependency", ctx, []*job.WithDependency{jobWithDependency}).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
-			jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
+			jobErr, sysErr := jobService.Add(ctx, sampleTenant, specs)
 			assert.NotNil(t, jobErr)
 			assert.Nil(t, sysErr)
 		})
@@ -134,14 +134,14 @@ func TestJobService(t *testing.T) {
 
 			invalidJobScheduleA := job.NewSchedule("invalid", "", "", false, false, nil)
 			invalidJobScheduleB := job.NewSchedule("2022-11-01", "invalid", "", false, false, nil)
-			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, invalidJobScheduleA,
+			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, invalidJobScheduleA,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			jobSpecB, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-B", "", "", nil, invalidJobScheduleB,
+			specB, _ := job.NewSpec(sampleTenant, jobVersion, "job-B", "", "", nil, invalidJobScheduleB,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			jobSpecs := []*job.JobSpec{jobSpecB, jobSpecA}
+			specs := []*job.Spec{specB, specA}
 
 			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
-			jobErrors, err := jobService.Add(ctx, sampleTenant, jobSpecs)
+			jobErrors, err := jobService.Add(ctx, sampleTenant, specs)
 
 			assert.NotNil(t, jobErrors)
 			assert.NotNil(t, err)
@@ -159,14 +159,14 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			jobSpecs := []*job.JobSpec{jobSpecA}
+			specs := []*job.Spec{specA}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(&tenant.WithDetails{}, errors.New("internal error"))
 
 			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
-			jobErrors, err := jobService.Add(ctx, sampleTenant, jobSpecs)
+			jobErrors, err := jobService.Add(ctx, sampleTenant, specs)
 
 			assert.Nil(t, jobErrors)
 			assert.NotNil(t, err)
@@ -184,27 +184,27 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			jobSpecB, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-B", "", "", nil, jobSchedule,
+			specB, _ := job.NewSpec(sampleTenant, jobVersion, "job-B", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			jobSpecC, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-C", "", "", nil, jobSchedule,
+			specC, _ := job.NewSpec(sampleTenant, jobVersion, "job-C", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			jobSpecs := []*job.JobSpec{jobSpecB, jobSpecA, jobSpecC}
+			specs := []*job.Spec{specB, specA, specC}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
 			jobADestination := "resource-A"
 			jobBDestination := "resource-B"
-			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecB.Task()).Return(jobBDestination, nil).Once()
-			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecA.Task()).Return(jobADestination, nil).Once()
-			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecC.Task()).Return("", errors.New("generate destination error")).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return(jobBDestination, nil).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specC.Task()).Return("", errors.New("generate destination error")).Once()
 
 			jobADependencies := []string{"job-B"}
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecB, true).Return(nil, errors.New("generate dependencies error"))
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecA, true).Return(jobADependencies, nil)
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, specB, true).Return(nil, errors.New("generate dependencies error"))
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, specA, true).Return(jobADependencies, nil)
 
-			jobA := job.NewJob(jobSpecA, jobADestination, jobADependencies)
+			jobA := job.NewJob(specA, jobADestination, jobADependencies)
 			jobs := []*job.Job{jobA}
 			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
 
@@ -215,7 +215,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("SaveDependency", ctx, []*job.WithDependency{jobWithDependency}).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
-			jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
+			jobErr, sysErr := jobService.Add(ctx, sampleTenant, specs)
 			assert.NotNil(t, jobErr)
 			assert.Nil(t, sysErr)
 		})
@@ -232,22 +232,22 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			jobSpecB, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-B", "", "", nil, jobSchedule,
+			specB, _ := job.NewSpec(sampleTenant, jobVersion, "job-B", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			jobSpecs := []*job.JobSpec{jobSpecB, jobSpecA}
+			specs := []*job.Spec{specB, specA}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
 			jobBDestination := "resource-B"
-			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecB.Task()).Return(jobBDestination, nil).Once()
-			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecA.Task()).Return("", errors.New("generate destination error")).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return(jobBDestination, nil).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return("", errors.New("generate destination error")).Once()
 
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecB, true).Return(nil, errors.New("generate dependencies error"))
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, specB, true).Return(nil, errors.New("generate dependencies error"))
 
 			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
-			jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
+			jobErr, sysErr := jobService.Add(ctx, sampleTenant, specs)
 			assert.NotNil(t, jobErr)
 			assert.NotNil(t, sysErr)
 		})
@@ -264,16 +264,16 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			jobSpecs := []*job.JobSpec{jobSpecA}
+			specs := []*job.Spec{specA}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecA.Task()).Return("", service.ErrDependencyModNotFound).Once()
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecA, true).Return(nil, service.ErrDependencyModNotFound)
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return("", service.ErrDependencyModNotFound).Once()
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, specA, true).Return(nil, service.ErrDependencyModNotFound)
 
-			jobA := job.NewJob(jobSpecA, "", nil)
+			jobA := job.NewJob(specA, "", nil)
 			jobs := []*job.Job{jobA}
 			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
 
@@ -283,7 +283,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("SaveDependency", ctx, []*job.WithDependency{jobWithDependency}).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
-			jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
+			jobErr, sysErr := jobService.Add(ctx, sampleTenant, specs)
 			assert.Nil(t, jobErr)
 			assert.Nil(t, sysErr)
 		})
@@ -300,24 +300,24 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			jobSpecB, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-B", "", "", nil, jobSchedule,
+			specB, _ := job.NewSpec(sampleTenant, jobVersion, "job-B", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			jobSpecs := []*job.JobSpec{jobSpecA, jobSpecB}
+			specs := []*job.Spec{specA, specB}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
 			resourceA := "resource-A"
-			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecA.Task()).Return(resourceA, nil).Once()
-			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecB.Task()).Return("", service.ErrDependencyModNotFound).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return("", service.ErrDependencyModNotFound).Once()
 
 			jobSourcesA := []string{"resource-B"}
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecA, true).Return(jobSourcesA, nil)
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecB, true).Return(nil, service.ErrDependencyModNotFound)
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, specB, true).Return(nil, service.ErrDependencyModNotFound)
 
-			jobA := job.NewJob(jobSpecA, resourceA, jobSourcesA)
-			jobB := job.NewJob(jobSpecB, "", nil)
+			jobA := job.NewJob(specA, resourceA, jobSourcesA)
+			jobB := job.NewJob(specB, "", nil)
 			jobs := []*job.Job{jobA, jobB}
 			savedJobs := []*job.Job{jobB}
 			jobRepo.On("Add", ctx, jobs).Return(savedJobs, errors.New("unable to save job A"), nil)
@@ -328,7 +328,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("SaveDependency", ctx, mock.Anything).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
-			jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
+			jobErr, sysErr := jobService.Add(ctx, sampleTenant, specs)
 			assert.NotNil(t, jobErr)
 			assert.Nil(t, sysErr)
 		})
@@ -345,24 +345,24 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			jobSpecs := []*job.JobSpec{jobSpecA}
+			specs := []*job.Spec{specA}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
 			resourceA := "resource-A"
-			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecA.Task()).Return(resourceA, nil).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
 
 			jobSourcesA := []string{"resource-B"}
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecA, true).Return(jobSourcesA, nil)
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
 
-			jobA := job.NewJob(jobSpecA, resourceA, jobSourcesA)
+			jobA := job.NewJob(specA, resourceA, jobSourcesA)
 			jobs := []*job.Job{jobA}
 			jobRepo.On("Add", ctx, jobs).Return([]*job.Job{}, errors.New("unable to save job A"), errors.New("all jobs failed"))
 
 			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
-			jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
+			jobErr, sysErr := jobService.Add(ctx, sampleTenant, specs)
 			assert.NotNil(t, jobErr)
 			assert.NotNil(t, sysErr)
 		})
@@ -379,19 +379,19 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			jobSpecs := []*job.JobSpec{jobSpecA}
+			specs := []*job.Spec{specA}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
 			resourceA := "resource-A"
-			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecA.Task()).Return(resourceA, nil).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
 
 			jobSourcesA := []string{"resource-B"}
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecA, true).Return(jobSourcesA, nil)
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
 
-			jobA := job.NewJob(jobSpecA, resourceA, jobSourcesA)
+			jobA := job.NewJob(specA, resourceA, jobSourcesA)
 			jobs := []*job.Job{jobA}
 			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
 
@@ -401,7 +401,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("SaveDependency", ctx, mock.Anything).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
-			jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
+			jobErr, sysErr := jobService.Add(ctx, sampleTenant, specs)
 			assert.NotNil(t, jobErr)
 			assert.Nil(t, sysErr)
 		})
@@ -418,19 +418,19 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			jobSpecs := []*job.JobSpec{jobSpecA}
+			specs := []*job.Spec{specA}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
 			resourceA := "resource-A"
-			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecA.Task()).Return(resourceA, nil).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
 
 			jobSourcesA := []string{"resource-B"}
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecA, true).Return(jobSourcesA, nil)
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
 
-			jobA := job.NewJob(jobSpecA, resourceA, jobSourcesA)
+			jobA := job.NewJob(specA, resourceA, jobSourcesA)
 			jobs := []*job.Job{jobA}
 			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
 
@@ -438,7 +438,7 @@ func TestJobService(t *testing.T) {
 			dependencyResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithDependency{jobWithDependencyA}, errors.New("dependency error"), errors.New("internal error"))
 
 			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
-			jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
+			jobErr, sysErr := jobService.Add(ctx, sampleTenant, specs)
 			assert.NotNil(t, jobErr)
 			assert.NotNil(t, sysErr)
 		})
@@ -455,19 +455,19 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			jobSpecA, _ := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			jobSpecs := []*job.JobSpec{jobSpecA}
+			specs := []*job.Spec{specA}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
 			resourceA := "resource-A"
-			pluginService.On("GenerateDestination", ctx, detailedTenant, jobSpecA.Task()).Return(resourceA, nil).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
 
 			jobSourcesA := []string{"resource-B"}
-			pluginService.On("GenerateDependencies", ctx, detailedTenant, jobSpecA, true).Return(jobSourcesA, nil)
+			pluginService.On("GenerateDependencies", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
 
-			jobA := job.NewJob(jobSpecA, resourceA, jobSourcesA)
+			jobA := job.NewJob(specA, resourceA, jobSourcesA)
 			jobs := []*job.Job{jobA}
 			jobRepo.On("Add", ctx, jobs).Return(jobs, nil, nil)
 
@@ -477,7 +477,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("SaveDependency", ctx, mock.Anything).Return(errors.New("internal error"))
 
 			jobService := service.NewJobService(jobRepo, pluginService, dependencyResolver, tenantDetailsGetter)
-			jobErr, sysErr := jobService.Add(ctx, sampleTenant, jobSpecs)
+			jobErr, sysErr := jobService.Add(ctx, sampleTenant, specs)
 			assert.Nil(t, jobErr)
 			assert.NotNil(t, sysErr)
 		})
@@ -561,13 +561,13 @@ type PluginService struct {
 	mock.Mock
 }
 
-// GenerateDependencies provides a mock function with given fields: ctx, jobTenant, jobSpec, dryRun
-func (_m *PluginService) GenerateDependencies(ctx context.Context, jobTenant *tenant.WithDetails, jobSpec *job.JobSpec, dryRun bool) ([]string, error) {
-	ret := _m.Called(ctx, jobTenant, jobSpec, dryRun)
+// GenerateDependencies provides a mock function with given fields: ctx, jobTenant, spec, dryRun
+func (_m *PluginService) GenerateDependencies(ctx context.Context, jobTenant *tenant.WithDetails, spec *job.Spec, dryRun bool) ([]string, error) {
+	ret := _m.Called(ctx, jobTenant, spec, dryRun)
 
 	var r0 []string
-	if rf, ok := ret.Get(0).(func(context.Context, *tenant.WithDetails, *job.JobSpec, bool) []string); ok {
-		r0 = rf(ctx, jobTenant, jobSpec, dryRun)
+	if rf, ok := ret.Get(0).(func(context.Context, *tenant.WithDetails, *job.Spec, bool) []string); ok {
+		r0 = rf(ctx, jobTenant, spec, dryRun)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]string)
@@ -575,8 +575,8 @@ func (_m *PluginService) GenerateDependencies(ctx context.Context, jobTenant *te
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *tenant.WithDetails, *job.JobSpec, bool) error); ok {
-		r1 = rf(ctx, jobTenant, jobSpec, dryRun)
+	if rf, ok := ret.Get(1).(func(context.Context, *tenant.WithDetails, *job.Spec, bool) error); ok {
+		r1 = rf(ctx, jobTenant, spec, dryRun)
 	} else {
 		r1 = ret.Error(1)
 	}

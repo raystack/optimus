@@ -26,7 +26,7 @@ func NewJobService(repo JobRepository, pluginService PluginService, dependencyRe
 
 type PluginService interface {
 	GenerateDestination(context.Context, *tenant.WithDetails, *job.Task) (string, error)
-	GenerateDependencies(ctx context.Context, jobTenant *tenant.WithDetails, jobSpec *job.JobSpec, dryRun bool) ([]string, error)
+	GenerateDependencies(ctx context.Context, jobTenant *tenant.WithDetails, spec *job.Spec, dryRun bool) ([]string, error)
 }
 
 type TenantDetailsGetter interface {
@@ -43,7 +43,7 @@ type DependencyResolver interface {
 	Resolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) (jobWithDependencies []*job.WithDependency, dependencyErrors error, err error)
 }
 
-func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.JobSpec) (jobErrors error, err error) {
+func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) (jobErrors error, err error) {
 	// TODO: initialize jobs, with unknown state
 
 	validatedJobs, jobErrors, err := j.validateSpecs(jobs)
@@ -58,8 +58,8 @@ func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*jo
 	return jobErrors, err
 }
 
-func (j JobService) add(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.JobSpec) (jobErrors error, systemErr error) {
-	jobs, jobErrors, err := j.createJobs(ctx, jobTenant, jobSpecs)
+func (j JobService) add(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) (jobErrors error, systemErr error) {
+	jobs, jobErrors, err := j.createJobs(ctx, jobTenant, specs)
 	if err != nil {
 		return jobErrors, err
 	}
@@ -84,7 +84,7 @@ func (j JobService) add(ctx context.Context, jobTenant tenant.Tenant, jobSpecs [
 }
 
 // TODO: instead of creating another list, lets just have a status in the spec that mark whether this job is skipped, or to_create
-func (j JobService) validateSpecs(jobs []*job.JobSpec) (validatedJobs []*job.JobSpec, jobErrors error, err error) {
+func (j JobService) validateSpecs(jobs []*job.Spec) (validatedJobs []*job.Spec, jobErrors error, err error) {
 	for _, spec := range jobs {
 		if err := spec.Validate(); err != nil {
 			jobErrors = multierror.Append(jobErrors, err)
@@ -102,7 +102,7 @@ func (j JobService) validateSpecs(jobs []*job.JobSpec) (validatedJobs []*job.Job
 	return validatedJobs, jobErrors, nil
 }
 
-func (j JobService) createJobs(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.JobSpec) ([]*job.Job, error, error) {
+func (j JobService) createJobs(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) ([]*job.Job, error, error) {
 	var jobs []*job.Job
 	var jobErrors error
 
@@ -111,7 +111,7 @@ func (j JobService) createJobs(ctx context.Context, jobTenant tenant.Tenant, job
 		return nil, nil, err
 	}
 
-	for _, spec := range jobSpecs {
+	for _, spec := range specs {
 		destination, err := j.pluginService.GenerateDestination(ctx, detailedJobTenant, spec.Task())
 		if err != nil && !errors.Is(err, ErrDependencyModNotFound) {
 			errorMsg := fmt.Sprintf("unable to add %s: %s", spec.Name().String(), err.Error())

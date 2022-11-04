@@ -106,12 +106,12 @@ func TestPluginService(t *testing.T) {
 				Dependencies: []string{jobSource}},
 				nil)
 
-			jobSpecA, err := job.NewJobSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
+			specA, err := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
 			assert.Nil(t, err)
 
 			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
-			result, err := pluginService.GenerateDependencies(ctx, tenantDetails, jobSpecA, false)
+			result, err := pluginService.GenerateDependencies(ctx, tenantDetails, specA, false)
 			assert.Nil(t, err)
 			assert.Equal(t, []string{jobSource}, result)
 		})
