@@ -112,7 +112,7 @@ func (o *optimusResourceManager) toOptimusDependency(response jobSpecificationRe
 		return nil, err
 	}
 	var dependencyType string
-	if unresolvedDependency.IsStaticDependency() {
+	if unresolvedDependency.IsStatic() {
 		dependencyType = "static"
 	} else {
 		dependencyType = "inferred"

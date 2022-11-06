@@ -9,48 +9,48 @@ import (
 	"github.com/odpf/optimus/core/job/dto"
 )
 
-type ExtDependencyResolver struct {
+type ExtUpstreamResolver struct {
 	optimusResourceManagers []ResourceManager
 }
 
 // ResourceManager is repository for external job spec
 type ResourceManager interface {
-	GetOptimusDependencies(context.Context, *dto.RawUpstream) ([]*job.Upstream, error)
+	GetOptimusUpstreams(context.Context, *dto.RawUpstream) ([]*job.Upstream, error)
 }
 
-// NewExternalDependencyResolver creates a new instance of externalDependencyResolver
-func NewExternalDependencyResolver(resourceManagers []ResourceManager) *ExtDependencyResolver {
-	return &ExtDependencyResolver{
+// NewExternalUpstreamResolver creates a new instance of externalUpstreamResolver
+func NewExternalUpstreamResolver(resourceManagers []ResourceManager) *ExtUpstreamResolver {
+	return &ExtUpstreamResolver{
 		optimusResourceManagers: resourceManagers,
 	}
 }
 
-func (e *ExtDependencyResolver) FetchExternalDependencies(ctx context.Context, unresolvedDependencies []*dto.RawUpstream) ([]*job.Upstream, []*dto.RawUpstream, error) {
-	var unknownDependencies []*dto.RawUpstream
-	var externalDependencies []*job.Upstream
+func (e *ExtUpstreamResolver) FetchExternalUpstreams(ctx context.Context, unresolvedUpstreams []*dto.RawUpstream) ([]*job.Upstream, []*dto.RawUpstream, error) {
+	var unknownUpstreams []*dto.RawUpstream
+	var externalUpstreams []*job.Upstream
 	var allErrors error
-	for _, toBeResolvedDependency := range unresolvedDependencies {
-		optimusDependencies, err := e.fetchOptimusDependencies(ctx, toBeResolvedDependency)
+	for _, toBeResolvedUpstream := range unresolvedUpstreams {
+		optimusUpstreams, err := e.fetchOptimusUpstreams(ctx, toBeResolvedUpstream)
 		if err != nil {
-			unknownDependencies = append(unknownDependencies, toBeResolvedDependency)
+			unknownUpstreams = append(unknownUpstreams, toBeResolvedUpstream)
 			allErrors = multierror.Append(allErrors, err)
 			continue
 		}
-		externalDependencies = append(externalDependencies, optimusDependencies...)
+		externalUpstreams = append(externalUpstreams, optimusUpstreams...)
 	}
-	return externalDependencies, unknownDependencies, allErrors
+	return externalUpstreams, unknownUpstreams, allErrors
 }
 
-func (e *ExtDependencyResolver) fetchOptimusDependencies(ctx context.Context, unresolvedDependency *dto.RawUpstream) ([]*job.Upstream, error) {
-	var dependencies []*job.Upstream
+func (e *ExtUpstreamResolver) fetchOptimusUpstreams(ctx context.Context, unresolvedUpstream *dto.RawUpstream) ([]*job.Upstream, error) {
+	var upstreams []*job.Upstream
 	var allErrors error
 	for _, manager := range e.optimusResourceManagers {
-		deps, err := manager.GetOptimusDependencies(ctx, unresolvedDependency)
+		deps, err := manager.GetOptimusUpstreams(ctx, unresolvedUpstream)
 		if err != nil {
 			allErrors = multierror.Append(allErrors, err)
 			continue
 		}
-		dependencies = append(dependencies, deps...)
+		upstreams = append(upstreams, deps...)
 	}
-	return dependencies, allErrors
+	return upstreams, allErrors
 }
