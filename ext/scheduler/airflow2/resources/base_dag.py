@@ -133,12 +133,10 @@ executor_env_vars = [
 ]
 
 init_env_vars = [
-    k8s.V1EnvVar(name="JOB_LABELS",value='{{$.Job.GetLabelsAsString}}'),
     k8s.V1EnvVar(name="JOB_DIR",value=JOB_DIR),
     k8s.V1EnvVar(name="JOB_NAME",value='{{$.Job.Name}}'),
     k8s.V1EnvVar(name="OPTIMUS_HOST",value='{{$.Hostname}}'),
     k8s.V1EnvVar(name="PROJECT",value='{{$.Namespace.ProjectSpec.Name}}'),
-    k8s.V1EnvVar(name="NAMESPACE",value='{{$.Namespace.Name}}'),
     k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ "{{ next_execution_date }}" }}'),
 ]
 
@@ -159,6 +157,7 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
     optimus_projectname="{{$.Namespace.ProjectSpec.Name}}",
     optimus_namespacename="{{$.Namespace.Name}}",
     optimus_jobname="{{.Job.Name}}",
+    optimus_jobtype="{{$.InstanceTypeTask}}",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = {{ $baseTaskSchema.Image | quote}},
@@ -205,6 +204,7 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
     optimus_projectname="{{$.Namespace.ProjectSpec.Name}}",
     optimus_namespacename="{{$.Namespace.Name}}",
     optimus_jobname="{{$.Job.Name}}",
+    optimus_jobtype="{{$.InstanceTypeHook}}",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "{{ $hookSchema.Image }}",

@@ -79,6 +79,7 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
                  optimus_projectname,
                  optimus_namespacename,
                  optimus_jobname,
+                 optimus_jobtype,
                  *args,
                  **kwargs):
         super(SuperKubernetesPodOperator, self).__init__(*args, **kwargs)
@@ -94,6 +95,7 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
         self.optimus_namespacename = optimus_namespacename
         self.optimus_jobname  = optimus_jobname
         self.optimus_projectname = optimus_projectname
+        self.optimus_jobtype = optimus_jobtype
         self._optimus_client = OptimusAPIClient(optimus_hostname)
 
     def render_init_containers(self, context):
@@ -104,11 +106,11 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
 
     def fetch_env_from_optimus(self, context):
         scheduled_at = context["next_execution_date"].strftime(TIMESTAMP_FORMAT)
-        job_meta = self._optimus_client.get_job_metadata(scheduled_at, self.optimus_namespacename, self.optimus_projectname, self.optimus_jobname)
+        job_meta = self._optimus_client.get_job_run_input(scheduled_at, self.optimus_projectname, self.optimus_jobname, self.optimus_jobtype)
         return [ 
-            k8s.V1EnvVar(name=key,value=val) for key, val in job_meta["context"]["envs"].items()
+            k8s.V1EnvVar(name=key,value=val) for key, val in job_meta["envs"].items()
         ] + [
-            k8s.V1EnvVar(name=key,value=val) for key, val in job_meta["context"]["secrets"].items()
+            k8s.V1EnvVar(name=key,value=val) for key, val in job_meta["secrets"].items()
         ]
 
     def _dry_run(self, pod):
@@ -239,6 +241,16 @@ class OptimusAPIClient:
             window_truncate_upto=window_truncate_upto,
         )
         response = requests.get(url)
+        self._raise_error_if_request_failed(response)
+        return response.json()
+
+
+    def get_job_run_input(self, execution_date: str, project_name: str, job_name: str, job_type: str) -> dict:
+        response = requests.post(url="{}/api/v1beta1/project/{}/job/{}/run_input".format(self.host, project_name, job_name),
+                      json={'scheduled_at': execution_date,
+                            'instance_name': job_name,
+                            'instance_type': "TYPE_" + job_type.upper()})
+
         self._raise_error_if_request_failed(response)
         return response.json()
 
