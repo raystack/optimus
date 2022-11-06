@@ -32,11 +32,11 @@ type Spec struct {
 	Retry         datatypes.JSON
 	Alert         datatypes.JSON
 
-	// Dependencies
-	StaticDependencies pq.StringArray `gorm:"type:varchar(220)[]" json:"static_dependencies"`
+	// Upstreams
+	StaticUpstreams pq.StringArray `gorm:"type:varchar(220)[]" json:"static_upstreams"`
 
-	// ExternalDependencies
-	HTTPDependencies datatypes.JSON `json:"http_dependencies"`
+	// ExternalUpstreams
+	HTTPUpstreams datatypes.JSON `json:"http_upstreams"`
 
 	TaskName   string
 	TaskConfig datatypes.JSON
@@ -85,6 +85,7 @@ type Hook struct {
 func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 	jobSpec := jobEntity.Spec()
 
+	// TODO: remove this comment as the line below is fine, just to be explicit in mentioning that
 	labelsBytes, err := json.Marshal(jobSpec.Labels())
 	if err != nil {
 		return nil, err
@@ -103,16 +104,19 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		}
 	}
 
+	// TODO: fix this as this results empty json bytes
 	retryBytes, err := json.Marshal(jobSpec.Schedule().Retry())
 	if err != nil {
 		return nil, err
 	}
 
+	// TODO: fix this as this results empty json bytes
 	alertsBytes, err := toStorageAlerts(jobSpec.Alerts())
 	if err != nil {
 		return nil, err
 	}
 
+	// TODO: fix this as this results empty json bytes
 	taskConfigBytes, err := json.Marshal(jobSpec.Task().Config())
 	if err != nil {
 		return nil, err
@@ -123,21 +127,24 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		return nil, err
 	}
 
+	// TODO: fix this as this results empty json bytes
 	hooksBytes, err := toStorageHooks(jobSpec.Hooks())
 	if err != nil {
 		return nil, err
 	}
 
+	// TODO: fix this as this results empty json bytes
 	metadataBytes, err := json.Marshal(jobSpec.Metadata())
 	if err != nil {
 		return nil, err
 	}
 
-	var staticDependencies []string
-	var httpDependenciesBytes []byte
+	var staticUpstreams []string
+	var httpUpstreamsInBytes []byte
 	if jobSpec.Upstream() != nil {
-		staticDependencies = jobSpec.Upstream().UpstreamNames()
-		httpDependenciesBytes, err = json.Marshal(jobSpec.Upstream().HTTPUpstreams())
+		staticUpstreams = jobSpec.Upstream().UpstreamNames()
+		// TODO: this results empty json bytes
+		httpUpstreamsInBytes, err = json.Marshal(jobSpec.Upstream().HTTPUpstreams())
 		if err != nil {
 			return nil, err
 		}
@@ -175,8 +182,8 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		Retry:         retryBytes,
 		Alert:         alertsBytes,
 
-		StaticDependencies: staticDependencies,
-		HTTPDependencies:   httpDependenciesBytes,
+		StaticUpstreams: staticUpstreams,
+		HTTPUpstreams:   httpUpstreamsInBytes,
 
 		Destination: jobEntity.Destination(),
 		Sources:     sources,
