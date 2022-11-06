@@ -6,6 +6,6 @@ type RawUpstream struct {
 	ResourceURN string
 }
 
-func (r RawUpstream) IsStaticDependency() bool {
+func (r RawUpstream) IsStatic() bool {
 	return r.JobName != ""
 }

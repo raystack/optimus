@@ -15,7 +15,7 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-func TestDependencyResolver(t *testing.T) {
+func TestUpstreamResolver(t *testing.T) {
 	ctx := context.Background()
 	project, _ := tenant.NewProject("test-proj",
 		map[string]string{
@@ -36,229 +36,229 @@ func TestDependencyResolver(t *testing.T) {
 	jobTask := job.NewTask("bq2bq", jobTaskConfig)
 
 	t.Run("Resolve", func(t *testing.T) {
-		t.Run("resolve dependency internally", func(t *testing.T) {
+		t.Run("resolve upstream internally", func(t *testing.T) {
 			jobRepo := new(JobRepository)
-			externalDependencyResolver := new(ExternalDependencyResolver)
+			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
-			dependencySpec := job.NewSpecUpstream([]string{"test-proj/job-c"}, nil)
+			upstreamSpec := job.NewSpecUpstream([]string{"test-proj/job-c"}, nil)
 			specA, err := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, dependencySpec, nil, nil)
+				jobWindow, jobTask, nil, nil, upstreamSpec, nil, nil)
 			assert.Nil(t, err)
 			jobADestination := "resource-A"
-			jobADependencies := []string{"resource-B"}
+			jobAUpstreams := []string{"resource-B"}
 
-			jobA := job.NewJob(specA, jobADestination, jobADependencies)
+			jobA := job.NewJob(specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
 
-			dependencyB, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "inferred")
-			dependencyC, _ := job.NewUpstreamResolved("job-C", "", "resource-C", sampleTenant, "static")
-			dependencies := []*job.Upstream{dependencyB, dependencyC}
-			jobNameWithDependencies := map[job.Name][]*job.Upstream{
-				jobA.Spec().Name(): dependencies,
+			upstreamB, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "inferred")
+			upstreamC, _ := job.NewUpstreamResolved("job-C", "", "resource-C", sampleTenant, "static")
+			upstreams := []*job.Upstream{upstreamB, upstreamC}
+			jobNameWithUpstreams := map[job.Name][]*job.Upstream{
+				jobA.Spec().Name(): upstreams,
 			}
 
-			jobRepo.On("GetJobNameWithInternalDependencies", ctx, project.Name(), []job.Name{specA.Name()}).Return(jobNameWithDependencies, nil)
+			jobRepo.On("GetJobNameWithInternalUpstreams", ctx, project.Name(), []job.Name{specA.Name()}).Return(jobNameWithUpstreams, nil)
 
-			externalDependencyResolver.On("FetchExternalDependencies", ctx, mock.Anything).Return([]*job.Upstream{}, nil, nil)
+			externalUpstreamResolver.On("FetchExternalUpstreams", ctx, mock.Anything).Return([]*job.Upstream{}, nil, nil)
 
-			expectedJobWithDependencies := []*job.WithUpstream{job.NewWithUpstream(jobA, []*job.Upstream{dependencyB, dependencyC})}
+			expectedJobWitUpstreams := []*job.WithUpstream{job.NewWithUpstream(jobA, []*job.Upstream{upstreamB, upstreamC})}
 
-			dependencyResolver := resolver.NewDependencyResolver(jobRepo, externalDependencyResolver)
-			result, depErrors, err := dependencyResolver.Resolve(ctx, project.Name(), jobs)
+			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
+			result, depErrors, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
 			assert.Nil(t, depErrors)
 			assert.Nil(t, err)
-			assert.EqualValues(t, expectedJobWithDependencies, result)
+			assert.EqualValues(t, expectedJobWitUpstreams, result)
 		})
-		t.Run("resolve dependency internally and externally", func(t *testing.T) {
+		t.Run("resolve upstream internally and externally", func(t *testing.T) {
 			jobRepo := new(JobRepository)
-			externalDependencyResolver := new(ExternalDependencyResolver)
+			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
-			dependencySpec := job.NewSpecUpstream([]string{"job-c"}, nil)
+			upstreamSpec := job.NewSpecUpstream([]string{"job-c"}, nil)
 			specA, err := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, dependencySpec, nil, nil)
+				jobWindow, jobTask, nil, nil, upstreamSpec, nil, nil)
 			assert.Nil(t, err)
 			jobADestination := "resource-A"
-			jobADependencies := []string{"resource-B", "resource-D"}
+			jobAUpstreams := []string{"resource-B", "resource-D"}
 
-			jobA := job.NewJob(specA, jobADestination, jobADependencies)
+			jobA := job.NewJob(specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
 
-			internalDependency, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
-			jobNameWithDependencies := map[job.Name][]*job.Upstream{
-				jobA.Spec().Name(): {internalDependency},
+			internalUpstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
+			jobNameWithUpstreams := map[job.Name][]*job.Upstream{
+				jobA.Spec().Name(): {internalUpstream},
 			}
 
-			jobRepo.On("GetJobNameWithInternalDependencies", ctx, project.Name(), []job.Name{specA.Name()}).Return(jobNameWithDependencies, nil)
+			jobRepo.On("GetJobNameWithInternalUpstreams", ctx, project.Name(), []job.Name{specA.Name()}).Return(jobNameWithUpstreams, nil)
 
-			externalDependencyC, _ := job.NewUpstreamResolved("job-C", "external-host", "resource-C", externalTenant, "static")
-			externalDependencyD, _ := job.NewUpstreamResolved("job-D", "external-host", "resource-D", externalTenant, "inferred")
-			externalDependencyResolver.On("FetchExternalDependencies", ctx, mock.Anything).Return([]*job.Upstream{externalDependencyC, externalDependencyD}, nil, nil)
+			externalUpstreamC, _ := job.NewUpstreamResolved("job-C", "external-host", "resource-C", externalTenant, "static")
+			externalUpstreamD, _ := job.NewUpstreamResolved("job-D", "external-host", "resource-D", externalTenant, "inferred")
+			externalUpstreamResolver.On("FetchExternalUpstreams", ctx, mock.Anything).Return([]*job.Upstream{externalUpstreamC, externalUpstreamD}, nil, nil)
 
-			expectedJobWithDependencies := []*job.WithUpstream{
-				job.NewWithUpstream(jobA, []*job.Upstream{internalDependency, externalDependencyC, externalDependencyD}),
+			expectedJobWitUpstreams := []*job.WithUpstream{
+				job.NewWithUpstream(jobA, []*job.Upstream{internalUpstream, externalUpstreamC, externalUpstreamD}),
 			}
 
-			dependencyResolver := resolver.NewDependencyResolver(jobRepo, externalDependencyResolver)
-			result, depErrors, err := dependencyResolver.Resolve(ctx, project.Name(), jobs)
+			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
+			result, depErrors, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
 			assert.Nil(t, depErrors)
 			assert.Nil(t, err)
-			assert.EqualValues(t, expectedJobWithDependencies, result)
+			assert.EqualValues(t, expectedJobWitUpstreams, result)
 		})
-		t.Run("returns error when unable to get internal dependencies", func(t *testing.T) {
+		t.Run("returns error when unable to get internal upstreams", func(t *testing.T) {
 			jobRepo := new(JobRepository)
-			externalDependencyResolver := new(ExternalDependencyResolver)
+			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
 			specA, err := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
 			assert.Nil(t, err)
 			jobADestination := "resource-A"
-			jobADependencies := []string{"resource-B"}
+			jobAUpstreams := []string{"resource-B"}
 
-			jobA := job.NewJob(specA, jobADestination, jobADependencies)
+			jobA := job.NewJob(specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
 
-			jobRepo.On("GetJobNameWithInternalDependencies", ctx, project.Name(), mock.Anything).Return(map[job.Name][]*job.Upstream{}, errors.New("internal error"))
+			jobRepo.On("GetJobNameWithInternalUpstreams", ctx, project.Name(), mock.Anything).Return(map[job.Name][]*job.Upstream{}, errors.New("internal error"))
 
-			dependencyResolver := resolver.NewDependencyResolver(jobRepo, externalDependencyResolver)
-			result, depErrors, err := dependencyResolver.Resolve(ctx, project.Name(), jobs)
+			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
+			result, depErrors, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
 			assert.Nil(t, depErrors)
 			assert.NotNil(t, err)
 			assert.Nil(t, result)
 		})
-		t.Run("returns dependency error when there is unresolved static dependency", func(t *testing.T) {
+		t.Run("returns upstream error when there is unresolved static upstream", func(t *testing.T) {
 			jobRepo := new(JobRepository)
-			externalDependencyResolver := new(ExternalDependencyResolver)
+			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
-			dependencySpec := job.NewSpecUpstream([]string{"job-c"}, nil)
+			upstreamSpec := job.NewSpecUpstream([]string{"job-c"}, nil)
 			specA, err := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, dependencySpec, nil, nil)
+				jobWindow, jobTask, nil, nil, upstreamSpec, nil, nil)
 			assert.Nil(t, err)
 			jobADestination := "resource-A"
-			jobADependencies := []string{"resource-B", "resource-D"}
+			jobAUpstreams := []string{"resource-B", "resource-D"}
 
-			jobA := job.NewJob(specA, jobADestination, jobADependencies)
+			jobA := job.NewJob(specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
 
-			internalDependency, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
-			jobNameWithDependencies := map[job.Name][]*job.Upstream{
-				jobA.Spec().Name(): {internalDependency},
+			internalUpstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
+			jobNameWithUpstreams := map[job.Name][]*job.Upstream{
+				jobA.Spec().Name(): {internalUpstream},
 			}
 
-			jobRepo.On("GetJobNameWithInternalDependencies", ctx, project.Name(), []job.Name{specA.Name()}).Return(jobNameWithDependencies, nil)
+			jobRepo.On("GetJobNameWithInternalUpstreams", ctx, project.Name(), []job.Name{specA.Name()}).Return(jobNameWithUpstreams, nil)
 
-			unresolvedDependencyC := &dto.RawUpstream{
+			unresolvedUpstreamC := &dto.RawUpstream{
 				ProjectName: externalTenant.ProjectName().String(),
 				JobName:     "job-C",
 			}
-			unresolvedDependencyD := &dto.RawUpstream{
+			unresolvedUpstreamD := &dto.RawUpstream{
 				ResourceURN: "resource-D",
 			}
-			externalDependencyResolver.On("FetchExternalDependencies", ctx, mock.Anything).Return([]*job.Upstream{}, []*dto.RawUpstream{unresolvedDependencyC, unresolvedDependencyD}, nil)
+			externalUpstreamResolver.On("FetchExternalUpstreams", ctx, mock.Anything).Return([]*job.Upstream{}, []*dto.RawUpstream{unresolvedUpstreamC, unresolvedUpstreamD}, nil)
 
-			externalDependencyC := job.NewUpstreamUnresolved("job-C", "", "external-proj")
-			externalDependencyD := job.NewUpstreamUnresolved("", "resource-D", "")
-			expectedJobWithDependencies := []*job.WithUpstream{
-				job.NewWithUpstream(jobA, []*job.Upstream{internalDependency, externalDependencyC, externalDependencyD}),
+			externalUpstreamC := job.NewUpstreamUnresolved("job-C", "", "external-proj")
+			externalUpstreamD := job.NewUpstreamUnresolved("", "resource-D", "")
+			expectedJobWitUpstreams := []*job.WithUpstream{
+				job.NewWithUpstream(jobA, []*job.Upstream{internalUpstream, externalUpstreamC, externalUpstreamD}),
 			}
 
-			dependencyResolver := resolver.NewDependencyResolver(jobRepo, externalDependencyResolver)
-			result, depErrors, err := dependencyResolver.Resolve(ctx, project.Name(), jobs)
+			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
+			result, depErrors, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
 			assert.NotNil(t, depErrors)
 			assert.Nil(t, err)
-			assert.EqualValues(t, expectedJobWithDependencies, result)
+			assert.EqualValues(t, expectedJobWitUpstreams, result)
 		})
-		t.Run("returns dependency error when encounter error on fetching fetch external dependencies", func(t *testing.T) {
+		t.Run("returns upstream error when encounter error on fetching fetch external upstreams", func(t *testing.T) {
 			jobRepo := new(JobRepository)
-			externalDependencyResolver := new(ExternalDependencyResolver)
+			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
-			dependencySpec := job.NewSpecUpstream([]string{"job-c"}, nil)
+			upstreamSpec := job.NewSpecUpstream([]string{"job-c"}, nil)
 			specA, err := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, dependencySpec, nil, nil)
+				jobWindow, jobTask, nil, nil, upstreamSpec, nil, nil)
 			assert.Nil(t, err)
 			jobADestination := "resource-A"
-			jobADependencies := []string{"resource-B", "resource-D"}
+			jobAUpstreams := []string{"resource-B", "resource-D"}
 
-			jobA := job.NewJob(specA, jobADestination, jobADependencies)
+			jobA := job.NewJob(specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
 
-			internalDependency, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
-			jobNameWithDependencies := map[job.Name][]*job.Upstream{
-				jobA.Spec().Name(): {internalDependency},
+			internalUpstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
+			jobNameWithUpstreams := map[job.Name][]*job.Upstream{
+				jobA.Spec().Name(): {internalUpstream},
 			}
 
-			externalDependencyC, _ := job.NewUpstreamResolved("job-C", "external-host", "resource-C", externalTenant, "static")
-			externalDependencyD, _ := job.NewUpstreamResolved("job-D", "external-host", "resource-D", externalTenant, "inferred")
-			jobRepo.On("GetJobNameWithInternalDependencies", ctx, project.Name(), []job.Name{specA.Name()}).Return(jobNameWithDependencies, nil)
+			externalUpstreamC, _ := job.NewUpstreamResolved("job-C", "external-host", "resource-C", externalTenant, "static")
+			externalUpstreamD, _ := job.NewUpstreamResolved("job-D", "external-host", "resource-D", externalTenant, "inferred")
+			jobRepo.On("GetJobNameWithInternalUpstreams", ctx, project.Name(), []job.Name{specA.Name()}).Return(jobNameWithUpstreams, nil)
 
-			externalDependencyResolver.On("FetchExternalDependencies", ctx, mock.Anything).Return([]*job.Upstream{externalDependencyC, externalDependencyD}, nil, errors.New("internal error"))
+			externalUpstreamResolver.On("FetchExternalUpstreams", ctx, mock.Anything).Return([]*job.Upstream{externalUpstreamC, externalUpstreamD}, nil, errors.New("internal error"))
 
-			expectedJobWithDependencies := []*job.WithUpstream{
-				job.NewWithUpstream(jobA, []*job.Upstream{internalDependency, externalDependencyC, externalDependencyD}),
+			expectedJobWitUpstreams := []*job.WithUpstream{
+				job.NewWithUpstream(jobA, []*job.Upstream{internalUpstream, externalUpstreamC, externalUpstreamD}),
 			}
 
-			dependencyResolver := resolver.NewDependencyResolver(jobRepo, externalDependencyResolver)
-			result, depErrors, err := dependencyResolver.Resolve(ctx, project.Name(), jobs)
+			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
+			result, depErrors, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
 			assert.NotNil(t, depErrors)
 			assert.Nil(t, err)
-			assert.EqualValues(t, expectedJobWithDependencies, result)
+			assert.EqualValues(t, expectedJobWitUpstreams, result)
 		})
-		t.Run("returns dependency error when encounter error on initializing unresolved dependency", func(t *testing.T) {
+		t.Run("returns upstream error when encounter error on initializing unresolved upstream", func(t *testing.T) {
 			jobRepo := new(JobRepository)
-			externalDependencyResolver := new(ExternalDependencyResolver)
+			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
-			dependencySpec := job.NewSpecUpstream([]string{"job-c"}, nil)
+			upstreamSpec := job.NewSpecUpstream([]string{"job-c"}, nil)
 			specA, err := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, dependencySpec, nil, nil)
+				jobWindow, jobTask, nil, nil, upstreamSpec, nil, nil)
 			assert.Nil(t, err)
 			jobADestination := "resource-A"
-			jobADependencies := []string{"resource-B", "resource-D"}
+			jobAUpstreams := []string{"resource-B", "resource-D"}
 
-			jobA := job.NewJob(specA, jobADestination, jobADependencies)
+			jobA := job.NewJob(specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
 
-			internalDependency, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
-			jobNameWithDependencies := map[job.Name][]*job.Upstream{
-				jobA.Spec().Name(): {internalDependency},
+			internalUpstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
+			jobNameWithUpstreams := map[job.Name][]*job.Upstream{
+				jobA.Spec().Name(): {internalUpstream},
 			}
 
-			jobRepo.On("GetJobNameWithInternalDependencies", ctx, project.Name(), []job.Name{specA.Name()}).Return(jobNameWithDependencies, nil)
+			jobRepo.On("GetJobNameWithInternalUpstreams", ctx, project.Name(), []job.Name{specA.Name()}).Return(jobNameWithUpstreams, nil)
 
-			unresolvedDependencyC := &dto.RawUpstream{
+			unresolvedUpstreamC := &dto.RawUpstream{
 				ProjectName: externalTenant.ProjectName().String(),
 				JobName:     "job-C",
 			}
-			unresolvedDependencyD := &dto.RawUpstream{
+			unresolvedUpstreamD := &dto.RawUpstream{
 				ResourceURN: "resource-D",
 			}
-			externalDependencyResolver.On("FetchExternalDependencies", ctx, mock.Anything).Return([]*job.Upstream{}, []*dto.RawUpstream{unresolvedDependencyC, unresolvedDependencyD}, nil)
+			externalUpstreamResolver.On("FetchExternalUpstreams", ctx, mock.Anything).Return([]*job.Upstream{}, []*dto.RawUpstream{unresolvedUpstreamC, unresolvedUpstreamD}, nil)
 
-			externalDependencyC := job.NewUpstreamUnresolved("job-C", "", "external-proj")
-			externalDependencyD := job.NewUpstreamUnresolved("", "resource-D", "")
-			expectedJobWithDependencies := []*job.WithUpstream{
-				job.NewWithUpstream(jobA, []*job.Upstream{internalDependency, externalDependencyC, externalDependencyD}),
+			externalUpstreamC := job.NewUpstreamUnresolved("job-C", "", "external-proj")
+			externalUpstreamD := job.NewUpstreamUnresolved("", "resource-D", "")
+			expectedJobWitUpstreams := []*job.WithUpstream{
+				job.NewWithUpstream(jobA, []*job.Upstream{internalUpstream, externalUpstreamC, externalUpstreamD}),
 			}
 
-			dependencyResolver := resolver.NewDependencyResolver(jobRepo, externalDependencyResolver)
-			result, depErrors, err := dependencyResolver.Resolve(ctx, project.Name(), jobs)
+			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
+			result, depErrors, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
 			assert.NotNil(t, depErrors)
 			assert.Nil(t, err)
-			assert.EqualValues(t, expectedJobWithDependencies, result)
+			assert.EqualValues(t, expectedJobWitUpstreams, result)
 		})
 	})
 }
 
-// ExternalDependencyResolver is an autogenerated mock type for the ExternalDependencyResolver type
-type ExternalDependencyResolver struct {
+// ExternalUpstreamResolver is an autogenerated mock type for the ExternalUpstreamResolver type
+type ExternalUpstreamResolver struct {
 	mock.Mock
 }
 
-// FetchExternalDependencies provides a mock function with given fields: ctx, unresolvedDependencies
-func (_m *ExternalDependencyResolver) FetchExternalDependencies(ctx context.Context, unresolvedDependencies []*dto.RawUpstream) ([]*job.Upstream, []*dto.RawUpstream, error) {
-	ret := _m.Called(ctx, unresolvedDependencies)
+// FetchExternalUpstreams provides a mock function with given fields: ctx, unresolvedUpstreams
+func (_m *ExternalUpstreamResolver) FetchExternalUpstreams(ctx context.Context, unresolvedUpstreams []*dto.RawUpstream) ([]*job.Upstream, []*dto.RawUpstream, error) {
+	ret := _m.Called(ctx, unresolvedUpstreams)
 
 	var r0 []*job.Upstream
 	if rf, ok := ret.Get(0).(func(context.Context, []*dto.RawUpstream) []*job.Upstream); ok {
-		r0 = rf(ctx, unresolvedDependencies)
+		r0 = rf(ctx, unresolvedUpstreams)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*job.Upstream)
@@ -267,7 +267,7 @@ func (_m *ExternalDependencyResolver) FetchExternalDependencies(ctx context.Cont
 
 	var r1 []*dto.RawUpstream
 	if rf, ok := ret.Get(1).(func(context.Context, []*dto.RawUpstream) []*dto.RawUpstream); ok {
-		r1 = rf(ctx, unresolvedDependencies)
+		r1 = rf(ctx, unresolvedUpstreams)
 	} else {
 		if ret.Get(1) != nil {
 			r1 = ret.Get(1).([]*dto.RawUpstream)
@@ -276,7 +276,7 @@ func (_m *ExternalDependencyResolver) FetchExternalDependencies(ctx context.Cont
 
 	var r2 error
 	if rf, ok := ret.Get(2).(func(context.Context, []*dto.RawUpstream) error); ok {
-		r2 = rf(ctx, unresolvedDependencies)
+		r2 = rf(ctx, unresolvedUpstreams)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -319,8 +319,7 @@ func (_m *JobRepository) Add(ctx context.Context, jobs []*job.Job) ([]*job.Job, 
 	return r0, r1, r2
 }
 
-// GetJobNameWithDependencies provides a mock function with given fields: ctx, projectName, jobNames
-func (_m *JobRepository) GetJobNameWithInternalDependencies(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error) {
+func (_m *JobRepository) GetJobNameWithInternalUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error) {
 	ret := _m.Called(ctx, projectName, jobNames)
 
 	var r0 map[job.Name][]*job.Upstream
