@@ -16,8 +16,8 @@ CREATE TABLE IF NOT EXISTS job (
     retry JSONB, -- from behavior
     alert JSONB, -- from behavior
 
-    static_dependencies VARCHAR(220)[], -- from dependencies
-    http_dependencies JSONB, -- from external dependencies
+    static_upstreams VARCHAR(220)[], -- from upstreams
+    http_upstreams JSONB, -- from external upstreams
 
     task_name VARCHAR(200),
     task_config JSONB,
@@ -41,7 +41,8 @@ CREATE TABLE IF NOT EXISTS job (
     deleted_at TIMESTAMP WITH TIME ZONE,
 
     UNIQUE (project_name, name)
-    );
+);
+
 CREATE INDEX IF NOT EXISTS job_name_idx ON job (name);
 CREATE INDEX IF NOT EXISTS job_project_name_idx ON job (project_name);
 CREATE INDEX IF NOT EXISTS job_namespace_name_idx ON job (namespace_name);
