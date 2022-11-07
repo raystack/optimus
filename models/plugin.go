@@ -88,8 +88,6 @@ type PluginInfoResponse struct {
 
 // CommandLineMod needs to be implemented by plugins to interact with optimus CLI
 type CommandLineMod interface {
-	BasePlugin
-
 	// GetQuestions list down all the cli inputs required to generate spec files
 	// name used for question will be directly mapped to DefaultConfig() parameters
 	GetQuestions(context.Context, GetQuestionsRequest) (*GetQuestionsResponse, error)
@@ -103,9 +101,6 @@ type CommandLineMod interface {
 	// DefaultAssets will be passed down to execution unit as files
 	// if DryRun is true in PluginOptions, should not throw error for missing inputs
 	DefaultAssets(context.Context, DefaultAssetsRequest) (*DefaultAssetsResponse, error)
-
-	// CompileAssets overrides default asset compilation
-	CompileAssets(context.Context, CompileAssetsRequest) (*CompileAssetsResponse, error)
 }
 
 // DependencyResolverMod needs to be implemented for automatic dependency resolution of tasks
@@ -117,6 +112,9 @@ type DependencyResolverMod interface {
 
 	// GenerateDependencies returns names of job destination on which this unit is dependent on
 	GenerateDependencies(context.Context, GenerateDependenciesRequest) (*GenerateDependenciesResponse, error)
+
+	// CompileAssets overrides default asset compilation
+	CompileAssets(context.Context, CompileAssetsRequest) (*CompileAssetsResponse, error)
 }
 
 type YamlMod interface {
@@ -390,14 +388,12 @@ var (
 )
 
 type PluginRepository interface {
-	AddYaml(YamlMod) error                                       // yaml plugin
-	Add(BasePlugin, CommandLineMod, DependencyResolverMod) error // binary plugin
+	AddYaml(YamlMod) error                       // yaml plugin
+	Add(BasePlugin, DependencyResolverMod) error // binary plugin
 	GetByName(string) (*Plugin, error)
 	GetAll() []*Plugin
 	GetTasks() []*Plugin
 	GetHooks() []*Plugin
-	GetCommandLines() []CommandLineMod
-	GetDependencyResolvers() []DependencyResolverMod
 }
 
 // Plugin is an extensible module implemented outside the core optimus boundaries
@@ -407,7 +403,6 @@ type Plugin struct {
 
 	// Mods apply multiple modifications to existing registered plugins which
 	// can be used in different circumstances
-	CLIMod        CommandLineMod
 	DependencyMod DependencyResolverMod
 	YamlMod       YamlMod
 }
@@ -417,10 +412,7 @@ func (p *Plugin) IsYamlPlugin() bool {
 }
 
 func (p *Plugin) GetSurveyMod() CommandLineMod {
-	if p.IsYamlPlugin() {
-		return p.YamlMod
-	}
-	return p.CLIMod
+	return p.YamlMod
 }
 
 func (p *Plugin) Info() *PluginInfoResponse {
@@ -465,30 +457,6 @@ func (s *registeredPlugins) GetAll() []*Plugin {
 	return list
 }
 
-func (s *registeredPlugins) GetDependencyResolvers() []DependencyResolverMod {
-	var list []DependencyResolverMod
-	s.lazySortPluginKeys() // sorts keys if not sorted
-	for _, pluginKey := range s.sortedKeys {
-		unit := s.data[pluginKey]
-		if unit.DependencyMod != nil {
-			list = append(list, unit.DependencyMod)
-		}
-	}
-	return list
-}
-
-func (s *registeredPlugins) GetCommandLines() []CommandLineMod {
-	var list []CommandLineMod
-	for _, unit := range s.data {
-		if unit.CLIMod != nil {
-			list = append(list, unit.CLIMod)
-		} else if unit.YamlMod != nil {
-			list = append(list, unit.YamlMod)
-		}
-	}
-	return list
-}
-
 func (s *registeredPlugins) GetTasks() []*Plugin {
 	var list []*Plugin
 	s.lazySortPluginKeys() // sorts keys if not sorted
@@ -515,15 +483,15 @@ func (s *registeredPlugins) GetHooks() []*Plugin {
 
 // for addin yaml plugins
 func (s *registeredPlugins) AddYaml(yamlMod YamlMod) error {
-	return s.add(nil, nil, nil, yamlMod)
+	return s.add(nil, nil, yamlMod)
 }
 
 // for addin binary plugins
-func (s *registeredPlugins) Add(baseMod BasePlugin, cliMod CommandLineMod, drMod DependencyResolverMod) error {
-	return s.add(baseMod, cliMod, drMod, nil)
+func (s *registeredPlugins) Add(baseMod BasePlugin, drMod DependencyResolverMod) error {
+	return s.add(baseMod, drMod, nil)
 }
 
-func (s *registeredPlugins) add(baseMod BasePlugin, cliMod CommandLineMod, drMod DependencyResolverMod, yamlMod CommandLineMod) error {
+func (s *registeredPlugins) add(baseMod BasePlugin, drMod DependencyResolverMod, yamlMod YamlMod) error {
 	var info *PluginInfoResponse
 	var err error
 	if yamlMod != nil {
@@ -574,7 +542,6 @@ func (s *registeredPlugins) add(baseMod BasePlugin, cliMod CommandLineMod, drMod
 	// creating new plugin
 	s.data[info.Name] = &Plugin{
 		Base:          baseMod,
-		CLIMod:        cliMod,
 		DependencyMod: drMod,
 		YamlMod:       yamlMod,
 	}

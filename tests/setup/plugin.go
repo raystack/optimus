@@ -44,6 +44,11 @@ func (MockPluginBQ) GenerateDependencies(_ context.Context, req models.GenerateD
 	return &models.GenerateDependenciesResponse{Dependencies: []string{c.Value}}, nil
 }
 
+func (MockPluginBQ) CompileAssets(_ context.Context, _ models.CompileAssetsRequest) (*models.CompileAssetsResponse, error) {
+	// TODO: implement mock
+	return &models.CompileAssetsResponse{}, nil
+}
+
 func InMemoryPluginRegistry() models.PluginRepository {
 	bq2bq := MockPluginBQ{}
 

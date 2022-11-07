@@ -10,7 +10,6 @@ import (
 
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin/v1beta1/base"
-	"github.com/odpf/optimus/plugin/v1beta1/cli"
 	pbp "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
 )
 
@@ -49,25 +48,10 @@ func NewPlugin(impl models.DependencyResolverMod, logger hclog.Logger) *Connecto
 	}
 }
 
-func NewPluginWithAdapter(impl models.DependencyResolverMod, logger hclog.Logger) *Connector {
-	return &Connector{
-		impl:   impl,
-		logger: logger,
-	}
-}
-
 func NewPluginClient(logger hclog.Logger) *Connector {
 	return &Connector{
 		logger: logger,
 	}
-}
-
-func ServeWithCLI(t models.DependencyResolverMod, c models.CommandLineMod, logger hclog.Logger) {
-	startServe(map[string]plugin.Plugin{
-		models.PluginTypeBase:                     base.NewPlugin(t, logger),
-		models.ModTypeCLI.String():                cli.NewPlugin(c, logger),
-		models.ModTypeDependencyResolver.String(): NewPlugin(t, logger),
-	}, logger)
 }
 
 func Serve(t models.DependencyResolverMod, logger hclog.Logger) {

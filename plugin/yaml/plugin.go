@@ -32,7 +32,7 @@ func (p *PluginSpec) PluginInfo() (*models.PluginInfoResponse, error) { // nolin
 		Image:         fmt.Sprintf("%s:%s", p.Image, p.PluginVersion),
 		SecretPath:    p.SecretPath,
 		PluginType:    p.PluginType,
-		PluginMods:    []models.PluginMod{models.ModTypeCLI}, // default cli mod for yaml plugins
+		PluginMods:    []models.PluginMod{models.ModTypeCLI},
 		PluginVersion: p.PluginVersion,
 		HookType:      p.HookType,
 		DependsOn:     p.DependsOn,
@@ -82,12 +82,6 @@ func (p *PluginSpec) DefaultConfig(_ context.Context, req models.DefaultConfigRe
 func (p *PluginSpec) DefaultAssets(context.Context, models.DefaultAssetsRequest) (*models.DefaultAssetsResponse, error) {
 	return &models.DefaultAssetsResponse{
 		Assets: p.Assets,
-	}, nil
-}
-
-func (PluginSpec) CompileAssets(_ context.Context, req models.CompileAssetsRequest) (*models.CompileAssetsResponse, error) {
-	return &models.CompileAssetsResponse{
-		Assets: req.Assets,
 	}, nil
 }
 

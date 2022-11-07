@@ -51,7 +51,7 @@ func (*JobSurvey) AskToSelectJobName(jobSpecReader local.SpecReader[*model.JobSp
 	return selectedJobName, nil
 }
 
-func (j *JobSurvey) askCLIModSurveyQuestion(ctx context.Context, cliMod models.CommandLineMod, question models.PluginQuestion) (models.PluginAnswers, error) {
+func (j *JobSurvey) askCliModSurveyQuestion(ctx context.Context, cliMod models.CommandLineMod, question models.PluginQuestion) (models.PluginAnswers, error) {
 	surveyPrompt := j.getSurveyPromptFromPluginQuestion(question)
 
 	var responseStr string
@@ -74,7 +74,7 @@ func (j *JobSurvey) askCLIModSurveyQuestion(ctx context.Context, cliMod models.C
 	for _, subQues := range question.SubQuestions {
 		if responseStr == subQues.IfValue {
 			for _, subQuestion := range subQues.Questions {
-				subQuestionAnswers, err := j.askCLIModSurveyQuestion(ctx, cliMod, subQuestion)
+				subQuestionAnswers, err := j.askCliModSurveyQuestion(ctx, cliMod, subQuestion)
 				if err != nil {
 					return nil, err
 				}
