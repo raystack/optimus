@@ -34,12 +34,7 @@ SETUP_FILE_PATH=          # default ./setup.yaml
 
 ### Mounting the plugins
 + define plugin artifacts on `setup.yaml` under section `plugins`
-+ pass the variable OPTIMUS_PLUGIN_ARTIFACTS when [applying optimus](#setup) (comma separated delimiter). eg.
-```sh
-OPTIMUS_PLUGIN_ARTIFACTS=/User/.../path/to/plugin.tar.gz,http://github.com/.../example.yaml \
-SETUP_FILE_PATH=./setup.yaml \
-make apply
-```
++ `make apply`. You can pass `SETUP_FILE_PATH` if the path is not the default one
 
 ### Load secrets
 + define key value pair of secrets on `setup.yaml` under section `secrets`
