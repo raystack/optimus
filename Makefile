@@ -5,7 +5,7 @@ NAME = "github.com/odpf/optimus"
 LAST_COMMIT := $(shell git rev-parse --short HEAD)
 LAST_TAG := "$(shell git rev-list --tags --max-count=1)"
 OPMS_VERSION := "$(shell git describe --tags ${LAST_TAG})-next"
-PROTON_COMMIT := "e113d7eb7c637a891d1f890e44f2292a366d976a"
+PROTON_COMMIT := "90b5d53e3e58e017032d12275597b93f53263add"
 
 .PHONY: build test test-ci generate-proto unit-test-ci integration-test vet coverage clean install lint
 
