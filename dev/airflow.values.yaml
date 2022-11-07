@@ -10,6 +10,8 @@ scheduler:
           type: Directory
 
 config:
+  core:
+    dags_folder: /opt/airflow/dags/dags
   webserver:
     expose_config: 'True'  # by default this is 'False'
 

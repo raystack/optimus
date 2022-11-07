@@ -6,6 +6,7 @@ OPTIMUS_PLUGINS_PATH=/tmp/colima/plugins
 DAGS_PATH?=/tmp/colima/dags
 OPTIMUS_SERVE_PORT?=9100
 SETUP_FILE_PATH?=./setup.yaml
+
 PROJECT?=project-a
 HOST?=localhost:9100
 
@@ -21,15 +22,17 @@ apply.optimus: _context
 	mkdir -p ${DAGS_PATH}
 	mkdir -p ${OPTIMUS_PLUGINS_PATH}
 	helm repo add odpf https://odpf.github.io/charts/
+	$(eval OPTIMUS_PLUGIN_ARTIFACTS = $(shell ./get_artifacts.sh ${SETUP_FILE_PATH}))
 	helm upgrade --install optimus-dev ${OPTIMUS_ODPF_CHART} \
 	-n ${NAMESPACE} \
 	--set volumes[0].hostPath.path=$(abspath ${DAGS_PATH}) \
 	--set volumes[1].hostPath.path=$(abspath ${OPTIMUS_PLUGINS_PATH}) \
 	--set config.OPTIMUS_SERVE_PORT=${OPTIMUS_SERVE_PORT} \
+	--set config.OPTIMUS_PLUGIN_ARTIFACTS=${OPTIMUS_PLUGIN_ARTIFACTS} \
 	-f optimus.values.yaml --version '>0.0.2'
 
-_setup:
-	PROJECT=${PROJECT} HOST=${HOST} ./load.sh ${SETUP_FILE_PATH}
+_load.secrets:
+	PROJECT=${PROJECT} HOST=${HOST} ./load_secrets.sh ${SETUP_FILE_PATH}
 
 _context:
 	kubectl config use-context $(EXPECTED_CONTEXT)

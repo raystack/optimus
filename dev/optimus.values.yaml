@@ -41,7 +41,7 @@ configYaml: |-
   log:
     level: DEBUG
   serve:
-    ingress_host: optimus.optimus.svc.cluster.local
+    ingress_host: optimus-dev.optimus-dev.svc.cluster.local:80
   scheduler:
     name: airflow2
 
