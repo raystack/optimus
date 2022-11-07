@@ -66,6 +66,16 @@ func NotFound(entity string, msg string) *DomainError {
 	}
 }
 
+func IsErrorType(err error, errType ErrorType) bool {
+	var de *DomainError
+	if errors.As(err, &de) {
+		if de.ErrorType == errType {
+			return true
+		}
+	}
+	return false
+}
+
 func Is(err, target error) bool {
 	return errors.Is(err, target)
 }

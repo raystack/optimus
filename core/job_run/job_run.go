@@ -1,6 +1,8 @@
 package job_run
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 
 	"github.com/odpf/optimus/core/tenant"
@@ -35,4 +37,10 @@ type JobRun struct {
 
 	jobName JobName
 	tenant  tenant.Tenant
+
+	startTime time.Time
+}
+
+func (r *JobRun) StartTime() time.Time {
+	return r.startTime
 }
