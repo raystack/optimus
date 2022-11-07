@@ -49,20 +49,20 @@ func (j *JobCreateSurvey) AskToCreateJob(jobSpecReader local.SpecReader[*model.J
 		return model.JobSpec{}, err
 	}
 
-	yamlMod, err := j.getPluginCliMod(jobInput.Task.Name)
+	cliMod, err := j.getPluginCliMod(jobInput.Task.Name)
 	if err != nil {
 		return jobInput, err
 	}
-	if yamlMod == nil {
+	if cliMod == nil {
 		return jobInput, nil
 	}
 
-	pluginAnswers, err := j.askPluginQuestions(yamlMod, jobInput.Name)
+	pluginAnswers, err := j.askPluginQuestions(cliMod, jobInput.Name)
 	if err != nil {
 		return jobInput, err
 	}
 
-	taskConfig, err := j.getTaskConfig(yamlMod, pluginAnswers)
+	taskConfig, err := j.getTaskConfig(cliMod, pluginAnswers)
 	if err != nil {
 		return jobInput, err
 	}
@@ -70,7 +70,7 @@ func (j *JobCreateSurvey) AskToCreateJob(jobSpecReader local.SpecReader[*model.J
 		jobInput.Task.Config = taskConfig
 	}
 
-	asset, err := j.getJobAsset(yamlMod, pluginAnswers)
+	asset, err := j.getJobAsset(cliMod, pluginAnswers)
 	if err != nil {
 		return jobInput, err
 	}

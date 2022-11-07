@@ -18,9 +18,9 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 	t.Run("CompileJobRunAssets", func(t *testing.T) {
 		ctx := context.Background()
 		engine := compiler.NewGoEngine()
-		execUnit := new(mock.BasePlugin)
+		execUnit := new(mock.YamlMod)
 		depResMod := new(mock.DependencyResolverMod)
-		plugin := &models.Plugin{Base: execUnit, DependencyMod: depResMod}
+		plugin := &models.Plugin{YamlMod: execUnit, DependencyMod: depResMod}
 
 		execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "bq"}, nil)
 

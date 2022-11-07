@@ -132,6 +132,14 @@
         }
       }
     },
+    "v1beta1GetNameResponse": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
     "v1beta1InstanceSpecData": {
       "type": "object",
       "properties": {

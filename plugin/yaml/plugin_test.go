@@ -12,20 +12,36 @@ import (
 	"github.com/odpf/optimus/plugin/yaml"
 )
 
-type mockBasePlugin struct {
+type mockYamlMod struct {
 	Name          string
 	Image         string
 	PluginVersion string
 	PluginType    string
 }
 
-func (p *mockBasePlugin) PluginInfo() (*models.PluginInfoResponse, error) {
+func (p *mockYamlMod) PluginInfo() *models.PluginInfoResponse {
 	return &models.PluginInfoResponse{
 		Name:          p.Name,
 		Image:         p.Image,
 		PluginVersion: p.PluginVersion,
 		PluginType:    models.PluginType(p.PluginType),
-	}, nil
+	}
+}
+
+func (*mockYamlMod) GetQuestions(context.Context, models.GetQuestionsRequest) (*models.GetQuestionsResponse, error) {
+	return &models.GetQuestionsResponse{Questions: models.PluginQuestions{}}, nil
+}
+
+func (*mockYamlMod) ValidateQuestion(context.Context, models.ValidateQuestionRequest) (*models.ValidateQuestionResponse, error) {
+	return &models.ValidateQuestionResponse{Success: true}, nil
+}
+
+func (*mockYamlMod) DefaultConfig(context.Context, models.DefaultConfigRequest) (*models.DefaultConfigResponse, error) {
+	return &models.DefaultConfigResponse{Config: models.PluginConfigs{}}, nil
+}
+
+func (*mockYamlMod) DefaultAssets(context.Context, models.DefaultAssetsRequest) (*models.DefaultAssetsResponse, error) {
+	return &models.DefaultAssetsResponse{Assets: models.PluginAssets{}}, nil
 }
 
 func TestYamlPlugin(t *testing.T) {
@@ -66,7 +82,7 @@ func TestYamlPlugin(t *testing.T) {
 	t.Run("PluginSpec", func(t *testing.T) {
 		plugin, _ := yaml.NewPluginSpec(testYamlPluginPath)
 		t.Run("PluginInfo", func(t *testing.T) {
-			actual, _ := plugin.PluginInfo()
+			actual := plugin.PluginInfo()
 			assert.Equal(t, expectedInfo, actual)
 		})
 		t.Run("GetQuestions", func(t *testing.T) {
@@ -145,21 +161,23 @@ func TestYamlPlugin(t *testing.T) {
 		})
 		t.Run("should load plugin for valid paths", func(t *testing.T) {
 			repo := models.NewPluginRepository()
-			yaml.Init(repo, []string{testYamlPluginPath}, pluginLogger)
+			err := yaml.Init(repo, []string{testYamlPluginPath}, pluginLogger)
+			assert.NoError(t, err)
 			assert.NotEmpty(t, repo.GetAll())
 		})
-		t.Run("should load yaml even when binary plugin with same name exists", func(t *testing.T) {
+		t.Run("should returns error when load yaml when same name exists", func(t *testing.T) {
 			repoWithBinayPlugin := models.NewPluginRepository()
-			err := repoWithBinayPlugin.Add(&mockBasePlugin{
+			err := repoWithBinayPlugin.AddYaml(&mockYamlMod{
 				Name:          testYamlPluginName,
 				Image:         "sdsd",
 				PluginVersion: "asdasd",
 				PluginType:    string(models.PluginTypeTask),
-			}, nil)
+			})
 			assert.Nil(t, err)
 			assert.Len(t, repoWithBinayPlugin.GetAll(), 1)
 
-			yaml.Init(repoWithBinayPlugin, []string{testYamlPluginPath}, pluginLogger)
+			err = yaml.Init(repoWithBinayPlugin, []string{testYamlPluginPath}, pluginLogger)
+			assert.Error(t, err)
 			repoPlugins := repoWithBinayPlugin.GetAll()
 
 			assert.Len(t, repoPlugins, 1)
@@ -168,7 +186,9 @@ func TestYamlPlugin(t *testing.T) {
 		})
 		t.Run("should not load duplicate yaml", func(t *testing.T) {
 			repoWithBinayPlugin := models.NewPluginRepository()
-			yaml.Init(repoWithBinayPlugin, []string{testYamlPluginPath, testYamlPluginPath}, pluginLogger)
+			err := yaml.Init(repoWithBinayPlugin, []string{testYamlPluginPath, testYamlPluginPath}, pluginLogger)
+			assert.Error(t, err)
+
 			repoPlugins := repoWithBinayPlugin.GetAll()
 			assert.Len(t, repoPlugins, 1)
 		})
@@ -179,7 +199,8 @@ func TestYamlPlugin(t *testing.T) {
 				"tests/sample_plugin_without_version.yaml",
 				"tests/sample_plugin_schema_invalid.yaml",
 			}
-			yaml.Init(repo, invalidPluginPaths, pluginLogger)
+			err := yaml.Init(repo, invalidPluginPaths, pluginLogger)
+			assert.Error(t, err)
 			assert.Empty(t, repo.GetAll())
 		})
 	})

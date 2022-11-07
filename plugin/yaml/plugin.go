@@ -25,7 +25,7 @@ type PluginSpec struct {
 	models.DefaultConfigResponse `yaml:",inline,omitempty"`
 }
 
-func (p *PluginSpec) PluginInfo() (*models.PluginInfoResponse, error) { // nolint
+func (p *PluginSpec) PluginInfo() *models.PluginInfoResponse {
 	return &models.PluginInfoResponse{
 		Name:          p.Name,
 		Description:   p.Description,
@@ -37,7 +37,7 @@ func (p *PluginSpec) PluginInfo() (*models.PluginInfoResponse, error) { // nolin
 		HookType:      p.HookType,
 		DependsOn:     p.DependsOn,
 		APIVersion:    p.APIVersion,
-	}, nil
+	}
 }
 
 func (p *PluginSpec) GetQuestions(context.Context, models.GetQuestionsRequest) (*models.GetQuestionsResponse, error) {
@@ -107,19 +107,21 @@ func NewPluginSpec(pluginPath string) (*PluginSpec, error) {
 }
 
 // if error in loading, initializing or adding to pluginsrepo , skipping that particular plugin
-// NOTE: binary plugins are loaded prior to yaml plugins
-func Init(pluginsRepo models.PluginRepository, discoveredYamlPlugins []string, pluginLogger hclog.Logger) {
+// NOTE: binary plugins are loaded after yaml plugins loaded
+func Init(pluginsRepo models.PluginRepository, discoveredYamlPlugins []string, pluginLogger hclog.Logger) error {
 	for _, yamlPluginPath := range discoveredYamlPlugins {
 		yamlPluginSpec, err := NewPluginSpec(yamlPluginPath)
 		if err != nil {
 			pluginLogger.Error(fmt.Sprintf("plugin Init: %s", yamlPluginPath), err)
-			continue
+			return err
 		}
-		pluginInfo, _ := yamlPluginSpec.PluginInfo()
+		pluginInfo := yamlPluginSpec.PluginInfo()
 		if err := pluginsRepo.AddYaml(yamlPluginSpec); err != nil {
 			pluginLogger.Error(fmt.Sprintf("PluginRegistry.Add: %s", yamlPluginPath), err)
-			continue
+			return err
 		}
 		pluginLogger.Debug("plugin ready: ", pluginInfo.Name)
 	}
+
+	return nil
 }

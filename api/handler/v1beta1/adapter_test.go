@@ -51,7 +51,7 @@ func TestAdapter(t *testing.T) {
 		assert.Equal(t, jobStatus.State.String(), replayExecutionTreeNode.Runs[0].State)
 	})
 	t.Run("should successfully parse job spec to and from proto", func(t *testing.T) {
-		execUnit1 := new(mock.BasePlugin)
+		execUnit1 := new(mock.YamlMod)
 		execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 			Name: "sample-task",
 		}, nil)
@@ -59,7 +59,7 @@ func TestAdapter(t *testing.T) {
 
 		pluginRepo := mock.NewPluginRepository(t)
 		pluginRepo.On("GetByName", "sample-task").Return(&models.Plugin{
-			Base: execUnit1,
+			YamlMod: execUnit1,
 		}, nil)
 
 		window, err := models.NewWindow(1, "h", "1h", "48h")
@@ -92,7 +92,7 @@ func TestAdapter(t *testing.T) {
 				},
 			},
 			Task: models.JobSpecTask{
-				Unit: &models.Plugin{Base: execUnit1},
+				Unit: &models.Plugin{YamlMod: execUnit1},
 				Config: models.JobSpecConfigs{
 					{
 						Name:  "DO",
@@ -118,7 +118,7 @@ func TestAdapter(t *testing.T) {
 							Value: "this",
 						},
 					},
-					Unit: &models.Plugin{Base: execUnit1},
+					Unit: &models.Plugin{YamlMod: execUnit1},
 				},
 			},
 			ExternalDependencies: models.ExternalDependency{

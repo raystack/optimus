@@ -47,14 +47,14 @@ func (j *JobAddHookSurvey) AskToAddHook(jobSpec *model.JobSpec) (*model.JobSpec,
 	}
 
 	var config map[string]string
-	if yamlMod := selectedHook.GetSurveyMod(); yamlMod != nil {
+	if cliMod := selectedHook.GetSurveyMod(); cliMod != nil {
 		ctx := context.Background()
-		hookAnswers, err := j.askHookQuestions(ctx, yamlMod, jobSpec.Name)
+		hookAnswers, err := j.askHookQuestions(ctx, cliMod, jobSpec.Name)
 		if err != nil {
 			return nil, err
 		}
 
-		config, err = j.getHookConfig(yamlMod, hookAnswers)
+		config, err = j.getHookConfig(cliMod, hookAnswers)
 		if err != nil {
 			return nil, err
 		}

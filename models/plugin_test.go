@@ -11,7 +11,7 @@ import (
 
 func NewMockBinaryPlugin(name, pluginType string) *models.Plugin {
 	return &models.Plugin{
-		Base:          &MockBasePlugin{Name: name, Type: pluginType},
+		YamlMod:       &MockYamlMod{Name: name, Type: pluginType},
 		DependencyMod: &MockDependencyMod{Name: name, Type: pluginType},
 	}
 }
@@ -22,31 +22,12 @@ func NewMockYamlPlugin(name, pluginType string) *models.Plugin {
 	}
 }
 
-type MockBasePlugin struct {
-	Name string
-	Type string
-}
-
-func (p *MockBasePlugin) PluginInfo() (*models.PluginInfoResponse, error) {
-	return &models.PluginInfoResponse{
-		Name:          p.Name,
-		Description:   "BigQuery to BigQuery transformation task",
-		PluginType:    models.PluginType(p.Type),
-		PluginVersion: "dev",
-		APIVersion:    nil,
-		DependsOn:     nil,
-		HookType:      "",
-		Image:         "gcr.io/bq-plugin:dev",
-		SecretPath:    "/tmp/auth.json",
-	}, nil
-}
-
 type MockYamlMod struct {
 	Name string
 	Type string
 }
 
-func (p *MockYamlMod) PluginInfo() (*models.PluginInfoResponse, error) {
+func (p *MockYamlMod) PluginInfo() *models.PluginInfoResponse {
 	return &models.PluginInfoResponse{
 		Name:          p.Name,
 		Description:   "Yaml Test Desc",
@@ -58,7 +39,7 @@ func (p *MockYamlMod) PluginInfo() (*models.PluginInfoResponse, error) {
 		Image:         "gcr.io/bq-plugin:dev",
 		SecretPath:    "/tmp/auth.json",
 		PluginMods:    []models.PluginMod{models.ModTypeCLI},
-	}, nil
+	}
 }
 
 func (*MockYamlMod) GetQuestions(context.Context, models.GetQuestionsRequest) (*models.GetQuestionsResponse, error) {
@@ -82,19 +63,8 @@ type MockDependencyMod struct {
 	Type string
 }
 
-func (p *MockDependencyMod) PluginInfo() (*models.PluginInfoResponse, error) {
-	return &models.PluginInfoResponse{
-		Name:          p.Name,
-		Description:   "Binary plugin",
-		PluginType:    models.PluginType(p.Type),
-		PluginVersion: "dev",
-		APIVersion:    nil,
-		DependsOn:     nil,
-		HookType:      "",
-		Image:         "gcr.io/bq-plugin:dev",
-		SecretPath:    "/tmp/auth.json",
-		PluginMods:    []models.PluginMod{models.ModTypeDependencyResolver},
-	}, nil
+func (*MockDependencyMod) GetName(context.Context) (string, error) {
+	return "", nil
 }
 
 func (*MockDependencyMod) GenerateDestination(context.Context, models.GenerateDestinationRequest) (*models.GenerateDestinationResponse, error) {
@@ -113,13 +83,13 @@ func TestPluginModels(t *testing.T) {
 	t.Run("Plugin", func(t *testing.T) {
 		t.Run("IsYamlPlugin", func(t *testing.T) {
 			plugin := NewMockBinaryPlugin("abc", string(models.PluginTypeTask))
-			assert.False(t, plugin.IsYamlPlugin())
+			assert.True(t, plugin.IsYamlPlugin())
 			plugin = NewMockYamlPlugin("abc", string(models.PluginTypeTask))
 			assert.True(t, plugin.IsYamlPlugin())
 		})
 		t.Run("GetSurveyMethod", func(t *testing.T) {
 			plugin := NewMockBinaryPlugin("abc", string(models.PluginTypeTask))
-			assert.Equal(t, nil, plugin.GetSurveyMod())
+			assert.Equal(t, plugin.YamlMod, plugin.GetSurveyMod())
 			plugin = NewMockYamlPlugin("abc", string(models.PluginTypeTask))
 			assert.Equal(t, plugin.YamlMod, plugin.GetSurveyMod())
 		})
@@ -157,18 +127,16 @@ func TestPluginModels(t *testing.T) {
 	})
 	t.Run("PluginRegistry", func(t *testing.T) {
 		repo := models.NewPluginRepository()
-		plugins := []*models.Plugin{
-			NewMockYamlPlugin("c", string(models.PluginTypeTask)),
-			NewMockYamlPlugin("b", string(models.PluginTypeTask)),
-			NewMockBinaryPlugin("a", string(models.PluginTypeHook)),
-			NewMockYamlPlugin("a", string(models.PluginTypeHook)),
-			NewMockYamlPlugin("z", string(models.PluginTypeTask)),
+		plugins := map[string]*models.Plugin{
+			"c": NewMockYamlPlugin("c", string(models.PluginTypeTask)),
+			"b": NewMockYamlPlugin("b", string(models.PluginTypeTask)),
+			"z": NewMockYamlPlugin("z", string(models.PluginTypeTask)),
+			"a": NewMockBinaryPlugin("a", string(models.PluginTypeHook)),
 		}
 		for _, plugin := range plugins {
-			if plugin.IsYamlPlugin() {
-				repo.AddYaml(plugin.YamlMod)
-			} else {
-				repo.Add(plugin.Base, plugin.DependencyMod)
+			repo.AddYaml(plugin.YamlMod)
+			if plugin.DependencyMod != nil {
+				repo.AddBinary(plugin.DependencyMod)
 			}
 		}
 		t.Run("should allow both yaml and bin implementations in plugin", func(t *testing.T) {

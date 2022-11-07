@@ -17,6 +17,14 @@ type GRPCServer struct {
 	pbp.UnimplementedDependencyResolverModServiceServer
 }
 
+func (s *GRPCServer) GetName(ctx context.Context, _ *pbp.GetNameRequest) (*pbp.GetNameResponse, error) {
+	name, err := s.Impl.GetName(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &pbp.GetNameResponse{Name: name}, nil
+}
+
 func (s *GRPCServer) GenerateDestination(ctx context.Context, req *pbp.GenerateDestinationRequest) (*pbp.GenerateDestinationResponse, error) {
 	resp, err := s.Impl.GenerateDestination(ctx, models.GenerateDestinationRequest{
 		Config:        adaptConfigsFromProto(req.Config),

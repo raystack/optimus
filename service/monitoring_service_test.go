@@ -16,9 +16,9 @@ import (
 func TestMonitoringService(t *testing.T) {
 	ctx := context.Background()
 	depMod := new(mock.DependencyResolverMod)
-	baseUnit := new(mock.BasePlugin)
-	plugin := &models.Plugin{Base: baseUnit, DependencyMod: depMod}
-	baseUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
+	yamlMod := new(mock.YamlMod)
+	plugin := &models.Plugin{YamlMod: yamlMod, DependencyMod: depMod}
+	yamlMod.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name: "bq",
 	}, nil)
 
