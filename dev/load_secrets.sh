@@ -28,7 +28,9 @@ fi
 
 yq '.secrets[] | (.name | . + " ") + (.value | @base64)' ${SETUP_PATH} >> s.tmp
 while read key value; do
-    curl -XPOST -H "Content-Type: application/json" \
+    resp=$(curl -XPOST -H "Content-Type: application/json" \
     "${HOST}/api/v1beta1/project/${PROJECT}/secret/${key}" \
-    -d '{"value": "'${value}'"}' -s -o /dev/null -w "set secret $key: %{http_code}\n"
+    -d '{"value": "'${value}'"}' -s -o s.result -w "%{http_code}")
+    if [ $resp -eq 200 ]; then echo "set secret ${key}: success"; else echo "set secret ${key}: fail\n$(cat s.result)"; fi
+    rm s.result
 done < s.tmp && rm s.tmp
