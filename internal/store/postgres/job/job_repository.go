@@ -1,8 +1,8 @@
 package job
 
 import (
-	"github.com/hashicorp/go-multierror"
-	"golang.org/x/net/context"
+	"context"
+
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/job"
@@ -18,20 +18,17 @@ func NewJobRepository(db *gorm.DB) *JobRepository {
 	return &JobRepository{db: db}
 }
 
-func (j JobRepository) Add(ctx context.Context, jobs []*job.Job) (savedJobs []*job.Job, jobErrors error, err error) {
+func (j JobRepository) Add(ctx context.Context, jobs []*job.Job) ([]*job.Job, error) {
+	me := errors.NewMultiError("add jobs errors")
+	var storedJobs []*job.Job
 	for _, jobEntity := range jobs {
 		if err := j.insertJobSpec(ctx, jobEntity); err != nil {
-			jobErrors = multierror.Append(jobErrors, err)
+			me.Append(err)
 			continue
 		}
-		savedJobs = append(savedJobs, jobEntity)
+		storedJobs = append(storedJobs, jobEntity)
 	}
-
-	if len(savedJobs) == 0 {
-		return nil, jobErrors, errors.NewError(errors.ErrInternalError, job.EntityJob, "no jobs to create")
-	}
-
-	return savedJobs, jobErrors, nil
+	return storedJobs, errors.MultiToError(me)
 }
 
 func (j JobRepository) insertJobSpec(ctx context.Context, jobEntity *job.Job) error {
@@ -155,9 +152,8 @@ JOIN job j ON id.source = j.destination;
 	}
 
 	var storeJobsWithUpstreams []JobWithUpstream
-	err := j.db.WithContext(ctx).Raw(query, projectName.String(), jobNames, projectName.String(), jobNames).
-		Scan(&storeJobsWithUpstreams).Error
-	if err != nil {
+	if err := j.db.WithContext(ctx).Raw(query, projectName.String(), jobNamesStr, projectName.String(), jobNames).
+		Scan(&storeJobsWithUpstreams).Error; err != nil {
 		return nil, errors.Wrap(job.EntityJob, "error while getting job with upstreams", err)
 	}
 
@@ -165,19 +161,27 @@ JOIN job j ON id.source = j.destination;
 }
 
 func (j JobRepository) toJobNameWithUpstreams(storeJobsWithUpstreams []JobWithUpstream) (map[job.Name][]*job.Upstream, error) {
-	jobNameWithUpstreams := make(map[job.Name][]*job.Upstream)
-
+	me := errors.NewMultiError("to job name wit upstreams errors")
 	upstreamsPerJobName := groupUpstreamsPerJobFullName(storeJobsWithUpstreams)
+
+	jobNameWithUpstreams := make(map[job.Name][]*job.Upstream)
 	for _, storeUpstreams := range upstreamsPerJobName {
 		upstreams, err := j.toUpstreams(storeUpstreams)
 		if err != nil {
-			return nil, err
+			me.Append(err)
+			continue
 		}
+		// TODO: check this as it can raise error if `storeUpstreams` is empty
 		name, err := job.NameFrom(storeUpstreams[0].JobName)
 		if err != nil {
-			return nil, err
+			me.Append(err)
+			continue
 		}
 		jobNameWithUpstreams[name] = upstreams
+	}
+
+	if err := errors.MultiToError(me); err != nil {
+		return nil, err
 	}
 	return jobNameWithUpstreams, nil
 }
@@ -191,6 +195,8 @@ func groupUpstreamsPerJobFullName(upstreams []JobWithUpstream) map[string][]JobW
 }
 
 func (j JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstream, error) {
+	me := errors.NewMultiError("to upstreams errors")
+
 	var upstreams []*job.Upstream
 	for _, storeUpstream := range storeUpstreams {
 		if storeUpstream.UpstreamJobName == "" {
@@ -198,11 +204,18 @@ func (j JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Ups
 		}
 		upstreamTenant, err := tenant.NewTenant(storeUpstream.UpstreamProjectName, storeUpstream.UpstreamNamespaceName)
 		if err != nil {
-			return nil, err
+			me.Append(err)
+			continue
 		}
-		// TODO: consider using this error
 		upstream, err := job.NewUpstreamResolved(storeUpstream.UpstreamJobName, "", storeUpstream.UpstreamResourceURN, upstreamTenant, storeUpstream.UpstreamType)
+		if err != nil {
+			me.Append(err)
+			continue
+		}
 		upstreams = append(upstreams, upstream)
+	}
+	if err := errors.MultiToError(me); err != nil {
+		return nil, err
 	}
 	return upstreams, nil
 }
@@ -223,26 +236,22 @@ func (j JobWithUpstream) getJobFullName() string {
 	return j.ProjectName + "/" + j.JobName
 }
 
-func (j JobRepository) SaveUpstream(ctx context.Context, jobsWithUpstreams []*job.WithUpstream) error {
+func (j JobRepository) ReplaceUpstreams(ctx context.Context, jobsWithUpstreams []*job.WithUpstream) error {
 	var storageJobUpstreams []*JobWithUpstream
 	for _, jobWithUpstreams := range jobsWithUpstreams {
-		upstream, err := toJobUpstream(jobWithUpstreams)
-		if err != nil {
-			return err
-		}
+		upstream := toJobUpstream(jobWithUpstreams)
 		storageJobUpstreams = append(storageJobUpstreams, upstream...)
 	}
 
 	return j.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := deleteUpstreams(ctx, tx, storageJobUpstreams); err != nil {
+		if err := j.deleteUpstreams(tx, storageJobUpstreams); err != nil {
 			return err
 		}
-
-		return insertUpstreams(ctx, tx, storageJobUpstreams)
+		return j.insertUpstreams(tx, storageJobUpstreams)
 	})
 }
 
-func insertUpstreams(ctx context.Context, tx *gorm.DB, storageJobUpstreams []*JobWithUpstream) error {
+func (JobRepository) insertUpstreams(tx *gorm.DB, storageJobUpstreams []*JobWithUpstream) error {
 	insertJobUpstreamQuery := `
 INSERT INTO job_upstream (
 	job_name, project_name, upstream_job_name, upstream_resource_urn, 
@@ -259,7 +268,7 @@ VALUES (
 `
 
 	for _, upstream := range storageJobUpstreams {
-		result := tx.WithContext(ctx).Exec(insertJobUpstreamQuery,
+		result := tx.Exec(insertJobUpstreamQuery,
 			upstream.JobName, upstream.ProjectName,
 			upstream.UpstreamJobName, upstream.UpstreamResourceURN,
 			upstream.UpstreamProjectName, upstream.UpstreamNamespaceName,
@@ -276,7 +285,7 @@ VALUES (
 	return nil
 }
 
-func deleteUpstreams(ctx context.Context, tx *gorm.DB, jobUpstreams []*JobWithUpstream) error {
+func (JobRepository) deleteUpstreams(tx *gorm.DB, jobUpstreams []*JobWithUpstream) error {
 	var result *gorm.DB
 
 	var jobFullName []string
@@ -289,7 +298,7 @@ FROM job_upstream
 WHERE project_name || '/' || job_name in (?);
 `
 
-	result = tx.WithContext(ctx).Exec(deleteForProjectScope, jobFullName)
+	result = tx.Exec(deleteForProjectScope, jobFullName)
 
 	if result.Error != nil {
 		return errors.Wrap(job.EntityJob, "error during delete of job upstream", result.Error)
@@ -298,7 +307,7 @@ WHERE project_name || '/' || job_name in (?);
 	return nil
 }
 
-func toJobUpstream(jobWithUpstream *job.WithUpstream) ([]*JobWithUpstream, error) {
+func toJobUpstream(jobWithUpstream *job.WithUpstream) []*JobWithUpstream {
 	var jobUpstreams []*JobWithUpstream
 	for _, upstream := range jobWithUpstream.Upstreams() {
 		var upstreamProjectName, upstreamNamespaceName string
@@ -321,5 +330,5 @@ func toJobUpstream(jobWithUpstream *job.WithUpstream) ([]*JobWithUpstream, error
 			UpstreamState:         upstream.State().String(),
 		})
 	}
-	return jobUpstreams, nil
+	return jobUpstreams
 }

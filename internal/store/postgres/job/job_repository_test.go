@@ -20,32 +20,36 @@ import (
 func TestPostgresJobRepository(t *testing.T) {
 	ctx := context.Background()
 
-	proj, _ := tenant.NewProject("test-proj",
+	proj, err := tenant.NewProject("test-proj",
 		map[string]string{
 			"bucket":                     "gs://some_folder-2",
 			tenant.ProjectSchedulerHost:  "host",
 			tenant.ProjectStoragePathKey: "gs://location",
 		})
-	namespace, _ := tenant.NewNamespace("test-ns", proj.Name(),
+	assert.NoError(t, err)
+	namespace, err := tenant.NewNamespace("test-ns", proj.Name(),
 		map[string]string{
 			"bucket": "gs://ns_bucket",
 		})
-	otherNamespace, _ := tenant.NewNamespace("other-ns", proj.Name(),
+	assert.NoError(t, err)
+	otherNamespace, err := tenant.NewNamespace("other-ns", proj.Name(),
 		map[string]string{
 			"bucket": "gs://ns_bucket",
 		})
-	sampleTenant, _ := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
+	assert.NoError(t, err)
+	sampleTenant, err := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
+	assert.NoError(t, err)
 
 	dbSetup := func() *gorm.DB {
 		dbConn := setup.TestDB()
 		setup.TruncateTables(dbConn)
 
 		projRepo := tenantPostgres.NewProjectRepository(dbConn)
-		assert.Nil(t, projRepo.Save(ctx, proj))
+		assert.NoError(t, projRepo.Save(ctx, proj))
 
 		namespaceRepo := tenantPostgres.NewNamespaceRepository(dbConn)
-		assert.Nil(t, namespaceRepo.Save(ctx, namespace))
-		assert.Nil(t, namespaceRepo.Save(ctx, otherNamespace))
+		assert.NoError(t, namespaceRepo.Save(ctx, namespace))
+		assert.NoError(t, namespaceRepo.Save(ctx, otherNamespace))
 
 		return dbConn
 	}
@@ -55,7 +59,8 @@ func TestPostgresJobRepository(t *testing.T) {
 	jobDescription := "sample job"
 	jobRetry := job.NewRetry(5, 0, false)
 	jobSchedule := job.NewSchedule("2022-10-01", "", "", false, false, jobRetry)
-	jobWindow, _ := models.NewWindow(jobVersion, "d", "24h", "24h")
+	jobWindow, err := models.NewWindow(jobVersion, "d", "24h", "24h")
+	assert.NoError(t, err)
 	jobTaskConfig := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
 	jobTask := job.NewTask("bq2bq", jobTaskConfig)
 
@@ -82,20 +87,19 @@ func TestPostgresJobRepository(t *testing.T) {
 
 			jobSpecA, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, jobLabels, jobSchedule,
 				jobWindow, jobTask, jobHooks, jobAlerts, jobUpstreams, jobAssets, jobMetadata)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			jobA := job.NewJob(jobSpecA, "dev.resource.sample_a", []string{"resource-3"})
 
 			jobSpecB, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-B", jobOwner, jobDescription, jobLabels, jobSchedule,
 				jobWindow, jobTask, jobHooks, jobAlerts, nil, jobAssets, jobMetadata)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			jobB := job.NewJob(jobSpecB, "dev.resource.sample_b", nil)
 
 			jobs := []*job.Job{jobA, jobB}
 
 			jobRepo := postgres.NewJobRepository(db)
-			addedJobs, jobErrors, err := jobRepo.Add(ctx, jobs)
-			assert.Nil(t, jobErrors)
-			assert.Nil(t, err)
+			addedJobs, err := jobRepo.Add(ctx, jobs)
+			assert.NoError(t, err)
 			assert.EqualValues(t, jobs, addedJobs)
 		})
 		t.Run("inserts job spec with optional fields empty", func(t *testing.T) {
@@ -103,15 +107,14 @@ func TestPostgresJobRepository(t *testing.T) {
 
 			jobSpecA, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			jobA := job.NewJob(jobSpecA, "dev.resource.sample_a", []string{"resource-3"})
 
 			jobs := []*job.Job{jobA}
 
 			jobRepo := postgres.NewJobRepository(db)
-			addedJobs, jobErrors, err := jobRepo.Add(ctx, jobs)
-			assert.Nil(t, jobErrors)
-			assert.Nil(t, err)
+			addedJobs, err := jobRepo.Add(ctx, jobs)
+			assert.NoError(t, err)
 			assert.EqualValues(t, jobs, addedJobs)
 		})
 		t.Run("skip job and return job error if job already exist", func(t *testing.T) {
@@ -119,22 +122,21 @@ func TestPostgresJobRepository(t *testing.T) {
 
 			jobSpecA, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			jobA := job.NewJob(jobSpecA, "dev.resource.sample_a", []string{"resource-3"})
 
 			jobRepo := postgres.NewJobRepository(db)
 			// TODO: consider using this error
-			addedJobs, jobErrors, err := jobRepo.Add(ctx, []*job.Job{jobA})
-			assert.Nil(t, err)
+			_, err = jobRepo.Add(ctx, []*job.Job{jobA})
+			assert.NoError(t, err)
 
 			jobSpecB, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-B", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			jobB := job.NewJob(jobSpecB, "dev.resource.sample_b", []string{"resource-3"})
 
-			addedJobs, jobErrors, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB})
-			assert.ErrorContains(t, jobErrors, "job already exists")
-			assert.Nil(t, err)
+			addedJobs, err := jobRepo.Add(ctx, []*job.Job{jobA, jobB})
+			assert.ErrorContains(t, err, "job already exists")
 			assert.EqualValues(t, []*job.Job{jobB}, addedJobs)
 		})
 		t.Run("return error if all jobs are failed to be saved", func(t *testing.T) {
@@ -142,22 +144,20 @@ func TestPostgresJobRepository(t *testing.T) {
 
 			jobSpecA, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			jobA := job.NewJob(jobSpecA, "dev.resource.sample_a", []string{"resource-3"})
 
 			jobSpecB, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-B", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			jobB := job.NewJob(jobSpecB, "dev.resource.sample_b", []string{"resource-3"})
 
 			jobRepo := postgres.NewJobRepository(db)
-			// TODO: consider using this error
-			addedJobs, jobErrors, err := jobRepo.Add(ctx, []*job.Job{jobA, jobB})
-			assert.Nil(t, err)
+			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB})
+			assert.NoError(t, err)
 
-			addedJobs, jobErrors, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB})
-			assert.ErrorContains(t, jobErrors, "job already exists")
-			assert.ErrorContains(t, err, "no jobs to create")
+			addedJobs, err := jobRepo.Add(ctx, []*job.Job{jobA, jobB})
+			assert.ErrorContains(t, err, "job already exists")
 			assert.Nil(t, addedJobs)
 		})
 	})
@@ -167,22 +167,21 @@ func TestPostgresJobRepository(t *testing.T) {
 			db := dbSetup()
 
 			tenantDetails, err := tenant.NewTenantDetails(proj, namespace)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 
 			jobSpecA, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			jobA := job.NewJob(jobSpecA, "dev.resource.sample_a", []string{"dev.resource.sample_b"})
 
 			jobSpecB, err := job.NewSpec(sampleTenant, jobVersion, "sample-job-B", jobOwner, jobDescription, nil, jobSchedule,
 				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			jobB := job.NewJob(jobSpecB, "dev.resource.sample_b", nil)
 
 			jobRepo := postgres.NewJobRepository(db)
-			_, jobErrors, err := jobRepo.Add(ctx, []*job.Job{jobA, jobB})
-			assert.Nil(t, jobErrors)
-			assert.Nil(t, err)
+			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB})
+			assert.NoError(t, err)
 
 			expectedUpstream, _ := job.NewUpstreamResolved(jobSpecB.Name().String(), "", jobB.Destination(), tenantDetails.ToTenant(), "inferred")
 
@@ -194,7 +193,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			db := dbSetup()
 
 			tenantDetails, err := tenant.NewTenantDetails(proj, namespace)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 
 			jobAUpstreams := job.NewSpecUpstream([]string{"sample-job-B"}, nil)
 			// TODO: consider using this error
@@ -208,9 +207,8 @@ func TestPostgresJobRepository(t *testing.T) {
 			jobB := job.NewJob(jobSpecB, "dev.resource.sample_b", nil)
 
 			jobRepo := postgres.NewJobRepository(db)
-			_, jobErrors, err := jobRepo.Add(ctx, []*job.Job{jobA, jobB})
-			assert.Nil(t, jobErrors)
-			assert.Nil(t, err)
+			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB})
+			assert.NoError(t, err)
 
 			expectedUpstream, _ := job.NewUpstreamResolved(jobSpecB.Name().String(), "", jobB.Destination(), tenantDetails.ToTenant(), "static")
 
@@ -222,7 +220,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			db := dbSetup()
 
 			tenantDetails, err := tenant.NewTenantDetails(proj, namespace)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 
 			jobAUpstreams := job.NewSpecUpstream([]string{"test-proj/sample-job-B"}, nil)
 			// TODO: consider using this error
@@ -241,9 +239,8 @@ func TestPostgresJobRepository(t *testing.T) {
 			jobC := job.NewJob(jobSpecC, "dev.resource.sample_c", nil)
 
 			jobRepo := postgres.NewJobRepository(db)
-			_, jobErrors, err := jobRepo.Add(ctx, []*job.Job{jobA, jobB, jobC})
-			assert.Nil(t, jobErrors)
-			assert.Nil(t, err)
+			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB, jobC})
+			assert.NoError(t, err)
 
 			upstreamB, _ := job.NewUpstreamResolved(jobSpecB.Name().String(), "", jobB.Destination(), tenantDetails.ToTenant(), "static")
 			upstreamC, _ := job.NewUpstreamResolved(jobSpecC.Name().String(), "", jobC.Destination(), tenantDetails.ToTenant(), "inferred")
@@ -254,12 +251,12 @@ func TestPostgresJobRepository(t *testing.T) {
 			}
 
 			upstreams, err := jobRepo.GetJobNameWithInternalUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.EqualValues(t, expectedUpstreams, upstreams[jobSpecA.Name()])
 		})
 	})
 
-	t.Run("SaveUpstream", func(t *testing.T) {
+	t.Run("ReplaceUpstreams", func(t *testing.T) {
 		jobSpecA, _ := job.NewSpec(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobDescription, nil, jobSchedule,
 			jobWindow, jobTask, nil, nil, nil, nil, nil)
 		jobA := job.NewJob(jobSpecA, "dev.resource.sample_a", []string{"dev.resource.sample_c"})
@@ -267,25 +264,25 @@ func TestPostgresJobRepository(t *testing.T) {
 			db := dbSetup()
 
 			upstreamB, err := job.NewUpstreamResolved("jobB", host, "resource-B", sampleTenant, upstreamType)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 
 			upstreamC, err := job.NewUpstreamResolved("jobC", host, "resource-C", sampleTenant, upstreamType)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 
 			upstreams := []*job.Upstream{upstreamB, upstreamC}
 			jobWithUpstream := job.NewWithUpstream(jobA, upstreams)
 
 			jobUpstreamRepo := postgres.NewJobRepository(db)
-			assert.Nil(t, jobUpstreamRepo.SaveUpstream(ctx, []*job.WithUpstream{jobWithUpstream}))
+			assert.Nil(t, jobUpstreamRepo.ReplaceUpstreams(ctx, []*job.WithUpstream{jobWithUpstream}))
 		})
 		t.Run("inserts job upstreams including unresolved upstreams", func(t *testing.T) {
 			db := dbSetup()
 
 			upstreamB, err := job.NewUpstreamResolved("jobB", host, "resource-B", sampleTenant, upstreamType)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 
 			upstreamC, err := job.NewUpstreamResolved("jobC", host, "resource-C", sampleTenant, upstreamType)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 
 			upstreamD := job.NewUpstreamUnresolved("", "resource-D", "")
 
@@ -293,29 +290,29 @@ func TestPostgresJobRepository(t *testing.T) {
 			jobWithUpstream := job.NewWithUpstream(jobA, upstreams)
 
 			jobUpstreamRepo := postgres.NewJobRepository(db)
-			assert.Nil(t, jobUpstreamRepo.SaveUpstream(ctx, []*job.WithUpstream{jobWithUpstream}))
+			assert.Nil(t, jobUpstreamRepo.ReplaceUpstreams(ctx, []*job.WithUpstream{jobWithUpstream}))
 		})
 		t.Run("deletes existing job upstream and inserts", func(t *testing.T) {
 			db := dbSetup()
 
 			sampleTenant, err := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 
 			upstreamB, err := job.NewUpstreamResolved("jobB", host, "resource-B", sampleTenant, upstreamType)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 
 			upstreams := []*job.Upstream{upstreamB}
 			jobWithUpstream := job.NewWithUpstream(jobA, upstreams)
 
 			jobUpstreamRepo := postgres.NewJobRepository(db)
-			assert.Nil(t, jobUpstreamRepo.SaveUpstream(ctx, []*job.WithUpstream{jobWithUpstream}))
+			assert.Nil(t, jobUpstreamRepo.ReplaceUpstreams(ctx, []*job.WithUpstream{jobWithUpstream}))
 
 			// TODO: consider using this error
 			upstreamC, err := job.NewUpstreamResolved("jobC", host, "resource-C", sampleTenant, upstreamType)
 			upstreams = []*job.Upstream{upstreamC}
 			jobWithUpstream = job.NewWithUpstream(jobA, upstreams)
 
-			assert.Nil(t, jobUpstreamRepo.SaveUpstream(ctx, []*job.WithUpstream{jobWithUpstream}))
+			assert.Nil(t, jobUpstreamRepo.ReplaceUpstreams(ctx, []*job.WithUpstream{jobWithUpstream}))
 		})
 	})
 }
