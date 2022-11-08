@@ -1,6 +1,8 @@
 # Job run context
-Need to remove the old api from protos.
-Need to move one api from runtime to job_run.
+~~Need to remove the old api from protos.~~
+
+~~Need to move one api from runtime to job_run.~~
+
 Need to create a new api with
  - resolve priority
         Question: Do we need to resolve only based on number of dependencies ? or job should have

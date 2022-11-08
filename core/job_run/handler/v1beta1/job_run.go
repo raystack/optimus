@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/odpf/salt/log"
 
@@ -13,6 +14,7 @@ import (
 
 type JobRunService interface {
 	JobRunInput(context.Context, tenant.ProjectName, job_run.JobName, job_run.RunConfig) (*job_run.ExecutorInput, error)
+	UpdateJobState(context.Context, tenant.Tenant, job_run.Event) error
 }
 
 type JobRunHandler struct {
@@ -66,6 +68,29 @@ func (JobRunHandler) JobRun(context.Context, *pb.JobRunRequest) (*pb.JobRunRespo
 }
 
 func (h JobRunHandler) UploadToScheduler(ctx context.Context, req *pb.UploadToSchedulerRequest) (*pb.UploadToSchedulerResponse, error) {
+	return nil, nil
+}
+
+func (h JobRunHandler) RegisterEvent(ctx context.Context, req *pb.RegisterJobEventRequest) (*pb.RegisterJobEventResponse, error) {
+	tenant, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
+	if err != nil {
+		return nil, errors.GRPCErr(err, "unable to get tenant")
+	}
+	jobName, err := job_run.JobNameFrom(req.GetJobName())
+	if err != nil {
+		return nil, errors.GRPCErr(err, "unable to get job name for "+req.GetJobName())
+	}
+	event, err := job_run.EventFrom(req.GetEvent(), jobName)
+	if err != nil {
+		return nil, errors.GRPCErr(err, "unable to parse event "+req.GetEvent().String())
+	}
+
+	err = h.service.UpdateJobState(ctx, tenant, event)
+	if err != nil {
+		jobEventByteString, _ := json.Marshal(event)
+		h.l.Error("Scheduler event not registered, event Payload::", string(jobEventByteString), "error:", err.Error())
+	}
+
 	return nil, nil
 }
 
