@@ -21,62 +21,6 @@
     "application/json"
   ],
   "paths": {
-    "/v1beta1/project/{projectName}/namespace/{namespaceName}/job/{jobName}/event": {
-      "post": {
-        "summary": "RegisterJobEvent notifies optimus service about an event related to job",
-        "operationId": "RuntimeService_RegisterJobEvent",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1beta1RegisterJobEventResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "namespaceName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "jobName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "event": {
-                  "$ref": "#/definitions/v1beta1JobEvent"
-                }
-              }
-            }
-          }
-        ],
-        "tags": [
-          "RuntimeService"
-        ]
-      }
-    },
     "/v1beta1/version": {
       "post": {
         "summary": "server ping with version",
@@ -124,14 +68,6 @@
         }
       }
     },
-    "protobufNullValue": {
-      "type": "string",
-      "enum": [
-        "NULL_VALUE"
-      ],
-      "default": "NULL_VALUE",
-      "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\n The JSON representation for `NullValue` is JSON `null`.\n\n - NULL_VALUE: Null value."
-    },
     "rpcStatus": {
       "type": "object",
       "properties": {
@@ -149,46 +85,6 @@
           }
         }
       }
-    },
-    "v1beta1JobEvent": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "$ref": "#/definitions/v1beta1JobEventType"
-        },
-        "value": {
-          "type": "object"
-        }
-      }
-    },
-    "v1beta1JobEventType": {
-      "type": "string",
-      "enum": [
-        "TYPE_UNSPECIFIED",
-        "TYPE_SLA_MISS",
-        "TYPE_FAILURE",
-        "TYPE_SUCCESS",
-        "TYPE_RETRY",
-        "TYPE_JOB_START",
-        "TYPE_JOB_SUCCESS",
-        "TYPE_JOB_FAIL",
-        "TYPE_TASK_RETRY",
-        "TYPE_TASK_SUCCESS",
-        "TYPE_TASK_START",
-        "TYPE_TASK_FAIL",
-        "TYPE_SENSOR_RETRY",
-        "TYPE_SENSOR_SUCCESS",
-        "TYPE_SENSOR_START",
-        "TYPE_SENSOR_FAIL",
-        "TYPE_HOOK_START",
-        "TYPE_HOOK_RETRY",
-        "TYPE_HOOK_FAIL",
-        "TYPE_HOOK_SUCCESS"
-      ],
-      "default": "TYPE_UNSPECIFIED"
-    },
-    "v1beta1RegisterJobEventResponse": {
-      "type": "object"
     },
     "v1beta1VersionRequest": {
       "type": "object",
