@@ -49,8 +49,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).Build()
 			specs := []*job.Spec{specA}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
@@ -89,10 +88,8 @@ func TestJobService(t *testing.T) {
 			defer tenantDetailsGetter.AssertExpectations(t)
 
 			invalidJobScheduleB := job.NewSchedule("invalid", "", "", false, false, nil)
-			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			specB, _ := job.NewSpec(sampleTenant, jobVersion, "job-B", "", "", nil, invalidJobScheduleB,
-				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).Build()
+			specB := job.NewSpecBuilder(sampleTenant, jobVersion, "job-B", "", nil, invalidJobScheduleB, jobWindow, jobTask).Build()
 			specs := []*job.Spec{specB, specA}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
@@ -132,10 +129,8 @@ func TestJobService(t *testing.T) {
 
 			invalidJobScheduleA := job.NewSchedule("invalid", "", "", false, false, nil)
 			invalidJobScheduleB := job.NewSchedule("2022-11-01", "invalid", "", false, false, nil)
-			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, invalidJobScheduleA,
-				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			specB, _ := job.NewSpec(sampleTenant, jobVersion, "job-B", "", "", nil, invalidJobScheduleB,
-				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, invalidJobScheduleA, jobWindow, jobTask).Build()
+			specB := job.NewSpecBuilder(sampleTenant, jobVersion, "job-B", "", nil, invalidJobScheduleB, jobWindow, jobTask).Build()
 			specs := []*job.Spec{specB, specA}
 
 			tenantDetailsGetter.On("GetDetails", ctx, mock.Anything).Return(nil, nil)
@@ -164,8 +159,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).Build()
 			specs := []*job.Spec{specA}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(&tenant.WithDetails{}, errors.New("internal error"))
@@ -194,12 +188,9 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			specB, _ := job.NewSpec(sampleTenant, jobVersion, "job-B", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			specC, _ := job.NewSpec(sampleTenant, jobVersion, "job-C", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).Build()
+			specB := job.NewSpecBuilder(sampleTenant, jobVersion, "job-B", "", nil, jobSchedule, jobWindow, jobTask).Build()
+			specC := job.NewSpecBuilder(sampleTenant, jobVersion, "job-C", "", nil, jobSchedule, jobWindow, jobTask).Build()
 			specs := []*job.Spec{specB, specA, specC}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
@@ -241,10 +232,8 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			specB, _ := job.NewSpec(sampleTenant, jobVersion, "job-B", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).Build()
+			specB := job.NewSpecBuilder(sampleTenant, jobVersion, "job-B", "", nil, jobSchedule, jobWindow, jobTask).Build()
 			specs := []*job.Spec{specB, specA}
 
 			jobRepo.On("Add", ctx, mock.Anything).Return(nil, nil)
@@ -278,8 +267,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).Build()
 			specs := []*job.Spec{specA}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
@@ -313,10 +301,8 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			specB, _ := job.NewSpec(sampleTenant, jobVersion, "job-B", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).Build()
+			specB := job.NewSpecBuilder(sampleTenant, jobVersion, "job-B", "", nil, jobSchedule, jobWindow, jobTask).Build()
 			specs := []*job.Spec{specA, specB}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
@@ -357,8 +343,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).Build()
 			specs := []*job.Spec{specA}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
@@ -394,8 +379,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			specA, _ := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, nil, nil, nil)
+			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).Build()
 			specs := []*job.Spec{specA}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)

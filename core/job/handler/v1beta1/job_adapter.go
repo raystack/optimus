@@ -35,9 +35,14 @@ func fromJobProto(jobTenant tenant.Tenant, js *pb.JobSpecification) (*job.Spec, 
 
 	metadata := toMetadata(js.Metadata)
 
-	//TODO: try explore builder. too many arguments
-	return job.NewSpec(jobTenant, int(js.Version), js.Name, js.Owner, js.Description, js.Labels,
-		schedule, window, task, hooks, alerts, upstreams, js.Assets, metadata)
+	return job.NewSpecBuilder(jobTenant, int(js.Version), job.Name(js.Name), js.Owner, js.Labels, schedule, window, task).
+		WithDescription(js.Description).
+		WithHooks(hooks).
+		WithAlerts(alerts).
+		WithSpecUpstream(upstreams).
+		WithAssets(js.Assets).
+		WithMetadata(metadata).
+		Build(), nil
 }
 
 func toRetry(protoRetry *pb.JobSpecification_Behavior_Retry) *job.Retry {

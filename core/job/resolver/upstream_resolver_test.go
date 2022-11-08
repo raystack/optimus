@@ -41,9 +41,7 @@ func TestUpstreamResolver(t *testing.T) {
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
 			upstreamSpec := job.NewSpecUpstream([]string{"test-proj/job-c"}, nil)
-			specA, err := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, upstreamSpec, nil, nil)
-			assert.Nil(t, err)
+			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobADestination := "resource-A"
 			jobAUpstreams := []string{"resource-B"}
 
@@ -73,9 +71,7 @@ func TestUpstreamResolver(t *testing.T) {
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
 			upstreamSpec := job.NewSpecUpstream([]string{"job-c"}, nil)
-			specA, err := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, upstreamSpec, nil, nil)
-			assert.Nil(t, err)
+			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobADestination := "resource-A"
 			jobAUpstreams := []string{"resource-B", "resource-D"}
 
@@ -106,9 +102,7 @@ func TestUpstreamResolver(t *testing.T) {
 			jobRepo := new(JobRepository)
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
-			specA, err := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, nil, nil, nil)
-			assert.Nil(t, err)
+			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).Build()
 			jobADestination := "resource-A"
 			jobAUpstreams := []string{"resource-B"}
 
@@ -127,9 +121,7 @@ func TestUpstreamResolver(t *testing.T) {
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
 			upstreamSpec := job.NewSpecUpstream([]string{"job-c"}, nil)
-			specA, err := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, upstreamSpec, nil, nil)
-			assert.Nil(t, err)
+			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobADestination := "resource-A"
 			jobAUpstreams := []string{"resource-B", "resource-D"}
 
@@ -168,9 +160,7 @@ func TestUpstreamResolver(t *testing.T) {
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
 			upstreamSpec := job.NewSpecUpstream([]string{"job-c"}, nil)
-			specA, err := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, upstreamSpec, nil, nil)
-			assert.Nil(t, err)
+			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobADestination := "resource-A"
 			jobAUpstreams := []string{"resource-B", "resource-D"}
 
@@ -202,9 +192,7 @@ func TestUpstreamResolver(t *testing.T) {
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
 			upstreamSpec := job.NewSpecUpstream([]string{"job-c"}, nil)
-			specA, err := job.NewSpec(sampleTenant, jobVersion, "job-A", "", "", nil, jobSchedule,
-				jobWindow, jobTask, nil, nil, upstreamSpec, nil, nil)
-			assert.Nil(t, err)
+			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobADestination := "resource-A"
 			jobAUpstreams := []string{"resource-B", "resource-D"}
 
