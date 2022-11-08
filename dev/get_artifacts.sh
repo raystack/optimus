@@ -13,7 +13,7 @@ is_yq_installed(){
 }
 
 if [ -z "$SETUP_PATH" ]; then
-  >&2 echo "must provide setup_path: ./load.sh <setup_path>"
+  >&2 echo "must provide setup_path: ./get_artifacts.sh <setup_path>"
   exit 1
 fi
 

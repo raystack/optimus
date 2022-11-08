@@ -6,12 +6,14 @@
 + `make start-colima`
 + check kubernetes context
 + `make apply`
++ expose the port to local machine:
+    + `kubectl port-forward svc/optimus-dev 9100:80`
+    + `kubectl port-forward svc/airflow-webserver 8080:8080`
 
 Some optional variable you can set alongside with `make apply`
 ```sh
 DAGS_PATH=                # default /tmp/colima/dags
 OPTIMUS_SERVE_PORT=       # default 9100
-OPTIMUS_PLUGIN_ARTIFACTS=
 SETUP_FILE_PATH=          # default ./setup.yaml
 ```
 
