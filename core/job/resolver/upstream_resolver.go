@@ -1,14 +1,12 @@
 package resolver
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
-
-	"golang.org/x/net/context"
 
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
@@ -32,29 +30,28 @@ type JobRepository interface {
 	GetJobNameWithInternalUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error)
 }
 
-func (d UpstreamResolver) Resolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) (jobsWithAllUpstreams []*job.WithUpstream, upstreamErrors error, err error) {
+func (d UpstreamResolver) Resolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) ([]*job.WithUpstream, error) {
+	me := errors.NewMultiError("resolve jobs errors")
+
 	// get internal inferred and static upstreams
 	jobNames := job.Jobs(jobs).GetJobNames()
 	jobsWithInternalUpstreams, err := d.jobRepository.GetJobNameWithInternalUpstreams(ctx, projectName, jobNames)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// merge with external upstreams
-	jobsWithAllUpstreams, getUpstreamErr := d.getJobsWithAllUpstreams(ctx, jobs, jobsWithInternalUpstreams)
-	if getUpstreamErr != nil {
-		upstreamErrors = multierror.Append(upstreamErrors, getUpstreamErr)
-	}
-	if unresolvedUpstreamErrors := d.getUnresolvedUpstreamsErrors(jobsWithAllUpstreams); unresolvedUpstreamErrors != nil {
-		upstreamErrors = multierror.Append(upstreamErrors, unresolvedUpstreamErrors)
-	}
-	return jobsWithAllUpstreams, upstreamErrors, nil
+	jobsWithAllUpstreams, err := d.getJobsWithAllUpstreams(ctx, jobs, jobsWithInternalUpstreams)
+	me.Append(err)
+
+	me.Append(d.getUnresolvedUpstreamsErrors(jobsWithAllUpstreams))
+	return jobsWithAllUpstreams, errors.MultiToError(me)
 }
 
 func (d UpstreamResolver) getJobsWithAllUpstreams(ctx context.Context, jobs []*job.Job, jobsWithInternalUpstreams map[job.Name][]*job.Upstream) ([]*job.WithUpstream, error) {
-	var jobsWithAllUpstreams []*job.WithUpstream
-	var allErrors error
+	me := errors.NewMultiError("get jobs with all upstreams errors")
 
+	var jobsWithAllUpstreams []*job.WithUpstream
 	for _, jobEntity := range jobs {
 		var allUpstreams []*job.Upstream
 
@@ -66,7 +63,7 @@ func (d UpstreamResolver) getJobsWithAllUpstreams(ctx context.Context, jobs []*j
 		unresolvedUpstreams := d.identifyUnresolvedUpstreams(internalUpstreams, jobEntity)
 		externalUpstreams, unresolvedUpstreams, err := d.externalUpstreamResolver.FetchExternalUpstreams(ctx, unresolvedUpstreams)
 		if err != nil {
-			allErrors = multierror.Append(allErrors, err)
+			me.Append(err)
 		}
 		allUpstreams = append(allUpstreams, externalUpstreams...)
 
@@ -78,7 +75,7 @@ func (d UpstreamResolver) getJobsWithAllUpstreams(ctx context.Context, jobs []*j
 		jobWithAllUpstreams := job.NewWithUpstream(jobEntity, allUpstreams)
 		jobsWithAllUpstreams = append(jobsWithAllUpstreams, jobWithAllUpstreams)
 	}
-	return jobsWithAllUpstreams, allErrors
+	return jobsWithAllUpstreams, errors.MultiToError(me)
 }
 
 func (d UpstreamResolver) identifyUnresolvedUpstreams(resolvedUpstreams []*job.Upstream, jobEntity *job.Job) (unresolvedUpstreams []*dto.RawUpstream) {
@@ -130,14 +127,14 @@ func (d UpstreamResolver) identifyUnresolvedStaticUpstream(resolvedUpstreams []*
 }
 
 func (UpstreamResolver) getUnresolvedUpstreamsErrors(jobsWithUpstreams []*job.WithUpstream) error {
-	var upstreamErr error
+	me := errors.NewMultiError("unresolved upstreams errors")
 	for _, jobWithUpstreams := range jobsWithUpstreams {
 		for _, unresolvedUpstream := range jobWithUpstreams.GetUnresolvedUpstreams() {
 			if unresolvedUpstream.Type() == job.UpstreamTypeStatic {
 				errMsg := fmt.Sprintf("[%s] error: %s unknown upstream", jobWithUpstreams.Name().String(), unresolvedUpstream.Name())
-				upstreamErr = multierror.Append(upstreamErr, errors.NewError(errors.ErrNotFound, job.EntityJob, errMsg))
+				me.Append(errors.NewError(errors.ErrNotFound, job.EntityJob, errMsg))
 			}
 		}
 	}
-	return upstreamErr
+	return errors.MultiToError(me)
 }

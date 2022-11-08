@@ -1,10 +1,8 @@
 package service
 
 import (
+	"context"
 	"fmt"
-
-	"github.com/hashicorp/go-multierror"
-	"golang.org/x/net/context"
 
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/tenant"
@@ -34,104 +32,80 @@ type TenantDetailsGetter interface {
 }
 
 type JobRepository interface {
-	Add(ctx context.Context, jobs []*job.Job) (savedJobs []*job.Job, jobErrors error, err error)
-	GetJobNameWithInternalUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error)
-	SaveUpstream(ctx context.Context, jobsWithUpsreams []*job.WithUpstream) error
+	// TODO: remove `savedJobs` since the method's main purpose is to add, not to get
+	Add(context.Context, []*job.Job) (savedJobs []*job.Job, err error)
+	GetJobNameWithInternalUpstreams(context.Context, tenant.ProjectName, []job.Name) (map[job.Name][]*job.Upstream, error)
+	ReplaceUpstreams(context.Context, []*job.WithUpstream) error
 }
 
 type UpstreamResolver interface {
-	Resolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) (jobWithUpstreams []*job.WithUpstream, upstreamErrors error, err error)
+	Resolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) (jobWithUpstreams []*job.WithUpstream, err error)
 }
 
-func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) (jobErrors error, err error) {
-	// TODO: initialize jobs, with unknown state
+func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) error {
+	me := errors.NewMultiError("add specs errors")
 
-	validatedJobs, jobErrors, err := j.validateSpecs(jobs)
-	if err != nil {
-		return jobErrors, err
-	}
+	validatedSpecs, err := j.getValidatedSpecs(specs)
+	me.Append(err)
 
-	addJobErrors, err := j.add(ctx, jobTenant, validatedJobs)
-	if addJobErrors != nil {
-		jobErrors = multierror.Append(jobErrors, addJobErrors)
-	}
-	return jobErrors, err
+	generatedJobs, err := j.generateJobs(ctx, jobTenant, validatedSpecs)
+	me.Append(err)
+
+	me.Append(j.addJobs(ctx, jobTenant, generatedJobs))
+	return errors.MultiToError(me)
 }
 
-func (j JobService) add(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) (jobErrors error, systemErr error) {
-	jobs, jobErrors, err := j.createJobs(ctx, jobTenant, specs)
-	if err != nil {
-		return jobErrors, err
-	}
+func (j JobService) addJobs(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Job) error {
+	me := errors.NewMultiError("add jobs errors")
 
-	jobs, saveErrors, err := j.repo.Add(ctx, jobs)
-	if saveErrors != nil {
-		jobErrors = multierror.Append(jobErrors, saveErrors)
-	}
-	if err != nil {
-		return jobErrors, err
-	}
+	jobs, err := j.repo.Add(ctx, jobs)
+	me.Append(err)
 
-	jobsWithUpstreams, upstreamErrors, err := j.upstreamResolver.Resolve(ctx, jobTenant.ProjectName(), jobs)
-	if upstreamErrors != nil {
-		jobErrors = multierror.Append(jobErrors, upstreamErrors)
-	}
-	if err != nil {
-		return jobErrors, err
-	}
+	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, jobTenant.ProjectName(), jobs)
+	me.Append(err)
 
-	return jobErrors, j.repo.SaveUpstream(ctx, jobsWithUpstreams)
+	me.Append(j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams))
+	return errors.MultiToError(me)
 }
 
-// TODO: instead of creating another list, lets just have a status in the spec that mark whether this job is skipped, or to_create
-func (j JobService) validateSpecs(jobs []*job.Spec) (validatedJobs []*job.Spec, jobErrors error, err error) {
+func (j JobService) getValidatedSpecs(jobs []*job.Spec) ([]*job.Spec, error) {
+	me := errors.NewMultiError("spec validation errors")
+
+	var validatedSpecs []*job.Spec
 	for _, spec := range jobs {
 		if err := spec.Validate(); err != nil {
-			jobErrors = multierror.Append(jobErrors, err)
+			me.Append(err)
 			continue
 		}
-		// TODO: mark job state
-		validatedJobs = append(validatedJobs, spec)
+		validatedSpecs = append(validatedSpecs, spec)
 	}
-
-	// TODO: if we want to keep this, we need to check for the length of jobs
-	if len(validatedJobs) == 0 {
-		return nil, jobErrors, errors.NewError(errors.ErrInternalError, job.EntityJob, "all jobs failed the validation checks")
-	}
-
-	return validatedJobs, jobErrors, nil
+	return validatedSpecs, errors.MultiToError(me)
 }
 
-func (j JobService) createJobs(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) ([]*job.Job, error, error) {
-	var jobs []*job.Job
-	var jobErrors error
-
-	detailedJobTenant, err := j.tenantDetailsGetter.GetDetails(ctx, jobTenant)
+func (j JobService) generateJobs(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) ([]*job.Job, error) {
+	tenantWithDetails, err := j.tenantDetailsGetter.GetDetails(ctx, jobTenant)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
+	me := errors.NewMultiError("generate jobs errors")
+	var output []*job.Job
 	for _, spec := range specs {
-		destination, err := j.pluginService.GenerateDestination(ctx, detailedJobTenant, spec.Task())
+		destination, err := j.pluginService.GenerateDestination(ctx, tenantWithDetails, spec.Task())
 		if err != nil && !errors.Is(err, ErrUpstreamModNotFound) {
 			errorMsg := fmt.Sprintf("unable to add %s: %s", spec.Name().String(), err.Error())
-			jobErrors = multierror.Append(jobErrors, errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg))
+			me.Append(errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg))
 			continue
 		}
 
-		sources, err := j.pluginService.GenerateUpstreams(ctx, detailedJobTenant, spec, true)
+		sources, err := j.pluginService.GenerateUpstreams(ctx, tenantWithDetails, spec, true)
 		if err != nil && !errors.Is(err, ErrUpstreamModNotFound) {
 			errorMsg := fmt.Sprintf("unable to add %s: %s", spec.Name().String(), err.Error())
-			jobErrors = multierror.Append(jobErrors, errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg))
+			me.Append(errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg))
 			continue
 		}
 
-		jobs = append(jobs, job.NewJob(spec, destination, sources))
+		output = append(output, job.NewJob(spec, destination, sources))
 	}
-
-	if len(jobs) == 0 {
-		return nil, jobErrors, errors.NewError(errors.ErrInternalError, job.EntityJob, "no jobs to create")
-	}
-
-	return jobs, jobErrors, nil
+	return output, errors.MultiToError(me)
 }

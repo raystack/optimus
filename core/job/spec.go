@@ -12,6 +12,7 @@ import (
 const DateSpecLayout = "2006-01-02"
 
 type Spec struct {
+	// TODO: based on discussion, remove tenant since it is not required in spec
 	tenant tenant.Tenant
 
 	version     int

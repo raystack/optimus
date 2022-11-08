@@ -1,12 +1,12 @@
 package resolver_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"golang.org/x/net/context"
 
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
@@ -64,9 +64,8 @@ func TestUpstreamResolver(t *testing.T) {
 			expectedJobWitUpstreams := []*job.WithUpstream{job.NewWithUpstream(jobA, []*job.Upstream{upstreamB, upstreamC})}
 
 			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
-			result, depErrors, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
-			assert.Nil(t, depErrors)
-			assert.Nil(t, err)
+			result, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
+			assert.NoError(t, err)
 			assert.EqualValues(t, expectedJobWitUpstreams, result)
 		})
 		t.Run("resolve upstream internally and externally", func(t *testing.T) {
@@ -99,9 +98,8 @@ func TestUpstreamResolver(t *testing.T) {
 			}
 
 			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
-			result, depErrors, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
-			assert.Nil(t, depErrors)
-			assert.Nil(t, err)
+			result, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
+			assert.NoError(t, err)
 			assert.EqualValues(t, expectedJobWitUpstreams, result)
 		})
 		t.Run("returns error when unable to get internal upstreams", func(t *testing.T) {
@@ -120,9 +118,8 @@ func TestUpstreamResolver(t *testing.T) {
 			jobRepo.On("GetJobNameWithInternalUpstreams", ctx, project.Name(), mock.Anything).Return(map[job.Name][]*job.Upstream{}, errors.New("internal error"))
 
 			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
-			result, depErrors, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
-			assert.Nil(t, depErrors)
-			assert.NotNil(t, err)
+			result, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
+			assert.Error(t, err)
 			assert.Nil(t, result)
 		})
 		t.Run("returns upstream error when there is unresolved static upstream", func(t *testing.T) {
@@ -162,9 +159,8 @@ func TestUpstreamResolver(t *testing.T) {
 			}
 
 			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
-			result, depErrors, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
-			assert.NotNil(t, depErrors)
-			assert.Nil(t, err)
+			result, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
+			assert.Error(t, err)
 			assert.EqualValues(t, expectedJobWitUpstreams, result)
 		})
 		t.Run("returns upstream error when encounter error on fetching fetch external upstreams", func(t *testing.T) {
@@ -197,9 +193,8 @@ func TestUpstreamResolver(t *testing.T) {
 			}
 
 			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
-			result, depErrors, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
-			assert.NotNil(t, depErrors)
-			assert.Nil(t, err)
+			result, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
+			assert.Error(t, err)
 			assert.EqualValues(t, expectedJobWitUpstreams, result)
 		})
 		t.Run("returns upstream error when encounter error on initializing unresolved upstream", func(t *testing.T) {
@@ -239,9 +234,8 @@ func TestUpstreamResolver(t *testing.T) {
 			}
 
 			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
-			result, depErrors, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
-			assert.NotNil(t, depErrors)
-			assert.Nil(t, err)
+			result, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
+			assert.ErrorContains(t, err, "resolve jobs errors")
 			assert.EqualValues(t, expectedJobWitUpstreams, result)
 		})
 	})
