@@ -129,24 +129,6 @@ func (j Name) String() string {
 	return string(j)
 }
 
-type Window struct {
-	size       string
-	offset     string
-	truncateTo string
-}
-
-func (w Window) Size() string {
-	return w.size
-}
-
-func (w Window) Offset() string {
-	return w.offset
-}
-
-func (w Window) TruncateTo() string {
-	return w.truncateTo
-}
-
 type Config struct {
 	config map[string]string
 }
