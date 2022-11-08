@@ -199,15 +199,15 @@
         ]
       }
     },
-    "/v1beta1/window": {
-      "get": {
-        "summary": "GetWindow provides the start and end dates provided a scheduled date\nof the execution window",
-        "operationId": "JobRunService_GetWindow",
+    "/v1beta1/project/{projectName}/upload": {
+      "put": {
+        "summary": "UploadToScheduler comiles jobSpec from database into DAGs and uploads the generated DAGs to scheduler",
+        "operationId": "JobRunService_UploadToScheduler",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1beta1GetWindowResponse"
+              "$ref": "#/definitions/v1beta1UploadToSchedulerResponse"
             }
           },
           "default": {
@@ -219,36 +219,23 @@
         },
         "parameters": [
           {
-            "name": "scheduledAt",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "format": "date-time"
-          },
-          {
-            "name": "size",
-            "in": "query",
-            "required": false,
+            "name": "projectName",
+            "in": "path",
+            "required": true,
             "type": "string"
           },
           {
-            "name": "offset",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "truncateTo",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "version",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "namespaceName": {
+                  "type": "string"
+                }
+              }
+            }
           }
         ],
         "tags": [
@@ -293,19 +280,6 @@
           "items": {
             "$ref": "#/definitions/protobufAny"
           }
-        }
-      }
-    },
-    "v1beta1GetWindowResponse": {
-      "type": "object",
-      "properties": {
-        "start": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "end": {
-          "type": "string",
-          "format": "date-time"
         }
       }
     },
@@ -403,6 +377,17 @@
     },
     "v1beta1RegisterJobEventResponse": {
       "type": "object"
+    },
+    "v1beta1UploadToSchedulerResponse": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "boolean"
+        },
+        "errorMessage": {
+          "type": "string"
+        }
+      }
     }
   },
   "externalDocs": {

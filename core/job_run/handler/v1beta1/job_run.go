@@ -22,11 +22,6 @@ type JobRunHandler struct {
 	pb.UnimplementedJobRunServiceServer
 }
 
-//func (JobRunHandler) GetJobTask(ctx context.Context, req *pb.GetJobTaskRequest) (*pb.GetJobTaskResponse, error) {
-//	// GetJobTask Should be part of the job BC
-//	return nil, nil
-//}
-
 func (h JobRunHandler) JobRunInput(ctx context.Context, req *pb.JobRunInputRequest) (*pb.JobRunInputResponse, error) {
 	projectName, err := tenant.ProjectNameFrom(req.GetProjectName())
 	if err != nil {
@@ -65,29 +60,14 @@ func (h JobRunHandler) JobRunInput(ctx context.Context, req *pb.JobRunInputReque
 	}, nil
 }
 
-//func (JobRunHandler) JobStatus(context.Context, *pb.JobStatusRequest) (*pb.JobStatusResponse, error) {
-//	// Old api, replaced by JobRun, Remove
-//	return nil, nil
-//}
-
 func (JobRunHandler) JobRun(context.Context, *pb.JobRunRequest) (*pb.JobRunResponse, error) {
 	// This should be using optimus to look in job run information for upstream check
 	return nil, nil
 }
 
-func (h JobRunHandler) UploadToScheduler(ctx context.Context) error {
-	return nil
+func (h JobRunHandler) UploadToScheduler(ctx context.Context, req *pb.UploadToSchedulerRequest) (*pb.UploadToSchedulerResponse, error) {
+	return nil, nil
 }
-
-//func (JobRunHandler) GetWindow(context.Context, *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
-//	// Need to copy, paste
-//	return nil, nil
-//}
-
-//func (JobRunHandler) RunJob(context.Context, *pb.RunJobRequest) (*pb.RunJobResponse, error) {
-//	// Remove
-//	return nil, status.Errorf(codes.Unimplemented, "run job api is deprecated")
-//}
 
 func NewJobRunHandler(l log.Logger, service JobRunService) *JobRunHandler {
 	return &JobRunHandler{
