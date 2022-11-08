@@ -19,7 +19,7 @@ type JobRunRepository interface {
 }
 
 type JobInputCompiler interface {
-	Compile(ctx context.Context, job *job_run.Job, config job_run.RunConfig, executedAt time.Time) (job_run.ExecutorInput, error)
+	Compile(ctx context.Context, job *job_run.Job, config job_run.RunConfig, executedAt time.Time) (*job_run.ExecutorInput, error)
 }
 
 type JobRunService struct {
@@ -28,10 +28,10 @@ type JobRunService struct {
 	compiler JobInputCompiler
 }
 
-func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName, config job_run.RunConfig) (job_run.ExecutorInput, error) {
+func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName, config job_run.RunConfig) (*job_run.ExecutorInput, error) {
 	job, err := s.jobRepo.GetJob(ctx, projectName, jobName)
 	if err != nil {
-		return job_run.ExecutorInput{}, err
+		return nil, err
 	}
 
 	var jobRun *job_run.JobRun // Only required for executed_at value
@@ -44,7 +44,7 @@ func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proje
 	var executedAt time.Time
 	if err != nil { // Fallback for executed_at to scheduled_at
 		if !errors.IsErrorType(err, errors.ErrNotFound) {
-			return job_run.ExecutorInput{}, err
+			return nil, err
 		}
 		executedAt = config.ScheduledAt
 	} else {

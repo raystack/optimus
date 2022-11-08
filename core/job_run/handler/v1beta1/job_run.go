@@ -12,7 +12,7 @@ import (
 )
 
 type JobRunService interface {
-	JobRunInput(context.Context, tenant.ProjectName, job_run.JobName, job_run.RunConfig) (job_run.ExecutorInput, error)
+	JobRunInput(context.Context, tenant.ProjectName, job_run.JobName, job_run.RunConfig) (*job_run.ExecutorInput, error)
 }
 
 type JobRunHandler struct {
