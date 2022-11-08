@@ -103,19 +103,6 @@ func (s Spec) Validate() error {
 	return nil
 }
 
-func NewSpec(tenant tenant.Tenant, version int, name string, owner string, description string,
-	labels map[string]string, schedule *Schedule, window models.Window, task *Task, hooks []*Hook, alerts []*Alert,
-	specUpstreams *SpecUpstream, assets map[string]string, metadata *Metadata) (*Spec, error) {
-	jobName, err := NameFrom(name)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Spec{tenant: tenant, version: version, name: jobName, owner: owner, description: description,
-		labels: labels, schedule: schedule, window: window, task: task, hooks: hooks, alerts: alerts,
-		upstream: specUpstreams, assets: assets, metadata: metadata}, nil
-}
-
 type Name string
 
 func NameFrom(urn string) (Name, error) {
@@ -127,6 +114,86 @@ func NameFrom(urn string) (Name, error) {
 
 func (j Name) String() string {
 	return string(j)
+}
+
+type SpecBuilder struct {
+	spec *Spec
+}
+
+func NewSpecBuilder(
+	tenant tenant.Tenant,
+	version int,
+	name Name,
+	owner string,
+	labels map[string]string,
+	schedule *Schedule,
+	window models.Window,
+	task *Task,
+) *SpecBuilder {
+	return &SpecBuilder{
+		spec: &Spec{
+			tenant:   tenant,
+			version:  version,
+			name:     name,
+			owner:    owner,
+			labels:   labels,
+			schedule: schedule,
+			window:   window,
+			task:     task,
+		},
+	}
+}
+
+func (s *SpecBuilder) Build() *Spec {
+	return s.spec
+}
+
+func (s *SpecBuilder) WithHooks(hooks []*Hook) *SpecBuilder {
+	spec := *s.spec
+	spec.hooks = hooks
+	return &SpecBuilder{
+		spec: &spec,
+	}
+}
+
+func (s *SpecBuilder) WithAlerts(alerts []*Alert) *SpecBuilder {
+	spec := *s.spec
+	spec.alerts = alerts
+	return &SpecBuilder{
+		spec: &spec,
+	}
+}
+
+func (s *SpecBuilder) WithSpecUpstream(specUpstream *SpecUpstream) *SpecBuilder {
+	spec := *s.spec
+	spec.upstream = specUpstream
+	return &SpecBuilder{
+		spec: &spec,
+	}
+}
+
+func (s *SpecBuilder) WithAssets(assets map[string]string) *SpecBuilder {
+	spec := *s.spec
+	spec.assets = assets
+	return &SpecBuilder{
+		spec: &spec,
+	}
+}
+
+func (s *SpecBuilder) WithMetadata(metadata *Metadata) *SpecBuilder {
+	spec := *s.spec
+	spec.metadata = metadata
+	return &SpecBuilder{
+		spec: &spec,
+	}
+}
+
+func (s *SpecBuilder) WithDescription(description string) *SpecBuilder {
+	spec := *s.spec
+	spec.description = description
+	return &SpecBuilder{
+		spec: &spec,
+	}
 }
 
 type Config struct {
