@@ -95,12 +95,10 @@ executor_env_vars = [
 ]
 
 init_env_vars = [
-    k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
     k8s.V1EnvVar(name="JOB_DIR",value=JOB_DIR),
     k8s.V1EnvVar(name="JOB_NAME",value='foo'),
     k8s.V1EnvVar(name="OPTIMUS_HOST",value='http://airflow.example.io'),
     k8s.V1EnvVar(name="PROJECT",value='foo-project'),
-    k8s.V1EnvVar(name="NAMESPACE",value='bar-namespace'),
     k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ next_execution_date }}'),
 ]
 
@@ -121,6 +119,7 @@ transformation_bq = SuperKubernetesPodOperator(
     optimus_projectname="foo-project",
     optimus_namespacename="bar-namespace",
     optimus_jobname="foo",
+    optimus_jobtype="task",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "example.io/namespace/image:latest",
@@ -160,6 +159,7 @@ hook_transporter = SuperKubernetesPodOperator(
     optimus_projectname="foo-project",
     optimus_namespacename="bar-namespace",
     optimus_jobname="foo",
+    optimus_jobtype="hook",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "example.io/namespace/hook-image:latest",
@@ -194,6 +194,7 @@ hook_predator = SuperKubernetesPodOperator(
     optimus_projectname="foo-project",
     optimus_namespacename="bar-namespace",
     optimus_jobname="foo",
+    optimus_jobtype="hook",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "example.io/namespace/predator-image:latest",
@@ -228,6 +229,7 @@ hook_hook__dash__for__dash__fail = SuperKubernetesPodOperator(
     optimus_projectname="foo-project",
     optimus_namespacename="bar-namespace",
     optimus_jobname="foo",
+    optimus_jobtype="hook",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "example.io/namespace/fail-image:latest",
