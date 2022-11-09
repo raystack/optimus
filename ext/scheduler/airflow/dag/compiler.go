@@ -6,7 +6,6 @@ import (
 	"text/template"
 
 	"github.com/odpf/optimus/core/job_run"
-	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 )
 
@@ -19,7 +18,7 @@ type Compiler struct {
 	template *template.Template
 }
 
-func (c Compiler) Compile(ctx context.Context, tnnt tenant.Tenant, job *job_run.Job) ([]byte, error) {
+func (c Compiler) Compile(ctx context.Context, job *job_run.Job) ([]byte, error) {
 	return nil, nil
 }
 
