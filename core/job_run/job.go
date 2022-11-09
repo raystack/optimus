@@ -1,6 +1,8 @@
 package job_run
 
 import (
+	"time"
+
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/models"
@@ -29,81 +31,88 @@ func (n JobName) String() string {
 	return string(n)
 }
 
-type JobNotifierConfig struct {
-	On       JobEventCategory
-	Config   map[string]string
-	Channels []string
-}
-
 type Job struct {
-	JobName JobName
-	tenant  tenant.Tenant
+	Name   JobName
+	Tenant tenant.Tenant
 
-	destination  string
-	task         *Task
-	hooks        []*Hook
-	window       models.Window
-	assets       map[string]string
-	notifyConfig JobNotifierConfig
-}
-
-func (j *Job) Tenant() tenant.Tenant {
-	return j.tenant
-}
-
-func (j *Job) SLADuration() (int64, error) {
-	return 0, nil
-}
-
-func (j *Job) Destination() string {
-	return j.destination
-}
-
-func (j *Job) Task() *Task {
-	return j.task
+	Version     int
+	Owner       string
+	Description string
+	Labels      map[string]string
+	Schedule    *Schedule
+	Alerts      []*Alert
+	Upstream    *Upstream
+	metadata    *Metadata
+	Destination string
+	Task        *Task
+	Hooks       []*Hook
+	Window      models.Window
+	Assets      map[string]string
 }
 
 func (j *Job) GetHook(hookName string) (*Hook, error) {
-	for _, hook := range j.hooks {
-		if hook.name == hookName {
+	for _, hook := range j.Hooks {
+		if hook.Name == hookName {
 			return hook, nil
 		}
 	}
 	return nil, errors.NotFound(EntityJobRun, "hook not found in job "+hookName)
 }
 
-func (j *Job) Window() models.Window {
-	return j.window
-}
-
-func (j *Job) Assets() map[string]string {
-	return j.assets
-}
-
-type JobWithDetails struct {
-}
-
 type Task struct {
-	name   string
-	config map[string]string
-}
-
-func (t *Task) Name() string {
-	return t.name
-}
-func (t *Task) Config() map[string]string {
-	return t.config
+	Name   string
+	Config map[string]string
 }
 
 type Hook struct {
-	name   string
-	config map[string]string
+	Name   string
+	Config map[string]string
 }
 
-func (h *Hook) Name() string {
-	return h.name
+type Upstream struct {
+	UpstreamNames []string
+	HttpUpstreams []*HTTPUpstreams
 }
 
-func (h *Hook) Config() map[string]string {
-	return h.config
+type HTTPUpstreams struct {
+	Name    string
+	Url     string
+	Headers map[string]string
+	Params  map[string]string
+}
+
+type Schedule struct {
+	StartDate     time.Time
+	EndDate       *time.Time
+	Interval      string
+	DependsOnPast bool
+	CatchUp       bool
+	Retry         *Retry
+}
+
+type Retry struct {
+	Count              int
+	Delay              int32
+	ExponentialBackoff bool
+}
+
+type Alert struct {
+	On       JobEventType
+	Channels []string
+	Config   map[string]string
+}
+
+type Metadata struct {
+	Resource  *Resource
+	Scheduler map[string]string
+}
+
+type Resource struct {
+	Request *ResourceConfig
+	Limit   *ResourceConfig
+}
+
+type ResourceConfig struct {
+	CPU    string
+	Memory string
 }
