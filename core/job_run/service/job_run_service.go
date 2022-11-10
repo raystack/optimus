@@ -72,7 +72,7 @@ func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proje
 
 	var jobRun *job_run.JobRun // Only required for executed_at value
 	if config.JobRunID.IsEmpty() {
-		jobRun, err = s.repo.GetJobRunByScheduledAt(ctx, job.Tenant(), jobName, config.ScheduledAt)
+		jobRun, err = s.repo.GetJobRunByScheduledAt(ctx, job.Tenant, jobName, config.ScheduledAt)
 	} else {
 		jobRun, err = s.repo.GetJobRunByID(ctx, config.JobRunID)
 	}

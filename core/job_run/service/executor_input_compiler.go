@@ -56,12 +56,12 @@ type InputCompiler struct {
 }
 
 func (i InputCompiler) Compile(ctx context.Context, job *job_run.Job, config job_run.RunConfig, executedAt time.Time) (*job_run.ExecutorInput, error) {
-	tenantDetails, err := i.tenantService.GetDetails(ctx, job.Tenant())
+	tenantDetails, err := i.tenantService.GetDetails(ctx, job.Tenant)
 	if err != nil {
 		return nil, err
 	}
 
-	secrets, err := i.tenantService.GetSecrets(ctx, job.Tenant().ProjectName(), job.Tenant().NamespaceName().String())
+	secrets, err := i.tenantService.GetSecrets(ctx, job.Tenant.ProjectName(), job.Tenant.NamespaceName().String())
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (i InputCompiler) Compile(ctx context.Context, job *job_run.Job, config job
 		return nil, err
 	}
 
-	confs, secretConfs, err := i.compileConfigs(job.Task().Config(), taskContext)
+	confs, secretConfs, err := i.compileConfigs(job.Task.Config, taskContext)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (i InputCompiler) Compile(ctx context.Context, job *job_run.Job, config job
 		return nil, err
 	}
 
-	hookConfs, hookSecrets, err := i.compileConfigs(hook.Config(), mergedContext)
+	hookConfs, hookSecrets, err := i.compileConfigs(hook.Config, mergedContext)
 	if err != nil {
 		return nil, err
 	}
@@ -137,11 +137,11 @@ func (i InputCompiler) compileConfigs(configs map[string]string, templateCtx map
 }
 
 func getSystemDefinedConfigs(job *job_run.Job, runConfig job_run.RunConfig, executedAt time.Time) (map[string]string, error) {
-	startTime, err := job.Window().GetStartTime(runConfig.ScheduledAt)
+	startTime, err := job.Window.GetStartTime(runConfig.ScheduledAt)
 	if err != nil {
 		return nil, err
 	}
-	endTime, err := job.Window().GetEndTime(runConfig.ScheduledAt)
+	endTime, err := job.Window.GetEndTime(runConfig.ScheduledAt)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func getSystemDefinedConfigs(job *job_run.Job, runConfig job_run.RunConfig, exec
 		configDstart:        startTime.Format(TimeISOFormat),
 		configDend:          endTime.Format(TimeISOFormat),
 		configExecutionTime: executedAt.Format(TimeISOFormat),
-		configDestination:   job.Destination(),
+		configDestination:   job.Destination,
 	}, nil
 }
 

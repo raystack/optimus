@@ -56,11 +56,15 @@ type SchedulerAuth struct {
 	token string
 }
 
-type airflowClient struct {
+type ClientAirflow struct {
 	client *http.Client
 }
 
-func (ac airflowClient) invoke(ctx context.Context, r airflowRequest, auth SchedulerAuth) ([]byte, error) {
+func NewAirflowClient() *ClientAirflow {
+	return &ClientAirflow{client: &http.Client{}}
+}
+
+func (ac ClientAirflow) Invoke(ctx context.Context, r airflowRequest, auth SchedulerAuth) ([]byte, error) {
 	var resp []byte
 
 	request, err := http.NewRequestWithContext(ctx, r.method, buildEndPoint(auth.host, r.URL, r.param), bytes.NewBuffer(r.body))

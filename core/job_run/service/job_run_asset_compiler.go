@@ -30,29 +30,29 @@ func NewJobAssetsCompiler(engine FilesCompiler, pluginRepo PluginRepo) *JobRunAs
 }
 
 func (c *JobRunAssetsCompiler) CompileJobRunAssets(ctx context.Context, job *job_run.Job, systemEnvVars map[string]string, scheduledAt time.Time, contextForTask map[string]interface{}) (map[string]string, error) {
-	plugin, err := c.pluginRepo.GetByName(job.Task().Name())
+	plugin, err := c.pluginRepo.GetByName(job.Task.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	startTime, err := job.Window().GetStartTime(scheduledAt)
+	startTime, err := job.Window.GetStartTime(scheduledAt)
 	if err != nil {
 		return nil, fmt.Errorf("error getting start time: %w", err)
 	}
-	endTime, err := job.Window().GetEndTime(scheduledAt)
+	endTime, err := job.Window.GetEndTime(scheduledAt)
 	if err != nil {
 		return nil, fmt.Errorf("error getting end time: %w", err)
 	}
 
-	inputFiles := job.Assets()
+	inputFiles := job.Assets
 
 	if plugin.CLIMod != nil {
 		// check if task needs to override the compilation behaviour
 		compiledAssetResponse, err := plugin.CLIMod.CompileAssets(ctx, models.CompileAssetsRequest{
 			StartTime:    startTime,
 			EndTime:      endTime,
-			Config:       toPluginConfig(job.Task().Config()),
-			Assets:       toPluginAssets(job.Assets()),
+			Config:       toPluginConfig(job.Task.Config),
+			Assets:       toPluginAssets(job.Assets),
 			InstanceData: toJobRunSpecData(systemEnvVars),
 		})
 		if err != nil {
