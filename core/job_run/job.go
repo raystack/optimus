@@ -1,6 +1,8 @@
 package job_run
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/odpf/optimus/core/tenant"
@@ -42,12 +44,20 @@ type Job struct {
 	Schedule    *Schedule
 	Alerts      []*Alert
 	Upstream    *Upstream
-	metadata    *Metadata
+	Metadata    *Metadata
 	Destination string
 	Task        *Task
 	Hooks       []*Hook
 	Window      models.Window
 	Assets      map[string]string
+}
+
+func (j *Job) GetLabelsAsString() string {
+	labels := ""
+	for k, v := range j.Labels {
+		labels += fmt.Sprintf("%s=%s,", strings.TrimSpace(k), strings.TrimSpace(v))
+	}
+	return strings.TrimRight(labels, ",")
 }
 
 func (j *Job) GetHook(hookName string) (*Hook, error) {
