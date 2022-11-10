@@ -38,8 +38,7 @@ func TestPluginService(t *testing.T) {
 	})
 	jobTask := job.NewTask("bq2bq", jobTaskConfig)
 	depMod := new(mockOpt.DependencyResolverMod)
-	baseUnit := new(mockOpt.BasePlugin)
-	plugin := &models.Plugin{Base: baseUnit, DependencyMod: depMod}
+	plugin := &models.Plugin{DependencyMod: depMod}
 
 	t.Run("GenerateDestination", func(t *testing.T) {
 		t.Run("returns destination", func(t *testing.T) {
