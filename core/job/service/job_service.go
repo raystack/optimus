@@ -105,7 +105,7 @@ func (j JobService) generateJobs(ctx context.Context, jobTenant tenant.Tenant, s
 			continue
 		}
 
-		output = append(output, job.NewJob(spec, destination, sources))
+		output = append(output, job.NewJob(jobTenant, spec, destination, sources))
 	}
 	return output, errors.MultiToError(me)
 }

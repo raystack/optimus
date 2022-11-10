@@ -34,19 +34,19 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 		return nil, errors.GRPCErr(err, "failed to add job specifications")
 	}
 
-	var jobs []*job.Spec
+	var jobSpecs []*job.Spec
 	//TODO: utilize multierror
 	var jobErrors error
 	for _, jobProto := range jobSpecRequest.Specs {
-		jobEntity, err := fromJobProto(jobTenant, jobProto)
+		jobSpec, err := fromJobProto(jobProto)
 		if err != nil {
 			jobErrors = multierror.Append(jobErrors, err)
 			continue
 		}
-		jobs = append(jobs, jobEntity)
+		jobSpecs = append(jobSpecs, jobSpec)
 	}
 
-	jobAddErrors, err := jh.jobService.Add(ctx, jobTenant, jobs)
+	jobAddErrors, err := jh.jobService.Add(ctx, jobTenant, jobSpecs)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,6 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 		responseLog = fmt.Sprintf("%s with error: %s", responseLog, jobErrors.Error())
 	}
 
-	// TODO: deprecate deployment ID field. is this api being used? if not we can deprecate deployment id, the api will be synchronous. if being used, we can still deprecate as it will be sync.
 	return &pb.AddJobSpecificationsResponse{
 		Log: responseLog,
 	}, nil

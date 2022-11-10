@@ -41,11 +41,11 @@ func TestUpstreamResolver(t *testing.T) {
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
 			upstreamSpec := job.NewSpecUpstream([]string{"test-proj/job-c"}, nil)
-			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobADestination := "resource-A"
 			jobAUpstreams := []string{"resource-B"}
 
-			jobA := job.NewJob(specA, jobADestination, jobAUpstreams)
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
 
 			upstreamB, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "inferred")
@@ -71,11 +71,11 @@ func TestUpstreamResolver(t *testing.T) {
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
 			upstreamSpec := job.NewSpecUpstream([]string{"job-c"}, nil)
-			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobADestination := "resource-A"
 			jobAUpstreams := []string{"resource-B", "resource-D"}
 
-			jobA := job.NewJob(specA, jobADestination, jobAUpstreams)
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
 
 			internalUpstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
@@ -102,11 +102,11 @@ func TestUpstreamResolver(t *testing.T) {
 			jobRepo := new(JobRepository)
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
-			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).Build()
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).Build()
 			jobADestination := "resource-A"
 			jobAUpstreams := []string{"resource-B"}
 
-			jobA := job.NewJob(specA, jobADestination, jobAUpstreams)
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
 
 			jobRepo.On("GetJobNameWithInternalUpstreams", ctx, project.Name(), mock.Anything).Return(map[job.Name][]*job.Upstream{}, errors.New("internal error"))
@@ -121,11 +121,11 @@ func TestUpstreamResolver(t *testing.T) {
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
 			upstreamSpec := job.NewSpecUpstream([]string{"job-c"}, nil)
-			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobADestination := "resource-A"
 			jobAUpstreams := []string{"resource-B", "resource-D"}
 
-			jobA := job.NewJob(specA, jobADestination, jobAUpstreams)
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
 
 			internalUpstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
@@ -160,11 +160,11 @@ func TestUpstreamResolver(t *testing.T) {
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
 			upstreamSpec := job.NewSpecUpstream([]string{"job-c"}, nil)
-			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobADestination := "resource-A"
 			jobAUpstreams := []string{"resource-B", "resource-D"}
 
-			jobA := job.NewJob(specA, jobADestination, jobAUpstreams)
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
 
 			internalUpstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
@@ -192,11 +192,11 @@ func TestUpstreamResolver(t *testing.T) {
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
 			upstreamSpec := job.NewSpecUpstream([]string{"job-c"}, nil)
-			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobADestination := "resource-A"
 			jobAUpstreams := []string{"resource-B", "resource-D"}
 
-			jobA := job.NewJob(specA, jobADestination, jobAUpstreams)
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
 
 			internalUpstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")

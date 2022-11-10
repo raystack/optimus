@@ -2,13 +2,12 @@ package v1beta1
 
 import (
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
-func fromJobProto(jobTenant tenant.Tenant, js *pb.JobSpecification) (*job.Spec, error) {
+func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
 	var retry *job.Retry
 	var alerts []*job.Alert
 	if js.Behavior != nil {
@@ -35,7 +34,7 @@ func fromJobProto(jobTenant tenant.Tenant, js *pb.JobSpecification) (*job.Spec, 
 
 	metadata := toMetadata(js.Metadata)
 
-	return job.NewSpecBuilder(jobTenant, int(js.Version), job.Name(js.Name), js.Owner, js.Labels, schedule, window, task).
+	return job.NewSpecBuilder(int(js.Version), job.Name(js.Name), js.Owner, js.Labels, schedule, window, task).
 		WithDescription(js.Description).
 		WithHooks(hooks).
 		WithAlerts(alerts).

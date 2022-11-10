@@ -16,11 +16,16 @@ const (
 )
 
 type Job struct {
-	spec        *Spec
+	tenant tenant.Tenant
+
+	spec *Spec
+
 	destination string
 	sources     []string
+}
 
-	// TODO: add state
+func (j Job) Tenant() tenant.Tenant {
+	return j.tenant
 }
 
 func (j Job) Spec() *Spec {
@@ -43,11 +48,11 @@ func (j Job) StaticUpstreamNames() []string {
 }
 
 func (j Job) ProjectName() tenant.ProjectName {
-	return j.spec.Tenant().ProjectName()
+	return j.Tenant().ProjectName()
 }
 
-func NewJob(spec *Spec, destination string, sources []string) *Job {
-	return &Job{spec: spec, destination: destination, sources: sources}
+func NewJob(tenant tenant.Tenant, spec *Spec, destination string, sources []string) *Job {
+	return &Job{tenant: tenant, spec: spec, destination: destination, sources: sources}
 }
 
 type Jobs []*Job

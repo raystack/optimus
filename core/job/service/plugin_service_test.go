@@ -28,7 +28,6 @@ func TestPluginService(t *testing.T) {
 		map[string]string{
 			"bucket": "gs://ns_bucket",
 		})
-	sampleTenant, _ := tenant.NewTenant(project.Name().String(), namespace.Name().String())
 	tenantDetails, _ := tenant.NewTenantDetails(project, namespace)
 	jobSchedule := job.NewSchedule("2022-10-01", "", "", false, false, nil)
 	jobVersion := 1
@@ -105,7 +104,7 @@ func TestPluginService(t *testing.T) {
 				Dependencies: []string{jobSource}},
 				nil)
 
-			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).Build()
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).Build()
 
 			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
 			result, err := pluginService.GenerateUpstreamNames(ctx, tenantDetails, specA, false)

@@ -188,8 +188,8 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		Destination: jobEntity.Destination(),
 		Sources:     sources,
 
-		ProjectName:   jobSpec.Tenant().ProjectName().String(),
-		NamespaceName: jobSpec.Tenant().NamespaceName().String(),
+		ProjectName:   jobEntity.Tenant().ProjectName().String(),
+		NamespaceName: jobEntity.Tenant().NamespaceName().String(),
 	}, nil
 }
 

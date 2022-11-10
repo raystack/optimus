@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/models"
 )
@@ -12,9 +11,6 @@ import (
 const DateSpecLayout = "2006-01-02"
 
 type Spec struct {
-	// TODO: based on discussion, remove tenant since it is not required in spec
-	tenant tenant.Tenant
-
 	version     int
 	name        Name
 	owner       string
@@ -32,10 +28,6 @@ type Spec struct {
 
 func (s Spec) Window() models.Window {
 	return s.window
-}
-
-func (s Spec) Tenant() tenant.Tenant {
-	return s.tenant
 }
 
 func (s Spec) Version() int {
@@ -121,7 +113,6 @@ type SpecBuilder struct {
 }
 
 func NewSpecBuilder(
-	tenant tenant.Tenant,
 	version int,
 	name Name,
 	owner string,
@@ -132,7 +123,6 @@ func NewSpecBuilder(
 ) *SpecBuilder {
 	return &SpecBuilder{
 		spec: &Spec{
-			tenant:   tenant,
 			version:  version,
 			name:     name,
 			owner:    owner,
