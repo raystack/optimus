@@ -3,19 +3,44 @@ package service
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/odpf/salt/log"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/odpf/optimus/core/job_run"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/models"
 )
 
+var (
+	jobFailureCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "job_event_failure",
+		Help: "Event received for job failures by scheduler",
+	})
+	jobSLAMissCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "job_event_slamiss",
+		Help: "Event received for SLA miss by scheduler",
+	})
+)
+
+const (
+	NotificationSchemeSlack     = "slack"
+	NotificationSchemePagerDuty = "pagerduty"
+)
+
+type Notifier interface {
+	io.Closer
+	Notify(ctx context.Context, attr job_run.NotifyAttrs) error
+}
+
 type NotifyService struct {
 	notifyChannels map[string]models.Notifier
 	jobSrv         JobServiceForNotifier
+	tenantService  TenantService
 	l              log.Logger
 }
 
@@ -23,7 +48,7 @@ type JobServiceForNotifier interface {
 	GetNotificationConfig(ctx context.Context, tnnt tenant.Tenant, jobName job_run.JobName) ([]job_run.JobNotifierConfig, error)
 }
 
-func (n NotifyService) Push(ctx context.Context, event job_run.Event) error {
+func (n NotifyService) Push(ctx context.Context, event job_run.Event, jobOwner string) error {
 
 	notificationConfig, err := n.jobSrv.GetNotificationConfig(ctx, event.Tenant, event.JobName)
 	for _, notify := range notificationConfig {
@@ -34,32 +59,50 @@ func (n NotifyService) Push(ctx context.Context, event job_run.Event) error {
 				route := chanParts[1]
 
 				n.l.Debug("notification event for job", "job spec name", event.JobName, "event", fmt.Sprintf("%v", event))
+
+				plainTextSecretsList, err := n.tenantService.GetSecrets(ctx,
+					event.Tenant.ProjectName(),
+					event.Tenant.NamespaceName().String())
+				if err != nil {
+					return err
+				}
+
+				secretMap := SecretsToMap(plainTextSecretsList)
+				var secret string
+				switch scheme {
+				case NotificationSchemeSlack:
+					secret = secretMap["NOTIFY_SLACK"]
+				case NotificationSchemePagerDuty:
+					secret = secretMap[strings.ReplaceAll(route, "#", "notify_")]
+				}
+
 				if notifyChannel, ok := n.notifyChannels[scheme]; ok {
-					if currErr := notifyChannel.Notify(ctx, models.NotifyAttrs{
-						Namespace: event.Tenant.NamespaceName(),
-						JobSpec:   jobSpec,
-						JobEvent:  evt,
-						Route:     route,
+					if currErr := notifyChannel.Notify(ctx, job_run.NotifyAttrs{
+						Owner:    jobOwner,
+						JobEvent: event,
+						Secret:   secret,
+						Route:    route,
 					}); currErr != nil {
-						e.log.Error("Error: No notification event for job ", "current error", currErr)
+						n.l.Error("Error: No notification event for job ", "current error", currErr)
 						err = multierror.Append(err, fmt.Errorf("notifyChannel.Notify: %s: %w", channel, currErr))
 					}
 				}
 			}
 		}
 	}
-	if evt.Type == models.JobFailureEvent {
+	if event.Type.IsOfType(job_run.EventCategoryJobFailure) {
 		jobFailureCounter.Inc()
-	} else if evt.Type == models.SLAMissEvent {
+	} else if event.Type.IsOfType(job_run.EventCategorySLAMiss) {
 		jobSLAMissCounter.Inc()
 	}
 	return err
 }
 
-func NewNotifyService(l log.Logger, jobService JobServiceForNotifier, notifyChan map[string]models.Notifier) *NotifyService {
+func NewNotifyService(l log.Logger, jobService JobServiceForNotifier, tenantService TenantService, notifyChan map[string]models.Notifier) *NotifyService {
 	return &NotifyService{
 		l:              l,
 		jobSrv:         jobService,
+		tenantService:  tenantService,
 		notifyChannels: notifyChan,
 	}
 }

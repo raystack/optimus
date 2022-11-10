@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/odpf/optimus/api/writer"
+	"github.com/odpf/optimus/core/job_run"
 )
 
 var (
@@ -418,12 +419,13 @@ type NotifyAttrs struct {
 	JobSpec  JobSpec
 	JobEvent JobEvent
 
-	Route string
+	secretVal string
+	Route     string
 }
 
 type Notifier interface {
 	io.Closer
-	Notify(ctx context.Context, attr NotifyAttrs) error
+	Notify(ctx context.Context, attr job_run.NotifyAttrs) error
 }
 
 // JobSpecMetadata contains metadata for a job spec

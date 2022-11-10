@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	api "github.com/slack-go/slack"
 
+	"github.com/odpf/optimus/core/job_run"
 	"github.com/odpf/optimus/models"
 )
 
@@ -59,15 +60,12 @@ type event struct {
 	namespaceName string
 	jobName       string
 	owner         string
-	meta          models.JobEvent
+	meta          job_run.Event
 }
 
-func (s *Notifier) Notify(ctx context.Context, attr models.NotifyAttrs) error {
-	oauthSecret, ok := attr.Namespace.ProjectSpec.Secret.GetByName(OAuthTokenSecretName)
-	if !ok {
-		return fmt.Errorf("failed to find authentication token of bot required for sending notifications, please register %s secret", OAuthTokenSecretName)
-	}
-	client := api.New(oauthSecret, api.OptionAPIURL(s.slackURL))
+func (s *Notifier) Notify(ctx context.Context, attr job_run.NotifyAttrs) error {
+
+	client := api.New(attr.Secret, api.OptionAPIURL(s.slackURL))
 
 	var receiverIDs []string
 
@@ -111,11 +109,11 @@ func (s *Notifier) Notify(ctx context.Context, attr models.NotifyAttrs) error {
 		return fmt.Errorf("failed to find notification route %s", attr.Route)
 	}
 
-	s.queueNotification(receiverIDs, oauthSecret, attr)
+	s.queueNotification(receiverIDs, attr.Secret, attr)
 	return nil
 }
 
-func (s *Notifier) queueNotification(receiverIDs []string, oauthSecret string, attr models.NotifyAttrs) {
+func (s *Notifier) queueNotification(receiverIDs []string, oauthSecret string, attr job_run.NotifyAttrs) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, receiverID := range receiverIDs {
@@ -129,10 +127,10 @@ func (s *Notifier) queueNotification(receiverIDs []string, oauthSecret string, a
 
 		evt := event{
 			authToken:     oauthSecret,
-			projectName:   attr.Namespace.ProjectSpec.Name,
-			namespaceName: attr.Namespace.Name,
-			jobName:       attr.JobSpec.Name,
-			owner:         attr.JobSpec.Owner,
+			projectName:   attr.JobEvent.Tenant.ProjectName().String(),
+			namespaceName: attr.JobEvent.Tenant.NamespaceName().String(),
+			jobName:       attr.JobEvent.JobName.String(),
+			owner:         attr.Owner,
 			meta:          attr.JobEvent,
 		}
 		s.routeMsgBatch[rt] = append(s.routeMsgBatch[rt], evt)

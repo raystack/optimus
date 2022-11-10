@@ -52,3 +52,10 @@ type OperatorRun struct {
 func (r *JobRun) StartTime() time.Time {
 	return r.startTime
 }
+
+type NotifyAttrs struct {
+	Owner    string
+	JobEvent Event
+	Route    string
+	Secret   string
+}

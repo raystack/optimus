@@ -74,7 +74,7 @@ func (i InputCompiler) Compile(ctx context.Context, job *job_run.Job, config job
 	// Prepare template context and compile task config
 	taskContext := compiler.PrepareContext(
 		compiler.From(tenantDetails.GetConfigs()).WithName(contextProject).WithKeyPrefix(projectConfigPrefix),
-		compiler.From(secretsToMap(secrets)).WithName(contextSecret),
+		compiler.From(SecretsToMap(secrets)).WithName(contextSecret),
 		compiler.From(systemDefinedVars).WithName(contextSystemDefined).AddToContext(),
 	)
 
@@ -167,7 +167,7 @@ func splitConfigWithSecrets(conf map[string]string) (map[string]string, map[stri
 	return configs, configWithSecrets
 }
 
-func secretsToMap(secrets []*tenant.PlainTextSecret) map[string]string {
+func SecretsToMap(secrets []*tenant.PlainTextSecret) map[string]string {
 	mapping := make(map[string]string, len(secrets))
 	for _, s := range secrets {
 		mapping[s.Name().String()] = s.Value()
