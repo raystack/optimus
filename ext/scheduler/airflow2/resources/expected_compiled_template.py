@@ -110,6 +110,7 @@ init_container = k8s.V1Container(
         k8s.V1EnvVar(name="INSTANCE_TYPE",value='task'),
         k8s.V1EnvVar(name="INSTANCE_NAME",value='bq'),
     ],
+    security_context=k8s.V1PodSecurityContext(run_as_user=0),
     volume_mounts=asset_volume_mounts,
     command=["/bin/sh", INIT_CONTAINER_ENTRYPOINT],
 )
@@ -150,6 +151,7 @@ init_container_transporter = k8s.V1Container(
         k8s.V1EnvVar(name="INSTANCE_TYPE",value='hook'),
         k8s.V1EnvVar(name="INSTANCE_NAME",value='transporter'),
     ],
+    security_context=k8s.V1PodSecurityContext(run_as_user=0),
     volume_mounts=asset_volume_mounts,
     command=["/bin/sh", INIT_CONTAINER_ENTRYPOINT],
 )
@@ -185,6 +187,7 @@ init_container_predator = k8s.V1Container(
         k8s.V1EnvVar(name="INSTANCE_TYPE",value='hook'),
         k8s.V1EnvVar(name="INSTANCE_NAME",value='predator'),
     ],
+    security_context=k8s.V1PodSecurityContext(run_as_user=0),
     volume_mounts=asset_volume_mounts,
     command=["/bin/sh", INIT_CONTAINER_ENTRYPOINT],
 )
@@ -220,6 +223,7 @@ init_container_hook__dash__for__dash__fail = k8s.V1Container(
         k8s.V1EnvVar(name="INSTANCE_TYPE",value='hook'),
         k8s.V1EnvVar(name="INSTANCE_NAME",value='hook-for-fail'),
     ],
+    security_context=k8s.V1PodSecurityContext(run_as_user=0),
     volume_mounts=asset_volume_mounts,
     command=["/bin/sh", INIT_CONTAINER_ENTRYPOINT],
 )

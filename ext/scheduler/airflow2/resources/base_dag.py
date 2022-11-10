@@ -148,6 +148,7 @@ init_container = k8s.V1Container(
         k8s.V1EnvVar(name="INSTANCE_TYPE",value='{{$.InstanceTypeTask}}'),
         k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$baseTaskSchema.Name}}'),
     ],
+    security_context=k8s.V1PodSecurityContext(run_as_user=0),
     volume_mounts=asset_volume_mounts,
     command=["/bin/sh", INIT_CONTAINER_ENTRYPOINT],
 )
@@ -195,6 +196,7 @@ init_container_{{$hookSchema.Name | replace "-" "__dash__"}} = k8s.V1Container(
         k8s.V1EnvVar(name="INSTANCE_TYPE",value='{{$.InstanceTypeHook}}'),
         k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$hookSchema.Name}}'),
     ],
+    security_context=k8s.V1PodSecurityContext(run_as_user=0),
     volume_mounts=asset_volume_mounts,
     command=["/bin/sh", INIT_CONTAINER_ENTRYPOINT],
 )
