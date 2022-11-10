@@ -35,8 +35,9 @@ func fromJobProto(jobTenant tenant.Tenant, js *pb.JobSpecification) (*job.Spec, 
 
 	metadata := toMetadata(js.Metadata)
 
-	return job.NewSpecBuilder(jobTenant, int(js.Version), job.Name(js.Name), js.Owner, js.Labels, schedule, window, task).
+	return job.NewSpecBuilder(jobTenant, int(js.Version), job.Name(js.Name), js.Owner, schedule, window, task).
 		WithDescription(js.Description).
+		WithLabels(js.Labels).
 		WithHooks(hooks).
 		WithAlerts(alerts).
 		WithSpecUpstream(upstreams).

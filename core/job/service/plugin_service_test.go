@@ -106,7 +106,7 @@ func TestPluginService(t *testing.T) {
 				Dependencies: []string{jobSource}},
 				nil)
 
-			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).Build()
+			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
 
 			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
 			result, err := pluginService.GenerateUpstreamNames(ctx, tenantDetails, specA, false)

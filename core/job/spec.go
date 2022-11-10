@@ -125,7 +125,6 @@ func NewSpecBuilder(
 	version int,
 	name Name,
 	owner string,
-	labels map[string]string,
 	schedule *Schedule,
 	window models.Window,
 	task *Task,
@@ -136,7 +135,6 @@ func NewSpecBuilder(
 			version:  version,
 			name:     name,
 			owner:    owner,
-			labels:   labels,
 			schedule: schedule,
 			window:   window,
 			task:     task,
@@ -191,6 +189,14 @@ func (s *SpecBuilder) WithMetadata(metadata *Metadata) *SpecBuilder {
 func (s *SpecBuilder) WithDescription(description string) *SpecBuilder {
 	spec := *s.spec
 	spec.description = description
+	return &SpecBuilder{
+		spec: &spec,
+	}
+}
+
+func (s *SpecBuilder) WithLabels(labels map[string]string) *SpecBuilder {
+	spec := *s.spec
+	spec.labels = labels
 	return &SpecBuilder{
 		spec: &spec,
 	}
