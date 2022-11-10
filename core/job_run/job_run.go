@@ -33,12 +33,20 @@ func (i JobRunID) IsEmpty() bool {
 }
 
 type JobRun struct {
-	RunID uuid.UUID
+	ID uuid.UUID
 
 	jobName JobName
 	tenant  tenant.Tenant
 
 	startTime time.Time
+}
+
+type OperatorRun struct {
+	ID           uuid.UUID
+	JobRunID     uuid.UUID
+	operatorType OperatorType
+	startTime    time.Time
+	endTime      time.Time
 }
 
 func (r *JobRun) StartTime() time.Time {

@@ -6,9 +6,16 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-const EntityJobRun = "jobRun"
-
 type JobName string
+type OperatorType string
+
+const (
+	EntityJobRun = "jobRun"
+
+	OperatorTask   OperatorType = "task"
+	OperatorSensor OperatorType = "sensor"
+	OperatorHook   OperatorType = "hook"
+)
 
 func JobNameFrom(name string) (JobName, error) {
 	if name == "" {
@@ -22,19 +29,30 @@ func (n JobName) String() string {
 	return string(n)
 }
 
+type JobNotifierConfig struct {
+	On       JobEventCategory
+	Config   map[string]string
+	Channels []string
+}
+
 type Job struct {
 	JobName JobName
 	tenant  tenant.Tenant
 
-	destination string
-	task        *Task
-	hooks       []*Hook
-	window      models.Window
-	assets      map[string]string
+	destination  string
+	task         *Task
+	hooks        []*Hook
+	window       models.Window
+	assets       map[string]string
+	notifyConfig JobNotifierConfig
 }
 
 func (j *Job) Tenant() tenant.Tenant {
 	return j.tenant
+}
+
+func (j *Job) SLADuration() (int64, error) {
+	return 0, nil
 }
 
 func (j *Job) Destination() string {

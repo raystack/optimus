@@ -14,12 +14,17 @@ import (
 
 type JobRunService interface {
 	JobRunInput(context.Context, tenant.ProjectName, job_run.JobName, job_run.RunConfig) (*job_run.ExecutorInput, error)
-	UpdateJobState(context.Context, tenant.Tenant, job_run.Event) error
+	UpdateJobState(context.Context, job_run.Event) error
+}
+
+type Notifier interface {
+	Push(context.Context, job_run.Event) error
 }
 
 type JobRunHandler struct {
-	l       log.Logger
-	service JobRunService
+	l        log.Logger
+	service  JobRunService
+	notifier Notifier
 
 	pb.UnimplementedJobRunServiceServer
 }
@@ -63,7 +68,7 @@ func (h JobRunHandler) JobRunInput(ctx context.Context, req *pb.JobRunInputReque
 }
 
 func (JobRunHandler) JobRun(context.Context, *pb.JobRunRequest) (*pb.JobRunResponse, error) {
-	// This should be using optimus to look in job run information for upstream check
+
 	return nil, nil
 }
 
@@ -72,31 +77,43 @@ func (h JobRunHandler) UploadToScheduler(ctx context.Context, req *pb.UploadToSc
 }
 
 func (h JobRunHandler) RegisterEvent(ctx context.Context, req *pb.RegisterJobEventRequest) (*pb.RegisterJobEventResponse, error) {
-	tenant, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
+	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "unable to get tenant")
 	}
+
 	jobName, err := job_run.JobNameFrom(req.GetJobName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "unable to get job name for "+req.GetJobName())
 	}
-	event, err := job_run.EventFrom(req.GetEvent(), jobName)
+
+	event, err := job_run.EventFrom(
+		req.GetEvent().Type.String(),
+		req.GetEvent().Value.AsMap(),
+		jobName, tnnt,
+	)
 	if err != nil {
 		return nil, errors.GRPCErr(err, "unable to parse event "+req.GetEvent().String())
 	}
 
-	err = h.service.UpdateJobState(ctx, tenant, event)
+	err = h.service.UpdateJobState(ctx, event)
 	if err != nil {
 		jobEventByteString, _ := json.Marshal(event)
 		h.l.Error("Scheduler event not registered, event Payload::", string(jobEventByteString), "error:", err.Error())
 	}
 
+	err = h.notifier.Push(ctx, event)
+	if err != nil {
+		return nil, err
+	}
+
 	return nil, nil
 }
 
-func NewJobRunHandler(l log.Logger, service JobRunService) *JobRunHandler {
+func NewJobRunHandler(l log.Logger, service JobRunService, notifier Notifier) *JobRunHandler {
 	return &JobRunHandler{
-		l:       l,
-		service: service,
+		l:        l,
+		service:  service,
+		notifier: notifier,
 	}
 }
