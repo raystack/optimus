@@ -1,16 +1,15 @@
 package resolver_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
-
+	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/resolver"
 	"github.com/odpf/optimus/core/tenant"
 )

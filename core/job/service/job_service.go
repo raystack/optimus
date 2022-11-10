@@ -68,7 +68,7 @@ func (j JobService) addJobs(ctx context.Context, jobTenant tenant.Tenant, jobs [
 	return errors.MultiToError(me)
 }
 
-func (j JobService) getValidatedSpecs(jobs []*job.Spec) ([]*job.Spec, error) {
+func (JobService) getValidatedSpecs(jobs []*job.Spec) ([]*job.Spec, error) {
 	me := errors.NewMultiError("spec validation errors")
 
 	var validatedSpecs []*job.Spec

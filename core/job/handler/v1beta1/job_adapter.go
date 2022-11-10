@@ -13,10 +13,30 @@ func fromJobProto(jobTenant tenant.Tenant, js *pb.JobSpecification) (*job.Spec, 
 	var alerts []*job.Alert
 	if js.Behavior != nil {
 		retry = toRetry(js.Behavior.Retry)
-		alerts = toAlerts(js.Behavior.Notify)
+		a, err := toAlerts(js.Behavior.Notify)
+		if err != nil {
+			return nil, err
+		}
+		alerts = a
 	}
 
-	schedule := job.NewSchedule(js.StartDate, js.EndDate, js.Interval, js.DependsOnPast, js.CatchUp, retry)
+	startDate, err := job.ScheduleDateFrom(js.StartDate)
+	if err != nil {
+		return nil, err
+	}
+	endDate, err := job.ScheduleDateFrom(js.EndDate)
+	if err != nil {
+		return nil, err
+	}
+	schedule, err := job.NewScheduleBuilder(startDate, js.Interval).
+		WithEndDate(endDate).
+		WithDependsOnPast(js.DependsOnPast).
+		WithCatchUp(js.CatchUp).
+		WithRetry(retry).
+		Build()
+	if err != nil {
+		return nil, err
+	}
 
 	window, err := models.NewWindow(int(js.Version), js.WindowTruncateTo, js.WindowOffset, js.WindowSize)
 	if err != nil {
@@ -26,22 +46,48 @@ func fromJobProto(jobTenant tenant.Tenant, js *pb.JobSpecification) (*job.Spec, 
 		return nil, err
 	}
 
-	taskConfig := toConfig(js.Config)
-	task := job.NewTask(js.TaskName, taskConfig)
+	taskConfig, err := toConfig(js.Config)
+	if err != nil {
+		return nil, err
+	}
+	taskName, err := job.TaskNameFrom(js.TaskName)
+	if err != nil {
+		return nil, err
+	}
+	task := job.NewTask(taskName, taskConfig)
 
-	hooks := toHooks(js.Hooks)
+	hooks, err := toHooks(js.Hooks)
+	if err != nil {
+		return nil, err
+	}
 
-	upstreams := toSpecUpstreams(js.Dependencies)
+	upstream, err := toSpecUpstreams(js.Dependencies)
+	if err != nil {
+		return nil, err
+	}
 
 	metadata := toMetadata(js.Metadata)
 
-	return job.NewSpecBuilder(jobTenant, int(js.Version), job.Name(js.Name), js.Owner, schedule, window, task).
+	version, err := job.VersionFrom(int(js.Version))
+	if err != nil {
+		return nil, err
+	}
+	name, err := job.NameFrom(js.Name)
+	if err != nil {
+		return nil, err
+	}
+	owner, err := job.OwnerFrom(js.Owner)
+	if err != nil {
+		return nil, err
+	}
+	asset := job.NewAsset(js.Assets)
+	return job.NewSpecBuilder(jobTenant, version, name, owner, schedule, window, task).
 		WithDescription(js.Description).
 		WithLabels(js.Labels).
 		WithHooks(hooks).
 		WithAlerts(alerts).
-		WithSpecUpstream(upstreams).
-		WithAssets(js.Assets).
+		WithSpecUpstream(upstream).
+		WithAsset(asset).
 		WithMetadata(metadata).
 		Build(), nil
 }
@@ -53,38 +99,60 @@ func toRetry(protoRetry *pb.JobSpecification_Behavior_Retry) *job.Retry {
 	return job.NewRetry(int(protoRetry.Count), protoRetry.Delay.GetNanos(), protoRetry.ExponentialBackoff)
 }
 
-func toHooks(hooksProto []*pb.JobSpecHook) []*job.Hook {
+func toHooks(hooksProto []*pb.JobSpecHook) ([]*job.Hook, error) {
 	hooks := make([]*job.Hook, len(hooksProto))
 	for i, hookProto := range hooksProto {
-		hookConfig := toConfig(hookProto.Config)
-		hooks[i] = job.NewHook(hookProto.Name, hookConfig)
+		hookConfig, err := toConfig(hookProto.Config)
+		if err != nil {
+			return nil, err
+		}
+		hookName, err := job.HookNameFrom(hookProto.Name)
+		if err != nil {
+			return nil, err
+		}
+		hooks[i] = job.NewHook(hookName, hookConfig)
 	}
-	return hooks
+	return hooks, nil
 }
 
-func toAlerts(notifiers []*pb.JobSpecification_Behavior_Notifiers) []*job.Alert {
+func toAlerts(notifiers []*pb.JobSpecification_Behavior_Notifiers) ([]*job.Alert, error) {
 	alerts := make([]*job.Alert, len(notifiers))
 	for i, notify := range notifiers {
 		alertOn := job.EventType(utils.FromEnumProto(notify.On.String(), "type"))
-		alerts[i] = job.NewAlert(alertOn, notify.Channels, notify.Config)
+		config, err := job.NewConfig(notify.Config)
+		if err != nil {
+			return nil, err
+		}
+		alerts[i] = job.NewAlertBuilder(alertOn, notify.Channels).WithConfig(config).Build()
 	}
-	return alerts
+	return alerts, nil
 }
 
-func toSpecUpstreams(upstreamProtos []*pb.JobDependency) *job.SpecUpstream {
-	var upstreamNames []string
-	var httpUpstreams []*job.HTTPUpstreams
+func toSpecUpstreams(upstreamProtos []*pb.JobDependency) (*job.SpecUpstream, error) {
+	var upstreamNames []job.Name
+	var httpUpstreams []*job.SpecHTTPUpstream
 	for _, upstream := range upstreamProtos {
+		name, err := job.NameFrom(upstream.Name)
+		if err != nil {
+			return nil, err
+		}
 		if upstream.HttpDependency == nil {
-			upstreamNames = append(upstreamNames, upstream.Name)
+			upstreamNames = append(upstreamNames, name)
 			continue
 		}
 		httpUpstreamProto := upstream.HttpDependency
-		httpUpstream := job.NewHTTPUpstream(httpUpstreamProto.Name, httpUpstreamProto.Url, httpUpstreamProto.Headers, httpUpstreamProto.Params)
+		httpUpstreamName, err := job.NameFrom(httpUpstreamProto.Name)
+		if err != nil {
+			return nil, err
+		}
+		httpUpstream := job.NewSpecHTTPUpstreamBuilder(httpUpstreamName, httpUpstreamProto.Url).
+			WithHeaders(httpUpstreamProto.Headers).
+			WithParams(httpUpstreamProto.Params).
+			Build()
 		httpUpstreams = append(httpUpstreams, httpUpstream)
 	}
-	upstreams := job.NewSpecUpstream(upstreamNames, httpUpstreams)
-	return upstreams
+	upstream := job.NewSpecUpstreamBuilder().WithUpstreamNames(upstreamNames).WithSpecHTTPUpstream(httpUpstreams).Build()
+	return upstream, nil
 }
 
 func toMetadata(jobMetadata *pb.JobMetadata) *job.Metadata {
@@ -92,12 +160,12 @@ func toMetadata(jobMetadata *pb.JobMetadata) *job.Metadata {
 		return nil
 	}
 
-	var resourceMetadata *job.ResourceMetadata
+	var resourceMetadata *job.MetadataResource
 	if jobMetadata.Resource != nil {
 		metadataResourceProto := jobMetadata.Resource
-		metadataResourceRequest := job.NewResourceConfig(metadataResourceProto.Request.Cpu, metadataResourceProto.Request.Memory)
-		metadataResourceLimit := job.NewResourceConfig(metadataResourceProto.Limit.Cpu, metadataResourceProto.Limit.Memory)
-		resourceMetadata = job.NewResourceMetadata(metadataResourceRequest, metadataResourceLimit)
+		request := job.NewMetadataResourceConfig(metadataResourceProto.Request.Cpu, metadataResourceProto.Request.Memory)
+		limit := job.NewMetadataResourceConfig(metadataResourceProto.Limit.Cpu, metadataResourceProto.Limit.Memory)
+		resourceMetadata = job.NewResourceMetadata(request, limit)
 	}
 
 	schedulerMetadata := make(map[string]string)
@@ -106,11 +174,10 @@ func toMetadata(jobMetadata *pb.JobMetadata) *job.Metadata {
 		schedulerMetadata["pool"] = metadataSchedulerProto.Pool
 		schedulerMetadata["queue"] = metadataSchedulerProto.Queue
 	}
-	metadata := job.NewMetadata(resourceMetadata, schedulerMetadata)
-	return metadata
+	return job.NewMetadataBuilder().WithResource(resourceMetadata).WithScheduler(schedulerMetadata).Build()
 }
 
-func toConfig(configs []*pb.JobConfigItem) *job.Config {
+func toConfig(configs []*pb.JobConfigItem) (*job.Config, error) {
 	configMap := make(map[string]string, len(configs))
 	for _, config := range configs {
 		configMap[config.Name] = config.Value

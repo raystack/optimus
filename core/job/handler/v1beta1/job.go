@@ -1,11 +1,10 @@
 package v1beta1
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hashicorp/go-multierror"
-
-	"golang.org/x/net/context"
 
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/tenant"

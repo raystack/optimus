@@ -5,8 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -14,6 +12,7 @@ import (
 	"github.com/odpf/optimus/core/job/handler/v1beta1"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/models"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
 func TestNewJobHandler(t *testing.T) {
@@ -29,10 +28,16 @@ func TestNewJobHandler(t *testing.T) {
 			"bucket": "gs://ns_bucket",
 		})
 	sampleTenant, _ := tenant.NewTenant(project.Name().String(), namespace.Name().String())
-	jobVersion := 1
-	jobSchedule := job.NewSchedule("2022-10-01", "", "", false, false, nil)
-	jobWindow, _ := models.NewWindow(jobVersion, "d", "24h", "24h")
-	jobTaskConfig := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+	jobVersion, err := job.VersionFrom(1)
+	assert.NoError(t, err)
+	startDate, err := job.ScheduleDateFrom("2022-10-01")
+	assert.NoError(t, err)
+	jobSchedule, err := job.NewScheduleBuilder(startDate, "").Build()
+	assert.NoError(t, err)
+	jobWindow, err := models.NewWindow(jobVersion.Int(), "d", "24h", "24h")
+	assert.NoError(t, err)
+	jobTaskConfig, err := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+	assert.NoError(t, err)
 	jobTask := job.NewTask("bq2bq", jobTaskConfig)
 	jobBehavior := &pb.JobSpecification_Behavior{
 		Retry: &pb.JobSpecification_Behavior_Retry{ExponentialBackoff: false},
@@ -60,10 +65,10 @@ func TestNewJobHandler(t *testing.T) {
 			jobSpecProto := &pb.JobSpecification{
 				Version:          int32(jobVersion),
 				Name:             "job-A",
-				StartDate:        jobSchedule.StartDate(),
-				EndDate:          jobSchedule.EndDate(),
+				StartDate:        jobSchedule.StartDate().String(),
+				EndDate:          jobSchedule.EndDate().String(),
 				Interval:         jobSchedule.Interval(),
-				TaskName:         jobTask.Name(),
+				TaskName:         jobTask.Name().String(),
 				WindowSize:       jobWindow.GetSize(),
 				WindowOffset:     jobWindow.GetOffset(),
 				WindowTruncateTo: jobWindow.GetTruncateTo(),
@@ -80,7 +85,7 @@ func TestNewJobHandler(t *testing.T) {
 			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.AddJobSpecificationsResponse{
-				Log: "jobs are created and queued for deployment on project test-proj",
+				Log: "jobs are created and queued for deployment on project test-proj with error: 1 error occurred:\n\t* invalid argument for entity job: owner is empty\n\n",
 			}, resp)
 		})
 		t.Run("adds complete job and returns deployment ID", func(t *testing.T) {
@@ -91,10 +96,10 @@ func TestNewJobHandler(t *testing.T) {
 			jobSpecProto := &pb.JobSpecification{
 				Version:          int32(jobVersion),
 				Name:             "job-A",
-				StartDate:        jobSchedule.StartDate(),
-				EndDate:          jobSchedule.EndDate(),
+				StartDate:        jobSchedule.StartDate().String(),
+				EndDate:          jobSchedule.EndDate().String(),
 				Interval:         jobSchedule.Interval(),
-				TaskName:         jobTask.Name(),
+				TaskName:         jobTask.Name().String(),
 				WindowSize:       jobWindow.GetSize(),
 				WindowOffset:     jobWindow.GetOffset(),
 				WindowTruncateTo: jobWindow.GetTruncateTo(),
@@ -114,7 +119,7 @@ func TestNewJobHandler(t *testing.T) {
 			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.AddJobSpecificationsResponse{
-				Log: "jobs are created and queued for deployment on project test-proj",
+				Log: "jobs are created and queued for deployment on project test-proj with error: 1 error occurred:\n\t* invalid argument for entity job: owner is empty\n\n",
 			}, resp)
 		})
 		t.Run("returns error when unable to create tenant", func(t *testing.T) {
@@ -139,10 +144,10 @@ func TestNewJobHandler(t *testing.T) {
 				{
 					Version:          int32(0),
 					Name:             "job-A",
-					StartDate:        jobSchedule.StartDate(),
-					EndDate:          jobSchedule.EndDate(),
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
 					Interval:         jobSchedule.Interval(),
-					TaskName:         jobTask.Name(),
+					TaskName:         jobTask.Name().String(),
 					WindowSize:       jobWindow.GetSize(),
 					WindowOffset:     jobWindow.GetOffset(),
 					WindowTruncateTo: jobWindow.GetTruncateTo(),
@@ -150,10 +155,10 @@ func TestNewJobHandler(t *testing.T) {
 				{
 					Version:          int32(jobVersion),
 					Name:             "job-B",
-					StartDate:        jobSchedule.StartDate(),
-					EndDate:          jobSchedule.EndDate(),
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
 					Interval:         jobSchedule.Interval(),
-					TaskName:         jobTask.Name(),
+					TaskName:         jobTask.Name().String(),
 					WindowSize:       jobWindow.GetSize(),
 					WindowOffset:     jobWindow.GetOffset(),
 					WindowTruncateTo: jobWindow.GetTruncateTo(),
@@ -181,10 +186,10 @@ func TestNewJobHandler(t *testing.T) {
 				{
 					Version:          int32(0),
 					Name:             "job-A",
-					StartDate:        jobSchedule.StartDate(),
-					EndDate:          jobSchedule.EndDate(),
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
 					Interval:         jobSchedule.Interval(),
-					TaskName:         jobTask.Name(),
+					TaskName:         jobTask.Name().String(),
 					WindowSize:       jobWindow.GetSize(),
 					WindowOffset:     jobWindow.GetOffset(),
 					WindowTruncateTo: jobWindow.GetTruncateTo(),
@@ -211,10 +216,10 @@ func TestNewJobHandler(t *testing.T) {
 				{
 					Version:          int32(jobVersion),
 					Name:             "job-A",
-					StartDate:        jobSchedule.StartDate(),
-					EndDate:          jobSchedule.EndDate(),
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
 					Interval:         jobSchedule.Interval(),
-					TaskName:         jobTask.Name(),
+					TaskName:         jobTask.Name().String(),
 					WindowSize:       jobWindow.GetSize(),
 					WindowOffset:     jobWindow.GetOffset(),
 					WindowTruncateTo: jobWindow.GetTruncateTo(),
@@ -222,10 +227,10 @@ func TestNewJobHandler(t *testing.T) {
 				{
 					Version:          int32(jobVersion),
 					Name:             "job-B",
-					StartDate:        jobSchedule.StartDate(),
-					EndDate:          jobSchedule.EndDate(),
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
 					Interval:         jobSchedule.Interval(),
-					TaskName:         jobTask.Name(),
+					TaskName:         jobTask.Name().String(),
 					WindowSize:       jobWindow.GetSize(),
 					WindowOffset:     jobWindow.GetOffset(),
 					WindowTruncateTo: jobWindow.GetTruncateTo(),

@@ -54,14 +54,20 @@ func TestPostgresJobRepository(t *testing.T) {
 		return dbConn
 	}
 
-	jobVersion := 1
-	jobOwner := "dev_test"
+	jobVersion, err := job.VersionFrom(1)
+	assert.NoError(t, err)
+	jobOwner, err := job.OwnerFrom("dev_test")
+	assert.NoError(t, err)
 	jobDescription := "sample job"
 	jobRetry := job.NewRetry(5, 0, false)
-	jobSchedule := job.NewSchedule("2022-10-01", "", "", false, false, jobRetry)
-	jobWindow, err := models.NewWindow(jobVersion, "d", "24h", "24h")
+	startDate, err := job.ScheduleDateFrom("2022-10-01")
 	assert.NoError(t, err)
-	jobTaskConfig := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+	jobSchedule, err := job.NewScheduleBuilder(startDate, "").WithRetry(jobRetry).Build()
+	assert.NoError(t, err)
+	jobWindow, err := models.NewWindow(jobVersion.Int(), "d", "24h", "24h")
+	assert.NoError(t, err)
+	jobTaskConfig, err := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+	assert.NoError(t, err)
 	jobTask := job.NewTask("bq2bq", jobTaskConfig)
 
 	host := "sample-host"
@@ -74,24 +80,34 @@ func TestPostgresJobRepository(t *testing.T) {
 			jobLabels := map[string]string{
 				"environment": "integration",
 			}
-			jobHookConfig := job.NewConfig(map[string]string{"sample_hook_key": "sample_value"})
+			jobHookConfig, err := job.NewConfig(map[string]string{"sample_hook_key": "sample_value"})
+			assert.NoError(t, err)
 			jobHooks := []*job.Hook{job.NewHook("sample_hook", jobHookConfig)}
-			jobAlertConfig := job.NewConfig(map[string]string{"sample_alert_key": "sample_value"})
-			jobAlerts := []*job.Alert{job.NewAlert(job.SLAMissEvent, []string{"sample-channel"}, jobAlertConfig.Config())}
-			jobUpstreams := job.NewSpecUpstream([]string{"job-upstream-1", "job-upstream-2"}, nil)
-			jobAssets := map[string]string{"sample-asset": "value-asset"}
-			resourceRequestConfig := job.NewResourceConfig("250m", "128Mi")
-			resourceLimitConfig := job.NewResourceConfig("500m", "1024Mi")
+			jobAlertConfig, err := job.NewConfig(map[string]string{"sample_alert_key": "sample_value"})
+			assert.NoError(t, err)
+			alert := job.NewAlertBuilder(job.SLAMissEvent, []string{"sample-channel"}).WithConfig(jobAlertConfig).Build()
+			jobAlerts := []*job.Alert{alert}
+			upstreamName1, err := job.NameFrom("job-upstream-1")
+			assert.NoError(t, err)
+			upstreamName2, err := job.NameFrom("job-upstream-2")
+			assert.NoError(t, err)
+			jobUpstream := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.Name{upstreamName1, upstreamName2}).Build()
+			jobAsset := job.NewAsset(map[string]string{"sample-asset": "value-asset"})
+			resourceRequestConfig := job.NewMetadataResourceConfig("250m", "128Mi")
+			resourceLimitConfig := job.NewMetadataResourceConfig("250m", "128Mi")
 			resourceMetadata := job.NewResourceMetadata(resourceRequestConfig, resourceLimitConfig)
-			jobMetadata := job.NewMetadata(resourceMetadata, map[string]string{"scheduler_config_key": "value"})
+			jobMetadata := job.NewMetadataBuilder().
+				WithResource(resourceMetadata).
+				WithScheduler(map[string]string{"scheduler_config_key": "value"}).
+				Build()
 
 			jobSpecA := job.NewSpecBuilder(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).
 				WithDescription(jobDescription).
 				WithLabels(jobLabels).
 				WithHooks(jobHooks).
 				WithAlerts(jobAlerts).
-				WithSpecUpstream(jobUpstreams).
-				WithAssets(jobAssets).
+				WithSpecUpstream(jobUpstream).
+				WithAsset(jobAsset).
 				WithMetadata(jobMetadata).
 				Build()
 			jobA := job.NewJob(jobSpecA, "dev.resource.sample_a", []string{"resource-3"})
@@ -101,7 +117,7 @@ func TestPostgresJobRepository(t *testing.T) {
 				WithLabels(jobLabels).
 				WithHooks(jobHooks).
 				WithAlerts(jobAlerts).
-				WithAssets(jobAssets).
+				WithAsset(jobAsset).
 				WithMetadata(jobMetadata).
 				Build()
 			assert.NoError(t, err)
@@ -199,10 +215,12 @@ func TestPostgresJobRepository(t *testing.T) {
 			tenantDetails, err := tenant.NewTenantDetails(proj, namespace)
 			assert.NoError(t, err)
 
-			jobAUpstreams := job.NewSpecUpstream([]string{"sample-job-B"}, nil)
+			upstreamName, err := job.NameFrom("sample-job-B")
+			assert.NoError(t, err)
+			jobAUpstream := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.Name{upstreamName}).Build()
 			jobSpecA := job.NewSpecBuilder(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).
 				WithDescription(jobDescription).
-				WithSpecUpstream(jobAUpstreams).
+				WithSpecUpstream(jobAUpstream).
 				Build()
 			jobA := job.NewJob(jobSpecA, "dev.resource.sample_a", nil)
 
@@ -225,10 +243,12 @@ func TestPostgresJobRepository(t *testing.T) {
 			tenantDetails, err := tenant.NewTenantDetails(proj, namespace)
 			assert.NoError(t, err)
 
-			jobAUpstreams := job.NewSpecUpstream([]string{"test-proj/sample-job-B"}, nil)
+			upstreamName, err := job.NameFrom("test-proj/sample-job-B")
+			assert.NoError(t, err)
+			jobAUpstream := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.Name{upstreamName}).Build()
 			jobSpecA := job.NewSpecBuilder(sampleTenant, jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).
 				WithDescription(jobDescription).
-				WithSpecUpstream(jobAUpstreams).
+				WithSpecUpstream(jobAUpstream).
 				Build()
 			jobA := job.NewJob(jobSpecA, "dev.resource.sample_a", []string{"dev.resource.sample_c"})
 

@@ -1,11 +1,11 @@
 package resolver
 
 import (
+	"context"
+
 	"github.com/hashicorp/go-multierror"
+
 	"github.com/odpf/optimus/core/job"
-
-	"golang.org/x/net/context"
-
 	"github.com/odpf/optimus/core/job/dto"
 )
 

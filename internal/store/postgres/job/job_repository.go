@@ -194,7 +194,7 @@ func groupUpstreamsPerJobFullName(upstreams []JobWithUpstream) map[string][]JobW
 	return upstreamsMap
 }
 
-func (j JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstream, error) {
+func (JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstream, error) {
 	me := errors.NewMultiError("to upstreams errors")
 
 	var upstreams []*job.Upstream

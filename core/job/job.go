@@ -35,7 +35,7 @@ func (j Job) Sources() []string {
 	return j.sources
 }
 
-func (j Job) StaticUpstreamNames() []string {
+func (j Job) StaticUpstreamNames() []Name {
 	if j.spec.upstream == nil {
 		return nil
 	}

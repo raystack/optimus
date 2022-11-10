@@ -29,10 +29,16 @@ func TestUpstreamResolver(t *testing.T) {
 		})
 	sampleTenant, _ := tenant.NewTenant(project.Name().String(), namespace.Name().String())
 	externalTenant, _ := tenant.NewTenant("external-proj", "external-namespace")
-	jobVersion := 1
-	jobSchedule := job.NewSchedule("2022-10-01", "", "", false, false, nil)
-	jobWindow, _ := models.NewWindow(jobVersion, "d", "24h", "24h")
-	jobTaskConfig := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+	jobVersion, err := job.VersionFrom(1)
+	assert.NoError(t, err)
+	startDate, err := job.ScheduleDateFrom("2022-10-01")
+	assert.NoError(t, err)
+	jobSchedule, err := job.NewScheduleBuilder(startDate, "").Build()
+	assert.NoError(t, err)
+	jobWindow, err := models.NewWindow(jobVersion.Int(), "d", "24h", "24h")
+	assert.NoError(t, err)
+	jobTaskConfig, err := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+	assert.NoError(t, err)
 	jobTask := job.NewTask("bq2bq", jobTaskConfig)
 
 	t.Run("Resolve", func(t *testing.T) {
@@ -40,7 +46,9 @@ func TestUpstreamResolver(t *testing.T) {
 			jobRepo := new(JobRepository)
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
-			upstreamSpec := job.NewSpecUpstream([]string{"test-proj/job-c"}, nil)
+			upstreamName, err := job.NameFrom("test-proj/job-c")
+			assert.NoError(t, err)
+			upstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.Name{upstreamName}).Build()
 			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobADestination := "resource-A"
 			jobAUpstreams := []string{"resource-B"}
@@ -70,7 +78,9 @@ func TestUpstreamResolver(t *testing.T) {
 			jobRepo := new(JobRepository)
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
-			upstreamSpec := job.NewSpecUpstream([]string{"job-c"}, nil)
+			upstreamName, err := job.NameFrom("job-c")
+			assert.NoError(t, err)
+			upstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.Name{upstreamName}).Build()
 			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobADestination := "resource-A"
 			jobAUpstreams := []string{"resource-B", "resource-D"}
@@ -120,7 +130,9 @@ func TestUpstreamResolver(t *testing.T) {
 			jobRepo := new(JobRepository)
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
-			upstreamSpec := job.NewSpecUpstream([]string{"job-c"}, nil)
+			upstreamName, err := job.NameFrom("job-c")
+			assert.NoError(t, err)
+			upstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.Name{upstreamName}).Build()
 			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobADestination := "resource-A"
 			jobAUpstreams := []string{"resource-B", "resource-D"}
@@ -159,7 +171,9 @@ func TestUpstreamResolver(t *testing.T) {
 			jobRepo := new(JobRepository)
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
-			upstreamSpec := job.NewSpecUpstream([]string{"job-c"}, nil)
+			upstreamName, err := job.NameFrom("job-c")
+			assert.NoError(t, err)
+			upstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.Name{upstreamName}).Build()
 			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobADestination := "resource-A"
 			jobAUpstreams := []string{"resource-B", "resource-D"}
@@ -191,7 +205,9 @@ func TestUpstreamResolver(t *testing.T) {
 			jobRepo := new(JobRepository)
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
-			upstreamSpec := job.NewSpecUpstream([]string{"job-c"}, nil)
+			upstreamName, err := job.NameFrom("job-c")
+			assert.NoError(t, err)
+			upstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.Name{upstreamName}).Build()
 			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobADestination := "resource-A"
 			jobAUpstreams := []string{"resource-B", "resource-D"}

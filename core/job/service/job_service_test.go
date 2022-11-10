@@ -29,10 +29,15 @@ func TestJobService(t *testing.T) {
 	sampleTenant, _ := tenant.NewTenant(project.Name().String(), namespace.Name().String())
 	detailedTenant, _ := tenant.NewTenantDetails(project, namespace)
 
-	jobVersion := 1
-	jobSchedule := job.NewSchedule("2022-10-01", "", "", false, false, nil)
-	jobWindow, _ := models.NewWindow(jobVersion, "d", "24h", "24h")
-	jobTaskConfig := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+	jobVersion, err := job.VersionFrom(1)
+	assert.NoError(t, err)
+	startDate, err := job.ScheduleDateFrom("2022-10-01")
+	assert.NoError(t, err)
+	jobSchedule, err := job.NewScheduleBuilder(startDate, "").Build()
+	assert.NoError(t, err)
+	jobWindow, _ := models.NewWindow(jobVersion.Int(), "d", "24h", "24h")
+	jobTaskConfig, err := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+	assert.NoError(t, err)
 	jobTask := job.NewTask("bq2bq", jobTaskConfig)
 
 	t.Run("Add", func(t *testing.T) {
@@ -87,10 +92,12 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			invalidJobScheduleB := job.NewSchedule("invalid", "", "", false, false, nil)
+			invalidAsset := job.NewAsset(map[string]string{"key": ""})
 			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
-			specB := job.NewSpecBuilder(sampleTenant, jobVersion, "job-B", "", invalidJobScheduleB, jobWindow, jobTask).Build()
-			specs := []*job.Spec{specB, specA}
+			specB := job.NewSpecBuilder(sampleTenant, jobVersion, "job-B", "", jobSchedule, jobWindow, jobTask).
+				WithAsset(invalidAsset).
+				Build()
+			specs := []*job.Spec{specA, specB}
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
@@ -112,39 +119,7 @@ func TestJobService(t *testing.T) {
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
 			err := jobService.Add(ctx, sampleTenant, specs)
-			assert.ErrorContains(t, err, "start date format should be")
-		})
-		t.Run("return error if all jobs not pass validation", func(t *testing.T) {
-			jobRepo := new(JobRepository)
-			defer jobRepo.AssertExpectations(t)
-
-			pluginService := new(PluginService)
-			defer pluginService.AssertExpectations(t)
-
-			upstreamResolver := new(UpstreamResolver)
-			defer upstreamResolver.AssertExpectations(t)
-
-			tenantDetailsGetter := new(TenantDetailsGetter)
-			defer tenantDetailsGetter.AssertExpectations(t)
-
-			invalidJobScheduleA := job.NewSchedule("invalid", "", "", false, false, nil)
-			invalidJobScheduleB := job.NewSchedule("2022-11-01", "invalid", "", false, false, nil)
-			specA := job.NewSpecBuilder(sampleTenant, jobVersion, "job-A", "", invalidJobScheduleA, jobWindow, jobTask).Build()
-			specB := job.NewSpecBuilder(sampleTenant, jobVersion, "job-B", "", invalidJobScheduleB, jobWindow, jobTask).Build()
-			specs := []*job.Spec{specB, specA}
-
-			tenantDetailsGetter.On("GetDetails", ctx, mock.Anything).Return(nil, nil)
-
-			jobRepo.On("Add", ctx, mock.Anything).Return(nil, nil)
-
-			upstreamResolver.On("Resolve", ctx, mock.Anything, mock.Anything).Return(nil, nil)
-
-			jobRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
-
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
-			err := jobService.Add(ctx, sampleTenant, specs)
-
-			assert.Error(t, err)
+			assert.ErrorContains(t, err, "keys [key] are empty")
 		})
 		t.Run("return error if unable to get detailed tenant", func(t *testing.T) {
 			jobRepo := new(JobRepository)
