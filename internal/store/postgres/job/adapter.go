@@ -218,6 +218,11 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 	}, nil
 }
 
+func fromStorageSpec(jobSpec *Spec) (*job.Job, error) {
+	// TODO: implement this
+	return &job.Job{}, nil
+}
+
 func toStorageHooks(hookSpecs []*job.Hook) ([]byte, error) {
 	if hookSpecs == nil {
 		return nil, nil

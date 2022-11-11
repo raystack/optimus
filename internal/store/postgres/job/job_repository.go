@@ -289,6 +289,47 @@ func (JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstr
 	return upstreams, nil
 }
 
+func (j JobRepository) GetByJobName(ctx context.Context, projectName, jobName string) (*job.Job, error) {
+	// TODO: use tenant instead
+	jobSpec, err := j.get(ctx, tenant.ProjectName(projectName), job.Name(jobName))
+	if err != nil {
+		return nil, err
+	}
+
+	return fromStorageSpec(&jobSpec)
+}
+
+func (j JobRepository) GetAllByProjectName(ctx context.Context, projectName string) ([]*job.Job, error) {
+	// TODO: use tenant instead
+
+	specs := []Spec{}
+	me := errors.NewMultiError("get all job specs by project name errors")
+
+	getAllByProjectName := `SELECT name
+FROM job
+WHERE project_name = ?
+`
+	if err := j.db.WithContext(ctx).Raw(getAllByProjectName, projectName).Find(&specs).Error; err != nil {
+		return nil, err
+	}
+
+	jobSpecs := make([]*job.Job, len(specs))
+	for i, spec := range specs {
+		jobSpec, err := fromStorageSpec(&spec)
+		if err != nil {
+			me.Append(err)
+			continue
+		}
+		jobSpecs[i] = jobSpec
+	}
+
+	return jobSpecs, me
+}
+
+func (j JobRepository) GetAllByResourceDestination(ctx context.Context, resourceDestination string) ([]*job.Job, error) {
+	return nil, nil
+}
+
 type JobWithUpstream struct {
 	JobName               string `json:"job_name"`
 	ProjectName           string `json:"project_name"`
