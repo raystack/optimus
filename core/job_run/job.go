@@ -74,6 +74,7 @@ type JobWithDetails struct {
 	Alerts        []Alert
 	RuntimeConfig RuntimeConfig
 	Upstream      Upstream
+	Priority      int
 }
 
 func (j JobWithDetails) SLADuration() (int64, error) {

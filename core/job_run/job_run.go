@@ -9,9 +9,11 @@ import (
 	"github.com/odpf/optimus/internal/errors"
 )
 
-const (
-	OperatorStateStarted = "started"
-)
+type JobRunState string
+
+func (j JobRunState) String() string {
+	return string(j)
+}
 
 type JobRunID uuid.UUID
 

@@ -17,6 +17,7 @@ type JobRunService interface {
 	JobRunInput(context.Context, tenant.ProjectName, job_run.JobName, job_run.RunConfig) (*job_run.ExecutorInput, error)
 	UpdateJobState(context.Context, job_run.Event) error
 	GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName, criteria *job_run.JobRunsCriteria) ([]*job_run.JobRunStatus, error)
+	UploadToScheduler(ctx context.Context, projectName tenant.ProjectName, namespaceName string) error
 }
 
 type Notifier interface {
@@ -126,6 +127,14 @@ func buildCriteriaForJobRun(req *pb.JobRunRequest) (*job_run.JobRunsCriteria, er
 }
 
 func (h JobRunHandler) UploadToScheduler(ctx context.Context, req *pb.UploadToSchedulerRequest) (*pb.UploadToSchedulerResponse, error) {
+	projectName, err := tenant.ProjectNameFrom(req.GetProjectName())
+	if err != nil {
+		return nil, errors.GRPCErr(err, "unable to get project "+req.GetProjectName())
+	}
+	err := h.service.UploadToScheduler(ctx, projectName, req.GetNamespaceName())
+	if err != nil {
+		return nil, errors.GRPCErr(err, "unable to upload to scheduler for "+projectName.String())
+	}
 	return nil, nil
 }
 

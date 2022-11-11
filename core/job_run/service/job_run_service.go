@@ -2,18 +2,23 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/odpf/optimus/core/job_run"
 	"github.com/odpf/optimus/core/tenant"
+	scheduler "github.com/odpf/optimus/ext/scheduler/airflow"
 	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/lib/cron"
+	"github.com/odpf/optimus/models"
 )
 
 type JobRepository interface {
 	GetJob(ctx context.Context, name tenant.ProjectName, jobName job_run.JobName) (*job_run.Job, error)
-	GetJobDetails(ctx context.Context, tnnt tenant.Tenant, jobNam job_run.JobName) (*job_run.JobWithDetails, error)
+	GetJobDetails(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName) (*job_run.JobWithDetails, error)
+	GetAll(ctx context.Context, projectName tenant.ProjectName) ([]*job_run.JobWithDetails, error)
 }
 
 type JobRunRepository interface {
@@ -33,9 +38,19 @@ type JobInputCompiler interface {
 }
 
 type JobRunService struct {
-	repo     JobRunRepository
-	jobRepo  JobRepository
-	compiler JobInputCompiler
+	repo      JobRunRepository
+	scheduler scheduler.Scheduler
+	jobRepo   JobRepository
+	compiler  JobInputCompiler
+}
+
+func (s JobRunService) UploadToScheduler(ctx context.Context, projectName tenant.ProjectName, namespaceName string) error {
+	allJobsWithDetails, err := s.jobRepo.GetAll(ctx, projectName)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName, config job_run.RunConfig) (*job_run.ExecutorInput, error) {
@@ -65,8 +80,117 @@ func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proje
 	return s.compiler.Compile(ctx, job, config, executedAt)
 }
 
+func validateJobQuery(jobQuery *job_run.JobRunsCriteria, jobWithDetails job_run.JobWithDetails) error {
+	jobStartDate := jobWithDetails.Schedule.StartDate
+	if jobStartDate.IsZero() {
+		return fmt.Errorf("job start time not found at DB")
+	}
+	givenStartDate := jobQuery.StartDate
+	givenEndDate := jobQuery.EndDate
+
+	if givenStartDate.Before(jobStartDate) || givenEndDate.Before(jobStartDate) {
+		return fmt.Errorf("invalid date range")
+	}
+	return nil
+}
+
+func getExpectedRuns(spec *cron.ScheduleSpec, startTime, endTime time.Time) []job_run.JobRunStatus {
+	var jobRuns []job_run.JobRunStatus
+	start := spec.Next(startTime.Add(-time.Second * 1))
+	end := endTime
+	exit := spec.Next(end)
+	for !start.Equal(exit) {
+		jobRuns = append(jobRuns, job_run.JobRunStatus{
+			State:       job_run.StatePending,
+			ScheduledAt: start,
+		})
+		start = spec.Next(start)
+	}
+	return jobRuns
+}
+
+func mergeRuns(expected, actual []job_run.JobRunStatus) []job_run.JobRunStatus {
+	var mergeRuns []job_run.JobRunStatus
+	m := actualRunMap(actual)
+	for _, exp := range expected {
+		if act, ok := m[exp.ScheduledAt.UTC().String()]; ok {
+			mergeRuns = append(mergeRuns, act)
+		} else {
+			mergeRuns = append(mergeRuns, exp)
+		}
+	}
+	return mergeRuns
+}
+
+func actualRunMap(runs []job_run.JobRunStatus) map[string]job_run.JobRunStatus {
+	m := map[string]job_run.JobRunStatus{}
+	for _, v := range runs {
+		m[v.ScheduledAt.UTC().String()] = v
+	}
+	return m
+}
+
+func filterRuns(runs []job_run.JobRunStatus, filter map[string]struct{}) []job_run.JobRunStatus {
+	var filteredRuns []job_run.JobRunStatus
+	if len(filter) == 0 {
+		return runs
+	}
+	for _, v := range runs {
+		if _, ok := filter[v.State.String()]; ok {
+			filteredRuns = append(filteredRuns, v)
+		}
+	}
+	return filteredRuns
+}
+
+func createFilterSet(filter []string) map[string]struct{} {
+	m := map[string]struct{}{}
+	for _, v := range filter {
+		m[models.JobRunState(v).String()] = struct{}{}
+	}
+	return m
+}
+
+func (s JobRunService) GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName, criteria *job_run.JobRunsCriteria) ([]*job_run.JobRunStatus, error) {
+
+	jobWithDetails, err := s.jobRepo.GetJobDetails(ctx, projectName, jobName)
+	interval := jobWithDetails.Schedule.Interval
+	if interval == "" {
+		return nil, fmt.Errorf("job interval not found at DB")
+	}
+	// jobCron
+	jobCron, err := cron.ParseCronSchedule(interval)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse the interval from DB %w", err)
+	}
+
+	if criteria.OnlyLastRun {
+		return s.scheduler.GetJobRuns(ctx, jobWithDetails.Job.Tenant, criteria, jobCron)
+	}
+	// validate job query
+	err = validateJobQuery(criteria, *jobWithDetails)
+	if err != nil {
+		return nil, err
+	}
+	// get expected runs StartDate and EndDate inclusive
+	expectedRuns := getExpectedRuns(jobCron, criteria.StartDate, criteria.EndDate)
+
+	// call to airflow for get runs
+	actualRuns, err := s.scheduler.GetJobRuns(ctx, jobWithDetails.Job.Tenant, criteria, jobCron)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get job runs from airflow %w", err)
+	}
+	// mergeRuns
+	totalRuns := mergeRuns(expectedRuns, actualRuns)
+
+	// filterRuns
+	result := filterRuns(totalRuns, createFilterSet(criteria.Filter))
+
+	return result, nil
+}
+
 func (s JobRunService) registerNewJobRun(ctx context.Context, event job_run.Event) error {
-	job, err := s.jobRepo.GetJobDetails(ctx, event.Tenant, event.JobName)
+	job, err := s.jobRepo.GetJobDetails(ctx, event.Tenant.ProjectName(), event.JobName)
 	if err != nil {
 		return err
 	}
@@ -125,7 +249,7 @@ func (s JobRunService) createOperatorRun(ctx context.Context, event job_run.Even
 			return err
 		}
 	} else {
-		if operatorRun.State == job_run.OperatorStateStarted {
+		if operatorRun.State == job_run.StateRunning.String() {
 			// operator run exists but is not yet finished
 			return nil
 		}

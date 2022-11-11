@@ -9,31 +9,6 @@ type EventName string
 type JobEventType string
 type JobEventCategory string
 
-type Event struct {
-	JobName JobName
-	Tenant  tenant.Tenant
-	Type    JobEventType
-	Values  map[string]any
-}
-
-func (incomingEvent JobEventType) IsOfType(category JobEventCategory) bool {
-	var failureEvents = []JobEventType{JobFailureEvent, JobFailEvent, TaskFailEvent, HookFailEvent, SensorFailEvent}
-
-	switch category {
-	case EventCategoryJobFailure:
-		for _, event := range failureEvents {
-			if incomingEvent == event {
-				return true
-			}
-		}
-	case EventCategorySLAMiss:
-		if incomingEvent == SLAMissEvent {
-			return true
-		}
-	}
-	return false
-}
-
 const (
 	EntityEvent = "event"
 
@@ -64,6 +39,7 @@ const (
 	SensorSuccessEvent JobEventType = "sensor_success"
 
 	JobRetryEvent JobEventType = "retry"
+	// todo: check if this is being used
 )
 
 func FromStringToEventType(name string) (JobEventType, error) {
@@ -103,6 +79,31 @@ func FromStringToEventType(name string) (JobEventType, error) {
 	default:
 		return "", errors.InvalidArgument(EntityEvent, "unknown event "+name)
 	}
+}
+
+type Event struct {
+	JobName JobName
+	Tenant  tenant.Tenant
+	Type    JobEventType
+	Values  map[string]any
+}
+
+func (incomingEvent JobEventType) IsOfType(category JobEventCategory) bool {
+	var failureEvents = []JobEventType{JobFailureEvent, JobFailEvent, TaskFailEvent, HookFailEvent, SensorFailEvent}
+
+	switch category {
+	case EventCategoryJobFailure:
+		for _, event := range failureEvents {
+			if incomingEvent == event {
+				return true
+			}
+		}
+	case EventCategorySLAMiss:
+		if incomingEvent == SLAMissEvent {
+			return true
+		}
+	}
+	return false
 }
 
 func EventFrom(eventTypeName string, eventValues map[string]any, jobName JobName, tenent tenant.Tenant) (Event, error) {
