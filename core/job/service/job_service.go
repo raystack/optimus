@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 )
@@ -40,6 +41,10 @@ type JobRepository interface {
 
 	GetDownstreamFullNames(context.Context, tenant.ProjectName, job.Name) ([]job.FullName, error)
 	Delete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, cleanHistory bool) error
+
+	GetByJobName(ctx context.Context, projectName, jobName string) (*job.Job, error)
+	GetAllByProjectName(ctx context.Context, projectName string) ([]*job.Job, error)
+	GetAllByResourceDestination(ctx context.Context, resourceDestination string) ([]*job.Job, error)
 }
 
 type UpstreamResolver interface {
@@ -100,6 +105,37 @@ func (j JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName
 	}
 
 	return downstreamFullNames, j.repo.Delete(ctx, jobTenant.ProjectName(), jobName, cleanFlag)
+}
+
+func (j JobService) Get(ctx context.Context, filters ...filter.FilterOpt) (*job.Spec, error) {
+	jobSpecs, err := j.GetAll(ctx, filters...)
+	if err != nil {
+		return nil, err
+	}
+
+	return jobSpecs[0], nil
+}
+
+func (j JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) ([]*job.Spec, error) {
+	// TODO: convert job.Job to job.Spec
+	f := filter.NewFilter(filters...)
+
+	if f.Contains(filter.ResourceDestination) {
+		j.repo.GetAllByResourceDestination(ctx, f.GetValue(filter.ResourceDestination))
+		return nil, nil
+	}
+
+	if f.Contains(filter.ProjectName, filter.JobName) {
+		j.repo.GetByJobName(ctx, f.GetValue(filter.ProjectName), f.GetValue(filter.JobName))
+		return nil, nil
+	}
+
+	if f.Contains(filter.ProjectName) {
+		j.repo.GetAllByProjectName(ctx, f.GetValue(filter.ProjectName))
+		return nil, nil
+	}
+
+	return nil, nil
 }
 
 func (JobService) getValidatedSpecs(jobs []*job.Spec) ([]*job.Spec, error) {

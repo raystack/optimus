@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
@@ -24,6 +25,8 @@ type JobService interface {
 	Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error
 	Update(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error
 	Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) (affectedDownstream []job.FullName, err error)
+	Get(ctx context.Context, filters ...filter.FilterOpt) (jobSpec *job.Spec, err error)
+	GetAll(ctx context.Context, filters ...filter.FilterOpt) (jobSpecs []*job.Spec, err error)
 }
 
 func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *pb.AddJobSpecificationsRequest) (*pb.AddJobSpecificationsResponse, error) {
@@ -115,4 +118,25 @@ func (jh *JobHandler) UpdateJobSpecifications(ctx context.Context, jobSpecReques
 	return &pb.UpdateJobSpecificationsResponse{
 		Log: responseLog,
 	}, nil
+}
+
+func (jh *JobHandler) GetJobSpecification(ctx context.Context, req *pb.GetJobSpecificationRequest) (*pb.GetJobSpecificationResponse, error) {
+	// TODO: convert job.Spec to proto
+	_, _ = jh.jobService.Get(ctx,
+		filter.With(filter.ProjectName, req.GetProjectName()),
+		filter.With(filter.JobName, req.GetJobName()),
+	)
+
+	return nil, nil
+}
+
+func (jh *JobHandler) GetJobSpecifications(ctx context.Context, req *pb.GetJobSpecificationsRequest) (*pb.GetJobSpecificationsResponse, error) {
+	// TODO: convert job.Spec to proto
+	_, _ = jh.jobService.GetAll(ctx,
+		filter.With(filter.ResourceDestination, req.GetResourceDestination()),
+		filter.With(filter.ProjectName, req.GetProjectName()),
+		filter.With(filter.JobName, req.GetJobName()),
+	)
+
+	return nil, nil
 }
