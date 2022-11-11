@@ -66,16 +66,17 @@ func setupJob(tnnt tenant.Tenant) *job_run.Job {
 		{Name: "failureHook"},
 	}
 
+	//		Version:     1,
+	//		Owner:       "infra-team@example.com",
+	//		Description: "This job collects the billing information related to infrastructure",
+	//		Labels:      map[string]string{"approved-by": "cto@example.com", "orchestrator": "optimus"},
+	//		Schedule:    schedule,
+	//		Alerts:      []*job_run.Alert{alert},
+	//		Upstream:    nil,
+
 	return &job_run.Job{
 		Name:        "infra.billing.weekly-status-reports",
 		Tenant:      tnnt,
-		Version:     1,
-		Owner:       "infra-team@example.com",
-		Description: "This job collects the billing information related to infrastructure",
-		Labels:      map[string]string{"approved-by": "cto@example.com", "orchestrator": "optimus"},
-		Schedule:    schedule,
-		Alerts:      []*job_run.Alert{alert},
-		Upstream:    nil,
 		Destination: "bigquery://billing:reports.weekly-status",
 		Task:        &job_run.Task{Name: "bq-bq"},
 		Hooks:       hooks,

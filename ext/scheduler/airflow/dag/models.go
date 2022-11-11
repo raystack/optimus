@@ -93,7 +93,7 @@ func PrepareHooksForJob(job *job_run.Job, pluginRepo PluginRepo) (Hooks, error) 
 			hooks.Fail = append(hooks.Fail, hk)
 		}
 
-		for _, before := range info.DependsOn {
+		for _, before := range info.DependsOn { // If we do not have a hook for before, raise error
 			hooks.Dependencies[before] = h.Name
 		}
 	}
@@ -180,7 +180,7 @@ func ToAirflowConfig(schedulerConf map[string]string) AirflowConfig {
 
 func SlaMissDuration(job *job_run.Job) (int64, error) {
 	var slaMissDurationInSec int64
-	for _, notify := range job.Alerts {
+	for _, notify := range job.Alerts { // We are ranging and picking one value
 		if notify.On == job_run.SLAMissEvent {
 			duration, ok := notify.Config["duration"]
 			if !ok {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/odpf/salt/log"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/odpf/optimus/core/job_run"
 	"github.com/odpf/optimus/core/tenant"
@@ -15,6 +16,7 @@ import (
 type JobRunService interface {
 	JobRunInput(context.Context, tenant.ProjectName, job_run.JobName, job_run.RunConfig) (*job_run.ExecutorInput, error)
 	UpdateJobState(context.Context, job_run.Event) error
+	GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName, criteria *job_run.JobRunsCriteria) ([]*job_run.JobRunStatus, error)
 }
 
 type Notifier interface {
@@ -67,9 +69,60 @@ func (h JobRunHandler) JobRunInput(ctx context.Context, req *pb.JobRunInputReque
 	}, nil
 }
 
-func (JobRunHandler) JobRun(context.Context, *pb.JobRunRequest) (*pb.JobRunResponse, error) {
+// JobRun currently gets the job runs from scheduler based on the criteria
+// TODO: later should collect the job runs from optimus
+func (h JobRunHandler) JobRun(ctx context.Context, req *pb.JobRunRequest) (*pb.JobRunResponse, error) {
+	projectName, err := tenant.ProjectNameFrom(req.GetProjectName())
+	if err != nil {
+		return nil, errors.GRPCErr(err, "unable to get job run for "+req.GetJobName())
+	}
 
-	return nil, nil
+	jobName, err := job_run.JobNameFrom(req.GetJobName())
+	if err != nil {
+		return nil, errors.GRPCErr(err, "unable to get job run for "+req.GetJobName())
+	}
+
+	criteria, err := buildCriteriaForJobRun(req)
+	if err != nil {
+		return nil, errors.GRPCErr(err, "unable to get job run for "+req.GetJobName())
+	}
+
+	var jobRuns []*job_run.JobRunStatus
+	jobRuns, err = h.service.GetJobRuns(ctx, projectName, jobName, criteria) // TODO: return not found if not runs found
+	if err != nil {
+		return nil, errors.GRPCErr(err, "unable to get job run for "+req.GetJobName())
+	}
+
+	var runs []*pb.JobRun
+	for _, run := range jobRuns {
+		ts := timestamppb.New(run.ScheduledAt)
+		runs = append(runs, &pb.JobRun{
+			State:       run.State.String(),
+			ScheduledAt: ts,
+		})
+	}
+	return &pb.JobRunResponse{JobRuns: runs}, nil
+}
+
+func buildCriteriaForJobRun(req *pb.JobRunRequest) (*job_run.JobRunsCriteria, error) {
+	if !req.GetStartDate().IsValid() && !req.GetEndDate().IsValid() {
+		return &job_run.JobRunsCriteria{
+			Name:        req.GetJobName(),
+			OnlyLastRun: true,
+		}, nil
+	}
+	if !req.GetStartDate().IsValid() {
+		return nil, errors.InvalidArgument(job_run.EntityJobRun, "empty start date is given")
+	}
+	if !req.GetEndDate().IsValid() {
+		return nil, errors.InvalidArgument(job_run.EntityJobRun, "empty end date is given")
+	}
+	return &job_run.JobRunsCriteria{
+		Name:      req.GetJobName(),
+		StartDate: req.GetStartDate().AsTime(),
+		EndDate:   req.GetEndDate().AsTime(),
+		Filter:    req.GetFilter(),
+	}, nil
 }
 
 func (h JobRunHandler) UploadToScheduler(ctx context.Context, req *pb.UploadToSchedulerRequest) (*pb.UploadToSchedulerResponse, error) {
