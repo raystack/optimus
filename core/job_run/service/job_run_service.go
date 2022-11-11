@@ -39,7 +39,7 @@ type JobInputCompiler interface {
 
 type JobRunService struct {
 	repo      JobRunRepository
-	scheduler scheduler.Scheduler
+	scheduler scheduler.Scheduler // TODO: define interface for it
 	jobRepo   JobRepository
 	compiler  JobInputCompiler
 }
