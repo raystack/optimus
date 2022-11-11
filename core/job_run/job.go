@@ -71,7 +71,7 @@ type JobWithDetails struct {
 	JobMetadata   *JobMetadata
 	Schedule      *Schedule
 	Retry         *Retry
-	Alert         []Alert
+	Alerts        []Alert
 	RuntimeConfig RuntimeConfig
 	Upstream      Upstream
 }

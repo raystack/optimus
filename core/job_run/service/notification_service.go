@@ -12,7 +12,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/odpf/optimus/core/job_run"
-	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/models"
 )
 
@@ -39,20 +38,16 @@ type Notifier interface {
 
 type NotifyService struct {
 	notifyChannels map[string]models.Notifier
-	jobSrv         JobServiceForNotifier
+	jobRepo        JobRepository
 	tenantService  TenantService
 	l              log.Logger
 }
 
-type JobServiceForNotifier interface {
-	GetNotificationConfig(ctx context.Context, tnnt tenant.Tenant, jobName job_run.JobName) ([]job_run.JobNotifierConfig, error)
-}
-
 func (n NotifyService) Push(ctx context.Context, event job_run.Event, jobOwner string) error {
 
-	notificationConfig, err := n.jobSrv.GetNotificationConfig(ctx, event.Tenant, event.JobName)
-	for _, notify := range notificationConfig {
-		if event.Type.IsOfType(notify.On) {
+	jobDetails, err := n.jobRepo.GetJobDetails(ctx, event.Tenant, event.JobName)
+	for _, notify := range jobDetails.Alerts {
+		if event.Type.IsOfType(notify.On) { // TODO: pass correct event type here
 			for _, channel := range notify.Channels {
 				chanParts := strings.Split(channel, "://")
 				scheme := chanParts[0]
@@ -98,10 +93,10 @@ func (n NotifyService) Push(ctx context.Context, event job_run.Event, jobOwner s
 	return err
 }
 
-func NewNotifyService(l log.Logger, jobService JobServiceForNotifier, tenantService TenantService, notifyChan map[string]models.Notifier) *NotifyService {
+func NewNotifyService(l log.Logger, jobRepo JobRepository, tenantService TenantService, notifyChan map[string]models.Notifier) *NotifyService {
 	return &NotifyService{
 		l:              l,
-		jobSrv:         jobService,
+		jobRepo:        jobRepo,
 		tenantService:  tenantService,
 		notifyChannels: notifyChan,
 	}
