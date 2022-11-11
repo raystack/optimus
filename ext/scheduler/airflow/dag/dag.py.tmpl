@@ -87,23 +87,23 @@ publish_job_end_event = PythonOperator(
 
 {{- if .RuntimeConfig.Resource }}
     resources = k8s.V1ResourceRequirements (
-    {{- if .Job.Resource.Request }}
+    {{- if .RuntimeConfig.Resource.Request }}
         requests = {
-        {{- if ne .Job.Resource.Request.Memory ""}}
-            'memory': '{{.Job.Resource.Request.Memory}}',
+        {{- if ne .RuntimeConfig.Resource.Request.Memory ""}}
+            'memory': '{{.RuntimeConfig.Resource.Request.Memory}}',
         {{- end }}
-        {{- if ne .Job.Resource.Request.CPU ""}}
-            'cpu': '{{.Metadata.Resource.Request.CPU}}',
+        {{- if ne .RuntimeConfig.Resource.Request.CPU ""}}
+            'cpu': '{{.RuntimeConfig.Resource.Request.CPU}}',
         {{- end }}
         },
     {{- end }}
-    {{- if .Job.Resource.Limit }}
+    {{- if .RuntimeConfig.Resource.Limit }}
         limits = {
-        {{- if ne .Job.Resource.Limit.Memory ""}}
-            'memory': '{{.Job.Resource.Request.Memory}}',
+        {{- if ne .RuntimeConfig.Resource.Limit.Memory ""}}
+            'memory': '{{.RuntimeConfig.Resource.Limit.Memory}}',
         {{- end }}
-        {{- if ne .Job.Resource.Limit.CPU ""}}
-            'cpu': '{{.Metadata.Resource.Request.CPU}}',
+        {{- if ne .RuntimeConfig.Resource.Limit.CPU ""}}
+            'cpu': '{{.RuntimeConfig.Resource.Limit.CPU}}',
         {{- end }}
         },
     {{- end }}
