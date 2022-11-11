@@ -13,7 +13,6 @@ import (
 	api "github.com/slack-go/slack"
 
 	"github.com/odpf/optimus/core/job_run"
-	"github.com/odpf/optimus/models"
 )
 
 const (
@@ -148,20 +147,20 @@ func buildMessageBlocks(events []event, workerErrChan chan error) []api.Block {
 		fieldSlice = append(fieldSlice, api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Job:*\n%s", evt.jobName), false, false))
 		fieldSlice = append(fieldSlice, api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Owner:*\n%s", evt.owner), false, false))
 
-		if evt.meta.Type.IsOfType(models.SLAMissEvent) {
+		if evt.meta.Type.IsOfType(job_run.EventCategorySLAMiss) {
 			heading := api.NewTextBlockObject("plain_text",
 				fmt.Sprintf("[Job] SLA Breached | %s/%s", evt.projectName, evt.namespaceName), true, false)
 			blocks = append(blocks, api.NewHeaderBlock(heading))
 
-			if slas, ok := evt.meta.Value["slas"]; ok {
-				for slaIdx, sla := range slas.GetListValue().GetValues() {
-					slaFields := sla.GetStructValue().GetFields()
+			if slas, ok := evt.meta.Values["slas"]; ok {
+				for slaIdx, sla := range slas.([]any) {
+					slaFields := sla.(map[string]any)
 					slaStr := ""
 					if taskID, ok := slaFields["task_id"]; ok {
-						slaStr += "\nTask: " + taskID.GetStringValue()
+						slaStr += "\nTask: " + taskID.(string)
 					}
 					if scheduledAt, ok := slaFields["scheduled_at"]; ok {
-						slaStr += "\nScheduled at: " + scheduledAt.GetStringValue()
+						slaStr += "\nScheduled at: " + scheduledAt.(string)
 					}
 					if slaStr != "" {
 						if slaIdx > MaxSLAEventsToProcess {
@@ -176,19 +175,19 @@ func buildMessageBlocks(events []event, workerErrChan chan error) []api.Block {
 					}
 				}
 			}
-		} else if evt.meta.Type.IsOfType(models.JobFailureEvent) {
+		} else if evt.meta.Type.IsOfType(job_run.EventCategoryJobFailure) {
 			heading := api.NewTextBlockObject("plain_text",
 				fmt.Sprintf("[Job] Failure | %s/%s", evt.projectName, evt.namespaceName), true, false)
 			blocks = append(blocks, api.NewHeaderBlock(heading))
 
-			if scheduledAt, ok := evt.meta.Value["scheduled_at"]; ok && scheduledAt.GetStringValue() != "" {
-				fieldSlice = append(fieldSlice, api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Scheduled At:*\n%s", scheduledAt.GetStringValue()), false, false))
+			if scheduledAt, ok := evt.meta.Values["scheduled_at"]; ok && scheduledAt.(string) != "" {
+				fieldSlice = append(fieldSlice, api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Scheduled At:*\n%s", scheduledAt.(string)), false, false))
 			}
-			if duration, ok := evt.meta.Value["duration"]; ok && duration.GetStringValue() != "" {
-				fieldSlice = append(fieldSlice, api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Duration:*\n%s", duration.GetStringValue()), false, false))
+			if duration, ok := evt.meta.Values["duration"]; ok && duration.(string) != "" {
+				fieldSlice = append(fieldSlice, api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Duration:*\n%s", duration.(string)), false, false))
 			}
-			if taskID, ok := evt.meta.Value["task_id"]; ok && taskID.GetStringValue() != "" {
-				fieldSlice = append(fieldSlice, api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Task ID:*\n%s", taskID.GetStringValue()), false, false))
+			if taskID, ok := evt.meta.Values["task_id"]; ok && taskID.(string) != "" {
+				fieldSlice = append(fieldSlice, api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Task ID:*\n%s", taskID.(string)), false, false))
 			}
 		} else {
 			workerErrChan <- fmt.Errorf("worker_buildMessageBlocks: unknown event type: %v", evt.meta.Type)
@@ -199,29 +198,29 @@ func buildMessageBlocks(events []event, workerErrChan chan error) []api.Block {
 		blocks = append(blocks, fieldsSection)
 
 		// event log url button
-		if logURL, ok := evt.meta.Value["log_url"]; ok && logURL.GetStringValue() != "" {
+		if logURL, ok := evt.meta.Values["log_url"]; ok && logURL.(string) != "" {
 			logText := api.NewTextBlockObject("plain_text", "View log :memo:", true, false)
 			logElement := api.NewButtonBlockElement("", "view_log", logText).WithStyle(api.StyleDanger)
-			logElement.URL = logURL.GetStringValue()
+			logElement.URL = logURL.(string)
 			blocks = append(blocks, api.NewActionBlock("", logElement))
 		}
 
 		// event job url button
-		if jobURL, ok := evt.meta.Value["job_url"]; ok && jobURL.GetStringValue() != "" {
+		if jobURL, ok := evt.meta.Values["job_url"]; ok && jobURL.(string) != "" {
 			logText := api.NewTextBlockObject("plain_text", "View job :memo:", true, false)
 			logElement := api.NewButtonBlockElement("", "view_job", logText).WithStyle(api.StyleDanger)
-			logElement.URL = jobURL.GetStringValue()
+			logElement.URL = jobURL.(string)
 			blocks = append(blocks, api.NewActionBlock("", logElement))
 		}
 
 		// build context footer
 		var detailsElementsSlice []api.MixedElement
-		if exception, ok := evt.meta.Value["exception"]; ok && exception.GetStringValue() != "" {
-			optionText := api.NewTextBlockObject("plain_text", fmt.Sprintf("Exception:\n%s", exception.GetStringValue()), true, false)
+		if exception, ok := evt.meta.Values["exception"]; ok && exception.(string) != "" {
+			optionText := api.NewTextBlockObject("plain_text", fmt.Sprintf("Exception:\n%s", exception.(string)), true, false)
 			detailsElementsSlice = append(detailsElementsSlice, optionText) // api.NewOptionBlockObject("", optionText, nil))
 		}
-		if message, ok := evt.meta.Value["message"]; ok && message.GetStringValue() != "" {
-			optionText := api.NewTextBlockObject("plain_text", fmt.Sprintf("Message:\n%s", message.GetStringValue()), true, false)
+		if message, ok := evt.meta.Values["message"]; ok && message.(string) != "" {
+			optionText := api.NewTextBlockObject("plain_text", fmt.Sprintf("Message:\n%s", message.(string)), true, false)
 			detailsElementsSlice = append(detailsElementsSlice, optionText)
 		}
 		if len(detailsElementsSlice) > 0 {

@@ -71,13 +71,13 @@ type JobWithDetails struct {
 	JobMetadata   *JobMetadata
 	Schedule      *Schedule
 	Retry         *Retry
-	Alert         []Alert
+	Alerts        []Alert
 	RuntimeConfig RuntimeConfig
 	Upstream      Upstream
 }
 
 func (j JobWithDetails) SLADuration() (int64, error) {
-	for _, notify := range j.Alert {
+	for _, notify := range j.Alerts {
 		if notify.On == EventCategorySLAMiss {
 			if _, ok := notify.Config["duration"]; !ok {
 				continue

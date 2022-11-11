@@ -38,15 +38,15 @@ type Notifier interface {
 
 type NotifyService struct {
 	notifyChannels map[string]models.Notifier
-	jobSrv         JobService
+	jobRepo        JobRepository
 	tenantService  TenantService
 	l              log.Logger
 }
 
 func (n NotifyService) Push(ctx context.Context, event job_run.Event, jobOwner string) error {
 
-	jobDetails, err := n.jobSrv.GetJobDetails(ctx, event.Tenant.ProjectName(), event.JobName)
-	notificationConfig := jobDetails.Alert
+	jobDetails, err := n.jobRepo.GetJobDetails(ctx, event.Tenant, event.JobName)
+	notificationConfig := jobDetails.Alerts
 	for _, notify := range notificationConfig {
 		if event.Type.IsOfType(notify.On) {
 			for _, channel := range notify.Channels {
@@ -94,10 +94,10 @@ func (n NotifyService) Push(ctx context.Context, event job_run.Event, jobOwner s
 	return err
 }
 
-func NewNotifyService(l log.Logger, jobService JobService, tenantService TenantService, notifyChan map[string]models.Notifier) *NotifyService {
+func NewNotifyService(l log.Logger, jobRepo JobRepository, tenantService TenantService, notifyChan map[string]models.Notifier) *NotifyService {
 	return &NotifyService{
 		l:              l,
-		jobSrv:         jobService,
+		jobRepo:        jobRepo,
 		tenantService:  tenantService,
 		notifyChannels: notifyChan,
 	}

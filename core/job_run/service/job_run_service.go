@@ -11,50 +11,21 @@ import (
 	"github.com/odpf/optimus/internal/errors"
 )
 
-type JobService interface {
+type JobRepository interface {
 	GetJob(ctx context.Context, name tenant.ProjectName, jobName job_run.JobName) (*job_run.Job, error)
-	GetJobDetails(ctx context.Context, name tenant.ProjectName, jobName job_run.JobName) (*job_run.JobWithDetails, error)
+	GetJobDetails(ctx context.Context, tnnt tenant.Tenant, jobNam job_run.JobName) (*job_run.JobWithDetails, error)
 }
 
 type JobRunRepository interface {
-	// GetJobRunByID get job_run by job_run ID
 	GetJobRunByID(ctx context.Context, id job_run.JobRunID) (*job_run.JobRun, error)
-	// GetJobRunByScheduledAt get the latest(by created at) job_run for a given Schedule time
-	GetJobRunByScheduledAt(ctx context.Context,
-		tenant tenant.Tenant,
-		name job_run.JobName,
-		scheduledAt time.Time) (*job_run.JobRun, error)
-	// Create add a new job_run in the DB
-	Create(ctx context.Context,
-		tenant tenant.Tenant,
-		name job_run.JobName,
-		scheduledAt time.Time,
-		slaDefinitionInSec int64) error
-	// Update update an exixting job_run in the DB
-	Update(ctx context.Context,
-		tenant tenant.Tenant,
-		name job_run.JobName,
-		scheduledAt time.Time,
-		jobRunStatus string,
-		endTime time.Time) error
+	GetJobRunByScheduledAt(ctx context.Context, tenant tenant.Tenant, name job_run.JobName, scheduledAt time.Time) (*job_run.JobRun, error)
 
-	// GetOperatorRun get operator run
-	GetOperatorRun(ctx context.Context,
-		operator job_run.OperatorType,
-		jobRunId uuid.UUID) (*job_run.OperatorRun, error)
+	Create(ctx context.Context, tenant tenant.Tenant, name job_run.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error
+	Update(ctx context.Context, tenant tenant.Tenant, name job_run.JobName, scheduledAt time.Time, jobRunStatus string, endTime time.Time) error
 
-	// CreateOperatorRun create operator run
-	CreateOperatorRun(ctx context.Context,
-		operator job_run.OperatorType,
-		jobRunId uuid.UUID,
-		startTime time.Time) error
-
-	// UpdateOperatorRun create operator run
-	UpdateOperatorRun(ctx context.Context,
-		operator job_run.OperatorType,
-		jobRunId uuid.UUID,
-		eventTime time.Time,
-		state string) error
+	GetOperatorRun(ctx context.Context, operator job_run.OperatorType, jobRunId uuid.UUID) (*job_run.OperatorRun, error)
+	CreateOperatorRun(ctx context.Context, operator job_run.OperatorType, jobRunID uuid.UUID, startTime time.Time) error
+	UpdateOperatorRun(ctx context.Context, operator job_run.OperatorType, jobRunID uuid.UUID, eventTime time.Time, state string) error
 }
 
 type JobInputCompiler interface {
@@ -63,12 +34,12 @@ type JobInputCompiler interface {
 
 type JobRunService struct {
 	repo     JobRunRepository
-	jobSrvc  JobService
+	jobRepo  JobRepository
 	compiler JobInputCompiler
 }
 
 func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName, config job_run.RunConfig) (*job_run.ExecutorInput, error) {
-	job, err := s.jobSrvc.GetJob(ctx, projectName, jobName)
+	job, err := s.jobRepo.GetJob(ctx, projectName, jobName)
 	if err != nil {
 		return nil, err
 	}
@@ -95,11 +66,11 @@ func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proje
 }
 
 func (s JobRunService) registerNewJobRun(ctx context.Context, event job_run.Event) error {
-	job, err := s.jobSrvc.GetJobDetails(ctx, event.Tenant.ProjectName(), event.JobName)
+	job, err := s.jobRepo.GetJobDetails(ctx, event.Tenant, event.JobName)
 	if err != nil {
 		return err
 	}
-	slaDefinitionInSec, err := job.SLADuration()
+	slaDefinitionInSec, err := job.SLADuration() // TODO: add method for sla based on alerts
 	if err != nil {
 		return err
 	}
