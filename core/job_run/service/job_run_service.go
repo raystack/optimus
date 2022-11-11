@@ -13,6 +13,7 @@ import (
 
 type JobService interface {
 	GetJob(ctx context.Context, name tenant.ProjectName, jobName job_run.JobName) (*job_run.Job, error)
+	GetJobDetails(ctx context.Context, name tenant.ProjectName, jobName job_run.JobName) (*job_run.JobWithDetails, error)
 }
 
 type JobRunRepository interface {
@@ -41,11 +42,13 @@ type JobRunRepository interface {
 	GetOperatorRun(ctx context.Context,
 		operator job_run.OperatorType,
 		jobRunId uuid.UUID) (*job_run.OperatorRun, error)
+
 	// CreateOperatorRun create operator run
 	CreateOperatorRun(ctx context.Context,
 		operator job_run.OperatorType,
 		jobRunId uuid.UUID,
 		startTime time.Time) error
+
 	// UpdateOperatorRun create operator run
 	UpdateOperatorRun(ctx context.Context,
 		operator job_run.OperatorType,
@@ -92,7 +95,7 @@ func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proje
 }
 
 func (s JobRunService) registerNewJobRun(ctx context.Context, event job_run.Event) error {
-	job, err := s.jobSrvc.GetJob(ctx, event.Tenant.ProjectName(), event.JobName)
+	job, err := s.jobSrvc.GetJobDetails(ctx, event.Tenant.ProjectName(), event.JobName)
 	if err != nil {
 		return err
 	}
@@ -143,20 +146,20 @@ func (s JobRunService) createOperatorRun(ctx context.Context, event job_run.Even
 		return err
 	}
 
-	// if operatorType == job_run.OperatorSensor {
-	// 	_, err := s.repo.GetOperatorRun(ctx, operatorType, jobRun.ID)
-	// 	if err != nil {
-	// 		if !errors.IsErrorType(err, errors.ErrNotFound) {
-	// 			return err
-	// 		}
-	// 	} else {
-	// 		return s.repo.UpdateOperatorRun(ctx,
-	// 			operatorType,
-	// 			scheduledAtTimeStamp,
-	// 			jobRunStatus,
-	// 			endTime)
-	// }
 	startedAtTimeStamp := time.Unix(int64(event.Values["event_time"].(int64)), 0)
+
+	operatorRun, err := s.repo.GetOperatorRun(ctx, operatorType, jobRun.ID)
+	if err == nil {
+		if !errors.IsErrorType(err, errors.ErrNotFound) {
+			return err
+		}
+	} else {
+		if operatorRun.State == job_run.OperatorStateStarted {
+			// operator run exists but is not yet finished
+			return nil
+		}
+	}
+
 	return s.repo.CreateOperatorRun(ctx,
 		operatorType,
 		jobRun.ID,

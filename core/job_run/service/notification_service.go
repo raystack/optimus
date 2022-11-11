@@ -12,7 +12,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/odpf/optimus/core/job_run"
-	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/models"
 )
 
@@ -39,18 +38,15 @@ type Notifier interface {
 
 type NotifyService struct {
 	notifyChannels map[string]models.Notifier
-	jobSrv         JobServiceForNotifier
+	jobSrv         JobService
 	tenantService  TenantService
 	l              log.Logger
 }
 
-type JobServiceForNotifier interface {
-	GetNotificationConfig(ctx context.Context, tnnt tenant.Tenant, jobName job_run.JobName) ([]job_run.JobNotifierConfig, error)
-}
-
 func (n NotifyService) Push(ctx context.Context, event job_run.Event, jobOwner string) error {
 
-	notificationConfig, err := n.jobSrv.GetNotificationConfig(ctx, event.Tenant, event.JobName)
+	jobDetails, err := n.jobSrv.GetJobDetails(ctx, event.Tenant.ProjectName(), event.JobName)
+	notificationConfig := jobDetails.Alert
 	for _, notify := range notificationConfig {
 		if event.Type.IsOfType(notify.On) {
 			for _, channel := range notify.Channels {
@@ -98,7 +94,7 @@ func (n NotifyService) Push(ctx context.Context, event job_run.Event, jobOwner s
 	return err
 }
 
-func NewNotifyService(l log.Logger, jobService JobServiceForNotifier, tenantService TenantService, notifyChan map[string]models.Notifier) *NotifyService {
+func NewNotifyService(l log.Logger, jobService JobService, tenantService TenantService, notifyChan map[string]models.Notifier) *NotifyService {
 	return &NotifyService{
 		l:              l,
 		jobSrv:         jobService,

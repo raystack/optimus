@@ -76,6 +76,23 @@ type JobWithDetails struct {
 	Upstream      Upstream
 }
 
+func (j JobWithDetails) SLADuration() (int64, error) {
+	for _, notify := range j.Alert {
+		if notify.On == EventCategorySLAMiss {
+			if _, ok := notify.Config["duration"]; !ok {
+				continue
+			}
+
+			dur, err := time.ParseDuration(notify.Config["duration"])
+			if err != nil {
+				return 0, fmt.Errorf("failed to parse sla_miss duration %s: %w", notify.Config["duration"], err)
+			}
+			return int64(dur.Seconds()), nil
+		}
+	}
+	return 0, nil
+}
+
 type JobMetadata struct {
 	Version     int
 	Owner       string
@@ -106,7 +123,7 @@ type Retry struct {
 }
 
 type Alert struct {
-	On       JobEventType
+	On       JobEventCategory
 	Channels []string
 	Config   map[string]string
 }

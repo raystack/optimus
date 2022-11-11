@@ -9,6 +9,10 @@ import (
 	"github.com/odpf/optimus/internal/errors"
 )
 
+const (
+	OperatorStateStarted = "started"
+)
+
 type JobRunID uuid.UUID
 
 func JobRunIDFromString(runID string) (JobRunID, error) {
@@ -45,6 +49,7 @@ type OperatorRun struct {
 	ID           uuid.UUID
 	JobRunID     uuid.UUID
 	operatorType OperatorType
+	State        string
 	startTime    time.Time
 	endTime      time.Time
 }
