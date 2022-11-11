@@ -7,6 +7,11 @@ import (
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
+func toJobProto(jobSpec *job.Spec) *pb.JobSpecification {
+	// TODO: implement this
+	return &pb.JobSpecification{}
+}
+
 func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
 	var retry *job.Retry
 	var alerts []*job.Alert

@@ -121,22 +121,36 @@ func (jh *JobHandler) UpdateJobSpecifications(ctx context.Context, jobSpecReques
 }
 
 func (jh *JobHandler) GetJobSpecification(ctx context.Context, req *pb.GetJobSpecificationRequest) (*pb.GetJobSpecificationResponse, error) {
-	// TODO: convert job.Spec to proto
-	_, _ = jh.jobService.Get(ctx,
+	jobSpec, err := jh.jobService.Get(ctx,
 		filter.With(filter.ProjectName, req.GetProjectName()),
 		filter.With(filter.JobName, req.GetJobName()),
 	)
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, nil
+	return &pb.GetJobSpecificationResponse{
+		Spec: toJobProto(jobSpec),
+	}, nil
 }
 
 func (jh *JobHandler) GetJobSpecifications(ctx context.Context, req *pb.GetJobSpecificationsRequest) (*pb.GetJobSpecificationsResponse, error) {
-	// TODO: convert job.Spec to proto
-	_, _ = jh.jobService.GetAll(ctx,
+	jobSpecs, merr := jh.jobService.GetAll(ctx,
 		filter.With(filter.ResourceDestination, req.GetResourceDestination()),
 		filter.With(filter.ProjectName, req.GetProjectName()),
 		filter.With(filter.JobName, req.GetJobName()),
 	)
 
-	return nil, nil
+	jobSpecResponseProtos := []*pb.JobSpecificationResponse{}
+	for _, jobSpec := range jobSpecs {
+		jobSpecResponseProtos = append(jobSpecResponseProtos, &pb.JobSpecificationResponse{
+			ProjectName:   jobSpec.Tenant().ProjectName().String(),
+			NamespaceName: jobSpec.Tenant().NamespaceName().String(),
+			Job:           toJobProto(jobSpec),
+		})
+	}
+
+	return &pb.GetJobSpecificationsResponse{
+		JobSpecificationResponses: jobSpecResponseProtos,
+	}, merr
 }
