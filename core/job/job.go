@@ -15,6 +15,12 @@ const (
 	UpstreamStateUnresolved UpstreamState = "unresolved"
 )
 
+// TODO: use this for destination and sources
+type ResourceURN string
+
+type Status string
+
+// TODO: add setter for destination and sources
 type Job struct {
 	tenant tenant.Tenant
 
@@ -22,6 +28,9 @@ type Job struct {
 
 	destination string
 	sources     []string
+
+	// TODO: use this status
+	status Status
 }
 
 func (j Job) Tenant() tenant.Tenant {
@@ -51,6 +60,7 @@ func (j Job) ProjectName() tenant.ProjectName {
 	return j.Tenant().ProjectName()
 }
 
+// TODO: remove destination and sources from this parameter
 func NewJob(tenant tenant.Tenant, spec *Spec, destination string, sources []string) *Job {
 	return &Job{tenant: tenant, spec: spec, destination: destination, sources: sources}
 }
@@ -97,6 +107,7 @@ func (w WithUpstream) GetUnresolvedUpstreams() []*Upstream {
 }
 
 type Upstream struct {
+	// TODO: change from string to Name
 	name     string
 	host     string
 	resource string

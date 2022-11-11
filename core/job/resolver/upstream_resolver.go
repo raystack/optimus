@@ -106,6 +106,7 @@ func (UpstreamResolver) identifyUnresolvedStaticUpstream(resolvedUpstreams []*jo
 	for _, upstreamName := range jobEntity.StaticUpstreamNames() {
 		var projectUpstreamName, jobUpstreamName string
 
+		// TODO: use SpecUpstreamName method
 		if strings.Contains(upstreamName.String(), "/") {
 			projectUpstreamName = strings.Split(upstreamName.String(), "/")[0]
 			jobUpstreamName = strings.Split(upstreamName.String(), "/")[1]

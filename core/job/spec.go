@@ -307,6 +307,7 @@ type ScheduleBuilder struct {
 	schedule *Schedule
 }
 
+// TODO: move interval to optional
 func NewScheduleBuilder(startDate ScheduleDate, interval string) *ScheduleBuilder {
 	return &ScheduleBuilder{
 		schedule: &Schedule{
@@ -612,6 +613,7 @@ func (a AlertBuilder) WithConfig(config *Config) *AlertBuilder {
 	}
 }
 
+// TODO: reconsider whether we still need it or not
 type SpecHTTPUpstream struct {
 	name    Name
 	url     string
@@ -675,6 +677,21 @@ func (s SpecHTTPUpstreamBuilder) WithParams(params map[string]string) *SpecHTTPU
 	}
 }
 
+// TODO: add the following implementtions
+// type SpecUpstreamName string
+
+// func (s SpecUpstreamName) IsWithProjectName() bool {
+// 	return false
+// }
+
+// func (s SpecUpstreamName) GetProjectName() tenant.ProjectName {
+// 	return ""
+// }
+
+// func (s SpecUpstreamName) GetJobName() Name {
+// 	return ""
+// }
+
 type SpecUpstream struct {
 	upstreamNames []Name
 	httpUpstreams []*SpecHTTPUpstream
@@ -726,6 +743,7 @@ func (s SpecUpstreamBuilder) WithSpecHTTPUpstream(httpUpstreams []*SpecHTTPUpstr
 	}
 }
 
+// TODO: check whether this is supposed to be here or in utils
 func validateMap(input map[string]string) error {
 	var invalidKeys []string
 	containsEmptyKey := false

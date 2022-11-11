@@ -23,7 +23,7 @@ func NewJobHandler(jobService JobService) *JobHandler {
 }
 
 type JobService interface {
-	// TODO: We don't need to differentiate the error. utilize in-built multierror
+	// TODO: use job.Job instead of job.Spec and use one error (utilize multierror)
 	Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) (jobErrors error, err error)
 }
 
