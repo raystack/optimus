@@ -73,7 +73,7 @@ type JobWithDetails struct {
 	Retry         *Retry
 	Alerts        []Alert
 	RuntimeConfig RuntimeConfig
-	Upstream      Upstream
+	Upstreams     Upstreams
 }
 
 func (j JobWithDetails) SLADuration() (int64, error) {
@@ -145,7 +145,7 @@ type ResourceConfig struct {
 
 type Upstreams struct {
 	HTTP      []*HTTPUpstreams
-	Upstreams []Upstream
+	Upstreams []*Upstream
 }
 
 type HTTPUpstreams struct {

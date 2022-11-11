@@ -28,33 +28,35 @@ func TestDagCompiler(t *testing.T) {
 			com, err := dag.NewDagCompiler("http://optimus.example.com", repo)
 			assert.Nil(t, err)
 
-			job := setupJob(tnnt)
-			compiledDag, err := com.Compile(job)
+			job := setupJobDetails(tnnt)
+			compiledDag, err := com.Compile(job, 2000)
 			assert.Nil(t, err)
 			assert.Equal(t, string(compiledTemplate), string(compiledDag))
 		})
 	})
 }
 
-func setupJob(tnnt tenant.Tenant) *job_run.Job {
+func setupJobDetails(tnnt tenant.Tenant) *job_run.JobWithDetails {
 	window, err := models.NewWindow(1, "d", "0", "1h")
 	if err != nil {
 		panic(err)
 	}
+	end := time.Date(2022, 11, 10, 10, 2, 0, 0, time.UTC)
 	schedule := &job_run.Schedule{
 		StartDate:     time.Date(2022, 11, 10, 5, 2, 0, 0, time.UTC),
-		EndDate:       nil,
+		EndDate:       &end,
 		Interval:      "0 2 * * 0",
 		DependsOnPast: false,
-		CatchUp:       false,
-		Retry: &job_run.Retry{
-			Count:              2,
-			Delay:              100,
-			ExponentialBackoff: true,
-		},
+		CatchUp:       true,
 	}
 
-	alert := &job_run.Alert{
+	retry := &job_run.Retry{
+		Count:              2,
+		Delay:              100,
+		ExponentialBackoff: true,
+	}
+
+	alert := job_run.Alert{
 		On:       job_run.SLAMissEvent,
 		Channels: []string{"#alerts"},
 		Config:   map[string]string{"duration": "2h"},
@@ -66,22 +68,80 @@ func setupJob(tnnt tenant.Tenant) *job_run.Job {
 		{Name: "failureHook"},
 	}
 
-	//		Version:     1,
-	//		Owner:       "infra-team@example.com",
-	//		Description: "This job collects the billing information related to infrastructure",
-	//		Labels:      map[string]string{"approved-by": "cto@example.com", "orchestrator": "optimus"},
-	//		Schedule:    schedule,
-	//		Alerts:      []*job_run.Alert{alert},
-	//		Upstream:    nil,
+	jobMeta := &job_run.JobMetadata{
+		Version:     1,
+		Owner:       "infra-team@example.com",
+		Description: "This job collects the billing information related to infrastructure",
+		Labels:      map[string]string{"orchestrator": "optimus"},
+	}
 
-	return &job_run.Job{
-		Name:        "infra.billing.weekly-status-reports",
+	jobName := job_run.JobName("infra.billing.weekly-status-reports")
+	job := &job_run.Job{
+		Name:        jobName,
 		Tenant:      tnnt,
 		Destination: "bigquery://billing:reports.weekly-status",
 		Task:        &job_run.Task{Name: "bq-bq"},
 		Hooks:       hooks,
 		Window:      window,
 		Assets:      nil,
+	}
+
+	runtimeConfig := job_run.RuntimeConfig{
+		Resource: &job_run.Resource{
+			Limit: &job_run.ResourceConfig{
+				CPU:    "200m",
+				Memory: "2G",
+			},
+		},
+		Scheduler: map[string]string{"pool": "billing"},
+	}
+
+	tnnt1, _ := tenant.NewTenant("project", "namespace")
+	tnnt2, _ := tenant.NewTenant("external-project", "external-namespace")
+	upstreams := job_run.Upstreams{
+		HTTP: nil,
+		Upstreams: []*job_run.Upstream{
+			{
+				Host:     "http://optimus.example.com",
+				Tenant:   tnnt,
+				JobName:  "foo-intra-dep-job",
+				TaskName: "bq",
+				State:    "resolved",
+			},
+			{
+				Host:     "http://optimus.example.com",
+				Tenant:   tnnt1,
+				JobName:  "foo-inter-dep-job",
+				TaskName: "bq-bq",
+				State:    "resolved",
+			},
+			{
+				Host:     "http://optimus.example.com",
+				Tenant:   tnnt1,
+				JobName:  "foo-inter-dep-job-unresolved",
+				TaskName: "bq-bq",
+				State:    "unresolved",
+			},
+			{
+				Host:     "http://optimus.external.io",
+				Tenant:   tnnt2,
+				JobName:  "foo-external-optimus-dep-job",
+				TaskName: "bq-bq",
+				State:    "resolved",
+			},
+		},
+	}
+
+	return &job_run.JobWithDetails{
+		Name:        jobName,
+		Job:         job,
+		JobMetadata: jobMeta,
+		Schedule:    schedule,
+		Retry:       retry,
+		Alerts:      []job_run.Alert{alert},
+
+		RuntimeConfig: runtimeConfig,
+		Upstreams:     upstreams,
 	}
 }
 
