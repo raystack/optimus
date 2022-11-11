@@ -91,14 +91,14 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		return nil, err
 	}
 
-	startDate, err := time.Parse(jobDatetimeLayout, jobSpec.Schedule().StartDate())
+	startDate, err := time.Parse(jobDatetimeLayout, jobSpec.Schedule().StartDate().String())
 	if err != nil {
 		return nil, err
 	}
 
 	var endDate time.Time
 	if jobSpec.Schedule().EndDate() != "" {
-		endDate, err = time.Parse(jobDatetimeLayout, jobSpec.Schedule().EndDate())
+		endDate, err = time.Parse(jobDatetimeLayout, jobSpec.Schedule().EndDate().String())
 		if err != nil {
 			return nil, err
 		}
@@ -122,9 +122,13 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		return nil, err
 	}
 
-	assetsBytes, err := toStorageAsset(jobSpec.Assets())
-	if err != nil {
-		return nil, err
+	var assetsBytes []byte
+	if jobSpec.Asset() != nil {
+		a, err := toStorageAsset(jobSpec.Asset().Assets())
+		if err != nil {
+			return nil, err
+		}
+		assetsBytes = a
 	}
 
 	// TODO: fix this as this results empty json bytes
@@ -142,7 +146,9 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 	var staticUpstreams []string
 	var httpUpstreamsInBytes []byte
 	if jobSpec.Upstream() != nil {
-		staticUpstreams = jobSpec.Upstream().UpstreamNames()
+		for _, name := range jobSpec.Upstream().UpstreamNames() {
+			staticUpstreams = append(staticUpstreams, name.String())
+		}
 		// TODO: this results empty json bytes
 		httpUpstreamsInBytes, err = json.Marshal(jobSpec.Upstream().HTTPUpstreams())
 		if err != nil {
@@ -157,8 +163,8 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 
 	return &Spec{
 		Name:        jobSpec.Name().String(),
-		Version:     jobSpec.Version(),
-		Owner:       jobSpec.Owner(),
+		Version:     jobSpec.Version().Int(),
+		Owner:       jobSpec.Owner().String(),
 		Description: jobSpec.Description(),
 		Labels:      labelsBytes,
 		Assets:      assetsBytes,
@@ -210,12 +216,12 @@ func toStorageHooks(hookSpecs []*job.Hook) ([]byte, error) {
 }
 
 func toStorageHook(spec *job.Hook) (Hook, error) {
-	configJSON, err := json.Marshal(spec.Config().Config())
+	configJSON, err := json.Marshal(spec.Config().Configs())
 	if err != nil {
 		return Hook{}, err
 	}
 	return Hook{
-		Name:   spec.Name(),
+		Name:   spec.Name().String(),
 		Config: configJSON,
 	}, nil
 }
@@ -237,7 +243,7 @@ func toStorageAlerts(alertSpecs []*job.Alert) ([]byte, error) {
 	for _, alertSpec := range alertSpecs {
 		alerts = append(alerts, Alert{
 			On:       string(alertSpec.On()),
-			Config:   alertSpec.Config(),
+			Config:   alertSpec.Config().Configs(),
 			Channels: alertSpec.Channels(),
 		})
 	}

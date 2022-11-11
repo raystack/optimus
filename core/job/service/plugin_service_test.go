@@ -29,12 +29,18 @@ func TestPluginService(t *testing.T) {
 			"bucket": "gs://ns_bucket",
 		})
 	tenantDetails, _ := tenant.NewTenantDetails(project, namespace)
-	jobSchedule := job.NewSchedule("2022-10-01", "", "", false, false, nil)
-	jobVersion := 1
-	jobWindow, _ := models.NewWindow(jobVersion, "d", "24h", "24h")
-	jobTaskConfig := job.NewConfig(map[string]string{
+	startDate, err := job.ScheduleDateFrom("2022-10-01")
+	assert.NoError(t, err)
+	jobSchedule, err := job.NewScheduleBuilder(startDate, "").Build()
+	assert.NoError(t, err)
+	jobVersion, err := job.VersionFrom(1)
+	assert.NoError(t, err)
+	jobWindow, err := models.NewWindow(jobVersion.Int(), "d", "24h", "24h")
+	assert.NoError(t, err)
+	jobTaskConfig, err := job.NewConfig(map[string]string{
 		"SECRET_TABLE_NAME": "{{.secret.table_name}}",
 	})
+	assert.NoError(t, err)
 	jobTask := job.NewTask("bq2bq", jobTaskConfig)
 	depMod := new(mockOpt.DependencyResolverMod)
 	plugin := &models.Plugin{DependencyMod: depMod}
@@ -52,7 +58,7 @@ func TestPluginService(t *testing.T) {
 			engine := compiler.NewGoEngine()
 			defer pluginRepo.AssertExpectations(t)
 
-			pluginRepo.On("GetByName", jobTask.Name()).Return(plugin, nil)
+			pluginRepo.On("GetByName", jobTask.Name().String()).Return(plugin, nil)
 
 			secret1, err := tenant.NewPlainTextSecret("table_name", "secret_table")
 			assert.Nil(t, err)
@@ -89,7 +95,7 @@ func TestPluginService(t *testing.T) {
 			engine := compiler.NewGoEngine()
 			defer pluginRepo.AssertExpectations(t)
 
-			pluginRepo.On("GetByName", jobTask.Name()).Return(plugin, nil)
+			pluginRepo.On("GetByName", jobTask.Name().String()).Return(plugin, nil)
 
 			secretsGetter.On("GetAll", ctx, tenantDetails.ToTenant()).Return(nil, nil)
 
@@ -104,7 +110,7 @@ func TestPluginService(t *testing.T) {
 				Dependencies: []string{jobSource}},
 				nil)
 
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "", nil, jobSchedule, jobWindow, jobTask).Build()
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
 
 			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
 			result, err := pluginService.GenerateUpstreamNames(ctx, tenantDetails, specA, false)

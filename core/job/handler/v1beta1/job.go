@@ -1,11 +1,10 @@
 package v1beta1
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hashicorp/go-multierror"
-
-	"golang.org/x/net/context"
 
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/tenant"
@@ -59,6 +58,7 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 		responseLog = fmt.Sprintf("%s with error: %s", responseLog, jobErrors.Error())
 	}
 
+	// TODO: deprecate deployment ID field. is this api being used? if not we can deprecate deployment id, the api will be synchronous. if being used, we can still deprecate as it will be sync.
 	return &pb.AddJobSpecificationsResponse{
 		Log: responseLog,
 	}, nil
