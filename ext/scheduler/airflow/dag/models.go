@@ -14,7 +14,7 @@ const (
 )
 
 type TemplateContext struct {
-	Job *job_run.Job
+	JobDetails *job_run.JobWithDetails
 
 	Tenant          tenant.Tenant
 	Version         string
@@ -27,6 +27,7 @@ type TemplateContext struct {
 	Task          Task
 	Hooks         Hooks
 	Priority      int
+	Upstreams     Upstreams
 }
 
 type Task struct {
@@ -93,7 +94,11 @@ func PrepareHooksForJob(job *job_run.Job, pluginRepo PluginRepo) (Hooks, error) 
 			hooks.Fail = append(hooks.Fail, hk)
 		}
 
-		for _, before := range info.DependsOn { // If we do not have a hook for before, raise error
+		for _, before := range info.DependsOn {
+			_, err = job.GetHook(before)
+			if err != nil { // If we do not have a hook for before, raise error
+				return Hooks{}, err
+			}
 			hooks.Dependencies[before] = h.Name
 		}
 	}
@@ -106,15 +111,11 @@ type RuntimeConfig struct {
 	Airflow  AirflowConfig
 }
 
-func SetupRuntimeConfig(job *job_run.Job) RuntimeConfig {
-	if job.Metadata == nil {
-		return RuntimeConfig{}
-	}
-
+func SetupRuntimeConfig(jobDetails *job_run.JobWithDetails) RuntimeConfig {
 	runtimeConf := RuntimeConfig{
-		Airflow: ToAirflowConfig(job.Metadata.Scheduler),
+		Airflow: ToAirflowConfig(jobDetails.RuntimeConfig.Scheduler),
 	}
-	if resource := ToResource(job.Metadata.Resource); resource != nil {
+	if resource := ToResource(jobDetails.RuntimeConfig.Resource); resource != nil {
 		runtimeConf.Resource = resource
 	}
 	return runtimeConf
@@ -178,7 +179,7 @@ func ToAirflowConfig(schedulerConf map[string]string) AirflowConfig {
 	return conf
 }
 
-func SlaMissDuration(job *job_run.Job) (int64, error) {
+func SlaMissDuration(job *job_run.JobWithDetails) (int64, error) {
 	var slaMissDurationInSec int64
 	for _, notify := range job.Alerts { // We are ranging and picking one value
 		if notify.On == job_run.SLAMissEvent {

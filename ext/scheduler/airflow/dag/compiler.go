@@ -26,27 +26,29 @@ type Compiler struct {
 	pluginRepo PluginRepo
 }
 
-func (c *Compiler) Compile(job *job_run.Job) ([]byte, error) {
-	task, err := PrepareTask(job, c.pluginRepo)
+func (c *Compiler) Compile(jobDetails *job_run.JobWithDetails, priority int) ([]byte, error) {
+	task, err := PrepareTask(jobDetails.Job, c.pluginRepo)
 	if err != nil {
 		return nil, err
 	}
 
-	hooks, err := PrepareHooksForJob(job, c.pluginRepo)
+	hooks, err := PrepareHooksForJob(jobDetails.Job, c.pluginRepo)
 	if err != nil {
 		return nil, err
 	}
 
-	slaDuration, err := SlaMissDuration(job)
+	slaDuration, err := SlaMissDuration(jobDetails)
 	if err != nil {
 		return nil, err
 	}
 
-	runtimeConfig := SetupRuntimeConfig(job)
+	runtimeConfig := SetupRuntimeConfig(jobDetails)
+
+	upstreams := SetupUpstreams(jobDetails.Upstreams)
 
 	templateContext := TemplateContext{
-		Job:             job,
-		Tenant:          job.Tenant,
+		JobDetails:      jobDetails,
+		Tenant:          jobDetails.Job.Tenant,
 		Version:         config.BuildVersion,
 		SlaMissDuration: slaDuration,
 		Hostname:        c.hostname,
@@ -55,13 +57,14 @@ func (c *Compiler) Compile(job *job_run.Job) ([]byte, error) {
 		Task:            task,
 		Hooks:           hooks,
 		RuntimeConfig:   runtimeConfig,
-		Priority:        1000, // TODO: compute
+		Priority:        priority,
+		Upstreams:       upstreams,
 	}
 
 	var buf bytes.Buffer
 	if err = c.template.Execute(&buf, templateContext); err != nil {
 		fmt.Println(err)
-		return nil, errors.InternalError(EntitySchedulerAirflow, "unable to compile template for job "+job.Name.String(), err)
+		return nil, errors.InternalError(EntitySchedulerAirflow, "unable to compile template for job "+jobDetails.Name.String(), err)
 	}
 
 	return buf.Bytes(), nil
