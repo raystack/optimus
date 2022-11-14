@@ -42,7 +42,7 @@ type UpstreamResolver interface {
 	Resolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) (jobWithUpstreams []*job.WithUpstream, err error)
 }
 
-func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) error {
+func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) ([]job.Name, error) {
 	me := errors.NewMultiError("add specs errors")
 
 	validatedSpecs, err := j.getValidatedSpecs(specs)
@@ -51,21 +51,29 @@ func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*j
 	generatedJobs, err := j.generateJobs(ctx, jobTenant, validatedSpecs)
 	me.Append(err)
 
-	me.Append(j.addJobs(ctx, jobTenant, generatedJobs))
-	return errors.MultiToError(me)
-}
-
-func (j JobService) addJobs(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Job) error {
-	me := errors.NewMultiError("add jobs errors")
-
-	jobs, err := j.repo.Add(ctx, jobs)
+	addedJobNames, err := j.addJobs(ctx, jobTenant, generatedJobs)
 	me.Append(err)
 
-	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, jobTenant.ProjectName(), jobs)
+	return addedJobNames, errors.MultiToError(me)
+}
+
+func (j JobService) addJobs(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Job) ([]job.Name, error) {
+	me := errors.NewMultiError("add jobs errors")
+
+	addedJobs, err := j.repo.Add(ctx, jobs)
+	me.Append(err)
+
+	var addedJobNames []job.Name
+	for _, addedJob := range addedJobs {
+		addedJobNames = append(addedJobNames, addedJob.Spec().Name())
+	}
+
+	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, jobTenant.ProjectName(), addedJobs)
 	me.Append(err)
 
 	me.Append(j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams))
-	return errors.MultiToError(me)
+
+	return addedJobNames, errors.MultiToError(me)
 }
 
 func (JobService) getValidatedSpecs(jobs []*job.Spec) ([]*job.Spec, error) {

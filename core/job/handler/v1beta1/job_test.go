@@ -3,6 +3,7 @@ package v1beta1_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -65,6 +66,7 @@ func TestNewJobHandler(t *testing.T) {
 			jobSpecProto := &pb.JobSpecification{
 				Version:          int32(jobVersion),
 				Name:             "job-A",
+				Owner:            "sample-owner",
 				StartDate:        jobSchedule.StartDate().String(),
 				EndDate:          jobSchedule.EndDate().String(),
 				Interval:         jobSchedule.Interval(),
@@ -79,13 +81,14 @@ func TestNewJobHandler(t *testing.T) {
 				NamespaceName: namespace.Name().String(),
 				Specs:         jobProtos,
 			}
+			addedJobNames := []job.Name{"job-A"}
 
-			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(nil, nil)
+			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(addedJobNames, nil)
 
 			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.AddJobSpecificationsResponse{
-				Log: "jobs are created and queued for deployment on project test-proj with error: 1 error occurred:\n\t* invalid argument for entity job: owner is empty\n\n",
+				Log: fmt.Sprintf("jobs %s are created", addedJobNames),
 			}, resp)
 		})
 		t.Run("adds complete job and returns deployment ID", func(t *testing.T) {
@@ -96,6 +99,7 @@ func TestNewJobHandler(t *testing.T) {
 			jobSpecProto := &pb.JobSpecification{
 				Version:          int32(jobVersion),
 				Name:             "job-A",
+				Owner:            "sample-owner",
 				StartDate:        jobSchedule.StartDate().String(),
 				EndDate:          jobSchedule.EndDate().String(),
 				Interval:         jobSchedule.Interval(),
@@ -113,13 +117,14 @@ func TestNewJobHandler(t *testing.T) {
 				NamespaceName: namespace.Name().String(),
 				Specs:         jobProtos,
 			}
+			addedJobNames := []job.Name{"job-A"}
 
-			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(nil, nil)
+			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(addedJobNames, nil)
 
 			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.AddJobSpecificationsResponse{
-				Log: "jobs are created and queued for deployment on project test-proj with error: 1 error occurred:\n\t* invalid argument for entity job: owner is empty\n\n",
+				Log: fmt.Sprintf("jobs %s are created", addedJobNames),
 			}, resp)
 		})
 		t.Run("returns error when unable to create tenant", func(t *testing.T) {
@@ -155,6 +160,7 @@ func TestNewJobHandler(t *testing.T) {
 				{
 					Version:          int32(jobVersion),
 					Name:             "job-B",
+					Owner:            "sample-owner",
 					StartDate:        jobSchedule.StartDate().String(),
 					EndDate:          jobSchedule.EndDate().String(),
 					Interval:         jobSchedule.Interval(),
@@ -169,15 +175,16 @@ func TestNewJobHandler(t *testing.T) {
 				NamespaceName: namespace.Name().String(),
 				Specs:         jobSpecProtos,
 			}
+			addedJobNames := []job.Name{"job-A"}
 
-			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(nil, nil)
+			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(addedJobNames, nil)
 
 			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
 			assert.Nil(t, err)
-			assert.NotNil(t, resp.DeploymentId)
 			assert.Contains(t, resp.Log, "error")
+			assert.Contains(t, resp.Log, fmt.Sprintf("jobs %s are created", addedJobNames))
 		})
-		t.Run("returns error when unable to do Add", func(t *testing.T) {
+		t.Run("returns error when all jobs failed to be added", func(t *testing.T) {
 			jobService := new(JobService)
 
 			jobHandler := v1beta1.NewJobHandler(jobService)
@@ -216,6 +223,7 @@ func TestNewJobHandler(t *testing.T) {
 				{
 					Version:          int32(jobVersion),
 					Name:             "job-A",
+					Owner:            "sample-owner",
 					StartDate:        jobSchedule.StartDate().String(),
 					EndDate:          jobSchedule.EndDate().String(),
 					Interval:         jobSchedule.Interval(),
@@ -241,12 +249,14 @@ func TestNewJobHandler(t *testing.T) {
 				NamespaceName: namespace.Name().String(),
 				Specs:         jobSpecProtos,
 			}
+			addedJobNames := []job.Name{"job-A"}
 
-			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(errors.New("some jobs failed to be added"), nil)
+			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(addedJobNames, errors.New("internal error"))
 
 			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
 			assert.Nil(t, err)
 			assert.Contains(t, resp.Log, "error")
+			assert.Contains(t, resp.Log, fmt.Sprintf("jobs %s are created", addedJobNames))
 		})
 	})
 }
@@ -257,14 +267,16 @@ type JobService struct {
 }
 
 // Add provides a mock function with given fields: ctx, jobTenant, jobs
-func (_m *JobService) Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) (error, error) {
+func (_m *JobService) Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) ([]job.Name, error) {
 	ret := _m.Called(ctx, jobTenant, jobs)
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []*job.Spec) error); ok {
+	var r0 []job.Name
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []*job.Spec) []job.Name); ok {
 		r0 = rf(ctx, jobTenant, jobs)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]job.Name)
+		}
 	}
 
 	var r1 error

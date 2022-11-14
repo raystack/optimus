@@ -20,7 +20,6 @@ type ResourceURN string
 
 type Status string
 
-// TODO: add setter for destination and sources
 type Job struct {
 	tenant tenant.Tenant
 
@@ -28,9 +27,6 @@ type Job struct {
 
 	destination string
 	sources     []string
-
-	// TODO: use this status
-	status Status
 }
 
 func (j Job) Tenant() tenant.Tenant {
