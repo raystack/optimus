@@ -152,14 +152,8 @@
             "schema": {
               "type": "object",
               "properties": {
-                "resourceName": {
-                  "type": "string"
-                },
                 "description": {
                   "type": "string"
-                },
-                "ignoreDownstream": {
-                  "type": "boolean"
                 },
                 "config": {
                   "type": "object",
@@ -167,12 +161,11 @@
                     "type": "string"
                   }
                 },
-                "allowedDownstreamNamespaces": {
+                "resourceNames": {
                   "type": "array",
                   "items": {
                     "type": "string"
-                  },
-                  "description": "represents which downstream to be backed up.\npossible values are the namespace names, *, or empty.\n'*' means all namespaces are allowed, empty list means all downstream will be ignored."
+                  }
                 }
               }
             }
@@ -226,21 +219,14 @@
             "schema": {
               "type": "object",
               "properties": {
-                "resourceName": {
-                  "type": "string"
-                },
                 "description": {
                   "type": "string"
                 },
-                "ignoreDownstream": {
-                  "type": "boolean"
-                },
-                "allowedDownstreamNamespaces": {
+                "resourceNames": {
                   "type": "array",
                   "items": {
                     "type": "string"
-                  },
-                  "description": "represents which downstream to be backed up.\npossible values are the namespace names, *, or empty.\n'*' means all namespaces are allowed, empty list means all downstream will be ignored."
+                  }
                 }
               }
             }
@@ -286,7 +272,7 @@
     "v1beta1BackupDryRunResponse": {
       "type": "object",
       "properties": {
-        "resourceName": {
+        "resourceNames": {
           "type": "array",
           "items": {
             "type": "string"
@@ -295,7 +281,7 @@
         "ignoredResources": {
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/v1beta1IgnoredResource"
           }
         }
       }
@@ -304,9 +290,6 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "string"
-        },
-        "resourceName": {
           "type": "string"
         },
         "createdAt": {
@@ -321,13 +304,19 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "resourceNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
     "v1beta1CreateBackupResponse": {
       "type": "object",
       "properties": {
-        "urn": {
+        "resourceNames": {
           "type": "array",
           "items": {
             "type": "string"
@@ -336,7 +325,7 @@
         "ignoredResources": {
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/v1beta1IgnoredResource"
           }
         }
       }
@@ -347,11 +336,22 @@
         "spec": {
           "$ref": "#/definitions/v1beta1BackupSpec"
         },
-        "urn": {
+        "pairs": {
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/v1beta1ResourcePair"
           }
+        }
+      }
+    },
+    "v1beta1IgnoredResource": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
         }
       }
     },
@@ -363,6 +363,17 @@
           "items": {
             "$ref": "#/definitions/v1beta1BackupSpec"
           }
+        }
+      }
+    },
+    "v1beta1ResourcePair": {
+      "type": "object",
+      "properties": {
+        "sourceName": {
+          "type": "string"
+        },
+        "destinationName": {
+          "type": "string"
         }
       }
     }
