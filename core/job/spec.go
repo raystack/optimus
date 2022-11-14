@@ -2,6 +2,7 @@ package job
 
 import (
 	"fmt"
+	"github.com/odpf/optimus/core/tenant"
 	"strings"
 	"time"
 
@@ -684,27 +685,42 @@ func (s SpecHTTPUpstreamBuilder) WithParams(params map[string]string) *SpecHTTPU
 	}
 }
 
-// TODO: add the following implementtions
-// type SpecUpstreamName string
+type SpecUpstreamName string
 
-// func (s SpecUpstreamName) IsWithProjectName() bool {
-// 	return false
-// }
+func (s SpecUpstreamName) String() string {
+	return string(s)
+}
 
-// func (s SpecUpstreamName) GetProjectName() tenant.ProjectName {
-// 	return ""
-// }
+func SpecUpstreamNameFrom(specUpstreamName string) SpecUpstreamName {
+	return SpecUpstreamName(specUpstreamName)
+}
 
-// func (s SpecUpstreamName) GetJobName() Name {
-// 	return ""
-// }
+func (s SpecUpstreamName) IsWithProjectName() bool {
+	return strings.Contains(s.String(), "/")
+}
+
+func (s SpecUpstreamName) GetProjectName() (tenant.ProjectName, error) {
+	if s.IsWithProjectName() {
+		projectNameStr := strings.Split(s.String(), "/")[0]
+		return tenant.ProjectNameFrom(projectNameStr)
+	}
+	return "", errors.NewError(errors.ErrInternalError, EntityJob, "project name in job upstream specification not found")
+}
+
+func (s SpecUpstreamName) GetJobName() (Name, error) {
+	if s.IsWithProjectName() {
+		projectNameStr := strings.Split(s.String(), "/")[1]
+		return NameFrom(projectNameStr)
+	}
+	return NameFrom(s.String())
+}
 
 type SpecUpstream struct {
-	upstreamNames []Name
+	upstreamNames []SpecUpstreamName
 	httpUpstreams []*SpecHTTPUpstream
 }
 
-func (s SpecUpstream) UpstreamNames() []Name {
+func (s SpecUpstream) UpstreamNames() []SpecUpstreamName {
 	return s.upstreamNames
 }
 
@@ -734,7 +750,7 @@ func (s SpecUpstreamBuilder) Build() *SpecUpstream {
 	return s.upstream
 }
 
-func (s SpecUpstreamBuilder) WithUpstreamNames(names []Name) *SpecUpstreamBuilder {
+func (s SpecUpstreamBuilder) WithUpstreamNames(names []SpecUpstreamName) *SpecUpstreamBuilder {
 	upstream := *s.upstream
 	upstream.upstreamNames = names
 	return &SpecUpstreamBuilder{

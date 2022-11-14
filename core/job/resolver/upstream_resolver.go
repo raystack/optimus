@@ -3,8 +3,6 @@ package resolver
 import (
 	"context"
 	"fmt"
-	"strings"
-
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/tenant"
@@ -107,22 +105,20 @@ func (UpstreamResolver) identifyUnresolvedStaticUpstream(resolvedUpstreams []*jo
 	var unresolvedStaticUpstreams []*dto.RawUpstream
 	resolvedUpstreamFullNameMap := job.Upstreams(resolvedUpstreams).ToUpstreamFullNameMap()
 	for _, upstreamName := range jobEntity.StaticUpstreamNames() {
-		var projectUpstreamName, jobUpstreamName string
+		jobUpstreamName, _ := upstreamName.GetJobName()
 
-		// TODO: use SpecUpstreamName method
-		if strings.Contains(upstreamName.String(), "/") {
-			projectUpstreamName = strings.Split(upstreamName.String(), "/")[0]
-			jobUpstreamName = strings.Split(upstreamName.String(), "/")[1]
+		var projectUpstreamName tenant.ProjectName
+		if upstreamName.IsWithProjectName() {
+			projectUpstreamName, _ = upstreamName.GetProjectName()
 		} else {
-			projectUpstreamName = jobEntity.ProjectName().String()
-			jobUpstreamName = upstreamName.String()
+			projectUpstreamName = jobEntity.ProjectName()
 		}
 
 		fullUpstreamName := jobEntity.ProjectName().String() + "/" + upstreamName.String()
 		if !resolvedUpstreamFullNameMap[fullUpstreamName] {
 			unresolvedStaticUpstreams = append(unresolvedStaticUpstreams, &dto.RawUpstream{
-				ProjectName: projectUpstreamName,
-				JobName:     jobUpstreamName,
+				ProjectName: projectUpstreamName.String(),
+				JobName:     jobUpstreamName.String(),
 			})
 		}
 	}

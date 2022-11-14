@@ -53,7 +53,7 @@ func (j Job) Sources() []ResourceURN {
 	return j.sources
 }
 
-func (j Job) StaticUpstreamNames() []Name {
+func (j Job) StaticUpstreamNames() []SpecUpstreamName {
 	if j.spec.upstream == nil {
 		return nil
 	}

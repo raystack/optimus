@@ -87,11 +87,9 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.NoError(t, err)
 			alert := job.NewAlertBuilder(job.SLAMissEvent, []string{"sample-channel"}).WithConfig(jobAlertConfig).Build()
 			jobAlerts := []*job.Alert{alert}
-			upstreamName1, err := job.NameFrom("job-upstream-1")
-			assert.NoError(t, err)
-			upstreamName2, err := job.NameFrom("job-upstream-2")
-			assert.NoError(t, err)
-			jobUpstream := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.Name{upstreamName1, upstreamName2}).Build()
+			upstreamName1 := job.SpecUpstreamNameFrom("job-upstream-1")
+			upstreamName2 := job.SpecUpstreamNameFrom("job-upstream-2")
+			jobUpstream := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName1, upstreamName2}).Build()
 			jobAsset := job.NewAsset(map[string]string{"sample-asset": "value-asset"})
 			resourceRequestConfig := job.NewMetadataResourceConfig("250m", "128Mi")
 			resourceLimitConfig := job.NewMetadataResourceConfig("250m", "128Mi")
@@ -215,9 +213,8 @@ func TestPostgresJobRepository(t *testing.T) {
 			tenantDetails, err := tenant.NewTenantDetails(proj, namespace)
 			assert.NoError(t, err)
 
-			upstreamName, err := job.NameFrom("sample-job-B")
-			assert.NoError(t, err)
-			jobAUpstream := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.Name{upstreamName}).Build()
+			upstreamName := job.SpecUpstreamNameFrom("sample-job-B")
+			jobAUpstream := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName}).Build()
 			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).
 				WithDescription(jobDescription).
 				WithSpecUpstream(jobAUpstream).
@@ -243,9 +240,8 @@ func TestPostgresJobRepository(t *testing.T) {
 			tenantDetails, err := tenant.NewTenantDetails(proj, namespace)
 			assert.NoError(t, err)
 
-			upstreamName, err := job.NameFrom("test-proj/sample-job-B")
-			assert.NoError(t, err)
-			jobAUpstream := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.Name{upstreamName}).Build()
+			upstreamName := job.SpecUpstreamNameFrom("test-proj/sample-job-B")
+			jobAUpstream := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName}).Build()
 			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).
 				WithDescription(jobDescription).
 				WithSpecUpstream(jobAUpstream).
