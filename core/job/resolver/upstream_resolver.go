@@ -3,8 +3,6 @@ package resolver
 import (
 	"context"
 	"fmt"
-	"strings"
-
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/tenant"
@@ -68,7 +66,10 @@ func (u UpstreamResolver) getJobsWithAllUpstreams(ctx context.Context, jobs []*j
 
 		// include unresolved upstreams
 		for _, upstream := range unresolvedUpstreams {
-			allUpstreams = append(allUpstreams, job.NewUpstreamUnresolved(upstream.JobName, upstream.ResourceURN, upstream.ProjectName))
+			// allow empty upstreamName and upstreamResourceURN
+			upstreamName, _ := job.NameFrom(upstream.JobName)
+			upstreamResourceURN, _ := job.ResourceURNFrom(upstream.ResourceURN)
+			allUpstreams = append(allUpstreams, job.NewUpstreamUnresolved(upstreamName, upstreamResourceURN, upstream.ProjectName))
 		}
 
 		jobWithAllUpstreams := job.NewWithUpstream(jobEntity, allUpstreams)
@@ -93,7 +94,7 @@ func (u UpstreamResolver) identifyUnresolvedInferredUpstreams(resolvedUpstreams 
 	for _, source := range jobEntity.Sources() {
 		if !resolvedUpstreamDestinationMap[source] {
 			unresolvedInferredUpstreams = append(unresolvedInferredUpstreams, &dto.RawUpstream{
-				ResourceURN: source,
+				ResourceURN: source.String(),
 			})
 		}
 	}
@@ -104,22 +105,20 @@ func (UpstreamResolver) identifyUnresolvedStaticUpstream(resolvedUpstreams []*jo
 	var unresolvedStaticUpstreams []*dto.RawUpstream
 	resolvedUpstreamFullNameMap := job.Upstreams(resolvedUpstreams).ToUpstreamFullNameMap()
 	for _, upstreamName := range jobEntity.StaticUpstreamNames() {
-		var projectUpstreamName, jobUpstreamName string
+		jobUpstreamName, _ := upstreamName.GetJobName()
 
-		// TODO: use SpecUpstreamName method
-		if strings.Contains(upstreamName.String(), "/") {
-			projectUpstreamName = strings.Split(upstreamName.String(), "/")[0]
-			jobUpstreamName = strings.Split(upstreamName.String(), "/")[1]
+		var projectUpstreamName tenant.ProjectName
+		if upstreamName.IsWithProjectName() {
+			projectUpstreamName, _ = upstreamName.GetProjectName()
 		} else {
-			projectUpstreamName = jobEntity.ProjectName().String()
-			jobUpstreamName = upstreamName.String()
+			projectUpstreamName = jobEntity.ProjectName()
 		}
 
 		fullUpstreamName := jobEntity.ProjectName().String() + "/" + upstreamName.String()
 		if !resolvedUpstreamFullNameMap[fullUpstreamName] {
 			unresolvedStaticUpstreams = append(unresolvedStaticUpstreams, &dto.RawUpstream{
-				ProjectName: projectUpstreamName,
-				JobName:     jobUpstreamName,
+				ProjectName: projectUpstreamName.String(),
+				JobName:     jobUpstreamName.String(),
 			})
 		}
 	}

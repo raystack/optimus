@@ -3,7 +3,6 @@ package v1beta1
 import (
 	"context"
 	"fmt"
-	"github.com/hashicorp/go-multierror"
 
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/tenant"
@@ -22,8 +21,7 @@ func NewJobHandler(jobService JobService) *JobHandler {
 }
 
 type JobService interface {
-	// TODO: use job.Job instead of job.Spec and use one error (utilize multierror)
-	Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) (jobErrors error, err error)
+	Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) ([]job.Name, error)
 	Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) (downstreamFullNames []job.FullName, err error)
 }
 
@@ -34,31 +32,28 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 	}
 
 	var jobSpecs []*job.Spec
-	//TODO: utilize multierror
-	var jobErrors error
+	me := errors.NewMultiError("add specs errors")
 	for _, jobProto := range jobSpecRequest.Specs {
 		jobSpec, err := fromJobProto(jobProto)
 		if err != nil {
-			jobErrors = multierror.Append(jobErrors, err)
+			me.Append(err)
 			continue
 		}
 		jobSpecs = append(jobSpecs, jobSpec)
 	}
 
-	jobAddErrors, err := jh.jobService.Add(ctx, jobTenant, jobSpecs)
-	if err != nil {
-		return nil, err
-	}
-	if jobAddErrors != nil {
-		jobErrors = multierror.Append(jobErrors, jobAddErrors)
+	addedJobNames, err := jh.jobService.Add(ctx, jobTenant, jobSpecs)
+	me.Append(err)
+
+	if len(addedJobNames) == 0 {
+		return nil, errors.GRPCErr(errors.MultiToError(me), "failed to add job specifications")
 	}
 
-	responseLog := fmt.Sprintf("jobs are created and queued for deployment on project %s", jobSpecRequest.GetProjectName())
-	if jobErrors != nil {
-		responseLog = fmt.Sprintf("%s with error: %s", responseLog, jobErrors.Error())
+	responseLog := fmt.Sprintf("jobs %s are created", addedJobNames)
+	if len(me.Errors) > 0 {
+		responseLog = fmt.Sprintf("%s with error: %s", responseLog, errors.MultiToError(err))
 	}
 
-	// TODO: deprecate deployment ID field. is this api being used? if not we can deprecate deployment id, the api will be synchronous. if being used, we can still deprecate as it will be sync.
 	return &pb.AddJobSpecificationsResponse{
 		Log: responseLog,
 	}, nil

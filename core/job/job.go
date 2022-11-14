@@ -15,22 +15,13 @@ const (
 	UpstreamStateUnresolved UpstreamState = "unresolved"
 )
 
-// TODO: use this for destination and sources
-type ResourceURN string
-
-type Status string
-
-// TODO: add setter for destination and sources
 type Job struct {
 	tenant tenant.Tenant
 
 	spec *Spec
 
-	destination string
-	sources     []string
-
-	// TODO: use this status
-	status Status
+	destination ResourceURN
+	sources     []ResourceURN
 }
 
 func (j Job) Tenant() tenant.Tenant {
@@ -41,15 +32,28 @@ func (j Job) Spec() *Spec {
 	return j.spec
 }
 
-func (j Job) Destination() string {
+type ResourceURN string
+
+func ResourceURNFrom(resourceURN string) (ResourceURN, error) {
+	if resourceURN == "" {
+		return "", errors.InvalidArgument(EntityJob, "name is empty")
+	}
+	return ResourceURN(resourceURN), nil
+}
+
+func (n ResourceURN) String() string {
+	return string(n)
+}
+
+func (j Job) Destination() ResourceURN {
 	return j.destination
 }
 
-func (j Job) Sources() []string {
+func (j Job) Sources() []ResourceURN {
 	return j.sources
 }
 
-func (j Job) StaticUpstreamNames() []Name {
+func (j Job) StaticUpstreamNames() []SpecUpstreamName {
 	if j.spec.upstream == nil {
 		return nil
 	}
@@ -60,8 +64,7 @@ func (j Job) ProjectName() tenant.ProjectName {
 	return j.Tenant().ProjectName()
 }
 
-// TODO: remove destination and sources from this parameter
-func NewJob(tenant tenant.Tenant, spec *Spec, destination string, sources []string) *Job {
+func NewJob(tenant tenant.Tenant, spec *Spec, destination ResourceURN, sources []ResourceURN) *Job {
 	return &Job{tenant: tenant, spec: spec, destination: destination, sources: sources}
 }
 
@@ -107,16 +110,15 @@ func (w WithUpstream) GetUnresolvedUpstreams() []*Upstream {
 }
 
 type Upstream struct {
-	// TODO: change from string to Name
-	name     string
+	name     Name
 	host     string
-	resource string
+	resource ResourceURN
 	tenant   tenant.Tenant
 	_type    UpstreamType
 	state    UpstreamState
 }
 
-func NewUpstreamResolved(name string, host string, resource string, tnnt tenant.Tenant, typeStr string) (*Upstream, error) {
+func NewUpstreamResolved(name Name, host string, resource ResourceURN, tnnt tenant.Tenant, typeStr string) (*Upstream, error) {
 	upstreamType, err := upstreamTypeFrom(typeStr)
 	if err != nil {
 		return nil, err
@@ -126,7 +128,7 @@ func NewUpstreamResolved(name string, host string, resource string, tnnt tenant.
 		_type: upstreamType, state: UpstreamStateResolved}, nil
 }
 
-func NewUpstreamUnresolved(name string, resource string, projectName string) *Upstream {
+func NewUpstreamUnresolved(name Name, resource ResourceURN, projectName string) *Upstream {
 	var _type UpstreamType
 	if name != "" {
 		_type = UpstreamTypeStatic
@@ -143,7 +145,7 @@ func NewUpstreamUnresolved(name string, resource string, projectName string) *Up
 		state: UpstreamStateUnresolved}
 }
 
-func (u Upstream) Name() string {
+func (u Upstream) Name() Name {
 	return u.name
 }
 
@@ -155,7 +157,7 @@ func (u Upstream) Host() string {
 	return u.host
 }
 
-func (u Upstream) Resource() string {
+func (u Upstream) Resource() ResourceURN {
 	return u.resource
 }
 
@@ -206,14 +208,14 @@ type Upstreams []*Upstream
 func (u Upstreams) ToUpstreamFullNameMap() map[string]bool {
 	fullNameUpstreamMap := make(map[string]bool)
 	for _, upstream := range u {
-		fullName := upstream.tenant.ProjectName().String() + "/" + upstream.name
+		fullName := upstream.tenant.ProjectName().String() + "/" + upstream.name.String()
 		fullNameUpstreamMap[fullName] = true
 	}
 	return fullNameUpstreamMap
 }
 
-func (u Upstreams) ToUpstreamDestinationMap() map[string]bool {
-	upstreamDestinationMap := make(map[string]bool)
+func (u Upstreams) ToUpstreamDestinationMap() map[ResourceURN]bool {
+	upstreamDestinationMap := make(map[ResourceURN]bool)
 	for _, upstream := range u {
 		upstreamDestinationMap[upstream.resource] = true
 	}

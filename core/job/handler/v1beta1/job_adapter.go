@@ -27,7 +27,8 @@ func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
 	if err != nil {
 		return nil, err
 	}
-	schedule, err := job.NewScheduleBuilder(startDate, js.Interval).
+	schedule, err := job.NewScheduleBuilder(startDate).
+		WithInterval(js.Interval).
 		WithEndDate(endDate).
 		WithDependsOnPast(js.DependsOnPast).
 		WithCatchUp(js.CatchUp).
@@ -128,15 +129,12 @@ func toAlerts(notifiers []*pb.JobSpecification_Behavior_Notifiers) ([]*job.Alert
 }
 
 func toSpecUpstreams(upstreamProtos []*pb.JobDependency) (*job.SpecUpstream, error) {
-	var upstreamNames []job.Name
+	var upstreamNames []job.SpecUpstreamName
 	var httpUpstreams []*job.SpecHTTPUpstream
 	for _, upstream := range upstreamProtos {
-		name, err := job.NameFrom(upstream.Name)
-		if err != nil {
-			return nil, err
-		}
+		upstreamName := job.SpecUpstreamNameFrom(upstream.Name)
 		if upstream.HttpDependency == nil {
-			upstreamNames = append(upstreamNames, name)
+			upstreamNames = append(upstreamNames, upstreamName)
 			continue
 		}
 		httpUpstreamProto := upstream.HttpDependency

@@ -38,7 +38,7 @@ func NewJobPluginService(secretsGetter SecretsGetter, pluginRepo models.PluginRe
 	return &JobPluginService{secretsGetter: secretsGetter, pluginRepo: pluginRepo, engine: engine, logger: logger, now: time.Now}
 }
 
-func (p JobPluginService) GenerateDestination(ctx context.Context, tnnt *tenant.WithDetails, task *job.Task) (string, error) {
+func (p JobPluginService) GenerateDestination(ctx context.Context, tnnt *tenant.WithDetails, task *job.Task) (job.ResourceURN, error) {
 	plugin, err := p.pluginRepo.GetByName(task.Name().String())
 	if err != nil {
 		return "", err
@@ -61,10 +61,14 @@ func (p JobPluginService) GenerateDestination(ctx context.Context, tnnt *tenant.
 		return "", fmt.Errorf("failed to generate destination: %w", err)
 	}
 
-	return destination.URN(), nil
+	destinationURN, err := job.ResourceURNFrom(destination.URN())
+	if err != nil {
+		return "", err
+	}
+	return destinationURN, nil
 }
 
-func (p JobPluginService) GenerateUpstreamNames(ctx context.Context, jobTenant *tenant.WithDetails, spec *job.Spec, dryRun bool) ([]string, error) {
+func (p JobPluginService) GenerateUpstreams(ctx context.Context, jobTenant *tenant.WithDetails, spec *job.Spec, dryRun bool) ([]job.ResourceURN, error) {
 	plugin, err := p.pluginRepo.GetByName(spec.Task().Name().String())
 	if err != nil {
 		return nil, err
@@ -95,7 +99,16 @@ func (p JobPluginService) GenerateUpstreamNames(ctx context.Context, jobTenant *
 		return nil, err
 	}
 
-	return resp.Dependencies, nil
+	var upstreamURNs []job.ResourceURN
+	for _, dependency := range resp.Dependencies {
+		resourceURN, err := job.ResourceURNFrom(dependency)
+		if err != nil {
+			return nil, err
+		}
+		upstreamURNs = append(upstreamURNs, resourceURN)
+	}
+
+	return upstreamURNs, nil
 }
 
 func (p JobPluginService) compileConfig(ctx context.Context, configs *job.Config, tnnt *tenant.WithDetails) (models.PluginConfigs, error) {
