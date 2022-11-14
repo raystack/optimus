@@ -288,3 +288,26 @@ func (_m *JobService) Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*
 
 	return r0, r1
 }
+
+// Delete provides a mock function with given fields: ctx, jobTenant, jobName, cleanFlag, forceFlag
+func (_m *JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) ([]job.FullName, error) {
+	ret := _m.Called(ctx, jobTenant, jobName, cleanFlag, forceFlag)
+
+	var r0 []job.FullName
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, job.Name, bool, bool) []job.FullName); ok {
+		r0 = rf(ctx, jobTenant, jobName, cleanFlag, forceFlag)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]job.FullName)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.Tenant, job.Name, bool, bool) error); ok {
+		r1 = rf(ctx, jobTenant, jobName, cleanFlag, forceFlag)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}

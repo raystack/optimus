@@ -398,13 +398,13 @@ type JobRepository struct {
 	mock.Mock
 }
 
-// Add provides a mock function with given fields: ctx, jobs
-func (_m *JobRepository) Add(ctx context.Context, jobs []*job.Job) ([]*job.Job, error) {
-	ret := _m.Called(ctx, jobs)
+// Add provides a mock function with given fields: _a0, _a1
+func (_m *JobRepository) Add(_a0 context.Context, _a1 []*job.Job) ([]*job.Job, error) {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 []*job.Job
 	if rf, ok := ret.Get(0).(func(context.Context, []*job.Job) []*job.Job); ok {
-		r0 = rf(ctx, jobs)
+		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*job.Job)
@@ -413,7 +413,7 @@ func (_m *JobRepository) Add(ctx context.Context, jobs []*job.Job) ([]*job.Job, 
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, []*job.Job) error); ok {
-		r1 = rf(ctx, jobs)
+		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -421,13 +421,50 @@ func (_m *JobRepository) Add(ctx context.Context, jobs []*job.Job) ([]*job.Job, 
 	return r0, r1
 }
 
-// GetJobNameWithInternalUpstreams provides a mock function with given fields: ctx, projectName, jobNames
-func (_m *JobRepository) GetJobNameWithInternalUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error) {
-	ret := _m.Called(ctx, projectName, jobNames)
+// Delete provides a mock function with given fields: ctx, projectName, jobName, cleanHistory
+func (_m *JobRepository) Delete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, cleanHistory bool) error {
+	ret := _m.Called(ctx, projectName, jobName, cleanHistory)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, job.Name, bool) error); ok {
+		r0 = rf(ctx, projectName, jobName, cleanHistory)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// GetDownstreamFullNames provides a mock function with given fields: _a0, _a1, _a2
+func (_m *JobRepository) GetDownstreamFullNames(_a0 context.Context, _a1 tenant.ProjectName, _a2 job.Name) ([]job.FullName, error) {
+	ret := _m.Called(_a0, _a1, _a2)
+
+	var r0 []job.FullName
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, job.Name) []job.FullName); ok {
+		r0 = rf(_a0, _a1, _a2)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]job.FullName)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, job.Name) error); ok {
+		r1 = rf(_a0, _a1, _a2)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetJobNameWithInternalUpstreams provides a mock function with given fields: _a0, _a1, _a2
+func (_m *JobRepository) GetJobNameWithInternalUpstreams(_a0 context.Context, _a1 tenant.ProjectName, _a2 []job.Name) (map[job.Name][]*job.Upstream, error) {
+	ret := _m.Called(_a0, _a1, _a2)
 
 	var r0 map[job.Name][]*job.Upstream
 	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, []job.Name) map[job.Name][]*job.Upstream); ok {
-		r0 = rf(ctx, projectName, jobNames)
+		r0 = rf(_a0, _a1, _a2)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(map[job.Name][]*job.Upstream)
@@ -436,7 +473,7 @@ func (_m *JobRepository) GetJobNameWithInternalUpstreams(ctx context.Context, pr
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, []job.Name) error); ok {
-		r1 = rf(ctx, projectName, jobNames)
+		r1 = rf(_a0, _a1, _a2)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -444,13 +481,13 @@ func (_m *JobRepository) GetJobNameWithInternalUpstreams(ctx context.Context, pr
 	return r0, r1
 }
 
-// ReplaceUpstreams provides a mock function with given fields: ctx, jobsWithUpstreams
-func (_m *JobRepository) ReplaceUpstreams(ctx context.Context, jobsWithUpstreams []*job.WithUpstream) error {
-	ret := _m.Called(ctx, jobsWithUpstreams)
+// ReplaceUpstreams provides a mock function with given fields: _a0, _a1
+func (_m *JobRepository) ReplaceUpstreams(_a0 context.Context, _a1 []*job.WithUpstream) error {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, []*job.WithUpstream) error); ok {
-		r0 = rf(ctx, jobsWithUpstreams)
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Error(0)
 	}
