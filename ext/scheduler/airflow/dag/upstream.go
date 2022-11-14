@@ -26,7 +26,7 @@ type Upstream struct {
 
 func SetupUpstreams(upstreams job_run.Upstreams) Upstreams {
 	var ups []Upstream
-	for _, u := range upstreams.Upstreams {
+	for _, u := range upstreams.UpstreamJobs {
 		if u.State != "resolved" {
 			continue
 		}

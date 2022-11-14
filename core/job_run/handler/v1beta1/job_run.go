@@ -91,6 +91,9 @@ func (h JobRunHandler) JobRun(ctx context.Context, req *pb.JobRunRequest) (*pb.J
 	var jobRuns []*job_run.JobRunStatus
 	jobRuns, err = h.service.GetJobRuns(ctx, projectName, jobName, criteria) // TODO: return not found if not runs found
 	if err != nil {
+		if errors.IsErrorType(err, errors.ErrNotFound) {
+
+		}
 		return nil, errors.GRPCErr(err, "unable to get job run for "+req.GetJobName())
 	}
 
@@ -131,7 +134,7 @@ func (h JobRunHandler) UploadToScheduler(ctx context.Context, req *pb.UploadToSc
 	if err != nil {
 		return nil, errors.GRPCErr(err, "unable to get project "+req.GetProjectName())
 	}
-	err := h.service.UploadToScheduler(ctx, projectName, req.GetNamespaceName())
+	err = h.service.UploadToScheduler(ctx, projectName, req.GetNamespaceName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "unable to upload to scheduler for "+projectName.String())
 	}

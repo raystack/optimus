@@ -57,7 +57,7 @@ type Scheduler struct {
 	secretGetter  SecretGetter
 }
 
-func (s *Scheduler) GetJobRuns(ctx context.Context, tnnt tenant.Tenant, jobQuery *job_run.JobRunsCriteria, jobCron *cron.ScheduleSpec) ([]job_run.JobRunStatus, error) {
+func (s *Scheduler) GetJobRuns(ctx context.Context, tnnt tenant.Tenant, jobQuery *job_run.JobRunsCriteria, jobCron *cron.ScheduleSpec) ([]*job_run.JobRunStatus, error) {
 	spanCtx, span := startChildSpan(ctx, "GetJobRuns")
 	defer span.End()
 

@@ -100,7 +100,7 @@ func setupJobDetails(tnnt tenant.Tenant) *job_run.JobWithDetails {
 	tnnt2, _ := tenant.NewTenant("external-project", "external-namespace")
 	upstreams := job_run.Upstreams{
 		HTTP: nil,
-		Upstreams: []*job_run.Upstream{
+		UpstreamJobs: []*job_run.JobUpstream{
 			{
 				Host:     "http://optimus.example.com",
 				Tenant:   tnnt,

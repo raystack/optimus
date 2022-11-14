@@ -77,6 +77,10 @@ type JobWithDetails struct {
 	Upstreams     Upstreams
 }
 
+func (j JobWithDetails) GetName() string {
+	return j.Name.String()
+}
+
 func (j JobWithDetails) SLADuration() (int64, error) {
 	for _, notify := range j.Alerts {
 		if notify.On == EventCategorySLAMiss {
@@ -145,8 +149,8 @@ type ResourceConfig struct {
 }
 
 type Upstreams struct {
-	HTTP      []*HTTPUpstreams
-	Upstreams []*Upstream
+	HTTP         []*HTTPUpstreams
+	UpstreamJobs []*JobUpstream
 }
 
 type HTTPUpstreams struct {
@@ -156,7 +160,7 @@ type HTTPUpstreams struct {
 	Params  map[string]string
 }
 
-type Upstream struct {
+type JobUpstream struct {
 	JobName        string
 	Host           string
 	TaskName       string        // TODO: remove after airflow migration

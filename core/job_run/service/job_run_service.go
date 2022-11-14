@@ -50,6 +50,7 @@ func (s JobRunService) UploadToScheduler(ctx context.Context, projectName tenant
 		return err
 	}
 
+	//todo: compile and upload all jobs with details
 	return nil
 }
 
@@ -94,13 +95,13 @@ func validateJobQuery(jobQuery *job_run.JobRunsCriteria, jobWithDetails job_run.
 	return nil
 }
 
-func getExpectedRuns(spec *cron.ScheduleSpec, startTime, endTime time.Time) []job_run.JobRunStatus {
-	var jobRuns []job_run.JobRunStatus
+func getExpectedRuns(spec *cron.ScheduleSpec, startTime, endTime time.Time) []*job_run.JobRunStatus {
+	var jobRuns []*job_run.JobRunStatus
 	start := spec.Next(startTime.Add(-time.Second * 1))
 	end := endTime
 	exit := spec.Next(end)
 	for !start.Equal(exit) {
-		jobRuns = append(jobRuns, job_run.JobRunStatus{
+		jobRuns = append(jobRuns, &job_run.JobRunStatus{
 			State:       job_run.StatePending,
 			ScheduledAt: start,
 		})
@@ -109,12 +110,12 @@ func getExpectedRuns(spec *cron.ScheduleSpec, startTime, endTime time.Time) []jo
 	return jobRuns
 }
 
-func mergeRuns(expected, actual []job_run.JobRunStatus) []job_run.JobRunStatus {
-	var mergeRuns []job_run.JobRunStatus
+func mergeRuns(expected, actual []*job_run.JobRunStatus) []*job_run.JobRunStatus {
+	var mergeRuns []*job_run.JobRunStatus
 	m := actualRunMap(actual)
 	for _, exp := range expected {
 		if act, ok := m[exp.ScheduledAt.UTC().String()]; ok {
-			mergeRuns = append(mergeRuns, act)
+			mergeRuns = append(mergeRuns, &act)
 		} else {
 			mergeRuns = append(mergeRuns, exp)
 		}
@@ -122,16 +123,16 @@ func mergeRuns(expected, actual []job_run.JobRunStatus) []job_run.JobRunStatus {
 	return mergeRuns
 }
 
-func actualRunMap(runs []job_run.JobRunStatus) map[string]job_run.JobRunStatus {
+func actualRunMap(runs []*job_run.JobRunStatus) map[string]job_run.JobRunStatus {
 	m := map[string]job_run.JobRunStatus{}
 	for _, v := range runs {
-		m[v.ScheduledAt.UTC().String()] = v
+		m[v.ScheduledAt.UTC().String()] = *v
 	}
 	return m
 }
 
-func filterRuns(runs []job_run.JobRunStatus, filter map[string]struct{}) []job_run.JobRunStatus {
-	var filteredRuns []job_run.JobRunStatus
+func filterRuns(runs []*job_run.JobRunStatus, filter map[string]struct{}) []*job_run.JobRunStatus {
+	var filteredRuns []*job_run.JobRunStatus
 	if len(filter) == 0 {
 		return runs
 	}

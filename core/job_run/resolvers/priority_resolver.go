@@ -1,4 +1,4 @@
-package job
+package resolver
 
 import (
 	"context"
@@ -115,21 +115,24 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobsWithDetails []*job_r
 	multiRootTree := tree.NewMultiRootTree()
 	for _, childSpec := range jobWithDetailsMap {
 		childNode := a.findOrCreateDAGNode(multiRootTree, childSpec)
-		for _, depDAG := range childSpec.Upstream. {
+		for _, upstream := range childSpec.Upstreams.UpstreamJobs {
 			missingParent := false
-			parentSpec, ok := jobWithDetailsMap[depDAG.Job.Name]
+			parentSpec, ok := jobWithDetailsMap[upstream.JobName]
 			if !ok {
-				if depDAG.Type == job_run.jobWithDetailsDependencyTypeIntra {
-					// if its intra dependency, ideally this should not happen but instead of failing
-					// its better to simply soft fail by notifying about this action
-					// this will cause us to treat it as a dummy job with a unique root
-					notify(progressObserver, &job_run.ProgressJobPriorityWeightAssignmentFailed{Err: fmt.Errorf("%s: %w", depDAG.Job.Name, ErrjobWithDetailsNotFound)})
-				}
+				//if upstream.Type == models.jobWithDetailsDependencyTypeIntra {
+				//	// if its intra dependency, ideally this should not happen but instead of failing
+				//	// its better to simply soft fail by notifying about this action
+				//	// this will cause us to treat it as a dummy job with a unique root
+				//	notify(progressObserver, &job_run.ProgressJobPriorityWeightAssignmentFailed{Err: fmt.Errorf("%s: %w", depDAG.Job.Name, ErrjobWithDetailsNotFound)})
+				//} TODO : why is this needed
 
 				// when the dependency of a jobWithDetails belong to some other tenant or is external, the jobWithDetails won't
 				// be available in jobsWithDetails []job_run.jobWithDetails object (which is tenant specific)
 				// so we'll add a dummy jobWithDetails for that cross tenant/external dependency.
-				parentSpec = job_run.jobWithDetails{Name: depDAG.Job.Name, Dependencies: make(map[string]job_run.jobWithDetailsDependency)}
+				parentSpec = &job_run.JobWithDetails{
+					Name:      job_run.JobName(upstream.JobName),
+					Upstreams: job_run.Upstreams{},
+				}
 				missingParent = true
 			}
 			parentNode := a.findOrCreateDAGNode(multiRootTree, parentSpec)
@@ -143,7 +146,7 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobsWithDetails []*job_r
 		}
 
 		// the DAGs with no dependencies are root nodes for the tree
-		if len(childSpec.Dependencies) == 0 {
+		if len(childSpec.Upstreams.UpstreamJobs) == 0 {
 			multiRootTree.MarkRoot(childNode)
 		}
 	}
@@ -154,10 +157,10 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobsWithDetails []*job_r
 	return multiRootTree, nil
 }
 
-func (*priorityResolver) findOrCreateDAGNode(dagTree *tree.MultiRootTree, dagSpec job_run.jobWithDetails) *tree.TreeNode {
-	node, ok := dagTree.GetNodeByName(dagSpec.Name)
+func (*priorityResolver) findOrCreateDAGNode(dagTree *tree.MultiRootTree, jobDetails *job_run.JobWithDetails) *tree.TreeNode {
+	node, ok := dagTree.GetNodeByName(jobDetails.Name.String())
 	if !ok {
-		node = tree.NewTreeNode(dagSpec)
+		node = tree.NewTreeNode(jobDetails)
 		dagTree.AddNode(node)
 	}
 	return node

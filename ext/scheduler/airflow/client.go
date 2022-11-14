@@ -114,8 +114,8 @@ func buildEndPoint(host, reqURL, pathParam string) string {
 	return u.String()
 }
 
-func getJobRuns(res DagRunListResponse, spec *cron.ScheduleSpec) ([]job_run.JobRunStatus, error) {
-	var jobRunList []job_run.JobRunStatus
+func getJobRuns(res DagRunListResponse, spec *cron.ScheduleSpec) ([]*job_run.JobRunStatus, error) {
+	var jobRunList []*job_run.JobRunStatus
 	if res.TotalEntries > pageLimit {
 		return jobRunList, errors.New("total number of entries exceed page limit")
 	}
@@ -124,7 +124,7 @@ func getJobRuns(res DagRunListResponse, spec *cron.ScheduleSpec) ([]job_run.JobR
 			scheduledAt := spec.Next(dag.ExecutionDate)
 			jobRunStatus, _ := job_run.JobRunStatusFrom(scheduledAt, dag.State)
 			// use multi error to collect errors and proceed
-			jobRunList = append(jobRunList, jobRunStatus)
+			jobRunList = append(jobRunList, &jobRunStatus)
 		}
 	}
 	return jobRunList, nil
