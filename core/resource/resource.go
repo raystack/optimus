@@ -52,7 +52,8 @@ type Resource struct {
 	spec     map[string]any
 	metadata *Metadata
 
-	status Status
+	status       Status
+	existInStore bool
 }
 
 func NewResource(fullName string, kind Kind, store Store, tnnt tenant.Tenant, meta *Metadata, spec map[string]any) (*Resource, error) {
@@ -89,13 +90,14 @@ func NewResource(fullName string, kind Kind, store Store, tnnt tenant.Tenant, me
 	}
 
 	return &Resource{
-		name:     name,
-		kind:     kind,
-		dataset:  dataset,
-		tenant:   tnnt,
-		spec:     spec,
-		metadata: meta,
-		status:   StatusUnknown,
+		name:         name,
+		kind:         kind,
+		dataset:      dataset,
+		tenant:       tnnt,
+		spec:         spec,
+		metadata:     meta,
+		status:       StatusUnknown,
+		existInStore: false,
 	}, nil
 }
 
@@ -139,6 +141,10 @@ func (r *Resource) Status() Status {
 
 func (r *Resource) Spec() map[string]any {
 	return r.spec
+}
+
+func (r *Resource) ExistInStore() bool {
+	return r.existInStore
 }
 
 func (r *Resource) Validate() error {
@@ -249,6 +255,10 @@ func (r *Resource) MarkSuccess() error {
 	}
 	msg := fmt.Sprintf("status transition for [%s] from [%s] to success is not allowed", r.FullName(), r.status)
 	return errors.InvalidStateTransition(EntityResource, msg)
+}
+
+func (r *Resource) MarkExistInStore() {
+	r.existInStore = true
 }
 
 type FromExistingOpt func(r *Resource)
