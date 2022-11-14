@@ -36,6 +36,9 @@ type JobRepository interface {
 	Add(context.Context, []*job.Job) (savedJobs []*job.Job, err error)
 	GetJobNameWithInternalUpstreams(context.Context, tenant.ProjectName, []job.Name) (map[job.Name][]*job.Upstream, error)
 	ReplaceUpstreams(context.Context, []*job.WithUpstream) error
+
+	GetDownstreamFullNames(context.Context, tenant.ProjectName, job.Name) ([]job.FullName, error)
+	Delete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, cleanHistory bool) error
 }
 
 type UpstreamResolver interface {
@@ -53,6 +56,24 @@ func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*j
 
 	me.Append(j.addJobs(ctx, jobTenant, generatedJobs))
 	return errors.MultiToError(me)
+}
+
+func (j JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) (downstreamNames []job.FullName, err error) {
+	downstreamFullNames, err := j.repo.GetDownstreamFullNames(ctx, jobTenant.ProjectName(), jobName)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(downstreamFullNames) > 0 && !forceFlag {
+		errorMsg := fmt.Sprintf("job is being used by %s", downstreamFullNames)
+		return nil, errors.NewError(errors.ErrFailedPrecond, job.EntityJob, errorMsg)
+	}
+
+	if err = j.repo.Delete(ctx, jobTenant.ProjectName(), jobName, cleanFlag); err != nil {
+		return nil, err
+	}
+
+	return downstreamFullNames, nil
 }
 
 func (j JobService) addJobs(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Job) error {

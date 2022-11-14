@@ -423,6 +423,10 @@ func local_request_JobSpecificationService_GetJobSpecifications_0(ctx context.Co
 
 }
 
+var (
+	filter_JobSpecificationService_DeleteJobSpecification_0 = &utilities.DoubleArray{Encoding: map[string]int{"project_name": 0, "namespace_name": 1, "job_name": 2}, Base: []int{1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 1, 2, 3, 4}}
+)
+
 func request_JobSpecificationService_DeleteJobSpecification_0(ctx context.Context, marshaler runtime.Marshaler, client JobSpecificationServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq DeleteJobSpecificationRequest
 	var metadata runtime.ServerMetadata
@@ -462,6 +466,13 @@ func request_JobSpecificationService_DeleteJobSpecification_0(ctx context.Contex
 	protoReq.JobName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "job_name", err)
+	}
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_JobSpecificationService_DeleteJobSpecification_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.DeleteJobSpecification(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -508,6 +519,13 @@ func local_request_JobSpecificationService_DeleteJobSpecification_0(ctx context.
 	protoReq.JobName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "job_name", err)
+	}
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_JobSpecificationService_DeleteJobSpecification_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := server.DeleteJobSpecification(ctx, &protoReq)

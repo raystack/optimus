@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"fmt"
 
 	"gorm.io/gorm"
 
@@ -331,4 +332,79 @@ func toJobUpstream(jobWithUpstream *job.WithUpstream) []*JobWithUpstream {
 		})
 	}
 	return jobUpstreams
+}
+
+type ProjectAndJobNames struct {
+	ProjectName string `json:"project_name"`
+	JobName     string `json:"job_name"`
+}
+
+func (j JobRepository) GetDownstreamFullNames(ctx context.Context, subjectProjectName tenant.ProjectName, subjectJobName job.Name) ([]job.FullName, error) {
+	query := `
+SELECT 
+project_name, job_name
+FROM job_upstream
+WHERE upstream_project_name = ? AND upstream_job_name = ?
+`
+
+	var projectAndJobNames []ProjectAndJobNames
+	if err := j.db.WithContext(ctx).Raw(query, subjectProjectName.String(), subjectJobName.String()).
+		Scan(&projectAndJobNames).Error; err != nil {
+		return nil, errors.Wrap(job.EntityJob, "error while getting job downstream", err)
+	}
+
+	var fullNames []job.FullName
+	for _, projectAndJobName := range projectAndJobNames {
+		projectName, err := tenant.ProjectNameFrom(projectAndJobName.ProjectName)
+		if err != nil {
+			return nil, errors.Wrap(job.EntityJob, "error while getting job downstream", err)
+		}
+		jobName, err := job.NameFrom(projectAndJobName.JobName)
+		if err != nil {
+			return nil, errors.Wrap(job.EntityJob, "error while getting job downstream", err)
+		}
+		fullNames = append(fullNames, job.FullNameFrom(projectName, jobName))
+	}
+	return fullNames, nil
+}
+
+func (j JobRepository) Delete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, cleanHistory bool) error {
+	if cleanHistory {
+		return j.hardDelete(ctx, projectName, jobName)
+	}
+	return j.softDelete(ctx, projectName, jobName)
+}
+
+func (j JobRepository) softDelete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) error {
+	query := `
+DELETE 
+FROM job
+WHERE project_name = ? AND job_name = ?
+`
+	result := j.db.WithContext(ctx).Exec(query, projectName.String(), jobName.String())
+	if result.Error != nil {
+		return errors.Wrap(job.EntityJob, "error during delete of secret", result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		return errors.NotFound(job.EntityJob, fmt.Sprintf("job %s in project %s failed to be deleted since not found", jobName.String(), projectName.String()))
+	}
+	return nil
+}
+
+func (j JobRepository) hardDelete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) error {
+	query := `
+DELETE 
+FROM job
+WHERE project_name = ? AND job_name = ?
+`
+	result := j.db.WithContext(ctx).Exec(query, projectName.String(), jobName.String()).Unscoped()
+	if result.Error != nil {
+		return errors.Wrap(job.EntityJob, "error during delete of secret", result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		return errors.NotFound(job.EntityJob, fmt.Sprintf("job %s in project %s failed to be deleted since not found", jobName.String(), projectName.String()))
+	}
+	return nil
 }

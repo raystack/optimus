@@ -3,7 +3,6 @@ package v1beta1
 import (
 	"context"
 	"fmt"
-
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/odpf/optimus/core/job"
@@ -25,6 +24,7 @@ func NewJobHandler(jobService JobService) *JobHandler {
 type JobService interface {
 	// TODO: use job.Job instead of job.Spec and use one error (utilize multierror)
 	Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) (jobErrors error, err error)
+	Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) (downstreamFullNames []job.FullName, err error)
 }
 
 func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *pb.AddJobSpecificationsRequest) (*pb.AddJobSpecificationsResponse, error) {
@@ -61,5 +61,32 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 	// TODO: deprecate deployment ID field. is this api being used? if not we can deprecate deployment id, the api will be synchronous. if being used, we can still deprecate as it will be sync.
 	return &pb.AddJobSpecificationsResponse{
 		Log: responseLog,
+	}, nil
+}
+
+func (jh *JobHandler) DeleteJobSpecification(ctx context.Context, deleteRequest *pb.DeleteJobSpecificationRequest) (*pb.DeleteJobSpecificationResponse, error) {
+	jobTenant, err := tenant.NewTenant(deleteRequest.ProjectName, deleteRequest.NamespaceName)
+	if err != nil {
+		return nil, errors.GRPCErr(err, "failed to delete job specification")
+	}
+
+	jobName, err := job.NameFrom(deleteRequest.JobName)
+	if err != nil {
+		return nil, errors.GRPCErr(err, "failed to delete job specification")
+	}
+
+	downstreamFullNames, err := jh.jobService.Delete(ctx, jobTenant, jobName, deleteRequest.CleanHistory, deleteRequest.Force)
+	if err != nil {
+		return nil, errors.GRPCErr(err, "failed to delete job specification")
+	}
+
+	msg := fmt.Sprintf("job %s has been deleted", jobName)
+	if deleteRequest.Force && len(downstreamFullNames) > 0 {
+		msg = fmt.Sprintf("job %s has been forced deleted. these downstream will be affected: %s", jobName, downstreamFullNames)
+	}
+
+	return &pb.DeleteJobSpecificationResponse{
+		Success: true,
+		Message: msg,
 	}, nil
 }

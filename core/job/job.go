@@ -219,3 +219,9 @@ func (u Upstreams) ToUpstreamDestinationMap() map[string]bool {
 	}
 	return upstreamDestinationMap
 }
+
+type FullName string
+
+func FullNameFrom(projectName tenant.ProjectName, jobName Name) FullName {
+	return FullName(projectName.String() + "/" + jobName.String())
+}

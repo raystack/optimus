@@ -314,6 +314,18 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "cleanHistory",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "force",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
           }
         ],
         "tags": [
