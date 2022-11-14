@@ -88,7 +88,7 @@ func create(ctx context.Context, handle ResourceHandle, res *resource.Resource) 
 
 	err := handle.Create(ctx, res)
 	if err != nil && !errors.IsErrorType(err, errors.ErrAlreadyExists) {
-		res.MarkFailure()
+		res.MarkCreateFailure()
 		return err
 	}
 
@@ -97,7 +97,7 @@ func create(ctx context.Context, handle ResourceHandle, res *resource.Resource) 
 
 func update(ctx context.Context, handle ResourceHandle, res *resource.Resource) error {
 	if err := handle.Update(ctx, res); err != nil {
-		res.MarkFailure()
+		res.MarkUpdateFailure()
 		return err
 	}
 	return res.MarkSuccess()

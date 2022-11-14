@@ -46,10 +46,8 @@ type Status string
 
 const (
 	StatusUnknown Status = "unknown"
-	StatusSkipped Status = "skipped"
 
-	StatusValidationFailure Status = "validation_failure"
-	StatusValidationSuccess Status = "validation_success"
+	StatusMarkExistInStore Status = "mark_exist_in_store"
 
 	StatusToCreate Status = "to_create"
 	StatusToUpdate Status = "to_update"
