@@ -175,67 +175,6 @@
           "BackupService"
         ]
       }
-    },
-    "/v1beta1/project/{projectName}/namespace/{namespaceName}/datastore/{datastoreName}/backupDryrun": {
-      "post": {
-        "operationId": "BackupService_BackupDryRun",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1beta1BackupDryRunResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "namespaceName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "datastoreName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "description": {
-                  "type": "string"
-                },
-                "resourceNames": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        ],
-        "tags": [
-          "BackupService"
-        ]
-      }
     }
   },
   "definitions": {
@@ -265,23 +204,6 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/protobufAny"
-          }
-        }
-      }
-    },
-    "v1beta1BackupDryRunResponse": {
-      "type": "object",
-      "properties": {
-        "resourceNames": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "ignoredResources": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1IgnoredResource"
           }
         }
       }
@@ -335,12 +257,6 @@
       "properties": {
         "spec": {
           "$ref": "#/definitions/v1beta1BackupSpec"
-        },
-        "pairs": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1ResourcePair"
-          }
         }
       }
     },
@@ -363,17 +279,6 @@
           "items": {
             "$ref": "#/definitions/v1beta1BackupSpec"
           }
-        }
-      }
-    },
-    "v1beta1ResourcePair": {
-      "type": "object",
-      "properties": {
-        "sourceName": {
-          "type": "string"
-        },
-        "destinationName": {
-          "type": "string"
         }
       }
     }
