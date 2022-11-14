@@ -68,7 +68,7 @@ func New(conf config.ServerConfig) (*OptimusServer, error) {
 	server := &OptimusServer{
 		conf:       conf,
 		serverAddr: addr,
-		logger:     createLogger(conf),
+		logger:     NewLogger(conf.Log.Level.String()),
 	}
 
 	if err := checkRequiredConfigs(conf.Serve); err != nil {
@@ -96,13 +96,6 @@ func New(conf config.ServerConfig) (*OptimusServer, error) {
 	server.startListening()
 
 	return server, nil
-}
-
-func createLogger(conf config.ServerConfig) *log.Logrus {
-	return log.NewLogrus(
-		log.LogrusWithLevel(conf.Log.Level.String()),
-		log.LogrusWithWriter(os.Stderr),
-	)
 }
 
 func (s *OptimusServer) setupPlugins() error {
@@ -253,7 +246,6 @@ func (s *OptimusServer) setupHandlers() error {
 
 	dbAdapter := postgres.NewAdapter(models.PluginRegistry)
 	replaySpecRepo := postgres.NewReplayRepository(s.dbConn, dbAdapter)
-	jobRunRepo := postgres.NewJobRunRepository(s.dbConn, dbAdapter)
 	jobSpecRepo, err := postgres.NewJobSpecRepository(s.dbConn, dbAdapter)
 	if err != nil {
 		return err
@@ -371,12 +363,7 @@ func (s *OptimusServer) setupHandlers() error {
 
 	// job run service
 	jobRunService := service.NewJobRunService(
-		jobRunRepo,
-		func() time.Time {
-			return time.Now().UTC()
-		},
 		models.BatchScheduler,
-		pluginService,
 	)
 
 	progressObs := &pipelineLogObserver{
@@ -424,6 +411,7 @@ func (s *OptimusServer) setupHandlers() error {
 	// job Spec service
 	pb.RegisterJobSpecificationServiceServer(s.grpcServer, v1handler.NewJobSpecServiceServer(s.logger,
 		jobService,
+		jobRunService,
 		pluginRepo,
 		projectService,
 		namespaceService,

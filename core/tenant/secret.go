@@ -77,8 +77,10 @@ type Secret struct {
 	name         SecretName
 	encodedValue string
 
-	_type  SecretType
-	tenant Tenant
+	_type SecretType
+
+	projName      ProjectName
+	namespaceName string
 }
 
 func (s *Secret) Name() SecretName {
@@ -93,11 +95,15 @@ func (s *Secret) EncodedValue() string {
 	return s.encodedValue
 }
 
-func (s *Secret) Tenant() Tenant {
-	return s.tenant
+func (s *Secret) ProjectName() ProjectName {
+	return s.projName
 }
 
-func NewSecret(name string, _type SecretType, encodedValue string, tenant Tenant) (*Secret, error) {
+func (s *Secret) NamespaceName() string {
+	return s.namespaceName
+}
+
+func NewSecret(name string, _type SecretType, encodedValue string, projName ProjectName, nsName string) (*Secret, error) {
 	secretName, err := SecretNameFrom(name)
 	if err != nil {
 		return nil, err
@@ -111,14 +117,15 @@ func NewSecret(name string, _type SecretType, encodedValue string, tenant Tenant
 		return nil, errors.InvalidArgument(EntitySecret, "empty encoded secret")
 	}
 
-	if tenant.ProjectName() == "" {
+	if projName == "" {
 		return nil, errors.InvalidArgument(EntitySecret, "invalid tenant details")
 	}
 
 	return &Secret{
-		name:         secretName,
-		encodedValue: encodedValue,
-		_type:        _type,
-		tenant:       tenant,
+		name:          secretName,
+		encodedValue:  encodedValue,
+		_type:         _type,
+		projName:      projName,
+		namespaceName: nsName,
 	}, nil
 }

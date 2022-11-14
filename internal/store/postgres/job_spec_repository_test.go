@@ -216,7 +216,7 @@ func (j *JobSpecRepositoryTestSuite) TestGetByResourceDestinationURN() {
 		actualJobSpec, actualError := repository.GetByResourceDestinationURN(ctx, destination)
 
 		j.NoError(actualError)
-		j.Equal(storedJob.Name, actualJobSpec.Name)
+		j.Equal(storedJob.Name, actualJobSpec[0].Name)
 	})
 }
 
@@ -383,7 +383,7 @@ func (j *JobSpecRepositoryTestSuite) TestSave() {
 
 	j.Run("should insert job spec if not exist and return nil if no error is encountered", func() {
 		pluginRepository := mock.NewPluginRepository(j.T())
-		execUnit := &mock.BasePlugin{}
+		execUnit := &mock.YamlMod{}
 		execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 			Name:       "task",
 			PluginType: models.PluginTypeTask,
@@ -408,7 +408,7 @@ func (j *JobSpecRepositoryTestSuite) TestSave() {
 				},
 			},
 			Task: models.JobSpecTask{
-				Unit: &models.Plugin{Base: execUnit},
+				Unit: &models.Plugin{YamlMod: execUnit},
 			},
 		}
 
@@ -423,7 +423,7 @@ func (j *JobSpecRepositoryTestSuite) TestSave() {
 
 	j.Run("should update existing job spec and return nil if no error is encountered", func() {
 		pluginRepository := mock.NewPluginRepository(j.T())
-		execUnit := &mock.BasePlugin{}
+		execUnit := &mock.YamlMod{}
 		execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 			Name:       "task",
 			PluginType: models.PluginTypeTask,
@@ -449,7 +449,7 @@ func (j *JobSpecRepositoryTestSuite) TestSave() {
 				},
 			},
 			Task: models.JobSpecTask{
-				Unit: &models.Plugin{Base: execUnit},
+				Unit: &models.Plugin{YamlMod: execUnit},
 			},
 		}
 

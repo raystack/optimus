@@ -1,0 +1,61 @@
+scheduler:
+  extraVolumeMounts: # this will get the volume and mount it to that path in the container
+    - name: dags-path
+      mountPath: /opt/airflow/dags  # location in the container it will put the directory mentioned below.
+
+  extraVolumes: # this will create the volume from the directory
+    - name: dags-path
+      hostPath:
+          path: /tmp/colima/dags
+          type: Directory
+
+config:
+  core:
+    dags_folder: /opt/airflow/dags/dags
+  webserver:
+    expose_config: 'True'  # by default this is 'False'
+
+ingress:
+  enabled: false
+
+extraEnv: |
+  - name: AIRFLOW__WEBSERVER__WORKER_CLASS
+    value: 'gevent'
+  - name: AIRFLOW__CORE__LOAD_EXAMPLES
+    value: 'false'
+  - name: AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL
+    value: '1'
+  - name: AIRFLOW__API__AUTH_BACKEND
+    value: 'airflow.api.auth.backend.basic_auth'
+  - name: AIRFLOW__WEBSERVER__WORKERS
+    value: '2'
+  - name: AIRFLOW__KUBERNETES__DELETE_WORKER_PODS_ON_FAILURE
+    value: 'False'
+  # - name: AIRFLOW__CORE__DAGS_FOLDER
+  #   value: /opt/airflow/dags
+
+uid: 1000
+
+executor: "LocalExecutor"
+airflowVersion: "2.1.3"
+defaultAirflowTag: "2.1.3"
+
+workers:
+  persistence:
+    # Enable persistent volumes
+    # enabled: true
+    size: 1Gi
+
+flower:
+  enabled: false
+
+statsd:
+  enabled: false
+
+redis:
+  enabled: false
+
+logs:
+  persistence:
+    enabled: true
+    existingClaim: airflowlogs-pvc # 1GB

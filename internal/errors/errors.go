@@ -132,6 +132,19 @@ func (e *DomainError) Unwrap() error {
 	return e.WrappedErr
 }
 
+func (e *DomainError) DebugString() string {
+	var msg string
+	var de *DomainError
+	if errors.As(e.WrappedErr, &de) {
+		msg = de.DebugString()
+	} else if e.WrappedErr != nil {
+		msg = e.WrappedErr.Error()
+	}
+
+	return fmt.Sprintf("%v for %v: %v (%s)",
+		e.ErrorType.String(), e.Entity, e.Message, msg)
+}
+
 func Wrap(entity, msg string, err error) error {
 	if errors.Is(err, &DomainError{}) {
 		return err

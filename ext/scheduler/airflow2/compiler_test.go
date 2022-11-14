@@ -17,7 +17,7 @@ import (
 var CompiledTemplate []byte
 
 func TestCompilerIntegration(t *testing.T) {
-	execUnit := new(mock.BasePlugin)
+	execUnit := new(mock.YamlMod)
 	execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name:       "bq",
 		Image:      "example.io/namespace/image:latest",
@@ -25,7 +25,7 @@ func TestCompilerIntegration(t *testing.T) {
 	}, nil)
 
 	transporterHook := "transporter"
-	hookUnit := new(mock.BasePlugin)
+	hookUnit := new(mock.YamlMod)
 	hookUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name:       transporterHook,
 		HookType:   models.HookTypePre,
@@ -34,14 +34,14 @@ func TestCompilerIntegration(t *testing.T) {
 	}, nil)
 
 	predatorHook := "predator"
-	hookUnit2 := new(mock.BasePlugin)
+	hookUnit2 := new(mock.YamlMod)
 	hookUnit2.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name:     predatorHook,
 		HookType: models.HookTypePost,
 		Image:    "example.io/namespace/predator-image:latest",
 	}, nil)
 
-	hookUnit3 := new(mock.BasePlugin)
+	hookUnit3 := new(mock.YamlMod)
 	hookUnit3.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name:     "hook-for-fail",
 		HookType: models.HookTypeFail,
@@ -82,7 +82,7 @@ func TestCompilerIntegration(t *testing.T) {
 			Interval:  "* * * * *",
 		},
 		Task: models.JobSpecTask{
-			Unit:     &models.Plugin{Base: execUnit},
+			Unit:     &models.Plugin{YamlMod: execUnit},
 			Priority: 2000,
 			Window:   window,
 		},
@@ -101,7 +101,7 @@ func TestCompilerIntegration(t *testing.T) {
 			Interval:  "* * * * *",
 		},
 		Task: models.JobSpecTask{
-			Unit:     &models.Plugin{Base: execUnit},
+			Unit:     &models.Plugin{YamlMod: execUnit},
 			Priority: 2000,
 			Window:   window,
 		},
@@ -116,7 +116,7 @@ func TestCompilerIntegration(t *testing.T) {
 				Value: "event_timestamp > 10000",
 			},
 		},
-		Unit:      &models.Plugin{Base: hookUnit},
+		Unit:      &models.Plugin{YamlMod: hookUnit},
 		DependsOn: nil,
 	}
 	hook2 := models.JobSpecHook{
@@ -126,12 +126,12 @@ func TestCompilerIntegration(t *testing.T) {
 				Value: "event_timestamp > 10000",
 			},
 		},
-		Unit:      &models.Plugin{Base: hookUnit2},
+		Unit:      &models.Plugin{YamlMod: hookUnit2},
 		DependsOn: []*models.JobSpecHook{&hook1},
 	}
 	hook3 := models.JobSpecHook{
 		Config: []models.JobSpecConfigItem{},
-		Unit:   &models.Plugin{Base: hookUnit3},
+		Unit:   &models.Plugin{YamlMod: hookUnit3},
 	}
 	spec := models.JobSpec{
 		Name:  "foo",
@@ -158,7 +158,7 @@ func TestCompilerIntegration(t *testing.T) {
 			Interval:  "* * * * *",
 		},
 		Task: models.JobSpecTask{
-			Unit:     &models.Plugin{Base: execUnit},
+			Unit:     &models.Plugin{YamlMod: execUnit},
 			Priority: 2000,
 			Window:   window,
 		},

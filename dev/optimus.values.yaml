@@ -1,0 +1,50 @@
+app:
+  labels:
+    environment: dev
+
+image:
+  repository: odpf/optimus
+  tag: "0.4.1"
+  pullPolicy: IfNotPresent
+
+container:
+  command:
+    - optimus
+  args:
+    - serve
+    - --install-plugins
+    - -c
+    - /etc/optimus/config.yaml  # mounted as per helm chart
+  volumeMounts:
+    - mountPath: /airflow-dags/dags
+      name: dags-path
+    - mountPath: /app/plugins
+      name: plugins-path
+
+volumes:
+  - name: dags-path
+    hostPath: 
+      path: /tmp/colima/dags # will be replaced through makefile
+      type: Directory
+  - name: plugins-path
+    hostPath: 
+      path: /tmp/colima/plugins
+      type: Directory
+
+telegraf:
+  enabled: false
+ingress:
+  enabled: false
+
+configYaml: |-
+  version: 1
+  log:
+    level: DEBUG
+  serve:
+    ingress_host: optimus-dev.optimus-dev.svc.cluster.local:80
+  scheduler:
+    name: airflow2
+
+config:
+  OPTIMUS_SERVE_DB_DSN: postgres://optimus:optimus@database-service/optimus?sslmode=disable
+  OPTIMUS_SERVE_APP_KEY: TuMxWWp4NkqNqaes6vK9DeqgUkk8I97s

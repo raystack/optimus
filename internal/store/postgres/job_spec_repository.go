@@ -67,19 +67,19 @@ func (j jobSpecRepository) GetByNameAndProjectName(ctx context.Context, name, pr
 	return j.adapter.ToSpec(job)
 }
 
-func (j jobSpecRepository) GetByResourceDestinationURN(ctx context.Context, resourceDestinationURN string) (models.JobSpec, error) {
-	var job Job
+func (j jobSpecRepository) GetByResourceDestinationURN(ctx context.Context, resourceDestinationURN string) ([]models.JobSpec, error) {
+	var jobs []Job
 	if err := j.db.WithContext(ctx).
 		Preload("Namespace").
 		Preload("Project").
 		Where("destination = ?", resourceDestinationURN).
-		First(&job).Error; err != nil {
+		Find(&jobs).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return models.JobSpec{}, store.ErrResourceNotFound
+			return []models.JobSpec{}, store.ErrResourceNotFound
 		}
-		return models.JobSpec{}, err
+		return []models.JobSpec{}, err
 	}
-	return j.adapter.ToSpec(job)
+	return j.toJobSpecs(jobs)
 }
 
 func (j jobSpecRepository) GetDependentJobs(ctx context.Context, jobName, resourceDestinationURN, projectName string) ([]models.JobSpec, error) {

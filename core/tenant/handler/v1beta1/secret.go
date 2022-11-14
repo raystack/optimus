@@ -14,10 +14,10 @@ import (
 )
 
 type SecretService interface {
-	Save(context.Context, tenant.Tenant, *tenant.PlainTextSecret) error
-	Update(context.Context, tenant.Tenant, *tenant.PlainTextSecret) error
-	Delete(context.Context, tenant.Tenant, tenant.SecretName) error
-	GetSecretsInfo(context.Context, tenant.Tenant) ([]*dto.SecretInfo, error)
+	Save(ctx context.Context, projName tenant.ProjectName, nsName string, pts *tenant.PlainTextSecret) error
+	Update(ctx context.Context, projName tenant.ProjectName, nsName string, pts *tenant.PlainTextSecret) error
+	Delete(ctx context.Context, projName tenant.ProjectName, nsName string, secretName tenant.SecretName) error
+	GetSecretsInfo(ctx context.Context, projName tenant.ProjectName) ([]*dto.SecretInfo, error)
 }
 
 type SecretHandler struct {
@@ -28,7 +28,7 @@ type SecretHandler struct {
 }
 
 func (sv *SecretHandler) RegisterSecret(ctx context.Context, req *pb.RegisterSecretRequest) (*pb.RegisterSecretResponse, error) {
-	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
+	projName, err := tenant.ProjectNameFrom(req.GetProjectName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to register secret "+req.GetSecretName())
 	}
@@ -43,7 +43,7 @@ func (sv *SecretHandler) RegisterSecret(ctx context.Context, req *pb.RegisterSec
 		return nil, errors.GRPCErr(err, "failed to register secret "+req.GetSecretName())
 	}
 
-	if err = sv.secretService.Save(ctx, tnnt, secret); err != nil {
+	if err = sv.secretService.Save(ctx, projName, req.GetNamespaceName(), secret); err != nil {
 		return nil, errors.GRPCErr(err, "failed to register secret "+req.GetSecretName())
 	}
 
@@ -51,7 +51,7 @@ func (sv *SecretHandler) RegisterSecret(ctx context.Context, req *pb.RegisterSec
 }
 
 func (sv *SecretHandler) UpdateSecret(ctx context.Context, req *pb.UpdateSecretRequest) (*pb.UpdateSecretResponse, error) {
-	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
+	projName, err := tenant.ProjectNameFrom(req.GetProjectName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to update secret "+req.GetSecretName())
 	}
@@ -66,7 +66,7 @@ func (sv *SecretHandler) UpdateSecret(ctx context.Context, req *pb.UpdateSecretR
 		return nil, errors.GRPCErr(err, "failed to update secret "+req.GetSecretName())
 	}
 
-	if err = sv.secretService.Update(ctx, tnnt, secret); err != nil {
+	if err = sv.secretService.Update(ctx, projName, req.GetNamespaceName(), secret); err != nil {
 		return nil, errors.GRPCErr(err, "failed to update secret "+req.GetSecretName())
 	}
 
@@ -74,12 +74,12 @@ func (sv *SecretHandler) UpdateSecret(ctx context.Context, req *pb.UpdateSecretR
 }
 
 func (sv *SecretHandler) ListSecrets(ctx context.Context, req *pb.ListSecretsRequest) (*pb.ListSecretsResponse, error) {
-	tnnt, err := tenant.NewTenant(req.GetProjectName(), "")
+	projName, err := tenant.ProjectNameFrom(req.GetProjectName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to list secrets")
 	}
 
-	secrets, err := sv.secretService.GetSecretsInfo(ctx, tnnt)
+	secrets, err := sv.secretService.GetSecretsInfo(ctx, projName)
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to list secrets")
 	}
@@ -104,12 +104,12 @@ func (sv *SecretHandler) DeleteSecret(ctx context.Context, req *pb.DeleteSecretR
 		return nil, errors.GRPCErr(err, "failed to delete secret"+req.GetSecretName())
 	}
 
-	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
+	projName, err := tenant.ProjectNameFrom(req.GetProjectName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to delete secret "+secretName.String())
 	}
 
-	if err = sv.secretService.Delete(ctx, tnnt, secretName); err != nil {
+	if err = sv.secretService.Delete(ctx, projName, req.GetNamespaceName(), secretName); err != nil {
 		return nil, errors.GRPCErr(err, "failed to delete secret "+secretName.String())
 	}
 

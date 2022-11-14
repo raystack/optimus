@@ -136,7 +136,7 @@ func (p *PluginManager) UnArchive(src, dest string) error {
 }
 
 func (p *PluginManager) Archive(archiveName string) error {
-	discoveredYamlPlugins := DiscoverPluginsGivenFilePattern(p.logger, yaml.Prefix, yaml.Suffix)
+	discoveredYamlPlugins := discoverPluginsGivenFilePattern(p.logger, yaml.Prefix, yaml.Suffix)
 	p.logger.Info(fmt.Sprintf("Archiving yaml plugins [%d]... --> %s", len(discoveredYamlPlugins), archiveName))
 	archive, err := os.Create(archiveName)
 	if err != nil {

@@ -47,9 +47,8 @@ func TestTenantService(t *testing.T) {
 			projGetter.On("Get", ctx, tnnt.ProjectName()).Return(proj, nil)
 			defer projGetter.AssertExpectations(t)
 
-			nsName, _ := tnnt.NamespaceName()
 			nsGetter := new(namespaceGetter)
-			nsGetter.On("Get", ctx, tnnt.ProjectName(), nsName).Return(nil, errors.New("unable to get ns"))
+			nsGetter.On("Get", ctx, tnnt.ProjectName(), tnnt.NamespaceName()).Return(nil, errors.New("unable to get ns"))
 			defer nsGetter.AssertExpectations(t)
 
 			tenantService := service.NewTenantService(projGetter, nsGetter, nil)
@@ -58,25 +57,13 @@ func TestTenantService(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "unable to get ns")
 		})
-		t.Run("returns details with only project", func(t *testing.T) {
-			projGetter := new(projectGetter)
-			projGetter.On("Get", ctx, tnnt.ProjectName()).Return(proj, nil)
-			defer projGetter.AssertExpectations(t)
-
-			tenantService := service.NewTenantService(projGetter, nil, nil)
-
-			details, err := tenantService.GetDetails(ctx, tnnt.ToProjectScope())
-			assert.Nil(t, err)
-			assert.Equal(t, proj.Name().String(), details.Project().Name().String())
-		})
 		t.Run("returns both project and namespace", func(t *testing.T) {
 			projGetter := new(projectGetter)
 			projGetter.On("Get", ctx, tnnt.ProjectName()).Return(proj, nil)
 			defer projGetter.AssertExpectations(t)
 
-			nsName, _ := tnnt.NamespaceName()
 			nsGetter := new(namespaceGetter)
-			nsGetter.On("Get", ctx, tnnt.ProjectName(), nsName).Return(ns, nil)
+			nsGetter.On("Get", ctx, tnnt.ProjectName(), tnnt.NamespaceName()).Return(ns, nil)
 			defer nsGetter.AssertExpectations(t)
 
 			tenantService := service.NewTenantService(projGetter, nsGetter, nil)
@@ -84,34 +71,73 @@ func TestTenantService(t *testing.T) {
 			d, err := tenantService.GetDetails(ctx, tnnt)
 			assert.Nil(t, err)
 			assert.Equal(t, proj.Name().String(), d.Project().Name().String())
-			receivedNS, _ := d.Namespace()
+			receivedNS := d.Namespace()
 			assert.Equal(t, receivedNS.Name(), ns.Name())
 		})
 	})
+	t.Run("GetProject", func(t *testing.T) {
+		t.Run("returns error when project name is invalid", func(t *testing.T) {
+			projGetter := new(projectGetter)
+
+			tenantService := service.NewTenantService(projGetter, nil, nil)
+
+			_, err := tenantService.GetProject(ctx, "")
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "invalid argument for entity tenant: invalid project name")
+		})
+		t.Run("returns the project", func(t *testing.T) {
+			projGetter := new(projectGetter)
+			projGetter.On("Get", ctx, tnnt.ProjectName()).Return(proj, nil)
+			defer projGetter.AssertExpectations(t)
+
+			tenantService := service.NewTenantService(projGetter, nil, nil)
+
+			p, err := tenantService.GetProject(ctx, tnnt.ProjectName())
+			assert.Nil(t, err)
+
+			assert.Equal(t, proj.Name().String(), p.Name().String())
+		})
+	})
 	t.Run("GetSecrets", func(t *testing.T) {
+		t.Run("returns error when project name is invalid", func(t *testing.T) {
+			secretsGetter := new(secretGetter)
+			tenantService := service.NewTenantService(nil, nil, secretsGetter)
+
+			_, err := tenantService.GetSecrets(ctx, "", ns.Name().String())
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "invalid argument for entity tenant: invalid project name")
+		})
 		t.Run("calls secrets getter to get all the secrets for tenant", func(t *testing.T) {
 			pts, _ := tenant.NewPlainTextSecret("secret_name", "secret_value")
 			secretsGetter := new(secretGetter)
-			secretsGetter.On("GetAll", ctx, tnnt).Return([]*tenant.PlainTextSecret{pts}, nil)
+			secretsGetter.On("GetAll", ctx, proj.Name(), ns.Name().String()).Return([]*tenant.PlainTextSecret{pts}, nil)
 			defer secretsGetter.AssertExpectations(t)
 
 			tenantService := service.NewTenantService(nil, nil, secretsGetter)
 
-			secrets, err := tenantService.GetSecrets(ctx, tnnt)
+			secrets, err := tenantService.GetSecrets(ctx, proj.Name(), ns.Name().String())
 			assert.Nil(t, err)
 			assert.Equal(t, 1, len(secrets))
 		})
 	})
 	t.Run("GetSecret", func(t *testing.T) {
+		t.Run("return error when project name is invalid", func(t *testing.T) {
+			secretsGetter := new(secretGetter)
+			tenantService := service.NewTenantService(nil, nil, secretsGetter)
+
+			_, err := tenantService.GetSecret(ctx, "", ns.Name().String(), "secret")
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "invalid argument for entity tenant: invalid project name")
+		})
 		t.Run("calls secrets getter to get the secret for tenant", func(t *testing.T) {
 			pts, _ := tenant.NewPlainTextSecret("secret_name", "secret_value")
 			secretsGetter := new(secretGetter)
-			secretsGetter.On("Get", ctx, tnnt, "secret_name").Return(pts, nil)
+			secretsGetter.On("Get", ctx, proj.Name(), ns.Name().String(), "secret_name").Return(pts, nil)
 			defer secretsGetter.AssertExpectations(t)
 
 			tenantService := service.NewTenantService(nil, nil, secretsGetter)
 
-			secret, err := tenantService.GetSecret(ctx, tnnt, pts.Name().String())
+			secret, err := tenantService.GetSecret(ctx, proj.Name(), ns.Name().String(), pts.Name().String())
 			assert.Nil(t, err)
 			assert.Equal(t, "secret_value", secret.Value())
 		})
@@ -148,8 +174,8 @@ type secretGetter struct {
 	mock.Mock
 }
 
-func (s *secretGetter) Get(ctx context.Context, ten tenant.Tenant, name string) (*tenant.PlainTextSecret, error) {
-	args := s.Called(ctx, ten, name)
+func (s *secretGetter) Get(ctx context.Context, projName tenant.ProjectName, namespaceName, name string) (*tenant.PlainTextSecret, error) {
+	args := s.Called(ctx, projName, namespaceName, name)
 	var pts *tenant.PlainTextSecret
 	if args.Get(0) != nil {
 		pts = args.Get(0).(*tenant.PlainTextSecret)
@@ -157,8 +183,8 @@ func (s *secretGetter) Get(ctx context.Context, ten tenant.Tenant, name string) 
 	return pts, args.Error(1)
 }
 
-func (s *secretGetter) GetAll(ctx context.Context, ten tenant.Tenant) ([]*tenant.PlainTextSecret, error) {
-	args := s.Called(ctx, ten)
+func (s *secretGetter) GetAll(ctx context.Context, projName tenant.ProjectName, namespaceName string) ([]*tenant.PlainTextSecret, error) {
+	args := s.Called(ctx, projName, namespaceName)
 	var ptss []*tenant.PlainTextSecret
 	if args.Get(0) != nil {
 		ptss = args.Get(0).([]*tenant.PlainTextSecret)

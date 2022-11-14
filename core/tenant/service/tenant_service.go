@@ -16,8 +16,8 @@ type NamespaceGetter interface {
 }
 
 type SecretsGetter interface {
-	Get(ctx context.Context, ten tenant.Tenant, name string) (*tenant.PlainTextSecret, error)
-	GetAll(ctx context.Context, ten tenant.Tenant) ([]*tenant.PlainTextSecret, error)
+	Get(ctx context.Context, projName tenant.ProjectName, namespaceName, name string) (*tenant.PlainTextSecret, error)
+	GetAll(ctx context.Context, projName tenant.ProjectName, namespaceName string) ([]*tenant.PlainTextSecret, error)
 }
 
 type TenantService struct {
@@ -36,23 +36,33 @@ func (t TenantService) GetDetails(ctx context.Context, tnnt tenant.Tenant) (*ten
 		return nil, err
 	}
 
-	var namespace *tenant.Namespace
-	if nsName, err := tnnt.NamespaceName(); err == nil {
-		namespace, err = t.namespaceGetter.Get(ctx, tnnt.ProjectName(), nsName)
-		if err != nil {
-			return nil, err
-		}
+	namespace, err := t.namespaceGetter.Get(ctx, tnnt.ProjectName(), tnnt.NamespaceName())
+	if err != nil {
+		return nil, err
 	}
 
 	return tenant.NewTenantDetails(proj, namespace)
 }
 
-func (t TenantService) GetSecrets(ctx context.Context, tnnt tenant.Tenant) ([]*tenant.PlainTextSecret, error) {
-	return t.secretsGetter.GetAll(ctx, tnnt)
+func (t TenantService) GetProject(ctx context.Context, name tenant.ProjectName) (*tenant.Project, error) {
+	if name == "" {
+		return nil, errors.InvalidArgument(tenant.EntityTenant, "invalid project name")
+	}
+	return t.projGetter.Get(ctx, name)
 }
 
-func (t TenantService) GetSecret(ctx context.Context, tnnt tenant.Tenant, name string) (*tenant.PlainTextSecret, error) {
-	return t.secretsGetter.Get(ctx, tnnt, name)
+func (t TenantService) GetSecrets(ctx context.Context, projName tenant.ProjectName, nsName string) ([]*tenant.PlainTextSecret, error) {
+	if projName == "" {
+		return nil, errors.InvalidArgument(tenant.EntityTenant, "invalid project name")
+	}
+	return t.secretsGetter.GetAll(ctx, projName, nsName)
+}
+
+func (t TenantService) GetSecret(ctx context.Context, projName tenant.ProjectName, nsName string, name string) (*tenant.PlainTextSecret, error) {
+	if projName == "" {
+		return nil, errors.InvalidArgument(tenant.EntityTenant, "invalid project name")
+	}
+	return t.secretsGetter.Get(ctx, projName, nsName, name)
 }
 
 func NewTenantService(projGetter ProjectGetter, nsGetter NamespaceGetter, secretsGetter SecretsGetter) *TenantService {
