@@ -598,6 +598,19 @@ type ResourceManager struct {
 	mock.Mock
 }
 
+func (_m *ResourceManager) CreateResource(ctx context.Context, res *resource.Resource) error {
+	ret := _m.Called(ctx, res)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *resource.Resource) error); ok {
+		r0 = rf(ctx, res)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 func (_m *ResourceManager) Deploy(ctx context.Context, store resource.Store, resources []*resource.Resource) error {
 	ret := _m.Called(ctx, store, resources)
 
@@ -611,17 +624,24 @@ func (_m *ResourceManager) Deploy(ctx context.Context, store resource.Store, res
 	return r0
 }
 
-func (_m *ResourceManager) CreateResource(ctx context.Context, res *resource.Resource) error {
+func (_m *ResourceManager) Exist(ctx context.Context, res *resource.Resource) (bool, error) {
 	ret := _m.Called(ctx, res)
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *resource.Resource) error); ok {
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(context.Context, *resource.Resource) bool); ok {
 		r0 = rf(ctx, res)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(bool)
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *resource.Resource) error); ok {
+		r1 = rf(ctx, res)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 func (_m *ResourceManager) UpdateResource(ctx context.Context, res *resource.Resource) error {
