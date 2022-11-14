@@ -36,54 +36,43 @@ func (i BackupID) UUID() uuid.UUID {
 }
 
 type BackupConfiguration struct {
-	ResourceName Name
+	ResourceNames []Name
 
-	Description                 string
-	AllowedDownstreamNamespaces []string // This should be allowed namespaces, default current
-	Config                      map[string]string
+	Description string
+	Config      map[string]string
 }
 
-type BackupInfo struct { // TODO: check if we really need it
-	ResourceURNs     []string
-	IgnoredResources []string
+type IgnoredResource struct {
+	Name   Name
+	Reason string
 }
 
-type TableInfo struct {
-	TableName Name
-	Dataset   Dataset
+type BackupInfo struct {
+	ResourceNames    []Name
+	IgnoredResources []IgnoredResource
 }
 
-func (t TableInfo) URN() string {
-	return t.Dataset.URN() + "." + t.TableName.String()
-}
-
-type TableBackupInfo struct {
-	Source      TableInfo
-	Destination TableInfo
+func (b BackupInfo) ResourceNamesAsString() []string {
+	var names []string
+	for _, name := range b.ResourceNames {
+		names = append(names, name.String())
+	}
+	return names
 }
 
 type BackupDetails struct {
 	ID BackupID
 
-	ResourceName   string
-	Description    string
-	CreatedAt      time.Time
-	Config         map[string]string
-	BackedUpTables []TableBackupInfo
+	ResourceNames []Name
+	Description   string
+	CreatedAt     time.Time
+	Config        map[string]string
 }
 
-func (d *BackupDetails) SourceURNs() []string {
-	var URNs []string
-	for _, backup := range d.BackedUpTables {
-		URNs = append(URNs, backup.Source.URN())
+func (d BackupDetails) ResourceNamesAsString() []string {
+	var names []string
+	for _, name := range d.ResourceNames {
+		names = append(names, name.String())
 	}
-	return URNs
-}
-
-func (d *BackupDetails) DestinationURNs() []string {
-	var URNs []string
-	for _, backup := range d.BackedUpTables {
-		URNs = append(URNs, backup.Destination.URN())
-	}
-	return URNs
+	return names
 }

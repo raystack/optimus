@@ -21,7 +21,7 @@ import (
 func TestResourceHandler(t *testing.T) {
 	logger := log.NewNoop()
 	ctx := context.Background()
-	tnnt, _ := tenant.NewNamespaceTenant("proj", "ns")
+	tnnt, _ := tenant.NewTenant("proj", "ns")
 
 	t.Run("DeployResourceSpecification", func(t *testing.T) {
 		t.Run("returns error when client sends error", func(t *testing.T) {

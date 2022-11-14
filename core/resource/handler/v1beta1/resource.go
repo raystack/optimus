@@ -52,7 +52,7 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 			return err
 		}
 
-		tnnt, err := tenant.NewNamespaceTenant(request.GetProjectName(), request.GetNamespaceName())
+		tnnt, err := tenant.NewTenant(request.GetProjectName(), request.GetNamespaceName())
 		if err != nil {
 			errMsg := fmt.Sprintf("invalid deploy request for %s: %s", request.GetNamespaceName(), err.Error())
 			rh.l.Error(errMsg)
@@ -124,7 +124,7 @@ func (rh ResourceHandler) ListResourceSpecification(ctx context.Context, req *pb
 		return nil, errors.GRPCErr(errors.InvalidArgument(resource.EntityResource, "invalid datastore name"), "invalid list resource request")
 	}
 
-	tnnt, err := tenant.NewNamespaceTenant(req.GetProjectName(), req.GetNamespaceName())
+	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to list resource for "+req.GetDatastoreName())
 	}
@@ -152,7 +152,7 @@ func (rh ResourceHandler) CreateResource(ctx context.Context, req *pb.CreateReso
 	spanCtx, span := rh.tracer.Start(ctx, "CreateResource()")
 	defer span.End()
 
-	tnnt, err := tenant.NewNamespaceTenant(req.GetProjectName(), req.GetNamespaceName())
+	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to create resource")
 	}
@@ -189,7 +189,7 @@ func (rh ResourceHandler) ReadResource(ctx context.Context, req *pb.ReadResource
 		return nil, errors.GRPCErr(err, "invalid read resource request")
 	}
 
-	tnnt, err := tenant.NewNamespaceTenant(req.GetProjectName(), req.GetNamespaceName())
+	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to read resource "+req.GetResourceName())
 	}
@@ -213,7 +213,7 @@ func (rh ResourceHandler) UpdateResource(ctx context.Context, req *pb.UpdateReso
 	spanCtx, span := rh.tracer.Start(ctx, "UpdateResource()")
 	defer span.End()
 
-	tnnt, err := tenant.NewNamespaceTenant(req.GetProjectName(), req.GetNamespaceName())
+	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to update resource")
 	}
