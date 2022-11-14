@@ -59,10 +59,10 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			jobADestination := "resource-A"
+			jobADestination, _ := job.ResourceURNFrom("resource-A")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil)
 
-			jobAUpstreamName := []string{"job-B"}
+			jobAUpstreamName := []job.ResourceURN{"job-B"}
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobAUpstreamName, nil)
 
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreamName)
@@ -102,10 +102,10 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			jobADestination := "resource-A"
+			jobADestination, _ := job.ResourceURNFrom("resource-A")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
 
-			jobAUpstreamName := []string{"job-B"}
+			jobAUpstreamName := []job.ResourceURN{"job-B"}
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobAUpstreamName, nil)
 
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreamName)
@@ -172,14 +172,15 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			jobADestination := "resource-A"
-			jobBDestination := "resource-B"
+			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobBDestination, _ := job.ResourceURNFrom("resource-B")
+			var jobDestination job.ResourceURN
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return(jobBDestination, nil).Once()
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
-			pluginService.On("GenerateDestination", ctx, detailedTenant, specC.Task()).Return("", errors.New("generate destination error")).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specC.Task()).Return(jobDestination, errors.New("generate destination error")).Once()
 
-			jobAUpstreamName := []string{"job-B"}
-			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specB, true).Return(nil, errors.New("generate upstream error"))
+			jobAUpstreamName := []job.ResourceURN{"job-B"}
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specB, true).Return([]job.ResourceURN{}, errors.New("generate upstream error"))
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobAUpstreamName, nil)
 
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreamName)
@@ -222,9 +223,10 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			jobBDestination := "resource-B"
+			var jobADestination job.ResourceURN
+			jobBDestination, _ := job.ResourceURNFrom("resource-B")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return(jobBDestination, nil).Once()
-			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return("", errors.New("generate destination error")).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, errors.New("generate destination error")).Once()
 
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specB, true).Return(nil, errors.New("generate upstream error"))
 
@@ -251,7 +253,8 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return("", service.ErrUpstreamModNotFound).Once()
+			var jobADestination job.ResourceURN
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, service.ErrUpstreamModNotFound).Once()
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(nil, service.ErrUpstreamModNotFound)
 
 			jobA := job.NewJob(sampleTenant, specA, "", nil)
@@ -287,11 +290,12 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			resourceA := "resource-A"
+			resourceA, _ := job.ResourceURNFrom("resource-A")
+			var resourceB job.ResourceURN
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
-			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return("", service.ErrUpstreamModNotFound).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return(resourceB, service.ErrUpstreamModNotFound).Once()
 
-			jobSourcesA := []string{"resource-B"}
+			jobSourcesA := []job.ResourceURN{"resource-B"}
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specB, true).Return(nil, service.ErrUpstreamModNotFound)
 
@@ -333,10 +337,10 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
 
-			resourceA := "resource-A"
+			resourceA, _ := job.ResourceURNFrom("resource-A")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
 
-			jobSourcesA := []string{"resource-B"}
+			jobSourcesA := []job.ResourceURN{"resource-B"}
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
 
 			jobA := job.NewJob(sampleTenant, specA, resourceA, jobSourcesA)
@@ -366,10 +370,10 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			resourceA := "resource-A"
+			resourceA, _ := job.ResourceURNFrom("resource-A")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
 
-			jobSourcesA := []string{"resource-B"}
+			jobSourcesA := []job.ResourceURN{"resource-B"}
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
 
 			jobA := job.NewJob(sampleTenant, specA, resourceA, jobSourcesA)
@@ -459,22 +463,20 @@ type PluginService struct {
 	mock.Mock
 }
 
-// GenerateUpstreams provides a mock function with given fields: ctx, jobTenant, spec, dryRun
-func (_m *PluginService) GenerateUpstreams(ctx context.Context, jobTenant *tenant.WithDetails, spec *job.Spec, dryRun bool) ([]string, error) {
-	ret := _m.Called(ctx, jobTenant, spec, dryRun)
+// GenerateDestination provides a mock function with given fields: _a0, _a1, _a2
+func (_m *PluginService) GenerateDestination(_a0 context.Context, _a1 *tenant.WithDetails, _a2 *job.Task) (job.ResourceURN, error) {
+	ret := _m.Called(_a0, _a1, _a2)
 
-	var r0 []string
-	if rf, ok := ret.Get(0).(func(context.Context, *tenant.WithDetails, *job.Spec, bool) []string); ok {
-		r0 = rf(ctx, jobTenant, spec, dryRun)
+	var r0 job.ResourceURN
+	if rf, ok := ret.Get(0).(func(context.Context, *tenant.WithDetails, *job.Task) job.ResourceURN); ok {
+		r0 = rf(_a0, _a1, _a2)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]string)
-		}
+		r0 = ret.Get(0).(job.ResourceURN)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *tenant.WithDetails, *job.Spec, bool) error); ok {
-		r1 = rf(ctx, jobTenant, spec, dryRun)
+	if rf, ok := ret.Get(1).(func(context.Context, *tenant.WithDetails, *job.Task) error); ok {
+		r1 = rf(_a0, _a1, _a2)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -482,20 +484,22 @@ func (_m *PluginService) GenerateUpstreams(ctx context.Context, jobTenant *tenan
 	return r0, r1
 }
 
-// GenerateDestination provides a mock function with given fields: _a0, _a1, _a2
-func (_m *PluginService) GenerateDestination(_a0 context.Context, _a1 *tenant.WithDetails, _a2 *job.Task) (string, error) {
-	ret := _m.Called(_a0, _a1, _a2)
+// GenerateUpstreams provides a mock function with given fields: ctx, jobTenant, spec, dryRun
+func (_m *PluginService) GenerateUpstreams(ctx context.Context, jobTenant *tenant.WithDetails, spec *job.Spec, dryRun bool) ([]job.ResourceURN, error) {
+	ret := _m.Called(ctx, jobTenant, spec, dryRun)
 
-	var r0 string
-	if rf, ok := ret.Get(0).(func(context.Context, *tenant.WithDetails, *job.Task) string); ok {
-		r0 = rf(_a0, _a1, _a2)
+	var r0 []job.ResourceURN
+	if rf, ok := ret.Get(0).(func(context.Context, *tenant.WithDetails, *job.Spec, bool) []job.ResourceURN); ok {
+		r0 = rf(ctx, jobTenant, spec, dryRun)
 	} else {
-		r0 = ret.Get(0).(string)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]job.ResourceURN)
+		}
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *tenant.WithDetails, *job.Task) error); ok {
-		r1 = rf(_a0, _a1, _a2)
+	if rf, ok := ret.Get(1).(func(context.Context, *tenant.WithDetails, *job.Spec, bool) error); ok {
+		r1 = rf(ctx, jobTenant, spec, dryRun)
 	} else {
 		r1 = ret.Error(1)
 	}

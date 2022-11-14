@@ -158,7 +158,7 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 
 	sources := make([]string, len(jobEntity.Sources()))
 	for i, source := range jobEntity.Sources() {
-		sources[i] = source
+		sources[i] = source.String()
 	}
 
 	return &Spec{
@@ -191,7 +191,7 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		StaticUpstreams: staticUpstreams,
 		HTTPUpstreams:   httpUpstreamsInBytes,
 
-		Destination: jobEntity.Destination(),
+		Destination: jobEntity.Destination().String(),
 		Sources:     sources,
 
 		ProjectName:   jobEntity.Tenant().ProjectName().String(),

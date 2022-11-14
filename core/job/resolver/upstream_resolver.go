@@ -68,7 +68,9 @@ func (u UpstreamResolver) getJobsWithAllUpstreams(ctx context.Context, jobs []*j
 
 		// include unresolved upstreams
 		for _, upstream := range unresolvedUpstreams {
-			allUpstreams = append(allUpstreams, job.NewUpstreamUnresolved(upstream.JobName, upstream.ResourceURN, upstream.ProjectName))
+			// allow empty resourceURN
+			resourceURN, _ := job.ResourceURNFrom(upstream.ResourceURN)
+			allUpstreams = append(allUpstreams, job.NewUpstreamUnresolved(upstream.JobName, resourceURN, upstream.ProjectName))
 		}
 
 		jobWithAllUpstreams := job.NewWithUpstream(jobEntity, allUpstreams)
@@ -93,7 +95,7 @@ func (u UpstreamResolver) identifyUnresolvedInferredUpstreams(resolvedUpstreams 
 	for _, source := range jobEntity.Sources() {
 		if !resolvedUpstreamDestinationMap[source] {
 			unresolvedInferredUpstreams = append(unresolvedInferredUpstreams, &dto.RawUpstream{
-				ResourceURN: source,
+				ResourceURN: source.String(),
 			})
 		}
 	}

@@ -207,7 +207,11 @@ func (JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstr
 			me.Append(err)
 			continue
 		}
-		upstream, err := job.NewUpstreamResolved(storeUpstream.UpstreamJobName, "", storeUpstream.UpstreamResourceURN, upstreamTenant, storeUpstream.UpstreamType)
+		resourceURN, err := job.ResourceURNFrom(storeUpstream.UpstreamResourceURN)
+		if err != nil {
+			me.Append(err)
+		}
+		upstream, err := job.NewUpstreamResolved(storeUpstream.UpstreamJobName, "", resourceURN, upstreamTenant, storeUpstream.UpstreamType)
 		if err != nil {
 			me.Append(err)
 			continue
@@ -322,7 +326,7 @@ func toJobUpstream(jobWithUpstream *job.WithUpstream) []*JobWithUpstream {
 			JobName:               jobWithUpstream.Name().String(),
 			ProjectName:           jobWithUpstream.Job().ProjectName().String(),
 			UpstreamJobName:       upstream.Name(),
-			UpstreamResourceURN:   upstream.Resource(),
+			UpstreamResourceURN:   upstream.Resource().String(),
 			UpstreamProjectName:   upstreamProjectName,
 			UpstreamNamespaceName: upstreamNamespaceName,
 			UpstreamHost:          upstream.Host(),

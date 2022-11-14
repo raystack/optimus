@@ -23,8 +23,8 @@ func NewJobService(repo JobRepository, pluginService PluginService, upstreamReso
 }
 
 type PluginService interface {
-	GenerateDestination(context.Context, *tenant.WithDetails, *job.Task) (string, error)
-	GenerateUpstreams(ctx context.Context, jobTenant *tenant.WithDetails, spec *job.Spec, dryRun bool) ([]string, error)
+	GenerateDestination(context.Context, *tenant.WithDetails, *job.Task) (job.ResourceURN, error)
+	GenerateUpstreams(ctx context.Context, jobTenant *tenant.WithDetails, spec *job.Spec, dryRun bool) ([]job.ResourceURN, error)
 }
 
 type TenantDetailsGetter interface {

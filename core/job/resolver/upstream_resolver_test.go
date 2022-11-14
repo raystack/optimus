@@ -50,8 +50,8 @@ func TestUpstreamResolver(t *testing.T) {
 			assert.NoError(t, err)
 			upstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.Name{upstreamName}).Build()
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
-			jobADestination := "resource-A"
-			jobAUpstreams := []string{"resource-B"}
+			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobAUpstreams := []job.ResourceURN{"resource-B"}
 
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
@@ -82,8 +82,8 @@ func TestUpstreamResolver(t *testing.T) {
 			assert.NoError(t, err)
 			upstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.Name{upstreamName}).Build()
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
-			jobADestination := "resource-A"
-			jobAUpstreams := []string{"resource-B", "resource-D"}
+			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobAUpstreams := []job.ResourceURN{"resource-B", "resource-D"}
 
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
@@ -113,8 +113,8 @@ func TestUpstreamResolver(t *testing.T) {
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
-			jobADestination := "resource-A"
-			jobAUpstreams := []string{"resource-B"}
+			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobAUpstreams := []job.ResourceURN{"resource-B"}
 
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
@@ -134,8 +134,8 @@ func TestUpstreamResolver(t *testing.T) {
 			assert.NoError(t, err)
 			upstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.Name{upstreamName}).Build()
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
-			jobADestination := "resource-A"
-			jobAUpstreams := []string{"resource-B", "resource-D"}
+			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobAUpstreams := []job.ResourceURN{"resource-B", "resource-D"}
 
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
@@ -175,8 +175,8 @@ func TestUpstreamResolver(t *testing.T) {
 			assert.NoError(t, err)
 			upstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.Name{upstreamName}).Build()
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
-			jobADestination := "resource-A"
-			jobAUpstreams := []string{"resource-B", "resource-D"}
+			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobAUpstreams := []job.ResourceURN{"resource-B", "resource-D"}
 
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
@@ -209,8 +209,8 @@ func TestUpstreamResolver(t *testing.T) {
 			assert.NoError(t, err)
 			upstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.Name{upstreamName}).Build()
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
-			jobADestination := "resource-A"
-			jobAUpstreams := []string{"resource-B", "resource-D"}
+			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobAUpstreams := []job.ResourceURN{"resource-B", "resource-D"}
 
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}

@@ -69,7 +69,7 @@ func TestPluginService(t *testing.T) {
 			secretsGetter.On("GetAll", ctx, tenantDetails.ToTenant()).Return([]*tenant.PlainTextSecret{secret1, secret2}, nil)
 
 			destination := "project.dataset.table"
-			destinationURN := "bigquery://project.dataset.table"
+			destinationURN, _ := job.ResourceURNFrom("bigquery://project.dataset.table")
 			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&models.GenerateDestinationResponse{
 				Destination: destination,
 				Type:        models.DestinationTypeBigquery,
@@ -105,17 +105,17 @@ func TestPluginService(t *testing.T) {
 				Type:        models.DestinationTypeBigquery,
 			}, nil)
 
-			jobSource := "project.dataset.table_upstream"
+			jobSource, _ := job.ResourceURNFrom("project.dataset.table_upstream")
 			depMod.On("GenerateDependencies", ctx, mock.Anything).Return(&models.GenerateDependenciesResponse{
-				Dependencies: []string{jobSource}},
+				Dependencies: []string{jobSource.String()}},
 				nil)
 
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
 
 			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
-			result, err := pluginService.GenerateUpstreamNames(ctx, tenantDetails, specA, false)
+			result, err := pluginService.GenerateUpstreams(ctx, tenantDetails, specA, false)
 			assert.Nil(t, err)
-			assert.Equal(t, []string{jobSource}, result)
+			assert.Equal(t, []job.ResourceURN{jobSource}, result)
 		})
 	})
 }
