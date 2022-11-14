@@ -2,30 +2,51 @@ package airflow
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"path"
+	"path/filepath"
 	"strings"
+
+	"github.com/kushsharma/parallel"
+	"gocloud.dev/blob"
+	"gocloud.dev/gcerrors"
 
 	"github.com/odpf/optimus/core/job_run"
 	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/lib/cron"
 )
 
+//go:embed __lib.py
+var SharedLib []byte
+
 const (
+	EntityAirflow = "Airflow"
+
 	dagStatusBatchURL = "api/v1/dags/~/dagRuns/list"
 	airflowDateFormat = "2006-01-02T15:04:05+00:00"
 
 	schedulerHostKey = "SCHEDULER_HOST"
 	schedulerAuthKey = "SCHEDULER_AUTH"
+
+	baseLibFileName = "__lib.py"
+	jobsDir         = "dags"
+	jobsExtension   = ".py"
+
+	concurrentTicketPerSec = 40
+	concurrentLimit        = 600
 )
 
 type Bucket interface {
-	//WriteAll(ctx context.Context, key string, p []byte, opts *blob.WriterOptions) error
+	WriteAll(ctx context.Context, key string, p []byte, opts *blob.WriterOptions) error
 	//ReadAll(ctx context.Context, key string) ([]byte, error)
-	//List(opts *blob.ListOptions) *blob.ListIterator
-	//Delete(ctx context.Context, key string) error
-	//Close() error
+	List(opts *blob.ListOptions) *blob.ListIterator
+	Delete(ctx context.Context, key string) error
+	Close() error
 }
 
 type BucketFactory interface {
@@ -33,7 +54,7 @@ type BucketFactory interface {
 }
 
 type DagCompiler interface {
-	Compile(job *job_run.Job) ([]byte, error)
+	Compile(job *job_run.JobWithDetails) ([]byte, error)
 }
 
 type Client interface {
@@ -55,6 +76,146 @@ type Scheduler struct {
 
 	projectGetter ProjectGetter
 	secretGetter  SecretGetter
+}
+
+func (s *Scheduler) DeployJobs(ctx context.Context, tenant tenant.Tenant, jobs []*job_run.JobWithDetails) error {
+	spanCtx, span := startChildSpan(ctx, "DeployJobs")
+	defer span.End()
+
+	bucket, err := s.bucketFac.New(spanCtx, tenant)
+	if err != nil {
+		return err
+	}
+	defer bucket.Close()
+
+	bucket.WriteAll(spanCtx, filepath.Join(jobsDir, baseLibFileName), SharedLib, nil)
+
+	multiError := errors.NewMultiError("ErrorsInDeployJobs")
+	runner := parallel.NewRunner(parallel.WithTicket(concurrentTicketPerSec), parallel.WithLimit(concurrentLimit))
+	for _, job := range jobs {
+		runner.Add(func(currentJob *job_run.JobWithDetails) func() (interface{}, error) {
+			return func() (interface{}, error) {
+				return s.compileAndUpload(ctx, currentJob, bucket), nil
+			}
+		}(job))
+	}
+
+	for _, result := range runner.Run() {
+		multiError.Append(result.Err)
+	}
+	return errors.MultiToError(multiError)
+}
+
+// TODO list jobs should not refer from the scheduler, rather should list from db and it has nothing to do with scheduler.
+func (s *Scheduler) ListJobs(ctx context.Context, t tenant.Tenant) ([]string, error) {
+	spanCtx, span := startChildSpan(ctx, "ListJobs")
+	defer span.End()
+
+	bucket, err := s.bucketFac.New(spanCtx, t)
+	if err != nil {
+		return nil, err
+	}
+	defer bucket.Close()
+
+	var jobNames []string
+	// get all items under namespace directory
+	it := bucket.List(&blob.ListOptions{
+		Prefix: pathForJobDirectory(jobsDir, t.NamespaceName().String()),
+	})
+	for {
+		obj, err := it.Next(spanCtx)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return nil, err
+		}
+		if strings.HasSuffix(obj.Key, jobsExtension) {
+			jobNames = append(jobNames, jobNameFromPath(obj.Key, jobsExtension))
+		}
+	}
+	return jobNames, nil
+}
+
+func (s *Scheduler) DeleteJobs(ctx context.Context, t tenant.Tenant, jobNames []string) error {
+	spanCtx, span := startChildSpan(ctx, "DeleteJobs")
+	defer span.End()
+
+	bucket, err := s.bucketFac.New(spanCtx, t)
+	if err != nil {
+		return err
+	}
+	multiError := errors.NewMultiError("ErrorsInDeleteJobs")
+	for _, jobName := range jobNames {
+		if strings.TrimSpace(jobName) == "" {
+			multiError.Append(errors.InvalidArgument(EntityAirflow, "job name cannot be an empty string"))
+			continue
+		}
+		blobKey := pathFromJobName(jobsDir, t.NamespaceName().String(), jobName, jobsExtension)
+		if err := bucket.Delete(spanCtx, blobKey); err != nil {
+			// ignore missing files
+			if gcerrors.Code(err) != gcerrors.NotFound {
+				multiError.Append(err)
+			}
+		}
+	}
+	err = deleteDirectoryIfEmpty(ctx, t.NamespaceName().String(), bucket)
+	if err != nil {
+		if gcerrors.Code(err) != gcerrors.NotFound {
+			multiError.Append(err)
+		}
+	}
+	return errors.MultiToError(multiError)
+}
+
+// deleteDirectoryIfEmpty remove jobs Folder if it exists
+func deleteDirectoryIfEmpty(ctx context.Context, nsDirectoryIdentifier string, bucket Bucket) error {
+	spanCtx, span := startChildSpan(ctx, "deleteDirectoryIfEmpty")
+	span.End()
+
+	jobsDir := pathForJobDirectory(jobsDir, nsDirectoryIdentifier)
+
+	it := bucket.List(&blob.ListOptions{
+		Prefix: jobsDir,
+	})
+	_, err := it.Next(spanCtx)
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return bucket.Delete(ctx, jobsDir)
+		}
+	}
+	return nil
+}
+
+func (s *Scheduler) compileAndUpload(ctx context.Context, job *job_run.JobWithDetails, bucket Bucket) interface{} {
+	compiledJob, err := s.compiler.Compile(job)
+	if err != nil {
+		return errors.AddErrContext(err, EntityAirflow, "error for job: "+job.Name.String())
+
+	}
+	namespaceName := job.Job.Tenant.NamespaceName().String()
+	blobKey := pathFromJobName(jobsDir, namespaceName, job.Name.String(), jobsExtension)
+	if err := bucket.WriteAll(ctx, blobKey, compiledJob, nil); err != nil {
+		return errors.AddErrContext(err, EntityAirflow, "error for job: "+job.Name.String())
+	}
+	return nil
+}
+
+func pathFromJobName(prefix, namespace, jobName, suffix string) string {
+	if len(prefix) > 0 && prefix[0] == '/' {
+		prefix = prefix[1:]
+	}
+	return fmt.Sprintf("%s%s", path.Join(prefix, namespace, jobName), suffix)
+}
+func pathForJobDirectory(prefix, namespace string) string {
+	if len(prefix) > 0 && prefix[0] == '/' {
+		prefix = prefix[1:]
+	}
+	return path.Join(prefix, namespace)
+}
+func jobNameFromPath(filePath, suffix string) string {
+	jobFileName := path.Base(filePath)
+	return strings.TrimSuffix(jobFileName, suffix)
 }
 
 func (s *Scheduler) GetJobRuns(ctx context.Context, tnnt tenant.Tenant, jobQuery *job_run.JobRunsCriteria, jobCron *cron.ScheduleSpec) ([]*job_run.JobRunStatus, error) {

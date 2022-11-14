@@ -85,7 +85,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 
 		dagSpec := []*job_run.JobWithDetails{s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11}
 		assigner := resolver.NewPriorityResolver()
-		err := assigner.Resolve(ctx, dagSpec, nil)
+		err := assigner.Resolve(ctx, dagSpec)
 		assert.Nil(t, err)
 
 		max := resolver.MaxPriorityWeight
@@ -139,7 +139,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 			dagSpec := []*job_run.JobWithDetails{s1, s11, s12, s111, s112, s121, s122, s2, s21, s22, s211, s212, s221, s222}
 
 			assigner := resolver.NewPriorityResolver()
-			err := assigner.Resolve(ctx, dagSpec, nil)
+			err := assigner.Resolve(ctx, dagSpec)
 			assert.Nil(t, err)
 
 			max := resolver.MaxPriorityWeight
@@ -170,7 +170,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		s5 := getJobWithUpstream(spec5, spec1)
 		dagSpec := []*job_run.JobWithDetails{s1, s2, s3, s4, s5}
 		assigner := resolver.NewPriorityResolver()
-		err := assigner.Resolve(ctx, dagSpec, nil)
+		err := assigner.Resolve(ctx, dagSpec)
 		assert.Nil(t, err)
 
 		max := resolver.MaxPriorityWeight
@@ -231,7 +231,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 	//	jobSpecs = append(jobSpecs, job_run.JobWithDetails{Name: jobnameWithExternalDep, Upstreams: jobnameWithExternalDepDependencies})
 	//
 	//	assigner := resolver.NewPriorityResolver()
-	//	err := assigner.Resolve(ctx, jobSpecs, nil)
+	//	err := assigner.Resolve(ctx, jobSpecs)
 	//	assert.Nil(t, err)
 	//
 	//	max := resolver.MaxPriorityWeight
@@ -259,7 +259,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		dagSpec := []*job_run.JobWithDetails{s1, s2, s3}
 
 		assigner := resolver.NewPriorityResolver()
-		err := assigner.Resolve(ctx, dagSpec, nil)
+		err := assigner.Resolve(ctx, dagSpec)
 		assert.Contains(t, err.Error(), "error occurred while resolving priority:")
 		assert.Contains(t, err.Error(), tree.ErrCyclicDependencyEncountered.Error())
 	})
@@ -274,7 +274,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		dagSpec := []*job_run.JobWithDetails{s2, s3}
 
 		assigner := resolver.NewPriorityResolver()
-		err := assigner.Resolve(ctx, dagSpec, nil)
+		err := assigner.Resolve(ctx, dagSpec)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), tree.ErrCyclicDependencyEncountered.Error())
 	})
@@ -288,7 +288,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		dagSpec := []*job_run.JobWithDetails{s1, s2}
 
 		assigner := resolver.NewPriorityResolver()
-		err := assigner.Resolve(ctx, dagSpec, nil)
+		err := assigner.Resolve(ctx, dagSpec)
 		assert.Nil(t, err)
 
 		max := resolver.MaxPriorityWeight
@@ -304,7 +304,7 @@ func TestPriorityWeightResolver(t *testing.T) {
 		dagSpec := []*job_run.JobWithDetails{s1}
 
 		assigner := resolver.NewPriorityResolver()
-		err := assigner.Resolve(ctx, dagSpec, nil)
+		err := assigner.Resolve(ctx, dagSpec)
 		assert.Nil(t, err)
 
 		for _, jobSpec := range dagSpec {

@@ -26,7 +26,7 @@ type Compiler struct {
 	pluginRepo PluginRepo
 }
 
-func (c *Compiler) Compile(jobDetails *job_run.JobWithDetails, priority int) ([]byte, error) {
+func (c *Compiler) Compile(jobDetails *job_run.JobWithDetails) ([]byte, error) {
 	task, err := PrepareTask(jobDetails.Job, c.pluginRepo)
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func (c *Compiler) Compile(jobDetails *job_run.JobWithDetails, priority int) ([]
 		Task:            task,
 		Hooks:           hooks,
 		RuntimeConfig:   runtimeConfig,
-		Priority:        priority,
+		Priority:        jobDetails.Priority,
 		Upstreams:       upstreams,
 	}
 

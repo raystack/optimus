@@ -48,6 +48,21 @@ func InternalError(entity string, msg string, err error) *DomainError {
 	}
 }
 
+func AddErrContext(err error, entity string, msg string) *DomainError {
+	errType := ErrInternalError
+	var de *DomainError
+	if errors.As(err, &de) {
+		errType = de.ErrorType
+	}
+
+	return &DomainError{
+		ErrorType:  errType,
+		Entity:     entity,
+		Message:    msg,
+		WrappedErr: err,
+	}
+}
+
 func InvalidArgument(entity string, msg string) *DomainError {
 	return &DomainError{
 		ErrorType:  ErrInvalidArgument,

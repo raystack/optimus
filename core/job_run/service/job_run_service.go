@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/odpf/salt/log"
 
 	"github.com/odpf/optimus/core/job_run"
 	"github.com/odpf/optimus/core/tenant"
-	scheduler "github.com/odpf/optimus/ext/scheduler/airflow"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/lib/cron"
 	"github.com/odpf/optimus/models"
@@ -37,21 +37,78 @@ type JobInputCompiler interface {
 	Compile(ctx context.Context, job *job_run.Job, config job_run.RunConfig, executedAt time.Time) (*job_run.ExecutorInput, error)
 }
 
+type PriorityResolver interface {
+	Resolve(context.Context, []*job_run.JobWithDetails) error
+}
+
+type Scheduler interface {
+	GetJobRuns(ctx context.Context, t tenant.Tenant, criteria *job_run.JobRunsCriteria, jobCron *cron.ScheduleSpec) ([]*job_run.JobRunStatus, error)
+	DeployJobs(ctx context.Context, t tenant.Tenant, jobs []*job_run.JobWithDetails) error
+	ListJobs(ctx context.Context, t tenant.Tenant) ([]string, error)
+	DeleteJobs(ctx context.Context, t tenant.Tenant, jobsToDelete []string) error
+}
+
 type JobRunService struct {
-	repo      JobRunRepository
-	scheduler scheduler.Scheduler // TODO: define interface for it
-	jobRepo   JobRepository
-	compiler  JobInputCompiler
+	l                log.Logger
+	repo             JobRunRepository
+	scheduler        Scheduler
+	jobRepo          JobRepository
+	priorityResolver PriorityResolver
+	compiler         JobInputCompiler
 }
 
 func (s JobRunService) UploadToScheduler(ctx context.Context, projectName tenant.ProjectName, namespaceName string) error {
 	allJobsWithDetails, err := s.jobRepo.GetAll(ctx, projectName)
+	//todo: confirm if we need namespace level deployments ?
+	if err != nil {
+		return err
+	}
+	// todo: pass logwriter in place of progress observer
+	err = s.priorityResolver.Resolve(ctx, allJobsWithDetails)
 	if err != nil {
 		return err
 	}
 
-	//todo: compile and upload all jobs with details
-	return nil
+	jobGroupByTenant := job_run.GroupJobsByTenant(allJobsWithDetails)
+	multiError := errors.NewMultiError("ErrorInUploadToScheduler")
+	for t, jobs := range jobGroupByTenant {
+		if err := s.deployJobsPerNamespace(ctx, t, jobs); err != nil {
+			multiError.Append(err)
+		}
+		s.l.Debug(fmt.Sprintf("namespace %s deployed", namespaceName), "project name", projectName)
+	}
+
+	return errors.MultiToError(multiError)
+}
+
+func (s JobRunService) deployJobsPerNamespace(ctx context.Context, t tenant.Tenant, jobs []*job_run.JobWithDetails) error {
+
+	err := s.scheduler.DeployJobs(ctx, t, jobs)
+	if err != nil {
+		return err
+	}
+	return s.cleanPerNamespace(ctx, t, jobs)
+}
+
+func (s JobRunService) cleanPerNamespace(ctx context.Context, t tenant.Tenant, jobs []*job_run.JobWithDetails) error {
+
+	// get all stored job names
+	schedulerJobNames, err := s.scheduler.ListJobs(ctx, t)
+	if err != nil {
+		return err
+	}
+	jobNamesMap := make(map[string]struct{})
+	for _, job := range jobs {
+		jobNamesMap[job.Name.String()] = struct{}{}
+	}
+	var jobsToDelete []string
+
+	for _, schedulerJobName := range schedulerJobNames {
+		if _, ok := jobNamesMap[schedulerJobName]; !ok {
+			jobsToDelete = append(jobsToDelete, schedulerJobName)
+		}
+	}
+	return s.scheduler.DeleteJobs(ctx, t, jobsToDelete)
 }
 
 func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName, config job_run.RunConfig) (*job_run.ExecutorInput, error) {

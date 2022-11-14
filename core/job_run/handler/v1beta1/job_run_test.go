@@ -174,13 +174,21 @@ func (m *mockJobRunService) JobRunInput(ctx context.Context, projectName tenant.
 }
 
 func (m *mockJobRunService) UpdateJobState(ctx context.Context, event job_run.Event) error {
-	//TODO implement me
-	panic("implement me")
+	args := m.Called(ctx, event)
+	return args.Error(0)
+}
+
+func (m *mockJobRunService) UploadToScheduler(ctx context.Context, projectName tenant.ProjectName, namespaceName string) error {
+	args := m.Called(ctx, projectName, namespaceName)
+	return args.Error(0)
 }
 
 func (m *mockJobRunService) GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName, criteria *job_run.JobRunsCriteria) ([]*job_run.JobRunStatus, error) {
-	//TODO implement me
-	panic("implement me")
+	args := m.Called(ctx, projectName, jobName, criteria)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*job_run.JobRunStatus), args.Error(1)
 }
 
 type mockNotifier struct {

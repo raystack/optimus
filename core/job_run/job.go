@@ -81,6 +81,15 @@ func (j JobWithDetails) GetName() string {
 	return j.Name.String()
 }
 
+func GroupJobsByTenant(j []*JobWithDetails) map[tenant.Tenant][]*JobWithDetails {
+	jobsGroup := make(map[tenant.Tenant][]*JobWithDetails)
+	for _, job := range j {
+		tnnt := job.Job.Tenant
+		jobsGroup[tnnt] = append(jobsGroup[tnnt], job)
+	}
+	return jobsGroup
+}
+
 func (j JobWithDetails) SLADuration() (int64, error) {
 	for _, notify := range j.Alerts {
 		if notify.On == EventCategorySLAMiss {

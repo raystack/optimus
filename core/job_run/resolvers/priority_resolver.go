@@ -8,7 +8,6 @@ import (
 	"github.com/odpf/optimus/core/job_run"
 	"github.com/odpf/optimus/internal/lib/progress"
 	"github.com/odpf/optimus/internal/lib/tree"
-	"github.com/odpf/optimus/models"
 )
 
 const (
@@ -25,21 +24,11 @@ const (
 )
 
 var (
-	// ErrjobWithDetailsNotFound is thrown when a Job was not found while looking up
-	ErrjobWithDetailsNotFound = errors.New("job spec not found")
-
 	// ErrPriorityNotFound is thrown when priority of a given spec is not found
 	ErrPriorityNotFound = errors.New("priority weight not found")
 )
 
-// PriorityResolver defines an interface that represents getting
-// priority weight of Jobs based on their dependencies
-// TODO: Simplify later after the restructure,
-type PriorityResolver interface {
-	Resolve(context.Context, []*job_run.JobWithDetails, progress.Observer) error
-}
-
-// priorityResolver runs a breadth first traversal on DAG/Job dependencies trees
+// PriorityResolver runs a breadth first traversal on DAG/Job dependencies trees
 // and returns highest weight for the DAG that do not have any dependencies, dynamically.
 // eg, consider following DAGs and dependencies: [dag1 <- dag2 <- dag3] [dag4] [dag5 <- dag6]
 // In this example, we've 6 DAGs in which dag1, dag2, dag5 have dependent DAGs. which means,
@@ -48,27 +37,25 @@ type PriorityResolver interface {
 // dag2, dag6 will get weight of maxWeight-1
 // dag3 will get maxWeight-2
 // Note: it's crucial that dependencies of all Jobs are already resolved
-type priorityResolver struct{}
+type PriorityResolver struct{}
 
-// NewPriorityResolver create an instance of priorityResolver
-func NewPriorityResolver() *priorityResolver {
-	return &priorityResolver{}
+// NewPriorityResolver create an instance of PriorityResolver
+func NewPriorityResolver() *PriorityResolver {
+	return &PriorityResolver{}
 }
 
 // Resolve takes jobsWithDetails and returns them with resolved priorities
-func (a *priorityResolver) Resolve(_ context.Context, jobWithDetails []*job_run.JobWithDetails,
-	progressObserver progress.Observer) error {
-	if err := a.resolvePriorities(jobWithDetails, progressObserver); err != nil {
+func (a *PriorityResolver) Resolve(_ context.Context, jobWithDetails []*job_run.JobWithDetails) error {
+	if err := a.resolvePriorities(jobWithDetails); err != nil {
 		return fmt.Errorf("error occurred while resolving priority: %w", err)
 	}
-	notify(progressObserver, &models.ProgressJobPriorityWeightAssign{})
 	return nil
 }
 
 // resolvePriorities resolves priorities of all provided jobs
-func (a *priorityResolver) resolvePriorities(jobsWithDetails []*job_run.JobWithDetails, progressObserver progress.Observer) error {
+func (a *PriorityResolver) resolvePriorities(jobsWithDetails []*job_run.JobWithDetails) error {
 	// build a multi-root tree from all jobs based on their dependencies
-	multiRootTree, err := a.buildMultiRootDependencyTree(jobsWithDetails, progressObserver)
+	multiRootTree, err := a.buildMultiRootDependencyTree(jobsWithDetails)
 	if err != nil {
 		return err
 	}
@@ -90,7 +77,7 @@ func (a *priorityResolver) resolvePriorities(jobsWithDetails []*job_run.JobWithD
 	return nil
 }
 
-func (a *priorityResolver) assignWeight(rootNodes []*tree.TreeNode, weight int, taskPriorityMap map[string]int) {
+func (a *PriorityResolver) assignWeight(rootNodes []*tree.TreeNode, weight int, taskPriorityMap map[string]int) {
 	subChildren := []*tree.TreeNode{}
 	for _, rootNode := range rootNodes {
 		taskPriorityMap[rootNode.GetName()] = weight
@@ -103,7 +90,7 @@ func (a *priorityResolver) assignWeight(rootNodes []*tree.TreeNode, weight int, 
 
 // buildMultiRootDependencyTree - converts []jobWithDetails into a MultiRootTree
 // based on the dependencies of each DAG.
-func (a *priorityResolver) buildMultiRootDependencyTree(jobsWithDetails []*job_run.JobWithDetails, progressObserver progress.Observer) (*tree.MultiRootTree, error) {
+func (a *PriorityResolver) buildMultiRootDependencyTree(jobsWithDetails []*job_run.JobWithDetails) (*tree.MultiRootTree, error) {
 	// creates map[jobName]jobWithDetails for faster retrieval
 	jobWithDetailsMap := make(map[string]*job_run.JobWithDetails)
 	for _, dagSpec := range jobsWithDetails {
@@ -119,13 +106,6 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobsWithDetails []*job_r
 			missingParent := false
 			parentSpec, ok := jobWithDetailsMap[upstream.JobName]
 			if !ok {
-				//if upstream.Type == models.jobWithDetailsDependencyTypeIntra {
-				//	// if its intra dependency, ideally this should not happen but instead of failing
-				//	// its better to simply soft fail by notifying about this action
-				//	// this will cause us to treat it as a dummy job with a unique root
-				//	notify(progressObserver, &job_run.ProgressJobPriorityWeightAssignmentFailed{Err: fmt.Errorf("%s: %w", depDAG.Job.Name, ErrjobWithDetailsNotFound)})
-				//} TODO : why is this needed
-
 				// when the dependency of a jobWithDetails belong to some other tenant or is external, the jobWithDetails won't
 				// be available in jobsWithDetails []job_run.jobWithDetails object (which is tenant specific)
 				// so we'll add a dummy jobWithDetails for that cross tenant/external dependency.
@@ -157,7 +137,7 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobsWithDetails []*job_r
 	return multiRootTree, nil
 }
 
-func (*priorityResolver) findOrCreateDAGNode(dagTree *tree.MultiRootTree, jobDetails *job_run.JobWithDetails) *tree.TreeNode {
+func (*PriorityResolver) findOrCreateDAGNode(dagTree *tree.MultiRootTree, jobDetails *job_run.JobWithDetails) *tree.TreeNode {
 	node, ok := dagTree.GetNodeByName(jobDetails.Name.String())
 	if !ok {
 		node = tree.NewTreeNode(jobDetails)
