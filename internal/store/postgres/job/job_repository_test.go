@@ -203,7 +203,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB})
 			assert.NoError(t, err)
 
-			expectedUpstream, _ := job.NewUpstreamResolved(jobSpecB.Name().String(), "", jobB.Destination(), tenantDetails.ToTenant(), "inferred")
+			expectedUpstream, _ := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), tenantDetails.ToTenant(), "inferred")
 
 			// TODO: consider using this error
 			upstreams, err := jobRepo.GetJobNameWithInternalUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
@@ -231,7 +231,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB})
 			assert.NoError(t, err)
 
-			expectedUpstream, _ := job.NewUpstreamResolved(jobSpecB.Name().String(), "", jobB.Destination(), tenantDetails.ToTenant(), "static")
+			expectedUpstream, _ := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), tenantDetails.ToTenant(), "static")
 
 			// TODO: consider using this error
 			upstreams, err := jobRepo.GetJobNameWithInternalUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
@@ -262,8 +262,8 @@ func TestPostgresJobRepository(t *testing.T) {
 			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB, jobC})
 			assert.NoError(t, err)
 
-			upstreamB, _ := job.NewUpstreamResolved(jobSpecB.Name().String(), "", jobB.Destination(), tenantDetails.ToTenant(), "static")
-			upstreamC, _ := job.NewUpstreamResolved(jobSpecC.Name().String(), "", jobC.Destination(), tenantDetails.ToTenant(), "inferred")
+			upstreamB, _ := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), tenantDetails.ToTenant(), "static")
+			upstreamC, _ := job.NewUpstreamResolved(jobSpecC.Name(), "", jobC.Destination(), tenantDetails.ToTenant(), "inferred")
 
 			expectedUpstreams := []*job.Upstream{
 				upstreamB,

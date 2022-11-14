@@ -117,6 +117,10 @@ func (o *optimusResourceManager) toOptimusDependency(response jobSpecificationRe
 	} else {
 		dependencyType = "inferred"
 	}
+	jobName, err := job.NameFrom(response.Job.Name)
+	if err != nil {
+		return nil, err
+	}
 	resourceURN, _ := job.ResourceURNFrom(unresolvedDependency.ResourceURN)
-	return job.NewUpstreamResolved(response.Job.Name, o.config.Host, resourceURN, jobTenant, dependencyType)
+	return job.NewUpstreamResolved(jobName, o.config.Host, resourceURN, jobTenant, dependencyType)
 }

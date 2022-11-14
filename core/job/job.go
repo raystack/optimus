@@ -110,8 +110,7 @@ func (w WithUpstream) GetUnresolvedUpstreams() []*Upstream {
 }
 
 type Upstream struct {
-	// TODO: change from string to Name
-	name     string
+	name     Name
 	host     string
 	resource ResourceURN
 	tenant   tenant.Tenant
@@ -119,7 +118,7 @@ type Upstream struct {
 	state    UpstreamState
 }
 
-func NewUpstreamResolved(name string, host string, resource ResourceURN, tnnt tenant.Tenant, typeStr string) (*Upstream, error) {
+func NewUpstreamResolved(name Name, host string, resource ResourceURN, tnnt tenant.Tenant, typeStr string) (*Upstream, error) {
 	upstreamType, err := upstreamTypeFrom(typeStr)
 	if err != nil {
 		return nil, err
@@ -129,7 +128,7 @@ func NewUpstreamResolved(name string, host string, resource ResourceURN, tnnt te
 		_type: upstreamType, state: UpstreamStateResolved}, nil
 }
 
-func NewUpstreamUnresolved(name string, resource ResourceURN, projectName string) *Upstream {
+func NewUpstreamUnresolved(name Name, resource ResourceURN, projectName string) *Upstream {
 	var _type UpstreamType
 	if name != "" {
 		_type = UpstreamTypeStatic
@@ -146,7 +145,7 @@ func NewUpstreamUnresolved(name string, resource ResourceURN, projectName string
 		state: UpstreamStateUnresolved}
 }
 
-func (u Upstream) Name() string {
+func (u Upstream) Name() Name {
 	return u.name
 }
 
@@ -209,7 +208,7 @@ type Upstreams []*Upstream
 func (u Upstreams) ToUpstreamFullNameMap() map[string]bool {
 	fullNameUpstreamMap := make(map[string]bool)
 	for _, upstream := range u {
-		fullName := upstream.tenant.ProjectName().String() + "/" + upstream.name
+		fullName := upstream.tenant.ProjectName().String() + "/" + upstream.name.String()
 		fullNameUpstreamMap[fullName] = true
 	}
 	return fullNameUpstreamMap
