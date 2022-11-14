@@ -23,7 +23,7 @@ func TestJobRunHandler(t *testing.T) {
 	t.Run("JobRunInput", func(t *testing.T) {
 		t.Run("returns error when project name is invalid", func(t *testing.T) {
 			service := new(mockJobRunService)
-			handler := v1beta1.NewJobRunHandler(logger, service)
+			handler := v1beta1.NewJobRunHandler(logger, service, nil)
 
 			inputRequest := pb.JobRunInputRequest{
 				ProjectName:  "",
@@ -41,7 +41,7 @@ func TestJobRunHandler(t *testing.T) {
 		})
 		t.Run("returns error when job name is invalid", func(t *testing.T) {
 			service := new(mockJobRunService)
-			handler := v1beta1.NewJobRunHandler(logger, service)
+			handler := v1beta1.NewJobRunHandler(logger, service, nil)
 
 			inputRequest := pb.JobRunInputRequest{
 				ProjectName:  "proj",
@@ -59,7 +59,7 @@ func TestJobRunHandler(t *testing.T) {
 		})
 		t.Run("returns error when executor is invalid", func(t *testing.T) {
 			service := new(mockJobRunService)
-			handler := v1beta1.NewJobRunHandler(logger, service)
+			handler := v1beta1.NewJobRunHandler(logger, service, nil)
 
 			inputRequest := pb.JobRunInputRequest{
 				ProjectName:  "proj",
@@ -77,7 +77,7 @@ func TestJobRunHandler(t *testing.T) {
 		})
 		t.Run("returns error when scheduled_at is invalid", func(t *testing.T) {
 			service := new(mockJobRunService)
-			handler := v1beta1.NewJobRunHandler(logger, service)
+			handler := v1beta1.NewJobRunHandler(logger, service, nil)
 
 			inputRequest := pb.JobRunInputRequest{
 				ProjectName:  "proj",
@@ -94,7 +94,7 @@ func TestJobRunHandler(t *testing.T) {
 		})
 		t.Run("returns error when run config is invalid", func(t *testing.T) {
 			service := new(mockJobRunService)
-			handler := v1beta1.NewJobRunHandler(logger, service)
+			handler := v1beta1.NewJobRunHandler(logger, service, nil)
 
 			inputRequest := pb.JobRunInputRequest{
 				ProjectName:  "proj",
@@ -116,7 +116,7 @@ func TestJobRunHandler(t *testing.T) {
 				Return(job_run.ExecutorInput{}, errors.New("error in service"))
 			defer service.AssertExpectations(t)
 
-			handler := v1beta1.NewJobRunHandler(logger, service)
+			handler := v1beta1.NewJobRunHandler(logger, service, nil)
 
 			inputRequest := pb.JobRunInputRequest{
 				ProjectName:  "proj",
@@ -142,7 +142,7 @@ func TestJobRunHandler(t *testing.T) {
 				}, nil)
 			defer service.AssertExpectations(t)
 
-			handler := v1beta1.NewJobRunHandler(logger, service)
+			handler := v1beta1.NewJobRunHandler(logger, service, nil)
 
 			inputRequest := pb.JobRunInputRequest{
 				ProjectName:  "proj",
@@ -165,8 +165,29 @@ type mockJobRunService struct {
 	mock.Mock
 }
 
-func (m *mockJobRunService) JobRunInput(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName, config job_run.RunConfig) (job_run.ExecutorInput, error) {
+func (m *mockJobRunService) JobRunInput(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName, config job_run.RunConfig) (*job_run.ExecutorInput, error) {
 	args := m.Called(ctx, projectName, jobName, config)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*job_run.ExecutorInput), args.Error(1)
+}
 
-	return args.Get(0).(job_run.ExecutorInput), args.Error(1)
+func (m *mockJobRunService) UpdateJobState(ctx context.Context, event job_run.Event) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *mockJobRunService) GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName, criteria *job_run.JobRunsCriteria) ([]*job_run.JobRunStatus, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+type mockNotifier struct {
+	mock.Mock
+}
+
+func (m *mockNotifier) Push(ctx context.Context, event job_run.Event) error {
+	//TODO implement me
+	panic("implement me")
 }
