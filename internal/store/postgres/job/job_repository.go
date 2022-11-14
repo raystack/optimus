@@ -2,8 +2,6 @@ package job
 
 import (
 	"context"
-	"fmt"
-
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/job"
@@ -38,7 +36,7 @@ func (j JobRepository) insertJobSpec(ctx context.Context, jobEntity *job.Job) er
 		return err
 	}
 
-	_, err = j.get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name())
+	_, err = j.Get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name())
 	if err == nil {
 		return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, "job already exists")
 	}
@@ -88,7 +86,7 @@ VALUES (
 	return nil
 }
 
-func (j JobRepository) get(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) (Spec, error) {
+func (j JobRepository) Get(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) (Spec, error) {
 	var spec Spec
 
 	getJobByNameAtProject := `SELECT name
@@ -254,7 +252,12 @@ func (j JobRepository) ReplaceUpstreams(ctx context.Context, jobsWithUpstreams [
 	}
 
 	return j.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := j.deleteUpstreams(tx, storageJobUpstreams); err != nil {
+		var jobFullName []string
+		for _, upstream := range storageJobUpstreams {
+			jobFullName = append(jobFullName, upstream.getJobFullName())
+		}
+
+		if err := j.deleteUpstreams(tx, jobFullName); err != nil {
 			return err
 		}
 		return j.insertUpstreams(tx, storageJobUpstreams)
@@ -295,12 +298,12 @@ VALUES (
 	return nil
 }
 
-func (JobRepository) deleteUpstreams(tx *gorm.DB, jobUpstreams []*JobWithUpstream) error {
+func (JobRepository) deleteUpstreams(tx *gorm.DB, jobUpstreams []string) error {
 	var result *gorm.DB
 
 	var jobFullName []string
 	for _, upstream := range jobUpstreams {
-		jobFullName = append(jobFullName, upstream.getJobFullName())
+		jobFullName = append(jobFullName, upstream)
 	}
 
 	deleteForProjectScope := `DELETE
@@ -354,6 +357,7 @@ SELECT
 project_name, job_name
 FROM job_upstream
 WHERE upstream_project_name = ? AND upstream_job_name = ?
+AND upstream_state = 'resolved'
 `
 
 	var projectAndJobNames []ProjectAndJobNames
@@ -378,42 +382,46 @@ WHERE upstream_project_name = ? AND upstream_job_name = ?
 }
 
 func (j JobRepository) Delete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, cleanHistory bool) error {
-	if cleanHistory {
-		return j.hardDelete(ctx, projectName, jobName)
-	}
-	return j.softDelete(ctx, projectName, jobName)
+	return j.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		jobFullName := projectName.String() + "/" + jobName.String()
+		if err := j.deleteUpstreams(tx, []string{jobFullName}); err != nil {
+			return err
+		}
+
+		if cleanHistory {
+			if err := j.hardDelete(tx, projectName, jobName); err != nil {
+				return err
+			}
+		}
+		if err := j.softDelete(tx, projectName, jobName); err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
-func (j JobRepository) softDelete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) error {
+func (j JobRepository) hardDelete(tx *gorm.DB, projectName tenant.ProjectName, jobName job.Name) error {
 	query := `
 DELETE 
 FROM job
-WHERE project_name = ? AND job_name = ?
+WHERE project_name = ? AND name = ?
 `
-	result := j.db.WithContext(ctx).Exec(query, projectName.String(), jobName.String())
+	result := tx.Exec(query, projectName.String(), jobName.String())
 	if result.Error != nil {
-		return errors.Wrap(job.EntityJob, "error during delete of secret", result.Error)
-	}
-
-	if result.RowsAffected == 0 {
-		return errors.NotFound(job.EntityJob, fmt.Sprintf("job %s in project %s failed to be deleted since not found", jobName.String(), projectName.String()))
+		return errors.Wrap(job.EntityJob, "error during delete of job", result.Error)
 	}
 	return nil
 }
 
-func (j JobRepository) hardDelete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) error {
+func (j JobRepository) softDelete(tx *gorm.DB, projectName tenant.ProjectName, jobName job.Name) error {
 	query := `
-DELETE 
-FROM job
-WHERE project_name = ? AND job_name = ?
+UPDATE job
+SET deleted_at = current_timestamp
+WHERE project_name = ? AND name = ?
 `
-	result := j.db.WithContext(ctx).Exec(query, projectName.String(), jobName.String()).Unscoped()
+	result := tx.Exec(query, projectName.String(), jobName.String())
 	if result.Error != nil {
 		return errors.Wrap(job.EntityJob, "error during delete of secret", result.Error)
-	}
-
-	if result.RowsAffected == 0 {
-		return errors.NotFound(job.EntityJob, fmt.Sprintf("job %s in project %s failed to be deleted since not found", jobName.String(), projectName.String()))
 	}
 	return nil
 }

@@ -330,4 +330,132 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.Nil(t, jobUpstreamRepo.ReplaceUpstreams(ctx, []*job.WithUpstream{jobWithUpstream}))
 		})
 	})
+
+	t.Run("GetDownstreamFullNames", func(t *testing.T) {
+		t.Run("returns job downstream full names", func(t *testing.T) {
+			db := dbSetup()
+
+			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", nil)
+
+			jobSpecB := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", []job.ResourceURN{"dev.resource.sample_c"})
+
+			upstreamCStatic, _ := job.NewUpstreamResolved("sample-job-C", "host-1", "dev.resource.sample_c", sampleTenant, "static")
+			upstreamCInferred, _ := job.NewUpstreamResolved("sample-job-C", "host-1", "dev.resource.sample_c", sampleTenant, "inferred")
+
+			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstreamCStatic})
+			jobBWithUpstream := job.NewWithUpstream(jobB, []*job.Upstream{upstreamCInferred})
+
+			jobRepo := postgres.NewJobRepository(db)
+
+			err = jobRepo.ReplaceUpstreams(ctx, []*job.WithUpstream{jobAWithUpstream, jobBWithUpstream})
+			assert.NoError(t, err)
+
+			downstreamFullNames, err := jobRepo.GetDownstreamFullNames(ctx, proj.Name(), "sample-job-C")
+
+			assert.NoError(t, err)
+			assert.EqualValues(t, []job.FullName{"test-proj/sample-job-A", "test-proj/sample-job-B"}, downstreamFullNames)
+		})
+		t.Run("returns job downstream full names ignoring unresolved downstream", func(t *testing.T) {
+			db := dbSetup()
+
+			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", nil)
+
+			jobSpecB := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", []job.ResourceURN{"dev.resource.sample_c"})
+
+			upstreamCStatic, _ := job.NewUpstreamResolved("sample-job-C", "host-1", "dev.resource.sample_c", sampleTenant, "static")
+			upstreamCUnresolved := job.NewUpstreamUnresolved("sample-job-C", "", proj.Name().String())
+
+			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstreamCStatic})
+			jobBWithUpstream := job.NewWithUpstream(jobB, []*job.Upstream{upstreamCUnresolved})
+
+			jobRepo := postgres.NewJobRepository(db)
+
+			err = jobRepo.ReplaceUpstreams(ctx, []*job.WithUpstream{jobAWithUpstream, jobBWithUpstream})
+			assert.NoError(t, err)
+
+			downstreamFullNames, err := jobRepo.GetDownstreamFullNames(ctx, proj.Name(), "sample-job-C")
+
+			assert.NoError(t, err)
+			assert.EqualValues(t, []job.FullName{"test-proj/sample-job-A"}, downstreamFullNames)
+		})
+	})
+
+	t.Run("Delete", func(t *testing.T) {
+		t.Run("soft delete a job if not asked to do clean delete", func(t *testing.T) {
+			db := dbSetup()
+
+			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", nil)
+
+			jobRepo := postgres.NewJobRepository(db)
+
+			addedJob, err := jobRepo.Add(ctx, []*job.Job{jobA})
+			assert.NoError(t, err)
+			assert.NotNil(t, addedJob)
+
+			err = jobRepo.Delete(ctx, proj.Name(), jobSpecA.Name(), false)
+			assert.NoError(t, err)
+
+			// should fail adding as job already exist
+			addedJob, err = jobRepo.Add(ctx, []*job.Job{jobA})
+			assert.Error(t, err)
+			assert.Nil(t, addedJob)
+		})
+		t.Run("hard delete a job if asked to do clean delete", func(t *testing.T) {
+			db := dbSetup()
+
+			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", nil)
+
+			jobRepo := postgres.NewJobRepository(db)
+
+			addedJob, err := jobRepo.Add(ctx, []*job.Job{jobA})
+			assert.NoError(t, err)
+			assert.NotNil(t, addedJob)
+
+			err = jobRepo.Delete(ctx, proj.Name(), jobSpecA.Name(), true)
+			assert.NoError(t, err)
+
+			// should succeed adding as job already cleaned earlier
+			addedJob, err = jobRepo.Add(ctx, []*job.Job{jobA})
+			assert.NoError(t, err)
+			assert.NotNil(t, addedJob)
+		})
+		t.Run("do delete job and delete upstream relationship", func(t *testing.T) {
+			db := dbSetup()
+
+			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"dev.resource.sample_b"})
+
+			jobRepo := postgres.NewJobRepository(db)
+
+			addedJob, err := jobRepo.Add(ctx, []*job.Job{jobA})
+			assert.NoError(t, err)
+			assert.NotNil(t, addedJob)
+
+			upstreamCInferred, _ := job.NewUpstreamResolved("sample-job-B", "host-1", "dev.resource.sample_b", sampleTenant, "inferred")
+			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstreamCInferred})
+			err = jobRepo.ReplaceUpstreams(ctx, []*job.WithUpstream{jobAWithUpstream})
+			assert.NoError(t, err)
+
+			err = jobRepo.Delete(ctx, proj.Name(), jobSpecA.Name(), true)
+			assert.NoError(t, err)
+
+			// should succeed adding as job already cleaned earlier
+			addedJob, err = jobRepo.Add(ctx, []*job.Job{jobA})
+			assert.NoError(t, err)
+			assert.NotNil(t, addedJob)
+		})
+	})
 }
