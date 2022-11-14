@@ -27,7 +27,8 @@ func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
 	if err != nil {
 		return nil, err
 	}
-	schedule, err := job.NewScheduleBuilder(startDate, js.Interval).
+	schedule, err := job.NewScheduleBuilder(startDate).
+		WithInterval(js.Interval).
 		WithEndDate(endDate).
 		WithDependsOnPast(js.DependsOnPast).
 		WithCatchUp(js.CatchUp).

@@ -32,7 +32,7 @@ func TestNewJobHandler(t *testing.T) {
 	assert.NoError(t, err)
 	startDate, err := job.ScheduleDateFrom("2022-10-01")
 	assert.NoError(t, err)
-	jobSchedule, err := job.NewScheduleBuilder(startDate, "").Build()
+	jobSchedule, err := job.NewScheduleBuilder(startDate).Build()
 	assert.NoError(t, err)
 	jobWindow, err := models.NewWindow(jobVersion.Int(), "d", "24h", "24h")
 	assert.NoError(t, err)

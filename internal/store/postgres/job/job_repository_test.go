@@ -62,7 +62,7 @@ func TestPostgresJobRepository(t *testing.T) {
 	jobRetry := job.NewRetry(5, 0, false)
 	startDate, err := job.ScheduleDateFrom("2022-10-01")
 	assert.NoError(t, err)
-	jobSchedule, err := job.NewScheduleBuilder(startDate, "").WithRetry(jobRetry).Build()
+	jobSchedule, err := job.NewScheduleBuilder(startDate).WithRetry(jobRetry).Build()
 	assert.NoError(t, err)
 	jobWindow, err := models.NewWindow(jobVersion.Int(), "d", "24h", "24h")
 	assert.NoError(t, err)

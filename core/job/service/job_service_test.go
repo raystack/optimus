@@ -33,7 +33,7 @@ func TestJobService(t *testing.T) {
 	assert.NoError(t, err)
 	startDate, err := job.ScheduleDateFrom("2022-10-01")
 	assert.NoError(t, err)
-	jobSchedule, err := job.NewScheduleBuilder(startDate, "").Build()
+	jobSchedule, err := job.NewScheduleBuilder(startDate).Build()
 	assert.NoError(t, err)
 	jobWindow, _ := models.NewWindow(jobVersion.Int(), "d", "24h", "24h")
 	jobTaskConfig, err := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})

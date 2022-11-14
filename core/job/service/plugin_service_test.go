@@ -31,7 +31,7 @@ func TestPluginService(t *testing.T) {
 	tenantDetails, _ := tenant.NewTenantDetails(project, namespace)
 	startDate, err := job.ScheduleDateFrom("2022-10-01")
 	assert.NoError(t, err)
-	jobSchedule, err := job.NewScheduleBuilder(startDate, "").Build()
+	jobSchedule, err := job.NewScheduleBuilder(startDate).Build()
 	assert.NoError(t, err)
 	jobVersion, err := job.VersionFrom(1)
 	assert.NoError(t, err)

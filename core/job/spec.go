@@ -308,11 +308,10 @@ type ScheduleBuilder struct {
 }
 
 // TODO: move interval to optional
-func NewScheduleBuilder(startDate ScheduleDate, interval string) *ScheduleBuilder {
+func NewScheduleBuilder(startDate ScheduleDate) *ScheduleBuilder {
 	return &ScheduleBuilder{
 		schedule: &Schedule{
 			startDate: startDate,
-			interval:  interval,
 		},
 	}
 }
@@ -322,6 +321,14 @@ func (s ScheduleBuilder) Build() (*Schedule, error) {
 		return nil, errors.InvalidArgument(EntityJob, "start date is empty")
 	}
 	return s.schedule, nil
+}
+
+func (s ScheduleBuilder) WithInterval(interval string) *ScheduleBuilder {
+	schedule := *s.schedule
+	schedule.interval = interval
+	return &ScheduleBuilder{
+		schedule: &schedule,
+	}
 }
 
 func (s ScheduleBuilder) WithEndDate(endDate ScheduleDate) *ScheduleBuilder {
