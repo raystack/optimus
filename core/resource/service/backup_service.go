@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/odpf/optimus/core/resource"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
@@ -15,25 +17,54 @@ const recentBackupWindowMonths = -3
 type BackupRepository interface {
 	GetByID(ctx context.Context, store resource.Store, id resource.BackupID) (*resource.BackupDetails, error)
 	GetAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.BackupDetails, error)
+	Save(ctx context.Context, details *resource.BackupDetails) error
 }
 
-type ResourceProvider interface { // Will actually get the resources to back up
+type ResourceProvider interface {
+	GetResources(ctx context.Context, tnnt tenant.Tenant, store resource.Store, names []string) ([]*resource.Resource, error)
+}
+
+type BackupManager interface {
+	Backup(ctx context.Context, store resource.Store, config *resource.BackupDetails, resources []*resource.Resource) (*resource.BackupInfo, error)
+}
+
+type IDProvider interface {
+	NewUUID() (uuid.UUID, error)
 }
 
 type BackupService struct {
 	repo BackupRepository
 
-	resourceProvider ResourceProvider
+	resources     ResourceProvider
+	idProvider    IDProvider
+	backupManager BackupManager
 }
 
-func (BackupService) Backup(ctx context.Context, tnnt tenant.Tenant, store resource.Store, config resource.BackupConfiguration) (resource.BackupInfo, error) {
-	//TODO implement me
-	panic("implement me")
-}
+func (s BackupService) Backup(ctx context.Context, tnnt tenant.Tenant, store resource.Store, details *resource.BackupDetails) (*resource.BackupInfo, error) {
+	id, err := s.idProvider.NewUUID()
+	if err != nil {
+		return nil, errors.InternalError(resource.EntityBackup, "unable to generate backup id", err)
+	}
+	details.ID = resource.BackupID(id)
 
-func (s BackupService) DryRun(ctx context.Context, tnnt tenant.Tenant, store resource.Store, config resource.BackupConfiguration) (resource.BackupInfo, error) {
-	//TODO implement me
-	panic("implement me")
+	resources, err := s.resources.GetResources(ctx, tnnt, store, details.ResourceNames)
+	if err != nil {
+		return nil, err
+	}
+
+	ignored := findMissingResources(details.ResourceNames, resources)
+	backupInfo, err := s.backupManager.Backup(ctx, store, details, resources)
+	if err != nil {
+		return nil, err
+	}
+
+	backupInfo.IgnoredResources = append(backupInfo.IgnoredResources, ignored...)
+	err = s.repo.Save(ctx, details)
+	if err != nil {
+		return backupInfo, err
+	}
+
+	return backupInfo, nil
 }
 
 func (s BackupService) Get(ctx context.Context, _ tenant.Tenant, store resource.Store, backupID resource.BackupID) (*resource.BackupDetails, error) {
@@ -58,4 +89,26 @@ func (s BackupService) List(ctx context.Context, tnnt tenant.Tenant, store resou
 	}
 
 	return recentBackups, nil
+}
+
+func findMissingResources(names []string, resources []*resource.Resource) []resource.IgnoredResource {
+	if len(resources) == len(names) {
+		return nil
+	}
+
+	var resourcesMap map[string]struct{}
+	for _, r := range resources {
+		resourcesMap[r.FullName()] = struct{}{}
+	}
+
+	var ignored []resource.IgnoredResource
+	for _, name := range names {
+		if _, ok := resourcesMap[name]; !ok {
+			ignored = append(ignored, resource.IgnoredResource{
+				Name:   name,
+				Reason: "no record found in tenant",
+			})
+		}
+	}
+	return ignored
 }

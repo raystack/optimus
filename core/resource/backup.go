@@ -35,44 +35,21 @@ func (i BackupID) UUID() uuid.UUID {
 	return uuid.UUID(i)
 }
 
-type BackupConfiguration struct {
-	ResourceNames []Name
-
-	Description string
-	Config      map[string]string
-}
-
 type IgnoredResource struct {
-	Name   Name
+	Name   string
 	Reason string
 }
 
 type BackupInfo struct {
-	ResourceNames    []Name
+	ResourceNames    []string
 	IgnoredResources []IgnoredResource
-}
-
-func (b BackupInfo) ResourceNamesAsString() []string {
-	var names []string
-	for _, name := range b.ResourceNames {
-		names = append(names, name.String())
-	}
-	return names
 }
 
 type BackupDetails struct {
 	ID BackupID
 
-	ResourceNames []Name
+	ResourceNames []string
 	Description   string
 	CreatedAt     time.Time
 	Config        map[string]string
-}
-
-func (d BackupDetails) ResourceNamesAsString() []string {
-	var names []string
-	for _, name := range d.ResourceNames {
-		names = append(names, name.String())
-	}
-	return names
 }

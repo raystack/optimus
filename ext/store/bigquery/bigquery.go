@@ -149,6 +149,10 @@ func (s Store) BatchUpdate(ctx context.Context, resources []*resource.Resource) 
 	return errors.MultiToError(me)
 }
 
+func (s Store) Backup(ctx context.Context, details *resource.BackupDetails, resources []*resource.Resource) (*resource.BackupInfo, error) {
+	return nil, nil
+}
+
 func startChildSpan(ctx context.Context, name string) (context.Context, trace.Span) {
 	tracer := otel.Tracer("datastore/bigquery")
 

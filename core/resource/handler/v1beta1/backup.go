@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"context"
+	"time"
 
 	"github.com/odpf/salt/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -13,7 +14,7 @@ import (
 )
 
 type BackupService interface {
-	Backup(context.Context, tenant.Tenant, resource.Store, resource.BackupConfiguration) (resource.BackupInfo, error)
+	Backup(context.Context, tenant.Tenant, resource.Store, *resource.BackupDetails) (*resource.BackupInfo, error)
 	Get(context.Context, tenant.Tenant, resource.Store, resource.BackupID) (*resource.BackupDetails, error)
 	List(context.Context, tenant.Tenant, resource.Store) ([]*resource.BackupDetails, error)
 }
@@ -36,19 +37,18 @@ func (b BackupHandler) CreateBackup(ctx context.Context, req *pb.CreateBackupReq
 		return nil, errors.GRPCErr(err, "invalid backup request")
 	}
 
-	var resourceNames []resource.Name
 	for _, resourceName := range req.ResourceNames {
-		resName, err := resource.NameFrom(resourceName)
-		if err != nil {
-			return nil, errors.GRPCErr(err, "invalid backup request")
+		if resourceName == "" {
+			return nil, errors.GRPCErr(errors.InvalidArgument(resource.EntityBackup, "resource name is empty"),
+				"invalid backup request")
 		}
-		resourceNames = append(resourceNames, resName)
 	}
 
-	backupConfig := resource.BackupConfiguration{
-		ResourceNames: resourceNames,
+	backupConfig := &resource.BackupDetails{
+		ResourceNames: req.ResourceNames,
 		Description:   req.Description,
 		Config:        req.Config,
+		CreatedAt:     time.Now(),
 	}
 
 	result, err := b.service.Backup(ctx, tnnt, store, backupConfig)
@@ -57,7 +57,7 @@ func (b BackupHandler) CreateBackup(ctx context.Context, req *pb.CreateBackupReq
 	}
 
 	return &pb.CreateBackupResponse{
-		ResourceNames:    result.ResourceNamesAsString(),
+		ResourceNames:    result.ResourceNames,
 		IgnoredResources: toIgnoredResources(result.IgnoredResources),
 	}, nil
 }
@@ -116,7 +116,7 @@ func (b BackupHandler) GetBackup(ctx context.Context, req *pb.GetBackupRequest) 
 func toBackupSpec(detail *resource.BackupDetails) *pb.BackupSpec {
 	return &pb.BackupSpec{
 		Id:            detail.ID.String(),
-		ResourceNames: detail.ResourceNamesAsString(),
+		ResourceNames: detail.ResourceNames,
 		CreatedAt:     timestamppb.New(detail.CreatedAt),
 		Description:   detail.Description,
 		Config:        detail.Config,
@@ -127,7 +127,7 @@ func toIgnoredResources(ignored []resource.IgnoredResource) []*pb.IgnoredResourc
 	var ignoredResources []*pb.IgnoredResource
 	for _, ig := range ignored {
 		ignoredResources = append(ignoredResources, &pb.IgnoredResource{
-			Name:   ig.Name.String(),
+			Name:   ig.Name,
 			Reason: ig.Reason,
 		})
 	}

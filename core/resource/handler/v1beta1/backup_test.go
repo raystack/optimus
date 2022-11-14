@@ -99,7 +99,7 @@ func TestBackupHandler(t *testing.T) {
 			mockService := new(backupService)
 			mockService.On("Backup", ctx, tnnt, store, mock.Anything).
 				Return(resource.BackupInfo{
-					ResourceNames: []resource.Name{"bigquery://proj.dataset.table"},
+					ResourceNames: []string{"bigquery://proj.dataset.table"},
 					IgnoredResources: []resource.IgnoredResource{{
 						Name:   "bigquery://proj.dataset.downstream",
 						Reason: "resource is not a table",
@@ -178,7 +178,7 @@ func TestBackupHandler(t *testing.T) {
 				Return([]*resource.BackupDetails{
 					{
 						ID:            resource.BackupID(uuid.New()),
-						ResourceNames: []resource.Name{"project.dataset.table1"},
+						ResourceNames: []string{"project.dataset.table1"},
 						Description:   "a new backup",
 						CreatedAt:     time.Now(),
 						Config:        map[string]string{"ttl": "720hrs"},
@@ -273,7 +273,7 @@ func TestBackupHandler(t *testing.T) {
 			mockService.On("Get", ctx, tnnt, store, resource.BackupID(id)).
 				Return(&resource.BackupDetails{
 					ID:            resource.BackupID(uuid.New()),
-					ResourceNames: []resource.Name{"project.dataset.table1"},
+					ResourceNames: []string{"project.dataset.table1"},
 					Description:   "a new backup",
 					CreatedAt:     time.Now(),
 					Config:        map[string]string{"ttl": "720hrs"},
