@@ -24,7 +24,7 @@ type ResourceBatchRepo interface {
 type ResourceManager interface {
 	CreateResource(ctx context.Context, res *resource.Resource) error
 	UpdateResource(ctx context.Context, res *resource.Resource) error
-	BatchUpdate(ctx context.Context, store resource.Store, resources []*resource.Resource) error
+	Deploy(ctx context.Context, store resource.Store, resources []*resource.Resource) error
 }
 
 type TenantDetailsGetter interface {
@@ -104,7 +104,7 @@ func (rs ResourceService) GetAll(ctx context.Context, tnnt tenant.Tenant, store 
 	return rs.repo.ReadAll(ctx, tnnt, store)
 }
 
-func (rs ResourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
+func (rs ResourceService) Deploy(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
 	multiError := errors.NewMultiError("error batch updating resources")
 
 	existingResources, err := rs.repo.ReadAll(ctx, tnnt, store)
@@ -132,7 +132,7 @@ func (rs ResourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, s
 	}
 
 	multiError.Append(rs.batch.CreateOrUpdateAll(ctx, resources))
-	multiError.Append(rs.mgr.BatchUpdate(ctx, store, resources))
+	multiError.Append(rs.mgr.Deploy(ctx, store, resources))
 	return errors.MultiToError(multiError)
 }
 
