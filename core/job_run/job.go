@@ -13,6 +13,10 @@ import (
 type JobName string
 type OperatorType string
 
+func (o OperatorType) String() string {
+	return string(o)
+}
+
 const (
 	EntityJobRun = "jobRun"
 

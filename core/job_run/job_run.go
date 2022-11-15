@@ -50,10 +50,10 @@ type JobRun struct {
 type OperatorRun struct {
 	ID           uuid.UUID
 	JobRunID     uuid.UUID
-	operatorType OperatorType
+	OperatorType OperatorType
 	State        string
-	startTime    time.Time
-	endTime      time.Time
+	StartTime    time.Time
+	EndTime      time.Time
 }
 
 type NotifyAttrs struct {

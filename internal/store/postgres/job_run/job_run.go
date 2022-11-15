@@ -10,10 +10,12 @@ import (
 
 	"github.com/odpf/optimus/core/job_run"
 	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
 )
 
 const (
-	jobRunColumns = "job_name, namespace_name, project_name, scheduled_at, start_time, end_time, status, sla_definition"
+	jobRunColumns   = "job_name, namespace_name, project_name, scheduled_at, start_time, end_time, status, sla_definition"
+	jobRunTableName = "job_run"
 )
 
 type JobRunRepository struct {
@@ -54,7 +56,7 @@ func (j JobRun) toJobRun() (*job_run.JobRun, error) {
 
 func (j *JobRunRepository) GetByID(ctx context.Context, id job_run.JobRunID) (*job_run.JobRun, error) {
 	var jobRun JobRun
-	getJobRunById := `SELECT ` + jobRunColumns + ` FROM job_run j where id = ?`
+	getJobRunById := `SELECT ` + jobRunColumns + ` FROM ` + jobRunTableName + ` j where id = ?`
 	err := j.db.WithContext(ctx).Raw(getJobRunById, id).First(&jobRun).Error
 	if err != nil {
 		return &job_run.JobRun{}, err
@@ -66,17 +68,22 @@ func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t *tenant.Tenan
 	var jobRun JobRun
 	getJobRunById := `SELECT ` + jobRunColumns + ` FROM job_run j 
 						where project_id = ? and namespace_id =?
-						job_name = ? and schedule_at=?`
-	err := j.db.WithContext(ctx).Raw(getJobRunById, t.ProjectName(), t.NamespaceName(), jobName, scheduledAt).Order(clause.OrderByColumn{Column: clause.Column{Name: "created_at"}, Desc: true}).First(&jobRun).Error
+						job_name = ? and schedule_at = ?`
+	err := j.db.WithContext(ctx).Raw(getJobRunById, t.ProjectName(), t.NamespaceName(), jobName, scheduledAt).
+		Order(clause.OrderByColumn{Column: clause.Column{Name: "created_at"}, Desc: true}).
+		First(&jobRun).Error
 	if err != nil {
-		return &job_run.JobRun{}, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.NotFound(job_run.EntityJobRun, "no record for job:"+jobName.String()+" scheduled at: "+scheduledAt.String())
+		}
+		return nil, err
 	}
 	return jobRun.toJobRun()
 }
 
-func (j *JobRunRepository) Update(ctx context.Context, t *tenant.Tenant, jobName job_run.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error {
-
-	return nil
+func (j *JobRunRepository) Update(ctx context.Context, jobRunId uuid.UUID, endTime time.Time, status string) error {
+	updateJobRun := "update" + jobRunTableName + "set status = " + status + " end_time = " + endTime.String() + " where id = " + jobRunId.String()
+	return j.db.WithContext(ctx).Exec(updateJobRun).Error
 }
 
 func (j *JobRunRepository) Create(ctx context.Context, t *tenant.Tenant, jobName job_run.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error {

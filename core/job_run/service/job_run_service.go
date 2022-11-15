@@ -25,7 +25,7 @@ type JobRunRepository interface {
 	GetByID(ctx context.Context, id job_run.JobRunID) (*job_run.JobRun, error)
 	GetByScheduledAt(ctx context.Context, tenant tenant.Tenant, name job_run.JobName, scheduledAt time.Time) (*job_run.JobRun, error)
 	Create(ctx context.Context, tenant tenant.Tenant, name job_run.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error
-	Update(ctx context.Context, tenant tenant.Tenant, name job_run.JobName, scheduledAt time.Time, jobRunStatus string, endTime time.Time) error
+	Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, jobRunStatus string) error
 
 	GetOperatorRun(ctx context.Context, operator job_run.OperatorType, jobRunId uuid.UUID) (*job_run.OperatorRun, error)
 	CreateOperatorRun(ctx context.Context, operator job_run.OperatorType, jobRunID uuid.UUID, startTime time.Time) error
@@ -77,24 +77,47 @@ func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proje
 		}
 		executedAt = config.ScheduledAt
 	} else {
-		executedAt = jobRun.StartTime()
+		executedAt = jobRun.StartTime
 	}
 
 	return s.compiler.Compile(ctx, job, config, executedAt)
 }
 
-func validateJobQuery(jobQuery *job_run.JobRunsCriteria, jobWithDetails job_run.JobWithDetails) error {
-	jobStartDate := jobWithDetails.Schedule.StartDate
-	if jobStartDate.IsZero() {
-		return fmt.Errorf("job start time not found at DB")
+func (s JobRunService) GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName, criteria *job_run.JobRunsCriteria) ([]*job_run.JobRunStatus, error) {
+	jobWithDetails, err := s.jobRepo.GetJobDetails(ctx, projectName, jobName)
+	interval := jobWithDetails.Schedule.Interval
+	if interval == "" {
+		return nil, fmt.Errorf("job interval not found at DB")
 	}
-	givenStartDate := jobQuery.StartDate
-	givenEndDate := jobQuery.EndDate
+	// jobCron
+	jobCron, err := cron.ParseCronSchedule(interval)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse the interval from DB %w", err)
+	}
 
-	if givenStartDate.Before(jobStartDate) || givenEndDate.Before(jobStartDate) {
-		return fmt.Errorf("invalid date range")
+	if criteria.OnlyLastRun {
+		return s.scheduler.GetJobRuns(ctx, jobWithDetails.Job.Tenant, criteria, jobCron)
 	}
-	return nil
+	// validate job query
+	err = validateJobQuery(criteria, *jobWithDetails)
+	if err != nil {
+		return nil, err
+	}
+	// get expected runs StartDate and EndDate inclusive
+	expectedRuns := getExpectedRuns(jobCron, criteria.StartDate, criteria.EndDate)
+
+	// call to airflow for get runs
+	actualRuns, err := s.scheduler.GetJobRuns(ctx, jobWithDetails.Job.Tenant, criteria, jobCron)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get job runs from airflow %w", err)
+	}
+	// mergeRuns
+	totalRuns := mergeRuns(expectedRuns, actualRuns)
+
+	// filterRuns
+	result := filterRuns(totalRuns, createFilterSet(criteria.Filter))
+
+	return result, nil
 }
 
 func getExpectedRuns(spec *cron.ScheduleSpec, startTime, endTime time.Time) []*job_run.JobRunStatus {
@@ -154,42 +177,18 @@ func createFilterSet(filter []string) map[string]struct{} {
 	return m
 }
 
-func (s JobRunService) GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName, criteria *job_run.JobRunsCriteria) ([]*job_run.JobRunStatus, error) {
-
-	jobWithDetails, err := s.jobRepo.GetJobDetails(ctx, projectName, jobName)
-	interval := jobWithDetails.Schedule.Interval
-	if interval == "" {
-		return nil, fmt.Errorf("job interval not found at DB")
+func validateJobQuery(jobQuery *job_run.JobRunsCriteria, jobWithDetails job_run.JobWithDetails) error {
+	jobStartDate := jobWithDetails.Schedule.StartDate
+	if jobStartDate.IsZero() {
+		return fmt.Errorf("job start time not found at DB")
 	}
-	// jobCron
-	jobCron, err := cron.ParseCronSchedule(interval)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse the interval from DB %w", err)
-	}
+	givenStartDate := jobQuery.StartDate
+	givenEndDate := jobQuery.EndDate
 
-	if criteria.OnlyLastRun {
-		return s.scheduler.GetJobRuns(ctx, jobWithDetails.Job.Tenant, criteria, jobCron)
+	if givenStartDate.Before(jobStartDate) || givenEndDate.Before(jobStartDate) {
+		return fmt.Errorf("invalid date range")
 	}
-	// validate job query
-	err = validateJobQuery(criteria, *jobWithDetails)
-	if err != nil {
-		return nil, err
-	}
-	// get expected runs StartDate and EndDate inclusive
-	expectedRuns := getExpectedRuns(jobCron, criteria.StartDate, criteria.EndDate)
-
-	// call to airflow for get runs
-	actualRuns, err := s.scheduler.GetJobRuns(ctx, jobWithDetails.Job.Tenant, criteria, jobCron)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get job runs from airflow %w", err)
-	}
-	// mergeRuns
-	totalRuns := mergeRuns(expectedRuns, actualRuns)
-
-	// filterRuns
-	result := filterRuns(totalRuns, createFilterSet(criteria.Filter))
-
-	return result, nil
+	return nil
 }
 
 func (s JobRunService) registerNewJobRun(ctx context.Context, event job_run.Event) error {
@@ -218,15 +217,34 @@ func (s JobRunService) updateJobRun(ctx context.Context, event job_run.Event) er
 	if err != nil {
 		return err
 	}
+	var jobRun *job_run.JobRun
+	jobRun, err = s.repo.GetByScheduledAt(ctx,
+		event.Tenant,
+		event.JobName,
+		scheduledAtTimeStamp)
+	if err != nil {
+		if errors.IsErrorType(err, errors.ErrNotFound) {
+			err = s.registerNewJobRun(ctx, event)
+			if err != nil {
+				return err
+			}
+			jobRun, err = s.repo.GetByScheduledAt(ctx,
+				event.Tenant,
+				event.JobName,
+				scheduledAtTimeStamp)
+			if err != nil {
+				return err
+			}
+		}
+		return err
+	}
 	jobRunStatus := event.Values["status"].(string)
 	endTime := time.Unix(int64(event.Values["event_time"].(int64)), 0)
 
 	return s.repo.Update(ctx,
-		event.Tenant,
-		event.JobName,
-		scheduledAtTimeStamp,
-		jobRunStatus,
+		jobRun.ID,
 		endTime,
+		jobRunStatus,
 	)
 }
 
@@ -276,13 +294,17 @@ func (s JobRunService) updateOperatorRun(ctx context.Context, event job_run.Even
 	if err != nil {
 		return err
 	}
-
+	operatorRun, err := s.repo.GetOperatorRun(ctx, operatorType, jobRun.ID)
+	if err != nil {
+		return err
+		//	todo: should i create a new operator run row here @sandeep
+	}
 	status := event.Values["status"].(string)
 	endTime := time.Unix(int64(event.Values["event_time"].(int64)), 0)
 
 	return s.repo.UpdateOperatorRun(ctx,
 		operatorType,
-		jobRun.ID,
+		operatorRun.ID,
 		endTime,
 		status)
 }
