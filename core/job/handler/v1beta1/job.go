@@ -21,7 +21,7 @@ func NewJobHandler(jobService JobService) *JobHandler {
 }
 
 type JobService interface {
-	Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) ([]job.Name, error)
+	Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error
 	Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) (affectedDownstream []job.FullName, err error)
 }
 
@@ -42,16 +42,14 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 		jobSpecs = append(jobSpecs, jobSpec)
 	}
 
-	addedJobNames, err := jh.jobService.Add(ctx, jobTenant, jobSpecs)
+	err = jh.jobService.Add(ctx, jobTenant, jobSpecs)
 	me.Append(err)
 
-	if len(addedJobNames) == 0 {
-		return nil, errors.GRPCErr(errors.MultiToError(me), "failed to add job specifications")
-	}
-
-	responseLog := fmt.Sprintf("jobs %s are created", addedJobNames)
+	var responseLog string
 	if len(me.Errors) > 0 {
-		responseLog = fmt.Sprintf("%s with error: %s", responseLog, errors.MultiToError(err))
+		responseLog = fmt.Sprintf("adding jobs finished with error: %s", errors.MultiToError(err))
+	} else {
+		responseLog = fmt.Sprintf("jobs are successfully created")
 	}
 
 	return &pb.AddJobSpecificationsResponse{
@@ -70,14 +68,14 @@ func (jh *JobHandler) DeleteJobSpecification(ctx context.Context, deleteRequest 
 		return nil, errors.GRPCErr(err, "failed to delete job specification")
 	}
 
-	downstreamFullNames, err := jh.jobService.Delete(ctx, jobTenant, jobName, deleteRequest.CleanHistory, deleteRequest.Force)
+	affectedDownstream, err := jh.jobService.Delete(ctx, jobTenant, jobName, deleteRequest.CleanHistory, deleteRequest.Force)
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to delete job specification")
 	}
 
 	msg := fmt.Sprintf("job %s has been deleted", jobName)
-	if deleteRequest.Force && len(downstreamFullNames) > 0 {
-		msg = fmt.Sprintf("job %s has been forced deleted. these downstream will be affected: %s", jobName, downstreamFullNames)
+	if deleteRequest.Force && len(affectedDownstream) > 0 {
+		msg = fmt.Sprintf("job %s has been forced deleted. these downstream will be affected: %s", jobName, affectedDownstream)
 	}
 
 	return &pb.DeleteJobSpecificationResponse{

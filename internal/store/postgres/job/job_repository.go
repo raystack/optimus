@@ -399,7 +399,7 @@ WHERE project_name = ? AND name = ?
 `
 	result := tx.Exec(query, projectName.String(), jobName.String())
 	if result.Error != nil {
-		return errors.Wrap(job.EntityJob, "error during delete of job", result.Error)
+		return errors.Wrap(job.EntityJob, "error during job deletion", result.Error)
 	}
 	return nil
 }
@@ -412,7 +412,7 @@ WHERE project_name = ? AND name = ?
 `
 	result := tx.Exec(query, projectName.String(), jobName.String())
 	if result.Error != nil {
-		return errors.Wrap(job.EntityJob, "error during delete of secret", result.Error)
+		return errors.Wrap(job.EntityJob, "error during job deletion", result.Error)
 	}
 	return nil
 }

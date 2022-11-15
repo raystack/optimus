@@ -45,22 +45,28 @@ type UpstreamResolver interface {
 	Resolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) (jobWithUpstreams []*job.WithUpstream, err error)
 }
 
-func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) ([]job.Name, error) {
+func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) error {
 	me := errors.NewMultiError("add specs errors")
 
 	validatedSpecs, err := j.getValidatedSpecs(specs)
 	me.Append(err)
 
-	generatedJobs, err := j.generateJobs(ctx, jobTenant, validatedSpecs)
+	jobs, err := j.generateJobs(ctx, jobTenant, validatedSpecs)
 	me.Append(err)
 
-	addedJobNames, err := j.addJobs(ctx, jobTenant, generatedJobs)
+	addedJobs, err := j.repo.Add(ctx, jobs)
 	me.Append(err)
 
-	return addedJobNames, errors.MultiToError(me)
+	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, jobTenant.ProjectName(), addedJobs)
+	me.Append(err)
+
+	err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
+	me.Append(err)
+
+	return errors.MultiToError(me)
 }
 
-func (j JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) (affectedDownstreamNames []job.FullName, err error) {
+func (j JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) (affectedDownstream []job.FullName, err error) {
 	downstreamFullNames, err := j.repo.GetDownstreamFullNames(ctx, jobTenant.ProjectName(), jobName)
 	if err != nil {
 		return nil, err
@@ -72,25 +78,6 @@ func (j JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName
 	}
 
 	return downstreamFullNames, j.repo.Delete(ctx, jobTenant.ProjectName(), jobName, cleanFlag)
-}
-
-func (j JobService) addJobs(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Job) ([]job.Name, error) {
-	me := errors.NewMultiError("add jobs errors")
-
-	addedJobs, err := j.repo.Add(ctx, jobs)
-	me.Append(err)
-
-	var addedJobNames []job.Name
-	for _, addedJob := range addedJobs {
-		addedJobNames = append(addedJobNames, addedJob.Spec().Name())
-	}
-
-	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, jobTenant.ProjectName(), addedJobs)
-	me.Append(err)
-
-	me.Append(j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams))
-
-	return addedJobNames, errors.MultiToError(me)
 }
 
 func (JobService) getValidatedSpecs(jobs []*job.Spec) ([]*job.Spec, error) {
@@ -116,21 +103,28 @@ func (j JobService) generateJobs(ctx context.Context, jobTenant tenant.Tenant, s
 	me := errors.NewMultiError("generate jobs errors")
 	var output []*job.Job
 	for _, spec := range specs {
-		destination, err := j.pluginService.GenerateDestination(ctx, tenantWithDetails, spec.Task())
-		if err != nil && !errors.Is(err, ErrUpstreamModNotFound) {
-			errorMsg := fmt.Sprintf("unable to add %s: %s", spec.Name().String(), err.Error())
-			me.Append(errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg))
+		generatedJob, err := j.generateJob(ctx, tenantWithDetails, spec)
+		if err != nil {
+			me.Append(err)
 			continue
 		}
-
-		sources, err := j.pluginService.GenerateUpstreams(ctx, tenantWithDetails, spec, true)
-		if err != nil && !errors.Is(err, ErrUpstreamModNotFound) {
-			errorMsg := fmt.Sprintf("unable to add %s: %s", spec.Name().String(), err.Error())
-			me.Append(errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg))
-			continue
-		}
-
-		output = append(output, job.NewJob(jobTenant, spec, destination, sources))
+		output = append(output, generatedJob)
 	}
 	return output, errors.MultiToError(me)
+}
+
+func (j JobService) generateJob(ctx context.Context, tenantWithDetails *tenant.WithDetails, spec *job.Spec) (*job.Job, error) {
+	destination, err := j.pluginService.GenerateDestination(ctx, tenantWithDetails, spec.Task())
+	if err != nil && !errors.Is(err, ErrUpstreamModNotFound) {
+		errorMsg := fmt.Sprintf("unable to add %s: %s", spec.Name().String(), err.Error())
+		return nil, errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg)
+	}
+
+	sources, err := j.pluginService.GenerateUpstreams(ctx, tenantWithDetails, spec, true)
+	if err != nil && !errors.Is(err, ErrUpstreamModNotFound) {
+		errorMsg := fmt.Sprintf("unable to add %s: %s", spec.Name().String(), err.Error())
+		return nil, errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg)
+	}
+
+	return job.NewJob(tenantWithDetails.ToTenant(), spec, destination, sources), nil
 }

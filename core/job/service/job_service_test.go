@@ -76,8 +76,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
-			addedJobNames, err := jobService.Add(ctx, sampleTenant, specs)
-			assert.EqualValues(t, []job.Name{specA.Name()}, addedJobNames)
+			err := jobService.Add(ctx, sampleTenant, specs)
 			assert.NoError(t, err)
 		})
 		t.Run("skip invalid job and add the rest", func(t *testing.T) {
@@ -119,8 +118,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
-			addedJobNames, err := jobService.Add(ctx, sampleTenant, specs)
-			assert.EqualValues(t, []job.Name{specA.Name()}, addedJobNames)
+			err := jobService.Add(ctx, sampleTenant, specs)
 			assert.ErrorContains(t, err, "keys [key] are empty")
 		})
 		t.Run("return error if unable to get detailed tenant", func(t *testing.T) {
@@ -148,8 +146,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
-			addedJobNames, err := jobService.Add(ctx, sampleTenant, specs)
-			assert.Nil(t, addedJobNames)
+			err := jobService.Add(ctx, sampleTenant, specs)
 			assert.ErrorContains(t, err, "internal error")
 		})
 		t.Run("skip job that has issue when generating destination and return error", func(t *testing.T) {
@@ -194,8 +191,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
-			addedJobNames, err := jobService.Add(ctx, sampleTenant, specs)
-			assert.EqualValues(t, []job.Name{specA.Name()}, addedJobNames)
+			err := jobService.Add(ctx, sampleTenant, specs)
 			assert.ErrorContains(t, err, "generate upstream error")
 		})
 		t.Run("return error when all jobs failed to have destination and upstream generated", func(t *testing.T) {
@@ -231,8 +227,7 @@ func TestJobService(t *testing.T) {
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specB, true).Return(nil, errors.New("generate upstream error"))
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
-			addedJobNames, err := jobService.Add(ctx, sampleTenant, specs)
-			assert.Nil(t, addedJobNames)
+			err := jobService.Add(ctx, sampleTenant, specs)
 			assert.ErrorContains(t, err, "generate upstream error")
 		})
 		t.Run("should not skip nor return error if jobs does not have upstream mod and encounter issue on generate destination/upstream", func(t *testing.T) {
@@ -267,8 +262,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
-			addedJobNames, err := jobService.Add(ctx, sampleTenant, specs)
-			assert.EqualValues(t, []job.Name{specA.Name()}, addedJobNames)
+			err := jobService.Add(ctx, sampleTenant, specs)
 			assert.NoError(t, err)
 		})
 		t.Run("should skip and not return error if one of the job is failed to be inserted to db", func(t *testing.T) {
@@ -311,8 +305,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
-			addedJobNames, err := jobService.Add(ctx, sampleTenant, specs)
-			assert.EqualValues(t, []job.Name{specB.Name()}, addedJobNames)
+			err := jobService.Add(ctx, sampleTenant, specs)
 			assert.ErrorContains(t, err, "unable to save job A")
 		})
 		t.Run("return error when all jobs failed to be inserted to db", func(t *testing.T) {
@@ -348,8 +341,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("Add", ctx, jobs).Return([]*job.Job{}, errors.New("unable to save job A"), errors.New("all jobs failed"))
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
-			addedJobNames, err := jobService.Add(ctx, sampleTenant, specs)
-			assert.Nil(t, addedJobNames)
+			err := jobService.Add(ctx, sampleTenant, specs)
 			assert.ErrorContains(t, err, "unable to save job A")
 		})
 		t.Run("should return error if failed to save upstream", func(t *testing.T) {
@@ -386,8 +378,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(errors.New("internal error"))
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
-			addedJobNames, err := jobService.Add(ctx, sampleTenant, specs)
-			assert.EqualValues(t, []job.Name{specA.Name()}, addedJobNames)
+			err := jobService.Add(ctx, sampleTenant, specs)
 			assert.Error(t, err)
 		})
 	})

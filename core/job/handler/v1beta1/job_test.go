@@ -81,14 +81,13 @@ func TestNewJobHandler(t *testing.T) {
 				NamespaceName: namespace.Name().String(),
 				Specs:         jobProtos,
 			}
-			addedJobNames := []job.Name{"job-A"}
 
-			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(addedJobNames, nil)
+			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(nil)
 
 			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.AddJobSpecificationsResponse{
-				Log: fmt.Sprintf("jobs %s are created", addedJobNames),
+				Log: "jobs are successfully created",
 			}, resp)
 		})
 		t.Run("adds complete job and returns deployment ID", func(t *testing.T) {
@@ -117,14 +116,13 @@ func TestNewJobHandler(t *testing.T) {
 				NamespaceName: namespace.Name().String(),
 				Specs:         jobProtos,
 			}
-			addedJobNames := []job.Name{"job-A"}
 
-			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(addedJobNames, nil)
+			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(nil)
 
 			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.AddJobSpecificationsResponse{
-				Log: fmt.Sprintf("jobs %s are created", addedJobNames),
+				Log: fmt.Sprintf("jobs are successfully created"),
 			}, resp)
 		})
 		t.Run("returns error when unable to create tenant", func(t *testing.T) {
@@ -175,14 +173,12 @@ func TestNewJobHandler(t *testing.T) {
 				NamespaceName: namespace.Name().String(),
 				Specs:         jobSpecProtos,
 			}
-			addedJobNames := []job.Name{"job-A"}
 
-			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(addedJobNames, nil)
+			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(nil)
 
 			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
 			assert.Nil(t, err)
 			assert.Contains(t, resp.Log, "error")
-			assert.Contains(t, resp.Log, fmt.Sprintf("jobs %s are created", addedJobNames))
 		})
 		t.Run("returns error when all jobs failed to be added", func(t *testing.T) {
 			jobService := new(JobService)
@@ -208,11 +204,11 @@ func TestNewJobHandler(t *testing.T) {
 				Specs:         jobSpecProtos,
 			}
 
-			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(nil, errors.New("internal error"))
+			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(errors.New("internal error"))
 
 			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
-			assert.NotNil(t, err)
-			assert.Nil(t, resp)
+			assert.Nil(t, err)
+			assert.Contains(t, resp.Log, "error")
 		})
 		t.Run("returns response with job errors log when some jobs failed to be added", func(t *testing.T) {
 			jobService := new(JobService)
@@ -249,14 +245,12 @@ func TestNewJobHandler(t *testing.T) {
 				NamespaceName: namespace.Name().String(),
 				Specs:         jobSpecProtos,
 			}
-			addedJobNames := []job.Name{"job-A"}
 
-			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(addedJobNames, errors.New("internal error"))
+			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(errors.New("internal error"))
 
 			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
 			assert.Nil(t, err)
 			assert.Contains(t, resp.Log, "error")
-			assert.Contains(t, resp.Log, fmt.Sprintf("jobs %s are created", addedJobNames))
 		})
 	})
 	t.Run("DeleteJobSpecification", func(t *testing.T) {
@@ -358,26 +352,17 @@ type JobService struct {
 }
 
 // Add provides a mock function with given fields: ctx, jobTenant, jobs
-func (_m *JobService) Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) ([]job.Name, error) {
+func (_m *JobService) Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error {
 	ret := _m.Called(ctx, jobTenant, jobs)
 
-	var r0 []job.Name
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []*job.Spec) []job.Name); ok {
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []*job.Spec) error); ok {
 		r0 = rf(ctx, jobTenant, jobs)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]job.Name)
-		}
+		r0 = ret.Error(0)
 	}
 
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, tenant.Tenant, []*job.Spec) error); ok {
-		r1 = rf(ctx, jobTenant, jobs)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return r0
 }
 
 // Delete provides a mock function with given fields: ctx, jobTenant, jobName, cleanFlag, forceFlag
