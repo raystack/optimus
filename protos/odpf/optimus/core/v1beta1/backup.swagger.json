@@ -249,6 +249,9 @@
           "items": {
             "$ref": "#/definitions/v1beta1IgnoredResource"
           }
+        },
+        "backupId": {
+          "type": "string"
         }
       }
     },
