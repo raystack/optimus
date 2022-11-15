@@ -459,6 +459,35 @@ func TestResource(t *testing.T) {
 				source      resource.Status
 				destination resource.Status
 			}{
+
+				{
+					source:      resource.StatusUnknown,
+					destination: resource.StatusUnknown,
+				},
+				{
+					source:      resource.StatusToCreate,
+					destination: resource.StatusToCreate,
+				},
+				{
+					source:      resource.StatusToUpdate,
+					destination: resource.StatusToUpdate,
+				},
+				{
+					source:      resource.StatusMarkExistInStore,
+					destination: resource.StatusMarkExistInStore,
+				},
+				{
+					source:      resource.StatusCreateFailure,
+					destination: resource.StatusCreateFailure,
+				},
+				{
+					source:      resource.StatusUpdateFailure,
+					destination: resource.StatusUpdateFailure,
+				},
+				{
+					source:      resource.StatusSuccess,
+					destination: resource.StatusSuccess,
+				},
 				{
 					source:      resource.StatusUnknown,
 					destination: resource.StatusToCreate,
