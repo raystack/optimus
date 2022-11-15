@@ -40,10 +40,10 @@ func (m *ResourceMgr) CreateResource(ctx context.Context, res *resource.Resource
 	err := datastore.Create(ctx, res)
 	if err != nil && !errors.IsErrorType(err, errors.ErrAlreadyExists) {
 		me.Append(err)
-		me.Append(res.MarkCreateFailure())
+		me.Append(res.ChangeStatusTo(resource.StatusCreateFailure))
 		m.logger.Error("error creating resource [%s] to datastore [%s]: %s", res.FullName(), res.Dataset().Store.String(), err)
 	} else {
-		me.Append(res.MarkSuccess())
+		me.Append(res.ChangeStatusTo(resource.StatusSuccess))
 	}
 
 	me.Append(m.repo.UpdateStatus(ctx, res))
@@ -63,10 +63,10 @@ func (m *ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource
 	err := datastore.Update(ctx, res)
 	if err != nil {
 		me.Append(err)
-		me.Append(res.MarkUpdateFailure())
+		me.Append(res.ChangeStatusTo(resource.StatusUpdateFailure))
 		m.logger.Error("error updating resource [%s] to datastore [%s]: %s", res.FullName(), res.Dataset().Store.String(), err)
 	} else {
-		me.Append(res.MarkSuccess())
+		me.Append(res.ChangeStatusTo(resource.StatusSuccess))
 	}
 
 	me.Append(m.repo.UpdateStatus(ctx, res))

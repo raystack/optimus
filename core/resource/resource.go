@@ -19,6 +19,14 @@ const (
 	TableNameSections   = 3
 )
 
+var statusTransitionSourceToDestinations = map[Status][]Status{
+	StatusUnknown:          {StatusToCreate, StatusToUpdate, StatusCreateFailure, StatusUpdateFailure, StatusMarkExistInStore},
+	StatusToCreate:         {StatusCreateFailure, StatusSuccess},
+	StatusToUpdate:         {StatusUpdateFailure, StatusSuccess},
+	StatusMarkExistInStore: {StatusCreateFailure},
+	StatusSuccess:          {StatusCreateFailure, StatusUpdateFailure},
+}
+
 type ValidateResource interface {
 	Validate() error
 }
@@ -211,49 +219,15 @@ func (r *Resource) Equal(incoming *Resource) bool {
 	return reflect.DeepEqual(r.metadata, incoming.metadata)
 }
 
-func (r *Resource) MarkToCreate() error {
-	if r.status == StatusUnknown {
-		r.status = StatusToCreate
-		return nil
+func (r *Resource) ChangeStatusTo(newStatus Status) error {
+	allowedDestinations := statusTransitionSourceToDestinations[r.Status()]
+	for _, destination := range allowedDestinations {
+		if destination == newStatus {
+			r.status = newStatus
+			return nil
+		}
 	}
-	msg := fmt.Sprintf("status transition for [%s] from [%s] to [%s] is not allowed", r.FullName(), r.status, StatusToCreate)
-	return errors.InvalidStateTransition(EntityResource, msg)
-}
-
-func (r *Resource) MarkToUpdate() error {
-	if r.status == StatusUnknown {
-		r.status = StatusToUpdate
-		return nil
-	}
-	msg := fmt.Sprintf("status transition for [%s] from [%s] to [%s] is not allowed", r.FullName(), r.status, StatusToUpdate)
-	return errors.InvalidStateTransition(EntityResource, msg)
-}
-
-func (r *Resource) MarkCreateFailure() error {
-	switch r.status {
-	case StatusUnknown, StatusMarkExistInStore, StatusToCreate, StatusSuccess:
-		r.status = StatusCreateFailure
-	}
-	msg := fmt.Sprintf("status transition for [%s] from [%s] to [%s] is not allowed", r.FullName(), r.status, StatusCreateFailure)
-	return errors.InvalidStateTransition(EntityResource, msg)
-}
-
-func (r *Resource) MarkUpdateFailure() error {
-	switch r.status {
-	case StatusUnknown, StatusToUpdate, StatusSuccess:
-		r.status = StatusUpdateFailure
-	}
-	msg := fmt.Sprintf("status transition for [%s] from [%s] to [%s] is not allowed", r.FullName(), r.status, StatusUpdateFailure)
-	return errors.InvalidStateTransition(EntityResource, msg)
-}
-
-func (r *Resource) MarkSuccess() error {
-	switch r.status {
-	case StatusToCreate, StatusToUpdate:
-		r.status = StatusSuccess
-		return nil
-	}
-	msg := fmt.Sprintf("status transition for [%s] from [%s] to success is not allowed", r.FullName(), r.status)
+	msg := fmt.Sprintf("status transition for [%s] from [%s] to [%s] is not allowed", r.FullName(), r.Status(), newStatus)
 	return errors.InvalidStateTransition(EntityResource, msg)
 }
 
