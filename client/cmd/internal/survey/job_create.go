@@ -49,7 +49,7 @@ func (j *JobCreateSurvey) AskToCreateJob(jobSpecReader local.SpecReader[*model.J
 		return model.JobSpec{}, err
 	}
 
-	cliMod, err := j.getPluginCLIMod(jobInput.Task.Name)
+	cliMod, err := j.getPluginCliMod(jobInput.Task.Name)
 	if err != nil {
 		return jobInput, err
 	}
@@ -216,7 +216,7 @@ func (j *JobCreateSurvey) askCreateQuestions(questions []*survey.Question) (mode
 	}, nil
 }
 
-func (*JobCreateSurvey) getPluginCLIMod(taskName string) (models.CommandLineMod, error) {
+func (*JobCreateSurvey) getPluginCliMod(taskName string) (models.CommandLineMod, error) {
 	pluginRepo := models.PluginRegistry
 	plugin, err := pluginRepo.GetByName(taskName)
 	if err != nil {
@@ -235,7 +235,7 @@ func (j *JobCreateSurvey) askPluginQuestions(cliMod models.CommandLineMod, jobNa
 
 	answers := models.PluginAnswers{}
 	for _, question := range questionResponse.Questions {
-		subAnswers, err := j.jobSurvey.askCLIModSurveyQuestion(ctx, cliMod, question)
+		subAnswers, err := j.jobSurvey.askCliModSurveyQuestion(ctx, cliMod, question)
 		if err != nil {
 			return nil, err
 		}

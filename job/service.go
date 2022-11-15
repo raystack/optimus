@@ -440,41 +440,6 @@ func (srv *Service) bulkDelete(ctx context.Context, namespace models.NamespaceSp
 	}
 }
 
-// TODO: we only need project name
-func (srv *Service) GetDependencyResolvedSpecs(ctx context.Context, proj models.ProjectSpec, progressObserver progress.Observer) (resolvedSpecs []models.JobSpec, resolvedErrors error) {
-	// fetch all jobs since dependency resolution happens for all jobs in a project, not just for a namespace
-	jobSpecs, err := srv.jobSpecRepository.GetAllByProjectName(ctx, proj.Name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve jobs: %w", err)
-	}
-	srv.notifyProgress(progressObserver, &models.ProgressJobSpecFetch{})
-
-	// generate a reverse map for namespace
-	jobsToNamespace := srv.getMappedJobNameToNamespaceName(jobSpecs)
-	// resolve specs in parallel
-	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
-	for _, jobSpec := range jobSpecs {
-		runner.Add(func(currentSpec models.JobSpec) func() (interface{}, error) {
-			return func() (interface{}, error) {
-				resolvedSpec, err := srv.dependencyResolver.Resolve(ctx, proj, currentSpec, progressObserver)
-				if err != nil {
-					return nil, fmt.Errorf("%s: %s/%s: %w", errDependencyResolution, jobsToNamespace[currentSpec.Name], currentSpec.Name, err)
-				}
-				return resolvedSpec, nil
-			}
-		}(jobSpec))
-	}
-
-	for _, state := range runner.Run() {
-		if state.Err != nil {
-			resolvedErrors = multierror.Append(resolvedErrors, state.Err)
-		} else {
-			resolvedSpecs = append(resolvedSpecs, state.Val.(models.JobSpec))
-		}
-	}
-	return resolvedSpecs, resolvedErrors
-}
-
 // do other jobs depend on this jobSpec
 func (srv *Service) getDependentJobNames(ctx context.Context, jobSpec models.JobSpec) ([]string, error) {
 	// inferred and static dependents
@@ -547,11 +512,19 @@ func (srv *Service) GetDownstream(ctx context.Context, projectSpec models.Projec
 	return jobSpecs, nil
 }
 
-func (srv *Service) prepareJobSpecMap(ctx context.Context, projectSpec models.ProjectSpec) (map[string]models.JobSpec, error) {
+func (srv *Service) prepareJobSpecMap(ctx context.Context, projectSpec models.ProjectSpec) (jobSpec map[string]models.JobSpec, resolvedErrors error) {
 	// resolve dependency of all jobs in given project
-	jobSpecs, err := srv.GetDependencyResolvedSpecs(ctx, projectSpec, nil)
+	jobSpecs, unknownDependencies, err := srv.dependencyResolver.GetJobSpecsWithDependencies(ctx, projectSpec.Name)
+
 	if err != nil {
 		return nil, err
+	}
+
+	if len(unknownDependencies) > 0 {
+		for _, unknownDependency := range unknownDependencies {
+			resolvedErrors = multierror.Append(resolvedErrors, fmt.Errorf("unable to resolve dependency %s", unknownDependency))
+		}
+		return nil, resolvedErrors
 	}
 
 	jobSpecMap := make(map[string]models.JobSpec)
@@ -615,13 +588,6 @@ func listIgnoredJobs(rootInstance, rootFilteredTree *tree.TreeNode) []string {
 	}
 
 	return ignoredJobs
-}
-
-func (*Service) notifyProgress(po progress.Observer, event progress.Event) {
-	if po == nil {
-		return
-	}
-	po.Notify(event)
 }
 
 // remove items present in from

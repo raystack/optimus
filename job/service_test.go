@@ -326,15 +326,14 @@ func TestService(t *testing.T) {
 		}
 
 		t.Run("should successfully generate destination and dependencies for job task", func(t *testing.T) {
-			execUnit1 := new(mock.DependencyResolverMod)
+			execUnit1 := new(mock.YamlMod)
 			defer execUnit1.AssertExpectations(t)
 			jobSpec := models.JobSpec{
 				Version: 1,
 				Name:    "test",
 				Task: models.JobSpecTask{
 					Unit: &models.Plugin{
-						Base:          execUnit1,
-						DependencyMod: execUnit1,
+						YamlMod: execUnit1,
 					},
 					Config: models.JobSpecConfigs{
 						{
@@ -820,16 +819,16 @@ func TestService(t *testing.T) {
 
 	t.Run("GetDownstream", func(t *testing.T) {
 		t.Run("should return nil and error if error is encountered when getting all jobs within a project", func(t *testing.T) {
-			jobSpecRepository := mock.NewJobSpecRepository(t)
-			service := job.NewService(nil, nil, nil, nil, nil, nil, nil, nil, nil, jobSpecRepository, nil)
-
 			ctx := context.Background()
 			projectSpec := models.ProjectSpec{
 				Name: "project_tes",
 			}
 			jobName := "job_test"
+			dependencyResolver := new(mock.DependencyResolver)
+			defer dependencyResolver.AssertExpectations(t)
+			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.Name).Return(nil, nil, errors.New("error while getting all dags"))
 
-			jobSpecRepository.On("GetAllByProjectName", ctx, projectSpec.Name).Return(nil, errors.New("unknown error"))
+			service := job.NewService(nil, nil, dependencyResolver, nil, nil, nil, nil, nil, nil, nil, nil)
 
 			actualJobSpecs, actualError := service.GetDownstream(ctx, projectSpec, jobName)
 
@@ -839,8 +838,7 @@ func TestService(t *testing.T) {
 
 		t.Run("should return nil and error if error is encountered when resolving dependency for one or more jobs", func(t *testing.T) {
 			dependencyResolver := mock.NewDependencyResolver(t)
-			jobSpecRepository := mock.NewJobSpecRepository(t)
-			service := job.NewService(nil, nil, dependencyResolver, nil, nil, nil, nil, nil, nil, jobSpecRepository, nil)
+			service := job.NewService(nil, nil, dependencyResolver, nil, nil, nil, nil, nil, nil, nil, nil)
 
 			ctx := context.Background()
 			projectSpec := models.ProjectSpec{
@@ -848,17 +846,7 @@ func TestService(t *testing.T) {
 			}
 			jobName := "job_test"
 
-			jobsWithinProject := []models.JobSpec{
-				{Name: "job_1", NamespaceSpec: models.NamespaceSpec{Name: "namespace_1"}},
-				{Name: "job_2", NamespaceSpec: models.NamespaceSpec{Name: "namespace_1"}},
-				{Name: "job_3", NamespaceSpec: models.NamespaceSpec{Name: "namespace_2"}},
-			}
-
-			jobSpecRepository.On("GetAllByProjectName", ctx, projectSpec.Name).Return(jobsWithinProject, nil)
-			for i := range jobsWithinProject {
-				dependencyResolver.On("Resolve", ctx, projectSpec, jobsWithinProject[i], nil).Return(models.JobSpec{}, errors.New("unknown error"))
-			}
-
+			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.Name).Return(nil, nil, errors.New("unknown error"))
 			actualJobSpecs, actualError := service.GetDownstream(ctx, projectSpec, jobName)
 
 			assert.Nil(t, actualJobSpecs)
@@ -867,8 +855,7 @@ func TestService(t *testing.T) {
 
 		t.Run("should return job specs and nil if no error is found", func(t *testing.T) {
 			dependencyResolver := mock.NewDependencyResolver(t)
-			jobSpecRepository := mock.NewJobSpecRepository(t)
-			service := job.NewService(nil, nil, dependencyResolver, nil, nil, nil, nil, nil, nil, jobSpecRepository, nil)
+			service := job.NewService(nil, nil, dependencyResolver, nil, nil, nil, nil, nil, nil, nil, nil)
 
 			ctx := context.Background()
 			projectSpec := models.ProjectSpec{
@@ -893,10 +880,7 @@ func TestService(t *testing.T) {
 			}
 			jobsWithinProject := []models.JobSpec{jobSpecWithoutDependency, jobSpecWithDependency}
 
-			jobSpecRepository.On("GetAllByProjectName", ctx, projectSpec.Name).Return(jobsWithinProject, nil)
-			for i := range jobsWithinProject {
-				dependencyResolver.On("Resolve", ctx, projectSpec, jobsWithinProject[i], nil).Return(jobsWithinProject[i], nil)
-			}
+			dependencyResolver.On("GetJobSpecsWithDependencies", ctx, projectSpec.Name).Return(jobsWithinProject, nil, nil)
 
 			actualJobSpecs, actualError := service.GetDownstream(ctx, projectSpec, jobName)
 

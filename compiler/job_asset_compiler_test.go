@@ -18,9 +18,9 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 	t.Run("CompileJobRunAssets", func(t *testing.T) {
 		ctx := context.Background()
 		engine := compiler.NewGoEngine()
-		execUnit := new(mock.BasePlugin)
-		cliMod := new(mock.CLIMod)
-		plugin := &models.Plugin{Base: execUnit, CLIMod: cliMod}
+		execUnit := new(mock.YamlMod)
+		depResMod := new(mock.DependencyResolverMod)
+		plugin := &models.Plugin{YamlMod: execUnit, DependencyMod: depResMod}
 
 		execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "bq"}, nil)
 
@@ -116,7 +116,7 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.Equal(t, "error", err.Error())
 		})
-		t.Run("compiles the assets when plugin has no cliMod", func(t *testing.T) {
+		t.Run("compiles the assets when plugin has no yamlMod", func(t *testing.T) {
 			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", "bq").Return(&models.Plugin{}, nil)
 
@@ -129,7 +129,7 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 			assert.Equal(t, expectedQuery, assets["query.sql"])
 		})
 		t.Run("compiles the assets successfully", func(t *testing.T) {
-			cliMod.On("CompileAssets", context.Background(), models.CompileAssetsRequest{
+			depResMod.On("CompileAssets", context.Background(), models.CompileAssetsRequest{
 				Config:       models.PluginConfigs{}.FromJobSpec(jobSpec.Task.Config),
 				Assets:       models.PluginAssets{}.FromJobSpec(jobSpec.Assets),
 				InstanceData: instanceSpec.Data,
@@ -141,6 +141,8 @@ func TestJobRunAssetsCompiler(t *testing.T) {
 					Value: "select * from table WHERE event_timestamp > '{{.EXECUTION_TIME}}' and name = '{{.secret.table_name}}'",
 				},
 			}}, nil)
+			defer depResMod.AssertExpectations(t)
+
 			pluginRepo := mock.NewPluginRepository(t)
 			pluginRepo.On("GetByName", "bq").Return(plugin, nil)
 

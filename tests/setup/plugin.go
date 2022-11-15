@@ -11,19 +11,8 @@ import (
 
 type MockPluginBQ struct{}
 
-func (MockPluginBQ) PluginInfo() (*models.PluginInfoResponse, error) {
-	return &models.PluginInfoResponse{
-		Name:          "bq2bq",
-		Description:   "BigQuery to BigQuery transformation task",
-		PluginType:    models.PluginTypeTask,
-		PluginVersion: "dev",
-		APIVersion:    nil,
-		DependsOn:     nil,
-		HookType:      "",
-		Image:         "gcr.io/bq-plugin:dev",
-		SecretPath:    "/tmp/auth.json",
-		PluginMods:    []models.PluginMod{models.ModTypeDependencyResolver},
-	}, nil
+func (MockPluginBQ) GetName(_ context.Context) (string, error) {
+	return "bq2bq", nil
 }
 
 func (MockPluginBQ) GenerateDestination(_ context.Context, request models.GenerateDestinationRequest) (*models.GenerateDestinationResponse, error) {
@@ -44,11 +33,16 @@ func (MockPluginBQ) GenerateDependencies(_ context.Context, req models.GenerateD
 	return &models.GenerateDependenciesResponse{Dependencies: []string{c.Value}}, nil
 }
 
+func (MockPluginBQ) CompileAssets(_ context.Context, _ models.CompileAssetsRequest) (*models.CompileAssetsResponse, error) {
+	// TODO: implement mock
+	return &models.CompileAssetsResponse{}, nil
+}
+
 func InMemoryPluginRegistry() models.PluginRepository {
 	bq2bq := MockPluginBQ{}
 
 	transporterHook := "transporter"
-	hookUnit := new(mock.BasePlugin)
+	hookUnit := new(mock.YamlMod)
 	hookUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name:       transporterHook,
 		HookType:   models.HookTypePre,
@@ -58,11 +52,11 @@ func InMemoryPluginRegistry() models.PluginRepository {
 
 	pluginRepo := new(mock.PluginRepository)
 	pluginRepo.On("GetByName", "bq2bq").Return(&models.Plugin{
-		Base:          bq2bq,
+		YamlMod:       hookUnit,
 		DependencyMod: bq2bq,
 	}, nil)
 	pluginRepo.On("GetByName", "transporter").Return(&models.Plugin{
-		Base: hookUnit,
+		YamlMod: hookUnit,
 	}, nil)
 	return pluginRepo
 }

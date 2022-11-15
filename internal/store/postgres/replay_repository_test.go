@@ -152,7 +152,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 	t.Run("Insert and GetByID", func(t *testing.T) {
 		db := DBSetup()
 
-		execUnit1 := new(mock.BasePlugin)
+		execUnit1 := new(mock.YamlMod)
 		defer execUnit1.AssertExpectations(t)
 		execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 			Name: gTask,
@@ -161,14 +161,14 @@ func TestIntegrationReplayRepository(t *testing.T) {
 		defer depMod1.AssertExpectations(t)
 
 		pluginRepo := mock.NewPluginRepository(t)
-
-		pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
+		defer pluginRepo.AssertExpectations(t)
+		pluginRepo.On("GetByName", gTask).Return(&models.Plugin{YamlMod: execUnit1, DependencyMod: depMod1}, nil)
 		adapter := postgres.NewAdapter(pluginRepo)
 
 		var testModels []*models.ReplaySpec
 		testModels = append(testModels, testConfigs...)
 
-		jobConfigs[0].Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}
+		jobConfigs[0].Task = models.JobSpecTask{Unit: &models.Plugin{YamlMod: execUnit1}}
 		testConfigs[0].Job = jobConfigs[0]
 
 		namespaceRepo := postgres.NewNamespaceRepository(db, hash)
@@ -197,7 +197,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 		var testModels []*models.ReplaySpec
 		testModels = append(testModels, testConfigs...)
 
-		execUnit1 := new(mock.BasePlugin)
+		execUnit1 := new(mock.YamlMod)
 		defer execUnit1.AssertExpectations(t)
 		execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 			Name: gTask,
@@ -206,11 +206,11 @@ func TestIntegrationReplayRepository(t *testing.T) {
 		defer depMod1.AssertExpectations(t)
 
 		pluginRepo := mock.NewPluginRepository(t)
-
-		pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
+		defer pluginRepo.AssertExpectations(t)
+		pluginRepo.On("GetByName", gTask).Return(&models.Plugin{YamlMod: execUnit1, DependencyMod: depMod1}, nil)
 		adapter := postgres.NewAdapter(pluginRepo)
 
-		jobConfigs[0].Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1}}
+		jobConfigs[0].Task = models.JobSpecTask{Unit: &models.Plugin{YamlMod: execUnit1}}
 		testConfigs[0].Job = jobConfigs[0]
 
 		namespaceRepo := postgres.NewNamespaceRepository(db, hash)
@@ -247,7 +247,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			var testModels []*models.ReplaySpec
 			testModels = append(testModels, testConfigs...)
 
-			execUnit1 := new(mock.BasePlugin)
+			execUnit1 := new(mock.YamlMod)
 			defer execUnit1.AssertExpectations(t)
 			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name: gTask,
@@ -255,13 +255,13 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			depMod1 := new(mock.DependencyResolverMod)
 
 			for idx, jobConfig := range jobConfigs {
-				jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1, DependencyMod: depMod1}}
+				jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{YamlMod: execUnit1, DependencyMod: depMod1}}
 				testConfigs[idx].Job = jobConfig
 			}
 
 			pluginRepo := mock.NewPluginRepository(t)
-
-			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
+			defer pluginRepo.AssertExpectations(t)
+			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{YamlMod: execUnit1, DependencyMod: depMod1}, nil)
 			adapter := postgres.NewAdapter(pluginRepo)
 
 			namespaceRepo := postgres.NewNamespaceRepository(db, hash)
@@ -301,20 +301,20 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			var testModels []*models.ReplaySpec
 			testModels = append(testModels, testConfigs...)
 
-			execUnit1 := new(mock.BasePlugin)
+			execUnit1 := new(mock.YamlMod)
 			defer execUnit1.AssertExpectations(t)
 			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name: gTask,
 			}, nil)
 			depMod1 := new(mock.DependencyResolverMod)
 			for idx, jobConfig := range jobConfigs {
-				jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1, DependencyMod: depMod1}}
+				jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{YamlMod: execUnit1, DependencyMod: depMod1}}
 				testConfigs[idx].Job = jobConfig
 			}
 
 			pluginRepo := mock.NewPluginRepository(t)
-
-			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
+			defer pluginRepo.AssertExpectations(t)
+			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{YamlMod: execUnit1, DependencyMod: depMod1}, nil)
 			adapter := postgres.NewAdapter(pluginRepo)
 
 			namespaceRepo := postgres.NewNamespaceRepository(db, hash)
@@ -351,7 +351,7 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			var testModels []*models.ReplaySpec
 			testModels = append(testModels, testConfigs...)
 
-			execUnit1 := new(mock.BasePlugin)
+			execUnit1 := new(mock.YamlMod)
 			defer execUnit1.AssertExpectations(t)
 			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name: gTask,
@@ -359,13 +359,13 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			depMod1 := new(mock.DependencyResolverMod)
 
 			for idx, jobConfig := range jobConfigs {
-				jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1, DependencyMod: depMod1}}
+				jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{YamlMod: execUnit1, DependencyMod: depMod1}}
 				testConfigs[idx].Job = jobConfig
 			}
 
 			pluginRepo := mock.NewPluginRepository(t)
-
-			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
+			defer pluginRepo.AssertExpectations(t)
+			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{YamlMod: execUnit1, DependencyMod: depMod1}, nil)
 			adapter := postgres.NewAdapter(pluginRepo)
 
 			projectRepo := postgres.NewProjectRepository(db, hash)
@@ -408,20 +408,20 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			testModels = append(testModels, testConfigs...)
 			expectedUUIDs := []uuid.UUID{testModels[0].ID, testModels[1].ID, testModels[2].ID}
 
-			execUnit1 := new(mock.BasePlugin)
+			execUnit1 := new(mock.YamlMod)
 			defer execUnit1.AssertExpectations(t)
 			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name: gTask,
 			}, nil)
 			depMod1 := new(mock.DependencyResolverMod)
 			for idx, jobConfig := range jobConfigs {
-				jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1, DependencyMod: depMod1}}
+				jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{YamlMod: execUnit1, DependencyMod: depMod1}}
 				testConfigs[idx].Job = jobConfig
 			}
 
 			pluginRepo := mock.NewPluginRepository(t)
-
-			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{Base: execUnit1, DependencyMod: depMod1}, nil)
+			defer pluginRepo.AssertExpectations(t)
+			pluginRepo.On("GetByName", gTask).Return(&models.Plugin{YamlMod: execUnit1, DependencyMod: depMod1}, nil)
 			adapter := postgres.NewAdapter(pluginRepo)
 
 			projectRepo := postgres.NewProjectRepository(db, hash)
@@ -460,14 +460,14 @@ func TestIntegrationReplayRepository(t *testing.T) {
 			var testModels []*models.ReplaySpec
 			testModels = append(testModels, testConfigs...)
 
-			execUnit1 := new(mock.BasePlugin)
+			execUnit1 := new(mock.YamlMod)
 			defer execUnit1.AssertExpectations(t)
 			execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
 				Name: gTask,
 			}, nil)
 			depMod1 := new(mock.DependencyResolverMod)
 			for idx, jobConfig := range jobConfigs {
-				jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{Base: execUnit1, DependencyMod: depMod1}}
+				jobConfig.Task = models.JobSpecTask{Unit: &models.Plugin{YamlMod: execUnit1, DependencyMod: depMod1}}
 				testConfigs[idx].Job = jobConfig
 			}
 
