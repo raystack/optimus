@@ -153,6 +153,39 @@ func (s Store) BatchUpdate(ctx context.Context, resources []*resource.Resource) 
 	return errors.MultiToError(me)
 }
 
+func (s Store) Exist(ctx context.Context, res *resource.Resource) (bool, error) {
+	spanCtx, span := startChildSpan(ctx, "bigquery/CreateResource")
+	defer span.End()
+
+	account, err := s.secretProvider.GetSecret(spanCtx, res.Tenant(), accountKey)
+	if err != nil {
+		return false, err
+	}
+
+	client, err := s.clientProvider.Get(spanCtx, account.Value())
+	if err != nil {
+		return false, err
+	}
+	defer client.Close()
+
+	switch res.Kind() {
+	case resource.KindDataset:
+		handle := client.DatasetHandleFrom(res)
+		return handle.Exists(spanCtx), nil
+	case resource.KindTable:
+		handle := client.TableHandleFrom(res)
+		return handle.Exists(spanCtx), nil
+	case resource.KindExternalTable:
+		handle := client.ExternalTableHandleFrom(res)
+		return handle.Exists(spanCtx), nil
+	case resource.KindView:
+		handle := client.ViewHandleFrom(res)
+		return handle.Exists(spanCtx), nil
+	default:
+		return false, errors.InvalidArgument(store, "invalid kind for bigquery resource "+res.Kind().String())
+	}
+}
+
 func startChildSpan(ctx context.Context, name string) (context.Context, trace.Span) {
 	tracer := otel.Tracer("datastore/bigquery")
 
