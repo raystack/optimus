@@ -84,7 +84,7 @@ func (m *ResourceMgr) Exist(ctx context.Context, res *resource.Resource) (bool, 
 	return datastore.Exist(ctx, res)
 }
 
-func (m *ResourceMgr) BatchUpdate(ctx context.Context, store resource.Store, resources []*resource.Resource) error {
+func (m *ResourceMgr) Deploy(ctx context.Context, store resource.Store, resources []*resource.Resource) error {
 	datastore, ok := m.datastoreMap[store]
 	if !ok {
 		m.logger.Error("datastore [%s]  is not found", store.String())

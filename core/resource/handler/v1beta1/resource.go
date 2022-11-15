@@ -35,7 +35,7 @@ type ResourceService interface {
 	Update(ctx context.Context, res *resource.Resource) error
 	Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceName string) (*resource.Resource, error)
 	GetAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error)
-	BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error
+	Deploy(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error
 }
 
 type ResourceHandler struct {
@@ -93,7 +93,7 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 			continue
 		}
 
-		err = rh.service.BatchUpdate(stream.Context(), tnnt, store, resourceSpecs)
+		err = rh.service.Deploy(stream.Context(), tnnt, store, resourceSpecs)
 		successResources := getResourcesByStatuses(resourceSpecs, resource.StatusSuccess)
 		failureResources := getResourcesByStatuses(resourceSpecs, resource.StatusCreateFailure, resource.StatusUpdateFailure)
 

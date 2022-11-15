@@ -119,7 +119,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("returns error log when service returns error", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("BatchUpdate", mock.Anything, tnnt, resource.Bigquery, mock.Anything, mock.Anything).
+			service.On("Deploy", mock.Anything, tnnt, resource.Bigquery, mock.Anything, mock.Anything).
 				Return(errors.New("error in batch"))
 			defer service.AssertExpectations(t)
 
@@ -158,7 +158,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("successfully updates the resources", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("BatchUpdate", mock.Anything, tnnt, resource.Bigquery, mock.Anything, mock.Anything).Return(nil)
+			service.On("Deploy", mock.Anything, tnnt, resource.Bigquery, mock.Anything, mock.Anything).Return(nil)
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -743,7 +743,7 @@ func (r *resourceService) GetAll(ctx context.Context, tnnt tenant.Tenant, store 
 	return resources, args.Error(1)
 }
 
-func (r *resourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
+func (r *resourceService) Deploy(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
 	args := r.Called(ctx, tnnt, store, resources)
 	return args.Error(0)
 }
