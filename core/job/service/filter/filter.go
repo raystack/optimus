@@ -3,7 +3,7 @@ package filter
 type FilterOpt func(*filter)
 
 type filter struct {
-	bits  uint64
+	bits  uint64 //0000000000000000000
 	value map[Operand]string
 }
 

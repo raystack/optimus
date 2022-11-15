@@ -1,9 +1,9 @@
 package filter
 
 const (
-	bitOnProjectName         uint64 = 0
-	bitOnJobName             uint64 = 0 << 1
-	bitOnResourceDestination uint64 = 0 << 2
+	bitOnProjectName         uint64 = 1 << 0
+	bitOnJobName             uint64 = 1 << 1
+	bitOnResourceDestination uint64 = 1 << 2
 )
 
 // Operand
