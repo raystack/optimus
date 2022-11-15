@@ -125,7 +125,7 @@ func (j *JobAddHookSurvey) askHookQuestions(ctx context.Context, cliMod models.C
 
 	answers := models.PluginAnswers{}
 	for _, question := range questionResponse.Questions {
-		responseAnswer, err := j.jobSurvey.askCLIModSurveyQuestion(ctx, cliMod, question)
+		responseAnswer, err := j.jobSurvey.askCliModSurveyQuestion(ctx, cliMod, question)
 		if err != nil {
 			return nil, err
 		}
