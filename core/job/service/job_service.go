@@ -60,7 +60,7 @@ func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*j
 	return addedJobNames, errors.MultiToError(me)
 }
 
-func (j JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) (downstreamNames []job.FullName, err error) {
+func (j JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) (affectedDownstreamNames []job.FullName, err error) {
 	downstreamFullNames, err := j.repo.GetDownstreamFullNames(ctx, jobTenant.ProjectName(), jobName)
 	if err != nil {
 		return nil, err
