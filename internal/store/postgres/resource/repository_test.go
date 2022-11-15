@@ -153,28 +153,31 @@ func TestPostgresResourceRepository(t *testing.T) {
 	})
 
 	t.Run("CreateOrUpdateAll", func(t *testing.T) {
-		t.Run("does not do any create nor update and returns error if error is encountered", func(t *testing.T) {
+		t.Run("does not do any create nor update and resources status to failure and returns error if error is encountered", func(t *testing.T) {
 			db := dbSetup()
 			repository := repoResource.NewRepository(db)
 
 			existingResource, err := serviceResource.NewResource("project.dataset1", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
+			existingResource.ChangeStatusTo(serviceResource.StatusSuccess)
 			err = insertAllToDB(db, []*serviceResource.Resource{existingResource})
 			assert.NoError(t, err)
 			nonExistingResource, err := serviceResource.NewResource("project.dataset2", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
 
-			resourcesToUpdate := []*serviceResource.Resource{
-				serviceResource.FromExisting(existingResource, serviceResource.ReplaceStatus(serviceResource.StatusToUpdate)),
-				serviceResource.FromExisting(nonExistingResource, serviceResource.ReplaceStatus(serviceResource.StatusToUpdate)), // should be to create, but failing it purposely
-			}
+			existingResource.ChangeStatusTo(serviceResource.StatusToUpdate)
+			nonExistingResource.ChangeStatusTo(serviceResource.StatusToUpdate) // should be to create, but purposely failing
+
+			resourcesToUpdate := []*serviceResource.Resource{existingResource, nonExistingResource}
 			actualError := repository.CreateOrUpdateAll(ctx, resourcesToUpdate)
 			assert.Error(t, actualError)
+			assert.Equal(t, serviceResource.StatusUpdateFailure, nonExistingResource.Status())
+			assert.Equal(t, serviceResource.StatusUpdateFailure, existingResource.Status())
 
 			storedResources, err := readAllFromDB(db)
 			assert.NoError(t, err)
 			assert.Len(t, storedResources, 1)
-			assert.EqualValues(t, serviceResource.StatusUnknown, storedResources[0].Status())
+			assert.EqualValues(t, serviceResource.StatusSuccess, storedResources[0].Status())
 		})
 
 		t.Run("returns nil if no error is encountered", func(t *testing.T) {
