@@ -22,7 +22,7 @@ type JobRunRepository struct {
 	db *gorm.DB
 }
 
-type JobRun struct {
+type jobRun struct {
 	ID uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
 
 	JobName       string
@@ -41,7 +41,7 @@ type JobRun struct {
 	DeletedAt gorm.DeletedAt
 }
 
-func (j JobRun) toJobRun() (*job_run.JobRun, error) {
+func (j jobRun) toJobRun() (*job_run.JobRun, error) {
 	t, err := tenant.NewTenant(j.ProjectName, j.NamespaceName)
 	if err != nil {
 		return nil, err
@@ -55,7 +55,7 @@ func (j JobRun) toJobRun() (*job_run.JobRun, error) {
 }
 
 func (j *JobRunRepository) GetByID(ctx context.Context, id job_run.JobRunID) (*job_run.JobRun, error) {
-	var jobRun JobRun
+	var jobRun jobRun
 	getJobRunById := `SELECT ` + jobRunColumns + ` FROM ` + jobRunTableName + ` j where id = ?`
 	err := j.db.WithContext(ctx).Raw(getJobRunById, id).First(&jobRun).Error
 	if err != nil {
@@ -64,8 +64,8 @@ func (j *JobRunRepository) GetByID(ctx context.Context, id job_run.JobRunID) (*j
 	return jobRun.toJobRun()
 }
 
-func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t *tenant.Tenant, jobName job_run.JobName, scheduledAt time.Time) (*job_run.JobRun, error) {
-	var jobRun JobRun
+func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t tenant.Tenant, jobName job_run.JobName, scheduledAt time.Time) (*job_run.JobRun, error) {
+	var jobRun jobRun
 	getJobRunById := `SELECT ` + jobRunColumns + ` FROM job_run j 
 						where project_id = ? and namespace_id =?
 						job_name = ? and schedule_at = ?`
@@ -86,7 +86,7 @@ func (j *JobRunRepository) Update(ctx context.Context, jobRunId uuid.UUID, endTi
 	return j.db.WithContext(ctx).Exec(updateJobRun).Error
 }
 
-func (j *JobRunRepository) Create(ctx context.Context, t *tenant.Tenant, jobName job_run.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error {
+func (j *JobRunRepository) Create(ctx context.Context, t tenant.Tenant, jobName job_run.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error {
 	insertJobRun := `INSERT INTO job_run (` + jobRunColumns + `) values (?, ?, ?, ?, now(), TIMESTAMP '3000-01-01 00:00:00' , ?, ?) `
 	return j.db.WithContext(ctx).Exec(insertJobRun,
 		jobName.String(), t.NamespaceName().String(), t.ProjectName().String(),

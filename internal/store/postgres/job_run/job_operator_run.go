@@ -19,7 +19,7 @@ const (
 	hookRunTableName   = "hook_run"
 )
 
-type operatorRunRepository struct {
+type OperatorRunRepository struct {
 	db *gorm.DB
 }
 
@@ -38,16 +38,6 @@ type operatorRun struct {
 	DeletedAt gorm.DeletedAt
 }
 
-func (o operatorRun) toOperatorRun() *job_run.OperatorRun {
-	return &job_run.OperatorRun{
-		ID:           o.ID,
-		JobRunID:     o.JobRunID,
-		OperatorType: job_run.OperatorType(o.OperatorType),
-		State:        o.State,
-		StartTime:    o.StartTime,
-		EndTime:      o.EndTime,
-	}
-}
 func operatorTypeToTableName(operatorType job_run.OperatorType) (string, error) {
 	switch operatorType {
 	case job_run.OperatorSensor:
@@ -60,7 +50,19 @@ func operatorTypeToTableName(operatorType job_run.OperatorType) (string, error) 
 		return "", errors.InvalidArgument(job_run.EntityJobRun, "invalid operator Type:"+operatorType.String())
 	}
 }
-func (o *operatorRunRepository) GetOperatorRun(ctx context.Context, operatorType job_run.OperatorType, jobRunId uuid.UUID) (*job_run.OperatorRun, error) {
+
+func (o operatorRun) toOperatorRun() *job_run.OperatorRun {
+	return &job_run.OperatorRun{
+		ID:           o.ID,
+		JobRunID:     o.JobRunID,
+		OperatorType: job_run.OperatorType(o.OperatorType),
+		State:        o.State,
+		StartTime:    o.StartTime,
+		EndTime:      o.EndTime,
+	}
+}
+
+func (o *OperatorRunRepository) GetOperatorRun(ctx context.Context, operatorType job_run.OperatorType, jobRunId uuid.UUID) (*job_run.OperatorRun, error) {
 	var opRun operatorRun
 	operatorTableName, err := operatorTypeToTableName(operatorType)
 	if err != nil {
@@ -77,7 +79,7 @@ func (o *operatorRunRepository) GetOperatorRun(ctx context.Context, operatorType
 	}
 	return opRun.toOperatorRun(), nil
 }
-func (o *operatorRunRepository) CreateOperatorRun(ctx context.Context, operatorType job_run.OperatorType, jobRunID uuid.UUID, startTime time.Time) error {
+func (o *OperatorRunRepository) CreateOperatorRun(ctx context.Context, operatorType job_run.OperatorType, jobRunID uuid.UUID, startTime time.Time) error {
 	operatorTableName, err := operatorTypeToTableName(operatorType)
 	if err != nil {
 		return err
@@ -89,7 +91,7 @@ func (o *operatorRunRepository) CreateOperatorRun(ctx context.Context, operatorT
 
 }
 
-func (o *operatorRunRepository) UpdateOperatorRun(ctx context.Context, operatorType job_run.OperatorType, operatorRunID uuid.UUID, eventTime time.Time, state string) error {
+func (o *OperatorRunRepository) UpdateOperatorRun(ctx context.Context, operatorType job_run.OperatorType, operatorRunID uuid.UUID, eventTime time.Time, state string) error {
 	operatorTableName, err := operatorTypeToTableName(operatorType)
 	if err != nil {
 		return err

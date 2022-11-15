@@ -26,12 +26,13 @@ type JobRunRepository interface {
 	GetByScheduledAt(ctx context.Context, tenant tenant.Tenant, name job_run.JobName, scheduledAt time.Time) (*job_run.JobRun, error)
 	Create(ctx context.Context, tenant tenant.Tenant, name job_run.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error
 	Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, jobRunStatus string) error
+}
 
+type OperatorRunRepository interface {
 	GetOperatorRun(ctx context.Context, operator job_run.OperatorType, jobRunId uuid.UUID) (*job_run.OperatorRun, error)
 	CreateOperatorRun(ctx context.Context, operator job_run.OperatorType, jobRunID uuid.UUID, startTime time.Time) error
 	UpdateOperatorRun(ctx context.Context, operator job_run.OperatorType, jobRunID uuid.UUID, eventTime time.Time, state string) error
 }
-
 type JobInputCompiler interface {
 	Compile(ctx context.Context, job *job_run.Job, config job_run.RunConfig, executedAt time.Time) (*job_run.ExecutorInput, error)
 }
@@ -50,6 +51,7 @@ type Scheduler interface {
 type JobRunService struct {
 	l                log.Logger
 	repo             JobRunRepository
+	operatorRunRepo  OperatorRunRepository
 	scheduler        Scheduler
 	jobRepo          JobRepository
 	priorityResolver PriorityResolver
@@ -264,7 +266,7 @@ func (s JobRunService) createOperatorRun(ctx context.Context, event job_run.Even
 
 	startedAtTimeStamp := time.Unix(int64(event.Values["event_time"].(int64)), 0)
 
-	operatorRun, err := s.repo.GetOperatorRun(ctx, operatorType, jobRun.ID)
+	operatorRun, err := s.operatorRunRepo.GetOperatorRun(ctx, operatorType, jobRun.ID)
 	if err == nil {
 		if !errors.IsErrorType(err, errors.ErrNotFound) {
 			return err
@@ -276,7 +278,7 @@ func (s JobRunService) createOperatorRun(ctx context.Context, event job_run.Even
 		}
 	}
 
-	return s.repo.CreateOperatorRun(ctx,
+	return s.operatorRunRepo.CreateOperatorRun(ctx,
 		operatorType,
 		jobRun.ID,
 		startedAtTimeStamp)
@@ -294,7 +296,7 @@ func (s JobRunService) updateOperatorRun(ctx context.Context, event job_run.Even
 	if err != nil {
 		return err
 	}
-	operatorRun, err := s.repo.GetOperatorRun(ctx, operatorType, jobRun.ID)
+	operatorRun, err := s.operatorRunRepo.GetOperatorRun(ctx, operatorType, jobRun.ID)
 	if err != nil {
 		return err
 		//	todo: should i create a new operator run row here @sandeep
@@ -302,7 +304,7 @@ func (s JobRunService) updateOperatorRun(ctx context.Context, event job_run.Even
 	status := event.Values["status"].(string)
 	endTime := time.Unix(int64(event.Values["event_time"].(int64)), 0)
 
-	return s.repo.UpdateOperatorRun(ctx,
+	return s.operatorRunRepo.UpdateOperatorRun(ctx,
 		operatorType,
 		operatorRun.ID,
 		endTime,
