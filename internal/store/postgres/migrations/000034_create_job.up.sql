@@ -16,8 +16,8 @@ CREATE TABLE IF NOT EXISTS job (
     retry JSONB, -- from behavior
     alert JSONB, -- from behavior
 
-    static_upstreams VARCHAR(220)[], -- from upstreams
-    http_upstreams JSONB, -- from external upstreams
+    static_upstreams VARCHAR(220)[], -- from dependencies column
+    http_upstreams JSONB, -- from external_dependencies column
 
     task_name VARCHAR(200),
     task_config JSONB,
@@ -47,3 +47,7 @@ CREATE INDEX IF NOT EXISTS job_name_idx ON job (name);
 CREATE INDEX IF NOT EXISTS job_project_name_idx ON job (project_name);
 CREATE INDEX IF NOT EXISTS job_namespace_name_idx ON job (namespace_name);
 CREATE INDEX IF NOT EXISTS job_destination_idx ON job (destination);
+
+ALTER TABLE job_run DROP CONSTRAINT job_run_job_id_fkey;
+ALTER TABLE job_run ADD CONSTRAINT job_run_job_id_fkey FOREIGN KEY (job_id) REFERENCES job(id) ON DELETE CASCADE;
+ALTER TABLE replay ADD CONSTRAINT replay_job_id_fkey FOREIGN KEY (job_id) REFERENCES job(id) ON DELETE CASCADE;
