@@ -78,7 +78,7 @@ func (p JobPluginService) GenerateUpstreams(ctx context.Context, jobTenant *tena
 		return nil, ErrUpstreamModNotFound
 	}
 
-	assets, err := p.compileAsset(ctx, plugin, spec, p.now(), false)
+	assets, err := p.compileAsset(ctx, plugin, spec, p.now())
 	if err != nil {
 		return nil, fmt.Errorf("asset compilation failure: %w", err)
 	}
@@ -136,7 +136,7 @@ func (p JobPluginService) compileConfig(ctx context.Context, configs *job.Config
 	return pluginConfigs, nil
 }
 
-func (p JobPluginService) compileAsset(ctx context.Context, plugin *models.Plugin, spec *job.Spec, scheduledAt time.Time, allowOverride bool) (map[string]string, error) {
+func (p JobPluginService) compileAsset(ctx context.Context, plugin *models.Plugin, spec *job.Spec, scheduledAt time.Time) (map[string]string, error) {
 	var jobDestination string
 	if plugin.DependencyMod != nil {
 		var assets map[string]string

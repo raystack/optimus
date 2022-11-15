@@ -3,6 +3,7 @@ package resolver
 import (
 	"context"
 	"fmt"
+
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/tenant"
@@ -88,7 +89,7 @@ func (u UpstreamResolver) identifyUnresolvedUpstreams(resolvedUpstreams []*job.U
 	return unresolvedUpstreams
 }
 
-func (u UpstreamResolver) identifyUnresolvedInferredUpstreams(resolvedUpstreams []*job.Upstream, jobEntity *job.Job) []*dto.RawUpstream {
+func (UpstreamResolver) identifyUnresolvedInferredUpstreams(resolvedUpstreams []*job.Upstream, jobEntity *job.Job) []*dto.RawUpstream {
 	var unresolvedInferredUpstreams []*dto.RawUpstream
 	resolvedUpstreamDestinationMap := job.Upstreams(resolvedUpstreams).ToUpstreamDestinationMap()
 	for _, source := range jobEntity.Sources() {

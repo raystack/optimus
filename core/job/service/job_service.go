@@ -71,11 +71,7 @@ func (j JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName
 		return nil, errors.NewError(errors.ErrFailedPrecond, job.EntityJob, errorMsg)
 	}
 
-	if err = j.repo.Delete(ctx, jobTenant.ProjectName(), jobName, cleanFlag); err != nil {
-		return nil, err
-	}
-
-	return downstreamFullNames, nil
+	return downstreamFullNames, j.repo.Delete(ctx, jobTenant.ProjectName(), jobName, cleanFlag)
 }
 
 func (j JobService) addJobs(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Job) ([]job.Name, error) {

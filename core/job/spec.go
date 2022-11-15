@@ -2,10 +2,10 @@ package job
 
 import (
 	"fmt"
-	"github.com/odpf/optimus/core/tenant"
 	"strings"
 	"time"
 
+	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/models"
 )

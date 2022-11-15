@@ -205,6 +205,7 @@ func TestPostgresJobRepository(t *testing.T) {
 
 			// TODO: consider using this error
 			upstreams, err := jobRepo.GetJobNameWithInternalUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
+			assert.NoError(t, err)
 			assert.Equal(t, expectedUpstream, upstreams[jobSpecA.Name()][0])
 		})
 		t.Run("returns job with static upstreams", func(t *testing.T) {
@@ -230,8 +231,8 @@ func TestPostgresJobRepository(t *testing.T) {
 
 			expectedUpstream, _ := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), tenantDetails.ToTenant(), "static")
 
-			// TODO: consider using this error
 			upstreams, err := jobRepo.GetJobNameWithInternalUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
+			assert.NoError(t, err)
 			assert.Equal(t, expectedUpstream, upstreams[jobSpecA.Name()][0])
 		})
 		t.Run("returns job with static and inferred upstreams", func(t *testing.T) {
@@ -322,8 +323,8 @@ func TestPostgresJobRepository(t *testing.T) {
 			jobUpstreamRepo := postgres.NewJobRepository(db)
 			assert.Nil(t, jobUpstreamRepo.ReplaceUpstreams(ctx, []*job.WithUpstream{jobWithUpstream}))
 
-			// TODO: consider using this error
 			upstreamC, err := job.NewUpstreamResolved("jobC", host, "resource-C", sampleTenant, upstreamType)
+			assert.NoError(t, err)
 			upstreams = []*job.Upstream{upstreamC}
 			jobWithUpstream = job.NewWithUpstream(jobA, upstreams)
 

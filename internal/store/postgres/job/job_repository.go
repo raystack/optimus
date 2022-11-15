@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/job"
@@ -301,17 +302,12 @@ VALUES (
 func (JobRepository) deleteUpstreams(tx *gorm.DB, jobUpstreams []string) error {
 	var result *gorm.DB
 
-	var jobFullName []string
-	for _, upstream := range jobUpstreams {
-		jobFullName = append(jobFullName, upstream)
-	}
-
 	deleteForProjectScope := `DELETE
 FROM job_upstream
 WHERE project_name || '/' || job_name in (?);
 `
 
-	result = tx.Exec(deleteForProjectScope, jobFullName)
+	result = tx.Exec(deleteForProjectScope, jobUpstreams)
 
 	if result.Error != nil {
 		return errors.Wrap(job.EntityJob, "error during delete of job upstream", result.Error)
@@ -395,7 +391,7 @@ func (j JobRepository) Delete(ctx context.Context, projectName tenant.ProjectNam
 	})
 }
 
-func (j JobRepository) hardDelete(tx *gorm.DB, projectName tenant.ProjectName, jobName job.Name) error {
+func (JobRepository) hardDelete(tx *gorm.DB, projectName tenant.ProjectName, jobName job.Name) error {
 	query := `
 DELETE 
 FROM job
@@ -408,7 +404,7 @@ WHERE project_name = ? AND name = ?
 	return nil
 }
 
-func (j JobRepository) softDelete(tx *gorm.DB, projectName tenant.ProjectName, jobName job.Name) error {
+func (JobRepository) softDelete(tx *gorm.DB, projectName tenant.ProjectName, jobName job.Name) error {
 	query := `
 UPDATE job
 SET deleted_at = current_timestamp
