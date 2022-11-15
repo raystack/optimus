@@ -24,7 +24,8 @@ type Resource struct {
 
 	URN string
 
-	Status string
+	Status       string
+	ExistInStore bool
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -43,6 +44,7 @@ func fromResourceToModel(r *resource.Resource) *Resource {
 		Spec:          spec,
 		URN:           r.URN(),
 		Status:        r.Status().String(),
+		ExistInStore:  r.ExistInStore(),
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
 	}
@@ -72,6 +74,9 @@ func fromModelToResource(r *Resource) (*resource.Resource, error) {
 	output, err := resource.NewResource(r.FullName, kind, store, tnnt, metadata, spec)
 	if err == nil {
 		output = resource.FromExisting(output, resource.ReplaceStatus(resource.FromStringToStatus(r.Status)))
+		if r.ExistInStore {
+			output.MarkExistInStore()
+		}
 	}
 	return output, err
 }

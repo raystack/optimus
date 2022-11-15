@@ -247,13 +247,14 @@ func ReplaceStatus(status Status) FromExistingOpt {
 
 func FromExisting(existing *Resource, opts ...FromExistingOpt) *Resource {
 	output := &Resource{
-		name:     existing.name,
-		kind:     existing.kind,
-		dataset:  existing.dataset,
-		tenant:   existing.tenant,
-		spec:     existing.spec,
-		metadata: existing.metadata,
-		status:   existing.status,
+		name:         existing.name,
+		kind:         existing.kind,
+		dataset:      existing.dataset,
+		tenant:       existing.tenant,
+		spec:         existing.spec,
+		metadata:     existing.metadata,
+		status:       existing.status,
+		existInStore: existing.existInStore,
 	}
 	for _, opt := range opts {
 		opt(output)

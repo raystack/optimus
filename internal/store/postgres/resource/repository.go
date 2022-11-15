@@ -92,7 +92,10 @@ func (r Repository) UpdateStatus(ctx context.Context, resources ...*resource.Res
 			Where("namespace_name = ?", m.NamespaceName).
 			Where("store = ?", m.Store).
 			Where("full_name = ?", m.FullName).
-			Update("status", m.Status)
+			Updates(map[string]any{
+				"status":         m.Status,
+				"exist_in_store": m.ExistInStore,
+			})
 		if result.Error != nil {
 			multiErr.Append(errors.Wrap(resource.EntityResource, "error updating status to database", result.Error))
 		}

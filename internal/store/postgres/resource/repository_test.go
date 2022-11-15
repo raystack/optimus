@@ -244,8 +244,10 @@ func TestPostgresResourceRepository(t *testing.T) {
 			}
 			modifiedResource1, err := serviceResource.NewResource("project.dataset1", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, newSpec)
 			assert.NoError(t, err)
+			modifiedResource1.MarkExistInStore()
 			modifiedResource2, err := serviceResource.NewResource("project.dataset2", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, newSpec)
 			assert.NoError(t, err)
+			modifiedResource2.MarkExistInStore()
 			resourcesToUpdate := []*serviceResource.Resource{
 				serviceResource.FromExisting(modifiedResource1, serviceResource.ReplaceStatus(serviceResource.StatusSuccess)),
 				serviceResource.FromExisting(modifiedResource2, serviceResource.ReplaceStatus(serviceResource.StatusSuccess)),
@@ -258,8 +260,10 @@ func TestPostgresResourceRepository(t *testing.T) {
 			assert.Len(t, storedResources, 2)
 			assert.EqualValues(t, existingResource1.Spec(), storedResources[0].Spec())
 			assert.EqualValues(t, serviceResource.StatusSuccess, storedResources[0].Status())
+			assert.True(t, storedResources[0].ExistInStore())
 			assert.EqualValues(t, existingResource2.Spec(), storedResources[1].Spec())
 			assert.EqualValues(t, serviceResource.StatusSuccess, storedResources[1].Status())
+			assert.True(t, storedResources[1].ExistInStore())
 		})
 	})
 }
@@ -332,6 +336,9 @@ func fromModelToResource(r *repoResource.Resource) (*serviceResource.Resource, e
 	output, err := serviceResource.NewResource(r.FullName, kind, store, tnnt, meta, spec)
 	if err != nil {
 		return nil, err
+	}
+	if r.ExistInStore {
+		output.MarkExistInStore()
 	}
 	status := serviceResource.FromStringToStatus(r.Status)
 	return serviceResource.FromExisting(output, serviceResource.ReplaceStatus(status)), nil
