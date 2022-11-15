@@ -52,7 +52,8 @@ type Resource struct {
 	spec     map[string]any
 	metadata *Metadata
 
-	status Status
+	status       Status
+	existInStore bool
 }
 
 func NewResource(fullName string, kind Kind, store Store, tnnt tenant.Tenant, meta *Metadata, spec map[string]any) (*Resource, error) {
@@ -89,13 +90,14 @@ func NewResource(fullName string, kind Kind, store Store, tnnt tenant.Tenant, me
 	}
 
 	return &Resource{
-		name:     name,
-		kind:     kind,
-		dataset:  dataset,
-		tenant:   tnnt,
-		spec:     spec,
-		metadata: meta,
-		status:   StatusUnknown,
+		name:         name,
+		kind:         kind,
+		dataset:      dataset,
+		tenant:       tnnt,
+		spec:         spec,
+		metadata:     meta,
+		status:       StatusUnknown,
+		existInStore: false,
 	}, nil
 }
 
@@ -139,6 +141,10 @@ func (r *Resource) Status() Status {
 
 func (r *Resource) Spec() map[string]any {
 	return r.spec
+}
+
+func (r *Resource) ExistInStore() bool {
+	return r.existInStore
 }
 
 func (r *Resource) Validate() error {
@@ -196,37 +202,21 @@ func (r *Resource) Equal(incoming *Resource) bool {
 	if r.dataset != incoming.dataset {
 		return false
 	}
-	if r.tenant != incoming.tenant {
+	if !reflect.DeepEqual(r.tenant, incoming.tenant) {
 		return false
 	}
 	if !reflect.DeepEqual(r.spec, incoming.spec) {
 		return false
 	}
-	if !reflect.DeepEqual(r.metadata, incoming.metadata) {
-		return false
-	}
-	return r.status == incoming.status
+	return reflect.DeepEqual(r.metadata, incoming.metadata)
 }
 
-func (r *Resource) MarkSuccess() error {
-	if r.status == StatusToCreate || r.status == StatusToUpdate {
-		r.status = StatusSuccess
-		return nil
-	}
-	msg := fmt.Sprintf("invalid transition from %s to %s for %s", r.status, StatusSuccess, r.FullName())
-	return errors.InvalidStateTransition(EntityResource, msg)
+func (r *Resource) ChangeStatusTo(newStatus Status) {
+	r.status = newStatus
 }
 
-func (r *Resource) MarkFailed() error {
-	if r.status == StatusToCreate {
-		r.status = StatusCreateFailure
-		return nil
-	} else if r.status == StatusToUpdate {
-		r.status = StatusUpdateFailure
-		return nil
-	}
-	msg := fmt.Sprintf("invalid transition from %s to failure for %s", r.status, r.FullName())
-	return errors.InvalidStateTransition(EntityResource, msg)
+func (r *Resource) MarkExistInStore() {
+	r.existInStore = true
 }
 
 type FromExistingOpt func(r *Resource)
@@ -239,13 +229,14 @@ func ReplaceStatus(status Status) FromExistingOpt {
 
 func FromExisting(existing *Resource, opts ...FromExistingOpt) *Resource {
 	output := &Resource{
-		name:     existing.name,
-		kind:     existing.kind,
-		dataset:  existing.dataset,
-		tenant:   existing.tenant,
-		spec:     existing.spec,
-		metadata: existing.metadata,
-		status:   existing.status,
+		name:         existing.name,
+		kind:         existing.kind,
+		dataset:      existing.dataset,
+		tenant:       existing.tenant,
+		spec:         existing.spec,
+		metadata:     existing.metadata,
+		status:       existing.status,
+		existInStore: existing.existInStore,
 	}
 	for _, opt := range opts {
 		opt(output)

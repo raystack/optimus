@@ -47,6 +47,8 @@ type Status string
 const (
 	StatusUnknown Status = "unknown"
 
+	StatusMarkExistInStore Status = "mark_exist_in_store"
+
 	StatusToCreate Status = "to_create"
 	StatusToUpdate Status = "to_update"
 

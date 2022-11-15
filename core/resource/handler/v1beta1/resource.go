@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/odpf/salt/log"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/trace"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/odpf/optimus/api/writer"
@@ -19,12 +19,23 @@ import (
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
+var (
+	totalSuccessBatchUpdateGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "resources_batch_update_success_total",
+		Help: "The total number of failure resources in batch update",
+	})
+	totalFailureBatchUpdateGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "resources_batch_update_failure_total",
+		Help: "The total number of failure resources in batch update",
+	})
+)
+
 type ResourceService interface {
 	Create(ctx context.Context, res *resource.Resource) error
 	Update(ctx context.Context, res *resource.Resource) error
 	Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceName string) (*resource.Resource, error)
 	GetAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error)
-	BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error
+	Deploy(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error
 }
 
 type ResourceHandler struct {
@@ -32,13 +43,9 @@ type ResourceHandler struct {
 	service ResourceService
 
 	pb.UnimplementedResourceServiceServer
-	tracer trace.Tracer
 }
 
 func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_DeployResourceSpecificationServer) error {
-	spanCtx, span := rh.tracer.Start(stream.Context(), "DeployResourceSpecification()")
-	defer span.End()
-
 	startTime := time.Now()
 	responseWriter := writer.NewDeployResourceSpecificationResponseWriter(stream)
 	var errNamespaces []string
@@ -86,39 +93,41 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 			continue
 		}
 
-		if err = rh.service.BatchUpdate(spanCtx, tnnt, store, resourceSpecs); err != nil {
-			var me *errors.MultiError
-			if errors.As(err, &me) {
-				for _, batchErr := range me.Errors {
-					errMsg := fmt.Sprintf("failed to update resources: %s", batchErr.Error())
-					responseWriter.Write(writer.LogLevelError, errMsg)
-				}
-			} else {
-				errMsg := fmt.Sprintf("failed to update resources: %s", err.Error())
-				responseWriter.Write(writer.LogLevelError, errMsg)
-			}
+		err = rh.service.Deploy(stream.Context(), tnnt, store, resourceSpecs)
+		successResources := getResourcesByStatuses(resourceSpecs, resource.StatusSuccess)
+		failureResources := getResourcesByStatuses(resourceSpecs, resource.StatusCreateFailure, resource.StatusUpdateFailure)
 
+		writeResourcesStatus(successResources, func(msg string) {
+			responseWriter.Write(writer.LogLevelInfo, msg)
+			rh.l.Info(msg)
+		})
+		writeResourcesStatus(failureResources, func(msg string) {
+			responseWriter.Write(writer.LogLevelError, msg)
+			rh.l.Error(msg)
+		})
+		writeError(responseWriter, err)
+
+		if err != nil {
 			errNamespaces = append(errNamespaces, request.GetNamespaceName())
 			continue
 		}
 
-		// runtimeDeployResourceSpecificationCounter.Add(float64(len(resourceSpecs)))
 		successMsg := fmt.Sprintf("resources with namespace [%s] are deployed successfully", request.GetNamespaceName())
 		responseWriter.Write(writer.LogLevelInfo, successMsg)
+
+		totalSuccessBatchUpdateGauge.Set(float64(len(successResources)))
+		totalFailureBatchUpdateGauge.Set(float64(len(failureResources)))
 	}
-	rh.l.Info("Finished resource deployment in", "time", time.Since(startTime))
+	rh.l.Info("Finished resource deployment in %v", time.Since(startTime))
 	if len(errNamespaces) > 0 {
 		namespacesWithError := strings.Join(errNamespaces, ", ")
-		rh.l.Warn(fmt.Sprintf("Error while deploying namespaces: [%s]", namespacesWithError))
+		rh.l.Error("Error while deploying namespaces: [%s]", namespacesWithError)
 		return fmt.Errorf("error when deploying: [%s]", namespacesWithError)
 	}
 	return nil
 }
 
 func (rh ResourceHandler) ListResourceSpecification(ctx context.Context, req *pb.ListResourceSpecificationRequest) (*pb.ListResourceSpecificationResponse, error) {
-	spanCtx, span := rh.tracer.Start(ctx, "ListResourceSpecification()")
-	defer span.End()
-
 	store, err := resource.FromStringToStore(req.GetDatastoreName())
 	if err != nil {
 		return nil, errors.GRPCErr(errors.InvalidArgument(resource.EntityResource, "invalid datastore name"), "invalid list resource request")
@@ -129,7 +138,7 @@ func (rh ResourceHandler) ListResourceSpecification(ctx context.Context, req *pb
 		return nil, errors.GRPCErr(err, "failed to list resource for "+req.GetDatastoreName())
 	}
 
-	resources, err := rh.service.GetAll(spanCtx, tnnt, store)
+	resources, err := rh.service.GetAll(ctx, tnnt, store)
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to retrieve jobs for project "+req.GetProjectName())
 	}
@@ -149,9 +158,6 @@ func (rh ResourceHandler) ListResourceSpecification(ctx context.Context, req *pb
 }
 
 func (rh ResourceHandler) CreateResource(ctx context.Context, req *pb.CreateResourceRequest) (*pb.CreateResourceResponse, error) {
-	spanCtx, span := rh.tracer.Start(ctx, "CreateResource()")
-	defer span.End()
-
 	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to create resource")
@@ -167,19 +173,14 @@ func (rh ResourceHandler) CreateResource(ctx context.Context, req *pb.CreateReso
 		return nil, errors.GRPCErr(err, "failed to create resource")
 	}
 
-	err = rh.service.Create(spanCtx, res)
+	err = rh.service.Create(ctx, res)
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to create resource "+res.FullName())
 	}
-	// runtimeDeployResourceSpecificationCounter.Inc()
-
 	return &pb.CreateResourceResponse{}, nil
 }
 
 func (rh ResourceHandler) ReadResource(ctx context.Context, req *pb.ReadResourceRequest) (*pb.ReadResourceResponse, error) {
-	spanCtx, span := rh.tracer.Start(ctx, "ReadResource()")
-	defer span.End()
-
 	if req.GetResourceName() == "" {
 		return nil, errors.GRPCErr(errors.InvalidArgument(resource.EntityResource, "empty resource name"), "invalid read resource request")
 	}
@@ -194,7 +195,7 @@ func (rh ResourceHandler) ReadResource(ctx context.Context, req *pb.ReadResource
 		return nil, errors.GRPCErr(err, "failed to read resource "+req.GetResourceName())
 	}
 
-	response, err := rh.service.Get(spanCtx, tnnt, store, req.GetResourceName())
+	response, err := rh.service.Get(ctx, tnnt, store, req.GetResourceName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to read resource "+req.GetResourceName())
 	}
@@ -210,9 +211,6 @@ func (rh ResourceHandler) ReadResource(ctx context.Context, req *pb.ReadResource
 }
 
 func (rh ResourceHandler) UpdateResource(ctx context.Context, req *pb.UpdateResourceRequest) (*pb.UpdateResourceResponse, error) {
-	spanCtx, span := rh.tracer.Start(ctx, "UpdateResource()")
-	defer span.End()
-
 	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to update resource")
@@ -228,13 +226,51 @@ func (rh ResourceHandler) UpdateResource(ctx context.Context, req *pb.UpdateReso
 		return nil, errors.GRPCErr(err, "failed to update resource")
 	}
 
-	err = rh.service.Update(spanCtx, res)
+	err = rh.service.Update(ctx, res)
 	if err != nil {
 		return nil, errors.GRPCErr(err, "failed to update resource "+res.FullName())
 	}
-
-	// runtimeDeployResourceSpecificationCounter.Inc()
 	return &pb.UpdateResourceResponse{}, nil
+}
+
+func writeError(logWriter writer.LogWriter, err error) {
+	if err == nil {
+		return
+	}
+	var me *errors.MultiError
+	if errors.As(err, &me) {
+		for _, e := range me.Errors {
+			writeError(logWriter, e)
+		}
+	} else {
+		var de *errors.DomainError
+		if errors.As(err, &de) {
+			logWriter.Write(writer.LogLevelError, de.DebugString())
+		} else {
+			logWriter.Write(writer.LogLevelError, err.Error())
+		}
+	}
+}
+
+func writeResourcesStatus(resources []*resource.Resource, writeFn func(msg string)) {
+	for _, r := range resources {
+		msg := fmt.Sprintf("[%s] %s", r.Status(), r.FullName())
+		writeFn(msg)
+	}
+}
+
+func getResourcesByStatuses(resources []*resource.Resource, statuses ...resource.Status) []*resource.Resource {
+	acceptedStatus := make(map[resource.Status]bool)
+	for _, s := range statuses {
+		acceptedStatus[s] = true
+	}
+	var output []*resource.Resource
+	for _, r := range resources {
+		if acceptedStatus[r.Status()] {
+			output = append(output, r)
+		}
+	}
+	return output
 }
 
 func fromResourceProto(rs *pb.ResourceSpecification, tnnt tenant.Tenant, store resource.Store) (*resource.Resource, error) {
@@ -291,6 +327,5 @@ func NewResourceHandler(l log.Logger, resourceService ResourceService) *Resource
 	return &ResourceHandler{
 		l:       l,
 		service: resourceService,
-		tracer:  otel.Tracer("core.resource.handle.v1beta1.ResourceHandler{}"),
 	}
 }

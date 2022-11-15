@@ -24,17 +24,14 @@ type Resource struct {
 
 	URN string
 
-	Status string
+	Status       string
+	ExistInStore bool
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
 func fromResourceToModel(r *resource.Resource) *Resource {
-	var namespaceName string
-	if name, err := r.Tenant().NamespaceName(); err == nil {
-		namespaceName = name.String()
-	}
 	metadata, _ := json.Marshal(r.Metadata())
 	spec, _ := json.Marshal(r.Spec())
 	return &Resource{
@@ -42,11 +39,12 @@ func fromResourceToModel(r *resource.Resource) *Resource {
 		Kind:          r.Kind().String(),
 		Store:         r.Dataset().Store.String(),
 		ProjectName:   r.Tenant().ProjectName().String(),
-		NamespaceName: namespaceName,
+		NamespaceName: r.Tenant().NamespaceName().String(),
 		Metadata:      metadata,
 		Spec:          spec,
 		URN:           r.URN(),
 		Status:        r.Status().String(),
+		ExistInStore:  r.ExistInStore(),
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
 	}
@@ -76,6 +74,9 @@ func fromModelToResource(r *Resource) (*resource.Resource, error) {
 	output, err := resource.NewResource(r.FullName, kind, store, tnnt, metadata, spec)
 	if err == nil {
 		output = resource.FromExisting(output, resource.ReplaceStatus(resource.FromStringToStatus(r.Status)))
+		if r.ExistInStore {
+			output.MarkExistInStore()
+		}
 	}
 	return output, err
 }

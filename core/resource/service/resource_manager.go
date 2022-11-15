@@ -3,8 +3,7 @@ package service
 import (
 	"context"
 
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/trace"
+	"github.com/odpf/salt/log"
 
 	"github.com/odpf/optimus/core/resource"
 	"github.com/odpf/optimus/internal/errors"
@@ -14,6 +13,7 @@ type DataStore interface {
 	Create(context.Context, *resource.Resource) error
 	Update(context.Context, *resource.Resource) error
 	BatchUpdate(context.Context, []*resource.Resource) error
+	Exist(context.Context, *resource.Resource) (bool, error)
 	Backup(context.Context, *resource.Backup, []*resource.Resource) (*resource.BackupResult, error)
 }
 
@@ -26,69 +26,75 @@ type ResourceMgr struct {
 
 	repo ResourceStatusRepo
 
-	tracer trace.Tracer
+	logger log.Logger
 }
 
 func (m *ResourceMgr) CreateResource(ctx context.Context, res *resource.Resource) error {
-	spanCtx, span := m.tracer.Start(ctx, "CreateResource()")
-	defer span.End()
-
 	store := res.Dataset().Store
 	datastore, ok := m.datastoreMap[store]
 	if !ok {
+		m.logger.Error("datastore [%s] for resource [%s] is not found", res.Dataset().Store.String(), res.FullName())
 		return errors.InvalidArgument(resource.EntityResource, "data store service not found for "+store.String())
 	}
 
 	me := errors.NewMultiError("error in create resource")
 
-	err := datastore.Create(spanCtx, res)
+	err := datastore.Create(ctx, res)
 	if err != nil && !errors.IsErrorType(err, errors.ErrAlreadyExists) {
 		me.Append(err)
-		me.Append(res.MarkFailed())
+		res.ChangeStatusTo(resource.StatusCreateFailure)
+		m.logger.Error("error creating resource [%s] to datastore [%s]: %s", res.FullName(), res.Dataset().Store.String(), err)
 	} else {
-		me.Append(res.MarkSuccess())
+		res.ChangeStatusTo(resource.StatusSuccess)
 	}
 
-	me.Append(m.repo.UpdateStatus(spanCtx, res))
+	me.Append(m.repo.UpdateStatus(ctx, res))
 	return errors.MultiToError(me)
 }
 
 func (m *ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource) error {
-	spanCtx, span := m.tracer.Start(ctx, "UpdateResource()")
-	defer span.End()
-
 	store := res.Dataset().Store
 	datastore, ok := m.datastoreMap[store]
 	if !ok {
+		m.logger.Error("datastore [%s] for resource [%s] is not found", res.Dataset().Store.String(), res.FullName())
 		return errors.InvalidArgument(resource.EntityResource, "data store service not found for "+store.String())
 	}
 
 	me := errors.NewMultiError("error in update resource")
 
-	err := datastore.Update(spanCtx, res)
+	err := datastore.Update(ctx, res)
 	if err != nil {
 		me.Append(err)
-		me.Append(res.MarkFailed())
+		res.ChangeStatusTo(resource.StatusUpdateFailure)
+		m.logger.Error("error updating resource [%s] to datastore [%s]: %s", res.FullName(), res.Dataset().Store.String(), err)
 	} else {
-		me.Append(res.MarkSuccess())
+		res.ChangeStatusTo(resource.StatusSuccess)
 	}
 
-	me.Append(m.repo.UpdateStatus(spanCtx, res))
+	me.Append(m.repo.UpdateStatus(ctx, res))
 	return errors.MultiToError(me)
 }
 
-func (m *ResourceMgr) BatchUpdate(ctx context.Context, store resource.Store, resources []*resource.Resource) error {
-	spanCtx, span := m.tracer.Start(ctx, "BatchUpdate()")
-	defer span.End()
-
+func (m *ResourceMgr) Exist(ctx context.Context, res *resource.Resource) (bool, error) {
+	store := res.Dataset().Store
 	datastore, ok := m.datastoreMap[store]
 	if !ok {
+		m.logger.Error("datastore [%s] for resource [%s] is not found", res.Dataset().Store.String(), res.FullName())
+		return false, errors.InvalidArgument(resource.EntityResource, "data store service not found for "+store.String())
+	}
+	return datastore.Exist(ctx, res)
+}
+
+func (m *ResourceMgr) Deploy(ctx context.Context, store resource.Store, resources []*resource.Resource) error {
+	datastore, ok := m.datastoreMap[store]
+	if !ok {
+		m.logger.Error("datastore [%s]  is not found", store.String())
 		return errors.InvalidArgument(resource.EntityResource, "data store service not found for "+store.String())
 	}
 
 	err := errors.NewMultiError("error in batch update")
-	err.Append(datastore.BatchUpdate(spanCtx, resources))
-	err.Append(m.repo.UpdateStatus(spanCtx, resources...))
+	err.Append(datastore.BatchUpdate(ctx, resources))
+	err.Append(m.repo.UpdateStatus(ctx, resources...))
 
 	return errors.MultiToError(err)
 }
@@ -102,14 +108,14 @@ func (m *ResourceMgr) Backup(ctx context.Context, details *resource.Backup, reso
 	return datastore.Backup(ctx, details, resources)
 }
 
-func NewResourceManager(repo ResourceStatusRepo) *ResourceMgr {
+func (m *ResourceMgr) RegisterDatastore(store resource.Store, dataStore DataStore) {
+	m.datastoreMap[store] = dataStore
+}
+
+func NewResourceManager(repo ResourceStatusRepo, logger log.Logger) *ResourceMgr {
 	return &ResourceMgr{
 		repo:         repo,
 		datastoreMap: map[resource.Store]DataStore{},
-		tracer:       otel.Tracer("core.resource.service"),
+		logger:       logger,
 	}
-}
-
-func (m *ResourceMgr) RegisterDatastore(store resource.Store, dataStore DataStore) {
-	m.datastoreMap[store] = dataStore
 }

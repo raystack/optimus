@@ -119,7 +119,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("returns error log when service returns error", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("BatchUpdate", mock.Anything, tnnt, resource.Bigquery, mock.Anything).
+			service.On("Deploy", mock.Anything, tnnt, resource.Bigquery, mock.Anything, mock.Anything).
 				Return(errors.New("error in batch"))
 			defer service.AssertExpectations(t)
 
@@ -150,6 +150,7 @@ func TestResourceHandler(t *testing.T) {
 			stream.On("Recv").Return(req, nil).Once()
 			stream.On("Recv").Return(nil, io.EOF).Once()
 			stream.On("Send", argMatcher).Return(nil).Once()
+			stream.On("Send", mock.Anything).Return(nil).Once()
 
 			err := handler.DeployResourceSpecification(stream)
 			assert.NotNil(t, err)
@@ -157,7 +158,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("successfully updates the resources", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("BatchUpdate", mock.Anything, tnnt, resource.Bigquery, mock.Anything).Return(nil)
+			service.On("Deploy", mock.Anything, tnnt, resource.Bigquery, mock.Anything, mock.Anything).Return(nil)
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -225,7 +226,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("GetAll", mock.Anything, mock.Anything, resource.Bigquery).
+			service.On("GetAll", ctx, mock.Anything, resource.Bigquery).
 				Return(nil, errors.New("error in getAll"))
 			defer service.AssertExpectations(t)
 
@@ -244,7 +245,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("returns error when unable to convert", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("GetAll", mock.Anything, mock.Anything, resource.Bigquery).
+			service.On("GetAll", ctx, mock.Anything, resource.Bigquery).
 				Return([]*resource.Resource{{}}, nil)
 			defer service.AssertExpectations(t)
 
@@ -268,7 +269,7 @@ func TestResourceHandler(t *testing.T) {
 			assert.Nil(t, err)
 
 			service := new(resourceService)
-			service.On("GetAll", mock.Anything, mock.Anything, resource.Bigquery).
+			service.On("GetAll", ctx, mock.Anything, resource.Bigquery).
 				Return([]*resource.Resource{dbRes}, nil)
 			defer service.AssertExpectations(t)
 
@@ -401,7 +402,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("Create", mock.Anything, mock.Anything).Return(errors.New("validation failure"))
+			service.On("Create", ctx, mock.Anything).Return(errors.New("validation failure"))
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -426,7 +427,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("creates the resource successfully", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("Create", mock.Anything, mock.Anything).Return(nil)
+			service.On("Create", ctx, mock.Anything).Return(nil)
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -500,7 +501,7 @@ func TestResourceHandler(t *testing.T) {
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			service := new(resourceService)
 			name := "proj.set.table"
-			service.On("Get", mock.Anything, mock.Anything, resource.Bigquery, name).Return(nil, errors.New("failure"))
+			service.On("Get", ctx, mock.Anything, resource.Bigquery, name).Return(nil, errors.New("failure"))
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -520,7 +521,7 @@ func TestResourceHandler(t *testing.T) {
 		t.Run("returns error when metadata missing in db resource", func(t *testing.T) {
 			service := new(resourceService)
 			name := "proj.set.table"
-			service.On("Get", mock.Anything, mock.Anything, resource.Bigquery, name).Return(&resource.Resource{}, nil)
+			service.On("Get", ctx, mock.Anything, resource.Bigquery, name).Return(&resource.Resource{}, nil)
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -545,7 +546,7 @@ func TestResourceHandler(t *testing.T) {
 			assert.Nil(t, err)
 			service := new(resourceService)
 			name := "proj.set.table"
-			service.On("Get", mock.Anything, mock.Anything, resource.Bigquery, name).Return(dbRes, nil)
+			service.On("Get", ctx, mock.Anything, resource.Bigquery, name).Return(dbRes, nil)
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -570,7 +571,7 @@ func TestResourceHandler(t *testing.T) {
 
 			service := new(resourceService)
 			name := "proj.set.table"
-			service.On("Get", mock.Anything, mock.Anything, resource.Bigquery, name).Return(dbRes, nil)
+			service.On("Get", ctx, mock.Anything, resource.Bigquery, name).Return(dbRes, nil)
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -661,7 +662,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("Update", mock.Anything, mock.Anything).Return(errors.New("validation failure"))
+			service.On("Update", ctx, mock.Anything).Return(errors.New("validation failure"))
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -686,7 +687,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("updates the resource successfully", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("Update", mock.Anything, mock.Anything).Return(nil)
+			service.On("Update", ctx, mock.Anything).Return(nil)
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -742,7 +743,7 @@ func (r *resourceService) GetAll(ctx context.Context, tnnt tenant.Tenant, store 
 	return resources, args.Error(1)
 }
 
-func (r *resourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
+func (r *resourceService) Deploy(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
 	args := r.Called(ctx, tnnt, store, resources)
 	return args.Error(0)
 }
