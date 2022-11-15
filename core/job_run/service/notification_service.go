@@ -42,9 +42,9 @@ type NotifyService struct {
 	l              log.Logger
 }
 
-func (n NotifyService) Push(ctx context.Context, event job_run.Event, jobOwner string) error {
+func (n NotifyService) Push(ctx context.Context, event job_run.Event) error {
 
-	jobDetails, err := n.jobRepo.GetJobDetails(ctx, event.Tenant, event.JobName)
+	jobDetails, err := n.jobRepo.GetJobDetails(ctx, event.Tenant.ProjectName(), event.JobName)
 	notificationConfig := jobDetails.Alerts
 	for _, notify := range notificationConfig {
 		if event.Type.IsOfType(notify.On) {
@@ -73,7 +73,7 @@ func (n NotifyService) Push(ctx context.Context, event job_run.Event, jobOwner s
 
 				if notifyChannel, ok := n.notifyChannels[scheme]; ok {
 					if currErr := notifyChannel.Notify(ctx, job_run.NotifyAttrs{
-						Owner:    jobOwner,
+						Owner:    jobDetails.JobMetadata.Owner,
 						JobEvent: event,
 						Secret:   secret,
 						Route:    route,

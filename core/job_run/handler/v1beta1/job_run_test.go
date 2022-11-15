@@ -196,6 +196,6 @@ type mockNotifier struct {
 }
 
 func (m *mockNotifier) Push(ctx context.Context, event job_run.Event) error {
-	//TODO implement me
-	panic("implement me")
+	args := m.Called(ctx, event)
+	return args.Error(0)
 }

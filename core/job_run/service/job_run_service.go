@@ -22,9 +22,8 @@ type JobRepository interface {
 }
 
 type JobRunRepository interface {
-	GetJobRunByID(ctx context.Context, id job_run.JobRunID) (*job_run.JobRun, error)
-	GetJobRunByScheduledAt(ctx context.Context, tenant tenant.Tenant, name job_run.JobName, scheduledAt time.Time) (*job_run.JobRun, error)
-
+	GetByID(ctx context.Context, id job_run.JobRunID) (*job_run.JobRun, error)
+	GetByScheduledAt(ctx context.Context, tenant tenant.Tenant, name job_run.JobName, scheduledAt time.Time) (*job_run.JobRun, error)
 	Create(ctx context.Context, tenant tenant.Tenant, name job_run.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error
 	Update(ctx context.Context, tenant tenant.Tenant, name job_run.JobName, scheduledAt time.Time, jobRunStatus string, endTime time.Time) error
 
@@ -57,60 +56,6 @@ type JobRunService struct {
 	compiler         JobInputCompiler
 }
 
-func (s JobRunService) UploadToScheduler(ctx context.Context, projectName tenant.ProjectName, namespaceName string) error {
-	allJobsWithDetails, err := s.jobRepo.GetAll(ctx, projectName)
-	//todo: confirm if we need namespace level deployments ?
-	if err != nil {
-		return err
-	}
-	// todo: pass logwriter in place of progress observer
-	err = s.priorityResolver.Resolve(ctx, allJobsWithDetails)
-	if err != nil {
-		return err
-	}
-
-	jobGroupByTenant := job_run.GroupJobsByTenant(allJobsWithDetails)
-	multiError := errors.NewMultiError("ErrorInUploadToScheduler")
-	for t, jobs := range jobGroupByTenant {
-		if err := s.deployJobsPerNamespace(ctx, t, jobs); err != nil {
-			multiError.Append(err)
-		}
-		s.l.Debug(fmt.Sprintf("namespace %s deployed", namespaceName), "project name", projectName)
-	}
-
-	return errors.MultiToError(multiError)
-}
-
-func (s JobRunService) deployJobsPerNamespace(ctx context.Context, t tenant.Tenant, jobs []*job_run.JobWithDetails) error {
-
-	err := s.scheduler.DeployJobs(ctx, t, jobs)
-	if err != nil {
-		return err
-	}
-	return s.cleanPerNamespace(ctx, t, jobs)
-}
-
-func (s JobRunService) cleanPerNamespace(ctx context.Context, t tenant.Tenant, jobs []*job_run.JobWithDetails) error {
-
-	// get all stored job names
-	schedulerJobNames, err := s.scheduler.ListJobs(ctx, t)
-	if err != nil {
-		return err
-	}
-	jobNamesMap := make(map[string]struct{})
-	for _, job := range jobs {
-		jobNamesMap[job.Name.String()] = struct{}{}
-	}
-	var jobsToDelete []string
-
-	for _, schedulerJobName := range schedulerJobNames {
-		if _, ok := jobNamesMap[schedulerJobName]; !ok {
-			jobsToDelete = append(jobsToDelete, schedulerJobName)
-		}
-	}
-	return s.scheduler.DeleteJobs(ctx, t, jobsToDelete)
-}
-
 func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName, config job_run.RunConfig) (*job_run.ExecutorInput, error) {
 	job, err := s.jobRepo.GetJob(ctx, projectName, jobName)
 	if err != nil {
@@ -120,9 +65,9 @@ func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proje
 	// TODO: Use scheduled_at instead of executed_at for computations, for deterministic calculations
 	var jobRun *job_run.JobRun
 	if config.JobRunID.IsEmpty() {
-		jobRun, err = s.repo.GetJobRunByScheduledAt(ctx, job.Tenant, jobName, config.ScheduledAt)
+		jobRun, err = s.repo.GetByScheduledAt(ctx, job.Tenant, jobName, config.ScheduledAt)
 	} else {
-		jobRun, err = s.repo.GetJobRunByID(ctx, config.JobRunID)
+		jobRun, err = s.repo.GetByID(ctx, config.JobRunID)
 	}
 
 	var executedAt time.Time
@@ -291,7 +236,7 @@ func (s JobRunService) createOperatorRun(ctx context.Context, event job_run.Even
 		return err
 	}
 
-	jobRun, err := s.repo.GetJobRunByScheduledAt(ctx,
+	jobRun, err := s.repo.GetByScheduledAt(ctx,
 		event.Tenant,
 		event.JobName,
 		scheduledAtTimeStamp)
@@ -324,7 +269,7 @@ func (s JobRunService) updateOperatorRun(ctx context.Context, event job_run.Even
 	if err != nil {
 		return err
 	}
-	jobRun, err := s.repo.GetJobRunByScheduledAt(ctx,
+	jobRun, err := s.repo.GetByScheduledAt(ctx,
 		event.Tenant,
 		event.JobName,
 		scheduledAtTimeStamp)

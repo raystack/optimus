@@ -41,10 +41,10 @@ func (i JobRunID) IsEmpty() bool {
 type JobRun struct {
 	ID uuid.UUID
 
-	jobName JobName
-	tenant  tenant.Tenant
+	JobName JobName
+	Tenant  tenant.Tenant
 
-	startTime time.Time
+	StartTime time.Time
 }
 
 type OperatorRun struct {
@@ -54,10 +54,6 @@ type OperatorRun struct {
 	State        string
 	startTime    time.Time
 	endTime      time.Time
-}
-
-func (r *JobRun) StartTime() time.Time {
-	return r.startTime
 }
 
 type NotifyAttrs struct {

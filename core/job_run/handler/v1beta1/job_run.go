@@ -21,7 +21,7 @@ type JobRunService interface {
 }
 
 type Notifier interface {
-	Push(context.Context, job_run.Event) error
+	Push(ctx context.Context, event job_run.Event) error
 }
 
 type JobRunHandler struct {
