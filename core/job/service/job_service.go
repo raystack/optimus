@@ -40,11 +40,11 @@ type JobRepository interface {
 	ReplaceUpstreams(context.Context, []*job.WithUpstream) error
 
 	GetDownstreamFullNames(context.Context, tenant.ProjectName, job.Name) ([]job.FullName, error)
-	Delete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, cleanHistory bool) error
+	Delete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, cleanHistory)
 
-	GetByJobName(ctx context.Context, projectName, jobName string) (*job.Job, error)
-	GetAllByProjectName(ctx context.Context, projectName string) ([]*job.Job, error)
-	GetAllByResourceDestination(ctx context.Context, resourceDestination string) ([]*job.Job, error)
+	GetByJobName(ctx context.Context, projectName, jobName string) (*job.Spec, error)
+	GetAllByProjectName(ctx context.Context, projectName string) ([]*job.Spec, error)
+	GetAllByResourceDestination(ctx context.Context, resourceDestination string) ([]*job.Spec, error)
 }
 
 type UpstreamResolver interface {
@@ -117,22 +117,28 @@ func (j JobService) Get(ctx context.Context, filters ...filter.FilterOpt) (*job.
 }
 
 func (j JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) ([]*job.Spec, error) {
-	// TODO: convert job.Job to job.Spec
 	f := filter.NewFilter(filters...)
 
+	// when resource destination exist, filter by destination
 	if f.Contains(filter.ResourceDestination) {
-		j.repo.GetAllByResourceDestination(ctx, f.GetValue(filter.ResourceDestination))
-		return nil, nil
+		return j.repo.GetAllByResourceDestination(ctx, f.GetValue(filter.ResourceDestination))
 	}
 
+	// when project name and job name exist, filter by project name and job name
 	if f.Contains(filter.ProjectName, filter.JobName) {
-		j.repo.GetByJobName(ctx, f.GetValue(filter.ProjectName), f.GetValue(filter.JobName))
-		return nil, nil
+		if jobSpec, err := j.repo.GetByJobName(ctx,
+			f.GetValue(filter.ProjectName),
+			f.GetValue(filter.JobName),
+		); err != nil {
+			return nil, err
+		} else {
+			return []*job.Spec{jobSpec}, nil
+		}
 	}
 
+	// when project name exist, filter by project name
 	if f.Contains(filter.ProjectName) {
-		j.repo.GetAllByProjectName(ctx, f.GetValue(filter.ProjectName))
-		return nil, nil
+		return j.repo.GetAllByProjectName(ctx, f.GetValue(filter.ProjectName))
 	}
 
 	return nil, nil

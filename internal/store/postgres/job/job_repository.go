@@ -289,19 +289,18 @@ func (JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstr
 	return upstreams, nil
 }
 
-func (j JobRepository) GetByJobName(ctx context.Context, projectName, jobName string) (*job.Job, error) {
-	// TODO: use tenant instead
+func (j JobRepository) GetByJobName(ctx context.Context, projectName, jobName string) (*job.Spec, error) {
 	jobSpec, err := j.get(ctx, tenant.ProjectName(projectName), job.Name(jobName))
 	if err != nil {
 		return nil, err
 	}
 
+	fmt.Printf("%+v", jobSpec)
+
 	return fromStorageSpec(&jobSpec)
 }
 
-func (j JobRepository) GetAllByProjectName(ctx context.Context, projectName string) ([]*job.Job, error) {
-	// TODO: use tenant instead
-
+func (j JobRepository) GetAllByProjectName(ctx context.Context, projectName string) ([]*job.Spec, error) {
 	specs := []Spec{}
 	me := errors.NewMultiError("get all job specs by project name errors")
 
@@ -313,7 +312,7 @@ WHERE project_name = ?
 		return nil, err
 	}
 
-	jobSpecs := make([]*job.Job, len(specs))
+	jobSpecs := make([]*job.Spec, len(specs))
 	for i, spec := range specs {
 		jobSpec, err := fromStorageSpec(&spec)
 		if err != nil {
@@ -323,11 +322,40 @@ WHERE project_name = ?
 		jobSpecs[i] = jobSpec
 	}
 
+	if len(jobSpecs) == 0 {
+		return nil, me
+	}
+
 	return jobSpecs, me
 }
 
-func (j JobRepository) GetAllByResourceDestination(ctx context.Context, resourceDestination string) ([]*job.Job, error) {
-	return nil, nil
+func (j JobRepository) GetAllByResourceDestination(ctx context.Context, resourceDestination string) ([]*job.Spec, error) {
+	specs := []Spec{}
+	me := errors.NewMultiError("get all job specs by resource destination")
+
+	getAllByProjectName := `SELECT name
+FROM job
+WHERE destination = ?
+`
+	if err := j.db.WithContext(ctx).Raw(getAllByProjectName, resourceDestination).Find(&specs).Error; err != nil {
+		return nil, err
+	}
+
+	jobSpecs := make([]*job.Spec, len(specs))
+	for i, spec := range specs {
+		jobSpec, err := fromStorageSpec(&spec)
+		if err != nil {
+			me.Append(err)
+			continue
+		}
+		jobSpecs[i] = jobSpec
+	}
+
+	if len(jobSpecs) == 0 {
+		return nil, me
+	}
+
+	return jobSpecs, me
 }
 
 type JobWithUpstream struct {

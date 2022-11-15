@@ -529,4 +529,23 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.NotNil(t, addedJob)
 		})
 	})
+
+	t.Run("GetByJobName", func(t *testing.T) {
+		db := dbSetup()
+
+		jobRepo := postgres.NewJobRepository(db)
+		jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+		jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", nil)
+
+		jobSpecB := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+		jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", nil)
+		_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB})
+		assert.NoError(t, err)
+
+		// TODO: fix this
+		// actual, err := jobRepo.GetByJobName(ctx, sampleTenant.ProjectName().String(), "sample-job-A")
+		// expected := jobA
+		// assert.NoError(t, err)
+		// assert.Equal(t, expected, actual)
+	})
 }

@@ -121,6 +121,7 @@ func (jh *JobHandler) UpdateJobSpecifications(ctx context.Context, jobSpecReques
 }
 
 func (jh *JobHandler) GetJobSpecification(ctx context.Context, req *pb.GetJobSpecificationRequest) (*pb.GetJobSpecificationResponse, error) {
+	// TODO: need to have further analysis if this api is stil needed or not
 	jobSpec, err := jh.jobService.Get(ctx,
 		filter.With(filter.ProjectName, req.GetProjectName()),
 		filter.With(filter.JobName, req.GetJobName()),
