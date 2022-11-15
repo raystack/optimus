@@ -276,7 +276,7 @@ func TestResourceService(t *testing.T) {
 					assert.Equal(t, resource.StatusCreateFailure, incoming.Status())
 				})
 
-				t.Run("sets status to create_failure and returns error if resource exist in store", func(t *testing.T) {
+				t.Run("sets status to create_failure and returns error if resource exist in store but failed to update status to repo", func(t *testing.T) {
 					repo := NewResourceRepository(t)
 					batch := NewResourceBatchRepo(t)
 					mgr := NewResourceManager(t)
@@ -294,6 +294,34 @@ func TestResourceService(t *testing.T) {
 					repo.On("ReadByFullName", ctx, incoming.Tenant(), incoming.Dataset().Store, incoming.FullName()).Return(existing, nil)
 
 					mgr.On("Exist", ctx, existing).Return(true, nil)
+
+					repo.On("UpdateStatus", ctx, incoming).Return(errors.New("unknown error"))
+
+					actualError := rscService.Create(ctx, incoming)
+					assert.ErrorContains(t, actualError, "already exist in Optimus and in store")
+					assert.Equal(t, resource.StatusCreateFailure, incoming.Status())
+				})
+
+				t.Run("sets status to create_failure and returns error if resource exist in store even if success to update status to repo", func(t *testing.T) {
+					repo := NewResourceRepository(t)
+					batch := NewResourceBatchRepo(t)
+					mgr := NewResourceManager(t)
+					tnntDetailsGetter := NewTenantDetailsGetter(t)
+					logger := log.NewLogrus()
+					rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
+
+					existing, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
+					assert.NoError(t, err)
+					incoming, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
+					assert.NoError(t, err)
+
+					tnntDetailsGetter.On("GetDetails", ctx, tnnt).Return(nil, nil)
+
+					repo.On("ReadByFullName", ctx, incoming.Tenant(), incoming.Dataset().Store, incoming.FullName()).Return(existing, nil)
+
+					mgr.On("Exist", ctx, existing).Return(true, nil)
+
+					repo.On("UpdateStatus", ctx, incoming).Return(nil)
 
 					actualError := rscService.Create(ctx, incoming)
 					assert.ErrorContains(t, actualError, "already exist in Optimus and in store")
@@ -393,10 +421,9 @@ func TestResourceService(t *testing.T) {
 					mgr.On("Exist", ctx, existing).Return(false, nil)
 
 					actualError := rscService.Update(ctx, incoming)
-					assert.ErrorContains(t, actualError, "is not found in store")
+					assert.ErrorContains(t, actualError, "is found in Optimus but not found in store")
 					assert.Equal(t, resource.StatusUpdateFailure, incoming.Status())
 				})
-
 			})
 
 			t.Run("validation success", func(t *testing.T) {

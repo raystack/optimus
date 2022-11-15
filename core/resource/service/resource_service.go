@@ -66,7 +66,6 @@ func (rs ResourceService) Create(ctx context.Context, incoming *resource.Resourc
 	}
 
 	fullNameToExistingResource := make(map[string]*resource.Resource)
-
 	if existing, err := rs.repo.ReadByFullName(ctx, incoming.Tenant(), incoming.Dataset().Store, incoming.FullName()); err == nil {
 		fullNameToExistingResource[incoming.FullName()] = existing
 	}
@@ -75,7 +74,9 @@ func (rs ResourceService) Create(ctx context.Context, incoming *resource.Resourc
 		rs.logger.Error("error validating resource [%s] for create: %s", incoming.FullName(), validateErr)
 
 		if incoming.Status() == resource.StatusMarkExistInStore {
-			incoming.MarkExistInStore()
+			if existing, ok := fullNameToExistingResource[incoming.FullName()]; ok {
+				incoming.ChangeStatusTo(existing.Status())
+			}
 			if updateErr := rs.repo.UpdateStatus(ctx, incoming); updateErr != nil {
 				rs.logger.Error("error updating status for resource [%s]: %s", incoming.FullName(), updateErr)
 				me.Append(updateErr)
@@ -220,6 +221,7 @@ func (rs ResourceService) validateUpdate(ctx context.Context, incoming *resource
 
 	if existing, ok := fullNameToExistingResource[incoming.FullName()]; ok {
 		if existing.ExistInStore() {
+			incoming.MarkExistInStore()
 			incoming.ChangeStatusTo(resource.StatusToUpdate)
 			return errors.MultiToError(me)
 		}
@@ -236,12 +238,11 @@ func (rs ResourceService) validateUpdate(ctx context.Context, incoming *resource
 		if !existInStore {
 			incoming.ChangeStatusTo(resource.StatusUpdateFailure)
 
-			msg := fmt.Sprintf("resource [%s] is not found in store [%s]", incoming.FullName(), incoming.Dataset().Store.String())
+			msg := fmt.Sprintf("resource [%s] is found in Optimus but not found in store [%s]", incoming.FullName(), incoming.Dataset().Store.String())
 			me.Append(errors.NotFound(resource.EntityResource, msg))
 			return errors.MultiToError(me)
 		}
 	} else {
-		// TODO: this will be run when deploying
 		incoming.ChangeStatusTo(resource.StatusUpdateFailure)
 
 		msg := fmt.Sprintf("resource [%s] does not exist in Optimus", incoming.FullName())
@@ -283,6 +284,7 @@ func (rs ResourceService) validateCreate(ctx context.Context, incoming *resource
 
 		if existInStore {
 			incoming.MarkExistInStore()
+			incoming.ChangeStatusTo(resource.StatusMarkExistInStore)
 
 			msg := fmt.Sprintf("resource [%s] already exist in Optimus and in store [%s]", existing.FullName(), existing.Dataset().Store.String())
 			me.Append(errors.AlreadyExists(resource.EntityResource, msg))
