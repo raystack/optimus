@@ -82,6 +82,25 @@ type Hook struct {
 	Config datatypes.JSON
 }
 
+type Metadata struct {
+	Resource  *MetadataResource
+	Scheduler map[string]string
+}
+
+type MetadataResource struct {
+	Request *MetadataResourceConfig
+	Limit   *MetadataResourceConfig
+}
+
+type MetadataResourceConfig struct {
+	CPU    string
+	Memory string
+}
+
+type Config struct {
+	Configs map[string]string
+}
+
 func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 	jobSpec := jobEntity.Spec()
 
@@ -105,7 +124,7 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 	}
 
 	// TODO: fix this as this results empty json bytes
-	retryBytes, err := json.Marshal(jobSpec.Schedule().Retry())
+	retryBytes, err := toStorageRetry(jobSpec.Schedule().Retry())
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +136,7 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 	}
 
 	// TODO: fix this as this results empty json bytes
-	taskConfigBytes, err := json.Marshal(jobSpec.Task().Config())
+	taskConfigBytes, err := toConfig(jobSpec.Task().Config())
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +157,7 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 	}
 
 	// TODO: fix this as this results empty json bytes
-	metadataBytes, err := json.Marshal(jobSpec.Metadata())
+	metadataBytes, err := toStorageMetadata(jobSpec.Metadata())
 	if err != nil {
 		return nil, err
 	}
@@ -248,4 +267,33 @@ func toStorageAlerts(alertSpecs []*job.Alert) ([]byte, error) {
 		})
 	}
 	return json.Marshal(alerts)
+}
+
+func toStorageRetry(retrySpec *job.Retry) ([]byte, error) {
+	retry := Retry{
+		Count:              retrySpec.Count(),
+		Delay:              retrySpec.Delay(),
+		ExponentialBackoff: retrySpec.ExponentialBackoff(),
+	}
+	return json.Marshal(retry)
+}
+
+func toStorageMetadata(metadataSpec *job.Metadata) ([]byte, error) {
+	metadataResource := &MetadataResource{
+		Request: nil,
+		Limit:   nil,
+	}
+
+	metadata := Metadata{
+		Resource:  metadataResource,
+		Scheduler: metadataSpec.Scheduler(),
+	}
+	return json.Marshal(metadata)
+}
+
+func toConfig(configSpec *job.Config) ([]byte, error) {
+	config := Config{
+		Configs: configSpec.Configs(),
+	}
+	return json.Marshal(config)
 }

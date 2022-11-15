@@ -49,7 +49,7 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 	if len(me.Errors) > 0 {
 		responseLog = fmt.Sprintf("adding jobs finished with error: %s", errors.MultiToError(err))
 	} else {
-		responseLog = fmt.Sprintf("jobs are successfully created")
+		responseLog = "jobs are successfully created"
 	}
 
 	return &pb.AddJobSpecificationsResponse{

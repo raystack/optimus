@@ -122,7 +122,7 @@ func TestNewJobHandler(t *testing.T) {
 			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.AddJobSpecificationsResponse{
-				Log: fmt.Sprintf("jobs are successfully created"),
+				Log: "jobs are successfully created",
 			}, resp)
 		})
 		t.Run("returns error when unable to create tenant", func(t *testing.T) {
