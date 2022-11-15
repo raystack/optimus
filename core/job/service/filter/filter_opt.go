@@ -1,13 +1,13 @@
 package filter
 
+type FilterOpt func(*filter)
+type Operand uint64
+
 const (
 	bitOnProjectName         uint64 = 1 << 0
 	bitOnJobName             uint64 = 1 << 1
 	bitOnResourceDestination uint64 = 1 << 2
 )
-
-// Operand
-type Operand uint64
 
 const (
 	ProjectName         = Operand(bitOnProjectName)
