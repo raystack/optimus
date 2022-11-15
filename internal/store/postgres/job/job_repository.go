@@ -389,14 +389,9 @@ func (j JobRepository) Delete(ctx context.Context, projectName tenant.ProjectNam
 		}
 
 		if cleanHistory {
-			if err := j.hardDelete(tx, projectName, jobName); err != nil {
-				return err
-			}
+			return j.hardDelete(tx, projectName, jobName)
 		}
-		if err := j.softDelete(tx, projectName, jobName); err != nil {
-			return err
-		}
-		return nil
+		return j.softDelete(tx, projectName, jobName)
 	})
 }
 
