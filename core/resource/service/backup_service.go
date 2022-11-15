@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/odpf/optimus/core/resource"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
@@ -15,9 +13,9 @@ import (
 const recentBackupWindowMonths = -3
 
 type BackupRepository interface {
-	GetByID(ctx context.Context, store resource.Store, id resource.BackupID) (*resource.BackupDetails, error)
-	GetAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.BackupDetails, error)
-	Save(ctx context.Context, details *resource.BackupDetails) error
+	GetByID(ctx context.Context, id resource.BackupID) (*resource.Backup, error)
+	GetAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Backup, error)
+	Save(ctx context.Context, details *resource.Backup) error
 }
 
 type ResourceProvider interface {
@@ -25,65 +23,55 @@ type ResourceProvider interface {
 }
 
 type BackupManager interface {
-	Backup(ctx context.Context, store resource.Store, config *resource.BackupDetails, resources []*resource.Resource) (*resource.BackupInfo, error)
-}
-
-type IDProvider interface {
-	NewUUID() (uuid.UUID, error)
+	Backup(ctx context.Context, backup *resource.Backup, resources []*resource.Resource) (*resource.BackupResult, error)
 }
 
 type BackupService struct {
 	repo BackupRepository
 
 	resources     ResourceProvider
-	idProvider    IDProvider
 	backupManager BackupManager
 }
 
-func (s BackupService) Backup(ctx context.Context, tnnt tenant.Tenant, store resource.Store, details *resource.BackupDetails) (*resource.BackupInfo, error) {
-	id, err := s.idProvider.NewUUID()
-	if err != nil {
-		return nil, errors.InternalError(resource.EntityBackup, "unable to generate backup id", err)
-	}
-	details.ID = resource.BackupID(id)
-
-	resources, err := s.resources.GetResources(ctx, tnnt, store, details.ResourceNames)
+func (s BackupService) Create(ctx context.Context, backup *resource.Backup) (*resource.BackupResult, error) {
+	resources, err := s.resources.GetResources(ctx, backup.Tenant(), backup.Store(), backup.ResourceNames())
 	if err != nil {
 		return nil, err
 	}
+	ignored := findMissingResources(backup.ResourceNames(), resources)
 
-	ignored := findMissingResources(details.ResourceNames, resources)
-	backupInfo, err := s.backupManager.Backup(ctx, store, details, resources)
+	backupInfo, err := s.backupManager.Backup(ctx, backup, resources)
 	if err != nil {
 		return nil, err
 	}
 
 	backupInfo.IgnoredResources = append(backupInfo.IgnoredResources, ignored...)
-	err = s.repo.Save(ctx, details)
+	err = s.repo.Save(ctx, backup)
 	if err != nil {
 		return backupInfo, err
 	}
 
+	backupInfo.ID = backup.ID()
 	return backupInfo, nil
 }
 
-func (s BackupService) Get(ctx context.Context, _ tenant.Tenant, store resource.Store, backupID resource.BackupID) (*resource.BackupDetails, error) {
+func (s BackupService) Get(ctx context.Context, backupID resource.BackupID) (*resource.Backup, error) {
 	if backupID.IsInvalid() {
 		return nil, errors.InvalidArgument("backup", "the backup id is not valid")
 	}
-	return s.repo.GetByID(ctx, store, backupID)
+	return s.repo.GetByID(ctx, backupID)
 }
 
-func (s BackupService) List(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.BackupDetails, error) {
+func (s BackupService) List(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Backup, error) {
 	backups, err := s.repo.GetAll(ctx, tnnt, store)
 	if err != nil {
 		return nil, err
 	}
 
-	var recentBackups []*resource.BackupDetails
+	var recentBackups []*resource.Backup
 	cutoffDate := time.Now().AddDate(0, recentBackupWindowMonths, 0)
 	for _, backup := range backups {
-		if backup.CreatedAt.After(cutoffDate) {
+		if backup.CreatedAt().After(cutoffDate) {
 			recentBackups = append(recentBackups, backup)
 		}
 	}

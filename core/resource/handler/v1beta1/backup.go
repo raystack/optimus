@@ -14,9 +14,9 @@ import (
 )
 
 type BackupService interface {
-	Backup(context.Context, tenant.Tenant, resource.Store, *resource.BackupDetails) (*resource.BackupInfo, error)
-	Get(context.Context, tenant.Tenant, resource.Store, resource.BackupID) (*resource.BackupDetails, error)
-	List(context.Context, tenant.Tenant, resource.Store) ([]*resource.BackupDetails, error)
+	Create(context.Context, *resource.Backup) (*resource.BackupResult, error)
+	Get(context.Context, resource.BackupID) (*resource.Backup, error)
+	List(context.Context, tenant.Tenant, resource.Store) ([]*resource.Backup, error)
 }
 
 type BackupHandler struct {
@@ -37,26 +37,18 @@ func (b BackupHandler) CreateBackup(ctx context.Context, req *pb.CreateBackupReq
 		return nil, errors.GRPCErr(err, "invalid backup request")
 	}
 
-	for _, resourceName := range req.ResourceNames {
-		if resourceName == "" {
-			return nil, errors.GRPCErr(errors.InvalidArgument(resource.EntityBackup, "resource name is empty"),
-				"invalid backup request")
-		}
+	backup, err := resource.NewBackup(store, tnnt, req.ResourceNames, req.Description, time.Now(), req.Config)
+	if err != nil {
+		return nil, errors.GRPCErr(err, "invalid backup request")
 	}
 
-	backupConfig := &resource.BackupDetails{
-		ResourceNames: req.ResourceNames,
-		Description:   req.Description,
-		Config:        req.Config,
-		CreatedAt:     time.Now(),
-	}
-
-	result, err := b.service.Backup(ctx, tnnt, store, backupConfig)
+	result, err := b.service.Create(ctx, backup)
 	if err != nil {
 		return nil, errors.GRPCErr(err, "error during backup")
 	}
 
 	return &pb.CreateBackupResponse{
+		BackupId:         backup.ID().String(),
 		ResourceNames:    result.ResourceNames,
 		IgnoredResources: toIgnoredResources(result.IgnoredResources),
 	}, nil
@@ -93,17 +85,7 @@ func (b BackupHandler) GetBackup(ctx context.Context, req *pb.GetBackupRequest) 
 		return nil, errors.GRPCErr(err, "invalid get backup request")
 	}
 
-	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
-	if err != nil {
-		return nil, errors.GRPCErr(err, "invalid get backup request for "+backupID.UUID().String())
-	}
-
-	store, err := resource.FromStringToStore(req.GetDatastoreName())
-	if err != nil {
-		return nil, errors.GRPCErr(err, "invalid get backup request for "+backupID.UUID().String())
-	}
-
-	backupDetail, err := b.service.Get(ctx, tnnt, store, backupID)
+	backupDetail, err := b.service.Get(ctx, backupID)
 	if err != nil {
 		return nil, errors.GRPCErr(err, "invalid get backup request for "+backupID.UUID().String())
 	}
@@ -113,13 +95,13 @@ func (b BackupHandler) GetBackup(ctx context.Context, req *pb.GetBackupRequest) 
 	}, nil
 }
 
-func toBackupSpec(detail *resource.BackupDetails) *pb.BackupSpec {
+func toBackupSpec(detail *resource.Backup) *pb.BackupSpec {
 	return &pb.BackupSpec{
-		Id:            detail.ID.String(),
-		ResourceNames: detail.ResourceNames,
-		CreatedAt:     timestamppb.New(detail.CreatedAt),
-		Description:   detail.Description,
-		Config:        detail.Config,
+		Id:            detail.ID().String(),
+		ResourceNames: detail.ResourceNames(),
+		CreatedAt:     timestamppb.New(detail.CreatedAt()),
+		Description:   detail.Description(),
+		Config:        detail.Config(),
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 )
 
@@ -40,16 +41,91 @@ type IgnoredResource struct {
 	Reason string
 }
 
-type BackupInfo struct {
+type BackupResult struct {
+	ID               BackupID
 	ResourceNames    []string
 	IgnoredResources []IgnoredResource
 }
 
-type BackupDetails struct {
-	ID BackupID
+type Backup struct {
+	id BackupID
 
-	ResourceNames []string
-	Description   string
-	CreatedAt     time.Time
-	Config        map[string]string
+	store  Store
+	tenant tenant.Tenant
+
+	resourceNames []string
+	description   string
+	createdAt     time.Time
+	config        map[string]string
+}
+
+func NewBackup(store Store, t tenant.Tenant, resNames []string, desc string, createdAt time.Time, conf map[string]string) (*Backup, error) {
+	if len(resNames) == 0 {
+		return nil, errors.InvalidArgument(EntityBackup, "list of resources to backup is empty")
+	}
+
+	for _, resourceName := range resNames {
+		if resourceName == "" {
+			return nil, errors.InvalidArgument(EntityBackup, "one of resource names is empty")
+		}
+	}
+
+	return &Backup{
+		store:         store,
+		tenant:        t,
+		resourceNames: nil,
+		description:   desc,
+		createdAt:     createdAt,
+		config:        conf,
+	}, nil
+}
+
+func (b *Backup) GetConfigOrDefaultFor(key string, fallback string) string {
+	value, ok := b.config[key]
+	if ok {
+		return value
+	}
+
+	b.config[key] = fallback
+	return fallback
+}
+
+func (b *Backup) UpdateID(id uuid.UUID) error {
+	if id == uuid.Nil {
+		return errors.InvalidArgument(EntityBackup, "id to update is invalid")
+	}
+
+	if !b.id.IsInvalid() {
+		return errors.InvalidStateTransition(EntityBackup, "trying to replace valid id "+b.id.String())
+	}
+	b.id = BackupID(id)
+	return nil
+}
+
+func (b *Backup) ID() BackupID {
+	return b.id
+}
+
+func (b *Backup) Store() Store {
+	return b.store
+}
+
+func (b *Backup) Tenant() tenant.Tenant {
+	return b.tenant
+}
+
+func (b *Backup) ResourceNames() []string {
+	return b.resourceNames
+}
+
+func (b *Backup) Description() string {
+	return b.description
+}
+
+func (b *Backup) CreatedAt() time.Time {
+	return b.createdAt
+}
+
+func (b *Backup) Config() map[string]string {
+	return b.config
 }

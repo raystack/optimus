@@ -24,6 +24,15 @@ func TestBackupHandler(t *testing.T) {
 	tnnt, _ := tenant.NewTenant("proj", "ns")
 	validID := "dda7b864-4268-4107-a096-dcf5343a0959"
 
+	id, _ := uuid.Parse(validID)
+	config := map[string]string{"ttl": "720hrs"}
+	resNames := []string{"project.dataset.table1"}
+	backup, err := resource.NewBackup(store, tnnt, resNames, "a new backup", time.Now(), config)
+	assert.Nil(t, err)
+
+	err = backup.UpdateID(id)
+	assert.Nil(t, err)
+
 	t.Run("CreateBackup", func(t *testing.T) {
 		t.Run("returns error on invalid resource names", func(t *testing.T) {
 			mockService := new(backupService)
@@ -79,7 +88,7 @@ func TestBackupHandler(t *testing.T) {
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			mockService := new(backupService)
 			mockService.On("Backup", ctx, tnnt, store, mock.Anything).
-				Return(resource.BackupInfo{}, errors.New("error in service"))
+				Return(resource.BackupResult{}, errors.New("error in service"))
 			defer mockService.AssertExpectations(t)
 			h := v1beta1.NewBackupHandler(logger, mockService)
 
@@ -98,7 +107,7 @@ func TestBackupHandler(t *testing.T) {
 		t.Run("returns result of backup", func(t *testing.T) {
 			mockService := new(backupService)
 			mockService.On("Backup", ctx, tnnt, store, mock.Anything).
-				Return(resource.BackupInfo{
+				Return(resource.BackupResult{
 					ResourceNames: []string{"bigquery://proj.dataset.table"},
 					IgnoredResources: []resource.IgnoredResource{{
 						Name:   "bigquery://proj.dataset.downstream",
@@ -157,7 +166,7 @@ func TestBackupHandler(t *testing.T) {
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			mockService := new(backupService)
 			mockService.On("List", ctx, tnnt, store).
-				Return([]*resource.BackupDetails{}, errors.New("error in service"))
+				Return([]*resource.Backup{}, errors.New("error in service"))
 			defer mockService.AssertExpectations(t)
 			h := v1beta1.NewBackupHandler(logger, mockService)
 
@@ -174,16 +183,7 @@ func TestBackupHandler(t *testing.T) {
 		})
 		t.Run("returns list of backups", func(t *testing.T) {
 			mockService := new(backupService)
-			mockService.On("List", ctx, tnnt, store).
-				Return([]*resource.BackupDetails{
-					{
-						ID:            resource.BackupID(uuid.New()),
-						ResourceNames: []string{"project.dataset.table1"},
-						Description:   "a new backup",
-						CreatedAt:     time.Now(),
-						Config:        map[string]string{"ttl": "720hrs"},
-					},
-				}, nil)
+			mockService.On("List", ctx, tnnt, store).Return([]*resource.Backup{backup}, nil)
 			defer mockService.AssertExpectations(t)
 			h := v1beta1.NewBackupHandler(logger, mockService)
 
@@ -268,16 +268,8 @@ func TestBackupHandler(t *testing.T) {
 				"backup request for dda7b864-4268-4107-a096-dcf5343a0959")
 		})
 		t.Run("returns details of backup", func(t *testing.T) {
-			id, _ := uuid.Parse(validID)
 			mockService := new(backupService)
-			mockService.On("Get", ctx, tnnt, store, resource.BackupID(id)).
-				Return(&resource.BackupDetails{
-					ID:            resource.BackupID(uuid.New()),
-					ResourceNames: []string{"project.dataset.table1"},
-					Description:   "a new backup",
-					CreatedAt:     time.Now(),
-					Config:        map[string]string{"ttl": "720hrs"},
-				}, nil)
+			mockService.On("Get", ctx, tnnt, store, resource.BackupID(id)).Return(backup, nil)
 			defer mockService.AssertExpectations(t)
 			h := v1beta1.NewBackupHandler(logger, mockService)
 
@@ -299,23 +291,26 @@ type backupService struct {
 	mock.Mock
 }
 
-func (b *backupService) Backup(ctx context.Context, t tenant.Tenant, store resource.Store, config resource.BackupConfiguration) (resource.BackupInfo, error) {
-	args := b.Called(ctx, t, store, config)
-	return args.Get(0).(resource.BackupInfo), args.Error(1)
-}
-
-func (b *backupService) Get(ctx context.Context, t tenant.Tenant, store resource.Store, id resource.BackupID) (*resource.BackupDetails, error) {
-	args := b.Called(ctx, t, store, id)
+func (b *backupService) Create(ctx context.Context, backup *resource.Backup) (*resource.BackupResult, error) {
+	args := b.Called(ctx, backup)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*resource.BackupDetails), args.Error(1)
+	return args.Get(0).(*resource.BackupResult), args.Error(1)
 }
 
-func (b *backupService) List(ctx context.Context, t tenant.Tenant, store resource.Store) ([]*resource.BackupDetails, error) {
+func (b *backupService) Get(ctx context.Context, id resource.BackupID) (*resource.Backup, error) {
+	args := b.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*resource.Backup), args.Error(1)
+}
+
+func (b *backupService) List(ctx context.Context, t tenant.Tenant, store resource.Store) ([]*resource.Backup, error) {
 	args := b.Called(ctx, t, store)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]*resource.BackupDetails), args.Error(1)
+	return args.Get(0).([]*resource.Backup), args.Error(1)
 }
