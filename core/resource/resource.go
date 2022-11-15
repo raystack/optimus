@@ -19,16 +19,6 @@ const (
 	TableNameSections   = 3
 )
 
-var statusTransitionSourceToDestinations = map[Status][]Status{
-	StatusUnknown:          {StatusUnknown, StatusToCreate, StatusToUpdate, StatusCreateFailure, StatusUpdateFailure, StatusMarkExistInStore},
-	StatusToCreate:         {StatusToCreate, StatusCreateFailure, StatusSuccess},
-	StatusToUpdate:         {StatusToUpdate, StatusUpdateFailure, StatusSuccess},
-	StatusMarkExistInStore: {StatusMarkExistInStore, StatusCreateFailure},
-	StatusCreateFailure:    {StatusCreateFailure},
-	StatusUpdateFailure:    {StatusUpdateFailure},
-	StatusSuccess:          {StatusSuccess, StatusCreateFailure, StatusUpdateFailure},
-}
-
 type ValidateResource interface {
 	Validate() error
 }
@@ -221,16 +211,8 @@ func (r *Resource) Equal(incoming *Resource) bool {
 	return reflect.DeepEqual(r.metadata, incoming.metadata)
 }
 
-func (r *Resource) ChangeStatusTo(newStatus Status) error {
-	allowedDestinations := statusTransitionSourceToDestinations[r.Status()]
-	for _, destination := range allowedDestinations {
-		if destination == newStatus {
-			r.status = newStatus
-			return nil
-		}
-	}
-	msg := fmt.Sprintf("status transition for [%s] from [%s] to [%s] is not allowed", r.FullName(), r.Status(), newStatus)
-	return errors.InvalidStateTransition(EntityResource, msg)
+func (r *Resource) ChangeStatusTo(newStatus Status) {
+	r.status = newStatus
 }
 
 func (r *Resource) MarkExistInStore() {
