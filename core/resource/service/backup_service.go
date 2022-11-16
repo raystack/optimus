@@ -15,7 +15,7 @@ const recentBackupWindowMonths = -3
 type BackupRepository interface {
 	GetByID(ctx context.Context, id resource.BackupID) (*resource.Backup, error)
 	GetAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Backup, error)
-	Save(ctx context.Context, details *resource.Backup) error
+	Create(ctx context.Context, details *resource.Backup) error
 }
 
 type ResourceProvider interface {
@@ -46,7 +46,7 @@ func (s BackupService) Create(ctx context.Context, backup *resource.Backup) (*re
 	}
 
 	backupInfo.IgnoredResources = append(backupInfo.IgnoredResources, ignored...)
-	err = s.repo.Save(ctx, backup)
+	err = s.repo.Create(ctx, backup)
 	if err != nil {
 		return backupInfo, err
 	}

@@ -32,13 +32,15 @@ func TestPostgresResourceRepository(t *testing.T) {
 			"orchestrator": "optimus",
 		},
 	}
+	store := serviceResource.Bigquery
+	kindDataset := serviceResource.KindDataset
 
 	t.Run("Create", func(t *testing.T) {
 		t.Run("returns error if resource with the provided full name is already defined within project and namespace", func(t *testing.T) {
 			db := dbSetup()
 			repository := repoResource.NewRepository(db)
 
-			resourceToCreate, err := serviceResource.NewResource("project.dataset", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			resourceToCreate, err := serviceResource.NewResource("project.dataset", kindDataset, store, tnnt, meta, spec)
 			assert.NoError(t, err)
 
 			actualFirstError := repository.Create(ctx, resourceToCreate)
@@ -51,7 +53,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 			db := dbSetup()
 			repository := repoResource.NewRepository(db)
 
-			resourceToCreate, err := serviceResource.NewResource("project.dataset", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			resourceToCreate, err := serviceResource.NewResource("project.dataset", kindDataset, store, tnnt, meta, spec)
 			assert.NoError(t, err)
 
 			actualError := repository.Create(ctx, resourceToCreate)
@@ -69,7 +71,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 			db := dbSetup()
 			repository := repoResource.NewRepository(db)
 
-			resourceToUpdate, err := serviceResource.NewResource("project.dataset", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			resourceToUpdate, err := serviceResource.NewResource("project.dataset", kindDataset, store, tnnt, meta, spec)
 			assert.NoError(t, err)
 
 			actualError := repository.Update(ctx, resourceToUpdate)
@@ -80,7 +82,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 			db := dbSetup()
 			repository := repoResource.NewRepository(db)
 
-			resourceToCreate, err := serviceResource.NewResource("project.dataset", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			resourceToCreate, err := serviceResource.NewResource("project.dataset", kindDataset, store, tnnt, meta, spec)
 			assert.NoError(t, err)
 
 			err = insertAllToDB(db, []*serviceResource.Resource{resourceToCreate})
@@ -102,7 +104,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 			db := dbSetup()
 			repository := repoResource.NewRepository(db)
 
-			actualResource, actualError := repository.ReadByFullName(ctx, tnnt, serviceResource.Bigquery, "project.dataset")
+			actualResource, actualError := repository.ReadByFullName(ctx, tnnt, store, "project.dataset")
 			assert.Nil(t, actualResource)
 			assert.ErrorContains(t, actualError, "error reading from database")
 		})
@@ -112,13 +114,13 @@ func TestPostgresResourceRepository(t *testing.T) {
 			repository := repoResource.NewRepository(db)
 
 			fullName := "project.dataset"
-			resourceToCreate, err := serviceResource.NewResource(fullName, serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			resourceToCreate, err := serviceResource.NewResource(fullName, kindDataset, store, tnnt, meta, spec)
 			assert.NoError(t, err)
 
 			err = insertAllToDB(db, []*serviceResource.Resource{resourceToCreate})
 			assert.NoError(t, err)
 
-			actualResource, actualError := repository.ReadByFullName(ctx, tnnt, serviceResource.Bigquery, fullName)
+			actualResource, actualError := repository.ReadByFullName(ctx, tnnt, store, fullName)
 			assert.NotNil(t, actualResource)
 			assert.NoError(t, actualError)
 			assert.EqualValues(t, resourceToCreate, actualResource)
@@ -130,7 +132,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 			db := dbSetup()
 			repository := repoResource.NewRepository(db)
 
-			actualResources, actualError := repository.ReadAll(ctx, tnnt, serviceResource.Bigquery)
+			actualResources, actualError := repository.ReadAll(ctx, tnnt, store)
 			assert.Empty(t, actualResources)
 			assert.NoError(t, actualError)
 		})
@@ -139,16 +141,45 @@ func TestPostgresResourceRepository(t *testing.T) {
 			db := dbSetup()
 			repository := repoResource.NewRepository(db)
 
-			resourceToCreate, err := serviceResource.NewResource("project.dataset", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			resourceToCreate, err := serviceResource.NewResource("project.dataset", kindDataset, store, tnnt, meta, spec)
 			assert.NoError(t, err)
 
 			err = repository.Create(ctx, resourceToCreate)
 			assert.NoError(t, err)
 
-			actualResources, actualError := repository.ReadAll(ctx, tnnt, serviceResource.Bigquery)
+			actualResources, actualError := repository.ReadAll(ctx, tnnt, store)
 			assert.NotEmpty(t, actualResources)
 			assert.NoError(t, actualError)
 			assert.EqualValues(t, []*serviceResource.Resource{resourceToCreate}, actualResources)
+		})
+	})
+
+	t.Run("GetResources", func(t *testing.T) {
+		t.Run("gets the resources with given full_names", func(t *testing.T) {
+			db := dbSetup()
+			repository := repoResource.NewRepository(db)
+
+			name1 := "project.dataset"
+			resourceToCreate1, err := serviceResource.NewResource(name1, kindDataset, store, tnnt, meta, spec)
+			assert.NoError(t, err)
+
+			err = repository.Create(ctx, resourceToCreate1)
+			assert.NoError(t, err)
+
+			viewSpec := map[string]any{
+				"view_query": "select * from `project.dataset.table`",
+			}
+			name2 := "project.dataset.view"
+			resourceToCreate2, err := serviceResource.NewResource(name2, serviceResource.KindView, store, tnnt, meta, viewSpec)
+			assert.NoError(t, err)
+
+			err = repository.Create(ctx, resourceToCreate2)
+			assert.NoError(t, err)
+
+			actualResources, actualError := repository.GetResources(ctx, tnnt, store, []string{name1, name2})
+			assert.NoError(t, actualError)
+			assert.NotEmpty(t, actualResources)
+			assert.EqualValues(t, []*serviceResource.Resource{resourceToCreate1, resourceToCreate2}, actualResources)
 		})
 	})
 
@@ -157,12 +188,12 @@ func TestPostgresResourceRepository(t *testing.T) {
 			db := dbSetup()
 			repository := repoResource.NewRepository(db)
 
-			existingResource, err := serviceResource.NewResource("project.dataset1", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			existingResource, err := serviceResource.NewResource("project.dataset1", kindDataset, store, tnnt, meta, spec)
 			assert.NoError(t, err)
 			existingResource.ChangeStatusTo(serviceResource.StatusSuccess)
 			err = insertAllToDB(db, []*serviceResource.Resource{existingResource})
 			assert.NoError(t, err)
-			nonExistingResource, err := serviceResource.NewResource("project.dataset2", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			nonExistingResource, err := serviceResource.NewResource("project.dataset2", kindDataset, store, tnnt, meta, spec)
 			assert.NoError(t, err)
 
 			existingResource.ChangeStatusTo(serviceResource.StatusToUpdate)
@@ -184,11 +215,11 @@ func TestPostgresResourceRepository(t *testing.T) {
 			db := dbSetup()
 			repository := repoResource.NewRepository(db)
 
-			existingResource, err := serviceResource.NewResource("project.dataset1", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			existingResource, err := serviceResource.NewResource("project.dataset1", kindDataset, store, tnnt, meta, spec)
 			assert.NoError(t, err)
 			err = insertAllToDB(db, []*serviceResource.Resource{existingResource})
 			assert.NoError(t, err)
-			nonExistingResource, err := serviceResource.NewResource("project.dataset2", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			nonExistingResource, err := serviceResource.NewResource("project.dataset2", kindDataset, store, tnnt, meta, spec)
 			assert.NoError(t, err)
 
 			resourcesToUpdate := []*serviceResource.Resource{
@@ -211,11 +242,11 @@ func TestPostgresResourceRepository(t *testing.T) {
 			db := dbSetup()
 			repository := repoResource.NewRepository(db)
 
-			existingResource, err := serviceResource.NewResource("project.dataset1", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			existingResource, err := serviceResource.NewResource("project.dataset1", kindDataset, store, tnnt, meta, spec)
 			assert.NoError(t, err)
 			err = insertAllToDB(db, []*serviceResource.Resource{existingResource})
 			assert.NoError(t, err)
-			nonExistingResource, err := serviceResource.NewResource("project.dataset2", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			nonExistingResource, err := serviceResource.NewResource("project.dataset2", kindDataset, store, tnnt, meta, spec)
 			assert.NoError(t, err)
 
 			resourcesToUpdate := []*serviceResource.Resource{
@@ -235,9 +266,9 @@ func TestPostgresResourceRepository(t *testing.T) {
 			db := dbSetup()
 			repository := repoResource.NewRepository(db)
 
-			existingResource1, err := serviceResource.NewResource("project.dataset1", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			existingResource1, err := serviceResource.NewResource("project.dataset1", kindDataset, store, tnnt, meta, spec)
 			assert.NoError(t, err)
-			existingResource2, err := serviceResource.NewResource("project.dataset2", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			existingResource2, err := serviceResource.NewResource("project.dataset2", kindDataset, store, tnnt, meta, spec)
 			assert.NoError(t, err)
 			err = insertAllToDB(db, []*serviceResource.Resource{existingResource1, existingResource2})
 			assert.NoError(t, err)
@@ -245,10 +276,10 @@ func TestPostgresResourceRepository(t *testing.T) {
 			newSpec := map[string]any{
 				"Description": "spec for testing update status",
 			}
-			modifiedResource1, err := serviceResource.NewResource("project.dataset1", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, newSpec)
+			modifiedResource1, err := serviceResource.NewResource("project.dataset1", kindDataset, store, tnnt, meta, newSpec)
 			assert.NoError(t, err)
 			modifiedResource1.MarkExistInStore()
-			modifiedResource2, err := serviceResource.NewResource("project.dataset2", serviceResource.KindDataset, serviceResource.Bigquery, tnnt, meta, newSpec)
+			modifiedResource2, err := serviceResource.NewResource("project.dataset2", kindDataset, store, tnnt, meta, newSpec)
 			assert.NoError(t, err)
 			modifiedResource2.MarkExistInStore()
 			resourcesToUpdate := []*serviceResource.Resource{

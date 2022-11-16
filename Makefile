@@ -35,7 +35,7 @@ integration-test:
 	go test -count 1 -cover -race -timeout 1m ./... -run TestIntegration
 
 repository-test:
-	go test -p 1 -count 1 -cover -race -timeout 1m ./... -run TestPostgres
+	go test -p 1 -count 1 -cover -race -timeout 1m ./internal/store/postgres/... -run TestPostgres
 
 vet: ## run go vet
 	go vet ./...

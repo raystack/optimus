@@ -57,6 +57,28 @@ func (r Repository) ReadAll(ctx context.Context, tnnt tenant.Tenant, store resou
 	return output, nil
 }
 
+func (r Repository) GetResources(ctx context.Context, tnnt tenant.Tenant, store resource.Store, names []string) ([]*resource.Resource, error) {
+	var resources []*Resource
+	result := r.db.WithContext(ctx).
+		Where("project_name = ?", tnnt.ProjectName().String()).
+		Where("namespace_name = ?", tnnt.NamespaceName().String()).
+		Where("store = ?", store.String()).Where("full_name IN ?", names).
+		Find(&resources)
+	if result.Error != nil {
+		return nil, errors.Wrap(resource.EntityResource, "error reading from database", result.Error)
+	}
+
+	var tenantResources = make([]*resource.Resource, len(resources))
+	for i, res := range resources {
+		model, err := fromModelToResource(res)
+		if err != nil {
+			return nil, err
+		}
+		tenantResources[i] = model
+	}
+	return tenantResources, nil
+}
+
 func (r Repository) CreateOrUpdateAll(ctx context.Context, resources []*resource.Resource) error {
 	resourceModels := make([]*Resource, len(resources))
 	for i, res := range resources {
