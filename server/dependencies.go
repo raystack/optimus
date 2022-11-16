@@ -15,13 +15,11 @@ import (
 	"gocloud.dev/blob/memblob"
 	"gocloud.dev/gcp"
 	"golang.org/x/oauth2/google"
-	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/ext/scheduler/airflow2"
 	"github.com/odpf/optimus/internal/lib/progress"
 	"github.com/odpf/optimus/internal/store"
-	"github.com/odpf/optimus/internal/store/postgres"
 	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 )
@@ -34,25 +32,6 @@ type replayWorkerFact struct {
 
 func (fac *replayWorkerFact) New() job.ReplayWorker {
 	return job.NewReplayWorker(fac.logger, fac.replaySpecRepoFac, fac.scheduler)
-}
-
-// projectResourceSpecRepoFactory stores raw resource specifications at a project level
-type projectResourceSpecRepoFactory struct {
-	db *gorm.DB
-}
-
-func (fac *projectResourceSpecRepoFactory) New(proj models.ProjectSpec, ds models.Datastorer) store.ProjectResourceSpecRepository {
-	return postgres.NewProjectResourceSpecRepository(fac.db, proj, ds)
-}
-
-// resourceSpecRepoFactory stores raw resource specifications
-type resourceSpecRepoFactory struct {
-	db                         *gorm.DB
-	projectResourceSpecRepoFac projectResourceSpecRepoFactory
-}
-
-func (fac *resourceSpecRepoFactory) New(namespace models.NamespaceSpec, ds models.Datastorer) store.ResourceSpecRepository {
-	return postgres.NewResourceSpecRepository(fac.db, namespace, ds, fac.projectResourceSpecRepoFac.New(namespace.ProjectSpec, ds))
 }
 
 type airflowBucketFactory struct{}

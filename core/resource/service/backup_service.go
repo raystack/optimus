@@ -100,3 +100,11 @@ func findMissingResources(names []string, resources []*resource.Resource) []reso
 	}
 	return ignored
 }
+
+func NewBackupService(repo BackupRepository, resources ResourceProvider, manager BackupManager) *BackupService {
+	return &BackupService{
+		repo:          repo,
+		resources:     resources,
+		backupManager: manager,
+	}
+}
