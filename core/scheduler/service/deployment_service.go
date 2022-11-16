@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/odpf/optimus/core/job_run"
+	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 )
@@ -20,7 +20,7 @@ func (s JobRunService) UploadToScheduler(ctx context.Context, projectName tenant
 		return err
 	}
 
-	jobGroupByTenant := job_run.GroupJobsByTenant(allJobsWithDetails)
+	jobGroupByTenant := scheduler.GroupJobsByTenant(allJobsWithDetails)
 	multiError := errors.NewMultiError("ErrorInUploadToScheduler")
 	for t, jobs := range jobGroupByTenant {
 		if err := s.deployJobsPerNamespace(ctx, t, jobs); err != nil {
@@ -32,7 +32,7 @@ func (s JobRunService) UploadToScheduler(ctx context.Context, projectName tenant
 	return errors.MultiToError(multiError)
 }
 
-func (s JobRunService) deployJobsPerNamespace(ctx context.Context, t tenant.Tenant, jobs []*job_run.JobWithDetails) error {
+func (s JobRunService) deployJobsPerNamespace(ctx context.Context, t tenant.Tenant, jobs []*scheduler.JobWithDetails) error {
 
 	err := s.scheduler.DeployJobs(ctx, t, jobs)
 	if err != nil {
@@ -41,7 +41,7 @@ func (s JobRunService) deployJobsPerNamespace(ctx context.Context, t tenant.Tena
 	return s.cleanPerNamespace(ctx, t, jobs)
 }
 
-func (s JobRunService) cleanPerNamespace(ctx context.Context, t tenant.Tenant, jobs []*job_run.JobWithDetails) error {
+func (s JobRunService) cleanPerNamespace(ctx context.Context, t tenant.Tenant, jobs []*scheduler.JobWithDetails) error {
 
 	// get all stored job names
 	schedulerJobNames, err := s.scheduler.ListJobs(ctx, t)

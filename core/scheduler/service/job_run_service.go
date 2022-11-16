@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/odpf/salt/log"
 
-	"github.com/odpf/optimus/core/job_run"
+	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/lib/cron"
@@ -16,34 +16,34 @@ import (
 )
 
 type JobRepository interface {
-	GetJob(ctx context.Context, name tenant.ProjectName, jobName job_run.JobName) (*job_run.Job, error)
-	GetJobDetails(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName) (*job_run.JobWithDetails, error)
-	GetAll(ctx context.Context, projectName tenant.ProjectName) ([]*job_run.JobWithDetails, error)
+	GetJob(ctx context.Context, name tenant.ProjectName, jobName scheduler.JobName) (*scheduler.Job, error)
+	GetJobDetails(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName) (*scheduler.JobWithDetails, error)
+	GetAll(ctx context.Context, projectName tenant.ProjectName) ([]*scheduler.JobWithDetails, error)
 }
 
 type JobRunRepository interface {
-	GetByID(ctx context.Context, id job_run.JobRunID) (*job_run.JobRun, error)
-	GetByScheduledAt(ctx context.Context, tenant tenant.Tenant, name job_run.JobName, scheduledAt time.Time) (*job_run.JobRun, error)
-	Create(ctx context.Context, tenant tenant.Tenant, name job_run.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error
+	GetByID(ctx context.Context, id scheduler.JobRunID) (*scheduler.JobRun, error)
+	GetByScheduledAt(ctx context.Context, tenant tenant.Tenant, name scheduler.JobName, scheduledAt time.Time) (*scheduler.JobRun, error)
+	Create(ctx context.Context, tenant tenant.Tenant, name scheduler.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error
 	Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, jobRunStatus string) error
 }
 
 type OperatorRunRepository interface {
-	GetOperatorRun(ctx context.Context, operator job_run.OperatorType, jobRunId uuid.UUID) (*job_run.OperatorRun, error)
-	CreateOperatorRun(ctx context.Context, operator job_run.OperatorType, jobRunID uuid.UUID, startTime time.Time) error
-	UpdateOperatorRun(ctx context.Context, operator job_run.OperatorType, jobRunID uuid.UUID, eventTime time.Time, state string) error
+	GetOperatorRun(ctx context.Context, operator scheduler.OperatorType, jobRunId uuid.UUID) (*scheduler.OperatorRun, error)
+	CreateOperatorRun(ctx context.Context, operator scheduler.OperatorType, jobRunID uuid.UUID, startTime time.Time) error
+	UpdateOperatorRun(ctx context.Context, operator scheduler.OperatorType, jobRunID uuid.UUID, eventTime time.Time, state string) error
 }
 type JobInputCompiler interface {
-	Compile(ctx context.Context, job *job_run.Job, config job_run.RunConfig, executedAt time.Time) (*job_run.ExecutorInput, error)
+	Compile(ctx context.Context, job *scheduler.Job, config scheduler.RunConfig, executedAt time.Time) (*scheduler.ExecutorInput, error)
 }
 
 type PriorityResolver interface {
-	Resolve(context.Context, []*job_run.JobWithDetails) error
+	Resolve(context.Context, []*scheduler.JobWithDetails) error
 }
 
 type Scheduler interface {
-	GetJobRuns(ctx context.Context, t tenant.Tenant, criteria *job_run.JobRunsCriteria, jobCron *cron.ScheduleSpec) ([]*job_run.JobRunStatus, error)
-	DeployJobs(ctx context.Context, t tenant.Tenant, jobs []*job_run.JobWithDetails) error
+	GetJobRuns(ctx context.Context, t tenant.Tenant, criteria *scheduler.JobRunsCriteria, jobCron *cron.ScheduleSpec) ([]*scheduler.JobRunStatus, error)
+	DeployJobs(ctx context.Context, t tenant.Tenant, jobs []*scheduler.JobWithDetails) error
 	ListJobs(ctx context.Context, t tenant.Tenant) ([]string, error)
 	DeleteJobs(ctx context.Context, t tenant.Tenant, jobsToDelete []string) error
 }
@@ -58,14 +58,14 @@ type JobRunService struct {
 	compiler         JobInputCompiler
 }
 
-func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName, config job_run.RunConfig) (*job_run.ExecutorInput, error) {
+func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName, config scheduler.RunConfig) (*scheduler.ExecutorInput, error) {
 	job, err := s.jobRepo.GetJob(ctx, projectName, jobName)
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO: Use scheduled_at instead of executed_at for computations, for deterministic calculations
-	var jobRun *job_run.JobRun
+	var jobRun *scheduler.JobRun
 	if config.JobRunID.IsEmpty() {
 		jobRun, err = s.repo.GetByScheduledAt(ctx, job.Tenant, jobName, config.ScheduledAt)
 	} else {
@@ -85,7 +85,7 @@ func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proje
 	return s.compiler.Compile(ctx, job, config, executedAt)
 }
 
-func (s JobRunService) GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName, criteria *job_run.JobRunsCriteria) ([]*job_run.JobRunStatus, error) {
+func (s JobRunService) GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName, criteria *scheduler.JobRunsCriteria) ([]*scheduler.JobRunStatus, error) {
 	jobWithDetails, err := s.jobRepo.GetJobDetails(ctx, projectName, jobName)
 	interval := jobWithDetails.Schedule.Interval
 	if interval == "" {
@@ -122,14 +122,14 @@ func (s JobRunService) GetJobRuns(ctx context.Context, projectName tenant.Projec
 	return result, nil
 }
 
-func getExpectedRuns(spec *cron.ScheduleSpec, startTime, endTime time.Time) []*job_run.JobRunStatus {
-	var jobRuns []*job_run.JobRunStatus
+func getExpectedRuns(spec *cron.ScheduleSpec, startTime, endTime time.Time) []*scheduler.JobRunStatus {
+	var jobRuns []*scheduler.JobRunStatus
 	start := spec.Next(startTime.Add(-time.Second * 1))
 	end := endTime
 	exit := spec.Next(end)
 	for !start.Equal(exit) {
-		jobRuns = append(jobRuns, &job_run.JobRunStatus{
-			State:       job_run.StatePending,
+		jobRuns = append(jobRuns, &scheduler.JobRunStatus{
+			State:       scheduler.StatePending,
 			ScheduledAt: start,
 		})
 		start = spec.Next(start)
@@ -137,8 +137,8 @@ func getExpectedRuns(spec *cron.ScheduleSpec, startTime, endTime time.Time) []*j
 	return jobRuns
 }
 
-func mergeRuns(expected, actual []*job_run.JobRunStatus) []*job_run.JobRunStatus {
-	var mergeRuns []*job_run.JobRunStatus
+func mergeRuns(expected, actual []*scheduler.JobRunStatus) []*scheduler.JobRunStatus {
+	var mergeRuns []*scheduler.JobRunStatus
 	m := actualRunMap(actual)
 	for _, exp := range expected {
 		if act, ok := m[exp.ScheduledAt.UTC().String()]; ok {
@@ -150,16 +150,16 @@ func mergeRuns(expected, actual []*job_run.JobRunStatus) []*job_run.JobRunStatus
 	return mergeRuns
 }
 
-func actualRunMap(runs []*job_run.JobRunStatus) map[string]job_run.JobRunStatus {
-	m := map[string]job_run.JobRunStatus{}
+func actualRunMap(runs []*scheduler.JobRunStatus) map[string]scheduler.JobRunStatus {
+	m := map[string]scheduler.JobRunStatus{}
 	for _, v := range runs {
 		m[v.ScheduledAt.UTC().String()] = *v
 	}
 	return m
 }
 
-func filterRuns(runs []*job_run.JobRunStatus, filter map[string]struct{}) []*job_run.JobRunStatus {
-	var filteredRuns []*job_run.JobRunStatus
+func filterRuns(runs []*scheduler.JobRunStatus, filter map[string]struct{}) []*scheduler.JobRunStatus {
+	var filteredRuns []*scheduler.JobRunStatus
 	if len(filter) == 0 {
 		return runs
 	}
@@ -179,7 +179,7 @@ func createFilterSet(filter []string) map[string]struct{} {
 	return m
 }
 
-func validateJobQuery(jobQuery *job_run.JobRunsCriteria, jobWithDetails job_run.JobWithDetails) error {
+func validateJobQuery(jobQuery *scheduler.JobRunsCriteria, jobWithDetails scheduler.JobWithDetails) error {
 	jobStartDate := jobWithDetails.Schedule.StartDate
 	if jobStartDate.IsZero() {
 		return fmt.Errorf("job start time not found at DB")
@@ -193,7 +193,7 @@ func validateJobQuery(jobQuery *job_run.JobRunsCriteria, jobWithDetails job_run.
 	return nil
 }
 
-func (s JobRunService) registerNewJobRun(ctx context.Context, event job_run.Event) error {
+func (s JobRunService) registerNewJobRun(ctx context.Context, event scheduler.Event) error {
 	job, err := s.jobRepo.GetJobDetails(ctx, event.Tenant.ProjectName(), event.JobName)
 	if err != nil {
 		return err
@@ -203,7 +203,7 @@ func (s JobRunService) registerNewJobRun(ctx context.Context, event job_run.Even
 		return err
 	}
 
-	scheduledAtTimeStamp, err := time.Parse(job_run.ISODateFormat, event.Values["scheduled_at"].(string))
+	scheduledAtTimeStamp, err := time.Parse(scheduler.ISODateFormat, event.Values["scheduled_at"].(string))
 	if err != nil {
 		return err
 	}
@@ -214,12 +214,12 @@ func (s JobRunService) registerNewJobRun(ctx context.Context, event job_run.Even
 		slaDefinitionInSec)
 }
 
-func (s JobRunService) updateJobRun(ctx context.Context, event job_run.Event) error {
-	scheduledAtTimeStamp, err := time.Parse(job_run.ISODateFormat, event.Values["scheduled_at"].(string))
+func (s JobRunService) updateJobRun(ctx context.Context, event scheduler.Event) error {
+	scheduledAtTimeStamp, err := time.Parse(scheduler.ISODateFormat, event.Values["scheduled_at"].(string))
 	if err != nil {
 		return err
 	}
-	var jobRun *job_run.JobRun
+	var jobRun *scheduler.JobRun
 	jobRun, err = s.repo.GetByScheduledAt(ctx,
 		event.Tenant,
 		event.JobName,
@@ -250,8 +250,8 @@ func (s JobRunService) updateJobRun(ctx context.Context, event job_run.Event) er
 	)
 }
 
-func (s JobRunService) createOperatorRun(ctx context.Context, event job_run.Event, operatorType job_run.OperatorType) error {
-	scheduledAtTimeStamp, err := time.Parse(job_run.ISODateFormat, event.Values["scheduled_at"].(string))
+func (s JobRunService) createOperatorRun(ctx context.Context, event scheduler.Event, operatorType scheduler.OperatorType) error {
+	scheduledAtTimeStamp, err := time.Parse(scheduler.ISODateFormat, event.Values["scheduled_at"].(string))
 	if err != nil {
 		return err
 	}
@@ -272,7 +272,7 @@ func (s JobRunService) createOperatorRun(ctx context.Context, event job_run.Even
 			return err
 		}
 	} else {
-		if operatorRun.State == job_run.StateRunning.String() {
+		if operatorRun.State == scheduler.StateRunning.String() {
 			// operator run exists but is not yet finished
 			return nil
 		}
@@ -284,8 +284,8 @@ func (s JobRunService) createOperatorRun(ctx context.Context, event job_run.Even
 		startedAtTimeStamp)
 }
 
-func (s JobRunService) updateOperatorRun(ctx context.Context, event job_run.Event, operatorType job_run.OperatorType) error {
-	scheduledAtTimeStamp, err := time.Parse(job_run.ISODateFormat, event.Values["scheduled_at"].(string))
+func (s JobRunService) updateOperatorRun(ctx context.Context, event scheduler.Event, operatorType scheduler.OperatorType) error {
+	scheduledAtTimeStamp, err := time.Parse(scheduler.ISODateFormat, event.Values["scheduled_at"].(string))
 	if err != nil {
 		return err
 	}
@@ -311,25 +311,25 @@ func (s JobRunService) updateOperatorRun(ctx context.Context, event job_run.Even
 		status)
 }
 
-func (s JobRunService) UpdateJobState(ctx context.Context, event job_run.Event) error {
+func (s JobRunService) UpdateJobState(ctx context.Context, event scheduler.Event) error {
 	switch event.Type {
-	case job_run.JobStartEvent:
+	case scheduler.JobStartEvent:
 		return s.registerNewJobRun(ctx, event)
-	case job_run.JobSuccessEvent, job_run.JobFailEvent:
+	case scheduler.JobSuccessEvent, scheduler.JobFailEvent:
 		return s.updateJobRun(ctx, event)
-	case job_run.TaskStartEvent:
-		return s.createOperatorRun(ctx, event, job_run.OperatorTask)
-	case job_run.TaskSuccessEvent, job_run.TaskRetryEvent, job_run.TaskFailEvent:
-		return s.updateOperatorRun(ctx, event, job_run.OperatorTask)
-	case job_run.SensorStartEvent:
-		return s.createOperatorRun(ctx, event, job_run.OperatorSensor)
-	case job_run.SensorSuccessEvent, job_run.SensorRetryEvent, job_run.SensorFailEvent:
-		return s.updateOperatorRun(ctx, event, job_run.OperatorSensor)
-	case job_run.HookStartEvent:
-		return s.createOperatorRun(ctx, event, job_run.OperatorHook)
-	case job_run.HookSuccessEvent, job_run.HookRetryEvent, job_run.HookFailEvent:
-		return s.updateOperatorRun(ctx, event, job_run.OperatorHook)
+	case scheduler.TaskStartEvent:
+		return s.createOperatorRun(ctx, event, scheduler.OperatorTask)
+	case scheduler.TaskSuccessEvent, scheduler.TaskRetryEvent, scheduler.TaskFailEvent:
+		return s.updateOperatorRun(ctx, event, scheduler.OperatorTask)
+	case scheduler.SensorStartEvent:
+		return s.createOperatorRun(ctx, event, scheduler.OperatorSensor)
+	case scheduler.SensorSuccessEvent, scheduler.SensorRetryEvent, scheduler.SensorFailEvent:
+		return s.updateOperatorRun(ctx, event, scheduler.OperatorSensor)
+	case scheduler.HookStartEvent:
+		return s.createOperatorRun(ctx, event, scheduler.OperatorHook)
+	case scheduler.HookSuccessEvent, scheduler.HookRetryEvent, scheduler.HookFailEvent:
+		return s.updateOperatorRun(ctx, event, scheduler.OperatorHook)
 	default:
-		return errors.InvalidArgument(job_run.EntityEvent, "invalid event type: "+string(event.Type))
+		return errors.InvalidArgument(scheduler.EntityEvent, "invalid event type: "+string(event.Type))
 	}
 }

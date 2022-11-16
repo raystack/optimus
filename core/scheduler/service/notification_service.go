@@ -11,7 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	"github.com/odpf/optimus/core/job_run"
+	"github.com/odpf/optimus/core/scheduler"
 )
 
 var (
@@ -32,7 +32,7 @@ const (
 
 type Notifier interface {
 	io.Closer
-	Notify(ctx context.Context, attr job_run.NotifyAttrs) error
+	Notify(ctx context.Context, attr scheduler.NotifyAttrs) error
 }
 
 type NotifyService struct {
@@ -42,7 +42,7 @@ type NotifyService struct {
 	l              log.Logger
 }
 
-func (n NotifyService) Push(ctx context.Context, event job_run.Event) error {
+func (n NotifyService) Push(ctx context.Context, event scheduler.Event) error {
 
 	jobDetails, err := n.jobRepo.GetJobDetails(ctx, event.Tenant.ProjectName(), event.JobName)
 	notificationConfig := jobDetails.Alerts
@@ -72,7 +72,7 @@ func (n NotifyService) Push(ctx context.Context, event job_run.Event) error {
 				}
 
 				if notifyChannel, ok := n.notifyChannels[scheme]; ok {
-					if currErr := notifyChannel.Notify(ctx, job_run.NotifyAttrs{
+					if currErr := notifyChannel.Notify(ctx, scheduler.NotifyAttrs{
 						Owner:    jobDetails.JobMetadata.Owner,
 						JobEvent: event,
 						Secret:   secret,
@@ -85,9 +85,9 @@ func (n NotifyService) Push(ctx context.Context, event job_run.Event) error {
 			}
 		}
 	}
-	if event.Type.IsOfType(job_run.EventCategoryJobFailure) {
+	if event.Type.IsOfType(scheduler.EventCategoryJobFailure) {
 		jobFailureCounter.Inc()
-	} else if event.Type.IsOfType(job_run.EventCategorySLAMiss) {
+	} else if event.Type.IsOfType(scheduler.EventCategorySLAMiss) {
 		jobSLAMissCounter.Inc()
 	}
 	return err

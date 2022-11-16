@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/odpf/optimus/core/job_run"
+	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/internal/lib/progress"
 	"github.com/odpf/optimus/internal/lib/tree"
 )
@@ -45,7 +45,7 @@ func NewPriorityResolver() *PriorityResolver {
 }
 
 // Resolve takes jobsWithDetails and returns them with resolved priorities
-func (a *PriorityResolver) Resolve(_ context.Context, jobWithDetails []*job_run.JobWithDetails) error {
+func (a *PriorityResolver) Resolve(_ context.Context, jobWithDetails []*scheduler.JobWithDetails) error {
 	if err := a.resolvePriorities(jobWithDetails); err != nil {
 		return fmt.Errorf("error occurred while resolving priority: %w", err)
 	}
@@ -53,7 +53,7 @@ func (a *PriorityResolver) Resolve(_ context.Context, jobWithDetails []*job_run.
 }
 
 // resolvePriorities resolves priorities of all provided jobs
-func (a *PriorityResolver) resolvePriorities(jobsWithDetails []*job_run.JobWithDetails) error {
+func (a *PriorityResolver) resolvePriorities(jobsWithDetails []*scheduler.JobWithDetails) error {
 	// build a multi-root tree from all jobs based on their dependencies
 	multiRootTree, err := a.buildMultiRootDependencyTree(jobsWithDetails)
 	if err != nil {
@@ -90,9 +90,9 @@ func (a *PriorityResolver) assignWeight(rootNodes []*tree.TreeNode, weight int, 
 
 // buildMultiRootDependencyTree - converts []jobWithDetails into a MultiRootTree
 // based on the dependencies of each DAG.
-func (a *PriorityResolver) buildMultiRootDependencyTree(jobsWithDetails []*job_run.JobWithDetails) (*tree.MultiRootTree, error) {
+func (a *PriorityResolver) buildMultiRootDependencyTree(jobsWithDetails []*scheduler.JobWithDetails) (*tree.MultiRootTree, error) {
 	// creates map[jobName]jobWithDetails for faster retrieval
-	jobWithDetailsMap := make(map[string]*job_run.JobWithDetails)
+	jobWithDetailsMap := make(map[string]*scheduler.JobWithDetails)
 	for _, dagSpec := range jobsWithDetails {
 		jobWithDetailsMap[dagSpec.Name.String()] = dagSpec
 	}
@@ -109,9 +109,9 @@ func (a *PriorityResolver) buildMultiRootDependencyTree(jobsWithDetails []*job_r
 				// when the dependency of a jobWithDetails belong to some other tenant or is external, the jobWithDetails won't
 				// be available in jobsWithDetails []job_run.jobWithDetails object (which is tenant specific)
 				// so we'll add a dummy jobWithDetails for that cross tenant/external dependency.
-				parentSpec = &job_run.JobWithDetails{
-					Name:      job_run.JobName(upstream.JobName),
-					Upstreams: job_run.Upstreams{},
+				parentSpec = &scheduler.JobWithDetails{
+					Name:      scheduler.JobName(upstream.JobName),
+					Upstreams: scheduler.Upstreams{},
 				}
 				missingParent = true
 			}
@@ -137,7 +137,7 @@ func (a *PriorityResolver) buildMultiRootDependencyTree(jobsWithDetails []*job_r
 	return multiRootTree, nil
 }
 
-func (*PriorityResolver) findOrCreateDAGNode(dagTree *tree.MultiRootTree, jobDetails *job_run.JobWithDetails) *tree.TreeNode {
+func (*PriorityResolver) findOrCreateDAGNode(dagTree *tree.MultiRootTree, jobDetails *scheduler.JobWithDetails) *tree.TreeNode {
 	node, ok := dagTree.GetNodeByName(jobDetails.Name.String())
 	if !ok {
 		node = tree.NewTreeNode(jobDetails)

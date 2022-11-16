@@ -12,7 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	api "github.com/slack-go/slack"
 
-	"github.com/odpf/optimus/core/job_run"
+	"github.com/odpf/optimus/core/scheduler"
 )
 
 const (
@@ -59,10 +59,10 @@ type event struct {
 	namespaceName string
 	jobName       string
 	owner         string
-	meta          job_run.Event
+	meta          scheduler.Event
 }
 
-func (s *Notifier) Notify(ctx context.Context, attr job_run.NotifyAttrs) error {
+func (s *Notifier) Notify(ctx context.Context, attr scheduler.NotifyAttrs) error {
 
 	client := api.New(attr.Secret, api.OptionAPIURL(s.slackURL))
 
@@ -112,7 +112,7 @@ func (s *Notifier) Notify(ctx context.Context, attr job_run.NotifyAttrs) error {
 	return nil
 }
 
-func (s *Notifier) queueNotification(receiverIDs []string, oauthSecret string, attr job_run.NotifyAttrs) {
+func (s *Notifier) queueNotification(receiverIDs []string, oauthSecret string, attr scheduler.NotifyAttrs) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, receiverID := range receiverIDs {
@@ -147,7 +147,7 @@ func buildMessageBlocks(events []event, workerErrChan chan error) []api.Block {
 		fieldSlice = append(fieldSlice, api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Job:*\n%s", evt.jobName), false, false))
 		fieldSlice = append(fieldSlice, api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Owner:*\n%s", evt.owner), false, false))
 
-		if evt.meta.Type.IsOfType(job_run.EventCategorySLAMiss) {
+		if evt.meta.Type.IsOfType(scheduler.EventCategorySLAMiss) {
 			heading := api.NewTextBlockObject("plain_text",
 				fmt.Sprintf("[Job] SLA Breached | %s/%s", evt.projectName, evt.namespaceName), true, false)
 			blocks = append(blocks, api.NewHeaderBlock(heading))
@@ -175,7 +175,7 @@ func buildMessageBlocks(events []event, workerErrChan chan error) []api.Block {
 					}
 				}
 			}
-		} else if evt.meta.Type.IsOfType(job_run.EventCategoryJobFailure) {
+		} else if evt.meta.Type.IsOfType(scheduler.EventCategoryJobFailure) {
 			heading := api.NewTextBlockObject("plain_text",
 				fmt.Sprintf("[Job] Failure | %s/%s", evt.projectName, evt.namespaceName), true, false)
 			blocks = append(blocks, api.NewHeaderBlock(heading))

@@ -1,13 +1,12 @@
-package job_run
+package scheduler
 
 import (
 	"context"
 	"time"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm/clause"
-
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/odpf/optimus/core/job_run"
 	"github.com/odpf/optimus/internal/errors"
@@ -88,7 +87,6 @@ func (o *OperatorRunRepository) CreateOperatorRun(ctx context.Context, operatorT
 	values (?, ?, ?, TIMESTAMP '3000-01-01 00:00:00' )`
 	return o.db.WithContext(ctx).Exec(insertOperatorRun, operatorTableName,
 		jobRunID, job_run.StateRunning, startTime).Error
-
 }
 
 func (o *OperatorRunRepository) UpdateOperatorRun(ctx context.Context, operatorType job_run.OperatorType, operatorRunID uuid.UUID, eventTime time.Time, state string) error {

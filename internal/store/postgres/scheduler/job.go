@@ -1,4 +1,4 @@
-package job_run
+package scheduler
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
-	"github.com/odpf/optimus/core/job_run"
+	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 )
@@ -64,7 +64,7 @@ type Job struct {
 	DeletedAt gorm.DeletedAt
 }
 
-func (j *Job) toJob() (*job_run.Job, error) {
+func (j *Job) toJob() (*scheduler.Job, error) {
 	t, err := tenant.NewTenant(j.ProjectName, j.NamespaceName)
 	if err != nil {
 		return nil, err
@@ -75,7 +75,7 @@ func (j *Job) toJob() (*job_run.Job, error) {
 		return nil, err
 	}
 
-	var hookConfig []*job_run.Hook
+	var hookConfig []*scheduler.Hook
 	if err := json.Unmarshal(j.Hooks, &hookConfig); err != nil {
 		return nil, err
 	}
@@ -85,11 +85,11 @@ func (j *Job) toJob() (*job_run.Job, error) {
 		return nil, err
 	}
 
-	return &job_run.Job{
-		Name:        job_run.JobName(j.Name),
+	return &scheduler.Job{
+		Name:        scheduler.JobName(j.Name),
 		Tenant:      t,
 		Destination: j.Destination,
-		Task: &job_run.Task{
+		Task: &scheduler.Task{
 			Name:   j.TaskName,
 			Config: taskConfig,
 		},
@@ -98,7 +98,7 @@ func (j *Job) toJob() (*job_run.Job, error) {
 	}, err
 }
 
-func (j *Job) toJobWithDetails() (*job_run.JobWithDetails, error) {
+func (j *Job) toJobWithDetails() (*scheduler.JobWithDetails, error) {
 	job, err := j.toJob()
 	if err != nil {
 		return nil, err
@@ -109,25 +109,25 @@ func (j *Job) toJobWithDetails() (*job_run.JobWithDetails, error) {
 		return nil, err
 	}
 
-	var retry job_run.Retry
+	var retry scheduler.Retry
 	if err := json.Unmarshal(j.Retry, &retry); err != nil {
 		return nil, err
 	}
-	var alerts []job_run.Alert
+	var alerts []scheduler.Alert
 	if err := json.Unmarshal(j.Alert, &alerts); err != nil {
 		return nil, err
 	}
 
-	return &job_run.JobWithDetails{
+	return &scheduler.JobWithDetails{
 		Name: job.Name,
 		Job:  job,
-		JobMetadata: &job_run.JobMetadata{
+		JobMetadata: &scheduler.JobMetadata{
 			Version:     j.Version,
 			Owner:       j.Owner,
 			Description: j.Description,
 			Labels:      labels,
 		},
-		Schedule: &job_run.Schedule{
+		Schedule: &scheduler.Schedule{
 			DependsOnPast: j.DependsOnPast,
 			CatchUp:       j.CatchUp,
 			StartDate:     j.StartDate,
@@ -135,13 +135,13 @@ func (j *Job) toJobWithDetails() (*job_run.JobWithDetails, error) {
 		},
 		Retry:         &retry,
 		Alerts:        alerts,
-		RuntimeConfig: job_run.RuntimeConfig{}, //todo: fix later
+		RuntimeConfig: scheduler.RuntimeConfig{}, //todo: fix later
 		//Priority: j.Priority, //todo: fix later
 		//Upstreams: j.Upstreams, //todo: fix later
 	}, err
 }
 
-func (j *JobRepository) GetJob(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName) (*job_run.Job, error) {
+func (j *JobRepository) GetJob(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName) (*scheduler.Job, error) {
 	var spec Job
 
 	getJobByNameAtProject := `SELECT * FROM job WHERE name = ? AND project_name = ?`
@@ -149,36 +149,36 @@ func (j *JobRepository) GetJob(ctx context.Context, projectName tenant.ProjectNa
 		First(&spec).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.NotFound(job_run.EntityJobRun, "unable to find job:"+jobName.String()+" in project:"+projectName.String())
+			return nil, errors.NotFound(scheduler.EntityJobRun, "unable to find job:"+jobName.String()+" in project:"+projectName.String())
 		}
 		return nil, err
 	}
 	return spec.toJob()
 }
-func (j *JobRepository) GetJobDetails(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName) (*job_run.JobWithDetails, error) {
+func (j *JobRepository) GetJobDetails(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName) (*scheduler.JobWithDetails, error) {
 	var spec Job
 	getJobByNameAtProject := `SELECT * FROM job WHERE name = ? AND project_name = ?`
 	err := j.db.WithContext(ctx).Raw(getJobByNameAtProject, jobName.String(), projectName.String()).
 		First(&spec).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.NotFound(job_run.EntityJobRun, "unable to find job:"+jobName.String()+" in project:"+projectName.String())
+			return nil, errors.NotFound(scheduler.EntityJobRun, "unable to find job:"+jobName.String()+" in project:"+projectName.String())
 		}
 		return nil, err
 	}
 	return spec.toJobWithDetails()
 }
-func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectName) ([]*job_run.JobWithDetails, error) {
+func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectName) ([]*scheduler.JobWithDetails, error) {
 	var specs []Job
 	getJobByNameAtProject := `SELECT * FROM job WHERE project_name = ?`
 	err := j.db.WithContext(ctx).Raw(getJobByNameAtProject, projectName.String()).Find(&specs).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.NotFound(job_run.EntityJobRun, "unable to find jobs in project:"+projectName.String())
+			return nil, errors.NotFound(scheduler.EntityJobRun, "unable to find jobs in project:"+projectName.String())
 		}
 		return nil, err
 	}
-	var jobs []*job_run.JobWithDetails
+	var jobs []*scheduler.JobWithDetails
 	for _, spec := range specs {
 		job, err := spec.toJobWithDetails()
 		if err != nil {
@@ -186,4 +186,5 @@ func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectNa
 		}
 		jobs = append(jobs, job)
 	}
+	return jobs, nil
 }

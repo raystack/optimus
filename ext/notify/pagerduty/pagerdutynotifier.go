@@ -10,7 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	"github.com/odpf/optimus/core/job_run"
+	"github.com/odpf/optimus/core/scheduler"
 )
 
 const (
@@ -48,15 +48,15 @@ type Event struct {
 	namespaceName string
 	jobName       string
 	owner         string
-	meta          job_run.Event
+	meta          scheduler.Event
 }
 
-func (s *Notifier) Notify(_ context.Context, attr job_run.NotifyAttrs) error {
+func (s *Notifier) Notify(_ context.Context, attr scheduler.NotifyAttrs) error {
 	s.queueNotification(attr.Secret, attr)
 	return nil
 }
 
-func (s *Notifier) queueNotification(routingKey string, attr job_run.NotifyAttrs) {
+func (s *Notifier) queueNotification(routingKey string, attr scheduler.NotifyAttrs) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	evt := Event{

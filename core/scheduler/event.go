@@ -1,4 +1,4 @@
-package job_run
+package scheduler
 
 import (
 	"github.com/odpf/optimus/core/tenant"

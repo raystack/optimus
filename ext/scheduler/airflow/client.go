@@ -15,7 +15,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/odpf/optimus/core/job_run"
+	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/internal/lib/cron"
 )
 
@@ -114,15 +114,15 @@ func buildEndPoint(host, reqURL, pathParam string) string {
 	return u.String()
 }
 
-func getJobRuns(res DagRunListResponse, spec *cron.ScheduleSpec) ([]*job_run.JobRunStatus, error) {
-	var jobRunList []*job_run.JobRunStatus
+func getJobRuns(res DagRunListResponse, spec *cron.ScheduleSpec) ([]*scheduler.JobRunStatus, error) {
+	var jobRunList []*scheduler.JobRunStatus
 	if res.TotalEntries > pageLimit {
 		return jobRunList, errors.New("total number of entries exceed page limit")
 	}
 	for _, dag := range res.DagRuns {
 		if !dag.ExternalTrigger { // only include scheduled runs
 			scheduledAt := spec.Next(dag.ExecutionDate)
-			jobRunStatus, _ := job_run.JobRunStatusFrom(scheduledAt, dag.State)
+			jobRunStatus, _ := scheduler.JobRunStatusFrom(scheduledAt, dag.State)
 			// use multi error to collect errors and proceed
 			jobRunList = append(jobRunList, &jobRunStatus)
 		}

@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/odpf/optimus/core/job_run"
-	"github.com/odpf/optimus/core/job_run/handler/v1beta1"
+	"github.com/odpf/optimus/core/scheduler"
+	"github.com/odpf/optimus/core/scheduler/handler/v1beta1"
 	"github.com/odpf/optimus/core/tenant"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
@@ -112,8 +112,8 @@ func TestJobRunHandler(t *testing.T) {
 		})
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			service := new(mockJobRunService)
-			service.On("JobRunInput", ctx, tenant.ProjectName("proj"), job_run.JobName("job1"), mock.Anything).
-				Return(job_run.ExecutorInput{}, errors.New("error in service"))
+			service.On("JobRunInput", ctx, tenant.ProjectName("proj"), scheduler.JobName("job1"), mock.Anything).
+				Return(scheduler.ExecutorInput{}, errors.New("error in service"))
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewJobRunHandler(logger, service, nil)
@@ -134,8 +134,8 @@ func TestJobRunHandler(t *testing.T) {
 		})
 		t.Run("returns job run input successfully", func(t *testing.T) {
 			service := new(mockJobRunService)
-			service.On("JobRunInput", ctx, tenant.ProjectName("proj"), job_run.JobName("job1"), mock.Anything).
-				Return(job_run.ExecutorInput{
+			service.On("JobRunInput", ctx, tenant.ProjectName("proj"), scheduler.JobName("job1"), mock.Anything).
+				Return(scheduler.ExecutorInput{
 					Configs: map[string]string{"a": "b"},
 					Secrets: map[string]string{"name": "secret_value"},
 					Files:   nil,
@@ -165,15 +165,15 @@ type mockJobRunService struct {
 	mock.Mock
 }
 
-func (m *mockJobRunService) JobRunInput(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName, config job_run.RunConfig) (*job_run.ExecutorInput, error) {
+func (m *mockJobRunService) JobRunInput(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName, config scheduler.RunConfig) (*scheduler.ExecutorInput, error) {
 	args := m.Called(ctx, projectName, jobName, config)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*job_run.ExecutorInput), args.Error(1)
+	return args.Get(0).(*scheduler.ExecutorInput), args.Error(1)
 }
 
-func (m *mockJobRunService) UpdateJobState(ctx context.Context, event job_run.Event) error {
+func (m *mockJobRunService) UpdateJobState(ctx context.Context, event scheduler.Event) error {
 	args := m.Called(ctx, event)
 	return args.Error(0)
 }
@@ -183,19 +183,19 @@ func (m *mockJobRunService) UploadToScheduler(ctx context.Context, projectName t
 	return args.Error(0)
 }
 
-func (m *mockJobRunService) GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName, criteria *job_run.JobRunsCriteria) ([]*job_run.JobRunStatus, error) {
+func (m *mockJobRunService) GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName, criteria *scheduler.JobRunsCriteria) ([]*scheduler.JobRunStatus, error) {
 	args := m.Called(ctx, projectName, jobName, criteria)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]*job_run.JobRunStatus), args.Error(1)
+	return args.Get(0).([]*scheduler.JobRunStatus), args.Error(1)
 }
 
 type mockNotifier struct {
 	mock.Mock
 }
 
-func (m *mockNotifier) Push(ctx context.Context, event job_run.Event) error {
+func (m *mockNotifier) Push(ctx context.Context, event scheduler.Event) error {
 	args := m.Called(ctx, event)
 	return args.Error(0)
 }

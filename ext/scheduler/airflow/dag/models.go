@@ -3,7 +3,7 @@ package dag
 import (
 	"time"
 
-	"github.com/odpf/optimus/core/job_run"
+	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/models"
@@ -14,7 +14,7 @@ const (
 )
 
 type TemplateContext struct {
-	JobDetails *job_run.JobWithDetails
+	JobDetails *scheduler.JobWithDetails
 
 	Tenant          tenant.Tenant
 	Version         string
@@ -35,7 +35,7 @@ type Task struct {
 	Image string
 }
 
-func PrepareTask(job *job_run.Job, pluginRepo PluginRepo) (Task, error) {
+func PrepareTask(job *scheduler.Job, pluginRepo PluginRepo) (Task, error) {
 	plugin, err := pluginRepo.GetByName(job.Task.Name)
 	if err != nil {
 		return Task{}, errors.NotFound(EntitySchedulerAirflow, "plugin not found for "+job.Task.Name)
@@ -69,7 +69,7 @@ func (h Hooks) List() []Hook {
 	return list
 }
 
-func PrepareHooksForJob(job *job_run.Job, pluginRepo PluginRepo) (Hooks, error) {
+func PrepareHooksForJob(job *scheduler.Job, pluginRepo PluginRepo) (Hooks, error) {
 	var hooks Hooks
 	hooks.Dependencies = map[string]string{}
 
@@ -111,7 +111,7 @@ type RuntimeConfig struct {
 	Airflow  AirflowConfig
 }
 
-func SetupRuntimeConfig(jobDetails *job_run.JobWithDetails) RuntimeConfig {
+func SetupRuntimeConfig(jobDetails *scheduler.JobWithDetails) RuntimeConfig {
 	runtimeConf := RuntimeConfig{
 		Airflow: ToAirflowConfig(jobDetails.RuntimeConfig.Scheduler),
 	}
@@ -126,7 +126,7 @@ type Resource struct {
 	Limit   *ResourceConfig
 }
 
-func ToResource(resource *job_run.Resource) *Resource {
+func ToResource(resource *scheduler.Resource) *Resource {
 	if resource == nil {
 		return nil
 	}
@@ -150,7 +150,7 @@ type ResourceConfig struct {
 	Memory string
 }
 
-func ToResourceConfig(config *job_run.ResourceConfig) *ResourceConfig {
+func ToResourceConfig(config *scheduler.ResourceConfig) *ResourceConfig {
 	if config == nil {
 		return nil
 	}
@@ -179,10 +179,10 @@ func ToAirflowConfig(schedulerConf map[string]string) AirflowConfig {
 	return conf
 }
 
-func SlaMissDuration(job *job_run.JobWithDetails) (int64, error) {
+func SlaMissDuration(job *scheduler.JobWithDetails) (int64, error) {
 	var slaMissDurationInSec int64
 	for _, notify := range job.Alerts { // We are ranging and picking one value
-		if notify.On == job_run.SLAMissEvent {
+		if notify.On == scheduler.EventCategorySLAMiss {
 			duration, ok := notify.Config["duration"]
 			if !ok {
 				continue

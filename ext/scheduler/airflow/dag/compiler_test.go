@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/job_run"
+	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/ext/scheduler/airflow/dag"
 	"github.com/odpf/optimus/mock"
@@ -36,13 +36,13 @@ func TestDagCompiler(t *testing.T) {
 	})
 }
 
-func setupJobDetails(tnnt tenant.Tenant) *job_run.JobWithDetails {
+func setupJobDetails(tnnt tenant.Tenant) *scheduler.JobWithDetails {
 	window, err := models.NewWindow(1, "d", "0", "1h")
 	if err != nil {
 		panic(err)
 	}
 	end := time.Date(2022, 11, 10, 10, 2, 0, 0, time.UTC)
-	schedule := &job_run.Schedule{
+	schedule := &scheduler.Schedule{
 		StartDate:     time.Date(2022, 11, 10, 5, 2, 0, 0, time.UTC),
 		EndDate:       &end,
 		Interval:      "0 2 * * 0",
@@ -50,45 +50,45 @@ func setupJobDetails(tnnt tenant.Tenant) *job_run.JobWithDetails {
 		CatchUp:       true,
 	}
 
-	retry := &job_run.Retry{
+	retry := &scheduler.Retry{
 		Count:              2,
 		Delay:              100,
 		ExponentialBackoff: true,
 	}
 
-	alert := job_run.Alert{
-		On:       job_run.SLAMissEvent,
+	alert := scheduler.Alert{
+		On:       scheduler.SLAMissEvent,
 		Channels: []string{"#alerts"},
 		Config:   map[string]string{"duration": "2h"},
 	}
 
-	hooks := []*job_run.Hook{
+	hooks := []*scheduler.Hook{
 		{Name: "transporter"},
 		{Name: "predator"},
 		{Name: "failureHook"},
 	}
 
-	jobMeta := &job_run.JobMetadata{
+	jobMeta := &scheduler.JobMetadata{
 		Version:     1,
 		Owner:       "infra-team@example.com",
 		Description: "This job collects the billing information related to infrastructure",
 		Labels:      map[string]string{"orchestrator": "optimus"},
 	}
 
-	jobName := job_run.JobName("infra.billing.weekly-status-reports")
-	job := &job_run.Job{
+	jobName := scheduler.JobName("infra.billing.weekly-status-reports")
+	job := &scheduler.Job{
 		Name:        jobName,
 		Tenant:      tnnt,
 		Destination: "bigquery://billing:reports.weekly-status",
-		Task:        &job_run.Task{Name: "bq-bq"},
+		Task:        &scheduler.Task{Name: "bq-bq"},
 		Hooks:       hooks,
 		Window:      window,
 		Assets:      nil,
 	}
 
-	runtimeConfig := job_run.RuntimeConfig{
-		Resource: &job_run.Resource{
-			Limit: &job_run.ResourceConfig{
+	runtimeConfig := scheduler.RuntimeConfig{
+		Resource: &scheduler.Resource{
+			Limit: &scheduler.ResourceConfig{
 				CPU:    "200m",
 				Memory: "2G",
 			},
@@ -98,9 +98,9 @@ func setupJobDetails(tnnt tenant.Tenant) *job_run.JobWithDetails {
 
 	tnnt1, _ := tenant.NewTenant("project", "namespace")
 	tnnt2, _ := tenant.NewTenant("external-project", "external-namespace")
-	upstreams := job_run.Upstreams{
+	upstreams := scheduler.Upstreams{
 		HTTP: nil,
-		UpstreamJobs: []*job_run.JobUpstream{
+		UpstreamJobs: []*scheduler.JobUpstream{
 			{
 				Host:     "http://optimus.example.com",
 				Tenant:   tnnt,
@@ -132,13 +132,13 @@ func setupJobDetails(tnnt tenant.Tenant) *job_run.JobWithDetails {
 		},
 	}
 
-	return &job_run.JobWithDetails{
+	return &scheduler.JobWithDetails{
 		Name:        jobName,
 		Job:         job,
 		JobMetadata: jobMeta,
 		Schedule:    schedule,
 		Retry:       retry,
-		Alerts:      []job_run.Alert{alert},
+		Alerts:      []scheduler.Alert{alert},
 
 		RuntimeConfig: runtimeConfig,
 		Upstreams:     upstreams,

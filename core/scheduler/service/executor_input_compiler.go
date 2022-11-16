@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/optimus/core/job_run"
+	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/compiler"
 	"github.com/odpf/optimus/internal/utils"
@@ -46,7 +46,7 @@ type TemplateCompiler interface {
 }
 
 type AssetCompiler interface {
-	CompileJobRunAssets(ctx context.Context, job *job_run.Job, systemEnvVars map[string]string, scheduledAt time.Time, contextForTask map[string]interface{}) (map[string]string, error)
+	CompileJobRunAssets(ctx context.Context, job *scheduler.Job, systemEnvVars map[string]string, scheduledAt time.Time, contextForTask map[string]interface{}) (map[string]string, error)
 }
 
 type InputCompiler struct {
@@ -55,7 +55,7 @@ type InputCompiler struct {
 	assetCompiler AssetCompiler
 }
 
-func (i InputCompiler) Compile(ctx context.Context, job *job_run.Job, config job_run.RunConfig, executedAt time.Time) (*job_run.ExecutorInput, error) {
+func (i InputCompiler) Compile(ctx context.Context, job *scheduler.Job, config scheduler.RunConfig, executedAt time.Time) (*scheduler.ExecutorInput, error) {
 	tenantDetails, err := i.tenantService.GetDetails(ctx, job.Tenant)
 	if err != nil {
 		return nil, err
@@ -89,8 +89,8 @@ func (i InputCompiler) Compile(ctx context.Context, job *job_run.Job, config job
 		return nil, err
 	}
 
-	if config.Executor.Type == job_run.ExecutorTask {
-		return &job_run.ExecutorInput{
+	if config.Executor.Type == scheduler.ExecutorTask {
+		return &scheduler.ExecutorInput{
 			Configs: utils.MergeMaps(confs, systemDefinedVars),
 			Secrets: secretConfs,
 			Files:   fileMap,
@@ -114,7 +114,7 @@ func (i InputCompiler) Compile(ctx context.Context, job *job_run.Job, config job
 		return nil, err
 	}
 
-	return &job_run.ExecutorInput{
+	return &scheduler.ExecutorInput{
 		Configs: utils.MergeMaps(hookConfs, systemDefinedVars),
 		Secrets: hookSecrets,
 		Files:   fileMap,
@@ -136,7 +136,7 @@ func (i InputCompiler) compileConfigs(configs map[string]string, templateCtx map
 	return conf, secretsConfig, nil
 }
 
-func getSystemDefinedConfigs(job *job_run.Job, runConfig job_run.RunConfig, executedAt time.Time) (map[string]string, error) {
+func getSystemDefinedConfigs(job *scheduler.Job, runConfig scheduler.RunConfig, executedAt time.Time) (map[string]string, error) {
 	startTime, err := job.Window.GetStartTime(runConfig.ScheduledAt)
 	if err != nil {
 		return nil, err

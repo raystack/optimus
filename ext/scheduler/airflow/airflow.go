@@ -15,7 +15,7 @@ import (
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 
-	"github.com/odpf/optimus/core/job_run"
+	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/lib/cron"
@@ -43,7 +43,7 @@ const (
 
 type Bucket interface {
 	WriteAll(ctx context.Context, key string, p []byte, opts *blob.WriterOptions) error
-	//ReadAll(ctx context.Context, key string) ([]byte, error)
+	// ReadAll(ctx context.Context, key string) ([]byte, error)
 	List(opts *blob.ListOptions) *blob.ListIterator
 	Delete(ctx context.Context, key string) error
 	Close() error
@@ -54,7 +54,7 @@ type BucketFactory interface {
 }
 
 type DagCompiler interface {
-	Compile(job *job_run.JobWithDetails) ([]byte, error)
+	Compile(job *scheduler.JobWithDetails) ([]byte, error)
 }
 
 type Client interface {
@@ -78,7 +78,7 @@ type Scheduler struct {
 	secretGetter  SecretGetter
 }
 
-func (s *Scheduler) DeployJobs(ctx context.Context, tenant tenant.Tenant, jobs []*job_run.JobWithDetails) error {
+func (s *Scheduler) DeployJobs(ctx context.Context, tenant tenant.Tenant, jobs []*scheduler.JobWithDetails) error {
 	spanCtx, span := startChildSpan(ctx, "DeployJobs")
 	defer span.End()
 
@@ -93,7 +93,7 @@ func (s *Scheduler) DeployJobs(ctx context.Context, tenant tenant.Tenant, jobs [
 	multiError := errors.NewMultiError("ErrorsInDeployJobs")
 	runner := parallel.NewRunner(parallel.WithTicket(concurrentTicketPerSec), parallel.WithLimit(concurrentLimit))
 	for _, job := range jobs {
-		runner.Add(func(currentJob *job_run.JobWithDetails) func() (interface{}, error) {
+		runner.Add(func(currentJob *scheduler.JobWithDetails) func() (interface{}, error) {
 			return func() (interface{}, error) {
 				return s.compileAndUpload(ctx, currentJob, bucket), nil
 			}
@@ -187,11 +187,10 @@ func deleteDirectoryIfEmpty(ctx context.Context, nsDirectoryIdentifier string, b
 	return nil
 }
 
-func (s *Scheduler) compileAndUpload(ctx context.Context, job *job_run.JobWithDetails, bucket Bucket) interface{} {
+func (s *Scheduler) compileAndUpload(ctx context.Context, job *scheduler.JobWithDetails, bucket Bucket) interface{} {
 	compiledJob, err := s.compiler.Compile(job)
 	if err != nil {
 		return errors.AddErrContext(err, EntityAirflow, "error for job: "+job.Name.String())
-
 	}
 	namespaceName := job.Job.Tenant.NamespaceName().String()
 	blobKey := pathFromJobName(jobsDir, namespaceName, job.Name.String(), jobsExtension)
@@ -218,7 +217,7 @@ func jobNameFromPath(filePath, suffix string) string {
 	return strings.TrimSuffix(jobFileName, suffix)
 }
 
-func (s *Scheduler) GetJobRuns(ctx context.Context, tnnt tenant.Tenant, jobQuery *job_run.JobRunsCriteria, jobCron *cron.ScheduleSpec) ([]*job_run.JobRunStatus, error) {
+func (s *Scheduler) GetJobRuns(ctx context.Context, tnnt tenant.Tenant, jobQuery *scheduler.JobRunsCriteria, jobCron *cron.ScheduleSpec) ([]*scheduler.JobRunStatus, error) {
 	spanCtx, span := startChildSpan(ctx, "GetJobRuns")
 	defer span.End()
 
@@ -252,7 +251,7 @@ func (s *Scheduler) GetJobRuns(ctx context.Context, tnnt tenant.Tenant, jobQuery
 	return getJobRuns(dagRunList, jobCron)
 }
 
-func getDagRunRequest(jobQuery *job_run.JobRunsCriteria, jobCron *cron.ScheduleSpec) DagRunRequest {
+func getDagRunRequest(jobQuery *scheduler.JobRunsCriteria, jobCron *cron.ScheduleSpec) DagRunRequest {
 	if jobQuery.OnlyLastRun {
 		return DagRunRequest{
 			OrderBy:    "-execution_date",

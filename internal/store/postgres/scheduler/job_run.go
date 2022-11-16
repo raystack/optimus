@@ -1,4 +1,4 @@
-package job_run
+package scheduler
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"github.com/odpf/optimus/core/job_run"
+	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 )
@@ -41,30 +41,30 @@ type jobRun struct {
 	DeletedAt gorm.DeletedAt
 }
 
-func (j jobRun) toJobRun() (*job_run.JobRun, error) {
+func (j jobRun) toJobRun() (*scheduler.JobRun, error) {
 	t, err := tenant.NewTenant(j.ProjectName, j.NamespaceName)
 	if err != nil {
 		return nil, err
 	}
-	return &job_run.JobRun{
+	return &scheduler.JobRun{
 		ID:        j.ID,
-		JobName:   job_run.JobName(j.JobName),
+		JobName:   scheduler.JobName(j.JobName),
 		Tenant:    t,
 		StartTime: j.StartTime,
 	}, nil
 }
 
-func (j *JobRunRepository) GetByID(ctx context.Context, id job_run.JobRunID) (*job_run.JobRun, error) {
+func (j *JobRunRepository) GetByID(ctx context.Context, id scheduler.JobRunID) (*scheduler.JobRun, error) {
 	var jobRun jobRun
 	getJobRunById := `SELECT ` + jobRunColumns + ` FROM ` + jobRunTableName + ` j where id = ?`
 	err := j.db.WithContext(ctx).Raw(getJobRunById, id).First(&jobRun).Error
 	if err != nil {
-		return &job_run.JobRun{}, err
+		return &scheduler.JobRun{}, err
 	}
 	return jobRun.toJobRun()
 }
 
-func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t tenant.Tenant, jobName job_run.JobName, scheduledAt time.Time) (*job_run.JobRun, error) {
+func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) (*scheduler.JobRun, error) {
 	var jobRun jobRun
 	getJobRunById := `SELECT ` + jobRunColumns + ` FROM job_run j 
 						where project_id = ? and namespace_id =?
@@ -74,7 +74,7 @@ func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t tenant.Tenant
 		First(&jobRun).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.NotFound(job_run.EntityJobRun, "no record for job:"+jobName.String()+" scheduled at: "+scheduledAt.String())
+			return nil, errors.NotFound(scheduler.EntityJobRun, "no record for job:"+jobName.String()+" scheduled at: "+scheduledAt.String())
 		}
 		return nil, err
 	}
@@ -86,9 +86,9 @@ func (j *JobRunRepository) Update(ctx context.Context, jobRunId uuid.UUID, endTi
 	return j.db.WithContext(ctx).Exec(updateJobRun).Error
 }
 
-func (j *JobRunRepository) Create(ctx context.Context, t tenant.Tenant, jobName job_run.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error {
+func (j *JobRunRepository) Create(ctx context.Context, t tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error {
 	insertJobRun := `INSERT INTO job_run (` + jobRunColumns + `) values (?, ?, ?, ?, now(), TIMESTAMP '3000-01-01 00:00:00' , ?, ?) `
 	return j.db.WithContext(ctx).Exec(insertJobRun,
 		jobName.String(), t.NamespaceName().String(), t.ProjectName().String(),
-		scheduledAt, job_run.StateRunning, slaDefinitionInSec).Error
+		scheduledAt, scheduler.StateRunning, slaDefinitionInSec).Error
 }

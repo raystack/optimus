@@ -7,7 +7,7 @@ import (
 	"text/template"
 
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/core/job_run"
+	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/models"
 )
@@ -26,7 +26,7 @@ type Compiler struct {
 	pluginRepo PluginRepo
 }
 
-func (c *Compiler) Compile(jobDetails *job_run.JobWithDetails) ([]byte, error) {
+func (c *Compiler) Compile(jobDetails *scheduler.JobWithDetails) ([]byte, error) {
 	task, err := PrepareTask(jobDetails.Job, c.pluginRepo)
 	if err != nil {
 		return nil, err
@@ -52,8 +52,8 @@ func (c *Compiler) Compile(jobDetails *job_run.JobWithDetails) ([]byte, error) {
 		Version:         config.BuildVersion,
 		SlaMissDuration: slaDuration,
 		Hostname:        c.hostname,
-		ExecutorTask:    job_run.ExecutorTask,
-		ExecutorHook:    job_run.ExecutorHook,
+		ExecutorTask:    scheduler.ExecutorTask,
+		ExecutorHook:    scheduler.ExecutorHook,
 		Task:            task,
 		Hooks:           hooks,
 		RuntimeConfig:   runtimeConfig,

@@ -1,12 +1,12 @@
 package dag
 
 import (
-	"github.com/odpf/optimus/core/job_run"
+	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 )
 
 type Upstreams struct {
-	HTTP      []*job_run.HTTPUpstreams
+	HTTP      []*scheduler.HTTPUpstreams
 	Upstreams []Upstream
 }
 
@@ -24,7 +24,7 @@ type Upstream struct {
 	TaskName string
 }
 
-func SetupUpstreams(upstreams job_run.Upstreams) Upstreams {
+func SetupUpstreams(upstreams scheduler.Upstreams) Upstreams {
 	var ups []Upstream
 	for _, u := range upstreams.UpstreamJobs {
 		if u.State != "resolved" {

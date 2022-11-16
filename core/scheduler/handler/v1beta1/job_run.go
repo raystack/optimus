@@ -7,21 +7,21 @@ import (
 	"github.com/odpf/salt/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/odpf/optimus/core/job_run"
+	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
 type JobRunService interface {
-	JobRunInput(context.Context, tenant.ProjectName, job_run.JobName, job_run.RunConfig) (*job_run.ExecutorInput, error)
-	UpdateJobState(context.Context, job_run.Event) error
-	GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName job_run.JobName, criteria *job_run.JobRunsCriteria) ([]*job_run.JobRunStatus, error)
+	JobRunInput(context.Context, tenant.ProjectName, scheduler.JobName, scheduler.RunConfig) (*scheduler.ExecutorInput, error)
+	UpdateJobState(context.Context, scheduler.Event) error
+	GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName, criteria *scheduler.JobRunsCriteria) ([]*scheduler.JobRunStatus, error)
 	UploadToScheduler(ctx context.Context, projectName tenant.ProjectName, namespaceName string) error
 }
 
 type Notifier interface {
-	Push(ctx context.Context, event job_run.Event) error
+	Push(ctx context.Context, event scheduler.Event) error
 }
 
 type JobRunHandler struct {
@@ -38,22 +38,22 @@ func (h JobRunHandler) JobRunInput(ctx context.Context, req *pb.JobRunInputReque
 		return nil, errors.GRPCErr(err, "unable to get job run input for "+req.GetJobName())
 	}
 
-	jobName, err := job_run.JobNameFrom(req.GetJobName())
+	jobName, err := scheduler.JobNameFrom(req.GetJobName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "unable to get job run input for "+req.GetJobName())
 	}
 
-	executor, err := job_run.ExecutorFromEnum(req.InstanceName, req.InstanceType.String())
+	executor, err := scheduler.ExecutorFromEnum(req.InstanceName, req.InstanceType.String())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "unable to get job run input for "+req.GetJobName())
 	}
 
 	err = req.ScheduledAt.CheckValid()
 	if err != nil {
-		return nil, errors.GRPCErr(errors.InvalidArgument(job_run.EntityJobRun, "invalid scheduled_at"), "unable to get job run input for "+req.GetJobName())
+		return nil, errors.GRPCErr(errors.InvalidArgument(scheduler.EntityJobRun, "invalid scheduled_at"), "unable to get job run input for "+req.GetJobName())
 	}
 
-	runConfig, err := job_run.RunConfigFrom(executor, req.ScheduledAt.AsTime(), req.JobrunId)
+	runConfig, err := scheduler.RunConfigFrom(executor, req.ScheduledAt.AsTime(), req.JobrunId)
 	if err != nil {
 		return nil, errors.GRPCErr(err, "unable to get job run input for "+req.GetJobName())
 	}
@@ -78,7 +78,7 @@ func (h JobRunHandler) JobRun(ctx context.Context, req *pb.JobRunRequest) (*pb.J
 		return nil, errors.GRPCErr(err, "unable to get job run for "+req.GetJobName())
 	}
 
-	jobName, err := job_run.JobNameFrom(req.GetJobName())
+	jobName, err := scheduler.JobNameFrom(req.GetJobName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "unable to get job run for "+req.GetJobName())
 	}
@@ -88,11 +88,11 @@ func (h JobRunHandler) JobRun(ctx context.Context, req *pb.JobRunRequest) (*pb.J
 		return nil, errors.GRPCErr(err, "unable to get job run for "+req.GetJobName())
 	}
 
-	var jobRuns []*job_run.JobRunStatus
+	var jobRuns []*scheduler.JobRunStatus
 	jobRuns, err = h.service.GetJobRuns(ctx, projectName, jobName, criteria) // TODO: return not found if not runs found
 	if err != nil {
 		if errors.IsErrorType(err, errors.ErrNotFound) {
-
+			// todo:
 		}
 		return nil, errors.GRPCErr(err, "unable to get job run for "+req.GetJobName())
 	}
@@ -108,20 +108,20 @@ func (h JobRunHandler) JobRun(ctx context.Context, req *pb.JobRunRequest) (*pb.J
 	return &pb.JobRunResponse{JobRuns: runs}, nil
 }
 
-func buildCriteriaForJobRun(req *pb.JobRunRequest) (*job_run.JobRunsCriteria, error) {
+func buildCriteriaForJobRun(req *pb.JobRunRequest) (*scheduler.JobRunsCriteria, error) {
 	if !req.GetStartDate().IsValid() && !req.GetEndDate().IsValid() {
-		return &job_run.JobRunsCriteria{
+		return &scheduler.JobRunsCriteria{
 			Name:        req.GetJobName(),
 			OnlyLastRun: true,
 		}, nil
 	}
 	if !req.GetStartDate().IsValid() {
-		return nil, errors.InvalidArgument(job_run.EntityJobRun, "empty start date is given")
+		return nil, errors.InvalidArgument(scheduler.EntityJobRun, "empty start date is given")
 	}
 	if !req.GetEndDate().IsValid() {
-		return nil, errors.InvalidArgument(job_run.EntityJobRun, "empty end date is given")
+		return nil, errors.InvalidArgument(scheduler.EntityJobRun, "empty end date is given")
 	}
-	return &job_run.JobRunsCriteria{
+	return &scheduler.JobRunsCriteria{
 		Name:      req.GetJobName(),
 		StartDate: req.GetStartDate().AsTime(),
 		EndDate:   req.GetEndDate().AsTime(),
@@ -147,12 +147,12 @@ func (h JobRunHandler) RegisterEvent(ctx context.Context, req *pb.RegisterJobEve
 		return nil, errors.GRPCErr(err, "unable to get tenant")
 	}
 
-	jobName, err := job_run.JobNameFrom(req.GetJobName())
+	jobName, err := scheduler.JobNameFrom(req.GetJobName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "unable to get job name for "+req.GetJobName())
 	}
 
-	event, err := job_run.EventFrom(
+	event, err := scheduler.EventFrom(
 		req.GetEvent().Type.String(),
 		req.GetEvent().Value.AsMap(),
 		jobName, tnnt,

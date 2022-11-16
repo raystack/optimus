@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/odpf/optimus/core/job_run"
+	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/models"
 )
 
@@ -29,7 +29,7 @@ func NewJobAssetsCompiler(engine FilesCompiler, pluginRepo PluginRepo) *JobRunAs
 	}
 }
 
-func (c *JobRunAssetsCompiler) CompileJobRunAssets(ctx context.Context, job *job_run.Job, systemEnvVars map[string]string, scheduledAt time.Time, contextForTask map[string]interface{}) (map[string]string, error) {
+func (c *JobRunAssetsCompiler) CompileJobRunAssets(ctx context.Context, job *scheduler.Job, systemEnvVars map[string]string, scheduledAt time.Time, contextForTask map[string]interface{}) (map[string]string, error) {
 	plugin, err := c.pluginRepo.GetByName(job.Task.Name)
 	if err != nil {
 		return nil, err
@@ -46,9 +46,9 @@ func (c *JobRunAssetsCompiler) CompileJobRunAssets(ctx context.Context, job *job
 
 	inputFiles := job.Assets
 
-	if plugin.CLIMod != nil {
+	if plugin.DependencyMod != nil {
 		// check if task needs to override the compilation behaviour
-		compiledAssetResponse, err := plugin.CLIMod.CompileAssets(ctx, models.CompileAssetsRequest{
+		compiledAssetResponse, err := plugin.DependencyMod.CompileAssets(ctx, models.CompileAssetsRequest{
 			StartTime:    startTime,
 			EndTime:      endTime,
 			Config:       toPluginConfig(job.Task.Config),
