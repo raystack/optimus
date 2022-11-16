@@ -90,7 +90,7 @@ func TestNewJobHandler(t *testing.T) {
 				Log: "jobs are successfully created",
 			}, resp)
 		})
-		t.Run("adds complete job and returns deployment ID", func(t *testing.T) {
+		t.Run("adds complete job", func(t *testing.T) {
 			jobService := new(JobService)
 
 			jobHandler := v1beta1.NewJobHandler(jobService)
@@ -253,6 +253,202 @@ func TestNewJobHandler(t *testing.T) {
 			assert.Contains(t, resp.Log, "error")
 		})
 	})
+	t.Run("UpdateJobSpecifications", func(t *testing.T) {
+		t.Run("update jobs", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobHandler := v1beta1.NewJobHandler(jobService)
+
+			jobSpecProto := &pb.JobSpecification{
+				Version:          int32(jobVersion),
+				Name:             "job-A",
+				Owner:            "sample-owner",
+				StartDate:        jobSchedule.StartDate().String(),
+				EndDate:          jobSchedule.EndDate().String(),
+				Interval:         jobSchedule.Interval(),
+				TaskName:         jobTask.Name().String(),
+				WindowSize:       jobWindow.GetSize(),
+				WindowOffset:     jobWindow.GetOffset(),
+				WindowTruncateTo: jobWindow.GetTruncateTo(),
+			}
+			jobProtos := []*pb.JobSpecification{jobSpecProto}
+			request := pb.UpdateJobSpecificationsRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: namespace.Name().String(),
+				Specs:         jobProtos,
+			}
+
+			jobService.On("Update", ctx, sampleTenant, mock.Anything).Return(nil)
+
+			resp, err := jobHandler.UpdateJobSpecifications(ctx, &request)
+			assert.Nil(t, err)
+			assert.Equal(t, &pb.UpdateJobSpecificationsResponse{
+				Log: "jobs are successfully updated",
+			}, resp)
+		})
+		t.Run("update complete jobs", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobHandler := v1beta1.NewJobHandler(jobService)
+
+			jobSpecProto := &pb.JobSpecification{
+				Version:          int32(jobVersion),
+				Name:             "job-A",
+				Owner:            "sample-owner",
+				StartDate:        jobSchedule.StartDate().String(),
+				EndDate:          jobSchedule.EndDate().String(),
+				Interval:         jobSchedule.Interval(),
+				TaskName:         jobTask.Name().String(),
+				WindowSize:       jobWindow.GetSize(),
+				WindowOffset:     jobWindow.GetOffset(),
+				WindowTruncateTo: jobWindow.GetTruncateTo(),
+				Behavior:         jobBehavior,
+				Dependencies:     jobDependencies,
+				Metadata:         jobMetadata,
+			}
+			jobProtos := []*pb.JobSpecification{jobSpecProto}
+			request := pb.UpdateJobSpecificationsRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: namespace.Name().String(),
+				Specs:         jobProtos,
+			}
+
+			jobService.On("Update", ctx, sampleTenant, mock.Anything).Return(nil)
+
+			resp, err := jobHandler.UpdateJobSpecifications(ctx, &request)
+			assert.Nil(t, err)
+			assert.Equal(t, &pb.UpdateJobSpecificationsResponse{
+				Log: "jobs are successfully updated",
+			}, resp)
+		})
+		t.Run("returns error when unable to create tenant", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobHandler := v1beta1.NewJobHandler(jobService)
+
+			request := pb.UpdateJobSpecificationsRequest{
+				NamespaceName: namespace.Name().String(),
+			}
+
+			resp, err := jobHandler.UpdateJobSpecifications(ctx, &request)
+			assert.NotNil(t, err)
+			assert.Nil(t, resp)
+		})
+		t.Run("skips job if unable to parse from proto", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobHandler := v1beta1.NewJobHandler(jobService)
+
+			jobSpecProtos := []*pb.JobSpecification{
+				{
+					Version:          int32(0),
+					Name:             "job-A",
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name().String(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+				{
+					Version:          int32(jobVersion),
+					Name:             "job-B",
+					Owner:            "sample-owner",
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name().String(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+			}
+			request := pb.UpdateJobSpecificationsRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: namespace.Name().String(),
+				Specs:         jobSpecProtos,
+			}
+
+			jobService.On("Update", ctx, sampleTenant, mock.Anything).Return(nil)
+
+			resp, err := jobHandler.UpdateJobSpecifications(ctx, &request)
+			assert.Nil(t, err)
+			assert.Contains(t, resp.Log, "error")
+		})
+		t.Run("returns error when all jobs failed to be updated", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobHandler := v1beta1.NewJobHandler(jobService)
+
+			jobSpecProtos := []*pb.JobSpecification{
+				{
+					Version:          int32(0),
+					Name:             "job-A",
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name().String(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+			}
+			request := pb.UpdateJobSpecificationsRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: namespace.Name().String(),
+				Specs:         jobSpecProtos,
+			}
+
+			jobService.On("Update", ctx, sampleTenant, mock.Anything).Return(errors.New("internal error"))
+
+			resp, err := jobHandler.UpdateJobSpecifications(ctx, &request)
+			assert.Nil(t, err)
+			assert.Contains(t, resp.Log, "error")
+		})
+		t.Run("returns response with job errors log when some jobs failed to be updated", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobHandler := v1beta1.NewJobHandler(jobService)
+
+			jobSpecProtos := []*pb.JobSpecification{
+				{
+					Version:          int32(jobVersion),
+					Name:             "job-A",
+					Owner:            "sample-owner",
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name().String(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+				{
+					Version:          int32(jobVersion),
+					Name:             "job-B",
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name().String(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+			}
+			request := pb.UpdateJobSpecificationsRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: namespace.Name().String(),
+				Specs:         jobSpecProtos,
+			}
+
+			jobService.On("Update", ctx, sampleTenant, mock.Anything).Return(errors.New("internal error"))
+
+			resp, err := jobHandler.UpdateJobSpecifications(ctx, &request)
+			assert.Nil(t, err)
+			assert.Contains(t, resp.Log, "error")
+		})
+	})
 	t.Run("DeleteJobSpecification", func(t *testing.T) {
 		t.Run("deletes job successfully", func(t *testing.T) {
 			jobService := new(JobService)
@@ -386,4 +582,18 @@ func (_m *JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobNa
 	}
 
 	return r0, r1
+}
+
+// Update provides a mock function with given fields: ctx, jobTenant, jobs
+func (_m *JobService) Update(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error {
+	ret := _m.Called(ctx, jobTenant, jobs)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []*job.Spec) error); ok {
+		r0 = rf(ctx, jobTenant, jobs)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }

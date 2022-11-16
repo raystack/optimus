@@ -22,6 +22,7 @@ func NewJobHandler(jobService JobService) *JobHandler {
 
 type JobService interface {
 	Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error
+	Update(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error
 	Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) (affectedDownstream []job.FullName, err error)
 }
 
@@ -81,5 +82,37 @@ func (jh *JobHandler) DeleteJobSpecification(ctx context.Context, deleteRequest 
 	return &pb.DeleteJobSpecificationResponse{
 		Success: true,
 		Message: msg,
+	}, nil
+}
+
+func (jh *JobHandler) UpdateJobSpecifications(ctx context.Context, jobSpecRequest *pb.UpdateJobSpecificationsRequest) (*pb.UpdateJobSpecificationsResponse, error) {
+	jobTenant, err := tenant.NewTenant(jobSpecRequest.ProjectName, jobSpecRequest.NamespaceName)
+	if err != nil {
+		return nil, errors.GRPCErr(err, "failed to add job specifications")
+	}
+
+	var jobSpecs []*job.Spec
+	me := errors.NewMultiError("update specs errors")
+	for _, jobProto := range jobSpecRequest.Specs {
+		jobSpec, err := fromJobProto(jobProto)
+		if err != nil {
+			me.Append(err)
+			continue
+		}
+		jobSpecs = append(jobSpecs, jobSpec)
+	}
+
+	err = jh.jobService.Update(ctx, jobTenant, jobSpecs)
+	me.Append(err)
+
+	var responseLog string
+	if len(me.Errors) > 0 {
+		responseLog = fmt.Sprintf("update jobs finished with error: %s", errors.MultiToError(err))
+	} else {
+		responseLog = "jobs are successfully updated"
+	}
+
+	return &pb.UpdateJobSpecificationsResponse{
+		Log: responseLog,
 	}, nil
 }

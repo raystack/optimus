@@ -384,6 +384,57 @@
         "tags": [
           "JobSpecificationService"
         ]
+      },
+      "put": {
+        "summary": "UpdateJobSpecifications modify jobs for a namespace which belongs to the given project",
+        "operationId": "JobSpecificationService_UpdateJobSpecifications",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1UpdateJobSpecificationsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "specs": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/v1beta1JobSpecification"
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "JobSpecificationService"
+        ]
       }
     }
   },
@@ -1002,6 +1053,14 @@
         },
         "logStatus": {
           "$ref": "#/definitions/v1beta1Log"
+        }
+      }
+    },
+    "v1beta1UpdateJobSpecificationsResponse": {
+      "type": "object",
+      "properties": {
+        "log": {
+          "type": "string"
         }
       }
     }
