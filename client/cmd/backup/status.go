@@ -16,7 +16,6 @@ import (
 	"github.com/odpf/optimus/client/cmd/internal/connectivity"
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/internal/progressbar"
-	"github.com/odpf/optimus/client/cmd/internal/survey"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
@@ -28,6 +27,7 @@ type statusCommand struct {
 
 	projectName string
 	host        string
+	storeName   string
 }
 
 // NewStatusCommand initialize command for backup status
@@ -56,6 +56,7 @@ func (s *statusCommand) injectFlags(cmd *cobra.Command) {
 	// Mandatory flags if config is not set
 	cmd.Flags().StringVarP(&s.projectName, "project-name", "p", "", "project name of optimus managed repository")
 	cmd.Flags().StringVar(&s.host, "host", "", "Optimus service endpoint url")
+	cmd.Flags().StringVar(&s.storeName, "datastore", "bigquery", "Name of datastore for backup")
 }
 
 func (s *statusCommand) PreRunE(cmd *cobra.Command, _ []string) error {
@@ -80,15 +81,9 @@ func (s *statusCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 }
 
 func (s *statusCommand) RunE(_ *cobra.Command, args []string) error {
-	availableStorer := getAvailableDatastorers()
-	storerName, err := survey.AskToSelectDatastorer(availableStorer)
-	if err != nil {
-		return err
-	}
-
 	getBackupRequest := &pb.GetBackupRequest{
 		ProjectName:   s.projectName,
-		DatastoreName: storerName,
+		DatastoreName: s.storeName,
 		Id:            args[0],
 	}
 

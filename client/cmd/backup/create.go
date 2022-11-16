@@ -35,7 +35,7 @@ type createCommand struct {
 
 	resourceNames []string
 	description   string
-	storerName    string
+	storeName     string
 }
 
 // NewCreateCommand initializes command to create backup
@@ -50,7 +50,7 @@ func NewCreateCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "create",
 		Short:   "Create a backup",
-		Example: "optimus backup create --resource <sample_resource_name>",
+		Example: "optimus backup create --resources <sample_resource_name>",
 		RunE:    create.RunE,
 		PreRunE: create.PreRunE,
 	}
@@ -64,9 +64,9 @@ func (c *createCommand) injectFlags(cmd *cobra.Command) {
 	// Config filepath flag
 	cmd.PersistentFlags().StringVarP(&c.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
 
-	cmd.Flags().StringSliceVarP(&c.resourceNames, "resource", "r", c.resourceNames, "Resource names created inside the datastore")
+	cmd.Flags().StringSliceVarP(&c.resourceNames, "resources", "r", c.resourceNames, "Resource names created inside the datastore")
 	cmd.Flags().StringVarP(&c.description, "description", "i", c.description, "Describe intention to help identify the backup")
-	cmd.Flags().StringVarP(&c.storerName, "datastore", "s", c.storerName, "Datastore type where the resource belongs")
+	cmd.Flags().StringVarP(&c.storeName, "datastore", "s", "bigquery", "Datastore type where the resource belongs")
 	cmd.Flags().StringVar(&c.dsBackupConfig, "backup-config", "", "Backup config for the selected datastore (JSON format)")
 
 	// Mandatory flags if config is not set
@@ -100,6 +100,7 @@ func (c *createCommand) fillAttributes(conf *config.ClientConfig) error {
 		c.host = conf.Host
 	}
 
+	var namespace *config.Namespace
 	// use flag or ask namespace name
 	if c.namespace == "" {
 		namespace, err := c.namespaceSurvey.AskToSelectNamespace(conf)
@@ -109,9 +110,8 @@ func (c *createCommand) fillAttributes(conf *config.ClientConfig) error {
 		c.namespace = namespace.Name
 	}
 
-	// use flag or ask datastore name
-	if err := prepareDatastoreName(c.storerName); err != nil {
-		return err
+	if !isStoreNameValid(c.storeName, namespace) {
+		return errors.New("name of datastore is invalid " + c.storeName)
 	}
 
 	// use flag or fetched from config
@@ -121,19 +121,24 @@ func (c *createCommand) fillAttributes(conf *config.ClientConfig) error {
 			return err
 		}
 	} else {
-		namespace, err := conf.GetNamespaceByName(c.namespace)
-		if err != nil {
-			return err
-		}
 
 		for _, ds := range namespace.Datastore {
-			if ds.Type == c.storerName {
+			if ds.Type == c.storeName {
 				c.dsBackupConfigUnmarshaled = ds.Backup
 			}
 		}
 	}
 
 	return nil
+}
+
+func isStoreNameValid(name string, namespace *config.Namespace) bool {
+	for _, ds := range namespace.Datastore {
+		if ds.Type == name {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *createCommand) RunE(_ *cobra.Command, _ []string) error {
@@ -160,7 +165,7 @@ func (c *createCommand) runBackupRequest() error {
 		ProjectName:   c.projectName,
 		NamespaceName: c.namespace,
 		ResourceNames: c.resourceNames,
-		DatastoreName: c.storerName,
+		DatastoreName: c.storeName,
 		Description:   c.description,
 		Config:        c.dsBackupConfigUnmarshaled,
 	}
@@ -192,9 +197,6 @@ func (c *createCommand) printBackupResponse(backupResponse *pb.CreateBackupRespo
 
 func (c *createCommand) prepareInput() error {
 	if !c.isConfigExist {
-		if err := prepareDatastoreName(c.storerName); err != nil {
-			return err
-		}
 		if c.dsBackupConfig != "" {
 			err := json.Unmarshal([]byte(c.dsBackupConfig), &c.dsBackupConfigUnmarshaled)
 			if err != nil {
@@ -234,28 +236,6 @@ func (c *createCommand) prepareResourceNames() error {
 			}
 		}
 		c.resourceNames = nonEmptyNames
-	}
-	return nil
-}
-
-func prepareDatastoreName(datastoreName string) error {
-	availableStorers := getAvailableDatastorers()
-	if datastoreName == "" {
-		storerName, err := survey.AskToSelectDatastorer(availableStorers)
-		if err != nil {
-			return err
-		}
-		datastoreName = storerName
-	}
-	datastoreName = strings.ToLower(datastoreName)
-	validStore := false
-	for _, s := range availableStorers {
-		if s == datastoreName {
-			validStore = true
-		}
-	}
-	if !validStore {
-		return fmt.Errorf("invalid datastore type, available values are: %v", availableStorers)
 	}
 	return nil
 }
