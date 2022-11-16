@@ -15,7 +15,6 @@ import (
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/internal/progressbar"
 	"github.com/odpf/optimus/client/cmd/internal/survey"
-	nameSpcCmd "github.com/odpf/optimus/client/cmd/namespace"
 	"github.com/odpf/optimus/config"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
@@ -34,13 +33,9 @@ type createCommand struct {
 	dsBackupConfig            string
 	dsBackupConfigUnmarshaled map[string]string // unmarshaled version of datastoreConfig
 
-	onlyDryRun       bool
-	ignoreDownstream bool
-	allDownstream    bool
-	skipConfirm      bool
-	resourceName     string
-	description      string
-	storerName       string
+	resourceNames []string
+	description   string
+	storerName    string
 }
 
 // NewCreateCommand initializes command to create backup
@@ -69,15 +64,10 @@ func (c *createCommand) injectFlags(cmd *cobra.Command) {
 	// Config filepath flag
 	cmd.PersistentFlags().StringVarP(&c.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
 
-	cmd.Flags().StringVarP(&c.resourceName, "resource", "r", c.resourceName, "Resource name created inside the datastore")
+	cmd.Flags().StringSliceVarP(&c.resourceNames, "resource", "r", c.resourceNames, "Resource names created inside the datastore")
 	cmd.Flags().StringVarP(&c.description, "description", "i", c.description, "Describe intention to help identify the backup")
 	cmd.Flags().StringVarP(&c.storerName, "datastore", "s", c.storerName, "Datastore type where the resource belongs")
 	cmd.Flags().StringVar(&c.dsBackupConfig, "backup-config", "", "Backup config for the selected datastore (JSON format)")
-
-	cmd.Flags().BoolVarP(&c.onlyDryRun, "dry-run", "d", c.onlyDryRun, "Only do a trial run with no permanent changes")
-	cmd.Flags().BoolVar(&c.skipConfirm, "confirm", c.skipConfirm, "Skip asking for confirmation")
-	cmd.Flags().BoolVarP(&c.allDownstream, "all-downstream", "", c.allDownstream, "Run backup for all downstreams across namespaces")
-	cmd.Flags().BoolVar(&c.ignoreDownstream, "ignore-downstream", c.ignoreDownstream, "Do not take backups for dependent downstream resources")
 
 	// Mandatory flags if config is not set
 	cmd.Flags().StringVarP(&c.projectName, "project-name", "p", "", "project name of optimus managed repository")
@@ -151,23 +141,6 @@ func (c *createCommand) RunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	if err := c.runBackupDryRunRequest(); err != nil {
-		c.logger.Warn("Failed to run backup dry run")
-		return err
-	}
-	if c.onlyDryRun {
-		return nil
-	}
-
-	if !c.skipConfirm {
-		proceedWithBackup, err := c.backupCreateSurvey.AskConfirmToContinue()
-		if err != nil {
-			return err
-		}
-		if !proceedWithBackup {
-			return nil
-		}
-	}
 	return c.runBackupRequest()
 }
 
@@ -184,13 +157,12 @@ func (c *createCommand) runBackupRequest() error {
 	spinner.Start("please wait...")
 
 	backupRequest := &pb.CreateBackupRequest{
-		ProjectName:                 c.projectName,
-		NamespaceName:               c.namespace,
-		ResourceName:                c.resourceName,
-		DatastoreName:               c.storerName,
-		Description:                 c.description,
-		Config:                      c.dsBackupConfigUnmarshaled,
-		AllowedDownstreamNamespaces: nameSpcCmd.GetAllowedDownstreamNamespaces(c.namespace, c.allDownstream),
+		ProjectName:   c.projectName,
+		NamespaceName: c.namespace,
+		ResourceNames: c.resourceNames,
+		DatastoreName: c.storerName,
+		Description:   c.description,
+		Config:        c.dsBackupConfigUnmarshaled,
 	}
 	backupResponse, err := backup.CreateBackup(conn.GetContext(), backupRequest)
 	spinner.Stop()
@@ -199,67 +171,23 @@ func (c *createCommand) runBackupRequest() error {
 		if errors.Is(err, context.DeadlineExceeded) {
 			c.logger.Error("Backup took too long, timing out")
 		}
-		return fmt.Errorf("request failed to backup job %s: %w", backupRequest.ResourceName, err)
+		return fmt.Errorf("request failed to backup resourcse: %w", err)
 	}
 	c.printBackupResponse(backupResponse)
 	return nil
 }
 
 func (c *createCommand) printBackupResponse(backupResponse *pb.CreateBackupResponse) {
-	c.logger.Info("Resource backup completed successfully:")
-	for counter, result := range backupResponse.Urn {
+	c.logger.Info("Resource backup completed successfully: %s", backupResponse.BackupId)
+	for counter, result := range backupResponse.ResourceNames {
 		c.logger.Info("%d. %s", counter+1, result)
 	}
-}
-
-func (c *createCommand) runBackupDryRunRequest() error {
-	conn, err := connectivity.NewConnectivity(c.host, backupTimeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	spinner := progressbar.NewProgressBar()
-	spinner.Start("please wait...")
-	request := &pb.BackupDryRunRequest{
-		ProjectName:                 c.projectName,
-		NamespaceName:               c.namespace,
-		ResourceName:                c.resourceName,
-		DatastoreName:               c.storerName,
-		Description:                 c.description,
-		AllowedDownstreamNamespaces: nameSpcCmd.GetAllowedDownstreamNamespaces(c.namespace, c.allDownstream),
-	}
-	backup := pb.NewBackupServiceClient(conn.GetConnection())
-	backupDryRunResponse, err := backup.BackupDryRun(conn.GetContext(), request)
-	spinner.Stop()
-	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			c.logger.Error("Backup dry run took too long, timing out")
+	if len(backupResponse.IgnoredResources) > 0 {
+		c.logger.Info("Some resources were ignored during backing")
+		for counter, result := range backupResponse.IgnoredResources {
+			c.logger.Info("%d. %s : %s", counter+1, result.Name, result.Reason)
 		}
-		return fmt.Errorf("request failed to backup %s: %w", request.ResourceName, err)
 	}
-
-	c.printBackupDryRunResponse(request, backupDryRunResponse)
-	return nil
-}
-
-func (c *createCommand) printBackupDryRunResponse(request *pb.BackupDryRunRequest, response *pb.BackupDryRunResponse) {
-	if c.ignoreDownstream {
-		c.logger.Warn("\nBackup list for %s. Downstreams will be ignored.", request.ResourceName)
-	} else {
-		c.logger.Info("\nBackup list for %s. Supported downstreams will be included.", request.ResourceName)
-	}
-	for counter, resource := range response.ResourceName {
-		c.logger.Info("%d. %s", counter+1, resource)
-	}
-
-	if len(response.IgnoredResources) > 0 {
-		c.logger.Warn("\nThese resources will be ignored:")
-	}
-	for counter, ignoredResource := range response.IgnoredResources {
-		c.logger.Info("%d. %s", counter+1, ignoredResource)
-	}
-	c.logger.Info("")
 }
 
 func (c *createCommand) prepareInput() error {
@@ -275,7 +203,7 @@ func (c *createCommand) prepareInput() error {
 		}
 	}
 
-	if err := c.prepareResourceName(); err != nil {
+	if err := c.prepareResourceNames(); err != nil {
 		return err
 	}
 	return c.prepareDescription()
@@ -292,13 +220,20 @@ func (c *createCommand) prepareDescription() error {
 	return nil
 }
 
-func (c *createCommand) prepareResourceName() error {
-	if c.resourceName == "" {
-		resourceName, err := c.backupCreateSurvey.AskResourceName()
+func (c *createCommand) prepareResourceNames() error {
+	if len(c.resourceNames) == 0 {
+		resourceName, err := c.backupCreateSurvey.AskResourceNames()
 		if err != nil {
 			return err
 		}
-		c.resourceName = resourceName
+		names := strings.Split(resourceName, ",")
+		var nonEmptyNames []string
+		for _, name := range names {
+			if name != "" {
+				nonEmptyNames = append(nonEmptyNames, name)
+			}
+		}
+		c.resourceNames = nonEmptyNames
 	}
 	return nil
 }

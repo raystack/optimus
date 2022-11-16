@@ -133,12 +133,11 @@ func (s *statusCommand) stringifyBackupDetailResponse(backupDetailResponse *pb.G
 	}
 
 	table.Append([]string{"ID", backupDetailResponse.Spec.Id})
-	table.Append([]string{"Resource", backupDetailResponse.Spec.ResourceName})
+	table.Append([]string{"Resources", strings.Join(backupDetailResponse.Spec.ResourceNames, " ,")})
 	table.Append([]string{"Created at", backupDetailResponse.Spec.CreatedAt.AsTime().Format(time.RFC3339)})
 	table.Append([]string{"Ignore downstream?", backupDetailResponse.Spec.Config[models.ConfigIgnoreDownstream]})
 	table.Append([]string{"Expire at", expiry.Format(time.RFC3339)})
 	table.Append([]string{"Description", backupDetailResponse.Spec.Description})
-	table.Append([]string{"Result", strings.Join(backupDetailResponse.Urn, "\n")})
 	table.Render()
 
 	return buff.String()

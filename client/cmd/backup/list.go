@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/odpf/salt/log"
@@ -136,7 +137,7 @@ func (*listCommand) stringifyBackupListResponse(listBackupsResponse *pb.ListBack
 		ttl := backupSpec.Config[models.ConfigTTL]
 		table.Append([]string{
 			backupSpec.Id,
-			backupSpec.ResourceName,
+			strings.Join(backupSpec.ResourceNames, ", "),
 			backupSpec.CreatedAt.AsTime().Format(time.RFC3339),
 			ignoreDownstream,
 			ttl,
