@@ -73,7 +73,7 @@ func NewBackup(store Store, t tenant.Tenant, resNames []string, desc string, cre
 	return &Backup{
 		store:         store,
 		tenant:        t,
-		resourceNames: nil,
+		resourceNames: resNames,
 		description:   desc,
 		createdAt:     createdAt,
 		config:        conf,

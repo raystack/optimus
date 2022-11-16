@@ -21,7 +21,7 @@ type BackupDetail struct {
 	Config      map[string]string
 }
 
-type Backup struct {
+type BackupOld struct {
 	ID uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
 
 	ResourceID  uuid.UUID
@@ -37,10 +37,10 @@ type backupRepository struct {
 	db *gorm.DB
 }
 
-func (Backup) FromSpec(backupSpec models.BackupSpec) (Backup, error) {
+func (BackupOld) FromSpec(backupSpec models.BackupSpec) (BackupOld, error) {
 	adaptResource, err := ResourceOld{}.FromSpec(backupSpec.Resource)
 	if err != nil {
-		return Backup{}, err
+		return BackupOld{}, err
 	}
 
 	toDBSpec := BackupDetail{
@@ -50,10 +50,10 @@ func (Backup) FromSpec(backupSpec models.BackupSpec) (Backup, error) {
 	}
 	specInBytes, err := json.Marshal(toDBSpec)
 	if err != nil {
-		return Backup{}, nil
+		return BackupOld{}, nil
 	}
 
-	return Backup{
+	return BackupOld{
 		ID:         backupSpec.ID,
 		ResourceID: adaptResource.ID,
 		Spec:       specInBytes,
@@ -64,14 +64,14 @@ func (repo *backupRepository) Save(ctx context.Context, spec models.BackupSpec) 
 	if len(spec.Resource.ID) == 0 {
 		return errors.New("resource cannot be empty")
 	}
-	p, err := Backup{}.FromSpec(spec)
+	p, err := BackupOld{}.FromSpec(spec)
 	if err != nil {
 		return err
 	}
 	return repo.db.WithContext(ctx).Create(&p).Error
 }
 
-func (b Backup) ToSpec(ds models.Datastorer) (models.BackupSpec, error) {
+func (b BackupOld) ToSpec(ds models.Datastorer) (models.BackupSpec, error) {
 	backupSpec := BackupDetail{}
 	if err := json.Unmarshal(b.Spec, &backupSpec); err != nil {
 		return models.BackupSpec{}, err
@@ -94,8 +94,8 @@ func (b Backup) ToSpec(ds models.Datastorer) (models.BackupSpec, error) {
 
 func (repo *backupRepository) GetAll(ctx context.Context, project models.ProjectSpec, ds models.Datastorer) ([]models.BackupSpec, error) {
 	var specs []models.BackupSpec
-	var backups []Backup
-	if err := repo.db.WithContext(ctx).Preload("ResourceOld").Joins("JOIN resource_old ON backup.resource_id = resource_old.id").
+	var backups []BackupOld
+	if err := repo.db.WithContext(ctx).Preload("ResourceOld").Joins("JOIN resource_old ON backup_old.resource_id = resource_old.id").
 		Where("resource_old.project_id = ?", project.ID.UUID()).Find(&backups).Error; err != nil {
 		return specs, err
 	}
@@ -110,9 +110,9 @@ func (repo *backupRepository) GetAll(ctx context.Context, project models.Project
 }
 
 func (repo *backupRepository) GetByID(ctx context.Context, id uuid.UUID, ds models.Datastorer) (models.BackupSpec, error) {
-	var b Backup
-	if err := repo.db.WithContext(ctx).Preload("ResourceOld").Joins("JOIN resource_old ON backup.resource_id = resource_old.id").
-		Where("backup.id = ?", id).First(&b).Error; err != nil {
+	var b BackupOld
+	if err := repo.db.WithContext(ctx).Preload("ResourceOld").Joins("JOIN resource_old ON backup_old.resource_id = resource_old.id").
+		Where("backup_old.id = ?", id).First(&b).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return models.BackupSpec{}, store.ErrResourceNotFound
 		}
