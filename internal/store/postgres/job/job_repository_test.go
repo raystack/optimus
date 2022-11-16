@@ -182,6 +182,76 @@ func TestPostgresJobRepository(t *testing.T) {
 		})
 	})
 
+	t.Run("Update", func(t *testing.T) {
+		t.Run("updates job spec", func(t *testing.T) {
+			db := dbSetup()
+
+			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).Build()
+			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"resource-3"})
+
+			jobSpecB := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", nil)
+
+			jobs := []*job.Job{jobA, jobB}
+
+			jobRepo := postgres.NewJobRepository(db)
+			addedJobs, err := jobRepo.Add(ctx, jobs)
+			assert.NoError(t, err)
+			assert.EqualValues(t, jobs, addedJobs)
+
+			jobSpecAToUpdate := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).
+				WithDescription(jobDescription).
+				Build()
+			jobAToUpdate := job.NewJob(sampleTenant, jobSpecAToUpdate, "dev.resource.sample_a", []job.ResourceURN{"resource-3"})
+			jobBToUpdate := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", []job.ResourceURN{"resource-4"})
+			jobsToUpdate := []*job.Job{jobAToUpdate, jobBToUpdate}
+
+			updatedJobs, err := jobRepo.Update(ctx, jobsToUpdate)
+			assert.NoError(t, err)
+			assert.EqualValues(t, jobsToUpdate, updatedJobs)
+		})
+		t.Run("skip job and return job error if job not exist yet", func(t *testing.T) {
+			db := dbSetup()
+
+			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).Build()
+			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"resource-3"})
+
+			jobRepo := postgres.NewJobRepository(db)
+			_, err = jobRepo.Add(ctx, []*job.Job{jobA})
+			assert.NoError(t, err)
+
+			jobSpecAToUpdate := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).
+				WithDescription(jobDescription).
+				Build()
+			jobAToUpdate := job.NewJob(sampleTenant, jobSpecAToUpdate, "dev.resource.sample_a", []job.ResourceURN{"resource-3"})
+
+			jobSpecB := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).Build()
+			jobBToUpdate := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", []job.ResourceURN{"resource-4"})
+			jobsToUpdate := []*job.Job{jobAToUpdate, jobBToUpdate}
+
+			updatedJobs, err := jobRepo.Update(ctx, jobsToUpdate)
+			assert.ErrorContains(t, err, "not exists yet")
+			assert.EqualValues(t, []*job.Job{jobAToUpdate}, updatedJobs)
+		})
+		t.Run("return error if all jobs are failed to be updated", func(t *testing.T) {
+			db := dbSetup()
+
+			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"resource-3"})
+
+			jobSpecB := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", []job.ResourceURN{"resource-3"})
+
+			jobRepo := postgres.NewJobRepository(db)
+			addedJobs, err := jobRepo.Update(ctx, []*job.Job{jobA, jobB})
+			assert.Error(t, err)
+			assert.Nil(t, addedJobs)
+		})
+	})
+
 	t.Run("GetJobWithUpstreams", func(t *testing.T) {
 		t.Run("returns job with inferred upstreams", func(t *testing.T) {
 			db := dbSetup()

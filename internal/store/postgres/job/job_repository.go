@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"fmt"
 
 	"gorm.io/gorm"
 
@@ -83,6 +84,65 @@ VALUES (
 
 	if result.RowsAffected == 0 {
 		return errors.InternalError(job.EntityJob, "unable to save job spec, rows affected 0", nil)
+	}
+	return nil
+}
+
+func (j JobRepository) Update(ctx context.Context, jobs []*job.Job) ([]*job.Job, error) {
+	me := errors.NewMultiError("update jobs errors")
+	var storedJobs []*job.Job
+	for _, jobEntity := range jobs {
+		if err := j.updateJobSpec(ctx, jobEntity); err != nil {
+			me.Append(err)
+			continue
+		}
+		storedJobs = append(storedJobs, jobEntity)
+	}
+	return storedJobs, errors.MultiToError(me)
+}
+
+func (j JobRepository) updateJobSpec(ctx context.Context, jobEntity *job.Job) error {
+	storageJob, err := toStorageSpec(jobEntity)
+	if err != nil {
+		return err
+	}
+
+	_, err = j.Get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name())
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.NewError(errors.ErrNotFound, job.EntityJob, fmt.Sprintf("job %s not exists yet", jobEntity.Spec().Name()))
+	}
+
+	updateJobQuery := `
+UPDATE job SET 
+	version = ?, owner = ?, description = ?, 
+	labels = ?, start_date = ?, end_date = ?, interval = ?,
+	depends_on_past = ?, catch_up = ?, retry = ?, alert = ?,
+	static_upstreams = ?, http_upstreams = ?, task_name = ?, task_config = ?,
+	window_size = ?, window_offset = ?, window_truncate_to = ?,
+	assets = ?, hooks = ?, metadata = ?,
+	destination = ?, sources = ?,
+	updated_at = NOW()
+WHERE 
+	name = ? AND 
+	project_name = ?;
+`
+
+	result := j.db.WithContext(ctx).Exec(updateJobQuery,
+		storageJob.Version, storageJob.Owner, storageJob.Description,
+		storageJob.Labels, storageJob.StartDate, storageJob.EndDate, storageJob.Interval,
+		storageJob.DependsOnPast, storageJob.CatchUp, storageJob.Retry, storageJob.Alert,
+		storageJob.StaticUpstreams, storageJob.HTTPUpstreams, storageJob.TaskName, storageJob.TaskConfig,
+		storageJob.WindowSize, storageJob.WindowOffset, storageJob.WindowTruncateTo,
+		storageJob.Assets, storageJob.Hooks, storageJob.Metadata,
+		storageJob.Destination, storageJob.Sources,
+		storageJob.Name, storageJob.ProjectName)
+
+	if result.Error != nil {
+		return errors.Wrap(job.EntityJob, "unable to update job spec", result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		return errors.InternalError(job.EntityJob, "unable to update job spec, rows affected 0", nil)
 	}
 	return nil
 }
