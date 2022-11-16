@@ -41,7 +41,7 @@ func TestJobService(t *testing.T) {
 	jobTask := job.NewTask("bq2bq", jobTaskConfig)
 
 	t.Run("Add", func(t *testing.T) {
-		t.Run("add jobs and return deployment ID", func(t *testing.T) {
+		t.Run("add jobs", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
@@ -382,6 +382,348 @@ func TestJobService(t *testing.T) {
 			assert.Error(t, err)
 		})
 	})
+	t.Run("Update", func(t *testing.T) {
+		t.Run("update jobs", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specs := []*job.Spec{specA}
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil)
+
+			jobAUpstreamName := []job.ResourceURN{"job-B"}
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobAUpstreamName, nil)
+
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreamName)
+			jobs := []*job.Job{jobA}
+			jobRepo.On("Update", ctx, jobs).Return(jobs, nil, nil)
+
+			upstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
+			jobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstream})
+			upstreamResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
+
+			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
+			err := jobService.Update(ctx, sampleTenant, specs)
+			assert.NoError(t, err)
+		})
+		t.Run("skip invalid job and update the rest", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			invalidAsset := job.NewAsset(map[string]string{"key": ""})
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, jobWindow, jobTask).
+				WithAsset(invalidAsset).
+				Build()
+			specs := []*job.Spec{specA, specB}
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
+
+			jobAUpstreamName := []job.ResourceURN{"job-B"}
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobAUpstreamName, nil)
+
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreamName)
+			jobs := []*job.Job{jobA}
+			jobRepo.On("Update", ctx, jobs).Return(jobs, nil, nil)
+
+			upstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
+			jobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstream})
+			upstreamResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
+
+			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
+			err := jobService.Update(ctx, sampleTenant, specs)
+			assert.ErrorContains(t, err, "keys [key] are empty")
+		})
+		t.Run("return error if unable to get detailed tenant", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specs := []*job.Spec{specA}
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(&tenant.WithDetails{}, errors.New("internal error"))
+
+			jobRepo.On("Update", ctx, mock.Anything).Return(nil, nil)
+
+			upstreamResolver.On("Resolve", ctx, mock.Anything, mock.Anything).Return(nil, nil)
+
+			jobRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
+			err := jobService.Update(ctx, sampleTenant, specs)
+			assert.ErrorContains(t, err, "internal error")
+		})
+		t.Run("skip job that has issue when generating destination and return error", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, jobWindow, jobTask).Build()
+			specC := job.NewSpecBuilder(jobVersion, "job-C", "", jobSchedule, jobWindow, jobTask).Build()
+			specs := []*job.Spec{specB, specA, specC}
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobBDestination, _ := job.ResourceURNFrom("resource-B")
+			var jobDestination job.ResourceURN
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return(jobBDestination, nil).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specC.Task()).Return(jobDestination, errors.New("generate destination error")).Once()
+
+			jobAUpstreamName := []job.ResourceURN{"job-B"}
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specB, true).Return([]job.ResourceURN{}, errors.New("generate upstream error"))
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobAUpstreamName, nil)
+
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreamName)
+			jobs := []*job.Job{jobA}
+			jobRepo.On("Update", ctx, jobs).Return(jobs, nil, nil)
+
+			upstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
+			jobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstream})
+			upstreamResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
+
+			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
+			err := jobService.Update(ctx, sampleTenant, specs)
+			assert.ErrorContains(t, err, "generate upstream error")
+		})
+		t.Run("return error when all jobs failed to have destination and upstream generated", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, jobWindow, jobTask).Build()
+			specs := []*job.Spec{specB, specA}
+
+			jobRepo.On("Update", ctx, mock.Anything).Return(nil, nil)
+
+			upstreamResolver.On("Resolve", ctx, mock.Anything, mock.Anything).Return(nil, nil)
+
+			jobRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			var jobADestination job.ResourceURN
+			jobBDestination, _ := job.ResourceURNFrom("resource-B")
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return(jobBDestination, nil).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, errors.New("generate destination error")).Once()
+
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specB, true).Return(nil, errors.New("generate upstream error"))
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
+			err := jobService.Update(ctx, sampleTenant, specs)
+			assert.ErrorContains(t, err, "generate upstream error")
+		})
+		t.Run("should not skip nor return error if jobs does not have upstream mod and encounter issue on generate destination/upstream", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specs := []*job.Spec{specA}
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			var jobADestination job.ResourceURN
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, service.ErrUpstreamModNotFound).Once()
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(nil, service.ErrUpstreamModNotFound)
+
+			jobA := job.NewJob(sampleTenant, specA, "", nil)
+			jobs := []*job.Job{jobA}
+			jobRepo.On("Update", ctx, jobs).Return(jobs, nil, nil)
+
+			jobWithUpstream := job.NewWithUpstream(jobA, nil)
+			upstreamResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
+
+			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
+			err := jobService.Update(ctx, sampleTenant, specs)
+			assert.NoError(t, err)
+		})
+		t.Run("should skip and not return error if one of the job is failed to be updated to db", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, jobWindow, jobTask).Build()
+			specs := []*job.Spec{specA, specB}
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			resourceA, _ := job.ResourceURNFrom("resource-A")
+			var resourceB job.ResourceURN
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return(resourceB, service.ErrUpstreamModNotFound).Once()
+
+			jobSourcesA := []job.ResourceURN{"resource-B"}
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specB, true).Return(nil, service.ErrUpstreamModNotFound)
+
+			jobA := job.NewJob(sampleTenant, specA, resourceA, jobSourcesA)
+			jobB := job.NewJob(sampleTenant, specB, "", nil)
+			jobs := []*job.Job{jobA, jobB}
+			savedJobs := []*job.Job{jobB}
+			jobRepo.On("Update", ctx, jobs).Return(savedJobs, errors.New("unable to save job A"), nil)
+
+			jobWithUpstreamB := job.NewWithUpstream(jobB, nil)
+			upstreamResolver.On("Resolve", ctx, project.Name(), savedJobs).Return([]*job.WithUpstream{jobWithUpstreamB}, nil, nil)
+
+			jobRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
+			err := jobService.Update(ctx, sampleTenant, specs)
+			assert.ErrorContains(t, err, "unable to save job A")
+		})
+		t.Run("return error when all jobs failed to be updated to db", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specs := []*job.Spec{specA}
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			upstreamResolver.On("Resolve", ctx, mock.Anything, mock.Anything).Return(nil, nil)
+
+			jobRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
+
+			resourceA, _ := job.ResourceURNFrom("resource-A")
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
+
+			jobSourcesA := []job.ResourceURN{"resource-B"}
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
+
+			jobA := job.NewJob(sampleTenant, specA, resourceA, jobSourcesA)
+			jobs := []*job.Job{jobA}
+			jobRepo.On("Update", ctx, jobs).Return([]*job.Job{}, errors.New("unable to update job A"), errors.New("all jobs failed"))
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
+			err := jobService.Update(ctx, sampleTenant, specs)
+			assert.ErrorContains(t, err, "unable to update job A")
+		})
+		t.Run("should return error if failed to save upstream", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specs := []*job.Spec{specA}
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			resourceA, _ := job.ResourceURNFrom("resource-A")
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
+
+			jobSourcesA := []job.ResourceURN{"resource-B"}
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobSourcesA, nil)
+
+			jobA := job.NewJob(sampleTenant, specA, resourceA, jobSourcesA)
+			jobs := []*job.Job{jobA}
+			jobRepo.On("Update", ctx, jobs).Return(jobs, nil, nil)
+
+			jobWithUpstreamA := job.NewWithUpstream(jobA, nil)
+			upstreamResolver.On("Resolve", ctx, project.Name(), jobs).Return([]*job.WithUpstream{jobWithUpstreamA}, nil, nil)
+
+			jobRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(errors.New("internal error"))
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
+			err := jobService.Update(ctx, sampleTenant, specs)
+			assert.Error(t, err)
+		})
+	})
 	t.Run("Delete", func(t *testing.T) {
 		t.Run("deletes job without downstream", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -556,6 +898,29 @@ func (_m *JobRepository) ReplaceUpstreams(_a0 context.Context, _a1 []*job.WithUp
 	}
 
 	return r0
+}
+
+// Update provides a mock function with given fields: _a0, _a1
+func (_m *JobRepository) Update(_a0 context.Context, _a1 []*job.Job) ([]*job.Job, error) {
+	ret := _m.Called(_a0, _a1)
+
+	var r0 []*job.Job
+	if rf, ok := ret.Get(0).(func(context.Context, []*job.Job) []*job.Job); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*job.Job)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, []*job.Job) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // PluginService is an autogenerated mock type for the PluginService type

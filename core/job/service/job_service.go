@@ -33,7 +33,8 @@ type TenantDetailsGetter interface {
 
 type JobRepository interface {
 	// TODO: remove `savedJobs` since the method's main purpose is to add, not to get
-	Add(context.Context, []*job.Job) (savedJobs []*job.Job, err error)
+	Add(context.Context, []*job.Job) (addedJobs []*job.Job, err error)
+	Update(context.Context, []*job.Job) (updatedJobs []*job.Job, err error)
 	GetJobNameWithInternalUpstreams(context.Context, tenant.ProjectName, []job.Name) (map[job.Name][]*job.Upstream, error)
 	ReplaceUpstreams(context.Context, []*job.WithUpstream) error
 
@@ -58,6 +59,27 @@ func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*j
 	me.Append(err)
 
 	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, jobTenant.ProjectName(), addedJobs)
+	me.Append(err)
+
+	err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
+	me.Append(err)
+
+	return errors.MultiToError(me)
+}
+
+func (j JobService) Update(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) error {
+	me := errors.NewMultiError("update specs errors")
+
+	validatedSpecs, err := j.getValidatedSpecs(specs)
+	me.Append(err)
+
+	jobs, err := j.generateJobs(ctx, jobTenant, validatedSpecs)
+	me.Append(err)
+
+	updatedJobs, err := j.repo.Update(ctx, jobs)
+	me.Append(err)
+
+	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, jobTenant.ProjectName(), updatedJobs)
 	me.Append(err)
 
 	err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
