@@ -102,12 +102,16 @@ type Config struct {
 }
 
 func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
+	var err error
+
 	jobSpec := jobEntity.Spec()
 
-	// TODO: remove this comment as the line below is fine, just to be explicit in mentioning that
-	labelsBytes, err := json.Marshal(jobSpec.Labels())
-	if err != nil {
-		return nil, err
+	var labelsBytes []byte
+	if jobSpec.Labels() != nil {
+		labelsBytes, err = json.Marshal(jobSpec.Labels())
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	startDate, err := time.Parse(jobDatetimeLayout, jobSpec.Schedule().StartDate().String())
@@ -123,19 +127,16 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		}
 	}
 
-	// TODO: fix this as this results empty json bytes
 	retryBytes, err := toStorageRetry(jobSpec.Schedule().Retry())
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: fix this as this results empty json bytes
 	alertsBytes, err := toStorageAlerts(jobSpec.Alerts())
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: fix this as this results empty json bytes
 	taskConfigBytes, err := toConfig(jobSpec.Task().Config())
 	if err != nil {
 		return nil, err
@@ -150,13 +151,11 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		assetsBytes = a
 	}
 
-	// TODO: fix this as this results empty json bytes
 	hooksBytes, err := toStorageHooks(jobSpec.Hooks())
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: fix this as this results empty json bytes
 	metadataBytes, err := toStorageMetadata(jobSpec.Metadata())
 	if err != nil {
 		return nil, err
@@ -168,10 +167,11 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		for _, name := range jobSpec.Upstream().UpstreamNames() {
 			staticUpstreams = append(staticUpstreams, name.String())
 		}
-		// TODO: this results empty json bytes
-		httpUpstreamsInBytes, err = json.Marshal(jobSpec.Upstream().HTTPUpstreams())
-		if err != nil {
-			return nil, err
+		if jobSpec.Upstream().HTTPUpstreams() != nil {
+			httpUpstreamsInBytes, err = json.Marshal(jobSpec.Upstream().HTTPUpstreams())
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -219,6 +219,9 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 }
 
 func toStorageHooks(hookSpecs []*job.Hook) ([]byte, error) {
+	if hookSpecs == nil {
+		return nil, nil
+	}
 	var hooks []Hook
 	for _, hookSpec := range hookSpecs {
 		hook, err := toStorageHook(hookSpec)
@@ -258,6 +261,9 @@ func toStorageAsset(assetSpecs map[string]string) ([]byte, error) {
 }
 
 func toStorageAlerts(alertSpecs []*job.Alert) ([]byte, error) {
+	if alertSpecs == nil {
+		return nil, nil
+	}
 	var alerts []Alert
 	for _, alertSpec := range alertSpecs {
 		alerts = append(alerts, Alert{
@@ -270,6 +276,9 @@ func toStorageAlerts(alertSpecs []*job.Alert) ([]byte, error) {
 }
 
 func toStorageRetry(retrySpec *job.Retry) ([]byte, error) {
+	if retrySpec == nil {
+		return nil, nil
+	}
 	retry := Retry{
 		Count:              retrySpec.Count(),
 		Delay:              retrySpec.Delay(),
@@ -279,6 +288,9 @@ func toStorageRetry(retrySpec *job.Retry) ([]byte, error) {
 }
 
 func toStorageMetadata(metadataSpec *job.Metadata) ([]byte, error) {
+	if metadataSpec == nil {
+		return nil, nil
+	}
 	metadataResource := &MetadataResource{
 		Request: nil,
 		Limit:   nil,
@@ -292,6 +304,9 @@ func toStorageMetadata(metadataSpec *job.Metadata) ([]byte, error) {
 }
 
 func toConfig(configSpec *job.Config) ([]byte, error) {
+	if configSpec == nil {
+		return nil, nil
+	}
 	config := Config{
 		Configs: configSpec.Configs(),
 	}
