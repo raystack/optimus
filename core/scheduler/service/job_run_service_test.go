@@ -11,6 +11,7 @@ import (
 	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/scheduler/service"
 	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/lib/cron"
 )
 
@@ -285,124 +286,183 @@ func TestJobRunService(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.Nil(t, nil, returnedRuns)
 		})
-		//	t.Run("should not able to get job runs when invalid cron interval present at DB", func(t *testing.T) {
-		//		jobSpec := scheduler.JobSpec{
-		//			Schedule: scheduler.JobSpecSchedule{
-		//				StartDate: startDate.Add(-time.Hour * 24),
-		//				EndDate:   nil,
-		//				Interval:  "invalid interval",
-		//			},
-		//		}
-		//		jobQuery := &scheduler.JobQuery{
-		//			Name:      "sample_select",
-		//			StartDate: startDate,
-		//			EndDate:   endDate,
-		//			Filter:    []string{"success"},
-		//		}
-		//
-		//		sch := new(mock.Scheduler)
-		//		runService := service.NewJobRunService(sch)
-		//		returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
-		//		assert.NotNil(t, err)
-		//		assert.Nil(t, nil, returnedRuns)
-		//	})
-		//	t.Run("should not able to get job runs when no cron interval present at DB", func(t *testing.T) {
-		//		jobSpec := scheduler.JobSpec{
-		//			Schedule: scheduler.JobSpecSchedule{
-		//				StartDate: startDate.Add(-time.Hour * 24),
-		//				EndDate:   nil,
-		//				Interval:  "",
-		//			},
-		//		}
-		//		jobQuery := &scheduler.JobQuery{
-		//			Name:      "sample_select",
-		//			StartDate: startDate,
-		//			EndDate:   endDate,
-		//			Filter:    []string{"success"},
-		//		}
-		//
-		//		sch := new(mock.Scheduler)
-		//		runService := service.NewJobRunService(sch)
-		//		returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
-		//		assert.NotNil(t, err)
-		//		assert.Nil(t, nil, returnedRuns)
-		//	})
-		//	t.Run("should not able to get job runs when no start date present at DB", func(t *testing.T) {
-		//		jobSpec := scheduler.JobSpec{
-		//			Schedule: scheduler.JobSpecSchedule{
-		//				EndDate:  nil,
-		//				Interval: "0 12 * * *",
-		//			},
-		//		}
-		//		jobQuery := &scheduler.JobQuery{
-		//			Name:      "sample_select",
-		//			StartDate: startDate,
-		//			EndDate:   endDate,
-		//			Filter:    []string{"success"},
-		//		}
-		//
-		//		sch := new(mock.Scheduler)
-		//		runService := service.NewJobRunService(sch)
-		//		returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
-		//		assert.NotNil(t, err)
-		//		assert.Nil(t, nil, returnedRuns)
-		//	})
-		//	t.Run("should not able to get job runs when scheduler returns an error", func(t *testing.T) {
-		//		sch := new(mock.Scheduler)
-		//		spec := scheduler.ProjectSpec{
-		//			Name: "proj",
-		//		}
-		//		jobSpec := scheduler.JobSpec{
-		//			Schedule: scheduler.JobSpecSchedule{
-		//				StartDate: startDate.Add(-time.Hour * 24),
-		//				EndDate:   nil,
-		//				Interval:  "0 12 * * *",
-		//			},
-		//		}
-		//		jobQuery := &scheduler.JobQuery{
-		//			Name:      "sample_select",
-		//			StartDate: startDate,
-		//			EndDate:   endDate,
-		//			Filter:    []string{"success"},
-		//		}
-		//
-		//		sch.On("GetJobRuns", ctx, spec, jobQuery, jobCron).Return([]scheduler.JobRun{}, errors.New("failed: due to invalid URL"))
-		//		defer sch.AssertExpectations(t)
-		//		runService := service.NewJobRunService(sch)
-		//		returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
-		//		assert.NotNil(t, err, errors.New("failed: due to invalid URL"))
-		//		assert.Nil(t, nil, returnedRuns)
-		//	})
-		//	t.Run("should able to get job runs when only last run is required", func(t *testing.T) {
-		//		sch := new(mock.Scheduler)
-		//		spec := scheduler.ProjectSpec{
-		//			Name: "proj",
-		//		}
-		//		jobSpec := scheduler.JobSpec{
-		//			Schedule: scheduler.JobSpecSchedule{
-		//				StartDate: startDate.Add(-time.Hour * 24),
-		//				EndDate:   nil,
-		//				Interval:  "0 12 * * *",
-		//			},
-		//		}
-		//
-		//		jobQuery := &scheduler.JobQuery{
-		//			Name:        "sample_select",
-		//			OnlyLastRun: true,
-		//		}
-		//		runs := []scheduler.JobRun{
-		//			{
-		//				Status:      scheduler.JobRunState("success"),
-		//				ScheduledAt: endDate,
-		//			},
-		//		}
-		//		sch.On("GetJobRuns", ctx, spec, jobQuery, jobCron).Return(runs, nil)
-		//		defer sch.AssertExpectations(t)
-		//		runService := service.NewJobRunService(sch)
-		//		returnedRuns, err := runService.GetJobRunList(ctx, projSpec, jobSpec, jobQuery)
-		//		assert.Nil(t, err)
-		//		assert.Equal(t, runs, returnedRuns)
-		//	})
+		t.Run("should not able to get job runs when invalid cron interval present at DB", func(t *testing.T) {
+			tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
+			job := scheduler.Job{
+				Name:   jobName,
+				Tenant: tnnt,
+			}
+			jobWithDetails := scheduler.JobWithDetails{
+				Job: &job,
+				JobMetadata: &scheduler.JobMetadata{
+					Version: 1,
+				},
+				Schedule: &scheduler.Schedule{
+					StartDate: startDate.Add(-time.Hour * 24),
+					EndDate:   nil,
+					Interval:  "invalid interval",
+				},
+			}
+
+			jobQuery := &scheduler.JobRunsCriteria{
+				Name:      "sample_select",
+				StartDate: startDate,
+				EndDate:   endDate,
+				Filter:    []string{"success"},
+			}
+
+			jobRepo := new(JobRepository)
+			jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&jobWithDetails, nil)
+			defer jobRepo.AssertExpectations(t)
+
+			runService := service.NewJobRunService(nil, jobRepo, nil)
+			returnedRuns, err := runService.GetJobRuns(ctx, projName, jobName, jobQuery)
+			assert.NotNil(t, err)
+			assert.Nil(t, nil, returnedRuns)
+		})
+		t.Run("should not able to get job runs when no cron interval present at DB", func(t *testing.T) {
+			tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
+			job := scheduler.Job{
+				Name:   jobName,
+				Tenant: tnnt,
+			}
+			jobWithDetails := scheduler.JobWithDetails{
+				Job: &job,
+				JobMetadata: &scheduler.JobMetadata{
+					Version: 1,
+				},
+				Schedule: &scheduler.Schedule{
+					StartDate: startDate.Add(-time.Hour * 24),
+					EndDate:   nil,
+					Interval:  "",
+				},
+			}
+
+			jobQuery := &scheduler.JobRunsCriteria{
+				Name:      "sample_select",
+				StartDate: startDate,
+				EndDate:   endDate,
+				Filter:    []string{"success"},
+			}
+			jobRepo := new(JobRepository)
+			jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&jobWithDetails, nil)
+			defer jobRepo.AssertExpectations(t)
+
+			runService := service.NewJobRunService(nil, jobRepo, nil)
+			returnedRuns, err := runService.GetJobRuns(ctx, projName, jobName, jobQuery)
+			assert.NotNil(t, err)
+			assert.Nil(t, nil, returnedRuns)
+		})
+		t.Run("should not able to get job runs when no start date present at DB", func(t *testing.T) {
+			tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
+			job := scheduler.Job{
+				Name:   jobName,
+				Tenant: tnnt,
+			}
+			jobWithDetails := scheduler.JobWithDetails{
+				Job: &job,
+				JobMetadata: &scheduler.JobMetadata{
+					Version: 1,
+				},
+				Schedule: &scheduler.Schedule{
+					//StartDate: startDate.Add(-time.Hour * 24),
+					EndDate:  nil,
+					Interval: "0 12 * * *",
+				},
+			}
+
+			jobQuery := &scheduler.JobRunsCriteria{
+				Name:      "sample_select",
+				StartDate: startDate,
+				EndDate:   endDate,
+				Filter:    []string{"success"},
+			}
+			jobRepo := new(JobRepository)
+			jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&jobWithDetails, nil)
+			defer jobRepo.AssertExpectations(t)
+			runService := service.NewJobRunService(nil, jobRepo, nil)
+			returnedRuns, err := runService.GetJobRuns(ctx, projName, jobName, jobQuery)
+			assert.NotNil(t, err)
+			assert.Nil(t, nil, returnedRuns)
+		})
+		t.Run("should not able to get job runs when scheduler returns an error", func(t *testing.T) {
+			tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
+			job := scheduler.Job{
+				Name:   jobName,
+				Tenant: tnnt,
+			}
+			jobWithDetails := scheduler.JobWithDetails{
+				Job: &job,
+				JobMetadata: &scheduler.JobMetadata{
+					Version: 1,
+				},
+				Schedule: &scheduler.Schedule{
+					StartDate: startDate.Add(-time.Hour * 24),
+					EndDate:   nil,
+					Interval:  "0 12 * * *",
+				},
+			}
+
+			criteria := &scheduler.JobRunsCriteria{
+				Name:      "sample_select",
+				StartDate: startDate,
+				EndDate:   endDate,
+				Filter:    []string{"success"},
+			}
+			sch := new(Scheduler)
+			sch.On("GetJobRuns", ctx, tnnt, criteria, jobCron).Return([]*scheduler.JobRunStatus{}, errors.InvalidArgument(scheduler.EntityJobRun, "failed: due to invalid URL"))
+			defer sch.AssertExpectations(t)
+			jobRepo := new(JobRepository)
+			jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&jobWithDetails, nil)
+			defer jobRepo.AssertExpectations(t)
+
+			runService := service.NewJobRunService(nil, jobRepo, sch)
+			returnedRuns, err := runService.GetJobRuns(ctx, projName, jobName, criteria)
+			assert.NotNil(t, err, errors.InvalidArgument(scheduler.EntityJobRun, "failed: due to invalid URL"))
+			assert.Nil(t, nil, returnedRuns)
+		})
+		t.Run("should able to get job runs when only last run is required", func(t *testing.T) {
+			tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
+			job := scheduler.Job{
+				Name:   jobName,
+				Tenant: tnnt,
+			}
+			jobWithDetails := scheduler.JobWithDetails{
+				Job: &job,
+				JobMetadata: &scheduler.JobMetadata{
+					Version: 1,
+				},
+				Schedule: &scheduler.Schedule{
+					StartDate: startDate.Add(-time.Hour * 24),
+					EndDate:   nil,
+					Interval:  "0 12 * * *",
+				},
+			}
+
+			criteria := &scheduler.JobRunsCriteria{
+				Name:        "sample_select",
+				OnlyLastRun: true,
+			}
+
+			runs := []*scheduler.JobRunStatus{
+				{
+					State:       scheduler.StateSuccess,
+					ScheduledAt: endDate,
+				},
+			}
+
+			sch := new(Scheduler)
+			sch.On("GetJobRuns", ctx, tnnt, criteria, jobCron).Return(runs, nil)
+			defer sch.AssertExpectations(t)
+			jobRepo := new(JobRepository)
+			jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&jobWithDetails, nil)
+			defer jobRepo.AssertExpectations(t)
+
+			runService := service.NewJobRunService(nil, jobRepo, sch)
+			returnedRuns, err := runService.GetJobRuns(ctx, projName, jobName, criteria)
+			assert.Nil(t, err)
+			assert.Equal(t, runs, returnedRuns)
+		})
 	})
 }
 
