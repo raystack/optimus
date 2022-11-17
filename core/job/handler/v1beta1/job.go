@@ -145,9 +145,8 @@ func (jh *JobHandler) GetJobSpecifications(ctx context.Context, req *pb.GetJobSp
 	jobSpecResponseProtos := []*pb.JobSpecificationResponse{}
 	for _, jobSpec := range jobSpecs {
 		jobSpecResponseProtos = append(jobSpecResponseProtos, &pb.JobSpecificationResponse{
-			ProjectName:   jobSpec.Tenant().ProjectName().String(),
-			NamespaceName: jobSpec.Tenant().NamespaceName().String(),
-			Job:           toJobProto(jobSpec),
+			// TODO: is it necessary to retrieve back the project name and namespace name?
+			Job: toJobProto(jobSpec),
 		})
 	}
 

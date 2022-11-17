@@ -295,8 +295,6 @@ func (j JobRepository) GetByJobName(ctx context.Context, projectName, jobName st
 		return nil, err
 	}
 
-	fmt.Printf("%+v", jobSpec)
-
 	return fromStorageSpec(&jobSpec)
 }
 
