@@ -63,7 +63,7 @@ func (o operatorRun) toOperatorRun() *scheduler.OperatorRun {
 	}
 }
 
-func (o *OperatorRunRepository) GetOperatorRun(ctx context.Context, name string, operatorType scheduler.OperatorType, jobRunId uuid.UUID) (*scheduler.OperatorRun, error) {
+func (o *OperatorRunRepository) GetOperatorRun(ctx context.Context, name string, operatorType scheduler.OperatorType, jobRunID uuid.UUID) (*scheduler.OperatorRun, error) {
 	var opRun operatorRun
 	operatorTableName, err := operatorTypeToTableName(operatorType)
 	if err != nil {

@@ -179,7 +179,7 @@ func ToAirflowConfig(schedulerConf map[string]string) AirflowConfig {
 	return conf
 }
 
-func SlaMissDuration(job *scheduler.JobWithDetails) (int64, error) {
+func SLAMissDuration(job *scheduler.JobWithDetails) (int64, error) {
 	var slaMissDurationInSec int64
 	for _, notify := range job.Alerts { // We are ranging and picking one value
 		if notify.On == scheduler.EventCategorySLAMiss {

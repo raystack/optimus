@@ -56,8 +56,8 @@ func (j jobRun) toJobRun() (*scheduler.JobRun, error) {
 
 func (j *JobRunRepository) GetByID(ctx context.Context, id scheduler.JobRunID) (*scheduler.JobRun, error) {
 	var jobRun jobRun
-	getJobRunById := `SELECT ` + jobRunColumns + ` FROM ` + jobRunTableName + ` j where id = ?`
-	err := j.db.WithContext(ctx).Raw(getJobRunById, id).First(&jobRun).Error
+	getJobRunByID := `SELECT ` + jobRunColumns + ` FROM ` + jobRunTableName + ` j where id = ?`
+	err := j.db.WithContext(ctx).Raw(getJobRunByID, id).First(&jobRun).Error
 	if err != nil {
 		return &scheduler.JobRun{}, err
 	}
@@ -81,7 +81,7 @@ func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t tenant.Tenant
 	return jobRun.toJobRun()
 }
 
-func (j *JobRunRepository) Update(ctx context.Context, jobRunId uuid.UUID, endTime time.Time, status string) error {
+func (j *JobRunRepository) Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, status string) error {
 	updateJobRun := "update" + jobRunTableName + "set status = " + status + " end_time = " + endTime.String() + " where id = " + jobRunId.String()
 	return j.db.WithContext(ctx).Exec(updateJobRun).Error
 }

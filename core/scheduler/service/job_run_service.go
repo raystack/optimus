@@ -267,7 +267,7 @@ func (s JobRunService) createOperatorRun(ctx context.Context, event scheduler.Ev
 		return err
 	}
 
-	startedAtTimeStamp := time.Unix(int64(event.Values["event_time"].(int64)), 0)
+	startedAtTimeStamp := time.Unix(event.Values["event_time"].(int64), 0)
 	operatorName := event.Values[scheduler.OperatorNameKey].(string)
 
 	operatorRun, err := s.operatorRunRepo.GetOperatorRun(ctx, operatorName, operatorType, jobRun.ID)

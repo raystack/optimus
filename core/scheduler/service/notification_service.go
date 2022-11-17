@@ -6,12 +6,13 @@ import (
 	"io"
 	"strings"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/odpf/optimus/core/scheduler"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
 )
 
 var (
@@ -44,7 +45,13 @@ type NotifyService struct {
 
 func (n NotifyService) Push(ctx context.Context, event scheduler.Event) error {
 	jobDetails, err := n.jobRepo.GetJobDetails(ctx, event.Tenant.ProjectName(), event.JobName)
+	if err != nil {
+		return err
+	}
 	notificationConfig := jobDetails.Alerts
+	multierror := errors.NewMultiError("ErrorsInNotifypush")
+	var secretMap map[string]string
+	var plainTextSecretsList []*tenant.PlainTextSecret
 	for _, notify := range notificationConfig {
 		if event.Type.IsOfType(notify.On) {
 			for _, channel := range notify.Channels {
@@ -53,15 +60,17 @@ func (n NotifyService) Push(ctx context.Context, event scheduler.Event) error {
 				route := chanParts[1]
 
 				n.l.Debug("notification event for job", "job spec name", event.JobName, "event", fmt.Sprintf("%v", event))
-
-				plainTextSecretsList, err := n.tenantService.GetSecrets(ctx,
-					event.Tenant.ProjectName(),
-					event.Tenant.NamespaceName().String())
-				if err != nil {
-					return err
+				if plainTextSecretsList == nil {
+					plainTextSecretsList, err = n.tenantService.GetSecrets(ctx,
+						event.Tenant.ProjectName(),
+						event.Tenant.NamespaceName().String())
+					if err != nil {
+						multierror.Append(err)
+						continue
+					}
+					secretMap = SecretsToMap(plainTextSecretsList)
 				}
 
-				secretMap := SecretsToMap(plainTextSecretsList)
 				var secret string
 				switch scheme {
 				case NotificationSchemeSlack:
@@ -78,7 +87,7 @@ func (n NotifyService) Push(ctx context.Context, event scheduler.Event) error {
 						Route:    route,
 					}); currErr != nil {
 						n.l.Error("Error: No notification event for job ", "current error", currErr)
-						err = multierror.Append(err, fmt.Errorf("notifyChannel.Notify: %s: %w", channel, currErr))
+						multierror.Append(fmt.Errorf("notifyChannel.Notify: %s: %w", channel, currErr))
 					}
 				}
 			}
@@ -89,7 +98,17 @@ func (n NotifyService) Push(ctx context.Context, event scheduler.Event) error {
 	} else if event.Type.IsOfType(scheduler.EventCategorySLAMiss) {
 		jobSLAMissCounter.Inc()
 	}
-	return err
+	return errors.MultiToError(multierror)
+}
+
+func (n *NotifyService) Close() error {
+	multierror := errors.NewMultiError("ErrorsInNotifyClose")
+	for _, notify := range n.notifyChannels {
+		if cerr := notify.Close(); cerr != nil {
+			multierror.Append(cerr)
+		}
+	}
+	return errors.MultiToError(multierror)
 }
 
 func NewNotifyService(l log.Logger, jobRepo JobRepository, tenantService TenantService, notifyChan map[string]Notifier) *NotifyService {

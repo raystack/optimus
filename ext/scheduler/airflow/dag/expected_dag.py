@@ -51,6 +51,7 @@ dag = DAG(
     default_args=default_args,
     schedule_interval="0 2 * * 0",
     sla_miss_callback=optimus_sla_miss_notify,
+    sla=timedelta(seconds=7200),
     catchup=True,
     dagrun_timeout=timedelta(seconds=DAGRUN_TIMEOUT_IN_SECS),
     tags=[
@@ -104,7 +105,6 @@ transformation_bq__dash__bq = SuperKubernetesPodOperator(
         k8s.V1EnvVar(name="INSTANCE_NAME", value='bq-bq'),
         k8s.V1EnvVar(name="SCHEDULED_AT", value='{{ next_execution_date }}'),
     ],
-    sla=timedelta(seconds=7200),
     resources=resources,
     reattach_on_restart=True
 )

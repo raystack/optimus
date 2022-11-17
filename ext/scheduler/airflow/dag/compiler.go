@@ -36,7 +36,7 @@ func (c *Compiler) Compile(jobDetails *scheduler.JobWithDetails) ([]byte, error)
 		return nil, err
 	}
 
-	slaDuration, err := SlaMissDuration(jobDetails)
+	slaDuration, err := SLAMissDuration(jobDetails)
 	if err != nil {
 		return nil, err
 	}

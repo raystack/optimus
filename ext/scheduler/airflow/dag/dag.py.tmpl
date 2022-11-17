@@ -136,8 +136,8 @@ resources = k8s.V1ResourceRequirements(
         k8s.V1EnvVar(name="INSTANCE_NAME", value='{{ .Task.Name}}'),
         k8s.V1EnvVar(name="SCHEDULED_AT", value='{{ "{{ next_execution_date }}" }}'),
     ],
-    {{- if gt .SlaMissDuration 0 }}
-    sla=timedelta(seconds={{ .SlaMissDuration }}),
+    {{- if gt .SLAMissDuration 0 }}
+    sla=timedelta(seconds={{ .SLAMissDuration }}),
     {{- end }}
     {{- if .RuntimeConfig.Resource }}
     resources=resources,

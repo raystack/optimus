@@ -61,6 +61,9 @@ dag = DAG(
     default_args=default_args,
     schedule_interval={{ if eq .Job.Schedule.Interval "" }}None{{- else -}} {{ .Job.Schedule.Interval | quote}}{{end}},
     sla_miss_callback=optimus_sla_miss_notify,
+    {{- if gt .SLAMissDurationInSec 0 }}
+        sla=timedelta(seconds={{ .SLAMissDurationInSec }}),
+    {{- end }}
     catchup={{ if .Job.Behavior.CatchUp -}}True{{- else -}}False{{- end }},
     dagrun_timeout=timedelta(seconds=DAGRUN_TIMEOUT_IN_SECS),
     tags = [
@@ -151,9 +154,6 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
         k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$baseTaskSchema.Name}}'),
         k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ "{{ next_execution_date }}" }}'),
     ],
-{{- if gt .SLAMissDurationInSec 0 }}
-    sla=timedelta(seconds={{ .SLAMissDurationInSec }}),
-{{- end }}
 {{- if $setResourceConfig }}
     resources = resources,
 {{- end }}
