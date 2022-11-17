@@ -290,7 +290,7 @@ func (JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstr
 }
 
 func (j JobRepository) GetByJobName(ctx context.Context, projectName, jobName string) (*job.Spec, error) {
-	jobSpec, err := j.get(ctx, tenant.ProjectName(projectName), job.Name(jobName))
+	jobSpec, err := j.Get(ctx, tenant.ProjectName(projectName), job.Name(jobName))
 	if err != nil {
 		return nil, err
 	}

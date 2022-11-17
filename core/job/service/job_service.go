@@ -40,7 +40,7 @@ type JobRepository interface {
 	ReplaceUpstreams(context.Context, []*job.WithUpstream) error
 
 	GetDownstreamFullNames(context.Context, tenant.ProjectName, job.Name) ([]job.FullName, error)
-	Delete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, cleanHistory)
+	Delete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, cleanHistory bool) error
 
 	GetByJobName(ctx context.Context, projectName, jobName string) (*job.Spec, error)
 	GetAllByProjectName(ctx context.Context, projectName string) ([]*job.Spec, error)
