@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/odpf/optimus/core/scheduler"
-	resolver "github.com/odpf/optimus/core/scheduler/resolvers"
+	resolver "github.com/odpf/optimus/core/scheduler/resolver"
 	"github.com/odpf/optimus/internal/lib/tree"
 )
 

@@ -23,8 +23,8 @@ func DisplayName(name string) string {
 	return strings.ReplaceAll(ReplaceDash(name), ".", "__dot__")
 }
 
-func Replace(old, new, name string) string {
-	return strings.ReplaceAll(name, old, new)
+func Replace(old, newStr, name string) string {
+	return strings.ReplaceAll(name, old, newStr)
 }
 
 func Quote(str string) string {

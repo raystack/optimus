@@ -48,7 +48,7 @@ type Event struct {
 	meta       scheduler.Event
 }
 
-func (s *Notifier) Notify(_ context.Context, attr scheduler.NotifyAttrs) error {
+func (s *Notifier) Notify(_ context.Context, attr scheduler.NotifyAttrs) error { //nolint:unparam
 	s.queueNotification(attr.Secret, attr)
 	return nil
 }

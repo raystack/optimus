@@ -70,12 +70,12 @@ func (o *OperatorRunRepository) GetOperatorRun(ctx context.Context, name string,
 		return nil, err
 	}
 	getJobRunByID := `SELECT id, name, job_run_id, state, start_time, end_time FROM ` + operatorTableName + ` j where job_run_id = ? and name =?`
-	err = o.db.WithContext(ctx).Raw(getJobRunByID, jobRunId, name).
+	err = o.db.WithContext(ctx).Raw(getJobRunByID, jobRunID, name).
 		Order(clause.OrderByColumn{Column: clause.Column{Name: "created_at"}, Desc: true}).
 		First(&opRun).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.NotFound(scheduler.EntityJobRun, "no record for "+operatorType.String()+"/"+name+" for job_run ID: "+jobRunId.String())
+			return nil, errors.NotFound(scheduler.EntityJobRun, "no record for "+operatorType.String()+"/"+name+" for job_run ID: "+jobRunID.String())
 		}
 	}
 	return opRun.toOperatorRun(), nil
@@ -98,4 +98,10 @@ func (o *OperatorRunRepository) UpdateOperatorRun(ctx context.Context, operatorT
 	}
 	updateJobRun := "update ? set state = ? and end_time = ? where id = ?"
 	return o.db.WithContext(ctx).Exec(updateJobRun, operatorTableName, state, eventTime, operatorRunID).Error
+}
+
+func NewOperatorRunRepository(db *gorm.DB) *OperatorRunRepository {
+	return &OperatorRunRepository{
+		db: db,
+	}
 }

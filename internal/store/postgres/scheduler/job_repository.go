@@ -188,3 +188,9 @@ func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectNa
 	}
 	return jobs, nil
 }
+
+func NewJobProviderRepository(db *gorm.DB) *JobRepository {
+	return &JobRepository{
+		db: db,
+	}
+}

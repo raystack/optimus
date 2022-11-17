@@ -174,3 +174,11 @@ func SecretsToMap(secrets []*tenant.PlainTextSecret) map[string]string {
 	}
 	return mapping
 }
+
+func NewJobInputCompiler(tenantService TenantService, compiler TemplateCompiler, assetCompiler AssetCompiler) *InputCompiler {
+	return &InputCompiler{
+		tenantService: tenantService,
+		compiler:      compiler,
+		assetCompiler: assetCompiler,
+	}
+}

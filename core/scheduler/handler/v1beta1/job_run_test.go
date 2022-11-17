@@ -16,6 +16,10 @@ import (
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
+//const (
+//	AirflowDateFormat = "2006-01-02T15:04:05+00:00"
+//)
+
 func TestJobRunHandler(t *testing.T) {
 	logger := log.NewNoop()
 	ctx := context.Background()

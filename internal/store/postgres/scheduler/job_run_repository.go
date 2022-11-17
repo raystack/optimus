@@ -82,7 +82,7 @@ func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t tenant.Tenant
 }
 
 func (j *JobRunRepository) Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, status string) error {
-	updateJobRun := "update" + jobRunTableName + "set status = " + status + " end_time = " + endTime.String() + " where id = " + jobRunId.String()
+	updateJobRun := "update" + jobRunTableName + "set status = " + status + " end_time = " + endTime.String() + " where id = " + jobRunID.String()
 	return j.db.WithContext(ctx).Exec(updateJobRun).Error
 }
 
@@ -91,4 +91,10 @@ func (j *JobRunRepository) Create(ctx context.Context, t tenant.Tenant, jobName 
 	return j.db.WithContext(ctx).Exec(insertJobRun,
 		jobName.String(), t.NamespaceName().String(), t.ProjectName().String(),
 		scheduledAt, scheduler.StateRunning, slaDefinitionInSec).Error
+}
+
+func NewJobRunRepository(db *gorm.DB) *JobRunRepository {
+	return &JobRunRepository{
+		db: db,
+	}
 }

@@ -159,14 +159,14 @@ func (m mockPluginRepo) GetByName(name string) (*models.Plugin, error) {
 }
 
 func setupPluginRepo() mockPluginRepo {
-	execUnit := new(mock.BasePlugin)
+	execUnit := new(mock.YamlMod)
 	execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name:  "bq-bq",
 		Image: "example.io/namespace/bq2bq-executor:latest",
 	}, nil)
 
 	transporterHook := "transporter"
-	hookUnit := new(mock.BasePlugin)
+	hookUnit := new(mock.YamlMod)
 	hookUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name:      transporterHook,
 		HookType:  models.HookTypePre,
@@ -175,14 +175,14 @@ func setupPluginRepo() mockPluginRepo {
 	}, nil)
 
 	predatorHook := "predator"
-	hookUnit2 := new(mock.BasePlugin)
+	hookUnit2 := new(mock.YamlMod)
 	hookUnit2.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name:     predatorHook,
 		HookType: models.HookTypePost,
 		Image:    "example.io/namespace/predator-image:latest",
 	}, nil)
 
-	hookUnit3 := new(mock.BasePlugin)
+	hookUnit3 := new(mock.YamlMod)
 	hookUnit3.On("PluginInfo").Return(&models.PluginInfoResponse{
 		Name:     "failureHook",
 		HookType: models.HookTypeFail,
@@ -190,7 +190,7 @@ func setupPluginRepo() mockPluginRepo {
 	}, nil)
 
 	repo := mockPluginRepo{plugins: []*models.Plugin{
-		{Base: execUnit}, {Base: hookUnit}, {Base: hookUnit2}, {Base: hookUnit3},
+		{YamlMod: execUnit}, {YamlMod: hookUnit}, {YamlMod: hookUnit2}, {YamlMod: hookUnit3},
 	}}
 	return repo
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/internal/lib/progress"
 	"github.com/odpf/optimus/internal/lib/tree"
 )
 
@@ -144,10 +143,4 @@ func (*PriorityResolver) findOrCreateDAGNode(dagTree *tree.MultiRootTree, jobDet
 		dagTree.AddNode(node)
 	}
 	return node
-}
-
-func notify(progressObserver progress.Observer, evt progress.Event) {
-	if progressObserver != nil {
-		progressObserver.Notify(evt)
-	}
 }

@@ -16,17 +16,9 @@ const (
 	storagePathKey = "STORAGE_PATH"
 )
 
-type SecretsGetter interface {
-	Get(ctx context.Context, projName tenant.ProjectName, namespaceName, name string) (*tenant.PlainTextSecret, error)
-}
-
-type ProjectGetter interface {
-	Get(context.Context, tenant.ProjectName) (*tenant.Project, error)
-}
-
 type Factory struct {
-	secretsGetter SecretsGetter
-	projectGetter ProjectGetter
+	secretsGetter airflow.SecretGetter
+	projectGetter airflow.ProjectGetter
 }
 
 func (f *Factory) New(ctx context.Context, tnnt tenant.Tenant) (airflow.Bucket, error) {
@@ -67,4 +59,11 @@ func (f *Factory) storageURL(ctx context.Context, tnnt tenant.Tenant) (*url.URL,
 		return nil, errors.InternalError("airflow", "unable to parse url "+storagePath, err)
 	}
 	return parsedURL, nil
+}
+
+func NewFactory(projectGetter airflow.ProjectGetter, secretsGetter airflow.SecretGetter) *Factory {
+	return &Factory{
+		secretsGetter: secretsGetter,
+		projectGetter: projectGetter,
+	}
 }
