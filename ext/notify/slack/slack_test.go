@@ -13,7 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/core/scheduler"
+	"github.com/odpf/optimus/core/tenant"
 )
 
 func getTestUserProfile() api.UserProfile {
@@ -48,6 +49,10 @@ func getTestUserWithID(id string) api.User {
 }
 
 func TestSlack(t *testing.T) {
+	projectName := "ss"
+	namespaceName := "bb"
+	jobName := scheduler.JobName("foo-job-spec")
+	tnnt, _ := tenant.NewTenant(projectName, namespaceName)
 	t.Run("should send message to user using email address successfully", func(t *testing.T) {
 		muxRouter := mux.NewRouter()
 		server := httptest.NewServer(muxRouter)
@@ -85,26 +90,16 @@ func TestSlack(t *testing.T) {
 			},
 		)
 		defer client.Close()
-		err := client.Notify(context.Background(), models.NotifyAttrs{
-			Namespace: models.NamespaceSpec{
-				Name: "test",
-				ProjectSpec: models.ProjectSpec{
-					Name: "foo",
-					Secret: []models.ProjectSecretItem{
-						{
-							Name:  OAuthTokenSecretName,
-							Value: "test-token",
-						},
-					},
-				},
+		err := client.Notify(context.Background(), scheduler.NotifyAttrs{
+			Owner: "",
+			JobEvent: scheduler.Event{
+				JobName: jobName,
+				Tenant:  tnnt,
+				Type:    scheduler.SLAMissEvent,
+				Values:  map[string]any{},
 			},
-			JobSpec: models.JobSpec{
-				Name: "foo-job-spec",
-			},
-			JobEvent: models.JobEvent{
-				Type: models.SLAMissEvent,
-			},
-			Route: "optimus@test.com",
+			Route:  "optimus@test.com",
+			Secret: "test-token",
 		})
 		assert.Nil(t, err)
 		cancel()
@@ -168,27 +163,17 @@ func TestSlack(t *testing.T) {
 			"message":   "some failure",
 			"exception": "this much data failed",
 		})
-		err := client.Notify(context.Background(), models.NotifyAttrs{
-			Namespace: models.NamespaceSpec{
-				Name: "test",
-				ProjectSpec: models.ProjectSpec{
-					Name: "foo",
-					Secret: []models.ProjectSecretItem{
-						{
-							Name:  OAuthTokenSecretName,
-							Value: "test-token",
-						},
-					},
-				},
+
+		err := client.Notify(context.Background(), scheduler.NotifyAttrs{
+			Owner: "",
+			JobEvent: scheduler.Event{
+				JobName: jobName,
+				Tenant:  tnnt,
+				Type:    scheduler.JobFailureEvent,
+				Values:  eventValues.AsMap(),
 			},
-			JobSpec: models.JobSpec{
-				Name: "foo-job-spec",
-			},
-			JobEvent: models.JobEvent{
-				Type:  models.JobFailureEvent,
-				Value: eventValues.GetFields(),
-			},
-			Route: "@optimus-devs",
+			Route:  "@optimus-devs",
+			Secret: "test-token",
 		})
 		assert.Nil(t, err)
 		cancel()
@@ -198,6 +183,10 @@ func TestSlack(t *testing.T) {
 }
 
 func TestBuildMessages(t *testing.T) {
+	projectName := "foo"
+	namespaceName := "test"
+	jobName := scheduler.JobName("foo-job-spec")
+	tnnt, _ := tenant.NewTenant(projectName, namespaceName)
 	eventValues := &structpb.Struct{}
 	_ = eventValues.UnmarshalJSON([]byte(`{
             "slas": [
@@ -227,14 +216,13 @@ func TestBuildMessages(t *testing.T) {
 			name: "should parse sla values of sla_miss correctly",
 			args: args{events: []event{
 				{
-					authToken:     "xx",
-					projectName:   "ss",
-					namespaceName: "bb",
-					jobName:       "cc",
-					owner:         "rr",
-					meta: models.JobEvent{
-						Type:  models.SLAMissEvent,
-						Value: eventValues.GetFields(),
+					authToken: "xx",
+					owner:     "rr",
+					meta: scheduler.Event{
+						JobName: jobName,
+						Tenant:  tnnt,
+						Type:    scheduler.SLAMissEvent,
+						Values:  eventValues.AsMap(),
 					},
 				},
 			}},

@@ -11,36 +11,6 @@ import (
 	"github.com/odpf/optimus/internal/lib/tree"
 )
 
-//
-//// getDependencyObject - returns the dependency object by providing the specs and the dependency
-//func getDependencyObject(specs map[string]job_run.JobWithDetails, dependencySpecs ...string) map[string]job_run.Upstreams {
-//	dependenciesMap := make(map[string]job_run.JobUpstream)
-//	for _, dependencySpec := range dependencySpecs {
-//		depSpec, ok := specs[dependencySpec]
-//		if !ok {
-//			dependenciesMap[dependencySpec] = job_run.JobUpstream{}
-//		}
-//		dependenciesMap[dependencySpec] = job_run.JobUpstream{
-//			JobName: depSpec.GetName(),
-//		}
-//	}
-//	return dependenciesMap
-//}
-
-func getJobWithExternalUpstream(name string, upstreams ...*scheduler.JobUpstream) *scheduler.JobWithDetails {
-	//var jobUpstreams []*job_run.JobUpstream
-	//for _, n := range upstreams {
-	//	jobUpstreams = append(jobUpstreams, &job_run.JobUpstream{
-	//		JobName: n,
-	//		Type:    job_run.UpstreamTypeExternal,
-	//	})
-	//}
-	return &scheduler.JobWithDetails{
-		Name:      scheduler.JobName(name),
-		Upstreams: scheduler.Upstreams{UpstreamJobs: upstreams},
-	}
-}
-
 func getJobWithUpstream(name string, upstreams ...string) *scheduler.JobWithDetails {
 	var jobUpstreams []*scheduler.JobUpstream
 	for _, n := range upstreams {

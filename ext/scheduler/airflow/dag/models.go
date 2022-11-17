@@ -18,7 +18,7 @@ type TemplateContext struct {
 
 	Tenant          tenant.Tenant
 	Version         string
-	SlaMissDuration int64
+	SLAMissDuration int64
 	Hostname        string
 	ExecutorTask    string
 	ExecutorHook    string

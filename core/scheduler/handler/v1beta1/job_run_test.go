@@ -190,12 +190,3 @@ func (m *mockJobRunService) GetJobRuns(ctx context.Context, projectName tenant.P
 	}
 	return args.Get(0).([]*scheduler.JobRunStatus), args.Error(1)
 }
-
-type mockNotifier struct {
-	mock.Mock
-}
-
-func (m *mockNotifier) Push(ctx context.Context, event scheduler.Event) error {
-	args := m.Called(ctx, event)
-	return args.Error(0)
-}

@@ -14,8 +14,8 @@ import (
 )
 
 type TaskRun struct { // will have mltiple rows
-	// for each retry / instead we incriment the 
-	// attempt column 
+	// for each retry / instead we incriment the
+	// attempt column
 
 	TaskRunID uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
 
@@ -25,8 +25,8 @@ type TaskRun struct { // will have mltiple rows
 	EndTime   time.Time
 
 	Status        string
-	Attempt       int  // not needed
-	JobRunAttempt int  // not needed
+	Attempt       int // not needed
+	JobRunAttempt int // not needed
 	Duration      int64
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`

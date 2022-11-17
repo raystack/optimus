@@ -417,8 +417,7 @@ type NotifyAttrs struct {
 	JobSpec  JobSpec
 	JobEvent JobEvent
 
-	secretVal string
-	Route     string
+	Route string
 }
 
 // JobSpecMetadata contains metadata for a job spec

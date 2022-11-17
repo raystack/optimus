@@ -29,7 +29,7 @@ func TestDagCompiler(t *testing.T) {
 			assert.Nil(t, err)
 
 			job := setupJobDetails(tnnt)
-			compiledDag, err := com.Compile(job, 2000)
+			compiledDag, err := com.Compile(job)
 			assert.Nil(t, err)
 			assert.Equal(t, string(compiledTemplate), string(compiledDag))
 		})
@@ -57,7 +57,7 @@ func setupJobDetails(tnnt tenant.Tenant) *scheduler.JobWithDetails {
 	}
 
 	alert := scheduler.Alert{
-		On:       scheduler.SLAMissEvent,
+		On:       scheduler.EventCategorySLAMiss,
 		Channels: []string{"#alerts"},
 		Config:   map[string]string{"duration": "2h"},
 	}

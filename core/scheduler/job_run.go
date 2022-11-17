@@ -9,12 +9,6 @@ import (
 	"github.com/odpf/optimus/internal/errors"
 )
 
-type JobRunState string
-
-func (j JobRunState) String() string {
-	return string(j)
-}
-
 type JobRunID uuid.UUID
 
 func JobRunIDFromString(runID string) (JobRunID, error) {
@@ -49,6 +43,7 @@ type JobRun struct {
 
 type OperatorRun struct {
 	ID           uuid.UUID
+	Name         string
 	JobRunID     uuid.UUID
 	OperatorType OperatorType
 	State        string

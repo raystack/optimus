@@ -54,16 +54,12 @@ type route struct {
 }
 
 type event struct {
-	authToken     string
-	projectName   string
-	namespaceName string
-	jobName       string
-	owner         string
-	meta          scheduler.Event
+	authToken string
+	owner     string
+	meta      scheduler.Event
 }
 
 func (s *Notifier) Notify(ctx context.Context, attr scheduler.NotifyAttrs) error {
-
 	client := api.New(attr.Secret, api.OptionAPIURL(s.slackURL))
 
 	var receiverIDs []string
@@ -125,12 +121,9 @@ func (s *Notifier) queueNotification(receiverIDs []string, oauthSecret string, a
 		}
 
 		evt := event{
-			authToken:     oauthSecret,
-			projectName:   attr.JobEvent.Tenant.ProjectName().String(),
-			namespaceName: attr.JobEvent.Tenant.NamespaceName().String(),
-			jobName:       attr.JobEvent.JobName.String(),
-			owner:         attr.Owner,
-			meta:          attr.JobEvent,
+			authToken: oauthSecret,
+			owner:     attr.Owner,
+			meta:      attr.JobEvent,
 		}
 		s.routeMsgBatch[rt] = append(s.routeMsgBatch[rt], evt)
 	}
@@ -144,12 +137,14 @@ func buildMessageBlocks(events []event, workerErrChan chan error) []api.Block {
 	// core details related to event
 	for evtIdx, evt := range events {
 		fieldSlice := make([]*api.TextBlockObject, 0)
-		fieldSlice = append(fieldSlice, api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Job:*\n%s", evt.jobName), false, false))
+		fieldSlice = append(fieldSlice, api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Job:*\n%s", evt.meta.JobName), false, false))
 		fieldSlice = append(fieldSlice, api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Owner:*\n%s", evt.owner), false, false))
 
+		projectName := evt.meta.Tenant.ProjectName().String()
+		namespaceName := evt.meta.Tenant.NamespaceName().String()
 		if evt.meta.Type.IsOfType(scheduler.EventCategorySLAMiss) {
 			heading := api.NewTextBlockObject("plain_text",
-				fmt.Sprintf("[Job] SLA Breached | %s/%s", evt.projectName, evt.namespaceName), true, false)
+				fmt.Sprintf("[Job] SLA Breached | %s/%s", projectName, namespaceName), true, false)
 			blocks = append(blocks, api.NewHeaderBlock(heading))
 
 			if slas, ok := evt.meta.Values["slas"]; ok {
@@ -177,7 +172,7 @@ func buildMessageBlocks(events []event, workerErrChan chan error) []api.Block {
 			}
 		} else if evt.meta.Type.IsOfType(scheduler.EventCategoryJobFailure) {
 			heading := api.NewTextBlockObject("plain_text",
-				fmt.Sprintf("[Job] Failure | %s/%s", evt.projectName, evt.namespaceName), true, false)
+				fmt.Sprintf("[Job] Failure | %s/%s", projectName, namespaceName), true, false)
 			blocks = append(blocks, api.NewHeaderBlock(heading))
 
 			if scheduledAt, ok := evt.meta.Values["scheduled_at"]; ok && scheduledAt.(string) != "" {

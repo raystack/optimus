@@ -3,7 +3,6 @@ package dag
 import (
 	"bytes"
 	_ "embed"
-	"fmt"
 	"text/template"
 
 	"github.com/odpf/optimus/config"
@@ -50,7 +49,7 @@ func (c *Compiler) Compile(jobDetails *scheduler.JobWithDetails) ([]byte, error)
 		JobDetails:      jobDetails,
 		Tenant:          jobDetails.Job.Tenant,
 		Version:         config.BuildVersion,
-		SlaMissDuration: slaDuration,
+		SLAMissDuration: slaDuration,
 		Hostname:        c.hostname,
 		ExecutorTask:    scheduler.ExecutorTask,
 		ExecutorHook:    scheduler.ExecutorHook,
@@ -63,7 +62,6 @@ func (c *Compiler) Compile(jobDetails *scheduler.JobWithDetails) ([]byte, error)
 
 	var buf bytes.Buffer
 	if err = c.template.Execute(&buf, templateContext); err != nil {
-		fmt.Println(err)
 		return nil, errors.InternalError(EntitySchedulerAirflow, "unable to compile template for job "+jobDetails.Name.String(), err)
 	}
 
@@ -77,7 +75,6 @@ func NewDagCompiler(hostname string, repo PluginRepo) (*Compiler, error) {
 
 	tmpl, err := template.New("optimus_dag_compiler").Funcs(OptimusFuncMap()).Parse(string(dagTemplate))
 	if err != nil {
-		fmt.Println(err)
 		return nil, errors.InternalError(EntitySchedulerAirflow, "unable to parse scheduler dag template", err)
 	}
 

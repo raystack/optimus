@@ -33,7 +33,6 @@ func (s JobRunService) UploadToScheduler(ctx context.Context, projectName tenant
 }
 
 func (s JobRunService) deployJobsPerNamespace(ctx context.Context, t tenant.Tenant, jobs []*scheduler.JobWithDetails) error {
-
 	err := s.scheduler.DeployJobs(ctx, t, jobs)
 	if err != nil {
 		return err
@@ -42,7 +41,6 @@ func (s JobRunService) deployJobsPerNamespace(ctx context.Context, t tenant.Tena
 }
 
 func (s JobRunService) cleanPerNamespace(ctx context.Context, t tenant.Tenant, jobs []*scheduler.JobWithDetails) error {
-
 	// get all stored job names
 	schedulerJobNames, err := s.scheduler.ListJobs(ctx, t)
 	if err != nil {

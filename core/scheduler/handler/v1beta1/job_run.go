@@ -92,7 +92,7 @@ func (h JobRunHandler) JobRun(ctx context.Context, req *pb.JobRunRequest) (*pb.J
 	jobRuns, err = h.service.GetJobRuns(ctx, projectName, jobName, criteria) // TODO: return not found if not runs found
 	if err != nil {
 		if errors.IsErrorType(err, errors.ErrNotFound) {
-			// todo:
+			return &pb.JobRunResponse{}, nil //todo: need strict review
 		}
 		return nil, errors.GRPCErr(err, "unable to get job run for "+req.GetJobName())
 	}
@@ -138,7 +138,10 @@ func (h JobRunHandler) UploadToScheduler(ctx context.Context, req *pb.UploadToSc
 	if err != nil {
 		return nil, errors.GRPCErr(err, "unable to upload to scheduler for "+projectName.String())
 	}
-	return nil, nil
+	return &pb.UploadToSchedulerResponse{
+		Status:       true,
+		ErrorMessage: "",
+	}, nil
 }
 
 func (h JobRunHandler) RegisterEvent(ctx context.Context, req *pb.RegisterJobEventRequest) (*pb.RegisterJobEventResponse, error) {
@@ -172,7 +175,7 @@ func (h JobRunHandler) RegisterEvent(ctx context.Context, req *pb.RegisterJobEve
 		return nil, err
 	}
 
-	return nil, nil
+	return &pb.RegisterJobEventResponse{}, nil
 }
 
 func NewJobRunHandler(l log.Logger, service JobRunService, notifier Notifier) *JobRunHandler {

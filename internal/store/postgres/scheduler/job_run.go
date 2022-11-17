@@ -66,10 +66,10 @@ func (j *JobRunRepository) GetByID(ctx context.Context, id scheduler.JobRunID) (
 
 func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) (*scheduler.JobRun, error) {
 	var jobRun jobRun
-	getJobRunById := `SELECT ` + jobRunColumns + ` FROM job_run j 
+	getJobRunByID := `SELECT ` + jobRunColumns + ` FROM job_run j 
 						where project_id = ? and namespace_id =?
 						job_name = ? and schedule_at = ?`
-	err := j.db.WithContext(ctx).Raw(getJobRunById, t.ProjectName(), t.NamespaceName(), jobName, scheduledAt).
+	err := j.db.WithContext(ctx).Raw(getJobRunByID, t.ProjectName(), t.NamespaceName(), jobName, scheduledAt).
 		Order(clause.OrderByColumn{Column: clause.Column{Name: "created_at"}, Desc: true}).
 		First(&jobRun).Error
 	if err != nil {

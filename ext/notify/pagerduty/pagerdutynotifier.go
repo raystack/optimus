@@ -43,12 +43,9 @@ type Notifier struct {
 }
 
 type Event struct {
-	routingKey    string
-	projectName   string
-	namespaceName string
-	jobName       string
-	owner         string
-	meta          scheduler.Event
+	routingKey string
+	owner      string
+	meta       scheduler.Event
 }
 
 func (s *Notifier) Notify(_ context.Context, attr scheduler.NotifyAttrs) error {
@@ -60,12 +57,9 @@ func (s *Notifier) queueNotification(routingKey string, attr scheduler.NotifyAtt
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	evt := Event{
-		routingKey:    routingKey,
-		projectName:   attr.JobEvent.Tenant.ProjectName().String(),
-		namespaceName: attr.JobEvent.Tenant.NamespaceName().String(),
-		jobName:       attr.JobEvent.JobName.String(),
-		owner:         attr.Owner,
-		meta:          attr.JobEvent,
+		routingKey: routingKey,
+		owner:      attr.Owner,
+		meta:       attr.JobEvent,
 	}
 	s.msgQueue = append(s.msgQueue, evt)
 	pagerdutyQueueCounter.Inc()

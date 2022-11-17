@@ -29,8 +29,8 @@ type JobRunRepository interface {
 }
 
 type OperatorRunRepository interface {
-	GetOperatorRun(ctx context.Context, operator scheduler.OperatorType, jobRunId uuid.UUID) (*scheduler.OperatorRun, error)
-	CreateOperatorRun(ctx context.Context, operator scheduler.OperatorType, jobRunID uuid.UUID, startTime time.Time) error
+	GetOperatorRun(ctx context.Context, operatorName string, operator scheduler.OperatorType, jobRunID uuid.UUID) (*scheduler.OperatorRun, error)
+	CreateOperatorRun(ctx context.Context, operatorName string, operator scheduler.OperatorType, jobRunID uuid.UUID, startTime time.Time) error
 	UpdateOperatorRun(ctx context.Context, operator scheduler.OperatorType, jobRunID uuid.UUID, eventTime time.Time, state string) error
 }
 type JobInputCompiler interface {
@@ -87,6 +87,9 @@ func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proje
 
 func (s JobRunService) GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName, criteria *scheduler.JobRunsCriteria) ([]*scheduler.JobRunStatus, error) {
 	jobWithDetails, err := s.jobRepo.GetJobDetails(ctx, projectName, jobName)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get job details from DB for jobName: %s, project:%s,  error:%w ", jobName, projectName, err)
+	}
 	interval := jobWithDetails.Schedule.Interval
 	if interval == "" {
 		return nil, fmt.Errorf("job interval not found at DB")
@@ -225,23 +228,23 @@ func (s JobRunService) updateJobRun(ctx context.Context, event scheduler.Event) 
 		event.JobName,
 		scheduledAtTimeStamp)
 	if err != nil {
-		if errors.IsErrorType(err, errors.ErrNotFound) {
-			err = s.registerNewJobRun(ctx, event)
-			if err != nil {
-				return err
-			}
-			jobRun, err = s.repo.GetByScheduledAt(ctx,
-				event.Tenant,
-				event.JobName,
-				scheduledAtTimeStamp)
-			if err != nil {
-				return err
-			}
+		if !errors.IsErrorType(err, errors.ErrNotFound) {
+			return err
 		}
-		return err
+		err = s.registerNewJobRun(ctx, event)
+		if err != nil {
+			return err
+		}
+		jobRun, err = s.repo.GetByScheduledAt(ctx,
+			event.Tenant,
+			event.JobName,
+			scheduledAtTimeStamp)
+		if err != nil {
+			return err
+		} // todo: ask sandeep should this be done
 	}
 	jobRunStatus := event.Values["status"].(string)
-	endTime := time.Unix(int64(event.Values["event_time"].(int64)), 0)
+	endTime := time.Unix(event.Values["event_time"].(int64), 0)
 
 	return s.repo.Update(ctx,
 		jobRun.ID,
@@ -265,8 +268,9 @@ func (s JobRunService) createOperatorRun(ctx context.Context, event scheduler.Ev
 	}
 
 	startedAtTimeStamp := time.Unix(int64(event.Values["event_time"].(int64)), 0)
+	operatorName := event.Values[scheduler.OperatorNameKey].(string)
 
-	operatorRun, err := s.operatorRunRepo.GetOperatorRun(ctx, operatorType, jobRun.ID)
+	operatorRun, err := s.operatorRunRepo.GetOperatorRun(ctx, operatorName, operatorType, jobRun.ID)
 	if err == nil {
 		if !errors.IsErrorType(err, errors.ErrNotFound) {
 			return err
@@ -279,6 +283,7 @@ func (s JobRunService) createOperatorRun(ctx context.Context, event scheduler.Ev
 	}
 
 	return s.operatorRunRepo.CreateOperatorRun(ctx,
+		operatorName,
 		operatorType,
 		jobRun.ID,
 		startedAtTimeStamp)
@@ -296,13 +301,14 @@ func (s JobRunService) updateOperatorRun(ctx context.Context, event scheduler.Ev
 	if err != nil {
 		return err
 	}
-	operatorRun, err := s.operatorRunRepo.GetOperatorRun(ctx, operatorType, jobRun.ID)
+	operatorName := event.Values[scheduler.OperatorNameKey].(string)
+	operatorRun, err := s.operatorRunRepo.GetOperatorRun(ctx, operatorName, operatorType, jobRun.ID)
 	if err != nil {
 		return err
 		//	todo: should i create a new operator run row here @sandeep
 	}
 	status := event.Values["status"].(string)
-	endTime := time.Unix(int64(event.Values["event_time"].(int64)), 0)
+	endTime := time.Unix(event.Values["event_time"].(int64), 0)
 
 	return s.operatorRunRepo.UpdateOperatorRun(ctx,
 		operatorType,
@@ -331,5 +337,17 @@ func (s JobRunService) UpdateJobState(ctx context.Context, event scheduler.Event
 		return s.updateOperatorRun(ctx, event, scheduler.OperatorHook)
 	default:
 		return errors.InvalidArgument(scheduler.EntityEvent, "invalid event type: "+string(event.Type))
+	}
+}
+
+func NewJobRunService(logger log.Logger, jobRepo JobRepository, scheduler Scheduler) *JobRunService {
+	return &JobRunService{
+		l:                logger,
+		repo:             nil,
+		operatorRunRepo:  nil,
+		scheduler:        scheduler,
+		jobRepo:          jobRepo,
+		priorityResolver: nil,
+		compiler:         nil,
 	}
 }

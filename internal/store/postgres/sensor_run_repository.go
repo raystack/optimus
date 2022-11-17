@@ -16,8 +16,7 @@ import (
 type SensorRun struct {
 	SensorRunID uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
 
-	JobRunID   uuid.UUID
-	sensorName string //  TODO: add sensor names
+	JobRunID uuid.UUID
 
 	StartTime time.Time `gorm:"not null"`
 	EndTime   time.Time

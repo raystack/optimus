@@ -38,8 +38,10 @@ const (
 	SensorFailEvent    JobEventType = "sensor_fail"
 	SensorSuccessEvent JobEventType = "sensor_success"
 
-	JobRetryEvent JobEventType = "retry"
+	// JobRetryEvent JobEventType = "retry"
 	// todo: check if this is being used
+
+	OperatorNameKey = "task_id"
 )
 
 func FromStringToEventType(name string) (JobEventType, error) {

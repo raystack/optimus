@@ -1,10 +1,6 @@
 package job
 
 import (
-	"context"
-	"fmt"
-	"strings"
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -28,39 +24,6 @@ type eventService struct {
 	// scheme -> notifier
 	notifyChannels map[string]models.Notifier
 	log            log.Logger
-}
-
-func (e *eventService) Register(ctx context.Context, namespace models.NamespaceSpec, jobSpec models.JobSpec,
-	evt models.JobEvent) error {
-	var err error
-	for _, notify := range jobSpec.Behavior.Notify {
-		if evt.Type.IsOfType(notify.On) {
-			for _, channel := range notify.Channels {
-				chanParts := strings.Split(channel, "://")
-				scheme := chanParts[0]
-				route := chanParts[1]
-
-				e.log.Debug("notification event for job", "job spec name", jobSpec.Name, "event", fmt.Sprintf("%v", evt))
-				if notifyChannel, ok := e.notifyChannels[scheme]; ok {
-					if currErr := notifyChannel.Notify(ctx, models.NotifyAttrs{
-						Namespace: namespace,
-						JobSpec:   jobSpec,
-						JobEvent:  evt,
-						Route:     route,
-					}); currErr != nil {
-						e.log.Error("Error: No notification event for job ", "current error", currErr)
-						err = multierror.Append(err, fmt.Errorf("notifyChannel.Notify: %s: %w", channel, currErr))
-					}
-				}
-			}
-		}
-	}
-	if evt.Type == models.JobFailureEvent {
-		jobFailureCounter.Inc()
-	} else if evt.Type == models.SLAMissEvent {
-		jobSLAMissCounter.Inc()
-	}
-	return err
 }
 
 func (e *eventService) Close() error {

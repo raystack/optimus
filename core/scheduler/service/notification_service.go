@@ -43,7 +43,6 @@ type NotifyService struct {
 }
 
 func (n NotifyService) Push(ctx context.Context, event scheduler.Event) error {
-
 	jobDetails, err := n.jobRepo.GetJobDetails(ctx, event.Tenant.ProjectName(), event.JobName)
 	notificationConfig := jobDetails.Alerts
 	for _, notify := range notificationConfig {
