@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/handler/v1beta1"
@@ -539,6 +541,55 @@ func TestNewJobHandler(t *testing.T) {
 			resp, err := jobHandler.DeleteJobSpecification(ctx, request)
 			assert.Error(t, err)
 			assert.Nil(t, resp)
+		})
+	})
+	t.Run("GetWindow", func(t *testing.T) {
+		t.Run("returns error if sheduleAt is not valid", func(t *testing.T) {
+			req := &pb.GetWindowRequest{
+				ScheduledAt: nil,
+			}
+			jobHandler := v1beta1.NewJobHandler(nil)
+
+			resp, err := jobHandler.GetWindow(ctx, req)
+			assert.Error(t, err)
+			assert.Nil(t, resp)
+		})
+		t.Run("returns error if version is not valid", func(t *testing.T) {
+			req := &pb.GetWindowRequest{
+				Version:     3,
+				ScheduledAt: timestamppb.New(time.Date(2022, 11, 18, 13, 0, 0, 0, time.UTC)),
+			}
+			jobHandler := v1beta1.NewJobHandler(nil)
+
+			resp, err := jobHandler.GetWindow(ctx, req)
+			assert.Error(t, err)
+			assert.Nil(t, resp)
+		})
+		t.Run("returns error if window is not valid", func(t *testing.T) {
+			req := &pb.GetWindowRequest{
+				Version:     2,
+				ScheduledAt: timestamppb.New(time.Date(2022, 11, 18, 13, 0, 0, 0, time.UTC)),
+				Size:        "1",
+			}
+			jobHandler := v1beta1.NewJobHandler(nil)
+
+			resp, err := jobHandler.GetWindow(ctx, req)
+			assert.Error(t, err)
+			assert.Nil(t, resp)
+		})
+		t.Run("returns dstart and dend", func(t *testing.T) {
+			req := &pb.GetWindowRequest{
+				Version:     2,
+				ScheduledAt: timestamppb.New(time.Date(2022, 11, 18, 13, 0, 0, 0, time.UTC)),
+				Size:        "24h",
+				Offset:      "0",
+				TruncateTo:  "d",
+			}
+			jobHandler := v1beta1.NewJobHandler(nil)
+
+			resp, err := jobHandler.GetWindow(ctx, req)
+			assert.NoError(t, err)
+			assert.NotNil(t, resp)
 		})
 	})
 }
