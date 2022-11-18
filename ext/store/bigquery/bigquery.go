@@ -2,7 +2,9 @@ package bigquery
 
 import (
 	"context"
+	"time"
 
+	bq "cloud.google.com/go/bigquery"
 	"github.com/kushsharma/parallel"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
@@ -24,6 +26,13 @@ type ResourceHandle interface {
 	Create(ctx context.Context, res *resource.Resource) error
 	Update(ctx context.Context, res *resource.Resource) error
 	Exists(ctx context.Context) bool
+}
+
+type TableResourceHandle interface {
+	ResourceHandle
+	GetBQTable() (*bq.Table, error)
+	GetCopier(destination TableResourceHandle) (TableCopier, error)
+	UpdateExpiry(ctx context.Context, name string, expiry time.Time) error
 }
 
 type Client interface {

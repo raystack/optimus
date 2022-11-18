@@ -91,18 +91,18 @@ func TestBatches(t *testing.T) {
 		assert.Nil(t, resErr)
 		successTab2 := resource.FromExisting(tab2, resource.ReplaceStatus(resource.StatusSuccess))
 
-		datasetHandle := new(mockResourceHandle)
+		datasetHandle := new(mockTableResourceHandle)
 		datasetHandle.On("Exists", ctx).Return(true)
 		datasetHandle.On("Update", ctx, mock.Anything).Return(nil)
 		defer datasetHandle.AssertExpectations(t)
 
-		tableHandle := new(mockResourceHandle)
+		tableHandle := new(mockTableResourceHandle)
 		tableHandle.On("Exists", ctx).Return(false)
 		tableHandle.On("Create", ctx, createTab1).Return(nil)
 		tableHandle.On("Update", ctx, updateTab1).Return(nil)
 		defer tableHandle.AssertExpectations(t)
 
-		viewHandle := new(mockResourceHandle)
+		viewHandle := new(mockTableResourceHandle)
 		viewHandle.On("Exists", ctx).Return(false)
 		viewHandle.On("Create", ctx, createView1).Return(errors.InternalError("view1", "some err", nil))
 		viewHandle.On("Update", ctx, updateView1).Return(nil)
@@ -110,7 +110,7 @@ func TestBatches(t *testing.T) {
 		viewHandle.On("Update", ctx, updateView2).Return(nil)
 		defer viewHandle.AssertExpectations(t)
 
-		extTableHandle := new(mockResourceHandle)
+		extTableHandle := new(mockTableResourceHandle)
 		extTableHandle.On("Update", ctx, updateExt1).Return(errors.InternalError("ext1", "err", nil))
 		extTableHandle.On("Exists", ctx).Return(true)
 		defer extTableHandle.AssertExpectations(t)

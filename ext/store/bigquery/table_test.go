@@ -267,6 +267,92 @@ func TestTableHandle(t *testing.T) {
 			assert.Nil(t, err)
 		})
 	})
+	t.Run("GetCopier", func(t *testing.T) {
+		t.Run("returns error when destination is nil", func(t *testing.T) {
+			table := new(mockBigQueryTable)
+			tHandle := bigquery.NewTableHandle(table)
+
+			_, err := tHandle.GetCopier(nil)
+			assert.Error(t, err)
+			assert.EqualError(t, err, "invalid argument for entity resource_table: destination handle is nil")
+		})
+		t.Run("returns error when destination is not table", func(t *testing.T) {
+			mockTable1 := new(mockBigQueryTable)
+			dest := bigquery.NewTableHandle(mockTable1)
+
+			table := new(mockBigQueryTable)
+			tHandle := bigquery.NewTableHandle(table)
+
+			_, err := tHandle.GetCopier(dest)
+			assert.Error(t, err)
+			assert.EqualError(t, err, "internal error for entity resource_table: not able to create bigquery destination table")
+		})
+		t.Run("returns the table copier", func(t *testing.T) {
+			table1 := &bq.Table{
+				ProjectID: "test",
+				DatasetID: "backup",
+				TableID:   "backup_table",
+			}
+			dest := bigquery.NewTableHandle(table1)
+
+			table := new(mockBigQueryTable)
+			table.On("CopierFrom", []*bq.Table{table1}).Return(&bq.Copier{})
+			tHandle := bigquery.NewTableHandle(table)
+
+			copier, err := tHandle.GetCopier(dest)
+			assert.Nil(t, err)
+			assert.NotNil(t, copier)
+		})
+	})
+	t.Run("UpdateExpiry", func(t *testing.T) {
+		t.Run("returns error when table not found", func(t *testing.T) {
+			bqErr := &googleapi.Error{Code: 404}
+			table := new(mockBigQueryTable)
+			table.On("Update", ctx, mock.Anything, "").Return(nil, bqErr)
+			defer table.AssertExpectations(t)
+
+			tHandle := bigquery.NewTableHandle(table)
+
+			tableName := "proj.dataset.table1"
+			expiry := time.Now().AddDate(0, 3, 0)
+
+			err := tHandle.UpdateExpiry(ctx, tableName, expiry)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "not found for entity resource_table: failed to update table in "+
+				"bigquery for proj.dataset.table1")
+		})
+		t.Run("returns error when error during update", func(t *testing.T) {
+			table := new(mockBigQueryTable)
+			table.On("Update", ctx, mock.Anything, "").Return(nil, errors.New("some error"))
+			defer table.AssertExpectations(t)
+
+			tHandle := bigquery.NewTableHandle(table)
+
+			tableName := "proj.dataset.table1"
+			expiry := time.Now().AddDate(0, 3, 0)
+
+			err := tHandle.UpdateExpiry(ctx, tableName, expiry)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "internal error for entity resource_table: failed to update table on "+
+				"bigquery for proj.dataset.table1")
+		})
+		t.Run("updates the expiry successfully", func(t *testing.T) {
+			meta := &bq.TableMetadata{
+				Description: "test update",
+			}
+			table := new(mockBigQueryTable)
+			table.On("Update", ctx, mock.Anything, "").Return(meta, nil)
+			defer table.AssertExpectations(t)
+
+			tHandle := bigquery.NewTableHandle(table)
+
+			tableName := "proj.dataset.table1"
+			expiry := time.Now().AddDate(0, 3, 0)
+
+			err := tHandle.UpdateExpiry(ctx, tableName, expiry)
+			assert.Nil(t, err)
+		})
+	})
 	t.Run("Exists", func(t *testing.T) {
 		t.Run("returns false when error in getting metadata", func(t *testing.T) {
 			table := new(mockBigQueryTable)
@@ -319,4 +405,9 @@ func (m *mockBigQueryTable) Metadata(ctx context.Context) (*bq.TableMetadata, er
 		tm = args.Get(0).(*bq.TableMetadata)
 	}
 	return tm, args.Error(1)
+}
+
+func (m *mockBigQueryTable) CopierFrom(srcs ...*bq.Table) *bq.Copier {
+	args := m.Called(srcs)
+	return args.Get(0).(*bq.Copier)
 }
