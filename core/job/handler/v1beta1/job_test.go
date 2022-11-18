@@ -11,6 +11,7 @@ import (
 
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/handler/v1beta1"
+	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
@@ -577,6 +578,66 @@ func (_m *JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobNa
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, tenant.Tenant, job.Name, bool, bool) error); ok {
 		r1 = rf(ctx, jobTenant, jobName, cleanFlag, forceFlag)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Get provides a mock function with given fields: ctx, filters
+func (_m *JobService) Get(ctx context.Context, filters ...filter.FilterOpt) (*job.Spec, error) {
+	_va := make([]interface{}, len(filters))
+	for _i := range filters {
+		_va[_i] = filters[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 *job.Spec
+	if rf, ok := ret.Get(0).(func(context.Context, ...filter.FilterOpt) *job.Spec); ok {
+		r0 = rf(ctx, filters...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*job.Spec)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, ...filter.FilterOpt) error); ok {
+		r1 = rf(ctx, filters...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetAll provides a mock function with given fields: ctx, filters
+func (_m *JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) ([]*job.Spec, error) {
+	_va := make([]interface{}, len(filters))
+	for _i := range filters {
+		_va[_i] = filters[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 []*job.Spec
+	if rf, ok := ret.Get(0).(func(context.Context, ...filter.FilterOpt) []*job.Spec); ok {
+		r0 = rf(ctx, filters...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*job.Spec)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, ...filter.FilterOpt) error); ok {
+		r1 = rf(ctx, filters...)
 	} else {
 		r1 = ret.Error(1)
 	}
