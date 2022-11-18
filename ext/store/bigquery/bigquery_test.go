@@ -515,6 +515,72 @@ func TestBigqueryStore(t *testing.T) {
 			assert.Nil(t, err)
 		})
 	})
+	t.Run("Backup", func(t *testing.T) {
+		createdAt := time.Date(2022, 11, 18, 1, 0, 0, 0, time.UTC)
+		backup, backupErr := resource.NewBackup(store, tnnt, []string{"p.d.t"}, "", createdAt, nil)
+		assert.NoError(t, backupErr)
+
+		t.Run("returns error when cannot get secret", func(t *testing.T) {
+			secretProvider := new(mockSecretProvider)
+			secretProvider.On("GetSecret", mock.Anything, tnnt, "DATASTORE_BIGQUERY").
+				Return(nil, errors.New("not found secret"))
+			defer secretProvider.AssertExpectations(t)
+
+			clientProvider := new(mockClientProvider)
+			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
+
+			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, store, tnnt, &metadata, spec)
+			assert.Nil(t, err)
+
+			_, err = bqStore.Backup(ctx, backup, []*resource.Resource{dataset})
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "not found secret")
+		})
+		t.Run("returns error when cannot create client", func(t *testing.T) {
+			pts, _ := tenant.NewPlainTextSecret("secret_name", "secret_value")
+			secretProvider := new(mockSecretProvider)
+			secretProvider.On("GetSecret", mock.Anything, tnnt, "DATASTORE_BIGQUERY").
+				Return(pts, nil)
+			defer secretProvider.AssertExpectations(t)
+
+			clientProvider := new(mockClientProvider)
+			clientProvider.On("Get", mock.Anything, "secret_value").Return(nil, errors.New("error in client"))
+			defer clientProvider.AssertExpectations(t)
+
+			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
+
+			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, store, tnnt, &metadata, spec)
+			assert.Nil(t, err)
+
+			_, err = bqStore.Backup(ctx, backup, []*resource.Resource{dataset})
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "error in client")
+		})
+		t.Run("calls backup resources to backup the resources", func(t *testing.T) {
+			pts, _ := tenant.NewPlainTextSecret("secret_name", "secret_value")
+			secretProvider := new(mockSecretProvider)
+			secretProvider.On("GetSecret", mock.Anything, tnnt, "DATASTORE_BIGQUERY").
+				Return(pts, nil)
+			defer secretProvider.AssertExpectations(t)
+
+			client := new(mockClient)
+			client.On("Close")
+			defer client.AssertExpectations(t)
+
+			clientProvider := new(mockClientProvider)
+			clientProvider.On("Get", mock.Anything, "secret_value").Return(client, nil)
+			defer clientProvider.AssertExpectations(t)
+
+			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
+
+			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, store, tnnt, &metadata, spec)
+			assert.Nil(t, err)
+
+			result, err := bqStore.Backup(ctx, backup, []*resource.Resource{dataset})
+			assert.NoError(t, err)
+			assert.Equal(t, 1, len(result.IgnoredResources))
+		})
+	})
 	t.Run("Exist", func(t *testing.T) {
 		t.Run("returns error when secret is not provided", func(t *testing.T) {
 			secretProvider := new(mockSecretProvider)

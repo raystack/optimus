@@ -20,6 +20,9 @@ func BackupIDFrom(id string) (BackupID, error) {
 	if err != nil {
 		return BackupID(uuid.Nil), errors.InvalidArgument(EntityBackup, "invalid id for backup "+id)
 	}
+	if parsedID == uuid.Nil {
+		return BackupID(uuid.Nil), errors.InvalidArgument(EntityBackup, "nil id for backup "+id)
+	}
 
 	return BackupID(parsedID), nil
 }
@@ -68,6 +71,10 @@ func NewBackup(store Store, t tenant.Tenant, resNames []string, desc string, cre
 		if resourceName == "" {
 			return nil, errors.InvalidArgument(EntityBackup, "one of resource names is empty")
 		}
+	}
+
+	if conf == nil {
+		conf = map[string]string{}
 	}
 
 	return &Backup{

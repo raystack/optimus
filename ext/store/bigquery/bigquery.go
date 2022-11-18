@@ -163,7 +163,18 @@ func (s Store) BatchUpdate(ctx context.Context, resources []*resource.Resource) 
 }
 
 func (s Store) Backup(ctx context.Context, backup *resource.Backup, resources []*resource.Resource) (*resource.BackupResult, error) {
-	return nil, nil
+	account, err := s.secretProvider.GetSecret(ctx, backup.Tenant(), accountKey)
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := s.clientProvider.Get(ctx, account.Value())
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
+	return BackupResources(ctx, backup, resources, client)
 }
 
 func (s Store) Exist(ctx context.Context, res *resource.Resource) (bool, error) {
