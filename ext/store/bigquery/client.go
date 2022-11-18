@@ -39,23 +39,23 @@ func NewClient(ctx context.Context, svcAccount string) (*BqClient, error) {
 	return &BqClient{bq: c}, nil
 }
 
-func (c *BqClient) DatasetHandleFrom(res *resource.Resource) ResourceHandle {
-	ds := c.bq.Dataset(res.Dataset().Schema)
+func (c *BqClient) DatasetHandleFrom(dataset resource.Dataset) ResourceHandle {
+	ds := c.bq.Dataset(dataset.Schema)
 	return NewDatasetHandle(ds)
 }
 
-func (c *BqClient) TableHandleFrom(res *resource.Resource) ResourceHandle {
-	t := c.bq.Dataset(res.Dataset().Schema).Table(res.Name().String())
+func (c *BqClient) TableHandleFrom(dataset resource.Dataset, name resource.Name) TableResourceHandle {
+	t := c.bq.Dataset(dataset.Schema).Table(name.String())
 	return NewTableHandle(t)
 }
 
-func (c *BqClient) ExternalTableHandleFrom(res *resource.Resource) ResourceHandle {
-	t := c.bq.Dataset(res.Dataset().Schema).Table(res.Name().String())
+func (c *BqClient) ExternalTableHandleFrom(dataset resource.Dataset, name resource.Name) ResourceHandle {
+	t := c.bq.Dataset(dataset.Schema).Table(name.String())
 	return NewExternalTableHandle(t)
 }
 
-func (c *BqClient) ViewHandleFrom(res *resource.Resource) ResourceHandle {
-	t := c.bq.Dataset(res.Dataset().Schema).Table(res.Name().String())
+func (c *BqClient) ViewHandleFrom(dataset resource.Dataset, name resource.Name) ResourceHandle {
+	t := c.bq.Dataset(dataset.Schema).Table(name.String())
 	return NewViewHandle(t)
 }
 

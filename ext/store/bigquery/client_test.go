@@ -54,7 +54,7 @@ func TestBqClient(t *testing.T) {
 			dataset, err := resource.NewResource(fullName, resource.KindDataset, bq, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
-			handle := c.DatasetHandleFrom(dataset)
+			handle := c.DatasetHandleFrom(dataset.Dataset())
 			assert.NotNil(t, handle)
 		})
 	})
@@ -67,7 +67,7 @@ func TestBqClient(t *testing.T) {
 			table, err := resource.NewResource(fullName, resource.KindTable, bq, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
-			handle := c.TableHandleFrom(table)
+			handle := c.TableHandleFrom(table.Dataset(), table.Name())
 			assert.NotNil(t, handle)
 		})
 	})
@@ -80,7 +80,7 @@ func TestBqClient(t *testing.T) {
 			extTable, err := resource.NewResource(fullName, resource.KindView, bq, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
-			handle := c.ExternalTableHandleFrom(extTable)
+			handle := c.ExternalTableHandleFrom(extTable.Dataset(), extTable.Name())
 			assert.NotNil(t, handle)
 		})
 	})
@@ -93,7 +93,7 @@ func TestBqClient(t *testing.T) {
 			view, err := resource.NewResource(fullName, resource.KindView, bq, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
-			handle := c.ViewHandleFrom(view)
+			handle := c.ViewHandleFrom(view.Dataset(), view.Name())
 			assert.NotNil(t, handle)
 		})
 	})

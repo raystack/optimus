@@ -27,10 +27,10 @@ type ResourceHandle interface {
 }
 
 type Client interface {
-	DatasetHandleFrom(*resource.Resource) ResourceHandle
-	ExternalTableHandleFrom(*resource.Resource) ResourceHandle
-	TableHandleFrom(*resource.Resource) ResourceHandle
-	ViewHandleFrom(*resource.Resource) ResourceHandle
+	DatasetHandleFrom(dataset resource.Dataset) ResourceHandle
+	TableHandleFrom(dataset resource.Dataset, name resource.Name) TableResourceHandle
+	ExternalTableHandleFrom(dataset resource.Dataset, name resource.Name) ResourceHandle
+	ViewHandleFrom(dataset resource.Dataset, name resource.Name) ResourceHandle
 	Close()
 }
 
@@ -64,19 +64,19 @@ func (s Store) Create(ctx context.Context, res *resource.Resource) error {
 
 	switch res.Kind() {
 	case resource.KindDataset:
-		handle := client.DatasetHandleFrom(res)
+		handle := client.DatasetHandleFrom(res.Dataset())
 		return handle.Create(spanCtx, res)
 
 	case resource.KindTable:
-		handle := client.TableHandleFrom(res)
+		handle := client.TableHandleFrom(res.Dataset(), res.Name())
 		return handle.Create(spanCtx, res)
 
 	case resource.KindExternalTable:
-		handle := client.ExternalTableHandleFrom(res)
+		handle := client.ExternalTableHandleFrom(res.Dataset(), res.Name())
 		return handle.Create(spanCtx, res)
 
 	case resource.KindView:
-		handle := client.ViewHandleFrom(res)
+		handle := client.ViewHandleFrom(res.Dataset(), res.Name())
 		return handle.Create(spanCtx, res)
 
 	default:
@@ -101,19 +101,19 @@ func (s Store) Update(ctx context.Context, res *resource.Resource) error {
 
 	switch res.Kind() {
 	case resource.KindDataset:
-		handle := client.DatasetHandleFrom(res)
+		handle := client.DatasetHandleFrom(res.Dataset())
 		return handle.Update(spanCtx, res)
 
 	case resource.KindTable:
-		handle := client.TableHandleFrom(res)
+		handle := client.TableHandleFrom(res.Dataset(), res.Name())
 		return handle.Update(spanCtx, res)
 
 	case resource.KindExternalTable:
-		handle := client.ExternalTableHandleFrom(res)
+		handle := client.ExternalTableHandleFrom(res.Dataset(), res.Name())
 		return handle.Update(spanCtx, res)
 
 	case resource.KindView:
-		handle := client.ViewHandleFrom(res)
+		handle := client.ViewHandleFrom(res.Dataset(), res.Name())
 		return handle.Update(spanCtx, res)
 
 	default:
@@ -174,16 +174,16 @@ func (s Store) Exist(ctx context.Context, res *resource.Resource) (bool, error) 
 
 	switch res.Kind() {
 	case resource.KindDataset:
-		handle := client.DatasetHandleFrom(res)
+		handle := client.DatasetHandleFrom(res.Dataset())
 		return handle.Exists(spanCtx), nil
 	case resource.KindTable:
-		handle := client.TableHandleFrom(res)
+		handle := client.TableHandleFrom(res.Dataset(), res.Name())
 		return handle.Exists(spanCtx), nil
 	case resource.KindExternalTable:
-		handle := client.ExternalTableHandleFrom(res)
+		handle := client.ExternalTableHandleFrom(res.Dataset(), res.Name())
 		return handle.Exists(spanCtx), nil
 	case resource.KindView:
-		handle := client.ViewHandleFrom(res)
+		handle := client.ViewHandleFrom(res.Dataset(), res.Name())
 		return handle.Exists(spanCtx), nil
 	default:
 		return false, errors.InvalidArgument(store, "invalid kind for bigquery resource "+res.Kind().String())

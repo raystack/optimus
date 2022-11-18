@@ -34,7 +34,7 @@ func (b *Batch) QueueJobs(ctx context.Context, account string, runner *parallel.
 
 	runner.Add(func(res *resource.Resource) func() (interface{}, error) {
 		return func() (interface{}, error) {
-			dsHandle := client.DatasetHandleFrom(res)
+			dsHandle := client.DatasetHandleFrom(res.Dataset())
 			err = createOrUpdate(ctx, dsHandle, res)
 			return res, err
 		}
@@ -43,7 +43,7 @@ func (b *Batch) QueueJobs(ctx context.Context, account string, runner *parallel.
 	for _, table := range b.Tables {
 		runner.Add(func(res *resource.Resource) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				handle := client.TableHandleFrom(res)
+				handle := client.TableHandleFrom(res.Dataset(), res.Name())
 				err = createOrUpdate(ctx, handle, res)
 				return res, err
 			}
@@ -53,7 +53,7 @@ func (b *Batch) QueueJobs(ctx context.Context, account string, runner *parallel.
 	for _, extTables := range b.ExternalTables {
 		runner.Add(func(res *resource.Resource) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				handle := client.ExternalTableHandleFrom(res)
+				handle := client.ExternalTableHandleFrom(res.Dataset(), res.Name())
 				err = createOrUpdate(ctx, handle, res)
 				return res, err
 			}
@@ -63,7 +63,7 @@ func (b *Batch) QueueJobs(ctx context.Context, account string, runner *parallel.
 	for _, view := range b.Views {
 		runner.Add(func(res *resource.Resource) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				handle := client.ViewHandleFrom(res)
+				handle := client.ViewHandleFrom(res.Dataset(), res.Name())
 				err = createOrUpdate(ctx, handle, res)
 				return res, err
 			}
