@@ -36,7 +36,7 @@ type ResourceURN string
 
 func ResourceURNFrom(resourceURN string) (ResourceURN, error) {
 	if resourceURN == "" {
-		return "", errors.InvalidArgument(EntityJob, "name is empty")
+		return "", errors.InvalidArgument(EntityJob, "resource urn is empty")
 	}
 	return ResourceURN(resourceURN), nil
 }
@@ -76,6 +76,14 @@ func (j Jobs) GetJobNames() []Name {
 		jobNames[i] = job.spec.Name()
 	}
 	return jobNames
+}
+
+func (j Jobs) GetNameAndSpecMap() map[Name]*Spec {
+	nameAndSpecMap := make(map[Name]*Spec, len(j))
+	for _, job := range j {
+		nameAndSpecMap[job.spec.Name()] = job.spec
+	}
+	return nameAndSpecMap
 }
 
 type WithUpstream struct {

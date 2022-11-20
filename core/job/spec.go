@@ -2,6 +2,7 @@ package job
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -109,6 +110,46 @@ func (s Spec) Validate() error {
 	return errors.MultiToError(me)
 }
 
+func (s Spec) IsEqual(otherSpec *Spec) bool {
+	if s.version != otherSpec.version {
+		return false
+	}
+	if s.name != otherSpec.name {
+		return false
+	}
+	if s.owner != otherSpec.owner {
+		return false
+	}
+	if !reflect.DeepEqual(s.schedule, otherSpec.schedule) {
+		return false
+	}
+	if !reflect.DeepEqual(s.window, otherSpec.window) {
+		return false
+	}
+	if !reflect.DeepEqual(s.task, otherSpec.task) {
+		return false
+	}
+	if s.description != otherSpec.description {
+		return false
+	}
+	if !reflect.DeepEqual(s.labels, otherSpec.labels) {
+		return false
+	}
+	if !reflect.DeepEqual(s.metadata, otherSpec.metadata) {
+		return false
+	}
+	if !reflect.DeepEqual(s.hooks, otherSpec.hooks) {
+		return false
+	}
+	if !reflect.DeepEqual(s.asset, otherSpec.asset) {
+		return false
+	}
+	if !reflect.DeepEqual(s.alerts, otherSpec.alerts) {
+		return false
+	}
+	return reflect.DeepEqual(s.upstream, otherSpec.upstream)
+}
+
 type SpecBuilder struct {
 	spec *Spec
 }
@@ -191,6 +232,16 @@ func (s *SpecBuilder) WithDescription(description string) *SpecBuilder {
 	return &SpecBuilder{
 		spec: &spec,
 	}
+}
+
+type Specs []*Spec
+
+func (s Specs) ToNameAndSpecMap() map[Name]*Spec {
+	nameAndSpecMap := make(map[Name]*Spec, len(s))
+	for _, spec := range s {
+		nameAndSpecMap[spec.Name()] = spec
+	}
+	return nameAndSpecMap
 }
 
 type Version int
