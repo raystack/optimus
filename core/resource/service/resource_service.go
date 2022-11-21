@@ -222,33 +222,33 @@ func (rs ResourceService) validateUpdate(ctx context.Context, incoming *resource
 		return errors.MultiToError(me)
 	}
 
-	existing, ok := fullNameToExistingResource[incoming.FullName()]
-	if !ok {
+	if existing, ok := fullNameToExistingResource[incoming.FullName()]; ok {
+		if existing.ExistInStore() {
+			incoming.MarkExistInStore()
+			incoming.ChangeStatusTo(resource.StatusToUpdate)
+			return errors.MultiToError(me)
+		}
+
+		existInStore, err := rs.mgr.Exist(ctx, existing)
+		if err != nil {
+			incoming.ChangeStatusTo(resource.StatusUpdateFailure)
+
+			msg := fmt.Sprintf("error checking resource [%s] in store [%s]", existing.FullName(), existing.Dataset().Store.String())
+			me.Append(errors.Wrap(resource.EntityResource, msg, err))
+			return errors.MultiToError(me)
+		}
+
+		if !existInStore {
+			incoming.ChangeStatusTo(resource.StatusUpdateFailure)
+
+			msg := fmt.Sprintf("resource [%s] is found in Optimus but not found in store [%s]", incoming.FullName(), incoming.Dataset().Store.String())
+			me.Append(errors.NotFound(resource.EntityResource, msg))
+			return errors.MultiToError(me)
+		}
+	} else {
 		incoming.ChangeStatusTo(resource.StatusUpdateFailure)
 
 		msg := fmt.Sprintf("resource [%s] does not exist in Optimus", incoming.FullName())
-		me.Append(errors.NotFound(resource.EntityResource, msg))
-		return errors.MultiToError(me)
-	}
-	if existing.ExistInStore() {
-		incoming.MarkExistInStore()
-		incoming.ChangeStatusTo(resource.StatusToUpdate)
-		return errors.MultiToError(me)
-	}
-
-	existInStore, err := rs.mgr.Exist(ctx, existing)
-	if err != nil {
-		incoming.ChangeStatusTo(resource.StatusUpdateFailure)
-
-		msg := fmt.Sprintf("error checking resource [%s] in store [%s]", existing.FullName(), existing.Dataset().Store.String())
-		me.Append(errors.Wrap(resource.EntityResource, msg, err))
-		return errors.MultiToError(me)
-	}
-
-	if !existInStore {
-		incoming.ChangeStatusTo(resource.StatusUpdateFailure)
-
-		msg := fmt.Sprintf("resource [%s] is found in Optimus but not found in store [%s]", incoming.FullName(), incoming.Dataset().Store.String())
 		me.Append(errors.NotFound(resource.EntityResource, msg))
 		return errors.MultiToError(me)
 	}
