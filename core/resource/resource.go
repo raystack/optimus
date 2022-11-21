@@ -205,39 +205,62 @@ func (r *Resource) Equal(incoming *Resource) bool {
 	return reflect.DeepEqual(r.metadata, incoming.metadata)
 }
 
-func (r *Resource) MarkToCreate() error {
+func (r *Resource) MarkValidationSuccess() error {
 	if r.status == StatusUnknown {
+		r.status = StatusValidationSuccess
+		return nil
+	}
+	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status [%s] is not allowed", r.FullName(), r.status, StatusValidationSuccess)
+	return errors.InvalidStateTransition(EntityResource, msg)
+}
+
+func (r *Resource) MarkValidationFailure() error {
+	if r.status == StatusUnknown {
+		r.status = StatusValidationFailure
+		return nil
+	}
+	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status [%s] is not allowed", r.FullName(), r.status, StatusValidationFailure)
+	return errors.InvalidStateTransition(EntityResource, msg)
+}
+
+func (r *Resource) MarkSkipped() error {
+	if r.status == StatusValidationSuccess {
+		r.status = StatusSkipped
+		return nil
+	}
+	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status [%s] is not allowed", r.FullName(), r.status, StatusSkipped)
+	return errors.InvalidStateTransition(EntityResource, msg)
+}
+
+func (r *Resource) MarkToCreate() error {
+	if r.status == StatusValidationSuccess {
 		r.status = StatusToCreate
 		return nil
 	}
-	msg := fmt.Sprintf("status transition for [%s] from [%s] to [%s] is not allowed", r.FullName(), r.status, StatusToCreate)
+	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status [%s] is not allowed", r.FullName(), r.status, StatusToCreate)
 	return errors.InvalidStateTransition(EntityResource, msg)
 }
 
 func (r *Resource) MarkToUpdate() error {
-	if r.status == StatusUnknown {
+	switch r.status {
+	case StatusSuccess, StatusValidationSuccess, StatusCreateFailure, StatusUpdateFailure:
 		r.status = StatusToUpdate
 		return nil
 	}
-	msg := fmt.Sprintf("status transition for [%s] from [%s] to [%s] is not allowed", r.FullName(), r.status, StatusToUpdate)
+	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status [%s] is not allowed", r.FullName(), r.status, StatusToUpdate)
 	return errors.InvalidStateTransition(EntityResource, msg)
 }
 
-func (r *Resource) MarkCreateFailure() error {
+func (r *Resource) MarkFailure() error {
 	switch r.status {
-	case StatusUnknown, StatusMarkExistInStore, StatusToCreate:
+	case StatusToCreate:
 		r.status = StatusCreateFailure
-	}
-	msg := fmt.Sprintf("status transition for [%s] from [%s] to [%s] is not allowed", r.FullName(), r.status, StatusCreateFailure)
-	return errors.InvalidStateTransition(EntityResource, msg)
-}
-
-func (r *Resource) MarkUpdateFailure() error {
-	switch r.status {
-	case StatusUnknown, StatusToUpdate:
+		return nil
+	case StatusToUpdate:
 		r.status = StatusUpdateFailure
+		return nil
 	}
-	msg := fmt.Sprintf("status transition for [%s] from [%s] to [%s] is not allowed", r.FullName(), r.status, StatusUpdateFailure)
+	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status failure is not allowed", r.FullName(), r.status)
 	return errors.InvalidStateTransition(EntityResource, msg)
 }
 
@@ -247,7 +270,7 @@ func (r *Resource) MarkSuccess() error {
 		r.status = StatusSuccess
 		return nil
 	}
-	msg := fmt.Sprintf("status transition for [%s] from [%s] to success is not allowed", r.FullName(), r.status)
+	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status success is not allowed", r.FullName(), r.status)
 	return errors.InvalidStateTransition(EntityResource, msg)
 }
 

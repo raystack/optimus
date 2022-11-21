@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/odpf/salt/log"
 
@@ -55,7 +56,7 @@ func (rs ResourceService) Create(ctx context.Context, res *resource.Resource) er
 		rs.logger.Error("error validating resource [%s]: %s", res.FullName(), err)
 		return err
 	}
-	res.MarkToCreate()
+	res.MarkValidationSuccess()
 
 	if _, err := rs.tnntDetailsGetter.GetDetails(ctx, res.Tenant()); err != nil {
 		rs.logger.Error("error getting tenant details: %s", err)
@@ -76,7 +77,7 @@ func (rs ResourceService) Update(ctx context.Context, res *resource.Resource) er
 		rs.logger.Error("error validating resource [%s]: %s", res.FullName(), err)
 		return err
 	}
-	res.MarkToUpdate()
+	res.MarkValidationSuccess()
 
 	if _, err := rs.repo.ReadByFullName(ctx, res.Tenant(), res.Dataset().Store, res.FullName()); err != nil {
 		rs.logger.Error("error getting stored resource [%s]: %s", res.FullName(), err)
@@ -106,6 +107,16 @@ func (rs ResourceService) GetAll(ctx context.Context, tnnt tenant.Tenant, store 
 
 func (rs ResourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
 	multiError := errors.NewMultiError("error batch updating resources")
+	for _, r := range resources {
+		if err := r.Validate(); err != nil {
+			msg := fmt.Sprintf("error validating [%s]: %s", r.FullName(), err)
+			multiError.Append(errors.Wrap(resource.EntityResource, msg, err))
+
+			rs.logger.Error(msg)
+		} else {
+			r.MarkValidationSuccess()
+		}
+	}
 
 	existingResources, err := rs.repo.ReadAll(ctx, tnnt, store)
 	if err != nil {
@@ -114,26 +125,41 @@ func (rs ResourceService) BatchUpdate(ctx context.Context, tnnt tenant.Tenant, s
 	}
 
 	existingMappedByFullName := rs.getResourcesMappedByFullName(existingResources)
-
-	for _, r := range resources {
-		if _, alreadyExist := existingMappedByFullName[r.FullName()]; alreadyExist {
-			if err := r.Validate(); err != nil {
-				r.MarkUpdateFailure()
-			} else {
-				r.MarkToUpdate()
-			}
-		} else {
-			if err := r.Validate(); err != nil {
-				r.MarkCreateFailure()
-			} else {
-				r.MarkToCreate()
-			}
-		}
+	resourcesToBatchUpdate := rs.getResourcesToBatchUpdate(resources, existingMappedByFullName)
+	if len(resourcesToBatchUpdate) == 0 {
+		rs.logger.Warn("no resources to be batch updated")
 	}
 
-	multiError.Append(rs.batch.CreateOrUpdateAll(ctx, resources))
-	multiError.Append(rs.mgr.BatchUpdate(ctx, store, resources))
+	multiError.Append(rs.batch.CreateOrUpdateAll(ctx, resourcesToBatchUpdate))
+	multiError.Append(rs.mgr.BatchUpdate(ctx, store, resourcesToBatchUpdate))
 	return errors.MultiToError(multiError)
+}
+
+func (rs ResourceService) getResourcesToBatchUpdate(incomings []*resource.Resource, existingMappedByFullName map[string]*resource.Resource) []*resource.Resource {
+	var output []*resource.Resource
+	for _, incoming := range incomings {
+		if incoming.Status() != resource.StatusValidationSuccess {
+			continue
+		}
+		if existing, ok := existingMappedByFullName[incoming.FullName()]; ok {
+			if incoming.Equal(existing) && existing.Status() == resource.StatusSuccess {
+				incoming.MarkSkipped()
+
+				rs.logger.Warn("resource [%s] is skipped because it has no changes", existing.FullName())
+			} else {
+				incoming.MarkToUpdate()
+				output = append(output, incoming)
+
+				rs.logger.Info("resource [%s] will be updated", existing.FullName())
+			}
+		} else {
+			incoming.MarkToCreate()
+			output = append(output, incoming)
+
+			rs.logger.Info("resource [%s] will be created", incoming.FullName())
+		}
+	}
+	return output
 }
 
 func (ResourceService) getResourcesMappedByFullName(resources []*resource.Resource) map[string]*resource.Resource {

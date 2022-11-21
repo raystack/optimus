@@ -20,6 +20,10 @@ import (
 )
 
 var (
+	totalSkippedBatchUpdateGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "resources_batch_update_skipped_total",
+		Help: "The total number of skipped resources in batch update",
+	})
 	totalSuccessBatchUpdateGauge = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "resources_batch_update_success_total",
 		Help: "The total number of failure resources in batch update",
@@ -95,11 +99,16 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 
 		err = rh.service.BatchUpdate(stream.Context(), tnnt, store, resourceSpecs)
 		successResources := getResourcesByStatuses(resourceSpecs, resource.StatusSuccess)
-		failureResources := getResourcesByStatuses(resourceSpecs, resource.StatusCreateFailure, resource.StatusUpdateFailure)
+		skippedResources := getResourcesByStatuses(resourceSpecs, resource.StatusSkipped)
+		failureResources := getResourcesByStatuses(resourceSpecs, resource.StatusCreateFailure, resource.StatusUpdateFailure, resource.StatusValidationFailure)
 
 		writeResourcesStatus(successResources, func(msg string) {
 			responseWriter.Write(writer.LogLevelInfo, msg)
 			rh.l.Info(msg)
+		})
+		writeResourcesStatus(skippedResources, func(msg string) {
+			responseWriter.Write(writer.LogLevelWarning, msg)
+			rh.l.Warn(msg)
 		})
 		writeResourcesStatus(failureResources, func(msg string) {
 			responseWriter.Write(writer.LogLevelError, msg)
@@ -116,6 +125,7 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 		responseWriter.Write(writer.LogLevelInfo, successMsg)
 
 		totalSuccessBatchUpdateGauge.Set(float64(len(successResources)))
+		totalSkippedBatchUpdateGauge.Set(float64(len(skippedResources)))
 		totalFailureBatchUpdateGauge.Set(float64(len(failureResources)))
 	}
 	rh.l.Info("Finished resource deployment in %v", time.Since(startTime))
