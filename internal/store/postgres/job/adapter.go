@@ -62,9 +62,9 @@ type Spec struct {
 }
 
 type Retry struct {
-	Count              int
-	Delay              int32
-	ExponentialBackoff bool
+	Count              int   `json:"count"`
+	Delay              int32 `json:"delay"`
+	ExponentialBackoff bool  `json:"exponential_backoff"`
 }
 
 type Alert struct {
@@ -194,7 +194,7 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		EndDate:   &endDate,
 		Interval:  jobSpec.Schedule().Interval(),
 
-		TaskName:   jobSpec.Name().String(),
+		TaskName:   jobSpec.Task().Name().String(),
 		TaskConfig: taskConfigBytes,
 
 		Hooks: hooksBytes,
@@ -315,16 +315,23 @@ func toConfig(configSpec *job.Config) ([]byte, error) {
 }
 
 func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
-	retry := &job.Retry{}
-	if err := json.Unmarshal(jobSpec.Retry, retry); err != nil {
-		return nil, err
-	}
-
 	startDate, err := job.ScheduleDateFrom(jobSpec.StartDate.Format(job.DateLayout))
 	if err != nil {
 		return nil, err
 	}
-	schedule, err := job.NewScheduleBuilder(startDate).Build()
+
+	scheduleBuilder := job.NewScheduleBuilder(startDate)
+
+	if jobSpec.Retry != nil {
+		var storageRetry Retry
+		if err := json.Unmarshal(jobSpec.Retry, &storageRetry); err != nil {
+			return nil, err
+		}
+		retry := job.NewRetry(storageRetry.Count, storageRetry.Delay, storageRetry.ExponentialBackoff)
+		scheduleBuilder = scheduleBuilder.WithRetry(retry)
+	}
+
+	schedule, err := scheduleBuilder.Build()
 	if err != nil {
 		return nil, err
 	}
@@ -339,9 +346,13 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 		return nil, err
 	}
 
-	taskConfig := &job.Config{}
-	if err := json.Unmarshal(jobSpec.TaskConfig, taskConfig); err != nil {
-		return nil, err
+	var taskConfig *job.Config
+	if jobSpec.TaskConfig != nil {
+		storageTaskConfig := &Config{}
+		if err := json.Unmarshal(jobSpec.TaskConfig, storageTaskConfig); err != nil {
+			return nil, err
+		}
+		taskConfig, err = job.NewConfig(storageTaskConfig.Configs)
 	}
 	taskName, err := job.TaskNameFrom(jobSpec.TaskName)
 	if err != nil {
@@ -349,7 +360,7 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 	}
 	task := job.NewTask(taskName, taskConfig)
 
-	labels := map[string]string{}
+	var labels map[string]string
 	if jobSpec.Labels != nil {
 		if err := json.Unmarshal(jobSpec.Labels, &labels); err != nil {
 			return nil, err
@@ -366,11 +377,14 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 		return nil, err
 	}
 
-	httpUpstreams := []*job.SpecHTTPUpstream{}
-	if err := json.Unmarshal(jobSpec.HTTPUpstreams, &httpUpstreams); err != nil {
-		return nil, err
+	var httpUpstreams []*job.SpecHTTPUpstream
+	if jobSpec.HTTPUpstreams != nil {
+		if err := json.Unmarshal(jobSpec.HTTPUpstreams, &httpUpstreams); err != nil {
+			return nil, err
+		}
 	}
-	upstreamNames := []job.SpecUpstreamName{}
+
+	var upstreamNames []job.SpecUpstreamName
 	for _, staticUpstream := range jobSpec.StaticUpstreams {
 		upstreamNames = append(upstreamNames, job.SpecUpstreamNameFrom(staticUpstream))
 	}
@@ -379,14 +393,31 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 		WithSpecHTTPUpstream(httpUpstreams).
 		Build()
 
-	assets, err := fromStorageAssets(jobSpec.Assets)
-	if err != nil {
-		return nil, err
+	var assets map[string]string
+	if jobSpec.Assets != nil {
+		assets, err = fromStorageAssets(jobSpec.Assets)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	metadata := &job.Metadata{}
-	if err := json.Unmarshal(jobSpec.Metadata, metadata); err != nil {
-		return nil, err
+	var metadata *job.Metadata
+	if jobSpec.Metadata != nil {
+		var storeMetadata Metadata
+		if err := json.Unmarshal(jobSpec.Metadata, storeMetadata); err != nil {
+			return nil, err
+		}
+		metadataBuilder := job.NewMetadataBuilder()
+		if storeMetadata.Resource != nil {
+			resourceRequest := job.NewMetadataResourceConfig(storeMetadata.Resource.Request.CPU, storeMetadata.Resource.Request.Memory)
+			resourceLimit := job.NewMetadataResourceConfig(storeMetadata.Resource.Limit.CPU, storeMetadata.Resource.Limit.Memory)
+			resourceMetadata := job.NewResourceMetadata(resourceRequest, resourceLimit)
+			metadataBuilder = metadataBuilder.WithResource(resourceMetadata)
+		}
+		if storeMetadata.Scheduler != nil {
+			metadataBuilder = metadataBuilder.WithScheduler(storeMetadata.Scheduler)
+		}
+		metadata = metadataBuilder.Build()
 	}
 
 	version, err := job.VersionFrom(jobSpec.Version)
@@ -423,6 +454,10 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 }
 
 func fromStorageHooks(raw []byte) ([]*job.Hook, error) {
+	if raw == nil {
+		return nil, nil
+	}
+
 	hooks := []Hook{}
 	if err := json.Unmarshal(raw, &hooks); err != nil {
 		return nil, err
@@ -453,6 +488,10 @@ func fromStorageHook(hook Hook) (*job.Hook, error) {
 }
 
 func fromStorageAlerts(raw []byte) ([]*job.Alert, error) {
+	if raw == nil {
+		return nil, nil
+	}
+
 	alerts := []Alert{}
 	if err := json.Unmarshal(raw, &alerts); err != nil {
 		return nil, err
@@ -474,6 +513,10 @@ func fromStorageAlerts(raw []byte) ([]*job.Alert, error) {
 }
 
 func fromStorageAssets(raw []byte) (map[string]string, error) {
+	if raw == nil {
+		return nil, nil
+	}
+
 	assets := []Asset{}
 	if err := json.Unmarshal(raw, &assets); err != nil {
 		return nil, err
