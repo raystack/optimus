@@ -621,6 +621,46 @@ func TestPostgresJobRepository(t *testing.T) {
 	})
 
 	t.Run("GetAllByResourceDestination", func(t *testing.T) {
-		// TODO: implement test cases
+		t.Run("returns with error when one of the job is not valid when convert", func(t *testing.T) {
+			db := dbSetup()
+
+			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_general", []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
+			jobSpecB := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_general", []job.ResourceURN{""})
+
+			jobRepo := postgres.NewJobRepository(db)
+			_, err := jobRepo.Add(ctx, []*job.Job{jobA, jobB})
+			assert.NoError(t, err)
+
+			actual, err := jobRepo.GetAllByResourceDestination(ctx, "dev.resource.sample_general")
+			assert.Error(t, err)
+			assert.Equal(t, "get all job specs by resource destination:\n invalid argument for entity job: resource urn is empty", err.Error())
+			assert.NotNil(t, actual)
+			assert.Len(t, actual, 1)
+			assert.Equal(t, []*job.Job{jobA}, actual)
+		})
+		t.Run("returns no error when get all jobs success", func(t *testing.T) {
+			db := dbSetup()
+
+			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_general", []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
+			jobSpecB := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_general", []job.ResourceURN{"dev.resource.sample_c"})
+
+			jobRepo := postgres.NewJobRepository(db)
+			_, err := jobRepo.Add(ctx, []*job.Job{jobA, jobB})
+			assert.NoError(t, err)
+
+			actual, err := jobRepo.GetAllByResourceDestination(ctx, "dev.resource.sample_general")
+			assert.NoError(t, err)
+			assert.NotNil(t, actual)
+			assert.Len(t, actual, 2)
+			assert.Equal(t, []*job.Job{jobA, jobB}, actual)
+		})
 	})
 }

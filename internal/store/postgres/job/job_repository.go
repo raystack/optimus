@@ -331,11 +331,11 @@ WHERE project_name = ?
 	return jobs, nil
 }
 
-func (j JobRepository) GetAllByResourceDestination(ctx context.Context, resourceDestination string) ([]*job.Spec, error) {
+func (j JobRepository) GetAllByResourceDestination(ctx context.Context, resourceDestination job.ResourceURN) ([]*job.Job, error) {
 	specs := []Spec{}
 	me := errors.NewMultiError("get all job specs by resource destination")
 
-	getAllByProjectName := `SELECT name
+	getAllByProjectName := `SELECT *
 FROM job
 WHERE destination = ?
 `
@@ -343,21 +343,20 @@ WHERE destination = ?
 		return nil, err
 	}
 
-	jobSpecs := make([]*job.Spec, len(specs))
-	for i, spec := range specs {
-		jobSpec, err := fromStorageSpec(&spec)
+	jobs := []*job.Job{}
+	for _, spec := range specs {
+		job, err := specToJob(&spec)
 		if err != nil {
 			me.Append(err)
 			continue
 		}
-		jobSpecs[i] = jobSpec
+		jobs = append(jobs, job)
+	}
+	if len(me.Errors) > 0 {
+		return jobs, me
 	}
 
-	if len(jobSpecs) == 0 {
-		return nil, me
-	}
-
-	return jobSpecs, me
+	return jobs, nil
 }
 
 func specToJob(spec *Spec) (*job.Job, error) {
