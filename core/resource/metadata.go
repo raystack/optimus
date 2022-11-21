@@ -45,19 +45,16 @@ func FromStringToKind(name string) (Kind, error) {
 type Status string
 
 const (
-	StatusUnknown Status = "unknown"
-	StatusSkipped Status = "skipped"
-
+	StatusUnknown           Status = "unknown"
 	StatusValidationFailure Status = "validation_failure"
 	StatusValidationSuccess Status = "validation_success"
-
-	StatusToCreate Status = "to_create"
-	StatusToUpdate Status = "to_update"
-
-	StatusCreateFailure Status = "create_failure"
-	StatusUpdateFailure Status = "update_failure"
-
-	StatusSuccess Status = "success"
+	StatusToCreate          Status = "to_create"
+	StatusToUpdate          Status = "to_update"
+	StatusSkipped           Status = "skipped"
+	StatusCreateFailure     Status = "create_failure"
+	StatusUpdateFailure     Status = "update_failure"
+	StatusExistInStore      Status = "exist_in_store"
+	StatusSuccess           Status = "success"
 )
 
 func (s Status) String() string {
@@ -66,14 +63,22 @@ func (s Status) String() string {
 
 func FromStringToStatus(status string) Status {
 	switch status {
+	case StatusValidationFailure.String():
+		return StatusValidationFailure
+	case StatusValidationSuccess.String():
+		return StatusValidationSuccess
 	case StatusToCreate.String():
 		return StatusToCreate
 	case StatusToUpdate.String():
 		return StatusToUpdate
+	case StatusSkipped.String():
+		return StatusSkipped
 	case StatusCreateFailure.String():
 		return StatusCreateFailure
 	case StatusUpdateFailure.String():
 		return StatusUpdateFailure
+	case StatusExistInStore.String():
+		return StatusExistInStore
 	case StatusSuccess.String():
 		return StatusSuccess
 	default:
