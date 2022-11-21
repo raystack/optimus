@@ -62,7 +62,7 @@ func (r Repository) CreateOrUpdateAll(ctx context.Context, resources []*resource
 	for i, res := range resources {
 		resourceModels[i] = fromResourceToModel(res)
 	}
-	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		multiErr := errors.NewMultiError("error updating resources status")
 		for _, m := range resourceModels {
 			if m.Status == resource.StatusToCreate.String() {
@@ -77,16 +77,6 @@ func (r Repository) CreateOrUpdateAll(ctx context.Context, resources []*resource
 		}
 		return errors.MultiToError(multiErr)
 	})
-	if err != nil {
-		for _, r := range resources {
-			if r.Status() == resource.StatusToCreate {
-				r.ChangeStatusTo(resource.StatusCreateFailure)
-			} else if r.Status() == resource.StatusToUpdate {
-				r.ChangeStatusTo(resource.StatusUpdateFailure)
-			}
-		}
-	}
-	return err
 }
 
 func (r Repository) UpdateStatus(ctx context.Context, resources ...*resource.Resource) error {
