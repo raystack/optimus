@@ -531,7 +531,49 @@ func TestPostgresJobRepository(t *testing.T) {
 	})
 
 	t.Run("GetByJobName", func(t *testing.T) {
-		// TODO: implement test cases
+		t.Run("returns error when spec is not exist", func(t *testing.T) {
+			db := dbSetup()
+
+			jobRepo := postgres.NewJobRepository(db)
+
+			job, err := jobRepo.GetByJobName(ctx, sampleTenant.ProjectName(), "sample-job-A")
+			assert.Error(t, err)
+			assert.Nil(t, job)
+			assert.Equal(t, "record not found", err.Error())
+		})
+		t.Run("returns error when spec is not valid", func(t *testing.T) {
+			db := dbSetup()
+			destinationURN := ""
+
+			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobA := job.NewJob(sampleTenant, jobSpecA, job.ResourceURN(destinationURN), []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
+
+			jobRepo := postgres.NewJobRepository(db)
+			_, err := jobRepo.Add(ctx, []*job.Job{jobA})
+			assert.NoError(t, err)
+
+			job, err := jobRepo.GetByJobName(ctx, sampleTenant.ProjectName(), "sample-job-A")
+			assert.Error(t, err)
+			assert.Nil(t, job)
+			assert.Equal(t, "get by job name errors:\n invalid argument for entity job: resource urn is empty", err.Error())
+		})
+		t.Run("returns job success", func(t *testing.T) {
+			db := dbSetup()
+
+			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
+
+			jobRepo := postgres.NewJobRepository(db)
+			_, err := jobRepo.Add(ctx, []*job.Job{jobA})
+			assert.NoError(t, err)
+
+			actual, err := jobRepo.GetByJobName(ctx, sampleTenant.ProjectName(), "sample-job-A")
+			assert.NoError(t, err)
+			assert.NotNil(t, actual)
+			assert.Equal(t, jobA, actual)
+		})
 	})
 
 	t.Run("GetAllByProjectName", func(t *testing.T) {

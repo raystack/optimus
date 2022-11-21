@@ -117,7 +117,12 @@ func (j JobService) Get(ctx context.Context, filters ...filter.FilterOpt) (*job.
 	return jobs[0], nil
 }
 
+<<<<<<< HEAD
 func (j JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) ([]*job.Job, error) {
+=======
+func (j JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) ([]*job.Spec, error) {
+	me := errors.NewMultiError("get all job spec errors")
+>>>>>>> e105e2ce (test: add get by job name test)
 	f := filter.NewFilter(filters...)
 
 	// when resource destination exist, filter by destination
@@ -147,6 +152,7 @@ func (j JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) ([]
 
 	// when project name and job name exist, filter by project name and job name
 	if f.Contains(filter.ProjectName, filter.JobName) {
+<<<<<<< HEAD
 		projectName, _ := tenant.ProjectNameFrom(f.GetStringValue(filter.ProjectName))
 		jobName, _ := job.NameFrom(f.GetStringValue(filter.JobName))
 		if fetchedJob, err := j.repo.GetByJobName(ctx,
@@ -156,7 +162,19 @@ func (j JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) ([]
 			return nil, err
 		} else {
 			return []*job.Job{fetchedJob}, nil
+=======
+		projectName, err := tenant.ProjectNameFrom(f.GetValue(filter.ProjectName))
+		me.Append(err)
+		jobName, err := job.NameFrom(f.GetValue(filter.JobName))
+		me.Append(err)
+
+		result, err := j.repo.GetByJobName(ctx, projectName, jobName)
+		if err != nil {
+			return nil, err
+>>>>>>> e105e2ce (test: add get by job name test)
 		}
+
+		return []*job.Spec{result.Spec()}, nil
 	}
 
 	// when project name and namespace name exist, filter by tenant

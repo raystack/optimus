@@ -388,10 +388,13 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 	for _, staticUpstream := range jobSpec.StaticUpstreams {
 		upstreamNames = append(upstreamNames, job.SpecUpstreamNameFrom(staticUpstream))
 	}
-	upstreams := job.NewSpecUpstreamBuilder().
-		WithUpstreamNames(upstreamNames).
-		WithSpecHTTPUpstream(httpUpstreams).
-		Build()
+	var upstreams *job.SpecUpstream
+	if len(httpUpstreams) > 0 {
+		upstreams = job.NewSpecUpstreamBuilder().
+			WithUpstreamNames(upstreamNames).
+			WithSpecHTTPUpstream(httpUpstreams).
+			Build()
+	}
 
 	var assets map[string]string
 	if jobSpec.Assets != nil {
@@ -435,7 +438,7 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 		return nil, err
 	}
 
-	return job.NewSpecBuilder(
+	specBuilder := job.NewSpecBuilder(
 		version,
 		jobName,
 		owner,
@@ -448,9 +451,14 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 		WithHooks(hooks).
 		WithAlerts(alerts).
 		WithSpecUpstream(upstreams).
-		WithAsset(job.NewAsset(assets)).
-		WithMetadata(metadata).
-		Build(), nil
+		WithMetadata(metadata)
+
+	if len(assets) > 0 {
+		return specBuilder.
+			WithAsset(job.NewAsset(assets)).
+			Build(), nil
+	}
+	return specBuilder.Build(), nil
 }
 
 func fromStorageHooks(raw []byte) ([]*job.Hook, error) {

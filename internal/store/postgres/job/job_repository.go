@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"fmt"
+
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/job"
@@ -149,7 +150,7 @@ WHERE
 func (j JobRepository) Get(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) (Spec, error) {
 	var spec Spec
 
-	getJobByNameAtProject := `SELECT name
+	getJobByNameAtProject := `SELECT *
 FROM job
 WHERE name = ?
 AND project_name = ?
@@ -288,20 +289,41 @@ func (JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstr
 	return upstreams, nil
 }
 
-func (j JobRepository) GetByJobName(ctx context.Context, projectName, jobName string) (*job.Spec, error) {
-	jobSpec, err := j.Get(ctx, tenant.ProjectName(projectName), job.Name(jobName))
+func (j JobRepository) GetByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) (*job.Job, error) {
+	spec, err := j.Get(ctx, projectName, jobName)
 	if err != nil {
 		return nil, err
 	}
 
-	return fromStorageSpec(&jobSpec)
+	me := errors.NewMultiError("get by job name errors")
+	jobSpec, err := fromStorageSpec(&spec)
+	me.Append(err)
+
+	tenantName, err := tenant.NewTenant(spec.ProjectName, spec.NamespaceName)
+	me.Append(err)
+
+	destination, err := job.ResourceURNFrom(spec.Destination)
+	me.Append(err)
+
+	sources := []job.ResourceURN{}
+	for _, source := range spec.Sources {
+		resourceURN, err := job.ResourceURNFrom(source)
+		me.Append(err)
+		sources = append(sources, resourceURN)
+	}
+
+	if len(me.Errors) > 0 {
+		return nil, me
+	}
+
+	return job.NewJob(tenantName, jobSpec, destination, sources), nil
 }
 
 func (j JobRepository) GetAllByProjectName(ctx context.Context, projectName string) ([]*job.Spec, error) {
 	specs := []Spec{}
 	me := errors.NewMultiError("get all job specs by project name errors")
 
-	getAllByProjectName := `SELECT name
+	getAllByProjectName := `SELECT *
 FROM job
 WHERE project_name = ?
 `
