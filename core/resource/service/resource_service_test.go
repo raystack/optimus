@@ -311,7 +311,7 @@ func TestResourceService(t *testing.T) {
 		})
 	})
 
-	t.Run("BatchUpdate", func(t *testing.T) {
+	t.Run("Deploy", func(t *testing.T) {
 		t.Run("returns error if one or more resources are invalid", func(t *testing.T) {
 			repo := NewResourceRepository(t)
 			batch := NewResourceBatchRepo(t)
@@ -331,7 +331,7 @@ func TestResourceService(t *testing.T) {
 
 			mgr.On("BatchUpdate", ctx, resource.Bigquery, []*resource.Resource{validResourceToUpdate}).Return(nil)
 
-			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, resourcesToUpdate)
+			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, resourcesToUpdate)
 			assert.Error(t, actualError)
 		})
 
@@ -353,7 +353,7 @@ func TestResourceService(t *testing.T) {
 
 			mgr.On("BatchUpdate", ctx, resource.Bigquery, resourcesToUpdate).Return(nil)
 
-			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, resourcesToUpdate)
+			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, resourcesToUpdate)
 			assert.ErrorContains(t, actualError, "unknown error")
 		})
 
@@ -377,7 +377,7 @@ func TestResourceService(t *testing.T) {
 
 			mgr.On("BatchUpdate", ctx, resource.Bigquery, mock.Anything).Return(nil)
 
-			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
+			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
 			assert.NoError(t, actualError)
 		})
 
@@ -407,7 +407,7 @@ func TestResourceService(t *testing.T) {
 
 			mgr.On("BatchUpdate", ctx, resource.Bigquery, mock.Anything).Return(nil)
 
-			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
+			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
 			assert.ErrorContains(t, actualError, "unknown error")
 		})
 
@@ -437,7 +437,7 @@ func TestResourceService(t *testing.T) {
 
 			mgr.On("BatchUpdate", ctx, resource.Bigquery, mock.Anything).Return(errors.New("unknown error"))
 
-			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
+			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
 
 			assert.ErrorContains(t, actualError, "unknown error")
 		})
@@ -468,7 +468,7 @@ func TestResourceService(t *testing.T) {
 
 			mgr.On("BatchUpdate", ctx, resource.Bigquery, mock.Anything).Return(nil)
 
-			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
+			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
 
 			assert.NoError(t, actualError)
 		})
