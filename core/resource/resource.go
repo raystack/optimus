@@ -233,7 +233,7 @@ func (r *Resource) MarkSkipped() error {
 }
 
 func (r *Resource) MarkToCreate() error {
-	if r.status == StatusValidationSuccess {
+	if r.status == StatusValidationSuccess || r.status == StatusCreateFailure {
 		r.status = StatusToCreate
 		return nil
 	}
@@ -243,11 +243,20 @@ func (r *Resource) MarkToCreate() error {
 
 func (r *Resource) MarkToUpdate() error {
 	switch r.status {
-	case StatusSuccess, StatusValidationSuccess, StatusCreateFailure, StatusUpdateFailure:
+	case StatusValidationSuccess, StatusUpdateFailure, StatusSuccess, StatusExistInStore:
 		r.status = StatusToUpdate
 		return nil
 	}
 	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status [%s] is not allowed", r.FullName(), r.status, StatusToUpdate)
+	return errors.InvalidStateTransition(EntityResource, msg)
+}
+
+func (r *Resource) MarkExistInStore() error {
+	if r.status == StatusToCreate {
+		r.status = StatusExistInStore
+		return nil
+	}
+	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status [%s] is not allowed", r.FullName(), r.status, StatusExistInStore)
 	return errors.InvalidStateTransition(EntityResource, msg)
 }
 
