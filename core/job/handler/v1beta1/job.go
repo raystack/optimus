@@ -10,12 +10,14 @@ import (
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/odpf/salt/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"io"
 	"strings"
 )
 
 type JobHandler struct {
+	l          log.Logger
 	jobService JobService
 
 	pb.UnimplementedJobSpecificationServiceServer
@@ -46,6 +48,8 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 	for _, jobProto := range jobSpecRequest.Specs {
 		jobSpec, err := fromJobProto(jobProto)
 		if err != nil {
+			errMsg := fmt.Sprintf("%s: cannot adapt job specification %s", err.Error(), jobProto.Name)
+			jh.l.Error(errMsg)
 			me.Append(err)
 			continue
 		}
@@ -53,6 +57,7 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 	}
 
 	err = jh.jobService.Add(ctx, jobTenant, jobSpecs)
+	jh.l.Error(fmt.Sprintf("%s: failure found when adding job specifications"))
 	me.Append(err)
 
 	var responseLog string
@@ -70,17 +75,23 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 func (jh *JobHandler) DeleteJobSpecification(ctx context.Context, deleteRequest *pb.DeleteJobSpecificationRequest) (*pb.DeleteJobSpecificationResponse, error) {
 	jobTenant, err := tenant.NewTenant(deleteRequest.ProjectName, deleteRequest.NamespaceName)
 	if err != nil {
-		return nil, errors.GRPCErr(err, "failed to delete job specification")
+		errorMsg := "failed to adapt tenant when deleting job specification"
+		jh.l.Error(fmt.Sprintf("%s: %s", err.Error(), errorMsg))
+		return nil, errors.GRPCErr(err, errorMsg)
 	}
 
 	jobName, err := job.NameFrom(deleteRequest.JobName)
 	if err != nil {
-		return nil, errors.GRPCErr(err, "failed to delete job specification")
+		errorMsg := "failed to adapt job name when deleting job specification"
+		jh.l.Error(fmt.Sprintf("%s: %s", err.Error(), errorMsg))
+		return nil, errors.GRPCErr(err, errorMsg)
 	}
 
 	affectedDownstream, err := jh.jobService.Delete(ctx, jobTenant, jobName, deleteRequest.CleanHistory, deleteRequest.Force)
 	if err != nil {
-		return nil, errors.GRPCErr(err, "failed to delete job specification")
+		errorMsg := "failed to delete job specification"
+		jh.l.Error(fmt.Sprintf("%s: %s", err.Error(), errorMsg))
+		return nil, errors.GRPCErr(err, errorMsg)
 	}
 
 	msg := fmt.Sprintf("job %s has been deleted", jobName)
@@ -97,7 +108,9 @@ func (jh *JobHandler) DeleteJobSpecification(ctx context.Context, deleteRequest 
 func (jh *JobHandler) UpdateJobSpecifications(ctx context.Context, jobSpecRequest *pb.UpdateJobSpecificationsRequest) (*pb.UpdateJobSpecificationsResponse, error) {
 	jobTenant, err := tenant.NewTenant(jobSpecRequest.ProjectName, jobSpecRequest.NamespaceName)
 	if err != nil {
-		return nil, errors.GRPCErr(err, "failed to add job specifications")
+		errorMsg := "failed to adapt tenant when updating job specifications"
+		jh.l.Error(fmt.Sprintf("%s: %s", err.Error(), errorMsg))
+		return nil, errors.GRPCErr(err, errorMsg)
 	}
 
 	var jobSpecs []*job.Spec
@@ -105,6 +118,8 @@ func (jh *JobHandler) UpdateJobSpecifications(ctx context.Context, jobSpecReques
 	for _, jobProto := range jobSpecRequest.Specs {
 		jobSpec, err := fromJobProto(jobProto)
 		if err != nil {
+			errMsg := fmt.Sprintf("%s: cannot adapt job specification %s", err.Error(), jobProto.Name)
+			jh.l.Error(errMsg)
 			me.Append(err)
 			continue
 		}
@@ -112,6 +127,7 @@ func (jh *JobHandler) UpdateJobSpecifications(ctx context.Context, jobSpecReques
 	}
 
 	err = jh.jobService.Update(ctx, jobTenant, jobSpecs)
+	jh.l.Error(fmt.Sprintf("%s: %s", err.Error(), "failed to update job specifications"))
 	me.Append(err)
 
 	var responseLog string
@@ -133,7 +149,9 @@ func (jh *JobHandler) GetJobSpecification(ctx context.Context, req *pb.GetJobSpe
 		filter.With(filter.JobName, req.GetJobName()),
 	)
 	if err != nil {
-		return nil, err
+		errorMsg := "failed to get job specification"
+		jh.l.Error(fmt.Sprintf("%s: %s", err.Error(), errorMsg))
+		return nil, errors.GRPCErr(err, errorMsg)
 	}
 
 	return &pb.GetJobSpecificationResponse{
@@ -208,6 +226,7 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 		jobTenant, err := tenant.NewTenant(request.ProjectName, request.NamespaceName)
 		if err != nil {
 			errMsg := fmt.Sprintf("invalid replace all job specifications request for %s: %s", request.GetNamespaceName(), err.Error())
+			jh.l.Error(errMsg)
 			responseWriter.Write(writer.LogLevelError, errMsg)
 			errNamespaces = append(errNamespaces, request.NamespaceName)
 			continue
@@ -218,6 +237,7 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 			jobSpec, err := fromJobProto(jobProto)
 			if err != nil {
 				errMsg := fmt.Sprintf("%s: cannot adapt job specification %s", err.Error(), jobProto.Name)
+				jh.l.Error(errMsg)
 				responseWriter.Write(writer.LogLevelError, errMsg)
 				errNamespaces = append(errNamespaces, request.NamespaceName)
 				continue
@@ -227,6 +247,7 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 
 		if err := jh.jobService.ReplaceAll(stream.Context(), jobTenant, jobSpecs); err != nil {
 			errMsg := fmt.Sprintf("%s: replace all job specifications failure for namespace %s", err.Error(), request.NamespaceName)
+			jh.l.Error(errMsg)
 			responseWriter.Write(writer.LogLevelError, errMsg)
 			errNamespaces = append(errNamespaces, request.NamespaceName)
 		}
@@ -235,6 +256,7 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 		namespacesWithError := strings.Join(errNamespaces, ", ")
 		return fmt.Errorf("error when replacing job specifications: [%s]", namespacesWithError)
 	}
+	responseWriter.Write(writer.LogLevelInfo, "jobs replaced successfully")
 	return nil
 }
 
@@ -243,12 +265,17 @@ func (jh *JobHandler) RefreshJobs(request *pb.RefreshJobsRequest, stream pb.JobS
 
 	projectName, err := tenant.ProjectNameFrom(request.ProjectName)
 	if err != nil {
-		responseWriter.Write(writer.LogLevelError, err.Error())
+		errMsg := fmt.Sprintf("%s: unable to adapt project %s", err.Error(), request.ProjectName)
+		jh.l.Error(errMsg)
+		responseWriter.Write(writer.LogLevelError, errMsg)
 		return err
 	}
 	if err = jh.jobService.Refresh(stream.Context(), projectName); err != nil {
-		responseWriter.Write(writer.LogLevelError, err.Error())
+		errMsg := fmt.Sprintf("%s: job refresh failed for project %s", err.Error(), request.ProjectName)
+		jh.l.Error(errMsg)
+		responseWriter.Write(writer.LogLevelError, errMsg)
 		return err
 	}
+	responseWriter.Write(writer.LogLevelInfo, "jobs refreshed successfully")
 	return nil
 }
