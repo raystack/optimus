@@ -231,7 +231,7 @@ func (r *Resource) MarkToUpdate() error {
 
 func (r *Resource) MarkCreateFailure() error {
 	switch r.status {
-	case StatusUnknown, StatusMarkExistInStore, StatusToCreate, StatusSuccess:
+	case StatusUnknown, StatusMarkExistInStore, StatusToCreate:
 		r.status = StatusCreateFailure
 	}
 	msg := fmt.Sprintf("status transition for [%s] from [%s] to [%s] is not allowed", r.FullName(), r.status, StatusCreateFailure)
@@ -240,7 +240,7 @@ func (r *Resource) MarkCreateFailure() error {
 
 func (r *Resource) MarkUpdateFailure() error {
 	switch r.status {
-	case StatusUnknown, StatusToUpdate, StatusSuccess:
+	case StatusUnknown, StatusToUpdate:
 		r.status = StatusUpdateFailure
 	}
 	msg := fmt.Sprintf("status transition for [%s] from [%s] to [%s] is not allowed", r.FullName(), r.status, StatusUpdateFailure)
