@@ -32,6 +32,7 @@ type JobService interface {
 	Get(ctx context.Context, filters ...filter.FilterOpt) (jobSpec *job.Spec, err error)
 	GetAll(ctx context.Context, filters ...filter.FilterOpt) (jobSpecs []*job.Spec, err error)
 	ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error
+	Refresh(ctx context.Context, projectName tenant.ProjectName, filters ...filter.FilterOpt) error
 }
 
 func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *pb.AddJobSpecificationsRequest) (*pb.AddJobSpecificationsResponse, error) {
@@ -233,6 +234,21 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 	if len(errNamespaces) > 0 {
 		namespacesWithError := strings.Join(errNamespaces, ", ")
 		return fmt.Errorf("error when replacing job specifications: [%s]", namespacesWithError)
+	}
+	return nil
+}
+
+func (jh *JobHandler) RefreshJobs(request *pb.RefreshJobsRequest, stream pb.JobSpecificationService_RefreshJobsServer) error {
+	responseWriter := writer.NewRefreshJobResponseWriter(stream)
+
+	projectName, err := tenant.ProjectNameFrom(request.ProjectName)
+	if err != nil {
+		responseWriter.Write(writer.LogLevelError, err.Error())
+		return err
+	}
+	if err = jh.jobService.Refresh(stream.Context(), projectName); err != nil {
+		responseWriter.Write(writer.LogLevelError, err.Error())
+		return err
 	}
 	return nil
 }

@@ -842,6 +842,15 @@
         },
         "metadata": {
           "$ref": "#/definitions/v1beta1JobMetadata"
+        },
+        "destination": {
+          "type": "string"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
