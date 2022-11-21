@@ -83,8 +83,7 @@ func createOrUpdate(ctx context.Context, handle ResourceHandle, res *resource.Re
 
 func create(ctx context.Context, handle ResourceHandle, res *resource.Resource) error {
 	if handle.Exists(ctx) {
-		res.ChangeStatusTo(resource.StatusSuccess)
-		return nil
+		return res.ChangeStatusTo(resource.StatusSuccess)
 	}
 
 	err := handle.Create(ctx, res)
@@ -93,8 +92,7 @@ func create(ctx context.Context, handle ResourceHandle, res *resource.Resource) 
 		return err
 	}
 
-	res.ChangeStatusTo(resource.StatusSuccess)
-	return nil
+	return res.ChangeStatusTo(resource.StatusSuccess)
 }
 
 func update(ctx context.Context, handle ResourceHandle, res *resource.Resource) error {
@@ -102,8 +100,7 @@ func update(ctx context.Context, handle ResourceHandle, res *resource.Resource) 
 		res.ChangeStatusTo(resource.StatusUpdateFailure)
 		return err
 	}
-	res.ChangeStatusTo(resource.StatusSuccess)
-	return nil
+	return res.ChangeStatusTo(resource.StatusSuccess)
 }
 
 func (b *Batch) DatasetOrDefault() (*resource.Resource, error) {
