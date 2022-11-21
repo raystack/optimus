@@ -295,31 +295,15 @@ func (j JobRepository) GetByJobName(ctx context.Context, projectName tenant.Proj
 		return nil, err
 	}
 
-	me := errors.NewMultiError("get by job name errors")
-	jobSpec, err := fromStorageSpec(&spec)
-	me.Append(err)
-
-	tenantName, err := tenant.NewTenant(spec.ProjectName, spec.NamespaceName)
-	me.Append(err)
-
-	destination, err := job.ResourceURNFrom(spec.Destination)
-	me.Append(err)
-
-	sources := []job.ResourceURN{}
-	for _, source := range spec.Sources {
-		resourceURN, err := job.ResourceURNFrom(source)
-		me.Append(err)
-		sources = append(sources, resourceURN)
+	job, err := specToJob(&spec)
+	if err != nil {
+		return nil, err
 	}
 
-	if len(me.Errors) > 0 {
-		return nil, me
-	}
-
-	return job.NewJob(tenantName, jobSpec, destination, sources), nil
+	return job, nil
 }
 
-func (j JobRepository) GetAllByProjectName(ctx context.Context, projectName string) ([]*job.Spec, error) {
+func (j JobRepository) GetAllByProjectName(ctx context.Context, projectName tenant.ProjectName) ([]*job.Job, error) {
 	specs := []Spec{}
 	me := errors.NewMultiError("get all job specs by project name errors")
 
@@ -331,21 +315,20 @@ WHERE project_name = ?
 		return nil, err
 	}
 
-	jobSpecs := make([]*job.Spec, len(specs))
-	for i, spec := range specs {
-		jobSpec, err := fromStorageSpec(&spec)
+	jobs := []*job.Job{}
+	for _, spec := range specs {
+		job, err := specToJob(&spec)
 		if err != nil {
 			me.Append(err)
 			continue
 		}
-		jobSpecs[i] = jobSpec
+		jobs = append(jobs, job)
+	}
+	if len(me.Errors) > 0 {
+		return jobs, me
 	}
 
-	if len(jobSpecs) == 0 {
-		return nil, me
-	}
-
-	return jobSpecs, me
+	return jobs, nil
 }
 
 func (j JobRepository) GetAllByResourceDestination(ctx context.Context, resourceDestination string) ([]*job.Spec, error) {
@@ -375,6 +358,32 @@ WHERE destination = ?
 	}
 
 	return jobSpecs, me
+}
+
+func specToJob(spec *Spec) (*job.Job, error) {
+	me := errors.NewMultiError("convert orm spec to job entity")
+	jobSpec, err := fromStorageSpec(spec)
+	if err != nil {
+		return nil, err
+	}
+
+	tenantName, err := tenant.NewTenant(spec.ProjectName, spec.NamespaceName)
+	me.Append(err)
+
+	destination, err := job.ResourceURNFrom(spec.Destination)
+	me.Append(err)
+
+	sources := []job.ResourceURN{}
+	for _, source := range spec.Sources {
+		resourceURN, err := job.ResourceURNFrom(source)
+		me.Append(err)
+		sources = append(sources, resourceURN)
+	}
+
+	if len(me.Errors) > 0 {
+		return nil, me
+	}
+	return job.NewJob(tenantName, jobSpec, destination, sources), nil
 }
 
 type JobWithUpstream struct {
