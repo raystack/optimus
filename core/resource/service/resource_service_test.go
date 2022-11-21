@@ -311,7 +311,7 @@ func TestResourceService(t *testing.T) {
 		})
 	})
 
-	t.Run("Deploy", func(t *testing.T) {
+	t.Run("BatchUpdate", func(t *testing.T) {
 		t.Run("returns error if one or more resources are invalid", func(t *testing.T) {
 			repo := NewResourceRepository(t)
 			batch := NewResourceBatchRepo(t)
@@ -329,9 +329,9 @@ func TestResourceService(t *testing.T) {
 
 			batch.On("CreateOrUpdateAll", ctx, []*resource.Resource{validResourceToUpdate}).Return(nil)
 
-			mgr.On("Deploy", ctx, resource.Bigquery, []*resource.Resource{validResourceToUpdate}).Return(nil)
+			mgr.On("BatchUpdate", ctx, resource.Bigquery, []*resource.Resource{validResourceToUpdate}).Return(nil)
 
-			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, resourcesToUpdate)
+			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, resourcesToUpdate)
 			assert.Error(t, actualError)
 		})
 
@@ -351,9 +351,9 @@ func TestResourceService(t *testing.T) {
 
 			batch.On("CreateOrUpdateAll", ctx, resourcesToUpdate).Return(nil)
 
-			mgr.On("Deploy", ctx, resource.Bigquery, resourcesToUpdate).Return(nil)
+			mgr.On("BatchUpdate", ctx, resource.Bigquery, resourcesToUpdate).Return(nil)
 
-			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, resourcesToUpdate)
+			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, resourcesToUpdate)
 			assert.ErrorContains(t, actualError, "unknown error")
 		})
 
@@ -375,9 +375,9 @@ func TestResourceService(t *testing.T) {
 
 			batch.On("CreateOrUpdateAll", ctx, mock.Anything).Return(nil)
 
-			mgr.On("Deploy", ctx, resource.Bigquery, mock.Anything).Return(nil)
+			mgr.On("BatchUpdate", ctx, resource.Bigquery, mock.Anything).Return(nil)
 
-			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
+			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
 			assert.NoError(t, actualError)
 		})
 
@@ -405,9 +405,9 @@ func TestResourceService(t *testing.T) {
 
 			batch.On("CreateOrUpdateAll", ctx, mock.Anything).Return(errors.New("unknown error"))
 
-			mgr.On("Deploy", ctx, resource.Bigquery, mock.Anything).Return(nil)
+			mgr.On("BatchUpdate", ctx, resource.Bigquery, mock.Anything).Return(nil)
 
-			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
+			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
 			assert.ErrorContains(t, actualError, "unknown error")
 		})
 
@@ -435,9 +435,9 @@ func TestResourceService(t *testing.T) {
 
 			batch.On("CreateOrUpdateAll", ctx, mock.Anything).Return(nil)
 
-			mgr.On("Deploy", ctx, resource.Bigquery, mock.Anything).Return(errors.New("unknown error"))
+			mgr.On("BatchUpdate", ctx, resource.Bigquery, mock.Anything).Return(errors.New("unknown error"))
 
-			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
+			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
 
 			assert.ErrorContains(t, actualError, "unknown error")
 		})
@@ -466,9 +466,9 @@ func TestResourceService(t *testing.T) {
 
 			batch.On("CreateOrUpdateAll", ctx, mock.Anything).Return(nil)
 
-			mgr.On("Deploy", ctx, resource.Bigquery, mock.Anything).Return(nil)
+			mgr.On("BatchUpdate", ctx, resource.Bigquery, mock.Anything).Return(nil)
 
-			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
+			actualError := rscService.BatchUpdate(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
 
 			assert.NoError(t, actualError)
 		})
@@ -598,7 +598,7 @@ type ResourceManager struct {
 	mock.Mock
 }
 
-func (_m *ResourceManager) Deploy(ctx context.Context, store resource.Store, resources []*resource.Resource) error {
+func (_m *ResourceManager) BatchUpdate(ctx context.Context, store resource.Store, resources []*resource.Resource) error {
 	ret := _m.Called(ctx, store, resources)
 
 	var r0 error
