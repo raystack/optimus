@@ -2,13 +2,13 @@ package filter
 
 type filter struct {
 	bits  uint64
-	value map[Operand]string
+	value map[Operand]interface{}
 }
 
 func NewFilter(opts ...FilterOpt) *filter {
 	f := &filter{
 		bits:  0,
-		value: make(map[Operand]string),
+		value: make(map[Operand]interface{}),
 	}
 	for _, opt := range opts {
 		opt(f)
@@ -16,11 +16,19 @@ func NewFilter(opts ...FilterOpt) *filter {
 	return f
 }
 
-func (f *filter) GetValue(operand Operand) string {
+func (f *filter) GetStringValue(operand Operand) string {
 	if v, ok := f.value[operand]; !ok {
 		return ""
 	} else {
-		return v
+		return v.(string)
+	}
+}
+
+func (f *filter) GetStringArrayValue(operand Operand) []string {
+	if v, ok := f.value[operand]; !ok {
+		return nil
+	} else {
+		return v.([]string)
 	}
 }
 

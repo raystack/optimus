@@ -42,10 +42,10 @@ type JobRepository interface {
 	GetDownstreamFullNames(context.Context, tenant.ProjectName, job.Name) ([]job.FullName, error)
 	Delete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, cleanHistory bool) error
 
-	GetByJobName(ctx context.Context, projectName, jobName string) (*job.Spec, error)
-	GetAllByProjectName(ctx context.Context, projectName string) ([]*job.Spec, error)
-	GetAllByResourceDestination(ctx context.Context, resourceDestination string) ([]*job.Spec, error)
+	GetByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) (*job.Job, error)
+	GetAllByResourceDestination(ctx context.Context, resourceDestination string) ([]*job.Job, error)
 	GetAllByTenant(ctx context.Context, jobTenant tenant.Tenant) ([]*job.Job, error)
+	GetAllByProjectName(ctx context.Context, projectName tenant.ProjectName) ([]*job.Job, error)
 }
 
 type UpstreamResolver interface {
@@ -108,38 +108,70 @@ func (j JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName
 	return downstreamFullNames, j.repo.Delete(ctx, jobTenant.ProjectName(), jobName, cleanFlag)
 }
 
-func (j JobService) Get(ctx context.Context, filters ...filter.FilterOpt) (*job.Spec, error) {
-	jobSpecs, err := j.GetAll(ctx, filters...)
+func (j JobService) Get(ctx context.Context, filters ...filter.FilterOpt) (*job.Job, error) {
+	jobs, err := j.GetAll(ctx, filters...)
 	if err != nil {
 		return nil, err
 	}
 
-	return jobSpecs[0], nil
+	return jobs[0], nil
 }
 
-func (j JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) ([]*job.Spec, error) {
+func (j JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) ([]*job.Job, error) {
 	f := filter.NewFilter(filters...)
 
 	// when resource destination exist, filter by destination
 	if f.Contains(filter.ResourceDestination) {
-		return j.repo.GetAllByResourceDestination(ctx, f.GetValue(filter.ResourceDestination))
+		return j.repo.GetAllByResourceDestination(ctx, f.GetStringValue(filter.ResourceDestination))
+	}
+
+	// when project name and job names exist, filter by project and job names
+	if f.Contains(filter.ProjectName, filter.JobNames) {
+		me := errors.NewMultiError("get all job specs errors")
+
+		projectName, _ := tenant.ProjectNameFrom(f.GetStringValue(filter.ProjectName))
+		jobNames := f.GetStringArrayValue(filter.JobNames)
+
+		var jobs []*job.Job
+		for _, jobNameStr := range jobNames {
+			jobName, _ := job.NameFrom(jobNameStr)
+			job, err := j.repo.GetByJobName(ctx, projectName, jobName)
+			if err != nil {
+				me.Append(err)
+				continue
+			}
+			jobs = append(jobs, job)
+		}
+		return jobs, errors.MultiToError(me)
 	}
 
 	// when project name and job name exist, filter by project name and job name
 	if f.Contains(filter.ProjectName, filter.JobName) {
-		if jobSpec, err := j.repo.GetByJobName(ctx,
-			f.GetValue(filter.ProjectName),
-			f.GetValue(filter.JobName),
+		projectName, _ := tenant.ProjectNameFrom(f.GetStringValue(filter.ProjectName))
+		jobName, _ := job.NameFrom(f.GetStringValue(filter.JobName))
+		if fetchedJob, err := j.repo.GetByJobName(ctx,
+			projectName,
+			jobName,
 		); err != nil {
 			return nil, err
 		} else {
-			return []*job.Spec{jobSpec}, nil
+			return []*job.Job{fetchedJob}, nil
 		}
+	}
+
+	// when project name and namespace name exist, filter by tenant
+	if f.Contains(filter.ProjectName, filter.NamespaceName) {
+		jobTenant, err := tenant.NewTenant(f.GetStringValue(filter.ProjectName), f.GetStringValue(filter.NamespaceName))
+		if err != nil {
+			return nil, err
+		}
+		return j.repo.GetAllByTenant(ctx, jobTenant)
 	}
 
 	// when project name exist, filter by project name
 	if f.Contains(filter.ProjectName) {
-		return j.repo.GetAllByProjectName(ctx, f.GetValue(filter.ProjectName))
+		projectName, _ := tenant.ProjectNameFrom(f.GetStringValue(filter.ProjectName))
+		return j.repo.GetAllByProjectName(ctx, projectName)
 	}
 
 	return nil, nil
@@ -172,13 +204,13 @@ func (j JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, spe
 	return errors.MultiToError(me)
 }
 
-func (j JobService) Refresh(ctx context.Context, jobTenant tenant.Tenant) error {
+func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, filters ...filter.FilterOpt) (err error) {
 	me := errors.NewMultiError("refresh all specs errors")
 
-	existingJobs, err := j.repo.GetAllByTenant(ctx, jobTenant)
+	jobs, err := j.GetAll(ctx, filters...)
 	me.Append(err)
 
-	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, jobTenant.ProjectName(), existingJobs)
+	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, projectName, jobs)
 	me.Append(err)
 
 	err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)

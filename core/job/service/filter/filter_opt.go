@@ -7,15 +7,19 @@ const (
 	bitOnProjectName         uint64 = 1 << 0
 	bitOnJobName             uint64 = 1 << 1
 	bitOnResourceDestination uint64 = 1 << 2
+	bitOnNamespaceName       uint64 = 1 << 3
+	bitOnJobNames            uint64 = 1 << 4
 )
 
 const (
 	ProjectName         = Operand(bitOnProjectName)
+	NamespaceName       = Operand(bitOnNamespaceName)
 	JobName             = Operand(bitOnJobName)
+	JobNames            = Operand(bitOnJobNames)
 	ResourceDestination = Operand(bitOnResourceDestination)
 )
 
-func With(operand Operand, value string) FilterOpt {
+func With(operand Operand, value interface{}) FilterOpt {
 	return func(f *filter) {
 		if value != "" {
 			f.bits |= uint64(operand)

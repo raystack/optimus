@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"github.com/odpf/optimus/core/job/service/filter"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,6 +40,9 @@ func TestJobService(t *testing.T) {
 	jobTaskConfig, err := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
 	assert.NoError(t, err)
 	jobTask := job.NewTask("bq2bq", jobTaskConfig)
+
+	projectFilter := filter.With(filter.ProjectName, project.Name().String())
+	namespaceFilter := filter.With(filter.NamespaceName, namespace.Name().String())
 
 	t.Run("Add", func(t *testing.T) {
 		t.Run("add jobs", func(t *testing.T) {
@@ -813,20 +817,21 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobAUpstreamName := []job.ResourceURN{"job-B"}
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreamName)
+
 			specB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, jobWindow, jobTask).Build()
+			jobB := job.NewJob(sampleTenant, specB, "", nil)
+
 			incomingSpecs := []*job.Spec{specA, specB}
 
-			existingSpecs := []*job.Spec{specB}
+			existingJobs := []*job.Job{jobB}
 
-			jobRepo.On("GetAllSpecsByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(existingJobs, nil)
 
-			jobADestination, _ := job.ResourceURNFrom("resource-A")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
-
-			jobAUpstreamName := []job.ResourceURN{"job-B"}
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobAUpstreamName, nil)
-
-			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreamName)
 
 			jobRepo.On("Add", ctx, []*job.Job{jobA}).Return([]*job.Job{jobA}, nil)
 
@@ -857,21 +862,21 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobAUpstreamName := []job.ResourceURN{"job-B"}
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreamName)
+
 			incomingSpecs := []*job.Spec{specA}
 
 			existingJobWindow, _ := models.NewWindow(jobVersion.Int(), "d", "0h", "24h")
 			existingSpecA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, existingJobWindow, jobTask).Build()
-			existingSpecs := []*job.Spec{existingSpecA}
+			existingJobA := job.NewJob(sampleTenant, existingSpecA, jobADestination, jobAUpstreamName)
+			existingSpecs := []*job.Job{existingJobA}
 
-			jobRepo.On("GetAllSpecsByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
 
-			jobADestination, _ := job.ResourceURNFrom("resource-A")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
-
-			jobAUpstreamName := []job.ResourceURN{"job-B"}
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobAUpstreamName, nil)
-
-			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreamName)
 
 			jobRepo.On("Update", ctx, []*job.Job{jobA}).Return([]*job.Job{jobA}, nil)
 
@@ -902,12 +907,16 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			jobA := job.NewJob(sampleTenant, specA, "", nil)
+
 			specB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, jobWindow, jobTask).Build()
+			jobB := job.NewJob(sampleTenant, specB, "", nil)
+
 			incomingSpecs := []*job.Spec{specA}
 
-			existingSpecs := []*job.Spec{specA, specB}
+			existingSpecs := []*job.Job{jobA, jobB}
 
-			jobRepo.On("GetAllSpecsByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
 
 			jobRepo.On("GetDownstreamFullNames", ctx, project.Name(), specB.Name()).Return(nil, nil)
 			jobRepo.On("Delete", ctx, project.Name(), specB.Name(), false).Return(nil)
@@ -937,10 +946,13 @@ func TestJobService(t *testing.T) {
 
 			existingJobWindow, _ := models.NewWindow(jobVersion.Int(), "d", "0h", "24h")
 			existingSpecB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, existingJobWindow, jobTask).Build()
+			existingJobB := job.NewJob(sampleTenant, existingSpecB, "", nil)
 			existingSpecC := job.NewSpecBuilder(jobVersion, "job-C", "", jobSchedule, jobWindow, jobTask).Build()
-			existingSpecs := []*job.Spec{existingSpecB, existingSpecC}
+			existingJobC := job.NewJob(sampleTenant, existingSpecC, "", nil)
 
-			jobRepo.On("GetAllSpecsByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
+			existingSpecs := []*job.Job{existingJobB, existingJobC}
+
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
 
 			jobADestination, _ := job.ResourceURNFrom("resource-A")
 			var jobBDestination job.ResourceURN
@@ -990,9 +1002,10 @@ func TestJobService(t *testing.T) {
 			incomingSpecs := []*job.Spec{specA}
 
 			existingSpecC := job.NewSpecBuilder(jobVersion, "job-C", "", jobSchedule, jobWindow, jobTask).Build()
-			existingSpecs := []*job.Spec{existingSpecC}
+			existingJobC := job.NewJob(sampleTenant, existingSpecC, "", nil)
+			existingSpecs := []*job.Job{existingJobC}
 
-			jobRepo.On("GetAllSpecsByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
 
 			var specADestination job.ResourceURN
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(specADestination, errors.New("internal error")).Once()
@@ -1024,10 +1037,12 @@ func TestJobService(t *testing.T) {
 
 			existingJobWindow, _ := models.NewWindow(jobVersion.Int(), "d", "0h", "24h")
 			existingSpecB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, existingJobWindow, jobTask).Build()
+			existingJobB := job.NewJob(sampleTenant, existingSpecB, "", nil)
 			existingSpecC := job.NewSpecBuilder(jobVersion, "job-C", "", jobSchedule, jobWindow, jobTask).Build()
-			existingSpecs := []*job.Spec{existingSpecB, existingSpecC}
+			existingJobC := job.NewJob(sampleTenant, existingSpecC, "", nil)
+			existingSpecs := []*job.Job{existingJobB, existingJobC}
 
-			jobRepo.On("GetAllSpecsByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
 
 			var jobBDestination job.ResourceURN
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return(jobBDestination, errors.New("internal error")).Once()
@@ -1058,10 +1073,12 @@ func TestJobService(t *testing.T) {
 			incomingSpecs := []*job.Spec{specA}
 
 			existingSpecC := job.NewSpecBuilder(jobVersion, "job-C", "", jobSchedule, jobWindow, jobTask).Build()
+			existingJobC := job.NewJob(sampleTenant, existingSpecC, "", nil)
 			existingSpecD := job.NewSpecBuilder(jobVersion, "job-D", "", jobSchedule, jobWindow, jobTask).Build()
-			existingSpecs := []*job.Spec{existingSpecC, existingSpecD}
+			existingJobD := job.NewJob(sampleTenant, existingSpecD, "", nil)
+			existingSpecs := []*job.Job{existingJobC, existingJobD}
 
-			jobRepo.On("GetAllSpecsByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
 
 			jobADestination, _ := job.ResourceURNFrom("resource-A")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
@@ -1119,7 +1136,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobAWithUpstream, jobBWithUpstream}).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
-			err := jobService.Refresh(ctx, sampleTenant)
+			err := jobService.Refresh(ctx, project.Name(), projectFilter, namespaceFilter)
 			assert.NoError(t, err)
 		})
 		t.Run("resolves and saves upstream for all existing jobs in the given tenant", func(t *testing.T) {
@@ -1152,7 +1169,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobAWithUpstream, jobBWithUpstream}).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
-			err := jobService.Refresh(ctx, sampleTenant)
+			err := jobService.Refresh(ctx, project.Name(), projectFilter, namespaceFilter)
 			assert.NoError(t, err)
 		})
 	})
@@ -1206,6 +1223,98 @@ func (_m *JobRepository) Delete(ctx context.Context, projectName tenant.ProjectN
 	}
 
 	return r0
+}
+
+// GetAllByProjectName provides a mock function with given fields: ctx, projectName
+func (_m *JobRepository) GetAllByProjectName(ctx context.Context, projectName tenant.ProjectName) ([]*job.Job, error) {
+	ret := _m.Called(ctx, projectName)
+
+	var r0 []*job.Job
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName) []*job.Job); ok {
+		r0 = rf(ctx, projectName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*job.Job)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName) error); ok {
+		r1 = rf(ctx, projectName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetAllByResourceDestination provides a mock function with given fields: ctx, resourceDestination
+func (_m *JobRepository) GetAllByResourceDestination(ctx context.Context, resourceDestination string) ([]*job.Job, error) {
+	ret := _m.Called(ctx, resourceDestination)
+
+	var r0 []*job.Job
+	if rf, ok := ret.Get(0).(func(context.Context, string) []*job.Job); ok {
+		r0 = rf(ctx, resourceDestination)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*job.Job)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, resourceDestination)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetAllByTenant provides a mock function with given fields: ctx, jobTenant
+func (_m *JobRepository) GetAllByTenant(ctx context.Context, jobTenant tenant.Tenant) ([]*job.Job, error) {
+	ret := _m.Called(ctx, jobTenant)
+
+	var r0 []*job.Job
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant) []*job.Job); ok {
+		r0 = rf(ctx, jobTenant)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*job.Job)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.Tenant) error); ok {
+		r1 = rf(ctx, jobTenant)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetByJobName provides a mock function with given fields: ctx, projectName, jobName
+func (_m *JobRepository) GetByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) (*job.Job, error) {
+	ret := _m.Called(ctx, projectName, jobName)
+
+	var r0 *job.Job
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, job.Name) *job.Job); ok {
+		r0 = rf(ctx, projectName, jobName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*job.Job)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, job.Name) error); ok {
+		r1 = rf(ctx, projectName, jobName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GetDownstreamFullNames provides a mock function with given fields: _a0, _a1, _a2
@@ -1284,121 +1393,6 @@ func (_m *JobRepository) Update(_a0 context.Context, _a1 []*job.Job) ([]*job.Job
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, []*job.Job) error); ok {
 		r1 = rf(_a0, _a1)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetAllByProjectName provides a mock function with given fields: ctx, projectName
-func (_m *JobRepository) GetAllByProjectName(ctx context.Context, projectName string) ([]*job.Spec, error) {
-	ret := _m.Called(ctx, projectName)
-
-	var r0 []*job.Spec
-	if rf, ok := ret.Get(0).(func(context.Context, string) []*job.Spec); ok {
-		r0 = rf(ctx, projectName)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*job.Spec)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, projectName)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetByJobName provides a mock function with given fields: ctx, projectName, jobName
-func (_m *JobRepository) GetByJobName(ctx context.Context, projectName string, jobName string) (*job.Spec, error) {
-	ret := _m.Called(ctx, projectName, jobName)
-
-	var r0 *job.Spec
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) *job.Spec); ok {
-		r0 = rf(ctx, projectName, jobName)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*job.Spec)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
-		r1 = rf(ctx, projectName, jobName)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetAllByResourceDestination provides a mock function with given fields: ctx, resourceDestination
-func (_m *JobRepository) GetAllByResourceDestination(ctx context.Context, resourceDestination string) ([]*job.Spec, error) {
-	ret := _m.Called(ctx, resourceDestination)
-
-	var r0 []*job.Spec
-	if rf, ok := ret.Get(0).(func(context.Context, string) []*job.Spec); ok {
-		r0 = rf(ctx, resourceDestination)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*job.Spec)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, resourceDestination)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetAllSpecsByTenant provides a mock function with given fields: ctx, jobTenant
-func (_m *JobRepository) GetAllSpecsByTenant(ctx context.Context, jobTenant tenant.Tenant) ([]*job.Spec, error) {
-	ret := _m.Called(ctx, jobTenant)
-
-	var r0 []*job.Spec
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant) []*job.Spec); ok {
-		r0 = rf(ctx, jobTenant)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*job.Spec)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, tenant.Tenant) error); ok {
-		r1 = rf(ctx, jobTenant)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetAllByTenant provides a mock function with given fields: ctx, jobTenant
-func (_m *JobRepository) GetAllByTenant(ctx context.Context, jobTenant tenant.Tenant) ([]*job.Job, error) {
-	ret := _m.Called(ctx, jobTenant)
-
-	var r0 []*job.Job
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant) []*job.Job); ok {
-		r0 = rf(ctx, jobTenant)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*job.Job)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, tenant.Tenant) error); ok {
-		r1 = rf(ctx, jobTenant)
 	} else {
 		r1 = ret.Error(1)
 	}
