@@ -254,7 +254,7 @@ func TestResourceManager(t *testing.T) {
 			logger := log.NewLogrus()
 			manager := service.NewResourceManager(repo, logger)
 
-			err = manager.Deploy(ctx, store, []*resource.Resource{updateRequest})
+			err = manager.BatchUpdate(ctx, store, []*resource.Resource{updateRequest})
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity resource: data store service not "+
 				"found for snowflake")
@@ -296,7 +296,7 @@ func TestResourceManager(t *testing.T) {
 
 			manager.RegisterDatastore(store, storeService)
 
-			err = manager.Deploy(ctx, store, batchReq)
+			err = manager.BatchUpdate(ctx, store, batchReq)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "error in batch update:"+
 				"\n internal error for entity resource: enable to update in data store:"+
@@ -332,7 +332,7 @@ func TestResourceManager(t *testing.T) {
 
 			manager.RegisterDatastore(store, storeService)
 
-			err = manager.Deploy(ctx, store, batchReq)
+			err = manager.BatchUpdate(ctx, store, batchReq)
 			assert.Nil(t, err)
 		})
 	})
