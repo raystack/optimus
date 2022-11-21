@@ -29,8 +29,8 @@ type JobService interface {
 	Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error
 	Update(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error
 	Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) (affectedDownstream []job.FullName, err error)
-	Get(ctx context.Context, filters ...filter.FilterOpt) (jobSpec *job.Spec, err error)
-	GetAll(ctx context.Context, filters ...filter.FilterOpt) (jobSpecs []*job.Spec, err error)
+	Get(ctx context.Context, filters ...filter.FilterOpt) (jobSpec *job.Job, err error)
+	GetAll(ctx context.Context, filters ...filter.FilterOpt) (jobSpecs []*job.Job, err error)
 	ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error
 	Refresh(ctx context.Context, projectName tenant.ProjectName, filters ...filter.FilterOpt) error
 }
