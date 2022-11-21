@@ -638,7 +638,7 @@ func TestResourceService(t *testing.T) {
 	})
 
 	t.Run("Deploy", func(t *testing.T) {
-		t.Run("returns error if error is encountered when reading existing resources from repository", func(t *testing.T) {
+		t.Run("returns error if one or more resources are invalid", func(t *testing.T) {
 			repo := NewResourceRepository(t)
 			batch := NewResourceBatchRepo(t)
 			mgr := NewResourceManager(t)
@@ -646,195 +646,157 @@ func TestResourceService(t *testing.T) {
 			logger := log.NewLogrus()
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
-			incoming, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
+			validResourceToUpdate, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
-			resourcesToDeploy := []*resource.Resource{incoming}
+			invalidResourceToUpdate := &resource.Resource{}
+			resourcesToUpdate := []*resource.Resource{validResourceToUpdate, invalidResourceToUpdate}
+
+			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{}, nil)
+
+			batch.On("CreateOrUpdateAll", ctx, []*resource.Resource{validResourceToUpdate}).Return(nil)
+
+			mgr.On("Deploy", ctx, resource.Bigquery, []*resource.Resource{validResourceToUpdate}).Return(nil)
+
+			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, resourcesToUpdate)
+			assert.Error(t, actualError)
+		})
+
+		t.Run("returns error if error is encountered when reading from repo", func(t *testing.T) {
+			repo := NewResourceRepository(t)
+			batch := NewResourceBatchRepo(t)
+			mgr := NewResourceManager(t)
+			tnntDetailsGetter := NewTenantDetailsGetter(t)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
+
+			incomingResourceToUpdate, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
+			assert.NoError(t, err)
+			resourcesToUpdate := []*resource.Resource{incomingResourceToUpdate}
 
 			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return(nil, errors.New("unknown error"))
 
-			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, resourcesToDeploy)
+			batch.On("CreateOrUpdateAll", ctx, resourcesToUpdate).Return(nil)
+
+			mgr.On("Deploy", ctx, resource.Bigquery, resourcesToUpdate).Return(nil)
+
+			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, resourcesToUpdate)
 			assert.ErrorContains(t, actualError, "unknown error")
 		})
 
-		t.Run("one or more resources are invalid", func(t *testing.T) {
-			t.Run("sets status to create_failure only for failing resources and success only for success resources and returns error if valid resources do not exist in repository", func(t *testing.T) {
-				repo := NewResourceRepository(t)
-				batch := NewResourceBatchRepo(t)
-				mgr := NewResourceManager(t)
-				tnntDetailsGetter := NewTenantDetailsGetter(t)
-				logger := log.NewLogrus()
-				rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
+		t.Run("returns nil if there is no resource to create or modify", func(t *testing.T) {
+			repo := NewResourceRepository(t)
+			batch := NewResourceBatchRepo(t)
+			mgr := NewResourceManager(t)
+			tnntDetailsGetter := NewTenantDetailsGetter(t)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
-				invalidSpec := map[string]any{
-					"spec": "invalid value",
-				}
-				invalid, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.Bigquery, tnnt, meta, invalidSpec)
-				assert.NoError(t, err)
-				valid, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
-				assert.NoError(t, err)
-				resourcesToDeploy := []*resource.Resource{invalid, valid}
+			fullName := "project.dataset"
+			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
+			assert.NoError(t, err)
+			incomingResourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
+			assert.NoError(t, err)
 
-				repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{}, nil)
+			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{existingResource}, nil)
 
-				mgr.On("Exist", ctx, valid).Return(false, nil)
+			batch.On("CreateOrUpdateAll", ctx, mock.Anything).Return(nil)
 
-				batch.On("CreateOrUpdateAll", ctx, resourcesToDeploy).Return(nil)
+			mgr.On("Deploy", ctx, resource.Bigquery, mock.Anything).Return(nil)
 
-				mgr.On("Deploy", ctx, resource.Bigquery, resourcesToDeploy).Run(func(args mock.Arguments) {
-					valid.ChangeStatusTo(resource.StatusSuccess)
-				}).Return(nil)
-
-				actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, resourcesToDeploy)
-				assert.ErrorContains(t, actualError, "error validating resource")
-				assert.Equal(t, resource.StatusCreateFailure, invalid.Status())
-				assert.Equal(t, resource.StatusSuccess, valid.Status())
-			})
-
-			t.Run("sets status to update_failure only for failing resources and success only for success resources and returns erro if valid resources exist in repository", func(t *testing.T) {
-				repo := NewResourceRepository(t)
-				batch := NewResourceBatchRepo(t)
-				mgr := NewResourceManager(t)
-				tnntDetailsGetter := NewTenantDetailsGetter(t)
-				logger := log.NewLogrus()
-				rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
-
-				invalidSpec := map[string]any{
-					"spec": "invalid value",
-				}
-				invalidIncoming, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.Bigquery, tnnt, meta, invalidSpec)
-				assert.NoError(t, err)
-				validIncoming, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
-				assert.NoError(t, err)
-				resourcesToDeploy := []*resource.Resource{invalidIncoming, validIncoming}
-
-				existing, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
-				assert.NoError(t, err)
-				existing.MarkExistInStore()
-
-				repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{existing}, nil)
-
-				batch.On("CreateOrUpdateAll", ctx, resourcesToDeploy).Return(nil)
-
-				mgr.On("Deploy", ctx, resource.Bigquery, resourcesToDeploy).Run(func(args mock.Arguments) {
-					validIncoming.ChangeStatusTo(resource.StatusSuccess)
-				}).Return(nil)
-
-				actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, resourcesToDeploy)
-				assert.ErrorContains(t, actualError, "error validating resource")
-				assert.Equal(t, resource.StatusCreateFailure, invalidIncoming.Status())
-				assert.Equal(t, resource.StatusSuccess, validIncoming.Status())
-			})
+			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
+			assert.NoError(t, actualError)
 		})
 
-		t.Run("all resources are valid", func(t *testing.T) {
-			t.Run("returns error if error is encountered during batch operation to repository", func(t *testing.T) {
-				repo := NewResourceRepository(t)
-				batch := NewResourceBatchRepo(t)
-				mgr := NewResourceManager(t)
-				tnntDetailsGetter := NewTenantDetailsGetter(t)
-				logger := log.NewLogrus()
-				rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
+		t.Run("returns error if error is encountered when batch updating to repo", func(t *testing.T) {
+			repo := NewResourceRepository(t)
+			batch := NewResourceBatchRepo(t)
+			mgr := NewResourceManager(t)
+			tnntDetailsGetter := NewTenantDetailsGetter(t)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
-				incoming1, err := resource.NewResource("project.dataset1", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
-				assert.NoError(t, err)
-				incoming2, err := resource.NewResource("project.dataset2", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
-				assert.NoError(t, err)
-				resourcesToDeploy := []*resource.Resource{incoming1, incoming2}
+			fullName := "project.dataset"
+			existingMetadata := &resource.Metadata{
+				Description: "existing resource metadata",
+			}
+			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, existingMetadata, spec)
+			assert.NoError(t, err)
+			incomingMetadata := &resource.Metadata{
+				Description: "incoming resource metadata",
+			}
+			incomingResourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, incomingMetadata, spec)
+			assert.NoError(t, err)
 
-				existing1, err := resource.NewResource("project.dataset1", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
-				assert.NoError(t, err)
-				existing1.MarkExistInStore()
-				existing2, err := resource.NewResource("project.dataset2", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
-				assert.NoError(t, err)
-				existing2.MarkExistInStore()
+			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{existingResource}, nil)
 
-				repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{existing1, existing2}, nil)
+			batch.On("CreateOrUpdateAll", ctx, mock.Anything).Return(errors.New("unknown error"))
 
-				batch.On("CreateOrUpdateAll", ctx, resourcesToDeploy).Run(func(args mock.Arguments) {
-					incoming1.ChangeStatusTo(resource.StatusCreateFailure)
-				}).Return(errors.New("unknown error"))
+			mgr.On("Deploy", ctx, resource.Bigquery, mock.Anything).Return(nil)
 
-				mgr.On("Deploy", ctx, resource.Bigquery, resourcesToDeploy).Run(func(args mock.Arguments) {
-					incoming2.ChangeStatusTo(resource.StatusSuccess)
-				}).Return(nil)
+			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
+			assert.ErrorContains(t, actualError, "unknown error")
+		})
 
-				actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, resourcesToDeploy)
-				assert.ErrorContains(t, actualError, "unknown error")
-				assert.Equal(t, resource.StatusCreateFailure, incoming1.Status())
-				assert.Equal(t, resource.StatusSuccess, incoming2.Status())
-			})
+		t.Run("returns error if error is encountered when batch updating to store", func(t *testing.T) {
+			repo := NewResourceRepository(t)
+			batch := NewResourceBatchRepo(t)
+			mgr := NewResourceManager(t)
+			tnntDetailsGetter := NewTenantDetailsGetter(t)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
-			t.Run("returns error if error is encountered during deploy operation to resource", func(t *testing.T) {
-				repo := NewResourceRepository(t)
-				batch := NewResourceBatchRepo(t)
-				mgr := NewResourceManager(t)
-				tnntDetailsGetter := NewTenantDetailsGetter(t)
-				logger := log.NewLogrus()
-				rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
+			fullName := "project.dataset"
+			existingMetadata := &resource.Metadata{
+				Description: "existing resource metadata",
+			}
+			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, existingMetadata, spec)
+			assert.NoError(t, err)
+			incomingMetadata := &resource.Metadata{
+				Description: "incoming resource metadata",
+			}
+			incomingResourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, incomingMetadata, spec)
+			assert.NoError(t, err)
 
-				incoming1, err := resource.NewResource("project.dataset1", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
-				assert.NoError(t, err)
-				incoming2, err := resource.NewResource("project.dataset2", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
-				assert.NoError(t, err)
-				resourcesToDeploy := []*resource.Resource{incoming1, incoming2}
+			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{existingResource}, nil)
 
-				existing1, err := resource.NewResource("project.dataset1", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
-				assert.NoError(t, err)
-				existing1.MarkExistInStore()
-				existing2, err := resource.NewResource("project.dataset2", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
-				assert.NoError(t, err)
-				existing2.MarkExistInStore()
+			batch.On("CreateOrUpdateAll", ctx, mock.Anything).Return(nil)
 
-				repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{existing1, existing2}, nil)
+			mgr.On("Deploy", ctx, resource.Bigquery, mock.Anything).Return(errors.New("unknown error"))
 
-				batch.On("CreateOrUpdateAll", ctx, resourcesToDeploy).Return(nil)
+			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
 
-				mgr.On("Deploy", ctx, resource.Bigquery, resourcesToDeploy).Run(func(args mock.Arguments) {
-					incoming1.ChangeStatusTo(resource.StatusCreateFailure)
-					incoming2.ChangeStatusTo(resource.StatusSuccess)
-				}).Return(errors.New("unknown error"))
+			assert.ErrorContains(t, actualError, "unknown error")
+		})
 
-				actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, resourcesToDeploy)
-				assert.ErrorContains(t, actualError, "unknown error")
-				assert.Equal(t, resource.StatusCreateFailure, incoming1.Status())
-				assert.Equal(t, resource.StatusSuccess, incoming2.Status())
-			})
+		t.Run("returns nil if no error is encountered", func(t *testing.T) {
+			repo := NewResourceRepository(t)
+			batch := NewResourceBatchRepo(t)
+			mgr := NewResourceManager(t)
+			tnntDetailsGetter := NewTenantDetailsGetter(t)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
-			t.Run("returns nil if no error is encountered", func(t *testing.T) {
-				repo := NewResourceRepository(t)
-				batch := NewResourceBatchRepo(t)
-				mgr := NewResourceManager(t)
-				tnntDetailsGetter := NewTenantDetailsGetter(t)
-				logger := log.NewLogrus()
-				rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
+			fullName := "project.dataset"
+			existingMetadata := &resource.Metadata{
+				Description: "existing resource metadata",
+			}
+			existingResource, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, existingMetadata, spec)
+			assert.NoError(t, err)
+			incomingMetadata := &resource.Metadata{
+				Description: "incoming resource metadata",
+			}
+			incomingResourceToUpdate, err := resource.NewResource(fullName, resource.KindDataset, resource.Bigquery, tnnt, incomingMetadata, spec)
+			assert.NoError(t, err)
 
-				incoming1, err := resource.NewResource("project.dataset1", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
-				assert.NoError(t, err)
-				incoming2, err := resource.NewResource("project.dataset2", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
-				assert.NoError(t, err)
-				resourcesToDeploy := []*resource.Resource{incoming1, incoming2}
+			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{existingResource}, nil)
 
-				existing1, err := resource.NewResource("project.dataset1", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
-				assert.NoError(t, err)
-				existing1.MarkExistInStore()
-				existing2, err := resource.NewResource("project.dataset2", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
-				assert.NoError(t, err)
-				existing2.MarkExistInStore()
+			batch.On("CreateOrUpdateAll", ctx, mock.Anything).Return(nil)
 
-				repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{existing1, existing2}, nil)
+			mgr.On("Deploy", ctx, resource.Bigquery, mock.Anything).Return(nil)
 
-				batch.On("CreateOrUpdateAll", ctx, resourcesToDeploy).Return(nil)
+			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, []*resource.Resource{incomingResourceToUpdate})
 
-				mgr.On("Deploy", ctx, resource.Bigquery, resourcesToDeploy).Run(func(args mock.Arguments) {
-					incoming1.ChangeStatusTo(resource.StatusSuccess)
-					incoming2.ChangeStatusTo(resource.StatusSuccess)
-				}).Return(nil)
-
-				actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, resourcesToDeploy)
-				assert.NoError(t, actualError)
-				assert.Equal(t, resource.StatusSuccess, incoming1.Status())
-				assert.Equal(t, resource.StatusSuccess, incoming2.Status())
-			})
+			assert.NoError(t, actualError)
 		})
 	})
 }
