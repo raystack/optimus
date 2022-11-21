@@ -1088,6 +1088,75 @@ func TestJobService(t *testing.T) {
 		})
 	})
 
+	t.Run("Refresh", func(t *testing.T) {
+		t.Run("resolves and saves upstream for all existing jobs in the given tenant", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			jobA := job.NewJob(sampleTenant, specA, "resource-A", []job.ResourceURN{"resource-B"})
+			specB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, jobWindow, jobTask).Build()
+			jobB := job.NewJob(sampleTenant, specB, "", nil)
+			jobs := []*job.Job{jobA, jobB}
+
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(jobs, nil)
+
+			upstreamB, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
+			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstreamB})
+			upstreamC, _ := job.NewUpstreamResolved("job-C", "", "resource-C", sampleTenant, "static")
+			jobBWithUpstream := job.NewWithUpstream(jobB, []*job.Upstream{upstreamC})
+			upstreamResolver.On("Resolve", ctx, project.Name(), []*job.Job{jobA, jobB}).Return([]*job.WithUpstream{jobAWithUpstream, jobBWithUpstream}, nil)
+
+			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobAWithUpstream, jobBWithUpstream}).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
+			err := jobService.Refresh(ctx, sampleTenant)
+			assert.NoError(t, err)
+		})
+		t.Run("resolves and saves upstream for all existing jobs in the given tenant", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			jobA := job.NewJob(sampleTenant, specA, "resource-A", []job.ResourceURN{"resource-B"})
+			specB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, jobWindow, jobTask).Build()
+			jobB := job.NewJob(sampleTenant, specB, "", nil)
+			jobs := []*job.Job{jobA, jobB}
+
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(jobs, nil)
+
+			upstreamB, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
+			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstreamB})
+			upstreamC, _ := job.NewUpstreamResolved("job-C", "", "resource-C", sampleTenant, "static")
+			jobBWithUpstream := job.NewWithUpstream(jobB, []*job.Upstream{upstreamC})
+			upstreamResolver.On("Resolve", ctx, project.Name(), []*job.Job{jobA, jobB}).Return([]*job.WithUpstream{jobAWithUpstream, jobBWithUpstream}, nil)
+
+			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobAWithUpstream, jobBWithUpstream}).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter)
+			err := jobService.Refresh(ctx, sampleTenant)
+			assert.NoError(t, err)
+		})
+	})
+
 	t.Run("Get", func(t *testing.T) {
 		// TODO: implement test cases
 	})
@@ -1301,6 +1370,29 @@ func (_m *JobRepository) GetAllSpecsByTenant(ctx context.Context, jobTenant tena
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*job.Spec)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.Tenant) error); ok {
+		r1 = rf(ctx, jobTenant)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetAllByTenant provides a mock function with given fields: ctx, jobTenant
+func (_m *JobRepository) GetAllByTenant(ctx context.Context, jobTenant tenant.Tenant) ([]*job.Job, error) {
+	ret := _m.Called(ctx, jobTenant)
+
+	var r0 []*job.Job
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant) []*job.Job); ok {
+		r0 = rf(ctx, jobTenant)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*job.Job)
 		}
 	}
 

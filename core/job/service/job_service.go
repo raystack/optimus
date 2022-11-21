@@ -46,6 +46,7 @@ type JobRepository interface {
 	GetAllByProjectName(ctx context.Context, projectName string) ([]*job.Spec, error)
 	GetAllByResourceDestination(ctx context.Context, resourceDestination string) ([]*job.Spec, error)
 	GetAllSpecsByTenant(ctx context.Context, jobTenant tenant.Tenant) ([]*job.Spec, error)
+	GetAllByTenant(ctx context.Context, jobTenant tenant.Tenant) ([]*job.Job, error)
 }
 
 type UpstreamResolver interface {
@@ -167,6 +168,21 @@ func (j JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, spe
 	me.Append(err)
 
 	err = j.resolveAndSaveUpstreams(ctx, jobTenant.ProjectName(), addedJobs, updatedJobs)
+	me.Append(err)
+
+	return errors.MultiToError(me)
+}
+
+func (j JobService) Refresh(ctx context.Context, jobTenant tenant.Tenant) error {
+	me := errors.NewMultiError("refresh all specs errors")
+
+	existingJobs, err := j.repo.GetAllByTenant(ctx, jobTenant)
+	me.Append(err)
+
+	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, jobTenant.ProjectName(), existingJobs)
+	me.Append(err)
+
+	err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
 	me.Append(err)
 
 	return errors.MultiToError(me)
