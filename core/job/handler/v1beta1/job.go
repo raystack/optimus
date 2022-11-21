@@ -3,7 +3,7 @@ package v1beta1
 import (
 	"context"
 	"fmt"
-
+	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
@@ -11,6 +11,8 @@ import (
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"io"
+	"strings"
 )
 
 type JobHandler struct {
@@ -29,6 +31,7 @@ type JobService interface {
 	Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) (affectedDownstream []job.FullName, err error)
 	Get(ctx context.Context, filters ...filter.FilterOpt) (jobSpec *job.Spec, err error)
 	GetAll(ctx context.Context, filters ...filter.FilterOpt) (jobSpecs []*job.Spec, err error)
+	ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error
 }
 
 func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *pb.AddJobSpecificationsRequest) (*pb.AddJobSpecificationsResponse, error) {
@@ -186,4 +189,50 @@ func (jh *JobHandler) GetWindow(_ context.Context, req *pb.GetWindowRequest) (*p
 		Start: timestamppb.New(startTime),
 		End:   timestamppb.New(endTime),
 	}, nil
+}
+
+func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationService_ReplaceAllJobSpecificationsServer) error {
+	responseWriter := writer.NewReplaceAllJobSpecificationsResponseWriter(stream)
+	var errNamespaces []string
+
+	for {
+		request, err := stream.Recv()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return err
+		}
+
+		jobTenant, err := tenant.NewTenant(request.ProjectName, request.NamespaceName)
+		if err != nil {
+			errMsg := fmt.Sprintf("invalid replace all job specifications request for %s: %s", request.GetNamespaceName(), err.Error())
+			responseWriter.Write(writer.LogLevelError, errMsg)
+			errNamespaces = append(errNamespaces, request.NamespaceName)
+			continue
+		}
+
+		var jobSpecs []*job.Spec
+		for _, jobProto := range request.Jobs {
+			jobSpec, err := fromJobProto(jobProto)
+			if err != nil {
+				errMsg := fmt.Sprintf("%s: cannot adapt job specification %s", err.Error(), jobProto.Name)
+				responseWriter.Write(writer.LogLevelError, errMsg)
+				errNamespaces = append(errNamespaces, request.NamespaceName)
+				continue
+			}
+			jobSpecs = append(jobSpecs, jobSpec)
+		}
+
+		if err := jh.jobService.ReplaceAll(stream.Context(), jobTenant, jobSpecs); err != nil {
+			errMsg := fmt.Sprintf("%s: replace all job specifications failure for namespace %s", err.Error(), request.NamespaceName)
+			responseWriter.Write(writer.LogLevelError, errMsg)
+			errNamespaces = append(errNamespaces, request.NamespaceName)
+		}
+	}
+	if len(errNamespaces) > 0 {
+		namespacesWithError := strings.Join(errNamespaces, ", ")
+		return fmt.Errorf("error when replacing job specifications: [%s]", namespacesWithError)
+	}
+	return nil
 }

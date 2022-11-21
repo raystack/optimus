@@ -696,6 +696,20 @@ func (_m *JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) (
 	return r0, r1
 }
 
+// ReplaceAll provides a mock function with given fields: ctx, jobTenant, jobs
+func (_m *JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error {
+	ret := _m.Called(ctx, jobTenant, jobs)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []*job.Spec) error); ok {
+		r0 = rf(ctx, jobTenant, jobs)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // Update provides a mock function with given fields: ctx, jobTenant, jobs
 func (_m *JobService) Update(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error {
 	ret := _m.Called(ctx, jobTenant, jobs)

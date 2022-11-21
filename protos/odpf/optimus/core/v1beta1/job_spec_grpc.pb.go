@@ -54,6 +54,8 @@ type JobSpecificationServiceClient interface {
 	// GetDeployJobsStatus check status of job deployment.
 	// It will returns status of the job deployment and the failure details.
 	GetDeployJobsStatus(ctx context.Context, in *GetDeployJobsStatusRequest, opts ...grpc.CallOption) (*GetDeployJobsStatusResponse, error)
+	// ReplaceAllJobSpecifications replaces all jobs in server for a given tenant
+	ReplaceAllJobSpecifications(ctx context.Context, opts ...grpc.CallOption) (JobSpecificationService_ReplaceAllJobSpecificationsClient, error)
 }
 
 type jobSpecificationServiceClient struct {
@@ -249,6 +251,37 @@ func (c *jobSpecificationServiceClient) GetDeployJobsStatus(ctx context.Context,
 	return out, nil
 }
 
+func (c *jobSpecificationServiceClient) ReplaceAllJobSpecifications(ctx context.Context, opts ...grpc.CallOption) (JobSpecificationService_ReplaceAllJobSpecificationsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &JobSpecificationService_ServiceDesc.Streams[3], "/odpf.optimus.core.v1beta1.JobSpecificationService/ReplaceAllJobSpecifications", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &jobSpecificationServiceReplaceAllJobSpecificationsClient{stream}
+	return x, nil
+}
+
+type JobSpecificationService_ReplaceAllJobSpecificationsClient interface {
+	Send(*ReplaceAllJobSpecificationsRequest) error
+	Recv() (*ReplaceAllJobSpecificationsResponse, error)
+	grpc.ClientStream
+}
+
+type jobSpecificationServiceReplaceAllJobSpecificationsClient struct {
+	grpc.ClientStream
+}
+
+func (x *jobSpecificationServiceReplaceAllJobSpecificationsClient) Send(m *ReplaceAllJobSpecificationsRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *jobSpecificationServiceReplaceAllJobSpecificationsClient) Recv() (*ReplaceAllJobSpecificationsResponse, error) {
+	m := new(ReplaceAllJobSpecificationsResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // JobSpecificationServiceServer is the server API for JobSpecificationService service.
 // All implementations must embed UnimplementedJobSpecificationServiceServer
 // for forward compatibility
@@ -285,6 +318,8 @@ type JobSpecificationServiceServer interface {
 	// GetDeployJobsStatus check status of job deployment.
 	// It will returns status of the job deployment and the failure details.
 	GetDeployJobsStatus(context.Context, *GetDeployJobsStatusRequest) (*GetDeployJobsStatusResponse, error)
+	// ReplaceAllJobSpecifications replaces all jobs in server for a given tenant
+	ReplaceAllJobSpecifications(JobSpecificationService_ReplaceAllJobSpecificationsServer) error
 	mustEmbedUnimplementedJobSpecificationServiceServer()
 }
 
@@ -330,6 +365,9 @@ func (UnimplementedJobSpecificationServiceServer) RefreshJobs(*RefreshJobsReques
 }
 func (UnimplementedJobSpecificationServiceServer) GetDeployJobsStatus(context.Context, *GetDeployJobsStatusRequest) (*GetDeployJobsStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetDeployJobsStatus not implemented")
+}
+func (UnimplementedJobSpecificationServiceServer) ReplaceAllJobSpecifications(JobSpecificationService_ReplaceAllJobSpecificationsServer) error {
+	return status.Errorf(codes.Unimplemented, "method ReplaceAllJobSpecifications not implemented")
 }
 func (UnimplementedJobSpecificationServiceServer) mustEmbedUnimplementedJobSpecificationServiceServer() {
 }
@@ -593,6 +631,32 @@ func _JobSpecificationService_GetDeployJobsStatus_Handler(srv interface{}, ctx c
 	return interceptor(ctx, in, info, handler)
 }
 
+func _JobSpecificationService_ReplaceAllJobSpecifications_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(JobSpecificationServiceServer).ReplaceAllJobSpecifications(&jobSpecificationServiceReplaceAllJobSpecificationsServer{stream})
+}
+
+type JobSpecificationService_ReplaceAllJobSpecificationsServer interface {
+	Send(*ReplaceAllJobSpecificationsResponse) error
+	Recv() (*ReplaceAllJobSpecificationsRequest, error)
+	grpc.ServerStream
+}
+
+type jobSpecificationServiceReplaceAllJobSpecificationsServer struct {
+	grpc.ServerStream
+}
+
+func (x *jobSpecificationServiceReplaceAllJobSpecificationsServer) Send(m *ReplaceAllJobSpecificationsResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *jobSpecificationServiceReplaceAllJobSpecificationsServer) Recv() (*ReplaceAllJobSpecificationsRequest, error) {
+	m := new(ReplaceAllJobSpecificationsRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // JobSpecificationService_ServiceDesc is the grpc.ServiceDesc for JobSpecificationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -657,6 +721,12 @@ var JobSpecificationService_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "RefreshJobs",
 			Handler:       _JobSpecificationService_RefreshJobs_Handler,
 			ServerStreams: true,
+		},
+		{
+			StreamName:    "ReplaceAllJobSpecifications",
+			Handler:       _JobSpecificationService_ReplaceAllJobSpecifications_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "odpf/optimus/core/v1beta1/job_spec.proto",
