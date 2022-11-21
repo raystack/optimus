@@ -114,55 +114,25 @@ func (rs ResourceService) Create(ctx context.Context, incoming *resource.Resourc
 	return errors.MultiToError(me)
 }
 
-func (rs ResourceService) Update(ctx context.Context, incoming *resource.Resource) error {
-	me := errors.NewMultiError("errors on updating resource")
+func (rs ResourceService) Update(ctx context.Context, res *resource.Resource) error {
+	if err := res.Validate(); err != nil {
+		rs.logger.Error("error validating resource [%s]: %s", res.FullName(), err)
+		return err
+	}
+	res.ChangeStatusTo(resource.StatusToUpdate)
 
-	existing, err := rs.repo.ReadByFullName(ctx, incoming.Tenant(), incoming.Dataset().Store, incoming.FullName())
-	if err != nil {
-		me.Append(incoming.ChangeStatusTo(resource.StatusUpdateFailure))
-
-		rs.logger.Error("error getting stored resource [%s]: %s", incoming.FullName(), err)
-		me.Append(err)
-		return errors.MultiToError(me)
+	if _, err := rs.repo.ReadByFullName(ctx, res.Tenant(), res.Dataset().Store, res.FullName()); err != nil {
+		rs.logger.Error("error getting stored resource [%s]: %s", res.FullName(), err)
+		return err
 	}
 
-	fullNameToExistingResource := map[string]*resource.Resource{
-		existing.FullName(): existing,
+	res.ChangeStatusTo(resource.StatusToUpdate)
+	if err := rs.repo.Update(ctx, res); err != nil {
+		rs.logger.Error("error updating stored resource [%s]: %s", res.FullName(), err)
+		return err
 	}
 
-	if err := rs.validateUpdate(ctx, incoming, fullNameToExistingResource); err != nil {
-		me.Append(incoming.ChangeStatusTo(resource.StatusUpdateFailure))
-
-		rs.logger.Error("error validating resource [%s] for update: %s", incoming.FullName(), err)
-		me.Append(err)
-		return errors.MultiToError(me)
-	}
-
-	if err := rs.repo.Update(ctx, incoming); err != nil {
-		me.Append(incoming.ChangeStatusTo(resource.StatusUpdateFailure))
-
-		rs.logger.Error("error updating resource [%s] to repository: %s", incoming.FullName(), err)
-		me.Append(err)
-		return errors.MultiToError(me)
-	}
-
-	if err := rs.mgr.UpdateResource(ctx, incoming); err != nil {
-		me.Append(incoming.ChangeStatusTo(resource.StatusUpdateFailure))
-
-		rs.logger.Error("error updating resource [%s] to store [%s]: %s", incoming.FullName(), incoming.Dataset().Store.String(), err)
-		me.Append(err)
-		return errors.MultiToError(me)
-	}
-
-	incoming.MarkExistInStore()
-	me.Append(incoming.ChangeStatusTo(resource.StatusSuccess))
-	if err := rs.repo.UpdateStatus(ctx, incoming); err != nil {
-		me.Append(incoming.ChangeStatusTo(resource.StatusUpdateFailure))
-
-		rs.logger.Error("error updating status for resource [%s]: %s", incoming.FullName(), err)
-		me.Append(err)
-	}
-	return errors.MultiToError(me)
+	return rs.mgr.UpdateResource(ctx, res)
 }
 
 func (rs ResourceService) Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceFullName string) (*resource.Resource, error) {
@@ -186,10 +156,10 @@ func (rs ResourceService) Deploy(ctx context.Context, tnnt tenant.Tenant, store 
 		rs.logger.Error("error reading all existing resources: %s", err)
 	}
 
-	fullNameToExistingResource := rs.getResourcesMappedByFullName(existingResources)
+	existingMappedByFullName := rs.getResourcesMappedByFullName(existingResources)
 
 	for _, r := range resources {
-		if _, alreadyExist := fullNameToExistingResource[r.FullName()]; alreadyExist {
+		if _, alreadyExist := existingMappedByFullName[r.FullName()]; alreadyExist {
 			if err := r.Validate(); err != nil {
 				r.ChangeStatusTo(resource.StatusUpdateFailure)
 			} else {
@@ -207,51 +177,6 @@ func (rs ResourceService) Deploy(ctx context.Context, tnnt tenant.Tenant, store 
 	multiError.Append(rs.batch.CreateOrUpdateAll(ctx, resources))
 	multiError.Append(rs.mgr.Deploy(ctx, store, resources))
 	return errors.MultiToError(multiError)
-}
-
-func (rs ResourceService) validateUpdate(ctx context.Context, incoming *resource.Resource, fullNameToExistingResource map[string]*resource.Resource) error {
-	me := errors.NewMultiError("errors on validating for update")
-
-	if err := incoming.Validate(); err != nil {
-		me.Append(incoming.ChangeStatusTo(resource.StatusUpdateFailure))
-		me.Append(errors.Wrap(resource.EntityResource, "error validating resource", err))
-		return errors.MultiToError(me)
-	}
-
-	if existing, ok := fullNameToExistingResource[incoming.FullName()]; ok {
-		if existing.ExistInStore() {
-			me.Append(incoming.ChangeStatusTo(resource.StatusToUpdate))
-			return errors.MultiToError(me)
-		}
-
-		existInStore, err := rs.mgr.Exist(ctx, existing)
-		if err != nil {
-			me.Append(incoming.ChangeStatusTo(resource.StatusUpdateFailure))
-
-			msg := fmt.Sprintf("error checking resource [%s] in store [%s]", existing.FullName(), existing.Dataset().Store.String())
-			me.Append(errors.Wrap(resource.EntityResource, msg, err))
-			return errors.MultiToError(me)
-		}
-
-		if !existInStore {
-			incoming.ChangeStatusTo(resource.StatusUpdateFailure)
-
-			msg := fmt.Sprintf("resource [%s] is not found in store [%s]", incoming.FullName(), incoming.Dataset().Store.String())
-			me.Append(errors.NotFound(resource.EntityResource, msg))
-			return errors.MultiToError(me)
-		}
-	} else {
-		// TODO: this will be run when deploying
-		me.Append(incoming.ChangeStatusTo(resource.StatusUpdateFailure))
-
-		msg := fmt.Sprintf("resource [%s] does not exist in Optimus", incoming.FullName())
-		me.Append(errors.NotFound(resource.EntityResource, msg))
-		return errors.MultiToError(me)
-	}
-
-	incoming.MarkExistInStore()
-	me.Append(incoming.ChangeStatusTo(resource.StatusToUpdate))
-	return errors.MultiToError(me)
 }
 
 func (rs ResourceService) validateCreate(ctx context.Context, incoming *resource.Resource, fullNameToExistingResource map[string]*resource.Resource) error {
