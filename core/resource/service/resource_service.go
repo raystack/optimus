@@ -25,8 +25,6 @@ type ResourceManager interface {
 	CreateResource(ctx context.Context, res *resource.Resource) error
 	UpdateResource(ctx context.Context, res *resource.Resource) error
 	Deploy(ctx context.Context, store resource.Store, resources []*resource.Resource) error
-
-	Exist(ctx context.Context, res *resource.Resource) (bool, error)
 }
 
 type TenantDetailsGetter interface {
