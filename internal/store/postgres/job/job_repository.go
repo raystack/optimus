@@ -3,7 +3,6 @@ package job
 import (
 	"context"
 	"fmt"
-
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/job"
@@ -542,4 +541,32 @@ WHERE project_name = ? AND name = ?
 		return errors.Wrap(job.EntityJob, "error during job deletion", result.Error)
 	}
 	return nil
+}
+
+func (j JobRepository) GetAllByTenant(ctx context.Context, jobTenant tenant.Tenant) ([]*job.Job, error) {
+	var specs []Spec
+	me := errors.NewMultiError("get all job specs by project name errors")
+
+	getAllByProjectName := `SELECT *
+FROM job
+WHERE project_name = ? 
+AND namespace_name = ?
+`
+	if err := j.db.WithContext(ctx).Raw(getAllByProjectName, jobTenant.ProjectName().String(), jobTenant.NamespaceName().String()).Find(&specs).Error; err != nil {
+		return nil, err
+	}
+
+	var jobs []*job.Job
+	for _, spec := range specs {
+		jobSpec, err := fromStorageSpec(&spec)
+		if err != nil {
+			me.Append(err)
+			continue
+		}
+		// TODO: pass destination and sources values
+		job := job.NewJob(jobTenant, jobSpec, "", nil)
+		jobs = append(jobs, job)
+	}
+
+	return jobs, errors.MultiToError(me)
 }
