@@ -45,7 +45,6 @@ type JobRepository interface {
 	GetByJobName(ctx context.Context, projectName, jobName string) (*job.Spec, error)
 	GetAllByProjectName(ctx context.Context, projectName string) ([]*job.Spec, error)
 	GetAllByResourceDestination(ctx context.Context, resourceDestination string) ([]*job.Spec, error)
-	GetAllSpecsByTenant(ctx context.Context, jobTenant tenant.Tenant) ([]*job.Spec, error)
 	GetAllByTenant(ctx context.Context, jobTenant tenant.Tenant) ([]*job.Job, error)
 }
 
@@ -278,12 +277,12 @@ func (j JobService) bulkDelete(ctx context.Context, jobTenant tenant.Tenant, toD
 func (j JobService) differentiateSpecs(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) (added []*job.Spec, modified []*job.Spec, deleted []*job.Spec, err error) {
 	me := errors.NewMultiError("differentiate specs errors")
 
-	existingJobSpecs, err := j.repo.GetAllSpecsByTenant(ctx, jobTenant)
+	existingJobs, err := j.repo.GetAllByTenant(ctx, jobTenant)
 	me.Append(err)
 
 	var addedSpecs, modifiedSpecs, deletedSpecs []*job.Spec
 
-	existingSpecsMap := job.Specs(existingJobSpecs).ToNameAndSpecMap()
+	existingSpecsMap := job.Jobs(existingJobs).GetNameAndSpecMap()
 	for _, incomingSpec := range specs {
 		if spec, ok := existingSpecsMap[incomingSpec.Name()]; !ok {
 			addedSpecs = append(addedSpecs, incomingSpec)
@@ -295,9 +294,9 @@ func (j JobService) differentiateSpecs(ctx context.Context, jobTenant tenant.Ten
 	}
 
 	incomingSpecsMap := job.Specs(specs).ToNameAndSpecMap()
-	for _, existingJob := range existingJobSpecs {
-		if _, ok := incomingSpecsMap[existingJob.Name()]; !ok {
-			deletedSpecs = append(deletedSpecs, existingJob)
+	for _, existingJob := range existingJobs {
+		if _, ok := incomingSpecsMap[existingJob.Spec().Name()]; !ok {
+			deletedSpecs = append(deletedSpecs, existingJob.Spec())
 		}
 	}
 	return addedSpecs, modifiedSpecs, deletedSpecs, errors.MultiToError(me)
