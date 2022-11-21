@@ -20,13 +20,11 @@ const (
 )
 
 var statusTransitionSourceToDestinations = map[Status][]Status{
-	StatusUnknown:          {StatusUnknown, StatusToCreate, StatusToUpdate, StatusCreateFailure, StatusUpdateFailure, StatusMarkExistInStore},
-	StatusToCreate:         {StatusToCreate, StatusCreateFailure, StatusSuccess},
-	StatusToUpdate:         {StatusToUpdate, StatusUpdateFailure, StatusSuccess},
-	StatusMarkExistInStore: {StatusMarkExistInStore, StatusCreateFailure},
-	StatusCreateFailure:    {StatusCreateFailure},
-	StatusUpdateFailure:    {StatusUpdateFailure},
-	StatusSuccess:          {StatusSuccess, StatusCreateFailure, StatusUpdateFailure},
+	StatusUnknown:          {StatusToCreate, StatusToUpdate, StatusCreateFailure, StatusUpdateFailure, StatusMarkExistInStore},
+	StatusToCreate:         {StatusCreateFailure, StatusSuccess},
+	StatusToUpdate:         {StatusUpdateFailure, StatusSuccess},
+	StatusMarkExistInStore: {StatusCreateFailure},
+	StatusSuccess:          {StatusCreateFailure, StatusUpdateFailure},
 }
 
 type ValidateResource interface {
