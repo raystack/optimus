@@ -153,7 +153,7 @@ func TestDatasetHandle(t *testing.T) {
 			spec := map[string]any{
 				"description":      "test update",
 				"location":         "asia-southeast2",
-				"table_expiration": 2,
+				"table_expiration": float64(2),
 			}
 			res, err := resource.NewResource("proj.dataset", resource.KindDataset, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
