@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/odpf/salt/log"
 
@@ -31,17 +32,21 @@ func (m *ResourceMgr) CreateResource(ctx context.Context, res *resource.Resource
 	store := res.Dataset().Store
 	datastore, ok := m.datastoreMap[store]
 	if !ok {
-		m.logger.Error("datastore [%s] for resource [%s] is not found", res.Dataset().Store.String(), res.FullName())
-		return errors.InvalidArgument(resource.EntityResource, "data store service not found for "+store.String())
+		msg := fmt.Sprintf("datastore [%s] for resource [%s] is not found", res.Dataset().Store.String(), res.FullName())
+		m.logger.Error(msg)
+		return errors.InternalError(resource.EntityResource, msg, nil)
 	}
 
 	me := errors.NewMultiError("error in create resource")
-
-	err := datastore.Create(ctx, res)
-	if err != nil && !errors.IsErrorType(err, errors.ErrAlreadyExists) {
-		me.Append(err)
-		me.Append(res.MarkFailure())
+	if err := datastore.Create(ctx, res); err != nil {
 		m.logger.Error("error creating resource [%s] to datastore [%s]: %s", res.FullName(), res.Dataset().Store.String(), err)
+
+		if errors.IsErrorType(err, errors.ErrAlreadyExists) {
+			me.Append(res.MarkExistInStore())
+		} else {
+			me.Append(res.MarkFailure())
+		}
+		me.Append(err)
 	} else {
 		me.Append(res.MarkSuccess())
 	}
@@ -54,14 +59,13 @@ func (m *ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource
 	store := res.Dataset().Store
 	datastore, ok := m.datastoreMap[store]
 	if !ok {
-		m.logger.Error("datastore [%s] for resource [%s] is not found", res.Dataset().Store.String(), res.FullName())
-		return errors.InvalidArgument(resource.EntityResource, "data store service not found for "+store.String())
+		msg := fmt.Sprintf("datastore [%s] for resource [%s] is not found", res.Dataset().Store.String(), res.FullName())
+		m.logger.Error(msg)
+		return errors.InternalError(resource.EntityResource, msg, nil)
 	}
 
 	me := errors.NewMultiError("error in update resource")
-
-	err := datastore.Update(ctx, res)
-	if err != nil {
+	if err := datastore.Update(ctx, res); err != nil {
 		me.Append(err)
 		me.Append(res.MarkFailure())
 		m.logger.Error("error updating resource [%s] to datastore [%s]: %s", res.FullName(), res.Dataset().Store.String(), err)
