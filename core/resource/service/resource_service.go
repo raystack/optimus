@@ -90,25 +90,35 @@ func (rs ResourceService) Create(ctx context.Context, incoming *resource.Resourc
 	return rs.mgr.CreateResource(ctx, incoming)
 }
 
-func (rs ResourceService) Update(ctx context.Context, res *resource.Resource) error {
-	if err := res.Validate(); err != nil {
-		rs.logger.Error("error validating resource [%s]: %s", res.FullName(), err)
+func (rs ResourceService) Update(ctx context.Context, incoming *resource.Resource) error {
+	if err := incoming.Validate(); err != nil {
+		rs.logger.Error("error validating resource [%s]: %s", incoming.FullName(), err)
 		return err
 	}
-	res.MarkValidationSuccess()
+	incoming.MarkValidationSuccess()
 
-	if _, err := rs.repo.ReadByFullName(ctx, res.Tenant(), res.Dataset().Store, res.FullName()); err != nil {
-		rs.logger.Error("error getting stored resource [%s]: %s", res.FullName(), err)
-		return err
-	}
-
-	res.MarkToUpdate()
-	if err := rs.repo.Update(ctx, res); err != nil {
-		rs.logger.Error("error updating stored resource [%s]: %s", res.FullName(), err)
+	existing, err := rs.repo.ReadByFullName(ctx, incoming.Tenant(), incoming.Dataset().Store, incoming.FullName())
+	if err != nil {
+		rs.logger.Error("error getting stored resource [%s]: %s", incoming.FullName(), err)
 		return err
 	}
 
-	return rs.mgr.UpdateResource(ctx, res)
+	if !(existing.Status() == resource.StatusToUpdate ||
+		existing.Status() == resource.StatusSuccess ||
+		existing.Status() == resource.StatusExistInStore ||
+		existing.Status() == resource.StatusUpdateFailure) {
+		msg := fmt.Sprintf("cannot update resource [%s] with existing status [%s]", incoming.FullName(), existing.Status())
+		rs.logger.Error(msg)
+		return errors.InvalidArgument(resource.EntityResource, msg)
+	}
+	incoming.MarkToUpdate()
+
+	if err := rs.repo.Update(ctx, incoming); err != nil {
+		rs.logger.Error("error updating stored resource [%s]: %s", incoming.FullName(), err)
+		return err
+	}
+
+	return rs.mgr.UpdateResource(ctx, incoming)
 }
 
 func (rs ResourceService) Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceFullName string) (*resource.Resource, error) {
