@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/odpf/optimus/api/writer"
+	"github.com/odpf/salt/log"
 	"testing"
 	"time"
 
@@ -59,12 +61,13 @@ func TestNewJobHandler(t *testing.T) {
 		},
 		Airflow: &pb.JobSpecMetadataAirflow{Pool: "100", Queue: "50"},
 	}
+	log := log.NewNoop()
 
 	t.Run("AddJobSpecifications", func(t *testing.T) {
 		t.Run("adds job", func(t *testing.T) {
 			jobService := new(JobService)
 
-			jobHandler := v1beta1.NewJobHandler(jobService)
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
 
 			jobSpecProto := &pb.JobSpecification{
 				Version:          int32(jobVersion),
@@ -96,7 +99,7 @@ func TestNewJobHandler(t *testing.T) {
 		t.Run("adds complete job", func(t *testing.T) {
 			jobService := new(JobService)
 
-			jobHandler := v1beta1.NewJobHandler(jobService)
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
 
 			jobSpecProto := &pb.JobSpecification{
 				Version:          int32(jobVersion),
@@ -131,7 +134,7 @@ func TestNewJobHandler(t *testing.T) {
 		t.Run("returns error when unable to create tenant", func(t *testing.T) {
 			jobService := new(JobService)
 
-			jobHandler := v1beta1.NewJobHandler(jobService)
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
 
 			request := pb.AddJobSpecificationsRequest{
 				NamespaceName: namespace.Name().String(),
@@ -144,7 +147,7 @@ func TestNewJobHandler(t *testing.T) {
 		t.Run("skips job if unable to parse from proto", func(t *testing.T) {
 			jobService := new(JobService)
 
-			jobHandler := v1beta1.NewJobHandler(jobService)
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
 
 			jobSpecProtos := []*pb.JobSpecification{
 				{
@@ -186,7 +189,7 @@ func TestNewJobHandler(t *testing.T) {
 		t.Run("returns error when all jobs failed to be added", func(t *testing.T) {
 			jobService := new(JobService)
 
-			jobHandler := v1beta1.NewJobHandler(jobService)
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
 
 			jobSpecProtos := []*pb.JobSpecification{
 				{
@@ -216,7 +219,7 @@ func TestNewJobHandler(t *testing.T) {
 		t.Run("returns response with job errors log when some jobs failed to be added", func(t *testing.T) {
 			jobService := new(JobService)
 
-			jobHandler := v1beta1.NewJobHandler(jobService)
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
 
 			jobSpecProtos := []*pb.JobSpecification{
 				{
@@ -260,7 +263,7 @@ func TestNewJobHandler(t *testing.T) {
 		t.Run("update jobs", func(t *testing.T) {
 			jobService := new(JobService)
 
-			jobHandler := v1beta1.NewJobHandler(jobService)
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
 
 			jobSpecProto := &pb.JobSpecification{
 				Version:          int32(jobVersion),
@@ -292,7 +295,7 @@ func TestNewJobHandler(t *testing.T) {
 		t.Run("update complete jobs", func(t *testing.T) {
 			jobService := new(JobService)
 
-			jobHandler := v1beta1.NewJobHandler(jobService)
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
 
 			jobSpecProto := &pb.JobSpecification{
 				Version:          int32(jobVersion),
@@ -327,7 +330,7 @@ func TestNewJobHandler(t *testing.T) {
 		t.Run("returns error when unable to create tenant", func(t *testing.T) {
 			jobService := new(JobService)
 
-			jobHandler := v1beta1.NewJobHandler(jobService)
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
 
 			request := pb.UpdateJobSpecificationsRequest{
 				NamespaceName: namespace.Name().String(),
@@ -340,7 +343,7 @@ func TestNewJobHandler(t *testing.T) {
 		t.Run("skips job if unable to parse from proto", func(t *testing.T) {
 			jobService := new(JobService)
 
-			jobHandler := v1beta1.NewJobHandler(jobService)
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
 
 			jobSpecProtos := []*pb.JobSpecification{
 				{
@@ -382,7 +385,7 @@ func TestNewJobHandler(t *testing.T) {
 		t.Run("returns error when all jobs failed to be updated", func(t *testing.T) {
 			jobService := new(JobService)
 
-			jobHandler := v1beta1.NewJobHandler(jobService)
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
 
 			jobSpecProtos := []*pb.JobSpecification{
 				{
@@ -412,7 +415,7 @@ func TestNewJobHandler(t *testing.T) {
 		t.Run("returns response with job errors log when some jobs failed to be updated", func(t *testing.T) {
 			jobService := new(JobService)
 
-			jobHandler := v1beta1.NewJobHandler(jobService)
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
 
 			jobSpecProtos := []*pb.JobSpecification{
 				{
@@ -467,7 +470,7 @@ func TestNewJobHandler(t *testing.T) {
 
 			jobService.On("Delete", ctx, sampleTenant, jobAName, false, false).Return(nil, nil)
 
-			jobHandler := v1beta1.NewJobHandler(jobService)
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
 			resp, err := jobHandler.DeleteJobSpecification(ctx, request)
 			assert.NoError(t, err)
 			assert.NotContains(t, resp.Message, "these downstream will be affected")
@@ -487,7 +490,7 @@ func TestNewJobHandler(t *testing.T) {
 			downstreamNames := []job.FullName{"job-B"}
 			jobService.On("Delete", ctx, sampleTenant, jobAName, false, true).Return(downstreamNames, nil)
 
-			jobHandler := v1beta1.NewJobHandler(jobService)
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
 			resp, err := jobHandler.DeleteJobSpecification(ctx, request)
 			assert.NoError(t, err)
 			assert.Contains(t, resp.Message, fmt.Sprintf("these downstream will be affected: %s", downstreamNames))
@@ -503,7 +506,7 @@ func TestNewJobHandler(t *testing.T) {
 				Force:         true,
 			}
 
-			jobHandler := v1beta1.NewJobHandler(jobService)
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
 			resp, err := jobHandler.DeleteJobSpecification(ctx, request)
 			assert.Error(t, err)
 			assert.Nil(t, resp)
@@ -518,7 +521,7 @@ func TestNewJobHandler(t *testing.T) {
 				Force:         true,
 			}
 
-			jobHandler := v1beta1.NewJobHandler(jobService)
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
 			resp, err := jobHandler.DeleteJobSpecification(ctx, request)
 			assert.Error(t, err)
 			assert.Nil(t, resp)
@@ -537,7 +540,7 @@ func TestNewJobHandler(t *testing.T) {
 
 			jobService.On("Delete", ctx, sampleTenant, jobAName, false, true).Return(nil, errors.New("internal error"))
 
-			jobHandler := v1beta1.NewJobHandler(jobService)
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
 			resp, err := jobHandler.DeleteJobSpecification(ctx, request)
 			assert.Error(t, err)
 			assert.Nil(t, resp)
@@ -548,7 +551,7 @@ func TestNewJobHandler(t *testing.T) {
 			req := &pb.GetWindowRequest{
 				ScheduledAt: nil,
 			}
-			jobHandler := v1beta1.NewJobHandler(nil)
+			jobHandler := v1beta1.NewJobHandler(nil, nil)
 
 			resp, err := jobHandler.GetWindow(ctx, req)
 			assert.Error(t, err)
@@ -559,7 +562,7 @@ func TestNewJobHandler(t *testing.T) {
 				Version:     3,
 				ScheduledAt: timestamppb.New(time.Date(2022, 11, 18, 13, 0, 0, 0, time.UTC)),
 			}
-			jobHandler := v1beta1.NewJobHandler(nil)
+			jobHandler := v1beta1.NewJobHandler(nil, nil)
 
 			resp, err := jobHandler.GetWindow(ctx, req)
 			assert.Error(t, err)
@@ -571,7 +574,7 @@ func TestNewJobHandler(t *testing.T) {
 				ScheduledAt: timestamppb.New(time.Date(2022, 11, 18, 13, 0, 0, 0, time.UTC)),
 				Size:        "1",
 			}
-			jobHandler := v1beta1.NewJobHandler(nil)
+			jobHandler := v1beta1.NewJobHandler(nil, nil)
 
 			resp, err := jobHandler.GetWindow(ctx, req)
 			assert.Error(t, err)
@@ -585,7 +588,7 @@ func TestNewJobHandler(t *testing.T) {
 				Offset:      "0",
 				TruncateTo:  "d",
 			}
-			jobHandler := v1beta1.NewJobHandler(nil)
+			jobHandler := v1beta1.NewJobHandler(nil, nil)
 
 			resp, err := jobHandler.GetWindow(ctx, req)
 			assert.NoError(t, err)
@@ -637,7 +640,7 @@ func (_m *JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobNa
 }
 
 // Get provides a mock function with given fields: ctx, filters
-func (_m *JobService) Get(ctx context.Context, filters ...filter.FilterOpt) (*job.Spec, error) {
+func (_m *JobService) Get(ctx context.Context, filters ...filter.FilterOpt) (*job.Job, error) {
 	_va := make([]interface{}, len(filters))
 	for _i := range filters {
 		_va[_i] = filters[_i]
@@ -647,12 +650,12 @@ func (_m *JobService) Get(ctx context.Context, filters ...filter.FilterOpt) (*jo
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
-	var r0 *job.Spec
-	if rf, ok := ret.Get(0).(func(context.Context, ...filter.FilterOpt) *job.Spec); ok {
+	var r0 *job.Job
+	if rf, ok := ret.Get(0).(func(context.Context, ...filter.FilterOpt) *job.Job); ok {
 		r0 = rf(ctx, filters...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*job.Spec)
+			r0 = ret.Get(0).(*job.Job)
 		}
 	}
 
@@ -667,7 +670,7 @@ func (_m *JobService) Get(ctx context.Context, filters ...filter.FilterOpt) (*jo
 }
 
 // GetAll provides a mock function with given fields: ctx, filters
-func (_m *JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) ([]*job.Spec, error) {
+func (_m *JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) ([]*job.Job, error) {
 	_va := make([]interface{}, len(filters))
 	for _i := range filters {
 		_va[_i] = filters[_i]
@@ -677,12 +680,12 @@ func (_m *JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) (
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
-	var r0 []*job.Spec
-	if rf, ok := ret.Get(0).(func(context.Context, ...filter.FilterOpt) []*job.Spec); ok {
+	var r0 []*job.Job
+	if rf, ok := ret.Get(0).(func(context.Context, ...filter.FilterOpt) []*job.Job); ok {
 		r0 = rf(ctx, filters...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*job.Spec)
+			r0 = ret.Get(0).([]*job.Job)
 		}
 	}
 
@@ -696,13 +699,34 @@ func (_m *JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) (
 	return r0, r1
 }
 
-// ReplaceAll provides a mock function with given fields: ctx, jobTenant, jobs
-func (_m *JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error {
-	ret := _m.Called(ctx, jobTenant, jobs)
+// Refresh provides a mock function with given fields: ctx, projectName, logWriter, filters
+func (_m *JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, logWriter writer.LogWriter, filters ...filter.FilterOpt) error {
+	_va := make([]interface{}, len(filters))
+	for _i := range filters {
+		_va[_i] = filters[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, projectName, logWriter)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []*job.Spec) error); ok {
-		r0 = rf(ctx, jobTenant, jobs)
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, writer.LogWriter, ...filter.FilterOpt) error); ok {
+		r0 = rf(ctx, projectName, logWriter, filters...)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// ReplaceAll provides a mock function with given fields: ctx, jobTenant, jobs, logWriter
+func (_m *JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, logWriter writer.LogWriter) error {
+	ret := _m.Called(ctx, jobTenant, jobs, logWriter)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []*job.Spec, writer.LogWriter) error); ok {
+		r0 = rf(ctx, jobTenant, jobs, logWriter)
 	} else {
 		r0 = ret.Error(0)
 	}

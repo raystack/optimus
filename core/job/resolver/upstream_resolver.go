@@ -3,6 +3,7 @@ package resolver
 import (
 	"context"
 	"fmt"
+	"github.com/odpf/optimus/api/writer"
 
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
@@ -28,7 +29,7 @@ type JobRepository interface {
 	GetJobNameWithInternalUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error)
 }
 
-func (u UpstreamResolver) Resolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) ([]*job.WithUpstream, error) {
+func (u UpstreamResolver) Resolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job, logWriter writer.LogWriter) ([]*job.WithUpstream, error) {
 	me := errors.NewMultiError("resolve jobs errors")
 
 	// get internal inferred and static upstreams
@@ -39,14 +40,14 @@ func (u UpstreamResolver) Resolve(ctx context.Context, projectName tenant.Projec
 	}
 
 	// merge with external upstreams
-	jobsWithAllUpstreams, err := u.getJobsWithAllUpstreams(ctx, jobs, jobsWithInternalUpstreams)
+	jobsWithAllUpstreams, err := u.getJobsWithAllUpstreams(ctx, jobs, jobsWithInternalUpstreams, logWriter)
 	me.Append(err)
 
 	me.Append(u.getUnresolvedUpstreamsErrors(jobsWithAllUpstreams))
 	return jobsWithAllUpstreams, errors.MultiToError(me)
 }
 
-func (u UpstreamResolver) getJobsWithAllUpstreams(ctx context.Context, jobs []*job.Job, jobsWithInternalUpstreams map[job.Name][]*job.Upstream) ([]*job.WithUpstream, error) {
+func (u UpstreamResolver) getJobsWithAllUpstreams(ctx context.Context, jobs []*job.Job, jobsWithInternalUpstreams map[job.Name][]*job.Upstream, logWriter writer.LogWriter) ([]*job.WithUpstream, error) {
 	me := errors.NewMultiError("get jobs with all upstreams errors")
 
 	var jobsWithAllUpstreams []*job.WithUpstream
@@ -61,6 +62,8 @@ func (u UpstreamResolver) getJobsWithAllUpstreams(ctx context.Context, jobs []*j
 		unresolvedUpstreams := u.identifyUnresolvedUpstreams(internalUpstreams, jobEntity)
 		externalUpstreams, unresolvedUpstreams, err := u.externalUpstreamResolver.FetchExternalUpstreams(ctx, unresolvedUpstreams)
 		if err != nil {
+			errorMsg := fmt.Sprintf("job %s upstream resolution failed: %s", jobEntity.Spec().Name().String(), err.Error())
+			logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] %s", jobEntity.Tenant().NamespaceName().String(), errorMsg))
 			me.Append(err)
 		}
 		allUpstreams = append(allUpstreams, externalUpstreams...)
@@ -75,6 +78,7 @@ func (u UpstreamResolver) getJobsWithAllUpstreams(ctx context.Context, jobs []*j
 
 		jobWithAllUpstreams := job.NewWithUpstream(jobEntity, allUpstreams)
 		jobsWithAllUpstreams = append(jobsWithAllUpstreams, jobWithAllUpstreams)
+		logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] job %s upstream resolved", jobEntity.Tenant().NamespaceName().String(), jobEntity.Spec().Name().String()))
 	}
 	return jobsWithAllUpstreams, errors.MultiToError(me)
 }

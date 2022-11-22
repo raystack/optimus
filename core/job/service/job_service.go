@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/odpf/optimus/api/writer"
+	"github.com/odpf/salt/log"
 
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/service/filter"
@@ -17,10 +19,18 @@ type JobService struct {
 	upstreamResolver UpstreamResolver
 
 	tenantDetailsGetter TenantDetailsGetter
+
+	logger log.Logger
 }
 
-func NewJobService(repo JobRepository, pluginService PluginService, upstreamResolver UpstreamResolver, tenantDetailsGetter TenantDetailsGetter) *JobService {
-	return &JobService{repo: repo, pluginService: pluginService, upstreamResolver: upstreamResolver, tenantDetailsGetter: tenantDetailsGetter}
+func NewJobService(repo JobRepository, pluginService PluginService, upstreamResolver UpstreamResolver, tenantDetailsGetter TenantDetailsGetter, logger log.Logger) *JobService {
+	return &JobService{
+		repo:                repo,
+		pluginService:       pluginService,
+		upstreamResolver:    upstreamResolver,
+		tenantDetailsGetter: tenantDetailsGetter,
+		logger:              logger,
+	}
 }
 
 type PluginService interface {
@@ -49,10 +59,11 @@ type JobRepository interface {
 }
 
 type UpstreamResolver interface {
-	Resolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) (jobWithUpstreams []*job.WithUpstream, err error)
+	Resolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job, logWriter writer.LogWriter) (jobWithUpstreams []*job.WithUpstream, err error)
 }
 
 func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) error {
+	logWriter := writer.NewLogWriter(j.logger)
 	me := errors.NewMultiError("add specs errors")
 
 	validatedSpecs, err := j.getValidatedSpecs(specs)
@@ -64,7 +75,7 @@ func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*j
 	addedJobs, err := j.repo.Add(ctx, jobs)
 	me.Append(err)
 
-	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, jobTenant.ProjectName(), addedJobs)
+	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, jobTenant.ProjectName(), addedJobs, logWriter)
 	me.Append(err)
 
 	err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
@@ -74,6 +85,7 @@ func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*j
 }
 
 func (j JobService) Update(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) error {
+	logWriter := writer.NewLogWriter(j.logger)
 	me := errors.NewMultiError("update specs errors")
 
 	validatedSpecs, err := j.getValidatedSpecs(specs)
@@ -85,7 +97,7 @@ func (j JobService) Update(ctx context.Context, jobTenant tenant.Tenant, specs [
 	updatedJobs, err := j.repo.Update(ctx, jobs)
 	me.Append(err)
 
-	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, jobTenant.ProjectName(), updatedJobs)
+	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, jobTenant.ProjectName(), updatedJobs, logWriter)
 	me.Append(err)
 
 	err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
@@ -122,7 +134,8 @@ func (j JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) ([]
 
 	// when resource destination exist, filter by destination
 	if f.Contains(filter.ResourceDestination) {
-		return j.repo.GetAllByResourceDestination(ctx, f.GetStringValue(filter.ResourceDestination))
+		resourceDestination, _ := job.ResourceURNFrom(f.GetStringValue(filter.ResourceDestination))
+		return j.repo.GetAllByResourceDestination(ctx, resourceDestination)
 	}
 
 	// when project name and job names exist, filter by project and job names
@@ -135,12 +148,12 @@ func (j JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) ([]
 		var jobs []*job.Job
 		for _, jobNameStr := range jobNames {
 			jobName, _ := job.NameFrom(jobNameStr)
-			job, err := j.repo.GetByJobName(ctx, projectName, jobName)
+			fetchedJob, err := j.repo.GetByJobName(ctx, projectName, jobName)
 			if err != nil {
 				me.Append(err)
 				continue
 			}
-			jobs = append(jobs, job)
+			jobs = append(jobs, fetchedJob)
 		}
 		return jobs, errors.MultiToError(me)
 	}
@@ -177,40 +190,41 @@ func (j JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) ([]
 	return nil, nil
 }
 
-func (j JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) error {
+func (j JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec, logWriter writer.LogWriter) error {
 	me := errors.NewMultiError("replace all specs errors")
 
 	validatedSpecs, err := j.getValidatedSpecs(specs)
 	me.Append(err)
 
 	toAdd, toUpdate, toDelete, err := j.differentiateSpecs(ctx, jobTenant, validatedSpecs)
+	logWriter.Write(writer.LogLevelInfo, fmt.Sprintf("found %d new, %d modified, and %d deleted job specs", len(toAdd), len(toUpdate), len(toDelete)))
 	me.Append(err)
 
 	tenantWithDetails, err := j.tenantDetailsGetter.GetDetails(ctx, jobTenant)
 	me.Append(err)
 
-	addedJobs, err := j.bulkAdd(ctx, tenantWithDetails, toAdd)
+	addedJobs, err := j.bulkAdd(ctx, tenantWithDetails, toAdd, logWriter)
 	me.Append(err)
 
-	updatedJobs, err := j.bulkUpdate(ctx, tenantWithDetails, toUpdate)
+	updatedJobs, err := j.bulkUpdate(ctx, tenantWithDetails, toUpdate, logWriter)
 	me.Append(err)
 
-	err = j.bulkDelete(ctx, jobTenant, toDelete)
+	err = j.bulkDelete(ctx, jobTenant, toDelete, logWriter)
 	me.Append(err)
 
-	err = j.resolveAndSaveUpstreams(ctx, jobTenant.ProjectName(), addedJobs, updatedJobs)
+	err = j.resolveAndSaveUpstreams(ctx, jobTenant.ProjectName(), logWriter, addedJobs, updatedJobs)
 	me.Append(err)
 
 	return errors.MultiToError(me)
 }
 
-func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, filters ...filter.FilterOpt) (err error) {
+func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, logWriter writer.LogWriter, filters ...filter.FilterOpt) (err error) {
 	me := errors.NewMultiError("refresh all specs errors")
 
 	jobs, err := j.GetAll(ctx, filters...)
 	me.Append(err)
 
-	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, projectName, jobs)
+	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, projectName, jobs, logWriter)
 	me.Append(err)
 
 	err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
@@ -219,7 +233,7 @@ func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName,
 	return errors.MultiToError(me)
 }
 
-func (j JobService) resolveAndSaveUpstreams(ctx context.Context, projectName tenant.ProjectName, jobsToResolve ...[]*job.Job) error {
+func (j JobService) resolveAndSaveUpstreams(ctx context.Context, projectName tenant.ProjectName, logWriter writer.LogWriter, jobsToResolve ...[]*job.Job) error {
 	var allJobsToResolve []*job.Job
 	for _, group := range jobsToResolve {
 		allJobsToResolve = append(allJobsToResolve, group...)
@@ -229,7 +243,7 @@ func (j JobService) resolveAndSaveUpstreams(ctx context.Context, projectName ten
 	}
 
 	me := errors.NewMultiError("resolve and save upstream errors")
-	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, projectName, allJobsToResolve)
+	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, projectName, allJobsToResolve, logWriter)
 	me.Append(err)
 
 	err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
@@ -238,17 +252,20 @@ func (j JobService) resolveAndSaveUpstreams(ctx context.Context, projectName ten
 	return errors.MultiToError(err)
 }
 
-func (j JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.WithDetails, specsToAdd []*job.Spec) ([]*job.Job, error) {
+func (j JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.WithDetails, specsToAdd []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {
 	me := errors.NewMultiError("bulk add specs errors")
 
+	//TODO: parallelize this
 	var jobsToAdd []*job.Job
 	for _, spec := range specsToAdd {
 		generatedJob, err := j.generateJob(ctx, tenantWithDetails, spec)
 		if err != nil {
+			logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] unable to add job %s", tenantWithDetails.Namespace().Name().String(), spec.Name().String()))
 			me.Append(err)
 			continue
 		}
 		jobsToAdd = append(jobsToAdd, generatedJob)
+		logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] adding job %s", tenantWithDetails.Namespace().Name().String(), spec.Name().String()))
 	}
 
 	if len(jobsToAdd) == 0 {
@@ -261,17 +278,20 @@ func (j JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.WithD
 	return addedJobs, errors.MultiToError(me)
 }
 
-func (j JobService) bulkUpdate(ctx context.Context, tenantWithDetails *tenant.WithDetails, specsToUpdate []*job.Spec) ([]*job.Job, error) {
+func (j JobService) bulkUpdate(ctx context.Context, tenantWithDetails *tenant.WithDetails, specsToUpdate []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {
 	me := errors.NewMultiError("bulk add specs errors")
 
+	//TODO: parallelize this
 	var jobsToUpdate []*job.Job
 	for _, spec := range specsToUpdate {
 		generatedJob, err := j.generateJob(ctx, tenantWithDetails, spec)
 		if err != nil {
+			logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] unable to update job %s", tenantWithDetails.Namespace().Name().String(), spec.Name().String()))
 			me.Append(err)
 			continue
 		}
 		jobsToUpdate = append(jobsToUpdate, generatedJob)
+		logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] updating job %s", tenantWithDetails.Namespace().Name().String(), spec.Name().String()))
 	}
 
 	if len(jobsToUpdate) == 0 {
@@ -284,7 +304,7 @@ func (j JobService) bulkUpdate(ctx context.Context, tenantWithDetails *tenant.Wi
 	return updatedJobs, errors.MultiToError(me)
 }
 
-func (j JobService) bulkDelete(ctx context.Context, jobTenant tenant.Tenant, toDelete []*job.Spec) error {
+func (j JobService) bulkDelete(ctx context.Context, jobTenant tenant.Tenant, toDelete []*job.Spec, logWriter writer.LogWriter) error {
 	me := errors.NewMultiError("bulk delete specs errors")
 
 	for _, spec := range toDelete {
@@ -295,12 +315,16 @@ func (j JobService) bulkDelete(ctx context.Context, jobTenant tenant.Tenant, toD
 		}
 
 		if len(downstreamFullNames) > 0 {
-			errorMsg := fmt.Sprintf("job is being used by %s", downstreamFullNames)
+			errorMsg := fmt.Sprintf("deleting job %s failed. job is being used by %s", spec.Name().String(), downstreamFullNames)
+			logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] %s", jobTenant.NamespaceName().String(), spec.Name().String()))
 			me.Append(errors.NewError(errors.ErrFailedPrecond, job.EntityJob, errorMsg))
 			continue
 		}
 
 		err = j.repo.Delete(ctx, jobTenant.ProjectName(), spec.Name(), false)
+		if err == nil {
+			logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] job %s deleted", jobTenant.NamespaceName().String(), spec.Name().String()))
+		}
 		me.Append(err)
 	}
 	return errors.MultiToError(me)
@@ -334,7 +358,7 @@ func (j JobService) differentiateSpecs(ctx context.Context, jobTenant tenant.Ten
 	return addedSpecs, modifiedSpecs, deletedSpecs, errors.MultiToError(me)
 }
 
-func (JobService) getValidatedSpecs(jobs []*job.Spec) ([]*job.Spec, error) {
+func (j JobService) getValidatedSpecs(jobs []*job.Spec) ([]*job.Spec, error) {
 	me := errors.NewMultiError("spec validation errors")
 
 	var validatedSpecs []*job.Spec

@@ -11,7 +11,7 @@ func TestFilter(t *testing.T) {
 	t.Run("GetValue", func(t *testing.T) {
 		t.Run("return project_name if operand project name exist", func(t *testing.T) {
 			f := filter.NewFilter(filter.With(filter.ProjectName, "project-a"))
-			actual := f.GetValue(filter.ProjectName)
+			actual := f.GetStringValue(filter.ProjectName)
 			assert.Equal(t, "project-a", actual)
 		})
 		t.Run("return project_name if multi operand exist including project name", func(t *testing.T) {
@@ -20,17 +20,17 @@ func TestFilter(t *testing.T) {
 				filter.With(filter.ProjectName, "project-a"),
 				filter.With(filter.ResourceDestination, "resource-destination"),
 			)
-			actual := f.GetValue(filter.ProjectName)
+			actual := f.GetStringValue(filter.ProjectName)
 			assert.Equal(t, "project-a", actual)
 		})
 		t.Run("return empty string if operand project name empty", func(t *testing.T) {
 			f := filter.NewFilter(filter.With(filter.ProjectName, ""))
-			actual := f.GetValue(filter.ProjectName)
+			actual := f.GetStringValue(filter.ProjectName)
 			assert.Empty(t, actual)
 		})
 		t.Run("return empty string if no operand exist", func(t *testing.T) {
 			f := filter.NewFilter()
-			actual := f.GetValue(filter.ProjectName)
+			actual := f.GetStringValue(filter.ProjectName)
 			assert.Empty(t, actual)
 		})
 	})

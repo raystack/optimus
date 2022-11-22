@@ -23,8 +23,11 @@ type JobHandler struct {
 	pb.UnimplementedJobSpecificationServiceServer
 }
 
-func NewJobHandler(jobService JobService) *JobHandler {
-	return &JobHandler{jobService: jobService}
+func NewJobHandler(jobService JobService, logger log.Logger) *JobHandler {
+	return &JobHandler{
+		jobService: jobService,
+		l:          logger,
+	}
 }
 
 type JobService interface {
@@ -33,8 +36,8 @@ type JobService interface {
 	Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) (affectedDownstream []job.FullName, err error)
 	Get(ctx context.Context, filters ...filter.FilterOpt) (jobSpec *job.Job, err error)
 	GetAll(ctx context.Context, filters ...filter.FilterOpt) (jobSpecs []*job.Job, err error)
-	ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error
-	Refresh(ctx context.Context, projectName tenant.ProjectName, filters ...filter.FilterOpt) error
+	ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, logWriter writer.LogWriter) error
+	Refresh(ctx context.Context, projectName tenant.ProjectName, logWriter writer.LogWriter, filters ...filter.FilterOpt) error
 }
 
 func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *pb.AddJobSpecificationsRequest) (*pb.AddJobSpecificationsResponse, error) {
@@ -56,9 +59,10 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 		jobSpecs = append(jobSpecs, jobSpec)
 	}
 
-	err = jh.jobService.Add(ctx, jobTenant, jobSpecs)
-	jh.l.Error(fmt.Sprintf("%s: failure found when adding job specifications"))
-	me.Append(err)
+	if err = jh.jobService.Add(ctx, jobTenant, jobSpecs); err != nil {
+		jh.l.Error(fmt.Sprintf("%s: failure found when adding job specifications", err.Error()))
+		me.Append(err)
+	}
 
 	var responseLog string
 	if len(me.Errors) > 0 {
@@ -126,9 +130,10 @@ func (jh *JobHandler) UpdateJobSpecifications(ctx context.Context, jobSpecReques
 		jobSpecs = append(jobSpecs, jobSpec)
 	}
 
-	err = jh.jobService.Update(ctx, jobTenant, jobSpecs)
-	jh.l.Error(fmt.Sprintf("%s: %s", err.Error(), "failed to update job specifications"))
-	me.Append(err)
+	if err = jh.jobService.Update(ctx, jobTenant, jobSpecs); err != nil {
+		jh.l.Error(fmt.Sprintf("%s: %s", err.Error(), "failed to update job specifications"))
+		me.Append(err)
+	}
 
 	var responseLog string
 	if len(me.Errors) > 0 {
@@ -245,7 +250,7 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 			jobSpecs = append(jobSpecs, jobSpec)
 		}
 
-		if err := jh.jobService.ReplaceAll(stream.Context(), jobTenant, jobSpecs); err != nil {
+		if err := jh.jobService.ReplaceAll(stream.Context(), jobTenant, jobSpecs, responseWriter); err != nil {
 			errMsg := fmt.Sprintf("%s: replace all job specifications failure for namespace %s", err.Error(), request.NamespaceName)
 			jh.l.Error(errMsg)
 			responseWriter.Write(writer.LogLevelError, errMsg)
@@ -270,7 +275,7 @@ func (jh *JobHandler) RefreshJobs(request *pb.RefreshJobsRequest, stream pb.JobS
 		responseWriter.Write(writer.LogLevelError, errMsg)
 		return err
 	}
-	if err = jh.jobService.Refresh(stream.Context(), projectName); err != nil {
+	if err = jh.jobService.Refresh(stream.Context(), projectName, responseWriter); err != nil {
 		errMsg := fmt.Sprintf("%s: job refresh failed for project %s", err.Error(), request.ProjectName)
 		jh.l.Error(errMsg)
 		responseWriter.Write(writer.LogLevelError, errMsg)

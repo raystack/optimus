@@ -3,6 +3,7 @@ package resolver_test
 import (
 	"context"
 	"errors"
+	optMock "github.com/odpf/optimus/mock"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -46,6 +47,9 @@ func TestUpstreamResolver(t *testing.T) {
 			jobRepo := new(JobRepository)
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
+			logWriter := new(optMock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			upstreamName := job.SpecUpstreamName("test-proj/job-c")
 			upstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName}).Build()
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
@@ -68,14 +72,19 @@ func TestUpstreamResolver(t *testing.T) {
 
 			expectedJobWitUpstreams := []*job.WithUpstream{job.NewWithUpstream(jobA, []*job.Upstream{upstreamB, upstreamC})}
 
+			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+
 			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
-			result, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
+			result, err := upstreamResolver.Resolve(ctx, project.Name(), jobs, logWriter)
 			assert.NoError(t, err)
 			assert.EqualValues(t, expectedJobWitUpstreams, result)
 		})
 		t.Run("resolve upstream internally and externally", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
+
+			logWriter := new(optMock.LogWriter)
+			defer logWriter.AssertExpectations(t)
 
 			upstreamName := job.SpecUpstreamNameFrom("job-c")
 			upstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName}).Build()
@@ -101,14 +110,19 @@ func TestUpstreamResolver(t *testing.T) {
 				job.NewWithUpstream(jobA, []*job.Upstream{internalUpstream, externalUpstreamC, externalUpstreamD}),
 			}
 
+			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+
 			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
-			result, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
+			result, err := upstreamResolver.Resolve(ctx, project.Name(), jobs, logWriter)
 			assert.NoError(t, err)
 			assert.EqualValues(t, expectedJobWitUpstreams, result)
 		})
 		t.Run("returns error when unable to get internal upstreams", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
+
+			logWriter := new(optMock.LogWriter)
+			defer logWriter.AssertExpectations(t)
 
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
 			jobADestination, _ := job.ResourceURNFrom("resource-A")
@@ -120,13 +134,16 @@ func TestUpstreamResolver(t *testing.T) {
 			jobRepo.On("GetJobNameWithInternalUpstreams", ctx, project.Name(), mock.Anything).Return(map[job.Name][]*job.Upstream{}, errors.New("internal error"))
 
 			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
-			result, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
+			result, err := upstreamResolver.Resolve(ctx, project.Name(), jobs, logWriter)
 			assert.Error(t, err)
 			assert.Nil(t, result)
 		})
 		t.Run("returns upstream error when there is unresolved static upstream", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
+
+			logWriter := new(optMock.LogWriter)
+			defer logWriter.AssertExpectations(t)
 
 			upstreamName := job.SpecUpstreamNameFrom("job-c")
 			upstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName}).Build()
@@ -159,14 +176,19 @@ func TestUpstreamResolver(t *testing.T) {
 				job.NewWithUpstream(jobA, []*job.Upstream{internalUpstream, externalUpstreamC, externalUpstreamD}),
 			}
 
+			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+
 			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
-			result, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
+			result, err := upstreamResolver.Resolve(ctx, project.Name(), jobs, logWriter)
 			assert.Error(t, err)
 			assert.EqualValues(t, expectedJobWitUpstreams, result)
 		})
 		t.Run("returns upstream error when encounter error on fetching fetch external upstreams", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
+
+			logWriter := new(optMock.LogWriter)
+			defer logWriter.AssertExpectations(t)
 
 			upstreamName := job.SpecUpstreamNameFrom("job-c")
 			upstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName}).Build()
@@ -192,14 +214,19 @@ func TestUpstreamResolver(t *testing.T) {
 				job.NewWithUpstream(jobA, []*job.Upstream{internalUpstream, externalUpstreamC, externalUpstreamD}),
 			}
 
+			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+
 			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
-			result, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
+			result, err := upstreamResolver.Resolve(ctx, project.Name(), jobs, logWriter)
 			assert.Error(t, err)
 			assert.EqualValues(t, expectedJobWitUpstreams, result)
 		})
 		t.Run("returns upstream error when encounter error on initializing unresolved upstream", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
+
+			logWriter := new(optMock.LogWriter)
+			defer logWriter.AssertExpectations(t)
 
 			upstreamName := job.SpecUpstreamName("job-c")
 			upstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName}).Build()
@@ -232,8 +259,10 @@ func TestUpstreamResolver(t *testing.T) {
 				job.NewWithUpstream(jobA, []*job.Upstream{internalUpstream, externalUpstreamC, externalUpstreamD}),
 			}
 
+			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+
 			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
-			result, err := upstreamResolver.Resolve(ctx, project.Name(), jobs)
+			result, err := upstreamResolver.Resolve(ctx, project.Name(), jobs, logWriter)
 			assert.ErrorContains(t, err, "resolve jobs errors")
 			assert.EqualValues(t, expectedJobWitUpstreams, result)
 		})
