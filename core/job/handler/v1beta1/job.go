@@ -3,6 +3,9 @@ package v1beta1
 import (
 	"context"
 	"fmt"
+	"io"
+	"strings"
+
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/service/filter"
@@ -12,8 +15,6 @@ import (
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 	"github.com/odpf/salt/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"io"
-	"strings"
 )
 
 type JobHandler struct {
@@ -38,6 +39,7 @@ type JobService interface {
 	GetAll(ctx context.Context, filters ...filter.FilterOpt) (jobSpecs []*job.Job, err error)
 	ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, logWriter writer.LogWriter) error
 	Refresh(ctx context.Context, projectName tenant.ProjectName, logWriter writer.LogWriter, filters ...filter.FilterOpt) error
+	Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, logWriter writer.LogWriter) error
 }
 
 func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *pb.AddJobSpecificationsRequest) (*pb.AddJobSpecificationsResponse, error) {
@@ -283,4 +285,33 @@ func (jh *JobHandler) RefreshJobs(request *pb.RefreshJobsRequest, stream pb.JobS
 	}
 	responseWriter.Write(writer.LogLevelInfo, "jobs refreshed successfully")
 	return nil
+}
+
+func (jh *JobHandler) CheckJobSpecification(ctx context.Context, req *pb.CheckJobSpecificationRequest) (*pb.CheckJobSpecificationResponse, error) {
+	// TODO: need to do further investigation if this api is still being used or not
+	return nil, nil
+}
+
+func (jh *JobHandler) CheckJobSpecifications(req *pb.CheckJobSpecificationsRequest, stream pb.JobSpecificationService_CheckJobSpecificationsServer) error {
+	responseWriter := writer.NewCheckJobSpecificationResponseWriter(stream)
+	jobTenant, err := tenant.NewTenant(req.ProjectName, req.NamespaceName)
+	if err != nil {
+		return err
+	}
+
+	me := errors.NewMultiError("check / validate job spec errors")
+	jobSpecs := []*job.Spec{}
+	for _, js := range req.Jobs {
+		jobSpec, err := fromJobProto(js)
+		if err != nil {
+			me.Append(err)
+			continue
+		}
+		jobSpecs = append(jobSpecs, jobSpec)
+	}
+
+	if err := jh.jobService.Validate(stream.Context(), jobTenant, jobSpecs, responseWriter); err != nil {
+		return err
+	}
+	return me
 }

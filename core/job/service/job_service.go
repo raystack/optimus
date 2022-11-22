@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/salt/log"
 
@@ -231,6 +232,29 @@ func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName,
 	me.Append(err)
 
 	return errors.MultiToError(me)
+}
+
+func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, logWriter writer.LogWriter) error {
+	tenantWithDetails, err := j.tenantDetailsGetter.GetDetails(ctx, jobTenant)
+	if err != nil {
+		return err
+	}
+
+	me := errors.NewMultiError("validate specs errors")
+	validatedJobSpecs, err := j.getValidatedSpecs(jobSpecs)
+	me.Append(err)
+
+	//TODO: parallelize this
+	for _, jobSpec := range validatedJobSpecs {
+		_, err := j.pluginService.GenerateUpstreams(ctx, tenantWithDetails, jobSpec, true)
+		if err != nil && !errors.Is(err, ErrUpstreamModNotFound) {
+			errorMsg := fmt.Sprintf("unable to add %s: %s", jobSpec.Name().String(), err.Error())
+			logWriter.Write(writer.LogLevelError, errorMsg)
+			me.Append(errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg))
+		}
+	}
+
+	return me
 }
 
 func (j JobService) resolveAndSaveUpstreams(ctx context.Context, projectName tenant.ProjectName, logWriter writer.LogWriter, jobsToResolve ...[]*job.Job) error {
