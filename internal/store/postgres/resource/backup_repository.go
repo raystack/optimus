@@ -3,7 +3,6 @@ package resource
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -52,24 +51,20 @@ func NewBackup(b *resource.Backup) (Backup, error) {
 func (b Backup) ToResourceBackup() (*resource.Backup, error) {
 	s, err := resource.FromStringToStore(b.Store)
 	if err != nil {
-		fmt.Printf("Error in resource backup: %v\n", err)
 		return nil, err
 	}
 	tnnt, err := tenant.NewTenant(b.ProjectName, b.NamespaceName)
 	if err != nil {
-		fmt.Printf("Error in resource backup: %v\n", err)
 		return nil, err
 	}
 
 	var config map[string]string
 	if err = json.Unmarshal(b.Config, &config); err != nil {
-		fmt.Printf("Error in resource backup: %v\n", err)
 		return nil, errors.Wrap(resource.EntityBackup, "error unmarshalling config", err)
 	}
 
 	backup, err := resource.NewBackup(s, tnnt, b.ResourceNames, b.Description, b.CreatedAt.UTC(), config)
 	if err != nil {
-		fmt.Printf("Error in resource backup: %v\n", err)
 		return nil, err
 	}
 
@@ -102,7 +97,6 @@ func (repo BackupRepository) GetByID(ctx context.Context, id resource.BackupID) 
 	var b Backup
 	if err := repo.db.WithContext(ctx).
 		Where("id = ?", id.UUID()).First(&b).Error; err != nil {
-		fmt.Println(err)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.NotFound(resource.EntityBackup, "record not found for id "+id.String())
 		}

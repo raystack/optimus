@@ -121,7 +121,6 @@ func (c *createCommand) fillAttributes(conf *config.ClientConfig) error {
 			return err
 		}
 	} else {
-
 		for _, ds := range namespace.Datastore {
 			if ds.Type == c.storeName {
 				c.dsBackupConfigUnmarshaled = ds.Backup

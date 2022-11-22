@@ -84,7 +84,7 @@ func findMissingResources(names []string, resources []*resource.Resource) []reso
 		return nil
 	}
 
-	var resourcesMap map[string]struct{}
+	resourcesMap := map[string]struct{}{}
 	for _, r := range resources {
 		resourcesMap[r.FullName()] = struct{}{}
 	}
