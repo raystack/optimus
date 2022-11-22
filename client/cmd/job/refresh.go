@@ -110,23 +110,18 @@ func (r *refreshCommand) refreshJobSpecificationRequest() error {
 
 	jobSpecService := pb.NewJobSpecificationServiceClient(conn.GetConnection())
 
-	for _, namespaceName := range r.selectedNamespaceNames {
-		respStream, err := jobSpecService.RefreshJobs(conn.GetContext(), &pb.RefreshJobsRequest{
-			ProjectName:   r.projectName,
-			NamespaceName: namespaceName,
-			JobNames:      r.selectedJobNames,
-		})
-		if err != nil {
-			if errors.Is(err, context.DeadlineExceeded) {
-				r.logger.Error("Refresh process took too long, timing out")
-			}
-			return fmt.Errorf("refresh request failed: %w", err)
+	respStream, err := jobSpecService.RefreshJobs(conn.GetContext(), &pb.RefreshJobsRequest{
+		ProjectName:    r.projectName,
+		NamespaceNames: r.selectedNamespaceNames,
+		JobNames:       r.selectedJobNames,
+	})
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			r.logger.Error("Refresh process took too long, timing out")
 		}
-		if r.handleRefreshResponse(respStream); err != nil {
-			return err
-		}
+		return fmt.Errorf("refresh request failed: %w", err)
 	}
-	return nil
+	return r.handleRefreshResponse(respStream)
 }
 
 func (r *refreshCommand) handleRefreshResponse(stream pb.JobSpecificationService_RefreshJobsClient) error {

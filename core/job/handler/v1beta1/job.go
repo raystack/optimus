@@ -278,7 +278,12 @@ func (jh *JobHandler) RefreshJobs(request *pb.RefreshJobsRequest, stream pb.JobS
 		responseWriter.Write(writer.LogLevelError, errMsg)
 		return err
 	}
-	if err = jh.jobService.Refresh(stream.Context(), projectName, responseWriter); err != nil {
+
+	projectFilter := filter.With(filter.ProjectName, projectName.String())
+	namespacesFilter := filter.With(filter.NamespaceNames, request.NamespaceNames)
+	jobNamesFilter := filter.With(filter.JobNames, request.JobNames)
+
+	if err = jh.jobService.Refresh(stream.Context(), projectName, responseWriter, projectFilter, namespacesFilter, jobNamesFilter); err != nil {
 		errMsg := fmt.Sprintf("%s: job refresh failed for project %s", err.Error(), request.ProjectName)
 		jh.l.Error(errMsg)
 		responseWriter.Write(writer.LogLevelError, errMsg)
@@ -288,7 +293,7 @@ func (jh *JobHandler) RefreshJobs(request *pb.RefreshJobsRequest, stream pb.JobS
 	return nil
 }
 
-func (jh *JobHandler) CheckJobSpecification(ctx context.Context, req *pb.CheckJobSpecificationRequest) (*pb.CheckJobSpecificationResponse, error) {
+func (*JobHandler) CheckJobSpecification(ctx context.Context, req *pb.CheckJobSpecificationRequest) (*pb.CheckJobSpecificationResponse, error) {
 	// TODO: need to do further investigation if this api is still being used or not
 	return nil, nil
 }

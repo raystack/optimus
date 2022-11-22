@@ -170,13 +170,22 @@ func (j JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) ([]
 		return []*job.Job{fetchedJob}, nil
 	}
 
-	// when project name and namespace name exist, filter by tenant
-	if f.Contains(filter.ProjectName, filter.NamespaceName) {
-		jobTenant, err := tenant.NewTenant(f.GetStringValue(filter.ProjectName), f.GetStringValue(filter.NamespaceName))
-		if err != nil {
-			return nil, err
+	// when project name and namespace names exist, filter by tenant
+	if f.Contains(filter.ProjectName, filter.NamespaceNames) {
+		var jobs []*job.Job
+		namespaceNames := f.GetStringArrayValue(filter.NamespaceNames)
+		for _, namespaceName := range namespaceNames {
+			jobTenant, err := tenant.NewTenant(f.GetStringValue(filter.ProjectName), namespaceName)
+			if err != nil {
+				return nil, err
+			}
+			tenantJobs, err := j.repo.GetAllByTenant(ctx, jobTenant)
+			if err != nil {
+				return nil, err
+			}
+			jobs = append(jobs, tenantJobs...)
 		}
-		return j.repo.GetAllByTenant(ctx, jobTenant)
+		return jobs, nil
 	}
 
 	// when project name exist, filter by project name
