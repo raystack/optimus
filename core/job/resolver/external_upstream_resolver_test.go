@@ -3,6 +3,7 @@ package resolver_test
 import (
 	"context"
 	"errors"
+	"github.com/odpf/optimus/ext/resourcemanager"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,11 +18,11 @@ import (
 func TestExternalUpstreamResolver(t *testing.T) {
 	ctx := context.Background()
 	externalTenant, _ := tenant.NewTenant("external-project", "external-namespace")
+	resourceManager := new(ResourceManager)
+	optimusResourceManagers := []resourcemanager.ResourceManager{resourceManager}
 
 	t.Run("FetchExternalUpstreams", func(t *testing.T) {
 		t.Run("resolves upstream externally", func(t *testing.T) {
-			resourceManager := new(ResourceManager)
-
 			rawUpstreams := []*dto.RawUpstream{
 				{JobName: "job-B", ProjectName: externalTenant.ProjectName().String()},
 				{ResourceURN: "resource-C"},
@@ -31,15 +32,13 @@ func TestExternalUpstreamResolver(t *testing.T) {
 			resourceManager.On("GetOptimusUpstreams", ctx, rawUpstreams[0]).Return([]*job.Upstream{upstreamB}, nil).Once()
 			resourceManager.On("GetOptimusUpstreams", ctx, rawUpstreams[1]).Return([]*job.Upstream{upstreamC}, nil).Once()
 
-			extUpstreamResolver := resolver.NewExternalUpstreamResolver([]resolver.ResourceManager{resourceManager})
+			extUpstreamResolver := resolver.NewTestExternalUpstreamResolver(optimusResourceManagers)
 			result, unresolvedDep, err := extUpstreamResolver.FetchExternalUpstreams(ctx, rawUpstreams)
 			assert.Nil(t, unresolvedDep)
 			assert.Nil(t, err)
 			assert.EqualValues(t, []*job.Upstream{upstreamB, upstreamC}, result)
 		})
 		t.Run("returns unresolved upstream and upstream error if unable to fetch upstreams from external", func(t *testing.T) {
-			resourceManager := new(ResourceManager)
-
 			rawUpstreams := []*dto.RawUpstream{
 				{JobName: "job-B", ProjectName: externalTenant.ProjectName().String()},
 				{ResourceURN: "resource-C"},
@@ -48,7 +47,7 @@ func TestExternalUpstreamResolver(t *testing.T) {
 			resourceManager.On("GetOptimusUpstreams", ctx, rawUpstreams[0]).Return([]*job.Upstream{upstreamB}, nil).Once()
 			resourceManager.On("GetOptimusUpstreams", ctx, rawUpstreams[1]).Return([]*job.Upstream{}, errors.New("connection error")).Once()
 
-			extUpstreamResolver := resolver.NewExternalUpstreamResolver([]resolver.ResourceManager{resourceManager})
+			extUpstreamResolver := resolver.NewTestExternalUpstreamResolver(optimusResourceManagers)
 			result, unresolvedDep, err := extUpstreamResolver.FetchExternalUpstreams(ctx, rawUpstreams)
 			assert.Equal(t, []*dto.RawUpstream{rawUpstreams[1]}, unresolvedDep)
 			assert.NotNil(t, err)
@@ -62,13 +61,13 @@ type ResourceManager struct {
 	mock.Mock
 }
 
-// GetOptimusUpstreams provides a mock function with given fields: _a0, _a1
-func (_m *ResourceManager) GetOptimusUpstreams(_a0 context.Context, _a1 *dto.RawUpstream) ([]*job.Upstream, error) {
-	ret := _m.Called(_a0, _a1)
+// GetOptimusUpstreams provides a mock function with given fields: ctx, unresolvedDependency
+func (_m *ResourceManager) GetOptimusUpstreams(ctx context.Context, unresolvedDependency *dto.RawUpstream) ([]*job.Upstream, error) {
+	ret := _m.Called(ctx, unresolvedDependency)
 
 	var r0 []*job.Upstream
 	if rf, ok := ret.Get(0).(func(context.Context, *dto.RawUpstream) []*job.Upstream); ok {
-		r0 = rf(_a0, _a1)
+		r0 = rf(ctx, unresolvedDependency)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*job.Upstream)
@@ -77,7 +76,7 @@ func (_m *ResourceManager) GetOptimusUpstreams(_a0 context.Context, _a1 *dto.Raw
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, *dto.RawUpstream) error); ok {
-		r1 = rf(_a0, _a1)
+		r1 = rf(ctx, unresolvedDependency)
 	} else {
 		r1 = ret.Error(1)
 	}

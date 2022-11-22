@@ -66,7 +66,7 @@ func TestPluginService(t *testing.T) {
 			secret2, err := tenant.NewPlainTextSecret("bucket", "gs://some_secret_bucket")
 			assert.Nil(t, err)
 
-			secretsGetter.On("GetAll", ctx, tenantDetails.ToTenant()).Return([]*tenant.PlainTextSecret{secret1, secret2}, nil)
+			secretsGetter.On("GetAll", ctx, project.Name(), namespace.Name().String()).Return([]*tenant.PlainTextSecret{secret1, secret2}, nil)
 
 			destination := "project.dataset.table"
 			destinationURN, _ := job.ResourceURNFrom("bigquery://project.dataset.table")
@@ -97,7 +97,7 @@ func TestPluginService(t *testing.T) {
 
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(plugin, nil)
 
-			secretsGetter.On("GetAll", ctx, tenantDetails.ToTenant()).Return(nil, nil)
+			secretsGetter.On("GetAll", ctx, project.Name(), namespace.Name().String()).Return(nil, nil)
 
 			destination := "project.dataset.table"
 			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&models.GenerateDestinationResponse{
@@ -125,13 +125,13 @@ type SecretsGetter struct {
 	mock.Mock
 }
 
-// Get provides a mock function with given fields: ctx, ten, name
-func (_m *SecretsGetter) Get(ctx context.Context, ten tenant.Tenant, name string) (*tenant.PlainTextSecret, error) {
-	ret := _m.Called(ctx, ten, name)
+// Get provides a mock function with given fields: ctx, projName, namespaceName, name
+func (_m *SecretsGetter) Get(ctx context.Context, projName tenant.ProjectName, namespaceName string, name string) (*tenant.PlainTextSecret, error) {
+	ret := _m.Called(ctx, projName, namespaceName, name)
 
 	var r0 *tenant.PlainTextSecret
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, string) *tenant.PlainTextSecret); ok {
-		r0 = rf(ctx, ten, name)
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, string, string) *tenant.PlainTextSecret); ok {
+		r0 = rf(ctx, projName, namespaceName, name)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*tenant.PlainTextSecret)
@@ -139,8 +139,8 @@ func (_m *SecretsGetter) Get(ctx context.Context, ten tenant.Tenant, name string
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, tenant.Tenant, string) error); ok {
-		r1 = rf(ctx, ten, name)
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, string, string) error); ok {
+		r1 = rf(ctx, projName, namespaceName, name)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -148,13 +148,13 @@ func (_m *SecretsGetter) Get(ctx context.Context, ten tenant.Tenant, name string
 	return r0, r1
 }
 
-// GetAll provides a mock function with given fields: ctx, ten
-func (_m *SecretsGetter) GetAll(ctx context.Context, ten tenant.Tenant) ([]*tenant.PlainTextSecret, error) {
-	ret := _m.Called(ctx, ten)
+// GetAll provides a mock function with given fields: ctx, projName, namespaceName
+func (_m *SecretsGetter) GetAll(ctx context.Context, projName tenant.ProjectName, namespaceName string) ([]*tenant.PlainTextSecret, error) {
+	ret := _m.Called(ctx, projName, namespaceName)
 
 	var r0 []*tenant.PlainTextSecret
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant) []*tenant.PlainTextSecret); ok {
-		r0 = rf(ctx, ten)
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, string) []*tenant.PlainTextSecret); ok {
+		r0 = rf(ctx, projName, namespaceName)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*tenant.PlainTextSecret)
@@ -162,8 +162,8 @@ func (_m *SecretsGetter) GetAll(ctx context.Context, ten tenant.Tenant) ([]*tena
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, tenant.Tenant) error); ok {
-		r1 = rf(ctx, ten)
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, string) error); ok {
+		r1 = rf(ctx, projName, namespaceName)
 	} else {
 		r1 = ret.Error(1)
 	}

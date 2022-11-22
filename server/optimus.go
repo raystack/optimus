@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/odpf/optimus/ext/resourcemanager"
 	"io"
 	"net/http"
 	"os"
@@ -266,7 +265,7 @@ func (s *OptimusServer) setupHandlers() error {
 	// Job Bounded Context Setup
 	jJobRepo := jRepo.NewJobRepository(s.dbConn)
 	jPluginService := jService.NewJobPluginService(tSecretService, models.PluginRegistry, engine, s.logger)
-	jExternalUpstreamResolver := jResolver.NewExternalUpstreamResolver(s.getOptimusResourceManagers())
+	jExternalUpstreamResolver, _ := jResolver.NewExternalUpstreamResolver(s.conf.ResourceManagers)
 	jUpstreamResolver := jResolver.NewUpstreamResolver(jJobRepo, jExternalUpstreamResolver)
 	tenantService := tService.NewTenantService(tProjectService, tNamespaceService, tSecretService)
 	jJobService := jService.NewJobService(jJobRepo, jPluginService, jUpstreamResolver, tenantService, s.logger)
@@ -461,16 +460,4 @@ func (s *OptimusServer) setupHandlers() error {
 	})
 
 	return nil
-}
-
-func (s *OptimusServer) getOptimusResourceManagers() []*resourcemanager.OptimusResourceManager {
-	var optimusResourceManagers []*resourcemanager.OptimusResourceManager
-	for _, conf := range s.conf.ResourceManagers {
-		switch conf.Type {
-		case "optimus":
-			optimusResourceManager, _ := resourcemanager.NewOptimusResourceManager(conf)
-			optimusResourceManagers = append(optimusResourceManagers, optimusResourceManager)
-		}
-	}
-	return optimusResourceManagers
 }
