@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"fmt"
 
 	"gorm.io/gorm"
 
@@ -122,6 +123,9 @@ func (Repository) readByFullName(db *gorm.DB, projectName, namespaceName, store,
 		query += " and namespace_name = ?"
 	}
 	if err := db.Where(query, projectName, store, fullName, namespaceName).First(&res).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.NotFound(resource.EntityResource, fmt.Sprintf("resource [%s] is not found", fullName))
+		}
 		return nil, errors.Wrap(resource.EntityResource, "error reading from database", err)
 	}
 	return res, nil

@@ -73,7 +73,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 			assert.NoError(t, err)
 
 			actualError := repository.Update(ctx, resourceToUpdate)
-			assert.ErrorContains(t, actualError, "error reading from database")
+			assert.ErrorContains(t, actualError, "not found for entity resource")
 		})
 
 		t.Run("updates resource and returns nil if no error is encountered", func(t *testing.T) {
@@ -104,7 +104,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 
 			actualResource, actualError := repository.ReadByFullName(ctx, tnnt, serviceResource.Bigquery, "project.dataset")
 			assert.Nil(t, actualResource)
-			assert.ErrorContains(t, actualError, "error reading from database")
+			assert.ErrorContains(t, actualError, "not found for entity resource")
 		})
 
 		t.Run("returns resource and nil if no error is encountered", func(t *testing.T) {
