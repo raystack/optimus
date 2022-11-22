@@ -59,6 +59,11 @@ func (rs ResourceService) Create(ctx context.Context, incoming *resource.Resourc
 	incoming.MarkValidationSuccess()
 
 	if existing, err := rs.repo.ReadByFullName(ctx, incoming.Tenant(), incoming.Dataset().Store, incoming.FullName()); err != nil {
+		if !errors.IsErrorType(err, errors.ErrNotFound) {
+			rs.logger.Error("error getting resource [%s]: %s", incoming.FullName(), err)
+			return err
+		}
+
 		if _, err := rs.tnntDetailsGetter.GetDetails(ctx, incoming.Tenant()); err != nil {
 			rs.logger.Error("error getting tenant for resource [%s] details: %s", incoming.FullName(), err)
 			return err

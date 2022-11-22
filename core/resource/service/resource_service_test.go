@@ -12,6 +12,7 @@ import (
 	"github.com/odpf/optimus/core/resource"
 	"github.com/odpf/optimus/core/resource/service"
 	"github.com/odpf/optimus/core/tenant"
+	oErrors "github.com/odpf/optimus/internal/errors"
 )
 
 func TestResourceService(t *testing.T) {
@@ -42,6 +43,23 @@ func TestResourceService(t *testing.T) {
 			assert.Error(t, actualError)
 		})
 
+		t.Run("returns error if unknown error is encountered when getting existing resource", func(t *testing.T) {
+			repo := NewResourceRepository(t)
+			batch := NewResourceBatchRepo(t)
+			mgr := NewResourceManager(t)
+			tnntDetailsGetter := NewTenantDetailsGetter(t)
+			logger := log.NewLogrus()
+			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
+
+			incoming, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
+			assert.NoError(t, err)
+
+			repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, incoming.FullName()).Return(nil, errors.New("unknown error"))
+
+			actualError := rscService.Create(ctx, incoming)
+			assert.ErrorContains(t, actualError, "unknown error")
+		})
+
 		t.Run("resource does not exist in repository", func(t *testing.T) {
 			t.Run("returns error if error is encountered when getting tenant for the resource", func(t *testing.T) {
 				repo := NewResourceRepository(t)
@@ -54,7 +72,7 @@ func TestResourceService(t *testing.T) {
 				incoming, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 				assert.NoError(t, err)
 
-				repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, incoming.FullName()).Return(nil, errors.New("resource not found"))
+				repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, incoming.FullName()).Return(nil, oErrors.NotFound(resource.EntityResource, "resource not found"))
 
 				tnntDetailsGetter.On("GetDetails", ctx, tnnt).Return(nil, errors.New("error getting tenant"))
 
@@ -73,7 +91,7 @@ func TestResourceService(t *testing.T) {
 				incoming, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 				assert.NoError(t, err)
 
-				repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, incoming.FullName()).Return(nil, errors.New("resource not found"))
+				repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, incoming.FullName()).Return(nil, oErrors.NotFound(resource.EntityResource, "resource not found"))
 
 				tnntDetailsGetter.On("GetDetails", ctx, tnnt).Return(nil, nil)
 
@@ -153,7 +171,7 @@ func TestResourceService(t *testing.T) {
 			incoming, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
 
-			repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, incoming.FullName()).Return(nil, errors.New("resource not found"))
+			repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, incoming.FullName()).Return(nil, oErrors.NotFound(resource.EntityResource, "resource not found"))
 
 			tnntDetailsGetter.On("GetDetails", ctx, tnnt).Return(nil, nil)
 
@@ -176,7 +194,7 @@ func TestResourceService(t *testing.T) {
 			incoming, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
 
-			repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, incoming.FullName()).Return(nil, errors.New("resource not found"))
+			repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, incoming.FullName()).Return(nil, oErrors.NotFound(resource.EntityResource, "resource not found"))
 
 			tnntDetailsGetter.On("GetDetails", ctx, tnnt).Return(nil, nil)
 
