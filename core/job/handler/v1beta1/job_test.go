@@ -747,3 +747,17 @@ func (_m *JobService) Update(ctx context.Context, jobTenant tenant.Tenant, jobs 
 
 	return r0
 }
+
+// Validate provides a mock function with given fields: ctx, jobTenant, jobSpecs, logWriter
+func (_m *JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, logWriter writer.LogWriter) error {
+	ret := _m.Called(ctx, jobTenant, jobSpecs, logWriter)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []*job.Spec, writer.LogWriter) error); ok {
+		r0 = rf(ctx, jobTenant, jobSpecs, logWriter)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
