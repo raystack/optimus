@@ -1,6 +1,8 @@
 package scheduler
 
 import (
+	"strings"
+
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 )
@@ -17,11 +19,16 @@ const (
 	EventCategorySLAMiss    JobEventCategory = "sla_miss"
 	EventCategoryJobFailure JobEventCategory = "failure"
 
+	SLAMissEvent    JobEventType = "sla_miss"
+	JobFailureEvent JobEventType = "failure"
+	// TODO: should they be event types anymore
+	// TODO: test the notification flows end to end
+	// JobRetryEvent JobEventType = "retry"
+	// todo: check if this is being used
+
 	JobStartEvent   JobEventType = "job_start"
 	JobFailEvent    JobEventType = "job_fail"
 	JobSuccessEvent JobEventType = "job_success"
-	SLAMissEvent    JobEventType = "sla_miss"
-	JobFailureEvent JobEventType = "failure"
 
 	TaskStartEvent   JobEventType = "task_start"
 	TaskRetryEvent   JobEventType = "task_retry"
@@ -38,13 +45,11 @@ const (
 	SensorFailEvent    JobEventType = "sensor_fail"
 	SensorSuccessEvent JobEventType = "sensor_success"
 
-	// JobRetryEvent JobEventType = "retry"
-	// todo: check if this is being used
-
 	OperatorNameKey = "task_id"
 )
 
 func FromStringToEventType(name string) (JobEventType, error) {
+	name = strings.TrimPrefix(strings.ToLower(name), strings.ToLower("TYPE_"))
 	switch name {
 	case string(JobStartEvent):
 		return JobStartEvent, nil

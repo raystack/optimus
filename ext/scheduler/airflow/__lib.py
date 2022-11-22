@@ -481,7 +481,7 @@ def optimus_sla_miss_notify(dag, task_list, blocking_task_list, slas, blocking_t
     }
 
     event = {
-        "type": "TYPE_SLA_MISS",
+        "type": "TYPE_SLA_MISS",# todo: rename this to job sla miss 
         "value": message,
     }
     # post event

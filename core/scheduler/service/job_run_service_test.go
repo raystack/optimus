@@ -2,9 +2,11 @@ package service_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -15,7 +17,39 @@ import (
 	"github.com/odpf/optimus/internal/lib/cron"
 )
 
-//TODO: add tests for missing pieces
+type mockJobInputCompiler struct {
+	mock.Mock
+}
+
+func (m *mockJobInputCompiler) Compile(ctx context.Context, job *scheduler.Job, config scheduler.RunConfig, executedAt time.Time) (*scheduler.ExecutorInput, error) {
+	args := m.Called(ctx, job, config, executedAt)
+	return args.Get(0).(*scheduler.ExecutorInput), args.Error(1)
+}
+
+type mockJobRunRepository struct {
+	mock.Mock
+}
+
+func (m *mockJobRunRepository) GetByID(ctx context.Context, id scheduler.JobRunID) (*scheduler.JobRun, error) {
+	args := m.Called(ctx, id)
+	return args.Get(0).(*scheduler.JobRun), args.Error(1)
+}
+
+func (m *mockJobRunRepository) GetByScheduledAt(ctx context.Context, tenant tenant.Tenant, name scheduler.JobName, scheduledAt time.Time) (*scheduler.JobRun, error) {
+	args := m.Called(ctx, tenant, name, scheduledAt)
+	return args.Get(0).(*scheduler.JobRun), args.Error(1)
+}
+
+func (m *mockJobRunRepository) Create(ctx context.Context, tenant tenant.Tenant, name scheduler.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error {
+	args := m.Called(ctx, name, tenant, name, scheduledAt, slaDefinitionInSec)
+	return args.Error(0)
+}
+
+func (m *mockJobRunRepository) Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, jobRunStatus string) error {
+	args := m.Called(ctx, jobRunID, endTime, jobRunStatus)
+	return args.Error(0)
+}
+
 type JobRepository struct {
 	mock.Mock
 }
@@ -64,7 +98,166 @@ func TestJobRunService(t *testing.T) {
 	projName := tenant.ProjectName("proj")
 	namespaceName := tenant.ProjectName("ns1")
 	jobName := scheduler.JobName("sample_select")
+	todayDate := time.Now()
 
+	t.Run("JobRunInput", func(t *testing.T) {
+		t.Run("should return error if getJob fails", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			jobRepo.On("GetJob", ctx, projName, jobName).Return(&scheduler.Job{}, fmt.Errorf("some error"))
+			//todo: why this fails for nil as return value , i.e. .Return(nil, fmt.Errorf("some error"))
+
+			defer jobRepo.AssertExpectations(t)
+			runService := service.NewJobRunService(nil,
+				jobRepo, nil, nil, nil, nil, nil)
+			executorInput, err := runService.JobRunInput(ctx, projName, jobName, scheduler.RunConfig{})
+			assert.Nil(t, executorInput)
+			assert.NotNil(t, err)
+		})
+		t.Run("should get jobRunByScheduledAt if job run id is not given", func(t *testing.T) {
+			tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
+			job := scheduler.Job{
+				Name:   jobName,
+				Tenant: tnnt,
+			}
+
+			someScheduleTime := todayDate.Add(time.Hour * 24 * -1)
+			executedAt := todayDate.Add(time.Hour * 23 * -1)
+			startTime := executedAt
+			runConfig := scheduler.RunConfig{
+				Executor:    scheduler.Executor{},
+				ScheduledAt: someScheduleTime,
+				JobRunID:    scheduler.JobRunID{},
+			}
+
+			jobRepo := new(JobRepository)
+			jobRepo.On("GetJob", ctx, projName, jobName).
+				Return(&job, nil)
+			defer jobRepo.AssertExpectations(t)
+
+			jobRun := scheduler.JobRun{
+				JobName:   jobName,
+				Tenant:    tnnt,
+				StartTime: startTime,
+			}
+			jobRunRepo := new(mockJobRunRepository)
+			jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, someScheduleTime).
+				Return(&jobRun, nil)
+			defer jobRunRepo.AssertExpectations(t)
+
+			dummyExecutorInput := scheduler.ExecutorInput{
+				Configs: scheduler.ConfigMap{
+					"someKey": "someValue",
+				},
+			}
+
+			jobInputCompiler := new(mockJobInputCompiler)
+			jobInputCompiler.On("Compile", ctx, &job, runConfig, executedAt).
+				Return(&dummyExecutorInput, nil)
+			defer jobInputCompiler.AssertExpectations(t)
+
+			runService := service.NewJobRunService(nil,
+				jobRepo, jobRunRepo, nil, nil, nil, jobInputCompiler)
+			executorInput, err := runService.JobRunInput(ctx, projName, jobName, runConfig)
+
+			assert.Equal(t, &dummyExecutorInput, executorInput)
+			assert.Nil(t, err)
+		})
+		t.Run("should user GetByID if job run id is given", func(t *testing.T) {
+			tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
+			job := scheduler.Job{
+				Name:   jobName,
+				Tenant: tnnt,
+			}
+
+			someScheduleTime := todayDate.Add(time.Hour * 24 * -1)
+			executedAt := todayDate.Add(time.Hour * 23 * -1)
+			startTime := executedAt
+			JobRunID := scheduler.JobRunID(uuid.New())
+			runConfig := scheduler.RunConfig{
+				Executor:    scheduler.Executor{},
+				ScheduledAt: someScheduleTime,
+				JobRunID:    JobRunID,
+			}
+
+			jobRepo := new(JobRepository)
+			jobRepo.On("GetJob", ctx, projName, jobName).
+				Return(&job, nil)
+			defer jobRepo.AssertExpectations(t)
+
+			jobRun := scheduler.JobRun{
+				JobName:   jobName,
+				Tenant:    tnnt,
+				StartTime: startTime,
+			}
+			jobRunRepo := new(mockJobRunRepository)
+			jobRunRepo.On("GetByID", ctx, JobRunID).
+				Return(&jobRun, nil)
+			defer jobRunRepo.AssertExpectations(t)
+
+			dummyExecutorInput := scheduler.ExecutorInput{
+				Configs: scheduler.ConfigMap{
+					"someKey": "someValue",
+				},
+			}
+
+			jobInputCompiler := new(mockJobInputCompiler)
+			jobInputCompiler.On("Compile", ctx, &job, runConfig, executedAt).
+				Return(&dummyExecutorInput, nil)
+			defer jobInputCompiler.AssertExpectations(t)
+
+			runService := service.NewJobRunService(nil,
+				jobRepo, jobRunRepo, nil, nil, nil, jobInputCompiler)
+			executorInput, err := runService.JobRunInput(ctx, projName, jobName, runConfig)
+
+			assert.Equal(t, &dummyExecutorInput, executorInput)
+			assert.Nil(t, err)
+		})
+		t.Run("should handle if job run is not found , and fallback to execution time being schedule time", func(t *testing.T) {
+			tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
+			job := scheduler.Job{
+				Name:   jobName,
+				Tenant: tnnt,
+			}
+
+			someScheduleTime := todayDate.Add(time.Hour * 24 * -1)
+			//executedAt := todayDate.Add(time.Hour * 23 * -1)
+			//startTime := executedAt
+			jobRunID := scheduler.JobRunID(uuid.New())
+			runConfig := scheduler.RunConfig{
+				Executor:    scheduler.Executor{},
+				ScheduledAt: someScheduleTime,
+				JobRunID:    jobRunID,
+			}
+
+			jobRepo := new(JobRepository)
+			jobRepo.On("GetJob", ctx, projName, jobName).
+				Return(&job, nil)
+			defer jobRepo.AssertExpectations(t)
+
+			jobRunRepo := new(mockJobRunRepository)
+			jobRunRepo.On("GetByID", ctx, jobRunID).
+				Return(&scheduler.JobRun{}, errors.NotFound(scheduler.EntityJobRun, "no record for job:"+jobName.String()))
+			defer jobRunRepo.AssertExpectations(t)
+
+			dummyExecutorInput := scheduler.ExecutorInput{
+				Configs: scheduler.ConfigMap{
+					"someKey": "someValue",
+				},
+			}
+
+			jobInputCompiler := new(mockJobInputCompiler)
+			jobInputCompiler.On("Compile", ctx, &job, runConfig, someScheduleTime).
+				Return(&dummyExecutorInput, nil)
+			defer jobInputCompiler.AssertExpectations(t)
+
+			runService := service.NewJobRunService(nil,
+				jobRepo, jobRunRepo, nil, nil, nil, jobInputCompiler)
+			executorInput, err := runService.JobRunInput(ctx, projName, jobName, runConfig)
+
+			assert.Equal(t, &dummyExecutorInput, executorInput)
+			assert.Nil(t, err)
+		})
+	})
 	t.Run("GetJobRunList", func(t *testing.T) {
 		startDate, err := time.Parse(time.RFC3339, "2022-03-20T02:00:00+00:00")
 		if err != nil {

@@ -77,6 +77,7 @@ func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proje
 		if !errors.IsErrorType(err, errors.ErrNotFound) {
 			return nil, err
 		}
+		//todo: discuss with sandeep, add check here, to always return scheduleTime , for runs greater than a given date
 		executedAt = config.ScheduledAt
 	} else {
 		executedAt = jobRun.StartTime
