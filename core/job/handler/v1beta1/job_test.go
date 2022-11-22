@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"google.golang.org/grpc/metadata"
+	"io"
 	"testing"
 	"time"
 
@@ -595,6 +597,184 @@ func TestNewJobHandler(t *testing.T) {
 			assert.NotNil(t, resp)
 		})
 	})
+	t.Run("ReplaceAllJobSpecifications", func(t *testing.T) {
+		t.Run("replaces all job specifications of a tenant", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
+
+			jobProtos := []*pb.JobSpecification{
+				{
+					Version:          int32(jobVersion),
+					Name:             "job-A",
+					Owner:            "sample-owner",
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name().String(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+				{
+					Version:          int32(jobVersion),
+					Name:             "job-B",
+					Owner:            "sample-owner",
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name().String(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+			}
+			request := &pb.ReplaceAllJobSpecificationsRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: namespace.Name().String(),
+				Jobs:          jobProtos,
+			}
+
+			stream := new(ReplaceAllJobSpecificationsServer)
+			stream.On("Context").Return(ctx)
+			stream.On("Recv").Return(request, nil).Once()
+			stream.On("Recv").Return(nil, io.EOF).Once()
+
+			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, mock.Anything).Return(nil)
+
+			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Twice()
+
+			err := jobHandler.ReplaceAllJobSpecifications(stream)
+			assert.Nil(t, err)
+		})
+		t.Run("replaces all job specifications given multiple tenant", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
+
+			jobProtos := []*pb.JobSpecification{
+				{
+					Version:          int32(jobVersion),
+					Name:             "job-A",
+					Owner:            "sample-owner",
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name().String(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+			}
+			request1 := &pb.ReplaceAllJobSpecificationsRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: namespace.Name().String(),
+				Jobs:          jobProtos,
+			}
+
+			otherTenant, _ := tenant.NewTenant(project.Name().String(), "other-namespace")
+			request2 := &pb.ReplaceAllJobSpecificationsRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: otherTenant.NamespaceName().String(),
+				Jobs:          jobProtos,
+			}
+
+			stream := new(ReplaceAllJobSpecificationsServer)
+			stream.On("Context").Return(ctx)
+			stream.On("Recv").Return(request1, nil).Once()
+			stream.On("Recv").Return(request2, nil).Once()
+			stream.On("Recv").Return(nil, io.EOF).Once()
+
+			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, mock.Anything).Return(nil)
+			jobService.On("ReplaceAll", ctx, otherTenant, mock.Anything, mock.Anything).Return(nil)
+
+			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Twice()
+
+			err := jobHandler.ReplaceAllJobSpecifications(stream)
+			assert.Nil(t, err)
+		})
+		t.Run("skips a job if the proto is invalid", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
+
+			jobProtos := []*pb.JobSpecification{
+				{
+					Version: int32(jobVersion),
+					Name:    "job-A",
+					Owner:   "sample-owner",
+				},
+				{
+					Version:          int32(jobVersion),
+					Name:             "job-B",
+					Owner:            "sample-owner",
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name().String(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+			}
+			request := &pb.ReplaceAllJobSpecificationsRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: namespace.Name().String(),
+				Jobs:          jobProtos,
+			}
+
+			stream := new(ReplaceAllJobSpecificationsServer)
+			stream.On("Context").Return(ctx)
+			stream.On("Recv").Return(request, nil).Once()
+			stream.On("Recv").Return(nil, io.EOF).Once()
+
+			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, mock.Anything).Return(nil)
+
+			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Twice()
+
+			err := jobHandler.ReplaceAllJobSpecifications(stream)
+			assert.ErrorContains(t, err, "error when replacing job specifications")
+		})
+	})
+	t.Run("RefreshJobs", func(t *testing.T) {
+		t.Run("do refresh for the requested jobs", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
+
+			request := &pb.RefreshJobsRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: namespace.Name().String(),
+			}
+
+			stream := new(RefreshJobsServer)
+			stream.On("Context").Return(ctx)
+
+			jobService.On("Refresh", ctx, project.Name(), mock.Anything).Return(nil)
+
+			stream.On("Send", mock.AnythingOfType("*optimus.RefreshJobsResponse")).Return(nil)
+
+			err := jobHandler.RefreshJobs(request, stream)
+			assert.Nil(t, err)
+		})
+		t.Run("returns error if project name is invalid", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
+
+			request := &pb.RefreshJobsRequest{
+				NamespaceName: namespace.Name().String(),
+			}
+
+			stream := new(RefreshJobsServer)
+			stream.On("Context").Return(ctx)
+
+			stream.On("Send", mock.AnythingOfType("*optimus.RefreshJobsResponse")).Return(nil)
+
+			err := jobHandler.RefreshJobs(request, stream)
+			assert.Error(t, err)
+		})
+	})
 }
 
 // JobService is an autogenerated mock type for the JobService type
@@ -760,4 +940,229 @@ func (_m *JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, job
 	}
 
 	return r0
+}
+
+// ReplaceAllJobSpecificationsServer is an autogenerated mock type for the ReplaceAllJobSpecificationsServer type
+type ReplaceAllJobSpecificationsServer struct {
+	mock.Mock
+}
+
+// Context provides a mock function with given fields:
+func (_m *ReplaceAllJobSpecificationsServer) Context() context.Context {
+	ret := _m.Called()
+
+	var r0 context.Context
+	if rf, ok := ret.Get(0).(func() context.Context); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(context.Context)
+		}
+	}
+
+	return r0
+}
+
+// Recv provides a mock function with given fields:
+func (_m *ReplaceAllJobSpecificationsServer) Recv() (*pb.ReplaceAllJobSpecificationsRequest, error) {
+	ret := _m.Called()
+
+	var r0 *pb.ReplaceAllJobSpecificationsRequest
+	if rf, ok := ret.Get(0).(func() *pb.ReplaceAllJobSpecificationsRequest); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.ReplaceAllJobSpecificationsRequest)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RecvMsg provides a mock function with given fields: m
+func (_m *ReplaceAllJobSpecificationsServer) RecvMsg(m interface{}) error {
+	ret := _m.Called(m)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(interface{}) error); ok {
+		r0 = rf(m)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// Send provides a mock function with given fields: _a0
+func (_m *ReplaceAllJobSpecificationsServer) Send(_a0 *pb.ReplaceAllJobSpecificationsResponse) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*pb.ReplaceAllJobSpecificationsResponse) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SendHeader provides a mock function with given fields: _a0
+func (_m *ReplaceAllJobSpecificationsServer) SendHeader(_a0 metadata.MD) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(metadata.MD) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SendMsg provides a mock function with given fields: m
+func (_m *ReplaceAllJobSpecificationsServer) SendMsg(m interface{}) error {
+	ret := _m.Called(m)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(interface{}) error); ok {
+		r0 = rf(m)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SetHeader provides a mock function with given fields: _a0
+func (_m *ReplaceAllJobSpecificationsServer) SetHeader(_a0 metadata.MD) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(metadata.MD) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SetTrailer provides a mock function with given fields: _a0
+func (_m *ReplaceAllJobSpecificationsServer) SetTrailer(_a0 metadata.MD) {
+	_m.Called(_a0)
+}
+
+type mockConstructorTestingTNewJobSpecificationService_ReplaceAllJobSpecificationsServer interface {
+	mock.TestingT
+	Cleanup(func())
+}
+
+// RefreshJobsServer is an autogenerated mock type for the RefreshJobsServer type
+type RefreshJobsServer struct {
+	mock.Mock
+}
+
+// Context provides a mock function with given fields:
+func (_m *RefreshJobsServer) Context() context.Context {
+	ret := _m.Called()
+
+	var r0 context.Context
+	if rf, ok := ret.Get(0).(func() context.Context); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(context.Context)
+		}
+	}
+
+	return r0
+}
+
+// RecvMsg provides a mock function with given fields: m
+func (_m *RefreshJobsServer) RecvMsg(m interface{}) error {
+	ret := _m.Called(m)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(interface{}) error); ok {
+		r0 = rf(m)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// Send provides a mock function with given fields: _a0
+func (_m *RefreshJobsServer) Send(_a0 *pb.RefreshJobsResponse) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*pb.RefreshJobsResponse) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SendHeader provides a mock function with given fields: _a0
+func (_m *RefreshJobsServer) SendHeader(_a0 metadata.MD) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(metadata.MD) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SendMsg provides a mock function with given fields: m
+func (_m *RefreshJobsServer) SendMsg(m interface{}) error {
+	ret := _m.Called(m)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(interface{}) error); ok {
+		r0 = rf(m)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SetHeader provides a mock function with given fields: _a0
+func (_m *RefreshJobsServer) SetHeader(_a0 metadata.MD) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(metadata.MD) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SetTrailer provides a mock function with given fields: _a0
+func (_m *RefreshJobsServer) SetTrailer(_a0 metadata.MD) {
+	_m.Called(_a0)
+}
+
+type mockConstructorTestingTNewJobSpecificationService_RefreshJobsServer interface {
+	mock.TestingT
+	Cleanup(func())
 }
