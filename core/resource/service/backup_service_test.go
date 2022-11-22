@@ -100,6 +100,33 @@ func TestBackupService(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, "p.d.t", result.ResourceNames[0])
 		})
+		t.Run("returns list of ignored resources", func(t *testing.T) {
+			resources := []*resource.Resource{source}
+			resourceProvider := new(mockResourceProvider)
+			resourceNames := []string{"p.d.t", "p.d.t1", "p.d.t2"}
+			resourceProvider.On("GetResources", ctx, tnnt, store, resourceNames).
+				Return(resources, nil)
+			defer resourceProvider.AssertExpectations(t)
+
+			bk1, _ := resource.NewBackup(store, tnnt, resourceNames, "", createdAt, nil)
+
+			backupManager := new(mockBackupManager)
+			backupManager.On("Backup", ctx, bk1, resources).
+				Return(&resource.BackupResult{ResourceNames: []string{"p.d.t"}}, nil)
+			defer backupManager.AssertExpectations(t)
+
+			repo := new(mockBackupRepo)
+			repo.On("Create", ctx, bk1).Return(nil)
+			defer repo.AssertExpectations(t)
+
+			backupService := service.NewBackupService(repo, resourceProvider, backupManager)
+			result, err := backupService.Create(ctx, bk1)
+			assert.NoError(t, err)
+			assert.Equal(t, "p.d.t", result.ResourceNames[0])
+			assert.Equal(t, "p.d.t1", result.IgnoredResources[0].Name)
+			assert.Equal(t, "no record found in tenant", result.IgnoredResources[0].Reason)
+			assert.Equal(t, "p.d.t2", result.IgnoredResources[1].Name)
+		})
 	})
 	t.Run("GetByID", func(t *testing.T) {
 		t.Run("returns error when id is invalid", func(t *testing.T) {
@@ -121,6 +148,39 @@ func TestBackupService(t *testing.T) {
 			bkup, err := backupService.Get(ctx, backupID)
 			assert.NoError(t, err)
 			assert.Equal(t, "p.d.t", bkup.ResourceNames()[0])
+		})
+	})
+	t.Run("List", func(t *testing.T) {
+		t.Run("returns error when error in service", func(t *testing.T) {
+			repo := new(mockBackupRepo)
+			repo.On("GetAll", ctx, tnnt, store).Return(nil, errors.NotFound("backup", "error in list backups"))
+			defer repo.AssertExpectations(t)
+
+			backupService := service.NewBackupService(repo, nil, nil)
+			_, err := backupService.List(ctx, tnnt, store)
+			assert.Error(t, err)
+			assert.EqualError(t, err, "not found for entity backup: error in list backups")
+		})
+		t.Run("returns recent backups", func(t *testing.T) {
+			names := []string{"p.d.t1"}
+			twoDaysAgo := time.Now().AddDate(0, 0, -2)
+			bk1, err1 := resource.NewBackup(store, tnnt, names, "bak1", twoDaysAgo, map[string]string{})
+			assert.Nil(t, err1)
+
+			fourMonthsAgo := time.Now().AddDate(0, -4, 0)
+			bk2, err2 := resource.NewBackup(store, tnnt, names, "bak2", fourMonthsAgo, map[string]string{})
+			assert.Nil(t, err2)
+
+			repo := new(mockBackupRepo)
+			repo.On("GetAll", ctx, tnnt, store).Return([]*resource.Backup{bk1, bk2}, nil)
+			defer repo.AssertExpectations(t)
+
+			backupService := service.NewBackupService(repo, nil, nil)
+			lst, err := backupService.List(ctx, tnnt, store)
+			assert.NoError(t, err)
+
+			assert.Equal(t, 1, len(lst))
+			assert.Equal(t, "bak1", lst[0].Description())
 		})
 	})
 }
