@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"context"
+	"github.com/odpf/optimus/ext/resourcemanager"
 
 	"github.com/hashicorp/go-multierror"
 
@@ -10,16 +11,11 @@ import (
 )
 
 type ExtUpstreamResolver struct {
-	optimusResourceManagers []ResourceManager
-}
-
-// ResourceManager is repository for external job spec
-type ResourceManager interface {
-	GetOptimusUpstreams(context.Context, *dto.RawUpstream) ([]*job.Upstream, error)
+	optimusResourceManagers []*resourcemanager.OptimusResourceManager
 }
 
 // NewExternalUpstreamResolver creates a new instance of externalUpstreamResolver
-func NewExternalUpstreamResolver(resourceManagers []ResourceManager) *ExtUpstreamResolver {
+func NewExternalUpstreamResolver(resourceManagers []*resourcemanager.OptimusResourceManager) *ExtUpstreamResolver {
 	return &ExtUpstreamResolver{
 		optimusResourceManagers: resourceManagers,
 	}

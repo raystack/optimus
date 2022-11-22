@@ -19,8 +19,8 @@ var (
 )
 
 type SecretsGetter interface {
-	Get(ctx context.Context, ten tenant.Tenant, name string) (*tenant.PlainTextSecret, error)
-	GetAll(ctx context.Context, ten tenant.Tenant) ([]*tenant.PlainTextSecret, error)
+	Get(ctx context.Context, projName tenant.ProjectName, namespaceName, name string) (*tenant.PlainTextSecret, error)
+	GetAll(ctx context.Context, projName tenant.ProjectName, namespaceName string) ([]*tenant.PlainTextSecret, error)
 }
 
 type JobPluginService struct {
@@ -112,7 +112,8 @@ func (p JobPluginService) GenerateUpstreams(ctx context.Context, jobTenant *tena
 }
 
 func (p JobPluginService) compileConfig(ctx context.Context, configs *job.Config, tnnt *tenant.WithDetails) (models.PluginConfigs, error) {
-	secrets, err := p.secretsGetter.GetAll(ctx, tnnt.ToTenant())
+	jobTenant := tnnt.ToTenant()
+	secrets, err := p.secretsGetter.GetAll(ctx, jobTenant.ProjectName(), jobTenant.NamespaceName().String())
 	if err != nil {
 		return nil, err
 	}

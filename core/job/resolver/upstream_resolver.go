@@ -25,7 +25,6 @@ type ExternalUpstreamResolver interface {
 }
 
 type JobRepository interface {
-	Add(ctx context.Context, jobs []*job.Job) (savedJobs []*job.Job, jobErrors error, err error)
 	GetJobNameWithInternalUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error)
 }
 

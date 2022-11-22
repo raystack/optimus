@@ -39,7 +39,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		var ctx context.Context
 		var unresolvedDependency *dto.RawUpstream
 
-		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
+		actualOptimusDependencies, actualError := manager.GetOptimusUpstreams(ctx, unresolvedDependency)
 
 		o.Nil(actualOptimusDependencies)
 		o.Error(actualError)
@@ -63,7 +63,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 			ResourceURN: "resource",
 		}
 
-		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
+		actualOptimusDependencies, actualError := manager.GetOptimusUpstreams(ctx, unresolvedDependency)
 
 		o.Nil(actualOptimusDependencies)
 		o.Error(actualError)
@@ -96,7 +96,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 			ResourceURN: "resource",
 		}
 
-		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
+		actualOptimusDependencies, actualError := manager.GetOptimusUpstreams(ctx, unresolvedDependency)
 
 		o.Nil(actualOptimusDependencies)
 		o.Error(actualError)
@@ -132,7 +132,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 			ResourceURN: "resource",
 		}
 
-		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
+		actualOptimusDependencies, actualError := manager.GetOptimusUpstreams(ctx, unresolvedDependency)
 
 		o.Nil(actualOptimusDependencies)
 		o.Error(actualError)
@@ -194,7 +194,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		dependency, _ := job.NewUpstreamResolved("job", server.URL, "resource", sampleTenant, "static")
 		expectedDependencies := []*job.Upstream{dependency}
 
-		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
+		actualOptimusDependencies, actualError := manager.GetOptimusUpstreams(ctx, unresolvedDependency)
 
 		o.EqualValues(expectedDependencies, actualOptimusDependencies)
 		o.NoError(actualError)
@@ -264,7 +264,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 		dependency, _ := job.NewUpstreamResolved("job", server.URL, "resource", sampleTenant, "static")
 		expectedDependencies := []*job.Upstream{dependency}
 
-		actualOptimusDependencies, actualError := manager.GetOptimusDependencies(ctx, unresolvedDependency)
+		actualOptimusDependencies, actualError := manager.GetOptimusUpstreams(ctx, unresolvedDependency)
 
 		o.EqualValues(expectedDependencies, actualOptimusDependencies)
 		o.NoError(actualError)

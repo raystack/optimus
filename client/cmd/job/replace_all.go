@@ -11,7 +11,6 @@ import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/odpf/optimus/client/cmd/internal/connectivity"
 	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/client/cmd/plugin"
 	"github.com/odpf/optimus/client/local/specio"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
@@ -61,17 +60,13 @@ func NewReplaceAllCommand() *cobra.Command {
 	return cmd
 }
 
-func (d *replaceAllCommand) PreRunE(_ *cobra.Command, _ []string) error {
+func (r *replaceAllCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	var err error
-	d.clientConfig, err = config.LoadClientConfig(d.configFilePath)
+	r.clientConfig, err = config.LoadClientConfig(r.configFilePath)
 	if err != nil {
 		return err
 	}
-
-	d.logger.Info("Initializing client plugins")
-	d.pluginCleanFn, err = plugin.TriggerClientPluginsInit(d.clientConfig.Log.Level)
-	d.logger.Info("initialization finished!\n")
-	return err
+	return nil
 }
 
 func (d *replaceAllCommand) RunE(_ *cobra.Command, _ []string) error {
@@ -161,7 +156,7 @@ func (d *replaceAllCommand) sendNamespaceJobRequest(
 	return nil
 }
 
-func (*replaceAllCommand) getReplaceAllRequest(projectName string, namespace *config.Namespace) (*pb.ReplaceAllJobSpecificationsRequest, error) {
+func (r *replaceAllCommand) getReplaceAllRequest(projectName string, namespace *config.Namespace) (*pb.ReplaceAllJobSpecificationsRequest, error) {
 	jobSpecReadWriter, err := specio.NewJobSpecReadWriter(afero.NewOsFs(), specio.WithJobSpecParentReading())
 	if err != nil {
 		return nil, err
