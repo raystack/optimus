@@ -51,25 +51,38 @@ func NewResourceService(repo ResourceRepository, batch ResourceBatchRepo, mgr Re
 	}
 }
 
-func (rs ResourceService) Create(ctx context.Context, res *resource.Resource) error {
-	if err := res.Validate(); err != nil {
-		rs.logger.Error("error validating resource [%s]: %s", res.FullName(), err)
+func (rs ResourceService) Create(ctx context.Context, incoming *resource.Resource) error {
+	if err := incoming.Validate(); err != nil {
+		rs.logger.Error("error validating resource [%s]: %s", incoming.FullName(), err)
 		return err
 	}
-	res.MarkValidationSuccess()
+	incoming.MarkValidationSuccess()
 
-	if _, err := rs.tnntDetailsGetter.GetDetails(ctx, res.Tenant()); err != nil {
-		rs.logger.Error("error getting tenant details: %s", err)
-		return err
+	if existing, err := rs.repo.ReadByFullName(ctx, incoming.Tenant(), incoming.Dataset().Store, incoming.FullName()); err != nil {
+		if _, err := rs.tnntDetailsGetter.GetDetails(ctx, incoming.Tenant()); err != nil {
+			rs.logger.Error("error getting tenant for resource [%s] details: %s", incoming.FullName(), err)
+			return err
+		}
+		incoming.MarkToCreate()
+
+		if err := rs.repo.Create(ctx, incoming); err != nil {
+			rs.logger.Error("error creating resource [%s] to db: %s", incoming.FullName(), err)
+			return err
+		}
+	} else {
+		if !(existing.Status() == resource.StatusCreateFailure || existing.Status() == resource.StatusToCreate) {
+			msg := fmt.Sprintf("cannot create resource [%s] since it already exists with status [%s]", incoming.FullName(), existing.Status())
+			rs.logger.Error(msg)
+			return errors.InvalidArgument(resource.EntityResource, msg)
+		}
+		incoming.MarkToCreate()
+
+		if err := rs.repo.Update(ctx, incoming); err != nil {
+			rs.logger.Error("error updating resource [%s] to db: %s", incoming.FullName(), err)
+			return err
+		}
 	}
-
-	res.MarkToCreate()
-	if err := rs.repo.Create(ctx, res); err != nil {
-		rs.logger.Error("error creating resource [%s]: %s", res.FullName(), err)
-		return err
-	}
-
-	return rs.mgr.CreateResource(ctx, res)
+	return rs.mgr.CreateResource(ctx, incoming)
 }
 
 func (rs ResourceService) Update(ctx context.Context, res *resource.Resource) error {

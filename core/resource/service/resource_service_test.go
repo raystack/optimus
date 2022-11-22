@@ -36,46 +36,110 @@ func TestResourceService(t *testing.T) {
 			logger := log.NewLogrus()
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
-			invalidResource := &resource.Resource{}
+			invalid := &resource.Resource{}
 
-			actualError := rscService.Create(ctx, invalidResource)
+			actualError := rscService.Create(ctx, invalid)
 			assert.Error(t, actualError)
 		})
 
-		t.Run("returns error if error is encountered when getting tenant", func(t *testing.T) {
-			repo := NewResourceRepository(t)
-			batch := NewResourceBatchRepo(t)
-			mgr := NewResourceManager(t)
-			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			logger := log.NewLogrus()
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
+		t.Run("resource does not exist in repository", func(t *testing.T) {
+			t.Run("returns error if error is encountered when getting tenant for the resource", func(t *testing.T) {
+				repo := NewResourceRepository(t)
+				batch := NewResourceBatchRepo(t)
+				mgr := NewResourceManager(t)
+				tnntDetailsGetter := NewTenantDetailsGetter(t)
+				logger := log.NewLogrus()
+				rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
-			incomingResource, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
-			assert.NoError(t, err)
+				incoming, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
 
-			tnntDetailsGetter.On("GetDetails", ctx, tnnt).Return(nil, errors.New("unknown error"))
+				repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, incoming.FullName()).Return(nil, errors.New("resource not found"))
 
-			actualError := rscService.Create(ctx, incomingResource)
-			assert.ErrorContains(t, actualError, "unknown error")
+				tnntDetailsGetter.On("GetDetails", ctx, tnnt).Return(nil, errors.New("error getting tenant"))
+
+				actualError := rscService.Create(ctx, incoming)
+				assert.ErrorContains(t, actualError, "error getting tenant")
+			})
+
+			t.Run("returns error if error is encountered when creating resource to repository", func(t *testing.T) {
+				repo := NewResourceRepository(t)
+				batch := NewResourceBatchRepo(t)
+				mgr := NewResourceManager(t)
+				tnntDetailsGetter := NewTenantDetailsGetter(t)
+				logger := log.NewLogrus()
+				rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
+
+				incoming, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+
+				repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, incoming.FullName()).Return(nil, errors.New("resource not found"))
+
+				tnntDetailsGetter.On("GetDetails", ctx, tnnt).Return(nil, nil)
+
+				repo.On("Create", ctx, mock.Anything).Return(errors.New("error creating resource"))
+
+				actualError := rscService.Create(ctx, incoming)
+				assert.ErrorContains(t, actualError, "error creating resource")
+			})
 		})
 
-		t.Run("returns error if error is encountered when getting tenant", func(t *testing.T) {
-			repo := NewResourceRepository(t)
-			batch := NewResourceBatchRepo(t)
-			mgr := NewResourceManager(t)
-			tnntDetailsGetter := NewTenantDetailsGetter(t)
-			logger := log.NewLogrus()
-			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
+		t.Run("resource already exists in repository", func(t *testing.T) {
+			t.Run("returns error if status is neither create_failure nor to_create", func(t *testing.T) {
+				repo := NewResourceRepository(t)
+				batch := NewResourceBatchRepo(t)
+				mgr := NewResourceManager(t)
+				tnntDetailsGetter := NewTenantDetailsGetter(t)
+				logger := log.NewLogrus()
+				rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
-			incomingResource, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
-			assert.NoError(t, err)
+				incoming, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+				existing, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
 
-			tnntDetailsGetter.On("GetDetails", ctx, tnnt).Return(nil, nil)
+				unacceptableStatuses := []resource.Status{
+					resource.StatusUnknown,
+					resource.StatusValidationFailure,
+					resource.StatusValidationSuccess,
+					resource.StatusToUpdate,
+					resource.StatusSkipped,
+					resource.StatusUpdateFailure,
+					resource.StatusExistInStore,
+					resource.StatusSuccess,
+				}
 
-			repo.On("Create", ctx, mock.Anything).Return(errors.New("unknown error"))
+				for _, status := range unacceptableStatuses {
+					existingWithStatus := resource.FromExisting(existing, resource.ReplaceStatus(status))
 
-			actualError := rscService.Create(ctx, incomingResource)
-			assert.ErrorContains(t, actualError, "unknown error")
+					repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, incoming.FullName()).Return(existingWithStatus, nil)
+
+					actualError := rscService.Create(ctx, incoming)
+					assert.ErrorContains(t, actualError, "since it already exists with status")
+				}
+			})
+
+			t.Run("returns error if error is encountered when updating to repository", func(t *testing.T) {
+				repo := NewResourceRepository(t)
+				batch := NewResourceBatchRepo(t)
+				mgr := NewResourceManager(t)
+				tnntDetailsGetter := NewTenantDetailsGetter(t)
+				logger := log.NewLogrus()
+				rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
+
+				incoming, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+				existing, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+				existing = resource.FromExisting(existing, resource.ReplaceStatus(resource.StatusCreateFailure))
+
+				repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, incoming.FullName()).Return(existing, nil)
+
+				repo.On("Update", ctx, incoming).Return(errors.New("error updating resource"))
+
+				actualError := rscService.Create(ctx, incoming)
+				assert.ErrorContains(t, actualError, "error updating resource")
+			})
 		})
 
 		t.Run("returns error if error is encountered when creating to store", func(t *testing.T) {
@@ -86,17 +150,19 @@ func TestResourceService(t *testing.T) {
 			logger := log.NewLogrus()
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
-			incomingResource, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
+			incoming, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
+
+			repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, incoming.FullName()).Return(nil, errors.New("resource not found"))
 
 			tnntDetailsGetter.On("GetDetails", ctx, tnnt).Return(nil, nil)
 
-			repo.On("Create", ctx, mock.Anything).Return(nil)
+			repo.On("Create", ctx, incoming).Return(nil)
 
-			mgr.On("CreateResource", ctx, mock.Anything).Return(errors.New("unknown error"))
+			mgr.On("CreateResource", ctx, incoming).Return(errors.New("error creating to store"))
 
-			actualError := rscService.Create(ctx, incomingResource)
-			assert.ErrorContains(t, actualError, "unknown error")
+			actualError := rscService.Create(ctx, incoming)
+			assert.ErrorContains(t, actualError, "error creating to store")
 		})
 
 		t.Run("returns nil if no error is encountered", func(t *testing.T) {
@@ -107,16 +173,18 @@ func TestResourceService(t *testing.T) {
 			logger := log.NewLogrus()
 			rscService := service.NewResourceService(repo, batch, mgr, tnntDetailsGetter, logger)
 
-			rsc, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
+			incoming, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
+
+			repo.On("ReadByFullName", ctx, tnnt, resource.Bigquery, incoming.FullName()).Return(nil, errors.New("resource not found"))
 
 			tnntDetailsGetter.On("GetDetails", ctx, tnnt).Return(nil, nil)
 
-			repo.On("Create", ctx, mock.Anything).Return(nil)
+			repo.On("Create", ctx, incoming).Return(nil)
 
-			mgr.On("CreateResource", ctx, mock.Anything).Return(nil)
+			mgr.On("CreateResource", ctx, incoming).Return(nil)
 
-			actualError := rscService.Create(ctx, rsc)
+			actualError := rscService.Create(ctx, incoming)
 			assert.NoError(t, actualError)
 		})
 	})
