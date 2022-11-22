@@ -48,8 +48,8 @@ func TestBackupHandler(t *testing.T) {
 
 			_, err := h.CreateBackup(ctx, req)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
-				"resource: resource name is empty: invalid backup request")
+			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for "+
+				"entity backup: one of resource names is empty: invalid backup request")
 		})
 		t.Run("returns error on invalid tenant", func(t *testing.T) {
 			mockService := new(backupService)
@@ -87,8 +87,8 @@ func TestBackupHandler(t *testing.T) {
 		})
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			mockService := new(backupService)
-			mockService.On("Backup", ctx, tnnt, store, mock.Anything).
-				Return(resource.BackupResult{}, errors.New("error in service"))
+			mockService.On("Create", ctx, mock.Anything).
+				Return(nil, errors.New("error in service"))
 			defer mockService.AssertExpectations(t)
 			h := v1beta1.NewBackupHandler(logger, mockService)
 
@@ -106,8 +106,8 @@ func TestBackupHandler(t *testing.T) {
 		})
 		t.Run("returns result of backup", func(t *testing.T) {
 			mockService := new(backupService)
-			mockService.On("Backup", ctx, tnnt, store, mock.Anything).
-				Return(resource.BackupResult{
+			mockService.On("Create", ctx, mock.Anything).
+				Return(&resource.BackupResult{
 					ResourceNames: []string{"bigquery://proj.dataset.table"},
 					IgnoredResources: []resource.IgnoredResource{{
 						Name:   "bigquery://proj.dataset.downstream",
@@ -216,41 +216,10 @@ func TestBackupHandler(t *testing.T) {
 			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
 				"backup: invalid id for backup : invalid get backup request")
 		})
-		t.Run("returns error on invalid tenant", func(t *testing.T) {
-			mockService := new(backupService)
-			h := v1beta1.NewBackupHandler(logger, mockService)
-
-			req := &pb.GetBackupRequest{
-				ProjectName:   tnnt.ProjectName().String(),
-				DatastoreName: store.String(),
-				NamespaceName: "",
-				Id:            validID,
-			}
-
-			_, err := h.GetBackup(ctx, req)
-			assert.NotNil(t, err)
-			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity namespace: namespace name is empty: invalid get backup request for dda7b864-4268-4107-a096-dcf5343a0959")
-		})
-		t.Run("returns error on invalid store", func(t *testing.T) {
-			mockService := new(backupService)
-			h := v1beta1.NewBackupHandler(logger, mockService)
-
-			req := &pb.GetBackupRequest{
-				ProjectName:   tnnt.ProjectName().String(),
-				DatastoreName: "",
-				NamespaceName: "ns",
-				Id:            validID,
-			}
-
-			_, err := h.GetBackup(ctx, req)
-			assert.NotNil(t, err)
-			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
-				"resource: unknown store : invalid get backup request for dda7b864-4268-4107-a096-dcf5343a0959")
-		})
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			id, _ := uuid.Parse(validID)
 			mockService := new(backupService)
-			mockService.On("Get", ctx, tnnt, store, resource.BackupID(id)).
+			mockService.On("Get", ctx, resource.BackupID(id)).
 				Return(nil, errors.New("error in service"))
 			defer mockService.AssertExpectations(t)
 			h := v1beta1.NewBackupHandler(logger, mockService)
@@ -269,7 +238,7 @@ func TestBackupHandler(t *testing.T) {
 		})
 		t.Run("returns details of backup", func(t *testing.T) {
 			mockService := new(backupService)
-			mockService.On("Get", ctx, tnnt, store, resource.BackupID(id)).Return(backup, nil)
+			mockService.On("Get", ctx, resource.BackupID(id)).Return(backup, nil)
 			defer mockService.AssertExpectations(t)
 			h := v1beta1.NewBackupHandler(logger, mockService)
 

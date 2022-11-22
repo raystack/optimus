@@ -422,6 +422,12 @@ func TestBigqueryStore(t *testing.T) {
 		})
 	})
 	t.Run("BatchUpdate", func(t *testing.T) {
+		t.Run("returns no error when empty list", func(t *testing.T) {
+			bqStore := bigquery.NewBigqueryDataStore(nil, nil)
+
+			err := bqStore.BatchUpdate(ctx, []*resource.Resource{})
+			assert.NoError(t, err)
+		})
 		t.Run("returns error when cannot get secret", func(t *testing.T) {
 			secretProvider := new(mockSecretProvider)
 			secretProvider.On("GetSecret", mock.Anything, tnnt, "DATASTORE_BIGQUERY").

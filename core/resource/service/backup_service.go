@@ -15,7 +15,7 @@ const recentBackupWindowMonths = -3
 type BackupRepository interface {
 	GetByID(ctx context.Context, id resource.BackupID) (*resource.Backup, error)
 	GetAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Backup, error)
-	Create(ctx context.Context, details *resource.Backup) error
+	Create(ctx context.Context, backup *resource.Backup) error
 }
 
 type ResourceProvider interface {
