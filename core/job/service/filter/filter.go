@@ -17,19 +17,19 @@ func NewFilter(opts ...FilterOpt) *filter {
 }
 
 func (f *filter) GetStringValue(operand Operand) string {
-	if v, ok := f.value[operand]; !ok {
+	v, ok := f.value[operand]
+	if !ok {
 		return ""
-	} else {
-		return v.(string)
 	}
+	return v.(string)
 }
 
 func (f *filter) GetStringArrayValue(operand Operand) []string {
-	if v, ok := f.value[operand]; !ok {
+	v, ok := f.value[operand]
+	if !ok {
 		return nil
-	} else {
-		return v.([]string)
 	}
+	return v.([]string)
 }
 
 // Contains provide conditional check for the filter if all operands satisfied by the filter.

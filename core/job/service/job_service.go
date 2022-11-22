@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/salt/log"
 
+	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
@@ -163,14 +163,11 @@ func (j JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) ([]
 	if f.Contains(filter.ProjectName, filter.JobName) {
 		projectName, _ := tenant.ProjectNameFrom(f.GetStringValue(filter.ProjectName))
 		jobName, _ := job.NameFrom(f.GetStringValue(filter.JobName))
-		if fetchedJob, err := j.repo.GetByJobName(ctx,
-			projectName,
-			jobName,
-		); err != nil {
+		fetchedJob, err := j.repo.GetByJobName(ctx, projectName, jobName)
+		if err != nil {
 			return nil, err
-		} else {
-			return []*job.Job{fetchedJob}, nil
 		}
+		return []*job.Job{fetchedJob}, nil
 	}
 
 	// when project name and namespace name exist, filter by tenant
@@ -366,10 +363,8 @@ func (j JobService) differentiateSpecs(ctx context.Context, jobTenant tenant.Ten
 	for _, incomingSpec := range specs {
 		if spec, ok := existingSpecsMap[incomingSpec.Name()]; !ok {
 			addedSpecs = append(addedSpecs, incomingSpec)
-		} else {
-			if !spec.IsEqual(incomingSpec) {
-				modifiedSpecs = append(modifiedSpecs, incomingSpec)
-			}
+		} else if !spec.IsEqual(incomingSpec) {
+			modifiedSpecs = append(modifiedSpecs, incomingSpec)
 		}
 	}
 
@@ -382,7 +377,7 @@ func (j JobService) differentiateSpecs(ctx context.Context, jobTenant tenant.Ten
 	return addedSpecs, modifiedSpecs, deletedSpecs, errors.MultiToError(me)
 }
 
-func (j JobService) getValidatedSpecs(jobs []*job.Spec) ([]*job.Spec, error) {
+func (JobService) getValidatedSpecs(jobs []*job.Spec) ([]*job.Spec, error) {
 	me := errors.NewMultiError("spec validation errors")
 
 	var validatedSpecs []*job.Spec

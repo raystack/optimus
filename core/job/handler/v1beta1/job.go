@@ -6,6 +6,9 @@ import (
 	"io"
 	"strings"
 
+	"github.com/odpf/salt/log"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/service/filter"
@@ -13,8 +16,6 @@ import (
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
-	"github.com/odpf/salt/log"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type JobHandler struct {
@@ -186,9 +187,9 @@ func (jh *JobHandler) GetJobSpecifications(ctx context.Context, req *pb.GetJobSp
 	}, merr
 }
 
-func (jh *JobHandler) GetWindow(_ context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
+func (*JobHandler) GetWindow(_ context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
 	if err := req.GetScheduledAt().CheckValid(); err != nil {
-		return nil, fmt.Errorf("%s: failed to parse schedule time %s", err.Error(), req.GetScheduledAt())
+		return nil, fmt.Errorf("%w: failed to parse schedule time %s", err, req.GetScheduledAt())
 	}
 
 	window, err := models.NewWindow(int(req.Version), req.GetTruncateTo(), req.GetOffset(), req.GetSize())

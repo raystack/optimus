@@ -3,7 +3,6 @@ package resolver_test
 import (
 	"context"
 	"errors"
-	optMock "github.com/odpf/optimus/mock"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,6 +12,7 @@ import (
 	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/resolver"
 	"github.com/odpf/optimus/core/tenant"
+	optMock "github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 )
 

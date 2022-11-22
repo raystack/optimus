@@ -3,7 +3,6 @@ package resolver_test
 import (
 	"context"
 	"errors"
-	"github.com/odpf/optimus/ext/resourcemanager"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,6 +12,7 @@ import (
 	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/resolver"
 	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/ext/resourcemanager"
 )
 
 func TestExternalUpstreamResolver(t *testing.T) {

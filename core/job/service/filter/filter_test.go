@@ -3,8 +3,9 @@ package filter_test
 import (
 	"testing"
 
-	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/odpf/optimus/core/job/service/filter"
 )
 
 func TestFilter(t *testing.T) {

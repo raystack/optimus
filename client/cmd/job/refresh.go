@@ -19,8 +19,6 @@ import (
 
 const (
 	refreshTimeout = time.Minute * 30
-	deployTimeout  = time.Minute * 30
-	pollInterval   = time.Second * 15
 )
 
 type refreshCommand struct {
@@ -124,7 +122,7 @@ func (r *refreshCommand) refreshJobSpecificationRequest() error {
 			}
 			return fmt.Errorf("refresh request failed: %w", err)
 		}
-		if err = r.handleRefreshResponse(respStream); err != nil {
+		if r.handleRefreshResponse(respStream); err != nil {
 			return err
 		}
 	}

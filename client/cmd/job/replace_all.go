@@ -9,15 +9,16 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/odpf/salt/log"
+	"github.com/spf13/afero"
+	"github.com/spf13/cobra"
+
 	"github.com/odpf/optimus/client/cmd/internal/connectivity"
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/local/specio"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
-	"github.com/odpf/salt/log"
-	"github.com/spf13/afero"
-	"github.com/spf13/cobra"
 )
 
 const (
@@ -69,48 +70,48 @@ func (r *replaceAllCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func (d *replaceAllCommand) RunE(_ *cobra.Command, _ []string) error {
-	d.logger.Info("Validating namespaces")
-	selectedNamespaces, err := d.clientConfig.GetSelectedNamespaces(d.selectedNamespaceNames...)
+func (r *replaceAllCommand) RunE(_ *cobra.Command, _ []string) error {
+	r.logger.Info("Validating namespaces")
+	selectedNamespaces, err := r.clientConfig.GetSelectedNamespaces(r.selectedNamespaceNames...)
 	if err != nil {
 		return err
 	}
 	if len(selectedNamespaces) == 0 {
-		selectedNamespaces = d.clientConfig.Namespaces
+		selectedNamespaces = r.clientConfig.Namespaces
 	}
-	d.logger.Info("validation finished!\n")
+	r.logger.Info("validation finished!\n")
 
-	return d.replaceAll(selectedNamespaces)
+	return r.replaceAll(selectedNamespaces)
 }
 
-func (d *replaceAllCommand) PostRunE(_ *cobra.Command, _ []string) error {
-	d.pluginCleanFn()
+func (r *replaceAllCommand) PostRunE(_ *cobra.Command, _ []string) error {
+	r.pluginCleanFn()
 	return nil
 }
 
-func (d *replaceAllCommand) replaceAll(selectedNamespaces []*config.Namespace) error {
-	conn, err := connectivity.NewConnectivity(d.clientConfig.Host, replaceAllTimeout)
+func (r *replaceAllCommand) replaceAll(selectedNamespaces []*config.Namespace) error {
+	conn, err := connectivity.NewConnectivity(r.clientConfig.Host, replaceAllTimeout)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	if err := d.replaceAllJobs(conn, selectedNamespaces); err != nil {
+	if err := r.replaceAllJobs(conn, selectedNamespaces); err != nil {
 		return err
 	}
-	d.logger.Info("> replace all job specifications finished!\n")
+	r.logger.Info("> replace all job specifications finished!\n")
 
 	return nil
 }
 
-func (d *replaceAllCommand) replaceAllJobs(conn *connectivity.Connectivity, selectedNamespaces []*config.Namespace) error {
+func (r *replaceAllCommand) replaceAllJobs(conn *connectivity.Connectivity, selectedNamespaces []*config.Namespace) error {
 	namespaceNames := []string{}
 	for _, namespace := range selectedNamespaces {
 		namespaceNames = append(namespaceNames, namespace.Name)
 	}
-	d.logger.Info("\n> Replacing all jobs for namespaces [%s]", strings.Join(namespaceNames, ","))
+	r.logger.Info("\n> Replacing all jobs for namespaces [%s]", strings.Join(namespaceNames, ","))
 
-	stream, err := d.getJobStreamClient(conn)
+	stream, err := r.getJobStreamClient(conn)
 	if err != nil {
 		return err
 	}
@@ -120,9 +121,9 @@ func (d *replaceAllCommand) replaceAllJobs(conn *connectivity.Connectivity, sele
 		progressFn := func(totalCount int) {
 			totalSpecsCount += totalCount
 		}
-		if err := d.sendNamespaceJobRequest(stream, namespace, progressFn); err != nil {
+		if err := r.sendNamespaceJobRequest(stream, namespace, progressFn); err != nil {
 			if errors.Is(err, models.ErrNoJobs) {
-				d.logger.Warn("no job specifications are found for namespace [%s]", namespace.Name)
+				r.logger.Warn("no job specifications are found for namespace [%s]", namespace.Name)
 				continue
 			}
 			return fmt.Errorf("error getting job specs for namespace [%s]: %w", namespace.Name, err)
@@ -133,19 +134,19 @@ func (d *replaceAllCommand) replaceAllJobs(conn *connectivity.Connectivity, sele
 	}
 
 	if totalSpecsCount == 0 {
-		d.logger.Warn("no job specs are found from all the namespaces")
+		r.logger.Warn("no job specs are found from all the namespaces")
 		return nil
 	}
 
-	return d.processJobReplaceAllResponses(stream)
+	return r.processJobReplaceAllResponses(stream)
 }
 
-func (d *replaceAllCommand) sendNamespaceJobRequest(
+func (r *replaceAllCommand) sendNamespaceJobRequest(
 	stream pb.JobSpecificationService_ReplaceAllJobSpecificationsClient,
 	namespace *config.Namespace,
 	progressFn func(totalCount int),
 ) error {
-	request, err := d.getReplaceAllRequest(d.clientConfig.Project.Name, namespace)
+	request, err := r.getReplaceAllRequest(r.clientConfig.Project.Name, namespace)
 	if err != nil {
 		return err
 	}
@@ -156,7 +157,7 @@ func (d *replaceAllCommand) sendNamespaceJobRequest(
 	return nil
 }
 
-func (r *replaceAllCommand) getReplaceAllRequest(projectName string, namespace *config.Namespace) (*pb.ReplaceAllJobSpecificationsRequest, error) {
+func (*replaceAllCommand) getReplaceAllRequest(projectName string, namespace *config.Namespace) (*pb.ReplaceAllJobSpecificationsRequest, error) {
 	jobSpecReadWriter, err := specio.NewJobSpecReadWriter(afero.NewOsFs(), specio.WithJobSpecParentReading())
 	if err != nil {
 		return nil, err
@@ -178,22 +179,22 @@ func (r *replaceAllCommand) getReplaceAllRequest(projectName string, namespace *
 	}, nil
 }
 
-func (d *replaceAllCommand) getJobStreamClient(
+func (r *replaceAllCommand) getJobStreamClient(
 	conn *connectivity.Connectivity,
 ) (pb.JobSpecificationService_ReplaceAllJobSpecificationsClient, error) {
 	client := pb.NewJobSpecificationServiceClient(conn.GetConnection())
 	stream, err := client.ReplaceAllJobSpecifications(conn.GetContext())
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			d.logger.Error("Replace job specifications process took too long, timing out")
+			r.logger.Error("Replace job specifications process took too long, timing out")
 		}
 		return nil, fmt.Errorf("replace job specifications failed: %w", err)
 	}
 	return stream, nil
 }
 
-func (d *replaceAllCommand) processJobReplaceAllResponses(stream pb.JobSpecificationService_ReplaceAllJobSpecificationsClient) error {
-	d.logger.Info("> Receiving responses:")
+func (r *replaceAllCommand) processJobReplaceAllResponses(stream pb.JobSpecificationService_ReplaceAllJobSpecificationsClient) error {
+	r.logger.Info("> Receiving responses:")
 
 	for {
 		resp, err := stream.Recv()
@@ -205,10 +206,10 @@ func (d *replaceAllCommand) processJobReplaceAllResponses(stream pb.JobSpecifica
 		}
 
 		if logStatus := resp.GetLogStatus(); logStatus != nil {
-			if d.verbose {
-				logger.PrintLogStatusVerbose(d.logger, logStatus)
+			if r.verbose {
+				logger.PrintLogStatusVerbose(r.logger, logStatus)
 			} else {
-				logger.PrintLogStatus(d.logger, logStatus)
+				logger.PrintLogStatus(r.logger, logStatus)
 			}
 			continue
 		}

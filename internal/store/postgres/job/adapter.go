@@ -353,6 +353,9 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 			return nil, err
 		}
 		taskConfig, err = job.NewConfig(storageTaskConfig.Configs)
+		if err != nil {
+			return nil, err
+		}
 	}
 	taskName, err := job.TaskNameFrom(jobSpec.TaskName)
 	if err != nil {
@@ -407,7 +410,7 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 	var metadata *job.Metadata
 	if jobSpec.Metadata != nil {
 		var storeMetadata Metadata
-		if err := json.Unmarshal(jobSpec.Metadata, storeMetadata); err != nil {
+		if err := json.Unmarshal(jobSpec.Metadata, &storeMetadata); err != nil {
 			return nil, err
 		}
 		metadataBuilder := job.NewMetadataBuilder()
@@ -484,15 +487,19 @@ func fromStorageHooks(raw []byte) ([]*job.Hook, error) {
 }
 
 func fromStorageHook(hook Hook) (*job.Hook, error) {
-	config := job.Config{}
-	if err := json.Unmarshal(hook.Config, &config); err != nil {
+	storageConfig := Config{}
+	if err := json.Unmarshal(hook.Config, &storageConfig); err != nil {
+		return nil, err
+	}
+	config, err := job.NewConfig(storageConfig.Configs)
+	if err != nil {
 		return nil, err
 	}
 	hookName, err := job.HookNameFrom(hook.Name)
 	if err != nil {
 		return nil, err
 	}
-	return job.NewHook(hookName, &config), nil
+	return job.NewHook(hookName, config), nil
 }
 
 func fromStorageAlerts(raw []byte) ([]*job.Alert, error) {
