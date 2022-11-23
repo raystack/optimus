@@ -260,7 +260,11 @@ func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSp
 		}
 	}
 
-	return me
+	if len(me.Errors) > 0 {
+		return me
+	}
+
+	return nil
 }
 
 func (j JobService) resolveAndSaveUpstreams(ctx context.Context, projectName tenant.ProjectName, logWriter writer.LogWriter, jobsToResolve ...[]*job.Job) error {
