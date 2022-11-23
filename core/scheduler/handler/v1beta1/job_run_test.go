@@ -284,6 +284,7 @@ func TestJobRunHandler(t *testing.T) {
 			}
 			resp, err := jobRunHandler.JobRun(ctx, req)
 			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = Internal desc = some random error: unable to get job run for transform-tables")
 			assert.Nil(t, resp)
 		})
 		t.Run("should not return error if job run service raises not found error", func(t *testing.T) {
@@ -321,6 +322,7 @@ func TestJobRunHandler(t *testing.T) {
 			}
 			resp, err := jobRunHandler.JobRun(ctx, req)
 			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity project: project name is empty: unable to get job run for transform-tables")
 			assert.Nil(t, resp)
 		})
 
@@ -335,6 +337,7 @@ func TestJobRunHandler(t *testing.T) {
 			}
 			resp, err := jobRunHandler.JobRun(ctx, req)
 			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity jobRun: job name is empty: unable to get job run for ")
 			assert.Nil(t, resp)
 		})
 		t.Run("should not return job runs if only start date is invalid", func(t *testing.T) {
@@ -347,6 +350,7 @@ func TestJobRunHandler(t *testing.T) {
 			}
 			resp, err := jobRunHandler.JobRun(ctx, req)
 			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity jobRun: empty start date is given: unable to get job run for jobname")
 			assert.Nil(t, resp)
 		})
 		t.Run("should not return job runs if only end date is invalid", func(t *testing.T) {
@@ -359,6 +363,7 @@ func TestJobRunHandler(t *testing.T) {
 			}
 			resp, err := jobRunHandler.JobRun(ctx, req)
 			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity jobRun: empty end date is given: unable to get job run for jobname")
 			assert.Nil(t, resp)
 		})
 	})
@@ -372,6 +377,7 @@ func TestJobRunHandler(t *testing.T) {
 			}
 			resp, err := jobRunHandler.UploadToScheduler(ctx, req)
 			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity project: project name is empty: unable to get projectName")
 			assert.Nil(t, resp)
 		})
 		t.Run("should fail deployment if UploadToScheduler service fails", func(t *testing.T) {
@@ -388,9 +394,10 @@ func TestJobRunHandler(t *testing.T) {
 
 			resp, err := jobRunHandler.UploadToScheduler(ctx, req)
 			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = Internal desc = some error: unable to upload to scheduler for a-data-proj")
 			assert.Nil(t, resp)
 		})
-		t.Run("should return success if deployment succeeds ", func(t *testing.T) {
+		t.Run("should return success if deployment succeeds", func(t *testing.T) {
 			namespaceName := "namespace-name"
 			req := &pb.UploadToSchedulerRequest{
 				ProjectName:   projectName,
@@ -406,9 +413,7 @@ func TestJobRunHandler(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, true, resp.Status)
 		})
-	})
-	t.Run("UploadToScheduler", func(t *testing.T) {
-		t.Run("should return error if projectName is not valid ", func(t *testing.T) {
+		t.Run("should return error if projectName is not valid", func(t *testing.T) {
 			namespaceName := "namespace-name"
 			eventValues, _ := structpb.NewStruct(
 				map[string]interface{}{
@@ -428,10 +433,11 @@ func TestJobRunHandler(t *testing.T) {
 
 			resp, err := jobRunHandler.RegisterEvent(ctx, req)
 			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity project: project name is empty: unable to get tenant")
 			assert.Nil(t, resp)
 		})
 
-		t.Run("should return error if NamespaceName is not valid ", func(t *testing.T) {
+		t.Run("should return error if NamespaceName is not valid", func(t *testing.T) {
 			namespaceName := ""
 			eventValues, _ := structpb.NewStruct(
 				map[string]interface{}{
@@ -451,9 +457,10 @@ func TestJobRunHandler(t *testing.T) {
 
 			resp, err := jobRunHandler.RegisterEvent(ctx, req)
 			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity namespace: namespace name is empty: unable to get tenant")
 			assert.Nil(t, resp)
 		})
-		t.Run("should return error if job name is not valid ", func(t *testing.T) {
+		t.Run("should return error if job name is not valid", func(t *testing.T) {
 			namespaceName := "namespace-name"
 			eventValues, _ := structpb.NewStruct(
 				map[string]interface{}{
@@ -473,6 +480,7 @@ func TestJobRunHandler(t *testing.T) {
 
 			resp, err := jobRunHandler.RegisterEvent(ctx, req)
 			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity jobRun: job name is empty: unable to get job name")
 			assert.Nil(t, resp)
 		})
 
@@ -488,7 +496,7 @@ func TestJobRunHandler(t *testing.T) {
 				JobName:       jobName,
 				NamespaceName: namespaceName,
 				Event: &pb.JobEvent{
-					Type:  2,
+					Type:  200,
 					Value: eventValues,
 				},
 			}
@@ -496,14 +504,18 @@ func TestJobRunHandler(t *testing.T) {
 
 			resp, err := jobRunHandler.RegisterEvent(ctx, req)
 			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity event: unknown event 200: unable to parse event type:200  value:{fields:{key:\"url\"  value:{string_value:\"https://example.io\"}}}")
 			assert.Nil(t, resp)
 		})
-		t.Run("should return error if Update Job State fails ", func(t *testing.T) {
+		t.Run("should return error if Update Job State fails", func(t *testing.T) {
 			namespaceName := "some-namespace"
 			tnnt, _ := tenant.NewTenant(projectName, namespaceName)
 			eventValues, _ := structpb.NewStruct(
 				map[string]interface{}{
-					"url": "https://example.io",
+					"url":          "https://example.io",
+					"event_time":   1600361600,
+					"task_id":      "wait_sample_select",
+					"scheduled_at": "2022-01-02T15:04:05Z",
 				},
 			)
 			req := &pb.RegisterJobEventRequest{
@@ -535,14 +547,18 @@ func TestJobRunHandler(t *testing.T) {
 
 			resp, err := jobRunHandler.RegisterEvent(ctx, req)
 			assert.NotNil(t, err)
+			assert.EqualError(t, err, "errors in RegisterEvent:\n internal error for entity jobRun: scheduler could not update job run state")
 			assert.Equal(t, &pb.RegisterJobEventResponse{}, resp)
 		})
-		t.Run("should return error if notify Push fails ", func(t *testing.T) {
+		t.Run("should return error if notify Push fails", func(t *testing.T) {
 			namespaceName := "some-namespace"
 			tnnt, _ := tenant.NewTenant(projectName, namespaceName)
 			eventValues, _ := structpb.NewStruct(
 				map[string]interface{}{
-					"url": "https://example.io",
+					"url":          "https://example.io",
+					"event_time":   1600361600,
+					"scheduled_at": "2022-01-02T15:04:05Z",
+					"task_id":      "wait_sample_select",
 				},
 			)
 			req := &pb.RegisterJobEventRequest{
@@ -574,6 +590,7 @@ func TestJobRunHandler(t *testing.T) {
 
 			resp, err := jobRunHandler.RegisterEvent(ctx, req)
 			assert.NotNil(t, err)
+			assert.EqualError(t, err, "errors in RegisterEvent:\n some error")
 			assert.Equal(t, &pb.RegisterJobEventResponse{}, resp)
 		})
 	})

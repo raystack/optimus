@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -49,7 +50,10 @@ func TestFromStringToEventType(t *testing.T) {
 	})
 	t.Run("EventFrom", func(t *testing.T) {
 		eventValues := map[string]any{
-			"someKey": "someValue",
+			"someKey":      "someValue",
+			"event_time":   16000631600.0,
+			"task_id":      "some_txbq",
+			"scheduled_at": "2022-01-02T15:04:05Z",
 		}
 		jobName := JobName("some_job")
 		tnnt, err := tenant.NewTenant("someProject", "someNamespace")
@@ -57,14 +61,18 @@ func TestFromStringToEventType(t *testing.T) {
 		assert.Nil(t, err)
 
 		outputObj := Event{
-			JobName: jobName,
-			Tenant:  tnnt,
-			Type:    TaskRetryEvent,
-			Values:  eventValues,
+			JobName:        jobName,
+			Tenant:         tnnt,
+			Type:           TaskRetryEvent,
+			EventTime:      time.Date(2477, time.January, 14, 17, 23, 20, 0, time.Local),
+			OperatorName:   "some_txbq",
+			JobScheduledAt: time.Date(2022, time.January, 2, 15, 04, 05, 0, time.UTC),
+			Values:         eventValues,
 		}
 
 		output, err := EventFrom(eventTypeName, eventValues, jobName, tnnt)
 		assert.Nil(t, err)
+		assert.Equal(t, outputObj.JobScheduledAt, output.JobScheduledAt)
 		assert.Equal(t, outputObj, output)
 	})
 	t.Run("IsOfType JobEventCategory", func(t *testing.T) {

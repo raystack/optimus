@@ -2,9 +2,11 @@ package scheduler
 
 import (
 	"strings"
+	"time"
 
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/utils"
 )
 
 type EventName string
@@ -44,8 +46,6 @@ const (
 	SensorRetryEvent   JobEventType = "sensor_retry"
 	SensorFailEvent    JobEventType = "sensor_fail"
 	SensorSuccessEvent JobEventType = "sensor_success"
-
-	OperatorNameKey = "task_id"
 )
 
 func FromStringToEventType(name string) (JobEventType, error) {
@@ -89,10 +89,13 @@ func FromStringToEventType(name string) (JobEventType, error) {
 }
 
 type Event struct {
-	JobName JobName
-	Tenant  tenant.Tenant
-	Type    JobEventType
-	Values  map[string]any
+	JobName        JobName
+	Tenant         tenant.Tenant
+	Type           JobEventType
+	EventTime      time.Time
+	OperatorName   string
+	JobScheduledAt time.Time
+	Values         map[string]any
 }
 
 func (incomingEvent JobEventType) IsOfType(category JobEventCategory) bool {
@@ -118,11 +121,35 @@ func EventFrom(eventTypeName string, eventValues map[string]any, jobName JobName
 	if err != nil {
 		return Event{}, err
 	}
+
+	eventTimeFloat := utils.ConfigAs[float64](eventValues, "event_time")
+	if eventTimeFloat == float64(0) {
+		return Event{}, errors.InvalidArgument(EntityEvent, "property 'event_time'(number) is missing in event payload")
+	}
+	eventTime := time.Unix(int64(eventTimeFloat), 0)
+
+	operatorName := utils.ConfigAs[string](eventValues, "task_id")
+	if operatorName == "" {
+		return Event{}, errors.InvalidArgument(EntityEvent, "property 'task_id'(string) is missing in event payload")
+	}
+
+	scheduledAtString := utils.ConfigAs[string](eventValues, "scheduled_at")
+	if scheduledAtString == "" {
+		return Event{}, errors.InvalidArgument(EntityEvent, "property 'scheduled_at'(string) is missing in event payload")
+	}
+	scheduledAtTimeStamp, err := time.Parse(ISODateFormat, scheduledAtString)
+	if err != nil {
+		return Event{}, errors.InvalidArgument(EntityEvent, "property 'scheduled_at' is not in appropriate format")
+	}
+
 	eventObj := Event{
-		JobName: jobName,
-		Type:    eventType,
-		Values:  eventValues,
-		Tenant:  tenent,
+		JobName:        jobName,
+		Tenant:         tenent,
+		Type:           eventType,
+		OperatorName:   operatorName,
+		EventTime:      eventTime,
+		JobScheduledAt: scheduledAtTimeStamp,
+		Values:         eventValues,
 	}
 	return eventObj, nil
 }

@@ -63,7 +63,6 @@ func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proje
 	if err != nil {
 		return nil, err
 	}
-
 	// TODO: Use scheduled_at instead of executed_at for computations, for deterministic calculations
 	var jobRun *scheduler.JobRun
 	if config.JobRunID.IsEmpty() {
@@ -71,7 +70,6 @@ func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proje
 	} else {
 		jobRun, err = s.repo.GetByID(ctx, config.JobRunID)
 	}
-
 	var executedAt time.Time
 	if err != nil { // Fallback for executed_at to scheduled_at
 		if !errors.IsErrorType(err, errors.ErrNotFound) {
@@ -82,7 +80,6 @@ func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proje
 	} else {
 		executedAt = jobRun.StartTime
 	}
-
 	return s.compiler.Compile(ctx, job, config, executedAt)
 }
 
@@ -93,12 +90,12 @@ func (s JobRunService) GetJobRuns(ctx context.Context, projectName tenant.Projec
 	}
 	interval := jobWithDetails.Schedule.Interval
 	if interval == "" {
-		return nil, fmt.Errorf("job interval not found at DB")
+		return nil, fmt.Errorf("job schedule interval not found")
 	}
 	// jobCron
 	jobCron, err := cron.ParseCronSchedule(interval)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse the interval from DB %w", err)
+		return nil, fmt.Errorf("unable to parse job cron interval %w", err)
 	}
 
 	if criteria.OnlyLastRun {
@@ -186,7 +183,7 @@ func createFilterSet(filter []string) map[string]struct{} {
 func validateJobQuery(jobQuery *scheduler.JobRunsCriteria, jobWithDetails scheduler.JobWithDetails) error {
 	jobStartDate := jobWithDetails.Schedule.StartDate
 	if jobStartDate.IsZero() {
-		return fmt.Errorf("job start time not found at DB")
+		return fmt.Errorf("job schedule startDate not found in job fetched from DB")
 	}
 	givenStartDate := jobQuery.StartDate
 	givenEndDate := jobQuery.EndDate
@@ -202,32 +199,20 @@ func (s JobRunService) registerNewJobRun(ctx context.Context, event scheduler.Ev
 	if err != nil {
 		return err
 	}
-	slaDefinitionInSec, err := job.SLADuration() // TODO: add method for sla based on alerts
-	if err != nil {
-		return err
-	}
-
-	scheduledAtTimeStamp, err := time.Parse(scheduler.ISODateFormat, event.Values["scheduled_at"].(string))
+	slaDefinitionInSec, err := job.SLADuration()
 	if err != nil {
 		return err
 	}
 	return s.repo.Create(ctx,
 		event.Tenant,
 		event.JobName,
-		scheduledAtTimeStamp,
+		event.JobScheduledAt,
 		slaDefinitionInSec)
 }
 
 func (s JobRunService) updateJobRun(ctx context.Context, event scheduler.Event) error {
-	scheduledAtTimeStamp, err := time.Parse(scheduler.ISODateFormat, event.Values["scheduled_at"].(string))
-	if err != nil {
-		return err
-	}
 	var jobRun *scheduler.JobRun
-	jobRun, err = s.repo.GetByScheduledAt(ctx,
-		event.Tenant,
-		event.JobName,
-		scheduledAtTimeStamp)
+	jobRun, err := s.repo.GetByScheduledAt(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
 	if err != nil {
 		if !errors.IsErrorType(err, errors.ErrNotFound) {
 			return err
@@ -236,16 +221,14 @@ func (s JobRunService) updateJobRun(ctx context.Context, event scheduler.Event) 
 		if err != nil {
 			return err
 		}
-		jobRun, err = s.repo.GetByScheduledAt(ctx,
-			event.Tenant,
-			event.JobName,
-			scheduledAtTimeStamp)
+		jobRun, err = s.repo.GetByScheduledAt(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
 		if err != nil {
 			return err
 		} // todo: ask sandeep should this be done
+		//	also tell, that we can get rid of job start event, and instead , mark job start on first occurrence of any operator
 	}
 	jobRunStatus := event.Values["status"].(string)
-	endTime := time.Unix(event.Values["event_time"].(int64), 0)
+	endTime := event.EventTime
 
 	return s.repo.Update(ctx,
 		jobRun.ID,
@@ -255,23 +238,12 @@ func (s JobRunService) updateJobRun(ctx context.Context, event scheduler.Event) 
 }
 
 func (s JobRunService) createOperatorRun(ctx context.Context, event scheduler.Event, operatorType scheduler.OperatorType) error {
-	scheduledAtTimeStamp, err := time.Parse(scheduler.ISODateFormat, event.Values["scheduled_at"].(string))
+	jobRun, err := s.repo.GetByScheduledAt(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
 	if err != nil {
 		return err
 	}
 
-	jobRun, err := s.repo.GetByScheduledAt(ctx,
-		event.Tenant,
-		event.JobName,
-		scheduledAtTimeStamp)
-	if err != nil {
-		return err
-	}
-
-	startedAtTimeStamp := time.Unix(event.Values["event_time"].(int64), 0)
-	operatorName := event.Values[scheduler.OperatorNameKey].(string)
-
-	operatorRun, err := s.operatorRunRepo.GetOperatorRun(ctx, operatorName, operatorType, jobRun.ID)
+	operatorRun, err := s.operatorRunRepo.GetOperatorRun(ctx, event.OperatorName, operatorType, jobRun.ID)
 	if err == nil {
 		if !errors.IsErrorType(err, errors.ErrNotFound) {
 			return err
@@ -283,39 +255,26 @@ func (s JobRunService) createOperatorRun(ctx context.Context, event scheduler.Ev
 		}
 	}
 
-	return s.operatorRunRepo.CreateOperatorRun(ctx,
-		operatorName,
-		operatorType,
-		jobRun.ID,
-		startedAtTimeStamp)
+	return s.operatorRunRepo.CreateOperatorRun(ctx, event.OperatorName, operatorType, jobRun.ID, event.EventTime)
 }
 
 func (s JobRunService) updateOperatorRun(ctx context.Context, event scheduler.Event, operatorType scheduler.OperatorType) error {
-	scheduledAtTimeStamp, err := time.Parse(scheduler.ISODateFormat, event.Values["scheduled_at"].(string))
-	if err != nil {
-		return err
-	}
 	jobRun, err := s.repo.GetByScheduledAt(ctx,
 		event.Tenant,
 		event.JobName,
-		scheduledAtTimeStamp)
+		event.JobScheduledAt)
 	if err != nil {
+		//TODO: create job_run row
 		return err
 	}
-	operatorName := event.Values[scheduler.OperatorNameKey].(string)
-	operatorRun, err := s.operatorRunRepo.GetOperatorRun(ctx, operatorName, operatorType, jobRun.ID)
+	operatorRun, err := s.operatorRunRepo.GetOperatorRun(ctx, event.OperatorName, operatorType, jobRun.ID)
 	if err != nil {
 		return err
 		//	todo: should i create a new operator run row here @sandeep
 	}
 	status := event.Values["status"].(string)
-	endTime := time.Unix(event.Values["event_time"].(int64), 0)
 
-	return s.operatorRunRepo.UpdateOperatorRun(ctx,
-		operatorType,
-		operatorRun.ID,
-		endTime,
-		status)
+	return s.operatorRunRepo.UpdateOperatorRun(ctx, operatorType, operatorRun.ID, event.EventTime, status)
 }
 
 func (s JobRunService) UpdateJobState(ctx context.Context, event scheduler.Event) error {

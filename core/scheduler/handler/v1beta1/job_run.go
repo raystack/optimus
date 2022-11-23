@@ -132,7 +132,7 @@ func buildCriteriaForJobRun(req *pb.JobRunRequest) (*scheduler.JobRunsCriteria, 
 func (h JobRunHandler) UploadToScheduler(ctx context.Context, req *pb.UploadToSchedulerRequest) (*pb.UploadToSchedulerResponse, error) {
 	projectName, err := tenant.ProjectNameFrom(req.GetProjectName())
 	if err != nil {
-		return nil, errors.GRPCErr(err, "unable to get project "+req.GetProjectName())
+		return nil, errors.GRPCErr(err, "unable to get projectName")
 	}
 	err = h.service.UploadToScheduler(ctx, projectName, req.GetNamespaceName())
 	if err != nil {
@@ -152,7 +152,7 @@ func (h JobRunHandler) RegisterEvent(ctx context.Context, req *pb.RegisterJobEve
 
 	jobName, err := scheduler.JobNameFrom(req.GetJobName())
 	if err != nil {
-		return nil, errors.GRPCErr(err, "unable to get job name for "+req.GetJobName())
+		return nil, errors.GRPCErr(err, "unable to get job name"+req.GetJobName())
 	}
 
 	event, err := scheduler.EventFrom(
@@ -168,10 +168,9 @@ func (h JobRunHandler) RegisterEvent(ctx context.Context, req *pb.RegisterJobEve
 
 	err = h.service.UpdateJobState(ctx, event)
 	if err != nil {
-		jobEventByteString, _ := json.Marshal(event)
-		errorMsg := errors.NewError(errors.ErrInternalError, scheduler.EntityJobRun, "Scheduler event not registered, event Payload::"+string(jobEventByteString)+", error:"+err.Error())
-		h.l.Error(errorMsg.Error())
-		multierror.Append(errorMsg)
+		jobEventByteString, _ := json.Marshal(req.GetEvent())
+		h.l.Error(errors.InternalError(scheduler.EntityJobRun, "scheduler could not update job run state, event Payload::"+string(jobEventByteString), err).Error())
+		multierror.Append(errors.InternalError(scheduler.EntityJobRun, "scheduler could not update job run state", err))
 	}
 
 	err = h.notifier.Push(ctx, event)

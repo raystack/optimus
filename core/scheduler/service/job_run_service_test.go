@@ -17,82 +17,6 @@ import (
 	"github.com/odpf/optimus/internal/lib/cron"
 )
 
-type mockJobInputCompiler struct {
-	mock.Mock
-}
-
-func (m *mockJobInputCompiler) Compile(ctx context.Context, job *scheduler.Job, config scheduler.RunConfig, executedAt time.Time) (*scheduler.ExecutorInput, error) {
-	args := m.Called(ctx, job, config, executedAt)
-	return args.Get(0).(*scheduler.ExecutorInput), args.Error(1)
-}
-
-type mockJobRunRepository struct {
-	mock.Mock
-}
-
-func (m *mockJobRunRepository) GetByID(ctx context.Context, id scheduler.JobRunID) (*scheduler.JobRun, error) {
-	args := m.Called(ctx, id)
-	return args.Get(0).(*scheduler.JobRun), args.Error(1)
-}
-
-func (m *mockJobRunRepository) GetByScheduledAt(ctx context.Context, tenant tenant.Tenant, name scheduler.JobName, scheduledAt time.Time) (*scheduler.JobRun, error) {
-	args := m.Called(ctx, tenant, name, scheduledAt)
-	return args.Get(0).(*scheduler.JobRun), args.Error(1)
-}
-
-func (m *mockJobRunRepository) Create(ctx context.Context, tenant tenant.Tenant, name scheduler.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error {
-	args := m.Called(ctx, name, tenant, name, scheduledAt, slaDefinitionInSec)
-	return args.Error(0)
-}
-
-func (m *mockJobRunRepository) Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, jobRunStatus string) error {
-	args := m.Called(ctx, jobRunID, endTime, jobRunStatus)
-	return args.Error(0)
-}
-
-type JobRepository struct {
-	mock.Mock
-}
-
-func (j *JobRepository) GetJob(ctx context.Context, name tenant.ProjectName, jobName scheduler.JobName) (*scheduler.Job, error) {
-	args := j.Called(ctx, name, jobName)
-	return args.Get(0).(*scheduler.Job), args.Error(1)
-}
-
-func (j *JobRepository) GetJobDetails(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName) (*scheduler.JobWithDetails, error) {
-	args := j.Called(ctx, projectName, jobName)
-	return args.Get(0).(*scheduler.JobWithDetails), args.Error(1)
-}
-
-func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectName) ([]*scheduler.JobWithDetails, error) {
-	args := j.Called(ctx, projectName)
-	return args.Get(0).([]*scheduler.JobWithDetails), args.Error(1)
-}
-
-type mockScheduler struct {
-	mock.Mock
-}
-
-func (ms *mockScheduler) GetJobRuns(ctx context.Context, t tenant.Tenant, criteria *scheduler.JobRunsCriteria, jobCron *cron.ScheduleSpec) ([]*scheduler.JobRunStatus, error) {
-	args := ms.Called(ctx, t, criteria, jobCron)
-	return args.Get(0).([]*scheduler.JobRunStatus), args.Error(1)
-}
-
-func (ms *mockScheduler) DeployJobs(ctx context.Context, t tenant.Tenant, jobs []*scheduler.JobWithDetails) error {
-	args := ms.Called(ctx, t, jobs)
-	return args.Error(0)
-}
-
-func (ms *mockScheduler) ListJobs(ctx context.Context, t tenant.Tenant) ([]string, error) {
-	args := ms.Called(ctx, t)
-	return args.Get(0).([]string), args.Error(1)
-}
-
-func (ms *mockScheduler) DeleteJobs(ctx context.Context, t tenant.Tenant, jobsToDelete []string) error {
-	args := ms.Called(ctx, t, jobsToDelete)
-	return args.Error(0)
-}
-
 func TestJobRunService(t *testing.T) {
 	ctx := context.Background()
 	projName := tenant.ProjectName("proj")
@@ -100,18 +24,162 @@ func TestJobRunService(t *testing.T) {
 	jobName := scheduler.JobName("sample_select")
 	todayDate := time.Now()
 
+	t.Run("UpdateJobState", func(t *testing.T) {
+		tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
+
+		t.Run("should return error on JobStartEvent if GetJobDetails fails", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(nil, fmt.Errorf("some error"))
+			defer jobRepo.AssertExpectations(t)
+
+			runService := service.NewJobRunService(nil,
+				jobRepo, nil, nil, nil, nil, nil)
+
+			event := scheduler.Event{
+				JobName: jobName,
+				Tenant:  tnnt,
+				Type:    scheduler.JobStartEvent,
+				Values:  map[string]any{},
+			}
+			err := runService.UpdateJobState(ctx, event)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "some error")
+		})
+		t.Run("should return error on JobStartEvent if job.SLADuration fails, due to wrong duration format", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			JobWithDetails := scheduler.JobWithDetails{
+				Name: jobName,
+				Job: &scheduler.Job{
+					Name:   jobName,
+					Tenant: tnnt,
+				},
+				Alerts: []scheduler.Alert{
+					{
+						On: scheduler.EventCategorySLAMiss,
+						Channels: []string{
+							"chanel1",
+							"chanel2",
+						},
+						Config: map[string]string{
+							"key":      "value",
+							"duration": "wrong duration format",
+						},
+					},
+				},
+			}
+			jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&JobWithDetails, nil)
+			defer jobRepo.AssertExpectations(t)
+
+			runService := service.NewJobRunService(nil,
+				jobRepo, nil, nil, nil, nil, nil)
+
+			event := scheduler.Event{
+				JobName: jobName,
+				Tenant:  tnnt,
+				Type:    scheduler.JobStartEvent,
+				Values:  map[string]any{},
+			}
+
+			err := runService.UpdateJobState(ctx, event)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "failed to parse sla_miss duration wrong duration format: time: invalid duration \"wrong duration format\"")
+		})
+		t.Run("should create job_run row on JobStartEvent", func(t *testing.T) {
+			JobWithDetails := scheduler.JobWithDetails{
+				Name: jobName,
+				Job: &scheduler.Job{
+					Name:   jobName,
+					Tenant: tnnt,
+				},
+				Alerts: []scheduler.Alert{
+					{
+						On: scheduler.EventCategorySLAMiss,
+						Channels: []string{
+							"chanel1",
+							"chanel2",
+						},
+						Config: map[string]string{
+							"key":      "value",
+							"duration": "2h45m",
+						},
+					},
+				},
+			}
+			slaDefinitionInSec, err := JobWithDetails.SLADuration()
+			assert.Nil(t, err)
+
+			scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
+			event := scheduler.Event{
+				JobName:        jobName,
+				Tenant:         tnnt,
+				Type:           scheduler.JobStartEvent,
+				EventTime:      time.Time{},
+				OperatorName:   "job_start_event",
+				JobScheduledAt: scheduledAtTimeStamp,
+				Values:         map[string]any{},
+			}
+
+			jobRepo := new(JobRepository)
+			jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&JobWithDetails, nil)
+			defer jobRepo.AssertExpectations(t)
+
+			jobRunRepo := new(mockJobRunRepository)
+			jobRunRepo.On("Create", ctx, tnnt, jobName, scheduledAtTimeStamp, slaDefinitionInSec).Return(nil)
+			defer jobRunRepo.AssertExpectations(t)
+
+			runService := service.NewJobRunService(nil,
+				jobRepo, jobRunRepo, nil, nil, nil, nil)
+
+			err = runService.UpdateJobState(ctx, event)
+			assert.Nil(t, err)
+		})
+		t.Run("should update job_run row on JobSuccessEvent, when no error in format etc", func(t *testing.T) {
+			scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
+			eventTime := time.Unix(todayDate.Add(time.Hour).Unix(), 0)
+			endTime := eventTime
+			event := scheduler.Event{
+				JobName:        jobName,
+				Tenant:         tnnt,
+				Type:           scheduler.JobSuccessEvent,
+				JobScheduledAt: scheduledAtTimeStamp,
+				EventTime:      eventTime,
+				Values: map[string]any{
+					"status": "success",
+				},
+			}
+
+			jobRun := scheduler.JobRun{
+				ID:        uuid.New(),
+				JobName:   jobName,
+				Tenant:    tnnt,
+				StartTime: todayDate,
+			}
+
+			jobRunRepo := new(mockJobRunRepository)
+			jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(&jobRun, nil)
+			jobRunRepo.On("Update", ctx, jobRun.ID, endTime, event.Values["status"].(string)).Return(nil)
+			defer jobRunRepo.AssertExpectations(t)
+
+			runService := service.NewJobRunService(nil,
+				nil, jobRunRepo, nil, nil, nil, nil)
+
+			err := runService.UpdateJobState(ctx, event)
+			assert.Nil(t, err)
+		})
+	})
+
 	t.Run("JobRunInput", func(t *testing.T) {
 		t.Run("should return error if getJob fails", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			jobRepo.On("GetJob", ctx, projName, jobName).Return(&scheduler.Job{}, fmt.Errorf("some error"))
-			//todo: why this fails for nil as return value , i.e. .Return(nil, fmt.Errorf("some error"))
-
 			defer jobRepo.AssertExpectations(t)
+
 			runService := service.NewJobRunService(nil,
 				jobRepo, nil, nil, nil, nil, nil)
 			executorInput, err := runService.JobRunInput(ctx, projName, jobName, scheduler.RunConfig{})
 			assert.Nil(t, executorInput)
 			assert.NotNil(t, err)
+			assert.EqualError(t, err, "some error")
 		})
 		t.Run("should get jobRunByScheduledAt if job run id is not given", func(t *testing.T) {
 			tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
@@ -135,6 +203,7 @@ func TestJobRunService(t *testing.T) {
 			defer jobRepo.AssertExpectations(t)
 
 			jobRun := scheduler.JobRun{
+
 				JobName:   jobName,
 				Tenant:    tnnt,
 				StartTime: startTime,
@@ -162,7 +231,7 @@ func TestJobRunService(t *testing.T) {
 			assert.Equal(t, &dummyExecutorInput, executorInput)
 			assert.Nil(t, err)
 		})
-		t.Run("should user GetByID if job run id is given", func(t *testing.T) {
+		t.Run("should use GetByID if job run id is given", func(t *testing.T) {
 			tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
 			job := scheduler.Job{
 				Name:   jobName,
@@ -220,8 +289,6 @@ func TestJobRunService(t *testing.T) {
 			}
 
 			someScheduleTime := todayDate.Add(time.Hour * 24 * -1)
-			//executedAt := todayDate.Add(time.Hour * 23 * -1)
-			//startTime := executedAt
 			jobRunID := scheduler.JobRunID(uuid.New())
 			runConfig := scheduler.RunConfig{
 				Executor:    scheduler.Executor{},
@@ -256,6 +323,39 @@ func TestJobRunService(t *testing.T) {
 
 			assert.Equal(t, &dummyExecutorInput, executorInput)
 			assert.Nil(t, err)
+		})
+		t.Run("should return error if get job run fails", func(t *testing.T) {
+			tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
+			job := scheduler.Job{
+				Name:   jobName,
+				Tenant: tnnt,
+			}
+
+			someScheduleTime := todayDate.Add(time.Hour * 24 * -1)
+			jobRunID := scheduler.JobRunID(uuid.New())
+			runConfig := scheduler.RunConfig{
+				Executor:    scheduler.Executor{},
+				ScheduledAt: someScheduleTime,
+				JobRunID:    jobRunID,
+			}
+
+			jobRepo := new(JobRepository)
+			jobRepo.On("GetJob", ctx, projName, jobName).
+				Return(&job, nil)
+			defer jobRepo.AssertExpectations(t)
+
+			jobRunRepo := new(mockJobRunRepository)
+			jobRunRepo.On("GetByID", ctx, jobRunID).
+				Return(&scheduler.JobRun{}, fmt.Errorf("some error other than not found error "))
+			defer jobRunRepo.AssertExpectations(t)
+
+			runService := service.NewJobRunService(nil,
+				jobRepo, jobRunRepo, nil, nil, nil, nil)
+			executorInput, err := runService.JobRunInput(ctx, projName, jobName, runConfig)
+
+			assert.Nil(t, executorInput)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "some error other than not found error ")
 		})
 	})
 	t.Run("GetJobRunList", func(t *testing.T) {
@@ -478,6 +578,7 @@ func TestJobRunService(t *testing.T) {
 			runService := service.NewJobRunService(nil, jobRepo, nil, nil, nil, nil, nil)
 			returnedRuns, err := runService.GetJobRuns(ctx, projName, jobName, jobQuery)
 			assert.NotNil(t, err)
+			assert.EqualError(t, err, "invalid date range")
 			assert.Nil(t, nil, returnedRuns)
 		})
 		t.Run("should not able to get job runs when invalid cron interval present at DB", func(t *testing.T) {
@@ -512,6 +613,7 @@ func TestJobRunService(t *testing.T) {
 			runService := service.NewJobRunService(nil, jobRepo, nil, nil, nil, nil, nil)
 			returnedRuns, err := runService.GetJobRuns(ctx, projName, jobName, jobQuery)
 			assert.NotNil(t, err)
+			assert.EqualError(t, err, "unable to parse job cron interval expected exactly 5 fields, found 2: [invalid interval]")
 			assert.Nil(t, nil, returnedRuns)
 		})
 		t.Run("should not able to get job runs when no cron interval present at DB", func(t *testing.T) {
@@ -545,6 +647,7 @@ func TestJobRunService(t *testing.T) {
 			runService := service.NewJobRunService(nil, jobRepo, nil, nil, nil, nil, nil)
 			returnedRuns, err := runService.GetJobRuns(ctx, projName, jobName, jobQuery)
 			assert.NotNil(t, err)
+			assert.EqualError(t, err, "job schedule interval not found")
 			assert.Nil(t, nil, returnedRuns)
 		})
 		t.Run("should not able to get job runs when no start date present at DB", func(t *testing.T) {
@@ -559,7 +662,6 @@ func TestJobRunService(t *testing.T) {
 					Version: 1,
 				},
 				Schedule: &scheduler.Schedule{
-					//StartDate: startDate.Add(-time.Hour * 24),
 					EndDate:  nil,
 					Interval: "0 12 * * *",
 				},
@@ -577,6 +679,7 @@ func TestJobRunService(t *testing.T) {
 			runService := service.NewJobRunService(nil, jobRepo, nil, nil, nil, nil, nil)
 			returnedRuns, err := runService.GetJobRuns(ctx, projName, jobName, jobQuery)
 			assert.NotNil(t, err)
+			assert.EqualError(t, err, "job schedule startDate not found in job fetched from DB")
 			assert.Nil(t, nil, returnedRuns)
 		})
 		t.Run("should not able to get job runs when scheduler returns an error", func(t *testing.T) {
@@ -612,7 +715,8 @@ func TestJobRunService(t *testing.T) {
 
 			runService := service.NewJobRunService(nil, jobRepo, nil, nil, sch, nil, nil)
 			returnedRuns, err := runService.GetJobRuns(ctx, projName, jobName, criteria)
-			assert.NotNil(t, err, errors.InvalidArgument(scheduler.EntityJobRun, "failed: due to invalid URL"))
+			assert.NotNil(t, err)
+			assert.Error(t, err, errors.InvalidArgument(scheduler.EntityJobRun, "failed: due to invalid URL"))
 			assert.Nil(t, nil, returnedRuns)
 		})
 		t.Run("should able to get job runs when only last run is required", func(t *testing.T) {
@@ -675,4 +779,101 @@ func mockGetJobRuns(afterDays int, date time.Time, interval, status string) ([]*
 		nextStart = schSpec.Next(nextStart)
 	}
 	return expRuns, nil
+}
+
+type mockJobInputCompiler struct {
+	mock.Mock
+}
+
+func (m *mockJobInputCompiler) Compile(ctx context.Context, job *scheduler.Job, config scheduler.RunConfig, executedAt time.Time) (*scheduler.ExecutorInput, error) {
+	args := m.Called(ctx, job, config, executedAt)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*scheduler.ExecutorInput), args.Error(1)
+}
+
+type mockJobRunRepository struct {
+	mock.Mock
+}
+
+func (m *mockJobRunRepository) GetByID(ctx context.Context, id scheduler.JobRunID) (*scheduler.JobRun, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*scheduler.JobRun), args.Error(1)
+}
+
+func (m *mockJobRunRepository) GetByScheduledAt(ctx context.Context, tenant tenant.Tenant, name scheduler.JobName, scheduledAt time.Time) (*scheduler.JobRun, error) {
+	args := m.Called(ctx, tenant, name, scheduledAt)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*scheduler.JobRun), args.Error(1)
+}
+
+func (m *mockJobRunRepository) Create(ctx context.Context, tenant tenant.Tenant, name scheduler.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error {
+	args := m.Called(ctx, tenant, name, scheduledAt, slaDefinitionInSec)
+	return args.Error(0)
+}
+
+func (m *mockJobRunRepository) Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, jobRunStatus string) error {
+	args := m.Called(ctx, jobRunID, endTime, jobRunStatus)
+	return args.Error(0)
+}
+
+type JobRepository struct {
+	mock.Mock
+}
+
+func (j *JobRepository) GetJob(ctx context.Context, name tenant.ProjectName, jobName scheduler.JobName) (*scheduler.Job, error) {
+	args := j.Called(ctx, name, jobName)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*scheduler.Job), args.Error(1)
+}
+
+func (j *JobRepository) GetJobDetails(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName) (*scheduler.JobWithDetails, error) {
+	args := j.Called(ctx, projectName, jobName)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*scheduler.JobWithDetails), args.Error(1)
+}
+
+func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectName) ([]*scheduler.JobWithDetails, error) {
+	args := j.Called(ctx, projectName)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*scheduler.JobWithDetails), args.Error(1)
+}
+
+type mockScheduler struct {
+	mock.Mock
+}
+
+func (ms *mockScheduler) GetJobRuns(ctx context.Context, t tenant.Tenant, criteria *scheduler.JobRunsCriteria, jobCron *cron.ScheduleSpec) ([]*scheduler.JobRunStatus, error) {
+	args := ms.Called(ctx, t, criteria, jobCron)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*scheduler.JobRunStatus), args.Error(1)
+}
+
+func (ms *mockScheduler) DeployJobs(ctx context.Context, t tenant.Tenant, jobs []*scheduler.JobWithDetails) error {
+	args := ms.Called(ctx, t, jobs)
+	return args.Error(0)
+}
+
+func (ms *mockScheduler) ListJobs(ctx context.Context, t tenant.Tenant) ([]string, error) {
+	args := ms.Called(ctx, t)
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (ms *mockScheduler) DeleteJobs(ctx context.Context, t tenant.Tenant, jobsToDelete []string) error {
+	args := ms.Called(ctx, t, jobsToDelete)
+	return args.Error(0)
 }
