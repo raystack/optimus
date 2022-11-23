@@ -11,6 +11,7 @@ import (
 	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/models"
 )
 
 type JobService struct {
@@ -35,6 +36,7 @@ func NewJobService(repo JobRepository, pluginService PluginService, upstreamReso
 }
 
 type PluginService interface {
+	Info(context.Context, *job.Task) (*models.PluginInfoResponse, error)
 	GenerateDestination(context.Context, *tenant.WithDetails, *job.Task) (job.ResourceURN, error)
 	GenerateUpstreams(ctx context.Context, jobTenant *tenant.WithDetails, spec *job.Spec, dryRun bool) ([]job.ResourceURN, error)
 }
@@ -121,13 +123,28 @@ func (j JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName
 	return downstreamFullNames, j.repo.Delete(ctx, jobTenant.ProjectName(), jobName, cleanFlag)
 }
 
-func (j JobService) Get(ctx context.Context, filters ...filter.FilterOpt) (*job.Job, error) {
-	jobs, err := j.GetAll(ctx, filters...)
+func (j JobService) Get(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name) (*job.Job, error) {
+	jobs, err := j.GetAll(ctx,
+		filter.WithString(filter.ProjectName, jobTenant.ProjectName().String()),
+		filter.WithString(filter.JobName, jobName.String()),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	return jobs[0], nil
+}
+
+func (j JobService) GetTaskInfo(ctx context.Context, task *job.Task) (*job.Task, error) {
+	taskInfo, err := j.pluginService.Info(ctx, task)
+	if err != nil {
+		return nil, err
+	}
+
+	return job.NewTaskBuilder(
+		task.Name(),
+		task.Config(),
+	).WithInfo(taskInfo).Build(), nil
 }
 
 func (j JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) ([]*job.Job, error) {
