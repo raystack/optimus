@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	ExecutorTask = "task"
-	ExecutorHook = "hook"
+	ExecutorTask ExecutorType = "task"
+	ExecutorHook ExecutorType = "hook"
 )
 
 type ExecutorType string
@@ -21,12 +21,12 @@ func (e ExecutorType) String() string {
 
 func ExecutorTypeFrom(val string) (ExecutorType, error) {
 	switch strings.ToLower(val) {
-	case "task":
+	case string(ExecutorTask):
 		return ExecutorTask, nil
-	case "hook":
+	case string(ExecutorHook):
 		return ExecutorHook, nil
 	}
-	return "", errors.InvalidArgument(EntityJobRun, "failed to convert to executor type, invalid val: "+val)
+	return "", errors.InvalidArgument(EntityJobRun, "failed to convert to executor type, invalid value: "+val)
 }
 
 type Executor struct {
@@ -66,7 +66,7 @@ type RunConfig struct {
 }
 
 func RunConfigFrom(executor Executor, scheduledAt time.Time, runID string) (RunConfig, error) {
-	jobRunID, err := JobRunIDFromString(runID)
+	jobRunID, err := JobRunIDFromString(runID) // runID can be empty or a valid uuid
 	if err != nil {
 		return RunConfig{}, errors.InvalidArgument(EntityJobRun, "invalid job run ID "+runID)
 	}
