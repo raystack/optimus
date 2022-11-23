@@ -4,7 +4,6 @@ from typing import Any, Callable, Dict, Optional
 from datetime import datetime, timedelta, timezone
 
 from airflow.models import DAG, Variable, DagRun, DagModel, TaskInstance, BaseOperator, XCom, XCOM_RETURN_KEY
-from airflow.kubernetes.secret import Secret
 from airflow.configuration import conf
 from airflow.operators.python_operator import PythonOperator
 from airflow.utils.weight_rule import WeightRule
@@ -86,15 +85,6 @@ publish_job_end_event = PythonOperator(
     )
 
 {{$baseTaskSchema := .Job.Task.Unit.Info -}}
-{{ if ne $baseTaskSchema.SecretPath "" -}}
-transformation_secret = Secret(
-    "volume",
-    {{ dir $baseTaskSchema.SecretPath | quote }},
-    "optimus-task-{{ $baseTaskSchema.Name }}",
-    {{ base $baseTaskSchema.SecretPath | quote }}
-)
-{{- end }}
-
 {{- $setCPURequest := not (empty .Metadata.Resource.Request.CPU) -}}
 {{- $setMemoryRequest := not (empty .Metadata.Resource.Request.Memory) -}}
 {{- $setCPULimit := not (empty .Metadata.Resource.Limit.CPU) -}}
@@ -125,9 +115,51 @@ resources = k8s.V1ResourceRequirements (
     {{- end }}
 )
 {{- end }}
+JOB_DIR = "/data"
+IMAGE_PULL_POLICY="Always"
+INIT_CONTAINER_IMAGE="odpf/optimus:{{.Version}}"
+INIT_CONTAINER_ENTRYPOINT = "/opt/entrypoint_init_container.sh"
+
+volume = k8s.V1Volume(
+    name='asset-volume',
+    empty_dir=k8s.V1EmptyDirVolumeSource()
+)
+asset_volume_mounts = [
+    k8s.V1VolumeMount(mount_path=JOB_DIR, name='asset-volume', sub_path=None, read_only=False)
+]
+executor_env_vars = [
+    k8s.V1EnvVar(name="JOB_LABELS",value='{{.Job.GetLabelsAsString}}'),
+    k8s.V1EnvVar(name="JOB_DIR",value=JOB_DIR),
+]
+
+init_env_vars = [
+    k8s.V1EnvVar(name="JOB_DIR",value=JOB_DIR),
+    k8s.V1EnvVar(name="JOB_NAME",value='{{$.Job.Name}}'),
+    k8s.V1EnvVar(name="OPTIMUS_HOST",value='{{$.Hostname}}'),
+    k8s.V1EnvVar(name="PROJECT",value='{{$.Namespace.ProjectSpec.Name}}'),
+    k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ "{{ next_execution_date }}" }}'),
+]
+
+init_container = k8s.V1Container(
+    name="init-container",
+    image=INIT_CONTAINER_IMAGE,
+    image_pull_policy=IMAGE_PULL_POLICY,
+    env=init_env_vars + [
+        k8s.V1EnvVar(name="INSTANCE_TYPE",value='{{$.InstanceTypeTask}}'),
+        k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$baseTaskSchema.Name}}'),
+    ],
+    security_context=k8s.V1PodSecurityContext(run_as_user=0),
+    volume_mounts=asset_volume_mounts,
+    command=["/bin/sh", INIT_CONTAINER_ENTRYPOINT],
+)
 
 transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperKubernetesPodOperator(
-    image_pull_policy="IfNotPresent",
+    optimus_hostname="{{$.Hostname}}",
+    optimus_projectname="{{$.Namespace.ProjectSpec.Name}}",
+    optimus_namespacename="{{$.Namespace.Name}}",
+    optimus_jobname="{{.Job.Name}}",
+    optimus_jobtype="{{$.InstanceTypeTask}}",
+    image_pull_policy=IMAGE_PULL_POLICY,
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = {{ $baseTaskSchema.Image | quote}},
     cmds=[],
@@ -139,42 +171,43 @@ transformation_{{$baseTaskSchema.Name | replace "-" "__dash__" | replace "." "__
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    secrets=[{{ if ne $baseTaskSchema.SecretPath "" -}} transformation_secret {{- end }}],
-    env_vars = [
-        k8s.V1EnvVar(name="JOB_NAME",value='{{.Job.Name}}'),
-        k8s.V1EnvVar(name="OPTIMUS_HOST",value='{{.Hostname}}'),
-        k8s.V1EnvVar(name="JOB_LABELS",value='{{.Job.GetLabelsAsString}}'),
-        k8s.V1EnvVar(name="JOB_DIR",value='/data'),
-        k8s.V1EnvVar(name="PROJECT",value='{{.Namespace.ProjectSpec.Name}}'),
-        k8s.V1EnvVar(name="NAMESPACE",value='{{.Namespace.Name}}'),
-        k8s.V1EnvVar(name="INSTANCE_TYPE",value='{{$.InstanceTypeTask}}'),
-        k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$baseTaskSchema.Name}}'),
-        k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ "{{ next_execution_date }}" }}'),
-    ],
+    env_vars=executor_env_vars,
+{{- if gt .SLAMissDurationInSec 0 }}
+    sla=timedelta(seconds={{ .SLAMissDurationInSec }}),
+{{- end }}
 {{- if $setResourceConfig }}
     resources = resources,
 {{- end }}
-    {{- if gt .SLAMissDurationInSec 0 }}
-    sla=timedelta(seconds={{ .SLAMissDurationInSec }}),
-    {{- end }}
-    reattach_on_restart=True
+    reattach_on_restart=True,
+    volume_mounts=asset_volume_mounts,
+    volumes=[volume],
+    init_containers=[init_container],
 )
 
 # hooks loop start
 {{ range $_, $t := .Job.Hooks }}
 {{ $hookSchema := $t.Unit.Info -}}
 
-{{ if ne $hookSchema.SecretPath "" -}}
-hook_{{$hookSchema.Name | replace "-" "_"}}_secret = Secret(
-    "volume",
-    {{ dir $hookSchema.SecretPath | quote }},
-    "optimus-hook-{{ $hookSchema.Name }}",
-    {{ base $hookSchema.SecretPath | quote }}
+init_container_{{$hookSchema.Name | replace "-" "__dash__"}} = k8s.V1Container(
+    name="init-container",
+    image=INIT_CONTAINER_IMAGE,
+    image_pull_policy=IMAGE_PULL_POLICY,
+    env= init_env_vars + [
+        k8s.V1EnvVar(name="INSTANCE_TYPE",value='{{$.InstanceTypeHook}}'),
+        k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$hookSchema.Name}}'),
+    ],
+    security_context=k8s.V1PodSecurityContext(run_as_user=0),
+    volume_mounts=asset_volume_mounts,
+    command=["/bin/sh", INIT_CONTAINER_ENTRYPOINT],
 )
-{{- end }}
 
 hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
-    image_pull_policy="IfNotPresent",
+    optimus_hostname="{{$.Hostname}}",
+    optimus_projectname="{{$.Namespace.ProjectSpec.Name}}",
+    optimus_namespacename="{{$.Namespace.Name}}",
+    optimus_jobname="{{$.Job.Name}}",
+    optimus_jobtype="{{$.InstanceTypeHook}}",
+    image_pull_policy=IMAGE_PULL_POLICY,
     namespace = conf.get('kubernetes', 'namespace', fallback="default"),
     image = "{{ $hookSchema.Image }}",
     cmds=[],
@@ -185,26 +218,17 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    secrets=[{{ if ne $hookSchema.SecretPath "" -}} hook_{{$hookSchema.Name | replace "-" "_"}}_secret {{- end }}],
-    env_vars = [
-        k8s.V1EnvVar(name="JOB_NAME",value='{{$.Job.Name}}'),
-        k8s.V1EnvVar(name="OPTIMUS_HOST",value='{{$.Hostname}}'),
-        k8s.V1EnvVar(name="JOB_LABELS",value='{{$.Job.GetLabelsAsString}}'),
-        k8s.V1EnvVar(name="JOB_DIR",value='/data'),
-        k8s.V1EnvVar(name="PROJECT",value='{{$.Namespace.ProjectSpec.Name}}'),
-        k8s.V1EnvVar(name="NAMESPACE",value='{{$.Namespace.Name}}'),
-        k8s.V1EnvVar(name="INSTANCE_TYPE",value='{{$.InstanceTypeHook}}'),
-        k8s.V1EnvVar(name="INSTANCE_NAME",value='{{$hookSchema.Name}}'),
-        k8s.V1EnvVar(name="SCHEDULED_AT",value='{{ "{{ next_execution_date }}" }}'),
-        # rest of the env vars are pulled from the container by making a GRPC call to optimus
-    ],
+    env_vars=executor_env_vars,
 {{- if eq $hookSchema.HookType $.HookTypeFail }}
     trigger_rule="one_failed",
 {{- end }}
 {{- if $setResourceConfig }}
     resources = resources,
 {{- end }}
-    reattach_on_restart=True
+    reattach_on_restart=True,
+    volume_mounts=asset_volume_mounts,
+    volumes=[volume],
+    init_containers=[init_container_{{$hookSchema.Name | replace "-" "__dash__"}}],
 )
 {{- end }}
 # hooks loop ends
