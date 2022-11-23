@@ -415,8 +415,14 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 		}
 		metadataBuilder := job.NewMetadataBuilder()
 		if storeMetadata.Resource != nil {
-			resourceRequest := job.NewMetadataResourceConfig(storeMetadata.Resource.Request.CPU, storeMetadata.Resource.Request.Memory)
-			resourceLimit := job.NewMetadataResourceConfig(storeMetadata.Resource.Limit.CPU, storeMetadata.Resource.Limit.Memory)
+			var resourceRequest *job.MetadataResourceConfig
+			if storeMetadata.Resource.Request != nil {
+				resourceRequest = job.NewMetadataResourceConfig(storeMetadata.Resource.Request.CPU, storeMetadata.Resource.Request.Memory)
+			}
+			var resourceLimit *job.MetadataResourceConfig
+			if storeMetadata.Resource.Limit != nil {
+				resourceLimit = job.NewMetadataResourceConfig(storeMetadata.Resource.Limit.CPU, storeMetadata.Resource.Limit.Memory)
+			}
 			resourceMetadata := job.NewResourceMetadata(resourceRequest, resourceLimit)
 			metadataBuilder = metadataBuilder.WithResource(resourceMetadata)
 		}
