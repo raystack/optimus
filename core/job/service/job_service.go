@@ -123,13 +123,21 @@ func (j JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName
 	return downstreamFullNames, j.repo.Delete(ctx, jobTenant.ProjectName(), jobName, cleanFlag)
 }
 
-func (j JobService) Get(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name) (*job.Job, error) {
+func (j JobService) Get(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, withDestinationAndSources bool) (*job.Job, error) {
 	jobs, err := j.GetAll(ctx,
 		filter.WithString(filter.ProjectName, jobTenant.ProjectName().String()),
 		filter.WithString(filter.JobName, jobName.String()),
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	if withDestinationAndSources {
+		tenantWithDetails, err := j.tenantDetailsGetter.GetDetails(ctx, jobTenant)
+		if err != nil {
+			return nil, err
+		}
+		return j.generateJob(ctx, tenantWithDetails, jobs[0].Spec())
 	}
 
 	return jobs[0], nil
