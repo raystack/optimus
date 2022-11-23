@@ -41,7 +41,7 @@ func TestJobService(t *testing.T) {
 	jobWindow, _ := models.NewWindow(jobVersion.Int(), "d", "24h", "24h")
 	jobTaskConfig, err := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
 	assert.NoError(t, err)
-	jobTask := job.NewTask("bq2bq", jobTaskConfig)
+	jobTask := job.NewTaskBuilder("bq2bq", jobTaskConfig).Build()
 
 	projectFilter := filter.WithString(filter.ProjectName, project.Name().String())
 	namespacesFilter := filter.WithStringArray(filter.NamespaceNames, []string{namespace.Name().String()})

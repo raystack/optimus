@@ -361,7 +361,7 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 	if err != nil {
 		return nil, err
 	}
-	task := job.NewTask(taskName, taskConfig)
+	task := job.NewTaskBuilder(taskName, taskConfig).Build()
 
 	var labels map[string]string
 	if jobSpec.Labels != nil {

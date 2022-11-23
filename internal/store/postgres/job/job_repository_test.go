@@ -68,7 +68,7 @@ func TestPostgresJobRepository(t *testing.T) {
 	assert.NoError(t, err)
 	jobTaskConfig, err := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
 	assert.NoError(t, err)
-	jobTask := job.NewTask("bq2bq", jobTaskConfig)
+	jobTask := job.NewTaskBuilder("bq2bq", jobTaskConfig).Build()
 
 	host := "sample-host"
 	upstreamType := "inferred"

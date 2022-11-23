@@ -154,6 +154,12 @@ type SpecBuilder struct {
 	spec *Spec
 }
 
+func NewSpecBuilderFromSpec(spec *Spec) *SpecBuilder {
+	return &SpecBuilder{
+		spec: spec,
+	}
+}
+
 func NewSpecBuilder(
 	version Version,
 	name Name,
@@ -444,6 +450,7 @@ func (t TaskName) String() string {
 }
 
 type Task struct {
+	info   *models.PluginInfoResponse
 	name   TaskName
 	config *Config
 }
@@ -456,8 +463,30 @@ func (t Task) Config() *Config {
 	return t.config
 }
 
-func NewTask(name TaskName, config *Config) *Task {
-	return &Task{name: name, config: config}
+func (t Task) Info() *models.PluginInfoResponse {
+	return t.info
+}
+
+type TaskBuilder struct {
+	task *Task
+}
+
+func NewTaskBuilder(name TaskName, config *Config) *TaskBuilder {
+	return &TaskBuilder{
+		task: &Task{name: name, config: config},
+	}
+}
+
+func (t TaskBuilder) WithInfo(info *models.PluginInfoResponse) *TaskBuilder {
+	task := *t.task
+	task.info = info
+	return &TaskBuilder{
+		task: &task,
+	}
+}
+
+func (t TaskBuilder) Build() *Task {
+	return t.task
 }
 
 type MetadataResourceConfig struct {

@@ -42,7 +42,7 @@ func TestPluginService(t *testing.T) {
 		"SECRET_TABLE_NAME": "{{.secret.table_name}}",
 	})
 	assert.NoError(t, err)
-	jobTask := job.NewTask("bq2bq", jobTaskConfig)
+	jobTask := job.NewTaskBuilder("bq2bq", jobTaskConfig).Build()
 	depMod := new(mockOpt.DependencyResolverMod)
 	yamlMod := new(mockOpt.YamlMod)
 	plugin := &models.Plugin{DependencyMod: depMod, YamlMod: yamlMod}

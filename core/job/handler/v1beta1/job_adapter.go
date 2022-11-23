@@ -59,7 +59,7 @@ func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
 	if err != nil {
 		return nil, err
 	}
-	task := job.NewTask(taskName, taskConfig)
+	task := job.NewTaskBuilder(taskName, taskConfig).Build()
 
 	hooks, err := toHooks(js.Hooks)
 	if err != nil {
