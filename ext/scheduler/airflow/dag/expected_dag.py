@@ -2,20 +2,19 @@
 
 from datetime import datetime, timedelta
 
-from airflow.configuration import conf
-from airflow.models import DAG, Variable
-from airflow.operators.python import PythonOperator
-from airflow.utils.weight_rule import WeightRule
-from kubernetes.client import models as k8s
-
-from ext.scheduler.airflow.__lib import JOB_START_EVENT_NAME, \
+from __lib import JOB_START_EVENT_NAME, \
     JOB_END_EVENT_NAME, \
     log_success_event, \
     log_retry_event, \
     log_failure_event, \
     log_job_end, log_job_start
-from ext.scheduler.airflow.__lib import optimus_sla_miss_notify, SuperKubernetesPodOperator, \
+from __lib import optimus_sla_miss_notify, SuperKubernetesPodOperator, \
     SuperExternalTaskSensor
+from airflow.configuration import conf
+from airflow.models import DAG, Variable
+from airflow.operators.python_operator import PythonOperator
+from airflow.utils.weight_rule import WeightRule
+from kubernetes.client import models as k8s
 
 SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS = int(Variable.get("sensor_poke_interval_in_secs", default_var=15 * 60))
 SENSOR_DEFAULT_TIMEOUT_IN_SECS = int(Variable.get("sensor_timeout_in_secs", default_var=15 * 60 * 60))
@@ -80,8 +79,53 @@ resources = k8s.V1ResourceRequirements(
     },
 )
 
+JOB_DIR = "/data"
+IMAGE_PULL_POLICY = "Always"
+INIT_CONTAINER_IMAGE = "odpf/optimus:dev"
+INIT_CONTAINER_ENTRYPOINT = "/opt/entrypoint_init_container.sh"
+
+volume = k8s.V1Volume(
+    name='asset-volume',
+    empty_dir=k8s.V1EmptyDirVolumeSource()
+)
+
+asset_volume_mounts = [
+    k8s.V1VolumeMount(mount_path=JOB_DIR, name='asset-volume', sub_path=None, read_only=False)
+]
+
+executor_env_vars = [
+    k8s.V1EnvVar(name="JOB_LABELS", value='orchestrator=optimus'),
+    k8s.V1EnvVar(name="JOB_DIR", value=JOB_DIR),
+]
+
+init_env_vars = [
+    k8s.V1EnvVar(name="JOB_DIR", value=JOB_DIR),
+    k8s.V1EnvVar(name="JOB_NAME", value='infra.billing.weekly-status-reports'),
+    k8s.V1EnvVar(name="OPTIMUS_HOST", value='http://optimus.example.com'),
+    k8s.V1EnvVar(name="PROJECT", value='example-proj'),
+    k8s.V1EnvVar(name="SCHEDULED_AT", value='{{ next_execution_date }}'),
+]
+
+init_container = k8s.V1Container(
+    name="init-container",
+    image=INIT_CONTAINER_IMAGE,
+    image_pull_policy=IMAGE_PULL_POLICY,
+    env=init_env_vars + [
+        k8s.V1EnvVar(name="INSTANCE_TYPE", value='task'),
+        k8s.V1EnvVar(name="INSTANCE_NAME", value='bq-bq'),
+    ],
+    security_context=k8s.V1PodSecurityContext(run_as_user=0),
+    volume_mounts=asset_volume_mounts,
+    command=["/bin/sh", INIT_CONTAINER_ENTRYPOINT],
+)
+
 transformation_bq__dash__bq = SuperKubernetesPodOperator(
-    image_pull_policy="IfNotPresent",
+    optimus_hostname="http://optimus.example.com",
+    optimus_projectname="example-proj",
+    optimus_namespacename="billing",
+    optimus_jobname="infra.billing.weekly-status-reports",
+    optimus_jobtype="task",
+    image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="example.io/namespace/bq2bq-executor:latest",
     cmds=[],
@@ -93,26 +137,36 @@ transformation_bq__dash__bq = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    env_vars=[
-        k8s.V1EnvVar(name="JOB_NAME", value='infra.billing.weekly-status-reports'),
-        k8s.V1EnvVar(name="OPTIMUS_HOST", value='http://optimus.example.com'),
-        k8s.V1EnvVar(name="JOB_LABELS", value='orchestrator=optimus'),
-        k8s.V1EnvVar(name="JOB_DIR", value='/data'),
-        k8s.V1EnvVar(name="PROJECT", value='example-proj'),
-        k8s.V1EnvVar(name="NAMESPACE", value='billing'),
-        k8s.V1EnvVar(name="INSTANCE_TYPE", value='task'),
-        k8s.V1EnvVar(name="INSTANCE_NAME", value='bq-bq'),
-        k8s.V1EnvVar(name="SCHEDULED_AT", value='{{ next_execution_date }}'),
-    ],
+    env_vars=executor_env_vars,
     sla=timedelta(seconds=7200),
     resources=resources,
-    reattach_on_restart=True
+    reattach_on_restart=True,
+    volume_mounts=asset_volume_mounts,
+    volumes=[volume],
+    init_containers=[init_container],
 )
 
 # hooks loop start
+init_container_transporter = k8s.V1Container(
+    name="init-container",
+    image=INIT_CONTAINER_IMAGE,
+    image_pull_policy=IMAGE_PULL_POLICY,
+    env=init_env_vars + [
+        k8s.V1EnvVar(name="INSTANCE_TYPE", value='hook'),
+        k8s.V1EnvVar(name="INSTANCE_NAME", value='transporter'),
+    ],
+    security_context=k8s.V1PodSecurityContext(run_as_user=0),
+    volume_mounts=asset_volume_mounts,
+    command=["/bin/sh", INIT_CONTAINER_ENTRYPOINT],
+)
 
 hook_transporter = SuperKubernetesPodOperator(
-    image_pull_policy="IfNotPresent",
+    optimus_hostname="http://optimus.example.com",
+    optimus_projectname="example-proj",
+    optimus_namespacename="billing",
+    optimus_jobname="infra.billing.weekly-status-reports",
+    optimus_jobtype="hook",
+    image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="example.io/namespace/transporter-executor:latest",
     cmds=[],
@@ -123,24 +177,33 @@ hook_transporter = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    env_vars=[
-        k8s.V1EnvVar(name="JOB_NAME", value='infra.billing.weekly-status-reports'),
-        k8s.V1EnvVar(name="OPTIMUS_HOST", value='http://optimus.example.com'),
-        k8s.V1EnvVar(name="JOB_LABELS", value='orchestrator=optimus'),
-        k8s.V1EnvVar(name="JOB_DIR", value='/data'),
-        k8s.V1EnvVar(name="PROJECT", value='example-proj'),
-        k8s.V1EnvVar(name="NAMESPACE", value='billing'),
-        k8s.V1EnvVar(name="INSTANCE_TYPE", value='hook'),
-        k8s.V1EnvVar(name="INSTANCE_NAME", value='transporter'),
-        k8s.V1EnvVar(name="SCHEDULED_AT", value='{{ next_execution_date }}'),
-        # rest of the env vars are pulled from the container by making a GRPC call to optimus
-    ],
+    env_vars=executor_env_vars,
     resources=resources,
-    reattach_on_restart=True
+    reattach_on_restart=True,
+    volume_mounts=asset_volume_mounts,
+    volumes=[volume],
+    init_containers=[init_container_transporter],
+)
+init_container_predator = k8s.V1Container(
+    name="init-container",
+    image=INIT_CONTAINER_IMAGE,
+    image_pull_policy=IMAGE_PULL_POLICY,
+    env=init_env_vars + [
+        k8s.V1EnvVar(name="INSTANCE_TYPE", value='hook'),
+        k8s.V1EnvVar(name="INSTANCE_NAME", value='predator'),
+    ],
+    security_context=k8s.V1PodSecurityContext(run_as_user=0),
+    volume_mounts=asset_volume_mounts,
+    command=["/bin/sh", INIT_CONTAINER_ENTRYPOINT],
 )
 
 hook_predator = SuperKubernetesPodOperator(
-    image_pull_policy="IfNotPresent",
+    optimus_hostname="http://optimus.example.com",
+    optimus_projectname="example-proj",
+    optimus_namespacename="billing",
+    optimus_jobname="infra.billing.weekly-status-reports",
+    optimus_jobtype="hook",
+    image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="example.io/namespace/predator-image:latest",
     cmds=[],
@@ -151,24 +214,33 @@ hook_predator = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    env_vars=[
-        k8s.V1EnvVar(name="JOB_NAME", value='infra.billing.weekly-status-reports'),
-        k8s.V1EnvVar(name="OPTIMUS_HOST", value='http://optimus.example.com'),
-        k8s.V1EnvVar(name="JOB_LABELS", value='orchestrator=optimus'),
-        k8s.V1EnvVar(name="JOB_DIR", value='/data'),
-        k8s.V1EnvVar(name="PROJECT", value='example-proj'),
-        k8s.V1EnvVar(name="NAMESPACE", value='billing'),
-        k8s.V1EnvVar(name="INSTANCE_TYPE", value='hook'),
-        k8s.V1EnvVar(name="INSTANCE_NAME", value='predator'),
-        k8s.V1EnvVar(name="SCHEDULED_AT", value='{{ next_execution_date }}'),
-        # rest of the env vars are pulled from the container by making a GRPC call to optimus
-    ],
+    env_vars=executor_env_vars,
     resources=resources,
-    reattach_on_restart=True
+    reattach_on_restart=True,
+    volume_mounts=asset_volume_mounts,
+    volumes=[volume],
+    init_containers=[init_container_predator],
+)
+init_container_failureHook = k8s.V1Container(
+    name="init-container",
+    image=INIT_CONTAINER_IMAGE,
+    image_pull_policy=IMAGE_PULL_POLICY,
+    env=init_env_vars + [
+        k8s.V1EnvVar(name="INSTANCE_TYPE", value='hook'),
+        k8s.V1EnvVar(name="INSTANCE_NAME", value='failureHook'),
+    ],
+    security_context=k8s.V1PodSecurityContext(run_as_user=0),
+    volume_mounts=asset_volume_mounts,
+    command=["/bin/sh", INIT_CONTAINER_ENTRYPOINT],
 )
 
 hook_failureHook = SuperKubernetesPodOperator(
-    image_pull_policy="IfNotPresent",
+    optimus_hostname="http://optimus.example.com",
+    optimus_projectname="example-proj",
+    optimus_namespacename="billing",
+    optimus_jobname="infra.billing.weekly-status-reports",
+    optimus_jobtype="hook",
+    image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="example.io/namespace/failure-hook-image:latest",
     cmds=[],
@@ -179,21 +251,13 @@ hook_failureHook = SuperKubernetesPodOperator(
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
-    env_vars=[
-        k8s.V1EnvVar(name="JOB_NAME", value='infra.billing.weekly-status-reports'),
-        k8s.V1EnvVar(name="OPTIMUS_HOST", value='http://optimus.example.com'),
-        k8s.V1EnvVar(name="JOB_LABELS", value='orchestrator=optimus'),
-        k8s.V1EnvVar(name="JOB_DIR", value='/data'),
-        k8s.V1EnvVar(name="PROJECT", value='example-proj'),
-        k8s.V1EnvVar(name="NAMESPACE", value='billing'),
-        k8s.V1EnvVar(name="INSTANCE_TYPE", value='hook'),
-        k8s.V1EnvVar(name="INSTANCE_NAME", value='failureHook'),
-        k8s.V1EnvVar(name="SCHEDULED_AT", value='{{ next_execution_date }}'),
-        # rest of the env vars are pulled from the container by making a GRPC call to optimus
-    ],
+    env_vars=executor_env_vars,
     trigger_rule="one_failed",
     resources=resources,
-    reattach_on_restart=True
+    reattach_on_restart=True,
+    volume_mounts=asset_volume_mounts,
+    volumes=[volume],
+    init_containers=[init_container_failureHook],
 )
 # hooks loop ends
 

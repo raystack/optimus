@@ -14,8 +14,10 @@ from airflow.providers.cncf.kubernetes.operators.kubernetes_pod import Kubernete
 from airflow.providers.cncf.kubernetes.utils import pod_launcher
 from airflow.providers.slack.operators.slack import SlackAPIPostOperator
 from airflow.sensors.base import BaseSensorOperator
+from airflow.utils import yaml
 from airflow.utils.state import State
 from croniter import croniter
+from kubernetes.client import models as k8s
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -62,9 +64,15 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
     """
     template_fields = ('image', 'cmds', 'arguments', 'env_vars', 'config_file', 'pod_template_file')
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self,
+                 optimus_hostname,
+                 optimus_projectname,
+                 optimus_namespacename,
+                 optimus_jobname,
+                 optimus_jobtype,
+                 *args,
+                 **kwargs):
         super(SuperKubernetesPodOperator, self).__init__(*args, **kwargs)
-
         self.do_xcom_push = kwargs.get('do_xcom_push')
         self.namespace = kwargs.get('namespace')
         self.in_cluster = kwargs.get('in_cluster')
@@ -72,10 +80,83 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
         self.reattach_on_restart = kwargs.get('reattach_on_restart')
         self.config_file = kwargs.get('config_file')
 
-    def execute(self, context):
+        # used to fetch job env from optimus for adding to k8s pod
+        self.optimus_hostname = optimus_hostname
+        self.optimus_namespacename = optimus_namespacename
+        self.optimus_jobname = optimus_jobname
+        self.optimus_projectname = optimus_projectname
+        self.optimus_jobtype = optimus_jobtype
+        self._optimus_client = OptimusAPIClient(optimus_hostname)
 
+    def render_init_containers(self, context):
+        for ic in self.init_containers:
+            env = getattr(ic, 'env')
+            if env:
+                self.render_template(env, context)
+
+    def fetch_env_from_optimus(self, context):
+        scheduled_at = context["next_execution_date"].strftime(TIMESTAMP_FORMAT)
+        job_meta = self._optimus_client.get_job_run_input(scheduled_at, self.optimus_projectname, self.optimus_jobname,
+                                                          self.optimus_jobtype)
+        return [
+                   k8s.V1EnvVar(name=key, value=val) for key, val in job_meta["envs"].items()
+               ] + [
+                   k8s.V1EnvVar(name=key, value=val) for key, val in job_meta["secrets"].items()
+               ]
+
+    def _dry_run(self, pod):
+        def prune_dict(val: Any, mode='strict'):
+            """
+            Given dict ``val``, returns new dict based on ``val`` with all
+            empty elements removed.
+            What constitutes "empty" is controlled by the ``mode`` parameter.  If mode is 'strict'
+            then only ``None`` elements will be removed.  If mode is ``truthy``, then element ``x``
+            will be removed if ``bool(x) is False``.
+            """
+
+            def is_empty(x):
+                if mode == 'strict':
+                    return x is None
+                elif mode == 'truthy':
+                    return bool(x) is False
+                raise ValueError("allowable values for `mode` include 'truthy' and 'strict'")
+
+            if isinstance(val, dict):
+                new_dict = {}
+                for k, v in val.items():
+                    if is_empty(v):
+                        continue
+                    elif isinstance(v, (list, dict)):
+                        new_val = prune_dict(v, mode=mode)
+                        if new_val:
+                            new_dict[k] = new_val
+                    else:
+                        new_dict[k] = v
+                return new_dict
+            elif isinstance(val, list):
+                new_list = []
+                for v in val:
+                    if is_empty(v):
+                        continue
+                    elif isinstance(v, (list, dict)):
+                        new_val = prune_dict(v, mode=mode)
+                        if new_val:
+                            new_list.append(new_val)
+                    else:
+                        new_list.append(v)
+                return new_list
+            else:
+                return val
+
+        log.info(prune_dict(pod.to_dict(), mode='strict'))
+        log.info(yaml.dump(prune_dict(pod.to_dict(), mode='strict')))
+
+    def execute(self, context):
         log_start_event(context, EVENT_NAMES.get("TASK_START_EVENT"))
         # to be done async
+        self.env_vars += self.fetch_env_from_optimus(context)
+        # init-container is not considered for rendering in airflow
+        self.render_init_containers(context)
 
         log.info('Task image version: %s', self.image)
         try:
@@ -88,6 +169,8 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
                                                      config_file=self.config_file)
 
             self.pod = self.create_pod_request_obj()
+            # self._dry_run(self.pod) # logs the yaml file for the pod [not compatible for future verison of implementation]
+
             self.namespace = self.pod.metadata.namespace
             self.client = client
 
@@ -151,6 +234,16 @@ class OptimusAPIClient:
             window_truncate_upto=window_truncate_upto,
         )
         response = requests.get(url)
+        self._raise_error_if_request_failed(response)
+        return response.json()
+
+    def get_job_run_input(self, execution_date: str, project_name: str, job_name: str, job_type: str) -> dict:
+        response = requests.post(
+            url="{}/api/v1beta1/project/{}/job/{}/run_input".format(self.host, project_name, job_name),
+            json={'scheduled_at': execution_date,
+                  'instance_name': job_name,
+                  'instance_type': "TYPE_" + job_type.upper()})
+
         self._raise_error_if_request_failed(response)
         return response.json()
 
@@ -481,7 +574,7 @@ def optimus_sla_miss_notify(dag, task_list, blocking_task_list, slas, blocking_t
     }
 
     event = {
-        "type": "TYPE_SLA_MISS",# todo: rename this to job sla miss 
+        "type": "TYPE_SLA_MISS",
         "value": message,
     }
     # post event
