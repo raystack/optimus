@@ -504,7 +504,7 @@ func TestJobRunHandler(t *testing.T) {
 
 			resp, err := jobRunHandler.RegisterEvent(ctx, req)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity event: unknown event 200: unable to parse event type:200  value:{fields:{key:\"url\"  value:{string_value:\"https://example.io\"}}}")
+			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity event: unknown event 200: unable to parse event type:200 value:{fields:{key:\"url\" value:{string_value:\"https://example.io\"}}}")
 			assert.Nil(t, resp)
 		})
 		t.Run("should return error if Update Job State fails", func(t *testing.T) {
