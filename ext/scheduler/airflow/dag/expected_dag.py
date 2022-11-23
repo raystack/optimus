@@ -51,7 +51,6 @@ dag = DAG(
     default_args=default_args,
     schedule_interval="0 2 * * 0",
     sla_miss_callback=optimus_sla_miss_notify,
-    sla=timedelta(seconds=7200),
     catchup=True,
     dagrun_timeout=timedelta(seconds=DAGRUN_TIMEOUT_IN_SECS),
     tags=[
@@ -105,6 +104,7 @@ transformation_bq__dash__bq = SuperKubernetesPodOperator(
         k8s.V1EnvVar(name="INSTANCE_NAME", value='bq-bq'),
         k8s.V1EnvVar(name="SCHEDULED_AT", value='{{ next_execution_date }}'),
     ],
+    sla=timedelta(seconds=7200),
     resources=resources,
     reattach_on_restart=True
 )
@@ -225,7 +225,7 @@ wait_foo__dash__inter__dash__dep__dash__job = SuperExternalTaskSensor(
     dag=dag
 )
 
-wait_external__dash__optimus__dash__foo__dash__external__dash__optimus__dash__project__dash__foo__dash__external__dash__optimus__dash__dep__dash__job = SuperExternalTaskSensor(
+wait_foo__dash__external__dash__optimus__dash__dep__dash__job = SuperExternalTaskSensor(
     optimus_hostname="http://optimus.external.io",
     upstream_optimus_project="external-project",
     upstream_optimus_namespace="external-namespace",
@@ -243,7 +243,7 @@ wait_external__dash__optimus__dash__foo__dash__external__dash__optimus__dash__pr
 # upstream sensors -> base transformation task
 publish_job_start_event >> wait_foo__dash__intra__dash__dep__dash__job >> transformation_bq__dash__bq
 publish_job_start_event >> wait_foo__dash__inter__dash__dep__dash__job >> transformation_bq__dash__bq
-publish_job_start_event >> wait_external__dash__optimus__dash__foo__dash__external__dash__optimus__dash__project__dash__foo__dash__external__dash__optimus__dash__dep__dash__job >> transformation_bq__dash__bq
+publish_job_start_event >> wait_foo__dash__external__dash__optimus__dash__dep__dash__job >> transformation_bq__dash__bq
 
 # setup hooks and dependencies
 # start_event -> [Dependency/HttpDep/ExternalDep/PreHook] -> Task -> [Post Hook -> Fail Hook] -> end_event

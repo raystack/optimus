@@ -142,6 +142,7 @@ func setupJobDetails(tnnt tenant.Tenant) *scheduler.JobWithDetails {
 
 		RuntimeConfig: runtimeConfig,
 		Upstreams:     upstreams,
+		Priority:      2000,
 	}
 }
 

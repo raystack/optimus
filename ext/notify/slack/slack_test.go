@@ -231,7 +231,7 @@ func TestBuildMessages(t *testing.T) {
         "type": "header",
         "text": {
             "type": "plain_text",
-            "text": "[Job] SLA Breached | ss/bb",
+            "text": "[Job] SLA Breached | foo/test",
             "emoji": true
         }
     },
@@ -240,7 +240,7 @@ func TestBuildMessages(t *testing.T) {
         "fields": [
             {
                 "type": "mrkdwn",
-                "text": "*Job:*\ncc"
+                "text": "*Job:*\nfoo-job-spec"
             },
             {
                 "type": "mrkdwn",
