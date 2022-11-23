@@ -153,8 +153,8 @@ func (jh *JobHandler) UpdateJobSpecifications(ctx context.Context, jobSpecReques
 func (jh *JobHandler) GetJobSpecification(ctx context.Context, req *pb.GetJobSpecificationRequest) (*pb.GetJobSpecificationResponse, error) {
 	// TODO: need to have further analysis if this api is stil needed or not
 	jobSpec, err := jh.jobService.Get(ctx,
-		filter.With(filter.ProjectName, req.GetProjectName()),
-		filter.With(filter.JobName, req.GetJobName()),
+		filter.WithString(filter.ProjectName, req.GetProjectName()),
+		filter.WithString(filter.JobName, req.GetJobName()),
 	)
 	if err != nil {
 		errorMsg := "failed to get job specification"
@@ -169,9 +169,9 @@ func (jh *JobHandler) GetJobSpecification(ctx context.Context, req *pb.GetJobSpe
 
 func (jh *JobHandler) GetJobSpecifications(ctx context.Context, req *pb.GetJobSpecificationsRequest) (*pb.GetJobSpecificationsResponse, error) {
 	jobSpecs, merr := jh.jobService.GetAll(ctx,
-		filter.With(filter.ResourceDestination, req.GetResourceDestination()),
-		filter.With(filter.ProjectName, req.GetProjectName()),
-		filter.With(filter.JobName, req.GetJobName()),
+		filter.WithString(filter.ResourceDestination, req.GetResourceDestination()),
+		filter.WithString(filter.ProjectName, req.GetProjectName()),
+		filter.WithString(filter.JobName, req.GetJobName()),
 	)
 
 	jobSpecResponseProtos := []*pb.JobSpecificationResponse{}
@@ -279,9 +279,9 @@ func (jh *JobHandler) RefreshJobs(request *pb.RefreshJobsRequest, stream pb.JobS
 		return err
 	}
 
-	projectFilter := filter.With(filter.ProjectName, projectName.String())
-	namespacesFilter := filter.With(filter.NamespaceNames, request.NamespaceNames)
-	jobNamesFilter := filter.With(filter.JobNames, request.JobNames)
+	projectFilter := filter.WithString(filter.ProjectName, projectName.String())
+	namespacesFilter := filter.WithStringArray(filter.NamespaceNames, request.NamespaceNames)
+	jobNamesFilter := filter.WithStringArray(filter.JobNames, request.JobNames)
 
 	if err = jh.jobService.Refresh(stream.Context(), projectName, responseWriter, projectFilter, namespacesFilter, jobNamesFilter); err != nil {
 		errMsg := fmt.Sprintf("%s: job refresh failed for project %s", err.Error(), request.ProjectName)

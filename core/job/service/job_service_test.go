@@ -43,8 +43,8 @@ func TestJobService(t *testing.T) {
 	assert.NoError(t, err)
 	jobTask := job.NewTask("bq2bq", jobTaskConfig)
 
-	projectFilter := filter.With(filter.ProjectName, project.Name().String())
-	namespacesFilter := filter.With(filter.NamespaceNames, []string{namespace.Name().String()})
+	projectFilter := filter.WithString(filter.ProjectName, project.Name().String())
+	namespacesFilter := filter.WithStringArray(filter.NamespaceNames, []string{namespace.Name().String()})
 
 	t.Run("Add", func(t *testing.T) {
 		t.Run("add jobs", func(t *testing.T) {

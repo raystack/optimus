@@ -19,9 +19,18 @@ const (
 	ResourceDestination = Operand(bitOnResourceDestination)
 )
 
-func With(operand Operand, value interface{}) FilterOpt {
+func WithString(operand Operand, value string) FilterOpt {
 	return func(f *filter) {
 		if value != "" {
+			f.bits |= uint64(operand)
+			f.value[operand] = value
+		}
+	}
+}
+
+func WithStringArray(operand Operand, value []string) FilterOpt {
+	return func(f *filter) {
+		if len(value) > 0 {
 			f.bits |= uint64(operand)
 			f.value[operand] = value
 		}
