@@ -51,9 +51,8 @@ func NewReplaceAllCommand() *cobra.Command {
 		Annotations: map[string]string{
 			"group:core": "true",
 		},
-		RunE:     replaceAll.RunE,
-		PreRunE:  replaceAll.PreRunE,
-		PostRunE: replaceAll.PostRunE,
+		RunE:    replaceAll.RunE,
+		PreRunE: replaceAll.PreRunE,
 	}
 	cmd.Flags().StringVarP(&replaceAll.configFilePath, "config", "c", replaceAll.configFilePath, "File path for client configuration")
 	cmd.Flags().StringSliceVarP(&replaceAll.selectedNamespaceNames, "namespace-names", "N", nil, "Selected namespaces of optimus project")
@@ -82,11 +81,6 @@ func (r *replaceAllCommand) RunE(_ *cobra.Command, _ []string) error {
 	r.logger.Info("validation finished!\n")
 
 	return r.replaceAll(selectedNamespaces)
-}
-
-func (r *replaceAllCommand) PostRunE(_ *cobra.Command, _ []string) error {
-	r.pluginCleanFn()
-	return nil
 }
 
 func (r *replaceAllCommand) replaceAll(selectedNamespaces []*config.Namespace) error {
