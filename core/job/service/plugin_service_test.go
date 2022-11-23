@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/odpf/salt/log"
@@ -43,7 +44,56 @@ func TestPluginService(t *testing.T) {
 	assert.NoError(t, err)
 	jobTask := job.NewTask("bq2bq", jobTaskConfig)
 	depMod := new(mockOpt.DependencyResolverMod)
-	plugin := &models.Plugin{DependencyMod: depMod}
+	yamlMod := new(mockOpt.YamlMod)
+	plugin := &models.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
+
+	t.Run("Info", func(t *testing.T) {
+		t.Run("returns error when no plugin", func(t *testing.T) {
+			pluginRepo := mockOpt.NewPluginRepository(t)
+			defer pluginRepo.AssertExpectations(t)
+
+			pluginRepo.On("GetByName", jobTask.Name().String()).Return(nil, errors.New("some error when fetch plugin"))
+
+			pluginService := service.NewJobPluginService(nil, pluginRepo, nil, nil)
+			result, err := pluginService.Info(ctx, jobTask)
+			assert.Error(t, err)
+			assert.Nil(t, result)
+			assert.Equal(t, "some error when fetch plugin", err.Error())
+		})
+		t.Run("returns error when yaml mod not supported", func(t *testing.T) {
+			pluginRepo := mockOpt.NewPluginRepository(t)
+			defer pluginRepo.AssertExpectations(t)
+
+			newPlugin := &models.Plugin{DependencyMod: depMod}
+			pluginRepo.On("GetByName", jobTask.Name().String()).Return(newPlugin, nil)
+
+			pluginService := service.NewJobPluginService(nil, pluginRepo, nil, nil)
+			result, err := pluginService.Info(ctx, jobTask)
+			assert.Error(t, err)
+			assert.Nil(t, result)
+			assert.Equal(t, "yaml mod not found for plugin", err.Error())
+		})
+		t.Run("returns plugin info", func(t *testing.T) {
+			pluginRepo := mockOpt.NewPluginRepository(t)
+			defer pluginRepo.AssertExpectations(t)
+
+			pluginRepo.On("GetByName", jobTask.Name().String()).Return(plugin, nil)
+			yamlMod.On("PluginInfo").Return(&models.PluginInfoResponse{
+				Name:        jobTask.Name().String(),
+				Description: "example",
+				Image:       "http://to.repo",
+			}, nil)
+			defer yamlMod.AssertExpectations(t)
+
+			pluginService := service.NewJobPluginService(nil, pluginRepo, nil, nil)
+			result, err := pluginService.Info(ctx, jobTask)
+			assert.NoError(t, err)
+			assert.NotNil(t, result)
+			assert.Equal(t, jobTask.Name().String(), result.Name)
+			assert.Equal(t, "example", result.Description)
+			assert.Equal(t, "http://to.repo", result.Image)
+		})
+	})
 
 	t.Run("GenerateDestination", func(t *testing.T) {
 		t.Run("returns destination", func(t *testing.T) {

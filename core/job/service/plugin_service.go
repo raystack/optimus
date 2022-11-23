@@ -16,6 +16,7 @@ import (
 
 var (
 	ErrUpstreamModNotFound = errors.New("upstream mod not found for plugin")
+	ErrYamlModNotExist     = errors.New("yaml mod not found for plugin")
 )
 
 type SecretsGetter interface {
@@ -36,6 +37,19 @@ type JobPluginService struct {
 
 func NewJobPluginService(secretsGetter SecretsGetter, pluginRepo models.PluginRepository, engine models.TemplateEngine, logger log.Logger) *JobPluginService {
 	return &JobPluginService{secretsGetter: secretsGetter, pluginRepo: pluginRepo, engine: engine, logger: logger, now: time.Now}
+}
+
+func (p JobPluginService) Info(ctx context.Context, task *job.Task) (*models.PluginInfoResponse, error) {
+	plugin, err := p.pluginRepo.GetByName(task.Name().String())
+	if err != nil {
+		return nil, err
+	}
+
+	if plugin.YamlMod == nil {
+		return nil, ErrYamlModNotExist
+	}
+
+	return plugin.YamlMod.PluginInfo(), nil
 }
 
 func (p JobPluginService) GenerateDestination(ctx context.Context, tnnt *tenant.WithDetails, task *job.Task) (job.ResourceURN, error) {
