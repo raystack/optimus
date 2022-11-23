@@ -121,7 +121,6 @@ func EventFrom(eventTypeName string, eventValues map[string]any, jobName JobName
 	if err != nil {
 		return Event{}, err
 	}
-
 	eventTimeFloat := utils.ConfigAs[float64](eventValues, "event_time")
 	if eventTimeFloat == float64(0) {
 		return Event{}, errors.InvalidArgument(EntityEvent, "property 'event_time'(number) is missing in event payload")

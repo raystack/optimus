@@ -1,6 +1,7 @@
 package scheduler_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,6 +11,118 @@ import (
 )
 
 func TestJob(t *testing.T) {
+	t.Run("JobNameFrom", func(t *testing.T) {
+		jobName, err := scheduler.JobNameFrom("someJob")
+		assert.Nil(t, err)
+		assert.Equal(t, scheduler.JobName("someJob"), jobName)
+
+		jobName1, err := scheduler.JobNameFrom("")
+		assert.NotNil(t, err)
+		assert.EqualError(t, err, "invalid argument for entity jobRun: job name is empty")
+		assert.Equal(t, scheduler.JobName(""), jobName1)
+	})
+	t.Run("OperatorType to String", func(t *testing.T) {
+		assert.Equal(t, "sensor", scheduler.OperatorSensor.String())
+		assert.Equal(t, "hook", scheduler.OperatorHook.String())
+		assert.Equal(t, "task", scheduler.OperatorTask.String())
+	})
+	t.Run("GetHook", func(t *testing.T) {
+		t.Run(" get someHook1", func(t *testing.T) {
+			dummyHook := scheduler.Hook{Name: "someHook1", Config: nil}
+			dummyHook2 := scheduler.Hook{Name: "someHook2", Config: nil}
+			job := scheduler.Job{
+				Name:  "jobName",
+				Hooks: []*scheduler.Hook{&dummyHook, &dummyHook2},
+			}
+			hook, err := job.GetHook("someHook1")
+			assert.Nil(t, err)
+			assert.Equal(t, &dummyHook, hook)
+
+		})
+		t.Run(" should return error when hook not found", func(t *testing.T) {
+			dummyHook := scheduler.Hook{Name: "someHook1", Config: nil}
+			dummyHook2 := scheduler.Hook{Name: "someHook2", Config: nil}
+			job := scheduler.Job{
+				Name:  "jobName",
+				Hooks: []*scheduler.Hook{&dummyHook, &dummyHook2},
+			}
+			hook, err := job.GetHook("someHook13")
+			fmt.Println(err.Error())
+			assert.NotNil(t, err)
+			assert.Nil(t, hook)
+
+		})
+	})
+	t.Run("GetName", func(t *testing.T) {
+		jobWithDetails := scheduler.JobWithDetails{
+			Name: "jobName",
+		}
+		assert.Equal(t, "jobName", jobWithDetails.GetName())
+	})
+	t.Run("SLADuration", func(t *testing.T) {
+		t.Run("should return 0 and error if duration is incorrect format", func(t *testing.T) {
+			jobWithDetails := scheduler.JobWithDetails{
+				Name: "jobName",
+				Alerts: []scheduler.Alert{
+					{
+						On:       scheduler.EventCategorySLAMiss,
+						Channels: nil,
+						Config: map[string]string{
+							"duration": "2l",
+						},
+					},
+				},
+			}
+			duration, err := jobWithDetails.SLADuration()
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "failed to parse sla_miss duration 2l: time: unknown unit \"l\" in duration \"2l\"")
+			assert.Equal(t, int64(0), duration)
+		})
+		t.Run("should return 0 if duration is not specified", func(t *testing.T) {
+			jobWithDetails := scheduler.JobWithDetails{
+				Name: "jobName",
+				Alerts: []scheduler.Alert{
+					{
+						On:       scheduler.EventCategorySLAMiss,
+						Channels: nil,
+						Config:   map[string]string{},
+					},
+				},
+			}
+			duration, err := jobWithDetails.SLADuration()
+			assert.Nil(t, err)
+			assert.Equal(t, int64(0), duration)
+		})
+		t.Run("should get sla duration", func(t *testing.T) {
+			jobWithDetails := scheduler.JobWithDetails{
+				Name: "jobName",
+				Alerts: []scheduler.Alert{
+					{
+						On:       scheduler.EventCategorySLAMiss,
+						Channels: nil,
+						Config: map[string]string{
+							"duration": "2h",
+						},
+					},
+				},
+			}
+			duration, err := jobWithDetails.SLADuration()
+			assert.Nil(t, err)
+			assert.Equal(t, int64(7200), duration)
+		})
+	})
+	t.Run("GetLabelsAsString", func(t *testing.T) {
+		jobWithDetails := scheduler.JobWithDetails{
+			Name: "jobName",
+			JobMetadata: &scheduler.JobMetadata{
+				Labels: map[string]string{
+					"label1": "someVale",
+				},
+			},
+		}
+		labels := jobWithDetails.GetLabelsAsString()
+		assert.Equal(t, labels, "label1=someVale")
+	})
 	t.Run("GroupJobsByTenant", func(t *testing.T) {
 		t1, _ := tenant.NewTenant("proj", "ns1")
 		t2, _ := tenant.NewTenant("proj", "ns1")

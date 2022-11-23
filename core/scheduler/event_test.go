@@ -49,31 +49,121 @@ func TestFromStringToEventType(t *testing.T) {
 		}
 	})
 	t.Run("EventFrom", func(t *testing.T) {
-		eventValues := map[string]any{
-			"someKey":      "someValue",
-			"event_time":   16000631600.0,
-			"task_id":      "some_txbq",
-			"scheduled_at": "2022-01-02T15:04:05Z",
-		}
-		jobName := JobName("some_job")
-		tnnt, err := tenant.NewTenant("someProject", "someNamespace")
-		eventTypeName := "TYPE_TASK_RETRY"
-		assert.Nil(t, err)
+		t.Run("Should return error if scheduled_at is incorrect format", func(t *testing.T) {
+			eventValues := map[string]any{
+				"someKey":      "someValue",
+				"event_time":   16000631600.0,
+				"task_id":      "some_txbq",
+				"scheduled_at": "2022--01-02T15:04:05Z",
+			}
+			jobName := JobName("some_job")
+			tnnt, err := tenant.NewTenant("someProject", "someNamespace")
+			assert.Nil(t, err)
 
-		outputObj := Event{
-			JobName:        jobName,
-			Tenant:         tnnt,
-			Type:           TaskRetryEvent,
-			EventTime:      time.Date(2477, time.January, 14, 17, 23, 20, 0, time.Local),
-			OperatorName:   "some_txbq",
-			JobScheduledAt: time.Date(2022, time.January, 2, 15, 04, 05, 0, time.UTC),
-			Values:         eventValues,
-		}
+			eventTypeName := "TYPE_TASK_RETRY"
+			eventObj, err := EventFrom(eventTypeName, eventValues, jobName, tnnt)
 
-		output, err := EventFrom(eventTypeName, eventValues, jobName, tnnt)
-		assert.Nil(t, err)
-		assert.Equal(t, outputObj.JobScheduledAt, output.JobScheduledAt)
-		assert.Equal(t, outputObj, output)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "invalid argument for entity event: property 'scheduled_at' is not in appropriate format")
+			assert.Equal(t, eventObj, Event{})
+		})
+		t.Run("Should return error if scheduled_at is not provided in event payload", func(t *testing.T) {
+			eventValues := map[string]any{
+				"someKey":    "someValue",
+				"event_time": 16000631600.0,
+				"task_id":    "some_txbq",
+			}
+			jobName := JobName("some_job")
+			tnnt, err := tenant.NewTenant("someProject", "someNamespace")
+			assert.Nil(t, err)
+
+			eventTypeName := "TYPE_TASK_RETRY"
+			eventObj, err := EventFrom(eventTypeName, eventValues, jobName, tnnt)
+
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "invalid argument for entity event: property 'scheduled_at'(string) is missing in event payload")
+			assert.Equal(t, eventObj, Event{})
+		})
+		t.Run("Should return error if task_id is not provided in event payload", func(t *testing.T) {
+			eventValues := map[string]any{
+				"someKey":      "someValue",
+				"event_time":   16000631600.0,
+				"scheduled_at": "2022-01-02T15:04:05Z",
+			}
+			jobName := JobName("some_job")
+			tnnt, err := tenant.NewTenant("someProject", "someNamespace")
+			assert.Nil(t, err)
+
+			eventTypeName := "TYPE_TASK_RETRY"
+			eventObj, err := EventFrom(eventTypeName, eventValues, jobName, tnnt)
+
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "invalid argument for entity event: property 'task_id'(string) is missing in event payload")
+			assert.Equal(t, eventObj, Event{})
+		})
+		t.Run("Should return error if event is notvalid number", func(t *testing.T) {
+			eventValues := map[string]any{
+				"someKey":      "someValue",
+				"event_time":   "16000631600.0",
+				"task_id":      "some_txbq",
+				"scheduled_at": "2022-01-02T15:04:05Z",
+			}
+			jobName := JobName("some_job")
+			tnnt, err := tenant.NewTenant("someProject", "someNamespace")
+			assert.Nil(t, err)
+
+			eventTypeName := "TYPE_TASK_RETRY"
+			eventObj, err := EventFrom(eventTypeName, eventValues, jobName, tnnt)
+
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "invalid argument for entity event: property 'event_time'(number) is missing in event payload")
+			assert.Equal(t, eventObj, Event{})
+		})
+		t.Run("Should return error if event is unregistered type", func(t *testing.T) {
+			eventValues := map[string]any{
+				"someKey":      "someValue",
+				"event_time":   16000631600.0,
+				"task_id":      "some_txbq",
+				"scheduled_at": "2022-01-02T15:04:05Z",
+			}
+			jobName := JobName("some_job")
+			tnnt, err := tenant.NewTenant("someProject", "someNamespace")
+			assert.Nil(t, err)
+
+			eventTypeName := "TYPE_TASK_RETRY_UNREGISTERED"
+			eventObj, err := EventFrom(eventTypeName, eventValues, jobName, tnnt)
+
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "invalid argument for entity event: unknown event task_retry_unregistered")
+			assert.Equal(t, eventObj, Event{})
+		})
+		t.Run("Should Successfully parse an event", func(t *testing.T) {
+			eventValues := map[string]any{
+				"someKey":      "someValue",
+				"event_time":   16000631600.0,
+				"task_id":      "some_txbq",
+				"scheduled_at": "2022-01-02T15:04:05Z",
+			}
+			jobName := JobName("some_job")
+			tnnt, err := tenant.NewTenant("someProject", "someNamespace")
+			eventTypeName := "TYPE_TASK_RETRY"
+			assert.Nil(t, err)
+
+			outputObj := Event{
+				JobName:        jobName,
+				Tenant:         tnnt,
+				Type:           TaskRetryEvent,
+				EventTime:      time.Date(2477, time.January, 14, 17, 23, 20, 0, time.Local),
+				OperatorName:   "some_txbq",
+				JobScheduledAt: time.Date(2022, time.January, 2, 15, 04, 05, 0, time.UTC),
+				Values:         eventValues,
+			}
+
+			output, err := EventFrom(eventTypeName, eventValues, jobName, tnnt)
+			assert.Nil(t, err)
+			assert.Equal(t, outputObj.JobScheduledAt, output.JobScheduledAt)
+			assert.Equal(t, outputObj, output)
+		})
 	})
 	t.Run("IsOfType JobEventCategory", func(t *testing.T) {
 		positiveExpectationMap := map[JobEventType]JobEventCategory{
