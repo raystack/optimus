@@ -52,12 +52,6 @@ func Job(tnnt tenant.Tenant, name job.Name) *job.Job {
 		panic(err)
 	}
 	alerts := []*job.AlertSpec{alert}
-	upstreamName1 := job.SpecUpstreamNameFrom("job-upstream-1")
-	upstreamName2 := job.SpecUpstreamNameFrom("job-upstream-2")
-	upstream, err := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName1, upstreamName2}).Build()
-	if err != nil {
-		panic(err)
-	}
 	asset, err := job.NewAsset(map[string]string{"sample-asset": "value-asset"})
 	if err != nil {
 		panic(err)
@@ -78,9 +72,8 @@ func Job(tnnt tenant.Tenant, name job.Name) *job.Job {
 		WithLabels(labels).
 		WithHooks(hooks).
 		WithAlerts(alerts).
-		WithSpecUpstream(upstream).
 		WithAsset(asset).
 		WithMetadata(metadata).
 		Build()
-	return job.NewJob(tnnt, spec, "dev.resource.sample", []job.ResourceURN{"resource"})
+	return job.NewJob(tnnt, spec, "dev.resource.sample", nil)
 }
