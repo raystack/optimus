@@ -32,6 +32,10 @@ func (j Job) Spec() *Spec {
 	return j.spec
 }
 
+func (j Job) GetName() string { // to support multiroot DataTree
+	return j.spec.name.String()
+}
+
 type ResourceURN string
 
 func ResourceURNFrom(resourceURN string) (ResourceURN, error) {

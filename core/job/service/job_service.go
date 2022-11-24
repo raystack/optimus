@@ -11,6 +11,7 @@ import (
 	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/lib/tree"
 	"github.com/odpf/optimus/models"
 )
 
@@ -258,22 +259,34 @@ func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName,
 }
 
 func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, logWriter writer.LogWriter) error {
-	tenantWithDetails, err := j.tenantDetailsGetter.GetDetails(ctx, jobTenant)
-	if err != nil {
-		return err
-	}
-
 	me := errors.NewMultiError("validate specs errors")
 	validatedJobSpecs, err := j.getValidatedSpecs(jobSpecs)
 	me.Append(err)
 
-	//TODO: parallelize this
-	for _, jobSpec := range validatedJobSpecs {
-		_, err := j.pluginService.GenerateUpstreams(ctx, tenantWithDetails, jobSpec, true)
-		if err != nil && !errors.Is(err, ErrUpstreamModNotFound) {
-			errorMsg := fmt.Sprintf("unable to add %s: %s", jobSpec.Name().String(), err.Error())
-			logWriter.Write(writer.LogLevelError, errorMsg)
-			me.Append(errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg))
+	jobs, err := j.generateJobs(ctx, jobTenant, validatedJobSpecs)
+	me.Append(err)
+
+	if len(me.Errors) > 0 {
+		return me
+	}
+
+	// NOTE: only check cyclic deps across internal upstreams (sources), need further discussion to check cyclic deps for external upstream
+	// asumption, all job specs from input are also the job within same project
+
+	// populate all jobs in project
+	jobsInProject, err := j.GetAll(ctx, filter.WithString(filter.ProjectName, jobTenant.ProjectName().String()))
+	if err != nil {
+		return err
+	}
+	jobMap := make(map[job.Name]*job.Job)
+	for _, jobEntity := range jobsInProject {
+		jobMap[jobEntity.Spec().Name()] = jobEntity
+	}
+
+	// check cyclic deps for every job
+	for _, jobEntity := range jobs {
+		if err = j.validateCyclic(ctx, jobEntity.Spec().Name(), jobMap); err != nil {
+			me.Append(err)
 		}
 	}
 
@@ -454,4 +467,62 @@ func (j JobService) generateJob(ctx context.Context, tenantWithDetails *tenant.W
 	}
 
 	return job.NewJob(tenantWithDetails.ToTenant(), spec, destination, sources), nil
+}
+
+func (j JobService) validateCyclic(ctx context.Context, rootName job.Name, jobMap map[job.Name]*job.Job) error {
+	dagTree, err := j.buildDAGTree(ctx, rootName, jobMap)
+	if err != nil {
+		return err
+	}
+
+	return dagTree.ValidateCyclic()
+}
+
+func (j JobService) buildDAGTree(ctx context.Context, rootName job.Name, jobMap map[job.Name]*job.Job) (*tree.MultiRootTree, error) {
+	rootJob, ok := jobMap[rootName]
+	if !ok {
+		return nil, fmt.Errorf("couldn't find any job with name %s", rootName)
+	}
+
+	dagTree := tree.NewMultiRootTree()
+	dagTree.AddNode(tree.NewTreeNode(rootJob))
+
+	// source: https://github.com/odpf/optimus/blob/a6dafbc1fbeb8e1f1eb8d4a6e9582ada4a7f639e/job/replay.go#L111
+	me := errors.NewMultiError("build DAGTree errors")
+	for _, childJob := range jobMap {
+		childNode := findOrCreateDAGNode(dagTree, childJob)
+		for _, source := range childJob.Sources() {
+			parents, err := j.GetAll(ctx, filter.WithString(filter.ResourceDestination, source.String()))
+			if err != nil {
+				me.Append(err)
+				continue
+			}
+
+			for _, parentJob := range parents {
+				if _, ok := jobMap[parentJob.Spec().Name()]; !ok {
+					// as of now, we're not providing the capability to build tree for the external job spec. skip
+					continue
+				}
+				parentNode := findOrCreateDAGNode(dagTree, parentJob)
+				parentNode.AddDependent(childNode)
+				dagTree.AddNode(parentNode)
+			}
+		}
+
+		if len(childJob.Sources()) == 0 {
+			dagTree.MarkRoot(childNode)
+		}
+	}
+
+	return dagTree, nil
+}
+
+// sources: https://github.com/odpf/optimus/blob/a6dafbc1fbeb8e1f1eb8d4a6e9582ada4a7f639e/job/replay.go#L101
+func findOrCreateDAGNode(dagTree *tree.MultiRootTree, dag tree.TreeData) *tree.TreeNode {
+	node, ok := dagTree.GetNodeByName(dag.GetName())
+	if !ok {
+		node = tree.NewTreeNode(dag)
+		dagTree.AddNode(node)
+	}
+	return node
 }
