@@ -184,13 +184,30 @@ func (jh *JobHandler) GetJobSpecifications(ctx context.Context, req *pb.GetJobSp
 	jobSpecResponseProtos := []*pb.JobSpecificationResponse{}
 	for _, jobSpec := range jobSpecs {
 		jobSpecResponseProtos = append(jobSpecResponseProtos, &pb.JobSpecificationResponse{
-			// TODO: is it necessary to retrieve back the project name and namespace name?
-			Job: toJobProto(jobSpec),
+			ProjectName:   jobSpec.Tenant().ProjectName().String(),
+			NamespaceName: jobSpec.Tenant().NamespaceName().String(),
+			Job:           toJobProto(jobSpec),
 		})
 	}
 
 	return &pb.GetJobSpecificationsResponse{
 		JobSpecificationResponses: jobSpecResponseProtos,
+	}, merr
+}
+
+func (jh *JobHandler) ListJobSpecification(ctx context.Context, req *pb.ListJobSpecificationRequest) (*pb.ListJobSpecificationResponse, error) {
+	jobSpecs, merr := jh.jobService.GetAll(ctx,
+		filter.WithString(filter.ProjectName, req.GetProjectName()),
+		filter.WithString(filter.NamespaceName, req.GetNamespaceName()),
+	)
+
+	jobSpecificationProtos := make([]*pb.JobSpecification, len(jobSpecs))
+	for i, jobSpec := range jobSpecs {
+		jobSpecificationProtos[i] = toJobProto(jobSpec)
+	}
+
+	return &pb.ListJobSpecificationResponse{
+		Jobs: jobSpecificationProtos,
 	}, merr
 }
 
