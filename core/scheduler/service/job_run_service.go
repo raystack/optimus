@@ -203,11 +203,7 @@ func (s JobRunService) registerNewJobRun(ctx context.Context, tenant tenant.Tena
 	if err != nil {
 		return err
 	}
-	return s.repo.Create(ctx,
-		tenant,
-		jobName,
-		scheduledAt,
-		slaDefinitionInSec)
+	return s.repo.Create(ctx, tenant, jobName, scheduledAt, slaDefinitionInSec)
 }
 
 func (s JobRunService) getJobRunByScheduledAt(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) (*scheduler.JobRun, error) {

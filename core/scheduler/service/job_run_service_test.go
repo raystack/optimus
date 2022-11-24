@@ -27,144 +27,257 @@ func TestJobRunService(t *testing.T) {
 	t.Run("UpdateJobState", func(t *testing.T) {
 		tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
 
-		t.Run("should return error on JobStartEvent if GetJobDetails fails", func(t *testing.T) {
-			jobRepo := new(JobRepository)
-			jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(nil, fmt.Errorf("some error"))
-			defer jobRepo.AssertExpectations(t)
+		t.Run("registerNewJobRun", func(t *testing.T) {
+			t.Run("should return error on JobStartEvent if GetJobDetails fails", func(t *testing.T) {
+				jobRepo := new(JobRepository)
+				jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(nil, fmt.Errorf("some error"))
+				defer jobRepo.AssertExpectations(t)
 
-			runService := service.NewJobRunService(nil,
-				jobRepo, nil, nil, nil, nil, nil)
+				runService := service.NewJobRunService(nil,
+					jobRepo, nil, nil, nil, nil, nil)
 
-			event := scheduler.Event{
-				JobName: jobName,
-				Tenant:  tnnt,
-				Type:    scheduler.JobStartEvent,
-				Values:  map[string]any{},
-			}
-			err := runService.UpdateJobState(ctx, event)
-			assert.NotNil(t, err)
-			assert.EqualError(t, err, "some error")
-		})
-		t.Run("should return error on JobStartEvent if job.SLADuration fails, due to wrong duration format", func(t *testing.T) {
-			jobRepo := new(JobRepository)
-			JobWithDetails := scheduler.JobWithDetails{
-				Name: jobName,
-				Job: &scheduler.Job{
-					Name:   jobName,
-					Tenant: tnnt,
-				},
-				Alerts: []scheduler.Alert{
-					{
-						On: scheduler.EventCategorySLAMiss,
-						Channels: []string{
-							"chanel1",
-							"chanel2",
-						},
-						Config: map[string]string{
-							"key":      "value",
-							"duration": "wrong duration format",
+				event := scheduler.Event{
+					JobName: jobName,
+					Tenant:  tnnt,
+					Type:    scheduler.JobStartEvent,
+					Values:  map[string]any{},
+				}
+				err := runService.UpdateJobState(ctx, event)
+				assert.NotNil(t, err)
+				assert.EqualError(t, err, "some error")
+			})
+			t.Run("should return error on JobStartEvent if job.SLADuration fails, due to wrong duration format", func(t *testing.T) {
+				JobWithDetails := scheduler.JobWithDetails{
+					Name: jobName,
+					Job: &scheduler.Job{
+						Name:   jobName,
+						Tenant: tnnt,
+					},
+					Alerts: []scheduler.Alert{
+						{
+							On: scheduler.EventCategorySLAMiss,
+							Channels: []string{
+								"chanel1",
+								"chanel2",
+							},
+							Config: map[string]string{
+								"key":      "value",
+								"duration": "wrong duration format",
+							},
 						},
 					},
-				},
-			}
-			jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&JobWithDetails, nil)
-			defer jobRepo.AssertExpectations(t)
+				}
+				jobRepo := new(JobRepository)
+				jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&JobWithDetails, nil)
+				defer jobRepo.AssertExpectations(t)
 
-			runService := service.NewJobRunService(nil,
-				jobRepo, nil, nil, nil, nil, nil)
+				runService := service.NewJobRunService(nil,
+					jobRepo, nil, nil, nil, nil, nil)
 
-			event := scheduler.Event{
-				JobName: jobName,
-				Tenant:  tnnt,
-				Type:    scheduler.JobStartEvent,
-				Values:  map[string]any{},
-			}
+				event := scheduler.Event{
+					JobName: jobName,
+					Tenant:  tnnt,
+					Type:    scheduler.JobStartEvent,
+					Values:  map[string]any{},
+				}
 
-			err := runService.UpdateJobState(ctx, event)
-			assert.NotNil(t, err)
-			assert.EqualError(t, err, "failed to parse sla_miss duration wrong duration format: time: invalid duration \"wrong duration format\"")
-		})
-		t.Run("should create job_run row on JobStartEvent", func(t *testing.T) {
-			JobWithDetails := scheduler.JobWithDetails{
-				Name: jobName,
-				Job: &scheduler.Job{
-					Name:   jobName,
-					Tenant: tnnt,
-				},
-				Alerts: []scheduler.Alert{
-					{
-						On: scheduler.EventCategorySLAMiss,
-						Channels: []string{
-							"chanel1",
-							"chanel2",
-						},
-						Config: map[string]string{
-							"key":      "value",
-							"duration": "2h45m",
+				err := runService.UpdateJobState(ctx, event)
+				assert.NotNil(t, err)
+				assert.EqualError(t, err, "failed to parse sla_miss duration wrong duration format: time: invalid duration \"wrong duration format\"")
+			})
+			t.Run("should create job_run row on JobStartEvent", func(t *testing.T) {
+				JobWithDetails := scheduler.JobWithDetails{
+					Name: jobName,
+					Job: &scheduler.Job{
+						Name:   jobName,
+						Tenant: tnnt,
+					},
+					Alerts: []scheduler.Alert{
+						{
+							On: scheduler.EventCategorySLAMiss,
+							Channels: []string{
+								"chanel1",
+								"chanel2",
+							},
+							Config: map[string]string{
+								"key":      "value",
+								"duration": "2h45m",
+							},
 						},
 					},
-				},
-			}
-			slaDefinitionInSec, err := JobWithDetails.SLADuration()
-			assert.Nil(t, err)
+				}
+				slaDefinitionInSec, err := JobWithDetails.SLADuration()
+				assert.Nil(t, err)
 
-			scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
-			event := scheduler.Event{
-				JobName:        jobName,
-				Tenant:         tnnt,
-				Type:           scheduler.JobStartEvent,
-				EventTime:      time.Time{},
-				OperatorName:   "job_start_event",
-				JobScheduledAt: scheduledAtTimeStamp,
-				Values:         map[string]any{},
-			}
+				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
+				event := scheduler.Event{
+					JobName:        jobName,
+					Tenant:         tnnt,
+					Type:           scheduler.JobStartEvent,
+					EventTime:      time.Time{},
+					OperatorName:   "job_start_event",
+					JobScheduledAt: scheduledAtTimeStamp,
+					Values:         map[string]any{},
+				}
 
-			jobRepo := new(JobRepository)
-			jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&JobWithDetails, nil)
-			defer jobRepo.AssertExpectations(t)
+				jobRepo := new(JobRepository)
+				jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&JobWithDetails, nil)
+				defer jobRepo.AssertExpectations(t)
 
-			jobRunRepo := new(mockJobRunRepository)
-			jobRunRepo.On("Create", ctx, tnnt, jobName, scheduledAtTimeStamp, slaDefinitionInSec).Return(nil)
-			defer jobRunRepo.AssertExpectations(t)
+				jobRunRepo := new(mockJobRunRepository)
+				jobRunRepo.On("Create", ctx, tnnt, jobName, scheduledAtTimeStamp, slaDefinitionInSec).Return(nil)
+				defer jobRunRepo.AssertExpectations(t)
 
-			runService := service.NewJobRunService(nil,
-				jobRepo, jobRunRepo, nil, nil, nil, nil)
+				runService := service.NewJobRunService(nil,
+					jobRepo, jobRunRepo, nil, nil, nil, nil)
 
-			err = runService.UpdateJobState(ctx, event)
-			assert.Nil(t, err)
+				err = runService.UpdateJobState(ctx, event)
+				assert.Nil(t, err)
+			})
 		})
-		t.Run("should update job_run row on JobSuccessEvent, when no error in format etc", func(t *testing.T) {
-			scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
-			eventTime := time.Unix(todayDate.Add(time.Hour).Unix(), 0)
-			endTime := eventTime
-			event := scheduler.Event{
-				JobName:        jobName,
-				Tenant:         tnnt,
-				Type:           scheduler.JobSuccessEvent,
-				JobScheduledAt: scheduledAtTimeStamp,
-				EventTime:      eventTime,
-				Values: map[string]any{
-					"status": "success",
-				},
-			}
 
-			jobRun := scheduler.JobRun{
-				ID:        uuid.New(),
-				JobName:   jobName,
-				Tenant:    tnnt,
-				StartTime: todayDate,
-			}
+		t.Run("updateJobRun", func(t *testing.T) {
+			t.Run("should update job_run row on JobSuccessEvent, when no error in format etc", func(t *testing.T) {
+				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
+				eventTime := time.Unix(todayDate.Add(time.Hour).Unix(), 0)
+				endTime := eventTime
+				event := scheduler.Event{
+					JobName:        jobName,
+					Tenant:         tnnt,
+					Type:           scheduler.JobSuccessEvent,
+					JobScheduledAt: scheduledAtTimeStamp,
+					EventTime:      eventTime,
+					Values: map[string]any{
+						"status": "success",
+					},
+				}
 
-			jobRunRepo := new(mockJobRunRepository)
-			jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(&jobRun, nil)
-			jobRunRepo.On("Update", ctx, jobRun.ID, endTime, event.Values["status"].(string)).Return(nil)
-			defer jobRunRepo.AssertExpectations(t)
+				jobRun := scheduler.JobRun{
+					ID:        uuid.New(),
+					JobName:   jobName,
+					Tenant:    tnnt,
+					StartTime: todayDate,
+				}
 
-			runService := service.NewJobRunService(nil,
-				nil, jobRunRepo, nil, nil, nil, nil)
+				jobRunRepo := new(mockJobRunRepository)
+				jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(&jobRun, nil)
+				jobRunRepo.On("Update", ctx, jobRun.ID, endTime, event.Values["status"].(string)).Return(nil)
+				defer jobRunRepo.AssertExpectations(t)
 
-			err := runService.UpdateJobState(ctx, event)
-			assert.Nil(t, err)
+				runService := service.NewJobRunService(nil,
+					nil, jobRunRepo, nil, nil, nil, nil)
+
+				err := runService.UpdateJobState(ctx, event)
+				assert.Nil(t, err)
+			})
+			t.Run("should create and update job_run row on JobSuccessEvent, when job_run row does not exist already", func(t *testing.T) {
+				JobWithDetails := scheduler.JobWithDetails{
+					Name: jobName,
+					Job: &scheduler.Job{
+						Name:   jobName,
+						Tenant: tnnt,
+					},
+					Alerts: []scheduler.Alert{
+						{
+							On: scheduler.EventCategorySLAMiss,
+							Channels: []string{
+								"chanel1",
+								"chanel2",
+							},
+							Config: map[string]string{
+								"key":      "value",
+								"duration": "2h45m",
+							},
+						},
+					},
+				}
+				jobRepo := new(JobRepository)
+				jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&JobWithDetails, nil)
+				defer jobRepo.AssertExpectations(t)
+
+				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
+				eventTime := time.Unix(todayDate.Add(time.Hour).Unix(), 0)
+				endTime := eventTime
+				event := scheduler.Event{
+					JobName:        jobName,
+					Tenant:         tnnt,
+					Type:           scheduler.JobFailEvent,
+					JobScheduledAt: scheduledAtTimeStamp,
+					EventTime:      eventTime,
+					Values: map[string]any{
+						"status": "success",
+					},
+				}
+
+				jobRun := scheduler.JobRun{
+					ID:        uuid.New(),
+					JobName:   jobName,
+					Tenant:    tnnt,
+					StartTime: time.Now(),
+				}
+				slaDefinitionInSec, _ := JobWithDetails.SLADuration()
+
+				t.Run("scenario, return error when, GetByScheduledAt return errors other than not found", func(t *testing.T) {
+					jobRunRepo := new(mockJobRunRepository)
+					jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(nil, fmt.Errorf("some random error")).Once()
+					defer jobRunRepo.AssertExpectations(t)
+
+					runService := service.NewJobRunService(nil,
+						jobRepo, jobRunRepo, nil, nil, nil, nil)
+
+					err := runService.UpdateJobState(ctx, event)
+					assert.NotNil(t, err)
+					assert.EqualError(t, err, "some random error")
+				})
+				t.Run("scenario, return error when, unable to create job run", func(t *testing.T) {
+					jobRunRepo := new(mockJobRunRepository)
+					jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(nil, errors.NotFound(scheduler.EntityJobRun, "job run not found")).Once()
+					jobRunRepo.On("Create", ctx, tnnt, jobName, scheduledAtTimeStamp, slaDefinitionInSec).Return(fmt.Errorf("unable to create job run")).Once()
+					defer jobRunRepo.AssertExpectations(t)
+
+					runService := service.NewJobRunService(nil,
+						jobRepo, jobRunRepo, nil, nil, nil, nil)
+
+					err := runService.UpdateJobState(ctx, event)
+					assert.NotNil(t, err)
+					assert.EqualError(t, err, "unable to create job run")
+				})
+				t.Run("scenario, return error when, despite successful creation getByScheduledAt still fails", func(t *testing.T) {
+					jobRunRepo := new(mockJobRunRepository)
+					jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(nil, errors.NotFound(scheduler.EntityJobRun, "job run not found"))
+					jobRunRepo.On("Create", ctx, tnnt, jobName, scheduledAtTimeStamp, slaDefinitionInSec).Return(nil)
+					defer jobRunRepo.AssertExpectations(t)
+
+					runService := service.NewJobRunService(nil,
+						jobRepo, jobRunRepo, nil, nil, nil, nil)
+
+					err := runService.UpdateJobState(ctx, event)
+					assert.NotNil(t, err)
+					assert.EqualError(t, err, "not found for entity jobRun: job run not found")
+				})
+				t.Run("scenario should successfully register new job run row", func(t *testing.T) {
+					jobRunRepo := new(mockJobRunRepository)
+					jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(nil, errors.NotFound(scheduler.EntityJobRun, "job run not found")).Once()
+					jobRunRepo.On("Create", ctx, tnnt, jobName, scheduledAtTimeStamp, slaDefinitionInSec).Return(nil).Once()
+					jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(&jobRun, nil).Once()
+					jobRunRepo.On("Update", ctx, jobRun.ID, endTime, event.Values["status"].(string)).Return(nil)
+					defer jobRunRepo.AssertExpectations(t)
+
+					runService := service.NewJobRunService(nil,
+						jobRepo, jobRunRepo, nil, nil, nil, nil)
+
+					err := runService.UpdateJobState(ctx, event)
+					assert.Nil(t, err)
+
+				})
+			})
+		})
+
+		t.Run("createOperatorRun", func(t *testing.T) {
+
+		})
+		t.Run("updateOperatorRun", func(t *testing.T) {
+
 		})
 	})
 
