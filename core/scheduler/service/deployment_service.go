@@ -11,7 +11,6 @@ import (
 
 func (s JobRunService) UploadToScheduler(ctx context.Context, projectName tenant.ProjectName, namespaceName string) error {
 	allJobsWithDetails, err := s.jobRepo.GetAll(ctx, projectName)
-	//todo: confirm if we need namespace level deployments ?
 	if err != nil {
 		return err
 	}
@@ -19,7 +18,6 @@ func (s JobRunService) UploadToScheduler(ctx context.Context, projectName tenant
 	if err != nil {
 		return err
 	}
-
 	jobGroupByTenant := scheduler.GroupJobsByTenant(allJobsWithDetails)
 	multiError := errors.NewMultiError("ErrorInUploadToScheduler")
 	for t, jobs := range jobGroupByTenant {
@@ -28,7 +26,6 @@ func (s JobRunService) UploadToScheduler(ctx context.Context, projectName tenant
 		}
 		s.l.Debug(fmt.Sprintf("namespace %s deployed", namespaceName), "project name", projectName)
 	}
-
 	return errors.MultiToError(multiError)
 }
 

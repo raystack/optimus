@@ -161,7 +161,7 @@ func splitConfigWithSecrets(conf map[string]string) (map[string]string, map[stri
 			configWithSecrets[name] = val
 			continue
 		}
-		configs[val] = val
+		configs[name] = val
 	}
 
 	return configs, configWithSecrets
