@@ -194,8 +194,8 @@ func validateJobQuery(jobQuery *scheduler.JobRunsCriteria, jobWithDetails schedu
 	return nil
 }
 
-func (s JobRunService) registerNewJobRun(ctx context.Context, event scheduler.Event) error {
-	job, err := s.jobRepo.GetJobDetails(ctx, event.Tenant.ProjectName(), event.JobName)
+func (s JobRunService) registerNewJobRun(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) error {
+	job, err := s.jobRepo.GetJobDetails(ctx, tenant.ProjectName(), jobName)
 	if err != nil {
 		return err
 	}
@@ -204,28 +204,36 @@ func (s JobRunService) registerNewJobRun(ctx context.Context, event scheduler.Ev
 		return err
 	}
 	return s.repo.Create(ctx,
-		event.Tenant,
-		event.JobName,
-		event.JobScheduledAt,
+		tenant,
+		jobName,
+		scheduledAt,
 		slaDefinitionInSec)
+}
+
+func (s JobRunService) getJobRunByScheduledAt(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) (*scheduler.JobRun, error) {
+	var jobRun *scheduler.JobRun
+	jobRun, err := s.repo.GetByScheduledAt(ctx, tenant, jobName, scheduledAt)
+	if err != nil {
+		if !errors.IsErrorType(err, errors.ErrNotFound) {
+			return nil, err
+		}
+		err = s.registerNewJobRun(ctx, tenant, jobName, scheduledAt)
+		if err != nil {
+			return nil, err
+		}
+		jobRun, err = s.repo.GetByScheduledAt(ctx, tenant, jobName, scheduledAt)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return jobRun, nil
 }
 
 func (s JobRunService) updateJobRun(ctx context.Context, event scheduler.Event) error {
 	var jobRun *scheduler.JobRun
-	jobRun, err := s.repo.GetByScheduledAt(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
+	jobRun, err := s.getJobRunByScheduledAt(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
 	if err != nil {
-		if !errors.IsErrorType(err, errors.ErrNotFound) {
-			return err
-		}
-		err = s.registerNewJobRun(ctx, event)
-		if err != nil {
-			return err
-		}
-		jobRun, err = s.repo.GetByScheduledAt(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
-		if err != nil {
-			return err
-		} // todo: ask sandeep should this be done
-		//	also tell, that we can get rid of job start event, and instead , mark job start on first occurrence of any operator
+		return err
 	}
 	jobRunStatus := event.Values["status"].(string)
 	endTime := event.EventTime
@@ -238,7 +246,7 @@ func (s JobRunService) updateJobRun(ctx context.Context, event scheduler.Event) 
 }
 
 func (s JobRunService) createOperatorRun(ctx context.Context, event scheduler.Event, operatorType scheduler.OperatorType) error {
-	jobRun, err := s.repo.GetByScheduledAt(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
+	jobRun, err := s.getJobRunByScheduledAt(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
 	if err != nil {
 		return err
 	}
@@ -251,6 +259,9 @@ func (s JobRunService) createOperatorRun(ctx context.Context, event scheduler.Ev
 	} else {
 		if operatorRun.State == scheduler.StateRunning.String() {
 			// operator run exists but is not yet finished
+			// this is a scenario where the old run has not concluded and a new create request rises
+			// this is done to takle the sensor poke scenario, until the airflow task operator either fails/succeds/retries
+			// optimus will not create newer entries on every poke cycle from the Scheduler
 			return nil
 		}
 	}
@@ -258,19 +269,33 @@ func (s JobRunService) createOperatorRun(ctx context.Context, event scheduler.Ev
 	return s.operatorRunRepo.CreateOperatorRun(ctx, event.OperatorName, operatorType, jobRun.ID, event.EventTime)
 }
 
-func (s JobRunService) updateOperatorRun(ctx context.Context, event scheduler.Event, operatorType scheduler.OperatorType) error {
-	jobRun, err := s.repo.GetByScheduledAt(ctx,
-		event.Tenant,
-		event.JobName,
-		event.JobScheduledAt)
+func (s JobRunService) getOperatorRun(ctx context.Context, event scheduler.Event, operatorType scheduler.OperatorType, jobRunID uuid.UUID) (*scheduler.OperatorRun, error) {
+	var operatorRun *scheduler.OperatorRun
+	operatorRun, err := s.operatorRunRepo.GetOperatorRun(ctx, event.OperatorName, operatorType, jobRunID)
 	if err != nil {
-		//TODO: create job_run row
+		if !errors.IsErrorType(err, errors.ErrNotFound) {
+			return nil, err
+		}
+		err = s.createOperatorRun(ctx, event, operatorType)
+		if err != nil {
+			return nil, err
+		}
+		operatorRun, err = s.operatorRunRepo.GetOperatorRun(ctx, event.OperatorName, operatorType, jobRunID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return operatorRun, nil
+}
+
+func (s JobRunService) updateOperatorRun(ctx context.Context, event scheduler.Event, operatorType scheduler.OperatorType) error {
+	jobRun, err := s.getJobRunByScheduledAt(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
+	if err != nil {
 		return err
 	}
-	operatorRun, err := s.operatorRunRepo.GetOperatorRun(ctx, event.OperatorName, operatorType, jobRun.ID)
+	operatorRun, err := s.getOperatorRun(ctx, event, operatorType, jobRun.ID)
 	if err != nil {
 		return err
-		//	todo: should i create a new operator run row here @sandeep
 	}
 	status := event.Values["status"].(string)
 
@@ -280,7 +305,7 @@ func (s JobRunService) updateOperatorRun(ctx context.Context, event scheduler.Ev
 func (s JobRunService) UpdateJobState(ctx context.Context, event scheduler.Event) error {
 	switch event.Type {
 	case scheduler.JobStartEvent:
-		return s.registerNewJobRun(ctx, event)
+		return s.registerNewJobRun(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
 	case scheduler.JobSuccessEvent, scheduler.JobFailEvent:
 		return s.updateJobRun(ctx, event)
 	case scheduler.TaskStartEvent:

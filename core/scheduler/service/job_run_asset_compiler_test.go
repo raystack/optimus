@@ -22,22 +22,22 @@ func TestJobAssetsCompiler(t *testing.T) {
 		"SCHEDULER_HOST": "localhost",
 	})
 	namespace, _ := tenant.NewNamespace("ns1", project.Name(), map[string]string{})
-	//tenantDetails, _ := tenant.NewTenantDetails(project, namespace)
 	tnnt, _ := tenant.NewTenant(project.Name().String(), namespace.Name().String())
 	currentTime := time.Now()
 	scheduleTime := currentTime.Add(-time.Hour)
 	window, _ := models.NewWindow(2, "d", "1h", "24h")
 	job := &scheduler.Job{
-		Name:   "jobname",
+		Name:   "jobName",
 		Tenant: tnnt,
 		Task: &scheduler.Task{
-			Name:   "pluginName",
+			Name:   "taskName",
 			Config: nil,
 		},
 		Hooks:  nil,
 		Window: window,
 		Assets: nil,
 	}
+	taskName := job.Task.Name
 	startTime, _ := job.Window.GetStartTime(scheduleTime)
 	endTime, _ := job.Window.GetEndTime(scheduleTime)
 	executedAt := currentTime.Add(time.Hour)
@@ -50,19 +50,100 @@ func TestJobAssetsCompiler(t *testing.T) {
 
 	t.Run("CompileJobRunAssets", func(t *testing.T) {
 
-		t.Run("should give error if tenant service getDetails fails", func(t *testing.T) {
+		t.Run("should error if plugin repo get plugin by name fails", func(t *testing.T) {
 			pluginRepo := new(mockPluginRepo)
-			pluginRepo.On("GetByName", "pluginName").Return(nil, fmt.Errorf("error in getting plugin by name"))
+			pluginRepo.On("GetByName", taskName).Return(nil, fmt.Errorf("error in getting plugin by name"))
 			defer pluginRepo.AssertExpectations(t)
 
 			contextForTask := map[string]any{}
 
-			//, systemEnvVars map[string]string, scheduledAt time.Time, contextForTask map[string]interface{}
 			jobRunAssetsCompiler := service.NewJobAssetsCompiler(nil, pluginRepo)
 			assets, err := jobRunAssetsCompiler.CompileJobRunAssets(ctx, job, systemEnvVars, scheduleTime, contextForTask)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "error in getting plugin by name")
 			assert.Nil(t, assets)
+		})
+		t.Run("should give error if window get start fails", func(t *testing.T) {
+
+			pluginRepo := new(mockPluginRepo)
+			pluginRepo.On("GetByName", "pluginName").Return(&models.Plugin{}, nil)
+			defer pluginRepo.AssertExpectations(t)
+
+			window1, _ := models.NewWindow(2, "d2", "1h", "24h")
+			job1 := &scheduler.Job{
+				Name:   "jobName",
+				Tenant: tnnt,
+				Task: &scheduler.Task{
+					Name:   "pluginName",
+					Config: nil,
+				},
+				Hooks:  nil,
+				Window: window1,
+				Assets: nil,
+			}
+
+			jobRunAssetsCompiler := service.NewJobAssetsCompiler(nil, pluginRepo)
+
+			contextForTask := map[string]any{}
+			assets, err := jobRunAssetsCompiler.CompileJobRunAssets(ctx, job1, systemEnvVars, scheduleTime, contextForTask)
+
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "error getting start time: error validating truncate_to: invalid option provided, provide one of: [h d w M]")
+			assert.Nil(t, assets)
+		})
+		t.Run("compile", func(t *testing.T) {
+			yamlMod := new(mockYamlMod)
+			defer yamlMod.AssertExpectations(t)
+
+			dependencyResolverMod := new(mockDependencyResolverMod)
+			dependencyResolverMod.On("CompileAssets", ctx, mock.Anything).Return(&models.CompileAssetsResponse{
+				Assets: models.PluginAssets{
+					models.PluginAsset{
+						Name:  "assetName",
+						Value: "assetValue",
+					},
+				},
+			}, nil)
+			defer dependencyResolverMod.AssertExpectations(t)
+
+			pluginRepo := new(mockPluginRepo)
+			pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
+				DependencyMod: dependencyResolverMod,
+				YamlMod:       yamlMod,
+			}, nil)
+			defer pluginRepo.AssertExpectations(t)
+
+			contextForTask := map[string]any{}
+
+			t.Run("return error if compiler.compile fails", func(t *testing.T) {
+				filesCompiler := new(mockFilesCompiler)
+				filesCompiler.On("Compile", map[string]string{"assetName": "assetValue"}, contextForTask).
+					Return(nil, fmt.Errorf("error in compiling"))
+				defer filesCompiler.AssertExpectations(t)
+
+				jobRunAssetsCompiler := service.NewJobAssetsCompiler(filesCompiler, pluginRepo)
+				assets, err := jobRunAssetsCompiler.CompileJobRunAssets(ctx, job, systemEnvVars, scheduleTime, contextForTask)
+
+				assert.NotNil(t, err)
+				fmt.Println(err.Error())
+				assert.Nil(t, assets)
+			})
+			t.Run("return compiled assets", func(t *testing.T) {
+				expectedFileMap := map[string]string{
+					"filename": "fileContent",
+				}
+
+				filesCompiler := new(mockFilesCompiler)
+				filesCompiler.On("Compile", map[string]string{"assetName": "assetValue"}, contextForTask).
+					Return(expectedFileMap, nil)
+				defer filesCompiler.AssertExpectations(t)
+
+				jobRunAssetsCompiler := service.NewJobAssetsCompiler(filesCompiler, pluginRepo)
+				assets, err := jobRunAssetsCompiler.CompileJobRunAssets(ctx, job, systemEnvVars, scheduleTime, contextForTask)
+
+				assert.Nil(t, err)
+				assert.Equal(t, expectedFileMap, assets)
+			})
 		})
 
 	})
@@ -90,4 +171,81 @@ func (m *mockFilesCompiler) Compile(fileMap map[string]string, context map[strin
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(map[string]string), args.Error(1)
+}
+
+type mockYamlMod struct {
+	mock.Mock
+}
+
+func (repo *mockYamlMod) PluginInfo() *models.PluginInfoResponse {
+	args := repo.Called()
+	if args.Get(0) == nil {
+		return nil
+	}
+	return args.Get(0).(*models.PluginInfoResponse)
+}
+
+func (repo *mockYamlMod) DefaultConfig(ctx context.Context, inp models.DefaultConfigRequest) (*models.DefaultConfigResponse, error) {
+	args := repo.Called(ctx, inp)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.DefaultConfigResponse), args.Error(1)
+}
+
+func (repo *mockYamlMod) DefaultAssets(ctx context.Context, inp models.DefaultAssetsRequest) (*models.DefaultAssetsResponse, error) {
+	args := repo.Called(ctx, inp)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.DefaultAssetsResponse), args.Error(1)
+}
+
+func (repo *mockYamlMod) GetQuestions(ctx context.Context, inp models.GetQuestionsRequest) (*models.GetQuestionsResponse, error) {
+	args := repo.Called(ctx, inp)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.GetQuestionsResponse), args.Error(1)
+}
+
+func (repo *mockYamlMod) ValidateQuestion(ctx context.Context, inp models.ValidateQuestionRequest) (*models.ValidateQuestionResponse, error) {
+	args := repo.Called(ctx, inp)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.ValidateQuestionResponse), args.Error(1)
+}
+
+type mockDependencyResolverMod struct {
+	mock.Mock
+}
+
+func (repo *mockDependencyResolverMod) GetName(ctx context.Context) (string, error) {
+	args := repo.Called(ctx)
+	return args.Get(0).(string), args.Error(1)
+}
+
+func (repo *mockDependencyResolverMod) GenerateDestination(ctx context.Context, inp models.GenerateDestinationRequest) (*models.GenerateDestinationResponse, error) {
+	args := repo.Called(ctx, inp)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.GenerateDestinationResponse), args.Error(1)
+}
+
+func (repo *mockDependencyResolverMod) GenerateDependencies(ctx context.Context, inp models.GenerateDependenciesRequest) (*models.GenerateDependenciesResponse, error) {
+	args := repo.Called(ctx, inp)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.GenerateDependenciesResponse), args.Error(1)
+}
+
+func (repo *mockDependencyResolverMod) CompileAssets(ctx context.Context, inp models.CompileAssetsRequest) (*models.CompileAssetsResponse, error) {
+	args := repo.Called(ctx, inp)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.CompileAssetsResponse), args.Error(1)
 }
