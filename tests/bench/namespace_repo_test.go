@@ -3,109 +3,115 @@
 
 package bench
 
-//
-//func BenchmarkNamespaceRepository(b *testing.B) {
-//	ctx := context.Background()
-//	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
-//
-//	proj := setup.Project(1)
-//	proj.ID = models.ProjectID(uuid.New())
-//
-//	dbSetup := func() *gorm.DB {
-//		dbConn := setup.TestDB()
-//		setup.TruncateTables(dbConn)
-//
-//		projRepo := postgres.NewProjectRepository(dbConn, hash)
-//		err := projRepo.Save(ctx, proj)
-//		assert.Nil(b, err)
-//
-//		secretRepo := postgres.NewSecretRepository(dbConn, hash)
-//		for s := 0; s < 5; s++ {
-//			secret := setup.Secret(s)
-//			err = secretRepo.Save(ctx, proj, models.NamespaceSpec{}, secret)
-//			assert.Nil(b, err)
-//		}
-//
-//		return dbConn
-//	}
-//
-//	b.Run("Save", func(b *testing.B) {
-//		db := dbSetup()
-//
-//		var nsRepo store.NamespaceRepository = postgres.NewNamespaceRepository(db, hash)
-//		b.ResetTimer()
-//
-//		for i := 0; i < b.N; i++ {
-//			namespace := setup.Namespace(i, proj)
-//			err := nsRepo.Save(ctx, proj, namespace)
-//			if err != nil {
-//				panic(err)
-//			}
-//		}
-//	})
-//	b.Run("GetByName", func(b *testing.B) {
-//		db := dbSetup()
-//
-//		var nsRepo store.NamespaceRepository = postgres.NewNamespaceRepository(db, hash)
-//		for i := 0; i < 20; i++ {
-//			namespace := setup.Namespace(i, proj)
-//			err := nsRepo.Save(ctx, proj, namespace)
-//			assert.Nil(b, err)
-//		}
-//		b.ResetTimer()
-//
-//		for i := 0; i < b.N; i++ {
-//			num := i % 20
-//			nsName := fmt.Sprintf("ns-optimus-%d", num)
-//			namespace, err := nsRepo.GetByName(ctx, proj, nsName)
-//			if err != nil {
-//				panic(err)
-//			}
-//			if namespace.Name != nsName {
-//				panic("Namespace name is not same")
-//			}
-//		}
-//	})
-//	b.Run("GetAll", func(b *testing.B) {
-//		db := dbSetup()
-//		var repo store.NamespaceRepository = postgres.NewNamespaceRepository(db, hash)
-//		for i := 0; i < 10; i++ {
-//			namespace := setup.Namespace(i, proj)
-//			err := repo.Save(ctx, proj, namespace)
-//			assert.Nil(b, err)
-//		}
-//		b.ResetTimer()
-//
-//		for i := 0; i < b.N; i++ {
-//			namespaces, err := repo.GetAll(ctx, proj)
-//			if err != nil {
-//				panic(err)
-//			}
-//			if len(namespaces) != 10 {
-//				panic("Namespaces list is not same")
-//			}
-//		}
-//	})
-//	b.Run("Get", func(b *testing.B) {
-//		db := dbSetup()
-//		var repo store.NamespaceRepository = postgres.NewNamespaceRepository(db, hash)
-//		for i := 0; i < 20; i++ {
-//			namespace := setup.Namespace(i, proj)
-//			err := repo.Save(ctx, proj, namespace)
-//			assert.Nil(b, err)
-//		}
-//		b.ResetTimer()
-//
-//		for i := 0; i < b.N; i++ {
-//			num := i % 20
-//			nsName := fmt.Sprintf("ns-optimus-%d", num)
-//			namespace, err := repo.Get(ctx, proj.Name, nsName)
-//			if err != nil {
-//				panic(err)
-//			}
-//			if namespace.Name != nsName {
-//				panic("Namespaces is not same")
-//			}
-//		}
-//	})
-//}
+import (
+	"context"
+	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
+
+	serviceTenant "github.com/odpf/optimus/core/tenant"
+	repoTenant "github.com/odpf/optimus/internal/store/postgres/tenant"
+	"github.com/odpf/optimus/tests/setup"
+)
+
+func BenchmarkNamespaceRepository(b *testing.B) {
+	transporterKafkaBrokerKey := "KAFKA_BROKERS"
+	proj, err := serviceTenant.NewProject("t-optimus-1",
+		map[string]string{
+			"bucket":                            "gs://some_folder-2",
+			transporterKafkaBrokerKey:           "10.12.12.12:6668,10.12.12.13:6668",
+			serviceTenant.ProjectSchedulerHost:  "host",
+			serviceTenant.ProjectStoragePathKey: "gs://location",
+		})
+	assert.NoError(b, err)
+
+	ctx := context.Background()
+	dbSetup := func() *gorm.DB {
+		dbConn := setup.TestDB()
+		setup.TruncateTables(dbConn)
+
+		prjRepo := repoTenant.NewProjectRepository(dbConn)
+		err := prjRepo.Save(ctx, proj)
+		if err != nil {
+			panic(err)
+		}
+
+		return dbConn
+	}
+
+	b.Run("Save", func(b *testing.B) {
+		db := dbSetup()
+		repo := repoTenant.NewNamespaceRepository(db)
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			name := fmt.Sprintf("n-optimus-%d", i)
+			ns, err := serviceTenant.NewNamespace(name, proj.Name(),
+				map[string]string{
+					"bucket": "gs://ns_bucket",
+				})
+			assert.NoError(b, err)
+
+			actualError := repo.Save(ctx, ns)
+			assert.NoError(b, actualError)
+		}
+	})
+
+	b.Run("GetByName", func(b *testing.B) {
+		db := dbSetup()
+		repo := repoTenant.NewNamespaceRepository(db)
+		maxNumberOfNamespaces := 50
+		for i := 0; i < maxNumberOfNamespaces; i++ {
+			name := fmt.Sprintf("t-optimus-%d", i)
+			ns, err := serviceTenant.NewNamespace(name, proj.Name(),
+				map[string]string{
+					"bucket": "gs://ns_bucket",
+				})
+			assert.NoError(b, err)
+
+			actualError := repo.Save(ctx, ns)
+			assert.NoError(b, actualError)
+		}
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			namespaceIdx := i % maxNumberOfNamespaces
+			name := fmt.Sprintf("t-optimus-%d", namespaceIdx)
+			namespaceName, err := serviceTenant.NamespaceNameFrom(name)
+			assert.NoError(b, err)
+
+			actualNamespace, actualError := repo.GetByName(ctx, proj.Name(), namespaceName)
+			assert.NotNil(b, actualNamespace)
+			assert.NoError(b, actualError)
+		}
+	})
+
+	b.Run("GetAll", func(b *testing.B) {
+		db := dbSetup()
+		repo := repoTenant.NewNamespaceRepository(db)
+		maxNumberOfNamespaces := 50
+		for i := 0; i < maxNumberOfNamespaces; i++ {
+			name := fmt.Sprintf("t-optimus-%d", i)
+			ns, err := serviceTenant.NewNamespace(name, proj.Name(),
+				map[string]string{
+					"bucket": "gs://ns_bucket",
+				})
+			assert.NoError(b, err)
+
+			actualError := repo.Save(ctx, ns)
+			assert.NoError(b, actualError)
+		}
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			actualNamespaces, actualError := repo.GetAll(ctx, proj.Name())
+			assert.NotNil(b, actualNamespaces)
+			assert.NoError(b, actualError)
+		}
+	})
+}
