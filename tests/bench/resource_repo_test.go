@@ -15,7 +15,7 @@ import (
 	"github.com/odpf/optimus/tests/setup"
 )
 
-func BenchmarkResourceRepo(b *testing.B) {
+func BenchmarkResourceRepository(b *testing.B) {
 	ctx := context.Background()
 	projectName := "project_test"
 	namespaceName := "namespace_test"
