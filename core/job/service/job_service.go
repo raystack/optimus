@@ -514,6 +514,10 @@ func (j JobService) buildDAGTree(ctx context.Context, rootName job.Name, jobMap 
 		}
 	}
 
+	if len(me.Errors) > 0 {
+		return nil, me
+	}
+
 	return dagTree, nil
 }
 
