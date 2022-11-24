@@ -3,167 +3,179 @@
 
 package bench
 
-//
-//func BenchmarkSecretRepo(b *testing.B) {
-//	ctx := context.Background()
-//	project := setup.Project(1)
-//	project.ID = models.ProjectID(uuid.New())
-//
-//	namespace := setup.Namespace(1, project)
-//	namespace.ID = uuid.New()
-//	otherNamespace := setup.Namespace(2, project)
-//	otherNamespace.ID = uuid.New()
-//
-//	key, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
-//
-//	dbSetup := func() *gorm.DB {
-//		dbConn := setup.TestDB()
-//		setup.TruncateTables(dbConn)
-//
-//		projRepo := postgres.NewProjectRepository(dbConn, key)
-//		assert.Nil(b, projRepo.Save(ctx, project))
-//
-//		namespaceRepo := postgres.NewNamespaceRepository(dbConn, key)
-//		assert.Nil(b, namespaceRepo.Save(ctx, project, namespace))
-//		assert.Nil(b, namespaceRepo.Save(ctx, project, otherNamespace))
-//		return dbConn
-//	}
-//
-//	b.Run("Save", func(b *testing.B) {
-//		dbConn := dbSetup()
-//		var repo store.SecretRepository = postgres.NewSecretRepository(dbConn, key)
-//		b.ResetTimer()
-//
-//		for i := 0; i < b.N; i++ {
-//			secret := setup.Secret(i)
-//
-//			err := repo.Save(ctx, project, namespace, secret)
-//			if err != nil {
-//				panic(err)
-//			}
-//		}
-//	})
-//
-//	b.Run("Update", func(b *testing.B) {
-//		dbConn := dbSetup()
-//		var repo store.SecretRepository = postgres.NewSecretRepository(dbConn, key)
-//		for i := 0; i < 50; i++ {
-//			secret := setup.Secret(i)
-//			err := repo.Save(ctx, project, namespace, secret)
-//			assert.Nil(b, err)
-//		}
-//		b.ResetTimer()
-//
-//		for i := 0; i < b.N; i++ {
-//			num := i % 50
-//			secret := setup.Secret(num)
-//			err := repo.Update(ctx, project, namespace, secret)
-//			if err != nil {
-//				panic(err)
-//			}
-//		}
-//	})
-//
-//	b.Run("GetAll", func(b *testing.B) {
-//		dbConn := dbSetup()
-//		var repo store.SecretRepository = postgres.NewSecretRepository(dbConn, key)
-//		for i := 0; i < 20; i++ {
-//			secretNS := models.ProjectSecretItem{
-//				Name:  fmt.Sprintf("SecretNS-%d", i),
-//				Value: "secret",
-//				Type:  models.SecretTypeUserDefined,
-//			}
-//			err := repo.Save(ctx, project, namespace, secretNS)
-//			assert.Nil(b, err)
-//
-//			secretNONS := models.ProjectSecretItem{
-//				Name:  fmt.Sprintf("SecretNONS-%d", i),
-//				Value: "secret",
-//				Type:  models.SecretTypeUserDefined,
-//			}
-//			err = repo.Save(ctx, project, models.NamespaceSpec{}, secretNONS)
-//			assert.Nil(b, err)
-//
-//			secretONS := models.ProjectSecretItem{
-//				Name:  fmt.Sprintf("SecretONS-%d", i),
-//				Value: "secret",
-//				Type:  models.SecretTypeUserDefined,
-//			}
-//			err = repo.Save(ctx, project, otherNamespace, secretONS)
-//			assert.Nil(b, err)
-//		}
-//		b.ResetTimer()
-//
-//		for i := 0; i < b.N; i++ {
-//			sec, err := repo.GetAll(ctx, project)
-//			if err != nil {
-//				panic(err)
-//			}
-//			if len(sec) != 60 {
-//				panic("Did not get all the secrets")
-//			}
-//		}
-//	})
-//
-//	b.Run("GetSecrets", func(b *testing.B) {
-//		dbConn := dbSetup()
-//		var repo store.SecretRepository = postgres.NewSecretRepository(dbConn, key)
-//		for i := 0; i < 20; i++ {
-//			secretNS := models.ProjectSecretItem{
-//				Name:  fmt.Sprintf("SecretNS-%d", i),
-//				Value: "secret",
-//				Type:  models.SecretTypeUserDefined,
-//			}
-//			err := repo.Save(ctx, project, namespace, secretNS)
-//			assert.Nil(b, err)
-//
-//			secretNONS := models.ProjectSecretItem{
-//				Name:  fmt.Sprintf("SecretNONS-%d", i),
-//				Value: "secret",
-//				Type:  models.SecretTypeUserDefined,
-//			}
-//			err = repo.Save(ctx, project, models.NamespaceSpec{}, secretNONS)
-//			assert.Nil(b, err)
-//
-//			secretONS := models.ProjectSecretItem{
-//				Name:  fmt.Sprintf("SecretONS-%d", i),
-//				Value: "secret",
-//				Type:  models.SecretTypeUserDefined,
-//			}
-//			err = repo.Save(ctx, project, otherNamespace, secretONS)
-//			assert.Nil(b, err)
-//		}
-//		b.ResetTimer()
-//
-//		for i := 0; i < b.N; i++ {
-//			sec, err := repo.GetSecrets(ctx, project, namespace)
-//			if err != nil {
-//				panic(err)
-//			}
-//			if len(sec) != 40 {
-//				panic("Did not get all the secrets")
-//			}
-//		}
-//	})
-//
-//	b.Run("Delete", func(b *testing.B) {
-//		dbConn := dbSetup()
-//		var repo store.SecretRepository = postgres.NewSecretRepository(dbConn, key)
-//		b.ResetTimer()
-//
-//		for i := 0; i < b.N; i++ {
-//			secretName := fmt.Sprintf("Secret%d", i)
-//			secret := setup.Secret(i)
-//
-//			err := repo.Save(ctx, project, namespace, secret)
-//			if err != nil {
-//				panic(err)
-//			}
-//
-//			err = repo.Delete(ctx, project, namespace, secretName)
-//			if err != nil {
-//				panic(err)
-//			}
-//		}
-//	})
-//}
+import (
+	"context"
+	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
+
+	serviceTenant "github.com/odpf/optimus/core/tenant"
+	repoTenant "github.com/odpf/optimus/internal/store/postgres/tenant"
+	"github.com/odpf/optimus/tests/setup"
+)
+
+func BenchmarkSecretRepository(b *testing.B) {
+	ctx := context.Background()
+
+	proj, err := serviceTenant.NewProject("test-proj",
+		map[string]string{
+			"bucket":                            "gs://some_folder-2",
+			serviceTenant.ProjectSchedulerHost:  "host",
+			serviceTenant.ProjectStoragePathKey: "gs://location",
+		})
+	assert.NoError(b, err)
+	namespace, err := serviceTenant.NewNamespace("test-ns", proj.Name(),
+		map[string]string{
+			"bucket": "gs://ns_bucket",
+		})
+	assert.NoError(b, err)
+
+	dbSetup := func() *gorm.DB {
+		dbConn := setup.TestDB()
+		setup.TruncateTables(dbConn)
+
+		prjRepo := repoTenant.NewProjectRepository(dbConn)
+		if err := prjRepo.Save(ctx, proj); err != nil {
+			panic(err)
+		}
+
+		namespaceRepo := repoTenant.NewNamespaceRepository(dbConn)
+		if err := namespaceRepo.Save(ctx, namespace); err != nil {
+			panic(err)
+		}
+		return dbConn
+	}
+
+	b.Run("Save", func(b *testing.B) {
+		db := dbSetup()
+		repo := repoTenant.NewSecretRepository(db)
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			name := fmt.Sprintf("secret_name_%d", i)
+			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, "abcd", proj.Name(), namespace.Name().String())
+			assert.Nil(b, err)
+
+			actualError := repo.Save(ctx, secret)
+			assert.NoError(b, actualError)
+		}
+	})
+
+	b.Run("Update", func(b *testing.B) {
+		db := dbSetup()
+		repo := repoTenant.NewSecretRepository(db)
+		maxNumberOfSecrets := 50
+		for i := 0; i < maxNumberOfSecrets; i++ {
+			name := fmt.Sprintf("secret_name_%d", i)
+			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, "abcd", proj.Name(), namespace.Name().String())
+			assert.Nil(b, err)
+
+			actualError := repo.Save(ctx, secret)
+			assert.NoError(b, actualError)
+		}
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			secretIdx := i % maxNumberOfSecrets
+			name := fmt.Sprintf("secret_name_%d", secretIdx)
+			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, "abcd", proj.Name(), namespace.Name().String())
+			assert.Nil(b, err)
+
+			actualError := repo.Update(ctx, secret)
+			assert.NoError(b, actualError)
+		}
+	})
+
+	b.Run("Get", func(b *testing.B) {
+		db := dbSetup()
+		repo := repoTenant.NewSecretRepository(db)
+		maxNumberOfSecrets := 50
+		for i := 0; i < maxNumberOfSecrets; i++ {
+			name := fmt.Sprintf("secret_name_%d", i)
+			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, "abcd", proj.Name(), namespace.Name().String())
+			assert.Nil(b, err)
+
+			actualError := repo.Save(ctx, secret)
+			assert.NoError(b, actualError)
+		}
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			secretIdx := i % maxNumberOfSecrets
+			name := fmt.Sprintf("secret_name_%d", secretIdx)
+			secretName, err := serviceTenant.SecretNameFrom(name)
+			assert.NoError(b, err)
+
+			actualSecret, actualError := repo.Get(ctx, proj.Name(), namespace.Name().String(), secretName)
+			assert.NotNil(b, actualSecret)
+			assert.NoError(b, actualError)
+		}
+	})
+
+	b.Run("GetAll", func(b *testing.B) {
+		db := dbSetup()
+		repo := repoTenant.NewSecretRepository(db)
+		maxNumberOfSecrets := 50
+		for i := 0; i < maxNumberOfSecrets; i++ {
+			name := fmt.Sprintf("secret_name_%d", i)
+			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, "abcd", proj.Name(), namespace.Name().String())
+			assert.Nil(b, err)
+
+			actualError := repo.Save(ctx, secret)
+			assert.NoError(b, actualError)
+		}
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			actualSecrets, actualError := repo.GetAll(ctx, proj.Name(), namespace.Name().String())
+			assert.Len(b, actualSecrets, maxNumberOfSecrets)
+			assert.NoError(b, actualError)
+		}
+	})
+
+	b.Run("GetSecrets", func(b *testing.B) {
+		db := dbSetup()
+		repo := repoTenant.NewSecretRepository(db)
+		maxNumberOfSecrets := 50
+		for i := 0; i < maxNumberOfSecrets; i++ {
+			name := fmt.Sprintf("secret_name_%d", i)
+			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, "abcd", proj.Name(), namespace.Name().String())
+			assert.Nil(b, err)
+
+			actualError := repo.Save(ctx, secret)
+			assert.NoError(b, actualError)
+		}
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			actualSecretInfos, actualError := repo.GetSecretsInfo(ctx, proj.Name())
+			assert.Len(b, actualSecretInfos, maxNumberOfSecrets)
+			assert.NoError(b, actualError)
+		}
+	})
+
+	b.Run("Delete", func(b *testing.B) {
+		db := dbSetup()
+		repo := repoTenant.NewSecretRepository(db)
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			name := fmt.Sprintf("secret_name_%d", i)
+			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, "abcd", proj.Name(), namespace.Name().String())
+			assert.Nil(b, err)
+
+			err = repo.Save(ctx, secret)
+			assert.NoError(b, err)
+
+			actualError := repo.Delete(ctx, proj.Name(), namespace.Name().String(), secret.Name())
+			assert.NoError(b, actualError)
+		}
+	})
+}
