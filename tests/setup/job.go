@@ -1,105 +1,86 @@
 package setup
 
-//
-//func Job(i int, namespace models.NamespaceSpec, bq2bq models.DependencyResolverMod, hookUnit models.YamlMod) models.JobSpec { //nolint:unparam
-//	jobConfig := []models.JobSpecConfigItem{
-//		{Name: "DATASET", Value: "playground"},
-//		{Name: "JOB_LABELS", Value: "owner=optimus"},
-//		{Name: "LOAD_METHOD", Value: "REPLACE"},
-//		{Name: "PROJECT", Value: "integration"},
-//		{Name: "SQL_TYPE", Value: "STANDARD"},
-//		{Name: "TABLE", Value: fmt.Sprintf("table%d", i)},
-//		{Name: "TASK_TIMEZONE", Value: "UTC"},
-//		{Name: "SECRET_NAME", Value: "{{.secret.secret3}}"},
-//		{Name: "TASK_BQ2BQ", Value: "{{.secret.TASK_BQ2BQ}}"},
-//	}
-//
-//	jobMeta := models.JobSpecMetadata{
-//		Resource: models.JobSpecResource{
-//			Request: models.JobSpecResourceConfig{CPU: "200m", Memory: "1g"},
-//			Limit:   models.JobSpecResourceConfig{CPU: "1000m", Memory: "2g"},
-//		},
-//	}
-//
-//	window, err := models.NewWindow(1, "h", "0", "24h")
-//	if err != nil {
-//		panic(err)
-//	}
-//	var hooks []models.JobSpecHook
-//	if hookUnit != nil {
-//		hooks = append(hooks, models.JobSpecHook{
-//			Config: []models.JobSpecConfigItem{
-//				{
-//					Name:  "FILTER_EXPRESSION",
-//					Value: "event_timestamp > 10000",
-//				},
-//			},
-//			Unit: &models.Plugin{YamlMod: hookUnit},
-//		})
-//	}
-//
-//	jobSpec := models.JobSpec{
-//		Version:     1,
-//		Name:        fmt.Sprintf("job_%d", i),
-//		Description: "A test job for benchmarking deploy",
-//		Labels:      map[string]string{"orchestrator": "optimus"},
-//		Owner:       "Benchmark",
-//		Schedule: models.JobSpecSchedule{
-//			StartDate: time.Date(2022, 2, 26, 0, 0, 0, 0, time.UTC),
-//			EndDate:   nil,
-//			Interval:  "0 8 * * *",
-//		},
-//		Behavior: models.JobSpecBehavior{
-//			DependsOnPast: false,
-//			CatchUp:       false,
-//			Retry: models.JobSpecBehaviorRetry{
-//				Count:              2,
-//				Delay:              time.Millisecond * 100,
-//				ExponentialBackoff: true,
-//			},
-//			Notify: nil,
-//		},
-//		Task: models.JobSpecTask{
-//			Unit: &models.Plugin{
-//				YamlMod:       hookUnit,
-//				DependencyMod: bq2bq,
-//			},
-//			Priority: 2000,
-//			Window:   window,
-//			Config:   jobConfig,
-//		},
-//		Dependencies: nil,
-//		Assets: *models.JobAssets{}.New(
-//			[]models.JobSpecAsset{
-//				{
-//					Name: "query.sql",
-//					Value: `WITH Characters AS
-// (SELECT '{{.secret.secret3}}' as name, 51 as age, CAST("{{.DSTART}}" AS TIMESTAMP) as event_timestamp, CAST("{{.EXECUTION_TIME}}" AS TIMESTAMP) as load_timestamp UNION ALL
-//  SELECT 'Uchiha', 77, CAST("{{.DSTART}}" AS TIMESTAMP) as event_timestamp, CAST("{{.EXECUTION_TIME}}" AS TIMESTAMP) as load_timestamp UNION ALL
-//  SELECT 'Saitama', 77, CAST("{{.DSTART}}" AS TIMESTAMP) as event_timestamp, CAST("{{.EXECUTION_TIME}}" AS TIMESTAMP) as load_timestamp UNION ALL
-//  SELECT 'Sanchez', 52, CAST("{{.DSTART}}" AS TIMESTAMP) as event_timestamp, CAST("{{.EXECUTION_TIME}}" AS TIMESTAMP) as load_timestamp)
-//SELECT * FROM Characters`,
-//				},
-//			},
-//		),
-//		Hooks:    hooks,
-//		Metadata: jobMeta,
-//		ExternalDependencies: models.ExternalDependency{
-//			HTTPDependencies: []models.HTTPDependency{
-//				{
-//					Name: "test_http_sensor_1",
-//					RequestParams: map[string]string{
-//						"key_test": "value_test",
-//					},
-//					URL: "http://test/optimus/status/1",
-//					Headers: map[string]string{
-//						"Content-Type": "application/json",
-//					},
-//				},
-//			},
-//		},
-//		NamespaceSpec: namespace,
-//	}
-//
-//	return jobSpec
-//}
+import (
+	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/models"
+)
+
+func Job(tnnt tenant.Tenant, name job.Name) *job.Job {
+	version, err := job.VersionFrom(1)
+	if err != nil {
+		panic(err)
+	}
+	owner, err := job.OwnerFrom("dev_test")
+	if err != nil {
+		panic(err)
+	}
+	description := "sample job"
+	retry := job.NewRetry(5, 0, false)
+	startDate, err := job.ScheduleDateFrom("2022-10-01")
+	if err != nil {
+		panic(err)
+	}
+	schedule, err := job.NewScheduleBuilder(startDate).WithRetry(retry).Build()
+	if err != nil {
+		panic(err)
+	}
+	window, err := models.NewWindow(version.Int(), "d", "24h", "24h")
+	if err != nil {
+		panic(err)
+	}
+	taskConfig, err := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+	if err != nil {
+		panic(err)
+	}
+	task := job.NewTaskBuilder("bq2bq", taskConfig).Build()
+
+	labels := map[string]string{
+		"environment": "integration",
+	}
+	hookConfig, err := job.NewConfig(map[string]string{"sample_hook_key": "sample_value"})
+	if err != nil {
+		panic(err)
+	}
+	hooks := []*job.Hook{job.NewHook("sample_hook", hookConfig)}
+	alertConfig, err := job.NewConfig(map[string]string{"sample_alert_key": "sample_value"})
+	if err != nil {
+		panic(err)
+	}
+	alert, err := job.NewAlertBuilder(job.SLAMissEvent, []string{"sample-channel"}).WithConfig(alertConfig).Build()
+	if err != nil {
+		panic(err)
+	}
+	alerts := []*job.AlertSpec{alert}
+	upstreamName1 := job.SpecUpstreamNameFrom("job-upstream-1")
+	upstreamName2 := job.SpecUpstreamNameFrom("job-upstream-2")
+	upstream, err := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName1, upstreamName2}).Build()
+	if err != nil {
+		panic(err)
+	}
+	asset, err := job.NewAsset(map[string]string{"sample-asset": "value-asset"})
+	if err != nil {
+		panic(err)
+	}
+	resourceRequestConfig := job.NewMetadataResourceConfig("250m", "128Mi")
+	resourceLimitConfig := job.NewMetadataResourceConfig("250m", "128Mi")
+	resourceMetadata := job.NewResourceMetadata(resourceRequestConfig, resourceLimitConfig)
+	metadata, err := job.NewMetadataBuilder().
+		WithResource(resourceMetadata).
+		WithScheduler(map[string]string{"scheduler_config_key": "value"}).
+		Build()
+	if err != nil {
+		panic(err)
+	}
+
+	spec := job.NewSpecBuilder(version, name, owner, schedule, window, task).
+		WithDescription(description).
+		WithLabels(labels).
+		WithHooks(hooks).
+		WithAlerts(alerts).
+		WithSpecUpstream(upstream).
+		WithAsset(asset).
+		WithMetadata(metadata).
+		Build()
+	return job.NewJob(tnnt, spec, "dev.resource.sample", []job.ResourceURN{"resource"})
+}
