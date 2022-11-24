@@ -36,7 +36,7 @@ type JobService interface {
 	Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error
 	Update(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error
 	Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) (affectedDownstream []job.FullName, err error)
-	Get(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, withDestinationAndSources bool) (jobSpec *job.Job, err error)
+	Get(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name) (jobSpec *job.Job, err error)
 	GetTaskInfo(ctx context.Context, task *job.Task) (*job.Task, error)
 	GetAll(ctx context.Context, filters ...filter.FilterOpt) (jobSpecs []*job.Job, err error)
 	ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, logWriter writer.LogWriter) error
@@ -162,7 +162,7 @@ func (jh *JobHandler) GetJobSpecification(ctx context.Context, req *pb.GetJobSpe
 		return nil, err
 	}
 
-	jobSpec, err := jh.jobService.Get(ctx, jobTenant, jobName, false)
+	jobSpec, err := jh.jobService.Get(ctx, jobTenant, jobName)
 	if err != nil {
 		errorMsg := "failed to get job specification"
 		jh.l.Error(fmt.Sprintf("%s: %s", err.Error(), errorMsg))
@@ -340,12 +340,12 @@ func (jh *JobHandler) GetJobTask(ctx context.Context, req *pb.GetJobTaskRequest)
 		return nil, err
 	}
 
-	jobDetails, err := jh.jobService.Get(ctx, jobTenant, jobName, true)
+	jobResult, err := jh.jobService.Get(ctx, jobTenant, jobName)
 	if err != nil {
 		return nil, err
 	}
 
-	jobTask, err := jh.jobService.GetTaskInfo(ctx, jobDetails.Spec().Task())
+	jobTask, err := jh.jobService.GetTaskInfo(ctx, jobResult.Spec().Task())
 	if err != nil {
 		return nil, err
 	}
@@ -357,12 +357,12 @@ func (jh *JobHandler) GetJobTask(ctx context.Context, req *pb.GetJobTaskRequest)
 	}
 
 	jobTaskSpec.Destination = &pb.JobTask_Destination{
-		Destination: jobDetails.Destination().String(),
+		Destination: jobResult.Destination().String(),
 		// TODO: investigate destination type
 	}
 
-	jobTaskSpec.Dependencies = make([]*pb.JobTask_Dependency, len(jobDetails.Sources()))
-	for i, source := range jobDetails.Sources() {
+	jobTaskSpec.Dependencies = make([]*pb.JobTask_Dependency, len(jobResult.Sources()))
+	for i, source := range jobResult.Sources() {
 		jobTaskSpec.Dependencies[i] = &pb.JobTask_Dependency{
 			Dependency: source.String(),
 		}
