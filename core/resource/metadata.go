@@ -62,7 +62,7 @@ func (s Status) String() string {
 }
 
 func FromStringToStatus(status string) Status {
-	switch status {
+	switch strings.ToLower(status) {
 	case StatusValidationFailure.String():
 		return StatusValidationFailure
 	case StatusValidationSuccess.String():
