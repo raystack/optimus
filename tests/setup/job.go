@@ -6,7 +6,7 @@ import (
 	"github.com/odpf/optimus/internal/models"
 )
 
-func Job(tnnt tenant.Tenant, name job.Name) *job.Job {
+func Job(tnnt tenant.Tenant, name job.Name, destination job.ResourceURN) *job.Job {
 	version, err := job.VersionFrom(1)
 	if err != nil {
 		panic(err)
@@ -75,5 +75,5 @@ func Job(tnnt tenant.Tenant, name job.Name) *job.Job {
 		WithAsset(asset).
 		WithMetadata(metadata).
 		Build()
-	return job.NewJob(tnnt, spec, "dev.resource.sample", nil)
+	return job.NewJob(tnnt, spec, destination, nil)
 }

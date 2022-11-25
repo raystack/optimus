@@ -66,7 +66,8 @@ func BenchmarkJobRepository(b *testing.B) {
 				name := fmt.Sprintf("job_test_%d_%d", i, j)
 				jobName, err := job.NameFrom(name)
 				assert.NoError(b, err)
-				jobs[j] = setup.Job(tnnt, jobName)
+				destination := job.ResourceURN("dev.resource.sample")
+				jobs[j] = setup.Job(tnnt, jobName, destination)
 			}
 
 			actualStoredJobs, actualError := repo.Add(ctx, jobs)
@@ -84,7 +85,8 @@ func BenchmarkJobRepository(b *testing.B) {
 			name := fmt.Sprintf("job_test_%d", i)
 			jobName, err := job.NameFrom(name)
 			assert.NoError(b, err)
-			jobs[i] = setup.Job(tnnt, jobName)
+			destination := job.ResourceURN("dev.resource.sample")
+			jobs[i] = setup.Job(tnnt, jobName, destination)
 		}
 		storedJobs, err := repo.Add(ctx, jobs)
 		assert.Len(b, storedJobs, maxNumberOfJobs)
