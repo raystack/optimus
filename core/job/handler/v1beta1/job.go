@@ -198,7 +198,7 @@ func (jh *JobHandler) GetJobSpecifications(ctx context.Context, req *pb.GetJobSp
 func (jh *JobHandler) ListJobSpecification(ctx context.Context, req *pb.ListJobSpecificationRequest) (*pb.ListJobSpecificationResponse, error) {
 	jobSpecs, merr := jh.jobService.GetAll(ctx,
 		filter.WithString(filter.ProjectName, req.GetProjectName()),
-		filter.WithString(filter.NamespaceName, req.GetNamespaceName()),
+		filter.WithStringArray(filter.NamespaceNames, []string{req.GetNamespaceName()}),
 	)
 
 	jobSpecificationProtos := make([]*pb.JobSpecification, len(jobSpecs))
