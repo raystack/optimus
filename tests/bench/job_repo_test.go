@@ -13,6 +13,7 @@ import (
 
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/models"
 	jobRepository "github.com/odpf/optimus/internal/store/postgres/job"
 	tenantRepository "github.com/odpf/optimus/internal/store/postgres/tenant"
 	"github.com/odpf/optimus/tests/setup"
@@ -97,6 +98,76 @@ func BenchmarkJobRepository(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			actualUpdatedJobs, actualError := repo.Update(ctx, jobs)
 			assert.Len(b, actualUpdatedJobs, maxNumberOfJobs)
+			assert.NoError(b, actualError)
+		}
+	})
+
+	b.Run("ResolveUpstreams", func(b *testing.B) {
+		db := dbSetup()
+		repo := jobRepository.NewJobRepository(db)
+		maxNumberOfJobs := 50
+		for i := 0; i < maxNumberOfJobs; i++ {
+			name := fmt.Sprintf("job_treated_as_static_upstream_%d", i)
+			staticUpstreamName, err := job.NameFrom(name)
+			assert.NoError(b, err)
+			staticUpstreamDestination := job.ResourceURN(fmt.Sprintf("dev.resource.sample_static_upstream_%d", i))
+			jobTreatedAsStaticUpstream := setup.Job(tnnt, staticUpstreamName, staticUpstreamDestination)
+
+			name = fmt.Sprintf("job_treated_as_inferred_upstream_%d", i)
+			inferredUpstreamName, err := job.NameFrom(name)
+			assert.NoError(b, err)
+			inferredUpstreamDestination := job.ResourceURN(fmt.Sprintf("dev.resource.sample_inferred_upstream_%d", i))
+			jobTreatedAsInferredUpstream := setup.Job(tnnt, inferredUpstreamName, inferredUpstreamDestination)
+
+			version, err := job.VersionFrom(1)
+			assert.NoError(b, err)
+			name = fmt.Sprintf("current_job_%d", i)
+			currentJobName, err := job.NameFrom(name)
+			assert.NoError(b, err)
+			owner, err := job.OwnerFrom("dev_test")
+			assert.NoError(b, err)
+			retry := job.NewRetry(5, 0, false)
+			startDate, err := job.ScheduleDateFrom("2022-10-01")
+			assert.NoError(b, err)
+			schedule, err := job.NewScheduleBuilder(startDate).WithRetry(retry).Build()
+			assert.NoError(b, err)
+			window, err := models.NewWindow(version.Int(), "d", "24h", "24h")
+			assert.NoError(b, err)
+			taskConfig, err := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+			assert.NoError(b, err)
+			task := job.NewTaskBuilder("bq2bq", taskConfig).Build()
+
+			specUpstream, err := job.NewSpecUpstreamBuilder().
+				WithUpstreamNames([]job.SpecUpstreamName{
+					job.SpecUpstreamNameFrom(staticUpstreamName.String()),
+				}).Build()
+			assert.NoError(b, err)
+			spec := job.NewSpecBuilder(version, currentJobName, owner, schedule, window, task).
+				WithSpecUpstream(specUpstream).
+				Build()
+			currentDestination := job.ResourceURN(fmt.Sprintf("dev.resource.sample_current_job_%d", i))
+			currentJob := job.NewJob(tnnt, spec, currentDestination, []job.ResourceURN{inferredUpstreamDestination})
+
+			storedJobs, err := repo.Add(ctx, []*job.Job{
+				jobTreatedAsStaticUpstream,
+				jobTreatedAsInferredUpstream,
+				currentJob,
+			})
+			assert.Len(b, storedJobs, 3)
+			assert.NoError(b, err)
+		}
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			jobIdx := i % maxNumberOfJobs
+			name := fmt.Sprintf("current_job_%d", jobIdx)
+			currentJobName, err := job.NameFrom(name)
+			assert.NoError(b, err)
+
+			actualUpstreamsPerJobName, actualError := repo.ResolveUpstreams(ctx, proj.Name(), []job.Name{currentJobName})
+			assert.Len(b, actualUpstreamsPerJobName, 1)
+			assert.Len(b, actualUpstreamsPerJobName[currentJobName], 2)
 			assert.NoError(b, actualError)
 		}
 	})
