@@ -34,7 +34,6 @@ func BenchmarkJobRepository(b *testing.B) {
 			"bucket": "gs://ns_bucket",
 		})
 	assert.NoError(b, err)
-	assert.NoError(b, err)
 	tnnt, err := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
 	assert.NoError(b, err)
 
@@ -251,6 +250,46 @@ func BenchmarkJobRepository(b *testing.B) {
 
 			actualJobs, actualError := repo.GetAllByResourceDestination(ctx, destination)
 			assert.Len(b, actualJobs, 1)
+			assert.NoError(b, actualError)
+		}
+	})
+
+	b.Run("ReplaceUpstreams", func(b *testing.B) {
+		db := dbSetup()
+		repo := jobRepository.NewJobRepository(db)
+		maxNumberOfJobs := 50
+		jobs := make([]*job.Job, maxNumberOfJobs)
+		for i := 0; i < maxNumberOfJobs; i++ {
+			name := fmt.Sprintf("job_test_%d", i)
+			jobName, err := job.NameFrom(name)
+			assert.NoError(b, err)
+			destination := job.ResourceURN(fmt.Sprintf("dev.resource.sample_%d", i))
+			jobs[i] = setup.Job(tnnt, jobName, destination)
+		}
+		storedJobs, err := repo.Add(ctx, jobs)
+		assert.Len(b, storedJobs, maxNumberOfJobs)
+		assert.NoError(b, err)
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			withUpstreams := make([]*job.WithUpstream, maxNumberOfJobs)
+			for j := 0; j < maxNumberOfJobs; j++ {
+				jobIdx := i % maxNumberOfJobs
+				currentJob := jobs[jobIdx]
+				currentJobName := currentJob.Spec().Name()
+
+				maxNumberOfUpstreams := 50
+				upstreams := make([]*job.Upstream, maxNumberOfUpstreams)
+				for k := 0; k < maxNumberOfUpstreams; k++ {
+					resourceURN := job.ResourceURN(fmt.Sprintf("dev.resource.resource_%d_%d_%d", i, j, k))
+					upstream := job.NewUpstreamResolved(currentJobName, "http://optimus.io", resourceURN, tnnt, job.UpstreamTypeInferred, "bq2bq", false)
+					upstreams[k] = upstream
+				}
+				withUpstreams[j] = job.NewWithUpstream(currentJob, upstreams)
+			}
+
+			actualError := repo.ReplaceUpstreams(ctx, withUpstreams)
 			assert.NoError(b, actualError)
 		}
 	})
