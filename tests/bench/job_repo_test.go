@@ -226,4 +226,32 @@ func BenchmarkJobRepository(b *testing.B) {
 			assert.NoError(b, actualError)
 		}
 	})
+
+	b.Run("GetAllByResourceDestination", func(b *testing.B) {
+		db := dbSetup()
+		repo := jobRepository.NewJobRepository(db)
+		maxNumberOfJobs := 50
+		jobs := make([]*job.Job, maxNumberOfJobs)
+		for i := 0; i < maxNumberOfJobs; i++ {
+			name := fmt.Sprintf("job_test_%d", i)
+			jobName, err := job.NameFrom(name)
+			assert.NoError(b, err)
+			destination := job.ResourceURN(fmt.Sprintf("dev.resource.sample_%d", i))
+			jobs[i] = setup.Job(tnnt, jobName, destination)
+		}
+		storedJobs, err := repo.Add(ctx, jobs)
+		assert.Len(b, storedJobs, maxNumberOfJobs)
+		assert.NoError(b, err)
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			jobIdx := i % maxNumberOfJobs
+			destination := job.ResourceURN(fmt.Sprintf("dev.resource.sample_%d", jobIdx))
+
+			actualJobs, actualError := repo.GetAllByResourceDestination(ctx, destination)
+			assert.Len(b, actualJobs, 1)
+			assert.NoError(b, actualError)
+		}
+	})
 }
