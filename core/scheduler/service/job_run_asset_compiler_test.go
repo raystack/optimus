@@ -30,12 +30,16 @@ func TestJobAssetsCompiler(t *testing.T) {
 		Name:   "jobName",
 		Tenant: tnnt,
 		Task: &scheduler.Task{
-			Name:   "taskName",
-			Config: nil,
+			Name: "taskName",
+			Config: map[string]string{
+				"configName": "configVale",
+			},
 		},
 		Hooks:  nil,
 		Window: window,
-		Assets: nil,
+		Assets: map[string]string{
+			"assetName": "assetVale",
+		},
 	}
 	taskName := job.Task.Name
 	startTime, _ := job.Window.GetStartTime(scheduleTime)
@@ -49,7 +53,6 @@ func TestJobAssetsCompiler(t *testing.T) {
 	}
 
 	t.Run("CompileJobRunAssets", func(t *testing.T) {
-
 		t.Run("should error if plugin repo get plugin by name fails", func(t *testing.T) {
 			pluginRepo := new(mockPluginRepo)
 			pluginRepo.On("GetByName", taskName).Return(nil, fmt.Errorf("error in getting plugin by name"))
@@ -64,7 +67,6 @@ func TestJobAssetsCompiler(t *testing.T) {
 			assert.Nil(t, assets)
 		})
 		t.Run("should give error if window get start fails", func(t *testing.T) {
-
 			pluginRepo := new(mockPluginRepo)
 			pluginRepo.On("GetByName", "pluginName").Return(&models.Plugin{}, nil)
 			defer pluginRepo.AssertExpectations(t)
@@ -74,12 +76,16 @@ func TestJobAssetsCompiler(t *testing.T) {
 				Name:   "jobName",
 				Tenant: tnnt,
 				Task: &scheduler.Task{
-					Name:   "pluginName",
-					Config: nil,
+					Name: "pluginName",
+					Config: map[string]string{
+						"configName": "configVale",
+					},
 				},
 				Hooks:  nil,
 				Window: window1,
-				Assets: nil,
+				Assets: map[string]string{
+					"assetName": "assetVale",
+				},
 			}
 
 			jobRunAssetsCompiler := service.NewJobAssetsCompiler(nil, pluginRepo)
@@ -89,6 +95,27 @@ func TestJobAssetsCompiler(t *testing.T) {
 
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "error getting start time: error validating truncate_to: invalid option provided, provide one of: [h d w M]")
+			assert.Nil(t, assets)
+		})
+		t.Run("compile should return error when DependencyMod CompileAssets fails", func(t *testing.T) {
+			yamlMod := new(mockYamlMod)
+			defer yamlMod.AssertExpectations(t)
+
+			dependencyResolverMod := new(mockDependencyResolverMod)
+			dependencyResolverMod.On("CompileAssets", ctx, mock.Anything).Return(nil, fmt.Errorf("error in dependencyMod compile assets"))
+			pluginRepo := new(mockPluginRepo)
+			pluginRepo.On("GetByName", taskName).Return(&models.Plugin{
+				DependencyMod: dependencyResolverMod,
+				YamlMod:       yamlMod,
+			}, nil)
+			defer pluginRepo.AssertExpectations(t)
+			jobRunAssetsCompiler := service.NewJobAssetsCompiler(nil, pluginRepo)
+
+			contextForTask := map[string]any{}
+			assets, err := jobRunAssetsCompiler.CompileJobRunAssets(ctx, job, systemEnvVars, scheduleTime, contextForTask)
+
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "error in dependencyMod compile assets")
 			assert.Nil(t, assets)
 		})
 		t.Run("compile", func(t *testing.T) {
@@ -125,7 +152,7 @@ func TestJobAssetsCompiler(t *testing.T) {
 				assets, err := jobRunAssetsCompiler.CompileJobRunAssets(ctx, job, systemEnvVars, scheduleTime, contextForTask)
 
 				assert.NotNil(t, err)
-				fmt.Println(err.Error())
+				assert.EqualError(t, err, "error in compiling")
 				assert.Nil(t, assets)
 			})
 			t.Run("return compiled assets", func(t *testing.T) {
@@ -145,7 +172,6 @@ func TestJobAssetsCompiler(t *testing.T) {
 				assert.Equal(t, expectedFileMap, assets)
 			})
 		})
-
 	})
 }
 

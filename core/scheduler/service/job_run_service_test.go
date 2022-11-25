@@ -27,6 +27,20 @@ func TestJobRunService(t *testing.T) {
 	t.Run("UpdateJobState", func(t *testing.T) {
 		tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
 
+		t.Run("should reject unregistered events", func(t *testing.T) {
+			runService := service.NewJobRunService(nil,
+				nil, nil, nil, nil, nil, nil)
+
+			event := scheduler.Event{
+				JobName: jobName,
+				Tenant:  tnnt,
+				Type:    "UnregisteredEventTYpe",
+				Values:  map[string]any{},
+			}
+			err := runService.UpdateJobState(ctx, event)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "invalid argument for entity event: invalid event type: UnregisteredEventTYpe")
+		})
 		t.Run("registerNewJobRun", func(t *testing.T) {
 			t.Run("should return error on JobStartEvent if GetJobDetails fails", func(t *testing.T) {
 				jobRepo := new(JobRepository)
@@ -268,16 +282,292 @@ func TestJobRunService(t *testing.T) {
 
 					err := runService.UpdateJobState(ctx, event)
 					assert.Nil(t, err)
-
 				})
 			})
 		})
 
 		t.Run("createOperatorRun", func(t *testing.T) {
+			t.Run("should return error on TaskStartEvent if GetJobDetails fails", func(t *testing.T) {
+				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
+				eventTime := time.Unix(todayDate.Add(time.Hour).Unix(), 0)
+				event := scheduler.Event{
+					JobName:        jobName,
+					Tenant:         tnnt,
+					Type:           scheduler.TaskStartEvent,
+					JobScheduledAt: scheduledAtTimeStamp,
+					EventTime:      eventTime,
+					Values:         map[string]any{},
+				}
 
+				jobRunRepo := new(mockJobRunRepository)
+				jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(nil, fmt.Errorf("some error in GetByScheduledAt"))
+				defer jobRunRepo.AssertExpectations(t)
+
+				runService := service.NewJobRunService(nil,
+					nil, jobRunRepo, nil, nil, nil, nil)
+
+				err := runService.UpdateJobState(ctx, event)
+				assert.NotNil(t, err)
+				assert.EqualError(t, err, "some error in GetByScheduledAt")
+			})
+			t.Run("should return error on SensorStartEvent if GetJobDetails fails", func(t *testing.T) {
+				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
+				eventTime := time.Unix(todayDate.Add(time.Hour).Unix(), 0)
+				event := scheduler.Event{
+					JobName:        jobName,
+					Tenant:         tnnt,
+					Type:           scheduler.SensorStartEvent,
+					JobScheduledAt: scheduledAtTimeStamp,
+					EventTime:      eventTime,
+					Values:         map[string]any{},
+				}
+
+				jobRunRepo := new(mockJobRunRepository)
+				jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(nil, fmt.Errorf("some error in GetByScheduledAt"))
+				defer jobRunRepo.AssertExpectations(t)
+
+				runService := service.NewJobRunService(nil,
+					nil, jobRunRepo, nil, nil, nil, nil)
+
+				err := runService.UpdateJobState(ctx, event)
+				assert.NotNil(t, err)
+				assert.EqualError(t, err, "some error in GetByScheduledAt")
+			})
+			t.Run("should return error on HookStartEvent if GetJobDetails fails", func(t *testing.T) {
+				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
+				eventTime := time.Unix(todayDate.Add(time.Hour).Unix(), 0)
+				event := scheduler.Event{
+					JobName:        jobName,
+					Tenant:         tnnt,
+					Type:           scheduler.HookStartEvent,
+					JobScheduledAt: scheduledAtTimeStamp,
+					EventTime:      eventTime,
+					Values:         map[string]any{},
+				}
+
+				jobRunRepo := new(mockJobRunRepository)
+				jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(nil, fmt.Errorf("some error in GetByScheduledAt"))
+				defer jobRunRepo.AssertExpectations(t)
+
+				runService := service.NewJobRunService(nil,
+					nil, jobRunRepo, nil, nil, nil, nil)
+
+				err := runService.UpdateJobState(ctx, event)
+				assert.NotNil(t, err)
+				assert.EqualError(t, err, "some error in GetByScheduledAt")
+			})
+			t.Run("on TaskStartEvent", func(t *testing.T) {
+				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
+				eventTime := time.Unix(todayDate.Add(time.Hour).Unix(), 0)
+				event := scheduler.Event{
+					JobName:        jobName,
+					Tenant:         tnnt,
+					Type:           scheduler.TaskStartEvent,
+					EventTime:      eventTime,
+					OperatorName:   "task_bq3bq",
+					JobScheduledAt: scheduledAtTimeStamp,
+					Values:         map[string]any{},
+				}
+
+				jobRun := scheduler.JobRun{
+					ID:        uuid.New(),
+					JobName:   jobName,
+					Tenant:    tnnt,
+					StartTime: time.Now(),
+				}
+
+				jobRunRepo := new(mockJobRunRepository)
+				jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(&jobRun, nil)
+				defer jobRunRepo.AssertExpectations(t)
+
+				t.Run("should return error, if operator run fails", func(t *testing.T) {
+					operatorRunRepository := new(mockOperatorRunRepository)
+					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(nil, fmt.Errorf("some error in GetOperatorRun"))
+					defer operatorRunRepository.AssertExpectations(t)
+
+					runService := service.NewJobRunService(nil,
+						nil, jobRunRepo, operatorRunRepository, nil, nil, nil)
+
+					err := runService.UpdateJobState(ctx, event)
+					assert.NotNil(t, err)
+					assert.EqualError(t, err, "some error in GetOperatorRun")
+				})
+				t.Run("should pass without creating new operator run , if existing operator run state is still running", func(t *testing.T) {
+					operatorRun := scheduler.OperatorRun{
+						ID:           uuid.New(),
+						Name:         "task_bq2bq",
+						JobRunID:     jobRun.ID,
+						OperatorType: scheduler.OperatorTask,
+						State:        scheduler.StateRunning.String(),
+					}
+					operatorRunRepository := new(mockOperatorRunRepository)
+					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(&operatorRun, nil)
+					defer operatorRunRepository.AssertExpectations(t)
+
+					runService := service.NewJobRunService(nil,
+						nil, jobRunRepo, operatorRunRepository, nil, nil, nil)
+
+					err := runService.UpdateJobState(ctx, event)
+					assert.Nil(t, err)
+				})
+				t.Run("should pass without creating new operator run , if existing operator run state is still running", func(t *testing.T) {
+					operatorRun := scheduler.OperatorRun{
+						ID:           uuid.New(),
+						Name:         "task_bq2bq",
+						JobRunID:     jobRun.ID,
+						OperatorType: scheduler.OperatorTask,
+						State:        scheduler.StateFailed.String(),
+					}
+					operatorRunRepository := new(mockOperatorRunRepository)
+					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(&operatorRun, nil)
+					operatorRunRepository.On("CreateOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID, eventTime).Return(nil)
+					defer operatorRunRepository.AssertExpectations(t)
+
+					runService := service.NewJobRunService(nil,
+						nil, jobRunRepo, operatorRunRepository, nil, nil, nil)
+
+					err := runService.UpdateJobState(ctx, event)
+					assert.Nil(t, err)
+				})
+			})
 		})
 		t.Run("updateOperatorRun", func(t *testing.T) {
+			t.Run("on TaskSuccessEvent should create task_run row", func(t *testing.T) {
+				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
+				eventTime := time.Unix(todayDate.Add(time.Hour).Unix(), 0)
+				event := scheduler.Event{
+					JobName:        jobName,
+					Tenant:         tnnt,
+					Type:           scheduler.TaskSuccessEvent,
+					EventTime:      eventTime,
+					OperatorName:   "task_bq2bq",
+					JobScheduledAt: scheduledAtTimeStamp,
+					Values: map[string]any{
+						"status": "success",
+					},
+				}
 
+				jobRun := scheduler.JobRun{
+					ID:        uuid.New(),
+					JobName:   jobName,
+					Tenant:    tnnt,
+					StartTime: time.Now(),
+				}
+
+				jobRunRepo := new(mockJobRunRepository)
+				jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(&jobRun, nil)
+				defer jobRunRepo.AssertExpectations(t)
+
+				operatorRun := scheduler.OperatorRun{
+					ID:           uuid.New(),
+					Name:         "task_bq2bq",
+					JobRunID:     jobRun.ID,
+					OperatorType: scheduler.OperatorTask,
+					State:        scheduler.StateRunning.String(),
+				}
+				t.Run("scenario OperatorRun not found and new operator creation fails", func(t *testing.T) {
+					operatorRunRepository := new(mockOperatorRunRepository)
+					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(nil, errors.NotFound(scheduler.EntityEvent, "operator not found in db")).Once()
+					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(nil, errors.NotFound(scheduler.EntityEvent, "operator not found in db")).Once()
+					operatorRunRepository.On("CreateOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID, eventTime).Return(fmt.Errorf("some error in creating operator run"))
+					//operatorRunRepository.On("UpdateOperatorRun", ctx, scheduler.OperatorTask, operatorRun.ID, eventTime, "success").Return(nil)
+					defer operatorRunRepository.AssertExpectations(t)
+					runService := service.NewJobRunService(nil,
+						nil, jobRunRepo, operatorRunRepository, nil, nil, nil)
+
+					err := runService.UpdateJobState(ctx, event)
+					assert.NotNil(t, err)
+					assert.EqualError(t, err, "some error in creating operator run")
+				})
+				t.Run("scenario OperatorRun not found even after successful new operator creation", func(t *testing.T) {
+					operatorRunRepository := new(mockOperatorRunRepository)
+					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(nil, errors.NotFound(scheduler.EntityEvent, "operator not found in db")).Once()
+					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(nil, errors.NotFound(scheduler.EntityEvent, "operator not found in db")).Once()
+					operatorRunRepository.On("CreateOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID, eventTime).Return(nil)
+					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(nil, fmt.Errorf("some error in getting operator run")).Once()
+					defer operatorRunRepository.AssertExpectations(t)
+					runService := service.NewJobRunService(nil,
+						nil, jobRunRepo, operatorRunRepository, nil, nil, nil)
+
+					err := runService.UpdateJobState(ctx, event)
+					assert.NotNil(t, err)
+					assert.EqualError(t, err, "some error in getting operator run")
+				})
+				t.Run("scenario OperatorRun found", func(t *testing.T) {
+					operatorRunRepository := new(mockOperatorRunRepository)
+					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(&operatorRun, nil)
+					operatorRunRepository.On("UpdateOperatorRun", ctx, scheduler.OperatorTask, operatorRun.ID, eventTime, "success").Return(nil)
+					defer operatorRunRepository.AssertExpectations(t)
+					runService := service.NewJobRunService(nil,
+						nil, jobRunRepo, operatorRunRepository, nil, nil, nil)
+
+					err := runService.UpdateJobState(ctx, event)
+					assert.Nil(t, err)
+				})
+			})
+			t.Run("on SensorSuccessEvent should fail when unable to get job run due to errors other than not found error ", func(t *testing.T) {
+				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
+				eventTime := time.Unix(todayDate.Add(time.Hour).Unix(), 0)
+				event := scheduler.Event{
+					JobName:        jobName,
+					Tenant:         tnnt,
+					Type:           scheduler.SensorSuccessEvent,
+					EventTime:      eventTime,
+					OperatorName:   "wait-sample_select",
+					JobScheduledAt: scheduledAtTimeStamp,
+					Values: map[string]any{
+						"status": "success",
+					},
+				}
+
+				jobRunRepo := new(mockJobRunRepository)
+				jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(nil, fmt.Errorf("error in getting job run GetByScheduledAt"))
+				defer jobRunRepo.AssertExpectations(t)
+
+				runService := service.NewJobRunService(nil,
+					nil, jobRunRepo, nil, nil, nil, nil)
+
+				err := runService.UpdateJobState(ctx, event)
+				assert.NotNil(t, err)
+				assert.EqualError(t, err, "error in getting job run GetByScheduledAt")
+			})
+			t.Run("on HookSuccessEvent should fail when unable to get operator run due to errors other than not found error ", func(t *testing.T) {
+				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
+				eventTime := time.Unix(todayDate.Add(time.Hour).Unix(), 0)
+				event := scheduler.Event{
+					JobName:        jobName,
+					Tenant:         tnnt,
+					Type:           scheduler.HookSuccessEvent,
+					EventTime:      eventTime,
+					OperatorName:   "hook-sample_select",
+					JobScheduledAt: scheduledAtTimeStamp,
+					Values: map[string]any{
+						"status": "success",
+					},
+				}
+
+				jobRun := scheduler.JobRun{
+					ID:        uuid.New(),
+					JobName:   jobName,
+					Tenant:    tnnt,
+					StartTime: time.Now(),
+				}
+
+				jobRunRepo := new(mockJobRunRepository)
+				jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(&jobRun, nil)
+				defer jobRunRepo.AssertExpectations(t)
+
+				operatorRunRepository := new(mockOperatorRunRepository)
+				operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorHook, jobRun.ID).Return(nil, fmt.Errorf("error in getting operator run"))
+				//operatorRunRepository.On("UpdateOperatorRun", ctx, scheduler.OperatorSensor, operatorRun.ID, eventTime, "success").Return(nil)
+				defer operatorRunRepository.AssertExpectations(t)
+				runService := service.NewJobRunService(nil,
+					nil, jobRunRepo, operatorRunRepository, nil, nil, nil)
+
+				err := runService.UpdateJobState(ctx, event)
+				assert.NotNil(t, err)
+				assert.EqualError(t, err, "error in getting operator run")
+			})
 		})
 	})
 
@@ -484,6 +774,25 @@ func TestJobRunService(t *testing.T) {
 		if err != nil {
 			t.Errorf("unable to parse the interval to test GetJobRuns %v", err)
 		}
+		t.Run("should not able to get job runs when unable to get job details", func(t *testing.T) {
+			criteria := &scheduler.JobRunsCriteria{
+				Name:      "sample_select",
+				StartDate: startDate,
+				EndDate:   endDate,
+				Filter:    []string{"success"},
+			}
+
+			jobRepo := new(JobRepository)
+			jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(nil, fmt.Errorf("some error in get job details"))
+			defer jobRepo.AssertExpectations(t)
+
+			runService := service.NewJobRunService(nil,
+				jobRepo, nil, nil, nil, nil, nil)
+			returnedRuns, err := runService.GetJobRuns(ctx, projName, jobName, criteria)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "unable to get job details from DB for jobName: sample_select, project:proj,  error:some error in get job details ")
+			assert.Nil(t, returnedRuns)
+		})
 		t.Run("should not able to get job runs when scheduler returns empty response", func(t *testing.T) {
 			tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
 			job := scheduler.Job{
@@ -988,5 +1297,27 @@ func (ms *mockScheduler) ListJobs(ctx context.Context, t tenant.Tenant) ([]strin
 
 func (ms *mockScheduler) DeleteJobs(ctx context.Context, t tenant.Tenant, jobsToDelete []string) error {
 	args := ms.Called(ctx, t, jobsToDelete)
+	return args.Error(0)
+}
+
+type mockOperatorRunRepository struct {
+	mock.Mock
+}
+
+func (m *mockOperatorRunRepository) GetOperatorRun(ctx context.Context, operatorName string, operator scheduler.OperatorType, jobRunID uuid.UUID) (*scheduler.OperatorRun, error) {
+	args := m.Called(ctx, operatorName, operator, jobRunID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*scheduler.OperatorRun), args.Error(1)
+}
+
+func (m *mockOperatorRunRepository) CreateOperatorRun(ctx context.Context, operatorName string, operator scheduler.OperatorType, jobRunID uuid.UUID, startTime time.Time) error {
+	args := m.Called(ctx, operatorName, operator, jobRunID, startTime)
+	return args.Error(0)
+}
+
+func (m *mockOperatorRunRepository) UpdateOperatorRun(ctx context.Context, operator scheduler.OperatorType, jobRunID uuid.UUID, eventTime time.Time, state string) error {
+	args := m.Called(ctx, operator, jobRunID, eventTime, state)
 	return args.Error(0)
 }

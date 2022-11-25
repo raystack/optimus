@@ -1,9 +1,9 @@
 package scheduler_test
 
 import (
-	"fmt"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/odpf/optimus/core/scheduler"
@@ -11,6 +11,20 @@ import (
 )
 
 func TestJob(t *testing.T) {
+	t.Run("JobRunIDFromString", func(t *testing.T) {
+		newUUID := uuid.New()
+		newUUIDString := newUUID.String()
+		parsedUUID, err := scheduler.JobRunIDFromString(newUUIDString)
+		assert.Nil(t, err)
+		assert.Equal(t, scheduler.JobRunID(newUUID), parsedUUID)
+	})
+	t.Run("IsEmpty", func(t *testing.T) {
+		newUUID := uuid.New()
+		jobRunID := scheduler.JobRunID(newUUID)
+		assert.False(t, jobRunID.IsEmpty())
+		jobRunID = scheduler.JobRunID{}
+		assert.True(t, jobRunID.IsEmpty())
+	})
 	t.Run("JobNameFrom", func(t *testing.T) {
 		jobName, err := scheduler.JobNameFrom("someJob")
 		assert.Nil(t, err)
@@ -37,7 +51,6 @@ func TestJob(t *testing.T) {
 			hook, err := job.GetHook("someHook1")
 			assert.Nil(t, err)
 			assert.Equal(t, &dummyHook, hook)
-
 		})
 		t.Run(" should return error when hook not found", func(t *testing.T) {
 			dummyHook := scheduler.Hook{Name: "someHook1", Config: nil}
@@ -47,10 +60,10 @@ func TestJob(t *testing.T) {
 				Hooks: []*scheduler.Hook{&dummyHook, &dummyHook2},
 			}
 			hook, err := job.GetHook("someHook13")
-			fmt.Println(err.Error())
-			assert.NotNil(t, err)
-			assert.Nil(t, hook)
 
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "not found for entity jobRun: hook not found in job someHook13")
+			assert.Nil(t, hook)
 		})
 	})
 	t.Run("GetName", func(t *testing.T) {

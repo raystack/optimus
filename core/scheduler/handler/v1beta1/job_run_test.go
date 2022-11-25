@@ -431,7 +431,7 @@ func TestJobRunHandler(t *testing.T) {
 			}
 			jobRunHandler := v1beta1.NewJobRunHandler(logger, nil, nil)
 
-			resp, err := jobRunHandler.RegisterEvent(ctx, req)
+			resp, err := jobRunHandler.RegisterJobEvent(ctx, req)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity project: project name is empty: unable to get tenant")
 			assert.Nil(t, resp)
@@ -455,7 +455,7 @@ func TestJobRunHandler(t *testing.T) {
 			}
 			jobRunHandler := v1beta1.NewJobRunHandler(logger, nil, nil)
 
-			resp, err := jobRunHandler.RegisterEvent(ctx, req)
+			resp, err := jobRunHandler.RegisterJobEvent(ctx, req)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity namespace: namespace name is empty: unable to get tenant")
 			assert.Nil(t, resp)
@@ -478,7 +478,7 @@ func TestJobRunHandler(t *testing.T) {
 			}
 			jobRunHandler := v1beta1.NewJobRunHandler(logger, nil, nil)
 
-			resp, err := jobRunHandler.RegisterEvent(ctx, req)
+			resp, err := jobRunHandler.RegisterJobEvent(ctx, req)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity jobRun: job name is empty: unable to get job name")
 			assert.Nil(t, resp)
@@ -502,9 +502,9 @@ func TestJobRunHandler(t *testing.T) {
 			}
 			jobRunHandler := v1beta1.NewJobRunHandler(logger, nil, nil)
 
-			resp, err := jobRunHandler.RegisterEvent(ctx, req)
+			resp, err := jobRunHandler.RegisterJobEvent(ctx, req)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity event: unknown event 200: unable to parse event type:200 value:{fields:{key:\"url\" value:{string_value:\"https://example.io\"}}}")
+			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity event: unknown event 200: unable to parse event")
 			assert.Nil(t, resp)
 		})
 		t.Run("should return error if Update Job State fails", func(t *testing.T) {
@@ -545,9 +545,9 @@ func TestJobRunHandler(t *testing.T) {
 
 			jobRunHandler := v1beta1.NewJobRunHandler(logger, jobRunService, notifier)
 
-			resp, err := jobRunHandler.RegisterEvent(ctx, req)
+			resp, err := jobRunHandler.RegisterJobEvent(ctx, req)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "errors in RegisterEvent:\n internal error for entity jobRun: scheduler could not update job run state")
+			assert.EqualError(t, err, "errors in RegisterJobEvent:\n internal error for entity jobRun: scheduler could not update job run state")
 			assert.Equal(t, &pb.RegisterJobEventResponse{}, resp)
 		})
 		t.Run("should return error if notify Push fails", func(t *testing.T) {
@@ -588,9 +588,9 @@ func TestJobRunHandler(t *testing.T) {
 
 			jobRunHandler := v1beta1.NewJobRunHandler(logger, jobRunService, notifier)
 
-			resp, err := jobRunHandler.RegisterEvent(ctx, req)
+			resp, err := jobRunHandler.RegisterJobEvent(ctx, req)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "errors in RegisterEvent:\n some error")
+			assert.EqualError(t, err, "errors in RegisterJobEvent:\n some error")
 			assert.Equal(t, &pb.RegisterJobEventResponse{}, resp)
 		})
 	})

@@ -33,6 +33,7 @@ type OperatorRunRepository interface {
 	CreateOperatorRun(ctx context.Context, operatorName string, operator scheduler.OperatorType, jobRunID uuid.UUID, startTime time.Time) error
 	UpdateOperatorRun(ctx context.Context, operator scheduler.OperatorType, jobRunID uuid.UUID, eventTime time.Time, state string) error
 }
+
 type JobInputCompiler interface {
 	Compile(ctx context.Context, job *scheduler.Job, config scheduler.RunConfig, executedAt time.Time) (*scheduler.ExecutorInput, error)
 }
@@ -75,7 +76,7 @@ func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proje
 		if !errors.IsErrorType(err, errors.ErrNotFound) {
 			return nil, err
 		}
-		//todo: discuss with sandeep, add check here, to always return scheduleTime , for runs greater than a given date
+		//todo: later, always return scheduleTime , for runs greater than a given date
 		executedAt = config.ScheduledAt
 	} else {
 		executedAt = jobRun.StartTime
@@ -234,11 +235,7 @@ func (s JobRunService) updateJobRun(ctx context.Context, event scheduler.Event) 
 	jobRunStatus := event.Values["status"].(string)
 	endTime := event.EventTime
 
-	return s.repo.Update(ctx,
-		jobRun.ID,
-		endTime,
-		jobRunStatus,
-	)
+	return s.repo.Update(ctx, jobRun.ID, endTime, jobRunStatus)
 }
 
 func (s JobRunService) createOperatorRun(ctx context.Context, event scheduler.Event, operatorType scheduler.OperatorType) error {
@@ -248,7 +245,7 @@ func (s JobRunService) createOperatorRun(ctx context.Context, event scheduler.Ev
 	}
 
 	operatorRun, err := s.operatorRunRepo.GetOperatorRun(ctx, event.OperatorName, operatorType, jobRun.ID)
-	if err == nil {
+	if err != nil {
 		if !errors.IsErrorType(err, errors.ErrNotFound) {
 			return err
 		}
@@ -256,7 +253,7 @@ func (s JobRunService) createOperatorRun(ctx context.Context, event scheduler.Ev
 		if operatorRun.State == scheduler.StateRunning.String() {
 			// operator run exists but is not yet finished
 			// this is a scenario where the old run has not concluded and a new create request rises
-			// this is done to takle the sensor poke scenario, until the airflow task operator either fails/succeds/retries
+			// this is done to takle the sensor poke scenario, until the airflow task operator either fails/succeeds/retries
 			// optimus will not create newer entries on every poke cycle from the Scheduler
 			return nil
 		}

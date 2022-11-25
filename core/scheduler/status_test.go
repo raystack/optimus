@@ -39,7 +39,6 @@ func TestStatus(t *testing.T) {
 		resp := criteria.ExecutionStart(schedule)
 		expectedDate := time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)
 		assert.Equal(t, expectedDate, resp)
-
 	})
 	t.Run("ExecutionEndDate", func(t *testing.T) {
 		t.Run("when the current time matches one of the schedule times execution time means previous schedule", func(t *testing.T) {
@@ -56,7 +55,6 @@ func TestStatus(t *testing.T) {
 			resp := criteria.ExecutionEndDate(schedule)
 			expectedDate := time.Date(2021, 12, 31, 0, 0, 0, 0, time.UTC)
 			assert.Equal(t, expectedDate, resp)
-
 		})
 
 		startDate := time.Date(2022, 1, 1, 1, 1, 1, 0, time.UTC)
@@ -72,7 +70,6 @@ func TestStatus(t *testing.T) {
 		resp := criteria.ExecutionEndDate(schedule)
 		expectedDate := time.Date(2021, 12, 31, 0, 0, 0, 0, time.UTC)
 		assert.Equal(t, expectedDate, resp)
-
 	})
 	t.Run("State to string", func(t *testing.T) {
 		expectationsMap := map[string]scheduler.State{

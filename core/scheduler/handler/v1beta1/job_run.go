@@ -144,7 +144,7 @@ func (h JobRunHandler) UploadToScheduler(ctx context.Context, req *pb.UploadToSc
 	}, nil
 }
 
-func (h JobRunHandler) RegisterEvent(ctx context.Context, req *pb.RegisterJobEventRequest) (*pb.RegisterJobEventResponse, error) {
+func (h JobRunHandler) RegisterJobEvent(ctx context.Context, req *pb.RegisterJobEventRequest) (*pb.RegisterJobEventResponse, error) {
 	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "unable to get tenant")
@@ -161,10 +161,10 @@ func (h JobRunHandler) RegisterEvent(ctx context.Context, req *pb.RegisterJobEve
 		jobName, tnnt,
 	)
 	if err != nil {
-		return nil, errors.GRPCErr(err, "unable to parse event "+req.GetEvent().String())
+		return nil, errors.GRPCErr(err, "unable to parse event")
 	}
 
-	multierror := errors.NewMultiError("errors in RegisterEvent")
+	multierror := errors.NewMultiError("errors in RegisterJobEvent")
 
 	err = h.service.UpdateJobState(ctx, event)
 	if err != nil {
