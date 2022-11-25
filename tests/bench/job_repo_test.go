@@ -293,4 +293,37 @@ func BenchmarkJobRepository(b *testing.B) {
 			assert.NoError(b, actualError)
 		}
 	})
+
+	b.Run("Delete", func(b *testing.B) {
+		db := dbSetup()
+		repo := jobRepository.NewJobRepository(db)
+		maxNumberOfJobs := 50
+		jobs := make([]*job.Job, maxNumberOfJobs)
+		for i := 0; i < maxNumberOfJobs; i++ {
+			name := fmt.Sprintf("job_test_%d", i)
+			jobName, err := job.NameFrom(name)
+			assert.NoError(b, err)
+			destination := job.ResourceURN("dev.resource.sample")
+			jobs[i] = setup.Job(tnnt, jobName, destination)
+		}
+		storedJobs, err := repo.Add(ctx, jobs)
+		assert.Len(b, storedJobs, maxNumberOfJobs)
+		assert.NoError(b, err)
+
+		b.ResetTimer()
+
+		for i := b.N; i > 0; i-- {
+			var cleanHistory bool
+			if i < maxNumberOfJobs {
+				cleanHistory = true
+			}
+			jobIdx := i % maxNumberOfJobs
+			name := fmt.Sprintf("job_test_%d", jobIdx)
+			jobName, err := job.NameFrom(name)
+			assert.NoError(b, err)
+
+			actualError := repo.Delete(ctx, tnnt.ProjectName(), jobName, cleanHistory)
+			assert.NoError(b, actualError)
+		}
+	})
 }
