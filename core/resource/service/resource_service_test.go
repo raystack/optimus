@@ -159,7 +159,6 @@ func TestResourceService(t *testing.T) {
 		})
 
 		t.Run("returns nil if no error is encountered", func(t *testing.T) {
-
 			incoming, err := resource.NewResource("project.dataset", resource.KindDataset, resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
 

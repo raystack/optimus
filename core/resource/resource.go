@@ -242,8 +242,7 @@ func (r *Resource) MarkToCreate() error {
 }
 
 func (r *Resource) MarkToUpdate() error {
-	switch r.status {
-	case StatusValidationSuccess:
+	if r.status == StatusValidationSuccess {
 		r.status = StatusToUpdate
 		return nil
 	}
