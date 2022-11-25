@@ -18,10 +18,6 @@ type ResourceRepository interface {
 	ReadAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error)
 }
 
-type ResourceBatchRepo interface {
-	CreateOrUpdateAll(ctx context.Context, resources []*resource.Resource) error
-}
-
 type ResourceManager interface {
 	CreateResource(ctx context.Context, res *resource.Resource) error
 	UpdateResource(ctx context.Context, res *resource.Resource) error
@@ -34,17 +30,15 @@ type TenantDetailsGetter interface {
 
 type ResourceService struct {
 	repo              ResourceRepository
-	batch             ResourceBatchRepo
 	mgr               ResourceManager
 	tnntDetailsGetter TenantDetailsGetter
 
 	logger log.Logger
 }
 
-func NewResourceService(repo ResourceRepository, batch ResourceBatchRepo, mgr ResourceManager, tnntDetailsGetter TenantDetailsGetter, logger log.Logger) *ResourceService {
+func NewResourceService(logger log.Logger, repo ResourceRepository, mgr ResourceManager, tnntDetailsGetter TenantDetailsGetter) *ResourceService {
 	return &ResourceService{
 		repo:              repo,
-		batch:             batch,
 		mgr:               mgr,
 		tnntDetailsGetter: tnntDetailsGetter,
 		logger:            logger,
@@ -75,7 +69,7 @@ func (rs ResourceService) Create(ctx context.Context, incoming *resource.Resourc
 			return err
 		}
 	} else {
-		if !(existing.Status() == resource.StatusCreateFailure || existing.Status() == resource.StatusToCreate) {
+		if !resource.StatusForToCreate(existing.Status()) {
 			msg := fmt.Sprintf("cannot create resource [%s] since it already exists with status [%s]", incoming.FullName(), existing.Status())
 			rs.logger.Error(msg)
 			return errors.InvalidArgument(resource.EntityResource, msg)
@@ -103,10 +97,7 @@ func (rs ResourceService) Update(ctx context.Context, incoming *resource.Resourc
 		return err
 	}
 
-	if !(existing.Status() == resource.StatusToUpdate ||
-		existing.Status() == resource.StatusSuccess ||
-		existing.Status() == resource.StatusExistInStore ||
-		existing.Status() == resource.StatusUpdateFailure) {
+	if !(resource.StatusForToUpdate(existing.Status())) {
 		msg := fmt.Sprintf("cannot update resource [%s] with existing status [%s]", incoming.FullName(), existing.Status())
 		rs.logger.Error(msg)
 		return errors.InvalidArgument(resource.EntityResource, msg)
@@ -146,51 +137,68 @@ func (rs ResourceService) Deploy(ctx context.Context, tnnt tenant.Tenant, store 
 		}
 	}
 
-	existingResources, err := rs.repo.ReadAll(ctx, tnnt, store)
-	if err != nil {
-		multiError.Append(err)
-		rs.logger.Error("error reading all existing resources: %s", err)
-	}
+	toUpdateOnStore, err := rs.getResourcesToBatchUpdate(ctx, tnnt, store, resources)
+	multiError.Append(err)
 
-	existingMappedByFullName := rs.getResourcesMappedByFullName(existingResources)
-	resourcesToBatchUpdate := rs.getResourcesToBatchUpdate(resources, existingMappedByFullName)
-	if len(resourcesToBatchUpdate) == 0 {
+	if len(toUpdateOnStore) == 0 {
 		rs.logger.Warn("no resources to be batch updated")
+		return errors.MultiToError(multiError)
 	}
 
-	multiError.Append(rs.batch.CreateOrUpdateAll(ctx, resourcesToBatchUpdate))
-	multiError.Append(rs.mgr.BatchUpdate(ctx, store, resourcesToBatchUpdate))
+	multiError.Append(rs.mgr.BatchUpdate(ctx, store, toUpdateOnStore))
 	return errors.MultiToError(multiError)
 }
 
-func (rs ResourceService) getResourcesToBatchUpdate(incomings []*resource.Resource, existingMappedByFullName map[string]*resource.Resource) []*resource.Resource {
-	var output []*resource.Resource
+func (rs ResourceService) getResourcesToBatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, incomings []*resource.Resource) ([]*resource.Resource, error) {
+	existingResources, readErr := rs.repo.ReadAll(ctx, tnnt, store)
+	if readErr != nil {
+		rs.logger.Error("error reading all existing resources: %s", readErr)
+		return nil, readErr
+	}
+
+	existingMappedByFullName := createFullNameToResourceMap(existingResources)
+
+	var toUpdateOnStore []*resource.Resource
+	me := errors.NewMultiError("error in resources to batch update")
+
 	for _, incoming := range incomings {
 		if incoming.Status() != resource.StatusValidationSuccess {
 			continue
 		}
-		if existing, ok := existingMappedByFullName[incoming.FullName()]; ok {
-			if incoming.Equal(existing) && existing.Status() == resource.StatusSuccess {
-				incoming.MarkSkipped()
 
-				rs.logger.Warn("resource [%s] is skipped because it has no changes", existing.FullName())
-			} else {
-				incoming.MarkToUpdate()
-				output = append(output, incoming)
-
-				rs.logger.Info("resource [%s] will be updated", existing.FullName())
+		existing, ok := existingMappedByFullName[incoming.FullName()]
+		if !ok {
+			_ = incoming.MarkToCreate()
+			err := rs.repo.Create(ctx, incoming)
+			if err == nil {
+				toUpdateOnStore = append(toUpdateOnStore, incoming)
 			}
-		} else {
-			incoming.MarkToCreate()
-			output = append(output, incoming)
-
-			rs.logger.Info("resource [%s] will be created", incoming.FullName())
+			me.Append(err)
+			continue
 		}
+
+		if resource.StatusIsSuccess(existing.Status()) && incoming.Equal(existing) {
+			_ = incoming.MarkSkipped()
+			rs.logger.Warn("resource [%s] is skipped because it has no changes", existing.FullName())
+			continue
+		}
+
+		if resource.StatusForToCreate(existing.Status()) {
+			_ = incoming.MarkToCreate()
+		} else if resource.StatusForToUpdate(existing.Status()) {
+			_ = incoming.MarkToUpdate()
+		}
+
+		err := rs.repo.Update(ctx, incoming)
+		if err == nil {
+			toUpdateOnStore = append(toUpdateOnStore, incoming)
+		}
+		me.Append(err)
 	}
-	return output
+	return toUpdateOnStore, errors.MultiToError(me)
 }
 
-func (ResourceService) getResourcesMappedByFullName(resources []*resource.Resource) map[string]*resource.Resource {
+func createFullNameToResourceMap(resources []*resource.Resource) map[string]*resource.Resource {
 	output := make(map[string]*resource.Resource, len(resources))
 	for _, r := range resources {
 		output[r.FullName()] = r

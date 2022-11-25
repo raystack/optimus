@@ -58,28 +58,6 @@ func (r Repository) ReadAll(ctx context.Context, tnnt tenant.Tenant, store resou
 	return output, nil
 }
 
-func (r Repository) CreateOrUpdateAll(ctx context.Context, resources []*resource.Resource) error {
-	resourceModels := make([]*Resource, len(resources))
-	for i, res := range resources {
-		resourceModels[i] = fromResourceToModel(res)
-	}
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		multiErr := errors.NewMultiError("error updating resources status")
-		for _, m := range resourceModels {
-			if m.Status == resource.StatusToCreate.String() {
-				if err := r.create(tx, m); err != nil {
-					multiErr.Append(errors.Wrap(resource.EntityResource, "error creating resource to database", err))
-				}
-			} else if m.Status == resource.StatusToUpdate.String() {
-				if err := r.update(tx, m); err != nil {
-					multiErr.Append(errors.Wrap(resource.EntityResource, "error updating resource to database", err))
-				}
-			}
-		}
-		return errors.MultiToError(multiErr)
-	})
-}
-
 func (r Repository) UpdateStatus(ctx context.Context, resources ...*resource.Resource) error {
 	resourceModels := make([]*Resource, len(resources))
 	for i, res := range resources {

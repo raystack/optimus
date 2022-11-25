@@ -233,7 +233,7 @@ func (r *Resource) MarkSkipped() error {
 }
 
 func (r *Resource) MarkToCreate() error {
-	if r.status == StatusValidationSuccess || r.status == StatusCreateFailure {
+	if r.status == StatusValidationSuccess {
 		r.status = StatusToCreate
 		return nil
 	}
@@ -243,7 +243,7 @@ func (r *Resource) MarkToCreate() error {
 
 func (r *Resource) MarkToUpdate() error {
 	switch r.status {
-	case StatusValidationSuccess, StatusUpdateFailure, StatusSuccess, StatusExistInStore:
+	case StatusValidationSuccess:
 		r.status = StatusToUpdate
 		return nil
 	}

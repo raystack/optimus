@@ -140,7 +140,7 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 func (rh ResourceHandler) ListResourceSpecification(ctx context.Context, req *pb.ListResourceSpecificationRequest) (*pb.ListResourceSpecificationResponse, error) {
 	store, err := resource.FromStringToStore(req.GetDatastoreName())
 	if err != nil {
-		return nil, errors.GRPCErr(errors.InvalidArgument(resource.EntityResource, "invalid datastore name"), "invalid list resource request")
+		return nil, errors.GRPCErr(err, "invalid list resource request")
 	}
 
 	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
@@ -150,7 +150,7 @@ func (rh ResourceHandler) ListResourceSpecification(ctx context.Context, req *pb
 
 	resources, err := rh.service.GetAll(ctx, tnnt, store)
 	if err != nil {
-		return nil, errors.GRPCErr(err, "failed to retrieve jobs for project "+req.GetProjectName())
+		return nil, errors.GRPCErr(err, "failed to list resource for "+req.GetDatastoreName())
 	}
 
 	var resourceProtos []*pb.ResourceSpecification

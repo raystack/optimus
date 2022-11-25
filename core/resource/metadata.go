@@ -86,6 +86,21 @@ func FromStringToStatus(status string) Status {
 	}
 }
 
+func StatusForToCreate(status Status) bool {
+	return status == StatusCreateFailure || status == StatusToCreate
+}
+
+func StatusForToUpdate(status Status) bool {
+	return status == StatusSuccess ||
+		status == StatusToUpdate ||
+		status == StatusExistInStore ||
+		status == StatusUpdateFailure
+}
+
+func StatusIsSuccess(status Status) bool {
+	return status == StatusSuccess
+}
+
 type Metadata struct {
 	Version     int32
 	Description string
