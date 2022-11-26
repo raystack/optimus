@@ -591,7 +591,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
-				monitoringService,
+				nil,
 				nil,
 			)
 
@@ -617,7 +617,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
-				monitoringService,
+				nil,
 				nil,
 			)
 
