@@ -13,7 +13,7 @@ import (
 type colorFormatter int
 
 func (*colorFormatter) Format(entry *logrus.Entry) ([]byte, error) {
-	var colorcode = ColorWhite
+	var colorcode termenv.Color
 	switch entry.Level {
 	case logrus.ErrorLevel, logrus.FatalLevel, logrus.PanicLevel:
 		colorcode = ColorRed
