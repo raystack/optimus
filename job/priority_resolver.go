@@ -147,7 +147,7 @@ func (a *priorityResolver) buildMultiRootDependencyTree(jobSpecs []models.JobSpe
 		}
 	}
 
-	if err := multiRootTree.IsCyclic(); err != nil {
+	if err := multiRootTree.ValidateCyclic(); err != nil {
 		return nil, err
 	}
 	return multiRootTree, nil

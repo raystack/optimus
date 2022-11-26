@@ -669,7 +669,7 @@ func populateDownstreamDAGs(dagTree *tree.MultiRootTree, jobSpec models.JobSpec,
 		}
 	}
 
-	if err := dagTree.IsCyclic(); err != nil {
+	if err := dagTree.ValidateCyclic(); err != nil {
 		return nil, err
 	}
 

@@ -86,7 +86,7 @@ func (d *deployCommand) PreRunE(_ *cobra.Command, _ []string) error {
 }
 
 func (d *deployCommand) RunE(_ *cobra.Command, _ []string) error {
-	d.logger.Info("Registering project [%s] to [%s]", d.clientConfig.Project.Name, d.clientConfig.Host)
+	d.logger.Info(fmt.Sprintf("Registering project [%s] to [%s]", d.clientConfig.Project.Name, d.clientConfig.Host))
 	if err := project.RegisterProject(d.logger, d.clientConfig.Host, d.clientConfig.Project); err != nil {
 		return err
 	}
@@ -102,7 +102,7 @@ func (d *deployCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 	d.logger.Info("validation finished!\n")
 
-	d.logger.Info("Registering namespaces for [%s] to [%s]", d.clientConfig.Project.Name, d.clientConfig.Host)
+	d.logger.Info(fmt.Sprintf("Registering namespaces for [%s] to [%s]", d.clientConfig.Project.Name, d.clientConfig.Host))
 	if err := namespace.RegisterSelectedNamespaces(d.logger, d.clientConfig.Host, d.clientConfig.Project.Name, selectedNamespaces...); err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ func (d *deployCommand) deployJobs(conn *connectivity.Connectivity, selectedName
 	for _, namespace := range selectedNamespaces {
 		namespaceNames = append(namespaceNames, namespace.Name)
 	}
-	d.logger.Info("\n> Deploying jobs from namespaces [%s]", strings.Join(namespaceNames, ","))
+	d.logger.Info(fmt.Sprintf("\n> Deploying jobs from namespaces [%s]", strings.Join(namespaceNames, ",")))
 
 	stream, err := d.getJobStreamClient(conn)
 	if err != nil {
@@ -455,19 +455,19 @@ func PollJobDeployment(ctx context.Context, l log.Logger, jobSpecService pb.JobS
 			if len(resp.Failures) > 0 {
 				for _, failedJob := range resp.Failures {
 					if failedJob.GetJobName() != "" {
-						l.Error("Unable to deploy job %s: %s", failedJob.GetJobName(), failedJob.GetMessage())
+						l.Error(fmt.Sprintf("Unable to deploy job %s: %s", failedJob.GetJobName(), failedJob.GetMessage()))
 					} else {
-						l.Error("Job deployment failed: %s", failedJob.GetMessage())
+						l.Error(fmt.Sprintf("Job deployment failed: %s", failedJob.GetMessage()))
 					}
 				}
 			}
 			if len(resp.UnknownDependencies) > 0 {
 				l.Error("Unable to create sensors for below jobs:")
 				for jobName, dependencies := range resp.UnknownDependencies {
-					l.Error("- %s: invalid dependency name(s): %s.", jobName, dependencies)
+					l.Error(fmt.Sprintf("- %s: invalid dependency name(s): %s.", jobName, dependencies))
 				}
 			}
-			l.Error("Deployed %d/%d jobs.", resp.SuccessCount, resp.SuccessCount+resp.FailureCount)
+			l.Error(fmt.Sprintf("Deployed %d/%d jobs.", resp.SuccessCount, resp.SuccessCount+resp.FailureCount))
 			return errors.New("job deployment failed")
 		}
 
