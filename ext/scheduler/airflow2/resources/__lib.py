@@ -494,94 +494,115 @@ def get_run_type(context):
 
 # job level events
 def log_job_end(ds=None, **kwargs):
-    context = kwargs
-    meta = {
-        "event_type": "TYPE_JOB_SUCCESS", # later determine the status based on task statuses
-        "status": "FINISHED",
-    }
-    optimus_notify(context, meta)
+    try:
+        context = kwargs
+        meta = {
+            "event_type": "TYPE_JOB_SUCCESS", # later determine the status based on task statuses
+            "status": "FINISHED",
+        }
+        optimus_notify(context, meta)
+    except Exception as e:
+        print(e)
 
 def log_job_start(ds=None, **kwargs):
-    context = kwargs
-    meta = {
-        "event_type": "TYPE_JOB_START"
-    }
-    optimus_notify(context, meta)
+    try:
+        context = kwargs
+        meta = {
+            "event_type": "TYPE_JOB_START"
+        }
+        optimus_notify(context, meta)
+    except Exception as e:
+        print(e)
 
 # task level events
 def log_start_event(context, EVENT_NAME):
-    meta = {
-        "event_type": EVENT_NAME,
-        "status": "STARTED"
-    }
-    optimus_notify(context, meta)
+    try:
+        meta = {
+            "event_type": EVENT_NAME,
+            "status": "STARTED"
+        }
+        optimus_notify(context, meta)
+    except Exception as e:
+        print(e)
 
 def log_success_event(context):
-    if not should_relay_airflow_callbacks(context):
+    try:
+        if not should_relay_airflow_callbacks(context):
+            return
+        run_type = get_run_type(context)
+        meta = {
+            "event_type": "TYPE_{}_SUCCESS".format(run_type)
+        }
+        optimus_notify(context, meta)
         return
-    run_type = get_run_type(context)
-    meta = {
-        "event_type": "TYPE_{}_SUCCESS".format(run_type)
-    }
-    optimus_notify(context, meta)
-    return
+    except Exception as e:
+        print(e)
 
 def log_retry_event(context):
-    if not should_relay_airflow_callbacks(context):
+    try:
+        if not should_relay_airflow_callbacks(context):
+            return
+        run_type = get_run_type(context)
+        meta = {
+            "event_type": "TYPE_{}_RETRY".format(run_type)
+        }
+        optimus_notify(context, meta)
         return
-    run_type = get_run_type(context)
-    meta = {
-        "event_type": "TYPE_{}_RETRY".format(run_type)
-    }
-    optimus_notify(context, meta)
-    return
+    except Exception as e:
+        print(e)
 
 def log_failure_event(context):
-    if not should_relay_airflow_callbacks(context):
-        return
-    run_type = get_run_type(context)
+    try:
+        if not should_relay_airflow_callbacks(context):
+            return
+        run_type = get_run_type(context)
 
-    meta = {
-        "event_type": "TYPE_{}_FAIL".format(run_type)
-    }
-    if SCHEDULER_ERR_MSG in context.keys():
-        meta[SCHEDULER_ERR_MSG] = context[SCHEDULER_ERR_MSG]
+        meta = {
+            "event_type": "TYPE_{}_FAIL".format(run_type)
+        }
+        if SCHEDULER_ERR_MSG in context.keys():
+            meta[SCHEDULER_ERR_MSG] = context[SCHEDULER_ERR_MSG]
 
-    optimus_notify(context, meta)
+        optimus_notify(context, meta)
+    except Exception as e:
+        print(e)
 
 
 def optimus_sla_miss_notify(dag, task_list, blocking_task_list, slas, blocking_tis):
-    params = dag.params
-    optimus_client = OptimusAPIClient(params["optimus_hostname"])
+    try:
+        params = dag.params
+        optimus_client = OptimusAPIClient(params["optimus_hostname"])
 
-    slamiss_alert = int(Variable.get("slamiss_alert", default_var=1))
-    if slamiss_alert != 1:
-        return "suppressed slamiss alert"
+        slamiss_alert = int(Variable.get("slamiss_alert", default_var=1))
+        if slamiss_alert != 1:
+            return "suppressed slamiss alert"
 
-    sla_list = []
-    for sla in slas:
-        sla_list.append({
-            'task_id': sla.task_id,
-            'dag_id': sla.dag_id,
-            'scheduled_at': sla.execution_date.strftime(TIMESTAMP_FORMAT),
-            'timestamp': sla.timestamp.strftime(TIMESTAMP_FORMAT)
-        })
+        sla_list = []
+        for sla in slas:
+            sla_list.append({
+                'task_id': sla.task_id,
+                'dag_id': sla.dag_id,
+                'scheduled_at': sla.execution_date.strftime(TIMESTAMP_FORMAT),
+                'timestamp': sla.timestamp.strftime(TIMESTAMP_FORMAT)
+            })
 
-    current_dag_id = dag.dag_id
-    webserver_url = conf.get(section='webserver', key='base_url')
-    message = {
-        "slas": sla_list,
-        "job_url": "{}/tree?dag_id={}".format(webserver_url, current_dag_id),
-    }
+        current_dag_id = dag.dag_id
+        webserver_url = conf.get(section='webserver', key='base_url')
+        message = {
+            "slas": sla_list,
+            "job_url": "{}/tree?dag_id={}".format(webserver_url, current_dag_id),
+        }
 
-    event = {
-        "type": "TYPE_SLA_MISS",
-        "value": message,
-    }
-    # post event
-    resp = optimus_client.notify_event(params["project_name"], params["namespace"], params["job_name"], event)
-    print("posted event ", params, event, resp)
-    return
+        event = {
+            "type": "TYPE_SLA_MISS",
+            "value": message,
+        }
+        # post event
+        resp = optimus_client.notify_event(params["project_name"], params["namespace"], params["job_name"], event)
+        print("posted event ", params, event, resp)
+        return
+    except Exception as e:
+        print(e)
 
 
 # everything below this is here for legacy reasons, should be cleaned up in future
