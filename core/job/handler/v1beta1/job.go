@@ -410,7 +410,7 @@ func (jh *JobHandler) JobInspect(ctx context.Context, req *pb.JobInspectRequest)
 		if err != nil {
 			return nil, err
 		}
-		subjectJob, err = jh.jobService.Get(ctx, jobTenant, jobName, false)
+		subjectJob, err = jh.jobService.Get(ctx, jobTenant, jobName)
 		if err != nil {
 			return nil, err
 		}

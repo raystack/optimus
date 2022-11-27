@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/odpf/optimus/core/job/dto"
 	"io"
 	"testing"
 	"time"
@@ -837,20 +838,13 @@ func (_m *JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobNa
 	return r0, r1
 }
 
-// Get provides a mock function with given fields: ctx, filters
-func (_m *JobService) Get(ctx context.Context, filters ...filter.FilterOpt) (*job.Job, error) {
-	_va := make([]interface{}, len(filters))
-	for _i := range filters {
-		_va[_i] = filters[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
+// Get provides a mock function with given fields: ctx, jobTenant, jobName
+func (_m *JobService) Get(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name) (*job.Job, error) {
+	ret := _m.Called(ctx, jobTenant, jobName)
 
 	var r0 *job.Job
-	if rf, ok := ret.Get(0).(func(context.Context, ...filter.FilterOpt) *job.Job); ok {
-		r0 = rf(ctx, filters...)
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, job.Name) *job.Job); ok {
+		r0 = rf(ctx, jobTenant, jobName)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*job.Job)
@@ -858,8 +852,8 @@ func (_m *JobService) Get(ctx context.Context, filters ...filter.FilterOpt) (*jo
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, ...filter.FilterOpt) error); ok {
-		r1 = rf(ctx, filters...)
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.Tenant, job.Name) error); ok {
+		r1 = rf(ctx, jobTenant, jobName)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -890,6 +884,98 @@ func (_m *JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) (
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, ...filter.FilterOpt) error); ok {
 		r1 = rf(ctx, filters...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetDownstream provides a mock function with given fields: ctx, _a1, localJob
+func (_m *JobService) GetDownstream(ctx context.Context, _a1 *job.Job, localJob bool) ([]*dto.Downstream, error) {
+	ret := _m.Called(ctx, _a1, localJob)
+
+	var r0 []*dto.Downstream
+	if rf, ok := ret.Get(0).(func(context.Context, *job.Job, bool) []*dto.Downstream); ok {
+		r0 = rf(ctx, _a1, localJob)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*dto.Downstream)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *job.Job, bool) error); ok {
+		r1 = rf(ctx, _a1, localJob)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetNewJobToInspect provides a mock function with given fields: ctx, jobTenant, spec
+func (_m *JobService) GetNewJobToInspect(ctx context.Context, jobTenant tenant.Tenant, spec *job.Spec) (*job.Job, error) {
+	ret := _m.Called(ctx, jobTenant, spec)
+
+	var r0 *job.Job
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, *job.Spec) *job.Job); ok {
+		r0 = rf(ctx, jobTenant, spec)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*job.Job)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.Tenant, *job.Spec) error); ok {
+		r1 = rf(ctx, jobTenant, spec)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetTaskInfo provides a mock function with given fields: ctx, task
+func (_m *JobService) GetTaskInfo(ctx context.Context, task *job.Task) (*job.Task, error) {
+	ret := _m.Called(ctx, task)
+
+	var r0 *job.Task
+	if rf, ok := ret.Get(0).(func(context.Context, *job.Task) *job.Task); ok {
+		r0 = rf(ctx, task)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*job.Task)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *job.Task) error); ok {
+		r1 = rf(ctx, task)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetUpstreamsToInspect provides a mock function with given fields: ctx, subjectJob, localJob
+func (_m *JobService) GetUpstreamsToInspect(ctx context.Context, subjectJob *job.Job, localJob bool) ([]*job.Upstream, error) {
+	ret := _m.Called(ctx, subjectJob, localJob)
+
+	var r0 []*job.Upstream
+	if rf, ok := ret.Get(0).(func(context.Context, *job.Job, bool) []*job.Upstream); ok {
+		r0 = rf(ctx, subjectJob, localJob)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*job.Upstream)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *job.Job, bool) error); ok {
+		r1 = rf(ctx, subjectJob, localJob)
 	} else {
 		r1 = ret.Error(1)
 	}
