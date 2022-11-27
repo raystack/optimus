@@ -40,7 +40,8 @@ func TestUpstreamResolver(t *testing.T) {
 	assert.NoError(t, err)
 	jobTaskConfig, err := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
 	assert.NoError(t, err)
-	jobTask := job.NewTaskBuilder("bq2bq", jobTaskConfig).Build()
+	taskName, _ := job.TaskNameFrom("sample-task")
+	jobTask := job.NewTaskBuilder(taskName, jobTaskConfig).Build()
 
 	t.Run("BulkResolve", func(t *testing.T) {
 		t.Run("resolve upstream internally", func(t *testing.T) {
@@ -59,8 +60,8 @@ func TestUpstreamResolver(t *testing.T) {
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
 
-			upstreamB, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "inferred")
-			upstreamC, _ := job.NewUpstreamResolved("job-C", "", "resource-C", sampleTenant, "static")
+			upstreamB, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "inferred", taskName, false)
+			upstreamC, _ := job.NewUpstreamResolved("job-C", "", "resource-C", sampleTenant, "static", taskName, false)
 			upstreams := []*job.Upstream{upstreamB, upstreamC}
 			jobNameWithUpstreams := map[job.Name][]*job.Upstream{
 				jobA.Spec().Name(): upstreams,
@@ -95,15 +96,15 @@ func TestUpstreamResolver(t *testing.T) {
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
 
-			internalUpstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
+			internalUpstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static", taskName, false)
 			jobNameWithUpstreams := map[job.Name][]*job.Upstream{
 				jobA.Spec().Name(): {internalUpstream},
 			}
 
 			jobRepo.On("GetJobNameWithInternalUpstreams", ctx, project.Name(), []job.Name{specA.Name()}).Return(jobNameWithUpstreams, nil)
 
-			externalUpstreamC, _ := job.NewUpstreamResolved("job-C", "external-host", "resource-C", externalTenant, "static")
-			externalUpstreamD, _ := job.NewUpstreamResolved("job-D", "external-host", "resource-D", externalTenant, "inferred")
+			externalUpstreamC, _ := job.NewUpstreamResolved("job-C", "external-host", "resource-C", externalTenant, "static", taskName, true)
+			externalUpstreamD, _ := job.NewUpstreamResolved("job-D", "external-host", "resource-D", externalTenant, "inferred", taskName, true)
 			externalUpstreamResolver.On("Resolve", ctx, mock.Anything).Return([]*job.Upstream{externalUpstreamC, externalUpstreamD}, nil, nil)
 
 			expectedJobWitUpstreams := []*job.WithUpstream{
@@ -154,7 +155,7 @@ func TestUpstreamResolver(t *testing.T) {
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
 
-			internalUpstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
+			internalUpstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static", taskName, false)
 			jobNameWithUpstreams := map[job.Name][]*job.Upstream{
 				jobA.Spec().Name(): {internalUpstream},
 			}
@@ -194,13 +195,13 @@ func TestUpstreamResolver(t *testing.T) {
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
 
-			internalUpstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
+			internalUpstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static", taskName, false)
 			jobNameWithUpstreams := map[job.Name][]*job.Upstream{
 				jobA.Spec().Name(): {internalUpstream},
 			}
 
-			externalUpstreamC, _ := job.NewUpstreamResolved("job-C", "external-host", "resource-C", externalTenant, "static")
-			externalUpstreamD, _ := job.NewUpstreamResolved("job-D", "external-host", "resource-D", externalTenant, "inferred")
+			externalUpstreamC, _ := job.NewUpstreamResolved("job-C", "external-host", "resource-C", externalTenant, "static", taskName, true)
+			externalUpstreamD, _ := job.NewUpstreamResolved("job-D", "external-host", "resource-D", externalTenant, "inferred", taskName, true)
 			jobRepo.On("GetJobNameWithInternalUpstreams", ctx, project.Name(), []job.Name{specA.Name()}).Return(jobNameWithUpstreams, nil)
 
 			externalUpstreamResolver.On("Resolve", ctx, mock.Anything).Return([]*job.Upstream{externalUpstreamC, externalUpstreamD}, nil, errors.New("internal error"))
@@ -232,7 +233,7 @@ func TestUpstreamResolver(t *testing.T) {
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreams)
 			jobs := []*job.Job{jobA}
 
-			internalUpstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static")
+			internalUpstream, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static", taskName, false)
 			jobNameWithUpstreams := map[job.Name][]*job.Upstream{
 				jobA.Spec().Name(): {internalUpstream},
 			}
@@ -280,14 +281,14 @@ func TestUpstreamResolver(t *testing.T) {
 			jobCDestination, _ := job.ResourceURNFrom("resource-C")
 			jobC := job.NewJob(sampleTenant, specC, jobCDestination, nil)
 
-			internalUpstreamB, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "inferred")
+			internalUpstreamB, _ := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "inferred", taskName, false)
 			jobRepo.On("GetAllByResourceDestination", ctx, jobASources[0]).Return([]*job.Job{jobB}, nil)
 			jobRepo.On("GetAllByResourceDestination", ctx, jobASources[1]).Return([]*job.Job{}, nil)
 
-			internalUpstreamC, _ := job.NewUpstreamResolved("job-C", "", "resource-C", sampleTenant, "static")
+			internalUpstreamC, _ := job.NewUpstreamResolved("job-C", "", "resource-C", sampleTenant, "static", taskName, false)
 			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specC.Name()).Return(jobC, nil)
 
-			externalUpstreamD, _ := job.NewUpstreamResolved("job-D", "external-host", "resource-D", externalTenant, "inferred")
+			externalUpstreamD, _ := job.NewUpstreamResolved("job-D", "external-host", "resource-D", externalTenant, "inferred", taskName, true)
 			externalUpstreamResolver.On("Resolve", ctx, mock.Anything).Return([]*job.Upstream{externalUpstreamD}, nil, nil)
 
 			expectedUpstream := []*job.Upstream{internalUpstreamB, internalUpstreamC, externalUpstreamD}

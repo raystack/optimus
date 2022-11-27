@@ -277,7 +277,12 @@ func (JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstr
 			me.Append(err)
 			continue
 		}
-		upstream, err := job.NewUpstreamResolved(upstreamName, "", resourceURN, upstreamTenant, storeUpstream.UpstreamType)
+		taskName, err := job.TaskNameFrom(storeUpstream.UpstreamTaskName)
+		if err != nil {
+			me.Append(err)
+			continue
+		}
+		upstream, err := job.NewUpstreamResolved(upstreamName, "", resourceURN, upstreamTenant, storeUpstream.UpstreamType, taskName, storeUpstream.UpstreamExternal)
 		if err != nil {
 			me.Append(err)
 			continue
@@ -393,9 +398,11 @@ type JobWithUpstream struct {
 	UpstreamResourceURN   string `json:"upstream_resource_urn"`
 	UpstreamProjectName   string `json:"upstream_project_name"`
 	UpstreamNamespaceName string `json:"upstream_namespace_name"`
+	UpstreamTaskName      string `json:"upstream_task_name"`
 	UpstreamHost          string `json:"upstream_host"`
 	UpstreamType          string `json:"upstream_type"`
 	UpstreamState         string `json:"upstream_state"`
+	UpstreamExternal      bool   `json:"upstream_external"`
 }
 
 func (j JobWithUpstream) getJobFullName() string {
@@ -478,11 +485,11 @@ func toJobUpstream(jobWithUpstream *job.WithUpstream) []*JobWithUpstream {
 	for _, upstream := range jobWithUpstream.Upstreams() {
 		var upstreamProjectName, upstreamNamespaceName string
 		// TODO: re-check this implementation as project and namespace name is not supposed to be empty within a tenant
-		if upstream.Tenant().ProjectName() != "" {
-			upstreamProjectName = upstream.Tenant().ProjectName().String()
+		if upstream.ProjectName() != "" {
+			upstreamProjectName = upstream.ProjectName().String()
 		}
-		if upstream.Tenant().NamespaceName() != "" {
-			upstreamNamespaceName = upstream.Tenant().NamespaceName().String()
+		if upstream.NamespaceName() != "" {
+			upstreamNamespaceName = upstream.NamespaceName().String()
 		}
 		jobUpstreams = append(jobUpstreams, &JobWithUpstream{
 			JobName:               jobWithUpstream.Name().String(),

@@ -71,7 +71,7 @@ func (u UpstreamResolver) resolveFromInternal(ctx context.Context, subjectJob *j
 		if len(jobUpstreams) == 0 {
 			continue
 		}
-		upstream, err := job.NewUpstreamResolved(jobUpstreams[0].Spec().Name(), "", jobUpstreams[0].Destination(), jobUpstreams[0].Tenant(), "inferred")
+		upstream, err := job.NewUpstreamResolved(jobUpstreams[0].Spec().Name(), "", jobUpstreams[0].Destination(), jobUpstreams[0].Tenant(), "inferred", jobUpstreams[0].Spec().Task().Name(), false)
 		if err != nil {
 			me.Append(err)
 			continue
@@ -89,7 +89,7 @@ func (u UpstreamResolver) resolveFromInternal(ctx context.Context, subjectJob *j
 		if jobUpstream == nil {
 			continue
 		}
-		upstream, err := job.NewUpstreamResolved(upstreamJobName, "", jobUpstream.Destination(), jobUpstream.Tenant(), "static")
+		upstream, err := job.NewUpstreamResolved(upstreamJobName, "", jobUpstream.Destination(), jobUpstream.Tenant(), "static", jobUpstream.Spec().Task().Name(), false)
 		if err != nil {
 			me.Append(err)
 			continue

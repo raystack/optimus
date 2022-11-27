@@ -126,6 +126,10 @@ func (o *OptimusResourceManager) toOptimusDependency(response jobSpecificationRe
 	if err != nil {
 		return nil, err
 	}
+	taskName, err := job.TaskNameFrom(response.Job.TaskName)
+	if err != nil {
+		return nil, err
+	}
 	resourceURN, _ := job.ResourceURNFrom(unresolvedDependency.ResourceURN)
-	return job.NewUpstreamResolved(jobName, o.config.Host, resourceURN, jobTenant, dependencyType)
+	return job.NewUpstreamResolved(jobName, o.config.Host, resourceURN, jobTenant, dependencyType, taskName, true)
 }

@@ -20,6 +20,7 @@ func TestExternalUpstreamResolver(t *testing.T) {
 	externalTenant, _ := tenant.NewTenant("external-project", "external-namespace")
 	resourceManager := new(ResourceManager)
 	optimusResourceManagers := []resourcemanager.ResourceManager{resourceManager}
+	taskName, _ := job.TaskNameFrom("sample-task")
 
 	t.Run("fetchExternalUpstreams", func(t *testing.T) {
 		t.Run("resolves upstream externally", func(t *testing.T) {
@@ -27,8 +28,8 @@ func TestExternalUpstreamResolver(t *testing.T) {
 				{JobName: "job-B", ProjectName: externalTenant.ProjectName().String()},
 				{ResourceURN: "resource-C"},
 			}
-			upstreamB, _ := job.NewUpstreamResolved("job-B", "external-host", "resource-B", externalTenant, "static")
-			upstreamC, _ := job.NewUpstreamResolved("job-C", "external-host", "resource-C", externalTenant, "inferred")
+			upstreamB, _ := job.NewUpstreamResolved("job-B", "external-host", "resource-B", externalTenant, "static", taskName, true)
+			upstreamC, _ := job.NewUpstreamResolved("job-C", "external-host", "resource-C", externalTenant, "inferred", taskName, true)
 			resourceManager.On("GetOptimusUpstreams", ctx, rawUpstreams[0]).Return([]*job.Upstream{upstreamB}, nil).Once()
 			resourceManager.On("GetOptimusUpstreams", ctx, rawUpstreams[1]).Return([]*job.Upstream{upstreamC}, nil).Once()
 
@@ -44,7 +45,7 @@ func TestExternalUpstreamResolver(t *testing.T) {
 				{ResourceURN: "resource-C"},
 			}
 			unresolvedUpstream := job.NewUpstreamUnresolved("", "resource-C", "")
-			upstreamB, _ := job.NewUpstreamResolved("job-B", "external-host", "resource-B", externalTenant, "static")
+			upstreamB, _ := job.NewUpstreamResolved("job-B", "external-host", "resource-B", externalTenant, "static", taskName, true)
 			resourceManager.On("GetOptimusUpstreams", ctx, rawUpstreams[0]).Return([]*job.Upstream{upstreamB}, nil).Once()
 			resourceManager.On("GetOptimusUpstreams", ctx, rawUpstreams[1]).Return([]*job.Upstream{}, errors.New("connection error")).Once()
 

@@ -203,26 +203,28 @@ func toBasicInfoSectionProto(jobDetail *job.Job, logMessages []*pb.Log) *pb.JobI
 
 func toUpstreamProtos(upstreams []*job.Upstream) ([]*pb.JobInspectResponse_JobDependency, []*pb.JobInspectResponse_UpstreamSection_UnknownDependencies) {
 	var internalUpstreamProtos []*pb.JobInspectResponse_JobDependency
+	var externalUpstreamProtos []*pb.JobInspectResponse_JobDependency
 	var unknownUpstreamProtos []*pb.JobInspectResponse_UpstreamSection_UnknownDependencies
 	for _, upstream := range upstreams {
 		if upstream.State() != job.UpstreamStateResolved {
 			unknownUpstreamProtos = append(unknownUpstreamProtos, &pb.JobInspectResponse_UpstreamSection_UnknownDependencies{
 				JobName:     upstream.Name().String(),
-				ProjectName: upstream.Tenant().ProjectName().String(),
+				ProjectName: upstream.ProjectName().String(),
 			})
 			continue
 		}
-		//TODO: differentiate internal and external
-
-		internalUpstream := &pb.JobInspectResponse_JobDependency{
+		upstreamProto := &pb.JobInspectResponse_JobDependency{
 			Name:          upstream.Name().String(),
 			Host:          upstream.Host(),
-			ProjectName:   upstream.Tenant().ProjectName().String(),
-			NamespaceName: upstream.Tenant().NamespaceName().String(),
-			//TODO: properly set these values
-			TaskName: "",
+			ProjectName:   upstream.ProjectName().String(),
+			NamespaceName: upstream.NamespaceName().String(),
+			TaskName:      upstream.TaskName().String(),
 		}
-		internalUpstreamProtos = append(internalUpstreamProtos, internalUpstream)
+		if upstream.External() {
+			externalUpstreamProtos = append(externalUpstreamProtos, upstreamProto)
+		} else {
+			internalUpstreamProtos = append(internalUpstreamProtos, upstreamProto)
+		}
 	}
 	return internalUpstreamProtos, unknownUpstreamProtos
 }

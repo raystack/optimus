@@ -125,9 +125,10 @@ type Upstream struct {
 	name     Name
 	host     string
 	resource ResourceURN
+	taskName TaskName
 
-	// TODO: project & namespace name can be empty for unresolved
-	tenant tenant.Tenant
+	projectName   tenant.ProjectName
+	namespaceName tenant.NamespaceName
 
 	_type UpstreamType
 	state UpstreamState
@@ -135,17 +136,25 @@ type Upstream struct {
 	external bool
 }
 
-func NewUpstreamResolved(name Name, host string, resource ResourceURN, tnnt tenant.Tenant, typeStr string) (*Upstream, error) {
+func NewUpstreamResolved(name Name, host string, resource ResourceURN, jobTenant tenant.Tenant, typeStr string, taskName TaskName, external bool) (*Upstream, error) {
 	upstreamType, err := upstreamTypeFrom(typeStr)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Upstream{name: name, host: host, resource: resource, tenant: tnnt,
-		_type: upstreamType, state: UpstreamStateResolved}, nil
+	return &Upstream{
+		name:          name,
+		host:          host,
+		resource:      resource,
+		projectName:   jobTenant.ProjectName(),
+		namespaceName: jobTenant.NamespaceName(),
+		taskName:      taskName,
+		_type:         upstreamType, state: UpstreamStateResolved,
+		external: external,
+	}, nil
 }
 
-func NewUpstreamUnresolved(name Name, resource ResourceURN, projectName string) *Upstream {
+func NewUpstreamUnresolved(name Name, resource ResourceURN, projectNameStr string) *Upstream {
 	var _type UpstreamType
 	if name != "" {
 		_type = UpstreamTypeStatic
@@ -153,21 +162,17 @@ func NewUpstreamUnresolved(name Name, resource ResourceURN, projectName string) 
 		_type = UpstreamTypeInferred
 	}
 
-	var tnnt tenant.Tenant
-	if projectName != "" {
-		tnnt, _ = tenant.NewTenant(projectName, "")
+	var projectName tenant.ProjectName
+	if projectNameStr != "" {
+		projectName, _ = tenant.ProjectNameFrom(projectNameStr)
 	}
 
-	return &Upstream{name: name, resource: resource, tenant: tnnt, _type: _type,
+	return &Upstream{name: name, resource: resource, projectName: projectName, _type: _type,
 		state: UpstreamStateUnresolved}
 }
 
 func (u Upstream) Name() Name {
 	return u.name
-}
-
-func (u Upstream) Tenant() tenant.Tenant {
-	return u.tenant
 }
 
 func (u Upstream) Host() string {
@@ -184,6 +189,22 @@ func (u Upstream) Type() UpstreamType {
 
 func (u Upstream) State() UpstreamState {
 	return u.state
+}
+
+func (u Upstream) ProjectName() tenant.ProjectName {
+	return u.projectName
+}
+
+func (u Upstream) NamespaceName() tenant.NamespaceName {
+	return u.namespaceName
+}
+
+func (u Upstream) External() bool {
+	return u.external
+}
+
+func (u Upstream) TaskName() TaskName {
+	return u.taskName
 }
 
 type UpstreamType string
@@ -225,7 +246,7 @@ type Upstreams []*Upstream
 func (u Upstreams) ToUpstreamFullNameMap() map[string]bool {
 	fullNameUpstreamMap := make(map[string]bool)
 	for _, upstream := range u {
-		fullName := upstream.tenant.ProjectName().String() + "/" + upstream.name.String()
+		fullName := upstream.ProjectName().String() + "/" + upstream.name.String()
 		fullNameUpstreamMap[fullName] = true
 	}
 	return fullNameUpstreamMap
