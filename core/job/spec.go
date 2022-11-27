@@ -440,7 +440,7 @@ type TaskName string
 
 func TaskNameFrom(name string) (TaskName, error) {
 	if name == "" {
-		return "", errors.InvalidArgument(EntityJob, "name is empty")
+		return "", errors.InvalidArgument(EntityJob, "task name is empty")
 	}
 	return TaskName(name), nil
 }

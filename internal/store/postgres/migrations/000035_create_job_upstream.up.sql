@@ -6,9 +6,11 @@ CREATE TABLE IF NOT EXISTS job_upstream (
     upstream_resource_urn VARCHAR(300),
     upstream_project_name VARCHAR(100),
     upstream_namespace_name VARCHAR(100),
+    upstream_task_name VARCHAR(200),
     upstream_host VARCHAR(50),
     upstream_type VARCHAR(15) NOT NULL,
     upstream_state VARCHAR(15) NOT NULL,
+    upstream_external BOOLEAN,
 
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL,

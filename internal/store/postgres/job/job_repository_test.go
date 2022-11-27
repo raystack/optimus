@@ -68,7 +68,9 @@ func TestPostgresJobRepository(t *testing.T) {
 	assert.NoError(t, err)
 	jobTaskConfig, err := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
 	assert.NoError(t, err)
-	jobTask := job.NewTaskBuilder("bq2bq", jobTaskConfig).Build()
+	taskName, err := job.TaskNameFrom("bq2bq")
+	assert.NoError(t, err)
+	jobTask := job.NewTaskBuilder(taskName, jobTaskConfig).Build()
 
 	host := "sample-host"
 	upstreamType := "inferred"
@@ -271,9 +273,8 @@ func TestPostgresJobRepository(t *testing.T) {
 			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB})
 			assert.NoError(t, err)
 
-			expectedUpstream, _ := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), tenantDetails.ToTenant(), "inferred")
+			expectedUpstream, _ := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), tenantDetails.ToTenant(), "inferred", taskName, false)
 
-			// TODO: consider using this error
 			upstreams, err := jobRepo.GetJobNameWithInternalUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
 			assert.NoError(t, err)
 			assert.Equal(t, expectedUpstream, upstreams[jobSpecA.Name()][0])
@@ -299,7 +300,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB})
 			assert.NoError(t, err)
 
-			expectedUpstream, _ := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), tenantDetails.ToTenant(), "static")
+			expectedUpstream, _ := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), tenantDetails.ToTenant(), "static", taskName, false)
 
 			upstreams, err := jobRepo.GetJobNameWithInternalUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
 			assert.NoError(t, err)
@@ -329,8 +330,8 @@ func TestPostgresJobRepository(t *testing.T) {
 			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB, jobC})
 			assert.NoError(t, err)
 
-			upstreamB, _ := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), tenantDetails.ToTenant(), "static")
-			upstreamC, _ := job.NewUpstreamResolved(jobSpecC.Name(), "", jobC.Destination(), tenantDetails.ToTenant(), "inferred")
+			upstreamB, _ := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), tenantDetails.ToTenant(), "static", taskName, false)
+			upstreamC, _ := job.NewUpstreamResolved(jobSpecC.Name(), "", jobC.Destination(), tenantDetails.ToTenant(), "inferred", taskName, false)
 
 			expectedUpstreams := []*job.Upstream{
 				upstreamB,
@@ -349,10 +350,10 @@ func TestPostgresJobRepository(t *testing.T) {
 		t.Run("inserts job upstreams", func(t *testing.T) {
 			db := dbSetup()
 
-			upstreamB, err := job.NewUpstreamResolved("jobB", host, "resource-B", sampleTenant, upstreamType)
+			upstreamB, err := job.NewUpstreamResolved("jobB", host, "resource-B", sampleTenant, upstreamType, taskName, false)
 			assert.NoError(t, err)
 
-			upstreamC, err := job.NewUpstreamResolved("jobC", host, "resource-C", sampleTenant, upstreamType)
+			upstreamC, err := job.NewUpstreamResolved("jobC", host, "resource-C", sampleTenant, upstreamType, taskName, false)
 			assert.NoError(t, err)
 
 			upstreams := []*job.Upstream{upstreamB, upstreamC}
@@ -364,10 +365,10 @@ func TestPostgresJobRepository(t *testing.T) {
 		t.Run("inserts job upstreams including unresolved upstreams", func(t *testing.T) {
 			db := dbSetup()
 
-			upstreamB, err := job.NewUpstreamResolved("jobB", host, "resource-B", sampleTenant, upstreamType)
+			upstreamB, err := job.NewUpstreamResolved("jobB", host, "resource-B", sampleTenant, upstreamType, taskName, false)
 			assert.NoError(t, err)
 
-			upstreamC, err := job.NewUpstreamResolved("jobC", host, "resource-C", sampleTenant, upstreamType)
+			upstreamC, err := job.NewUpstreamResolved("jobC", host, "resource-C", sampleTenant, upstreamType, taskName, false)
 			assert.NoError(t, err)
 
 			upstreamD := job.NewUpstreamUnresolved("", "resource-D", "")
@@ -384,7 +385,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			sampleTenant, err := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
 			assert.NoError(t, err)
 
-			upstreamB, err := job.NewUpstreamResolved("jobB", host, "resource-B", sampleTenant, upstreamType)
+			upstreamB, err := job.NewUpstreamResolved("jobB", host, "resource-B", sampleTenant, upstreamType, taskName, false)
 			assert.NoError(t, err)
 
 			upstreams := []*job.Upstream{upstreamB}
@@ -393,7 +394,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			jobUpstreamRepo := postgres.NewJobRepository(db)
 			assert.Nil(t, jobUpstreamRepo.ReplaceUpstreams(ctx, []*job.WithUpstream{jobWithUpstream}))
 
-			upstreamC, err := job.NewUpstreamResolved("jobC", host, "resource-C", sampleTenant, upstreamType)
+			upstreamC, err := job.NewUpstreamResolved("jobC", host, "resource-C", sampleTenant, upstreamType, taskName, false)
 			assert.NoError(t, err)
 			upstreams = []*job.Upstream{upstreamC}
 			jobWithUpstream = job.NewWithUpstream(jobA, upstreams)
@@ -414,8 +415,8 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.NoError(t, err)
 			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", []job.ResourceURN{"dev.resource.sample_c"})
 
-			upstreamCStatic, _ := job.NewUpstreamResolved("sample-job-C", "host-1", "dev.resource.sample_c", sampleTenant, "static")
-			upstreamCInferred, _ := job.NewUpstreamResolved("sample-job-C", "host-1", "dev.resource.sample_c", sampleTenant, "inferred")
+			upstreamCStatic, _ := job.NewUpstreamResolved("sample-job-C", "host-1", "dev.resource.sample_c", sampleTenant, "static", taskName, false)
+			upstreamCInferred, _ := job.NewUpstreamResolved("sample-job-C", "host-1", "dev.resource.sample_c", sampleTenant, "inferred", taskName, false)
 
 			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstreamCStatic})
 			jobBWithUpstream := job.NewWithUpstream(jobB, []*job.Upstream{upstreamCInferred})
@@ -441,7 +442,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.NoError(t, err)
 			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", []job.ResourceURN{"dev.resource.sample_c"})
 
-			upstreamCStatic, _ := job.NewUpstreamResolved("sample-job-C", "host-1", "dev.resource.sample_c", sampleTenant, "static")
+			upstreamCStatic, _ := job.NewUpstreamResolved("sample-job-C", "host-1", "dev.resource.sample_c", sampleTenant, "static", taskName, false)
 			upstreamCUnresolved := job.NewUpstreamUnresolved("sample-job-C", "", proj.Name().String())
 
 			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstreamCStatic})
@@ -515,7 +516,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, addedJob)
 
-			upstreamCInferred, _ := job.NewUpstreamResolved("sample-job-B", "host-1", "dev.resource.sample_b", sampleTenant, "inferred")
+			upstreamCInferred, _ := job.NewUpstreamResolved("sample-job-B", "host-1", "dev.resource.sample_b", sampleTenant, "inferred", taskName, false)
 			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstreamCInferred})
 			err = jobRepo.ReplaceUpstreams(ctx, []*job.WithUpstream{jobAWithUpstream})
 			assert.NoError(t, err)

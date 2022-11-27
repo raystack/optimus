@@ -187,7 +187,9 @@ SELECT
 	j.project_name AS upstream_project_name,
 	j.namespace_name AS upstream_namespace_name,
 	j.destination AS upstream_resource_urn,
-	'static' AS upstream_type
+	j.task_name AS upstream_task_name,
+	'static' AS upstream_type,
+	false AS upstream_external
 FROM static_upstreams su
 JOIN job j ON 
 	(su.static_upstream = j.name and su.project_name = j.project_name) OR 
@@ -202,7 +204,9 @@ SELECT
 	j.project_name AS upstream_project_name,
 	j.namespace_name AS upstream_namespace_name,
 	j.destination AS upstream_resource_urn,
-	'inferred' AS upstream_type
+	j.task_name AS upstream_task_name,
+	'inferred' AS upstream_type,
+	false AS upstream_external
 FROM inferred_upstreams id
 JOIN job j ON id.source = j.destination;
 `
@@ -222,17 +226,19 @@ JOIN job j ON id.source = j.destination;
 }
 
 func (j JobRepository) toJobNameWithUpstreams(storeJobsWithUpstreams []JobWithUpstream) (map[job.Name][]*job.Upstream, error) {
-	me := errors.NewMultiError("to job name wit upstreams errors")
+	me := errors.NewMultiError("to job name with upstreams errors")
 	upstreamsPerJobName := groupUpstreamsPerJobFullName(storeJobsWithUpstreams)
 
 	jobNameWithUpstreams := make(map[job.Name][]*job.Upstream)
 	for _, storeUpstreams := range upstreamsPerJobName {
+		if len(storeUpstreams) == 0 {
+			continue
+		}
 		upstreams, err := j.toUpstreams(storeUpstreams)
 		if err != nil {
 			me.Append(err)
 			continue
 		}
-		// TODO: check this as it can raise error if `storeUpstreams` is empty
 		name, err := job.NameFrom(storeUpstreams[0].JobName)
 		if err != nil {
 			me.Append(err)
@@ -433,13 +439,15 @@ func (JobRepository) insertUpstreams(tx *gorm.DB, storageJobUpstreams []*JobWith
 	insertJobUpstreamQuery := `
 INSERT INTO job_upstream (
 	job_name, project_name, upstream_job_name, upstream_resource_urn, 
-	upstream_project_name, upstream_namespace_name, upstream_host, 
+	upstream_project_name, upstream_namespace_name, upstream_host,
+	upstream_task_name, upstream_external,
 	upstream_type, upstream_state,
 	created_at, updated_at
 )
 VALUES (
 	?, ?, ?, ?,
 	?, ?, ?, 
+	?, ?,
 	?, ?, 
 	NOW(), NOW()
 );
@@ -449,8 +457,9 @@ VALUES (
 		result := tx.Exec(insertJobUpstreamQuery,
 			upstream.JobName, upstream.ProjectName,
 			upstream.UpstreamJobName, upstream.UpstreamResourceURN,
-			upstream.UpstreamProjectName, upstream.UpstreamNamespaceName,
-			upstream.UpstreamHost, upstream.UpstreamType, upstream.UpstreamState)
+			upstream.UpstreamProjectName, upstream.UpstreamNamespaceName, upstream.UpstreamHost,
+			upstream.UpstreamTaskName, upstream.UpstreamExternal,
+			upstream.UpstreamType, upstream.UpstreamState)
 
 		if result.Error != nil {
 			return errors.Wrap(job.EntityJob, "unable to save job upstream", result.Error)
@@ -498,9 +507,11 @@ func toJobUpstream(jobWithUpstream *job.WithUpstream) []*JobWithUpstream {
 			UpstreamResourceURN:   upstream.Resource().String(),
 			UpstreamProjectName:   upstreamProjectName,
 			UpstreamNamespaceName: upstreamNamespaceName,
+			UpstreamTaskName:      upstream.TaskName().String(),
 			UpstreamHost:          upstream.Host(),
 			UpstreamType:          upstream.Type().String(),
 			UpstreamState:         upstream.State().String(),
+			UpstreamExternal:      upstream.External(),
 		})
 	}
 	return jobUpstreams
