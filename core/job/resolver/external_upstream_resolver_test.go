@@ -21,7 +21,7 @@ func TestExternalUpstreamResolver(t *testing.T) {
 	resourceManager := new(ResourceManager)
 	optimusResourceManagers := []resourcemanager.ResourceManager{resourceManager}
 
-	t.Run("FetchExternalUpstreams", func(t *testing.T) {
+	t.Run("fetchExternalUpstreams", func(t *testing.T) {
 		t.Run("resolves upstream externally", func(t *testing.T) {
 			rawUpstreams := []*dto.RawUpstream{
 				{JobName: "job-B", ProjectName: externalTenant.ProjectName().String()},
@@ -33,7 +33,7 @@ func TestExternalUpstreamResolver(t *testing.T) {
 			resourceManager.On("GetOptimusUpstreams", ctx, rawUpstreams[1]).Return([]*job.Upstream{upstreamC}, nil).Once()
 
 			extUpstreamResolver := resolver.NewTestExternalUpstreamResolver(optimusResourceManagers)
-			result, unresolvedDep, err := extUpstreamResolver.FetchExternalUpstreams(ctx, rawUpstreams)
+			result, unresolvedDep, err := extUpstreamResolver.Resolve(ctx, rawUpstreams)
 			assert.Nil(t, unresolvedDep)
 			assert.Nil(t, err)
 			assert.EqualValues(t, []*job.Upstream{upstreamB, upstreamC}, result)
@@ -43,13 +43,14 @@ func TestExternalUpstreamResolver(t *testing.T) {
 				{JobName: "job-B", ProjectName: externalTenant.ProjectName().String()},
 				{ResourceURN: "resource-C"},
 			}
+			unresolvedUpstream := job.NewUpstreamUnresolved("", "resource-C", "")
 			upstreamB, _ := job.NewUpstreamResolved("job-B", "external-host", "resource-B", externalTenant, "static")
 			resourceManager.On("GetOptimusUpstreams", ctx, rawUpstreams[0]).Return([]*job.Upstream{upstreamB}, nil).Once()
 			resourceManager.On("GetOptimusUpstreams", ctx, rawUpstreams[1]).Return([]*job.Upstream{}, errors.New("connection error")).Once()
 
 			extUpstreamResolver := resolver.NewTestExternalUpstreamResolver(optimusResourceManagers)
-			result, unresolvedDep, err := extUpstreamResolver.FetchExternalUpstreams(ctx, rawUpstreams)
-			assert.Equal(t, []*dto.RawUpstream{rawUpstreams[1]}, unresolvedDep)
+			result, unresolvedDep, err := extUpstreamResolver.Resolve(ctx, rawUpstreams)
+			assert.Equal(t, []*job.Upstream{unresolvedUpstream}, unresolvedDep)
 			assert.NotNil(t, err)
 			assert.Equal(t, []*job.Upstream{upstreamB}, result)
 		})

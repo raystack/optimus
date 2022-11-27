@@ -3,7 +3,6 @@ package resolver
 import (
 	"context"
 	"fmt"
-
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/odpf/optimus/config"
@@ -40,7 +39,21 @@ type ResourceManager interface {
 	GetOptimusUpstreams(ctx context.Context, unresolvedDependency *dto.RawUpstream) ([]*job.Upstream, error)
 }
 
-func (e *extUpstreamResolver) FetchExternalUpstreams(ctx context.Context, unresolvedUpstreams []*dto.RawUpstream) ([]*job.Upstream, []*dto.RawUpstream, error) {
+func (e *extUpstreamResolver) Resolve(ctx context.Context, upstreamsToResolve []*dto.RawUpstream) ([]*job.Upstream, []*job.Upstream, error) {
+	externalUpstreams, unresolvedUpstreams, err := e.fetchExternalUpstreams(ctx, upstreamsToResolve)
+
+	var unknownUpstreams []*job.Upstream
+	for _, upstream := range unresolvedUpstreams {
+		// allow empty upstreamName and upstreamResourceURN
+		upstreamName, _ := job.NameFrom(upstream.JobName)
+		upstreamResourceURN, _ := job.ResourceURNFrom(upstream.ResourceURN)
+		unknownUpstreams = append(unknownUpstreams, job.NewUpstreamUnresolved(upstreamName, upstreamResourceURN, upstream.ProjectName))
+	}
+
+	return externalUpstreams, unknownUpstreams, err
+}
+
+func (e *extUpstreamResolver) fetchExternalUpstreams(ctx context.Context, unresolvedUpstreams []*dto.RawUpstream) ([]*job.Upstream, []*dto.RawUpstream, error) {
 	var unknownUpstreams []*dto.RawUpstream
 	var externalUpstreams []*job.Upstream
 	var allErrors error
