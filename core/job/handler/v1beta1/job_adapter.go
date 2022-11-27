@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
@@ -185,4 +186,69 @@ func toConfig(configs []*pb.JobConfigItem) (*job.Config, error) {
 		configMap[config.Name] = config.Value
 	}
 	return job.NewConfig(configMap)
+}
+
+func toBasicInfoSectionProto(jobDetail *job.Job, logMessages []*pb.Log) *pb.JobInspectResponse_BasicInfoSection {
+	var sources []string
+	for _, source := range jobDetail.Sources() {
+		sources = append(sources, source.String())
+	}
+	return &pb.JobInspectResponse_BasicInfoSection{
+		Destination: jobDetail.Destination().String(),
+		Source:      sources,
+		Job:         toJobProto(jobDetail),
+		Notice:      logMessages,
+	}
+}
+
+func toUpstreamProtos(upstreams []*job.Upstream) ([]*pb.JobInspectResponse_JobDependency, []*pb.JobInspectResponse_UpstreamSection_UnknownDependencies) {
+	var internalUpstreamProtos []*pb.JobInspectResponse_JobDependency
+	var unknownUpstreamProtos []*pb.JobInspectResponse_UpstreamSection_UnknownDependencies
+	for _, upstream := range upstreams {
+		if upstream.State() != job.UpstreamStateResolved {
+			unknownUpstreamProtos = append(unknownUpstreamProtos, &pb.JobInspectResponse_UpstreamSection_UnknownDependencies{
+				JobName:     upstream.Name().String(),
+				ProjectName: upstream.Tenant().ProjectName().String(),
+			})
+			continue
+		}
+		//TODO: differentiate internal and external
+
+		internalUpstream := &pb.JobInspectResponse_JobDependency{
+			Name:          upstream.Name().String(),
+			Host:          upstream.Host(),
+			ProjectName:   upstream.Tenant().ProjectName().String(),
+			NamespaceName: upstream.Tenant().NamespaceName().String(),
+			//TODO: properly set these values
+			TaskName: "",
+		}
+		internalUpstreamProtos = append(internalUpstreamProtos, internalUpstream)
+	}
+	return internalUpstreamProtos, unknownUpstreamProtos
+}
+
+func toHTTPUpstreamProtos(httpUpstreamSpecs []*job.SpecHTTPUpstream) []*pb.HttpDependency {
+	var httpUpstreamProtos []*pb.HttpDependency
+	for _, httpUpstream := range httpUpstreamSpecs {
+		httpUpstreamProtos = append(httpUpstreamProtos, &pb.HttpDependency{
+			Name:    httpUpstream.Name().String(),
+			Url:     httpUpstream.URL(),
+			Headers: httpUpstream.Headers(),
+			Params:  httpUpstream.Params(),
+		})
+	}
+	return httpUpstreamProtos
+}
+
+func toDownstreamProtos(downstreamJobs []*dto.Downstream) []*pb.JobInspectResponse_JobDependency {
+	var downstreamProtos []*pb.JobInspectResponse_JobDependency
+	for _, downstreamJob := range downstreamJobs {
+		downstreamProtos = append(downstreamProtos, &pb.JobInspectResponse_JobDependency{
+			Name:          downstreamJob.Name,
+			ProjectName:   downstreamJob.ProjectName,
+			NamespaceName: downstreamJob.NamespaceName,
+			TaskName:      downstreamJob.TaskName,
+		})
+	}
+	return downstreamProtos
 }

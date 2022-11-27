@@ -3,6 +3,7 @@ package v1beta1
 import (
 	"context"
 	"fmt"
+	"github.com/odpf/optimus/core/job/dto"
 	"io"
 	"strings"
 
@@ -42,6 +43,10 @@ type JobService interface {
 	ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, logWriter writer.LogWriter) error
 	Refresh(ctx context.Context, projectName tenant.ProjectName, logWriter writer.LogWriter, filters ...filter.FilterOpt) error
 	Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, logWriter writer.LogWriter) error
+
+	GetNewJobToInspect(ctx context.Context, jobTenant tenant.Tenant, spec *job.Spec) (*job.Job, error)
+	GetUpstreamsToInspect(ctx context.Context, subjectJob *job.Job, localJob bool) ([]*job.Upstream, error)
+	GetDownstream(ctx context.Context, job *job.Job, localJob bool) ([]*dto.Downstream, error)
 }
 
 func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *pb.AddJobSpecificationsRequest) (*pb.AddJobSpecificationsResponse, error) {
@@ -387,5 +392,71 @@ func (jh *JobHandler) GetJobTask(ctx context.Context, req *pb.GetJobTaskRequest)
 
 	return &pb.GetJobTaskResponse{
 		Task: jobTaskSpec,
+	}, nil
+}
+
+func (jh *JobHandler) JobInspect(ctx context.Context, req *pb.JobInspectRequest) (*pb.JobInspectResponse, error) {
+	jobTenant, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
+	if err != nil {
+		return nil, err
+	}
+
+	// Get job based on the given job name
+	var subjectJob *job.Job
+	localJob := false
+	if req.GetJobName() != "" {
+		// get from db
+		jobName, err := job.NameFrom(req.JobName)
+		if err != nil {
+			return nil, err
+		}
+		subjectJob, err = jh.jobService.Get(ctx, jobTenant, jobName, false)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// provided from client
+		jobSpec, err := fromJobProto(req.GetSpec())
+		if err != nil {
+			errMsg := fmt.Sprintf("%s: cannot adapt job specification %s", err.Error(), jobSpec.Name())
+			jh.l.Error(errMsg)
+			return nil, err
+		}
+		localJob = true
+	}
+
+	upstreamLogs := &writer.BufferedLogger{}
+	upstreams, err := jh.jobService.GetUpstreamsToInspect(ctx, subjectJob, localJob)
+	if err != nil {
+		return nil, err
+	}
+
+	// get downstream
+	downstreamLogs := &writer.BufferedLogger{}
+	downstreams, err := jh.jobService.GetDownstream(ctx, subjectJob, localJob)
+	if err != nil {
+		return nil, err
+	}
+
+	// convert to proto
+	internalUpstreamProto, unknownUpstreamProto := toUpstreamProtos(upstreams)
+	httpUpstreamProto := toHTTPUpstreamProtos(subjectJob.Spec().Upstream().HTTPUpstreams())
+	downstreamProto := toDownstreamProtos(downstreams)
+
+	return &pb.JobInspectResponse{
+		//TODO: set proper value for log messages
+		BasicInfo: toBasicInfoSectionProto(subjectJob, nil),
+		Upstreams: &pb.JobInspectResponse_UpstreamSection{
+			//TODO: set proper value for external and internal upstream
+			ExternalDependency:  nil,
+			InternalDependency:  internalUpstreamProto,
+			HttpDependency:      httpUpstreamProto,
+			UnknownDependencies: unknownUpstreamProto,
+			Notice:              upstreamLogs.Messages,
+		},
+		Downstreams: &pb.JobInspectResponse_DownstreamSection{
+			DownstreamJobs: downstreamProto,
+			Notice:         downstreamLogs.Messages,
+		},
 	}, nil
 }

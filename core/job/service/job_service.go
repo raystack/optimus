@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/odpf/optimus/core/job/dto"
 
 	"github.com/odpf/salt/log"
 
@@ -60,10 +61,15 @@ type JobRepository interface {
 	GetAllByResourceDestination(ctx context.Context, resourceDestination job.ResourceURN) ([]*job.Job, error)
 	GetAllByTenant(ctx context.Context, jobTenant tenant.Tenant) ([]*job.Job, error)
 	GetAllByProjectName(ctx context.Context, projectName tenant.ProjectName) ([]*job.Job, error)
+
+	GetUpstreams(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*job.Upstream, error)
+	GetDownstreamByDestination(ctx context.Context, projectName tenant.ProjectName, destination job.ResourceURN) ([]*dto.Downstream, error)
+	GetDownstreamByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*dto.Downstream, error)
 }
 
 type UpstreamResolver interface {
-	Resolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job, logWriter writer.LogWriter) (jobWithUpstreams []*job.WithUpstream, err error)
+	BulkResolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job, logWriter writer.LogWriter) (jobWithUpstreams []*job.WithUpstream, err error)
+	Resolve(ctx context.Context, subjectJob *job.Job) ([]*job.Upstream, error)
 }
 
 func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) error {
@@ -79,7 +85,7 @@ func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*j
 	addedJobs, err := j.repo.Add(ctx, jobs)
 	me.Append(err)
 
-	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, jobTenant.ProjectName(), addedJobs, logWriter)
+	jobsWithUpstreams, err := j.upstreamResolver.BulkResolve(ctx, jobTenant.ProjectName(), addedJobs, logWriter)
 	me.Append(err)
 
 	err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
@@ -101,7 +107,7 @@ func (j JobService) Update(ctx context.Context, jobTenant tenant.Tenant, specs [
 	updatedJobs, err := j.repo.Update(ctx, jobs)
 	me.Append(err)
 
-	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, jobTenant.ProjectName(), updatedJobs, logWriter)
+	jobsWithUpstreams, err := j.upstreamResolver.BulkResolve(ctx, jobTenant.ProjectName(), updatedJobs, logWriter)
 	me.Append(err)
 
 	err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
@@ -148,6 +154,7 @@ func (j JobService) GetTaskInfo(ctx context.Context, task *job.Task) (*job.Task,
 	).WithInfo(taskInfo).Build(), nil
 }
 
+// TODO: GetByFilter?
 func (j JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) ([]*job.Job, error) {
 	f := filter.NewFilter(filters...)
 
@@ -249,7 +256,7 @@ func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName,
 	jobs, err := j.GetAll(ctx, filters...)
 	me.Append(err)
 
-	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, projectName, jobs, logWriter)
+	jobsWithUpstreams, err := j.upstreamResolver.BulkResolve(ctx, projectName, jobs, logWriter)
 	me.Append(err)
 
 	err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
@@ -307,7 +314,7 @@ func (j JobService) resolveAndSaveUpstreams(ctx context.Context, projectName ten
 	}
 
 	me := errors.NewMultiError("resolve and save upstream errors")
-	jobsWithUpstreams, err := j.upstreamResolver.Resolve(ctx, projectName, allJobsToResolve, logWriter)
+	jobsWithUpstreams, err := j.upstreamResolver.BulkResolve(ctx, projectName, allJobsToResolve, logWriter)
 	me.Append(err)
 
 	err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
@@ -529,4 +536,27 @@ func findOrCreateDAGNode(dagTree *tree.MultiRootTree, dag tree.TreeData) *tree.T
 		dagTree.AddNode(node)
 	}
 	return node
+}
+
+func (j JobService) GetUpstreamsToInspect(ctx context.Context, subjectJob *job.Job, localJob bool) ([]*job.Upstream, error) {
+	if localJob {
+		return j.upstreamResolver.Resolve(ctx, subjectJob)
+	}
+	return j.repo.GetUpstreams(ctx, subjectJob.ProjectName(), subjectJob.Spec().Name())
+}
+
+func (j JobService) GetNewJobToInspect(ctx context.Context, jobTenant tenant.Tenant, spec *job.Spec) (*job.Job, error) {
+	tenantWithDetails, err := j.tenantDetailsGetter.GetDetails(ctx, jobTenant)
+	if err != nil {
+		return nil, err
+	}
+
+	return j.generateJob(ctx, tenantWithDetails, spec)
+}
+
+func (j JobService) GetDownstream(ctx context.Context, subjectJob *job.Job, localJob bool) ([]*dto.Downstream, error) {
+	if localJob {
+		return j.repo.GetDownstreamByDestination(ctx, subjectJob.ProjectName(), subjectJob.Destination())
+	}
+	return j.repo.GetDownstreamByJobName(ctx, subjectJob.ProjectName(), subjectJob.Spec().Name())
 }

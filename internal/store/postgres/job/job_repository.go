@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"fmt"
+	"github.com/odpf/optimus/core/job/dto"
 
 	"gorm.io/gorm"
 
@@ -599,4 +600,81 @@ AND namespace_name = ?
 	}
 
 	return jobs, errors.MultiToError(me)
+}
+
+func (j JobRepository) GetUpstreams(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*job.Upstream, error) {
+	query := `
+SELECT
+	*
+FROM job_upstream
+WHERE project_name=? AND job_name=?;
+`
+
+	var storeJobsWithUpstreams []JobWithUpstream
+	if err := j.db.WithContext(ctx).Raw(query, projectName.String(), jobName.String()).
+		Scan(&storeJobsWithUpstreams).Error; err != nil {
+		return nil, errors.Wrap(job.EntityJob, "error while getting job with upstreams", err)
+	}
+
+	return j.toUpstreams(storeJobsWithUpstreams)
+}
+
+func (j JobRepository) GetDownstreamByDestination(ctx context.Context, projectName tenant.ProjectName, destination job.ResourceURN) ([]*dto.Downstream, error) {
+	query := `
+SELECT
+	name, project_name, namespace_name, task_name
+FROM job
+WHERE ? = ANY(sources);
+`
+
+	var storeDownstreams []Downstream
+	if err := j.db.WithContext(ctx).Raw(query, projectName.String(), destination.String()).
+		Scan(&storeDownstreams).Error; err != nil {
+		return nil, errors.Wrap(job.EntityJob, "error while getting downstream by destination", err)
+	}
+
+	var downstreams []*dto.Downstream
+	for _, storeDownstream := range storeDownstreams {
+		downstreams = append(downstreams, &dto.Downstream{
+			Name:          storeDownstream.JobName,
+			ProjectName:   storeDownstream.ProjectName,
+			NamespaceName: storeDownstream.NamespaceName,
+			TaskName:      storeDownstream.TaskName,
+		})
+	}
+	return downstreams, nil
+}
+
+type Downstream struct {
+	JobName       string `json:"job_name"`
+	ProjectName   string `json:"project_name"`
+	NamespaceName string `json:"namespace_name"`
+	TaskName      string `json:"task_name"`
+}
+
+func (j JobRepository) GetDownstreamByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*dto.Downstream, error) {
+	query := `
+SELECT
+	j.name, j.project_name, j.namespace_name, j.task_name
+FROM job_upstream ju
+JOIN job j ON (ju.job_name = j.name AND ju.project_name = j.project_name)
+WHERE upstream_project_name=? AND upstream_job_name=?;
+`
+
+	var storeDownstreams []Downstream
+	if err := j.db.WithContext(ctx).Raw(query, projectName.String(), jobName.String()).
+		Scan(&storeDownstreams).Error; err != nil {
+		return nil, errors.Wrap(job.EntityJob, "error while getting downstream by job name", err)
+	}
+
+	var downstreams []*dto.Downstream
+	for _, storeDownstream := range storeDownstreams {
+		downstreams = append(downstreams, &dto.Downstream{
+			Name:          storeDownstream.JobName,
+			ProjectName:   storeDownstream.ProjectName,
+			NamespaceName: storeDownstream.NamespaceName,
+			TaskName:      storeDownstream.TaskName,
+		})
+	}
+	return downstreams, nil
 }

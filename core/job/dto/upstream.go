@@ -9,3 +9,12 @@ type RawUpstream struct {
 func (r RawUpstream) IsStatic() bool {
 	return r.JobName != ""
 }
+
+type Downstream struct {
+	Name string
+
+	ProjectName   string
+	NamespaceName string
+
+	TaskName string
+}

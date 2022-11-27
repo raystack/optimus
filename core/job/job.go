@@ -125,9 +125,14 @@ type Upstream struct {
 	name     Name
 	host     string
 	resource ResourceURN
-	tenant   tenant.Tenant
-	_type    UpstreamType
-	state    UpstreamState
+
+	// TODO: project & namespace name can be empty for unresolved
+	tenant tenant.Tenant
+
+	_type UpstreamType
+	state UpstreamState
+
+	external bool
 }
 
 func NewUpstreamResolved(name Name, host string, resource ResourceURN, tnnt tenant.Tenant, typeStr string) (*Upstream, error) {
