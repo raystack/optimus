@@ -1430,8 +1430,8 @@ func TestJobService(t *testing.T) {
 		})
 	})
 
-	t.Run("GetNewJobToInspect", func(t *testing.T) {
-		t.Run("should return a job given a spec", func(t *testing.T) {
+	t.Run("GetJobBasicInfo", func(t *testing.T) {
+		t.Run("should return job basic info and its logger for user given job spec", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
@@ -1454,11 +1454,39 @@ func TestJobService(t *testing.T) {
 			jobASources := []job.ResourceURN{"job-B"}
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobASources, nil)
 
+			jobRepo.On("GetAllByResourceDestination", ctx, jobADestination).Return([]*job.Job{}, nil)
+
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
-			result, err := jobService.GetNewJobToInspect(ctx, sampleTenant, specA)
-			assert.NoError(t, err)
+			result, logger := jobService.GetJobBasicInfo(ctx, sampleTenant, "", specA)
+			assert.Nil(t, logger.Messages)
+			assert.Equal(t, jobA, result)
+		})
+		t.Run("should return job basic info and its logger for existing job spec", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobASources := []job.ResourceURN{"job-B"}
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
+
+			jobRepo.On("GetByJobName", ctx, project.Name(), specA.Name()).Return(jobA, nil)
+			jobRepo.On("GetAllByResourceDestination", ctx, jobADestination).Return([]*job.Job{}, nil)
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
+			result, logger := jobService.GetJobBasicInfo(ctx, sampleTenant, specA.Name(), nil)
+			assert.Nil(t, logger.Messages)
 			assert.Equal(t, jobA, result)
 		})
 	})

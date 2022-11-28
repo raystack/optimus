@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/odpf/optimus/core/job/dto"
+	"strings"
 
 	"github.com/odpf/salt/log"
 
@@ -535,20 +536,67 @@ func findOrCreateDAGNode(dagTree *tree.MultiRootTree, dag tree.TreeData) *tree.T
 	return node
 }
 
+func (j JobService) GetJobBasicInfo(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, spec *job.Spec) (*job.Job, writer.BufferedLogger) {
+	var subjectJob *job.Job
+	var logger writer.BufferedLogger
+	var err error
+	if spec != nil {
+		tenantWithDetails, err := j.tenantDetailsGetter.GetDetails(ctx, jobTenant)
+		if err != nil {
+			logger.Write(writer.LogLevelError, fmt.Sprintf("unable to get tenant detail, err: %v", err))
+			return nil, logger
+		}
+		subjectJob, err = j.generateJob(ctx, tenantWithDetails, spec)
+		if err != nil {
+			logger.Write(writer.LogLevelError, fmt.Sprintf("unable to generate job, err: %v", err))
+			return nil, logger
+		}
+	} else {
+		subjectJob, err = j.Get(ctx, jobTenant, jobName)
+		if err != nil {
+			logger.Write(writer.LogLevelError, fmt.Sprintf("unable to get job, err: %v", err))
+			return nil, logger
+		}
+	}
+
+	if len(subjectJob.Sources()) == 0 {
+		logger.Write(writer.LogLevelInfo, "no job sources detected")
+	}
+	if err := subjectJob.Spec().Validate(); err != nil {
+		logger.Write(writer.LogLevelError, fmt.Sprintf("job validation failed, err: %v", err))
+	}
+	if subjectJob.Spec().Schedule().CatchUp() {
+		logger.Write(writer.LogLevelWarning, "catchup is enabled")
+	}
+
+	if dupDestJobNames, err := j.getJobNamesWithSameDestination(ctx, subjectJob); err != nil {
+		logger.Write(writer.LogLevelError, "could not perform duplicate job destination check, err: "+err.Error())
+	} else if dupDestJobNames != "" {
+		logger.Write(writer.LogLevelWarning, "job already exists with same Destination: "+subjectJob.Destination().String()+" existing jobNames: "+dupDestJobNames)
+	}
+	return subjectJob, logger
+}
+
+func (j JobService) getJobNamesWithSameDestination(ctx context.Context, subjectJob *job.Job) (string, error) {
+	sameDestinationJobs, err := j.repo.GetAllByResourceDestination(ctx, subjectJob.Destination())
+	if err != nil {
+		return "", err
+	}
+	var jobNames []string
+	for _, sameDestinationJob := range sameDestinationJobs {
+		if sameDestinationJob.FullName() == subjectJob.FullName() {
+			continue
+		}
+		jobNames = append(jobNames, sameDestinationJob.GetName())
+	}
+	return strings.Join(jobNames, ", "), nil
+}
+
 func (j JobService) GetUpstreamsToInspect(ctx context.Context, subjectJob *job.Job, localJob bool) ([]*job.Upstream, error) {
 	if localJob {
 		return j.upstreamResolver.Resolve(ctx, subjectJob)
 	}
 	return j.repo.GetUpstreams(ctx, subjectJob.ProjectName(), subjectJob.Spec().Name())
-}
-
-func (j JobService) GetNewJobToInspect(ctx context.Context, jobTenant tenant.Tenant, spec *job.Spec) (*job.Job, error) {
-	tenantWithDetails, err := j.tenantDetailsGetter.GetDetails(ctx, jobTenant)
-	if err != nil {
-		return nil, err
-	}
-
-	return j.generateJob(ctx, tenantWithDetails, spec)
 }
 
 func (j JobService) GetDownstream(ctx context.Context, subjectJob *job.Job, localJob bool) ([]*dto.Downstream, error) {

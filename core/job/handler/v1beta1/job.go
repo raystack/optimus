@@ -44,7 +44,7 @@ type JobService interface {
 	Refresh(ctx context.Context, projectName tenant.ProjectName, logWriter writer.LogWriter, filters ...filter.FilterOpt) error
 	Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, logWriter writer.LogWriter) error
 
-	GetNewJobToInspect(ctx context.Context, jobTenant tenant.Tenant, spec *job.Spec) (*job.Job, error)
+	GetJobBasicInfo(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, spec *job.Spec) (*job.Job, writer.BufferedLogger)
 	GetUpstreamsToInspect(ctx context.Context, subjectJob *job.Job, localJob bool) ([]*job.Upstream, error)
 	GetDownstream(ctx context.Context, job *job.Job, localJob bool) ([]*dto.Downstream, error)
 }
@@ -401,22 +401,16 @@ func (jh *JobHandler) JobInspect(ctx context.Context, req *pb.JobInspectRequest)
 		return nil, err
 	}
 
-	// Get job based on the given job name
-	var subjectJob *job.Job
 	localJob := false
+	var jobName job.Name
+	var jobSpec *job.Spec
 	if req.GetJobName() != "" {
-		// get from db
-		jobName, err := job.NameFrom(req.JobName)
-		if err != nil {
-			return nil, err
-		}
-		subjectJob, err = jh.jobService.Get(ctx, jobTenant, jobName)
+		jobName, err = job.NameFrom(req.JobName)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		// provided from client
-		jobSpec, err := fromJobProto(req.GetSpec())
+		jobSpec, err = fromJobProto(req.GetSpec())
 		if err != nil {
 			errMsg := fmt.Sprintf("%s: cannot adapt job specification %s", err.Error(), jobSpec.Name())
 			jh.l.Error(errMsg)
@@ -425,30 +419,32 @@ func (jh *JobHandler) JobInspect(ctx context.Context, req *pb.JobInspectRequest)
 		localJob = true
 	}
 
+	subjectJob, basicInfoLogger := jh.jobService.GetJobBasicInfo(ctx, jobTenant, jobName, jobSpec)
+
 	upstreamLogs := &writer.BufferedLogger{}
 	upstreams, err := jh.jobService.GetUpstreamsToInspect(ctx, subjectJob, localJob)
 	if err != nil {
 		return nil, err
 	}
 
-	// get downstream
 	downstreamLogs := &writer.BufferedLogger{}
 	downstreams, err := jh.jobService.GetDownstream(ctx, subjectJob, localJob)
 	if err != nil {
 		return nil, err
 	}
 
-	// convert to proto
-	internalUpstreamProto, unknownUpstreamProto := toUpstreamProtos(upstreams)
-	httpUpstreamProto := toHTTPUpstreamProtos(subjectJob.Spec().Upstream().HTTPUpstreams())
+	internalUpstreamProto, externalUpstreamProto, unknownUpstreamProto := toUpstreamProtos(upstreams)
 	downstreamProto := toDownstreamProtos(downstreams)
 
+	var httpUpstreamProto []*pb.HttpDependency
+	if subjectJob.Spec().Upstream() != nil {
+		httpUpstreamProto = toHTTPUpstreamProtos(subjectJob.Spec().Upstream().HTTPUpstreams())
+	}
+
 	return &pb.JobInspectResponse{
-		//TODO: set proper value for log messages
-		BasicInfo: toBasicInfoSectionProto(subjectJob, nil),
+		BasicInfo: toBasicInfoSectionProto(subjectJob, basicInfoLogger.Messages),
 		Upstreams: &pb.JobInspectResponse_UpstreamSection{
-			//TODO: set proper value for external and internal upstream
-			ExternalDependency:  nil,
+			ExternalDependency:  externalUpstreamProto,
 			InternalDependency:  internalUpstreamProto,
 			HttpDependency:      httpUpstreamProto,
 			UnknownDependencies: unknownUpstreamProto,

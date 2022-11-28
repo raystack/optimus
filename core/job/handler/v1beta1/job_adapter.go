@@ -201,7 +201,7 @@ func toBasicInfoSectionProto(jobDetail *job.Job, logMessages []*pb.Log) *pb.JobI
 	}
 }
 
-func toUpstreamProtos(upstreams []*job.Upstream) ([]*pb.JobInspectResponse_JobDependency, []*pb.JobInspectResponse_UpstreamSection_UnknownDependencies) {
+func toUpstreamProtos(upstreams []*job.Upstream) ([]*pb.JobInspectResponse_JobDependency, []*pb.JobInspectResponse_JobDependency, []*pb.JobInspectResponse_UpstreamSection_UnknownDependencies) {
 	var internalUpstreamProtos []*pb.JobInspectResponse_JobDependency
 	var externalUpstreamProtos []*pb.JobInspectResponse_JobDependency
 	var unknownUpstreamProtos []*pb.JobInspectResponse_UpstreamSection_UnknownDependencies
@@ -226,7 +226,7 @@ func toUpstreamProtos(upstreams []*job.Upstream) ([]*pb.JobInspectResponse_JobDe
 			internalUpstreamProtos = append(internalUpstreamProtos, upstreamProto)
 		}
 	}
-	return internalUpstreamProtos, unknownUpstreamProtos
+	return internalUpstreamProtos, externalUpstreamProtos, unknownUpstreamProtos
 }
 
 func toHTTPUpstreamProtos(httpUpstreamSpecs []*job.SpecHTTPUpstream) []*pb.HttpDependency {

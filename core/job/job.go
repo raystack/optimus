@@ -36,6 +36,10 @@ func (j Job) GetName() string { // to support multiroot DataTree
 	return j.spec.name.String()
 }
 
+func (j Job) FullName() string {
+	return j.ProjectName().String() + "/" + j.spec.name.String()
+}
+
 type ResourceURN string
 
 // TODO: resource urn is not mandatory, consider remove the validation
