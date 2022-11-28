@@ -1387,6 +1387,159 @@ func TestJobService(t *testing.T) {
 			assert.NoError(t, err)
 		})
 	})
+
+	t.Run("GetUpstreamsToInspect", func(t *testing.T) {
+		t.Run("should return upstream for an existing job", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			jobA := job.NewJob(sampleTenant, specA, "resource-A", []job.ResourceURN{"resource-B"})
+
+			upstreamB, err := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "inferred", taskName, false)
+			assert.NoError(t, err)
+
+			jobRepo.On("GetUpstreams", ctx, project.Name(), jobA.Spec().Name()).Return([]*job.Upstream{upstreamB}, nil)
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
+			result, err := jobService.GetUpstreamsToInspect(ctx, jobA, false)
+			assert.NoError(t, err)
+			assert.EqualValues(t, []*job.Upstream{upstreamB}, result)
+		})
+		t.Run("should return upstream for client's local job", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			jobA := job.NewJob(sampleTenant, specA, "resource-A", []job.ResourceURN{"resource-B"})
+
+			upstreamB, err := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "inferred", taskName, false)
+			assert.NoError(t, err)
+
+			upstreamResolver.On("Resolve", ctx, jobA).Return([]*job.Upstream{upstreamB}, nil)
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
+			result, err := jobService.GetUpstreamsToInspect(ctx, jobA, true)
+			assert.NoError(t, err)
+			assert.EqualValues(t, []*job.Upstream{upstreamB}, result)
+		})
+	})
+
+	t.Run("GetNewJobToInspect", func(t *testing.T) {
+		t.Run("should return a job given a spec", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil)
+
+			jobASources := []job.ResourceURN{"job-B"}
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobASources, nil)
+
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
+			result, err := jobService.GetNewJobToInspect(ctx, sampleTenant, specA)
+			assert.NoError(t, err)
+			assert.Equal(t, jobA, result)
+		})
+	})
+
+	t.Run("GetDownstream", func(t *testing.T) {
+		t.Run("should return downstream for client's local job", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			jobA := job.NewJob(sampleTenant, specA, "resource-A", nil)
+
+			jobADownstream := []*dto.Downstream{
+				{
+					Name:          "job-B",
+					ProjectName:   project.Name().String(),
+					NamespaceName: namespace.Name().String(),
+					TaskName:      taskName.String(),
+				},
+			}
+			jobRepo.On("GetDownstreamByDestination", ctx, project.Name(), jobA.Destination()).Return(jobADownstream, nil)
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
+			result, err := jobService.GetDownstream(ctx, jobA, true)
+			assert.NoError(t, err)
+			assert.Equal(t, jobADownstream, result)
+		})
+		t.Run("should return downstream of an existing job", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			jobA := job.NewJob(sampleTenant, specA, "resource-A", nil)
+
+			jobADownstream := []*dto.Downstream{
+				{
+					Name:          "job-B",
+					ProjectName:   project.Name().String(),
+					NamespaceName: namespace.Name().String(),
+					TaskName:      taskName.String(),
+				},
+			}
+			jobRepo.On("GetDownstreamByJobName", ctx, project.Name(), specA.Name()).Return(jobADownstream, nil)
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
+			result, err := jobService.GetDownstream(ctx, jobA, false)
+			assert.NoError(t, err)
+			assert.Equal(t, jobADownstream, result)
+		})
+	})
 }
 
 // JobRepository is an autogenerated mock type for the JobRepository type
