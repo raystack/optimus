@@ -162,7 +162,7 @@ func TestUpstreamResolver(t *testing.T) {
 
 			jobRepo.On("GetJobNameWithInternalUpstreams", ctx, project.Name(), []job.Name{specA.Name()}).Return(jobNameWithUpstreams, nil)
 
-			unresolvedUpstreamC := job.NewUpstreamUnresolved("job-C", "", externalTenant.ProjectName().String())
+			unresolvedUpstreamC := job.NewUpstreamUnresolved("job-C", "", externalTenant.ProjectName())
 			unresolvedUpstreamD := job.NewUpstreamUnresolved("", "resource-D", "")
 			externalUpstreamResolver.On("Resolve", ctx, mock.Anything).Return([]*job.Upstream{}, []*job.Upstream{unresolvedUpstreamC, unresolvedUpstreamD}, nil)
 
@@ -240,7 +240,7 @@ func TestUpstreamResolver(t *testing.T) {
 
 			jobRepo.On("GetJobNameWithInternalUpstreams", ctx, project.Name(), []job.Name{specA.Name()}).Return(jobNameWithUpstreams, nil)
 
-			unresolvedUpstreamC := job.NewUpstreamUnresolved("job-C", "", externalTenant.ProjectName().String())
+			unresolvedUpstreamC := job.NewUpstreamUnresolved("job-C", "", externalTenant.ProjectName())
 			unresolvedUpstreamD := job.NewUpstreamUnresolved("", "resource-D", "")
 			externalUpstreamResolver.On("Resolve", ctx, mock.Anything).Return([]*job.Upstream{}, []*job.Upstream{unresolvedUpstreamC, unresolvedUpstreamD}, nil)
 

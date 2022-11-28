@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/go-multierror"
+	"github.com/odpf/optimus/core/tenant"
 
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/job"
@@ -47,7 +48,8 @@ func (e *extUpstreamResolver) Resolve(ctx context.Context, upstreamsToResolve []
 		// allow empty upstreamName and upstreamResourceURN
 		upstreamName, _ := job.NameFrom(upstream.JobName)
 		upstreamResourceURN, _ := job.ResourceURNFrom(upstream.ResourceURN)
-		unknownUpstreams = append(unknownUpstreams, job.NewUpstreamUnresolved(upstreamName, upstreamResourceURN, upstream.ProjectName))
+		upstreamProjectName, _ := tenant.ProjectNameFrom(upstream.ProjectName)
+		unknownUpstreams = append(unknownUpstreams, job.NewUpstreamUnresolved(upstreamName, upstreamResourceURN, upstreamProjectName))
 	}
 
 	return externalUpstreams, unknownUpstreams, err
