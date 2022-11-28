@@ -405,19 +405,19 @@ func (jh *JobHandler) JobInspect(ctx context.Context, req *pb.JobInspectRequest)
 	localJob := false
 	var jobName job.Name
 	var jobSpec *job.Spec
-	if req.GetJobName() != "" {
-		jobName, err = job.NameFrom(req.JobName)
-		if err != nil {
-			return nil, err
-		}
-	} else {
+	if req.GetSpec() != nil {
 		jobSpec, err = fromJobProto(req.GetSpec())
 		if err != nil {
-			errMsg := fmt.Sprintf("%s: cannot adapt job specification %s", err.Error(), jobSpec.Name())
+			errMsg := fmt.Sprintf("cannot adapt job specification %s: %s", req.Spec.Name, err.Error())
 			jh.l.Error(errMsg)
 			return nil, err
 		}
 		localJob = true
+	} else {
+		jobName, err = job.NameFrom(req.JobName)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	subjectJob, basicInfoLogger := jh.jobService.GetJobBasicInfo(ctx, jobTenant, jobName, jobSpec)
@@ -425,13 +425,13 @@ func (jh *JobHandler) JobInspect(ctx context.Context, req *pb.JobInspectRequest)
 	upstreamLogs := &writer.BufferedLogger{}
 	upstreams, err := jh.jobService.GetUpstreamsToInspect(ctx, subjectJob, localJob)
 	if err != nil {
-		return nil, err
+		upstreamLogs.Write(writer.LogLevelError, fmt.Sprintf("unable to get upstream jobs: %v", err.Error()))
 	}
 
 	downstreamLogs := &writer.BufferedLogger{}
 	downstreams, err := jh.jobService.GetDownstream(ctx, subjectJob, localJob)
 	if err != nil {
-		return nil, err
+		downstreamLogs.Write(writer.LogLevelError, fmt.Sprintf("unable to get downstream jobs: %v", err.Error()))
 	}
 
 	internalUpstreamProto, externalUpstreamProto, unknownUpstreamProto := toUpstreamProtos(upstreams)

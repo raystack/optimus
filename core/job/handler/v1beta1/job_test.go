@@ -821,9 +821,8 @@ func TestNewJobHandler(t *testing.T) {
 				},
 			}
 
-			var jobSpec *job.Spec
 			var basicInfoLogger writer.BufferedLogger
-			jobService.On("GetJobBasicInfo", ctx, sampleTenant, specA.Name(), jobSpec).Return(jobA, basicInfoLogger)
+			jobService.On("GetJobBasicInfo", ctx, sampleTenant, specA.Name(), mock.Anything).Return(jobA, basicInfoLogger)
 			jobService.On("GetUpstreamsToInspect", ctx, jobA, false).Return(jobAUpstream, nil)
 			jobService.On("GetDownstream", ctx, jobA, false).Return(jobADownstream, nil)
 
@@ -867,6 +866,223 @@ func TestNewJobHandler(t *testing.T) {
 							TaskName:      jobADownstream[0].TaskName,
 						},
 					},
+				},
+			}
+
+			handler := v1beta1.NewJobHandler(jobService, nil)
+			result, err := handler.JobInspect(ctx, req)
+			assert.NoError(t, err)
+			assert.Equal(t, resp, result)
+		})
+		t.Run("should return basic info, upstream, downstream of a user given job spec", func(t *testing.T) {
+			jobService := new(JobService)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			jobA := job.NewJob(sampleTenant, specA, "resource-A", nil)
+
+			upstreamB, err := job.NewUpstreamResolved("job-B", "", "resource-b", sampleTenant, "static", "bq2bq", false)
+			assert.NoError(t, err)
+			upstreamC, err := job.NewUpstreamResolved("job-C", "other-host", "resource-c", sampleTenant, "inferred", "bq2bq", true)
+			assert.NoError(t, err)
+
+			jobAUpstream := []*job.Upstream{
+				upstreamB,
+				upstreamC,
+			}
+			jobADownstream := []*dto.Downstream{
+				{
+					Name:          "job-x",
+					ProjectName:   project.Name().String(),
+					NamespaceName: namespace.Name().String(),
+					TaskName:      jobTask.Name().String(),
+				},
+			}
+
+			var basicInfoLogger writer.BufferedLogger
+			jobService.On("GetJobBasicInfo", ctx, sampleTenant, mock.Anything, mock.Anything).Return(jobA, basicInfoLogger)
+			jobService.On("GetUpstreamsToInspect", ctx, jobA, true).Return(jobAUpstream, nil)
+			jobService.On("GetDownstream", ctx, jobA, true).Return(jobADownstream, nil)
+
+			jobSpecProto := &pb.JobSpecification{
+				Version:          int32(jobVersion),
+				Name:             "job-A",
+				Owner:            "sample-owner",
+				StartDate:        jobSchedule.StartDate().String(),
+				Interval:         jobSchedule.Interval(),
+				TaskName:         jobTask.Name().String(),
+				WindowSize:       jobWindow.GetSize(),
+				WindowOffset:     jobWindow.GetOffset(),
+				WindowTruncateTo: jobWindow.GetTruncateTo(),
+				Behavior:         jobBehavior,
+				Dependencies:     jobDependencies,
+				Metadata:         jobMetadata,
+			}
+			req := &pb.JobInspectRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: namespace.Name().String(),
+				Spec:          jobSpecProto,
+			}
+
+			resp := &pb.JobInspectResponse{
+				BasicInfo: &pb.JobInspectResponse_BasicInfoSection{
+					Job:         &pb.JobSpecification{},
+					Destination: "resource-A",
+				},
+				Upstreams: &pb.JobInspectResponse_UpstreamSection{
+					ExternalDependency: []*pb.JobInspectResponse_JobDependency{
+						{
+							Name:          upstreamC.Name().String(),
+							Host:          upstreamC.Host(),
+							ProjectName:   upstreamC.ProjectName().String(),
+							NamespaceName: upstreamC.NamespaceName().String(),
+							TaskName:      upstreamC.TaskName().String(),
+						},
+					},
+					InternalDependency: []*pb.JobInspectResponse_JobDependency{
+						{
+							Name:          upstreamB.Name().String(),
+							Host:          upstreamB.Host(),
+							ProjectName:   upstreamB.ProjectName().String(),
+							NamespaceName: upstreamB.NamespaceName().String(),
+							TaskName:      upstreamB.TaskName().String(),
+						},
+					},
+				},
+				Downstreams: &pb.JobInspectResponse_DownstreamSection{
+					DownstreamJobs: []*pb.JobInspectResponse_JobDependency{
+						{
+							Name:          jobADownstream[0].Name,
+							ProjectName:   jobADownstream[0].ProjectName,
+							NamespaceName: jobADownstream[0].NamespaceName,
+							TaskName:      jobADownstream[0].TaskName,
+						},
+					},
+				},
+			}
+
+			handler := v1beta1.NewJobHandler(jobService, log)
+			result, err := handler.JobInspect(ctx, req)
+			assert.NoError(t, err)
+			assert.Equal(t, resp, result)
+		})
+		t.Run("should return error if tenant is invalid", func(t *testing.T) {
+			jobService := new(JobService)
+
+			req := &pb.JobInspectRequest{
+				ProjectName: project.Name().String(),
+				JobName:     "job-A",
+			}
+
+			handler := v1beta1.NewJobHandler(jobService, log)
+			result, err := handler.JobInspect(ctx, req)
+			assert.Error(t, err)
+			assert.Nil(t, result)
+		})
+		t.Run("should return error if job name and spec are not provided", func(t *testing.T) {
+			jobService := new(JobService)
+
+			req := &pb.JobInspectRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: namespace.Name().String(),
+			}
+
+			handler := v1beta1.NewJobHandler(jobService, log)
+			result, err := handler.JobInspect(ctx, req)
+			assert.Error(t, err)
+			assert.Nil(t, result)
+		})
+		t.Run("should return error if job spec proto is invalid", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobSpecProto := &pb.JobSpecification{
+				Name: "job-A",
+			}
+			req := &pb.JobInspectRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: namespace.Name().String(),
+				Spec:          jobSpecProto,
+			}
+
+			handler := v1beta1.NewJobHandler(jobService, log)
+			result, err := handler.JobInspect(ctx, req)
+			assert.Error(t, err)
+			assert.Nil(t, result)
+		})
+		t.Run("should return downstream and upstream error log messages if exist", func(t *testing.T) {
+			jobService := new(JobService)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			jobA := job.NewJob(sampleTenant, specA, "resource-A", nil)
+
+			upstreamB, err := job.NewUpstreamResolved("job-B", "", "resource-b", sampleTenant, "static", "bq2bq", false)
+			assert.NoError(t, err)
+			upstreamC, err := job.NewUpstreamResolved("job-C", "other-host", "resource-c", sampleTenant, "inferred", "bq2bq", true)
+			assert.NoError(t, err)
+
+			jobAUpstream := []*job.Upstream{
+				upstreamB,
+				upstreamC,
+			}
+			jobADownstream := []*dto.Downstream{
+				{
+					Name:          "job-x",
+					ProjectName:   project.Name().String(),
+					NamespaceName: namespace.Name().String(),
+					TaskName:      jobTask.Name().String(),
+				},
+			}
+
+			var basicInfoLogger writer.BufferedLogger
+			jobService.On("GetJobBasicInfo", ctx, sampleTenant, specA.Name(), mock.Anything).Return(jobA, basicInfoLogger)
+
+			upstreamErrorMsg := "sample upstream error"
+			jobService.On("GetUpstreamsToInspect", ctx, jobA, false).Return(jobAUpstream, errors.New(upstreamErrorMsg))
+
+			downstreamErrorMsg := "sample downstream error"
+			jobService.On("GetDownstream", ctx, jobA, false).Return(jobADownstream, errors.New(downstreamErrorMsg))
+
+			req := &pb.JobInspectRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: namespace.Name().String(),
+				JobName:       specA.Name().String(),
+			}
+
+			resp := &pb.JobInspectResponse{
+				BasicInfo: &pb.JobInspectResponse_BasicInfoSection{
+					Job:         &pb.JobSpecification{},
+					Destination: "resource-A",
+				},
+				Upstreams: &pb.JobInspectResponse_UpstreamSection{
+					ExternalDependency: []*pb.JobInspectResponse_JobDependency{
+						{
+							Name:          upstreamC.Name().String(),
+							Host:          upstreamC.Host(),
+							ProjectName:   upstreamC.ProjectName().String(),
+							NamespaceName: upstreamC.NamespaceName().String(),
+							TaskName:      upstreamC.TaskName().String(),
+						},
+					},
+					InternalDependency: []*pb.JobInspectResponse_JobDependency{
+						{
+							Name:          upstreamB.Name().String(),
+							Host:          upstreamB.Host(),
+							ProjectName:   upstreamB.ProjectName().String(),
+							NamespaceName: upstreamB.NamespaceName().String(),
+							TaskName:      upstreamB.TaskName().String(),
+						},
+					},
+					Notice: []*pb.Log{{Level: pb.Level_LEVEL_ERROR, Message: "unable to get upstream jobs: sample upstream error"}},
+				},
+				Downstreams: &pb.JobInspectResponse_DownstreamSection{
+					DownstreamJobs: []*pb.JobInspectResponse_JobDependency{
+						{
+							Name:          jobADownstream[0].Name,
+							ProjectName:   jobADownstream[0].ProjectName,
+							NamespaceName: jobADownstream[0].NamespaceName,
+							TaskName:      jobADownstream[0].TaskName,
+						},
+					},
+					Notice: []*pb.Log{{Level: pb.Level_LEVEL_ERROR, Message: "unable to get downstream jobs: sample downstream error"}},
 				},
 			}
 
