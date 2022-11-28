@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+
 	"github.com/odpf/optimus/core/job/dto"
 
 	"github.com/odpf/salt/log"
@@ -286,13 +287,18 @@ func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSp
 		return err
 	}
 	jobMap := make(map[job.Name]*job.Job)
+	destinationToJobsMap := make(map[job.ResourceURN][]*job.Job)
 	for _, jobEntity := range jobsInProject {
 		jobMap[jobEntity.Spec().Name()] = jobEntity
+		if _, ok := destinationToJobsMap[jobEntity.Destination()]; !ok {
+			destinationToJobsMap[jobEntity.Destination()] = []*job.Job{}
+		}
+		destinationToJobsMap[jobEntity.Destination()] = append(destinationToJobsMap[jobEntity.Destination()], jobEntity)
 	}
 
 	// check cyclic deps for every job
 	for _, jobEntity := range jobs {
-		if err = j.validateCyclic(ctx, jobEntity.Spec().Name(), jobMap); err != nil {
+		if err = j.validateCyclic(ctx, jobEntity.Spec().Name(), jobMap, destinationToJobsMap); err != nil {
 			me.Append(err)
 		}
 	}
@@ -476,8 +482,8 @@ func (j JobService) generateJob(ctx context.Context, tenantWithDetails *tenant.W
 	return job.NewJob(tenantWithDetails.ToTenant(), spec, destination, sources), nil
 }
 
-func (j JobService) validateCyclic(ctx context.Context, rootName job.Name, jobMap map[job.Name]*job.Job) error {
-	dagTree, err := j.buildDAGTree(ctx, rootName, jobMap)
+func (j JobService) validateCyclic(ctx context.Context, rootName job.Name, jobMap map[job.Name]*job.Job, destinationToJobMap map[job.ResourceURN][]*job.Job) error {
+	dagTree, err := j.buildDAGTree(ctx, rootName, jobMap, destinationToJobMap)
 	if err != nil {
 		return err
 	}
@@ -485,7 +491,7 @@ func (j JobService) validateCyclic(ctx context.Context, rootName job.Name, jobMa
 	return dagTree.ValidateCyclic()
 }
 
-func (j JobService) buildDAGTree(ctx context.Context, rootName job.Name, jobMap map[job.Name]*job.Job) (*tree.MultiRootTree, error) {
+func (j JobService) buildDAGTree(ctx context.Context, rootName job.Name, jobMap map[job.Name]*job.Job, destinationToJobMap map[job.ResourceURN][]*job.Job) (*tree.MultiRootTree, error) {
 	rootJob, ok := jobMap[rootName]
 	if !ok {
 		return nil, fmt.Errorf("couldn't find any job with name %s", rootName)
@@ -494,22 +500,17 @@ func (j JobService) buildDAGTree(ctx context.Context, rootName job.Name, jobMap 
 	dagTree := tree.NewMultiRootTree()
 	dagTree.AddNode(tree.NewTreeNode(rootJob))
 
-	// source: https://github.com/odpf/optimus/blob/a6dafbc1fbeb8e1f1eb8d4a6e9582ada4a7f639e/job/replay.go#L111
-	me := errors.NewMultiError("build DAGTree errors")
 	for _, childJob := range jobMap {
 		childNode := findOrCreateDAGNode(dagTree, childJob)
 		for _, source := range childJob.Sources() {
-			parents, err := j.GetAll(ctx, filter.WithString(filter.ResourceDestination, source.String()))
-			if err != nil {
-				me.Append(err)
+			if _, ok := destinationToJobMap[source]; !ok {
+				// source maybe from external optimus or outside project,
+				// as of now, we're not providing the capability to build tree from external optimus or outside project. skip
 				continue
 			}
 
+			parents := destinationToJobMap[source]
 			for _, parentJob := range parents {
-				if _, ok := jobMap[parentJob.Spec().Name()]; !ok {
-					// as of now, we're not providing the capability to build tree for the external job spec. skip
-					continue
-				}
 				parentNode := findOrCreateDAGNode(dagTree, parentJob)
 				parentNode.AddDependent(childNode)
 				dagTree.AddNode(parentNode)
@@ -519,10 +520,6 @@ func (j JobService) buildDAGTree(ctx context.Context, rootName job.Name, jobMap 
 		if len(childJob.Sources()) == 0 {
 			dagTree.MarkRoot(childNode)
 		}
-	}
-
-	if len(me.Errors) > 0 {
-		return nil, me
 	}
 
 	return dagTree, nil

@@ -3,8 +3,9 @@ package service_test
 import (
 	"context"
 	"errors"
-	"github.com/odpf/optimus/core/job/dto"
 	"testing"
+
+	"github.com/odpf/optimus/core/job/dto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -1302,14 +1303,7 @@ func TestJobService(t *testing.T) {
 			specC := job.NewSpecBuilder(jobVersion, "job-C", "", jobSchedule, jobWindow, jobTask).Build()
 			specs := []*job.Spec{specA, specB, specC}
 
-			jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-C"})
-			jobB := job.NewJob(sampleTenant, specB, "table-B", []job.ResourceURN{"table-A"})
-			jobC := job.NewJob(sampleTenant, specC, "table-C", []job.ResourceURN{"table-B"})
-			repo.On("GetAllByProjectName", ctx, sampleTenant.ProjectName()).Return([]*job.Job{jobA, jobB, jobC}, nil)
-
-			repo.On("GetAllByResourceDestination", ctx, job.ResourceURN("table-A")).Return([]*job.Job{}, errors.New("error when fetch dest table-A"))
-			repo.On("GetAllByResourceDestination", ctx, job.ResourceURN("table-B")).Return([]*job.Job{}, errors.New("error when fetch dest table-B"))
-			repo.On("GetAllByResourceDestination", ctx, job.ResourceURN("table-C")).Return([]*job.Job{}, errors.New("error when fetch dest table-C"))
+			repo.On("GetAllByProjectName", ctx, sampleTenant.ProjectName()).Return([]*job.Job{}, nil)
 
 			pluginService.On("GenerateDestination", ctx, detailedTenant, jobTask).Return(job.ResourceURN("example_destination"), nil)
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, mock.Anything, true).Return([]job.ResourceURN{"example_upstream"}, nil)
@@ -1318,9 +1312,9 @@ func TestJobService(t *testing.T) {
 			err := jobService.Validate(ctx, sampleTenant, specs, nil)
 			assert.Error(t, err)
 			assert.ErrorContains(t, err, "validate specs errors")
-			assert.ErrorContains(t, err, "error when fetch dest table-C")
-			assert.ErrorContains(t, err, "error when fetch dest table-A")
-			assert.ErrorContains(t, err, "error when fetch dest table-B")
+			assert.ErrorContains(t, err, "couldn't find any job with name job-A")
+			assert.ErrorContains(t, err, "couldn't find any job with name job-B")
+			assert.ErrorContains(t, err, "couldn't find any job with name job-C")
 		})
 		t.Run("returns error when there's a cyclic", func(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
@@ -1342,10 +1336,6 @@ func TestJobService(t *testing.T) {
 			jobB := job.NewJob(sampleTenant, specB, "table-B", []job.ResourceURN{"table-A"})
 			jobC := job.NewJob(sampleTenant, specC, "table-C", []job.ResourceURN{"table-B"})
 			repo.On("GetAllByProjectName", ctx, sampleTenant.ProjectName()).Return([]*job.Job{jobA, jobB, jobC}, nil)
-
-			repo.On("GetAllByResourceDestination", ctx, job.ResourceURN("table-A")).Return([]*job.Job{jobA}, nil)
-			repo.On("GetAllByResourceDestination", ctx, job.ResourceURN("table-B")).Return([]*job.Job{jobB}, nil)
-			repo.On("GetAllByResourceDestination", ctx, job.ResourceURN("table-C")).Return([]*job.Job{jobC}, nil)
 
 			pluginService.On("GenerateDestination", ctx, detailedTenant, jobTask).Return(job.ResourceURN("example_destination"), nil)
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, mock.Anything, true).Return([]job.ResourceURN{"example_upstream"}, nil)
@@ -1375,9 +1365,6 @@ func TestJobService(t *testing.T) {
 			jobB := job.NewJob(sampleTenant, specB, "table-B", []job.ResourceURN{"table-A"})
 			jobC := job.NewJob(sampleTenant, specC, "table-C", []job.ResourceURN{"table-B"})
 			repo.On("GetAllByProjectName", ctx, sampleTenant.ProjectName()).Return([]*job.Job{jobA, jobB, jobC}, nil)
-
-			repo.On("GetAllByResourceDestination", ctx, job.ResourceURN("table-A")).Return([]*job.Job{jobA}, nil)
-			repo.On("GetAllByResourceDestination", ctx, job.ResourceURN("table-B")).Return([]*job.Job{jobB}, nil)
 
 			pluginService.On("GenerateDestination", ctx, detailedTenant, jobTask).Return(job.ResourceURN("example_destination"), nil)
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, mock.Anything, true).Return([]job.ResourceURN{"example_upstream"}, nil)
