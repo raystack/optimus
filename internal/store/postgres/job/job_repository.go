@@ -266,19 +266,16 @@ func (JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstr
 
 	var upstreams []*job.Upstream
 	for _, storeUpstream := range storeUpstreams {
-		if storeUpstream.UpstreamJobName == "" {
+		resourceURN, _ := job.ResourceURNFrom(storeUpstream.UpstreamResourceURN)
+		upstreamName, _ := job.NameFrom(storeUpstream.UpstreamJobName)
+		projectName, _ := tenant.ProjectNameFrom(storeUpstream.UpstreamProjectName)
+
+		if storeUpstream.UpstreamState == job.UpstreamStateUnresolved.String() {
+			upstreams = append(upstreams, job.NewUpstreamUnresolved(upstreamName, resourceURN, projectName))
 			continue
 		}
+
 		upstreamTenant, err := tenant.NewTenant(storeUpstream.UpstreamProjectName, storeUpstream.UpstreamNamespaceName)
-		if err != nil {
-			me.Append(err)
-			continue
-		}
-		resourceURN, err := job.ResourceURNFrom(storeUpstream.UpstreamResourceURN)
-		if err != nil {
-			me.Append(err)
-		}
-		upstreamName, err := job.NameFrom(storeUpstream.UpstreamJobName)
 		if err != nil {
 			me.Append(err)
 			continue
@@ -288,7 +285,8 @@ func (JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstr
 			me.Append(err)
 			continue
 		}
-		upstream, err := job.NewUpstreamResolved(upstreamName, "", resourceURN, upstreamTenant, storeUpstream.UpstreamType, taskName, storeUpstream.UpstreamExternal)
+
+		upstream, err := job.NewUpstreamResolved(upstreamName, storeUpstream.UpstreamHost, resourceURN, upstreamTenant, storeUpstream.UpstreamType, taskName, storeUpstream.UpstreamExternal)
 		if err != nil {
 			me.Append(err)
 			continue
@@ -640,9 +638,9 @@ WHERE project_name=? AND job_name=?;
 func (j JobRepository) GetDownstreamByDestination(ctx context.Context, projectName tenant.ProjectName, destination job.ResourceURN) ([]*dto.Downstream, error) {
 	query := `
 SELECT
-	name, project_name, namespace_name, task_name
+	name as job_name, project_name, namespace_name, task_name
 FROM job
-WHERE ? = ANY(sources);
+WHERE project_name = ? AND ? = ANY(sources);
 `
 
 	var storeDownstreams []Downstream
@@ -673,7 +671,7 @@ type Downstream struct {
 func (j JobRepository) GetDownstreamByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*dto.Downstream, error) {
 	query := `
 SELECT
-	j.name, j.project_name, j.namespace_name, j.task_name
+	j.name as job_name, j.project_name, j.namespace_name, j.task_name
 FROM job_upstream ju
 JOIN job j ON (ju.job_name = j.name AND ju.project_name = j.project_name)
 WHERE upstream_project_name=? AND upstream_job_name=?;

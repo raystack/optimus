@@ -38,6 +38,7 @@ func (j Job) GetName() string { // to support multiroot DataTree
 
 type ResourceURN string
 
+// TODO: resource urn is not mandatory, consider remove the validation
 func ResourceURNFrom(resourceURN string) (ResourceURN, error) {
 	if resourceURN == "" {
 		return "", errors.InvalidArgument(EntityJob, "resource urn is empty")
@@ -154,17 +155,12 @@ func NewUpstreamResolved(name Name, host string, resource ResourceURN, jobTenant
 	}, nil
 }
 
-func NewUpstreamUnresolved(name Name, resource ResourceURN, projectNameStr string) *Upstream {
+func NewUpstreamUnresolved(name Name, resource ResourceURN, projectName tenant.ProjectName) *Upstream {
 	var _type UpstreamType
 	if name != "" {
 		_type = UpstreamTypeStatic
 	} else {
 		_type = UpstreamTypeInferred
-	}
-
-	var projectName tenant.ProjectName
-	if projectNameStr != "" {
-		projectName, _ = tenant.ProjectNameFrom(projectNameStr)
 	}
 
 	return &Upstream{name: name, resource: resource, projectName: projectName, _type: _type,
