@@ -162,7 +162,7 @@ func (j JobService) GetByFilter(ctx context.Context, filters ...filter.FilterOpt
 
 	// when resource destination exist, filter by destination
 	if f.Contains(filter.ResourceDestination) {
-		resourceDestination, _ := job.ResourceURNFrom(f.GetStringValue(filter.ResourceDestination))
+		resourceDestination := job.ResourceURN(f.GetStringValue(filter.ResourceDestination))
 		return j.repo.GetAllByResourceDestination(ctx, resourceDestination)
 	}
 

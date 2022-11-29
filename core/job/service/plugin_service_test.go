@@ -119,7 +119,7 @@ func TestPluginService(t *testing.T) {
 			secretsGetter.On("GetAll", ctx, project.Name(), namespace.Name().String()).Return([]*tenant.PlainTextSecret{secret1, secret2}, nil)
 
 			destination := "project.dataset.table"
-			destinationURN, _ := job.ResourceURNFrom("bigquery://project.dataset.table")
+			destinationURN := job.ResourceURN("bigquery://project.dataset.table")
 			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&models.GenerateDestinationResponse{
 				Destination: destination,
 				Type:        models.DestinationTypeBigquery,
@@ -155,7 +155,7 @@ func TestPluginService(t *testing.T) {
 				Type:        models.DestinationTypeBigquery,
 			}, nil)
 
-			jobSource, _ := job.ResourceURNFrom("project.dataset.table_upstream")
+			jobSource := job.ResourceURN("project.dataset.table_upstream")
 			depMod.On("GenerateDependencies", ctx, mock.Anything).Return(&models.GenerateDependenciesResponse{
 				Dependencies: []string{jobSource.String()}},
 				nil)

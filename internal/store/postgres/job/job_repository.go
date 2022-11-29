@@ -266,7 +266,7 @@ func (JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstr
 
 	var upstreams []*job.Upstream
 	for _, storeUpstream := range storeUpstreams {
-		resourceURN, _ := job.ResourceURNFrom(storeUpstream.UpstreamResourceURN)
+		resourceURN := job.ResourceURN(storeUpstream.UpstreamResourceURN)
 		upstreamName, _ := job.NameFrom(storeUpstream.UpstreamJobName)
 		projectName, _ := tenant.ProjectNameFrom(storeUpstream.UpstreamProjectName)
 
@@ -379,12 +379,12 @@ func specToJob(spec *Spec) (*job.Job, error) {
 	tenantName, err := tenant.NewTenant(spec.ProjectName, spec.NamespaceName)
 	me.Append(err)
 
-	destination, err := job.ResourceURNFrom(spec.Destination)
+	destination := job.ResourceURN(spec.Destination)
 	me.Append(err)
 
 	sources := []job.ResourceURN{}
 	for _, source := range spec.Sources {
-		resourceURN, err := job.ResourceURNFrom(source)
+		resourceURN := job.ResourceURN(source)
 		me.Append(err)
 		sources = append(sources, resourceURN)
 	}

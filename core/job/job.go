@@ -42,14 +42,6 @@ func (j Job) FullName() string {
 
 type ResourceURN string
 
-// TODO: resource urn is not mandatory, consider remove the validation
-func ResourceURNFrom(resourceURN string) (ResourceURN, error) {
-	if resourceURN == "" {
-		return "", errors.InvalidArgument(EntityJob, "resource urn is empty")
-	}
-	return ResourceURN(resourceURN), nil
-}
-
 func (n ResourceURN) String() string {
 	return string(n)
 }

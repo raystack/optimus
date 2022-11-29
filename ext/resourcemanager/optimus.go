@@ -130,6 +130,6 @@ func (o *OptimusResourceManager) toOptimusDependency(response jobSpecificationRe
 	if err != nil {
 		return nil, err
 	}
-	resourceURN, _ := job.ResourceURNFrom(unresolvedDependency.ResourceURN)
+	resourceURN := job.ResourceURN(unresolvedDependency.ResourceURN)
 	return job.NewUpstreamResolved(jobName, o.config.Host, resourceURN, jobTenant, dependencyType, taskName, true)
 }

@@ -45,10 +45,10 @@ func (e *extUpstreamResolver) Resolve(ctx context.Context, upstreamsToResolve []
 
 	var unknownUpstreams []*job.Upstream
 	for _, upstream := range unresolvedUpstreams {
-		// allow empty upstreamName and upstreamResourceURN
+		// allow empty upstreamName and upstreamProjectName
 		upstreamName, _ := job.NameFrom(upstream.JobName)
-		upstreamResourceURN, _ := job.ResourceURNFrom(upstream.ResourceURN)
 		upstreamProjectName, _ := tenant.ProjectNameFrom(upstream.ProjectName)
+		upstreamResourceURN := job.ResourceURN(upstream.ResourceURN)
 		unknownUpstreams = append(unknownUpstreams, job.NewUpstreamUnresolved(upstreamName, upstreamResourceURN, upstreamProjectName))
 	}
 

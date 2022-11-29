@@ -68,7 +68,7 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobADestination := job.ResourceURN("resource-A")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil)
 
 			jobAUpstreamName := []job.ResourceURN{"job-B"}
@@ -110,7 +110,7 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobADestination := job.ResourceURN("resource-A")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
 
 			jobAUpstreamName := []job.ResourceURN{"job-B"}
@@ -178,8 +178,8 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			jobADestination, _ := job.ResourceURNFrom("resource-A")
-			jobBDestination, _ := job.ResourceURNFrom("resource-B")
+			jobADestination := job.ResourceURN("resource-A")
+			jobBDestination := job.ResourceURN("resource-B")
 			var jobDestination job.ResourceURN
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return(jobBDestination, nil).Once()
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
@@ -229,7 +229,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
 			var jobADestination job.ResourceURN
-			jobBDestination, _ := job.ResourceURNFrom("resource-B")
+			jobBDestination := job.ResourceURN("resource-B")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return(jobBDestination, nil).Once()
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, errors.New("generate destination error")).Once()
 
@@ -293,7 +293,7 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			resourceA, _ := job.ResourceURNFrom("resource-A")
+			resourceA := job.ResourceURN("resource-A")
 			var resourceB job.ResourceURN
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return(resourceB, service.ErrUpstreamModNotFound).Once()
@@ -339,7 +339,7 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
 
-			resourceA, _ := job.ResourceURNFrom("resource-A")
+			resourceA := job.ResourceURN("resource-A")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
 
 			jobSourcesA := []job.ResourceURN{"resource-B"}
@@ -371,7 +371,7 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			resourceA, _ := job.ResourceURNFrom("resource-A")
+			resourceA := job.ResourceURN("resource-A")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
 
 			jobSourcesA := []job.ResourceURN{"resource-B"}
@@ -410,7 +410,7 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobADestination := job.ResourceURN("resource-A")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil)
 
 			jobAUpstreamName := []job.ResourceURN{"job-B"}
@@ -452,7 +452,7 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobADestination := job.ResourceURN("resource-A")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
 
 			jobAUpstreamName := []job.ResourceURN{"job-B"}
@@ -520,8 +520,8 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			jobADestination, _ := job.ResourceURNFrom("resource-A")
-			jobBDestination, _ := job.ResourceURNFrom("resource-B")
+			jobADestination := job.ResourceURN("resource-A")
+			jobBDestination := job.ResourceURN("resource-B")
 			var jobDestination job.ResourceURN
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return(jobBDestination, nil).Once()
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
@@ -571,7 +571,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
 			var jobADestination job.ResourceURN
-			jobBDestination, _ := job.ResourceURNFrom("resource-B")
+			jobBDestination := job.ResourceURN("resource-B")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return(jobBDestination, nil).Once()
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, errors.New("generate destination error")).Once()
 
@@ -635,7 +635,7 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			resourceA, _ := job.ResourceURNFrom("resource-A")
+			resourceA := job.ResourceURN("resource-A")
 			var resourceB job.ResourceURN
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return(resourceB, service.ErrUpstreamModNotFound).Once()
@@ -681,7 +681,7 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
 
-			resourceA, _ := job.ResourceURNFrom("resource-A")
+			resourceA := job.ResourceURN("resource-A")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
 
 			jobSourcesA := []job.ResourceURN{"resource-B"}
@@ -713,7 +713,7 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			resourceA, _ := job.ResourceURNFrom("resource-A")
+			resourceA := job.ResourceURN("resource-A")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
 
 			jobSourcesA := []job.ResourceURN{"resource-B"}
@@ -825,7 +825,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
-			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobADestination := job.ResourceURN("resource-A")
 			jobAUpstreamName := []job.ResourceURN{"job-B"}
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreamName)
 
@@ -875,7 +875,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
-			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobADestination := job.ResourceURN("resource-A")
 			jobAUpstreamName := []job.ResourceURN{"job-B"}
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreamName)
 
@@ -977,7 +977,7 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
 
-			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobADestination := job.ResourceURN("resource-A")
 			var jobBDestination job.ResourceURN
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return(jobBDestination, service.ErrUpstreamModNotFound).Once()
@@ -1118,7 +1118,7 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
 
-			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobADestination := job.ResourceURN("resource-A")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
 
 			jobAUpstreamNames := []job.ResourceURN{"job-B"}
@@ -1473,7 +1473,7 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobADestination := job.ResourceURN("resource-A")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil)
 
 			jobASources := []job.ResourceURN{"job-B"}
@@ -1502,7 +1502,7 @@ func TestJobService(t *testing.T) {
 			defer tenantDetailsGetter.AssertExpectations(t)
 
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
-			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobADestination := job.ResourceURN("resource-A")
 			jobASources := []job.ResourceURN{"job-B"}
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
 
@@ -1553,7 +1553,7 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobADestination := job.ResourceURN("resource-A")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
 
 			jobAUpstreamName := []job.ResourceURN{"job-B"}
@@ -1582,7 +1582,7 @@ func TestJobService(t *testing.T) {
 
 			invalidLabels := map[string]string{"": ""}
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", specASchedule, jobWindow, jobTask).WithLabels(invalidLabels).Build()
-			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobADestination := job.ResourceURN("resource-A")
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, nil)
 
 			jobRepo.On("GetByJobName", ctx, project.Name(), specA.Name()).Return(jobA, nil)
