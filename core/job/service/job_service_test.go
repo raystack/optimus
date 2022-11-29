@@ -1377,6 +1377,18 @@ func TestJobService(t *testing.T) {
 				assert.Error(t, err, "error encountered")
 				assert.Nil(t, actual)
 			})
+			t.Run("return error when namespace empty", func(t *testing.T) {
+				jobRepo := new(JobRepository)
+				defer jobRepo.AssertExpectations(t)
+
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				actual, err := jobService.GetByFilter(ctx,
+					filter.WithString(filter.ProjectName, sampleTenant.ProjectName().String()),
+					filter.WithStringArray(filter.NamespaceNames, []string{""}),
+				)
+				assert.Error(t, err)
+				assert.Nil(t, actual)
+			})
 			t.Run("return success", func(t *testing.T) {
 				jobRepo := new(JobRepository)
 				defer jobRepo.AssertExpectations(t)
