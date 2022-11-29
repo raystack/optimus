@@ -834,7 +834,24 @@ func TestNewJobHandler(t *testing.T) {
 
 			resp := &pb.JobInspectResponse{
 				BasicInfo: &pb.JobInspectResponse_BasicInfoSection{
-					Job:         &pb.JobSpecification{},
+					Job: &pb.JobSpecification{
+						Version:          int32(jobVersion),
+						Name:             specA.Name().String(),
+						StartDate:        specA.Schedule().StartDate().String(),
+						EndDate:          specA.Schedule().EndDate().String(),
+						Interval:         specA.Schedule().Interval(),
+						DependsOnPast:    specA.Schedule().DependsOnPast(),
+						CatchUp:          specA.Schedule().CatchUp(),
+						TaskName:         specA.Task().Name().String(),
+						WindowSize:       specA.Window().GetSize(),
+						WindowOffset:     specA.Window().GetOffset(),
+						WindowTruncateTo: specA.Window().GetTruncateTo(),
+						Destination:      "resource-A",
+						Config: []*pb.JobConfigItem{{
+							Name:  "sample_task_key",
+							Value: "sample_value",
+						}},
+					},
 					Destination: "resource-A",
 				},
 				Upstreams: &pb.JobInspectResponse_UpstreamSection{
@@ -869,7 +886,7 @@ func TestNewJobHandler(t *testing.T) {
 				},
 			}
 
-			handler := v1beta1.NewJobHandler(jobService, nil)
+			handler := v1beta1.NewJobHandler(jobService, log)
 			result, err := handler.JobInspect(ctx, req)
 			assert.NoError(t, err)
 			assert.Equal(t, resp, result)
@@ -925,7 +942,25 @@ func TestNewJobHandler(t *testing.T) {
 
 			resp := &pb.JobInspectResponse{
 				BasicInfo: &pb.JobInspectResponse_BasicInfoSection{
-					Job:         &pb.JobSpecification{},
+					Job: &pb.JobSpecification{
+						Version:          int32(jobVersion),
+						Name:             specA.Name().String(),
+						Owner:            "sample-owner",
+						StartDate:        specA.Schedule().StartDate().String(),
+						EndDate:          specA.Schedule().EndDate().String(),
+						Interval:         specA.Schedule().Interval(),
+						DependsOnPast:    specA.Schedule().DependsOnPast(),
+						CatchUp:          specA.Schedule().CatchUp(),
+						TaskName:         specA.Task().Name().String(),
+						WindowSize:       specA.Window().GetSize(),
+						WindowOffset:     specA.Window().GetOffset(),
+						WindowTruncateTo: specA.Window().GetTruncateTo(),
+						Destination:      "resource-A",
+						Config: []*pb.JobConfigItem{{
+							Name:  "sample_task_key",
+							Value: "sample_value",
+						}},
+					},
 					Destination: "resource-A",
 				},
 				Upstreams: &pb.JobInspectResponse_UpstreamSection{
@@ -1049,7 +1084,24 @@ func TestNewJobHandler(t *testing.T) {
 
 			resp := &pb.JobInspectResponse{
 				BasicInfo: &pb.JobInspectResponse_BasicInfoSection{
-					Job:         &pb.JobSpecification{},
+					Job: &pb.JobSpecification{
+						Version:          int32(jobVersion),
+						Name:             specA.Name().String(),
+						StartDate:        specA.Schedule().StartDate().String(),
+						EndDate:          specA.Schedule().EndDate().String(),
+						Interval:         specA.Schedule().Interval(),
+						DependsOnPast:    specA.Schedule().DependsOnPast(),
+						CatchUp:          specA.Schedule().CatchUp(),
+						TaskName:         specA.Task().Name().String(),
+						WindowSize:       specA.Window().GetSize(),
+						WindowOffset:     specA.Window().GetOffset(),
+						WindowTruncateTo: specA.Window().GetTruncateTo(),
+						Destination:      "resource-A",
+						Config: []*pb.JobConfigItem{{
+							Name:  "sample_task_key",
+							Value: "sample_value",
+						}},
+					},
 					Destination: "resource-A",
 				},
 				Upstreams: &pb.JobInspectResponse_UpstreamSection{

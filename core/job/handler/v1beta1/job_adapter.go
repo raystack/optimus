@@ -19,13 +19,13 @@ func toJobProto(jobEntity *job.Job) *pb.JobSpecification {
 		Interval:         jobEntity.Spec().Schedule().Interval(),
 		DependsOnPast:    jobEntity.Spec().Schedule().DependsOnPast(),
 		CatchUp:          jobEntity.Spec().Schedule().CatchUp(),
-		TaskName:         jobEntity.Spec().Task().Info().Name,
+		TaskName:         jobEntity.Spec().Task().Name().String(),
 		Config:           fromConfig(jobEntity.Spec().Task().Config()),
 		WindowSize:       jobEntity.Spec().Window().GetSize(),
 		WindowOffset:     jobEntity.Spec().Window().GetOffset(),
 		WindowTruncateTo: jobEntity.Spec().Window().GetTruncateTo(),
 		Dependencies:     fromSpecUpstreams(jobEntity.Spec().Upstream()),
-		Assets:           jobEntity.Spec().Asset().Assets(),
+		Assets:           fromAsset(jobEntity.Spec().Asset()),
 		Hooks:            fromHooks(jobEntity.Spec().Hooks()),
 		Description:      jobEntity.Spec().Description(),
 		Labels:           jobEntity.Spec().Labels(),
@@ -186,6 +186,14 @@ func fromHooks(hooks []*job.Hook) []*pb.JobSpecHook {
 	return hooksProto
 }
 
+func fromAsset(jobAsset *job.Asset) map[string]string {
+	var assets map[string]string
+	if jobAsset != nil {
+		assets = jobAsset.Assets()
+	}
+	return assets
+}
+
 func toAlerts(notifiers []*pb.JobSpecification_Behavior_Notifiers) ([]*job.Alert, error) {
 	alerts := make([]*job.Alert, len(notifiers))
 	for i, notify := range notifiers {
@@ -236,6 +244,9 @@ func toSpecUpstreams(upstreamProtos []*pb.JobDependency) (*job.SpecUpstream, err
 }
 
 func fromSpecUpstreams(upstreams *job.SpecUpstream) []*pb.JobDependency {
+	if upstreams == nil {
+		return nil
+	}
 	var dependencies []*pb.JobDependency
 	for _, upstreamName := range upstreams.UpstreamNames() {
 		dependencies = append(dependencies, &pb.JobDependency{Name: upstreamName.String()}) // TODO: upstream type?
