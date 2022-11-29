@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/odpf/optimus/core/job/dto"
 	"io"
 	"testing"
 	"time"
+
+	"github.com/odpf/optimus/core/job/dto"
 
 	"google.golang.org/grpc/metadata"
 
@@ -943,7 +944,7 @@ func (_m *JobService) Get(ctx context.Context, jobTenant tenant.Tenant, jobName 
 }
 
 // GetAll provides a mock function with given fields: ctx, filters
-func (_m *JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) ([]*job.Job, error) {
+func (_m *JobService) GetByFilter(ctx context.Context, filters ...filter.FilterOpt) ([]*job.Job, error) {
 	_va := make([]interface{}, len(filters))
 	for _i := range filters {
 		_va[_i] = filters[_i]

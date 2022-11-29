@@ -1244,7 +1244,7 @@ func TestJobService(t *testing.T) {
 	})
 
 	t.Run("GetAll", func(t *testing.T) {
-		// TODO: implement test cases
+		// t.Run("return error when ")
 	})
 
 	t.Run("Validate", func(t *testing.T) {

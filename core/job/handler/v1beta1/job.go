@@ -3,9 +3,10 @@ package v1beta1
 import (
 	"context"
 	"fmt"
-	"github.com/odpf/optimus/core/job/dto"
 	"io"
 	"strings"
+
+	"github.com/odpf/optimus/core/job/dto"
 
 	"github.com/odpf/salt/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -39,7 +40,7 @@ type JobService interface {
 	Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) (affectedDownstream []job.FullName, err error)
 	Get(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name) (jobSpec *job.Job, err error)
 	GetTaskInfo(ctx context.Context, task *job.Task) (*job.Task, error)
-	GetAll(ctx context.Context, filters ...filter.FilterOpt) (jobSpecs []*job.Job, err error)
+	GetByFilter(ctx context.Context, filters ...filter.FilterOpt) (jobSpecs []*job.Job, err error)
 	ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, logWriter writer.LogWriter) error
 	Refresh(ctx context.Context, projectName tenant.ProjectName, logWriter writer.LogWriter, filters ...filter.FilterOpt) error
 	Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, logWriter writer.LogWriter) error
@@ -180,7 +181,7 @@ func (jh *JobHandler) GetJobSpecification(ctx context.Context, req *pb.GetJobSpe
 }
 
 func (jh *JobHandler) GetJobSpecifications(ctx context.Context, req *pb.GetJobSpecificationsRequest) (*pb.GetJobSpecificationsResponse, error) {
-	jobSpecs, merr := jh.jobService.GetAll(ctx,
+	jobSpecs, merr := jh.jobService.GetByFilter(ctx,
 		filter.WithString(filter.ResourceDestination, req.GetResourceDestination()),
 		filter.WithString(filter.ProjectName, req.GetProjectName()),
 		filter.WithString(filter.JobName, req.GetJobName()),
@@ -201,7 +202,7 @@ func (jh *JobHandler) GetJobSpecifications(ctx context.Context, req *pb.GetJobSp
 }
 
 func (jh *JobHandler) ListJobSpecification(ctx context.Context, req *pb.ListJobSpecificationRequest) (*pb.ListJobSpecificationResponse, error) {
-	jobSpecs, merr := jh.jobService.GetAll(ctx,
+	jobSpecs, merr := jh.jobService.GetByFilter(ctx,
 		filter.WithString(filter.ProjectName, req.GetProjectName()),
 		filter.WithStringArray(filter.NamespaceNames, []string{req.GetNamespaceName()}),
 	)

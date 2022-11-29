@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/odpf/optimus/core/job/dto"
 	"strings"
+
+	"github.com/odpf/optimus/core/job/dto"
 
 	"github.com/odpf/salt/log"
 
@@ -133,7 +134,7 @@ func (j JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName
 }
 
 func (j JobService) Get(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name) (*job.Job, error) {
-	jobs, err := j.GetAll(ctx,
+	jobs, err := j.GetByFilter(ctx,
 		filter.WithString(filter.ProjectName, jobTenant.ProjectName().String()),
 		filter.WithString(filter.JobName, jobName.String()),
 	)
@@ -156,8 +157,7 @@ func (j JobService) GetTaskInfo(ctx context.Context, task *job.Task) (*job.Task,
 	).WithInfo(taskInfo).Build(), nil
 }
 
-// TODO: GetByFilter?
-func (j JobService) GetAll(ctx context.Context, filters ...filter.FilterOpt) ([]*job.Job, error) {
+func (j JobService) GetByFilter(ctx context.Context, filters ...filter.FilterOpt) ([]*job.Job, error) {
 	f := filter.NewFilter(filters...)
 
 	// when resource destination exist, filter by destination
@@ -255,7 +255,7 @@ func (j JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, spe
 func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, logWriter writer.LogWriter, filters ...filter.FilterOpt) (err error) {
 	me := errors.NewMultiError("refresh all specs errors")
 
-	jobs, err := j.GetAll(ctx, filters...)
+	jobs, err := j.GetByFilter(ctx, filters...)
 	me.Append(err)
 
 	jobsWithUpstreams, err := j.upstreamResolver.BulkResolve(ctx, projectName, jobs, logWriter)
@@ -283,7 +283,7 @@ func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSp
 	// asumption, all job specs from input are also the job within same project
 
 	// populate all jobs in project
-	jobsInProject, err := j.GetAll(ctx, filter.WithString(filter.ProjectName, jobTenant.ProjectName().String()))
+	jobsInProject, err := j.GetByFilter(ctx, filter.WithString(filter.ProjectName, jobTenant.ProjectName().String()))
 	if err != nil {
 		return err
 	}
