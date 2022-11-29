@@ -43,11 +43,14 @@ func (j JobRepository) insertJobSpec(ctx context.Context, jobEntity *job.Job) er
 				errorMsg := fmt.Sprintf("job already exists and soft deleted in namespace %s. consider hard delete the job before inserting in this namespace.", existingJob.NamespaceName)
 				return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, errorMsg)
 			}
-			return j.updateJobSpec(ctx, jobEntity)
+			return j.triggerUpdate(ctx, jobEntity)
 		}
 		return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, "job already exists")
 	}
+	return j.triggerInsert(ctx, jobEntity)
+}
 
+func (j JobRepository) triggerInsert(ctx context.Context, jobEntity *job.Job) error {
 	storageJob, err := toStorageSpec(jobEntity)
 	if err != nil {
 		return err
@@ -102,7 +105,11 @@ func (j JobRepository) Update(ctx context.Context, jobs []*job.Job) ([]*job.Job,
 	me := errors.NewMultiError("update jobs errors")
 	var storedJobs []*job.Job
 	for _, jobEntity := range jobs {
-		if err := j.updateJobSpec(ctx, jobEntity); err != nil {
+		if err := j.preCheckUpdate(ctx, jobEntity); err != nil {
+			me.Append(err)
+			continue
+		}
+		if err := j.triggerUpdate(ctx, jobEntity); err != nil {
 			me.Append(err)
 			continue
 		}
@@ -111,15 +118,31 @@ func (j JobRepository) Update(ctx context.Context, jobs []*job.Job) ([]*job.Job,
 	return storedJobs, errors.MultiToError(me)
 }
 
-func (j JobRepository) updateJobSpec(ctx context.Context, jobEntity *job.Job) error {
+func (j JobRepository) preCheckUpdate(ctx context.Context, jobEntity *job.Job) error {
+	existingJob, err := j.get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name(), false)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.NewError(errors.ErrNotFound, job.EntityJob, fmt.Sprintf("job %s not exists yet", jobEntity.Spec().Name()))
+		}
+		return errors.NewError(errors.ErrInternalError, job.EntityJob, fmt.Sprintf("failed to check job %s in db: %s", jobEntity.Spec().Name().String(), err.Error()))
+	}
+
+	if existingJob.DeletedAt.Valid {
+		if existingJob.NamespaceName != jobEntity.Tenant().NamespaceName().String() {
+			errorMsg := fmt.Sprintf("job already exists and soft deleted in namespace %s. consider hard delete the job and do add to this namespace.", existingJob.NamespaceName)
+			return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, errorMsg)
+		}
+		errorMsg := fmt.Sprintf("update is not allowed as job %s has been soft deleted. please do add operation.", existingJob.Name)
+		return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, errorMsg)
+	}
+
+	return nil
+}
+
+func (j JobRepository) triggerUpdate(ctx context.Context, jobEntity *job.Job) error {
 	storageJob, err := toStorageSpec(jobEntity)
 	if err != nil {
 		return err
-	}
-
-	_, err = j.get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name(), false)
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return errors.NewError(errors.ErrNotFound, job.EntityJob, fmt.Sprintf("job %s not exists yet", jobEntity.Spec().Name()))
 	}
 
 	updateJobQuery := `
