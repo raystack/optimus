@@ -1448,6 +1448,38 @@ func TestJobService(t *testing.T) {
 		})
 	})
 
+	t.Run("GetTaskInfo", func(t *testing.T) {
+		t.Run("return error when plugin could not retrieve info", func(t *testing.T) {
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			pluginService.On("Info", ctx, jobTask).Return(nil, errors.New("error encountered"))
+
+			jobService := service.NewJobService(nil, pluginService, nil, nil, nil)
+			actual, err := jobService.GetTaskInfo(ctx, jobTask)
+			assert.Error(t, err, "error encountered")
+			assert.Nil(t, actual)
+		})
+		t.Run("return task with information included when success", func(t *testing.T) {
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			pluginInfoResp := &models.PluginInfoResponse{
+				Name:        "bq2bq",
+				Description: "plugin desc",
+				Image:       "odpf/bq2bq:latest",
+			}
+			pluginService.On("Info", ctx, jobTask).Return(pluginInfoResp, nil)
+
+			expected := job.NewTaskBuilder(jobTask.Name(), jobTask.Config()).WithInfo(pluginInfoResp).Build()
+			jobService := service.NewJobService(nil, pluginService, nil, nil, nil)
+			actual, err := jobService.GetTaskInfo(ctx, jobTask)
+			assert.NoError(t, err)
+			assert.NotNil(t, actual)
+			assert.Equal(t, expected, actual)
+		})
+	})
+
 	t.Run("Validate", func(t *testing.T) {
 		t.Run("returns error when get tenant details if failed", func(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
