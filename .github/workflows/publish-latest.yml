@@ -28,7 +28,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Push latest image
-        run: env GOOS=linux GOARCH=amd64 make build && docker build -t  docker.io/odpf/optimus:latest . && docker push docker.io/odpf/optimus:latest
+        run: env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make build && docker build -t  docker.io/odpf/optimus:latest . && docker push docker.io/odpf/optimus:latest
 
   documentation:
     runs-on: ubuntu-latest
