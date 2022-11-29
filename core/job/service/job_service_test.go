@@ -1514,6 +1514,88 @@ func TestJobService(t *testing.T) {
 			assert.Nil(t, logger.Messages)
 			assert.Equal(t, jobA, result)
 		})
+		t.Run("should return error if unable to get tenant details", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, errors.New("sample error"))
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
+			result, logger := jobService.GetJobBasicInfo(ctx, sampleTenant, "", specA)
+			assert.Contains(t, logger.Messages[0].Message, "sample error")
+			assert.Nil(t, result)
+		})
+		t.Run("should return error if unable to generate job based on spec", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
+
+			jobAUpstreamName := []job.ResourceURN{"job-B"}
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobAUpstreamName, errors.New("sample error"))
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
+			result, logger := jobService.GetJobBasicInfo(ctx, sampleTenant, "", specA)
+			assert.Contains(t, logger.Messages[0].Message, "sample error")
+			assert.Nil(t, result)
+		})
+		t.Run("should return job information with warning and errors", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			specASchedule, err := job.NewScheduleBuilder(startDate).WithCatchUp(true).Build()
+			assert.NoError(t, err)
+
+			invalidLabels := map[string]string{"": ""}
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", specASchedule, jobWindow, jobTask).WithLabels(invalidLabels).Build()
+			jobADestination, _ := job.ResourceURNFrom("resource-A")
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, nil)
+
+			jobRepo.On("GetByJobName", ctx, project.Name(), specA.Name()).Return(jobA, nil)
+			jobRepo.On("GetAllByResourceDestination", ctx, jobADestination).Return([]*job.Job{}, errors.New("sample-error"))
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
+			result, logger := jobService.GetJobBasicInfo(ctx, sampleTenant, specA.Name(), nil)
+			assert.Contains(t, logger.Messages[0].Message, "no job sources detected")
+			assert.Contains(t, logger.Messages[1].Message, "job validation failed")
+			assert.Contains(t, logger.Messages[2].Message, "catchup is enabled")
+			assert.Contains(t, logger.Messages[3].Message, "could not perform duplicate job destination check")
+			assert.Equal(t, jobA, result)
+		})
 	})
 
 	t.Run("GetDownstream", func(t *testing.T) {
