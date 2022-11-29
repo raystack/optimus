@@ -183,6 +183,121 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.ErrorContains(t, err, "job already exists")
 			assert.Nil(t, addedJobs)
 		})
+		t.Run("update job spec if the job is already exist but soft deleted", func(t *testing.T) {
+			db := dbSetup()
+
+			jobLabels := map[string]string{
+				"environment": "integration",
+			}
+			jobHookConfig, err := job.NewConfig(map[string]string{"sample_hook_key": "sample_value"})
+			assert.NoError(t, err)
+			jobHooks := []*job.Hook{job.NewHook("sample_hook", jobHookConfig)}
+			jobAlertConfig, err := job.NewConfig(map[string]string{"sample_alert_key": "sample_value"})
+			assert.NoError(t, err)
+			alert := job.NewAlertBuilder(job.SLAMissEvent, []string{"sample-channel"}).WithConfig(jobAlertConfig).Build()
+			jobAlerts := []*job.Alert{alert}
+			upstreamName1 := job.SpecUpstreamNameFrom("job-upstream-1")
+			upstreamName2 := job.SpecUpstreamNameFrom("job-upstream-2")
+			jobUpstream := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName1, upstreamName2}).Build()
+			jobAsset := job.NewAsset(map[string]string{"sample-asset": "value-asset"})
+			resourceRequestConfig := job.NewMetadataResourceConfig("250m", "128Mi")
+			resourceLimitConfig := job.NewMetadataResourceConfig("250m", "128Mi")
+			resourceMetadata := job.NewResourceMetadata(resourceRequestConfig, resourceLimitConfig)
+			jobMetadata := job.NewMetadataBuilder().
+				WithResource(resourceMetadata).
+				WithScheduler(map[string]string{"scheduler_config_key": "value"}).
+				Build()
+
+			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).
+				WithDescription(jobDescription).
+				WithLabels(jobLabels).
+				WithHooks(jobHooks).
+				WithAlerts(jobAlerts).
+				WithSpecUpstream(jobUpstream).
+				WithAsset(jobAsset).
+				WithMetadata(jobMetadata).
+				Build()
+			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"resource-3"})
+
+			jobSpecB := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).
+				WithDescription(jobDescription).
+				WithLabels(jobLabels).
+				WithHooks(jobHooks).
+				WithAlerts(jobAlerts).
+				WithAsset(jobAsset).
+				WithMetadata(jobMetadata).
+				Build()
+			assert.NoError(t, err)
+			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", nil)
+
+			jobs := []*job.Job{jobA, jobB}
+
+			jobRepo := postgres.NewJobRepository(db)
+			addedJobs, err := jobRepo.Add(ctx, jobs)
+			assert.NoError(t, err)
+			assert.EqualValues(t, jobs, addedJobs)
+
+			err = jobRepo.Delete(ctx, proj.Name(), jobA.Spec().Name(), false)
+			assert.NoError(t, err)
+
+			addedJobs, err = jobRepo.Add(ctx, []*job.Job{jobA})
+			assert.NoError(t, err)
+			assert.EqualValues(t, []*job.Job{jobA}, addedJobs)
+		})
+		t.Run("avoid re-inserting job if it is soft deleted in other namespace", func(t *testing.T) {
+			db := dbSetup()
+
+			jobLabels := map[string]string{
+				"environment": "integration",
+			}
+			jobHookConfig, err := job.NewConfig(map[string]string{"sample_hook_key": "sample_value"})
+			assert.NoError(t, err)
+			jobHooks := []*job.Hook{job.NewHook("sample_hook", jobHookConfig)}
+			jobAlertConfig, err := job.NewConfig(map[string]string{"sample_alert_key": "sample_value"})
+			assert.NoError(t, err)
+			alert := job.NewAlertBuilder(job.SLAMissEvent, []string{"sample-channel"}).WithConfig(jobAlertConfig).Build()
+			jobAlerts := []*job.Alert{alert}
+			upstreamName1 := job.SpecUpstreamNameFrom("job-upstream-1")
+			upstreamName2 := job.SpecUpstreamNameFrom("job-upstream-2")
+			jobUpstream := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName1, upstreamName2}).Build()
+			jobAsset := job.NewAsset(map[string]string{"sample-asset": "value-asset"})
+			resourceRequestConfig := job.NewMetadataResourceConfig("250m", "128Mi")
+			resourceLimitConfig := job.NewMetadataResourceConfig("250m", "128Mi")
+			resourceMetadata := job.NewResourceMetadata(resourceRequestConfig, resourceLimitConfig)
+			jobMetadata := job.NewMetadataBuilder().
+				WithResource(resourceMetadata).
+				WithScheduler(map[string]string{"scheduler_config_key": "value"}).
+				Build()
+
+			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).
+				WithDescription(jobDescription).
+				WithLabels(jobLabels).
+				WithHooks(jobHooks).
+				WithAlerts(jobAlerts).
+				WithSpecUpstream(jobUpstream).
+				WithAsset(jobAsset).
+				WithMetadata(jobMetadata).
+				Build()
+			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"resource-3"})
+
+			jobs := []*job.Job{jobA}
+
+			jobRepo := postgres.NewJobRepository(db)
+			addedJobs, err := jobRepo.Add(ctx, jobs)
+			assert.NoError(t, err)
+			assert.EqualValues(t, jobs, addedJobs)
+
+			err = jobRepo.Delete(ctx, proj.Name(), jobA.Spec().Name(), false)
+			assert.NoError(t, err)
+
+			otherTenant, err := tenant.NewTenant(proj.Name().String(), otherNamespace.Name().String())
+			assert.NoError(t, err)
+
+			jobAToReAdd := job.NewJob(otherTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"resource-3"})
+			addedJobs, err = jobRepo.Add(ctx, []*job.Job{jobAToReAdd})
+			assert.ErrorContains(t, err, "job already exists and soft deleted in namespace")
+			assert.Nil(t, addedJobs)
+		})
 	})
 
 	t.Run("Update", func(t *testing.T) {

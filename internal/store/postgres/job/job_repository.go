@@ -34,14 +34,23 @@ func (j JobRepository) Add(ctx context.Context, jobs []*job.Job) ([]*job.Job, er
 }
 
 func (j JobRepository) insertJobSpec(ctx context.Context, jobEntity *job.Job) error {
+	existingJob, err := j.get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name(), false)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.NewError(errors.ErrInternalError, job.EntityJob, fmt.Sprintf("failed to check job %s in db: %s", jobEntity.Spec().Name().String(), err.Error()))
+	} else if err == nil {
+		if existingJob.DeletedAt.Valid {
+			if existingJob.NamespaceName != jobEntity.Tenant().NamespaceName().String() {
+				errorMsg := fmt.Sprintf("job already exists and soft deleted in namespace %s. consider hard delete the job before inserting in this namespace.", existingJob.NamespaceName)
+				return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, errorMsg)
+			}
+			return j.updateJobSpec(ctx, jobEntity)
+		}
+		return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, "job already exists")
+	}
+
 	storageJob, err := toStorageSpec(jobEntity)
 	if err != nil {
 		return err
-	}
-
-	_, err = j.Get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name())
-	if err == nil {
-		return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, "job already exists")
 	}
 
 	insertJobQuery := `
@@ -108,7 +117,7 @@ func (j JobRepository) updateJobSpec(ctx context.Context, jobEntity *job.Job) er
 		return err
 	}
 
-	_, err = j.Get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name())
+	_, err = j.get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name(), false)
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return errors.NewError(errors.ErrNotFound, job.EntityJob, fmt.Sprintf("job %s not exists yet", jobEntity.Spec().Name()))
 	}
@@ -122,7 +131,7 @@ UPDATE job SET
 	window_size = ?, window_offset = ?, window_truncate_to = ?,
 	assets = ?, hooks = ?, metadata = ?,
 	destination = ?, sources = ?,
-	updated_at = NOW()
+	updated_at = NOW(), deleted_at = null
 WHERE 
 	name = ? AND 
 	project_name = ?;
@@ -148,7 +157,7 @@ WHERE
 	return nil
 }
 
-func (j JobRepository) Get(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) (Spec, error) {
+func (j JobRepository) get(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, onlyActiveJob bool) (*Spec, error) {
 	var spec Spec
 
 	getJobByNameAtProject := `SELECT *
@@ -156,10 +165,15 @@ FROM job
 WHERE name = ?
 AND project_name = ?
 `
+	if onlyActiveJob {
+		jobDeletedFilter := " AND deleted_at IS NOT NULL"
+		getJobByNameAtProject += jobDeletedFilter
+	}
+
 	err := j.db.WithContext(ctx).Raw(getJobByNameAtProject, jobName.String(), projectName.String()).
 		First(&spec).Error
 
-	return spec, err
+	return &spec, err
 }
 
 func (j JobRepository) GetJobNameWithInternalUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error) {
@@ -300,12 +314,12 @@ func (JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstr
 }
 
 func (j JobRepository) GetByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) (*job.Job, error) {
-	spec, err := j.Get(ctx, projectName, jobName)
+	spec, err := j.get(ctx, projectName, jobName, true)
 	if err != nil {
 		return nil, err
 	}
 
-	job, err := specToJob(&spec)
+	job, err := specToJob(spec)
 	if err != nil {
 		return nil, err
 	}
