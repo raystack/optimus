@@ -1215,7 +1215,32 @@ func TestJobService(t *testing.T) {
 	})
 
 	t.Run("Get", func(t *testing.T) {
-		// TODO: implement test cases
+		t.Run("return error when repo get by job name error", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			jobName, _ := job.NameFrom("job-A")
+			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), jobName).Return(nil, errors.New("error when fetch job"))
+
+			jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+			actual, err := jobService.Get(ctx, sampleTenant, jobName)
+			assert.Error(t, err, "error when fetch job")
+			assert.Nil(t, actual)
+		})
+		t.Run("return job when success fetch the job", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-B"})
+			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specA.Name()).Return(jobA, nil)
+
+			jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+			actual, err := jobService.Get(ctx, sampleTenant, specA.Name())
+			assert.NoError(t, err, "error when fetch job")
+			assert.NotNil(t, actual)
+			assert.Equal(t, jobA, actual)
+		})
 	})
 
 	t.Run("GetAll", func(t *testing.T) {
