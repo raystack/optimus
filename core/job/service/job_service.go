@@ -221,7 +221,7 @@ func (j JobService) GetByFilter(ctx context.Context, filters ...filter.FilterOpt
 		return j.repo.GetAllByProjectName(ctx, projectName)
 	}
 
-	return nil, nil
+	return nil, fmt.Errorf("no filter matched")
 }
 
 func (j JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec, logWriter writer.LogWriter) error {
