@@ -21,7 +21,11 @@ func (f *filter) GetStringValue(operand Operand) string {
 	if !ok {
 		return ""
 	}
-	return v.(string)
+	val, ok := v.(string)
+	if !ok {
+		return ""
+	}
+	return val
 }
 
 func (f *filter) GetStringArrayValue(operand Operand) []string {
@@ -29,7 +33,11 @@ func (f *filter) GetStringArrayValue(operand Operand) []string {
 	if !ok {
 		return nil
 	}
-	return v.([]string)
+	val, ok := v.([]string)
+	if !ok {
+		return nil
+	}
+	return val
 }
 
 // Contains provide conditional check for the filter if all operands satisfied by the filter.

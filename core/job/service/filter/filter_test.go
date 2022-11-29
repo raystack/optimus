@@ -9,7 +9,7 @@ import (
 )
 
 func TestFilter(t *testing.T) {
-	t.Run("GetValue", func(t *testing.T) {
+	t.Run("GetStringValue", func(t *testing.T) {
 		t.Run("return project_name if operand project name exist", func(t *testing.T) {
 			f := filter.NewFilter(filter.WithString(filter.ProjectName, "project-a"))
 			actual := f.GetStringValue(filter.ProjectName)
@@ -33,6 +33,52 @@ func TestFilter(t *testing.T) {
 			f := filter.NewFilter()
 			actual := f.GetStringValue(filter.ProjectName)
 			assert.Empty(t, actual)
+		})
+		t.Run("return empty string if only operand array string type exist", func(t *testing.T) {
+			f := filter.NewFilter(
+				filter.WithStringArray(filter.ProjectName, []string{"example"}),
+			)
+			actual := f.GetStringValue(filter.ProjectName)
+			assert.Empty(t, actual)
+		})
+	})
+
+	t.Run("GetStringArrayValue", func(t *testing.T) {
+		t.Run("return namespace names if operand namespace names exist", func(t *testing.T) {
+			f := filter.NewFilter(filter.WithStringArray(filter.NamespaceNames, []string{"example"}))
+			actual := f.GetStringArrayValue(filter.NamespaceNames)
+			assert.Equal(t, []string{"example"}, actual)
+		})
+		t.Run("return namespace names if multi operand exist including namespace names", func(t *testing.T) {
+			f := filter.NewFilter(
+				filter.WithStringArray(filter.NamespaceNames, []string{"example"}),
+				filter.WithString(filter.JobName, "job-a"),
+				filter.WithString(filter.ProjectName, "project-a"),
+				filter.WithString(filter.ResourceDestination, "resource-destination"),
+			)
+			actual := f.GetStringArrayValue(filter.NamespaceNames)
+			assert.Equal(t, []string{"example"}, actual)
+		})
+		t.Run("return nil if namespace names not exist", func(t *testing.T) {
+			f := filter.NewFilter(
+				filter.WithString(filter.JobName, "job-a"),
+				filter.WithString(filter.ProjectName, "project-a"),
+				filter.WithString(filter.ResourceDestination, "resource-destination"),
+			)
+			actual := f.GetStringArrayValue(filter.NamespaceNames)
+			assert.Nil(t, actual)
+		})
+		t.Run("return nil if no operand exist", func(t *testing.T) {
+			f := filter.NewFilter()
+			actual := f.GetStringArrayValue(filter.NamespaceNames)
+			assert.Nil(t, actual)
+		})
+		t.Run("return nil if only operand string type exist", func(t *testing.T) {
+			f := filter.NewFilter(
+				filter.WithString(filter.NamespaceNames, "example"),
+			)
+			actual := f.GetStringArrayValue(filter.NamespaceNames)
+			assert.Nil(t, actual)
 		})
 	})
 
