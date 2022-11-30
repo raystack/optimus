@@ -134,6 +134,8 @@ func TestUpstreamResolver(t *testing.T) {
 
 			jobRepo.On("GetJobNameWithInternalUpstreams", ctx, project.Name(), mock.Anything).Return(map[job.Name][]*job.Upstream{}, errors.New("internal error"))
 
+			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+
 			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
 			result, err := upstreamResolver.BulkResolve(ctx, project.Name(), jobs, logWriter)
 			assert.Error(t, err)

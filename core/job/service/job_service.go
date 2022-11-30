@@ -233,10 +233,13 @@ func (j JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, spe
 	me := errors.NewMultiError("replace all specs errors")
 
 	validatedSpecs, err := j.getValidatedSpecs(specs)
+	if err != nil {
+		logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] spec validation failures: %s", jobTenant.NamespaceName().String(), err.Error()))
+	}
 	me.Append(err)
 
 	toAdd, toUpdate, toDelete, err := j.differentiateSpecs(ctx, jobTenant, validatedSpecs)
-	logWriter.Write(writer.LogLevelInfo, fmt.Sprintf("found %d new, %d modified, and %d deleted job specs", len(toAdd), len(toUpdate), len(toDelete)))
+	logWriter.Write(writer.LogLevelInfo, fmt.Sprintf("[%s] found %d new, %d modified, and %d deleted job specs", jobTenant.NamespaceName().String(), len(toAdd), len(toUpdate), len(toDelete)))
 	me.Append(err)
 
 	tenantWithDetails, err := j.tenantDetailsGetter.GetDetails(ctx, jobTenant)
@@ -368,7 +371,10 @@ func (j JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.WithD
 	}
 
 	addedJobs, err := j.repo.Add(ctx, jobsToAdd)
-	me.Append(err)
+	if err != nil {
+		logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] add jobs failure found: %s", tenantWithDetails.Namespace().Name().String(), err.Error()))
+		me.Append(err)
+	}
 
 	return addedJobs, errors.MultiToError(me)
 }
@@ -406,7 +412,10 @@ func (j JobService) bulkUpdate(ctx context.Context, tenantWithDetails *tenant.Wi
 	}
 
 	updatedJobs, err := j.repo.Update(ctx, jobsToUpdate)
-	me.Append(err)
+	if err != nil {
+		logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] update jobs failure found: %s", tenantWithDetails.Namespace().Name().String(), err.Error()))
+		me.Append(err)
+	}
 
 	return updatedJobs, errors.MultiToError(me)
 }
@@ -428,11 +437,12 @@ func (j JobService) bulkDelete(ctx context.Context, jobTenant tenant.Tenant, toD
 			continue
 		}
 
-		err = j.repo.Delete(ctx, jobTenant.ProjectName(), spec.Name(), false)
-		if err == nil {
+		if err = j.repo.Delete(ctx, jobTenant.ProjectName(), spec.Name(), false); err != nil {
+			logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] deleting job %s failed: %s", jobTenant.NamespaceName().String(), spec.Name().String(), err.Error()))
+			me.Append(err)
+		} else {
 			logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] job %s deleted", jobTenant.NamespaceName().String(), spec.Name().String()))
 		}
-		me.Append(err)
 	}
 	return errors.MultiToError(me)
 }

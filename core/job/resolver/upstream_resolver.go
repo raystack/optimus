@@ -44,7 +44,9 @@ func (u UpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.Pr
 	jobNames := job.Jobs(jobs).GetJobNames()
 	jobsWithInternalUpstreams, err := u.jobRepository.GetJobNameWithInternalUpstreams(ctx, projectName, jobNames)
 	if err != nil {
-		return nil, err
+		errorMsg := fmt.Sprintf("unable to resolve upstream: %s", err.Error())
+		logWriter.Write(writer.LogLevelError, errorMsg)
+		return nil, errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg)
 	}
 
 	// merge with external upstreams
@@ -118,11 +120,11 @@ func (u UpstreamResolver) getJobsWithAllUpstreams(ctx context.Context, jobs []*j
 				if err != nil {
 					errorMsg := fmt.Sprintf("job %s upstream resolution failed: %s", currentJob.Spec().Name().String(), err.Error())
 					logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] %s", currentJob.Tenant().NamespaceName().String(), errorMsg))
+				} else {
+					logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] job %s upstream resolved", currentJob.Tenant().NamespaceName().String(), currentJob.Spec().Name().String()))
 				}
 
 				allUpstreams := mergeUpstreams(internalUpstreams, externalUpstreams, unresolvedUpstreams)
-
-				logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] job %s upstream resolved", currentJob.Tenant().NamespaceName().String(), currentJob.Spec().Name().String()))
 				return job.NewWithUpstream(currentJob, allUpstreams), err
 			}
 		}(jobEntity, logWriter))
