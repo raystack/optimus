@@ -928,6 +928,126 @@ func TestNewJobHandler(t *testing.T) {
 
 		})
 	})
+	t.Run("CheckJobSpecifications", func(t *testing.T) {
+		t.Run("return error when creating tenant failed", func(t *testing.T) {
+			jobService := new(JobService)
+			defer jobService.AssertExpectations(t)
+
+			stream := new(JobSpecificationService_CheckJobSpecificationsServer)
+			defer stream.AssertExpectations(t)
+
+			request := &pb.CheckJobSpecificationsRequest{}
+
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
+			err := jobHandler.CheckJobSpecifications(request, stream)
+			assert.Error(t, err)
+			assert.Equal(t, "invalid argument for entity project: project name is empty", err.Error())
+		})
+		t.Run("return error when job proto conversion failed", func(t *testing.T) {
+			jobService := new(JobService)
+			defer jobService.AssertExpectations(t)
+
+			stream := new(JobSpecificationService_CheckJobSpecificationsServer)
+			defer stream.AssertExpectations(t)
+
+			jobSpecProto := &pb.JobSpecification{
+				Version:          int32(jobVersion),
+				Name:             "",
+				Owner:            "sample-owner",
+				StartDate:        jobSchedule.StartDate().String(),
+				EndDate:          jobSchedule.EndDate().String(),
+				Interval:         jobSchedule.Interval(),
+				TaskName:         jobTask.Name().String(),
+				WindowSize:       jobWindow.GetSize(),
+				WindowOffset:     jobWindow.GetOffset(),
+				WindowTruncateTo: jobWindow.GetTruncateTo(),
+			}
+			jobProtos := []*pb.JobSpecification{jobSpecProto}
+
+			stream.On("Context").Return(ctx)
+			jobService.On("Validate", ctx, sampleTenant, mock.Anything, mock.Anything).Return(nil)
+
+			request := &pb.CheckJobSpecificationsRequest{
+				ProjectName:   sampleTenant.ProjectName().String(),
+				NamespaceName: sampleTenant.NamespaceName().String(),
+				Jobs:          jobProtos,
+			}
+
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
+			err := jobHandler.CheckJobSpecifications(request, stream)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "invalid argument for entity job: name is empty")
+		})
+		t.Run("return error when service validate job is failed", func(t *testing.T) {
+			jobService := new(JobService)
+			defer jobService.AssertExpectations(t)
+
+			stream := new(JobSpecificationService_CheckJobSpecificationsServer)
+			defer stream.AssertExpectations(t)
+
+			jobSpecProto := &pb.JobSpecification{
+				Version:          int32(jobVersion),
+				Name:             "job-A",
+				Owner:            "sample-owner",
+				StartDate:        jobSchedule.StartDate().String(),
+				EndDate:          jobSchedule.EndDate().String(),
+				Interval:         jobSchedule.Interval(),
+				TaskName:         jobTask.Name().String(),
+				WindowSize:       jobWindow.GetSize(),
+				WindowOffset:     jobWindow.GetOffset(),
+				WindowTruncateTo: jobWindow.GetTruncateTo(),
+			}
+			jobProtos := []*pb.JobSpecification{jobSpecProto}
+
+			stream.On("Context").Return(ctx)
+			jobService.On("Validate", ctx, sampleTenant, mock.Anything, mock.Anything).Return(errors.New("error encountered"))
+
+			request := &pb.CheckJobSpecificationsRequest{
+				ProjectName:   sampleTenant.ProjectName().String(),
+				NamespaceName: sampleTenant.NamespaceName().String(),
+				Jobs:          jobProtos,
+			}
+
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
+			err := jobHandler.CheckJobSpecifications(request, stream)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "error encountered")
+		})
+		t.Run("return success", func(t *testing.T) {
+			jobService := new(JobService)
+			defer jobService.AssertExpectations(t)
+
+			stream := new(JobSpecificationService_CheckJobSpecificationsServer)
+			defer stream.AssertExpectations(t)
+
+			jobSpecProto := &pb.JobSpecification{
+				Version:          int32(jobVersion),
+				Name:             "job-A",
+				Owner:            "sample-owner",
+				StartDate:        jobSchedule.StartDate().String(),
+				EndDate:          jobSchedule.EndDate().String(),
+				Interval:         jobSchedule.Interval(),
+				TaskName:         jobTask.Name().String(),
+				WindowSize:       jobWindow.GetSize(),
+				WindowOffset:     jobWindow.GetOffset(),
+				WindowTruncateTo: jobWindow.GetTruncateTo(),
+			}
+			jobProtos := []*pb.JobSpecification{jobSpecProto}
+
+			stream.On("Context").Return(ctx)
+			jobService.On("Validate", ctx, sampleTenant, mock.Anything, mock.Anything).Return(nil)
+
+			request := &pb.CheckJobSpecificationsRequest{
+				ProjectName:   sampleTenant.ProjectName().String(),
+				NamespaceName: sampleTenant.NamespaceName().String(),
+				Jobs:          jobProtos,
+			}
+
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
+			err := jobHandler.CheckJobSpecifications(request, stream)
+			assert.NoError(t, err)
+		})
+	})
 	t.Run("JobInspect", func(t *testing.T) {
 		t.Run("should return basic info, upstream, downstream of an existing job", func(t *testing.T) {
 			jobService := new(JobService)
@@ -1734,5 +1854,101 @@ func (_m *RefreshJobsServer) SetHeader(_a0 metadata.MD) error {
 
 // SetTrailer provides a mock function with given fields: _a0
 func (_m *RefreshJobsServer) SetTrailer(_a0 metadata.MD) {
+	_m.Called(_a0)
+}
+
+// JobSpecificationService_CheckJobSpecificationsServer is an autogenerated mock type for the JobSpecificationService_CheckJobSpecificationsServer type
+type JobSpecificationService_CheckJobSpecificationsServer struct {
+	mock.Mock
+}
+
+// Context provides a mock function with given fields:
+func (_m *JobSpecificationService_CheckJobSpecificationsServer) Context() context.Context {
+	ret := _m.Called()
+
+	var r0 context.Context
+	if rf, ok := ret.Get(0).(func() context.Context); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(context.Context)
+		}
+	}
+
+	return r0
+}
+
+// RecvMsg provides a mock function with given fields: m
+func (_m *JobSpecificationService_CheckJobSpecificationsServer) RecvMsg(m interface{}) error {
+	ret := _m.Called(m)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(interface{}) error); ok {
+		r0 = rf(m)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// Send provides a mock function with given fields: _a0
+func (_m *JobSpecificationService_CheckJobSpecificationsServer) Send(_a0 *pb.CheckJobSpecificationsResponse) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*pb.CheckJobSpecificationsResponse) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SendHeader provides a mock function with given fields: _a0
+func (_m *JobSpecificationService_CheckJobSpecificationsServer) SendHeader(_a0 metadata.MD) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(metadata.MD) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SendMsg provides a mock function with given fields: m
+func (_m *JobSpecificationService_CheckJobSpecificationsServer) SendMsg(m interface{}) error {
+	ret := _m.Called(m)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(interface{}) error); ok {
+		r0 = rf(m)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SetHeader provides a mock function with given fields: _a0
+func (_m *JobSpecificationService_CheckJobSpecificationsServer) SetHeader(_a0 metadata.MD) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(metadata.MD) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SetTrailer provides a mock function with given fields: _a0
+func (_m *JobSpecificationService_CheckJobSpecificationsServer) SetTrailer(_a0 metadata.MD) {
 	_m.Called(_a0)
 }
