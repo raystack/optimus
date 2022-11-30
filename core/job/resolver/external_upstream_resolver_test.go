@@ -3,6 +3,7 @@ package resolver_test
 import (
 	"context"
 	"errors"
+	"github.com/odpf/optimus/config"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,7 +23,7 @@ func TestExternalUpstreamResolver(t *testing.T) {
 	optimusResourceManagers := []resourcemanager.ResourceManager{resourceManager}
 	taskName, _ := job.TaskNameFrom("sample-task")
 
-	t.Run("fetchExternalUpstreams", func(t *testing.T) {
+	t.Run("Resolve", func(t *testing.T) {
 		t.Run("resolves upstream externally", func(t *testing.T) {
 			rawUpstreams := []*dto.RawUpstream{
 				{JobName: "job-B", ProjectName: externalTenant.ProjectName().String()},
@@ -54,6 +55,40 @@ func TestExternalUpstreamResolver(t *testing.T) {
 			assert.Equal(t, []*job.Upstream{unresolvedUpstream}, unresolvedDep)
 			assert.NotNil(t, err)
 			assert.Equal(t, []*job.Upstream{upstreamB}, result)
+		})
+	})
+	t.Run("NewExternalUpstreamResolver", func(t *testing.T) {
+		t.Run("should able to construct external upstream resolver using resource manager config", func(t *testing.T) {
+			optimusResourceManagerConfig := config.ResourceManager{
+				Name: "sample",
+				Type: "optimus",
+				Config: config.ResourceManagerConfigOptimus{
+					Host: "sample-host",
+				},
+			}
+
+			_, err := resolver.NewExternalUpstreamResolver([]config.ResourceManager{optimusResourceManagerConfig})
+			assert.NoError(t, err)
+
+		})
+		t.Run("should return error if the resource manager is unknown", func(t *testing.T) {
+			optimusResourceManagerConfig := config.ResourceManager{
+				Name: "sample",
+				Type: "invalid-sample",
+				Config: config.ResourceManagerConfigOptimus{
+					Host: "sample-host",
+				},
+			}
+			_, err := resolver.NewExternalUpstreamResolver([]config.ResourceManager{optimusResourceManagerConfig})
+			assert.ErrorContains(t, err, "resource manager invalid-sample is not recognized")
+		})
+		t.Run("should return error if unable to construct optimus resource manager", func(t *testing.T) {
+			optimusResourceManagerConfig := config.ResourceManager{
+				Name: "sample",
+				Type: "optimus",
+			}
+			_, err := resolver.NewExternalUpstreamResolver([]config.ResourceManager{optimusResourceManagerConfig})
+			assert.ErrorContains(t, err, "host is empty")
 		})
 	})
 }

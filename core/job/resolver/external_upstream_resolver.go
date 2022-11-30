@@ -29,7 +29,7 @@ func NewExternalUpstreamResolver(resourceManagerConfigs []config.ResourceManager
 			}
 			optimusResourceManagers = append(optimusResourceManagers, getter)
 		default:
-			return nil, fmt.Errorf("resource manager [%s] is not recognized", conf.Type)
+			return nil, fmt.Errorf("resource manager %s is not recognized", conf.Type)
 		}
 	}
 	return &extUpstreamResolver{
