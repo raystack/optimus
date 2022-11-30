@@ -662,16 +662,6 @@ func TestPostgresJobRepository(t *testing.T) {
 	})
 
 	t.Run("GetByJobName", func(t *testing.T) {
-		t.Run("returns error when spec is not exist", func(t *testing.T) {
-			db := dbSetup()
-
-			jobRepo := postgres.NewJobRepository(db)
-
-			job, err := jobRepo.GetByJobName(ctx, sampleTenant.ProjectName(), "sample-job-A")
-			assert.Error(t, err)
-			assert.Nil(t, job)
-			assert.Equal(t, "record not found", err.Error())
-		})
 		t.Run("returns job success", func(t *testing.T) {
 			db := dbSetup()
 
@@ -687,6 +677,29 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, actual)
 			assert.Equal(t, jobA, actual)
+		})
+		t.Run("should not return job if it is soft deleted", func(t *testing.T) {
+			db := dbSetup()
+
+			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
+
+			jobRepo := postgres.NewJobRepository(db)
+			_, err := jobRepo.Add(ctx, []*job.Job{jobA})
+			assert.NoError(t, err)
+
+			actual, err := jobRepo.GetByJobName(ctx, sampleTenant.ProjectName(), "sample-job-A")
+			assert.NoError(t, err)
+			assert.NotNil(t, actual)
+			assert.Equal(t, jobA, actual)
+
+			err = jobRepo.Delete(ctx, sampleTenant.ProjectName(), jobSpecA.Name(), false)
+			assert.NoError(t, err)
+
+			actual, err = jobRepo.GetByJobName(ctx, sampleTenant.ProjectName(), "sample-job-A")
+			assert.Error(t, err)
+			assert.Nil(t, actual)
 		})
 	})
 
@@ -711,6 +724,27 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.Len(t, actual, 2)
 			assert.Equal(t, []*job.Job{jobA, jobB}, actual)
 		})
+		t.Run("returns only active jobs excluding the soft deleted jobs", func(t *testing.T) {
+			db := dbSetup()
+
+			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
+			jobSpecB := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", []job.ResourceURN{"dev.resource.sample_c"})
+
+			jobRepo := postgres.NewJobRepository(db)
+			_, err := jobRepo.Add(ctx, []*job.Job{jobA, jobB})
+			assert.NoError(t, err)
+
+			err = jobRepo.Delete(ctx, sampleTenant.ProjectName(), jobSpecB.Name(), false)
+			assert.NoError(t, err)
+
+			actual, err := jobRepo.GetAllByProjectName(ctx, sampleTenant.ProjectName())
+			assert.NoError(t, err)
+			assert.Equal(t, []*job.Job{jobA}, actual)
+		})
 	})
 
 	t.Run("GetAllByResourceDestination", func(t *testing.T) {
@@ -733,6 +767,27 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.NotNil(t, actual)
 			assert.Len(t, actual, 2)
 			assert.Equal(t, []*job.Job{jobA, jobB}, actual)
+		})
+		t.Run("returns only active jobs excluding the soft deleted jobs", func(t *testing.T) {
+			db := dbSetup()
+
+			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_general", []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
+			jobSpecB := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_general", []job.ResourceURN{"dev.resource.sample_c"})
+
+			jobRepo := postgres.NewJobRepository(db)
+			_, err := jobRepo.Add(ctx, []*job.Job{jobA, jobB})
+			assert.NoError(t, err)
+
+			err = jobRepo.Delete(ctx, sampleTenant.ProjectName(), jobSpecB.Name(), false)
+			assert.NoError(t, err)
+
+			actual, err := jobRepo.GetAllByResourceDestination(ctx, "dev.resource.sample_general")
+			assert.NoError(t, err)
+			assert.Equal(t, []*job.Job{jobA}, actual)
 		})
 	})
 

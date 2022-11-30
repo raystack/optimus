@@ -205,16 +205,18 @@ WITH static_upstreams AS (
 	SELECT j.name, j.project_name, d.static_upstream
 	FROM job j
 	JOIN UNNEST(j.static_upstreams) d(static_upstream) ON true
-	WHERE project_name = ? AND
-	name IN (?)
+	WHERE project_name = ? 
+    AND name IN (?) 
+	AND j.deleted_at IS NULL
 ), 
 
 inferred_upstreams AS (
 	SELECT j.name, j.project_name, s.source
 	FROM job j
 	JOIN UNNEST(j.sources) s(source) ON true
-	WHERE project_name = ? AND
-	name IN (?)
+	WHERE project_name = ?
+	AND name IN (?)
+	AND j.deleted_at IS NULL
 )
 
 SELECT
@@ -231,6 +233,7 @@ FROM static_upstreams su
 JOIN job j ON 
 	(su.static_upstream = j.name and su.project_name = j.project_name) OR 
 	(su.static_upstream = j.project_name || '/' ||j.name)
+WHERE j.deleted_at IS NULL
 
 UNION ALL
 	
@@ -245,7 +248,8 @@ SELECT
 	'inferred' AS upstream_type,
 	false AS upstream_external
 FROM inferred_upstreams id
-JOIN job j ON id.source = j.destination;
+JOIN job j ON id.source = j.destination 
+WHERE j.deleted_at IS NULL;
 `
 
 	jobNamesStr := make([]string, len(jobNames))
@@ -362,7 +366,8 @@ func (j JobRepository) GetAllByProjectName(ctx context.Context, projectName tena
 
 	getAllByProjectName := `SELECT *
 FROM job
-WHERE project_name = ?
+WHERE project_name = ? 
+AND deleted_at IS NULL;
 `
 	if err := j.db.WithContext(ctx).Raw(getAllByProjectName, projectName).Find(&specs).Error; err != nil {
 		return nil, err
@@ -390,7 +395,8 @@ func (j JobRepository) GetAllByResourceDestination(ctx context.Context, resource
 
 	getAllByProjectName := `SELECT *
 FROM job
-WHERE destination = ?
+WHERE destination = ? 
+AND deleted_at IS NULL;
 `
 	if err := j.db.WithContext(ctx).Raw(getAllByProjectName, resourceDestination).Find(&specs).Error; err != nil {
 		return nil, err
@@ -636,7 +642,8 @@ func (j JobRepository) GetAllByTenant(ctx context.Context, jobTenant tenant.Tena
 	getAllByProjectName := `SELECT *
 FROM job
 WHERE project_name = ? 
-AND namespace_name = ?
+AND namespace_name = ? 
+AND deleted_at IS NULL;
 `
 	if err := j.db.WithContext(ctx).Raw(getAllByProjectName, jobTenant.ProjectName().String(), jobTenant.NamespaceName().String()).Find(&specs).Error; err != nil {
 		return nil, err
@@ -679,7 +686,8 @@ func (j JobRepository) GetDownstreamByDestination(ctx context.Context, projectNa
 SELECT
 	name as job_name, project_name, namespace_name, task_name
 FROM job
-WHERE project_name = ? AND ? = ANY(sources);
+WHERE project_name = ? AND ? = ANY(sources)
+AND deleted_at IS NULL;
 `
 
 	var storeDownstreams []Downstream
@@ -713,7 +721,8 @@ SELECT
 	j.name as job_name, j.project_name, j.namespace_name, j.task_name
 FROM job_upstream ju
 JOIN job j ON (ju.job_name = j.name AND ju.project_name = j.project_name)
-WHERE upstream_project_name=? AND upstream_job_name=?;
+WHERE upstream_project_name=? AND upstream_job_name=?
+AND j.deleted_at IS NULL;
 `
 
 	var storeDownstreams []Downstream
