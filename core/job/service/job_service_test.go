@@ -100,7 +100,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			invalidAsset := job.NewAsset(map[string]string{"key": ""})
+			invalidAsset := job.NewAsset(map[string]string{"": ""})
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
 			specB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, jobWindow, jobTask).
 				WithAsset(invalidAsset).
@@ -127,7 +127,7 @@ func TestJobService(t *testing.T) {
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
 			err := jobService.Add(ctx, sampleTenant, specs)
-			assert.ErrorContains(t, err, "keys [key] are empty")
+			assert.ErrorContains(t, err, "map contains empty key")
 		})
 		t.Run("return error if unable to get detailed tenant", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -439,7 +439,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			invalidAsset := job.NewAsset(map[string]string{"key": ""})
+			invalidAsset := job.NewAsset(map[string]string{"": ""})
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
 			specB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, jobWindow, jobTask).
 				WithAsset(invalidAsset).
@@ -466,7 +466,7 @@ func TestJobService(t *testing.T) {
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
 			err := jobService.Update(ctx, sampleTenant, specs)
-			assert.ErrorContains(t, err, "keys [key] are empty")
+			assert.ErrorContains(t, err, "map contains empty key")
 		})
 		t.Run("return error if unable to get detailed tenant", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -1690,12 +1690,12 @@ func TestJobService(t *testing.T) {
 			defer tenantDetailsGetter.AssertExpectations(t)
 
 			invalidJobSpec := job.NewSpecBuilder(jobVersion, "job-invalid", "", jobSchedule, jobWindow, jobTask).
-				WithLabels(map[string]string{"a": ""}).
+				WithLabels(map[string]string{"": ""}).
 				Build()
 			jobService := service.NewJobService(nil, nil, nil, tenantDetailsGetter, nil)
 			err := jobService.Validate(ctx, sampleTenant, []*job.Spec{invalidJobSpec}, nil)
 			assert.Error(t, err)
-			assert.Equal(t, "validate specs errors:\n invalid argument for entity job: keys [a] are empty", err.Error())
+			assert.ErrorContains(t, err, "map contains empty key")
 		})
 		t.Run("returns error when generate jobs failed", func(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)

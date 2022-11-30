@@ -848,24 +848,10 @@ func (s SpecUpstreamBuilder) WithSpecHTTPUpstream(httpUpstreams []*SpecHTTPUpstr
 
 // TODO: check whether this is supposed to be here or in utils
 func validateMap(input map[string]string) error {
-	var invalidKeys []string
-	containsEmptyKey := false
-	for key, value := range input {
+	for key, _ := range input {
 		if key == "" {
-			containsEmptyKey = true
-			continue
-		}
-		if value == "" {
-			invalidKeys = append(invalidKeys, key)
+			return errors.InvalidArgument(EntityJob, "map contains empty key")
 		}
 	}
-	me := errors.NewMultiError("errors on map")
-	if containsEmptyKey {
-		me.Append(errors.InvalidArgument(EntityJob, "map contains empty key"))
-	}
-	if len(invalidKeys) > 0 {
-		msg := fmt.Sprintf("keys [%s] are empty", strings.Join(invalidKeys, ", "))
-		me.Append(errors.InvalidArgument(EntityJob, msg))
-	}
-	return errors.MultiToError(me)
+	return nil
 }
