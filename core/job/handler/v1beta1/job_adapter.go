@@ -1,12 +1,13 @@
 package v1beta1
 
 import (
+	"google.golang.org/protobuf/types/known/durationpb"
+
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
-	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 func toJobProto(jobEntity *job.Job) *pb.JobSpecification {

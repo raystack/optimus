@@ -39,7 +39,7 @@ func NewJobPluginService(secretsGetter SecretsGetter, pluginRepo models.PluginRe
 	return &JobPluginService{secretsGetter: secretsGetter, pluginRepo: pluginRepo, engine: engine, logger: logger, now: time.Now}
 }
 
-func (p JobPluginService) Info(ctx context.Context, task *job.Task) (*models.PluginInfoResponse, error) {
+func (p JobPluginService) Info(_ context.Context, task *job.Task) (*models.PluginInfoResponse, error) {
 	plugin, err := p.pluginRepo.GetByName(task.Name().String())
 	if err != nil {
 		return nil, err

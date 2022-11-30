@@ -3,11 +3,11 @@ package job
 import (
 	"context"
 	"fmt"
-	"github.com/odpf/optimus/core/job/dto"
 
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 )

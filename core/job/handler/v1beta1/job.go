@@ -6,13 +6,12 @@ import (
 	"io"
 	"strings"
 
-	"github.com/odpf/optimus/core/job/dto"
-
 	"github.com/odpf/salt/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
@@ -323,7 +322,7 @@ func (jh *JobHandler) RefreshJobs(request *pb.RefreshJobsRequest, stream pb.JobS
 	return nil
 }
 
-func (*JobHandler) CheckJobSpecification(ctx context.Context, req *pb.CheckJobSpecificationRequest) (*pb.CheckJobSpecificationResponse, error) {
+func (*JobHandler) CheckJobSpecification(_ context.Context, _ *pb.CheckJobSpecificationRequest) (*pb.CheckJobSpecificationResponse, error) {
 	// TODO: need to do further investigation if this api is still being used or not
 	return nil, nil
 }

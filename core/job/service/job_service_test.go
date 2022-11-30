@@ -5,13 +5,12 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/odpf/optimus/core/job/dto"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/service"
 	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"

@@ -3,12 +3,13 @@ package resolver
 import (
 	"context"
 	"fmt"
+
 	"github.com/hashicorp/go-multierror"
-	"github.com/odpf/optimus/core/tenant"
 
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
+	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/ext/resourcemanager"
 )
 

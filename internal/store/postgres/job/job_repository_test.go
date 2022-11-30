@@ -4,13 +4,13 @@ package job_test
 
 import (
 	"context"
-	"github.com/odpf/optimus/core/job/dto"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/tenant"
 	postgres "github.com/odpf/optimus/internal/store/postgres/job"
 	tenantPostgres "github.com/odpf/optimus/internal/store/postgres/tenant"

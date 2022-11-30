@@ -32,8 +32,6 @@ type replaceAllCommand struct {
 	selectedNamespaceNames []string
 	verbose                bool
 	configFilePath         string
-
-	pluginCleanFn func()
 }
 
 // NewReplaceAllCommand initializes command for ReplaceAll

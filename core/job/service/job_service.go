@@ -3,15 +3,14 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/kushsharma/parallel"
 	"strings"
 
-	"github.com/odpf/optimus/core/job/dto"
-
+	"github.com/kushsharma/parallel"
 	"github.com/odpf/salt/log"
 
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
@@ -345,12 +344,12 @@ func (j JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.WithD
 	for _, spec := range specsToAdd {
 		runner.Add(func(currentSpec *job.Spec, lw writer.LogWriter) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				generatedJob, err := j.generateJob(ctx, tenantWithDetails, spec)
+				generatedJob, err := j.generateJob(ctx, tenantWithDetails, currentSpec)
 				if err != nil {
-					logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] unable to add job %s", tenantWithDetails.Namespace().Name().String(), spec.Name().String()))
+					lw.Write(writer.LogLevelError, fmt.Sprintf("[%s] unable to add job %s", tenantWithDetails.Namespace().Name().String(), currentSpec.Name().String()))
 					return nil, err
 				}
-				logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] adding job %s", tenantWithDetails.Namespace().Name().String(), spec.Name().String()))
+				lw.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] adding job %s", tenantWithDetails.Namespace().Name().String(), currentSpec.Name().String()))
 				return generatedJob, nil
 			}
 		}(spec, logWriter))
@@ -386,12 +385,12 @@ func (j JobService) bulkUpdate(ctx context.Context, tenantWithDetails *tenant.Wi
 	for _, spec := range specsToUpdate {
 		runner.Add(func(currentSpec *job.Spec, lw writer.LogWriter) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				generatedJob, err := j.generateJob(ctx, tenantWithDetails, spec)
+				generatedJob, err := j.generateJob(ctx, tenantWithDetails, currentSpec)
 				if err != nil {
-					logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] unable to update job %s", tenantWithDetails.Namespace().Name().String(), spec.Name().String()))
+					lw.Write(writer.LogLevelError, fmt.Sprintf("[%s] unable to update job %s", tenantWithDetails.Namespace().Name().String(), currentSpec.Name().String()))
 					return nil, err
 				}
-				logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] updating job %s", tenantWithDetails.Namespace().Name().String(), spec.Name().String()))
+				lw.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] updating job %s", tenantWithDetails.Namespace().Name().String(), currentSpec.Name().String()))
 				return generatedJob, nil
 			}
 		}(spec, logWriter))

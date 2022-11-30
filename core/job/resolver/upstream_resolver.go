@@ -3,6 +3,7 @@ package resolver
 import (
 	"context"
 	"fmt"
+
 	"github.com/kushsharma/parallel"
 
 	"github.com/odpf/optimus/api/writer"
@@ -119,9 +120,9 @@ func (u UpstreamResolver) getJobsWithAllUpstreams(ctx context.Context, jobs []*j
 				externalUpstreams, unresolvedUpstreams, err := u.externalUpstreamResolver.Resolve(ctx, upstreamsToResolve)
 				if err != nil {
 					errorMsg := fmt.Sprintf("job %s upstream resolution failed: %s", currentJob.Spec().Name().String(), err.Error())
-					logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] %s", currentJob.Tenant().NamespaceName().String(), errorMsg))
+					lw.Write(writer.LogLevelError, fmt.Sprintf("[%s] %s", currentJob.Tenant().NamespaceName().String(), errorMsg))
 				} else {
-					logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] job %s upstream resolved", currentJob.Tenant().NamespaceName().String(), currentJob.Spec().Name().String()))
+					lw.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] job %s upstream resolved", currentJob.Tenant().NamespaceName().String(), currentJob.Spec().Name().String()))
 				}
 
 				allUpstreams := mergeUpstreams(internalUpstreams, externalUpstreams, unresolvedUpstreams)
