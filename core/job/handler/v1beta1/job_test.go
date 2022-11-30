@@ -736,6 +736,106 @@ func TestNewJobHandler(t *testing.T) {
 			err := jobHandler.ReplaceAllJobSpecifications(stream)
 			assert.ErrorContains(t, err, "error when replacing job specifications")
 		})
+		t.Run("skips operation for a namespace if the tenant is invalid", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
+
+			jobProtos := []*pb.JobSpecification{
+				{
+					Version:          int32(jobVersion),
+					Name:             "job-A",
+					Owner:            "sample-owner",
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name().String(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+				{
+					Version:          int32(jobVersion),
+					Name:             "job-B",
+					Owner:            "sample-owner",
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name().String(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+			}
+			request1 := &pb.ReplaceAllJobSpecificationsRequest{}
+			request2 := &pb.ReplaceAllJobSpecificationsRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: namespace.Name().String(),
+				Jobs:          jobProtos,
+			}
+
+			stream := new(ReplaceAllJobSpecificationsServer)
+			stream.On("Context").Return(ctx)
+			stream.On("Recv").Return(request1, nil).Once()
+			stream.On("Recv").Return(request2, nil).Once()
+			stream.On("Recv").Return(nil, io.EOF).Once()
+
+			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, mock.Anything).Return(nil)
+
+			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Twice()
+
+			err := jobHandler.ReplaceAllJobSpecifications(stream)
+			assert.Error(t, err)
+		})
+		t.Run("marks operation for this namespace to failed if unable to successfully do replace all", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
+
+			jobProtos := []*pb.JobSpecification{
+				{
+					Version:          int32(jobVersion),
+					Name:             "job-A",
+					Owner:            "sample-owner",
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name().String(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+				{
+					Version:          int32(jobVersion),
+					Name:             "job-B",
+					Owner:            "sample-owner",
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name().String(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+			}
+			request := &pb.ReplaceAllJobSpecificationsRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: namespace.Name().String(),
+				Jobs:          jobProtos,
+			}
+
+			stream := new(ReplaceAllJobSpecificationsServer)
+			stream.On("Context").Return(ctx)
+			stream.On("Recv").Return(request, nil).Once()
+			stream.On("Recv").Return(nil, io.EOF).Once()
+
+			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, mock.Anything).Return(errors.New("internal error"))
+
+			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Twice()
+
+			err := jobHandler.ReplaceAllJobSpecifications(stream)
+			assert.Error(t, err)
+		})
 	})
 	t.Run("RefreshJobs", func(t *testing.T) {
 		t.Run("do refresh for the requested jobs", func(t *testing.T) {
@@ -775,22 +875,25 @@ func TestNewJobHandler(t *testing.T) {
 			err := jobHandler.RefreshJobs(request, stream)
 			assert.Error(t, err)
 		})
-		t.Run("returns error if project name is invalid", func(t *testing.T) {
+		t.Run("returns error if unable to successfully run refresh", func(t *testing.T) {
 			jobService := new(JobService)
 
 			jobHandler := v1beta1.NewJobHandler(jobService, log)
 
 			request := &pb.RefreshJobsRequest{
+				ProjectName:    project.Name().String(),
 				NamespaceNames: []string{namespace.Name().String()},
 			}
 
 			stream := new(RefreshJobsServer)
 			stream.On("Context").Return(ctx)
 
+			jobService.On("Refresh", ctx, project.Name(), mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("internal error"))
+
 			stream.On("Send", mock.AnythingOfType("*optimus.RefreshJobsResponse")).Return(nil)
 
 			err := jobHandler.RefreshJobs(request, stream)
-			assert.Error(t, err)
+			assert.ErrorContains(t, err, "internal error")
 		})
 	})
 	t.Run("GetJobSpecification", func(t *testing.T) {
@@ -1052,7 +1155,9 @@ func TestNewJobHandler(t *testing.T) {
 		t.Run("should return basic info, upstream, downstream of an existing job", func(t *testing.T) {
 			jobService := new(JobService)
 
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			httpUpstream := job.NewSpecHTTPUpstreamBuilder("sample-upstream", "sample-url").Build()
+			upstreamSpec := job.NewSpecUpstreamBuilder().WithSpecHTTPUpstream([]*job.SpecHTTPUpstream{httpUpstream}).Build()
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobA := job.NewJob(sampleTenant, specA, "resource-A", nil)
 
 			upstreamB := job.NewUpstreamResolved("job-B", "", "resource-b", sampleTenant, "static", "bq2bq", false)
@@ -1101,6 +1206,14 @@ func TestNewJobHandler(t *testing.T) {
 							Name:  "sample_task_key",
 							Value: "sample_value",
 						}},
+						Dependencies: []*pb.JobDependency{
+							{
+								HttpDependency: &pb.HttpDependency{
+									Name: httpUpstream.Name().String(),
+									Url:  httpUpstream.URL(),
+								},
+							},
+						},
 					},
 					Destination: "resource-A",
 				},
@@ -1121,6 +1234,12 @@ func TestNewJobHandler(t *testing.T) {
 							ProjectName:   upstreamB.ProjectName().String(),
 							NamespaceName: upstreamB.NamespaceName().String(),
 							TaskName:      upstreamB.TaskName().String(),
+						},
+					},
+					HttpDependency: []*pb.HttpDependency{
+						{
+							Name: httpUpstream.Name().String(),
+							Url:  httpUpstream.URL(),
 						},
 					},
 				},

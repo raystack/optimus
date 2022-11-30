@@ -255,6 +255,7 @@ func fromSpecUpstreams(upstreams *job.SpecUpstream) []*pb.JobDependency {
 	for _, httpUpstream := range upstreams.HTTPUpstreams() {
 		dependencies = append(dependencies, &pb.JobDependency{
 			HttpDependency: &pb.HttpDependency{
+				Name:    httpUpstream.Name().String(),
 				Url:     httpUpstream.URL(),
 				Headers: httpUpstream.Headers(),
 				Params:  httpUpstream.Params(),
