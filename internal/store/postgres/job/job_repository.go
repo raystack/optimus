@@ -323,11 +323,17 @@ func (JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstr
 			continue
 		}
 
-		upstream, err := job.NewUpstreamResolved(upstreamName, storeUpstream.UpstreamHost, resourceURN, upstreamTenant, storeUpstream.UpstreamType, taskName, storeUpstream.UpstreamExternal)
-		if err != nil {
-			me.Append(err)
+		var upstreamType job.UpstreamType
+		switch storeUpstream.UpstreamType {
+		case job.UpstreamTypeInferred.String():
+			upstreamType = job.UpstreamTypeInferred
+		case job.UpstreamTypeStatic.String():
+			upstreamType = job.UpstreamTypeStatic
+		default:
+			me.Append(errors.NewError(errors.ErrInternalError, job.EntityJob, "unknown upstream type"))
 			continue
 		}
+		upstream := job.NewUpstreamResolved(upstreamName, storeUpstream.UpstreamHost, resourceURN, upstreamTenant, upstreamType, taskName, storeUpstream.UpstreamExternal)
 		upstreams = append(upstreams, upstream)
 	}
 	if err := errors.MultiToError(me); err != nil {

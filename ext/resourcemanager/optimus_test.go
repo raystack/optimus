@@ -192,7 +192,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 			ResourceURN: "resource",
 		}
 
-		dependency, _ := job.NewUpstreamResolved("job", server.URL, "resource", sampleTenant, "static", "sample-task", true)
+		dependency := job.NewUpstreamResolved("job", server.URL, "resource", sampleTenant, "static", "sample-task", true)
 		expectedDependencies := []*job.Upstream{dependency}
 
 		actualOptimusDependencies, actualError := manager.GetOptimusUpstreams(ctx, unresolvedDependency)
@@ -262,7 +262,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 			ResourceURN: "resource",
 		}
 
-		dependency, _ := job.NewUpstreamResolved("job", server.URL, "resource", sampleTenant, "static", "task-1", true)
+		dependency := job.NewUpstreamResolved("job", server.URL, "resource", sampleTenant, "static", "task-1", true)
 		expectedDependencies := []*job.Upstream{dependency}
 
 		actualOptimusDependencies, actualError := manager.GetOptimusUpstreams(ctx, unresolvedDependency)

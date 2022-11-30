@@ -801,10 +801,8 @@ func TestNewJobHandler(t *testing.T) {
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
 			jobA := job.NewJob(sampleTenant, specA, "resource-A", nil)
 
-			upstreamB, err := job.NewUpstreamResolved("job-B", "", "resource-b", sampleTenant, "static", "bq2bq", false)
-			assert.NoError(t, err)
-			upstreamC, err := job.NewUpstreamResolved("job-C", "other-host", "resource-c", sampleTenant, "inferred", "bq2bq", true)
-			assert.NoError(t, err)
+			upstreamB := job.NewUpstreamResolved("job-B", "", "resource-b", sampleTenant, "static", "bq2bq", false)
+			upstreamC := job.NewUpstreamResolved("job-C", "other-host", "resource-c", sampleTenant, "inferred", "bq2bq", true)
 
 			jobAUpstream := []*job.Upstream{
 				upstreamB,
@@ -895,10 +893,8 @@ func TestNewJobHandler(t *testing.T) {
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			jobA := job.NewJob(sampleTenant, specA, "resource-A", nil)
 
-			upstreamB, err := job.NewUpstreamResolved("job-B", "", "resource-b", sampleTenant, "static", "bq2bq", false)
-			assert.NoError(t, err)
-			upstreamC, err := job.NewUpstreamResolved("job-C", "other-host", "resource-c", sampleTenant, "inferred", "bq2bq", true)
-			assert.NoError(t, err)
+			upstreamB := job.NewUpstreamResolved("job-B", "", "resource-b", sampleTenant, "static", "bq2bq", false)
+			upstreamC := job.NewUpstreamResolved("job-C", "other-host", "resource-c", sampleTenant, "inferred", "bq2bq", true)
 
 			jobAUpstream := []*job.Upstream{
 				upstreamB,
@@ -1047,10 +1043,8 @@ func TestNewJobHandler(t *testing.T) {
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
 			jobA := job.NewJob(sampleTenant, specA, "resource-A", nil)
 
-			upstreamB, err := job.NewUpstreamResolved("job-B", "", "resource-b", sampleTenant, "static", "bq2bq", false)
-			assert.NoError(t, err)
-			upstreamC, err := job.NewUpstreamResolved("job-C", "other-host", "resource-c", sampleTenant, "inferred", "bq2bq", true)
-			assert.NoError(t, err)
+			upstreamB := job.NewUpstreamResolved("job-B", "", "resource-b", sampleTenant, "static", "bq2bq", false)
+			upstreamC := job.NewUpstreamResolved("job-C", "other-host", "resource-c", sampleTenant, "inferred", "bq2bq", true)
 
 			jobAUpstream := []*job.Upstream{
 				upstreamB,

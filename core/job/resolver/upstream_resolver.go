@@ -80,11 +80,7 @@ func (u UpstreamResolver) resolveFromInternal(ctx context.Context, subjectJob *j
 		if len(jobUpstreams) == 0 {
 			continue
 		}
-		upstream, err := job.NewUpstreamResolved(jobUpstreams[0].Spec().Name(), "", jobUpstreams[0].Destination(), jobUpstreams[0].Tenant(), "inferred", jobUpstreams[0].Spec().Task().Name(), false)
-		if err != nil {
-			me.Append(err)
-			continue
-		}
+		upstream := job.NewUpstreamResolved(jobUpstreams[0].Spec().Name(), "", jobUpstreams[0].Destination(), jobUpstreams[0].Tenant(), job.UpstreamTypeInferred, jobUpstreams[0].Spec().Task().Name(), false)
 		internalUpstream = append(internalUpstream, upstream)
 	}
 	for _, upstreamName := range subjectJob.Spec().Upstream().UpstreamNames() {
@@ -98,11 +94,7 @@ func (u UpstreamResolver) resolveFromInternal(ctx context.Context, subjectJob *j
 		if jobUpstream == nil {
 			continue
 		}
-		upstream, err := job.NewUpstreamResolved(upstreamJobName, "", jobUpstream.Destination(), jobUpstream.Tenant(), "static", jobUpstream.Spec().Task().Name(), false)
-		if err != nil {
-			me.Append(err)
-			continue
-		}
+		upstream := job.NewUpstreamResolved(upstreamJobName, "", jobUpstream.Destination(), jobUpstream.Tenant(), job.UpstreamTypeStatic, jobUpstream.Spec().Task().Name(), false)
 		internalUpstream = append(internalUpstream, upstream)
 	}
 	return internalUpstream, errors.MultiToError(me)

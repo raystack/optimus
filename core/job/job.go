@@ -133,12 +133,7 @@ type Upstream struct {
 	external bool
 }
 
-func NewUpstreamResolved(name Name, host string, resource ResourceURN, jobTenant tenant.Tenant, typeStr string, taskName TaskName, external bool) (*Upstream, error) {
-	upstreamType, err := upstreamTypeFrom(typeStr)
-	if err != nil {
-		return nil, err
-	}
-
+func NewUpstreamResolved(name Name, host string, resource ResourceURN, jobTenant tenant.Tenant, upstreamType UpstreamType, taskName TaskName, external bool) *Upstream {
 	return &Upstream{
 		name:          name,
 		host:          host,
@@ -146,9 +141,10 @@ func NewUpstreamResolved(name Name, host string, resource ResourceURN, jobTenant
 		projectName:   jobTenant.ProjectName(),
 		namespaceName: jobTenant.NamespaceName(),
 		taskName:      taskName,
-		_type:         upstreamType, state: UpstreamStateResolved,
-		external: external,
-	}, nil
+		_type:         upstreamType,
+		state:         UpstreamStateResolved,
+		external:      external,
+	}
 }
 
 func NewUpstreamUnresolved(name Name, resource ResourceURN, projectName tenant.ProjectName) *Upstream {

@@ -116,11 +116,11 @@ func (o *OptimusResourceManager) toOptimusDependency(response jobSpecificationRe
 	if err != nil {
 		return nil, err
 	}
-	var dependencyType string
+	var dependencyType job.UpstreamType
 	if unresolvedDependency.IsStatic() {
-		dependencyType = "static"
+		dependencyType = job.UpstreamTypeStatic
 	} else {
-		dependencyType = "inferred"
+		dependencyType = job.UpstreamTypeInferred
 	}
 	jobName, err := job.NameFrom(response.Job.Name)
 	if err != nil {
@@ -131,5 +131,5 @@ func (o *OptimusResourceManager) toOptimusDependency(response jobSpecificationRe
 		return nil, err
 	}
 	resourceURN := job.ResourceURN(unresolvedDependency.ResourceURN)
-	return job.NewUpstreamResolved(jobName, o.config.Host, resourceURN, jobTenant, dependencyType, taskName, true)
+	return job.NewUpstreamResolved(jobName, o.config.Host, resourceURN, jobTenant, dependencyType, taskName, true), nil
 }
