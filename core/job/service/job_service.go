@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
-
+	"github.com/kushsharma/parallel"
 	"strings"
 
 	"github.com/odpf/optimus/core/job/dto"
@@ -17,6 +17,11 @@ import (
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/lib/tree"
 	"github.com/odpf/optimus/models"
+)
+
+const (
+	ConcurrentTicketPerSec = 40
+	ConcurrentLimit        = 600
 )
 
 type JobService struct {
@@ -333,17 +338,29 @@ func (j JobService) resolveAndSaveUpstreams(ctx context.Context, projectName ten
 func (j JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.WithDetails, specsToAdd []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {
 	me := errors.NewMultiError("bulk add specs errors")
 
-	//TODO: parallelize this
-	var jobsToAdd []*job.Job
+	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
 	for _, spec := range specsToAdd {
-		generatedJob, err := j.generateJob(ctx, tenantWithDetails, spec)
-		if err != nil {
-			logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] unable to add job %s", tenantWithDetails.Namespace().Name().String(), spec.Name().String()))
-			me.Append(err)
-			continue
+		runner.Add(func(currentSpec *job.Spec, lw writer.LogWriter) func() (interface{}, error) {
+			return func() (interface{}, error) {
+				generatedJob, err := j.generateJob(ctx, tenantWithDetails, spec)
+				if err != nil {
+					logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] unable to add job %s", tenantWithDetails.Namespace().Name().String(), spec.Name().String()))
+					return nil, err
+				}
+				logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] adding job %s", tenantWithDetails.Namespace().Name().String(), spec.Name().String()))
+				return generatedJob, nil
+			}
+		}(spec, logWriter))
+	}
+
+	var jobsToAdd []*job.Job
+	for _, result := range runner.Run() {
+		if result.Err != nil {
+			me.Append(result.Err)
+		} else {
+			specVal := result.Val.(*job.Job)
+			jobsToAdd = append(jobsToAdd, specVal)
 		}
-		jobsToAdd = append(jobsToAdd, generatedJob)
-		logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] adding job %s", tenantWithDetails.Namespace().Name().String(), spec.Name().String()))
 	}
 
 	if len(jobsToAdd) == 0 {
@@ -359,17 +376,29 @@ func (j JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.WithD
 func (j JobService) bulkUpdate(ctx context.Context, tenantWithDetails *tenant.WithDetails, specsToUpdate []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {
 	me := errors.NewMultiError("bulk add specs errors")
 
-	//TODO: parallelize this
-	var jobsToUpdate []*job.Job
+	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
 	for _, spec := range specsToUpdate {
-		generatedJob, err := j.generateJob(ctx, tenantWithDetails, spec)
-		if err != nil {
-			logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] unable to update job %s", tenantWithDetails.Namespace().Name().String(), spec.Name().String()))
-			me.Append(err)
-			continue
+		runner.Add(func(currentSpec *job.Spec, lw writer.LogWriter) func() (interface{}, error) {
+			return func() (interface{}, error) {
+				generatedJob, err := j.generateJob(ctx, tenantWithDetails, spec)
+				if err != nil {
+					logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] unable to update job %s", tenantWithDetails.Namespace().Name().String(), spec.Name().String()))
+					return nil, err
+				}
+				logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] updating job %s", tenantWithDetails.Namespace().Name().String(), spec.Name().String()))
+				return generatedJob, nil
+			}
+		}(spec, logWriter))
+	}
+
+	var jobsToUpdate []*job.Job
+	for _, result := range runner.Run() {
+		if result.Err != nil {
+			me.Append(result.Err)
+		} else {
+			specVal := result.Val.(*job.Job)
+			jobsToUpdate = append(jobsToUpdate, specVal)
 		}
-		jobsToUpdate = append(jobsToUpdate, generatedJob)
-		logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] updating job %s", tenantWithDetails.Namespace().Name().String(), spec.Name().String()))
 	}
 
 	if len(jobsToUpdate) == 0 {
