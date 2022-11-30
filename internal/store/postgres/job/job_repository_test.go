@@ -609,10 +609,9 @@ func TestPostgresJobRepository(t *testing.T) {
 			err = jobRepo.Delete(ctx, proj.Name(), jobSpecA.Name(), false)
 			assert.NoError(t, err)
 
-			// should fail adding as job already exist
-			addedJob, err = jobRepo.Add(ctx, []*job.Job{jobA})
-			assert.Error(t, err)
-			assert.Nil(t, addedJob)
+			// update failure with proper log message shows job has been soft deleted
+			_, err = jobRepo.Update(ctx, []*job.Job{jobA})
+			assert.ErrorContains(t, err, "update is not allowed as job sample-job-A has been soft deleted")
 		})
 		t.Run("hard delete a job if asked to do clean delete", func(t *testing.T) {
 			db := dbSetup()
@@ -630,10 +629,9 @@ func TestPostgresJobRepository(t *testing.T) {
 			err = jobRepo.Delete(ctx, proj.Name(), jobSpecA.Name(), true)
 			assert.NoError(t, err)
 
-			// should succeed adding as job already cleaned earlier
-			addedJob, err = jobRepo.Add(ctx, []*job.Job{jobA})
-			assert.NoError(t, err)
-			assert.NotNil(t, addedJob)
+			// update failure with proper log message shows job has been hard deleted
+			_, err = jobRepo.Update(ctx, []*job.Job{jobA})
+			assert.ErrorContains(t, err, "job sample-job-A not exists yet")
 		})
 		t.Run("do delete job and delete upstream relationship", func(t *testing.T) {
 			db := dbSetup()
@@ -674,23 +672,6 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.Nil(t, job)
 			assert.Equal(t, "record not found", err.Error())
 		})
-		t.Run("returns error when spec is not valid", func(t *testing.T) {
-			db := dbSetup()
-			destinationURN := ""
-
-			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
-			assert.NoError(t, err)
-			jobA := job.NewJob(sampleTenant, jobSpecA, job.ResourceURN(destinationURN), []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
-
-			jobRepo := postgres.NewJobRepository(db)
-			_, err := jobRepo.Add(ctx, []*job.Job{jobA})
-			assert.NoError(t, err)
-
-			job, err := jobRepo.GetByJobName(ctx, sampleTenant.ProjectName(), "sample-job-A")
-			assert.Error(t, err)
-			assert.Nil(t, job)
-			assert.Equal(t, "convert orm spec to job entity:\n invalid argument for entity job: resource urn is empty", err.Error())
-		})
 		t.Run("returns job success", func(t *testing.T) {
 			db := dbSetup()
 
@@ -710,27 +691,6 @@ func TestPostgresJobRepository(t *testing.T) {
 	})
 
 	t.Run("GetAllByProjectName", func(t *testing.T) {
-		t.Run("returns with error when one of the job is not valid when convert", func(t *testing.T) {
-			db := dbSetup()
-
-			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
-			assert.NoError(t, err)
-			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
-			jobSpecB := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
-			assert.NoError(t, err)
-			jobB := job.NewJob(sampleTenant, jobSpecB, "", []job.ResourceURN{"dev.resource.sample_c"})
-
-			jobRepo := postgres.NewJobRepository(db)
-			_, err := jobRepo.Add(ctx, []*job.Job{jobA, jobB})
-			assert.NoError(t, err)
-
-			actual, err := jobRepo.GetAllByProjectName(ctx, sampleTenant.ProjectName())
-			assert.Error(t, err)
-			assert.Equal(t, "get all job specs by project name errors:\n invalid argument for entity job: resource urn is empty", err.Error())
-			assert.NotNil(t, actual)
-			assert.Len(t, actual, 1)
-			assert.Equal(t, []*job.Job{jobA}, actual)
-		})
 		t.Run("returns no error when get all jobs success", func(t *testing.T) {
 			db := dbSetup()
 
@@ -754,27 +714,6 @@ func TestPostgresJobRepository(t *testing.T) {
 	})
 
 	t.Run("GetAllByResourceDestination", func(t *testing.T) {
-		t.Run("returns with error when one of the job is not valid when convert", func(t *testing.T) {
-			db := dbSetup()
-
-			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
-			assert.NoError(t, err)
-			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_general", []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
-			jobSpecB := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
-			assert.NoError(t, err)
-			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_general", []job.ResourceURN{""})
-
-			jobRepo := postgres.NewJobRepository(db)
-			_, err := jobRepo.Add(ctx, []*job.Job{jobA, jobB})
-			assert.NoError(t, err)
-
-			actual, err := jobRepo.GetAllByResourceDestination(ctx, "dev.resource.sample_general")
-			assert.Error(t, err)
-			assert.Equal(t, "get all job specs by resource destination:\n invalid argument for entity job: resource urn is empty", err.Error())
-			assert.NotNil(t, actual)
-			assert.Len(t, actual, 1)
-			assert.Equal(t, []*job.Job{jobA}, actual)
-		})
 		t.Run("returns no error when get all jobs success", func(t *testing.T) {
 			db := dbSetup()
 

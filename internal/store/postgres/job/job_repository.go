@@ -189,7 +189,7 @@ WHERE name = ?
 AND project_name = ?
 `
 	if onlyActiveJob {
-		jobDeletedFilter := " AND deleted_at IS NOT NULL"
+		jobDeletedFilter := " AND deleted_at IS NULL"
 		getJobByNameAtProject += jobDeletedFilter
 	}
 
@@ -413,28 +413,24 @@ WHERE destination = ?
 }
 
 func specToJob(spec *Spec) (*job.Job, error) {
-	me := errors.NewMultiError("convert orm spec to job entity")
 	jobSpec, err := fromStorageSpec(spec)
 	if err != nil {
 		return nil, err
 	}
 
 	tenantName, err := tenant.NewTenant(spec.ProjectName, spec.NamespaceName)
-	me.Append(err)
+	if err != nil {
+		return nil, err
+	}
 
 	destination := job.ResourceURN(spec.Destination)
-	me.Append(err)
 
 	sources := []job.ResourceURN{}
 	for _, source := range spec.Sources {
 		resourceURN := job.ResourceURN(source)
-		me.Append(err)
 		sources = append(sources, resourceURN)
 	}
 
-	if len(me.Errors) > 0 {
-		return nil, me
-	}
 	return job.NewJob(tenantName, jobSpec, destination, sources), nil
 }
 
