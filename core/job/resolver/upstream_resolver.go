@@ -3,12 +3,18 @@ package resolver
 import (
 	"context"
 	"fmt"
+	"github.com/kushsharma/parallel"
 
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
+)
+
+const (
+	ConcurrentTicketPerSec = 40
+	ConcurrentLimit        = 600
 )
 
 type UpstreamResolver struct {
@@ -102,23 +108,37 @@ func (u UpstreamResolver) resolveFromInternal(ctx context.Context, subjectJob *j
 func (u UpstreamResolver) getJobsWithAllUpstreams(ctx context.Context, jobs []*job.Job, jobsWithInternalUpstreams map[job.Name][]*job.Upstream, logWriter writer.LogWriter) ([]*job.WithUpstream, error) {
 	me := errors.NewMultiError("get jobs with all upstreams errors")
 
-	var jobsWithAllUpstreams []*job.WithUpstream
+	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
 	for _, jobEntity := range jobs {
-		internalUpstreams := jobsWithInternalUpstreams[jobEntity.Spec().Name()]
-		upstreamsToResolve := u.getUpstreamsToResolve(internalUpstreams, jobEntity)
-		externalUpstreams, unresolvedUpstreams, err := u.externalUpstreamResolver.Resolve(ctx, upstreamsToResolve)
-		if err != nil {
-			errorMsg := fmt.Sprintf("job %s upstream resolution failed: %s", jobEntity.Spec().Name().String(), err.Error())
-			logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] %s", jobEntity.Tenant().NamespaceName().String(), errorMsg))
-			me.Append(err)
-		}
+		runner.Add(func(currentJob *job.Job, lw writer.LogWriter) func() (interface{}, error) {
+			return func() (interface{}, error) {
+				internalUpstreams := jobsWithInternalUpstreams[currentJob.Spec().Name()]
+				upstreamsToResolve := u.getUpstreamsToResolve(internalUpstreams, currentJob)
+				externalUpstreams, unresolvedUpstreams, err := u.externalUpstreamResolver.Resolve(ctx, upstreamsToResolve)
+				if err != nil {
+					errorMsg := fmt.Sprintf("job %s upstream resolution failed: %s", currentJob.Spec().Name().String(), err.Error())
+					logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] %s", currentJob.Tenant().NamespaceName().String(), errorMsg))
+				}
 
-		allUpstreams := mergeUpstreams(internalUpstreams, externalUpstreams, unresolvedUpstreams)
+				allUpstreams := mergeUpstreams(internalUpstreams, externalUpstreams, unresolvedUpstreams)
 
-		jobWithAllUpstream := job.NewWithUpstream(jobEntity, allUpstreams)
-		jobsWithAllUpstreams = append(jobsWithAllUpstreams, jobWithAllUpstream)
-		logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] job %s upstream resolved", jobEntity.Tenant().NamespaceName().String(), jobEntity.Spec().Name().String()))
+				logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] job %s upstream resolved", currentJob.Tenant().NamespaceName().String(), currentJob.Spec().Name().String()))
+				return job.NewWithUpstream(currentJob, allUpstreams), err
+			}
+		}(jobEntity, logWriter))
 	}
+
+	var jobsWithAllUpstreams []*job.WithUpstream
+	for _, result := range runner.Run() {
+		if result.Err != nil {
+			me.Append(result.Err)
+		}
+		if result.Val != nil {
+			specVal := result.Val.(*job.WithUpstream)
+			jobsWithAllUpstreams = append(jobsWithAllUpstreams, specVal)
+		}
+	}
+
 	return jobsWithAllUpstreams, errors.MultiToError(me)
 }
 

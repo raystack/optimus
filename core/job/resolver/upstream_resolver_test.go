@@ -179,7 +179,7 @@ func TestUpstreamResolver(t *testing.T) {
 			assert.Error(t, err)
 			assert.EqualValues(t, expectedJobWitUpstreams, result)
 		})
-		t.Run("returns upstream error when encounter error on fetching fetch external upstreams", func(t *testing.T) {
+		t.Run("returns upstream error when encounter error on fetching external upstreams", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 
