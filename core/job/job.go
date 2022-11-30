@@ -201,7 +201,7 @@ func (d UpstreamType) String() string {
 	return string(d)
 }
 
-func upstreamTypeFrom(str string) (UpstreamType, error) {
+func UpstreamTypeFrom(str string) (UpstreamType, error) {
 	switch str {
 	case UpstreamTypeStatic.String():
 		return UpstreamTypeStatic, nil
@@ -216,17 +216,6 @@ type UpstreamState string
 
 func (d UpstreamState) String() string {
 	return string(d)
-}
-
-func UpstreamStateFrom(str string) (UpstreamState, error) {
-	switch str {
-	case UpstreamStateResolved.String():
-		return UpstreamStateResolved, nil
-	case UpstreamStateUnresolved.String():
-		return UpstreamStateUnresolved, nil
-	default:
-		return "", errors.InvalidArgument(EntityJob, "unknown state for upstream: "+str)
-	}
 }
 
 type Upstreams []*Upstream

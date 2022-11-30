@@ -274,7 +274,7 @@ func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName,
 	return errors.MultiToError(me)
 }
 
-func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, logWriter writer.LogWriter) error {
+func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, _ writer.LogWriter) error {
 	me := errors.NewMultiError("validate specs errors")
 	validatedJobSpecs, err := j.getValidatedSpecs(jobSpecs)
 	me.Append(err)
@@ -306,7 +306,7 @@ func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSp
 
 	// check cyclic deps for every job
 	for _, jobEntity := range jobs {
-		if err = j.validateCyclic(ctx, jobEntity.Spec().Name(), jobMap, destinationToJobsMap); err != nil {
+		if err = j.validateCyclic(jobEntity.Spec().Name(), jobMap, destinationToJobsMap); err != nil {
 			me.Append(err)
 		}
 	}
@@ -522,8 +522,8 @@ func (j JobService) generateJob(ctx context.Context, tenantWithDetails *tenant.W
 	return job.NewJob(tenantWithDetails.ToTenant(), spec, destination, sources), nil
 }
 
-func (j JobService) validateCyclic(ctx context.Context, rootName job.Name, jobMap map[job.Name]*job.Job, destinationToJobMap map[job.ResourceURN][]*job.Job) error {
-	dagTree, err := j.buildDAGTree(ctx, rootName, jobMap, destinationToJobMap)
+func (j JobService) validateCyclic(rootName job.Name, jobMap map[job.Name]*job.Job, destinationToJobMap map[job.ResourceURN][]*job.Job) error {
+	dagTree, err := j.buildDAGTree(rootName, jobMap, destinationToJobMap)
 	if err != nil {
 		return err
 	}
@@ -531,7 +531,7 @@ func (j JobService) validateCyclic(ctx context.Context, rootName job.Name, jobMa
 	return dagTree.ValidateCyclic()
 }
 
-func (j JobService) buildDAGTree(ctx context.Context, rootName job.Name, jobMap map[job.Name]*job.Job, destinationToJobMap map[job.ResourceURN][]*job.Job) (*tree.MultiRootTree, error) {
+func (JobService) buildDAGTree(rootName job.Name, jobMap map[job.Name]*job.Job, destinationToJobMap map[job.ResourceURN][]*job.Job) (*tree.MultiRootTree, error) {
 	rootJob, ok := jobMap[rootName]
 	if !ok {
 		return nil, fmt.Errorf("couldn't find any job with name %s", rootName)

@@ -321,11 +321,6 @@ func (jh *JobHandler) RefreshJobs(request *pb.RefreshJobsRequest, stream pb.JobS
 	return nil
 }
 
-func (*JobHandler) CheckJobSpecification(_ context.Context, _ *pb.CheckJobSpecificationRequest) (*pb.CheckJobSpecificationResponse, error) {
-	// TODO: need to do further investigation if this api is still being used or not
-	return nil, nil
-}
-
 func (jh *JobHandler) CheckJobSpecifications(req *pb.CheckJobSpecificationsRequest, stream pb.JobSpecificationService_CheckJobSpecificationsServer) error {
 	responseWriter := writer.NewCheckJobSpecificationResponseWriter(stream)
 	jobTenant, err := tenant.NewTenant(req.ProjectName, req.NamespaceName)

@@ -3,12 +3,12 @@ package resolver_test
 import (
 	"context"
 	"errors"
-	"github.com/odpf/optimus/config"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/resolver"
@@ -69,7 +69,6 @@ func TestExternalUpstreamResolver(t *testing.T) {
 
 			_, err := resolver.NewExternalUpstreamResolver([]config.ResourceManager{optimusResourceManagerConfig})
 			assert.NoError(t, err)
-
 		})
 		t.Run("should return error if the resource manager is unknown", func(t *testing.T) {
 			optimusResourceManagerConfig := config.ResourceManager{
