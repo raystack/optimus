@@ -75,11 +75,7 @@ func (p JobPluginService) GenerateDestination(ctx context.Context, tnnt *tenant.
 		return "", fmt.Errorf("failed to generate destination: %w", err)
 	}
 
-	destinationURN := job.ResourceURN(destination.URN())
-	if err != nil {
-		return "", err
-	}
-	return destinationURN, nil
+	return job.ResourceURN(destination.URN()), nil
 }
 
 func (p JobPluginService) GenerateUpstreams(ctx context.Context, jobTenant *tenant.WithDetails, spec *job.Spec, dryRun bool) ([]job.ResourceURN, error) {
@@ -116,9 +112,6 @@ func (p JobPluginService) GenerateUpstreams(ctx context.Context, jobTenant *tena
 	var upstreamURNs []job.ResourceURN
 	for _, dependency := range resp.Dependencies {
 		resourceURN := job.ResourceURN(dependency)
-		if err != nil {
-			return nil, err
-		}
 		upstreamURNs = append(upstreamURNs, resourceURN)
 	}
 
