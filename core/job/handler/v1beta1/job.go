@@ -157,7 +157,6 @@ func (jh *JobHandler) UpdateJobSpecifications(ctx context.Context, jobSpecReques
 }
 
 func (jh *JobHandler) GetJobSpecification(ctx context.Context, req *pb.GetJobSpecificationRequest) (*pb.GetJobSpecificationResponse, error) {
-	// TODO: need to have further analysis if this api is stil needed or not
 	jobTenant, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
 		return nil, err

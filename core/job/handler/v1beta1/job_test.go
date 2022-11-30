@@ -793,7 +793,68 @@ func TestNewJobHandler(t *testing.T) {
 			assert.Error(t, err)
 		})
 	})
+	t.Run("GetJobSpecification", func(t *testing.T) {
+		t.Run("return error when tenant creation failed", func(t *testing.T) {
+			jobService := new(JobService)
+			defer jobService.AssertExpectations(t)
 
+			request := pb.GetJobSpecificationRequest{}
+
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
+			resp, err := jobHandler.GetJobSpecification(ctx, &request)
+			assert.Error(t, err)
+			assert.Nil(t, resp)
+		})
+		t.Run("return error when job name is empty", func(t *testing.T) {
+			jobService := new(JobService)
+			defer jobService.AssertExpectations(t)
+
+			request := pb.GetJobSpecificationRequest{
+				ProjectName:   sampleTenant.ProjectName().String(),
+				NamespaceName: sampleTenant.NamespaceName().String(),
+			}
+
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
+			resp, err := jobHandler.GetJobSpecification(ctx, &request)
+			assert.Error(t, err)
+			assert.Nil(t, resp)
+		})
+		t.Run("return error when service get failed", func(t *testing.T) {
+			jobService := new(JobService)
+			defer jobService.AssertExpectations(t)
+
+			request := pb.GetJobSpecificationRequest{
+				ProjectName:   sampleTenant.ProjectName().String(),
+				NamespaceName: sampleTenant.NamespaceName().String(),
+				JobName:       "job-A",
+			}
+
+			jobService.On("Get", ctx, sampleTenant, job.Name("job-A")).Return(nil, errors.New("error encountered"))
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
+			resp, err := jobHandler.GetJobSpecification(ctx, &request)
+			assert.Error(t, err)
+			assert.Nil(t, resp)
+		})
+		t.Run("return success", func(t *testing.T) {
+			jobService := new(JobService)
+			defer jobService.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-B"})
+
+			request := pb.GetJobSpecificationRequest{
+				ProjectName:   sampleTenant.ProjectName().String(),
+				NamespaceName: sampleTenant.NamespaceName().String(),
+				JobName:       jobA.Spec().Name().String(),
+			}
+
+			jobService.On("Get", ctx, sampleTenant, jobA.Spec().Name()).Return(jobA, nil)
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
+			resp, err := jobHandler.GetJobSpecification(ctx, &request)
+			assert.NoError(t, err)
+			assert.NotNil(t, resp)
+		})
+	})
 	t.Run("JobInspect", func(t *testing.T) {
 		t.Run("should return basic info, upstream, downstream of an existing job", func(t *testing.T) {
 			jobService := new(JobService)
