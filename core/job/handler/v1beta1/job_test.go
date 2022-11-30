@@ -855,6 +855,40 @@ func TestNewJobHandler(t *testing.T) {
 			assert.NotNil(t, resp)
 		})
 	})
+	t.Run("GetJobSpecifications", func(t *testing.T) {
+		t.Run("return error when service get by filter is failed", func(t *testing.T) {
+			jobService := new(JobService)
+			defer jobService.AssertExpectations(t)
+
+			request := pb.GetJobSpecificationsRequest{}
+
+			jobService.On("GetByFilter", ctx, mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("error encountered"))
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
+			resp, err := jobHandler.GetJobSpecifications(ctx, &request)
+			assert.Error(t, err)
+			assert.NotNil(t, resp)
+			assert.Empty(t, resp.JobSpecificationResponses)
+		})
+		t.Run("return success", func(t *testing.T) {
+			jobService := new(JobService)
+			defer jobService.AssertExpectations(t)
+
+			request := pb.GetJobSpecificationsRequest{}
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-B"})
+			specB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, jobWindow, jobTask).Build()
+			jobB := job.NewJob(sampleTenant, specB, "table-B", []job.ResourceURN{"table-C"})
+
+			jobService.On("GetByFilter", ctx, mock.Anything, mock.Anything, mock.Anything).Return([]*job.Job{jobA, jobB}, nil)
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
+			resp, err := jobHandler.GetJobSpecifications(ctx, &request)
+			assert.NoError(t, err)
+			assert.NotNil(t, resp)
+			assert.NotEmpty(t, resp.JobSpecificationResponses)
+			assert.Len(t, resp.JobSpecificationResponses, 2)
+		})
+	})
 	t.Run("JobInspect", func(t *testing.T) {
 		t.Run("should return basic info, upstream, downstream of an existing job", func(t *testing.T) {
 			jobService := new(JobService)
