@@ -346,7 +346,7 @@ func (j JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.WithD
 			return func() (interface{}, error) {
 				generatedJob, err := j.generateJob(ctx, tenantWithDetails, currentSpec)
 				if err != nil {
-					lw.Write(writer.LogLevelError, fmt.Sprintf("[%s] unable to add job %s", tenantWithDetails.Namespace().Name().String(), currentSpec.Name().String()))
+					lw.Write(writer.LogLevelError, fmt.Sprintf("[%s] unable to add job %s: %s", tenantWithDetails.Namespace().Name().String(), currentSpec.Name().String(), err.Error()))
 					return nil, err
 				}
 				lw.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] adding job %s", tenantWithDetails.Namespace().Name().String(), currentSpec.Name().String()))
@@ -387,7 +387,7 @@ func (j JobService) bulkUpdate(ctx context.Context, tenantWithDetails *tenant.Wi
 			return func() (interface{}, error) {
 				generatedJob, err := j.generateJob(ctx, tenantWithDetails, currentSpec)
 				if err != nil {
-					lw.Write(writer.LogLevelError, fmt.Sprintf("[%s] unable to update job %s", tenantWithDetails.Namespace().Name().String(), currentSpec.Name().String()))
+					lw.Write(writer.LogLevelError, fmt.Sprintf("[%s] unable to update job %s: %s", tenantWithDetails.Namespace().Name().String(), currentSpec.Name().String(), err.Error()))
 					return nil, err
 				}
 				lw.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] updating job %s", tenantWithDetails.Namespace().Name().String(), currentSpec.Name().String()))

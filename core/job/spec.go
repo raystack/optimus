@@ -85,26 +85,26 @@ func (s Spec) Metadata() *Metadata {
 func (s Spec) Validate() error {
 	me := errors.NewMultiError("errors on spec")
 	if err := validateMap(s.labels); err != nil {
-		me.Append(errors.Wrap(EntityJob, "labels is invalid", err))
+		me.Append(errors.NewError(errors.ErrFailedPrecond, EntityJob, fmt.Sprintf("label is invalid: %s", err.Error())))
 	}
 	if s.metadata != nil {
 		if err := s.metadata.Validate(); err != nil {
-			me.Append(errors.Wrap(EntityJob, "metadata is invalid", err))
+			me.Append(errors.NewError(errors.ErrFailedPrecond, EntityJob, fmt.Sprintf("metadata is invalid: %s", err.Error())))
 		}
 	}
 	if s.asset != nil {
 		if err := s.asset.Validate(); err != nil {
-			me.Append(errors.Wrap(EntityJob, "asset is invalid", err))
+			me.Append(errors.NewError(errors.ErrFailedPrecond, EntityJob, fmt.Sprintf("asset is invalid: %s", err.Error())))
 		}
 	}
 	for _, a := range s.alerts {
 		if err := a.Validate(); err != nil {
-			me.Append(errors.Wrap(EntityJob, "alert is invalid", err))
+			me.Append(errors.NewError(errors.ErrFailedPrecond, EntityJob, fmt.Sprintf("alert config is invalid: %s", err.Error())))
 		}
 	}
 	if s.upstream != nil {
 		if err := s.upstream.Validate(); err != nil {
-			me.Append(errors.Wrap(EntityJob, "upstream is invalid", err))
+			me.Append(errors.NewError(errors.ErrFailedPrecond, EntityJob, fmt.Sprintf("upstream config is invalid: %s", err.Error())))
 		}
 	}
 	return errors.MultiToError(me)
@@ -427,7 +427,7 @@ type Config struct {
 
 func NewConfig(configs map[string]string) (*Config, error) {
 	if err := validateMap(configs); err != nil {
-		return nil, errors.Wrap(EntityJob, "configs contain error", err)
+		return nil, err
 	}
 	return &Config{configs: configs}, nil
 }
@@ -538,7 +538,7 @@ func (m Metadata) Scheduler() map[string]string {
 
 func (m Metadata) Validate() error {
 	if err := validateMap(m.scheduler); err != nil {
-		return errors.Wrap(EntityJob, "scheduler contains error", err)
+		return err
 	}
 	return nil
 }
@@ -613,7 +613,7 @@ func NewAsset(fileNameToContent map[string]string) *Asset {
 
 func (a Asset) Validate() error {
 	if err := validateMap(a.assets); err != nil {
-		return errors.Wrap(EntityJob, "assets is invalid", err)
+		return err
 	}
 	return nil
 }
@@ -670,7 +670,7 @@ func (a Alert) Config() *Config {
 func (a Alert) Validate() error {
 	if a.config != nil {
 		if err := validateMap(a.config.configs); err != nil {
-			return errors.Wrap(EntityJob, "configs is invalid", err)
+			return err
 		}
 	}
 	return nil
