@@ -300,6 +300,75 @@ func TestUpstreamResolver(t *testing.T) {
 			assert.NoError(t, err)
 			assert.EqualValues(t, expectedUpstream, result)
 		})
+		t.Run("should skip resolving upstream if the static upstream name is invalid", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			externalUpstreamResolver := new(ExternalUpstreamResolver)
+
+			logWriter := new(optMock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
+			jobAUpstreamCName := job.SpecUpstreamNameFrom("")
+			jobAUpstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{jobAUpstreamCName}).Build()
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(jobAUpstreamSpec).Build()
+			jobADestination := job.ResourceURN("resource-A")
+			jobASources := []job.ResourceURN{"resource-B", "resource-D"}
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
+
+			specB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, jobWindow, jobTask).Build()
+			jobBDestination := job.ResourceURN("resource-B")
+			jobB := job.NewJob(sampleTenant, specB, jobBDestination, nil)
+
+			internalUpstreamB := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "inferred", taskName, false)
+			jobRepo.On("GetAllByResourceDestination", ctx, jobASources[0]).Return([]*job.Job{jobB}, nil)
+			jobRepo.On("GetAllByResourceDestination", ctx, jobASources[1]).Return([]*job.Job{}, nil)
+
+			externalUpstreamD := job.NewUpstreamResolved("job-D", "external-host", "resource-D", externalTenant, "inferred", taskName, true)
+			externalUpstreamResolver.On("Resolve", ctx, mock.Anything).Return([]*job.Upstream{externalUpstreamD}, nil, nil)
+
+			expectedUpstream := []*job.Upstream{internalUpstreamB, externalUpstreamD}
+
+			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
+			result, err := upstreamResolver.Resolve(ctx, jobA)
+			assert.ErrorContains(t, err, "name is empty")
+			assert.EqualValues(t, expectedUpstream, result)
+		})
+		t.Run("should not break process but still return error if failed to resolve static upstream internally", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			externalUpstreamResolver := new(ExternalUpstreamResolver)
+
+			logWriter := new(optMock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
+			jobAUpstreamCName := job.SpecUpstreamNameFrom("job-C")
+			jobAUpstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{jobAUpstreamCName}).Build()
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(jobAUpstreamSpec).Build()
+			jobADestination := job.ResourceURN("resource-A")
+			jobASources := []job.ResourceURN{"resource-B", "resource-D"}
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
+
+			specB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, jobWindow, jobTask).Build()
+			jobBDestination := job.ResourceURN("resource-B")
+			jobB := job.NewJob(sampleTenant, specB, jobBDestination, nil)
+
+			specC := job.NewSpecBuilder(jobVersion, "job-C", "", jobSchedule, jobWindow, jobTask).Build()
+
+			internalUpstreamB := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "inferred", taskName, false)
+			jobRepo.On("GetAllByResourceDestination", ctx, jobASources[0]).Return([]*job.Job{jobB}, nil)
+			jobRepo.On("GetAllByResourceDestination", ctx, jobASources[1]).Return([]*job.Job{}, nil)
+
+			errorMsg := "resolve static upstream internally failed"
+			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specC.Name()).Return(nil, errors.New(errorMsg))
+
+			externalUpstreamD := job.NewUpstreamResolved("job-D", "external-host", "resource-D", externalTenant, "inferred", taskName, true)
+			externalUpstreamResolver.On("Resolve", ctx, mock.Anything).Return([]*job.Upstream{externalUpstreamD}, nil, nil)
+
+			expectedUpstream := []*job.Upstream{internalUpstreamB, externalUpstreamD}
+
+			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver)
+			result, err := upstreamResolver.Resolve(ctx, jobA)
+			assert.ErrorContains(t, err, errorMsg)
+			assert.EqualValues(t, expectedUpstream, result)
+		})
 	})
 }
 

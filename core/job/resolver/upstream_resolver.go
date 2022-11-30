@@ -68,7 +68,7 @@ func (u UpstreamResolver) Resolve(ctx context.Context, subjectJob *job.Job) ([]*
 	externalUpstreams, unresolvedUpstreams, err := u.externalUpstreamResolver.Resolve(ctx, upstreamsToResolve)
 	me.Append(err)
 
-	return mergeUpstreams(internalUpstream, externalUpstreams, unresolvedUpstreams), errors.MultiToError(err)
+	return mergeUpstreams(internalUpstream, externalUpstreams, unresolvedUpstreams), errors.MultiToError(me)
 }
 
 func (u UpstreamResolver) resolveFromInternal(ctx context.Context, subjectJob *job.Job) ([]*job.Upstream, error) {
@@ -90,8 +90,8 @@ func (u UpstreamResolver) resolveFromInternal(ctx context.Context, subjectJob *j
 			continue
 		}
 		jobUpstream, err := u.jobRepository.GetByJobName(ctx, subjectJob.Tenant().ProjectName(), upstreamJobName)
-		me.Append(err)
-		if jobUpstream == nil {
+		if err != nil || jobUpstream == nil {
+			me.Append(err)
 			continue
 		}
 		upstream := job.NewUpstreamResolved(upstreamJobName, "", jobUpstream.Destination(), jobUpstream.Tenant(), job.UpstreamTypeStatic, jobUpstream.Spec().Task().Name(), false)
