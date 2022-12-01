@@ -35,7 +35,7 @@ func (j JobRepository) Add(ctx context.Context, jobs []*job.Job) ([]*job.Job, er
 
 func (j JobRepository) insertJobSpec(ctx context.Context, jobEntity *job.Job) error {
 	existingJob, err := j.get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name(), false)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil && !errors.IsInType(err, errors.ErrNotFound) {
 		return errors.NewError(errors.ErrInternalError, job.EntityJob, fmt.Sprintf("failed to check job %s in db: %s", jobEntity.Spec().Name().String(), err.Error()))
 	} else if err == nil {
 		if existingJob.DeletedAt.Valid {
@@ -121,7 +121,7 @@ func (j JobRepository) Update(ctx context.Context, jobs []*job.Job) ([]*job.Job,
 func (j JobRepository) preCheckUpdate(ctx context.Context, jobEntity *job.Job) error {
 	existingJob, err := j.get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name(), false)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.IsInType(err, errors.ErrNotFound) {
 			return errors.NewError(errors.ErrNotFound, job.EntityJob, fmt.Sprintf("job %s not exists yet", jobEntity.Spec().Name()))
 		}
 		return errors.NewError(errors.ErrInternalError, job.EntityJob, fmt.Sprintf("failed to check job %s in db: %s", jobEntity.Spec().Name().String(), err.Error()))
@@ -481,14 +481,14 @@ INSERT INTO job_upstream (
 	upstream_project_name, upstream_namespace_name, upstream_host,
 	upstream_task_name, upstream_external,
 	upstream_type, upstream_state,
-	created_at, updated_at
+	created_at
 )
 VALUES (
 	?, ?, ?, ?,
 	?, ?, ?, 
 	?, ?,
 	?, ?, 
-	NOW(), NOW()
+	NOW()
 );
 `
 
