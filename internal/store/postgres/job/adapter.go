@@ -320,7 +320,15 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 		return nil, err
 	}
 
-	scheduleBuilder := job.NewScheduleBuilder(startDate)
+	scheduleBuilder := job.NewScheduleBuilder(startDate).WithCatchUp(jobSpec.CatchUp).WithDependsOnPast(jobSpec.DependsOnPast).WithInterval(jobSpec.Interval)
+
+	if !jobSpec.EndDate.IsZero() {
+		endDate, err := job.ScheduleDateFrom(jobSpec.EndDate.Format(job.DateLayout))
+		if err != nil {
+			return nil, err
+		}
+		scheduleBuilder = scheduleBuilder.WithEndDate(endDate)
+	}
 
 	if jobSpec.Retry != nil {
 		var storageRetry Retry
@@ -391,13 +399,10 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 	for _, staticUpstream := range jobSpec.StaticUpstreams {
 		upstreamNames = append(upstreamNames, job.SpecUpstreamNameFrom(staticUpstream))
 	}
-	var upstreams *job.SpecUpstream
-	if len(httpUpstreams) > 0 {
-		upstreams = job.NewSpecUpstreamBuilder().
-			WithUpstreamNames(upstreamNames).
-			WithSpecHTTPUpstream(httpUpstreams).
-			Build()
-	}
+	upstreams := job.NewSpecUpstreamBuilder().
+		WithUpstreamNames(upstreamNames).
+		WithSpecHTTPUpstream(httpUpstreams).
+		Build()
 
 	var assets map[string]string
 	if jobSpec.Assets != nil {
@@ -447,7 +452,7 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 		return nil, err
 	}
 
-	specBuilder := job.NewSpecBuilder(
+	return job.NewSpecBuilder(
 		version,
 		jobName,
 		owner,
@@ -460,14 +465,9 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 		WithHooks(hooks).
 		WithAlerts(alerts).
 		WithSpecUpstream(upstreams).
-		WithMetadata(metadata)
-
-	if len(assets) > 0 {
-		return specBuilder.
-			WithAsset(job.NewAsset(assets)).
-			Build(), nil
-	}
-	return specBuilder.Build(), nil
+		WithMetadata(metadata).
+		WithAsset(job.NewAsset(assets)).
+		Build(), nil
 }
 
 func fromStorageHooks(raw []byte) ([]*job.Hook, error) {
@@ -493,11 +493,11 @@ func fromStorageHooks(raw []byte) ([]*job.Hook, error) {
 }
 
 func fromStorageHook(hook Hook) (*job.Hook, error) {
-	storageConfig := Config{}
-	if err := json.Unmarshal(hook.Config, &storageConfig); err != nil {
+	mapConfig := map[string]string{}
+	if err := json.Unmarshal(hook.Config, &mapConfig); err != nil {
 		return nil, err
 	}
-	config, err := job.NewConfig(storageConfig.Configs)
+	config, err := job.NewConfig(mapConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -541,6 +541,10 @@ func fromStorageAssets(raw []byte) (map[string]string, error) {
 	assets := []Asset{}
 	if err := json.Unmarshal(raw, &assets); err != nil {
 		return nil, err
+	}
+
+	if len(assets) == 0 {
+		return nil, nil
 	}
 
 	jobAssets := make(map[string]string)
