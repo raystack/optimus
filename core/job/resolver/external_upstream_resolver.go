@@ -4,13 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/go-multierror"
-
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/ext/resourcemanager"
+	"github.com/odpf/optimus/internal/errors"
 )
 
 type extUpstreamResolver struct {
@@ -57,33 +56,33 @@ func (e *extUpstreamResolver) Resolve(ctx context.Context, upstreamsToResolve []
 }
 
 func (e *extUpstreamResolver) fetchExternalUpstreams(ctx context.Context, unresolvedUpstreams []*dto.RawUpstream) ([]*job.Upstream, []*dto.RawUpstream, error) {
+	me := errors.NewMultiError("external upstream resolution errors")
 	var unknownUpstreams []*dto.RawUpstream
 	var externalUpstreams []*job.Upstream
-	var allErrors error
 	for _, toBeResolvedUpstream := range unresolvedUpstreams {
 		optimusUpstreams, err := e.fetchOptimusUpstreams(ctx, toBeResolvedUpstream)
 		if err != nil {
 			unknownUpstreams = append(unknownUpstreams, toBeResolvedUpstream)
-			allErrors = multierror.Append(allErrors, err)
+			me.Append(err)
 			continue
 		}
 		externalUpstreams = append(externalUpstreams, optimusUpstreams...)
 	}
-	return externalUpstreams, unknownUpstreams, allErrors
+	return externalUpstreams, unknownUpstreams, errors.MultiToError(me)
 }
 
 func (e *extUpstreamResolver) fetchOptimusUpstreams(ctx context.Context, unresolvedUpstream *dto.RawUpstream) ([]*job.Upstream, error) {
+	me := errors.NewMultiError("fetch external optimus job errors")
 	var upstreams []*job.Upstream
-	var allErrors error
 	for _, manager := range e.optimusResourceManagers {
 		deps, err := manager.GetOptimusUpstreams(ctx, unresolvedUpstream)
 		if err != nil {
-			allErrors = multierror.Append(allErrors, err)
+			me.Append(err)
 			continue
 		}
 		upstreams = append(upstreams, deps...)
 	}
-	return upstreams, allErrors
+	return upstreams, errors.MultiToError(me)
 }
 
 func NewTestExternalUpstreamResolver(
