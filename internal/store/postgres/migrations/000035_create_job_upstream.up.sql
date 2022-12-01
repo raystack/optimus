@@ -12,9 +12,7 @@ CREATE TABLE IF NOT EXISTS job_upstream (
     upstream_state VARCHAR(15) NOT NULL,
     upstream_external BOOLEAN,
 
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    deleted_at TIMESTAMP WITH TIME ZONE
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS job_upstream_job_name_idx ON job_upstream (job_name);
