@@ -232,7 +232,8 @@ func (c *createCommand) prepareResourceNames() error {
 		var nonEmptyNames []string
 		for _, name := range names {
 			if name != "" {
-				nonEmptyNames = append(nonEmptyNames, name)
+				trimmedName := strings.TrimSpace(name)
+				nonEmptyNames = append(nonEmptyNames, trimmedName)
 			}
 		}
 		c.resourceNames = nonEmptyNames
