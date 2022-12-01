@@ -14,6 +14,7 @@ import (
 	"github.com/odpf/optimus/core/job/service"
 	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
+	optErrors "github.com/odpf/optimus/internal/errors"
 	optMock "github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 )
@@ -1501,6 +1502,21 @@ func TestJobService(t *testing.T) {
 				assert.NotEmpty(t, actual)
 				assert.Len(t, actual, 1)
 			})
+			t.Run("not return error if the record is not found", func(t *testing.T) {
+				jobRepo := new(JobRepository)
+				defer jobRepo.AssertExpectations(t)
+
+				specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+				jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specA.Name()).Return(nil, optErrors.NotFound(job.EntityJob, "job not found"))
+
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				actual, err := jobService.GetByFilter(ctx,
+					filter.WithString(filter.ProjectName, sampleTenant.ProjectName().String()),
+					filter.WithStringArray(filter.JobNames, []string{specA.Name().String()}),
+				)
+				assert.NoError(t, err)
+				assert.Nil(t, actual)
+			})
 			t.Run("return success", func(t *testing.T) {
 				jobRepo := new(JobRepository)
 				defer jobRepo.AssertExpectations(t)
@@ -1535,6 +1551,21 @@ func TestJobService(t *testing.T) {
 				)
 				assert.Error(t, err, "error encountered")
 				assert.Nil(t, actual)
+			})
+			t.Run("not return error if the record is not found", func(t *testing.T) {
+				jobRepo := new(JobRepository)
+				defer jobRepo.AssertExpectations(t)
+
+				specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+				jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specA.Name()).Return(nil, optErrors.NotFound(job.EntityJob, "job not found"))
+
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				actual, err := jobService.GetByFilter(ctx,
+					filter.WithString(filter.ProjectName, sampleTenant.ProjectName().String()),
+					filter.WithString(filter.JobName, specA.Name().String()),
+				)
+				assert.NoError(t, err)
+				assert.Empty(t, actual)
 			})
 			t.Run("return success", func(t *testing.T) {
 				jobRepo := new(JobRepository)

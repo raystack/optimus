@@ -195,7 +195,9 @@ AND project_name = ?
 
 	err := j.db.WithContext(ctx).Raw(getJobByNameAtProject, jobName.String(), projectName.String()).
 		First(&spec).Error
-
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, errors.NotFound(job.EntityJob, fmt.Sprintf("job %s not found in project %s", jobName.String(), projectName.String()))
+	}
 	return &spec, err
 }
 
