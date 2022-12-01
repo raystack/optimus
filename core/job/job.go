@@ -195,6 +195,10 @@ func (u Upstream) TaskName() TaskName {
 	return u.taskName
 }
 
+func (u Upstream) FullName() string {
+	return u.projectName.String() + "/" + u.name.String()
+}
+
 type UpstreamType string
 
 func (d UpstreamType) String() string {

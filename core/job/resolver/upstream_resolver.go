@@ -190,7 +190,7 @@ func (UpstreamResolver) getUnresolvedUpstreamsErrors(jobsWithUpstreams []*job.Wi
 	for _, jobWithUpstreams := range jobsWithUpstreams {
 		for _, unresolvedUpstream := range jobWithUpstreams.GetUnresolvedUpstreams() {
 			if unresolvedUpstream.Type() == job.UpstreamTypeStatic {
-				errMsg := fmt.Sprintf("[%s] error: %s unknown upstream", jobWithUpstreams.Name().String(), unresolvedUpstream.Name())
+				errMsg := fmt.Sprintf("[%s] found unknown upstream for job %s: %s", jobWithUpstreams.Job().Tenant().NamespaceName().String(), jobWithUpstreams.Name().String(), unresolvedUpstream.FullName())
 				logWriter.Write(writer.LogLevelError, errMsg)
 				me.Append(errors.NewError(errors.ErrNotFound, job.EntityJob, errMsg))
 			}
