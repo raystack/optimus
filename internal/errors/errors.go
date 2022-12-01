@@ -100,8 +100,12 @@ func As(err error, target any) bool {
 }
 
 func (e *DomainError) Error() string {
-	return fmt.Sprintf("%v for entity %v: %v",
-		e.ErrorType.String(), e.Entity, e.Message) // TODO: this does not capture wrapped error @sandeep
+	subError := ""
+	if errors.Is(e.WrappedErr, &DomainError{}) {
+		subError = ": " + e.WrappedErr.Error()
+	}
+	return fmt.Sprintf("%v for entity %v: %v%s",
+		e.ErrorType.String(), e.Entity, e.Message, subError)
 }
 
 func (e *DomainError) Unwrap() error {

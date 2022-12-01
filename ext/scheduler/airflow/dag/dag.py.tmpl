@@ -3,14 +3,14 @@
 
 from datetime import datetime, timedelta
 
-from __lib import JOB_START_EVENT_NAME, \
-    JOB_END_EVENT_NAME, \
-    log_success_event, \
-    log_retry_event, \
-    log_failure_event, \
-    log_job_end, log_job_start
-from __lib import optimus_sla_miss_notify, SuperKubernetesPodOperator, \
-    SuperExternalTaskSensor
+# imoprt Dag level callbacks
+from __lib import job_success_event, job_failure_event
+
+# imoprt operator level callbacks
+from __lib import operator_start_event, operator_success_event, operator_retry_event, operator_failure_event
+
+from __lib import optimus_sla_miss_notify, SuperKubernetesPodOperator, SuperExternalTaskSensor
+
 from airflow.configuration import conf
 from airflow.models import DAG, Variable
 from airflow.operators.python_operator import PythonOperator
@@ -46,10 +46,12 @@ default_args = {
     {{if .JobDetails.Schedule.EndDate -}}
     "end_date": datetime.strptime({{ .JobDetails.Schedule.EndDate.Format "2006-01-02T15:04:05" | quote}}, "%Y-%m-%dT%H:%M:%S"),
     {{- end}}
-    "on_failure_callback": log_failure_event,
-    "on_retry_callback": log_retry_event,
-    "on_success_callback": log_success_event,
-    "weight_rule": WeightRule.ABSOLUTE
+    "weight_rule": WeightRule.ABSOLUTE,
+
+    "on_execute_callback": operator_start_event,
+    "on_success_callback": operator_success_event,
+    "on_retry_callback"  : operator_retry_event,
+    "on_failure_callback": operator_failure_event,
 }
 
 {{ if ne .JobDetails.JobMetadata.Description "" -}}
@@ -59,29 +61,16 @@ dag = DAG(
     dag_id={{.JobDetails.Name.String | quote}},
     default_args=default_args,
     schedule_interval={{ if eq .JobDetails.Schedule.Interval "" }}None{{- else -}} {{ .JobDetails.Schedule.Interval | quote}}{{end}},
-    sla_miss_callback=optimus_sla_miss_notify,
     catchup={{ if .JobDetails.Schedule.CatchUp -}}True{{- else -}}False{{- end }},
     dagrun_timeout=timedelta(seconds=DAGRUN_TIMEOUT_IN_SECS),
     tags=[
         {{- range $key, $value := $.JobDetails.JobMetadata.Labels}}
         "{{ $value }}",
         {{- end}}
-    ]
-)
-
-publish_job_start_event = PythonOperator(
-    task_id=JOB_START_EVENT_NAME,
-    python_callable=log_job_start,
-    provide_context=True,
-    dag=dag
-)
-
-publish_job_end_event = PythonOperator(
-    task_id=JOB_END_EVENT_NAME,
-    python_callable=log_job_end,
-    provide_context=True,
-    trigger_rule='all_success',
-    dag=dag
+    ],
+    sla_miss_callback=optimus_sla_miss_notify,
+    on_success_callback=job_success_event,
+    on_failure_callback=job_failure_event,
 )
 
 {{ if .RuntimeConfig.Resource -}}
@@ -268,15 +257,15 @@ wait_{{$httpUpstream.Name}} = ExternalHttpSensor(
 
 # upstream sensors -> base transformation task
 {{- range $i, $t := $.Upstreams.Upstreams }}
-publish_job_start_event >> wait_{{ $t.JobName | DisplayName }} >> {{$transformationName}}
+wait_{{ $t.JobName | DisplayName }} >> {{$transformationName}}
 {{- end}}
 {{- range $_, $t := $.Upstreams.HTTP }}
-publish_job_start_event >>  wait_{{ $t.Name }} >> {{$transformationName}}
+wait_{{ $t.Name }} >> {{$transformationName}}
 {{- end}}
 
 {{if .Upstreams.Empty }}
 # if no sensor and dependency is configured
-publish_job_start_event >> {{$transformationName}}
+{{$transformationName}}
 {{- end -}}
 
 # setup hooks and dependencies
@@ -284,7 +273,7 @@ publish_job_start_event >> {{$transformationName}}
 
 # setup hook dependencies
 {{- range $_, $h := .Hooks.Pre }}
-publish_job_start_event >> hook_{{$h.Name | ReplaceDash}} >> {{$transformationName}}
+hook_{{$h.Name | ReplaceDash}} >> {{$transformationName}}
 {{- end }}
 
 {{$transformationName}} >>
@@ -297,9 +286,9 @@ publish_job_start_event >> hook_{{$h.Name | ReplaceDash}} >> {{$transformationNa
 {{- range $_, $h := .Hooks.Fail -}}
    hook_{{$h.Name | ReplaceDash}},
 {{- end -}} ] >>
-{{- end }} publish_job_end_event
+{{- end }} 
 
 # set inter-dependencies between hooks and hooks
 {{- range $before, $after := .Hooks.Dependencies }}
-hook_{{$before | ReplaceDash}} >> hook_{{$after | ReplaceDash}} >> publish_job_end_event
+hook_{{$before | ReplaceDash}} >> hook_{{$after | ReplaceDash}}
 {{- end }}

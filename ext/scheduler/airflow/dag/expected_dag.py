@@ -2,14 +2,14 @@
 
 from datetime import datetime, timedelta
 
-from __lib import JOB_START_EVENT_NAME, \
-    JOB_END_EVENT_NAME, \
-    log_success_event, \
-    log_retry_event, \
-    log_failure_event, \
-    log_job_end, log_job_start
-from __lib import optimus_sla_miss_notify, SuperKubernetesPodOperator, \
-    SuperExternalTaskSensor
+# imoprt Dag level callbacks
+from __lib import job_success_event, job_failure_event
+
+# imoprt operator level callbacks
+from __lib import operator_start_event, operator_success_event, operator_retry_event, operator_failure_event
+
+from __lib import optimus_sla_miss_notify, SuperKubernetesPodOperator, SuperExternalTaskSensor
+
 from airflow.configuration import conf
 from airflow.models import DAG, Variable
 from airflow.operators.python_operator import PythonOperator
@@ -38,10 +38,12 @@ default_args = {
     "priority_weight": 2000,
     "start_date": datetime.strptime("2022-11-10T05:02:00", "%Y-%m-%dT%H:%M:%S"),
     "end_date": datetime.strptime("2022-11-10T10:02:00", "%Y-%m-%dT%H:%M:%S"),
-    "on_failure_callback": log_failure_event,
-    "on_retry_callback": log_retry_event,
-    "on_success_callback": log_success_event,
-    "weight_rule": WeightRule.ABSOLUTE
+    "weight_rule": WeightRule.ABSOLUTE,
+
+    "on_execute_callback": operator_start_event,
+    "on_success_callback": operator_success_event,
+    "on_retry_callback"  : operator_retry_event,
+    "on_failure_callback": operator_failure_event,
 }
 
 # This job collects the billing information related to infrastructure
@@ -49,27 +51,14 @@ dag = DAG(
     dag_id="infra.billing.weekly-status-reports",
     default_args=default_args,
     schedule_interval="0 2 * * 0",
-    sla_miss_callback=optimus_sla_miss_notify,
     catchup=True,
     dagrun_timeout=timedelta(seconds=DAGRUN_TIMEOUT_IN_SECS),
     tags=[
         "optimus",
-    ]
-)
-
-publish_job_start_event = PythonOperator(
-    task_id=JOB_START_EVENT_NAME,
-    python_callable=log_job_start,
-    provide_context=True,
-    dag=dag
-)
-
-publish_job_end_event = PythonOperator(
-    task_id=JOB_END_EVENT_NAME,
-    python_callable=log_job_end,
-    provide_context=True,
-    trigger_rule='all_success',
-    dag=dag
+    ],
+    sla_miss_callback=optimus_sla_miss_notify,
+    on_success_callback=job_success_event,
+    on_failure_callback=job_failure_event,
 )
 
 resources = k8s.V1ResourceRequirements(
@@ -305,17 +294,17 @@ wait_foo__dash__external__dash__optimus__dash__dep__dash__job = SuperExternalTas
 ####################################
 
 # upstream sensors -> base transformation task
-publish_job_start_event >> wait_foo__dash__intra__dash__dep__dash__job >> transformation_bq__dash__bq
-publish_job_start_event >> wait_foo__dash__inter__dash__dep__dash__job >> transformation_bq__dash__bq
-publish_job_start_event >> wait_foo__dash__external__dash__optimus__dash__dep__dash__job >> transformation_bq__dash__bq
+wait_foo__dash__intra__dash__dep__dash__job >> transformation_bq__dash__bq
+wait_foo__dash__inter__dash__dep__dash__job >> transformation_bq__dash__bq
+wait_foo__dash__external__dash__optimus__dash__dep__dash__job >> transformation_bq__dash__bq
 
 # setup hooks and dependencies
 # start_event -> [Dependency/HttpDep/ExternalDep/PreHook] -> Task -> [Post Hook -> Fail Hook] -> end_event
 
 # setup hook dependencies
-publish_job_start_event >> hook_transporter >> transformation_bq__dash__bq
+hook_transporter >> transformation_bq__dash__bq
 
-transformation_bq__dash__bq >> [hook_predator,] >> [hook_failureHook,] >> publish_job_end_event
+transformation_bq__dash__bq >> [hook_predator,] >> [hook_failureHook,] >> 
 
 # set inter-dependencies between hooks and hooks
-hook_predator >> hook_transporter >> publish_job_end_event
+hook_predator >> hook_transporter

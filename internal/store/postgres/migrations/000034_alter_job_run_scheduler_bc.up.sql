@@ -1,6 +1,5 @@
 -- rename id colum
 DROP INDEX IF EXISTS job_run_idx;
-DROP INDEX IF EXISTS job_run_job_id_project_id_namespace_id_scheduled_at_attempt_key;
 
 ALTER TABLE job_run DROP CONSTRAINT IF EXISTS job_run_job_id_fkey;
 ALTER TABLE job_run DROP CONSTRAINT IF EXISTS job_run_namespace_id_fkey;

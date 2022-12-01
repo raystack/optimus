@@ -152,8 +152,6 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
         log.info(yaml.dump(prune_dict(pod.to_dict(), mode='strict')))
 
     def execute(self, context):
-        log_start_event(context, EVENT_NAMES.get("TASK_START_EVENT"))
-        # to be done async
         self.env_vars += self.fetch_env_from_optimus(context)
         # init-container is not considered for rendering in airflow
         self.render_init_containers(context)
@@ -340,7 +338,6 @@ class SuperExternalTaskSensor(BaseSensorOperator):
         self._optimus_client = OptimusAPIClient(optimus_hostname)
 
     def poke(self, context):
-        log_start_event(context, EVENT_NAMES.get("SENSOR_START_EVENT"))
         schedule_time = context['next_execution_date']
 
         try:
@@ -442,15 +439,16 @@ def optimus_notify(context, event_meta):
     message = {
         "log_url": context.get('task_instance').log_url,
         "task_id": context.get('task_instance').task_id,
-        "run_id": context.get('run_id'),
-        "duration": str(context.get('task_instance').duration),
         "exception": str(context.get('exception')) or "",
         "message": failure_message,
         "scheduled_at": current_schedule_date.strftime(TIMESTAMP_FORMAT),
-        "job_run_id": context.get('dag_run').run_id,
-        "task_run_id": context.get('run_id'),
         "attempt": context['task_instance'].try_number,
         "event_time": datetime.now().timestamp(),
+        
+        "run_id": context.get('run_id'),                        # do we need this ?
+        "duration": str(context.get('task_instance').duration), # do we need this ?
+        "job_run_id": context.get('dag_run').run_id,            # do we need this ?
+        "task_run_id": context.get('run_id'),                   # do we need this ?
     }
     message.update(event_meta)
 
@@ -464,89 +462,88 @@ def optimus_notify(context, event_meta):
     print("posted event ", params, event, resp)
     return
 
-
-# utils
-def should_relay_airflow_callbacks(context):
-    if context.get('task_instance').task_id in [JOB_START_EVENT_NAME, JOB_END_EVENT_NAME]:
-        return False
-    else:
-        return True
-
-
-# time elapsed since job run started
-
 def get_run_type(context):
     task_identifier = context.get('task_instance_key_str')
-    job_name = context.get('params')['job_name']
-    if task_identifier.split(job_name)[1].startswith("__wait_"):
-        return "SENSOR"
-    elif task_identifier.split(job_name)[1].startswith("__hook_"):
-        return "HOOK"
-    else:
-        return "TASK"
+    try:
+        job_name = context.get('params')['job_name']
+        if task_identifier.split(job_name)[1].startswith("__wait_"):
+            return "SENSOR"
+        elif task_identifier.split(job_name)[1].startswith("__hook_"):
+            return "HOOK"
+        else:
+            return "TASK"
+    except Exception as e:
+        return task_identifier
 
 
 # job level events
-def log_job_end(ds=None, **kwargs):
-    context = kwargs
-    meta = {
-        "event_type": "TYPE_JOB_SUCCESS",  # later determine the status based on task statuses
-        "status": "FINISHED",
-    }
-    optimus_notify(context, meta)
+def job_success_event(context):
+    try:
+        meta = {
+            "event_type": "TYPE_JOB_SUCCESS",
+            "status": "FINISHED"
+        }
+        optimus_notify(context, meta)
+    except Exception as e:
+        print(e)
 
-
-def log_job_start(ds=None, **kwargs):
-    context = kwargs
-    meta = {
-        "event_type": "TYPE_JOB_START"
-    }
-    optimus_notify(context, meta)
+def job_failure_event(context):
+    try:
+        meta = {
+            "event_type": "TYPE_JOB_FAIL",
+            "status": "FAIL"
+        }
+        optimus_notify(context, meta)
+    except Exception as e:
+        print(e)
 
 
 # task level events
-def log_start_event(context, EVENT_NAME):
-    meta = {
-        "event_type": EVENT_NAME,
-        "status": "STARTED"
-    }
-    optimus_notify(context, meta)
+def operator_start_event(context):
+    try:
+        run_type = get_run_type(context)
+        meta = {
+            "event_type": "TYPE_{}_START".format(run_type),
+            "status": "STARTED"
+        }
+        optimus_notify(context, meta)
+    except Exception as e:
+        print(e)
+
+def operator_success_event(context):
+    try:
+        run_type = get_run_type(context)
+        meta = {
+            "event_type": "TYPE_{}_SUCCESS".format(run_type)
+        }
+        optimus_notify(context, meta)
+    except Exception as e:
+        print(e)
 
 
-def log_success_event(context):
-    if not should_relay_airflow_callbacks(context):
-        return
-    run_type = get_run_type(context)
-    meta = {
-        "event_type": "TYPE_{}_SUCCESS".format(run_type)
-    }
-    optimus_notify(context, meta)
-    return
+def operator_retry_event(context):
+    try:
+        run_type = get_run_type(context)
+        meta = {
+            "event_type": "TYPE_{}_RETRY".format(run_type)
+        }
+        optimus_notify(context, meta)
+    except Exception as e:
+        print(e)
 
 
-def log_retry_event(context):
-    if not should_relay_airflow_callbacks(context):
-        return
-    run_type = get_run_type(context)
-    meta = {
-        "event_type": "TYPE_{}_RETRY".format(run_type)
-    }
-    optimus_notify(context, meta)
-    return
+def operator_failure_event(context):
+    try:
+        run_type = get_run_type(context)
+        meta = {
+            "event_type": "TYPE_{}_FAIL".format(run_type)
+        }
+        if SCHEDULER_ERR_MSG in context.keys():
+            meta[SCHEDULER_ERR_MSG] = context[SCHEDULER_ERR_MSG]
 
-
-def log_failure_event(context):
-    if not should_relay_airflow_callbacks(context):
-        return
-    run_type = get_run_type(context)
-
-    meta = {
-        "event_type": "TYPE_{}_FAIL".format(run_type)
-    }
-    if SCHEDULER_ERR_MSG in context.keys():
-        meta[SCHEDULER_ERR_MSG] = context[SCHEDULER_ERR_MSG]
-
-    optimus_notify(context, meta)
+        optimus_notify(context, meta)
+    except Exception as e:
+        print(e)
 
 
 def optimus_sla_miss_notify(dag, task_list, blocking_task_list, slas, blocking_tis):
