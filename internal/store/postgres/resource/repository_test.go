@@ -75,7 +75,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 			assert.NoError(t, err)
 
 			actualError := repository.Update(ctx, resourceToUpdate)
-			assert.ErrorContains(t, actualError, "error reading from database")
+			assert.ErrorContains(t, actualError, "not found for entity resource")
 		})
 
 		t.Run("updates resource and returns nil if no error is encountered", func(t *testing.T) {
@@ -106,7 +106,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 
 			actualResource, actualError := repository.ReadByFullName(ctx, tnnt, store, "project.dataset")
 			assert.Nil(t, actualResource)
-			assert.ErrorContains(t, actualError, "error reading from database")
+			assert.ErrorContains(t, actualError, "not found for entity resource")
 		})
 
 		t.Run("returns resource and nil if no error is encountered", func(t *testing.T) {
@@ -183,60 +183,6 @@ func TestPostgresResourceRepository(t *testing.T) {
 		})
 	})
 
-	t.Run("CreateOrUpdateAll", func(t *testing.T) {
-		t.Run("does not do any create nor update and resources status to failure and returns error if error is encountered", func(t *testing.T) {
-			db := dbSetup()
-			repository := repoResource.NewRepository(db)
-
-			existingResource, err := serviceResource.NewResource("project.dataset1", kindDataset, store, tnnt, meta, spec)
-			assert.NoError(t, err)
-			existingResource.ChangeStatusTo(serviceResource.StatusSuccess)
-			err = insertAllToDB(db, []*serviceResource.Resource{existingResource})
-			assert.NoError(t, err)
-			nonExistingResource, err := serviceResource.NewResource("project.dataset2", kindDataset, store, tnnt, meta, spec)
-			assert.NoError(t, err)
-
-			existingResource.ChangeStatusTo(serviceResource.StatusToUpdate)
-			nonExistingResource.ChangeStatusTo(serviceResource.StatusToUpdate) // should be to create, but purposely failing
-
-			resourcesToUpdate := []*serviceResource.Resource{existingResource, nonExistingResource}
-			actualError := repository.CreateOrUpdateAll(ctx, resourcesToUpdate)
-			assert.Error(t, actualError)
-			assert.Equal(t, serviceResource.StatusUpdateFailure, nonExistingResource.Status())
-			assert.Equal(t, serviceResource.StatusUpdateFailure, existingResource.Status())
-
-			storedResources, err := readAllFromDB(db)
-			assert.NoError(t, err)
-			assert.Len(t, storedResources, 1)
-			assert.EqualValues(t, serviceResource.StatusSuccess, storedResources[0].Status())
-		})
-
-		t.Run("returns nil if no error is encountered", func(t *testing.T) {
-			db := dbSetup()
-			repository := repoResource.NewRepository(db)
-
-			existingResource, err := serviceResource.NewResource("project.dataset1", kindDataset, store, tnnt, meta, spec)
-			assert.NoError(t, err)
-			err = insertAllToDB(db, []*serviceResource.Resource{existingResource})
-			assert.NoError(t, err)
-			nonExistingResource, err := serviceResource.NewResource("project.dataset2", kindDataset, store, tnnt, meta, spec)
-			assert.NoError(t, err)
-
-			resourcesToUpdate := []*serviceResource.Resource{
-				serviceResource.FromExisting(existingResource, serviceResource.ReplaceStatus(serviceResource.StatusToUpdate)),
-				serviceResource.FromExisting(nonExistingResource, serviceResource.ReplaceStatus(serviceResource.StatusToCreate)),
-			}
-			actualError := repository.CreateOrUpdateAll(ctx, resourcesToUpdate)
-			assert.NoError(t, actualError)
-
-			storedResources, err := readAllFromDB(db)
-			assert.NoError(t, err)
-			assert.Len(t, storedResources, 2)
-			assert.EqualValues(t, resourcesToUpdate[0], storedResources[0])
-			assert.EqualValues(t, resourcesToUpdate[1], storedResources[1])
-		})
-	})
-
 	t.Run("UpdateStatus", func(t *testing.T) {
 		t.Run("updates status and return error for partial update success", func(t *testing.T) {
 			db := dbSetup()
@@ -281,7 +227,6 @@ func TestPostgresResourceRepository(t *testing.T) {
 			modifiedResource1.MarkExistInStore()
 			modifiedResource2, err := serviceResource.NewResource("project.dataset2", kindDataset, store, tnnt, meta, newSpec)
 			assert.NoError(t, err)
-			modifiedResource2.MarkExistInStore()
 			resourcesToUpdate := []*serviceResource.Resource{
 				serviceResource.FromExisting(modifiedResource1, serviceResource.ReplaceStatus(serviceResource.StatusSuccess)),
 				serviceResource.FromExisting(modifiedResource2, serviceResource.ReplaceStatus(serviceResource.StatusSuccess)),
@@ -294,10 +239,8 @@ func TestPostgresResourceRepository(t *testing.T) {
 			assert.Len(t, storedResources, 2)
 			assert.EqualValues(t, existingResource1.Spec(), storedResources[0].Spec())
 			assert.EqualValues(t, serviceResource.StatusSuccess, storedResources[0].Status())
-			assert.True(t, storedResources[0].ExistInStore())
 			assert.EqualValues(t, existingResource2.Spec(), storedResources[1].Spec())
 			assert.EqualValues(t, serviceResource.StatusSuccess, storedResources[1].Status())
-			assert.True(t, storedResources[1].ExistInStore())
 		})
 	})
 }
@@ -370,9 +313,6 @@ func fromModelToResource(r *repoResource.Resource) (*serviceResource.Resource, e
 	output, err := serviceResource.NewResource(r.FullName, kind, store, tnnt, meta, spec)
 	if err != nil {
 		return nil, err
-	}
-	if r.ExistInStore {
-		output.MarkExistInStore()
 	}
 	status := serviceResource.FromStringToStatus(r.Status)
 	return serviceResource.FromExisting(output, serviceResource.ReplaceStatus(status)), nil

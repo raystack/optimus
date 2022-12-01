@@ -57,7 +57,7 @@ func (d DatasetHandle) Update(ctx context.Context, res *resource.Resource) error
 		metadataToUpdate.Description = details.Description
 	}
 
-	expirationAsInt := ConfigAs[int](details.ExtraConfig, tableExpirationKey)
+	expirationAsInt := ConfigAs[float64](details.ExtraConfig, tableExpirationKey)
 	if expirationAsInt > 0 {
 		metadataToUpdate.DefaultTableExpiration = time.Hour * time.Duration(expirationAsInt)
 	}
@@ -99,7 +99,8 @@ func toBQDatasetMetadata(details *resource.DatasetDetails, res *resource.Resourc
 		meta.Location = location
 	}
 
-	expirationAsInt := ConfigAs[int](details.ExtraConfig, tableExpirationKey)
+	// structpb from proto returns a number value as float64
+	expirationAsInt := ConfigAs[float64](details.ExtraConfig, tableExpirationKey)
 	if expirationAsInt > 0 {
 		meta.DefaultTableExpiration = time.Hour * time.Duration(expirationAsInt)
 	}

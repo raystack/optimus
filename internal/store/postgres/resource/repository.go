@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"fmt"
 
 	"gorm.io/gorm"
 
@@ -79,38 +80,6 @@ func (r Repository) GetResources(ctx context.Context, tnnt tenant.Tenant, store 
 	return tenantResources, nil
 }
 
-func (r Repository) CreateOrUpdateAll(ctx context.Context, resources []*resource.Resource) error {
-	resourceModels := make([]*Resource, len(resources))
-	for i, res := range resources {
-		resourceModels[i] = fromResourceToModel(res)
-	}
-	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		multiErr := errors.NewMultiError("error updating resources status")
-		for _, m := range resourceModels {
-			if m.Status == resource.StatusToCreate.String() {
-				if err := r.create(tx, m); err != nil {
-					multiErr.Append(errors.Wrap(resource.EntityResource, "error creating resource to database", err))
-				}
-			} else if m.Status == resource.StatusToUpdate.String() {
-				if err := r.update(tx, m); err != nil {
-					multiErr.Append(errors.Wrap(resource.EntityResource, "error updating resource to database", err))
-				}
-			}
-		}
-		return errors.MultiToError(multiErr)
-	})
-	if err != nil {
-		for _, r := range resources {
-			if r.Status() == resource.StatusToCreate {
-				r.ChangeStatusTo(resource.StatusCreateFailure)
-			} else if r.Status() == resource.StatusToUpdate {
-				r.ChangeStatusTo(resource.StatusUpdateFailure)
-			}
-		}
-	}
-	return err
-}
-
 func (r Repository) UpdateStatus(ctx context.Context, resources ...*resource.Resource) error {
 	resourceModels := make([]*Resource, len(resources))
 	for i, res := range resources {
@@ -124,10 +93,7 @@ func (r Repository) UpdateStatus(ctx context.Context, resources ...*resource.Res
 			Where("namespace_name = ?", m.NamespaceName).
 			Where("store = ?", m.Store).
 			Where("full_name = ?", m.FullName).
-			Updates(map[string]any{
-				"status":         m.Status,
-				"exist_in_store": m.ExistInStore,
-			})
+			Update("status", m.Status)
 		if result.Error != nil {
 			multiErr.Append(errors.Wrap(resource.EntityResource, "error updating status to database", result.Error))
 		}
@@ -157,6 +123,9 @@ func (Repository) readByFullName(db *gorm.DB, projectName, namespaceName, store,
 		query += " and namespace_name = ?"
 	}
 	if err := db.Where(query, projectName, store, fullName, namespaceName).First(&res).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.NotFound(resource.EntityResource, fmt.Sprintf("resource [%s] is not found", fullName))
+		}
 		return nil, errors.Wrap(resource.EntityResource, "error reading from database", err)
 	}
 	return res, nil

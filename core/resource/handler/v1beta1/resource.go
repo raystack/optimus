@@ -20,6 +20,10 @@ import (
 )
 
 var (
+	totalSkippedBatchUpdateGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "resources_batch_update_skipped_total",
+		Help: "The total number of skipped resources in batch update",
+	})
 	totalSuccessBatchUpdateGauge = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "resources_batch_update_success_total",
 		Help: "The total number of failure resources in batch update",
@@ -95,11 +99,16 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 
 		err = rh.service.Deploy(stream.Context(), tnnt, store, resourceSpecs)
 		successResources := getResourcesByStatuses(resourceSpecs, resource.StatusSuccess)
-		failureResources := getResourcesByStatuses(resourceSpecs, resource.StatusCreateFailure, resource.StatusUpdateFailure)
+		skippedResources := getResourcesByStatuses(resourceSpecs, resource.StatusSkipped)
+		failureResources := getResourcesByStatuses(resourceSpecs, resource.StatusCreateFailure, resource.StatusUpdateFailure, resource.StatusValidationFailure)
 
 		writeResourcesStatus(successResources, func(msg string) {
 			responseWriter.Write(writer.LogLevelInfo, msg)
 			rh.l.Info(msg)
+		})
+		writeResourcesStatus(skippedResources, func(msg string) {
+			responseWriter.Write(writer.LogLevelWarning, msg)
+			rh.l.Warn(msg)
 		})
 		writeResourcesStatus(failureResources, func(msg string) {
 			responseWriter.Write(writer.LogLevelError, msg)
@@ -116,6 +125,7 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 		responseWriter.Write(writer.LogLevelInfo, successMsg)
 
 		totalSuccessBatchUpdateGauge.Set(float64(len(successResources)))
+		totalSkippedBatchUpdateGauge.Set(float64(len(skippedResources)))
 		totalFailureBatchUpdateGauge.Set(float64(len(failureResources)))
 	}
 	rh.l.Info("Finished resource deployment in %v", time.Since(startTime))
@@ -130,7 +140,7 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 func (rh ResourceHandler) ListResourceSpecification(ctx context.Context, req *pb.ListResourceSpecificationRequest) (*pb.ListResourceSpecificationResponse, error) {
 	store, err := resource.FromStringToStore(req.GetDatastoreName())
 	if err != nil {
-		return nil, errors.GRPCErr(errors.InvalidArgument(resource.EntityResource, "invalid datastore name"), "invalid list resource request")
+		return nil, errors.GRPCErr(err, "invalid list resource request")
 	}
 
 	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
@@ -140,7 +150,7 @@ func (rh ResourceHandler) ListResourceSpecification(ctx context.Context, req *pb
 
 	resources, err := rh.service.GetAll(ctx, tnnt, store)
 	if err != nil {
-		return nil, errors.GRPCErr(err, "failed to retrieve jobs for project "+req.GetProjectName())
+		return nil, errors.GRPCErr(err, "failed to list resource for "+req.GetDatastoreName())
 	}
 
 	var resourceProtos []*pb.ResourceSpecification

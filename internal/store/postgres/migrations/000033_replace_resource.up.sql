@@ -18,7 +18,6 @@ CREATE TABLE IF NOT EXISTS resource (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
 
     status VARCHAR(32) NOT NULL,
-    exist_in_store BOOLEAN NOT NULL,
 
     UNIQUE(project_name, namespace_name, store, full_name),
     UNIQUE(project_name, namespace_name, urn)

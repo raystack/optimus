@@ -439,14 +439,211 @@ func TestResource(t *testing.T) {
 			}
 			resource1, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.Bigquery, tnnt, metadata, spec)
 			assert.NoError(t, err)
-			resource1.ChangeStatusTo(resource.StatusToCreate)
-			assert.NoError(t, err)
+			resource1.MarkToCreate()
 			resource2, err := resource.NewResource("project.dataset.table", resource.KindTable, resource.Bigquery, tnnt, metadata, spec)
+			resource1.MarkToUpdate()
 			assert.NoError(t, err)
-			resource2.ChangeStatusTo(resource.StatusToUpdate)
-			assert.NoError(t, err)
+
 			actualEquality := resource1.Equal(resource2)
 			assert.True(t, actualEquality)
+		})
+	})
+
+	t.Run("MarkStatus", func(t *testing.T) {
+		meta := &resource.Metadata{Version: 1}
+		spec := map[string]any{"abc": "def"}
+
+		t.Run("MarkValidationSuccess", func(t *testing.T) {
+			t.Run("returns error if current status is not unknown", func(t *testing.T) {
+				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusSkipped))
+
+				actualError := res.MarkValidationSuccess()
+				assert.Error(t, actualError)
+				assert.Equal(t, resource.StatusSkipped, res.Status())
+			})
+
+			t.Run("changes status to validation_success and returns nil if current status is unknown", func(t *testing.T) {
+				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+
+				actualError := res.MarkValidationSuccess()
+				assert.NoError(t, actualError)
+				assert.Equal(t, resource.StatusValidationSuccess, res.Status())
+			})
+		})
+
+		t.Run("MarkValidationFailure", func(t *testing.T) {
+			t.Run("returns error if current status is not unknown", func(t *testing.T) {
+				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusSkipped))
+
+				actualError := res.MarkValidationFailure()
+				assert.Error(t, actualError)
+				assert.Equal(t, resource.StatusSkipped, res.Status())
+			})
+
+			t.Run("changes status to validation_failure and returns nil if current status is unknown", func(t *testing.T) {
+				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+
+				actualError := res.MarkValidationFailure()
+				assert.NoError(t, actualError)
+				assert.Equal(t, resource.StatusValidationFailure, res.Status())
+			})
+		})
+
+		t.Run("MarkSkipped", func(t *testing.T) {
+			t.Run("returns error if current status is not validation_success", func(t *testing.T) {
+				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToCreate))
+
+				actualError := res.MarkSkipped()
+				assert.Error(t, actualError)
+				assert.Equal(t, resource.StatusToCreate, res.Status())
+			})
+
+			t.Run("changes status to skipped and returns error if current status is validation_success", func(t *testing.T) {
+				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusValidationSuccess))
+
+				actualError := res.MarkSkipped()
+				assert.NoError(t, actualError)
+				assert.Equal(t, resource.StatusSkipped, res.Status())
+			})
+		})
+
+		t.Run("MarkToCreate", func(t *testing.T) {
+			t.Run("changes status to to_create and returns nil if current status is validation_success", func(t *testing.T) {
+				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusValidationSuccess))
+
+				actualError := res.MarkToCreate()
+				assert.NoError(t, actualError)
+				assert.Equal(t, resource.StatusToCreate, res.Status())
+			})
+
+			t.Run("returns error if current status is other statuses", func(t *testing.T) {
+				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusSkipped))
+
+				actualError := res.MarkToCreate()
+				assert.Error(t, actualError)
+				assert.Equal(t, resource.StatusSkipped, res.Status())
+			})
+		})
+
+		t.Run("MarkToUpdate", func(t *testing.T) {
+			t.Run("changes status to to_update and returns nil if current status is validation_success", func(t *testing.T) {
+				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusValidationSuccess))
+
+				actualError := res.MarkToUpdate()
+				assert.NoError(t, actualError)
+				assert.Equal(t, resource.StatusToUpdate, res.Status())
+			})
+
+			t.Run("returns error if other status", func(t *testing.T) {
+				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusSkipped))
+
+				actualError := res.MarkToUpdate()
+				assert.Error(t, actualError)
+				assert.Equal(t, resource.StatusSkipped, res.Status())
+			})
+		})
+
+		t.Run("MarkExistInStore", func(t *testing.T) {
+			t.Run("changes status to exist_in_store and return nil if current status is to_create", func(t *testing.T) {
+				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToCreate))
+
+				actualError := res.MarkExistInStore()
+				assert.NoError(t, actualError)
+				assert.Equal(t, resource.StatusExistInStore, res.Status())
+			})
+
+			t.Run("returns error if other status", func(t *testing.T) {
+				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusSkipped))
+
+				actualError := res.MarkExistInStore()
+				assert.Error(t, actualError)
+				assert.Equal(t, resource.StatusSkipped, res.Status())
+			})
+		})
+
+		t.Run("MarkFailure", func(t *testing.T) {
+			t.Run("changes status to create_failure and return nil if current status is to_create", func(t *testing.T) {
+				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToCreate))
+
+				actualError := res.MarkFailure()
+				assert.NoError(t, actualError)
+				assert.Equal(t, resource.StatusCreateFailure, res.Status())
+			})
+
+			t.Run("changes status to update_failure and return nil if current status is to_update", func(t *testing.T) {
+				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToUpdate))
+
+				actualError := res.MarkFailure()
+				assert.NoError(t, actualError)
+				assert.Equal(t, resource.StatusUpdateFailure, res.Status())
+			})
+
+			t.Run("returns error if other status", func(t *testing.T) {
+				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusSkipped))
+
+				actualError := res.MarkFailure()
+				assert.Error(t, actualError)
+				assert.Equal(t, resource.StatusSkipped, res.Status())
+			})
+		})
+
+		t.Run("MarkSuccess", func(t *testing.T) {
+			t.Run("changes status and returns nil if current status is to_create", func(t *testing.T) {
+				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToCreate))
+
+				actualError := res.MarkSuccess()
+				assert.NoError(t, actualError)
+				assert.Equal(t, resource.StatusSuccess, res.Status())
+			})
+
+			t.Run("changes status and returns nil if current status is to_update", func(t *testing.T) {
+				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+				res = resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToUpdate))
+
+				actualError := res.MarkSuccess()
+				assert.NoError(t, actualError)
+				assert.Equal(t, resource.StatusSuccess, res.Status())
+			})
+
+			t.Run("returns error if other status", func(t *testing.T) {
+				res, err := resource.NewResource("proj.ds.name1", resource.KindTable, resource.Bigquery, tnnt, meta, spec)
+				assert.NoError(t, err)
+
+				actualError := res.MarkSuccess()
+				assert.Error(t, actualError)
+				assert.Equal(t, resource.StatusUnknown, res.Status())
+			})
 		})
 	})
 }

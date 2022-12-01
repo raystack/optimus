@@ -206,8 +206,7 @@ func TestResourceHandler(t *testing.T) {
 
 			_, err := handler.ListResourceSpecification(ctx, req)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
-				"resource: invalid datastore name: invalid list resource request")
+			assert.ErrorContains(t, err, "invalid list resource request")
 		})
 		t.Run("returns error when tenant is invalid", func(t *testing.T) {
 			service := new(resourceService)
@@ -240,8 +239,7 @@ func TestResourceHandler(t *testing.T) {
 
 			_, err := handler.ListResourceSpecification(ctx, req)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "rpc error: code = Internal desc = error in getAll: "+
-				"failed to retrieve jobs for project proj")
+			assert.ErrorContains(t, err, "failed to list resource for bigquery")
 		})
 		t.Run("returns error when unable to convert", func(t *testing.T) {
 			service := new(resourceService)

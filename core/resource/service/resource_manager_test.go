@@ -33,8 +33,7 @@ func TestResourceManager(t *testing.T) {
 
 			err = manager.CreateResource(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource: data store service not found "+
-				"for snowflake")
+			assert.EqualError(t, err, "internal error for entity resource: datastore [snowflake] for resource [proj.ds.name1] is not found")
 		})
 		t.Run("return error when datastore return an error", func(t *testing.T) {
 			spec := map[string]any{"description": "test spec"}
@@ -92,7 +91,7 @@ func TestResourceManager(t *testing.T) {
 			assert.EqualError(t, err, "error in create resource:\n invalid argument for entity res: error in "+
 				"create:\n not found for entity resource: error in update")
 		})
-		t.Run("marks the create success if already exists on datastore", func(t *testing.T) {
+		t.Run("marks the create exist_in_store if already exists on datastore", func(t *testing.T) {
 			spec := map[string]any{"description": "test spec"}
 			res, err := resource.NewResource("proj.ds.name1", resource.KindTable, store, tnnt, meta, spec)
 			assert.Nil(t, err)
@@ -102,7 +101,7 @@ func TestResourceManager(t *testing.T) {
 				if len(res) != 1 {
 					return false
 				}
-				return res[0].Name() == createRequest.Name() && res[0].Status() == resource.StatusSuccess
+				return res[0].Name() == createRequest.Name() && res[0].Status() == resource.StatusExistInStore
 			})
 			repo := new(mockRepo)
 			repo.On("UpdateStatus", ctx, argMatcher).Return(nil)
@@ -116,7 +115,7 @@ func TestResourceManager(t *testing.T) {
 			manager.RegisterDatastore(store, storeService)
 
 			err = manager.CreateResource(ctx, createRequest)
-			assert.Nil(t, err)
+			assert.Error(t, err)
 		})
 		t.Run("creates the resource on the datastore", func(t *testing.T) {
 			spec := map[string]any{"description": "test spec"}
@@ -157,8 +156,7 @@ func TestResourceManager(t *testing.T) {
 
 			err = manager.UpdateResource(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource: data store service not found "+
-				"for snowflake")
+			assert.EqualError(t, err, "internal error for entity resource: datastore [snowflake] for resource [proj.ds.name1] is not found")
 		})
 		t.Run("return error when datastore return an error", func(t *testing.T) {
 			spec := map[string]any{"description": "test spec"}
@@ -255,7 +253,7 @@ func TestResourceManager(t *testing.T) {
 			logger := log.NewLogrus()
 			manager := service.NewResourceManager(repo, logger)
 
-			err = manager.Deploy(ctx, store, []*resource.Resource{updateRequest})
+			err = manager.BatchUpdate(ctx, store, []*resource.Resource{updateRequest})
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity resource: data store service not "+
 				"found for snowflake")
@@ -284,7 +282,7 @@ func TestResourceManager(t *testing.T) {
 
 			matcher := mock.MatchedBy(func(res []*resource.Resource) bool {
 				if res[0].Name() == updateRequest.Name() {
-					res[0].ChangeStatusTo(resource.StatusUpdateFailure)
+					res[0].MarkFailure()
 					return true
 				}
 				return false
@@ -297,7 +295,7 @@ func TestResourceManager(t *testing.T) {
 
 			manager.RegisterDatastore(store, storeService)
 
-			err = manager.Deploy(ctx, store, batchReq)
+			err = manager.BatchUpdate(ctx, store, batchReq)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "error in batch update:"+
 				"\n internal error for entity resource: enable to update in data store:"+
@@ -322,7 +320,7 @@ func TestResourceManager(t *testing.T) {
 
 			matcher := mock.MatchedBy(func(res []*resource.Resource) bool {
 				if res[0].Name() == updateRequest.Name() {
-					res[0].ChangeStatusTo(resource.StatusSuccess)
+					res[0].MarkSuccess()
 					return true
 				}
 				return false
@@ -333,49 +331,8 @@ func TestResourceManager(t *testing.T) {
 
 			manager.RegisterDatastore(store, storeService)
 
-			err = manager.Deploy(ctx, store, batchReq)
+			err = manager.BatchUpdate(ctx, store, batchReq)
 			assert.Nil(t, err)
-		})
-	})
-	t.Run("Exist", func(t *testing.T) {
-		spec := map[string]any{"description": "test spec"}
-		res, err := resource.NewResource("proj.ds.name1", resource.KindTable, store, tnnt, meta, spec)
-		assert.Nil(t, err)
-
-		t.Run("return false and error when datastore is not found", func(t *testing.T) {
-			repo := new(mockRepo)
-			logger := log.NewLogrus()
-			manager := service.NewResourceManager(repo, logger)
-
-			actualExist, actualError := manager.Exist(ctx, res)
-			assert.False(t, actualExist)
-			assert.ErrorContains(t, actualError, "data store service not found for snowflake")
-		})
-		t.Run("return false and error when datastore is found but error when checking to datastore", func(t *testing.T) {
-			repo := new(mockRepo)
-			logger := log.NewLogrus()
-			manager := service.NewResourceManager(repo, logger)
-			storeService := new(mockDataStore)
-			manager.RegisterDatastore(store, storeService)
-
-			storeService.On("Exist", ctx, res).Return(false, errors.NewError(errors.ErrNotFound, resource.EntityResource, "unknown error"))
-
-			actualExist, actualError := manager.Exist(ctx, res)
-			assert.False(t, actualExist)
-			assert.ErrorContains(t, actualError, "unknown error")
-		})
-		t.Run("return existence status from store and nil if no error is encountered", func(t *testing.T) {
-			repo := new(mockRepo)
-			logger := log.NewLogrus()
-			manager := service.NewResourceManager(repo, logger)
-			storeService := new(mockDataStore)
-			manager.RegisterDatastore(store, storeService)
-
-			storeService.On("Exist", ctx, res).Return(true, nil)
-
-			actualExist, actualError := manager.Exist(ctx, res)
-			assert.True(t, actualExist)
-			assert.NoError(t, actualError)
 		})
 	})
 	t.Run("Backup", func(t *testing.T) {
@@ -447,11 +404,6 @@ func (m *mockDataStore) Update(ctx context.Context, r *resource.Resource) error 
 
 func (m *mockDataStore) BatchUpdate(ctx context.Context, resources []*resource.Resource) error {
 	return m.Called(ctx, resources).Error(0)
-}
-
-func (m *mockDataStore) Exist(ctx context.Context, r *resource.Resource) (bool, error) {
-	args := m.Called(ctx, r)
-	return args.Get(0).(bool), args.Error(1)
 }
 
 func (m *mockDataStore) Backup(ctx context.Context, backup *resource.Backup, resources []*resource.Resource) (*resource.BackupResult, error) {

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/odpf/salt/log"
 
@@ -13,7 +14,6 @@ type DataStore interface {
 	Create(context.Context, *resource.Resource) error
 	Update(context.Context, *resource.Resource) error
 	BatchUpdate(context.Context, []*resource.Resource) error
-	Exist(context.Context, *resource.Resource) (bool, error)
 	Backup(context.Context, *resource.Backup, []*resource.Resource) (*resource.BackupResult, error)
 }
 
@@ -33,19 +33,23 @@ func (m *ResourceMgr) CreateResource(ctx context.Context, res *resource.Resource
 	store := res.Dataset().Store
 	datastore, ok := m.datastoreMap[store]
 	if !ok {
-		m.logger.Error("datastore [%s] for resource [%s] is not found", res.Dataset().Store.String(), res.FullName())
-		return errors.InvalidArgument(resource.EntityResource, "data store service not found for "+store.String())
+		msg := fmt.Sprintf("datastore [%s] for resource [%s] is not found", res.Dataset().Store.String(), res.FullName())
+		m.logger.Error(msg)
+		return errors.InternalError(resource.EntityResource, msg, nil)
 	}
 
 	me := errors.NewMultiError("error in create resource")
-
-	err := datastore.Create(ctx, res)
-	if err != nil && !errors.IsErrorType(err, errors.ErrAlreadyExists) {
-		me.Append(err)
-		res.ChangeStatusTo(resource.StatusCreateFailure)
+	if err := datastore.Create(ctx, res); err != nil {
 		m.logger.Error("error creating resource [%s] to datastore [%s]: %s", res.FullName(), res.Dataset().Store.String(), err)
+
+		if errors.IsErrorType(err, errors.ErrAlreadyExists) {
+			me.Append(res.MarkExistInStore())
+		} else {
+			me.Append(res.MarkFailure())
+		}
+		me.Append(err)
 	} else {
-		res.ChangeStatusTo(resource.StatusSuccess)
+		me.Append(res.MarkSuccess())
 	}
 
 	me.Append(m.repo.UpdateStatus(ctx, res))
@@ -56,36 +60,25 @@ func (m *ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource
 	store := res.Dataset().Store
 	datastore, ok := m.datastoreMap[store]
 	if !ok {
-		m.logger.Error("datastore [%s] for resource [%s] is not found", res.Dataset().Store.String(), res.FullName())
-		return errors.InvalidArgument(resource.EntityResource, "data store service not found for "+store.String())
+		msg := fmt.Sprintf("datastore [%s] for resource [%s] is not found", res.Dataset().Store.String(), res.FullName())
+		m.logger.Error(msg)
+		return errors.InternalError(resource.EntityResource, msg, nil)
 	}
 
 	me := errors.NewMultiError("error in update resource")
-
-	err := datastore.Update(ctx, res)
-	if err != nil {
+	if err := datastore.Update(ctx, res); err != nil {
 		me.Append(err)
-		res.ChangeStatusTo(resource.StatusUpdateFailure)
+		me.Append(res.MarkFailure())
 		m.logger.Error("error updating resource [%s] to datastore [%s]: %s", res.FullName(), res.Dataset().Store.String(), err)
 	} else {
-		res.ChangeStatusTo(resource.StatusSuccess)
+		me.Append(res.MarkSuccess())
 	}
 
 	me.Append(m.repo.UpdateStatus(ctx, res))
 	return errors.MultiToError(me)
 }
 
-func (m *ResourceMgr) Exist(ctx context.Context, res *resource.Resource) (bool, error) {
-	store := res.Dataset().Store
-	datastore, ok := m.datastoreMap[store]
-	if !ok {
-		m.logger.Error("datastore [%s] for resource [%s] is not found", res.Dataset().Store.String(), res.FullName())
-		return false, errors.InvalidArgument(resource.EntityResource, "data store service not found for "+store.String())
-	}
-	return datastore.Exist(ctx, res)
-}
-
-func (m *ResourceMgr) Deploy(ctx context.Context, store resource.Store, resources []*resource.Resource) error {
+func (m *ResourceMgr) BatchUpdate(ctx context.Context, store resource.Store, resources []*resource.Resource) error {
 	datastore, ok := m.datastoreMap[store]
 	if !ok {
 		m.logger.Error("datastore [%s]  is not found", store.String())

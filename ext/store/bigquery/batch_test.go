@@ -148,45 +148,32 @@ func TestBatches(t *testing.T) {
 
 		states := testParallel.RunSerial()
 
-		assert.Nil(t, states[0].Err)
 		assert.Equal(t, resource.StatusSuccess, updateDS.Status())
-
-		assert.Nil(t, states[1].Err)
 		assert.Equal(t, resource.StatusSuccess, createTab1.Status())
-
-		assert.Nil(t, states[2].Err)
-		assert.Equal(t, resource.StatusSuccess, updateTab1.Status())
-
-		assert.Nil(t, states[3].Err)
-		assert.Equal(t, resource.StatusSuccess, updateTab1.Status())
-
-		viewErr := states[4].Err
-		assert.NotNil(t, viewErr)
-		assert.EqualError(t, viewErr, "internal error for entity view1: some err")
 		assert.Equal(t, resource.StatusCreateFailure, createView1.Status())
-
-		assert.Nil(t, states[5].Err)
+		assert.Equal(t, resource.StatusSuccess, createExt1.Status())
+		assert.Equal(t, resource.StatusSuccess, createView2.Status())
+		assert.Equal(t, resource.StatusSuccess, successTab2.Status())
+		assert.Equal(t, resource.StatusSuccess, updateTab1.Status())
 		assert.Equal(t, resource.StatusSuccess, updateView1.Status())
+		assert.Equal(t, resource.StatusUpdateFailure, updateExt1.Status())
+		assert.Equal(t, resource.StatusSuccess, updateView2.Status())
+
+		positions := []int{0, 1, 2, 3, 5, 6, 7, 9, 10}
+		for _, i := range positions {
+			assert.Nil(t, states[i].Err)
+		}
+
+		assert.NotNil(t, states[4].Err)
+		assert.EqualError(t, states[4].Err, "internal error for entity view1: some err")
 
 		// Dataset for batch2
 		dataset2, ok := states[6].Val.(*resource.Resource)
 		assert.True(t, ok)
-		assert.Nil(t, states[6].Err)
-		assert.Equal(t, ds2Name, dataset2.FullName())
 		assert.Equal(t, resource.StatusSuccess, dataset2.Status())
-
-		assert.Nil(t, states[7].Err)
-		assert.Equal(t, resource.StatusSuccess, createExt1.Status())
 
 		extErr := states[8].Err
 		assert.NotNil(t, extErr)
 		assert.EqualError(t, extErr, "internal error for entity ext1: err")
-		assert.Equal(t, resource.StatusUpdateFailure, updateExt1.Status())
-
-		assert.Nil(t, states[9].Err)
-		assert.Equal(t, resource.StatusSuccess, createView2.Status())
-
-		assert.Nil(t, states[10].Err)
-		assert.Equal(t, resource.StatusSuccess, updateView2.Status())
 	})
 }
