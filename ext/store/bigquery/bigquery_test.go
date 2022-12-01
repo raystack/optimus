@@ -669,7 +669,7 @@ func (m *mockTableResourceHandle) GetBQTable() (*bq.Table, error) {
 	return args.Get(0).(*bq.Table), args.Error(1)
 }
 
-func (m *mockTableResourceHandle) GetCopier(destination bigquery.TableResourceHandle) (bigquery.TableCopier, error) {
+func (m *mockTableResourceHandle) CopierFrom(destination bigquery.TableResourceHandle) (bigquery.TableCopier, error) {
 	args := m.Called(destination)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)

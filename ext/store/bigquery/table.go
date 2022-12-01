@@ -89,17 +89,17 @@ func (t TableHandle) Exists(ctx context.Context) bool {
 	return err == nil
 }
 
-func (t TableHandle) GetCopier(destination TableResourceHandle) (TableCopier, error) {
-	if destination == nil {
-		return nil, errors.InvalidArgument(resource.EntityTable, "destination handle is nil")
+func (t TableHandle) CopierFrom(source TableResourceHandle) (TableCopier, error) {
+	if source == nil {
+		return nil, errors.InvalidArgument(resource.EntityTable, "source handle is nil")
 	}
 
-	destinationTable, err := destination.GetBQTable()
+	sourceTable, err := source.GetBQTable()
 	if err != nil {
 		return nil, err
 	}
 
-	return NewCopier(t.bqTable.CopierFrom(destinationTable)), nil
+	return NewCopier(t.bqTable.CopierFrom(sourceTable)), nil
 }
 
 func (t TableHandle) UpdateExpiry(ctx context.Context, name string, expiry time.Time) error {
@@ -120,7 +120,7 @@ func (t TableHandle) UpdateExpiry(ctx context.Context, name string, expiry time.
 func (t TableHandle) GetBQTable() (*bigquery.Table, error) {
 	bqTable, ok := t.bqTable.(*bigquery.Table)
 	if !ok {
-		return nil, errors.InternalError(resource.EntityTable, "not able to create bigquery destination table", nil)
+		return nil, errors.InternalError(resource.EntityTable, "not able to convert to bigquery table", nil)
 	}
 	return bqTable, nil
 }

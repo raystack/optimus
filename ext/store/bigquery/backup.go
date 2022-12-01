@@ -121,7 +121,7 @@ func BackupTable(ctx context.Context, backup *resource.Backup, source *resource.
 }
 
 func CopyTable(ctx context.Context, source, destination TableResourceHandle) error {
-	copier, err := source.GetCopier(destination)
+	copier, err := destination.CopierFrom(source)
 	if err != nil {
 		return err
 	}

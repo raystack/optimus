@@ -102,7 +102,7 @@ func TestBigqueryBackup(t *testing.T) {
 			defer mockCopier.AssertExpectations(t)
 
 			tableHandle := new(mockTableResourceHandle)
-			tableHandle.On("GetCopier", mock.Anything).Return(mockCopier, nil)
+			tableHandle.On("CopierFrom", mock.Anything).Return(mockCopier, nil)
 			tableHandle.On("UpdateExpiry", ctx, mock.Anything, mock.Anything).
 				Return(nil)
 			defer tableHandle.AssertExpectations(t)
@@ -149,7 +149,7 @@ func TestBigqueryBackup(t *testing.T) {
 		})
 		t.Run("returns error when error in copy table", func(t *testing.T) {
 			tableHandle := new(mockTableResourceHandle)
-			tableHandle.On("GetCopier", mock.Anything).Return(nil, errors.InternalError("bq", "cannot get copier", nil))
+			tableHandle.On("CopierFrom", mock.Anything).Return(nil, errors.InternalError("bq", "cannot get copier", nil))
 			defer tableHandle.AssertExpectations(t)
 
 			client := new(mockClient)
@@ -173,7 +173,7 @@ func TestBigqueryBackup(t *testing.T) {
 			defer mockCopier.AssertExpectations(t)
 
 			tableHandle := new(mockTableResourceHandle)
-			tableHandle.On("GetCopier", mock.Anything).Return(mockCopier, nil)
+			tableHandle.On("CopierFrom", mock.Anything).Return(mockCopier, nil)
 			tableHandle.On("UpdateExpiry", ctx, mock.Anything, mock.Anything).
 				Return(errors.InternalError("bq", "failed to update", nil))
 			defer tableHandle.AssertExpectations(t)
@@ -199,7 +199,7 @@ func TestBigqueryBackup(t *testing.T) {
 			defer mockCopier.AssertExpectations(t)
 
 			tableHandle := new(mockTableResourceHandle)
-			tableHandle.On("GetCopier", mock.Anything).Return(mockCopier, nil)
+			tableHandle.On("CopierFrom", mock.Anything).Return(mockCopier, nil)
 			tableHandle.On("UpdateExpiry", ctx, mock.Anything, mock.Anything).
 				Return(nil)
 			defer tableHandle.AssertExpectations(t)
@@ -275,8 +275,8 @@ func TestBigqueryBackup(t *testing.T) {
 		t.Run("returns error when cannot create copier", func(t *testing.T) {
 			mockDest := new(mockTableResourceHandle)
 			mockSource := new(mockTableResourceHandle)
-			mockSource.On("GetCopier", mockDest).Return(nil, errors.InternalError("bq", "some error", nil))
-			defer mockSource.AssertExpectations(t)
+			mockDest.On("CopierFrom", mockSource).Return(nil, errors.InternalError("bq", "some error", nil))
+			defer mockDest.AssertExpectations(t)
 
 			err := bigquery.CopyTable(ctx, mockSource, mockDest)
 			assert.Error(t, err)
@@ -289,8 +289,8 @@ func TestBigqueryBackup(t *testing.T) {
 
 			mockDest := new(mockTableResourceHandle)
 			mockSource := new(mockTableResourceHandle)
-			mockSource.On("GetCopier", mockDest).Return(mockCopier, nil)
-			defer mockSource.AssertExpectations(t)
+			mockDest.On("CopierFrom", mockSource).Return(mockCopier, nil)
+			defer mockDest.AssertExpectations(t)
 
 			err := bigquery.CopyTable(ctx, mockSource, mockDest)
 			assert.Error(t, err)
@@ -307,8 +307,8 @@ func TestBigqueryBackup(t *testing.T) {
 
 			mockDest := new(mockTableResourceHandle)
 			mockSource := new(mockTableResourceHandle)
-			mockSource.On("GetCopier", mockDest).Return(mockCopier, nil)
-			defer mockSource.AssertExpectations(t)
+			mockDest.On("CopierFrom", mockSource).Return(mockCopier, nil)
+			defer mockDest.AssertExpectations(t)
 
 			err := bigquery.CopyTable(ctx, mockSource, mockDest)
 			assert.NoError(t, err)

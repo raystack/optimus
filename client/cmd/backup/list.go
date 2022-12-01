@@ -16,6 +16,7 @@ import (
 	"github.com/odpf/optimus/client/cmd/internal/connectivity"
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/internal/progressbar"
+	"github.com/odpf/optimus/client/cmd/internal/survey"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
@@ -25,9 +26,12 @@ type listCommand struct {
 	logger         log.Logger
 	configFilePath string
 
-	projectName string
-	host        string
-	storeName   string
+	namespaceSurvey *survey.NamespaceSurvey
+
+	projectName   string
+	namespaceName string
+	host          string
+	storeName     string
 }
 
 // NewListCommand initialize command to list backup
@@ -56,6 +60,7 @@ func (l *listCommand) injectFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&l.projectName, "project-name", "p", "", "project name of optimus managed repository")
 	cmd.Flags().StringVar(&l.host, "host", "", "Optimus service endpoint url")
 	cmd.Flags().StringVar(&l.storeName, "datastore", "bigquery", "Name of datastore for backup")
+	cmd.Flags().StringVarP(&l.namespaceName, "namespace", "n", "", "Namespace name within project to be backed up")
 }
 
 func (l *listCommand) PreRunE(cmd *cobra.Command, _ []string) error {
@@ -76,6 +81,15 @@ func (l *listCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	if l.host == "" {
 		l.host = conf.Host
 	}
+	// use flag or ask namespace name
+	if l.namespaceName == "" {
+		namespace, err := l.namespaceSurvey.AskToSelectNamespace(conf)
+		if err != nil {
+			return err
+		}
+		l.namespaceName = namespace.Name
+	}
+
 	return nil
 }
 
@@ -83,6 +97,7 @@ func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 	listBackupsRequest := &pb.ListBackupsRequest{
 		ProjectName:   l.projectName,
 		DatastoreName: l.storeName,
+		NamespaceName: l.namespaceName,
 	}
 
 	conn, err := connectivity.NewConnectivity(l.host, backupTimeout)

@@ -40,22 +40,22 @@ func NewClient(ctx context.Context, svcAccount string) (*BqClient, error) {
 }
 
 func (c *BqClient) DatasetHandleFrom(dataset resource.Dataset) ResourceHandle {
-	ds := c.bq.Dataset(dataset.Schema)
+	ds := c.bq.DatasetInProject(dataset.Database, dataset.Schema)
 	return NewDatasetHandle(ds)
 }
 
 func (c *BqClient) TableHandleFrom(dataset resource.Dataset, name resource.Name) TableResourceHandle {
-	t := c.bq.Dataset(dataset.Schema).Table(name.String())
+	t := c.bq.DatasetInProject(dataset.Database, dataset.Schema).Table(name.String())
 	return NewTableHandle(t)
 }
 
 func (c *BqClient) ExternalTableHandleFrom(dataset resource.Dataset, name resource.Name) ResourceHandle {
-	t := c.bq.Dataset(dataset.Schema).Table(name.String())
+	t := c.bq.DatasetInProject(dataset.Database, dataset.Schema).Table(name.String())
 	return NewExternalTableHandle(t)
 }
 
 func (c *BqClient) ViewHandleFrom(dataset resource.Dataset, name resource.Name) ResourceHandle {
-	t := c.bq.Dataset(dataset.Schema).Table(name.String())
+	t := c.bq.DatasetInProject(dataset.Database, dataset.Schema).Table(name.String())
 	return NewViewHandle(t)
 }
 

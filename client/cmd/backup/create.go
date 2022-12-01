@@ -72,7 +72,7 @@ func (c *createCommand) injectFlags(cmd *cobra.Command) {
 	// Mandatory flags if config is not set
 	cmd.Flags().StringVarP(&c.projectName, "project-name", "p", "", "project name of optimus managed repository")
 	cmd.Flags().StringVar(&c.host, "host", "", "Optimus service endpoint url")
-	cmd.Flags().StringVar(&c.namespace, "namespace", "", "Namespace name within project to be backed up")
+	cmd.Flags().StringVarP(&c.namespace, "namespace", "n", "", "Namespace name within project to be backed up")
 }
 
 func (c *createCommand) PreRunE(cmd *cobra.Command, _ []string) error {
@@ -103,7 +103,8 @@ func (c *createCommand) fillAttributes(conf *config.ClientConfig) error {
 	var namespace *config.Namespace
 	// use flag or ask namespace name
 	if c.namespace == "" {
-		namespace, err := c.namespaceSurvey.AskToSelectNamespace(conf)
+		var err error
+		namespace, err = c.namespaceSurvey.AskToSelectNamespace(conf)
 		if err != nil {
 			return err
 		}

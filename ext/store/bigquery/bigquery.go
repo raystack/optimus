@@ -31,7 +31,7 @@ type ResourceHandle interface {
 type TableResourceHandle interface {
 	ResourceHandle
 	GetBQTable() (*bq.Table, error)
-	GetCopier(destination TableResourceHandle) (TableCopier, error)
+	CopierFrom(source TableResourceHandle) (TableCopier, error)
 	UpdateExpiry(ctx context.Context, name string, expiry time.Time) error
 }
 

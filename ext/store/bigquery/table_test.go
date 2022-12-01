@@ -268,24 +268,24 @@ func TestTableHandle(t *testing.T) {
 		})
 	})
 	t.Run("GetCopier", func(t *testing.T) {
-		t.Run("returns error when destination is nil", func(t *testing.T) {
+		t.Run("returns error when source is nil", func(t *testing.T) {
 			table := new(mockBigQueryTable)
 			tHandle := bigquery.NewTableHandle(table)
 
-			_, err := tHandle.GetCopier(nil)
+			_, err := tHandle.CopierFrom(nil)
 			assert.Error(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource_table: destination handle is nil")
+			assert.ErrorContains(t, err, "source handle is nil")
 		})
 		t.Run("returns error when destination is not table", func(t *testing.T) {
 			mockTable1 := new(mockBigQueryTable)
-			dest := bigquery.NewTableHandle(mockTable1)
+			source := bigquery.NewTableHandle(mockTable1)
 
 			table := new(mockBigQueryTable)
 			tHandle := bigquery.NewTableHandle(table)
 
-			_, err := tHandle.GetCopier(dest)
+			_, err := tHandle.CopierFrom(source)
 			assert.Error(t, err)
-			assert.EqualError(t, err, "internal error for entity resource_table: not able to create bigquery destination table")
+			assert.ErrorContains(t, err, "not able to convert to bigquery table")
 		})
 		t.Run("returns the table copier", func(t *testing.T) {
 			table1 := &bq.Table{
@@ -299,7 +299,7 @@ func TestTableHandle(t *testing.T) {
 			table.On("CopierFrom", []*bq.Table{table1}).Return(&bq.Copier{})
 			tHandle := bigquery.NewTableHandle(table)
 
-			copier, err := tHandle.GetCopier(dest)
+			copier, err := tHandle.CopierFrom(dest)
 			assert.Nil(t, err)
 			assert.NotNil(t, copier)
 		})
