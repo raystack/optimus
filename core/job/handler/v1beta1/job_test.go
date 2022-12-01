@@ -782,7 +782,7 @@ func TestNewJobHandler(t *testing.T) {
 
 			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, mock.Anything).Return(nil)
 
-			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Twice()
+			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Times(3)
 
 			err := jobHandler.ReplaceAllJobSpecifications(stream)
 			assert.Error(t, err)

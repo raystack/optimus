@@ -101,7 +101,7 @@ func (r *replaceAllCommand) replaceAllJobs(conn *connectivity.Connectivity, sele
 	for _, namespace := range selectedNamespaces {
 		namespaceNames = append(namespaceNames, namespace.Name)
 	}
-	r.logger.Info("\n> Replacing all jobs for namespaces [%s]", strings.Join(namespaceNames, ","))
+	r.logger.Info("> Replacing all jobs for namespaces [%s]", strings.Join(namespaceNames, ","))
 
 	stream, err := r.getJobStreamClient(conn)
 	if err != nil {

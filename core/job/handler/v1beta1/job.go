@@ -259,6 +259,8 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 			return err
 		}
 
+		responseWriter.Write(writer.LogLevelInfo, fmt.Sprintf("[%s] received %d job specs", request.GetNamespaceName(), len(request.GetJobs())))
+
 		jobTenant, err := tenant.NewTenant(request.ProjectName, request.NamespaceName)
 		if err != nil {
 			errMsg := fmt.Sprintf("invalid replace all job specifications request for %s: %s", request.GetNamespaceName(), err.Error())
@@ -292,7 +294,6 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 		namespacesWithError := strings.Join(errNamespaces, ", ")
 		return fmt.Errorf("error when replacing job specifications: [%s]", namespacesWithError)
 	}
-	responseWriter.Write(writer.LogLevelInfo, "jobs replaced successfully")
 	return nil
 }
 
