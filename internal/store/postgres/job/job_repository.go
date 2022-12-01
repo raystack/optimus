@@ -501,11 +501,11 @@ VALUES (
 			upstream.UpstreamType, upstream.UpstreamState)
 
 		if result.Error != nil {
-			return errors.Wrap(job.EntityJob, "unable to save job upstream", result.Error)
+			return errors.NewError(errors.ErrInternalError, job.EntityJob, fmt.Sprintf("unable to save job upstream: %s", result.Error))
 		}
 
 		if result.RowsAffected == 0 {
-			return errors.InternalError(job.EntityJob, "unable to save job upstream, rows affected 0", nil)
+			return errors.NewError(errors.ErrInternalError, job.EntityJob, "unable to save job upstream, rows affected 0")
 		}
 	}
 	return nil
