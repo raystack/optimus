@@ -68,7 +68,7 @@ func (r *replaceAllCommand) PreRunE(_ *cobra.Command, _ []string) error {
 }
 
 func (r *replaceAllCommand) RunE(_ *cobra.Command, _ []string) error {
-	r.logger.Info("Validating namespaces")
+	r.logger.Info("> Validating namespaces")
 	selectedNamespaces, err := r.clientConfig.GetSelectedNamespaces(r.selectedNamespaceNames...)
 	if err != nil {
 		return err
@@ -91,7 +91,7 @@ func (r *replaceAllCommand) replaceAll(selectedNamespaces []*config.Namespace) e
 	if err := r.replaceAllJobs(conn, selectedNamespaces); err != nil {
 		return err
 	}
-	r.logger.Info("> replace all job specifications finished!\n")
+	r.logger.Info("replace all job specifications finished!\n")
 
 	return nil
 }
