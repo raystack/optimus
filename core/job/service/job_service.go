@@ -339,7 +339,7 @@ func (j JobService) resolveAndSaveUpstreams(ctx context.Context, projectName ten
 	err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
 	me.Append(err)
 
-	return errors.MultiToError(err)
+	return errors.MultiToError(me)
 }
 
 func (j JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.WithDetails, specsToAdd []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {

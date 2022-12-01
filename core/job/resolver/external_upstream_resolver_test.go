@@ -44,15 +44,18 @@ func TestExternalUpstreamResolver(t *testing.T) {
 			rawUpstreams := []*dto.RawUpstream{
 				{JobName: "job-B", ProjectName: externalTenant.ProjectName().String()},
 				{ResourceURN: "resource-C"},
+				{ResourceURN: "resource-D"},
 			}
-			unresolvedUpstream := job.NewUpstreamUnresolved("", "resource-C", "")
+			unresolvedUpstreamC := job.NewUpstreamUnresolved("", "resource-C", "")
+			unresolvedUpstreamD := job.NewUpstreamUnresolved("", "resource-D", "")
 			upstreamB := job.NewUpstreamResolved("job-B", "external-host", "resource-B", externalTenant, "static", taskName, true)
 			resourceManager.On("GetOptimusUpstreams", ctx, rawUpstreams[0]).Return([]*job.Upstream{upstreamB}, nil).Once()
 			resourceManager.On("GetOptimusUpstreams", ctx, rawUpstreams[1]).Return([]*job.Upstream{}, errors.New("connection error")).Once()
+			resourceManager.On("GetOptimusUpstreams", ctx, rawUpstreams[2]).Return([]*job.Upstream{}, nil).Once()
 
 			extUpstreamResolver := resolver.NewTestExternalUpstreamResolver(optimusResourceManagers)
 			result, unresolvedDep, err := extUpstreamResolver.Resolve(ctx, rawUpstreams)
-			assert.Equal(t, []*job.Upstream{unresolvedUpstream}, unresolvedDep)
+			assert.EqualValues(t, []*job.Upstream{unresolvedUpstreamC, unresolvedUpstreamD}, unresolvedDep)
 			assert.NotNil(t, err)
 			assert.Equal(t, []*job.Upstream{upstreamB}, result)
 		})

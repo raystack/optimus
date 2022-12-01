@@ -54,7 +54,8 @@ func (u UpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.Pr
 	jobsWithAllUpstreams, err := u.getJobsWithAllUpstreams(ctx, jobs, jobsWithInternalUpstreams, logWriter)
 	me.Append(err)
 
-	me.Append(u.getUnresolvedUpstreamsErrors(jobsWithAllUpstreams))
+	me.Append(u.getUnresolvedUpstreamsErrors(jobsWithAllUpstreams, logWriter))
+
 	return jobsWithAllUpstreams, errors.MultiToError(me)
 }
 
@@ -184,12 +185,13 @@ func (UpstreamResolver) getStaticUpstreamsToResolve(resolvedUpstreams []*job.Ups
 	return unresolvedStaticUpstreams
 }
 
-func (UpstreamResolver) getUnresolvedUpstreamsErrors(jobsWithUpstreams []*job.WithUpstream) error {
+func (UpstreamResolver) getUnresolvedUpstreamsErrors(jobsWithUpstreams []*job.WithUpstream, logWriter writer.LogWriter) error {
 	me := errors.NewMultiError("unresolved upstreams errors")
 	for _, jobWithUpstreams := range jobsWithUpstreams {
 		for _, unresolvedUpstream := range jobWithUpstreams.GetUnresolvedUpstreams() {
 			if unresolvedUpstream.Type() == job.UpstreamTypeStatic {
 				errMsg := fmt.Sprintf("[%s] error: %s unknown upstream", jobWithUpstreams.Name().String(), unresolvedUpstream.Name())
+				logWriter.Write(writer.LogLevelError, errMsg)
 				me.Append(errors.NewError(errors.ErrNotFound, job.EntityJob, errMsg))
 			}
 		}

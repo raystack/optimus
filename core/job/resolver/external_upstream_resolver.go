@@ -61,7 +61,7 @@ func (e *extUpstreamResolver) fetchExternalUpstreams(ctx context.Context, unreso
 	var externalUpstreams []*job.Upstream
 	for _, toBeResolvedUpstream := range unresolvedUpstreams {
 		optimusUpstreams, err := e.fetchOptimusUpstreams(ctx, toBeResolvedUpstream)
-		if err != nil {
+		if err != nil || len(optimusUpstreams) == 0 {
 			unknownUpstreams = append(unknownUpstreams, toBeResolvedUpstream)
 			me.Append(err)
 			continue
