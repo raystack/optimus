@@ -35,7 +35,7 @@ func fromResourceToModel(r *resource.Resource) *Resource {
 	spec, _ := json.Marshal(r.Spec())
 	return &Resource{
 		FullName:      r.FullName(),
-		Kind:          r.Kind().String(),
+		Kind:          r.Kind(),
 		Store:         r.Store().String(),
 		ProjectName:   r.Tenant().ProjectName().String(),
 		NamespaceName: r.Tenant().NamespaceName().String(),
@@ -49,10 +49,6 @@ func fromResourceToModel(r *resource.Resource) *Resource {
 }
 
 func fromModelToResource(r *Resource) (*resource.Resource, error) {
-	kind, err := resource.FromStringToKind(r.Kind)
-	if err != nil {
-		return nil, errors.Wrap(resource.EntityResource, "error constructing kind", err)
-	}
 	store, err := resource.FromStringToStore(r.Store)
 	if err != nil {
 		return nil, errors.Wrap(resource.EntityResource, "error constructing kind", err)
@@ -69,9 +65,10 @@ func fromModelToResource(r *Resource) (*resource.Resource, error) {
 	if err := json.Unmarshal(r.Spec, &spec); err != nil {
 		return nil, errors.Wrap(resource.EntityResource, "error unmarshalling spec", err)
 	}
-	output, err := resource.NewResource(r.FullName, kind, store, tnnt, metadata, spec)
+	output, err := resource.NewResource(r.FullName, r.Kind, store, tnnt, metadata, spec)
 	if err == nil {
 		output = resource.FromExisting(output, resource.ReplaceStatus(resource.FromStringToStatus(r.Status)))
+		output.UpdateURN(r.URN)
 	}
 	return output, err
 }

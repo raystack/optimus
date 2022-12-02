@@ -160,6 +160,7 @@ func FromExisting(existing *Resource, opts ...FromExistingOpt) *Resource {
 		tenant:   existing.tenant,
 		spec:     existing.spec,
 		metadata: existing.metadata,
+		urn:      existing.urn,
 		status:   existing.status,
 	}
 	for _, opt := range opts {
