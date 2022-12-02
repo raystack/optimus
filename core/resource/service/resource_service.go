@@ -22,6 +22,8 @@ type ResourceManager interface {
 	CreateResource(ctx context.Context, res *resource.Resource) error
 	UpdateResource(ctx context.Context, res *resource.Resource) error
 	BatchUpdate(ctx context.Context, store resource.Store, resources []*resource.Resource) error
+	Validate(res *resource.Resource) error
+	GetURN(res *resource.Resource) (string, error)
 }
 
 type TenantDetailsGetter interface {
@@ -46,13 +48,23 @@ func NewResourceService(logger log.Logger, repo ResourceRepository, mgr Resource
 }
 
 func (rs ResourceService) Create(ctx context.Context, incoming *resource.Resource) error {
-	if err := incoming.Validate(); err != nil {
+	if err := rs.mgr.Validate(incoming); err != nil {
 		rs.logger.Error("error validating resource [%s]: %s", incoming.FullName(), err)
 		return err
 	}
 	incoming.MarkValidationSuccess()
+	urn, err := rs.mgr.GetURN(incoming)
+	if err != nil {
+		rs.logger.Error("error validating resource [%s]: %s", incoming.FullName(), err)
+		return err
+	}
+	err = incoming.UpdateURN(urn)
+	if err != nil {
+		rs.logger.Error("error updating urn of resource [%s]: %s", incoming.FullName(), err)
+		return err
+	}
 
-	if existing, err := rs.repo.ReadByFullName(ctx, incoming.Tenant(), incoming.Dataset().Store, incoming.FullName()); err != nil {
+	if existing, err := rs.repo.ReadByFullName(ctx, incoming.Tenant(), incoming.Store(), incoming.FullName()); err != nil {
 		if !errors.IsErrorType(err, errors.ErrNotFound) {
 			rs.logger.Error("error getting resource [%s]: %s", incoming.FullName(), err)
 			return err
@@ -85,13 +97,23 @@ func (rs ResourceService) Create(ctx context.Context, incoming *resource.Resourc
 }
 
 func (rs ResourceService) Update(ctx context.Context, incoming *resource.Resource) error {
-	if err := incoming.Validate(); err != nil {
+	if err := rs.mgr.Validate(incoming); err != nil {
 		rs.logger.Error("error validating resource [%s]: %s", incoming.FullName(), err)
 		return err
 	}
 	incoming.MarkValidationSuccess()
+	urn, err := rs.mgr.GetURN(incoming)
+	if err != nil {
+		rs.logger.Error("error validating resource [%s]: %s", incoming.FullName(), err)
+		return err
+	}
+	err = incoming.UpdateURN(urn)
+	if err != nil {
+		rs.logger.Error("error updating urn of resource [%s]: %s", incoming.FullName(), err)
+		return err
+	}
 
-	existing, err := rs.repo.ReadByFullName(ctx, incoming.Tenant(), incoming.Dataset().Store, incoming.FullName())
+	existing, err := rs.repo.ReadByFullName(ctx, incoming.Tenant(), incoming.Store(), incoming.FullName())
 	if err != nil {
 		rs.logger.Error("error getting stored resource [%s]: %s", incoming.FullName(), err)
 		return err
@@ -127,13 +149,25 @@ func (rs ResourceService) GetAll(ctx context.Context, tnnt tenant.Tenant, store 
 func (rs ResourceService) Deploy(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
 	multiError := errors.NewMultiError("error batch updating resources")
 	for _, r := range resources {
-		if err := r.Validate(); err != nil {
+		if err := rs.mgr.Validate(r); err != nil {
 			msg := fmt.Sprintf("error validating [%s]: %s", r.FullName(), err)
 			multiError.Append(errors.Wrap(resource.EntityResource, msg, err))
 
 			rs.logger.Error(msg)
-		} else {
-			r.MarkValidationSuccess()
+			r.MarkValidationFailure()
+			continue
+		}
+		r.MarkValidationSuccess()
+
+		urn, err := rs.mgr.GetURN(r)
+		if err != nil {
+			rs.logger.Error("error getting resource urn [%s]: %s", r.FullName(), err)
+			return err
+		}
+		err = r.UpdateURN(urn)
+		if err != nil {
+			rs.logger.Error("error updating urn of resource [%s]: %s", r.FullName(), err)
+			return err
 		}
 	}
 

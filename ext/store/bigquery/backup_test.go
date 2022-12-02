@@ -20,7 +20,7 @@ func TestBigqueryBackup(t *testing.T) {
 	tnnt, _ := tenant.NewTenant("project", "namespace")
 	createdAt := time.Date(2022, 11, 18, 1, 0, 0, 0, time.UTC)
 	meta := &resource.Metadata{}
-	kindTable := resource.KindTable
+	kindTable := bigquery.KindTable
 	spec := map[string]any{
 		"description": "test resource",
 	}
@@ -33,7 +33,7 @@ func TestBigqueryBackup(t *testing.T) {
 			client := new(mockClient)
 
 			viewName := "t-optimus.playground.product-view"
-			view, err := resource.NewResource(viewName, resource.KindView, store, tnnt, meta, spec)
+			view, err := resource.NewResource(viewName, bigquery.KindView, store, tnnt, meta, spec)
 			assert.NoError(t, err)
 
 			backup, err := resource.NewBackup(store, tnnt, []string{"p.d.t"}, "", createdAt, nil)
@@ -54,7 +54,7 @@ func TestBigqueryBackup(t *testing.T) {
 
 			_, err = bigquery.BackupResources(ctx, backup, []*resource.Resource{source}, client)
 			assert.Error(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource_dataset: schema/dataset name is empty")
+			assert.ErrorContains(t, err, "bigquery dataset name is empty")
 		})
 		t.Run("returns error when cannot create dataset", func(t *testing.T) {
 			datasetHandle := new(mockTableResourceHandle)
@@ -71,7 +71,7 @@ func TestBigqueryBackup(t *testing.T) {
 
 			_, err = bigquery.BackupResources(ctx, backup, []*resource.Resource{source}, client)
 			assert.Error(t, err)
-			assert.EqualError(t, err, "internal error for entity bq: some error in create")
+			assert.ErrorContains(t, err, "some error in create")
 		})
 		t.Run("returns error when error in backup table", func(t *testing.T) {
 			datasetHandle := new(mockTableResourceHandle)
@@ -90,7 +90,7 @@ func TestBigqueryBackup(t *testing.T) {
 
 			_, err = bigquery.BackupResources(ctx, backup, []*resource.Resource{source}, client)
 			assert.Error(t, err)
-			assert.EqualError(t, err, "invalid argument for entity BigqueryStore: failed to parse bigquery backup TTL 32P")
+			assert.ErrorContains(t, err, "failed to parse bigquery backup TTL 32P")
 		})
 		t.Run("backs up the resources successfully", func(t *testing.T) {
 			mockJob := new(mockCopyJob)
@@ -145,7 +145,7 @@ func TestBigqueryBackup(t *testing.T) {
 
 			_, err = bigquery.BackupTable(ctx, backup, source, client)
 			assert.Error(t, err)
-			assert.EqualError(t, err, "invalid argument for entity BigqueryStore: failed to parse bigquery backup TTL 32P")
+			assert.ErrorContains(t, err, "failed to parse bigquery backup TTL 32P")
 		})
 		t.Run("returns error when error in copy table", func(t *testing.T) {
 			tableHandle := new(mockTableResourceHandle)
@@ -161,7 +161,7 @@ func TestBigqueryBackup(t *testing.T) {
 
 			_, err = bigquery.BackupTable(ctx, backup, source, client)
 			assert.Error(t, err)
-			assert.EqualError(t, err, "internal error for entity bq: cannot get copier")
+			assert.ErrorContains(t, err, "cannot get copier")
 		})
 		t.Run("returns error when not able to update expiry time", func(t *testing.T) {
 			mockJob := new(mockCopyJob)
@@ -187,7 +187,7 @@ func TestBigqueryBackup(t *testing.T) {
 
 			_, err = bigquery.BackupTable(ctx, backup, source, client)
 			assert.Error(t, err)
-			assert.EqualError(t, err, "internal error for entity bq: failed to update")
+			assert.ErrorContains(t, err, "failed to update")
 		})
 		t.Run("returns name of resource backup", func(t *testing.T) {
 			mockJob := new(mockCopyJob)
@@ -217,10 +217,9 @@ func TestBigqueryBackup(t *testing.T) {
 		})
 	})
 	t.Run("CreateIfDatasetDoesNotExist", func(t *testing.T) {
-		destDataset := resource.Dataset{
-			Store:    store,
-			Database: "t-optimus",
-			Schema:   "backup_optimus",
+		destDataset := bigquery.Dataset{
+			Project:     "t-optimus",
+			DatasetName: "backup_optimus",
 		}
 
 		t.Run("return no error if exists", func(t *testing.T) {
@@ -280,7 +279,7 @@ func TestBigqueryBackup(t *testing.T) {
 
 			err := bigquery.CopyTable(ctx, mockSource, mockDest)
 			assert.Error(t, err)
-			assert.EqualError(t, err, "internal error for entity bq: some error")
+			assert.ErrorContains(t, err, "some error")
 		})
 		t.Run("returns error when copier returns error", func(t *testing.T) {
 			mockCopier := new(mockTableCopier)
@@ -294,7 +293,7 @@ func TestBigqueryBackup(t *testing.T) {
 
 			err := bigquery.CopyTable(ctx, mockSource, mockDest)
 			assert.Error(t, err)
-			assert.EqualError(t, err, "internal error for entity bq: error in job")
+			assert.ErrorContains(t, err, "error in job")
 		})
 		t.Run("returns when successful", func(t *testing.T) {
 			mockJob := new(mockCopyJob)
@@ -319,10 +318,12 @@ func TestBigqueryBackup(t *testing.T) {
 			backup, err := resource.NewBackup(store, tnnt, []string{fullName}, "", createdAt, nil)
 			assert.NoError(t, err)
 
-			dataset, err := bigquery.DestinationDataset(source.Dataset(), backup)
+			dataset, err := bigquery.DataSetFor(source)
 			assert.NoError(t, err)
-			assert.Equal(t, "t-optimus.optimus_backup", dataset.FullName())
-			assert.Equal(t, store, dataset.Store)
+
+			destinationDS, err := bigquery.DestinationDataset(dataset.Project, backup)
+			assert.NoError(t, err)
+			assert.Equal(t, "t-optimus.optimus_backup", destinationDS.FullName())
 		})
 	})
 	t.Run("DestinationName", func(t *testing.T) {
@@ -330,9 +331,14 @@ func TestBigqueryBackup(t *testing.T) {
 			backup, err := resource.NewBackup(store, tnnt, []string{fullName}, "", createdAt, nil)
 			assert.NoError(t, err)
 
-			name, err := bigquery.DestinationName(source, backup)
+			dataset, err := bigquery.DataSetFor(source)
 			assert.NoError(t, err)
-			assert.Equal(t, "backup_playground_product_2022_11_18_01_00_00", name.String())
+
+			name, err := bigquery.ResourceNameFor(source)
+			assert.NoError(t, err)
+
+			destination := bigquery.DestinationName(dataset.DatasetName, name, backup)
+			assert.Equal(t, "backup_playground_product_2022_11_18_01_00_00", destination)
 		})
 	})
 	t.Run("DestinationExpiry", func(t *testing.T) {
@@ -345,7 +351,7 @@ func TestBigqueryBackup(t *testing.T) {
 
 			_, err = bigquery.DestinationExpiry(backup)
 			assert.Error(t, err)
-			assert.EqualError(t, err, "invalid argument for entity BigqueryStore: failed to parse bigquery backup TTL 32P")
+			assert.ErrorContains(t, err, "invalid argument for entity BigqueryStore: failed to parse bigquery backup TTL 32P")
 		})
 		t.Run("returns the time for backup expiration", func(t *testing.T) {
 			backup, err := resource.NewBackup(store, tnnt, []string{"p.d.t"}, "", createdAt, nil)

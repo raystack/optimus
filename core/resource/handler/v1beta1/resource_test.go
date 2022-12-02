@@ -258,11 +258,11 @@ func TestResourceHandler(t *testing.T) {
 			_, err := handler.ListResourceSpecification(ctx, req)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
-				"resource: missing resource metadata: failed to parse resource ..")
+				"resource: missing resource metadata: failed to parse resource ")
 		})
 		t.Run("lists the resources successfully", func(t *testing.T) {
 			spec := map[string]any{"a": "b"}
-			dbRes, err := resource.NewResource("proj.set.table", resource.KindTable, resource.Bigquery, tnnt,
+			dbRes, err := resource.NewResource("proj.set.table", "table", resource.Bigquery, tnnt,
 				&resource.Metadata{}, spec)
 			assert.Nil(t, err)
 
@@ -355,7 +355,7 @@ func TestResourceHandler(t *testing.T) {
 			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
 				"resource: empty resource: failed to create resource")
 		})
-		t.Run("returns error when kind is invalid", func(t *testing.T) {
+		t.Run("returns error when kind is empty", func(t *testing.T) {
 			service := new(resourceService)
 			handler := v1beta1.NewResourceHandler(logger, service)
 
@@ -364,8 +364,9 @@ func TestResourceHandler(t *testing.T) {
 				ProjectName:   "proj",
 				DatastoreName: "bigquery",
 				Resource: &pb.ResourceSpecification{
+					Name:    "project.dataset.table",
 					Version: 0,
-					Type:    "invalid",
+					Type:    "",
 					Spec:    spec,
 				},
 				NamespaceName: "ns",
@@ -373,8 +374,7 @@ func TestResourceHandler(t *testing.T) {
 
 			_, err := handler.CreateResource(ctx, createReq)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
-				"resource: unknown kind invalid: failed to create resource")
+			assert.ErrorContains(t, err, "empty resource type for project.dataset.table")
 		})
 		t.Run("returns error when name is invalid", func(t *testing.T) {
 			service := new(resourceService)
@@ -396,7 +396,7 @@ func TestResourceHandler(t *testing.T) {
 			_, err := handler.CreateResource(ctx, createReq)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
-				"resource: invalid resource name: : failed to create resource")
+				"resource: resource name is empty: failed to create resource")
 		})
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			service := new(resourceService)
@@ -539,7 +539,7 @@ func TestResourceHandler(t *testing.T) {
 		t.Run("returns error when error in spec to ", func(t *testing.T) {
 			invalidKey := "a\xc5z"
 			specWithInvalidUTF := map[string]any{invalidKey: "value"}
-			dbRes, err := resource.NewResource("proj.set.table", resource.KindTable, resource.Bigquery, tnnt,
+			dbRes, err := resource.NewResource("proj.set.table", "table", resource.Bigquery, tnnt,
 				&resource.Metadata{}, specWithInvalidUTF)
 			assert.Nil(t, err)
 			service := new(resourceService)
@@ -563,7 +563,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("returns the resource successfully", func(t *testing.T) {
 			spec := map[string]any{"a": "b"}
-			dbRes, err := resource.NewResource("proj.set.table", resource.KindTable, resource.Bigquery, tnnt,
+			dbRes, err := resource.NewResource("proj.set.table", "table", resource.Bigquery, tnnt,
 				&resource.Metadata{}, spec)
 			assert.Nil(t, err)
 
@@ -585,7 +585,7 @@ func TestResourceHandler(t *testing.T) {
 			assert.Nil(t, err)
 
 			assert.Equal(t, "proj.set.table", res.Resource.Name)
-			assert.Equal(t, dbRes.Kind().String(), res.Resource.Type)
+			assert.Equal(t, dbRes.Kind(), res.Resource.Type)
 		})
 	})
 	t.Run("UpdateResource", func(t *testing.T) {
@@ -637,7 +637,7 @@ func TestResourceHandler(t *testing.T) {
 			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
 				"resource: empty resource: failed to update resource")
 		})
-		t.Run("returns error when kind is invalid", func(t *testing.T) {
+		t.Run("returns error when kind is empty", func(t *testing.T) {
 			service := new(resourceService)
 			handler := v1beta1.NewResourceHandler(logger, service)
 
@@ -646,8 +646,9 @@ func TestResourceHandler(t *testing.T) {
 				ProjectName:   "proj",
 				DatastoreName: "bigquery",
 				Resource: &pb.ResourceSpecification{
+					Name:    "proj.ds.table1",
 					Version: 0,
-					Type:    "invalid",
+					Type:    "",
 					Spec:    spec,
 				},
 				NamespaceName: "ns",
@@ -655,8 +656,7 @@ func TestResourceHandler(t *testing.T) {
 
 			_, err := handler.UpdateResource(ctx, req)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
-				"resource: unknown kind invalid: failed to update resource")
+			assert.ErrorContains(t, err, "empty resource type for proj.ds.table1")
 		})
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			service := new(resourceService)

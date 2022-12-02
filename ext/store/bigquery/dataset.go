@@ -29,7 +29,7 @@ type DatasetHandle struct {
 }
 
 func (d DatasetHandle) Create(ctx context.Context, res *resource.Resource) error {
-	details, err := resource.ConvertSpecTo[resource.DatasetDetails](res)
+	details, err := ConvertSpecTo[DatasetDetails](res)
 	if err != nil {
 		return err
 	}
@@ -39,15 +39,15 @@ func (d DatasetHandle) Create(ctx context.Context, res *resource.Resource) error
 		var metaErr *googleapi.Error
 		if errors.As(err, &metaErr) &&
 			metaErr.Code == 409 && strings.Contains(metaErr.Message, "Already Exists") {
-			return errors.AlreadyExists(resource.EntityDataset, "dataset already exists on bigquery: "+res.FullName())
+			return errors.AlreadyExists(EntityDataset, "dataset already exists on bigquery: "+res.FullName())
 		}
-		return errors.InternalError(resource.EntityDataset, "failed to create resource "+res.FullName(), err)
+		return errors.InternalError(EntityDataset, "failed to create resource "+res.FullName(), err)
 	}
 	return nil
 }
 
 func (d DatasetHandle) Update(ctx context.Context, res *resource.Resource) error {
-	details, err := resource.ConvertSpecTo[resource.DatasetDetails](res)
+	details, err := ConvertSpecTo[DatasetDetails](res)
 	if err != nil {
 		return err
 	}
@@ -70,9 +70,9 @@ func (d DatasetHandle) Update(ctx context.Context, res *resource.Resource) error
 	if err != nil {
 		var metaErr *googleapi.Error
 		if errors.As(err, &metaErr) && metaErr.Code == http.StatusNotFound {
-			return errors.NotFound(resource.EntityDataset, "failed to update dataset in bigquery for "+res.FullName())
+			return errors.NotFound(EntityDataset, "failed to update dataset in bigquery for "+res.FullName())
 		}
-		return errors.InternalError(resource.EntityDataset, "failed to update resource on bigquery for "+res.FullName(), err)
+		return errors.InternalError(EntityDataset, "failed to update resource on bigquery for "+res.FullName(), err)
 	}
 
 	return nil
@@ -88,7 +88,7 @@ func NewDatasetHandle(ds BqDataset) *DatasetHandle {
 	return &DatasetHandle{bqDataset: ds}
 }
 
-func toBQDatasetMetadata(details *resource.DatasetDetails, res *resource.Resource) *bigquery.DatasetMetadata {
+func toBQDatasetMetadata(details *DatasetDetails, res *resource.Resource) *bigquery.DatasetMetadata {
 	meta := &bigquery.DatasetMetadata{
 		Description: details.Description,
 		Labels:      res.Metadata().Labels,

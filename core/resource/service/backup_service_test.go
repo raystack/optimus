@@ -23,7 +23,7 @@ func TestBackupService(t *testing.T) {
 	backup, _ := resource.NewBackup(store, tnnt, []string{"p.d.t"}, "", createdAt, nil)
 	meta := &resource.Metadata{}
 	spec := map[string]any{"description": "resource table"}
-	source, resErr := resource.NewResource("p.d.t", resource.KindTable, store, tnnt, meta, spec)
+	source, resErr := resource.NewResource("p.d.t", "table", store, tnnt, meta, spec)
 	assert.NoError(t, resErr)
 
 	validID := "dda7b864-4268-4107-a096-dcf5343a0959"

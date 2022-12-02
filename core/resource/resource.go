@@ -1,11 +1,8 @@
 package resource
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
-
-	"github.com/mitchellh/mapstructure"
 
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
@@ -14,17 +11,12 @@ import (
 const (
 	EntityResource       = "resource"
 	nameSectionSeparator = "."
-
-	DatesetNameSections = 2
-	TableNameSections   = 3
 )
 
-type ValidateResource interface {
-	Validate() error
-}
-
-type UniqueResource interface {
-	URN() string
+type Metadata struct {
+	Version     int32
+	Description string
+	Labels      map[string]string
 }
 
 type Name string
@@ -44,8 +36,9 @@ func (n Name) String() string {
 type Resource struct {
 	name Name
 
-	kind    Kind
-	dataset Dataset
+	kind  string
+	store Store
+	urn   string
 
 	tenant tenant.Tenant
 
@@ -55,33 +48,14 @@ type Resource struct {
 	status Status
 }
 
-func NewResource(fullName string, kind Kind, store Store, tnnt tenant.Tenant, meta *Metadata, spec map[string]any) (*Resource, error) {
-	sections := strings.Split(fullName, nameSectionSeparator)
-	var strName string
-	if kind == KindDataset {
-		if len(sections) != DatesetNameSections {
-			return nil, errors.InvalidArgument(EntityResource, "invalid dataset name: "+fullName)
-		}
-		strName = sections[1]
-	} else {
-		if len(sections) != TableNameSections {
-			return nil, errors.InvalidArgument(EntityResource, "invalid resource name: "+fullName)
-		}
-		strName = sections[2]
-	}
-
-	name, err := NameFrom(strName)
+func NewResource(fullName string, kind string, store Store, tnnt tenant.Tenant, meta *Metadata, spec map[string]any) (*Resource, error) {
+	name, err := NameFrom(fullName)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(spec) == 0 {
 		return nil, errors.InvalidArgument(EntityResource, "invalid resource spec for "+fullName)
-	}
-
-	dataset, err := DataSetFrom(store, sections[0], sections[1])
-	if err != nil {
-		return nil, err
 	}
 
 	if meta == nil {
@@ -91,7 +65,7 @@ func NewResource(fullName string, kind Kind, store Store, tnnt tenant.Tenant, me
 	return &Resource{
 		name:     name,
 		kind:     kind,
-		dataset:  dataset,
+		store:    store,
 		tenant:   tnnt,
 		spec:     spec,
 		metadata: meta,
@@ -104,24 +78,31 @@ func (r *Resource) Name() Name {
 }
 
 func (r *Resource) FullName() string {
-	if r.kind == KindDataset {
-		return r.dataset.FullName()
-	}
-	return r.dataset.FullName() + "." + r.name.String()
+	return r.name.String()
 }
 
 func (r *Resource) URN() string {
-	if r.kind == KindDataset {
-		return r.dataset.URN()
+	return r.urn
+}
+
+func (r *Resource) UpdateURN(urn string) error {
+	if r.urn == "" {
+		r.urn = urn
+		return nil
 	}
-	return r.dataset.URN() + "." + r.name.String()
+
+	return errors.InvalidArgument(EntityResource, "urn already present")
 }
 
 func (r *Resource) Metadata() *Metadata {
 	return r.metadata
 }
 
-func (r *Resource) Kind() Kind {
+func (r *Resource) NameSections() []string {
+	return strings.Split(r.name.String(), nameSectionSeparator)
+}
+
+func (r *Resource) Kind() string {
 	return r.kind
 }
 
@@ -129,8 +110,8 @@ func (r *Resource) Tenant() tenant.Tenant {
 	return r.tenant
 }
 
-func (r *Resource) Dataset() Dataset {
-	return r.dataset
+func (r *Resource) Store() Store {
+	return r.store
 }
 
 func (r *Resource) Status() Status {
@@ -139,48 +120,6 @@ func (r *Resource) Status() Status {
 
 func (r *Resource) Spec() map[string]any {
 	return r.spec
-}
-
-func (r *Resource) Validate() error {
-	switch r.kind {
-	case KindTable:
-		table, err := ConvertSpecTo[Table](r)
-		if err != nil {
-			return err
-		}
-		table.Name = r.name
-		table.Dataset = r.dataset
-		return table.Validate()
-
-	case KindExternalTable:
-		externalTable, err := ConvertSpecTo[ExternalTable](r)
-		if err != nil {
-			return err
-		}
-		externalTable.Name = r.name
-		externalTable.Dataset = r.dataset
-		return externalTable.Validate()
-
-	case KindView:
-		view, err := ConvertSpecTo[View](r)
-		if err != nil {
-			return err
-		}
-		view.Name = r.name
-		view.Dataset = r.dataset
-		return view.Validate()
-
-	case KindDataset:
-		ds, err := ConvertSpecTo[DatasetDetails](r)
-		if err != nil {
-			return err
-		}
-		ds.Dataset = r.dataset
-		return ds.Validate()
-
-	default:
-		return errors.InvalidArgument(EntityResource, "unknown kind")
-	}
 }
 
 func (r *Resource) Equal(incoming *Resource) bool {
@@ -193,7 +132,7 @@ func (r *Resource) Equal(incoming *Resource) bool {
 	if r.kind != incoming.kind {
 		return false
 	}
-	if r.dataset != incoming.dataset {
+	if r.store != incoming.store {
 		return false
 	}
 	if !reflect.DeepEqual(r.tenant, incoming.tenant) {
@@ -203,83 +142,6 @@ func (r *Resource) Equal(incoming *Resource) bool {
 		return false
 	}
 	return reflect.DeepEqual(r.metadata, incoming.metadata)
-}
-
-func (r *Resource) MarkValidationSuccess() error {
-	if r.status == StatusUnknown {
-		r.status = StatusValidationSuccess
-		return nil
-	}
-	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status [%s] is not allowed", r.FullName(), r.status, StatusValidationSuccess)
-	return errors.InvalidStateTransition(EntityResource, msg)
-}
-
-func (r *Resource) MarkValidationFailure() error {
-	if r.status == StatusUnknown {
-		r.status = StatusValidationFailure
-		return nil
-	}
-	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status [%s] is not allowed", r.FullName(), r.status, StatusValidationFailure)
-	return errors.InvalidStateTransition(EntityResource, msg)
-}
-
-func (r *Resource) MarkSkipped() error {
-	if r.status == StatusValidationSuccess {
-		r.status = StatusSkipped
-		return nil
-	}
-	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status [%s] is not allowed", r.FullName(), r.status, StatusSkipped)
-	return errors.InvalidStateTransition(EntityResource, msg)
-}
-
-func (r *Resource) MarkToCreate() error {
-	if r.status == StatusValidationSuccess {
-		r.status = StatusToCreate
-		return nil
-	}
-	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status [%s] is not allowed", r.FullName(), r.status, StatusToCreate)
-	return errors.InvalidStateTransition(EntityResource, msg)
-}
-
-func (r *Resource) MarkToUpdate() error {
-	if r.status == StatusValidationSuccess {
-		r.status = StatusToUpdate
-		return nil
-	}
-	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status [%s] is not allowed", r.FullName(), r.status, StatusToUpdate)
-	return errors.InvalidStateTransition(EntityResource, msg)
-}
-
-func (r *Resource) MarkExistInStore() error {
-	if r.status == StatusToCreate {
-		r.status = StatusExistInStore
-		return nil
-	}
-	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status [%s] is not allowed", r.FullName(), r.status, StatusExistInStore)
-	return errors.InvalidStateTransition(EntityResource, msg)
-}
-
-func (r *Resource) MarkFailure() error {
-	switch r.status {
-	case StatusToCreate:
-		r.status = StatusCreateFailure
-		return nil
-	case StatusToUpdate:
-		r.status = StatusUpdateFailure
-		return nil
-	}
-	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status failure is not allowed", r.FullName(), r.status)
-	return errors.InvalidStateTransition(EntityResource, msg)
-}
-
-func (r *Resource) MarkSuccess() error {
-	switch r.status {
-	case StatusToCreate, StatusToUpdate:
-		r.status = StatusSuccess
-		return nil
-	}
-	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status success is not allowed", r.FullName(), r.status)
-	return errors.InvalidStateTransition(EntityResource, msg)
 }
 
 type FromExistingOpt func(r *Resource)
@@ -294,24 +156,15 @@ func FromExisting(existing *Resource, opts ...FromExistingOpt) *Resource {
 	output := &Resource{
 		name:     existing.name,
 		kind:     existing.kind,
-		dataset:  existing.dataset,
+		store:    existing.store,
 		tenant:   existing.tenant,
 		spec:     existing.spec,
 		metadata: existing.metadata,
+		urn:      existing.urn,
 		status:   existing.status,
 	}
 	for _, opt := range opts {
 		opt(output)
 	}
 	return output
-}
-
-func ConvertSpecTo[T DatasetDetails | Table | View | ExternalTable](res *Resource) (*T, error) {
-	var spec T
-	if err := mapstructure.Decode(res.spec, &spec); err != nil {
-		msg := fmt.Sprintf("%s: not able to decode spec for %s", err, res.FullName())
-		return nil, errors.InvalidArgument(EntityResource, msg)
-	}
-
-	return &spec, nil
 }

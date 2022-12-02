@@ -33,7 +33,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 		},
 	}
 	store := serviceResource.Bigquery
-	kindDataset := serviceResource.KindDataset
+	kindDataset := "dataset"
 
 	t.Run("Create", func(t *testing.T) {
 		t.Run("returns error if resource with the provided full name is already defined within project and namespace", func(t *testing.T) {
@@ -42,6 +42,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 
 			resourceToCreate, err := serviceResource.NewResource("project.dataset", kindDataset, store, tnnt, meta, spec)
 			assert.NoError(t, err)
+			resourceToCreate.UpdateURN("bigquery://project:dataset")
 
 			actualFirstError := repository.Create(ctx, resourceToCreate)
 			assert.NoError(t, actualFirstError)
@@ -54,6 +55,8 @@ func TestPostgresResourceRepository(t *testing.T) {
 			repository := repoResource.NewRepository(db)
 
 			resourceToCreate, err := serviceResource.NewResource("project.dataset", kindDataset, store, tnnt, meta, spec)
+			assert.NoError(t, err)
+			err = resourceToCreate.UpdateURN("bigquery://project:dataset")
 			assert.NoError(t, err)
 
 			actualError := repository.Create(ctx, resourceToCreate)
@@ -73,6 +76,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 
 			resourceToUpdate, err := serviceResource.NewResource("project.dataset", kindDataset, store, tnnt, meta, spec)
 			assert.NoError(t, err)
+			resourceToUpdate.UpdateURN("bigquery://project:dataset")
 
 			actualError := repository.Update(ctx, resourceToUpdate)
 			assert.ErrorContains(t, actualError, "not found for entity resource")
@@ -84,6 +88,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 
 			resourceToCreate, err := serviceResource.NewResource("project.dataset", kindDataset, store, tnnt, meta, spec)
 			assert.NoError(t, err)
+			resourceToCreate.UpdateURN("bigquery://project:dataset")
 
 			err = insertAllToDB(db, []*serviceResource.Resource{resourceToCreate})
 			assert.NoError(t, err)
@@ -162,6 +167,7 @@ func TestPostgresResourceRepository(t *testing.T) {
 			name1 := "project.dataset"
 			resourceToCreate1, err := serviceResource.NewResource(name1, kindDataset, store, tnnt, meta, spec)
 			assert.NoError(t, err)
+			resourceToCreate1.UpdateURN("bigquery://project:dataset1")
 
 			err = repository.Create(ctx, resourceToCreate1)
 			assert.NoError(t, err)
@@ -170,8 +176,9 @@ func TestPostgresResourceRepository(t *testing.T) {
 				"view_query": "select * from `project.dataset.table`",
 			}
 			name2 := "project.dataset.view"
-			resourceToCreate2, err := serviceResource.NewResource(name2, serviceResource.KindView, store, tnnt, meta, viewSpec)
+			resourceToCreate2, err := serviceResource.NewResource(name2, "view", store, tnnt, meta, viewSpec)
 			assert.NoError(t, err)
+			resourceToCreate2.UpdateURN("bigquery://project:dataset.view")
 
 			err = repository.Create(ctx, resourceToCreate2)
 			assert.NoError(t, err)
@@ -214,8 +221,10 @@ func TestPostgresResourceRepository(t *testing.T) {
 
 			existingResource1, err := serviceResource.NewResource("project.dataset1", kindDataset, store, tnnt, meta, spec)
 			assert.NoError(t, err)
+			existingResource1.UpdateURN("bigquery://project:dataset1")
 			existingResource2, err := serviceResource.NewResource("project.dataset2", kindDataset, store, tnnt, meta, spec)
 			assert.NoError(t, err)
+			existingResource2.UpdateURN("bigquery://project:dataset2")
 			err = insertAllToDB(db, []*serviceResource.Resource{existingResource1, existingResource2})
 			assert.NoError(t, err)
 
@@ -276,8 +285,8 @@ func fromResourceToModel(r *serviceResource.Resource) *repoResource.Resource {
 	spec, _ := json.Marshal(r.Spec())
 	return &repoResource.Resource{
 		FullName:      r.FullName(),
-		Kind:          r.Kind().String(),
-		Store:         r.Dataset().Store.String(),
+		Kind:          r.Kind(),
+		Store:         r.Store().String(),
 		ProjectName:   r.Tenant().ProjectName().String(),
 		NamespaceName: r.Tenant().NamespaceName().String(),
 		Metadata:      metadata,
@@ -290,10 +299,6 @@ func fromResourceToModel(r *serviceResource.Resource) *repoResource.Resource {
 }
 
 func fromModelToResource(r *repoResource.Resource) (*serviceResource.Resource, error) {
-	kind, err := serviceResource.FromStringToKind(r.Kind)
-	if err != nil {
-		return nil, err
-	}
 	store, err := serviceResource.FromStringToStore(r.Store)
 	if err != nil {
 		return nil, err
@@ -310,12 +315,14 @@ func fromModelToResource(r *repoResource.Resource) (*serviceResource.Resource, e
 	if err := json.Unmarshal(r.Spec, &spec); err != nil {
 		return nil, err
 	}
-	output, err := serviceResource.NewResource(r.FullName, kind, store, tnnt, meta, spec)
+	output, err := serviceResource.NewResource(r.FullName, r.Kind, store, tnnt, meta, spec)
 	if err != nil {
 		return nil, err
 	}
 	status := serviceResource.FromStringToStatus(r.Status)
-	return serviceResource.FromExisting(output, serviceResource.ReplaceStatus(status)), nil
+	res := serviceResource.FromExisting(output, serviceResource.ReplaceStatus(status))
+	res.UpdateURN(r.URN)
+	return res, nil
 }
 
 func dbSetup() *gorm.DB {

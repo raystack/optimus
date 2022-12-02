@@ -36,10 +36,10 @@ type TableResourceHandle interface {
 }
 
 type Client interface {
-	DatasetHandleFrom(dataset resource.Dataset) ResourceHandle
-	TableHandleFrom(dataset resource.Dataset, name resource.Name) TableResourceHandle
-	ExternalTableHandleFrom(dataset resource.Dataset, name resource.Name) ResourceHandle
-	ViewHandleFrom(dataset resource.Dataset, name resource.Name) ResourceHandle
+	DatasetHandleFrom(dataset Dataset) ResourceHandle
+	TableHandleFrom(dataset Dataset, name string) TableResourceHandle
+	ExternalTableHandleFrom(dataset Dataset, name string) ResourceHandle
+	ViewHandleFrom(dataset Dataset, name string) ResourceHandle
 	Close()
 }
 
@@ -71,25 +71,34 @@ func (s Store) Create(ctx context.Context, res *resource.Resource) error {
 	}
 	defer client.Close()
 
+	dataset, err := DataSetFor(res)
+	if err != nil {
+		return err
+	}
+	resourceName, err := ResourceNameFor(res)
+	if err != nil {
+		return err
+	}
+
 	switch res.Kind() {
-	case resource.KindDataset:
-		handle := client.DatasetHandleFrom(res.Dataset())
+	case KindDataset:
+		handle := client.DatasetHandleFrom(dataset)
 		return handle.Create(spanCtx, res)
 
-	case resource.KindTable:
-		handle := client.TableHandleFrom(res.Dataset(), res.Name())
+	case KindTable:
+		handle := client.TableHandleFrom(dataset, resourceName)
 		return handle.Create(spanCtx, res)
 
-	case resource.KindExternalTable:
-		handle := client.ExternalTableHandleFrom(res.Dataset(), res.Name())
+	case KindExternalTable:
+		handle := client.ExternalTableHandleFrom(dataset, resourceName)
 		return handle.Create(spanCtx, res)
 
-	case resource.KindView:
-		handle := client.ViewHandleFrom(res.Dataset(), res.Name())
+	case KindView:
+		handle := client.ViewHandleFrom(dataset, resourceName)
 		return handle.Create(spanCtx, res)
 
 	default:
-		return errors.InvalidArgument(store, "invalid kind for bigquery resource "+res.Kind().String())
+		return errors.InvalidArgument(store, "invalid kind for bigquery resource "+res.Kind())
 	}
 }
 
@@ -108,25 +117,34 @@ func (s Store) Update(ctx context.Context, res *resource.Resource) error {
 	}
 	defer client.Close()
 
+	dataset, err := DataSetFor(res)
+	if err != nil {
+		return err
+	}
+	resourceName, err := ResourceNameFor(res)
+	if err != nil {
+		return err
+	}
+
 	switch res.Kind() {
-	case resource.KindDataset:
-		handle := client.DatasetHandleFrom(res.Dataset())
+	case KindDataset:
+		handle := client.DatasetHandleFrom(dataset)
 		return handle.Update(spanCtx, res)
 
-	case resource.KindTable:
-		handle := client.TableHandleFrom(res.Dataset(), res.Name())
+	case KindTable:
+		handle := client.TableHandleFrom(dataset, resourceName)
 		return handle.Update(spanCtx, res)
 
-	case resource.KindExternalTable:
-		handle := client.ExternalTableHandleFrom(res.Dataset(), res.Name())
+	case KindExternalTable:
+		handle := client.ExternalTableHandleFrom(dataset, resourceName)
 		return handle.Update(spanCtx, res)
 
-	case resource.KindView:
-		handle := client.ViewHandleFrom(res.Dataset(), res.Name())
+	case KindView:
+		handle := client.ViewHandleFrom(dataset, resourceName)
 		return handle.Update(spanCtx, res)
 
 	default:
-		return errors.InvalidArgument(store, "invalid kind for bigquery resource "+res.Kind().String())
+		return errors.InvalidArgument(store, "invalid kind for bigquery resource "+res.Kind())
 	}
 }
 
@@ -144,7 +162,11 @@ func (s Store) BatchUpdate(ctx context.Context, resources []*resource.Resource) 
 		return err
 	}
 
-	batches := BatchesFrom(resources, s.clientProvider)
+	me := errors.NewMultiError("error while resource batch update")
+
+	batches, err := BatchesFrom(resources, s.clientProvider)
+	me.Append(err)
+
 	runner := parallel.NewRunner(parallel.WithLimit(ConcurrentLimit), parallel.WithTicket(ConcurrentTicketPerSec))
 	for _, batch := range batches {
 		err = batch.QueueJobs(ctx, account.Value(), runner)
@@ -154,12 +176,58 @@ func (s Store) BatchUpdate(ctx context.Context, resources []*resource.Resource) 
 	}
 
 	states := runner.Run()
-	me := errors.NewMultiError("error while resource batch update")
-	for _, s := range states {
-		me.Append(s.Err)
+	for _, state := range states {
+		me.Append(state.Err)
 	}
 
 	return errors.MultiToError(me)
+}
+
+func (Store) Validate(r *resource.Resource) error {
+	err := ValidateName(r)
+	if err != nil {
+		return err
+	}
+
+	switch r.Kind() {
+	case KindTable:
+		table, err := ConvertSpecTo[Table](r)
+		if err != nil {
+			return err
+		}
+		table.Name = r.Name()
+		return table.Validate()
+
+	case KindExternalTable:
+		externalTable, err := ConvertSpecTo[ExternalTable](r)
+		if err != nil {
+			return err
+		}
+		externalTable.Name = r.Name()
+		return externalTable.Validate()
+
+	case KindView:
+		view, err := ConvertSpecTo[View](r)
+		if err != nil {
+			return err
+		}
+		view.Name = r.Name()
+		return view.Validate()
+
+	case KindDataset:
+		ds, err := ConvertSpecTo[DatasetDetails](r)
+		if err != nil {
+			return err
+		}
+		return ds.Validate()
+
+	default:
+		return errors.InvalidArgument(resource.EntityResource, "unknown kind")
+	}
+}
+
+func (Store) GetURN(res *resource.Resource) (string, error) {
+	return URNFor(res)
 }
 
 func (s Store) Backup(ctx context.Context, backup *resource.Backup, resources []*resource.Resource) (*resource.BackupResult, error) {

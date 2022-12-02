@@ -29,14 +29,14 @@ type TableHandle struct {
 }
 
 func (t TableHandle) Create(ctx context.Context, res *resource.Resource) error {
-	table, err := resource.ConvertSpecTo[resource.Table](res)
+	table, err := ConvertSpecTo[Table](res)
 	if err != nil {
 		return err
 	}
 
 	meta, err := toBQTableMetadata(table, res)
 	if err != nil {
-		return errors.AddErrContext(err, resource.EntityTable, "failed to get metadata to create for "+res.FullName())
+		return errors.AddErrContext(err, EntityTable, "failed to get metadata to create for "+res.FullName())
 	}
 
 	err = t.bqTable.Create(ctx, meta)
@@ -44,22 +44,22 @@ func (t TableHandle) Create(ctx context.Context, res *resource.Resource) error {
 		var metaErr *googleapi.Error
 		if errors.As(err, &metaErr) &&
 			metaErr.Code == 409 && strings.Contains(metaErr.Message, "Already Exists") {
-			return errors.AlreadyExists(resource.EntityTable, "table already exists on bigquery: "+res.FullName())
+			return errors.AlreadyExists(EntityTable, "table already exists on bigquery: "+res.FullName())
 		}
-		return errors.InternalError(resource.EntityTable, "failed to create resource "+res.FullName(), err)
+		return errors.InternalError(EntityTable, "failed to create resource "+res.FullName(), err)
 	}
 	return nil
 }
 
 func (t TableHandle) Update(ctx context.Context, res *resource.Resource) error {
-	table, err := resource.ConvertSpecTo[resource.Table](res)
+	table, err := ConvertSpecTo[Table](res)
 	if err != nil {
 		return err
 	}
 
 	metadataToUpdate, err := getMetadataToUpdate(table.Description, table.ExtraConfig, res.Metadata().Labels)
 	if err != nil {
-		return errors.AddErrContext(err, resource.EntityTable, "failed to get metadata to update for "+res.FullName())
+		return errors.AddErrContext(err, EntityTable, "failed to get metadata to update for "+res.FullName())
 	}
 
 	metadataToUpdate.Schema = toBQSchema(table.Schema)
@@ -75,9 +75,9 @@ func (t TableHandle) Update(ctx context.Context, res *resource.Resource) error {
 	if err != nil {
 		var metaErr *googleapi.Error
 		if errors.As(err, &metaErr) && metaErr.Code == http.StatusNotFound {
-			return errors.NotFound(resource.EntityTable, "failed to update table in bigquery for "+res.FullName())
+			return errors.NotFound(EntityTable, "failed to update table in bigquery for "+res.FullName())
 		}
-		return errors.InternalError(resource.EntityTable, "failed to update table on bigquery for "+res.FullName(), err)
+		return errors.InternalError(EntityTable, "failed to update table on bigquery for "+res.FullName(), err)
 	}
 
 	return nil
@@ -91,7 +91,7 @@ func (t TableHandle) Exists(ctx context.Context) bool {
 
 func (t TableHandle) CopierFrom(source TableResourceHandle) (TableCopier, error) {
 	if source == nil {
-		return nil, errors.InvalidArgument(resource.EntityTable, "source handle is nil")
+		return nil, errors.InvalidArgument(EntityTable, "source handle is nil")
 	}
 
 	sourceTable, err := source.GetBQTable()
@@ -110,9 +110,9 @@ func (t TableHandle) UpdateExpiry(ctx context.Context, name string, expiry time.
 	if _, err := t.bqTable.Update(ctx, metadataToUpdate, ""); err != nil {
 		var metaErr *googleapi.Error
 		if errors.As(err, &metaErr) && metaErr.Code == http.StatusNotFound {
-			return errors.NotFound(resource.EntityTable, "failed to update table in bigquery for "+name)
+			return errors.NotFound(EntityTable, "failed to update table in bigquery for "+name)
 		}
-		return errors.InternalError(resource.EntityTable, "failed to update table on bigquery for "+name, err)
+		return errors.InternalError(EntityTable, "failed to update table on bigquery for "+name, err)
 	}
 	return nil
 }
@@ -120,7 +120,7 @@ func (t TableHandle) UpdateExpiry(ctx context.Context, name string, expiry time.
 func (t TableHandle) GetBQTable() (*bigquery.Table, error) {
 	bqTable, ok := t.bqTable.(*bigquery.Table)
 	if !ok {
-		return nil, errors.InternalError(resource.EntityTable, "not able to convert to bigquery table", nil)
+		return nil, errors.InternalError(EntityTable, "not able to convert to bigquery table", nil)
 	}
 	return bqTable, nil
 }
@@ -129,10 +129,10 @@ func NewTableHandle(bq BqTable) *TableHandle {
 	return &TableHandle{bqTable: bq}
 }
 
-func toBQTableMetadata(t *resource.Table, res *resource.Resource) (*bigquery.TableMetadata, error) {
+func toBQTableMetadata(t *Table, res *resource.Resource) (*bigquery.TableMetadata, error) {
 	meta, err := getMetadataToCreate(t.Description, t.ExtraConfig, res.Metadata().Labels)
 	if err != nil {
-		return nil, errors.AddErrContext(err, resource.EntityExternalTable, "failed to get metadata to update for "+t.FullName())
+		return nil, errors.AddErrContext(err, EntityTable, "failed to get metadata to update for "+t.FullName())
 	}
 
 	meta.Schema = toBQSchema(t.Schema)
@@ -151,7 +151,7 @@ func toBQTableMetadata(t *resource.Table, res *resource.Resource) (*bigquery.Tab
 	return meta, nil
 }
 
-func toBQRangePartitioning(t *resource.Partition) *bigquery.RangePartitioning {
+func toBQRangePartitioning(t *Partition) *bigquery.RangePartitioning {
 	return &bigquery.RangePartitioning{
 		Field: t.Field,
 		Range: &bigquery.RangePartitioningRange{
@@ -162,7 +162,7 @@ func toBQRangePartitioning(t *resource.Partition) *bigquery.RangePartitioning {
 	}
 }
 
-func toBQTimePartitioning(t *resource.Partition) *bigquery.TimePartitioning {
+func toBQTimePartitioning(t *Partition) *bigquery.TimePartitioning {
 	info := &bigquery.TimePartitioning{
 		Field:      t.Field,
 		Expiration: time.Duration(t.Expiration) * time.Hour,
@@ -175,7 +175,7 @@ func toBQTimePartitioning(t *resource.Partition) *bigquery.TimePartitioning {
 	return info
 }
 
-func toBQClustering(ct *resource.Cluster) *bigquery.Clustering {
+func toBQClustering(ct *Cluster) *bigquery.Clustering {
 	clustering := &bigquery.Clustering{
 		Fields: ct.Using,
 	}

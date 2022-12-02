@@ -18,14 +18,14 @@ type ViewHandle struct {
 }
 
 func (v ViewHandle) Create(ctx context.Context, res *resource.Resource) error {
-	view, err := resource.ConvertSpecTo[resource.View](res)
+	view, err := ConvertSpecTo[View](res)
 	if err != nil {
 		return err
 	}
 
 	meta, err := getMetadataToCreate(view.Description, view.ExtraConfig, res.Metadata().Labels)
 	if err != nil {
-		return errors.AddErrContext(err, resource.EntityView, "failed to get metadata to update for "+res.FullName())
+		return errors.AddErrContext(err, EntityView, "failed to get metadata to update for "+res.FullName())
 	}
 	meta.ViewQuery = view.ViewQuery
 
@@ -34,22 +34,22 @@ func (v ViewHandle) Create(ctx context.Context, res *resource.Resource) error {
 		var metaErr *googleapi.Error
 		if errors.As(err, &metaErr) &&
 			metaErr.Code == 409 && strings.Contains(metaErr.Message, "Already Exists") {
-			return errors.AlreadyExists(resource.EntityView, "view already exists on bigquery: "+res.FullName())
+			return errors.AlreadyExists(EntityView, "view already exists on bigquery: "+res.FullName())
 		}
-		return errors.InternalError(resource.EntityView, "failed to create resource "+res.FullName(), err)
+		return errors.InternalError(EntityView, "failed to create resource "+res.FullName(), err)
 	}
 	return nil
 }
 
 func (v ViewHandle) Update(ctx context.Context, res *resource.Resource) error {
-	view, err := resource.ConvertSpecTo[resource.View](res)
+	view, err := ConvertSpecTo[View](res)
 	if err != nil {
 		return err
 	}
 
 	meta, err := getMetadataToUpdate(view.Description, view.ExtraConfig, res.Metadata().Labels)
 	if err != nil {
-		return errors.AddErrContext(err, resource.EntityView, "failed to get metadata to update for "+res.FullName())
+		return errors.AddErrContext(err, EntityView, "failed to get metadata to update for "+res.FullName())
 	}
 	meta.ViewQuery = view.ViewQuery
 
@@ -57,9 +57,9 @@ func (v ViewHandle) Update(ctx context.Context, res *resource.Resource) error {
 	if err != nil {
 		var metaErr *googleapi.Error
 		if errors.As(err, &metaErr) && metaErr.Code == http.StatusNotFound {
-			return errors.NotFound(resource.EntityView, "failed to update dataset in bigquery for "+res.FullName())
+			return errors.NotFound(EntityView, "failed to update dataset in bigquery for "+res.FullName())
 		}
-		return errors.InternalError(resource.EntityView, "failed to update resource on bigquery for "+res.FullName(), err)
+		return errors.InternalError(EntityView, "failed to update resource on bigquery for "+res.FullName(), err)
 	}
 
 	return nil

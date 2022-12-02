@@ -28,10 +28,10 @@ func BackupResources(ctx context.Context, backup *resource.Backup, resources []*
 
 	var tablesToBackup []*resource.Resource
 	for _, r := range resources {
-		if r.Kind() != resource.KindTable {
+		if r.Kind() != KindTable {
 			ignored = append(ignored, resource.IgnoredResource{
 				Name:   r.FullName(),
-				Reason: "backup not supported for " + r.Kind().String(),
+				Reason: "backup not supported for " + r.Kind(),
 			})
 			continue
 		}
@@ -41,7 +41,11 @@ func BackupResources(ctx context.Context, backup *resource.Backup, resources []*
 
 	var backupNames []string
 	if len(tablesToBackup) > 0 {
-		destinationDataset, err := DestinationDataset(tablesToBackup[0].Dataset(), backup)
+		dataset, err := DataSetFor(tablesToBackup[0])
+		if err != nil {
+			return nil, err
+		}
+		destinationDataset, err := DestinationDataset(dataset.Project, backup)
 		if err != nil {
 			return nil, err
 		}
@@ -64,7 +68,7 @@ func BackupResources(ctx context.Context, backup *resource.Backup, resources []*
 	}, nil
 }
 
-func CreateIfDatasetDoesNotExist(ctx context.Context, client Client, dataset resource.Dataset) error {
+func CreateIfDatasetDoesNotExist(ctx context.Context, client Client, dataset Dataset) error {
 	datasetHandle := client.DatasetHandleFrom(dataset)
 	if datasetHandle.Exists(ctx) {
 		return nil
@@ -75,7 +79,7 @@ func CreateIfDatasetDoesNotExist(ctx context.Context, client Client, dataset res
 		Labels:      map[string]string{"created_by": "optimus"},
 	}
 	spec := map[string]any{"description": backupMetadata.Description}
-	r, err := resource.NewResource(dataset.FullName(), resource.KindDataset, resource.Bigquery, tenant.Tenant{}, backupMetadata, spec)
+	r, err := resource.NewResource(dataset.FullName(), KindDataset, resource.Bigquery, tenant.Tenant{}, backupMetadata, spec)
 	if err != nil {
 		return err
 	}
@@ -88,22 +92,28 @@ func CreateIfDatasetDoesNotExist(ctx context.Context, client Client, dataset res
 }
 
 func BackupTable(ctx context.Context, backup *resource.Backup, source *resource.Resource, client Client) (string, error) {
-	datasetDST, err := DestinationDataset(source.Dataset(), backup)
+	sourceDataset, err := DataSetFor(source)
+	if err != nil {
+		return "", err
+	}
+	sourceName, err := ResourceNameFor(source)
 	if err != nil {
 		return "", err
 	}
 
-	nameDST, err := DestinationName(source, backup)
+	datasetDST, err := DestinationDataset(sourceDataset.Project, backup)
 	if err != nil {
 		return "", err
 	}
+
+	nameDST := DestinationName(sourceDataset.DatasetName, sourceName, backup)
 
 	backupExpiry, err := DestinationExpiry(backup)
 	if err != nil {
 		return "", err
 	}
 
-	sourceHandle := client.TableHandleFrom(source.Dataset(), source.Name())
+	sourceHandle := client.TableHandleFrom(sourceDataset, sourceName)
 	destinationHandle := client.TableHandleFrom(datasetDST, nameDST)
 
 	err = CopyTable(ctx, sourceHandle, destinationHandle)
@@ -111,7 +121,7 @@ func BackupTable(ctx context.Context, backup *resource.Backup, source *resource.
 		return "", err
 	}
 
-	destinationFullName := datasetDST.FullName() + "." + nameDST.String()
+	destinationFullName := datasetDST.FullName() + "." + nameDST
 	err = destinationHandle.UpdateExpiry(ctx, destinationFullName, backupExpiry)
 	if err != nil {
 		return "", err
@@ -134,21 +144,20 @@ func CopyTable(ctx context.Context, source, destination TableResourceHandle) err
 	return copyJob.Wait(ctx)
 }
 
-func DestinationDataset(sourceDataset resource.Dataset, backup *resource.Backup) (resource.Dataset, error) {
+func DestinationDataset(project string, backup *resource.Backup) (Dataset, error) {
 	datasetName := backup.GetConfigOrDefaultFor(configDataset, defaultBackupDataset)
 
-	return resource.DataSetFrom(sourceDataset.Store, sourceDataset.Database, datasetName)
+	return DataSetFrom(project, datasetName)
 }
 
-func DestinationName(source *resource.Resource, backup *resource.Backup) (resource.Name, error) {
-	// TODO: After getting resources check status, reject if not exist or create_failure
+func DestinationName(sourceDatasetName, sourceName string, backup *resource.Backup) string {
 	prefixValue := backup.GetConfigOrDefaultFor(configPrefix, defaultBackupPrefix)
 
 	backupTime := backup.CreatedAt()
-	nameStr := fmt.Sprintf("%s_%s_%s_%s", prefixValue, source.Dataset().Schema, source.Name().String(),
+	nameStr := fmt.Sprintf("%s_%s_%s_%s", prefixValue, sourceDatasetName, sourceName,
 		backupTime.Format(backupTimePostfixFormat))
 
-	return resource.NameFrom(nameStr)
+	return nameStr
 }
 
 func DestinationExpiry(backup *resource.Backup) (time.Time, error) {

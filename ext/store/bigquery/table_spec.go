@@ -1,8 +1,9 @@
-package resource
+package bigquery
 
 import (
 	"strings"
 
+	"github.com/odpf/optimus/core/resource"
 	"github.com/odpf/optimus/internal/errors"
 )
 
@@ -11,8 +12,7 @@ const (
 )
 
 type Table struct {
-	Name    Name
-	Dataset Dataset
+	Name resource.Name
 
 	Description string     `mapstructure:"description,omitempty"`
 	Schema      Schema     `mapstructure:"schema,omitempty"`
@@ -23,11 +23,7 @@ type Table struct {
 }
 
 func (t *Table) FullName() string {
-	return t.Dataset.FullName() + "." + t.Name.String()
-}
-
-func (t *Table) URN() string {
-	return t.Dataset.URN() + "." + t.Name.String()
+	return t.Name.String()
 }
 
 func (t *Table) Validate() error {

@@ -32,14 +32,12 @@ func TestViewHandle(t *testing.T) {
 			vHandle := bigquery.NewViewHandle(v)
 
 			spec := map[string]any{"description": []string{"a", "b"}}
-			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.view1", bigquery.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = vHandle.Create(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource: 1 error(s) decoding:\n\n* "+
-				"'description' expected type 'string', got unconvertible type '[]string', value: '[a b]': not able to "+
-				"decode spec for proj.dataset.view1")
+			assert.ErrorContains(t, err, "not able to decode spec for proj.dataset.view1")
 		})
 		t.Run("returns error when cannot cannot get matadata", func(t *testing.T) {
 			v := new(mockBigQueryTable)
@@ -50,13 +48,12 @@ func TestViewHandle(t *testing.T) {
 				"expiration_time": "invalid_date",
 				"view_query":      "select * from dummy",
 			}
-			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.view1", bigquery.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = vHandle.Create(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource_view: failed to get "+
-				"metadata to update for proj.dataset.view1")
+			assert.ErrorContains(t, err, "failed to get metadata to update for proj.dataset.view1")
 		})
 		t.Run("returns error when view already present on bigquery", func(t *testing.T) {
 			bqErr := &googleapi.Error{Code: 409, Message: "Already Exists project.dataset.view1"}
@@ -67,13 +64,12 @@ func TestViewHandle(t *testing.T) {
 			vHandle := bigquery.NewViewHandle(v)
 
 			spec := map[string]any{"description": "test create"}
-			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.view1", bigquery.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = vHandle.Create(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "resource already exists for entity resource_view: view already "+
-				"exists on bigquery: proj.dataset.view1")
+			assert.ErrorContains(t, err, "view already exists on bigquery: proj.dataset.view1")
 		})
 		t.Run("returns error when bigquery returns error", func(t *testing.T) {
 			v := new(mockBigQueryTable)
@@ -83,13 +79,12 @@ func TestViewHandle(t *testing.T) {
 			vHandle := bigquery.NewViewHandle(v)
 
 			spec := map[string]any{"description": "test create"}
-			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.view1", bigquery.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = vHandle.Create(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "internal error for entity resource_view: failed to create "+
-				"resource proj.dataset.view1")
+			assert.ErrorContains(t, err, "failed to create resource proj.dataset.view1")
 		})
 		t.Run("successfully creates the resource", func(t *testing.T) {
 			v := new(mockBigQueryTable)
@@ -103,7 +98,7 @@ func TestViewHandle(t *testing.T) {
 				"expiration_time": time.Now().Format(time.RFC3339),
 				"view_query":      "select * from dummy",
 			}
-			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.view1", bigquery.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = vHandle.Create(ctx, res)
@@ -116,14 +111,12 @@ func TestViewHandle(t *testing.T) {
 			vHandle := bigquery.NewViewHandle(v)
 
 			spec := map[string]any{"description": []string{"a", "b"}}
-			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.view1", bigquery.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = vHandle.Update(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource: 1 error(s) decoding:\n\n* "+
-				"'description' expected type 'string', got unconvertible type '[]string', value: '[a b]': not able to "+
-				"decode spec for proj.dataset.view1")
+			assert.ErrorContains(t, err, "not able to decode spec for proj.dataset.view1")
 		})
 		t.Run("returns error when creating metadata fails", func(t *testing.T) {
 			v := new(mockBigQueryTable)
@@ -134,13 +127,12 @@ func TestViewHandle(t *testing.T) {
 				"expiration_time": "invalid_date",
 				"view_query":      "select * from dummy",
 			}
-			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.view1", bigquery.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = vHandle.Update(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource_view: failed to get metadata "+
-				"to update for proj.dataset.view1")
+			assert.ErrorContains(t, err, "failed to get metadata to update for proj.dataset.view1")
 		})
 		t.Run("returns error when view not present on bigquery", func(t *testing.T) {
 			bqErr := &googleapi.Error{Code: 404}
@@ -151,13 +143,12 @@ func TestViewHandle(t *testing.T) {
 			vHandle := bigquery.NewViewHandle(v)
 
 			spec := map[string]any{"description": "test update"}
-			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.view1", bigquery.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = vHandle.Update(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "not found for entity resource_view: failed to update dataset in "+
-				"bigquery for proj.dataset.view1")
+			assert.ErrorContains(t, err, "failed to update dataset in bigquery for proj.dataset.view1")
 		})
 		t.Run("returns error when bigquery returns error", func(t *testing.T) {
 			v := new(mockBigQueryTable)
@@ -167,13 +158,12 @@ func TestViewHandle(t *testing.T) {
 			vHandle := bigquery.NewViewHandle(v)
 
 			spec := map[string]any{"description": "test update"}
-			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.view1", bigquery.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = vHandle.Update(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "internal error for entity resource_view: failed to update resource on "+
-				"bigquery for proj.dataset.view1")
+			assert.ErrorContains(t, err, "failed to update resource on bigquery for proj.dataset.view1")
 		})
 		t.Run("successfully updates the resource", func(t *testing.T) {
 			meta := &bq.TableMetadata{
@@ -190,7 +180,7 @@ func TestViewHandle(t *testing.T) {
 				"expiration_time": time.Now().Format(time.RFC3339),
 				"view_query":      "select * from dummy",
 			}
-			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.view1", bigquery.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = vHandle.Update(ctx, res)

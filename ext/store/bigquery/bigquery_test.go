@@ -21,6 +21,7 @@ func TestBigqueryStore(t *testing.T) {
 	store := resource.Bigquery
 	metadata := resource.Metadata{Description: "meta"}
 	spec := map[string]any{"description": "resource"}
+	ds := bigquery.Dataset{Project: "project", DatasetName: "dataset"}
 
 	t.Run("Create", func(t *testing.T) {
 		t.Run("returns error when secret is not provided", func(t *testing.T) {
@@ -32,7 +33,7 @@ func TestBigqueryStore(t *testing.T) {
 			clientProvider := new(mockClientProvider)
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, store, tnnt, &metadata, spec)
+			dataset, err := resource.NewResource("project.dataset", bigquery.KindDataset, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = bqStore.Create(ctx, dataset)
@@ -52,7 +53,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, store, tnnt, &metadata, spec)
+			dataset, err := resource.NewResource("project.dataset", bigquery.KindDataset, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = bqStore.Create(ctx, dataset)
@@ -76,7 +77,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			dataset, err := resource.NewResource("proj.dataset.name", "unknown", store, tnnt, &metadata, spec)
+			dataset, err := resource.NewResource("project.dataset.name", "unknown", store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = bqStore.Create(ctx, dataset)
@@ -90,7 +91,7 @@ func TestBigqueryStore(t *testing.T) {
 				Return(pts, nil)
 			defer secretProvider.AssertExpectations(t)
 
-			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, store, tnnt, &metadata, spec)
+			dataset, err := resource.NewResource("project.dataset", bigquery.KindDataset, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			datasetHandle := new(mockTableResourceHandle)
@@ -99,7 +100,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			client := new(mockClient)
 			client.On("Close")
-			client.On("DatasetHandleFrom", dataset.Dataset()).Return(datasetHandle)
+			client.On("DatasetHandleFrom", ds).Return(datasetHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -118,7 +119,7 @@ func TestBigqueryStore(t *testing.T) {
 				Return(pts, nil)
 			defer secretProvider.AssertExpectations(t)
 
-			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, store, tnnt, &metadata, spec)
+			dataset, err := resource.NewResource("project.dataset", bigquery.KindDataset, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			datasetHandle := new(mockTableResourceHandle)
@@ -127,7 +128,8 @@ func TestBigqueryStore(t *testing.T) {
 
 			client := new(mockClient)
 			client.On("Close")
-			client.On("DatasetHandleFrom", dataset.Dataset()).Return(datasetHandle)
+
+			client.On("DatasetHandleFrom", ds).Return(datasetHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -146,7 +148,7 @@ func TestBigqueryStore(t *testing.T) {
 				Return(pts, nil)
 			defer secretProvider.AssertExpectations(t)
 
-			table, err := resource.NewResource("proj.dataset.table", resource.KindTable, store, tnnt, &metadata, spec)
+			table, err := resource.NewResource("project.dataset.table", bigquery.KindTable, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			tableHandle := new(mockTableResourceHandle)
@@ -155,7 +157,8 @@ func TestBigqueryStore(t *testing.T) {
 
 			client := new(mockClient)
 			client.On("Close")
-			client.On("TableHandleFrom", table.Dataset(), table.Name()).Return(tableHandle)
+
+			client.On("TableHandleFrom", ds, "table").Return(tableHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -174,7 +177,7 @@ func TestBigqueryStore(t *testing.T) {
 				Return(pts, nil)
 			defer secretProvider.AssertExpectations(t)
 
-			view, err := resource.NewResource("proj.dataset.view", resource.KindView, store, tnnt, &metadata, spec)
+			view, err := resource.NewResource("project.dataset.view", bigquery.KindView, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			viewHandle := new(mockTableResourceHandle)
@@ -183,7 +186,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			client := new(mockClient)
 			client.On("Close")
-			client.On("ViewHandleFrom", view.Dataset(), view.Name()).Return(viewHandle)
+			client.On("ViewHandleFrom", ds, "view").Return(viewHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -202,7 +205,7 @@ func TestBigqueryStore(t *testing.T) {
 				Return(pts, nil)
 			defer secretProvider.AssertExpectations(t)
 
-			extTable, err := resource.NewResource("proj.dataset.extTable", resource.KindExternalTable, store, tnnt, &metadata, spec)
+			extTable, err := resource.NewResource("project.dataset.extTable", bigquery.KindExternalTable, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			extTableHandle := new(mockTableResourceHandle)
@@ -211,7 +214,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			client := new(mockClient)
 			client.On("Close")
-			client.On("ExternalTableHandleFrom", extTable.Dataset(), extTable.Name()).Return(extTableHandle)
+			client.On("ExternalTableHandleFrom", ds, "extTable").Return(extTableHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -234,7 +237,7 @@ func TestBigqueryStore(t *testing.T) {
 			clientProvider := new(mockClientProvider)
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, store, tnnt, &metadata, spec)
+			dataset, err := resource.NewResource("project.dataset", bigquery.KindDataset, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = bqStore.Update(ctx, dataset)
@@ -254,7 +257,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, store, tnnt, &metadata, spec)
+			dataset, err := resource.NewResource("project.dataset", bigquery.KindDataset, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = bqStore.Update(ctx, dataset)
@@ -277,7 +280,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			dataset, err := resource.NewResource("proj.dataset.name1", "unknown", store, tnnt, &metadata, spec)
+			dataset, err := resource.NewResource("project.dataset.name1", "unknown", store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = bqStore.Update(ctx, dataset)
@@ -291,7 +294,7 @@ func TestBigqueryStore(t *testing.T) {
 				Return(pts, nil)
 			defer secretProvider.AssertExpectations(t)
 
-			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, store, tnnt, &metadata, spec)
+			dataset, err := resource.NewResource("project.dataset", bigquery.KindDataset, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			datasetHandle := new(mockTableResourceHandle)
@@ -300,7 +303,8 @@ func TestBigqueryStore(t *testing.T) {
 
 			client := new(mockClient)
 			client.On("Close")
-			client.On("DatasetHandleFrom", dataset.Dataset()).Return(datasetHandle)
+
+			client.On("DatasetHandleFrom", ds).Return(datasetHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -318,7 +322,7 @@ func TestBigqueryStore(t *testing.T) {
 				Return(pts, nil)
 			defer secretProvider.AssertExpectations(t)
 
-			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, store, tnnt, &metadata, spec)
+			dataset, err := resource.NewResource("project.dataset", bigquery.KindDataset, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			datasetHandle := new(mockTableResourceHandle)
@@ -327,7 +331,8 @@ func TestBigqueryStore(t *testing.T) {
 
 			client := new(mockClient)
 			client.On("Close")
-			client.On("DatasetHandleFrom", dataset.Dataset()).Return(datasetHandle)
+
+			client.On("DatasetHandleFrom", ds).Return(datasetHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -345,7 +350,7 @@ func TestBigqueryStore(t *testing.T) {
 				Return(pts, nil)
 			defer secretProvider.AssertExpectations(t)
 
-			table, err := resource.NewResource("proj.dataset.table", resource.KindTable, store, tnnt, &metadata, spec)
+			table, err := resource.NewResource("project.dataset.table", bigquery.KindTable, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			tableHandle := new(mockTableResourceHandle)
@@ -354,7 +359,8 @@ func TestBigqueryStore(t *testing.T) {
 
 			client := new(mockClient)
 			client.On("Close")
-			client.On("TableHandleFrom", table.Dataset(), table.Name()).Return(tableHandle)
+
+			client.On("TableHandleFrom", ds, "table").Return(tableHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -372,7 +378,7 @@ func TestBigqueryStore(t *testing.T) {
 				Return(pts, nil)
 			defer secretProvider.AssertExpectations(t)
 
-			view, err := resource.NewResource("proj.dataset.view", resource.KindView, store, tnnt, &metadata, spec)
+			view, err := resource.NewResource("project.dataset.view", bigquery.KindView, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			viewHandle := new(mockTableResourceHandle)
@@ -381,7 +387,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			client := new(mockClient)
 			client.On("Close")
-			client.On("ViewHandleFrom", view.Dataset(), view.Name()).Return(viewHandle)
+			client.On("ViewHandleFrom", ds, "view").Return(viewHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -400,7 +406,7 @@ func TestBigqueryStore(t *testing.T) {
 				Return(pts, nil)
 			defer secretProvider.AssertExpectations(t)
 
-			extTable, err := resource.NewResource("proj.dataset.extTable", resource.KindExternalTable, store, tnnt, &metadata, spec)
+			extTable, err := resource.NewResource("project.dataset.extTable", bigquery.KindExternalTable, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			extTableHandle := new(mockTableResourceHandle)
@@ -409,7 +415,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			client := new(mockClient)
 			client.On("Close")
-			client.On("ExternalTableHandleFrom", extTable.Dataset(), extTable.Name()).Return(extTableHandle)
+			client.On("ExternalTableHandleFrom", ds, "extTable").Return(extTableHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -437,7 +443,7 @@ func TestBigqueryStore(t *testing.T) {
 			clientProvider := new(mockClientProvider)
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, store, tnnt, &metadata, spec)
+			dataset, err := resource.NewResource("project.dataset", bigquery.KindDataset, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = bqStore.BatchUpdate(ctx, []*resource.Resource{dataset})
@@ -451,7 +457,7 @@ func TestBigqueryStore(t *testing.T) {
 				Return(pts, nil)
 			defer secretProvider.AssertExpectations(t)
 
-			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, store, tnnt, &metadata, spec)
+			dataset, err := resource.NewResource("project.dataset", bigquery.KindDataset, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 			updateDS := resource.FromExisting(dataset, resource.ReplaceStatus(resource.StatusToUpdate))
 
@@ -472,7 +478,7 @@ func TestBigqueryStore(t *testing.T) {
 				Return(pts, nil)
 			defer secretProvider.AssertExpectations(t)
 
-			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, store, tnnt, &metadata, spec)
+			dataset, err := resource.NewResource("project.dataset", bigquery.KindDataset, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 			updateDS := resource.FromExisting(dataset, resource.ReplaceStatus(resource.StatusToUpdate))
 
@@ -481,7 +487,7 @@ func TestBigqueryStore(t *testing.T) {
 			defer datasetHandle.AssertExpectations(t)
 
 			client := new(mockClient)
-			client.On("DatasetHandleFrom", updateDS.Dataset()).Return(datasetHandle)
+			client.On("DatasetHandleFrom", ds).Return(datasetHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -500,7 +506,7 @@ func TestBigqueryStore(t *testing.T) {
 				Return(pts, nil)
 			defer secretProvider.AssertExpectations(t)
 
-			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, store, tnnt, &metadata, spec)
+			dataset, err := resource.NewResource("project.dataset", bigquery.KindDataset, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 			updateDS := resource.FromExisting(dataset, resource.ReplaceStatus(resource.StatusToUpdate))
 
@@ -509,7 +515,7 @@ func TestBigqueryStore(t *testing.T) {
 			defer datasetHandle.AssertExpectations(t)
 
 			client := new(mockClient)
-			client.On("DatasetHandleFrom", updateDS.Dataset()).Return(datasetHandle)
+			client.On("DatasetHandleFrom", ds).Return(datasetHandle)
 			defer client.AssertExpectations(t)
 
 			clientProvider := new(mockClientProvider)
@@ -519,6 +525,133 @@ func TestBigqueryStore(t *testing.T) {
 
 			err = bqStore.BatchUpdate(ctx, []*resource.Resource{updateDS})
 			assert.Nil(t, err)
+		})
+	})
+	t.Run("Validate", func(t *testing.T) {
+		invalidSpec := map[string]any{
+			"description": map[string]any{"some": "desc"},
+		}
+		specWithoutValues := map[string]any{"a": "b"}
+		t.Run("returns error for invalid resource", func(t *testing.T) {
+			res := resource.Resource{}
+			bqStore := bigquery.NewBigqueryDataStore(nil, nil)
+			err := bqStore.Validate(&res)
+			assert.NotNil(t, err)
+			assert.ErrorContains(t, err, "invalid sections in name:")
+		})
+		t.Run("returns error for invalid resource kind", func(t *testing.T) {
+			res, err := resource.NewResource("project.set.view_name1", "unknown", resource.Bigquery,
+				tnnt, &resource.Metadata{}, invalidSpec)
+			assert.NoError(t, err)
+
+			bqStore := bigquery.NewBigqueryDataStore(nil, nil)
+			err = bqStore.Validate(res)
+			assert.NotNil(t, err)
+			assert.ErrorContains(t, err, "unknown kind")
+		})
+		t.Run("for view", func(t *testing.T) {
+			t.Run("returns error when cannot decode view spec", func(t *testing.T) {
+				res, err := resource.NewResource("project.set.view_name1", bigquery.KindView, resource.Bigquery,
+					tnnt, &resource.Metadata{}, invalidSpec)
+				assert.Nil(t, err)
+
+				assert.Equal(t, "project.set.view_name1", res.FullName())
+
+				bqStore := bigquery.NewBigqueryDataStore(nil, nil)
+				err = bqStore.Validate(res)
+				assert.NotNil(t, err)
+				assert.ErrorContains(t, err, "not able to decode spec for project.set.view_name1")
+			})
+			t.Run("returns error for validation failure", func(t *testing.T) {
+				res, err := resource.NewResource("project.set.view_name1", bigquery.KindView, resource.Bigquery,
+					tnnt, &resource.Metadata{}, specWithoutValues)
+				assert.Nil(t, err)
+
+				assert.Equal(t, "project.set.view_name1", res.FullName())
+				bqStore := bigquery.NewBigqueryDataStore(nil, nil)
+				err = bqStore.Validate(res)
+				assert.NotNil(t, err)
+				assert.ErrorContains(t, err, "view query is empty for project.set.view_name1")
+			})
+		})
+		t.Run("for external_table", func(t *testing.T) {
+			t.Run("returns error when cannot decode spec", func(t *testing.T) {
+				res, err := resource.NewResource("project.set.external_name1", bigquery.KindExternalTable, resource.Bigquery,
+					tnnt, &resource.Metadata{}, invalidSpec)
+				assert.Nil(t, err)
+
+				assert.Equal(t, "project.set.external_name1", res.FullName())
+				bqStore := bigquery.NewBigqueryDataStore(nil, nil)
+				err = bqStore.Validate(res)
+				assert.NotNil(t, err)
+				assert.ErrorContains(t, err, "not able to decode spec for project.set.external_name1")
+			})
+			t.Run("returns error when external_table spec is invalid", func(t *testing.T) {
+				res, err := resource.NewResource("project.set.external_name1", bigquery.KindExternalTable, resource.Bigquery,
+					tnnt, &resource.Metadata{}, specWithoutValues)
+				assert.Nil(t, err)
+
+				assert.Equal(t, "project.set.external_name1", res.FullName())
+				bqStore := bigquery.NewBigqueryDataStore(nil, nil)
+				err = bqStore.Validate(res)
+				assert.NotNil(t, err)
+				assert.ErrorContains(t, err, "invalid schema for project.set.external_name1")
+			})
+		})
+		t.Run("for table", func(t *testing.T) {
+			t.Run("returns error when cannot decode table", func(t *testing.T) {
+				res, err := resource.NewResource("project.set.table_name1", bigquery.KindTable, resource.Bigquery,
+					tnnt, &resource.Metadata{}, invalidSpec)
+				assert.Nil(t, err)
+
+				assert.Equal(t, "project.set.table_name1", res.FullName())
+				bqStore := bigquery.NewBigqueryDataStore(nil, nil)
+				err = bqStore.Validate(res)
+				assert.NotNil(t, err)
+				assert.ErrorContains(t, err, "not able to decode spec for project.set.table_name1")
+			})
+			t.Run("returns error when cannot decode table", func(t *testing.T) {
+				res, err := resource.NewResource("project.set.table_name1", bigquery.KindTable, resource.Bigquery,
+					tnnt, &resource.Metadata{}, specWithoutValues)
+				assert.Nil(t, err)
+
+				assert.Equal(t, "project.set.table_name1", res.FullName())
+				bqStore := bigquery.NewBigqueryDataStore(nil, nil)
+				err = bqStore.Validate(res)
+				assert.NotNil(t, err)
+				assert.ErrorContains(t, err, "empty schema for table project.set.table_name1")
+			})
+		})
+		t.Run("for dataset", func(t *testing.T) {
+			t.Run("returns error when cannot decode dataset", func(t *testing.T) {
+				res, err := resource.NewResource("project.set_name1", bigquery.KindDataset, resource.Bigquery,
+					tnnt, &resource.Metadata{}, invalidSpec)
+				assert.Nil(t, err)
+				bqStore := bigquery.NewBigqueryDataStore(nil, nil)
+				err = bqStore.Validate(res)
+				assert.NotNil(t, err)
+				assert.ErrorContains(t, err, "not able to decode spec for project.set_name1")
+			})
+			t.Run("returns no error when validation passes", func(t *testing.T) {
+				res, err := resource.NewResource("project.set_name1", bigquery.KindDataset, resource.Bigquery,
+					tnnt, &resource.Metadata{}, specWithoutValues)
+				assert.Nil(t, err)
+				bqStore := bigquery.NewBigqueryDataStore(nil, nil)
+				err = bqStore.Validate(res)
+				assert.Nil(t, err)
+			})
+		})
+	})
+	t.Run("URNFor", func(t *testing.T) {
+		t.Run("returns urn for resource", func(t *testing.T) {
+			res, err := resource.NewResource("project.set.view_name1", "unknown", resource.Bigquery,
+				tnnt, &resource.Metadata{}, spec)
+			assert.NoError(t, err)
+
+			bqStore := bigquery.NewBigqueryDataStore(nil, nil)
+			urn, err := bqStore.GetURN(res)
+			assert.NoError(t, err)
+			assert.Equal(t, "bigquery://project:set.view_name1", urn)
 		})
 	})
 	t.Run("Backup", func(t *testing.T) {
@@ -535,7 +668,7 @@ func TestBigqueryStore(t *testing.T) {
 			clientProvider := new(mockClientProvider)
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, store, tnnt, &metadata, spec)
+			dataset, err := resource.NewResource("project.dataset", bigquery.KindDataset, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			_, err = bqStore.Backup(ctx, backup, []*resource.Resource{dataset})
@@ -555,7 +688,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, store, tnnt, &metadata, spec)
+			dataset, err := resource.NewResource("project.dataset", bigquery.KindDataset, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			_, err = bqStore.Backup(ctx, backup, []*resource.Resource{dataset})
@@ -579,7 +712,7 @@ func TestBigqueryStore(t *testing.T) {
 
 			bqStore := bigquery.NewBigqueryDataStore(secretProvider, clientProvider)
 
-			dataset, err := resource.NewResource("proj.dataset", resource.KindDataset, store, tnnt, &metadata, spec)
+			dataset, err := resource.NewResource("project.dataset", bigquery.KindDataset, store, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			result, err := bqStore.Backup(ctx, backup, []*resource.Resource{dataset})
@@ -618,22 +751,22 @@ type mockClient struct {
 	mock.Mock
 }
 
-func (m *mockClient) DatasetHandleFrom(dataset resource.Dataset) bigquery.ResourceHandle {
-	args := m.Called(dataset)
+func (m *mockClient) DatasetHandleFrom(ds bigquery.Dataset) bigquery.ResourceHandle {
+	args := m.Called(ds)
 	return args.Get(0).(bigquery.ResourceHandle)
 }
 
-func (m *mockClient) ExternalTableHandleFrom(ds resource.Dataset, name resource.Name) bigquery.ResourceHandle {
+func (m *mockClient) ExternalTableHandleFrom(ds bigquery.Dataset, name string) bigquery.ResourceHandle {
 	args := m.Called(ds, name)
 	return args.Get(0).(bigquery.ResourceHandle)
 }
 
-func (m *mockClient) TableHandleFrom(ds resource.Dataset, name resource.Name) bigquery.TableResourceHandle {
+func (m *mockClient) TableHandleFrom(ds bigquery.Dataset, name string) bigquery.TableResourceHandle {
 	args := m.Called(ds, name)
 	return args.Get(0).(bigquery.TableResourceHandle)
 }
 
-func (m *mockClient) ViewHandleFrom(ds resource.Dataset, name resource.Name) bigquery.ResourceHandle {
+func (m *mockClient) ViewHandleFrom(ds bigquery.Dataset, name string) bigquery.ResourceHandle {
 	args := m.Called(ds, name)
 	return args.Get(0).(bigquery.ResourceHandle)
 }

@@ -292,9 +292,8 @@ func fromResourceProto(rs *pb.ResourceSpecification, tnnt tenant.Tenant, store r
 		return nil, errors.InvalidArgument(resource.EntityResource, "empty resource spec for "+rs.Name)
 	}
 
-	kind, err := resource.FromStringToKind(rs.GetType())
-	if err != nil {
-		return nil, err
+	if rs.GetType() == "" {
+		return nil, errors.InvalidArgument(resource.EntityResource, "empty resource type for "+rs.Name)
 	}
 
 	spec := rs.GetSpec().AsMap()
@@ -309,7 +308,7 @@ func fromResourceProto(rs *pb.ResourceSpecification, tnnt tenant.Tenant, store r
 		Labels:      rs.Labels,
 	}
 
-	return resource.NewResource(rs.Name, kind, store, tnnt, &metadata, spec)
+	return resource.NewResource(rs.Name, rs.GetType(), store, tnnt, &metadata, spec)
 }
 
 func toResourceProto(res *resource.Resource) (*pb.ResourceSpecification, error) {
@@ -326,7 +325,7 @@ func toResourceProto(res *resource.Resource) (*pb.ResourceSpecification, error) 
 	return &pb.ResourceSpecification{
 		Version: meta.Version,
 		Name:    res.FullName(),
-		Type:    res.Kind().String(),
+		Type:    res.Kind(),
 		Spec:    pbStruct,
 		Assets:  nil,
 		Labels:  meta.Labels,

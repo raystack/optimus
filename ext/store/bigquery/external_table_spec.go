@@ -1,14 +1,16 @@
-package resource
+package bigquery
 
-import "github.com/odpf/optimus/internal/errors"
+import (
+	"github.com/odpf/optimus/core/resource"
+	"github.com/odpf/optimus/internal/errors"
+)
 
 const (
 	EntityExternalTable = "resource_external_table"
 )
 
 type ExternalTable struct {
-	Name    Name
-	Dataset Dataset
+	Name resource.Name
 
 	Description string          `mapstructure:"description,omitempty"`
 	Schema      Schema          `mapstructure:"schema,omitempty"`
@@ -18,11 +20,7 @@ type ExternalTable struct {
 }
 
 func (e *ExternalTable) FullName() string {
-	return e.Dataset.FullName() + "." + e.Name.String()
-}
-
-func (e *ExternalTable) URN() string {
-	return e.Dataset.URN() + "." + e.Name.String()
+	return e.Name.String()
 }
 
 func (e *ExternalTable) Validate() error {
