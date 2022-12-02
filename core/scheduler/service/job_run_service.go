@@ -297,8 +297,6 @@ func (s JobRunService) updateOperatorRun(ctx context.Context, event scheduler.Ev
 
 func (s JobRunService) UpdateJobState(ctx context.Context, event scheduler.Event) error {
 	switch event.Type {
-	case scheduler.JobStartEvent:
-		return s.registerNewJobRun(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
 	case scheduler.JobSuccessEvent, scheduler.JobFailEvent:
 		return s.updateJobRun(ctx, event)
 	case scheduler.TaskStartEvent:

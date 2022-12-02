@@ -721,10 +721,6 @@
       "enum": [
         "TYPE_UNSPECIFIED",
         "TYPE_SLA_MISS",
-        "TYPE_FAILURE",
-        "TYPE_SUCCESS",
-        "TYPE_RETRY",
-        "TYPE_JOB_START",
         "TYPE_JOB_SUCCESS",
         "TYPE_JOB_FAIL",
         "TYPE_TASK_RETRY",

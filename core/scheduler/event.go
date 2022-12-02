@@ -22,13 +22,6 @@ const (
 	EventCategoryJobFailure JobEventCategory = "failure"
 
 	SLAMissEvent    JobEventType = "sla_miss"
-	JobFailureEvent JobEventType = "failure"
-	// TODO: should they be event types anymore
-	// TODO: test the notification flows end to end
-	// JobRetryEvent JobEventType = "retry"
-	// todo: check if this is being used
-
-	JobStartEvent   JobEventType = "job_start"
 	JobFailEvent    JobEventType = "job_fail"
 	JobSuccessEvent JobEventType = "job_success"
 
@@ -51,8 +44,6 @@ const (
 func FromStringToEventType(name string) (JobEventType, error) {
 	name = strings.TrimPrefix(strings.ToLower(name), strings.ToLower("TYPE_"))
 	switch name {
-	case string(JobStartEvent):
-		return JobStartEvent, nil
 	case string(JobFailEvent):
 		return JobFailEvent, nil
 	case string(JobSuccessEvent):
@@ -99,14 +90,10 @@ type Event struct {
 }
 
 func (incomingEvent JobEventType) IsOfType(category JobEventCategory) bool {
-	var failureEvents = []JobEventType{JobFailureEvent, JobFailEvent, TaskFailEvent, HookFailEvent, SensorFailEvent}
-
 	switch category {
 	case EventCategoryJobFailure:
-		for _, event := range failureEvents {
-			if incomingEvent == event {
-				return true
-			}
+		if incomingEvent == JobFailEvent {
+			return true
 		}
 	case EventCategorySLAMiss:
 		if incomingEvent == SLAMissEvent {
