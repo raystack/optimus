@@ -97,7 +97,7 @@ func (r *refreshCommand) RunE(_ *cobra.Command, _ []string) error {
 	if err := r.refreshJobSpecificationRequest(); err != nil {
 		return err
 	}
-	r.logger.Info("Job refresh & deployment finished, took %s", time.Since(start).Round(time.Second))
+	r.logger.Info("Job refresh finished, took %s", time.Since(start).Round(time.Second))
 	return nil
 }
 

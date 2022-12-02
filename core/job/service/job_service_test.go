@@ -1300,6 +1300,55 @@ func TestJobService(t *testing.T) {
 	})
 
 	t.Run("Refresh", func(t *testing.T) {
+		t.Run("resolves, update modified sources and saves upstream for all existing jobs in the given tenant", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			logWriter := new(optMock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			jobADestination := job.ResourceURN("resource-A")
+			jobAUpstreamName := []job.ResourceURN{"job-B"}
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreamName)
+
+			var jobBDestination job.ResourceURN
+			jobBUpstreamName := []job.ResourceURN{"job-C"}
+			specB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, jobWindow, jobTask).Build()
+			jobB := job.NewJob(sampleTenant, specB, jobBDestination, jobBUpstreamName)
+
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return([]*job.Job{jobA, jobB}, nil)
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobAUpstreamName, nil)
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specB, true).Return(jobBUpstreamName, nil)
+
+			jobRepo.On("Update", ctx, mock.Anything).Return([]*job.Job{jobB}, nil)
+
+			upstreamB := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static", taskName, false)
+			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstreamB})
+			upstreamC := job.NewUpstreamResolved("job-C", "", "resource-C", sampleTenant, "static", taskName, false)
+			jobBWithUpstream := job.NewWithUpstream(jobB, []*job.Upstream{upstreamC})
+			upstreamResolver.On("BulkResolve", ctx, project.Name(), []*job.Job{jobA, jobB}, mock.Anything).Return([]*job.WithUpstream{jobAWithUpstream, jobBWithUpstream}, nil)
+
+			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobAWithUpstream, jobBWithUpstream}).Return(nil)
+
+			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil).Once()
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
+			err := jobService.Refresh(ctx, project.Name(), logWriter, projectFilter, namespacesFilter)
+			assert.NoError(t, err)
+		})
 		t.Run("resolves and saves upstream for all existing jobs in the given tenant", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
@@ -1331,13 +1380,10 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
-			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil)
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobAUpstreamName, nil)
-
-			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return(jobBDestination, nil)
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specB, true).Return(jobBUpstreamName, nil)
 
-			jobRepo.On("Update", ctx, mock.Anything).Return(jobs, nil)
+			jobRepo.On("Update", ctx, mock.Anything).Return([]*job.Job{}, nil)
 
 			upstreamB := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static", taskName, false)
 			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstreamB})
@@ -1346,8 +1392,6 @@ func TestJobService(t *testing.T) {
 			upstreamResolver.On("BulkResolve", ctx, project.Name(), []*job.Job{jobA, jobB}, mock.Anything).Return([]*job.WithUpstream{jobAWithUpstream, jobBWithUpstream}, nil)
 
 			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobAWithUpstream, jobBWithUpstream}).Return(nil)
-
-			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil).Times(3)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
 			err := jobService.Refresh(ctx, project.Name(), logWriter, projectFilter, namespacesFilter)
@@ -1387,14 +1431,11 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil).Once()
 			tenantDetailsGetter.On("GetDetails", ctx, otherTenant).Return(detailedOtherTenant, nil).Once()
 
-			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobAUpstreamName, nil).Once()
-
-			pluginService.On("GenerateDestination", ctx, detailedOtherTenant, specB.Task()).Return(jobBDestination, nil).Once()
 			pluginService.On("GenerateUpstreams", ctx, detailedOtherTenant, specB, true).Return(jobBUpstreamName, nil).Once()
 
-			jobRepo.On("Update", ctx, mock.Anything).Return(jobsTenant1, nil).Once()
-			jobRepo.On("Update", ctx, mock.Anything).Return(jobsTenant2, nil).Once()
+			jobRepo.On("Update", ctx, mock.Anything).Return([]*job.Job{}, nil).Once()
+			jobRepo.On("Update", ctx, mock.Anything).Return([]*job.Job{}, nil).Once()
 
 			upstreamB := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static", taskName, false)
 			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstreamB})
@@ -1406,8 +1447,6 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobAWithUpstream}).Return(nil)
 			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobBWithUpstream}).Return(nil)
-
-			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil).Times(4)
 
 			multiNamespacesFilter := filter.WithStringArray(filter.NamespaceNames, []string{namespace.Name().String(), otherNamespace.Name().String()})
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
