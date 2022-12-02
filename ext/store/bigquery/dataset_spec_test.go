@@ -53,11 +53,11 @@ func TestDataSet(t *testing.T) {
 			Labels:      map[string]string{"owner": "optimus"},
 		}
 		spec := map[string]any{"description": []string{"a", "b"}}
-		res, err := resource.NewResource("proj.dataset.extTable1", resource.KindExternalTable, bqStore, tnnt, &metadata, spec)
+		res, err := resource.NewResource("proj.dataset.extTable1", bigquery.KindExternalTable, bqStore, tnnt, &metadata, spec)
 		assert.Nil(t, err)
 
 		t.Run("returns error when name not valid", func(t *testing.T) {
-			invalidRes, err := resource.NewResource("proj.", resource.KindExternalTable, bqStore, tnnt, &metadata, spec)
+			invalidRes, err := resource.NewResource("proj.", bigquery.KindExternalTable, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			_, err = bigquery.DataSetFor(invalidRes)
@@ -82,12 +82,12 @@ func TestResourceName(t *testing.T) {
 		Labels:      map[string]string{"owner": "optimus"},
 	}
 	spec := map[string]any{"description": []string{"a", "b"}}
-	res, err := resource.NewResource("proj.dataset.extTable1", resource.KindExternalTable, bqStore, tnnt, &metadata, spec)
+	res, err := resource.NewResource("proj.dataset.extTable1", bigquery.KindExternalTable, bqStore, tnnt, &metadata, spec)
 	assert.Nil(t, err)
 
 	t.Run("for dataset", func(t *testing.T) {
 		t.Run("return error when invalid", func(t *testing.T) {
-			dsRes, dsErr := resource.NewResource("proj", resource.KindDataset, bqStore, tnnt, &metadata, spec)
+			dsRes, dsErr := resource.NewResource("proj", bigquery.KindDataset, bqStore, tnnt, &metadata, spec)
 			assert.NoError(t, dsErr)
 
 			_, err := bigquery.ResourceNameFor(dsRes)
@@ -95,7 +95,7 @@ func TestResourceName(t *testing.T) {
 			assert.ErrorContains(t, err, "invalid resource name: proj")
 		})
 		t.Run("name when valid", func(t *testing.T) {
-			dsRes, dsErr := resource.NewResource("proj.dataset", resource.KindDataset, bqStore, tnnt, &metadata, spec)
+			dsRes, dsErr := resource.NewResource("proj.dataset", bigquery.KindDataset, bqStore, tnnt, &metadata, spec)
 			assert.NoError(t, dsErr)
 
 			name, err := bigquery.ResourceNameFor(dsRes)
@@ -105,7 +105,15 @@ func TestResourceName(t *testing.T) {
 	})
 	t.Run("for other resources", func(t *testing.T) {
 		t.Run("return error when invalid", func(t *testing.T) {
-			dsRes, dsErr := resource.NewResource("proj.dataset", resource.KindTable, bqStore, tnnt, &metadata, spec)
+			dsRes, dsErr := resource.NewResource("proj.dataset", bigquery.KindTable, bqStore, tnnt, &metadata, spec)
+			assert.NoError(t, dsErr)
+
+			_, err := bigquery.ResourceNameFor(dsRes)
+			assert.Error(t, err)
+			assert.ErrorContains(t, err, "invalid resource name")
+		})
+		t.Run("return error when resource name is empty", func(t *testing.T) {
+			dsRes, dsErr := resource.NewResource("proj.dataset.", bigquery.KindTable, bqStore, tnnt, &metadata, spec)
 			assert.NoError(t, dsErr)
 
 			_, err := bigquery.ResourceNameFor(dsRes)
@@ -132,7 +140,7 @@ func TestValidateName(t *testing.T) {
 
 	t.Run("when invalid", func(t *testing.T) {
 		t.Run("return error for not enough sections", func(t *testing.T) {
-			res, err := resource.NewResource("proj", resource.KindDataset, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj", bigquery.KindDataset, bqStore, tnnt, &metadata, spec)
 			assert.NoError(t, err)
 
 			err = bigquery.ValidateName(res)
@@ -140,7 +148,7 @@ func TestValidateName(t *testing.T) {
 			assert.ErrorContains(t, err, "invalid sections in name: proj")
 		})
 		t.Run("return error for invalid character in project name", func(t *testing.T) {
-			res, err := resource.NewResource("proj@.dataset", resource.KindDataset, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj@.dataset", bigquery.KindDataset, bqStore, tnnt, &metadata, spec)
 			assert.NoError(t, err)
 
 			err = bigquery.ValidateName(res)
@@ -148,7 +156,7 @@ func TestValidateName(t *testing.T) {
 			assert.ErrorContains(t, err, "invalid character in project name proj@.dataset")
 		})
 		t.Run("return error for invalid character in dataset name", func(t *testing.T) {
-			res, err := resource.NewResource("p-project.data-set", resource.KindDataset, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("p-project.data-set", bigquery.KindDataset, bqStore, tnnt, &metadata, spec)
 			assert.NoError(t, err)
 
 			err = bigquery.ValidateName(res)
@@ -156,7 +164,7 @@ func TestValidateName(t *testing.T) {
 			assert.ErrorContains(t, err, "invalid character in dataset name p-project.data-set")
 		})
 		t.Run("returns error when sections in table name are less", func(t *testing.T) {
-			res, err := resource.NewResource("p-project.dataset", resource.KindTable, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("p-project.dataset", bigquery.KindTable, bqStore, tnnt, &metadata, spec)
 			assert.NoError(t, err)
 
 			err = bigquery.ValidateName(res)
@@ -164,7 +172,7 @@ func TestValidateName(t *testing.T) {
 			assert.ErrorContains(t, err, "invalid resource name sections: p-project.dataset")
 		})
 		t.Run("returns error when table name is invalid", func(t *testing.T) {
-			res, err := resource.NewResource("p-project.dataset.tab@tab1", resource.KindTable, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("p-project.dataset.tab@tab1", bigquery.KindTable, bqStore, tnnt, &metadata, spec)
 			assert.NoError(t, err)
 
 			err = bigquery.ValidateName(res)
@@ -174,18 +182,61 @@ func TestValidateName(t *testing.T) {
 	})
 	t.Run("when valid", func(t *testing.T) {
 		t.Run("return no error for dataset", func(t *testing.T) {
-			res, err := resource.NewResource("p-project.dataset", resource.KindDataset, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("p-project.dataset", bigquery.KindDataset, bqStore, tnnt, &metadata, spec)
 			assert.NoError(t, err)
 
 			err = bigquery.ValidateName(res)
 			assert.NoError(t, err)
 		})
 		t.Run("returns no error when table name is valid", func(t *testing.T) {
-			res, err := resource.NewResource("p-project.dataset.tab1", resource.KindTable, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("p-project.dataset.tab1", bigquery.KindTable, bqStore, tnnt, &metadata, spec)
 			assert.NoError(t, err)
 
 			err = bigquery.ValidateName(res)
 			assert.NoError(t, err)
 		})
+	})
+}
+
+func TestURNFor(t *testing.T) {
+	bqStore := resource.Bigquery
+	tnnt, _ := tenant.NewTenant("proj", "ns")
+	metadata := resource.Metadata{
+		Version:     1,
+		Description: "resource description",
+		Labels:      map[string]string{"owner": "optimus"},
+	}
+	spec := map[string]any{"description": []string{"a", "b"}}
+
+	t.Run("returns error when cannot get dataset", func(t *testing.T) {
+		res, err := resource.NewResource("p-project.", bigquery.KindDataset, bqStore, tnnt, &metadata, spec)
+		assert.NoError(t, err)
+
+		_, err = bigquery.URNFor(res)
+		assert.Error(t, err)
+	})
+	t.Run("returns urn for dataset", func(t *testing.T) {
+		res, err := resource.NewResource("p-project.dataset", bigquery.KindDataset, bqStore, tnnt, &metadata, spec)
+		assert.NoError(t, err)
+
+		urn, err := bigquery.URNFor(res)
+		assert.NoError(t, err)
+		assert.Equal(t, "bigquery://p-project:dataset", urn)
+	})
+	t.Run("returns error when cannot get resource name", func(t *testing.T) {
+		res, err := resource.NewResource("p-project.dataset.", bigquery.KindTable, bqStore, tnnt, &metadata, spec)
+		assert.NoError(t, err)
+
+		_, err = bigquery.URNFor(res)
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "invalid resource name")
+	})
+	t.Run("returns urn for table", func(t *testing.T) {
+		res, err := resource.NewResource("p-project.dataset.table1", bigquery.KindTable, bqStore, tnnt, &metadata, spec)
+		assert.NoError(t, err)
+
+		urn, err := bigquery.URNFor(res)
+		assert.NoError(t, err)
+		assert.Equal(t, "bigquery://p-project:dataset.table1", urn)
 	})
 }

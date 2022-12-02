@@ -20,7 +20,7 @@ func TestBatches(t *testing.T) {
 	spec := map[string]any{
 		"description": "test resource",
 	}
-	kindDS := resource.KindDataset
+	kindDS := bigquery.KindDataset
 	store := resource.Bigquery
 
 	tnnt, _ := tenant.NewTenant("proj", "ns")
@@ -29,14 +29,14 @@ func TestBatches(t *testing.T) {
 
 	ds1, resErr := resource.NewResource(ds1Name, kindDS, store, tnnt, meta1, spec)
 	assert.Nil(t, resErr)
-	tab1, resErr := resource.NewResource(ds1Name+".table1", resource.KindTable, store, tnnt, meta1, spec)
+	tab1, resErr := resource.NewResource(ds1Name+".table1", bigquery.KindTable, store, tnnt, meta1, spec)
 	assert.Nil(t, resErr)
-	view1, resErr := resource.NewResource(ds1Name+".view1", resource.KindView, store, tnnt, meta1, spec)
+	view1, resErr := resource.NewResource(ds1Name+".view1", bigquery.KindView, store, tnnt, meta1, spec)
 	assert.Nil(t, resErr)
 
-	extTab1, resErr := resource.NewResource(ds2Name+".extTable1", resource.KindExternalTable, store, tnnt, meta1, spec)
+	extTab1, resErr := resource.NewResource(ds2Name+".extTable1", bigquery.KindExternalTable, store, tnnt, meta1, spec)
 	assert.Nil(t, resErr)
-	view2, resErr := resource.NewResource(ds2Name+".view2", resource.KindView, store, tnnt, meta1, spec)
+	view2, resErr := resource.NewResource(ds2Name+".view2", bigquery.KindView, store, tnnt, meta1, spec)
 	assert.Nil(t, resErr)
 
 	t.Run("BatchesFrom", func(t *testing.T) {
@@ -89,7 +89,7 @@ func TestBatches(t *testing.T) {
 		createView2 := resource.FromExisting(view2, resource.ReplaceStatus(resource.StatusToCreate))
 		updateView2 := resource.FromExisting(view2, resource.ReplaceStatus(resource.StatusToUpdate))
 
-		tab2, resErr := resource.NewResource(ds1Name+".table2", resource.KindTable, store, tnnt, meta1, spec)
+		tab2, resErr := resource.NewResource(ds1Name+".table2", bigquery.KindTable, store, tnnt, meta1, spec)
 		assert.Nil(t, resErr)
 		successTab2 := resource.FromExisting(tab2, resource.ReplaceStatus(resource.StatusSuccess))
 

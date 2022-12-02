@@ -31,7 +31,7 @@ func TestExternalTableHandle(t *testing.T) {
 			etHandle := bigquery.NewExternalTableHandle(et)
 
 			spec := map[string]any{"description": []string{"a", "b"}}
-			res, err := resource.NewResource("proj.dataset.extTable1", resource.KindExternalTable, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.extTable1", bigquery.KindExternalTable, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = etHandle.Create(ctx, res)
@@ -46,7 +46,7 @@ func TestExternalTableHandle(t *testing.T) {
 				"description":     "test create",
 				"expiration_time": "invalid_date",
 			}
-			res, err := resource.NewResource("proj.dataset.extTable1", resource.KindExternalTable, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.extTable1", bigquery.KindExternalTable, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = etHandle.Create(ctx, res)
@@ -62,7 +62,7 @@ func TestExternalTableHandle(t *testing.T) {
 			etHandle := bigquery.NewExternalTableHandle(et)
 
 			spec := map[string]any{"description": "test create"}
-			res, err := resource.NewResource("proj.dataset.extTable1", resource.KindExternalTable, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.extTable1", bigquery.KindExternalTable, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = etHandle.Create(ctx, res)
@@ -87,7 +87,7 @@ func TestExternalTableHandle(t *testing.T) {
 			et := new(mockBigQueryTable)
 			etHandle := bigquery.NewExternalTableHandle(et)
 
-			res, err := resource.NewResource("proj.dataset.extTable1", resource.KindExternalTable, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.extTable1", bigquery.KindExternalTable, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = etHandle.Create(ctx, res)
@@ -102,7 +102,7 @@ func TestExternalTableHandle(t *testing.T) {
 			etHandle := bigquery.NewExternalTableHandle(et)
 
 			spec := map[string]any{"description": "test create"}
-			res, err := resource.NewResource("proj.dataset.extTable1", resource.KindExternalTable, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.extTable1", bigquery.KindExternalTable, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = etHandle.Create(ctx, res)
@@ -154,7 +154,7 @@ func TestExternalTableHandle(t *testing.T) {
 
 			etHandle := bigquery.NewExternalTableHandle(et)
 
-			res, err := resource.NewResource("proj.dataset.extTable1", resource.KindExternalTable, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.extTable1", bigquery.KindExternalTable, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = etHandle.Create(ctx, res)
@@ -167,7 +167,7 @@ func TestExternalTableHandle(t *testing.T) {
 			etHandle := bigquery.NewExternalTableHandle(et)
 
 			spec := map[string]any{"description": []string{"a", "b"}}
-			res, err := resource.NewResource("proj.dataset.extTable1", resource.KindExternalTable, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.extTable1", bigquery.KindExternalTable, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = etHandle.Update(ctx, res)
@@ -182,7 +182,7 @@ func TestExternalTableHandle(t *testing.T) {
 				"description":     "test update",
 				"expiration_time": "invalid_date",
 			}
-			res, err := resource.NewResource("proj.dataset.extTable1", resource.KindExternalTable, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.extTable1", bigquery.KindExternalTable, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = etHandle.Update(ctx, res)
@@ -198,7 +198,7 @@ func TestExternalTableHandle(t *testing.T) {
 			etHandle := bigquery.NewExternalTableHandle(et)
 
 			spec := map[string]any{"description": "test update"}
-			res, err := resource.NewResource("proj.dataset.extTable1", resource.KindExternalTable, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.extTable1", bigquery.KindExternalTable, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = etHandle.Update(ctx, res)
@@ -213,7 +213,7 @@ func TestExternalTableHandle(t *testing.T) {
 			etHandle := bigquery.NewExternalTableHandle(et)
 
 			spec := map[string]any{"description": "test update"}
-			res, err := resource.NewResource("proj.dataset.extTable1", resource.KindExternalTable, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.extTable1", bigquery.KindExternalTable, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = etHandle.Update(ctx, res)
@@ -231,7 +231,7 @@ func TestExternalTableHandle(t *testing.T) {
 			etHandle := bigquery.NewExternalTableHandle(et)
 
 			spec := map[string]any{"description": "test update"}
-			res, err := resource.NewResource("proj.dataset.extTable1", resource.KindExternalTable, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.extTable1", bigquery.KindExternalTable, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = etHandle.Update(ctx, res)

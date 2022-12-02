@@ -142,7 +142,7 @@ func (b *Batch) DatasetOrDefault() (*resource.Resource, error) {
 		Labels:      map[string]string{"created_by": "optimus"},
 	}
 	spec := map[string]any{"description": fakeMeta.Description}
-	r, err := resource.NewResource(b.Dataset.FullName(), resource.KindDataset, resource.Bigquery, fakeTnnt, fakeMeta, spec)
+	r, err := resource.NewResource(b.Dataset.FullName(), KindDataset, resource.Bigquery, fakeTnnt, fakeMeta, spec)
 	if err != nil {
 		return nil, err
 	}
@@ -170,13 +170,13 @@ func BatchesFrom(resources []*resource.Resource, provider ClientProvider) (map[s
 		}
 
 		switch res.Kind() {
-		case resource.KindDataset:
+		case KindDataset:
 			batch.DatasetDetails = res
-		case resource.KindView:
+		case KindView:
 			batch.Views = append(batch.Views, res)
-		case resource.KindExternalTable:
+		case KindExternalTable:
 			batch.ExternalTables = append(batch.ExternalTables, res)
-		case resource.KindTable:
+		case KindTable:
 			batch.Tables = append(batch.Tables, res)
 		default:
 		}

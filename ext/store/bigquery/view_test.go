@@ -32,7 +32,7 @@ func TestViewHandle(t *testing.T) {
 			vHandle := bigquery.NewViewHandle(v)
 
 			spec := map[string]any{"description": []string{"a", "b"}}
-			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.view1", bigquery.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = vHandle.Create(ctx, res)
@@ -48,7 +48,7 @@ func TestViewHandle(t *testing.T) {
 				"expiration_time": "invalid_date",
 				"view_query":      "select * from dummy",
 			}
-			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.view1", bigquery.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = vHandle.Create(ctx, res)
@@ -64,7 +64,7 @@ func TestViewHandle(t *testing.T) {
 			vHandle := bigquery.NewViewHandle(v)
 
 			spec := map[string]any{"description": "test create"}
-			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.view1", bigquery.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = vHandle.Create(ctx, res)
@@ -79,7 +79,7 @@ func TestViewHandle(t *testing.T) {
 			vHandle := bigquery.NewViewHandle(v)
 
 			spec := map[string]any{"description": "test create"}
-			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.view1", bigquery.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = vHandle.Create(ctx, res)
@@ -98,7 +98,7 @@ func TestViewHandle(t *testing.T) {
 				"expiration_time": time.Now().Format(time.RFC3339),
 				"view_query":      "select * from dummy",
 			}
-			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.view1", bigquery.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = vHandle.Create(ctx, res)
@@ -111,7 +111,7 @@ func TestViewHandle(t *testing.T) {
 			vHandle := bigquery.NewViewHandle(v)
 
 			spec := map[string]any{"description": []string{"a", "b"}}
-			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.view1", bigquery.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = vHandle.Update(ctx, res)
@@ -127,7 +127,7 @@ func TestViewHandle(t *testing.T) {
 				"expiration_time": "invalid_date",
 				"view_query":      "select * from dummy",
 			}
-			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.view1", bigquery.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = vHandle.Update(ctx, res)
@@ -143,7 +143,7 @@ func TestViewHandle(t *testing.T) {
 			vHandle := bigquery.NewViewHandle(v)
 
 			spec := map[string]any{"description": "test update"}
-			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.view1", bigquery.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = vHandle.Update(ctx, res)
@@ -158,7 +158,7 @@ func TestViewHandle(t *testing.T) {
 			vHandle := bigquery.NewViewHandle(v)
 
 			spec := map[string]any{"description": "test update"}
-			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.view1", bigquery.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = vHandle.Update(ctx, res)
@@ -180,7 +180,7 @@ func TestViewHandle(t *testing.T) {
 				"expiration_time": time.Now().Format(time.RFC3339),
 				"view_query":      "select * from dummy",
 			}
-			res, err := resource.NewResource("proj.dataset.view1", resource.KindView, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset.view1", bigquery.KindView, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = vHandle.Update(ctx, res)

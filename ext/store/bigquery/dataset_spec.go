@@ -83,17 +83,23 @@ func DataSetFor(res *resource.Resource) (Dataset, error) {
 
 func ResourceNameFor(res *resource.Resource) (string, error) {
 	sections := res.NameSections()
-	if res.Kind() == resource.KindDataset {
+	var strName string
+	if res.Kind() == KindDataset {
 		if len(sections) < DatesetNameSections {
 			return "", errors.InvalidArgument(resource.EntityResource, "invalid resource name: "+res.FullName())
 		}
-		return sections[1], nil
+		strName = sections[1]
+	} else {
+		if len(sections) < TableNameSections {
+			return "", errors.InvalidArgument(resource.EntityResource, "invalid resource name: "+res.FullName())
+		}
+		strName = sections[2]
 	}
 
-	if len(sections) < TableNameSections {
+	if strName == "" {
 		return "", errors.InvalidArgument(resource.EntityResource, "invalid resource name: "+res.FullName())
 	}
-	return sections[2], nil
+	return strName, nil
 }
 
 func ValidateName(res *resource.Resource) error {
@@ -110,7 +116,7 @@ func ValidateName(res *resource.Resource) error {
 		return errors.InvalidArgument(resource.EntityResource, "invalid character in dataset name "+res.FullName())
 	}
 
-	if res.Kind() != resource.KindDataset {
+	if res.Kind() != KindDataset {
 		if len(sections) != TableNameSections {
 			return errors.InvalidArgument(resource.EntityResource, "invalid resource name sections: "+res.FullName())
 		}
@@ -128,8 +134,8 @@ func URNFor(res *resource.Resource) (string, error) {
 		return "", err
 	}
 
-	datasetURN := string(resource.Bigquery) + "://" + dataset.Project + "." + dataset.DatasetName
-	if res.Kind() == resource.KindDataset {
+	datasetURN := string(resource.Bigquery) + "://" + dataset.Project + ":" + dataset.DatasetName
+	if res.Kind() == KindDataset {
 		return datasetURN, nil
 	}
 

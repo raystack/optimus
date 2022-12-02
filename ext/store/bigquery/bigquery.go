@@ -217,7 +217,7 @@ func (Store) Validate(r *resource.Resource) error {
 	}
 }
 
-func (s Store) GetURN(res *resource.Resource) (string, error) {
+func (Store) GetURN(res *resource.Resource) (string, error) {
 	return URNFor(res)
 }
 

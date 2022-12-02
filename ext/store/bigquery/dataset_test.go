@@ -31,7 +31,7 @@ func TestDatasetHandle(t *testing.T) {
 			dsHandle := bigquery.NewDatasetHandle(ds)
 
 			spec := map[string]any{"description": []string{"a", "b"}}
-			res, err := resource.NewResource("proj.dataset", resource.KindDataset, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset", bigquery.KindDataset, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = dsHandle.Create(ctx, res)
@@ -49,7 +49,7 @@ func TestDatasetHandle(t *testing.T) {
 			dsHandle := bigquery.NewDatasetHandle(ds)
 
 			spec := map[string]any{"description": "test create"}
-			res, err := resource.NewResource("proj.dataset", resource.KindDataset, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset", bigquery.KindDataset, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = dsHandle.Create(ctx, res)
@@ -64,7 +64,7 @@ func TestDatasetHandle(t *testing.T) {
 			dsHandle := bigquery.NewDatasetHandle(ds)
 
 			spec := map[string]any{"description": "test create"}
-			res, err := resource.NewResource("proj.dataset", resource.KindDataset, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset", bigquery.KindDataset, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = dsHandle.Create(ctx, res)
@@ -83,7 +83,7 @@ func TestDatasetHandle(t *testing.T) {
 				"location":         "asia-southeast2",
 				"table_expiration": 2,
 			}
-			res, err := resource.NewResource("proj.dataset", resource.KindDataset, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset", bigquery.KindDataset, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = dsHandle.Create(ctx, res)
@@ -96,7 +96,7 @@ func TestDatasetHandle(t *testing.T) {
 			dsHandle := bigquery.NewDatasetHandle(ds)
 
 			spec := map[string]any{"description": []string{"a", "b"}}
-			res, err := resource.NewResource("proj.dataset", resource.KindDataset, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset", bigquery.KindDataset, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = dsHandle.Update(ctx, res)
@@ -112,7 +112,7 @@ func TestDatasetHandle(t *testing.T) {
 			dsHandle := bigquery.NewDatasetHandle(ds)
 
 			spec := map[string]any{"description": "test update"}
-			res, err := resource.NewResource("proj.dataset", resource.KindDataset, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset", bigquery.KindDataset, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = dsHandle.Update(ctx, res)
@@ -127,7 +127,7 @@ func TestDatasetHandle(t *testing.T) {
 			dsHandle := bigquery.NewDatasetHandle(ds)
 
 			spec := map[string]any{"description": "test update"}
-			res, err := resource.NewResource("proj.dataset", resource.KindDataset, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset", bigquery.KindDataset, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = dsHandle.Update(ctx, res)
@@ -149,7 +149,7 @@ func TestDatasetHandle(t *testing.T) {
 				"location":         "asia-southeast2",
 				"table_expiration": float64(2),
 			}
-			res, err := resource.NewResource("proj.dataset", resource.KindDataset, bqStore, tnnt, &metadata, spec)
+			res, err := resource.NewResource("proj.dataset", bigquery.KindDataset, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
 			err = dsHandle.Update(ctx, res)
