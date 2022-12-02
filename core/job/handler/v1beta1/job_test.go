@@ -213,11 +213,9 @@ func TestNewJobHandler(t *testing.T) {
 				Specs:         jobSpecProtos,
 			}
 
-			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(errors.New("internal error"))
-
 			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
-			assert.Nil(t, err)
-			assert.Contains(t, resp.Log, "error")
+			assert.ErrorContains(t, err, "no jobs to be processed")
+			assert.Nil(t, resp)
 		})
 		t.Run("returns response with job errors log when some jobs failed to be added", func(t *testing.T) {
 			jobService := new(JobService)
@@ -412,8 +410,8 @@ func TestNewJobHandler(t *testing.T) {
 			jobService.On("Update", ctx, sampleTenant, mock.Anything).Return(errors.New("internal error"))
 
 			resp, err := jobHandler.UpdateJobSpecifications(ctx, &request)
-			assert.Nil(t, err)
-			assert.Contains(t, resp.Log, "error")
+			assert.ErrorContains(t, err, "no jobs to be processed")
+			assert.Nil(t, resp)
 		})
 		t.Run("returns response with job errors log when some jobs failed to be updated", func(t *testing.T) {
 			jobService := new(JobService)

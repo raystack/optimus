@@ -110,16 +110,18 @@ func (u UpstreamResolver) getJobsWithAllUpstreams(ctx context.Context, jobs []*j
 			return func() (interface{}, error) {
 				internalUpstreams := jobsWithInternalUpstreams[currentJob.Spec().Name()]
 				upstreamsToResolve := u.getUpstreamsToResolve(internalUpstreams, currentJob)
+				var wrappedErr error
 				externalUpstreams, unresolvedUpstreams, err := u.externalUpstreamResolver.Resolve(ctx, upstreamsToResolve)
 				if err != nil {
 					errorMsg := fmt.Sprintf("job %s upstream resolution failed: %s", currentJob.Spec().Name().String(), err.Error())
+					wrappedErr = errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg)
 					lw.Write(writer.LogLevelError, fmt.Sprintf("[%s] %s", currentJob.Tenant().NamespaceName().String(), errorMsg))
 				} else {
 					lw.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] job %s upstream resolved", currentJob.Tenant().NamespaceName().String(), currentJob.Spec().Name().String()))
 				}
 
 				allUpstreams := mergeUpstreams(internalUpstreams, externalUpstreams, unresolvedUpstreams)
-				return job.NewWithUpstream(currentJob, allUpstreams), err
+				return job.NewWithUpstream(currentJob, allUpstreams), wrappedErr
 			}
 		}(jobEntity, logWriter))
 	}

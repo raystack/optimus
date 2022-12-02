@@ -40,12 +40,12 @@ func (j JobRepository) insertJobSpec(ctx context.Context, jobEntity *job.Job) er
 	} else if err == nil {
 		if existingJob.DeletedAt.Valid {
 			if existingJob.NamespaceName != jobEntity.Tenant().NamespaceName().String() {
-				errorMsg := fmt.Sprintf("job already exists and soft deleted in namespace %s. consider hard delete the job before inserting in this namespace.", existingJob.NamespaceName)
+				errorMsg := fmt.Sprintf("job %s already exists and soft deleted in namespace %s. consider hard delete the job before inserting in this namespace.", existingJob.Name, existingJob.NamespaceName)
 				return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, errorMsg)
 			}
 			return j.triggerUpdate(ctx, jobEntity)
 		}
-		return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, "job already exists")
+		return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, fmt.Sprintf("job %s already exists", existingJob.Name))
 	}
 	return j.triggerInsert(ctx, jobEntity)
 }
@@ -129,7 +129,7 @@ func (j JobRepository) preCheckUpdate(ctx context.Context, jobEntity *job.Job) e
 
 	if existingJob.DeletedAt.Valid {
 		if existingJob.NamespaceName != jobEntity.Tenant().NamespaceName().String() {
-			errorMsg := fmt.Sprintf("job already exists and soft deleted in namespace %s. consider hard delete the job and do add to this namespace.", existingJob.NamespaceName)
+			errorMsg := fmt.Sprintf("job %s already exists and soft deleted in namespace %s. consider hard delete the job and do add to this namespace.", existingJob.Name, existingJob.NamespaceName)
 			return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, errorMsg)
 		}
 		errorMsg := fmt.Sprintf("update is not allowed as job %s has been soft deleted. please do add operation.", existingJob.Name)

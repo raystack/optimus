@@ -162,7 +162,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", []job.ResourceURN{"resource-3"})
 
 			addedJobs, err := jobRepo.Add(ctx, []*job.Job{jobA, jobB})
-			assert.ErrorContains(t, err, "job already exists")
+			assert.ErrorContains(t, err, "already exists")
 			assert.EqualValues(t, []*job.Job{jobB}, addedJobs)
 		})
 		t.Run("return error if all jobs are failed to be saved", func(t *testing.T) {
@@ -181,7 +181,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.NoError(t, err)
 
 			addedJobs, err := jobRepo.Add(ctx, []*job.Job{jobA, jobB})
-			assert.ErrorContains(t, err, "job already exists")
+			assert.ErrorContains(t, err, "already exists")
 			assert.Nil(t, addedJobs)
 		})
 		t.Run("update job spec if the job is already exist but soft deleted", func(t *testing.T) {
@@ -298,7 +298,7 @@ func TestPostgresJobRepository(t *testing.T) {
 
 			jobAToReAdd := job.NewJob(otherTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"resource-3"})
 			addedJobs, err = jobRepo.Add(ctx, []*job.Job{jobAToReAdd})
-			assert.ErrorContains(t, err, "job already exists and soft deleted in namespace test-ns")
+			assert.ErrorContains(t, err, "already exists and soft deleted in namespace test-ns")
 			assert.Nil(t, addedJobs)
 		})
 	})
@@ -395,7 +395,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.NoError(t, err)
 			jobToUpdate := job.NewJob(otherTenant, jobSpecA, "", nil)
 			updatedJobs, err = jobRepo.Update(ctx, []*job.Job{jobToUpdate})
-			assert.ErrorContains(t, err, "job already exists and soft deleted in namespace test-ns")
+			assert.ErrorContains(t, err, "already exists and soft deleted in namespace test-ns")
 			assert.Nil(t, updatedJobs)
 		})
 	})
