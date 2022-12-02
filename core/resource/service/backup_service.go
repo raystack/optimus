@@ -94,7 +94,7 @@ func findMissingResources(names []string, resources []*resource.Resource) []reso
 		if _, ok := resourcesMap[name]; !ok {
 			ignored = append(ignored, resource.IgnoredResource{
 				Name:   name,
-				Reason: "no record found in tenant",
+				Reason: "no resource found in namespace",
 			})
 		}
 	}

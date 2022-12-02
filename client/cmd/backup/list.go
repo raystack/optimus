@@ -137,19 +137,16 @@ func (*listCommand) stringifyBackupListResponse(listBackupsResponse *pb.ListBack
 		"ID",
 		"Resource",
 		"Created at",
-		"Ignore Downstream?",
 		"TTL",
 		"Description",
 	})
 
 	for _, backupSpec := range listBackupsResponse.Backups {
-		ignoreDownstream := backupSpec.Config[models.ConfigIgnoreDownstream]
 		ttl := backupSpec.Config[models.ConfigTTL]
 		table.Append([]string{
 			backupSpec.Id,
 			strings.Join(backupSpec.ResourceNames, ", "),
 			backupSpec.CreatedAt.AsTime().Format(time.RFC3339),
-			ignoreDownstream,
 			ttl,
 			backupSpec.Description,
 		})
