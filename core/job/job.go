@@ -87,6 +87,14 @@ func (j Jobs) GetNameAndSpecMap() map[Name]*Spec {
 	return nameAndSpecMap
 }
 
+func (j Jobs) GetNamespaceNameAndSpecMap() map[tenant.NamespaceName][]*Spec {
+	specsPerNamespaceName := make(map[tenant.NamespaceName][]*Spec, len(j))
+	for _, job := range j {
+		specsPerNamespaceName[job.tenant.NamespaceName()] = append(specsPerNamespaceName[job.tenant.NamespaceName()], job.spec)
+	}
+	return specsPerNamespaceName
+}
+
 type WithUpstream struct {
 	job       *Job
 	upstreams []*Upstream

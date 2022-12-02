@@ -253,16 +253,35 @@ func (j JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, spe
 }
 
 func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, logWriter writer.LogWriter, filters ...filter.FilterOpt) (err error) {
-	me := errors.NewMultiError("refresh all specs errors")
-
 	jobs, err := j.GetByFilter(ctx, filters...)
-	me.Append(err)
+	if err != nil {
+		return err
+	}
 
-	jobsWithUpstreams, err := j.upstreamResolver.BulkResolve(ctx, projectName, jobs, logWriter)
-	me.Append(err)
+	me := errors.NewMultiError("refresh all specs errors")
+	namespaceAndSpecsMap := job.Jobs(jobs).GetNamespaceNameAndSpecMap()
+	for namespaceName, specs := range namespaceAndSpecsMap {
+		jobTenant, err := tenant.NewTenant(projectName.String(), namespaceName.String())
+		if err != nil {
+			me.Append(err)
+			continue
+		}
 
-	err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
-	me.Append(err)
+		tenantWithDetails, err := j.tenantDetailsGetter.GetDetails(ctx, jobTenant)
+		if err != nil {
+			me.Append(err)
+			continue
+		}
+
+		updatedJobs, err := j.bulkUpdate(ctx, tenantWithDetails, specs, logWriter)
+		me.Append(err)
+
+		jobsWithUpstreams, err := j.upstreamResolver.BulkResolve(ctx, projectName, updatedJobs, logWriter)
+		me.Append(err)
+
+		err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
+		me.Append(err)
+	}
 
 	return errors.MultiToError(me)
 }
@@ -374,7 +393,7 @@ func (j JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.WithD
 }
 
 func (j JobService) bulkUpdate(ctx context.Context, tenantWithDetails *tenant.WithDetails, specsToUpdate []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {
-	me := errors.NewMultiError("bulk add specs errors")
+	me := errors.NewMultiError("bulk update specs errors")
 
 	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
 	for _, spec := range specsToUpdate {
