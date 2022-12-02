@@ -242,7 +242,6 @@ func insertAllToDB(db *gorm.DB, rs []*serviceResource.Resource) error {
 func fromResourceToModel(r *serviceResource.Resource) *repoResource.Resource {
 	metadata, _ := json.Marshal(r.Metadata())
 	spec, _ := json.Marshal(r.Spec())
-	urn, _ := r.URN()
 	return &repoResource.Resource{
 		FullName:      r.FullName(),
 		Kind:          r.Kind().String(),
@@ -251,7 +250,7 @@ func fromResourceToModel(r *serviceResource.Resource) *repoResource.Resource {
 		NamespaceName: r.Tenant().NamespaceName().String(),
 		Metadata:      metadata,
 		Spec:          spec,
-		URN:           urn,
+		URN:           r.URN(),
 		Status:        r.Status().String(),
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),

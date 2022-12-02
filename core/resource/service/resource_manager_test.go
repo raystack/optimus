@@ -27,7 +27,7 @@ func TestResourceManager(t *testing.T) {
 			manager := service.NewResourceManager(repo, logger)
 
 			spec := map[string]any{"description": "test spec"}
-			res, err := resource.NewResource("proj.ds.name1", resource.KindTable, store, tnnt, meta, spec)
+			res, err := resource.NewResource("proj.ds.name1", "table", store, tnnt, meta, spec)
 			assert.Nil(t, err)
 
 			err = manager.CreateResource(ctx, res)
@@ -36,7 +36,7 @@ func TestResourceManager(t *testing.T) {
 		})
 		t.Run("return error when datastore return an error", func(t *testing.T) {
 			spec := map[string]any{"description": "test spec"}
-			res, err := resource.NewResource("proj.ds.name1", resource.KindTable, store, tnnt, meta, spec)
+			res, err := resource.NewResource("proj.ds.name1", "table", store, tnnt, meta, spec)
 			assert.Nil(t, err)
 			createRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToCreate))
 
@@ -63,7 +63,7 @@ func TestResourceManager(t *testing.T) {
 		})
 		t.Run("return error when create fails and mark also fails", func(t *testing.T) {
 			spec := map[string]any{"description": "test spec"}
-			res, err := resource.NewResource("proj.ds.name1", resource.KindTable, store, tnnt, meta, spec)
+			res, err := resource.NewResource("proj.ds.name1", "table", store, tnnt, meta, spec)
 			assert.Nil(t, err)
 			createRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToCreate))
 
@@ -92,7 +92,7 @@ func TestResourceManager(t *testing.T) {
 		})
 		t.Run("marks the create exist_in_store if already exists on datastore", func(t *testing.T) {
 			spec := map[string]any{"description": "test spec"}
-			res, err := resource.NewResource("proj.ds.name1", resource.KindTable, store, tnnt, meta, spec)
+			res, err := resource.NewResource("proj.ds.name1", "table", store, tnnt, meta, spec)
 			assert.Nil(t, err)
 			createRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToCreate))
 
@@ -118,7 +118,7 @@ func TestResourceManager(t *testing.T) {
 		})
 		t.Run("creates the resource on the datastore", func(t *testing.T) {
 			spec := map[string]any{"description": "test spec"}
-			res, err := resource.NewResource("proj.ds.name1", resource.KindTable, store, tnnt, meta, spec)
+			res, err := resource.NewResource("proj.ds.name1", "table", store, tnnt, meta, spec)
 			assert.Nil(t, err)
 			createRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToCreate))
 
@@ -150,7 +150,7 @@ func TestResourceManager(t *testing.T) {
 			manager := service.NewResourceManager(repo, logger)
 
 			spec := map[string]any{"description": "test spec"}
-			res, err := resource.NewResource("proj.ds.name1", resource.KindTable, store, tnnt, meta, spec)
+			res, err := resource.NewResource("proj.ds.name1", "table", store, tnnt, meta, spec)
 			assert.Nil(t, err)
 
 			err = manager.UpdateResource(ctx, res)
@@ -159,7 +159,7 @@ func TestResourceManager(t *testing.T) {
 		})
 		t.Run("return error when datastore return an error", func(t *testing.T) {
 			spec := map[string]any{"description": "test spec"}
-			res, err := resource.NewResource("proj.ds.name1", resource.KindTable, store, tnnt, meta, spec)
+			res, err := resource.NewResource("proj.ds.name1", "table", store, tnnt, meta, spec)
 			assert.Nil(t, err)
 			updateRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToUpdate))
 
@@ -186,7 +186,7 @@ func TestResourceManager(t *testing.T) {
 		})
 		t.Run("return error when update fails and mark also fails", func(t *testing.T) {
 			spec := map[string]any{"description": "test spec"}
-			res, err := resource.NewResource("proj.ds.name1", resource.KindTable, store, tnnt, meta, spec)
+			res, err := resource.NewResource("proj.ds.name1", "table", store, tnnt, meta, spec)
 			assert.Nil(t, err)
 			updateRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToUpdate))
 
@@ -216,7 +216,7 @@ func TestResourceManager(t *testing.T) {
 		})
 		t.Run("updates the resource on the datastore", func(t *testing.T) {
 			spec := map[string]any{"description": "test spec"}
-			res, err := resource.NewResource("proj.ds.name1", resource.KindTable, store, tnnt, meta, spec)
+			res, err := resource.NewResource("proj.ds.name1", "table", store, tnnt, meta, spec)
 			assert.Nil(t, err)
 			updateRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToUpdate))
 
@@ -241,10 +241,79 @@ func TestResourceManager(t *testing.T) {
 			assert.Nil(t, err)
 		})
 	})
+	t.Run("Validate", func(t *testing.T) {
+		t.Run("return error when service not found for datastore", func(t *testing.T) {
+			spec := map[string]any{"description": "test spec"}
+			res, err := resource.NewResource("proj.ds.name1", "table", store, tnnt, meta, spec)
+			assert.Nil(t, err)
+			updateRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToUpdate))
+
+			repo := new(mockRepo)
+			logger := log.NewLogrus()
+			manager := service.NewResourceManager(repo, logger)
+
+			err = manager.Validate(updateRequest)
+			assert.NotNil(t, err)
+			assert.ErrorContains(t, err, "datastore [snowflake] for resource [proj.ds.name1] is not found")
+		})
+		t.Run("returns response from the datastore", func(t *testing.T) {
+			spec := map[string]any{"description": "test spec"}
+			res, err := resource.NewResource("proj.ds.name1", "table", store, tnnt, meta, spec)
+			assert.Nil(t, err)
+			updateRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToUpdate))
+
+			logger := log.NewLogrus()
+			manager := service.NewResourceManager(nil, logger)
+
+			storeService := new(mockDataStore)
+			storeService.On("Validate", updateRequest).Return(nil)
+			defer storeService.AssertExpectations(t)
+
+			manager.RegisterDatastore(store, storeService)
+
+			err = manager.Validate(updateRequest)
+			assert.NoError(t, err)
+		})
+	})
+	t.Run("URN", func(t *testing.T) {
+		t.Run("return error when service not found for datastore", func(t *testing.T) {
+			spec := map[string]any{"description": "test spec"}
+			res, err := resource.NewResource("proj.ds.name1", "table", store, tnnt, meta, spec)
+			assert.Nil(t, err)
+			updateRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToUpdate))
+
+			repo := new(mockRepo)
+			logger := log.NewLogrus()
+			manager := service.NewResourceManager(repo, logger)
+
+			_, err = manager.GetURN(updateRequest)
+			assert.NotNil(t, err)
+			assert.ErrorContains(t, err, "datastore [snowflake] for resource [proj.ds.name1] is not found")
+		})
+		t.Run("returns response from the datastore", func(t *testing.T) {
+			spec := map[string]any{"description": "test spec"}
+			res, err := resource.NewResource("proj.ds.name1", "table", store, tnnt, meta, spec)
+			assert.Nil(t, err)
+			updateRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToUpdate))
+
+			logger := log.NewLogrus()
+			manager := service.NewResourceManager(nil, logger)
+
+			storeService := new(mockDataStore)
+			storeService.On("GetURN", updateRequest).Return("snowflake://db.schema.table", nil)
+			defer storeService.AssertExpectations(t)
+
+			manager.RegisterDatastore(store, storeService)
+
+			urn, err := manager.GetURN(updateRequest)
+			assert.NoError(t, err)
+			assert.Equal(t, "snowflake://db.schema.table", urn)
+		})
+	})
 	t.Run("BatchUpdate", func(t *testing.T) {
 		t.Run("return error when service not found for datastore", func(t *testing.T) {
 			spec := map[string]any{"description": "test spec"}
-			res, err := resource.NewResource("proj.ds.name1", resource.KindTable, store, tnnt, meta, spec)
+			res, err := resource.NewResource("proj.ds.name1", "table", store, tnnt, meta, spec)
 			assert.Nil(t, err)
 			updateRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToUpdate))
 
@@ -259,7 +328,7 @@ func TestResourceManager(t *testing.T) {
 		})
 		t.Run("return error when error in both batchUpdate and update status", func(t *testing.T) {
 			spec := map[string]any{"description": "test spec"}
-			res, err := resource.NewResource("proj.ds.name1", resource.KindTable, store, tnnt, meta, spec)
+			res, err := resource.NewResource("proj.ds.name1", "table", store, tnnt, meta, spec)
 			assert.Nil(t, err)
 			updateRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToUpdate))
 			batchReq := []*resource.Resource{updateRequest}
@@ -302,7 +371,7 @@ func TestResourceManager(t *testing.T) {
 		})
 		t.Run("returns success when no error in updating the batch", func(t *testing.T) {
 			spec := map[string]any{"description": "test spec"}
-			res, err := resource.NewResource("proj.ds.name1", resource.KindTable, store, tnnt, meta, spec)
+			res, err := resource.NewResource("proj.ds.name1", "table", store, tnnt, meta, spec)
 			assert.Nil(t, err)
 			updateRequest := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusToUpdate))
 			batchReq := []*resource.Resource{updateRequest}
@@ -363,4 +432,9 @@ func (m *mockDataStore) BatchUpdate(ctx context.Context, resources []*resource.R
 
 func (m *mockDataStore) Validate(r *resource.Resource) error {
 	return m.Called(r).Error(0)
+}
+
+func (m *mockDataStore) GetURN(r *resource.Resource) (string, error) {
+	args := m.Called(r)
+	return args.Get(0).(string), args.Error(1)
 }

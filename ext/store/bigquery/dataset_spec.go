@@ -121,3 +121,22 @@ func ValidateName(res *resource.Resource) error {
 	}
 	return nil
 }
+
+func URNFor(res *resource.Resource) (string, error) {
+	dataset, err := DataSetFor(res)
+	if err != nil {
+		return "", err
+	}
+
+	datasetURN := string(resource.Bigquery) + "://" + dataset.Project + "." + dataset.DatasetName
+	if res.Kind() == resource.KindDataset {
+		return datasetURN, nil
+	}
+
+	name, err := ResourceNameFor(res)
+	if err != nil {
+		return "", err
+	}
+
+	return datasetURN + "." + name, nil
+}

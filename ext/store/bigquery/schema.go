@@ -14,6 +14,13 @@ const (
 	EntityResourceSchema = "bigquery_schema"
 )
 
+const (
+	KindDataset       string = "dataset"
+	KindTable         string = "table"
+	KindView          string = "view"
+	KindExternalTable string = "external_table"
+)
+
 type Schema []Field
 
 func (s Schema) Validate() error {

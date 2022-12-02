@@ -1,7 +1,6 @@
 package resource
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 
@@ -12,17 +11,12 @@ import (
 const (
 	EntityResource       = "resource"
 	nameSectionSeparator = "."
-
-	DatesetNameSections = 2
-	TableNameSections   = 3
 )
 
-type ValidateResource interface {
-	Validate() error
-}
-
-type UniqueResource interface {
-	URN() string
+type Metadata struct {
+	Version     int32
+	Description string
+	Labels      map[string]string
 }
 
 type Name string
@@ -42,8 +36,9 @@ func (n Name) String() string {
 type Resource struct {
 	name Name
 
-	kind  Kind
+	kind  string
 	store Store
+	urn   string
 
 	tenant tenant.Tenant
 
@@ -53,7 +48,7 @@ type Resource struct {
 	status Status
 }
 
-func NewResource(fullName string, kind Kind, store Store, tnnt tenant.Tenant, meta *Metadata, spec map[string]any) (*Resource, error) {
+func NewResource(fullName string, kind string, store Store, tnnt tenant.Tenant, meta *Metadata, spec map[string]any) (*Resource, error) {
 	name, err := NameFrom(fullName)
 	if err != nil {
 		return nil, err
@@ -86,24 +81,17 @@ func (r *Resource) FullName() string {
 	return r.name.String()
 }
 
-// TODO: this is bad, URN now should come from the store
-func (r *Resource) URN() (string, error) {
-	sections := strings.Split(r.name.String(), nameSectionSeparator)
-	if r.kind == KindDataset {
-		if len(sections) != DatesetNameSections {
-			return "", errors.InvalidArgument(EntityResource, "invalid dataset name: "+r.name.String())
-		}
-	} else {
-		if len(sections) != TableNameSections {
-			return "", errors.InvalidArgument(EntityResource, "invalid resource name: "+r.name.String())
-		}
+func (r *Resource) URN() string {
+	return r.urn
+}
+
+func (r *Resource) UpdateURN(urn string) error {
+	if r.urn == "" {
+		r.urn = urn
+		return nil
 	}
 
-	datasetURN := string(r.store) + "://" + sections[0] + ":" + sections[1]
-	if r.kind == KindDataset {
-		return datasetURN, nil
-	}
-	return datasetURN + "." + sections[2], nil
+	return errors.InvalidArgument(EntityResource, "urn already present")
 }
 
 func (r *Resource) Metadata() *Metadata {
@@ -114,7 +102,7 @@ func (r *Resource) NameSections() []string {
 	return strings.Split(r.name.String(), nameSectionSeparator)
 }
 
-func (r *Resource) Kind() Kind {
+func (r *Resource) Kind() string {
 	return r.kind
 }
 
@@ -154,83 +142,6 @@ func (r *Resource) Equal(incoming *Resource) bool {
 		return false
 	}
 	return reflect.DeepEqual(r.metadata, incoming.metadata)
-}
-
-func (r *Resource) MarkValidationSuccess() error {
-	if r.status == StatusUnknown {
-		r.status = StatusValidationSuccess
-		return nil
-	}
-	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status [%s] is not allowed", r.FullName(), r.status, StatusValidationSuccess)
-	return errors.InvalidStateTransition(EntityResource, msg)
-}
-
-func (r *Resource) MarkValidationFailure() error {
-	if r.status == StatusUnknown {
-		r.status = StatusValidationFailure
-		return nil
-	}
-	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status [%s] is not allowed", r.FullName(), r.status, StatusValidationFailure)
-	return errors.InvalidStateTransition(EntityResource, msg)
-}
-
-func (r *Resource) MarkSkipped() error {
-	if r.status == StatusValidationSuccess {
-		r.status = StatusSkipped
-		return nil
-	}
-	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status [%s] is not allowed", r.FullName(), r.status, StatusSkipped)
-	return errors.InvalidStateTransition(EntityResource, msg)
-}
-
-func (r *Resource) MarkToCreate() error {
-	if r.status == StatusValidationSuccess {
-		r.status = StatusToCreate
-		return nil
-	}
-	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status [%s] is not allowed", r.FullName(), r.status, StatusToCreate)
-	return errors.InvalidStateTransition(EntityResource, msg)
-}
-
-func (r *Resource) MarkToUpdate() error {
-	if r.status == StatusValidationSuccess {
-		r.status = StatusToUpdate
-		return nil
-	}
-	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status [%s] is not allowed", r.FullName(), r.status, StatusToUpdate)
-	return errors.InvalidStateTransition(EntityResource, msg)
-}
-
-func (r *Resource) MarkExistInStore() error {
-	if r.status == StatusToCreate {
-		r.status = StatusExistInStore
-		return nil
-	}
-	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status [%s] is not allowed", r.FullName(), r.status, StatusExistInStore)
-	return errors.InvalidStateTransition(EntityResource, msg)
-}
-
-func (r *Resource) MarkFailure() error {
-	switch r.status {
-	case StatusToCreate:
-		r.status = StatusCreateFailure
-		return nil
-	case StatusToUpdate:
-		r.status = StatusUpdateFailure
-		return nil
-	}
-	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status failure is not allowed", r.FullName(), r.status)
-	return errors.InvalidStateTransition(EntityResource, msg)
-}
-
-func (r *Resource) MarkSuccess() error {
-	switch r.status {
-	case StatusToCreate, StatusToUpdate:
-		r.status = StatusSuccess
-		return nil
-	}
-	msg := fmt.Sprintf("status transition for [%s] from status [%s] to status success is not allowed", r.FullName(), r.status)
-	return errors.InvalidStateTransition(EntityResource, msg)
 }
 
 type FromExistingOpt func(r *Resource)

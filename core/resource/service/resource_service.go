@@ -23,6 +23,7 @@ type ResourceManager interface {
 	UpdateResource(ctx context.Context, res *resource.Resource) error
 	BatchUpdate(ctx context.Context, store resource.Store, resources []*resource.Resource) error
 	Validate(res *resource.Resource) error
+	GetURN(res *resource.Resource) (string, error)
 }
 
 type TenantDetailsGetter interface {
@@ -52,6 +53,16 @@ func (rs ResourceService) Create(ctx context.Context, incoming *resource.Resourc
 		return err
 	}
 	incoming.MarkValidationSuccess()
+	urn, err := rs.mgr.GetURN(incoming)
+	if err != nil {
+		rs.logger.Error("error validating resource [%s]: %s", incoming.FullName(), err)
+		return err
+	}
+	err = incoming.UpdateURN(urn)
+	if err != nil {
+		rs.logger.Error("error updating urn of resource [%s]: %s", incoming.FullName(), err)
+		return err
+	}
 
 	if existing, err := rs.repo.ReadByFullName(ctx, incoming.Tenant(), incoming.Store(), incoming.FullName()); err != nil {
 		if !errors.IsErrorType(err, errors.ErrNotFound) {
@@ -91,6 +102,16 @@ func (rs ResourceService) Update(ctx context.Context, incoming *resource.Resourc
 		return err
 	}
 	incoming.MarkValidationSuccess()
+	urn, err := rs.mgr.GetURN(incoming)
+	if err != nil {
+		rs.logger.Error("error validating resource [%s]: %s", incoming.FullName(), err)
+		return err
+	}
+	err = incoming.UpdateURN(urn)
+	if err != nil {
+		rs.logger.Error("error updating urn of resource [%s]: %s", incoming.FullName(), err)
+		return err
+	}
 
 	existing, err := rs.repo.ReadByFullName(ctx, incoming.Tenant(), incoming.Store(), incoming.FullName())
 	if err != nil {
@@ -133,8 +154,20 @@ func (rs ResourceService) Deploy(ctx context.Context, tnnt tenant.Tenant, store 
 			multiError.Append(errors.Wrap(resource.EntityResource, msg, err))
 
 			rs.logger.Error(msg)
-		} else {
-			r.MarkValidationSuccess()
+			r.MarkValidationFailure()
+			continue
+		}
+		r.MarkValidationSuccess()
+
+		urn, err := rs.mgr.GetURN(r)
+		if err != nil {
+			rs.logger.Error("error getting resource urn [%s]: %s", r.FullName(), err)
+			return err
+		}
+		err = r.UpdateURN(urn)
+		if err != nil {
+			rs.logger.Error("error updating urn of resource [%s]: %s", r.FullName(), err)
+			return err
 		}
 	}
 

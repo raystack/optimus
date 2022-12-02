@@ -72,24 +72,24 @@ func (s Store) Create(ctx context.Context, res *resource.Resource) error {
 	}
 
 	switch res.Kind() {
-	case resource.KindDataset:
+	case KindDataset:
 		handle := client.DatasetHandleFrom(dataset)
 		return handle.Create(spanCtx, res)
 
-	case resource.KindTable:
+	case KindTable:
 		handle := client.TableHandleFrom(dataset, resourceName)
 		return handle.Create(spanCtx, res)
 
-	case resource.KindExternalTable:
+	case KindExternalTable:
 		handle := client.ExternalTableHandleFrom(dataset, resourceName)
 		return handle.Create(spanCtx, res)
 
-	case resource.KindView:
+	case KindView:
 		handle := client.ViewHandleFrom(dataset, resourceName)
 		return handle.Create(spanCtx, res)
 
 	default:
-		return errors.InvalidArgument(store, "invalid kind for bigquery resource "+res.Kind().String())
+		return errors.InvalidArgument(store, "invalid kind for bigquery resource "+res.Kind())
 	}
 }
 
@@ -118,24 +118,24 @@ func (s Store) Update(ctx context.Context, res *resource.Resource) error {
 	}
 
 	switch res.Kind() {
-	case resource.KindDataset:
+	case KindDataset:
 		handle := client.DatasetHandleFrom(dataset)
 		return handle.Update(spanCtx, res)
 
-	case resource.KindTable:
+	case KindTable:
 		handle := client.TableHandleFrom(dataset, resourceName)
 		return handle.Update(spanCtx, res)
 
-	case resource.KindExternalTable:
+	case KindExternalTable:
 		handle := client.ExternalTableHandleFrom(dataset, resourceName)
 		return handle.Update(spanCtx, res)
 
-	case resource.KindView:
+	case KindView:
 		handle := client.ViewHandleFrom(dataset, resourceName)
 		return handle.Update(spanCtx, res)
 
 	default:
-		return errors.InvalidArgument(store, "invalid kind for bigquery resource "+res.Kind().String())
+		return errors.InvalidArgument(store, "invalid kind for bigquery resource "+res.Kind())
 	}
 }
 
@@ -181,7 +181,7 @@ func (Store) Validate(r *resource.Resource) error {
 	}
 
 	switch r.Kind() {
-	case resource.KindTable:
+	case KindTable:
 		table, err := ConvertSpecTo[Table](r)
 		if err != nil {
 			return err
@@ -189,7 +189,7 @@ func (Store) Validate(r *resource.Resource) error {
 		table.Name = r.Name()
 		return table.Validate()
 
-	case resource.KindExternalTable:
+	case KindExternalTable:
 		externalTable, err := ConvertSpecTo[ExternalTable](r)
 		if err != nil {
 			return err
@@ -197,7 +197,7 @@ func (Store) Validate(r *resource.Resource) error {
 		externalTable.Name = r.Name()
 		return externalTable.Validate()
 
-	case resource.KindView:
+	case KindView:
 		view, err := ConvertSpecTo[View](r)
 		if err != nil {
 			return err
@@ -205,7 +205,7 @@ func (Store) Validate(r *resource.Resource) error {
 		view.Name = r.Name()
 		return view.Validate()
 
-	case resource.KindDataset:
+	case KindDataset:
 		ds, err := ConvertSpecTo[DatasetDetails](r)
 		if err != nil {
 			return err
@@ -215,6 +215,10 @@ func (Store) Validate(r *resource.Resource) error {
 	default:
 		return errors.InvalidArgument(resource.EntityResource, "unknown kind")
 	}
+}
+
+func (s Store) GetURN(res *resource.Resource) (string, error) {
+	return URNFor(res)
 }
 
 func startChildSpan(ctx context.Context, name string) (context.Context, trace.Span) {
