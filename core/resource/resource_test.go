@@ -34,28 +34,12 @@ func TestNewResource(t *testing.T) {
 		t.Run("returns error when name is empty", func(t *testing.T) {
 			_, err := resource.NewResource("", resource.KindTable, resource.Bigquery, tnnt, nil, nil)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource: invalid resource name: ")
+			assert.ErrorContains(t, err, "resource name is empty")
 		})
 		t.Run("returns error when dataset name is empty", func(t *testing.T) {
 			_, err := resource.NewResource("", resource.KindDataset, resource.Bigquery, tnnt, nil, nil)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource: invalid dataset name: ")
-		})
-		t.Run("returns error when invalid resource name", func(t *testing.T) {
-			_, err := resource.NewResource("proj.set.", resource.KindTable, resource.Bigquery, tnnt, nil, nil)
-			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource: resource name is empty")
-		})
-		t.Run("returns error when invalid dataset name", func(t *testing.T) {
-			_, err := resource.NewResource("proj.", resource.KindDataset, resource.Bigquery, tnnt, nil, nil)
-			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource: resource name is empty")
-		})
-		t.Run("returns error when resource has invalid dataset name", func(t *testing.T) {
-			spec := map[string]any{"a": "b"}
-			_, err := resource.NewResource("proj..name1", resource.KindTable, resource.Bigquery, tnnt, nil, spec)
-			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource_dataset: schema/dataset name is empty")
+			assert.ErrorContains(t, err, "resource name is empty")
 		})
 		t.Run("returns error when invalid resource metadata", func(t *testing.T) {
 			spec := map[string]any{"a": "b"}
@@ -85,15 +69,13 @@ func TestNewResource(t *testing.T) {
 			resource.Bigquery, tnnt, meta, spec)
 		assert.Nil(t, err)
 
-		assert.Equal(t, "res_name", res.Name().String())
 		assert.Equal(t, "proj.set.res_name", res.FullName())
-		assert.Equal(t, "bigquery://proj:set.res_name", res.URN())
+		urn, err := res.URN()
+		assert.NoError(t, err)
+		assert.Equal(t, "bigquery://proj:set.res_name", urn)
 		assert.EqualValues(t, meta, res.Metadata())
 		assert.Equal(t, "table", res.Kind().String())
 		assert.EqualValues(t, tnnt, res.Tenant())
-		dataset, err := resource.DataSetFrom(resource.Bigquery, "proj", "set")
-		assert.NoError(t, err)
-		assert.EqualValues(t, dataset, res.Dataset())
 		assert.Equal(t, resource.StatusUnknown, res.Status())
 		assert.EqualValues(t, spec, res.Spec())
 	})
@@ -107,15 +89,13 @@ func TestNewResource(t *testing.T) {
 			resource.Bigquery, tnnt, meta, spec)
 		assert.Nil(t, err)
 
-		assert.Equal(t, "dataset", res.Name().String())
 		assert.Equal(t, "proj.dataset", res.FullName())
-		assert.Equal(t, "bigquery://proj:dataset", res.URN())
+		urn, err := res.URN()
+		assert.NoError(t, err)
+		assert.Equal(t, "bigquery://proj:dataset", urn)
 		assert.EqualValues(t, meta, res.Metadata())
 		assert.Equal(t, "dataset", res.Kind().String())
 		assert.EqualValues(t, tnnt, res.Tenant())
-		dataset, err := resource.DataSetFrom(resource.Bigquery, "proj", "dataset")
-		assert.NoError(t, err)
-		assert.EqualValues(t, dataset, res.Dataset())
 		assert.Equal(t, resource.StatusUnknown, res.Status())
 		assert.EqualValues(t, spec, res.Spec())
 	})
@@ -124,120 +104,6 @@ func TestNewResource(t *testing.T) {
 func TestResource(t *testing.T) {
 	tnnt, tnntErr := tenant.NewTenant("proj", "ns")
 	assert.Nil(t, tnntErr)
-
-	t.Run("Validate", func(t *testing.T) {
-		invalidSpec := map[string]any{
-			"description": map[string]any{"some": "desc"},
-		}
-		specWithoutValues := map[string]any{"a": "b"}
-		t.Run("returns error for unknown kind", func(t *testing.T) {
-			res := resource.Resource{}
-			err := res.Validate()
-			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource: unknown kind")
-		})
-		t.Run("for view", func(t *testing.T) {
-			t.Run("returns error when cannot decode view spec", func(t *testing.T) {
-				res, err := resource.NewResource("proj.set.view_name1", resource.KindView, resource.Bigquery,
-					tnnt, &resource.Metadata{}, invalidSpec)
-				assert.Nil(t, err)
-
-				assert.Equal(t, "proj.set.view_name1", res.FullName())
-
-				err = res.Validate()
-				assert.NotNil(t, err)
-				assert.EqualError(t, err, "invalid argument for entity resource: 1 error(s) decoding:\n\n* "+
-					"'description' expected type 'string', got unconvertible type 'map[string]interface {}', value: "+
-					"'map[some:desc]': not able to decode spec for proj.set.view_name1")
-			})
-			t.Run("returns error for validation failure", func(t *testing.T) {
-				res, err := resource.NewResource("proj.set.view_name1", resource.KindView, resource.Bigquery,
-					tnnt, &resource.Metadata{}, specWithoutValues)
-				assert.Nil(t, err)
-
-				assert.Equal(t, "proj.set.view_name1", res.FullName())
-
-				err = res.Validate()
-				assert.NotNil(t, err)
-				assert.EqualError(t, err, "invalid argument for entity resource_view: view query is empty "+
-					"for proj.set.view_name1")
-			})
-		})
-		t.Run("for external_table", func(t *testing.T) {
-			t.Run("returns error when cannot decode spec", func(t *testing.T) {
-				res, err := resource.NewResource("proj.set.external_name1", resource.KindExternalTable, resource.Bigquery,
-					tnnt, &resource.Metadata{}, invalidSpec)
-				assert.Nil(t, err)
-
-				assert.Equal(t, "proj.set.external_name1", res.FullName())
-
-				err = res.Validate()
-				assert.NotNil(t, err)
-				assert.EqualError(t, err, "invalid argument for entity resource: 1 error(s) decoding:\n\n* "+
-					"'description' expected type 'string', got unconvertible type 'map[string]interface {}', value: "+
-					"'map[some:desc]': not able to decode spec for proj.set.external_name1")
-			})
-			t.Run("returns error when external_table spec is invalid", func(t *testing.T) {
-				res, err := resource.NewResource("proj.set.external_name1", resource.KindExternalTable, resource.Bigquery,
-					tnnt, &resource.Metadata{}, specWithoutValues)
-				assert.Nil(t, err)
-
-				assert.Equal(t, "proj.set.external_name1", res.FullName())
-
-				err = res.Validate()
-				assert.NotNil(t, err)
-				assert.EqualError(t, err, "invalid argument for entity resource_external_table: invalid schema "+
-					"for proj.set.external_name1")
-			})
-		})
-		t.Run("for table", func(t *testing.T) {
-			t.Run("returns error when cannot decode table", func(t *testing.T) {
-				res, err := resource.NewResource("proj.set.table_name1", resource.KindTable, resource.Bigquery,
-					tnnt, &resource.Metadata{}, invalidSpec)
-				assert.Nil(t, err)
-
-				assert.Equal(t, "proj.set.table_name1", res.FullName())
-
-				err = res.Validate()
-				assert.NotNil(t, err)
-				assert.EqualError(t, err, "invalid argument for entity resource: 1 error(s) decoding:\n\n* "+
-					"'description' expected type 'string', got unconvertible type 'map[string]interface {}', value: "+
-					"'map[some:desc]': not able to decode spec for proj.set.table_name1")
-			})
-			t.Run("returns error when cannot decode table", func(t *testing.T) {
-				res, err := resource.NewResource("proj.set.table_name1", resource.KindTable, resource.Bigquery,
-					tnnt, &resource.Metadata{}, specWithoutValues)
-				assert.Nil(t, err)
-
-				assert.Equal(t, "proj.set.table_name1", res.FullName())
-
-				err = res.Validate()
-				assert.NotNil(t, err)
-				assert.EqualError(t, err, "invalid argument for entity resource_table: empty schema for table proj.set.table_name1")
-			})
-		})
-		t.Run("for dataset", func(t *testing.T) {
-			t.Run("returns error when cannot decode dataset", func(t *testing.T) {
-				res, err := resource.NewResource("proj.set_name1", resource.KindDataset, resource.Bigquery,
-					tnnt, &resource.Metadata{}, invalidSpec)
-				assert.Nil(t, err)
-
-				err = res.Validate()
-				assert.NotNil(t, err)
-				assert.EqualError(t, err, "invalid argument for entity resource: 1 error(s) decoding:\n\n* "+
-					"'description' expected type 'string', got unconvertible type 'map[string]interface {}', value: "+
-					"'map[some:desc]': not able to decode spec for proj.set_name1")
-			})
-			t.Run("returns no error when validation passes", func(t *testing.T) {
-				res, err := resource.NewResource("proj.set_name1", resource.KindDataset, resource.Bigquery,
-					tnnt, &resource.Metadata{}, specWithoutValues)
-				assert.Nil(t, err)
-
-				err = res.Validate()
-				assert.Nil(t, err)
-			})
-		})
-	})
 
 	t.Run("Equal", func(t *testing.T) {
 		t.Run("returns false if current resource is nil", func(t *testing.T) {

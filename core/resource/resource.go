@@ -5,8 +5,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/mitchellh/mapstructure"
-
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 )
@@ -44,8 +42,8 @@ func (n Name) String() string {
 type Resource struct {
 	name Name
 
-	kind    Kind
-	dataset Dataset
+	kind  Kind
+	store Store
 
 	tenant tenant.Tenant
 
@@ -56,32 +54,13 @@ type Resource struct {
 }
 
 func NewResource(fullName string, kind Kind, store Store, tnnt tenant.Tenant, meta *Metadata, spec map[string]any) (*Resource, error) {
-	sections := strings.Split(fullName, nameSectionSeparator)
-	var strName string
-	if kind == KindDataset {
-		if len(sections) != DatesetNameSections {
-			return nil, errors.InvalidArgument(EntityResource, "invalid dataset name: "+fullName)
-		}
-		strName = sections[1]
-	} else {
-		if len(sections) != TableNameSections {
-			return nil, errors.InvalidArgument(EntityResource, "invalid resource name: "+fullName)
-		}
-		strName = sections[2]
-	}
-
-	name, err := NameFrom(strName)
+	name, err := NameFrom(fullName)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(spec) == 0 {
 		return nil, errors.InvalidArgument(EntityResource, "invalid resource spec for "+fullName)
-	}
-
-	dataset, err := DataSetFrom(store, sections[0], sections[1])
-	if err != nil {
-		return nil, err
 	}
 
 	if meta == nil {
@@ -91,7 +70,7 @@ func NewResource(fullName string, kind Kind, store Store, tnnt tenant.Tenant, me
 	return &Resource{
 		name:     name,
 		kind:     kind,
-		dataset:  dataset,
+		store:    store,
 		tenant:   tnnt,
 		spec:     spec,
 		metadata: meta,
@@ -104,21 +83,35 @@ func (r *Resource) Name() Name {
 }
 
 func (r *Resource) FullName() string {
-	if r.kind == KindDataset {
-		return r.dataset.FullName()
-	}
-	return r.dataset.FullName() + "." + r.name.String()
+	return r.name.String()
 }
 
-func (r *Resource) URN() string {
+// TODO: this is bad, URN now should come from the store
+func (r *Resource) URN() (string, error) {
+	sections := strings.Split(r.name.String(), nameSectionSeparator)
 	if r.kind == KindDataset {
-		return r.dataset.URN()
+		if len(sections) != DatesetNameSections {
+			return "", errors.InvalidArgument(EntityResource, "invalid dataset name: "+r.name.String())
+		}
+	} else {
+		if len(sections) != TableNameSections {
+			return "", errors.InvalidArgument(EntityResource, "invalid resource name: "+r.name.String())
+		}
 	}
-	return r.dataset.URN() + "." + r.name.String()
+
+	datasetURN := string(r.store) + "://" + sections[0] + ":" + sections[1]
+	if r.kind == KindDataset {
+		return datasetURN, nil
+	}
+	return datasetURN + "." + sections[2], nil
 }
 
 func (r *Resource) Metadata() *Metadata {
 	return r.metadata
+}
+
+func (r *Resource) NameSections() []string {
+	return strings.Split(r.name.String(), nameSectionSeparator)
 }
 
 func (r *Resource) Kind() Kind {
@@ -129,8 +122,8 @@ func (r *Resource) Tenant() tenant.Tenant {
 	return r.tenant
 }
 
-func (r *Resource) Dataset() Dataset {
-	return r.dataset
+func (r *Resource) Store() Store {
+	return r.store
 }
 
 func (r *Resource) Status() Status {
@@ -139,48 +132,6 @@ func (r *Resource) Status() Status {
 
 func (r *Resource) Spec() map[string]any {
 	return r.spec
-}
-
-func (r *Resource) Validate() error {
-	switch r.kind {
-	case KindTable:
-		table, err := ConvertSpecTo[Table](r)
-		if err != nil {
-			return err
-		}
-		table.Name = r.name
-		table.Dataset = r.dataset
-		return table.Validate()
-
-	case KindExternalTable:
-		externalTable, err := ConvertSpecTo[ExternalTable](r)
-		if err != nil {
-			return err
-		}
-		externalTable.Name = r.name
-		externalTable.Dataset = r.dataset
-		return externalTable.Validate()
-
-	case KindView:
-		view, err := ConvertSpecTo[View](r)
-		if err != nil {
-			return err
-		}
-		view.Name = r.name
-		view.Dataset = r.dataset
-		return view.Validate()
-
-	case KindDataset:
-		ds, err := ConvertSpecTo[DatasetDetails](r)
-		if err != nil {
-			return err
-		}
-		ds.Dataset = r.dataset
-		return ds.Validate()
-
-	default:
-		return errors.InvalidArgument(EntityResource, "unknown kind")
-	}
 }
 
 func (r *Resource) Equal(incoming *Resource) bool {
@@ -193,7 +144,7 @@ func (r *Resource) Equal(incoming *Resource) bool {
 	if r.kind != incoming.kind {
 		return false
 	}
-	if r.dataset != incoming.dataset {
+	if r.store != incoming.store {
 		return false
 	}
 	if !reflect.DeepEqual(r.tenant, incoming.tenant) {
@@ -294,7 +245,7 @@ func FromExisting(existing *Resource, opts ...FromExistingOpt) *Resource {
 	output := &Resource{
 		name:     existing.name,
 		kind:     existing.kind,
-		dataset:  existing.dataset,
+		store:    existing.store,
 		tenant:   existing.tenant,
 		spec:     existing.spec,
 		metadata: existing.metadata,
@@ -304,14 +255,4 @@ func FromExisting(existing *Resource, opts ...FromExistingOpt) *Resource {
 		opt(output)
 	}
 	return output
-}
-
-func ConvertSpecTo[T DatasetDetails | Table | View | ExternalTable](res *Resource) (*T, error) {
-	var spec T
-	if err := mapstructure.Decode(res.spec, &spec); err != nil {
-		msg := fmt.Sprintf("%s: not able to decode spec for %s", err, res.FullName())
-		return nil, errors.InvalidArgument(EntityResource, msg)
-	}
-
-	return &spec, nil
 }

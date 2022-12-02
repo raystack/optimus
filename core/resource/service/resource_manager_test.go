@@ -360,3 +360,7 @@ func (m *mockDataStore) Update(ctx context.Context, r *resource.Resource) error 
 func (m *mockDataStore) BatchUpdate(ctx context.Context, resources []*resource.Resource) error {
 	return m.Called(ctx, resources).Error(0)
 }
+
+func (m *mockDataStore) Validate(r *resource.Resource) error {
+	return m.Called(r).Error(0)
+}

@@ -43,7 +43,8 @@ func TestBatches(t *testing.T) {
 		invalidRes, err2 := resource.NewResource(ds2Name+".invalid1", "stream", store, tnnt, meta1, spec)
 		assert.Nil(t, err2)
 
-		batches := bigquery.BatchesFrom([]*resource.Resource{ds1, tab1, view1, extTab1, view2, invalidRes}, nil)
+		batches, err := bigquery.BatchesFrom([]*resource.Resource{ds1, tab1, view1, extTab1, view2, invalidRes}, nil)
+		assert.NoError(t, err)
 		assert.Equal(t, 2, len(batches))
 
 		batch1, ok := batches[ds1Name]
@@ -65,12 +66,13 @@ func TestBatches(t *testing.T) {
 		clientProvider.On("Get", ctx, "secret_value").
 			Return(nil, errors.InvalidArgument("client", "cannot create"))
 
-		batches := bigquery.BatchesFrom([]*resource.Resource{tab1}, clientProvider)
-		batch1 := batches[tab1.Dataset().FullName()]
+		batches, err := bigquery.BatchesFrom([]*resource.Resource{tab1}, clientProvider)
+		assert.NoError(t, err)
+		batch1 := batches[ds1Name]
 
-		err := batch1.QueueJobs(ctx, "secret_value", nil)
+		err = batch1.QueueJobs(ctx, "secret_value", nil)
 		assert.NotNil(t, err)
-		assert.EqualError(t, err, "invalid argument for entity client: cannot create")
+		assert.ErrorContains(t, err, "cannot create")
 	})
 	t.Run("queues the jobs for execution", func(t *testing.T) {
 		updateDS := resource.FromExisting(ds1, resource.ReplaceStatus(resource.StatusToUpdate))
@@ -115,30 +117,33 @@ func TestBatches(t *testing.T) {
 		extTableHandle.On("Exists", ctx).Return(true)
 		defer extTableHandle.AssertExpectations(t)
 
+		dataset1, err := bigquery.DataSetFor(updateDS)
+		assert.NoError(t, err)
+		dataset2, err := bigquery.DataSetFor(updateExt1)
+		assert.NoError(t, err)
 		client := new(mockClient)
-		client.On("DatasetHandleFrom", updateDS).Return(datasetHandle)
-		client.On("TableHandleFrom", createTab1).Return(tableHandle)
-		client.On("TableHandleFrom", updateTab1).Return(tableHandle)
-		client.On("TableHandleFrom", successTab2).Return(tableHandle)
-		client.On("ViewHandleFrom", createView1).Return(viewHandle)
-		client.On("ViewHandleFrom", updateView1).Return(viewHandle)
-		client.On("ViewHandleFrom", createView2).Return(viewHandle)
-		client.On("ViewHandleFrom", updateView2).Return(viewHandle)
-		client.On("ExternalTableHandleFrom", createExt1).Return(extTableHandle)
-		client.On("ExternalTableHandleFrom", updateExt1).Return(extTableHandle)
-		bth := bigquery.Batch{Dataset: updateExt1.Dataset()}
-		ds, _ := bth.DatasetOrDefault()
-		client.On("DatasetHandleFrom", ds).Return(datasetHandle)
+		client.On("DatasetHandleFrom", dataset1).Return(datasetHandle)
+		client.On("DatasetHandleFrom", dataset2).Return(datasetHandle)
+		client.On("TableHandleFrom", dataset1, "table1").Return(tableHandle)
+		client.On("TableHandleFrom", dataset1, "table1").Return(tableHandle)
+		client.On("TableHandleFrom", dataset1, "table2").Return(tableHandle)
+		client.On("ViewHandleFrom", dataset1, "view1").Return(viewHandle)
+		client.On("ViewHandleFrom", dataset1, "view1").Return(viewHandle)
+		client.On("ViewHandleFrom", dataset2, "view2").Return(viewHandle)
+		client.On("ViewHandleFrom", dataset2, "view2").Return(viewHandle)
+		client.On("ExternalTableHandleFrom", dataset2, "extTable1").Return(extTableHandle)
+		client.On("ExternalTableHandleFrom", dataset2, "extTable1").Return(extTableHandle)
 		defer client.AssertExpectations(t)
 
 		clientProvider := new(mockClientProvider)
 		clientProvider.On("Get", ctx, "secret_value").Return(client, nil)
 		defer clientProvider.AssertExpectations(t)
 
-		batches := bigquery.BatchesFrom([]*resource.Resource{
+		batches, err := bigquery.BatchesFrom([]*resource.Resource{
 			updateDS, createTab1, createView1, createExt1, createView2, successTab2,
 			updateTab1, updateView1, updateExt1, updateView2,
 		}, clientProvider)
+		assert.NoError(t, err)
 
 		testParallel := parallel.NewRunner()
 		for _, batch := range batches {
@@ -158,22 +163,20 @@ func TestBatches(t *testing.T) {
 		assert.Equal(t, resource.StatusSuccess, updateView1.Status())
 		assert.Equal(t, resource.StatusUpdateFailure, updateExt1.Status())
 		assert.Equal(t, resource.StatusSuccess, updateView2.Status())
+		// Dataset for batch2
+		ds2, ok := states[6].Val.(*resource.Resource)
+		assert.True(t, ok)
+		assert.Equal(t, resource.StatusSuccess, ds2.Status())
 
-		positions := []int{0, 1, 2, 3, 5, 6, 7, 9, 10}
-		for _, i := range positions {
-			assert.Nil(t, states[i].Err)
+		var errMsgs []string
+		for _, st := range states {
+			if st.Err != nil {
+				errMsgs = append(errMsgs, st.Err.Error())
+			}
 		}
 
-		assert.NotNil(t, states[4].Err)
-		assert.EqualError(t, states[4].Err, "internal error for entity view1: some err")
-
-		// Dataset for batch2
-		dataset2, ok := states[6].Val.(*resource.Resource)
-		assert.True(t, ok)
-		assert.Equal(t, resource.StatusSuccess, dataset2.Status())
-
-		extErr := states[8].Err
-		assert.NotNil(t, extErr)
-		assert.EqualError(t, extErr, "internal error for entity ext1: err")
+		assert.Equal(t, 2, len(errMsgs))
+		assert.Contains(t, errMsgs, "internal error for entity view1: some err")
+		assert.Contains(t, errMsgs, "internal error for entity ext1: err")
 	})
 }

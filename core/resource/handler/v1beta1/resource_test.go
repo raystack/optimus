@@ -258,7 +258,7 @@ func TestResourceHandler(t *testing.T) {
 			_, err := handler.ListResourceSpecification(ctx, req)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
-				"resource: missing resource metadata: failed to parse resource ..")
+				"resource: missing resource metadata: failed to parse resource ")
 		})
 		t.Run("lists the resources successfully", func(t *testing.T) {
 			spec := map[string]any{"a": "b"}
@@ -396,7 +396,7 @@ func TestResourceHandler(t *testing.T) {
 			_, err := handler.CreateResource(ctx, createReq)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
-				"resource: invalid resource name: : failed to create resource")
+				"resource: resource name is empty: failed to create resource")
 		})
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			service := new(resourceService)

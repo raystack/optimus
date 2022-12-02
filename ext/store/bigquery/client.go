@@ -7,7 +7,6 @@ import (
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 
-	"github.com/odpf/optimus/core/resource"
 	"github.com/odpf/optimus/internal/errors"
 )
 
@@ -39,23 +38,23 @@ func NewClient(ctx context.Context, svcAccount string) (*BqClient, error) {
 	return &BqClient{bq: c}, nil
 }
 
-func (c *BqClient) DatasetHandleFrom(res *resource.Resource) ResourceHandle {
-	ds := c.bq.Dataset(res.Dataset().Schema)
-	return NewDatasetHandle(ds)
+func (c *BqClient) DatasetHandleFrom(ds Dataset) ResourceHandle {
+	dsHandle := c.bq.DatasetInProject(ds.Project, ds.DatasetName)
+	return NewDatasetHandle(dsHandle)
 }
 
-func (c *BqClient) TableHandleFrom(res *resource.Resource) ResourceHandle {
-	t := c.bq.Dataset(res.Dataset().Schema).Table(res.Name().String())
+func (c *BqClient) TableHandleFrom(ds Dataset, name string) ResourceHandle {
+	t := c.bq.DatasetInProject(ds.Project, ds.DatasetName).Table(name)
 	return NewTableHandle(t)
 }
 
-func (c *BqClient) ExternalTableHandleFrom(res *resource.Resource) ResourceHandle {
-	t := c.bq.Dataset(res.Dataset().Schema).Table(res.Name().String())
+func (c *BqClient) ExternalTableHandleFrom(ds Dataset, name string) ResourceHandle {
+	t := c.bq.DatasetInProject(ds.Project, ds.DatasetName).Table(name)
 	return NewExternalTableHandle(t)
 }
 
-func (c *BqClient) ViewHandleFrom(res *resource.Resource) ResourceHandle {
-	t := c.bq.Dataset(res.Dataset().Schema).Table(res.Name().String())
+func (c *BqClient) ViewHandleFrom(ds Dataset, name string) ResourceHandle {
+	t := c.bq.DatasetInProject(ds.Project, ds.DatasetName).Table(name)
 	return NewViewHandle(t)
 }
 

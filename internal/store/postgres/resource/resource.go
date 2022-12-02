@@ -33,15 +33,16 @@ type Resource struct {
 func fromResourceToModel(r *resource.Resource) *Resource {
 	metadata, _ := json.Marshal(r.Metadata())
 	spec, _ := json.Marshal(r.Spec())
+	urn, _ := r.URN() // TODO: handle this properly
 	return &Resource{
 		FullName:      r.FullName(),
 		Kind:          r.Kind().String(),
-		Store:         r.Dataset().Store.String(),
+		Store:         r.Store().String(),
 		ProjectName:   r.Tenant().ProjectName().String(),
 		NamespaceName: r.Tenant().NamespaceName().String(),
 		Metadata:      metadata,
 		Spec:          spec,
-		URN:           r.URN(),
+		URN:           urn,
 		Status:        r.Status().String(),
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),

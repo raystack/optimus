@@ -11,7 +11,7 @@ import (
 )
 
 type Batch struct {
-	Dataset        resource.Dataset
+	Dataset        Dataset
 	DatasetDetails *resource.Resource
 
 	provider ClientProvider
@@ -34,7 +34,11 @@ func (b *Batch) QueueJobs(ctx context.Context, account string, runner *parallel.
 
 	runner.Add(func(res *resource.Resource) func() (interface{}, error) {
 		return func() (interface{}, error) {
-			dsHandle := client.DatasetHandleFrom(res)
+			ds, err := DataSetFor(res)
+			if err != nil {
+				return res, err
+			}
+			dsHandle := client.DatasetHandleFrom(ds)
 			err = createOrUpdate(ctx, dsHandle, res)
 			return res, err
 		}
@@ -43,7 +47,15 @@ func (b *Batch) QueueJobs(ctx context.Context, account string, runner *parallel.
 	for _, table := range b.Tables {
 		runner.Add(func(res *resource.Resource) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				handle := client.TableHandleFrom(res)
+				ds, err := DataSetFor(res)
+				if err != nil {
+					return res, err
+				}
+				resourceName, err := ResourceNameFor(res)
+				if err != nil {
+					return res, err
+				}
+				handle := client.TableHandleFrom(ds, resourceName)
 				err = createOrUpdate(ctx, handle, res)
 				return res, err
 			}
@@ -53,7 +65,15 @@ func (b *Batch) QueueJobs(ctx context.Context, account string, runner *parallel.
 	for _, extTables := range b.ExternalTables {
 		runner.Add(func(res *resource.Resource) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				handle := client.ExternalTableHandleFrom(res)
+				ds, err := DataSetFor(res)
+				if err != nil {
+					return res, err
+				}
+				resourceName, err := ResourceNameFor(res)
+				if err != nil {
+					return res, err
+				}
+				handle := client.ExternalTableHandleFrom(ds, resourceName)
 				err = createOrUpdate(ctx, handle, res)
 				return res, err
 			}
@@ -63,7 +83,15 @@ func (b *Batch) QueueJobs(ctx context.Context, account string, runner *parallel.
 	for _, view := range b.Views {
 		runner.Add(func(res *resource.Resource) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				handle := client.ViewHandleFrom(res)
+				ds, err := DataSetFor(res)
+				if err != nil {
+					return res, err
+				}
+				resourceName, err := ResourceNameFor(res)
+				if err != nil {
+					return res, err
+				}
+				handle := client.ViewHandleFrom(ds, resourceName)
 				err = createOrUpdate(ctx, handle, res)
 				return res, err
 			}
@@ -122,16 +150,21 @@ func (b *Batch) DatasetOrDefault() (*resource.Resource, error) {
 	return resToCreate, nil
 }
 
-func BatchesFrom(resources []*resource.Resource, provider ClientProvider) map[string]Batch {
+func BatchesFrom(resources []*resource.Resource, provider ClientProvider) (map[string]Batch, error) {
 	var mapping = make(map[string]Batch)
 
+	me := errors.NewMultiError("error while creating batches")
 	for _, res := range resources {
-		datasetName := res.Dataset().FullName()
+		dataset, err := DataSetFor(res)
+		if err != nil {
+			me.Append(err)
+			continue
+		}
 
-		batch, ok := mapping[datasetName]
+		batch, ok := mapping[dataset.FullName()]
 		if !ok {
 			batch = Batch{
-				Dataset:  res.Dataset(),
+				Dataset:  dataset,
 				provider: provider,
 			}
 		}
@@ -148,7 +181,7 @@ func BatchesFrom(resources []*resource.Resource, provider ClientProvider) map[st
 		default:
 		}
 
-		mapping[datasetName] = batch
+		mapping[dataset.FullName()] = batch
 	}
-	return mapping
+	return mapping, errors.MultiToError(me)
 }

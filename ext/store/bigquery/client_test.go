@@ -6,17 +6,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/resource"
-	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/ext/store/bigquery"
 )
 
 func TestBqClient(t *testing.T) {
 	ctx := context.Background()
-	bq := resource.Bigquery
-	tnnt, _ := tenant.NewTenant("proj", "ns")
-	metadata := resource.Metadata{Description: "meta"}
-	spec := map[string]any{"description": "resource"}
 	testCredJSON := `
 {
   "type": "service_account",
@@ -36,7 +30,7 @@ func TestBqClient(t *testing.T) {
 		t.Run("returns error when invalid creds", func(t *testing.T) {
 			_, err := bigquery.NewClient(ctx, "")
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "internal error for entity BigqueryStore: failed to read account")
+			assert.ErrorContains(t, err, "failed to read account")
 		})
 		t.Run("returns client on creds", func(t *testing.T) {
 			client, err := bigquery.NewClient(ctx, testCredJSON)
@@ -50,8 +44,7 @@ func TestBqClient(t *testing.T) {
 			c, err := bigquery.NewClient(ctx, testCredJSON)
 			assert.Nil(t, err)
 
-			fullName := "project.dataset"
-			dataset, err := resource.NewResource(fullName, resource.KindDataset, bq, tnnt, &metadata, spec)
+			dataset, err := bigquery.DataSetFrom("project", "dataset")
 			assert.Nil(t, err)
 
 			handle := c.DatasetHandleFrom(dataset)
@@ -63,11 +56,12 @@ func TestBqClient(t *testing.T) {
 			c, err := bigquery.NewClient(ctx, testCredJSON)
 			assert.Nil(t, err)
 
-			fullName := "project.dataset.table"
-			table, err := resource.NewResource(fullName, resource.KindTable, bq, tnnt, &metadata, spec)
+			dataset, err := bigquery.DataSetFrom("project", "dataset")
 			assert.Nil(t, err)
 
-			handle := c.TableHandleFrom(table)
+			assert.Nil(t, err)
+
+			handle := c.TableHandleFrom(dataset, "table")
 			assert.NotNil(t, handle)
 		})
 	})
@@ -76,11 +70,10 @@ func TestBqClient(t *testing.T) {
 			c, err := bigquery.NewClient(ctx, testCredJSON)
 			assert.Nil(t, err)
 
-			fullName := "project.dataset.external_table"
-			extTable, err := resource.NewResource(fullName, resource.KindView, bq, tnnt, &metadata, spec)
+			dataset, err := bigquery.DataSetFrom("project", "dataset")
 			assert.Nil(t, err)
 
-			handle := c.ExternalTableHandleFrom(extTable)
+			handle := c.ExternalTableHandleFrom(dataset, "external_table")
 			assert.NotNil(t, handle)
 		})
 	})
@@ -89,11 +82,10 @@ func TestBqClient(t *testing.T) {
 			c, err := bigquery.NewClient(ctx, testCredJSON)
 			assert.Nil(t, err)
 
-			fullName := "project.dataset.view"
-			view, err := resource.NewResource(fullName, resource.KindView, bq, tnnt, &metadata, spec)
+			dataset, err := bigquery.DataSetFrom("project", "dataset")
 			assert.Nil(t, err)
 
-			handle := c.ViewHandleFrom(view)
+			handle := c.ViewHandleFrom(dataset, "view")
 			assert.NotNil(t, handle)
 		})
 	})

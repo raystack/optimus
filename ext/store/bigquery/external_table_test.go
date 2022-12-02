@@ -36,9 +36,7 @@ func TestExternalTableHandle(t *testing.T) {
 
 			err = etHandle.Create(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource: 1 error(s) decoding:\n\n* "+
-				"'description' expected type 'string', got unconvertible type '[]string', value: '[a b]': not able to "+
-				"decode spec for proj.dataset.extTable1")
+			assert.ErrorContains(t, err, "not able to decode spec for proj.dataset.extTable1")
 		})
 		t.Run("returns error when cannot get metadata", func(t *testing.T) {
 			et := new(mockBigQueryTable)
@@ -53,8 +51,7 @@ func TestExternalTableHandle(t *testing.T) {
 
 			err = etHandle.Create(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource_external_table: failed to get "+
-				"metadata to create for proj.dataset.extTable1")
+			assert.ErrorContains(t, err, "failed to get metadata to create for proj.dataset.extTable1")
 		})
 		t.Run("returns error when external table already present on bigquery", func(t *testing.T) {
 			bqErr := &googleapi.Error{Code: 409, Message: "Already Exists project.dataset.extTable1"}
@@ -70,8 +67,7 @@ func TestExternalTableHandle(t *testing.T) {
 
 			err = etHandle.Create(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "resource already exists for entity resource_external_table: external "+
-				"table already exists on bigquery: proj.dataset.extTable1")
+			assert.ErrorContains(t, err, "external table already exists on bigquery: proj.dataset.extTable1")
 		})
 		t.Run("returns error when external table type is wrong", func(t *testing.T) {
 			spec := map[string]any{
@@ -96,7 +92,7 @@ func TestExternalTableHandle(t *testing.T) {
 
 			err = etHandle.Create(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource_external_table: source format not yet implemented avro")
+			assert.ErrorContains(t, err, "source format not yet implemented avro")
 		})
 		t.Run("returns error when bigquery returns error", func(t *testing.T) {
 			et := new(mockBigQueryTable)
@@ -111,8 +107,7 @@ func TestExternalTableHandle(t *testing.T) {
 
 			err = etHandle.Create(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "internal error for entity resource_external_table: failed to create "+
-				"external table proj.dataset.extTable1")
+			assert.ErrorContains(t, err, "failed to create external table proj.dataset.extTable1")
 		})
 		t.Run("successfully creates the resource", func(t *testing.T) {
 			spec := map[string]any{
@@ -177,9 +172,7 @@ func TestExternalTableHandle(t *testing.T) {
 
 			err = etHandle.Update(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource: 1 error(s) decoding:\n\n* "+
-				"'description' expected type 'string', got unconvertible type '[]string', value: '[a b]': not able to "+
-				"decode spec for proj.dataset.extTable1")
+			assert.ErrorContains(t, err, "not able to decode spec for proj.dataset.extTable1")
 		})
 		t.Run("returns error when cannot get metadata", func(t *testing.T) {
 			et := new(mockBigQueryTable)
@@ -194,8 +187,7 @@ func TestExternalTableHandle(t *testing.T) {
 
 			err = etHandle.Update(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource_external_table: failed to get "+
-				"metadata to update for proj.dataset.extTable1")
+			assert.ErrorContains(t, err, "failed to get metadata to update for proj.dataset.extTable1")
 		})
 		t.Run("returns error when external table not present on bigquery", func(t *testing.T) {
 			bqErr := &googleapi.Error{Code: 404}
@@ -211,8 +203,7 @@ func TestExternalTableHandle(t *testing.T) {
 
 			err = etHandle.Update(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "not found for entity resource_external_table: failed to update "+
-				"external_table in bigquery for proj.dataset.extTable1")
+			assert.ErrorContains(t, err, "failed to update external_table in bigquery for proj.dataset.extTable1")
 		})
 		t.Run("returns error when bigquery returns error", func(t *testing.T) {
 			et := new(mockBigQueryTable)
@@ -227,8 +218,7 @@ func TestExternalTableHandle(t *testing.T) {
 
 			err = etHandle.Update(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "internal error for entity resource_external_table: failed to update "+
-				"external_table on bigquery for proj.dataset.extTable1")
+			assert.ErrorContains(t, err, "failed to update external_table on bigquery for proj.dataset.extTable1")
 		})
 		t.Run("successfully updates the resource", func(t *testing.T) {
 			meta := &bq.TableMetadata{
