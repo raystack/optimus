@@ -82,34 +82,6 @@ func (s Spec) Metadata() *Metadata {
 	return s.metadata
 }
 
-func (s Spec) Validate() error {
-	me := errors.NewMultiError("errors on spec")
-	if err := validateMap(s.labels); err != nil {
-		me.Append(errors.NewError(errors.ErrFailedPrecond, EntityJob, fmt.Sprintf("label is invalid: %s", err.Error())))
-	}
-	if s.metadata != nil {
-		if err := s.metadata.Validate(); err != nil {
-			me.Append(errors.NewError(errors.ErrFailedPrecond, EntityJob, fmt.Sprintf("metadata is invalid: %s", err.Error())))
-		}
-	}
-	if s.asset != nil {
-		if err := s.asset.Validate(); err != nil {
-			me.Append(errors.NewError(errors.ErrFailedPrecond, EntityJob, fmt.Sprintf("asset is invalid: %s", err.Error())))
-		}
-	}
-	for _, a := range s.alerts {
-		if err := a.Validate(); err != nil {
-			me.Append(errors.NewError(errors.ErrFailedPrecond, EntityJob, fmt.Sprintf("alert config is invalid: %s", err.Error())))
-		}
-	}
-	if s.upstream != nil {
-		if err := s.upstream.Validate(); err != nil {
-			me.Append(errors.NewError(errors.ErrFailedPrecond, EntityJob, fmt.Sprintf("upstream config is invalid: %s", err.Error())))
-		}
-	}
-	return errors.MultiToError(me)
-}
-
 func (s Spec) IsEqual(otherSpec *Spec) bool {
 	if s.version != otherSpec.version {
 		return false
@@ -141,13 +113,35 @@ func (s Spec) IsEqual(otherSpec *Spec) bool {
 	if !reflect.DeepEqual(s.hooks, otherSpec.hooks) {
 		return false
 	}
+
 	if !reflect.DeepEqual(s.asset, otherSpec.asset) {
-		return false
+		if s.asset == nil && otherSpec.asset.assets != nil {
+			return false
+		}
+		if otherSpec.asset == nil && s.asset.assets != nil {
+			return false
+		}
+		if !reflect.DeepEqual(s.asset.assets, otherSpec.asset.assets) {
+			return false
+		}
 	}
-	if !reflect.DeepEqual(s.alerts, otherSpec.alerts) {
-		return false
+
+	if !reflect.DeepEqual(s.upstream, otherSpec.upstream) {
+		if s.upstream == nil && (otherSpec.upstream.UpstreamNames() != nil || otherSpec.upstream.HTTPUpstreams() != nil) {
+			return false
+		}
+		if otherSpec.upstream == nil && (s.upstream.UpstreamNames() != nil || s.upstream.HTTPUpstreams() != nil) {
+			return false
+		}
+		if s.upstream != nil && otherSpec.upstream != nil {
+			if !reflect.DeepEqual(s.upstream.httpUpstreams, otherSpec.upstream.httpUpstreams) || !reflect.DeepEqual(s.upstream.upstreamNames, otherSpec.upstream.upstreamNames) {
+				return false
+			}
+		}
 	}
-	return reflect.DeepEqual(s.upstream, otherSpec.upstream)
+
+	return reflect.DeepEqual(s.alerts, otherSpec.alerts)
+
 }
 
 type SpecBuilder struct {
@@ -607,8 +601,15 @@ type Asset struct {
 	assets map[string]string
 }
 
-func NewAsset(fileNameToContent map[string]string) *Asset {
-	return &Asset{assets: fileNameToContent}
+func NewAsset(fileNameToContent map[string]string) (*Asset, error) {
+	if fileNameToContent == nil {
+		return nil, nil
+	}
+	asset := &Asset{assets: fileNameToContent}
+	if err := asset.Validate(); err != nil {
+		return nil, err
+	}
+	return asset, nil
 }
 
 func (a Asset) Validate() error {
@@ -620,6 +621,18 @@ func (a Asset) Validate() error {
 
 func (a Asset) Assets() map[string]string {
 	return a.assets
+}
+
+func (a Asset) IsEqual(otherAsset *Asset) bool {
+	if reflect.DeepEqual(a, otherAsset) {
+		return true
+	}
+	if otherAsset == nil {
+		if a.Assets() == nil {
+			return true
+		}
+	}
+	return false
 }
 
 type EventType string
@@ -844,6 +857,13 @@ func (s SpecUpstreamBuilder) WithSpecHTTPUpstream(httpUpstreams []*SpecHTTPUpstr
 	return &SpecUpstreamBuilder{
 		upstream: &upstream,
 	}
+}
+
+func NewLabels(labels map[string]string) (map[string]string, error) {
+	if err := validateMap(labels); err != nil {
+		return nil, err
+	}
+	return labels, nil
 }
 
 // TODO: check whether this is supposed to be here or in utils

@@ -294,7 +294,8 @@ func TestPluginService(t *testing.T) {
 				Dependencies: []string{jobSource.String()}},
 				nil)
 
-			asset := job.NewAsset(map[string]string{"sample-key": "sample-value"})
+			asset, err := job.NewAsset(map[string]string{"sample-key": "sample-value"})
+			assert.NoError(t, err)
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithAsset(asset).Build()
 
 			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)

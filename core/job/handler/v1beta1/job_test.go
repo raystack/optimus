@@ -599,6 +599,7 @@ func TestNewJobHandler(t *testing.T) {
 		})
 	})
 	t.Run("ReplaceAllJobSpecifications", func(t *testing.T) {
+		var jobNamesToSkip []job.Name
 		t.Run("replaces all job specifications of a tenant", func(t *testing.T) {
 			jobService := new(JobService)
 
@@ -641,7 +642,7 @@ func TestNewJobHandler(t *testing.T) {
 			stream.On("Recv").Return(request, nil).Once()
 			stream.On("Recv").Return(nil, io.EOF).Once()
 
-			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, mock.Anything).Return(nil)
+			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesToSkip, mock.Anything).Return(nil)
 
 			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Twice()
 
@@ -686,8 +687,8 @@ func TestNewJobHandler(t *testing.T) {
 			stream.On("Recv").Return(request2, nil).Once()
 			stream.On("Recv").Return(nil, io.EOF).Once()
 
-			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, mock.Anything).Return(nil)
-			jobService.On("ReplaceAll", ctx, otherTenant, mock.Anything, mock.Anything).Return(nil)
+			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesToSkip, mock.Anything).Return(nil)
+			jobService.On("ReplaceAll", ctx, otherTenant, mock.Anything, jobNamesToSkip, mock.Anything).Return(nil)
 
 			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Twice()
 
@@ -729,7 +730,7 @@ func TestNewJobHandler(t *testing.T) {
 			stream.On("Recv").Return(request, nil).Once()
 			stream.On("Recv").Return(nil, io.EOF).Once()
 
-			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, mock.Anything).Return(nil)
+			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, []job.Name{"job-A"}, mock.Anything).Return(nil)
 
 			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Twice()
 
@@ -780,7 +781,7 @@ func TestNewJobHandler(t *testing.T) {
 			stream.On("Recv").Return(request2, nil).Once()
 			stream.On("Recv").Return(nil, io.EOF).Once()
 
-			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, mock.Anything).Return(nil)
+			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesToSkip, mock.Anything).Return(nil)
 
 			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Times(3)
 
@@ -829,7 +830,7 @@ func TestNewJobHandler(t *testing.T) {
 			stream.On("Recv").Return(request, nil).Once()
 			stream.On("Recv").Return(nil, io.EOF).Once()
 
-			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, mock.Anything).Return(errors.New("internal error"))
+			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesToSkip, mock.Anything).Return(errors.New("internal error"))
 
 			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Twice()
 
@@ -1808,13 +1809,13 @@ func (_m *JobService) Refresh(ctx context.Context, projectName tenant.ProjectNam
 	return r0
 }
 
-// ReplaceAll provides a mock function with given fields: ctx, jobTenant, jobs, logWriter
-func (_m *JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, logWriter writer.LogWriter) error {
-	ret := _m.Called(ctx, jobTenant, jobs, logWriter)
+// ReplaceAll provides a mock function with given fields: ctx, jobTenant, jobs, jobNamesToSkip, logWriter
+func (_m *JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, jobNamesToSkip []job.Name, logWriter writer.LogWriter) error {
+	ret := _m.Called(ctx, jobTenant, jobs, jobNamesToSkip, logWriter)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []*job.Spec, writer.LogWriter) error); ok {
-		r0 = rf(ctx, jobTenant, jobs, logWriter)
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []*job.Spec, []job.Name, writer.LogWriter) error); ok {
+		r0 = rf(ctx, jobTenant, jobs, jobNamesToSkip, logWriter)
 	} else {
 		r0 = ret.Error(0)
 	}

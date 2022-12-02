@@ -96,7 +96,10 @@ func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
 		return nil, err
 	}
 
-	metadata := toMetadata(js.Metadata)
+	metadata, err := toMetadata(js.Metadata)
+	if err != nil {
+		return nil, err
+	}
 
 	version, err := job.VersionFrom(int(js.Version))
 	if err != nil {
@@ -110,10 +113,20 @@ func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
 	if err != nil {
 		return nil, err
 	}
-	asset := job.NewAsset(js.Assets)
+
+	labels, err := job.NewLabels(js.Labels)
+	if err != nil {
+		return nil, err
+	}
+
+	asset, err := job.NewAsset(js.Assets)
+	if err != nil {
+		return nil, err
+	}
+
 	return job.NewSpecBuilder(version, name, owner, schedule, window, task).
 		WithDescription(js.Description).
-		WithLabels(js.Labels).
+		WithLabels(labels).
 		WithHooks(hooks).
 		WithAlerts(alerts).
 		WithSpecUpstream(upstream).
@@ -203,7 +216,11 @@ func toAlerts(notifiers []*pb.JobSpecification_Behavior_Notifiers) ([]*job.Alert
 		if err != nil {
 			return nil, err
 		}
-		alerts[i] = job.NewAlertBuilder(alertOn, notify.Channels).WithConfig(config).Build()
+		alertConfig := job.NewAlertBuilder(alertOn, notify.Channels).WithConfig(config).Build()
+		if err = alertConfig.Validate(); err != nil {
+			return nil, err
+		}
+		alerts[i] = alertConfig
 	}
 	return alerts, nil
 }
@@ -241,6 +258,9 @@ func toSpecUpstreams(upstreamProtos []*pb.JobDependency) (*job.SpecUpstream, err
 		httpUpstreams = append(httpUpstreams, httpUpstream)
 	}
 	upstream := job.NewSpecUpstreamBuilder().WithUpstreamNames(upstreamNames).WithSpecHTTPUpstream(httpUpstreams).Build()
+	if err := upstream.Validate(); err != nil {
+		return nil, err
+	}
 	return upstream, nil
 }
 
@@ -265,9 +285,9 @@ func fromSpecUpstreams(upstreams *job.SpecUpstream) []*pb.JobDependency {
 	return dependencies
 }
 
-func toMetadata(jobMetadata *pb.JobMetadata) *job.Metadata {
+func toMetadata(jobMetadata *pb.JobMetadata) (*job.Metadata, error) {
 	if jobMetadata == nil {
-		return nil
+		return nil, nil
 	}
 
 	var resourceMetadata *job.MetadataResource
@@ -284,7 +304,11 @@ func toMetadata(jobMetadata *pb.JobMetadata) *job.Metadata {
 		schedulerMetadata["pool"] = metadataSchedulerProto.Pool
 		schedulerMetadata["queue"] = metadataSchedulerProto.Queue
 	}
-	return job.NewMetadataBuilder().WithResource(resourceMetadata).WithScheduler(schedulerMetadata).Build()
+	metadata := job.NewMetadataBuilder().WithResource(resourceMetadata).WithScheduler(schedulerMetadata).Build()
+	if err := metadata.Validate(); err != nil {
+		return nil, err
+	}
+	return metadata, nil
 }
 
 func fromMetadata(metadata *job.Metadata) *pb.JobMetadata {

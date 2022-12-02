@@ -93,7 +93,8 @@ func TestPostgresJobRepository(t *testing.T) {
 			upstreamName1 := job.SpecUpstreamNameFrom("job-upstream-1")
 			upstreamName2 := job.SpecUpstreamNameFrom("job-upstream-2")
 			jobUpstream := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName1, upstreamName2}).Build()
-			jobAsset := job.NewAsset(map[string]string{"sample-asset": "value-asset"})
+			jobAsset, err := job.NewAsset(map[string]string{"sample-asset": "value-asset"})
+			assert.NoError(t, err)
 			resourceRequestConfig := job.NewMetadataResourceConfig("250m", "128Mi")
 			resourceLimitConfig := job.NewMetadataResourceConfig("250m", "128Mi")
 			resourceMetadata := job.NewResourceMetadata(resourceRequestConfig, resourceLimitConfig)
@@ -199,7 +200,8 @@ func TestPostgresJobRepository(t *testing.T) {
 			upstreamName1 := job.SpecUpstreamNameFrom("job-upstream-1")
 			upstreamName2 := job.SpecUpstreamNameFrom("job-upstream-2")
 			jobUpstream := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName1, upstreamName2}).Build()
-			jobAsset := job.NewAsset(map[string]string{"sample-asset": "value-asset"})
+			jobAsset, err := job.NewAsset(map[string]string{"sample-asset": "value-asset"})
+			assert.NoError(t, err)
 			resourceRequestConfig := job.NewMetadataResourceConfig("250m", "128Mi")
 			resourceLimitConfig := job.NewMetadataResourceConfig("250m", "128Mi")
 			resourceMetadata := job.NewResourceMetadata(resourceRequestConfig, resourceLimitConfig)
@@ -260,7 +262,8 @@ func TestPostgresJobRepository(t *testing.T) {
 			upstreamName1 := job.SpecUpstreamNameFrom("job-upstream-1")
 			upstreamName2 := job.SpecUpstreamNameFrom("job-upstream-2")
 			jobUpstream := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName1, upstreamName2}).Build()
-			jobAsset := job.NewAsset(map[string]string{"sample-asset": "value-asset"})
+			jobAsset, err := job.NewAsset(map[string]string{"sample-asset": "value-asset"})
+			assert.NoError(t, err)
 			resourceRequestConfig := job.NewMetadataResourceConfig("250m", "128Mi")
 			resourceLimitConfig := job.NewMetadataResourceConfig("250m", "128Mi")
 			resourceMetadata := job.NewResourceMetadata(resourceRequestConfig, resourceLimitConfig)
@@ -670,7 +673,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
 
 			jobRepo := postgres.NewJobRepository(db)
-			_, err := jobRepo.Add(ctx, []*job.Job{jobA})
+			_, err = jobRepo.Add(ctx, []*job.Job{jobA})
 			assert.NoError(t, err)
 
 			actual, err := jobRepo.GetByJobName(ctx, sampleTenant.ProjectName(), "sample-job-A")
@@ -686,7 +689,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
 
 			jobRepo := postgres.NewJobRepository(db)
-			_, err := jobRepo.Add(ctx, []*job.Job{jobA})
+			_, err = jobRepo.Add(ctx, []*job.Job{jobA})
 			assert.NoError(t, err)
 
 			actual, err := jobRepo.GetByJobName(ctx, sampleTenant.ProjectName(), "sample-job-A")
@@ -715,7 +718,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", []job.ResourceURN{"dev.resource.sample_c"})
 
 			jobRepo := postgres.NewJobRepository(db)
-			_, err := jobRepo.Add(ctx, []*job.Job{jobA, jobB})
+			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB})
 			assert.NoError(t, err)
 
 			actual, err := jobRepo.GetAllByProjectName(ctx, sampleTenant.ProjectName())

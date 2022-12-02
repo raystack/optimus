@@ -40,7 +40,7 @@ type JobService interface {
 	Get(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name) (jobSpec *job.Job, err error)
 	GetTaskInfo(ctx context.Context, task *job.Task) (*job.Task, error)
 	GetByFilter(ctx context.Context, filters ...filter.FilterOpt) (jobSpecs []*job.Job, err error)
-	ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, logWriter writer.LogWriter) error
+	ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, jobNamesToSkip []job.Name, logWriter writer.LogWriter) error
 	Refresh(ctx context.Context, projectName tenant.ProjectName, logWriter writer.LogWriter, filters ...filter.FilterOpt) error
 	Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, logWriter writer.LogWriter) error
 
@@ -271,19 +271,26 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 		}
 
 		var jobSpecs []*job.Spec
+		var jobNamesToSkip []job.Name
 		for _, jobProto := range request.Jobs {
 			jobSpec, err := fromJobProto(jobProto)
 			if err != nil {
-				errMsg := fmt.Sprintf("cannot adapt job specification %s: %s", jobProto.Name, err.Error())
+				errMsg := fmt.Sprintf("[%s] cannot adapt job specification %s: %s", request.GetNamespaceName(), jobProto.Name, err.Error())
 				jh.l.Error(errMsg)
 				responseWriter.Write(writer.LogLevelError, errMsg)
+
+				jobNameToSkip, err := job.NameFrom(jobProto.Name)
+				if err == nil {
+					jobNamesToSkip = append(jobNamesToSkip, jobNameToSkip)
+				}
+
 				errNamespaces = append(errNamespaces, request.NamespaceName)
 				continue
 			}
 			jobSpecs = append(jobSpecs, jobSpec)
 		}
 
-		if err := jh.jobService.ReplaceAll(stream.Context(), jobTenant, jobSpecs, responseWriter); err != nil {
+		if err := jh.jobService.ReplaceAll(stream.Context(), jobTenant, jobSpecs, jobNamesToSkip, responseWriter); err != nil {
 			errMsg := fmt.Sprintf("replace all job specifications failure for namespace %s: %s", request.NamespaceName, err.Error())
 			jh.l.Error(errMsg)
 			responseWriter.Write(writer.LogLevelError, errMsg)
