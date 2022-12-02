@@ -124,7 +124,7 @@ func TestBackupService(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, "p.d.t", result.ResourceNames[0])
 			assert.Equal(t, "p.d.t1", result.IgnoredResources[0].Name)
-			assert.Equal(t, "no record found in tenant", result.IgnoredResources[0].Reason)
+			assert.Equal(t, "no resource found in namespace", result.IgnoredResources[0].Reason)
 			assert.Equal(t, "p.d.t2", result.IgnoredResources[1].Name)
 		})
 	})
