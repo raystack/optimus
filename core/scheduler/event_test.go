@@ -12,11 +12,9 @@ import (
 func TestFromStringToEventType(t *testing.T) {
 	t.Run("FromStringToEventType", func(t *testing.T) {
 		expectationMap := map[string]JobEventType{
-			"TYPE_JOB_START":   JobStartEvent,
-			"TYPE_JOB_FAIL":    JobFailEvent,
+			"TYPE_SLA_MISS":    SLAMissEvent,
+			"TYPE_JOB_FAIL":    JobFailureEvent,
 			"TYPE_JOB_SUCCESS": JobSuccessEvent,
-
-			"TYPE_SLA_MISS": SLAMissEvent,
 
 			"TYPE_TASK_START":   TaskStartEvent,
 			"TYPE_TASK_RETRY":   TaskRetryEvent,
@@ -168,12 +166,7 @@ func TestFromStringToEventType(t *testing.T) {
 	t.Run("IsOfType JobEventCategory", func(t *testing.T) {
 		positiveExpectationMap := map[JobEventType]JobEventCategory{
 			JobFailureEvent: EventCategoryJobFailure,
-			JobFailEvent:    EventCategoryJobFailure,
-			TaskFailEvent:   EventCategoryJobFailure,
-			HookFailEvent:   EventCategoryJobFailure,
-			SensorFailEvent: EventCategoryJobFailure,
-
-			SLAMissEvent: EventCategorySLAMiss,
+			SLAMissEvent:    EventCategorySLAMiss,
 		}
 		for eventType, category := range positiveExpectationMap {
 			assert.True(t, eventType.IsOfType(category))
@@ -181,7 +174,6 @@ func TestFromStringToEventType(t *testing.T) {
 		NegativeExpectationMap := map[JobEventType]JobEventCategory{
 			SLAMissEvent:       EventCategoryJobFailure,
 			SensorRetryEvent:   EventCategoryJobFailure,
-			JobFailureEvent:    EventCategorySLAMiss,
 			SensorSuccessEvent: EventCategorySLAMiss,
 		}
 		for eventType, category := range NegativeExpectationMap {

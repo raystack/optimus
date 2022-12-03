@@ -22,7 +22,7 @@ const (
 	EventCategoryJobFailure JobEventCategory = "failure"
 
 	SLAMissEvent    JobEventType = "sla_miss"
-	JobFailEvent    JobEventType = "job_fail"
+	JobFailureEvent JobEventType = "job_fail"
 	JobSuccessEvent JobEventType = "job_success"
 
 	TaskStartEvent   JobEventType = "task_start"
@@ -44,8 +44,8 @@ const (
 func FromStringToEventType(name string) (JobEventType, error) {
 	name = strings.TrimPrefix(strings.ToLower(name), strings.ToLower("TYPE_"))
 	switch name {
-	case string(JobFailEvent):
-		return JobFailEvent, nil
+	case string(JobFailureEvent):
+		return JobFailureEvent, nil
 	case string(JobSuccessEvent):
 		return JobSuccessEvent, nil
 	case string(SLAMissEvent):
@@ -92,7 +92,7 @@ type Event struct {
 func (incomingEvent JobEventType) IsOfType(category JobEventCategory) bool {
 	switch category {
 	case EventCategoryJobFailure:
-		if incomingEvent == JobFailEvent {
+		if incomingEvent == JobFailureEvent {
 			return true
 		}
 	case EventCategorySLAMiss:

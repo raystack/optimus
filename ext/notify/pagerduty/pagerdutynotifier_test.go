@@ -35,7 +35,7 @@ func TestPagerDuty(t *testing.T) {
 				meta: scheduler.Event{
 					JobName: "foo-job-spec",
 					Tenant:  tnnt,
-					Type:    "failure",
+					Type:    "job_fail",
 					Values:  map[string]any(nil),
 				},
 			},
@@ -83,7 +83,7 @@ func TestPagerDuty(t *testing.T) {
 				meta: scheduler.Event{
 					JobName: jobName,
 					Tenant:  tnnt,
-					Type:    "failure",
+					Type:    "job_fail",
 					Values:  map[string]any(nil),
 				},
 			},

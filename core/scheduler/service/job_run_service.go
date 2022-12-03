@@ -65,6 +65,7 @@ func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proje
 		return nil, err
 	}
 	// TODO: Use scheduled_at instead of executed_at for computations, for deterministic calculations
+	// Todo: later, always return scheduleTime, for scheduleTimes greater than a given date
 	var jobRun *scheduler.JobRun
 	if config.JobRunID.IsEmpty() {
 		jobRun, err = s.repo.GetByScheduledAt(ctx, job.Tenant, jobName, config.ScheduledAt)
@@ -73,10 +74,6 @@ func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proje
 	}
 	var executedAt time.Time
 	if err != nil { // Fallback for executed_at to scheduled_at
-		if !errors.IsErrorType(err, errors.ErrNotFound) {
-			return nil, err
-		}
-		//todo: later, always return scheduleTime , for runs greater than a given date
 		executedAt = config.ScheduledAt
 	} else {
 		executedAt = jobRun.StartTime
@@ -297,7 +294,7 @@ func (s JobRunService) updateOperatorRun(ctx context.Context, event scheduler.Ev
 
 func (s JobRunService) UpdateJobState(ctx context.Context, event scheduler.Event) error {
 	switch event.Type {
-	case scheduler.JobSuccessEvent, scheduler.JobFailEvent:
+	case scheduler.JobSuccessEvent, scheduler.JobFailureEvent:
 		return s.updateJobRun(ctx, event)
 	case scheduler.TaskStartEvent:
 		return s.createOperatorRun(ctx, event, scheduler.OperatorTask)

@@ -38,7 +38,7 @@ func TestNotificationService(t *testing.T) {
 			event := scheduler.Event{
 				JobName: jobName,
 				Tenant:  tnnt,
-				Type:    scheduler.JobStartEvent,
+				Type:    scheduler.TaskStartEvent,
 				Values:  map[string]any{},
 			}
 			err := notifyService.Push(ctx, event)
@@ -134,7 +134,7 @@ func TestNotificationService(t *testing.T) {
 			event := scheduler.Event{
 				JobName: jobName,
 				Tenant:  tnnt,
-				Type:    scheduler.JobFailEvent,
+				Type:    scheduler.JobFailureEvent,
 				Values:  map[string]any{},
 			}
 
@@ -196,7 +196,7 @@ func TestNotificationService(t *testing.T) {
 			event := scheduler.Event{
 				JobName: jobName,
 				Tenant:  tnnt,
-				Type:    scheduler.JobFailEvent,
+				Type:    scheduler.JobFailureEvent,
 				Values:  map[string]any{},
 			}
 

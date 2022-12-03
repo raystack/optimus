@@ -164,21 +164,21 @@ func (h JobRunHandler) RegisterJobEvent(ctx context.Context, req *pb.RegisterJob
 		return nil, errors.GRPCErr(err, "unable to parse event")
 	}
 
-	multierror := errors.NewMultiError("errors in RegisterJobEvent")
+	multiError := errors.NewMultiError("errors in RegisterJobEvent")
 
 	err = h.service.UpdateJobState(ctx, event)
 	if err != nil {
 		jobEventByteString, _ := json.Marshal(req.GetEvent())
 		h.l.Error(errors.InternalError(scheduler.EntityJobRun, "scheduler could not update job run state, event Payload::"+string(jobEventByteString), err).Error())
-		multierror.Append(errors.InternalError(scheduler.EntityJobRun, "scheduler could not update job run state", err))
+		multiError.Append(errors.InternalError(scheduler.EntityJobRun, "scheduler could not update job run state", err))
 	}
 
 	err = h.notifier.Push(ctx, event)
 	if err != nil {
-		multierror.Append(err)
+		multiError.Append(err)
 	}
 
-	return &pb.RegisterJobEventResponse{}, errors.MultiToError(multierror)
+	return &pb.RegisterJobEventResponse{}, errors.MultiToError(multiError)
 }
 
 func NewJobRunHandler(l log.Logger, service JobRunService, notifier Notifier) *JobRunHandler {

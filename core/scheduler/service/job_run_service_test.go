@@ -23,6 +23,8 @@ func TestJobRunService(t *testing.T) {
 	namespaceName := tenant.ProjectName("ns1")
 	jobName := scheduler.JobName("sample_select")
 	todayDate := time.Now()
+	scheduledAtString := "2022-01-02T15:04:05Z"
+	scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, scheduledAtString)
 
 	t.Run("UpdateJobState", func(t *testing.T) {
 		tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
@@ -42,25 +44,32 @@ func TestJobRunService(t *testing.T) {
 			assert.EqualError(t, err, "invalid argument for entity event: invalid event type: UnregisteredEventTYpe")
 		})
 		t.Run("registerNewJobRun", func(t *testing.T) {
-			t.Run("should return error on JobStartEvent if GetJobDetails fails", func(t *testing.T) {
+			t.Run("should return error on TaskStartEvent for creating a new job run, if GetJobDetails fails", func(t *testing.T) {
+				jobRunRepository := new(mockJobRunRepository)
+				jobRunRepository.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(nil, errors.NotFound(scheduler.EntityJobRun, "job run not found in db for given schedule date"))
+				defer jobRunRepository.AssertExpectations(t)
+
 				jobRepo := new(JobRepository)
 				jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(nil, fmt.Errorf("some error"))
 				defer jobRepo.AssertExpectations(t)
 
 				runService := service.NewJobRunService(nil,
-					jobRepo, nil, nil, nil, nil, nil)
+					jobRepo, jobRunRepository, nil, nil, nil, nil)
 
 				event := scheduler.Event{
-					JobName: jobName,
-					Tenant:  tnnt,
-					Type:    scheduler.JobStartEvent,
-					Values:  map[string]any{},
+					JobName:        jobName,
+					Tenant:         tnnt,
+					Type:           scheduler.TaskStartEvent,
+					EventTime:      todayDate,
+					OperatorName:   "taskBq2bq",
+					JobScheduledAt: scheduledAtTimeStamp,
+					Values:         map[string]any{},
 				}
 				err := runService.UpdateJobState(ctx, event)
 				assert.NotNil(t, err)
 				assert.EqualError(t, err, "some error")
 			})
-			t.Run("should return error on JobStartEvent if job.SLADuration fails, due to wrong duration format", func(t *testing.T) {
+			t.Run("should return error on TaskStartEvent if job.SLADuration fails while creating a new job run, due to wrong duration format", func(t *testing.T) {
 				JobWithDetails := scheduler.JobWithDetails{
 					Name: jobName,
 					Job: &scheduler.Job{
@@ -85,21 +94,26 @@ func TestJobRunService(t *testing.T) {
 				jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&JobWithDetails, nil)
 				defer jobRepo.AssertExpectations(t)
 
+				jobRunRepository := new(mockJobRunRepository)
+				jobRunRepository.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(nil, errors.NotFound(scheduler.EntityJobRun, "job run not found in db for given schedule date"))
+				defer jobRunRepository.AssertExpectations(t)
+
 				runService := service.NewJobRunService(nil,
-					jobRepo, nil, nil, nil, nil, nil)
+					jobRepo, jobRunRepository, nil, nil, nil, nil)
 
 				event := scheduler.Event{
-					JobName: jobName,
-					Tenant:  tnnt,
-					Type:    scheduler.JobStartEvent,
-					Values:  map[string]any{},
+					JobName:        jobName,
+					Tenant:         tnnt,
+					Type:           scheduler.TaskStartEvent,
+					JobScheduledAt: scheduledAtTimeStamp,
+					Values:         map[string]any{},
 				}
 
 				err := runService.UpdateJobState(ctx, event)
 				assert.NotNil(t, err)
 				assert.EqualError(t, err, "failed to parse sla_miss duration wrong duration format: time: invalid duration \"wrong duration format\"")
 			})
-			t.Run("should create job_run row on JobStartEvent", func(t *testing.T) {
+			t.Run("should create job_run row on JobSuccessEvent if job run row does not already exist", func(t *testing.T) {
 				JobWithDetails := scheduler.JobWithDetails{
 					Name: jobName,
 					Job: &scheduler.Job{
@@ -123,27 +137,41 @@ func TestJobRunService(t *testing.T) {
 				slaDefinitionInSec, err := JobWithDetails.SLADuration()
 				assert.Nil(t, err)
 
-				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
 				event := scheduler.Event{
 					JobName:        jobName,
 					Tenant:         tnnt,
-					Type:           scheduler.JobStartEvent,
+					Type:           scheduler.JobSuccessEvent,
 					EventTime:      time.Time{},
-					OperatorName:   "job_start_event",
+					OperatorName:   "some_dummy_name",
 					JobScheduledAt: scheduledAtTimeStamp,
-					Values:         map[string]any{},
+					Values: map[string]any{
+						"status": "success",
+					},
 				}
 
 				jobRepo := new(JobRepository)
 				jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&JobWithDetails, nil)
 				defer jobRepo.AssertExpectations(t)
 
+				jobRun := &scheduler.JobRun{
+					ID:        uuid.New(),
+					JobName:   jobName,
+					Tenant:    tnnt,
+					StartTime: todayDate,
+				}
+
 				jobRunRepo := new(mockJobRunRepository)
+				jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(nil, errors.NotFound(scheduler.EntityJobRun, "job run not found in db for given schedule date")).Once()
 				jobRunRepo.On("Create", ctx, tnnt, jobName, scheduledAtTimeStamp, slaDefinitionInSec).Return(nil)
+				jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(jobRun, nil).Once()
+				jobRunRepo.On("Update", ctx, jobRun.ID, event.EventTime, "success").Return(nil)
 				defer jobRunRepo.AssertExpectations(t)
 
+				operatorRunRepo := new(mockOperatorRunRepository)
+				defer operatorRunRepo.AssertExpectations(t)
+
 				runService := service.NewJobRunService(nil,
-					jobRepo, jobRunRepo, nil, nil, nil, nil)
+					jobRepo, jobRunRepo, operatorRunRepo, nil, nil, nil)
 
 				err = runService.UpdateJobState(ctx, event)
 				assert.Nil(t, err)
@@ -215,7 +243,7 @@ func TestJobRunService(t *testing.T) {
 				event := scheduler.Event{
 					JobName:        jobName,
 					Tenant:         tnnt,
-					Type:           scheduler.JobFailEvent,
+					Type:           scheduler.JobFailureEvent,
 					JobScheduledAt: scheduledAtTimeStamp,
 					EventTime:      eventTime,
 					Values: map[string]any{
@@ -727,7 +755,7 @@ func TestJobRunService(t *testing.T) {
 			assert.Equal(t, &dummyExecutorInput, executorInput)
 			assert.Nil(t, err)
 		})
-		t.Run("should return error if get job run fails", func(t *testing.T) {
+		t.Run("should not return error if get job run fails", func(t *testing.T) {
 			tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
 			job := scheduler.Job{
 				Name:   jobName,
@@ -752,13 +780,22 @@ func TestJobRunService(t *testing.T) {
 				Return(&scheduler.JobRun{}, fmt.Errorf("some error other than not found error "))
 			defer jobRunRepo.AssertExpectations(t)
 
+			dummyExecutorInput := scheduler.ExecutorInput{
+				Configs: scheduler.ConfigMap{
+					"someKey": "someValue",
+				},
+			}
+			jobInputCompiler := new(mockJobInputCompiler)
+			jobInputCompiler.On("Compile", ctx, &job, runConfig, someScheduleTime).
+				Return(&dummyExecutorInput, nil)
+			defer jobInputCompiler.AssertExpectations(t)
+
 			runService := service.NewJobRunService(nil,
-				jobRepo, jobRunRepo, nil, nil, nil, nil)
+				jobRepo, jobRunRepo, nil, nil, nil, jobInputCompiler)
 			executorInput, err := runService.JobRunInput(ctx, projName, jobName, runConfig)
 
-			assert.Nil(t, executorInput)
-			assert.NotNil(t, err)
-			assert.EqualError(t, err, "some error other than not found error ")
+			assert.Nil(t, err)
+			assert.Equal(t, &dummyExecutorInput, executorInput)
 		})
 	})
 	t.Run("GetJobRunList", func(t *testing.T) {
