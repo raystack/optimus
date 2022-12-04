@@ -50,6 +50,98 @@ func TestAdapter(t *testing.T) {
 		assert.Equal(t, "nested-job-name", replayExecutionTreeNode.Dependents[0].JobName)
 		assert.Equal(t, jobStatus.State.String(), replayExecutionTreeNode.Runs[0].State)
 	})
+	t.Run("should successfully parse job spec to and from proto", func(t *testing.T) {
+		execUnit1 := new(mock.YamlMod)
+		execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{
+			Name: "sample-task",
+		}, nil)
+		defer execUnit1.AssertExpectations(t)
+
+		pluginRepo := mock.NewPluginRepository(t)
+		pluginRepo.On("GetByName", "sample-task").Return(&models.Plugin{
+			YamlMod: execUnit1,
+		}, nil)
+
+		window, err := models.NewWindow(1, "h", "1h", "48h")
+		if err != nil {
+			panic(err)
+		}
+		jobSpec := models.JobSpec{
+			Version: 1,
+			Name:    "test-job",
+			Schedule: models.JobSpecSchedule{
+				StartDate: time.Date(2021, 10, 6, 0, 0, 0, 0, time.UTC),
+				Interval:  "@daily",
+			},
+			Behavior: models.JobSpecBehavior{
+				DependsOnPast: false,
+				CatchUp:       true,
+				Retry: models.JobSpecBehaviorRetry{
+					Count:              5,
+					Delay:              0,
+					ExponentialBackoff: true,
+				},
+				Notify: []models.JobSpecNotifier{
+					{
+						On: models.JobFailureEvent,
+						Config: map[string]string{
+							"key": "val",
+						},
+						Channels: []string{"slack://@devs"},
+					},
+				},
+			},
+			Task: models.JobSpecTask{
+				Unit: &models.Plugin{YamlMod: execUnit1},
+				Config: models.JobSpecConfigs{
+					{
+						Name:  "DO",
+						Value: "this",
+					},
+				},
+				Window: window,
+			},
+			Assets: *models.JobAssets{}.New(
+				[]models.JobSpecAsset{
+					{
+						Name:  "query.sql",
+						Value: "select * from 1",
+					},
+				},
+			),
+			Dependencies: map[string]models.JobSpecDependency{},
+			Hooks: []models.JobSpecHook{
+				{
+					Config: models.JobSpecConfigs{
+						{
+							Name:  "PROJECT",
+							Value: "this",
+						},
+					},
+					Unit: &models.Plugin{YamlMod: execUnit1},
+				},
+			},
+			ExternalDependencies: models.ExternalDependency{
+				HTTPDependencies: []models.HTTPDependency{
+					{
+						Name: "test_http_sensor_1",
+						RequestParams: map[string]string{
+							"key_test": "value_test",
+						},
+						URL: "http://test/optimus/status/1",
+						Headers: map[string]string{
+							"Content-Type": "application/json",
+						},
+					},
+				},
+			},
+		}
+
+		inProto := v1.ToJobSpecificationProto(jobSpec)
+		original, err := v1.FromJobProto(inProto, pluginRepo)
+		assert.Equal(t, jobSpec, original)
+		assert.Nil(t, err)
+	})
 }
 
 func TestAdapter_FromResourceProto(t *testing.T) {
