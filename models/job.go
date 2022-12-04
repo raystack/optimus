@@ -36,7 +36,7 @@ const (
 	JobFailureEvent JobEventType = "failure"
 
 	JobStartEvent   JobEventType = "job_start"
-	JobFailEvent    JobEventType = "job_fail"
+	JobFailEvent    JobEventType = "failure"
 	JobSuccessEvent JobEventType = "job_success"
 
 	TaskStartEvent   JobEventType = "task_start"

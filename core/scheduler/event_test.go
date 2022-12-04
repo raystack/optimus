@@ -13,7 +13,7 @@ func TestFromStringToEventType(t *testing.T) {
 	t.Run("FromStringToEventType", func(t *testing.T) {
 		expectationMap := map[string]JobEventType{
 			"TYPE_SLA_MISS":    SLAMissEvent,
-			"TYPE_JOB_FAIL":    JobFailureEvent,
+			"TYPE_FAILURE":     JobFailureEvent,
 			"TYPE_JOB_SUCCESS": JobSuccessEvent,
 
 			"TYPE_TASK_START":   TaskStartEvent,

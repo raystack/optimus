@@ -22,7 +22,7 @@ const (
 	EventCategoryJobFailure JobEventCategory = "failure"
 
 	SLAMissEvent    JobEventType = "sla_miss"
-	JobFailureEvent JobEventType = "job_fail"
+	JobFailureEvent JobEventType = "failure"
 	JobSuccessEvent JobEventType = "job_success"
 
 	TaskStartEvent   JobEventType = "task_start"

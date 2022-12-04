@@ -309,7 +309,7 @@
         "TYPE_UNSPECIFIED",
         "TYPE_SLA_MISS",
         "TYPE_JOB_SUCCESS",
-        "TYPE_JOB_FAIL",
+        "TYPE_FAILURE",
         "TYPE_TASK_RETRY",
         "TYPE_TASK_SUCCESS",
         "TYPE_TASK_START",

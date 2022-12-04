@@ -490,7 +490,7 @@ def job_success_event(context):
 def job_failure_event(context):
     try:
         meta = {
-            "event_type": "TYPE_JOB_FAIL",
+            "event_type": "TYPE_FAILURE",
             "status": "FAIL"
         }
         optimus_notify(context, meta)

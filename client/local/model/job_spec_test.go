@@ -194,7 +194,7 @@ func (*JobSpecTestSuite) getCompleteJobSpecProto() *pb.JobSpecification {
 			},
 			Notify: []*pb.JobSpecification_Behavior_Notifiers{
 				{
-					On: pb.JobEvent_TYPE_JOB_FAIL,
+					On: pb.JobEvent_TYPE_FAILURE,
 					Config: map[string]string{
 						"configkey": "configvalue",
 					},
