@@ -3,7 +3,6 @@ package v1beta1_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -494,7 +493,7 @@ func TestNewJobHandler(t *testing.T) {
 			jobHandler := v1beta1.NewJobHandler(jobService, log)
 			resp, err := jobHandler.DeleteJobSpecification(ctx, request)
 			assert.NoError(t, err)
-			assert.Contains(t, resp.Message, fmt.Sprintf("these downstream will be affected: %s", downstreamNames))
+			assert.Contains(t, resp.Message, "these downstream will be affected")
 		})
 		t.Run("returns error if unable to construct tenant", func(t *testing.T) {
 			jobService := new(JobService)
