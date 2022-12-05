@@ -15,7 +15,7 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-type Resource struct {
+type ResourceOld struct {
 	ID uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
 
 	ProjectID uuid.UUID
@@ -39,20 +39,20 @@ type Resource struct {
 	DeletedAt gorm.DeletedAt
 }
 
-func (Resource) FromSpec(resourceSpec models.ResourceSpec) (Resource, error) {
+func (ResourceOld) FromSpec(resourceSpec models.ResourceSpec) (ResourceOld, error) {
 	assetBytes, err := json.Marshal(resourceSpec.Assets)
 	if err != nil {
-		return Resource{}, err
+		return ResourceOld{}, err
 	}
 	labelBytes, err := json.Marshal(resourceSpec.Labels)
 	if err != nil {
-		return Resource{}, err
+		return ResourceOld{}, err
 	}
 
 	// serialize resource spec without assets to one of the datastore provided wire format
 	controller, ok := resourceSpec.Datastore.Types()[resourceSpec.Type]
 	if !ok {
-		return Resource{}, fmt.Errorf("unknown type of datastore %s", resourceSpec.Type)
+		return ResourceOld{}, fmt.Errorf("unknown type of datastore %s", resourceSpec.Type)
 	}
 
 	binaryReadySpec := resourceSpec
@@ -60,15 +60,15 @@ func (Resource) FromSpec(resourceSpec models.ResourceSpec) (Resource, error) {
 	binaryReadySpec.Labels = nil
 	serializedSpec, err := controller.Adapter().ToYaml(binaryReadySpec)
 	if err != nil {
-		return Resource{}, fmt.Errorf("controller.Adapter().ToYaml: %v: %w", binaryReadySpec, err)
+		return ResourceOld{}, fmt.Errorf("controller.Adapter().ToYaml: %v: %w", binaryReadySpec, err)
 	}
 
 	urn, err := controller.GenerateURN(resourceSpec.Spec)
 	if err != nil {
-		return Resource{}, err
+		return ResourceOld{}, err
 	}
 
-	return Resource{
+	return ResourceOld{
 		ID:        resourceSpec.ID,
 		Version:   resourceSpec.Version,
 		Name:      resourceSpec.Name,
@@ -81,10 +81,10 @@ func (Resource) FromSpec(resourceSpec models.ResourceSpec) (Resource, error) {
 	}, nil
 }
 
-func (r Resource) FromSpecWithNamespace(resourceSpec models.ResourceSpec, namespace models.NamespaceSpec) (Resource, error) {
+func (r ResourceOld) FromSpecWithNamespace(resourceSpec models.ResourceSpec, namespace models.NamespaceSpec) (ResourceOld, error) {
 	adaptResource, err := r.FromSpec(resourceSpec)
 	if err != nil {
-		return Resource{}, err
+		return ResourceOld{}, err
 	}
 
 	// namespace
@@ -102,7 +102,7 @@ func (r Resource) FromSpecWithNamespace(resourceSpec models.ResourceSpec, namesp
 	return adaptResource, nil
 }
 
-func (r Resource) ToSpec(ds models.Datastorer) (models.ResourceSpec, error) {
+func (r ResourceOld) ToSpec(ds models.Datastorer) (models.ResourceSpec, error) {
 	resourceType := models.ResourceType(r.Type)
 
 	// deserialize resource spec without assets to one of the datastore provided wire format
@@ -144,7 +144,7 @@ type projectResourceSpecRepository struct {
 }
 
 func (repo *projectResourceSpecRepository) GetByName(ctx context.Context, name string) (models.ResourceSpec, models.NamespaceSpec, error) {
-	var r Resource
+	var r ResourceOld
 	if err := repo.db.WithContext(ctx).Preload("Namespace").Where("project_id = ? AND datastore = ? AND name = ?",
 		repo.project.ID.UUID(), repo.datastore.Name(), name).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -167,7 +167,7 @@ func (repo *projectResourceSpecRepository) GetByName(ctx context.Context, name s
 }
 
 func (repo *projectResourceSpecRepository) GetByURN(ctx context.Context, urn string) (models.ResourceSpec, models.NamespaceSpec, error) {
-	var r Resource
+	var r ResourceOld
 	if err := repo.db.WithContext(ctx).Preload("Namespace").Where("project_id = ? AND datastore = ? AND urn = ?",
 		repo.project.ID.UUID(), repo.datastore.Name(), urn).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -208,7 +208,7 @@ func (repo *resourceSpecRepository) Insert(ctx context.Context, resource models.
 	if resource.Name == "" {
 		return errors.New("name cannot be empty")
 	}
-	p, err := Resource{}.FromSpecWithNamespace(resource, repo.namespace)
+	p, err := ResourceOld{}.FromSpecWithNamespace(resource, repo.namespace)
 	if err != nil {
 		return err
 	}
@@ -231,7 +231,7 @@ func (repo *resourceSpecRepository) Save(ctx context.Context, spec models.Resour
 		return fmt.Errorf("resource %s already exists for the project %s", spec.Name, repo.namespace.ProjectSpec.Name)
 	}
 
-	resource, err := Resource{}.FromSpec(spec)
+	resource, err := ResourceOld{}.FromSpec(spec)
 	if err != nil {
 		return err
 	}
@@ -241,7 +241,7 @@ func (repo *resourceSpecRepository) Save(ctx context.Context, spec models.Resour
 }
 
 func (repo *resourceSpecRepository) GetByName(ctx context.Context, name string) (models.ResourceSpec, error) {
-	var r Resource
+	var r ResourceOld
 	if err := repo.db.WithContext(ctx).Where("namespace_id = ? AND datastore = ? AND name = ?",
 		repo.namespace.ID, repo.datastore.Name(), name).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -254,7 +254,7 @@ func (repo *resourceSpecRepository) GetByName(ctx context.Context, name string) 
 
 func (repo *resourceSpecRepository) GetAll(ctx context.Context) ([]models.ResourceSpec, error) {
 	specs := []models.ResourceSpec{}
-	resources := []Resource{}
+	resources := []ResourceOld{}
 	if err := repo.db.WithContext(ctx).Where("namespace_id = ? AND datastore = ?", repo.namespace.ID, repo.datastore.Name()).Find(&resources).Error; err != nil {
 		return specs, err
 	}
@@ -269,11 +269,11 @@ func (repo *resourceSpecRepository) GetAll(ctx context.Context) ([]models.Resour
 }
 
 func (repo *resourceSpecRepository) Delete(ctx context.Context, name string) error {
-	return repo.db.WithContext(ctx).Where("namespace_id = ? AND datastore = ? AND name = ? ", repo.namespace.ID, repo.datastore.Name(), name).Delete(&Resource{}).Error
+	return repo.db.WithContext(ctx).Where("namespace_id = ? AND datastore = ? AND name = ? ", repo.namespace.ID, repo.datastore.Name(), name).Delete(&ResourceOld{}).Error
 }
 
 func (repo *resourceSpecRepository) HardDelete(ctx context.Context, name string) error {
-	return repo.db.WithContext(ctx).Unscoped().Where("namespace_id = ? AND datastore = ? AND name = ? ", repo.namespace.ID, repo.datastore.Name(), name).Delete(&Resource{}).Error
+	return repo.db.WithContext(ctx).Unscoped().Where("namespace_id = ? AND datastore = ? AND name = ? ", repo.namespace.ID, repo.datastore.Name(), name).Delete(&ResourceOld{}).Error
 }
 
 func NewResourceSpecRepository(db *gorm.DB, namespace models.NamespaceSpec, ds models.Datastorer, projectResourceSpecRepo store.ProjectResourceSpecRepository) *resourceSpecRepository {

@@ -22,13 +22,18 @@ import (
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	jobRunCompiler "github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"
+	rModel "github.com/odpf/optimus/core/resource"
+	rHandler "github.com/odpf/optimus/core/resource/handler/v1beta1"
+	rService "github.com/odpf/optimus/core/resource/service"
 	tHandler "github.com/odpf/optimus/core/tenant/handler/v1beta1"
 	tService "github.com/odpf/optimus/core/tenant/service"
 	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/ext/notify/pagerduty"
 	"github.com/odpf/optimus/ext/notify/slack"
+	bqStore "github.com/odpf/optimus/ext/store/bigquery"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/store/postgres"
+	"github.com/odpf/optimus/internal/store/postgres/resource"
 	"github.com/odpf/optimus/internal/store/postgres/tenant"
 	"github.com/odpf/optimus/internal/telemetry"
 	"github.com/odpf/optimus/internal/utils"
@@ -255,6 +260,17 @@ func (s *OptimusServer) setupHandlers() error {
 	tProjectService := tService.NewProjectService(tProjectRepo)
 	tNamespaceService := tService.NewNamespaceService(tNamespaceRepo)
 	tSecretService := tService.NewSecretService(s.key, tSecretRepo)
+	tenantService := tService.NewTenantService(tProjectService, tNamespaceService, tSecretService)
+
+	// Resource Bounded Context
+	resourceRepository := resource.NewRepository(s.dbConn)
+	resourceManager := rService.NewResourceManager(resourceRepository, s.logger)
+	resourceService := rService.NewResourceService(s.logger, resourceRepository, resourceManager, tenantService)
+
+	// Register datastore
+	bqClientProvider := bqStore.NewClientProvider()
+	bigqueryStore := bqStore.NewBigqueryDataStore(tenantService, bqClientProvider)
+	resourceManager.RegisterDatastore(rModel.Bigquery, bigqueryStore)
 
 	scheduler, err := initScheduler(s.conf)
 	if err != nil {
@@ -383,12 +399,9 @@ func (s *OptimusServer) setupHandlers() error {
 	pb.RegisterProjectServiceServer(s.grpcServer, tHandler.NewProjectHandler(s.logger, tProjectService))
 	pb.RegisterNamespaceServiceServer(s.grpcServer, tHandler.NewNamespaceHandler(s.logger, tNamespaceService))
 
-	// resource service
-	pb.RegisterResourceServiceServer(s.grpcServer, v1handler.NewResourceServiceServer(s.logger,
-		dataStoreService,
-		namespaceService,
-		models.DatastoreRegistry,
-		progressObs))
+	// Resource Handler
+	pb.RegisterResourceServiceServer(s.grpcServer, rHandler.NewResourceHandler(s.logger, resourceService))
+
 	// replay service
 	pb.RegisterReplayServiceServer(s.grpcServer, v1handler.NewReplayServiceServer(s.logger,
 		jobService,
