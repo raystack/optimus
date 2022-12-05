@@ -333,6 +333,49 @@
         ]
       }
     },
+    "/v1beta1/project/{projectName}/namespace/{namespaceName}/job/{jobName}/task": {
+      "get": {
+        "summary": "GetJobTask provides task details specific to plugin used in a job",
+        "operationId": "JobSpecificationService_GetJobTask",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1GetJobTaskResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "JobSpecificationService"
+        ]
+      }
+    },
     "/v1beta1/project/{projectName}/namespace/{namespaceName}/jobs": {
       "post": {
         "summary": "AddJobSpecification registers new jobs for a namespace which belongs to the given project",
@@ -430,6 +473,63 @@
                 }
               }
             }
+          }
+        ],
+        "tags": [
+          "JobSpecificationService"
+        ]
+      }
+    },
+    "/v1beta1/window": {
+      "get": {
+        "summary": "GetWindow provides the start and end dates provided a scheduled date\nof the execution window",
+        "operationId": "JobSpecificationService_GetWindow",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1GetWindowResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scheduledAt",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "truncateTo",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
           }
         ],
         "tags": [
@@ -562,6 +662,25 @@
           "items": {
             "$ref": "#/definitions/BehaviorNotifiers"
           }
+        }
+      }
+    },
+    "JobTaskDependency": {
+      "type": "object",
+      "properties": {
+        "dependency": {
+          "type": "string"
+        }
+      }
+    },
+    "JobTaskDestination": {
+      "type": "object",
+      "properties": {
+        "destination": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
         }
       }
     },
@@ -739,6 +858,27 @@
           "items": {
             "$ref": "#/definitions/v1beta1JobSpecificationResponse"
           }
+        }
+      }
+    },
+    "v1beta1GetJobTaskResponse": {
+      "type": "object",
+      "properties": {
+        "task": {
+          "$ref": "#/definitions/v1beta1JobTask"
+        }
+      }
+    },
+    "v1beta1GetWindowResponse": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end": {
+          "type": "string",
+          "format": "date-time"
         }
       }
     },
@@ -1011,6 +1151,30 @@
           "$ref": "#/definitions/v1beta1JobSpecification"
         }
       }
+    },
+    "v1beta1JobTask": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "image": {
+          "type": "string"
+        },
+        "destination": {
+          "$ref": "#/definitions/JobTaskDestination"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/JobTaskDependency"
+          }
+        }
+      },
+      "title": "JobTask is part of a job that dictates main transformation\neach job has exactly one task"
     },
     "v1beta1Level": {
       "type": "string",

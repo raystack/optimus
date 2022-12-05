@@ -321,7 +321,6 @@ func (s *OptimusServer) setupHandlers() error {
 	jPluginService := jService.NewJobPluginService(tSecretService, models.PluginRegistry, engine, s.logger)
 	jExternalUpstreamResolver, _ := jResolver.NewExternalUpstreamResolver(s.conf.ResourceManagers)
 	jUpstreamResolver := jResolver.NewUpstreamResolver(jJobRepo, jExternalUpstreamResolver)
-	tenantService := tService.NewTenantService(tProjectService, tNamespaceService, tSecretService)
 	jJobService := jService.NewJobService(jJobRepo, jPluginService, jUpstreamResolver, tenantService, s.logger)
 
 	scheduler, err := initScheduler(s.conf)

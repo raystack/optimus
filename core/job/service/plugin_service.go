@@ -14,6 +14,8 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
+const projectConfigPrefix = "GLOBAL__"
+
 var (
 	ErrUpstreamModNotFound = errors.New("upstream mod not found for plugin")
 	ErrYamlModNotExist     = errors.New("yaml mod not found for plugin")
@@ -126,7 +128,7 @@ func (p JobPluginService) compileConfig(ctx context.Context, configs *job.Config
 	}
 
 	tmplCtx := compiler.PrepareContext(
-		compiler.From(tnnt.GetConfigs()).WithName("proj").WithKeyPrefix(compiler.ProjectConfigPrefix),
+		compiler.From(tnnt.GetConfigs()).WithName("proj").WithKeyPrefix(projectConfigPrefix),
 		compiler.From(tenant.PlainTextSecrets(secrets).ToMap()).WithName("secret"),
 	)
 
