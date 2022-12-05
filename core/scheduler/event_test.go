@@ -151,7 +151,7 @@ func TestFromStringToEventType(t *testing.T) {
 				JobName:        jobName,
 				Tenant:         tnnt,
 				Type:           TaskRetryEvent,
-				EventTime:      time.Date(2477, time.January, 14, 17, 23, 20, 0, time.Local),
+				EventTime:      time.Date(2477, time.January, 14, 11, 53, 20, 0, time.UTC),
 				OperatorName:   "some_txbq",
 				JobScheduledAt: time.Date(2022, time.January, 2, 15, 04, 05, 0, time.UTC),
 				Values:         eventValues,

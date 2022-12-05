@@ -112,7 +112,7 @@ func EventFrom(eventTypeName string, eventValues map[string]any, jobName JobName
 	if eventTimeFloat == float64(0) {
 		return Event{}, errors.InvalidArgument(EntityEvent, "property 'event_time'(number) is missing in event payload")
 	}
-	eventTime := time.Unix(int64(eventTimeFloat), 0)
+	eventTime := time.Unix(int64(eventTimeFloat), 0).UTC()
 
 	operatorName := utils.ConfigAs[string](eventValues, "task_id")
 	if operatorName == "" {
