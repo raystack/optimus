@@ -1505,6 +1505,29 @@ func TestNewJobHandler(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, resp, result)
 		})
+		t.Run("should return error if job basic info is not found", func(t *testing.T) {
+			jobService := new(JobService)
+
+			httpUpstream := job.NewSpecHTTPUpstreamBuilder("sample-upstream", "sample-url").Build()
+			upstreamSpec := job.NewSpecUpstreamBuilder().WithSpecHTTPUpstream([]*job.SpecHTTPUpstream{httpUpstream}).Build()
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
+
+			basicInfoLogger := writer.BufferedLogger{Messages: []*pb.Log{
+				{Message: "not found"},
+			}}
+			jobService.On("GetJobBasicInfo", ctx, sampleTenant, specA.Name(), mock.Anything).Return(nil, basicInfoLogger)
+
+			req := &pb.JobInspectRequest{
+				ProjectName:   project.Name().String(),
+				NamespaceName: namespace.Name().String(),
+				JobName:       specA.Name().String(),
+			}
+
+			handler := v1beta1.NewJobHandler(jobService, log)
+			result, err := handler.JobInspect(ctx, req)
+			assert.Nil(t, result)
+			assert.ErrorContains(t, err, "not found")
+		})
 	})
 	t.Run("GetJobTask", func(t *testing.T) {
 		t.Run("return error when create tenant failed", func(t *testing.T) {

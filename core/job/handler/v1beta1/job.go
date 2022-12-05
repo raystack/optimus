@@ -434,6 +434,14 @@ func (jh *JobHandler) JobInspect(ctx context.Context, req *pb.JobInspectRequest)
 
 	subjectJob, basicInfoLogger := jh.jobService.GetJobBasicInfo(ctx, jobTenant, jobName, jobSpec)
 
+	if subjectJob == nil && req.GetSpec() == nil {
+		var basicInfoMsg []string
+		for _, message := range basicInfoLogger.Messages {
+			basicInfoMsg = append(basicInfoMsg, message.GetMessage())
+		}
+		return nil, errors.GRPCErr(errors.NewError(errors.ErrFailedPrecond, job.EntityJob, strings.Join(basicInfoMsg, "\n")), "failed to inspect job")
+	}
+
 	upstreamLogs := &writer.BufferedLogger{}
 	upstreams, err := jh.jobService.GetUpstreamsToInspect(ctx, subjectJob, localJob)
 	if err != nil {

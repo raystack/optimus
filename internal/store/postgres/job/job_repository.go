@@ -40,7 +40,7 @@ func (j JobRepository) insertJobSpec(ctx context.Context, jobEntity *job.Job) er
 	} else if err == nil {
 		if existingJob.DeletedAt.Valid {
 			if existingJob.NamespaceName != jobEntity.Tenant().NamespaceName().String() {
-				errorMsg := fmt.Sprintf("job %s already exists and soft deleted in namespace %s. consider hard delete the job before inserting in this namespace.", existingJob.Name, existingJob.NamespaceName)
+				errorMsg := fmt.Sprintf("job %s already exists and soft deleted in namespace %s. consider hard delete the job before inserting to this namespace.", existingJob.Name, existingJob.NamespaceName)
 				return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, errorMsg)
 			}
 			return j.triggerUpdate(ctx, jobEntity)

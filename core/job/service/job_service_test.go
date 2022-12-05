@@ -2124,6 +2124,28 @@ func TestJobService(t *testing.T) {
 			assert.Contains(t, logger.Messages[0].Message, "internal error")
 			assert.Nil(t, result)
 		})
+		t.Run("should return error if requested job is not exist yet and spec is not provided", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+
+			jobRepo.On("GetByJobName", ctx, project.Name(), specA.Name()).Return(nil, nil)
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
+			result, logger := jobService.GetJobBasicInfo(ctx, sampleTenant, specA.Name(), nil)
+			assert.Contains(t, logger.Messages[0].Message, "job job-A not found in the server")
+			assert.Nil(t, result)
+		})
 		t.Run("should write log if found existing job with same resource destination", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
