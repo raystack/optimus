@@ -318,20 +318,29 @@ func fromMetadata(metadata *job.Metadata) *pb.JobMetadata {
 
 	var metadataResourceProto *pb.JobSpecMetadataResource
 	if metadata.Resource() != nil {
-		metadataResourceProto.Request = &pb.JobSpecMetadataResourceConfig{
-			Cpu:    metadata.Resource().Request().CPU(),
-			Memory: metadata.Resource().Request().Memory(),
+		if metadata.Resource().Request() != nil {
+			metadataResourceProto.Request = &pb.JobSpecMetadataResourceConfig{
+				Cpu:    metadata.Resource().Request().CPU(),
+				Memory: metadata.Resource().Request().Memory(),
+			}
 		}
-		metadataResourceProto.Limit = &pb.JobSpecMetadataResourceConfig{
-			Cpu:    metadata.Resource().Limit().CPU(),
-			Memory: metadata.Resource().Limit().Memory(),
+		if metadata.Resource().Limit() != nil {
+			metadataResourceProto.Limit = &pb.JobSpecMetadataResourceConfig{
+				Cpu:    metadata.Resource().Limit().CPU(),
+				Memory: metadata.Resource().Limit().Memory(),
+			}
 		}
 	}
 
 	var metadataSchedulerProto *pb.JobSpecMetadataAirflow
 	if metadata.Scheduler() != nil {
-		metadataSchedulerProto.Pool = metadata.Scheduler()["pool"]
-		metadataSchedulerProto.Queue = metadata.Scheduler()["queue"]
+		scheduler := metadata.Scheduler()
+		if _, ok := scheduler["pool"]; ok {
+			metadataSchedulerProto.Pool = metadata.Scheduler()["pool"]
+		}
+		if _, ok := scheduler["queue"]; ok {
+			metadataSchedulerProto.Queue = metadata.Scheduler()["queue"]
+		}
 	}
 	return &pb.JobMetadata{
 		Resource: metadataResourceProto,
