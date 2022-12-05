@@ -54,6 +54,8 @@ dockers:
     image_templates:
       - 'docker.io/odpf/{{.ProjectName}}:{{ .Version }}'
       - 'docker.io/odpf/{{.ProjectName}}:{{ .Version }}-amd64'
+    extra_files:
+      - entrypoint_init_container.sh
 brews:
   - name: optimus
     tap:
