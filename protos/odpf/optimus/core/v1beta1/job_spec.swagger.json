@@ -623,9 +623,6 @@
     "v1beta1AddJobSpecificationsResponse": {
       "type": "object",
       "properties": {
-        "deploymentId": {
-          "type": "string"
-        },
         "log": {
           "type": "string"
         }
@@ -1057,9 +1054,6 @@
     "v1beta1RefreshJobsResponse": {
       "type": "object",
       "properties": {
-        "deploymentId": {
-          "type": "string"
-        },
         "logStatus": {
           "$ref": "#/definitions/v1beta1Log"
         }

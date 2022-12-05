@@ -362,7 +362,7 @@ func (sv *JobSpecServiceServer) AddJobSpecifications(ctx context.Context, req *p
 		jobSpecs = append(jobSpecs, jobSpec)
 	}
 
-	deployID, err := sv.jobSvc.CreateAndDeploy(ctx, namespaceSpec, jobSpecs, logWriter)
+	_, err = sv.jobSvc.CreateAndDeploy(ctx, namespaceSpec, jobSpecs, logWriter)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "jobs addition failed for project %s, error:: %s", req.GetProjectName(), err.Error())
 	}
@@ -370,8 +370,7 @@ func (sv *JobSpecServiceServer) AddJobSpecifications(ctx context.Context, req *p
 	runtimeDeployJobSpecificationCounter.Inc()
 
 	return &pb.AddJobSpecificationsResponse{
-		Log:          fmt.Sprintf("jobs are created and queued for deployment on project %s", req.GetProjectName()),
-		DeploymentId: deployID.UUID().String(),
+		Log: fmt.Sprintf("jobs are created and queued for deployment on project %s", req.GetProjectName()),
 	}, nil
 }
 
@@ -447,8 +446,6 @@ func (sv *JobSpecServiceServer) RefreshJobs(req *pb.RefreshJobsRequest, stream p
 	sv.l.Info("finished job refresh", "time", time.Since(startTime))
 	successMsg := fmt.Sprintf("Deployment request created with ID: %s", deployID.UUID().String())
 	responseWriter.Write(writer.LogLevelInfo, successMsg)
-
-	responseWriter.SendDeploymentID(deployID.UUID().String())
 	return nil
 }
 

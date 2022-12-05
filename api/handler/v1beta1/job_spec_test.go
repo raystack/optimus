@@ -678,8 +678,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 			resp, err := jobSpecServiceServer.AddJobSpecifications(ctx, &request)
 			assert.Nil(t, err)
 			assert.Equal(t, &pb.AddJobSpecificationsResponse{
-				Log:          "jobs are created and queued for deployment on project a-data-project",
-				DeploymentId: deploymentID.UUID().String(),
+				Log: "jobs are created and queued for deployment on project a-data-project",
 			}, resp)
 		})
 		t.Run("should handle error for failed AddJobSpecifications", func(t *testing.T) {
@@ -887,7 +886,7 @@ func TestJobSpecificationOnServer(t *testing.T) {
 
 			jobService.On("Refresh", mock2.Anything, projectSpec.Name, namespaceNames, []string(nil), mock2.Anything).Return(models.DeploymentID(uuid.Must(uuid.NewRandom())), nil)
 			grpcRespStream.On("Context").Return(context.Background())
-			grpcRespStream.On("Send", mock2.Anything).Return(nil).Twice()
+			grpcRespStream.On("Send", mock2.Anything).Return(nil).Once()
 
 			jobSpecServiceServer := v1.NewJobSpecServiceServer(
 				log,
