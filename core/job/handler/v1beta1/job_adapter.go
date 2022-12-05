@@ -96,9 +96,12 @@ func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
 		return nil, err
 	}
 
-	metadata, err := toMetadata(js.Metadata)
-	if err != nil {
-		return nil, err
+	var metadata *job.Metadata
+	if js.Metadata != nil {
+		metadata, err = toMetadata(js.Metadata)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	version, err := job.VersionFrom(int(js.Version))
@@ -119,9 +122,12 @@ func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
 		return nil, err
 	}
 
-	asset, err := job.NewAsset(js.Assets)
-	if err != nil {
-		return nil, err
+	var asset *job.Asset
+	if js.Assets != nil {
+		asset, err = job.NewAsset(js.Assets)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return job.NewSpecBuilder(version, name, owner, schedule, window, task).
@@ -217,7 +223,7 @@ func toAlerts(notifiers []*pb.JobSpecification_Behavior_Notifiers) ([]*job.Alert
 			return nil, err
 		}
 		alertConfig := job.NewAlertBuilder(alertOn, notify.Channels).WithConfig(config).Build()
-		if err = alertConfig.Validate(); err != nil {
+		if err := alertConfig.Validate(); err != nil {
 			return nil, err
 		}
 		alerts[i] = alertConfig
@@ -286,10 +292,6 @@ func fromSpecUpstreams(upstreams *job.SpecUpstream) []*pb.JobDependency {
 }
 
 func toMetadata(jobMetadata *pb.JobMetadata) (*job.Metadata, error) {
-	if jobMetadata == nil {
-		return nil, nil
-	}
-
 	var resourceMetadata *job.MetadataResource
 	if jobMetadata.Resource != nil {
 		metadataResourceProto := jobMetadata.Resource

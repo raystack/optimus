@@ -405,14 +405,6 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 		upstreams = job.NewSpecUpstreamBuilder().WithUpstreamNames(upstreamNames).WithSpecHTTPUpstream(httpUpstreams).Build()
 	}
 
-	var assets map[string]string
-	if jobSpec.Assets != nil {
-		assets, err = fromStorageAssets(jobSpec.Assets)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	var metadata *job.Metadata
 	if jobSpec.Metadata != nil {
 		var storeMetadata Metadata
@@ -453,9 +445,16 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 		return nil, err
 	}
 
-	asset, err := job.NewAsset(assets)
-	if err != nil {
-		return nil, err
+	var asset *job.Asset
+	if jobSpec.Assets != nil {
+		assetsMap, err := fromStorageAssets(jobSpec.Assets)
+		if err != nil {
+			return nil, err
+		}
+		asset, err = job.NewAsset(assetsMap)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return job.NewSpecBuilder(
@@ -540,20 +539,16 @@ func fromStorageAlerts(raw []byte) ([]*job.Alert, error) {
 }
 
 func fromStorageAssets(raw []byte) (map[string]string, error) {
-	if raw == nil {
-		return nil, nil
-	}
-
+	jobAssets := make(map[string]string)
 	assets := []Asset{}
 	if err := json.Unmarshal(raw, &assets); err != nil {
 		return nil, err
 	}
 
 	if len(assets) == 0 {
-		return nil, nil
+		return jobAssets, nil
 	}
 
-	jobAssets := make(map[string]string)
 	for _, asset := range assets {
 		jobAssets[asset.Name] = asset.Value
 	}

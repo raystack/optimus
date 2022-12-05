@@ -1,9 +1,10 @@
 package job
 
 import (
+	"strings"
+
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
-	"strings"
 )
 
 const (

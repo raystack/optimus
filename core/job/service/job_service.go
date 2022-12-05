@@ -144,7 +144,7 @@ func (j JobService) Get(ctx context.Context, jobTenant tenant.Tenant, jobName jo
 		return jobs[0], nil
 	}
 
-	return nil, nil
+	return &job.Job{}, nil
 }
 
 func (j JobService) GetTaskInfo(ctx context.Context, task *job.Task) (*job.Task, error) {
@@ -269,7 +269,7 @@ func (j JobService) bulkRefreshSources(ctx context.Context, tenantWithDetails *t
 					return nil, errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg)
 				}
 				if !reflect.DeepEqual(currentJob.Sources(), freshSources) {
-					if (currentJob.Sources() == nil || len(currentJob.Sources()) == 0) && (freshSources == nil || len(freshSources) == 0) {
+					if len(currentJob.Sources()) == 0 && len(freshSources) == 0 {
 						return nil, nil
 					}
 					lw.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] identified new sources for job %s", tenantWithDetails.Namespace().Name().String(), currentJob.Spec().Name().String()))

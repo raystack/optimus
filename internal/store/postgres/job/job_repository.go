@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"fmt"
+
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/job"

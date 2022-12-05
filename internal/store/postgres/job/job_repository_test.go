@@ -47,6 +47,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			tenant.ProjectSchedulerHost:  "host",
 			tenant.ProjectStoragePathKey: "gs://location",
 		})
+	assert.NoError(t, err)
 
 	dbSetup := func() *gorm.DB {
 		dbConn := setup.TestDB()

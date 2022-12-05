@@ -141,7 +141,6 @@ func (s Spec) IsEqual(otherSpec *Spec) bool {
 	}
 
 	return reflect.DeepEqual(s.alerts, otherSpec.alerts)
-
 }
 
 type SpecBuilder struct {
@@ -531,10 +530,7 @@ func (m Metadata) Scheduler() map[string]string {
 }
 
 func (m Metadata) Validate() error {
-	if err := validateMap(m.scheduler); err != nil {
-		return err
-	}
-	return nil
+	return validateMap(m.scheduler)
 }
 
 type MetadataBuilder struct {
@@ -602,9 +598,6 @@ type Asset struct {
 }
 
 func NewAsset(fileNameToContent map[string]string) (*Asset, error) {
-	if fileNameToContent == nil {
-		return nil, nil
-	}
 	asset := &Asset{assets: fileNameToContent}
 	if err := asset.Validate(); err != nil {
 		return nil, err
@@ -613,10 +606,7 @@ func NewAsset(fileNameToContent map[string]string) (*Asset, error) {
 }
 
 func (a Asset) Validate() error {
-	if err := validateMap(a.assets); err != nil {
-		return err
-	}
-	return nil
+	return validateMap(a.assets)
 }
 
 func (a Asset) Assets() map[string]string {
@@ -868,7 +858,7 @@ func NewLabels(labels map[string]string) (map[string]string, error) {
 
 // TODO: check whether this is supposed to be here or in utils
 func validateMap(input map[string]string) error {
-	for key, _ := range input {
+	for key := range input {
 		if key == "" {
 			return errors.InvalidArgument(EntityJob, "map contains empty key")
 		}
