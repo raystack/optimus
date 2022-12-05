@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
@@ -37,7 +36,7 @@ const (
 	JobFailureEvent JobEventType = "failure"
 
 	JobStartEvent   JobEventType = "job_start"
-	JobFailEvent    JobEventType = "job_fail"
+	JobFailEvent    JobEventType = "failure"
 	JobSuccessEvent JobEventType = "job_success"
 
 	TaskStartEvent   JobEventType = "task_start"
@@ -419,11 +418,6 @@ type NotifyAttrs struct {
 	JobEvent JobEvent
 
 	Route string
-}
-
-type Notifier interface {
-	io.Closer
-	Notify(ctx context.Context, attr NotifyAttrs) error
 }
 
 // JobSpecMetadata contains metadata for a job spec

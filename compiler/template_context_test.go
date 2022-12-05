@@ -8,6 +8,10 @@ import (
 	"github.com/odpf/optimus/compiler"
 )
 
+const (
+	projectConfigPrefix = "GLOBAL__"
+)
+
 func TestContextBuilder(t *testing.T) {
 	t.Run("Template Context", func(t *testing.T) {
 		t.Run("builds the context for compilation", func(t *testing.T) {
@@ -28,7 +32,7 @@ func TestContextBuilder(t *testing.T) {
 				"EXECUTION_DATE": "TODAY",
 			}
 			ctx := compiler.PrepareContext(
-				compiler.From(projectConf, nsConf).WithKeyPrefix(compiler.ProjectConfigPrefix).WithName("proj"),
+				compiler.From(projectConf, nsConf).WithKeyPrefix(projectConfigPrefix).WithName("proj"),
 				compiler.From(secrets).WithName("secret"),
 				compiler.From(instanceConfs).WithName("inst").AddToContext(),
 			)

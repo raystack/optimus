@@ -22,24 +22,14 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type JobRunServiceClient interface {
-	// GetJobTask provides task details specific to plugin used in a job
-	GetJobTask(ctx context.Context, in *GetJobTaskRequest, opts ...grpc.CallOption) (*GetJobTaskResponse, error)
-	// Deprecated: Do not use.
-	// RegisterInstance is an internal admin command used during task/hook execution
-	// to pull task/hook compiled configuration and assets.
-	RegisterInstance(ctx context.Context, in *RegisterInstanceRequest, opts ...grpc.CallOption) (*RegisterInstanceResponse, error)
 	// JobRunInput is used to fetch task/hook compiled configuration and assets.
 	JobRunInput(ctx context.Context, in *JobRunInputRequest, opts ...grpc.CallOption) (*JobRunInputResponse, error)
-	// JobStatus returns the current and past run status of jobs
-	JobStatus(ctx context.Context, in *JobStatusRequest, opts ...grpc.CallOption) (*JobStatusResponse, error)
 	// JobRun returns the current and past run status of jobs on a given range
 	JobRun(ctx context.Context, in *JobRunRequest, opts ...grpc.CallOption) (*JobRunResponse, error)
-	// GetWindow provides the start and end dates provided a scheduled date
-	// of the execution window
-	GetWindow(ctx context.Context, in *GetWindowRequest, opts ...grpc.CallOption) (*GetWindowResponse, error)
-	// RunJob creates a job run and executes all included tasks/hooks instantly
-	// this doesn't necessarily deploy the job in db first
-	RunJob(ctx context.Context, in *RunJobRequest, opts ...grpc.CallOption) (*RunJobResponse, error)
+	// RegisterJobEvent notifies optimus service about an event related to job
+	RegisterJobEvent(ctx context.Context, in *RegisterJobEventRequest, opts ...grpc.CallOption) (*RegisterJobEventResponse, error)
+	// UploadToScheduler comiles jobSpec from database into DAGs and uploads the generated DAGs to scheduler
+	UploadToScheduler(ctx context.Context, in *UploadToSchedulerRequest, opts ...grpc.CallOption) (*UploadToSchedulerResponse, error)
 }
 
 type jobRunServiceClient struct {
@@ -50,37 +40,9 @@ func NewJobRunServiceClient(cc grpc.ClientConnInterface) JobRunServiceClient {
 	return &jobRunServiceClient{cc}
 }
 
-func (c *jobRunServiceClient) GetJobTask(ctx context.Context, in *GetJobTaskRequest, opts ...grpc.CallOption) (*GetJobTaskResponse, error) {
-	out := new(GetJobTaskResponse)
-	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobRunService/GetJobTask", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// Deprecated: Do not use.
-func (c *jobRunServiceClient) RegisterInstance(ctx context.Context, in *RegisterInstanceRequest, opts ...grpc.CallOption) (*RegisterInstanceResponse, error) {
-	out := new(RegisterInstanceResponse)
-	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobRunService/RegisterInstance", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *jobRunServiceClient) JobRunInput(ctx context.Context, in *JobRunInputRequest, opts ...grpc.CallOption) (*JobRunInputResponse, error) {
 	out := new(JobRunInputResponse)
 	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobRunService/JobRunInput", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *jobRunServiceClient) JobStatus(ctx context.Context, in *JobStatusRequest, opts ...grpc.CallOption) (*JobStatusResponse, error) {
-	out := new(JobStatusResponse)
-	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobRunService/JobStatus", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -96,18 +58,18 @@ func (c *jobRunServiceClient) JobRun(ctx context.Context, in *JobRunRequest, opt
 	return out, nil
 }
 
-func (c *jobRunServiceClient) GetWindow(ctx context.Context, in *GetWindowRequest, opts ...grpc.CallOption) (*GetWindowResponse, error) {
-	out := new(GetWindowResponse)
-	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobRunService/GetWindow", in, out, opts...)
+func (c *jobRunServiceClient) RegisterJobEvent(ctx context.Context, in *RegisterJobEventRequest, opts ...grpc.CallOption) (*RegisterJobEventResponse, error) {
+	out := new(RegisterJobEventResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobRunService/RegisterJobEvent", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *jobRunServiceClient) RunJob(ctx context.Context, in *RunJobRequest, opts ...grpc.CallOption) (*RunJobResponse, error) {
-	out := new(RunJobResponse)
-	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobRunService/RunJob", in, out, opts...)
+func (c *jobRunServiceClient) UploadToScheduler(ctx context.Context, in *UploadToSchedulerRequest, opts ...grpc.CallOption) (*UploadToSchedulerResponse, error) {
+	out := new(UploadToSchedulerResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobRunService/UploadToScheduler", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -118,24 +80,14 @@ func (c *jobRunServiceClient) RunJob(ctx context.Context, in *RunJobRequest, opt
 // All implementations must embed UnimplementedJobRunServiceServer
 // for forward compatibility
 type JobRunServiceServer interface {
-	// GetJobTask provides task details specific to plugin used in a job
-	GetJobTask(context.Context, *GetJobTaskRequest) (*GetJobTaskResponse, error)
-	// Deprecated: Do not use.
-	// RegisterInstance is an internal admin command used during task/hook execution
-	// to pull task/hook compiled configuration and assets.
-	RegisterInstance(context.Context, *RegisterInstanceRequest) (*RegisterInstanceResponse, error)
 	// JobRunInput is used to fetch task/hook compiled configuration and assets.
 	JobRunInput(context.Context, *JobRunInputRequest) (*JobRunInputResponse, error)
-	// JobStatus returns the current and past run status of jobs
-	JobStatus(context.Context, *JobStatusRequest) (*JobStatusResponse, error)
 	// JobRun returns the current and past run status of jobs on a given range
 	JobRun(context.Context, *JobRunRequest) (*JobRunResponse, error)
-	// GetWindow provides the start and end dates provided a scheduled date
-	// of the execution window
-	GetWindow(context.Context, *GetWindowRequest) (*GetWindowResponse, error)
-	// RunJob creates a job run and executes all included tasks/hooks instantly
-	// this doesn't necessarily deploy the job in db first
-	RunJob(context.Context, *RunJobRequest) (*RunJobResponse, error)
+	// RegisterJobEvent notifies optimus service about an event related to job
+	RegisterJobEvent(context.Context, *RegisterJobEventRequest) (*RegisterJobEventResponse, error)
+	// UploadToScheduler comiles jobSpec from database into DAGs and uploads the generated DAGs to scheduler
+	UploadToScheduler(context.Context, *UploadToSchedulerRequest) (*UploadToSchedulerResponse, error)
 	mustEmbedUnimplementedJobRunServiceServer()
 }
 
@@ -143,26 +95,17 @@ type JobRunServiceServer interface {
 type UnimplementedJobRunServiceServer struct {
 }
 
-func (UnimplementedJobRunServiceServer) GetJobTask(context.Context, *GetJobTaskRequest) (*GetJobTaskResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetJobTask not implemented")
-}
-func (UnimplementedJobRunServiceServer) RegisterInstance(context.Context, *RegisterInstanceRequest) (*RegisterInstanceResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RegisterInstance not implemented")
-}
 func (UnimplementedJobRunServiceServer) JobRunInput(context.Context, *JobRunInputRequest) (*JobRunInputResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method JobRunInput not implemented")
-}
-func (UnimplementedJobRunServiceServer) JobStatus(context.Context, *JobStatusRequest) (*JobStatusResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method JobStatus not implemented")
 }
 func (UnimplementedJobRunServiceServer) JobRun(context.Context, *JobRunRequest) (*JobRunResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method JobRun not implemented")
 }
-func (UnimplementedJobRunServiceServer) GetWindow(context.Context, *GetWindowRequest) (*GetWindowResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetWindow not implemented")
+func (UnimplementedJobRunServiceServer) RegisterJobEvent(context.Context, *RegisterJobEventRequest) (*RegisterJobEventResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RegisterJobEvent not implemented")
 }
-func (UnimplementedJobRunServiceServer) RunJob(context.Context, *RunJobRequest) (*RunJobResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RunJob not implemented")
+func (UnimplementedJobRunServiceServer) UploadToScheduler(context.Context, *UploadToSchedulerRequest) (*UploadToSchedulerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UploadToScheduler not implemented")
 }
 func (UnimplementedJobRunServiceServer) mustEmbedUnimplementedJobRunServiceServer() {}
 
@@ -175,42 +118,6 @@ type UnsafeJobRunServiceServer interface {
 
 func RegisterJobRunServiceServer(s grpc.ServiceRegistrar, srv JobRunServiceServer) {
 	s.RegisterService(&JobRunService_ServiceDesc, srv)
-}
-
-func _JobRunService_GetJobTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetJobTaskRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(JobRunServiceServer).GetJobTask(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/odpf.optimus.core.v1beta1.JobRunService/GetJobTask",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(JobRunServiceServer).GetJobTask(ctx, req.(*GetJobTaskRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _JobRunService_RegisterInstance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RegisterInstanceRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(JobRunServiceServer).RegisterInstance(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/odpf.optimus.core.v1beta1.JobRunService/RegisterInstance",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(JobRunServiceServer).RegisterInstance(ctx, req.(*RegisterInstanceRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _JobRunService_JobRunInput_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -227,24 +134,6 @@ func _JobRunService_JobRunInput_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(JobRunServiceServer).JobRunInput(ctx, req.(*JobRunInputRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _JobRunService_JobStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(JobStatusRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(JobRunServiceServer).JobStatus(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/odpf.optimus.core.v1beta1.JobRunService/JobStatus",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(JobRunServiceServer).JobStatus(ctx, req.(*JobStatusRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -267,38 +156,38 @@ func _JobRunService_JobRun_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _JobRunService_GetWindow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetWindowRequest)
+func _JobRunService_RegisterJobEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegisterJobEventRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(JobRunServiceServer).GetWindow(ctx, in)
+		return srv.(JobRunServiceServer).RegisterJobEvent(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/odpf.optimus.core.v1beta1.JobRunService/GetWindow",
+		FullMethod: "/odpf.optimus.core.v1beta1.JobRunService/RegisterJobEvent",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(JobRunServiceServer).GetWindow(ctx, req.(*GetWindowRequest))
+		return srv.(JobRunServiceServer).RegisterJobEvent(ctx, req.(*RegisterJobEventRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _JobRunService_RunJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RunJobRequest)
+func _JobRunService_UploadToScheduler_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UploadToSchedulerRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(JobRunServiceServer).RunJob(ctx, in)
+		return srv.(JobRunServiceServer).UploadToScheduler(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/odpf.optimus.core.v1beta1.JobRunService/RunJob",
+		FullMethod: "/odpf.optimus.core.v1beta1.JobRunService/UploadToScheduler",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(JobRunServiceServer).RunJob(ctx, req.(*RunJobRequest))
+		return srv.(JobRunServiceServer).UploadToScheduler(ctx, req.(*UploadToSchedulerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -311,32 +200,20 @@ var JobRunService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*JobRunServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetJobTask",
-			Handler:    _JobRunService_GetJobTask_Handler,
-		},
-		{
-			MethodName: "RegisterInstance",
-			Handler:    _JobRunService_RegisterInstance_Handler,
-		},
-		{
 			MethodName: "JobRunInput",
 			Handler:    _JobRunService_JobRunInput_Handler,
-		},
-		{
-			MethodName: "JobStatus",
-			Handler:    _JobRunService_JobStatus_Handler,
 		},
 		{
 			MethodName: "JobRun",
 			Handler:    _JobRunService_JobRun_Handler,
 		},
 		{
-			MethodName: "GetWindow",
-			Handler:    _JobRunService_GetWindow_Handler,
+			MethodName: "RegisterJobEvent",
+			Handler:    _JobRunService_RegisterJobEvent_Handler,
 		},
 		{
-			MethodName: "RunJob",
-			Handler:    _JobRunService_RunJob_Handler,
+			MethodName: "UploadToScheduler",
+			Handler:    _JobRunService_UploadToScheduler_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

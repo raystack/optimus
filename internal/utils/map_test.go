@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/odpf/optimus/internal/utils"
 )
@@ -96,6 +97,16 @@ func TestMapHelper(t *testing.T) {
 
 			result := utils.Contains(mp, "a", "c", "e")
 			assert.True(t, result)
+		})
+	})
+	t.Run("ConfigAs", func(t *testing.T) {
+		t.Run("returns false when map is nil", func(t *testing.T) {
+			input, _ := structpb.NewStruct(map[string]any{
+				"time": 10,
+			})
+
+			result := utils.ConfigAs[float64](input.AsMap(), "time")
+			assert.Equal(t, result, float64(10))
 		})
 	})
 }

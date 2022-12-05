@@ -4,14 +4,13 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/core/scheduler"
 )
 
 const (
@@ -44,33 +43,23 @@ type Notifier struct {
 }
 
 type Event struct {
-	routingKey    string
-	projectName   string
-	namespaceName string
-	jobName       string
-	owner         string
-	meta          models.JobEvent
+	routingKey string
+	owner      string
+	meta       scheduler.Event
 }
 
-func (s *Notifier) Notify(_ context.Context, attr models.NotifyAttrs) error {
-	routingKey, ok := attr.Namespace.ProjectSpec.Secret.GetByName(strings.ReplaceAll(attr.Route, "#", "notify_"))
-	if !ok {
-		return fmt.Errorf("failed to find authentication token of bot required for sending notifications, please register %s secret", strings.ReplaceAll(attr.Route, "#", "notify_"))
-	}
-	s.queueNotification(routingKey, attr)
+func (s *Notifier) Notify(_ context.Context, attr scheduler.NotifyAttrs) error { //nolint:unparam
+	s.queueNotification(attr.Secret, attr)
 	return nil
 }
 
-func (s *Notifier) queueNotification(routingKey string, attr models.NotifyAttrs) {
+func (s *Notifier) queueNotification(routingKey string, attr scheduler.NotifyAttrs) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	evt := Event{
-		routingKey:    routingKey,
-		projectName:   attr.Namespace.ProjectSpec.Name,
-		namespaceName: attr.Namespace.Name,
-		jobName:       attr.JobSpec.Name,
-		owner:         attr.JobSpec.Owner,
-		meta:          attr.JobEvent,
+		routingKey: routingKey,
+		owner:      attr.Owner,
+		meta:       attr.JobEvent,
 	}
 	s.msgQueue = append(s.msgQueue, evt)
 	pagerdutyQueueCounter.Inc()

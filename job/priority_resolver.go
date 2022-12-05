@@ -33,6 +33,7 @@ var (
 
 // PriorityResolver defines an interface that represents getting
 // priority weight of Jobs based on their dependencies
+// TODO: Simplify later after the restructure,
 type PriorityResolver interface {
 	Resolve(context.Context, []models.JobSpec, progress.Observer) ([]models.JobSpec, error)
 }
