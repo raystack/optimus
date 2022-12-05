@@ -22,17 +22,21 @@ import (
 	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	jobRunCompiler "github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"
+	rModel "github.com/odpf/optimus/core/resource"
+	rHandler "github.com/odpf/optimus/core/resource/handler/v1beta1"
+	rService "github.com/odpf/optimus/core/resource/service"
 	schedulerHandler "github.com/odpf/optimus/core/scheduler/handler/v1beta1"
 	schedulerResolver "github.com/odpf/optimus/core/scheduler/resolver"
 	schedulerService "github.com/odpf/optimus/core/scheduler/service"
 	tHandler "github.com/odpf/optimus/core/tenant/handler/v1beta1"
 	tService "github.com/odpf/optimus/core/tenant/service"
-	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/ext/notify/pagerduty"
 	"github.com/odpf/optimus/ext/notify/slack"
+	bqStore "github.com/odpf/optimus/ext/store/bigquery"
 	"github.com/odpf/optimus/internal/compiler"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/store/postgres"
+	"github.com/odpf/optimus/internal/store/postgres/resource"
 	schedulerRepo "github.com/odpf/optimus/internal/store/postgres/scheduler"
 	"github.com/odpf/optimus/internal/store/postgres/tenant"
 	"github.com/odpf/optimus/internal/telemetry"
@@ -256,8 +260,19 @@ func (s *OptimusServer) setupHandlers() error {
 	tProjectService := tService.NewProjectService(tProjectRepo)
 	tNamespaceService := tService.NewNamespaceService(tNamespaceRepo)
 	tSecretService := tService.NewSecretService(s.key, tSecretRepo)
-
 	tenantService := tService.NewTenantService(tProjectService, tNamespaceService, tSecretService)
+
+	// Resource Bounded Context
+	resourceRepository := resource.NewRepository(s.dbConn)
+	backupRepository := resource.NewBackupRepository(s.dbConn)
+	resourceManager := rService.NewResourceManager(resourceRepository, s.logger)
+	resourceService := rService.NewResourceService(s.logger, resourceRepository, resourceManager, tenantService)
+	backupService := rService.NewBackupService(backupRepository, resourceRepository, resourceManager)
+
+	// Register datastore
+	bqClientProvider := bqStore.NewClientProvider()
+	bigqueryStore := bqStore.NewBigqueryDataStore(tenantService, bqClientProvider)
+	resourceManager.RegisterDatastore(rModel.Bigquery, bigqueryStore)
 
 	// Scheduler bounded context
 	jobRunRepo := schedulerRepo.NewJobRunRepository(s.dbConn)
@@ -374,16 +389,6 @@ func (s *OptimusServer) setupHandlers() error {
 		log: s.logger,
 	}
 
-	projectResourceSpecRepoFac := projectResourceSpecRepoFactory{
-		db: s.dbConn,
-	}
-	resourceSpecRepoFac := resourceSpecRepoFactory{
-		db:                         s.dbConn,
-		projectResourceSpecRepoFac: projectResourceSpecRepoFac,
-	}
-	backupRepo := postgres.NewBackupRepository(s.dbConn)
-	dataStoreService := datastore.NewService(s.logger, &resourceSpecRepoFac, models.DatastoreRegistry)
-	backupService := datastore.NewBackupService(&projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), backupRepo, pluginService)
 	// adapter service
 	// adapterService := v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry)
 	pluginRepo := models.PluginRegistry
@@ -393,12 +398,9 @@ func (s *OptimusServer) setupHandlers() error {
 	pb.RegisterProjectServiceServer(s.grpcServer, tHandler.NewProjectHandler(s.logger, tProjectService))
 	pb.RegisterNamespaceServiceServer(s.grpcServer, tHandler.NewNamespaceHandler(s.logger, tNamespaceService))
 
-	// resource service
-	pb.RegisterResourceServiceServer(s.grpcServer, v1handler.NewResourceServiceServer(s.logger,
-		dataStoreService,
-		namespaceService,
-		models.DatastoreRegistry,
-		progressObs))
+	// Resource Handler
+	pb.RegisterResourceServiceServer(s.grpcServer, rHandler.NewResourceHandler(s.logger, resourceService))
+
 	// replay service
 	pb.RegisterReplayServiceServer(s.grpcServer, v1handler.NewReplayServiceServer(s.logger,
 		jobService,
@@ -417,12 +419,7 @@ func (s *OptimusServer) setupHandlers() error {
 	pb.RegisterJobRunServiceServer(s.grpcServer, schedulerHandler.NewJobRunHandler(s.logger, newJobRunService, notificationService))
 
 	// backup service
-	pb.RegisterBackupServiceServer(s.grpcServer, v1handler.NewBackupServiceServer(s.logger,
-		jobService,
-		dataStoreService,
-		namespaceService,
-		projectService,
-		backupService))
+	pb.RegisterBackupServiceServer(s.grpcServer, rHandler.NewBackupHandler(s.logger, backupService))
 	// runtime service instance over grpc
 	pb.RegisterRuntimeServiceServer(s.grpcServer, v1handler.NewRuntimeServiceServer(s.logger, config.BuildVersion))
 

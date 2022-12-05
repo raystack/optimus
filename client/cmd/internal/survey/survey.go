@@ -93,18 +93,3 @@ func AskDirectoryName(root string) (string, error) {
 
 	return selectedDir, nil
 }
-
-// AskToSelectDatastorer asks the user to select a available datastorer
-func AskToSelectDatastorer(datastorers []string) (string, error) {
-	var storerName string
-	if err := survey.AskOne(
-		&survey.Select{
-			Message: "Select supported datastores?",
-			Options: datastorers,
-		},
-		&storerName,
-	); err != nil {
-		return "", err
-	}
-	return storerName, nil
-}

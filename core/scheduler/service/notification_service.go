@@ -62,8 +62,7 @@ func (n NotifyService) Push(ctx context.Context, event scheduler.Event) error {
 				n.l.Debug("notification event for job", "job spec name", event.JobName, "event", fmt.Sprintf("%v", event))
 				if plainTextSecretsList == nil {
 					plainTextSecretsList, err = n.tenantService.GetSecrets(ctx,
-						event.Tenant.ProjectName(),
-						event.Tenant.NamespaceName().String())
+						event.Tenant)
 					if err != nil {
 						multierror.Append(err)
 						continue

@@ -71,7 +71,7 @@ func TestExecutorCompiler(t *testing.T) {
 
 			tenantService := new(mockTenantService)
 			tenantService.On("GetDetails", ctx, tnnt).Return(tenantDetails, nil)
-			tenantService.On("GetSecrets", ctx, project.Name(), namespace.Name().String()).Return(nil, fmt.Errorf("get secrets error"))
+			tenantService.On("GetSecrets", ctx, tnnt).Return(nil, fmt.Errorf("get secrets error"))
 			defer tenantService.AssertExpectations(t)
 
 			inputCompiler := service.NewJobInputCompiler(tenantService, nil, nil)
@@ -99,7 +99,7 @@ func TestExecutorCompiler(t *testing.T) {
 
 			tenantService := new(mockTenantService)
 			tenantService.On("GetDetails", ctx, tnnt).Return(tenantDetails, nil)
-			tenantService.On("GetSecrets", ctx, project.Name(), namespace.Name().String()).Return([]*tenant.PlainTextSecret{}, nil)
+			tenantService.On("GetSecrets", ctx, tnnt).Return([]*tenant.PlainTextSecret{}, nil)
 			defer tenantService.AssertExpectations(t)
 
 			inputCompiler := service.NewJobInputCompiler(tenantService, nil, nil)
@@ -132,7 +132,7 @@ func TestExecutorCompiler(t *testing.T) {
 
 			tenantService := new(mockTenantService)
 			tenantService.On("GetDetails", ctx, tnnt).Return(tenantDetails, nil)
-			tenantService.On("GetSecrets", ctx, project.Name(), namespace.Name().String()).Return(secretsArray, nil)
+			tenantService.On("GetSecrets", ctx, tnnt).Return(secretsArray, nil)
 			defer tenantService.AssertExpectations(t)
 
 			startTime, _ := job.Window.GetStartTime(config.ScheduledAt)
@@ -189,7 +189,7 @@ func TestExecutorCompiler(t *testing.T) {
 
 			tenantService := new(mockTenantService)
 			tenantService.On("GetDetails", ctx, tnnt).Return(tenantDetails, nil)
-			tenantService.On("GetSecrets", ctx, project.Name(), namespace.Name().String()).Return(secretsArray, nil)
+			tenantService.On("GetSecrets", ctx, tnnt).Return(secretsArray, nil)
 			defer tenantService.AssertExpectations(t)
 
 			startTime, _ := job.Window.GetStartTime(config.ScheduledAt)
@@ -304,7 +304,7 @@ func TestExecutorCompiler(t *testing.T) {
 
 			tenantService := new(mockTenantService)
 			tenantService.On("GetDetails", ctx, tnnt).Return(tenantDetails, nil)
-			tenantService.On("GetSecrets", ctx, project.Name(), namespace.Name().String()).Return(secretsArray, nil)
+			tenantService.On("GetSecrets", ctx, tnnt).Return(secretsArray, nil)
 			defer tenantService.AssertExpectations(t)
 
 			startTime, _ := job.Window.GetStartTime(config.ScheduledAt)
@@ -393,7 +393,7 @@ func TestExecutorCompiler(t *testing.T) {
 
 			tenantService := new(mockTenantService)
 			tenantService.On("GetDetails", ctx, tnnt).Return(tenantDetails, nil)
-			tenantService.On("GetSecrets", ctx, project.Name(), namespace.Name().String()).Return(secretsArray, nil)
+			tenantService.On("GetSecrets", ctx, tnnt).Return(secretsArray, nil)
 			defer tenantService.AssertExpectations(t)
 
 			startTime, _ := job.Window.GetStartTime(config.ScheduledAt)
@@ -463,7 +463,7 @@ func TestExecutorCompiler(t *testing.T) {
 
 			tenantService := new(mockTenantService)
 			tenantService.On("GetDetails", ctx, tnnt).Return(tenantDetails, nil)
-			tenantService.On("GetSecrets", ctx, project.Name(), namespace.Name().String()).Return(secretsArray, nil)
+			tenantService.On("GetSecrets", ctx, tnnt).Return(secretsArray, nil)
 			defer tenantService.AssertExpectations(t)
 
 			startTime, _ := job.Window.GetStartTime(config.ScheduledAt)
@@ -513,8 +513,8 @@ func (m *mockTenantService) GetDetails(ctx context.Context, tnnt tenant.Tenant) 
 	return args.Get(0).(*tenant.WithDetails), args.Error(1)
 }
 
-func (m *mockTenantService) GetSecrets(ctx context.Context, projName tenant.ProjectName, nsName string) ([]*tenant.PlainTextSecret, error) {
-	args := m.Called(ctx, projName, nsName)
+func (m *mockTenantService) GetSecrets(ctx context.Context, tnnt tenant.Tenant) ([]*tenant.PlainTextSecret, error) {
+	args := m.Called(ctx, tnnt)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

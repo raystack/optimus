@@ -22,7 +22,6 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type BackupServiceClient interface {
-	BackupDryRun(ctx context.Context, in *BackupDryRunRequest, opts ...grpc.CallOption) (*BackupDryRunResponse, error)
 	CreateBackup(ctx context.Context, in *CreateBackupRequest, opts ...grpc.CallOption) (*CreateBackupResponse, error)
 	ListBackups(ctx context.Context, in *ListBackupsRequest, opts ...grpc.CallOption) (*ListBackupsResponse, error)
 	GetBackup(ctx context.Context, in *GetBackupRequest, opts ...grpc.CallOption) (*GetBackupResponse, error)
@@ -34,15 +33,6 @@ type backupServiceClient struct {
 
 func NewBackupServiceClient(cc grpc.ClientConnInterface) BackupServiceClient {
 	return &backupServiceClient{cc}
-}
-
-func (c *backupServiceClient) BackupDryRun(ctx context.Context, in *BackupDryRunRequest, opts ...grpc.CallOption) (*BackupDryRunResponse, error) {
-	out := new(BackupDryRunResponse)
-	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.BackupService/BackupDryRun", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *backupServiceClient) CreateBackup(ctx context.Context, in *CreateBackupRequest, opts ...grpc.CallOption) (*CreateBackupResponse, error) {
@@ -76,7 +66,6 @@ func (c *backupServiceClient) GetBackup(ctx context.Context, in *GetBackupReques
 // All implementations must embed UnimplementedBackupServiceServer
 // for forward compatibility
 type BackupServiceServer interface {
-	BackupDryRun(context.Context, *BackupDryRunRequest) (*BackupDryRunResponse, error)
 	CreateBackup(context.Context, *CreateBackupRequest) (*CreateBackupResponse, error)
 	ListBackups(context.Context, *ListBackupsRequest) (*ListBackupsResponse, error)
 	GetBackup(context.Context, *GetBackupRequest) (*GetBackupResponse, error)
@@ -87,9 +76,6 @@ type BackupServiceServer interface {
 type UnimplementedBackupServiceServer struct {
 }
 
-func (UnimplementedBackupServiceServer) BackupDryRun(context.Context, *BackupDryRunRequest) (*BackupDryRunResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method BackupDryRun not implemented")
-}
 func (UnimplementedBackupServiceServer) CreateBackup(context.Context, *CreateBackupRequest) (*CreateBackupResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateBackup not implemented")
 }
@@ -110,24 +96,6 @@ type UnsafeBackupServiceServer interface {
 
 func RegisterBackupServiceServer(s grpc.ServiceRegistrar, srv BackupServiceServer) {
 	s.RegisterService(&BackupService_ServiceDesc, srv)
-}
-
-func _BackupService_BackupDryRun_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(BackupDryRunRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(BackupServiceServer).BackupDryRun(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/odpf.optimus.core.v1beta1.BackupService/BackupDryRun",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BackupServiceServer).BackupDryRun(ctx, req.(*BackupDryRunRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _BackupService_CreateBackup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -191,10 +159,6 @@ var BackupService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "odpf.optimus.core.v1beta1.BackupService",
 	HandlerType: (*BackupServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "BackupDryRun",
-			Handler:    _BackupService_BackupDryRun_Handler,
-		},
 		{
 			MethodName: "CreateBackup",
 			Handler:    _BackupService_CreateBackup_Handler,

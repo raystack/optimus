@@ -83,7 +83,7 @@ func TestNotificationService(t *testing.T) {
 			plainSecret, _ := tenant.NewPlainTextSecret("NOTIFY_SLACK", "secretValue")
 			plainSecrets := []*tenant.PlainTextSecret{plainSecret}
 			tenantService := new(mockTenantService)
-			tenantService.On("GetSecrets", ctx, tnnt.ProjectName(), tnnt.NamespaceName().String()).Return(plainSecrets, nil)
+			tenantService.On("GetSecrets", ctx, tnnt).Return(plainSecrets, nil)
 			defer tenantService.AssertExpectations(t)
 
 			notifyChanelSlack := new(mockNotificationChanel)
@@ -145,7 +145,7 @@ func TestNotificationService(t *testing.T) {
 			plainSecret, _ := tenant.NewPlainTextSecret("notify_chanel-name", "secretValue")
 			plainSecrets := []*tenant.PlainTextSecret{plainSecret}
 			tenantService := new(mockTenantService)
-			tenantService.On("GetSecrets", ctx, tnnt.ProjectName(), tnnt.NamespaceName().String()).Return(plainSecrets, nil)
+			tenantService.On("GetSecrets", ctx, tnnt).Return(plainSecrets, nil)
 			defer tenantService.AssertExpectations(t)
 
 			notifChanelSlack := new(mockNotificationChanel)
@@ -207,7 +207,7 @@ func TestNotificationService(t *testing.T) {
 			plainSecret, _ := tenant.NewPlainTextSecret("notify_chanel-name", "secretValue")
 			plainSecrets := []*tenant.PlainTextSecret{plainSecret}
 			tenantService := new(mockTenantService)
-			tenantService.On("GetSecrets", ctx, tnnt.ProjectName(), tnnt.NamespaceName().String()).Return(plainSecrets, nil)
+			tenantService.On("GetSecrets", ctx, tnnt).Return(plainSecrets, nil)
 			defer tenantService.AssertExpectations(t)
 
 			notifyChanelSlack := new(mockNotificationChanel)

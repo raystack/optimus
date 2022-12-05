@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS backup;
+
+ALTER TABLE IF EXISTS backup_old
+    RENAME TO backup;

@@ -78,6 +78,7 @@ func dropTables(db *gorm.DB) error {
 		"job_run_old",
 		"job_run",
 		"backup",
+		"backup_old",
 		"secret",
 		"job_deployment",
 		"job_source",
@@ -85,6 +86,7 @@ func dropTables(db *gorm.DB) error {
 		"schema_migrations",
 		"job",
 		"resource",
+		"resource_old",
 		"namespace",
 		"project",
 		"migration_steps",
@@ -105,6 +107,8 @@ func dropTables(db *gorm.DB) error {
 }
 
 func truncateTables(db *gorm.DB) {
+	db.Exec("TRUNCATE TABLE backup_old")
+	db.Exec("TRUNCATE TABLE resource_old")
 	db.Exec("TRUNCATE TABLE backup CASCADE")
 	db.Exec("TRUNCATE TABLE replay CASCADE")
 	db.Exec("TRUNCATE TABLE resource CASCADE")

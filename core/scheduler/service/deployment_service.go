@@ -21,7 +21,7 @@ func (s JobRunService) UploadToScheduler(ctx context.Context, projectName tenant
 	jobGroupByTenant := scheduler.GroupJobsByTenant(allJobsWithDetails)
 	multiError := errors.NewMultiError("ErrorInUploadToScheduler")
 	for t, jobs := range jobGroupByTenant {
-		if err := s.deployJobsPerNamespace(ctx, t, jobs); err == nil {
+		if err = s.deployJobsPerNamespace(ctx, t, jobs); err == nil {
 			s.l.Debug(fmt.Sprintf("namespace %s deployed", namespaceName), "project name", projectName)
 		}
 		multiError.Append(err)

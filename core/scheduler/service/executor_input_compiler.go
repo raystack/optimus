@@ -38,7 +38,7 @@ const (
 
 type TenantService interface {
 	GetDetails(ctx context.Context, tnnt tenant.Tenant) (*tenant.WithDetails, error)
-	GetSecrets(ctx context.Context, projName tenant.ProjectName, nsName string) ([]*tenant.PlainTextSecret, error)
+	GetSecrets(ctx context.Context, tnnt tenant.Tenant) ([]*tenant.PlainTextSecret, error)
 }
 
 type TemplateCompiler interface {
@@ -61,7 +61,7 @@ func (i InputCompiler) Compile(ctx context.Context, job *scheduler.Job, config s
 		return nil, err
 	}
 
-	secrets, err := i.tenantService.GetSecrets(ctx, job.Tenant.ProjectName(), job.Tenant.NamespaceName().String())
+	secrets, err := i.tenantService.GetSecrets(ctx, job.Tenant)
 	if err != nil {
 		return nil, err
 	}
