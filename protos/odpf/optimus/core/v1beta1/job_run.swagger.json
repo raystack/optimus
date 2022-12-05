@@ -21,67 +21,6 @@
     "application/json"
   ],
   "paths": {
-    "/v1beta1/project/{projectName}/job/{jobName}/instance": {
-      "post": {
-        "summary": "RegisterInstance is an internal admin command used during task/hook execution\nto pull task/hook compiled configuration and assets.",
-        "operationId": "JobRunService_RegisterInstance",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1beta1RegisterInstanceResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "jobName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "scheduledAt": {
-                  "type": "string",
-                  "format": "date-time"
-                },
-                "instanceName": {
-                  "type": "string"
-                },
-                "instanceType": {
-                  "$ref": "#/definitions/v1beta1InstanceSpecType"
-                },
-                "jobrunId": {
-                  "type": "string",
-                  "title": "either set job_name if this is a scheduled execution\nor set jobrun_id if this is a manual triggered execution\nand not really registered as a valid job"
-                }
-              }
-            }
-          }
-        ],
-        "tags": [
-          "JobRunService"
-        ]
-      }
-    },
     "/v1beta1/project/{projectName}/job/{jobName}/run": {
       "get": {
         "summary": "JobRun returns the current and past run status of jobs on a given range",
@@ -204,95 +143,15 @@
         ]
       }
     },
-    "/v1beta1/project/{projectName}/job/{jobName}/status": {
-      "get": {
-        "summary": "JobStatus returns the current and past run status of jobs",
-        "operationId": "JobRunService_JobStatus",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1beta1JobStatusResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "jobName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "JobRunService"
-        ]
-      }
-    },
-    "/v1beta1/project/{projectName}/namespace/{namespaceName}/job/{jobName}/task": {
-      "get": {
-        "summary": "GetJobTask provides task details specific to plugin used in a job",
-        "operationId": "JobRunService_GetJobTask",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1beta1GetJobTaskResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "namespaceName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "jobName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "JobRunService"
-        ]
-      }
-    },
-    "/v1beta1/project/{projectName}/namespace/{namespaceName}/run": {
+    "/v1beta1/project/{projectName}/namespace/{namespaceName}/job/{jobName}/event": {
       "post": {
-        "summary": "RunJob creates a job run and executes all included tasks/hooks instantly\nthis doesn't necessarily deploy the job in db first",
-        "operationId": "JobRunService_RunJob",
+        "summary": "RegisterJobEvent notifies optimus service about an event related to job",
+        "operationId": "JobRunService_RegisterJobEvent",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1beta1RunJobResponse"
+              "$ref": "#/definitions/v1beta1RegisterJobEventResponse"
             }
           },
           "default": {
@@ -311,6 +170,12 @@
           },
           {
             "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "jobName",
             "in": "path",
             "required": true,
             "type": "string"
@@ -322,12 +187,8 @@
             "schema": {
               "type": "object",
               "properties": {
-                "specifications": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/v1beta1JobSpecification"
-                  },
-                  "title": "job specification order of execution is undefined\nattributes realted to schedule behaviour are ignored like interval,\nstart_date, end_date, catchup, etc"
+                "event": {
+                  "$ref": "#/definitions/v1beta1JobEvent"
                 }
               }
             }
@@ -338,15 +199,15 @@
         ]
       }
     },
-    "/v1beta1/window": {
-      "get": {
-        "summary": "GetWindow provides the start and end dates provided a scheduled date\nof the execution window",
-        "operationId": "JobRunService_GetWindow",
+    "/v1beta1/project/{projectName}/upload": {
+      "put": {
+        "summary": "UploadToScheduler comiles jobSpec from database into DAGs and uploads the generated DAGs to scheduler",
+        "operationId": "JobRunService_UploadToScheduler",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1beta1GetWindowResponse"
+              "$ref": "#/definitions/v1beta1UploadToSchedulerResponse"
             }
           },
           "default": {
@@ -358,36 +219,23 @@
         },
         "parameters": [
           {
-            "name": "scheduledAt",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "format": "date-time"
-          },
-          {
-            "name": "size",
-            "in": "query",
-            "required": false,
+            "name": "projectName",
+            "in": "path",
+            "required": true,
             "type": "string"
           },
           {
-            "name": "offset",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "truncateTo",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "version",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "namespaceName": {
+                  "type": "string"
+                }
+              }
+            }
           }
         ],
         "tags": [
@@ -397,101 +245,6 @@
     }
   },
   "definitions": {
-    "BehaviorNotifiers": {
-      "type": "object",
-      "properties": {
-        "on": {
-          "$ref": "#/definitions/v1beta1JobEventType"
-        },
-        "channels": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "config": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      },
-      "title": "Notifiers are used to set custom alerting in case of job failure/sla_miss"
-    },
-    "BehaviorRetry": {
-      "type": "object",
-      "properties": {
-        "count": {
-          "type": "integer",
-          "format": "int32"
-        },
-        "delay": {
-          "type": "string"
-        },
-        "exponentialBackoff": {
-          "type": "boolean"
-        }
-      },
-      "title": "retry behaviour if job failed to execute for the first time"
-    },
-    "JobSpecificationBehavior": {
-      "type": "object",
-      "properties": {
-        "retry": {
-          "$ref": "#/definitions/BehaviorRetry"
-        },
-        "notify": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/BehaviorNotifiers"
-          }
-        }
-      }
-    },
-    "JobTaskDependency": {
-      "type": "object",
-      "properties": {
-        "dependency": {
-          "type": "string"
-        }
-      }
-    },
-    "JobTaskDestination": {
-      "type": "object",
-      "properties": {
-        "destination": {
-          "type": "string"
-        },
-        "type": {
-          "type": "string"
-        }
-      }
-    },
-    "ProjectSpecificationProjectSecret": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    },
-    "corev1beta1JobDependency": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "type": {
-          "type": "string"
-        },
-        "httpDependency": {
-          "$ref": "#/definitions/v1beta1HttpDependency"
-        }
-      }
-    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -503,6 +256,14 @@
           "format": "byte"
         }
       }
+    },
+    "protobufNullValue": {
+      "type": "string",
+      "enum": [
+        "NULL_VALUE"
+      ],
+      "default": "NULL_VALUE",
+      "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\n The JSON representation for `NullValue` is JSON `null`.\n\n - NULL_VALUE: Null value."
     },
     "rpcStatus": {
       "type": "object",
@@ -522,98 +283,6 @@
         }
       }
     },
-    "v1beta1GetJobTaskResponse": {
-      "type": "object",
-      "properties": {
-        "task": {
-          "$ref": "#/definitions/v1beta1JobTask"
-        }
-      }
-    },
-    "v1beta1GetWindowResponse": {
-      "type": "object",
-      "properties": {
-        "start": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "end": {
-          "type": "string",
-          "format": "date-time"
-        }
-      }
-    },
-    "v1beta1HttpDependency": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "url": {
-          "type": "string"
-        },
-        "headers": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "params": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "v1beta1InstanceSpec": {
-      "type": "object",
-      "properties": {
-        "state": {
-          "type": "string"
-        },
-        "data": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1InstanceSpecData"
-          }
-        },
-        "executedAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "name": {
-          "type": "string"
-        },
-        "type": {
-          "$ref": "#/definitions/v1beta1InstanceSpecType"
-        }
-      }
-    },
-    "v1beta1InstanceSpecData": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "value": {
-          "type": "string"
-        },
-        "type": {
-          "$ref": "#/definitions/v1beta1InstanceSpecDataType"
-        }
-      }
-    },
-    "v1beta1InstanceSpecDataType": {
-      "type": "string",
-      "enum": [
-        "TYPE_UNSPECIFIED",
-        "TYPE_ENV",
-        "TYPE_FILE"
-      ],
-      "default": "TYPE_UNSPECIFIED",
-      "title": "type of data, could be an env var or file"
-    },
     "v1beta1InstanceSpecType": {
       "type": "string",
       "enum": [
@@ -623,14 +292,14 @@
       ],
       "default": "TYPE_UNSPECIFIED"
     },
-    "v1beta1JobConfigItem": {
+    "v1beta1JobEvent": {
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string"
+        "type": {
+          "$ref": "#/definitions/v1beta1JobEventType"
         },
         "value": {
-          "type": "string"
+          "type": "object"
         }
       }
     },
@@ -639,12 +308,8 @@
       "enum": [
         "TYPE_UNSPECIFIED",
         "TYPE_SLA_MISS",
-        "TYPE_FAILURE",
-        "TYPE_SUCCESS",
-        "TYPE_RETRY",
-        "TYPE_JOB_START",
         "TYPE_JOB_SUCCESS",
-        "TYPE_JOB_FAIL",
+        "TYPE_FAILURE",
         "TYPE_TASK_RETRY",
         "TYPE_TASK_SUCCESS",
         "TYPE_TASK_START",
@@ -659,17 +324,6 @@
         "TYPE_HOOK_SUCCESS"
       ],
       "default": "TYPE_UNSPECIFIED"
-    },
-    "v1beta1JobMetadata": {
-      "type": "object",
-      "properties": {
-        "resource": {
-          "$ref": "#/definitions/v1beta1JobSpecMetadataResource"
-        },
-        "airflow": {
-          "$ref": "#/definitions/v1beta1JobSpecMetadataAirflow"
-        }
-      }
     },
     "v1beta1JobRun": {
       "type": "object",
@@ -717,246 +371,19 @@
         }
       }
     },
-    "v1beta1JobSpecHook": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "config": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1JobConfigItem"
-          }
-        }
-      }
-    },
-    "v1beta1JobSpecMetadataAirflow": {
-      "type": "object",
-      "properties": {
-        "pool": {
-          "type": "string"
-        },
-        "queue": {
-          "type": "string"
-        }
-      }
-    },
-    "v1beta1JobSpecMetadataResource": {
-      "type": "object",
-      "properties": {
-        "request": {
-          "$ref": "#/definitions/v1beta1JobSpecMetadataResourceConfig"
-        },
-        "limit": {
-          "$ref": "#/definitions/v1beta1JobSpecMetadataResourceConfig"
-        }
-      }
-    },
-    "v1beta1JobSpecMetadataResourceConfig": {
-      "type": "object",
-      "properties": {
-        "cpu": {
-          "type": "string"
-        },
-        "memory": {
-          "type": "string"
-        }
-      }
-    },
-    "v1beta1JobSpecification": {
-      "type": "object",
-      "properties": {
-        "version": {
-          "type": "integer",
-          "format": "int32"
-        },
-        "name": {
-          "type": "string"
-        },
-        "owner": {
-          "type": "string"
-        },
-        "startDate": {
-          "type": "string"
-        },
-        "endDate": {
-          "type": "string"
-        },
-        "interval": {
-          "type": "string"
-        },
-        "dependsOnPast": {
-          "type": "boolean"
-        },
-        "catchUp": {
-          "type": "boolean"
-        },
-        "taskName": {
-          "type": "string"
-        },
-        "config": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1JobConfigItem"
-          }
-        },
-        "windowSize": {
-          "type": "string"
-        },
-        "windowOffset": {
-          "type": "string"
-        },
-        "windowTruncateTo": {
-          "type": "string"
-        },
-        "dependencies": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/corev1beta1JobDependency"
-          }
-        },
-        "assets": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "hooks": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1JobSpecHook"
-          }
-        },
-        "description": {
-          "type": "string"
-        },
-        "labels": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "behavior": {
-          "$ref": "#/definitions/JobSpecificationBehavior"
-        },
-        "metadata": {
-          "$ref": "#/definitions/v1beta1JobMetadata"
-        },
-        "destination": {
-          "type": "string"
-        },
-        "sources": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "v1beta1JobStatus": {
-      "type": "object",
-      "properties": {
-        "state": {
-          "type": "string"
-        },
-        "scheduledAt": {
-          "type": "string",
-          "format": "date-time"
-        }
-      }
-    },
-    "v1beta1JobStatusResponse": {
-      "type": "object",
-      "properties": {
-        "statuses": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1JobStatus"
-          }
-        }
-      }
-    },
-    "v1beta1JobTask": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "description": {
-          "type": "string"
-        },
-        "image": {
-          "type": "string"
-        },
-        "destination": {
-          "$ref": "#/definitions/JobTaskDestination"
-        },
-        "dependencies": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/JobTaskDependency"
-          }
-        }
-      },
-      "title": "JobTask is part of a job that dictates main transformation\neach job has exactly one task"
-    },
-    "v1beta1NamespaceSpecification": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "config": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "v1beta1ProjectSpecification": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "config": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "secrets": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/ProjectSpecificationProjectSecret"
-          }
-        }
-      }
-    },
-    "v1beta1RegisterInstanceResponse": {
-      "type": "object",
-      "properties": {
-        "project": {
-          "$ref": "#/definitions/v1beta1ProjectSpecification"
-        },
-        "namespace": {
-          "$ref": "#/definitions/v1beta1NamespaceSpecification"
-        },
-        "job": {
-          "$ref": "#/definitions/v1beta1JobSpecification"
-        },
-        "instance": {
-          "$ref": "#/definitions/v1beta1InstanceSpec"
-        },
-        "context": {
-          "$ref": "#/definitions/v1beta1JobRunInputResponse"
-        }
-      }
-    },
-    "v1beta1RunJobResponse": {
+    "v1beta1RegisterJobEventResponse": {
       "type": "object"
+    },
+    "v1beta1UploadToSchedulerResponse": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "boolean"
+        },
+        "errorMessage": {
+          "type": "string"
+        }
+      }
     }
   },
   "externalDocs": {

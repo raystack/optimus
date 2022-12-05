@@ -5,8 +5,6 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
-
-	"github.com/odpf/optimus/models"
 )
 
 const (
@@ -17,8 +15,8 @@ const (
 func NewBackupCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "backup",
-		Short: "Backup a resource and its downstream",
-		Long: heredoc.Doc(`Backup supported resource of a datastore and all of its downstream dependencies.
+		Short: "Backup a list resource",
+		Long: heredoc.Doc(`Backup supported resources of a datastore.
 			Operation can take up to few minutes to complete. It is advised to check the operation status
 			using "list" command.
 		`),
@@ -31,13 +29,4 @@ func NewBackupCommand() *cobra.Command {
 	cmd.AddCommand(NewListCommand())
 	cmd.AddCommand(NewStatusCommand())
 	return cmd
-}
-
-func getAvailableDatastorers() []string {
-	dsRepo := models.DatastoreRegistry
-	availableStorers := []string{}
-	for _, s := range dsRepo.GetAll() {
-		availableStorers = append(availableStorers, s.Name())
-	}
-	return availableStorers
 }

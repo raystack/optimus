@@ -24,12 +24,12 @@ func (s *jobRunService) GetJobRunList(ctx context.Context, projectSpec models.Pr
 
 	interval := jobSpec.Schedule.Interval
 	if interval == "" {
-		return jobRuns, errors.New("job interval not found at DB")
+		return jobRuns, errors.New("job schedule interval not found")
 	}
 	// jobCron
 	jobCron, err := cron.ParseCronSchedule(interval)
 	if err != nil {
-		return jobRuns, fmt.Errorf("unable to parse the interval from DB %w", err)
+		return jobRuns, fmt.Errorf("unable to parse job cron internval %w", err)
 	}
 
 	if jobQuery.OnlyLastRun {
@@ -66,7 +66,7 @@ func NewJobRunService(scheduler models.SchedulerUnit) *jobRunService {
 func validateJobQuery(jobQuery *models.JobQuery, jobSpec models.JobSpec) error {
 	jobStartDate := jobSpec.Schedule.StartDate
 	if jobStartDate.IsZero() {
-		return errors.New("job start time not found at DB")
+		return errors.New("job schedule startDate not found in job fetched from DB")
 	}
 	givenStartDate := jobQuery.StartDate
 	givenEndDate := jobQuery.EndDate

@@ -16,6 +16,8 @@ var (
 	ErrDependencyModNotFound = errors.New("dependency mod not found for plugin")
 )
 
+const projectConfigPrefix = "GLOBAL__"
+
 type PluginService interface {
 	GenerateDestination(context.Context, models.JobSpec, models.NamespaceSpec) (*models.GenerateDestinationResponse, error)
 	GenerateDependencies(context.Context, models.JobSpec, models.NamespaceSpec, bool) (*models.GenerateDependenciesResponse, error)
@@ -103,7 +105,7 @@ func (d DependencyPluginService) compileConfig(ctx context.Context, configs mode
 	}
 
 	tmplCtx := compiler.PrepareContext(
-		compiler.From(namespace.ProjectSpec.Config, namespace.Config).WithName("proj").WithKeyPrefix(compiler.ProjectConfigPrefix),
+		compiler.From(namespace.ProjectSpec.Config, namespace.Config).WithName("proj").WithKeyPrefix(projectConfigPrefix),
 		compiler.From(secrets.ToMap()).WithName("secret"),
 	)
 

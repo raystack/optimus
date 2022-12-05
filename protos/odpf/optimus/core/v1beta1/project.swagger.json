@@ -168,20 +168,6 @@
         }
       }
     },
-    "v1beta1NamespaceSpecification": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "config": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "v1beta1ProjectSpecification": {
       "type": "object",
       "properties": {
@@ -207,9 +193,6 @@
       "properties": {
         "project": {
           "$ref": "#/definitions/v1beta1ProjectSpecification"
-        },
-        "namespace": {
-          "$ref": "#/definitions/v1beta1NamespaceSpecification"
         }
       }
     },

@@ -8,9 +8,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/core/scheduler"
+	"github.com/odpf/optimus/core/tenant"
 )
 
 type PagerDutyServiceImplMock struct {
@@ -26,18 +26,17 @@ func TestPagerDuty(t *testing.T) {
 	t.Run("should send alert to pagerduty service using service name successfully", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		var sendErrors []error
-
+		tnnt, _ := tenant.NewTenant("foo", "test")
 		pagerDutyServiceMock := new(PagerDutyServiceImplMock)
 		pagerDutyServiceMock.On("SendAlert", ctx,
 			Event{
-				routingKey:    "test-token",
-				projectName:   "foo",
-				namespaceName: "test",
-				jobName:       "foo-job-spec",
-				owner:         "",
-				meta: models.JobEvent{
-					Type:  "failure",
-					Value: map[string]*structpb.Value(nil),
+				routingKey: "test-token",
+				owner:      "",
+				meta: scheduler.Event{
+					JobName: "foo-job-spec",
+					Tenant:  tnnt,
+					Type:    scheduler.JobFailureEvent,
+					Values:  map[string]any(nil),
 				},
 			},
 		).Return(nil)
@@ -53,26 +52,16 @@ func TestPagerDuty(t *testing.T) {
 		)
 		defer client.Close()
 
-		err := client.Notify(context.Background(), models.NotifyAttrs{
-			Namespace: models.NamespaceSpec{
-				Name: "test",
-				ProjectSpec: models.ProjectSpec{
-					Name: "foo",
-					Secret: []models.ProjectSecretItem{
-						{
-							Name:  "optimus@test.com",
-							Value: "test-token",
-						},
-					},
-				},
+		err := client.Notify(context.Background(), scheduler.NotifyAttrs{
+			Owner: "",
+			JobEvent: scheduler.Event{
+				JobName: "foo-job-spec",
+				Tenant:  tnnt,
+				Type:    scheduler.JobFailureEvent,
+				Values:  nil,
 			},
-			JobSpec: models.JobSpec{
-				Name: "foo-job-spec",
-			},
-			JobEvent: models.JobEvent{
-				Type: models.JobFailureEvent,
-			},
-			Route: "optimus@test.com",
+			Route:  "optimus@test.com",
+			Secret: "test-token",
 		})
 
 		assert.Nil(t, err)
@@ -84,18 +73,18 @@ func TestPagerDuty(t *testing.T) {
 	t.Run("should call error handler function for any error from pagerduty service ", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		var sendErrors []error
-
+		tnnt, _ := tenant.NewTenant("foo", "test")
+		jobName := scheduler.JobName("foo-job-spec")
 		pagerDutyServiceMock := new(PagerDutyServiceImplMock)
 		pagerDutyServiceMock.On("SendAlert", ctx,
 			Event{
-				routingKey:    "test-invalid-token",
-				projectName:   "foo",
-				namespaceName: "test",
-				jobName:       "foo-job-spec",
-				owner:         "",
-				meta: models.JobEvent{
-					Type:  "failure",
-					Value: map[string]*structpb.Value(nil),
+				routingKey: "test-invalid-token",
+				owner:      "",
+				meta: scheduler.Event{
+					JobName: jobName,
+					Tenant:  tnnt,
+					Type:    scheduler.JobFailureEvent,
+					Values:  map[string]any(nil),
 				},
 			},
 		).Return(fmt.Errorf("invalid routing key test-invalid-token"))
@@ -111,26 +100,17 @@ func TestPagerDuty(t *testing.T) {
 		)
 		defer client.Close()
 
-		client.Notify(context.Background(), models.NotifyAttrs{
-			Namespace: models.NamespaceSpec{
-				Name: "test",
-				ProjectSpec: models.ProjectSpec{
-					Name: "foo",
-					Secret: []models.ProjectSecretItem{
-						{
-							Name:  "optimus@test.com",
-							Value: "test-invalid-token",
-						},
-					},
-				},
+		client.Notify(context.Background(), scheduler.NotifyAttrs{
+			Owner: "",
+			JobEvent: scheduler.Event{
+				JobName: jobName,
+				Tenant:  tnnt,
+				Type:    scheduler.JobFailureEvent,
+				Values:  map[string]any(nil),
 			},
-			JobSpec: models.JobSpec{
-				Name: "foo-job-spec",
-			},
-			JobEvent: models.JobEvent{
-				Type: models.JobFailureEvent,
-			},
-			Route: "optimus@test.com",
+
+			Route:  "optimus@test.com",
+			Secret: "test-invalid-token",
 		})
 
 		cancel()

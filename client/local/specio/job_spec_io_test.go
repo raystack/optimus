@@ -370,7 +370,7 @@ hooks: []`
 	return specFS
 }
 
-func (JobSpecReadWriterTestSuite) writeTo(fs afero.Fs, filePath string, content string) error {
+func (*JobSpecReadWriterTestSuite) writeTo(fs afero.Fs, filePath string, content string) error {
 	f, err := fs.Create(filePath)
 	if err != nil {
 		return err
@@ -381,7 +381,7 @@ func (JobSpecReadWriterTestSuite) writeTo(fs afero.Fs, filePath string, content 
 	return err
 }
 
-func (JobSpecReadWriterTestSuite) readFrom(fs afero.Fs, filePath string) (string, error) {
+func (*JobSpecReadWriterTestSuite) readFrom(fs afero.Fs, filePath string) (string, error) {
 	f, err := fs.Open(filePath)
 	if err != nil {
 		return "", err
