@@ -20,10 +20,6 @@ func (t Tenant) NamespaceName() NamespaceName {
 	return t.nsName
 }
 
-func (t Tenant) IsInvalid() bool {
-	return t.projName.String() == ""
-}
-
 func NewTenant(projectName string, namespaceName string) (Tenant, error) {
 	projName, err := ProjectNameFrom(projectName)
 	if err != nil {
