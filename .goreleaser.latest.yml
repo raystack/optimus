@@ -30,8 +30,8 @@ archives:
       - goos: windows
         format: zip
 release:
-  draft: false
-  prerelease: auto
+  disable: true
+  name_template: "{{.ProjectName}}-latest"
 checksum:
   name_template: 'checksums.txt'
 snapshot:
