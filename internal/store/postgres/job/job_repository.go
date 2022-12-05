@@ -3,7 +3,6 @@ package job
 import (
 	"context"
 	"fmt"
-
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/job"
@@ -475,16 +474,18 @@ func (j JobRepository) ReplaceUpstreams(ctx context.Context, jobsWithUpstreams [
 }
 
 func (JobRepository) insertUpstreams(tx *gorm.DB, storageJobUpstreams []*JobWithUpstream) error {
-	insertJobUpstreamQuery := `
+	insertResolvedUpstreamQuery := `
 INSERT INTO job_upstream (
-	job_name, project_name, upstream_job_name, upstream_resource_urn, 
+	job_id, job_name, project_name, 
+	upstream_job_id, upstream_job_name, upstream_resource_urn, 
 	upstream_project_name, upstream_namespace_name, upstream_host,
 	upstream_task_name, upstream_external,
 	upstream_type, upstream_state,
 	created_at
 )
 VALUES (
-	?, ?, ?, ?,
+	(select id FROM job WHERE name = ?), ?, ?, 
+	(select id FROM job WHERE name = ?), ?, ?,
 	?, ?, ?, 
 	?, ?,
 	?, ?, 
@@ -492,13 +493,36 @@ VALUES (
 );
 `
 
+	insertUnresolvedUpstreamQuery := `
+INSERT INTO job_upstream (
+	job_id, job_name, project_name, 
+	upstream_job_name, upstream_resource_urn, upstream_project_name,
+	upstream_type, upstream_state,
+	created_at
+)
+VALUES (
+	(select id FROM job WHERE name = ?), ?, ?, 
+	?, ?, ?,
+	?, ?, 
+	NOW()
+);
+`
+
 	for _, upstream := range storageJobUpstreams {
-		result := tx.Exec(insertJobUpstreamQuery,
-			upstream.JobName, upstream.ProjectName,
-			upstream.UpstreamJobName, upstream.UpstreamResourceURN,
-			upstream.UpstreamProjectName, upstream.UpstreamNamespaceName, upstream.UpstreamHost,
-			upstream.UpstreamTaskName, upstream.UpstreamExternal,
-			upstream.UpstreamType, upstream.UpstreamState)
+		var result *gorm.DB
+		if upstream.UpstreamState == job.UpstreamStateResolved.String() {
+			result = tx.Exec(insertResolvedUpstreamQuery,
+				upstream.JobName, upstream.JobName, upstream.ProjectName,
+				upstream.UpstreamJobName, upstream.UpstreamJobName, upstream.UpstreamResourceURN,
+				upstream.UpstreamProjectName, upstream.UpstreamNamespaceName, upstream.UpstreamHost,
+				upstream.UpstreamTaskName, upstream.UpstreamExternal,
+				upstream.UpstreamType, upstream.UpstreamState)
+		} else {
+			result = tx.Exec(insertUnresolvedUpstreamQuery,
+				upstream.JobName, upstream.JobName, upstream.ProjectName,
+				upstream.UpstreamJobName, upstream.UpstreamResourceURN, upstream.UpstreamProjectName,
+				upstream.UpstreamType, upstream.UpstreamState)
+		}
 
 		if result.Error != nil {
 			return errors.NewError(errors.ErrInternalError, job.EntityJob, fmt.Sprintf("unable to save job upstream: %s", result.Error))
@@ -592,39 +616,32 @@ AND upstream_state = 'resolved'
 }
 
 func (j JobRepository) Delete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, cleanHistory bool) error {
-	return j.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		jobFullName := projectName.String() + "/" + jobName.String()
-		if err := j.deleteUpstreams(tx, []string{jobFullName}); err != nil {
-			return err
-		}
-
-		if cleanHistory {
-			return j.hardDelete(tx, projectName, jobName)
-		}
-		return j.softDelete(tx, projectName, jobName)
-	})
+	if cleanHistory {
+		return j.hardDelete(ctx, projectName, jobName)
+	}
+	return j.softDelete(ctx, projectName, jobName)
 }
 
-func (JobRepository) hardDelete(tx *gorm.DB, projectName tenant.ProjectName, jobName job.Name) error {
+func (j JobRepository) hardDelete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) error {
 	query := `
 DELETE 
 FROM job
 WHERE project_name = ? AND name = ?
 `
-	result := tx.Exec(query, projectName.String(), jobName.String())
+	result := j.db.WithContext(ctx).Exec(query, projectName.String(), jobName.String())
 	if result.Error != nil {
 		return errors.Wrap(job.EntityJob, "error during job deletion", result.Error)
 	}
 	return nil
 }
 
-func (JobRepository) softDelete(tx *gorm.DB, projectName tenant.ProjectName, jobName job.Name) error {
+func (j JobRepository) softDelete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) error {
 	query := `
 UPDATE job
 SET deleted_at = current_timestamp
 WHERE project_name = ? AND name = ?
 `
-	result := tx.Exec(query, projectName.String(), jobName.String())
+	result := j.db.WithContext(ctx).Exec(query, projectName.String(), jobName.String())
 	if result.Error != nil {
 		return errors.Wrap(job.EntityJob, "error during job deletion", result.Error)
 	}
