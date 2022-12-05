@@ -41,6 +41,13 @@ func TestPostgresJobRepository(t *testing.T) {
 	sampleTenant, err := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
 	assert.NoError(t, err)
 
+	otherProj, err := tenant.NewProject("test-other-proj",
+		map[string]string{
+			"bucket":                     "gs://some_folder-3",
+			tenant.ProjectSchedulerHost:  "host",
+			tenant.ProjectStoragePathKey: "gs://location",
+		})
+
 	dbSetup := func() *gorm.DB {
 		dbConn := setup.TestDB()
 		setup.TruncateTables(dbConn)
@@ -400,7 +407,7 @@ func TestPostgresJobRepository(t *testing.T) {
 		})
 	})
 
-	t.Run("GetJobWithUpstreams", func(t *testing.T) {
+	t.Run("GetJobNameWithInternalUpstreams", func(t *testing.T) {
 		t.Run("returns job with inferred upstreams", func(t *testing.T) {
 			db := dbSetup()
 
@@ -482,6 +489,54 @@ func TestPostgresJobRepository(t *testing.T) {
 			expectedUpstreams := []*job.Upstream{
 				upstreamB,
 				upstreamC,
+			}
+
+			upstreams, err := jobRepo.GetJobNameWithInternalUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
+			assert.NoError(t, err)
+			assert.EqualValues(t, expectedUpstreams, upstreams[jobSpecA.Name()])
+		})
+		t.Run("returns job with external project static and inferred upstreams", func(t *testing.T) {
+			db := dbSetup()
+
+			otherTenant, err := tenant.NewTenant(otherProj.Name().String(), otherNamespace.Name().String())
+			assert.NoError(t, err)
+
+			upstreamDName := job.SpecUpstreamNameFrom("test-other-proj/sample-job-D")
+
+			upstreamBName := job.SpecUpstreamNameFrom("test-proj/sample-job-B")
+			jobAUpstream := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamBName, upstreamDName}).Build()
+			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).
+				WithDescription(jobDescription).
+				WithSpecUpstream(jobAUpstream).
+				Build()
+			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"dev.resource.sample_c", "dev.resource.sample_e"})
+
+			// internal project, same server
+			jobSpecB := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", nil)
+			jobSpecC := job.NewSpecBuilder(jobVersion, "sample-job-C", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			jobC := job.NewJob(sampleTenant, jobSpecC, "dev.resource.sample_c", nil)
+
+			// external project, same server
+			jobSpecD := job.NewSpecBuilder(jobVersion, "sample-job-D", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			jobD := job.NewJob(otherTenant, jobSpecD, "dev.resource.sample_d", nil)
+			jobSpecE := job.NewSpecBuilder(jobVersion, "sample-job-E", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			jobE := job.NewJob(otherTenant, jobSpecE, "dev.resource.sample_e", nil)
+
+			jobRepo := postgres.NewJobRepository(db)
+			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB, jobC, jobD, jobE})
+			assert.NoError(t, err)
+
+			upstreamB := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), sampleTenant, "static", taskName, false)
+			upstreamC := job.NewUpstreamResolved(jobSpecC.Name(), "", jobC.Destination(), sampleTenant, "inferred", taskName, false)
+			upstreamD := job.NewUpstreamResolved(jobSpecD.Name(), "", jobD.Destination(), otherTenant, "static", taskName, false)
+			upstreamE := job.NewUpstreamResolved(jobSpecE.Name(), "", jobE.Destination(), otherTenant, "inferred", taskName, false)
+
+			expectedUpstreams := []*job.Upstream{
+				upstreamB,
+				upstreamD,
+				upstreamC,
+				upstreamE,
 			}
 
 			upstreams, err := jobRepo.GetJobNameWithInternalUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
