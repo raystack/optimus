@@ -51,18 +51,18 @@ func (t TenantService) GetProject(ctx context.Context, name tenant.ProjectName) 
 	return t.projGetter.Get(ctx, name)
 }
 
-func (t TenantService) GetSecrets(ctx context.Context, tnnt tenant.Tenant) ([]*tenant.PlainTextSecret, error) {
-	if tnnt.IsInvalid() {
-		return nil, errors.InvalidArgument(tenant.EntityTenant, "tenant is invalid")
+func (t TenantService) GetSecrets(ctx context.Context, projName tenant.ProjectName, nsName string) ([]*tenant.PlainTextSecret, error) {
+	if projName == "" {
+		return nil, errors.InvalidArgument(tenant.EntityTenant, "invalid project name")
 	}
-	return t.secretsGetter.GetAll(ctx, tnnt.ProjectName(), tnnt.NamespaceName().String())
+	return t.secretsGetter.GetAll(ctx, projName, nsName)
 }
 
-func (t TenantService) GetSecret(ctx context.Context, tnnt tenant.Tenant, name string) (*tenant.PlainTextSecret, error) {
-	if tnnt.IsInvalid() {
-		return nil, errors.InvalidArgument(tenant.EntityTenant, "tenant is invalid")
+func (t TenantService) GetSecret(ctx context.Context, projName tenant.ProjectName, nsName string, name string) (*tenant.PlainTextSecret, error) {
+	if projName == "" {
+		return nil, errors.InvalidArgument(tenant.EntityTenant, "invalid project name")
 	}
-	return t.secretsGetter.Get(ctx, tnnt.ProjectName(), tnnt.NamespaceName().String(), name)
+	return t.secretsGetter.Get(ctx, projName, nsName, name)
 }
 
 func NewTenantService(projGetter ProjectGetter, nsGetter NamespaceGetter, secretsGetter SecretsGetter) *TenantService {
