@@ -15,8 +15,8 @@ import (
 
 type BqTable interface {
 	Create(context.Context, *bigquery.TableMetadata) error
-	Update(context.Context, bigquery.TableMetadataToUpdate, string) (*bigquery.TableMetadata, error)
-	Metadata(ctx context.Context) (*bigquery.TableMetadata, error)
+	Update(context.Context, bigquery.TableMetadataToUpdate, string, ...bigquery.TableUpdateOption) (*bigquery.TableMetadata, error)
+	Metadata(ctx context.Context, opts ...bigquery.TableMetadataOption) (*bigquery.TableMetadata, error)
 	CopierFrom(srcs ...*bigquery.Table) *bigquery.Copier
 }
 
@@ -84,7 +84,7 @@ func (t TableHandle) Update(ctx context.Context, res *resource.Resource) error {
 }
 
 func (t TableHandle) Exists(ctx context.Context) bool {
-	_, err := t.bqTable.Metadata(ctx)
+	_, err := t.bqTable.Metadata(ctx, bigquery.WithMetadataView(bigquery.BasicMetadataView))
 	// There can be connection issue, we return false for now
 	return err == nil
 }

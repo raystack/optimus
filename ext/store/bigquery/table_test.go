@@ -198,7 +198,7 @@ func TestTableHandle(t *testing.T) {
 		t.Run("returns error when table not present on bigquery", func(t *testing.T) {
 			bqErr := &googleapi.Error{Code: 404}
 			table := new(mockBigQueryTable)
-			table.On("Update", ctx, mock.Anything, "").Return(nil, bqErr)
+			table.On("Update", ctx, mock.Anything, "", emptyUpdateOptions).Return(nil, bqErr)
 			defer table.AssertExpectations(t)
 
 			tHandle := bigquery.NewTableHandle(table)
@@ -214,7 +214,7 @@ func TestTableHandle(t *testing.T) {
 		})
 		t.Run("returns error when bigquery returns error", func(t *testing.T) {
 			table := new(mockBigQueryTable)
-			table.On("Update", ctx, mock.Anything, "").Return(nil, errors.New("some error"))
+			table.On("Update", ctx, mock.Anything, "", emptyUpdateOptions).Return(nil, errors.New("some error"))
 			defer table.AssertExpectations(t)
 
 			tHandle := bigquery.NewTableHandle(table)
@@ -233,7 +233,7 @@ func TestTableHandle(t *testing.T) {
 				Description: "test update",
 			}
 			table := new(mockBigQueryTable)
-			table.On("Update", ctx, mock.Anything, "").Return(meta, nil)
+			table.On("Update", ctx, mock.Anything, "", emptyUpdateOptions).Return(meta, nil)
 			defer table.AssertExpectations(t)
 
 			tHandle := bigquery.NewTableHandle(table)
@@ -308,7 +308,7 @@ func TestTableHandle(t *testing.T) {
 		t.Run("returns error when table not found", func(t *testing.T) {
 			bqErr := &googleapi.Error{Code: 404}
 			table := new(mockBigQueryTable)
-			table.On("Update", ctx, mock.Anything, "").Return(nil, bqErr)
+			table.On("Update", ctx, mock.Anything, "", emptyUpdateOptions).Return(nil, bqErr)
 			defer table.AssertExpectations(t)
 
 			tHandle := bigquery.NewTableHandle(table)
@@ -323,7 +323,7 @@ func TestTableHandle(t *testing.T) {
 		})
 		t.Run("returns error when error during update", func(t *testing.T) {
 			table := new(mockBigQueryTable)
-			table.On("Update", ctx, mock.Anything, "").Return(nil, errors.New("some error"))
+			table.On("Update", ctx, mock.Anything, "", emptyUpdateOptions).Return(nil, errors.New("some error"))
 			defer table.AssertExpectations(t)
 
 			tHandle := bigquery.NewTableHandle(table)
@@ -341,7 +341,7 @@ func TestTableHandle(t *testing.T) {
 				Description: "test update",
 			}
 			table := new(mockBigQueryTable)
-			table.On("Update", ctx, mock.Anything, "").Return(meta, nil)
+			table.On("Update", ctx, mock.Anything, "", emptyUpdateOptions).Return(meta, nil)
 			defer table.AssertExpectations(t)
 
 			tHandle := bigquery.NewTableHandle(table)
@@ -356,7 +356,7 @@ func TestTableHandle(t *testing.T) {
 	t.Run("Exists", func(t *testing.T) {
 		t.Run("returns false when error in getting metadata", func(t *testing.T) {
 			table := new(mockBigQueryTable)
-			table.On("Metadata", ctx).Return(nil, errors.New("error in get"))
+			table.On("Metadata", ctx, mock.Anything).Return(nil, errors.New("error in get"))
 			defer table.AssertExpectations(t)
 
 			tHandle := bigquery.NewTableHandle(table)
@@ -369,7 +369,7 @@ func TestTableHandle(t *testing.T) {
 				Description: "test update",
 			}
 			table := new(mockBigQueryTable)
-			table.On("Metadata", ctx).Return(meta, nil)
+			table.On("Metadata", ctx, mock.Anything).Return(meta, nil)
 			defer table.AssertExpectations(t)
 
 			tHandle := bigquery.NewTableHandle(table)
@@ -389,8 +389,8 @@ func (m *mockBigQueryTable) Create(ctx context.Context, metadata *bq.TableMetada
 	return args.Error(0)
 }
 
-func (m *mockBigQueryTable) Update(ctx context.Context, update bq.TableMetadataToUpdate, etag string) (*bq.TableMetadata, error) {
-	args := m.Called(ctx, update, etag)
+func (m *mockBigQueryTable) Update(ctx context.Context, update bq.TableMetadataToUpdate, etag string, option ...bq.TableUpdateOption) (*bq.TableMetadata, error) {
+	args := m.Called(ctx, update, etag, option)
 	var tm *bq.TableMetadata
 	if args.Get(0) != nil {
 		tm = args.Get(0).(*bq.TableMetadata)
@@ -398,8 +398,8 @@ func (m *mockBigQueryTable) Update(ctx context.Context, update bq.TableMetadataT
 	return tm, args.Error(1)
 }
 
-func (m *mockBigQueryTable) Metadata(ctx context.Context) (*bq.TableMetadata, error) {
-	args := m.Called(ctx)
+func (m *mockBigQueryTable) Metadata(ctx context.Context, opts ...bq.TableMetadataOption) (*bq.TableMetadata, error) {
+	args := m.Called(ctx, opts)
 	var tm *bq.TableMetadata
 	if args.Get(0) != nil {
 		tm = args.Get(0).(*bq.TableMetadata)
