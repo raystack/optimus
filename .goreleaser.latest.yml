@@ -21,7 +21,8 @@ builds:
     env:
       - CGO_ENABLED=0
 archives:
-  - replacements:
+  - name_template: "{{ .ProjectName }}_latest_{{ .Os }}_{{ .Arch }}"
+    replacements:
       darwin: macos
       linux: linux
       windows: windows
