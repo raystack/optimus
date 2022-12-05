@@ -48,4 +48,4 @@ CREATE INDEX IF NOT EXISTS job_project_name_idx ON job (project_name);
 CREATE INDEX IF NOT EXISTS job_namespace_name_idx ON job (namespace_name);
 CREATE INDEX IF NOT EXISTS job_destination_idx ON job (destination);
 
-ALTER TABLE job_run DROP CONSTRAINT IF EXISTS job_run_job_id_fkey;
+ALTER TABLE job_run ADD CONSTRAINT IF EXISTS job_run_job_id_fkey;

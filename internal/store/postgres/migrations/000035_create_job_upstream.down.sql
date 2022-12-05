@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS job;
+DROP TABLE IF EXISTS job_upstream;

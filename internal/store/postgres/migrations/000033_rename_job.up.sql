@@ -1,3 +1,5 @@
+ALTER TABLE job_run DROP CONSTRAINT IF EXISTS job_run_job_id_fkey;
+
 ALTER TABLE job
 RENAME TO job_old;
 
