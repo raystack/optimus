@@ -114,7 +114,7 @@ func (jh *JobHandler) DeleteJobSpecification(ctx context.Context, deleteRequest 
 
 	msg := fmt.Sprintf("job %s has been deleted", jobName)
 	if deleteRequest.Force && len(affectedDownstream) > 0 {
-		msg = fmt.Sprintf("job %s has been forced deleted. these downstream will be affected: %s", jobName, affectedDownstream)
+		msg = fmt.Sprintf("job %s has been forced deleted. these downstream will be affected: %s", jobName, job.FullNames(affectedDownstream).String())
 	}
 
 	return &pb.DeleteJobSpecificationResponse{

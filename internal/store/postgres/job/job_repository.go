@@ -639,6 +639,9 @@ WHERE project_name = ? AND name = ?
 	if result.Error != nil {
 		return errors.Wrap(job.EntityJob, "error during job deletion", result.Error)
 	}
+	if result.RowsAffected == 0 {
+		return errors.NewError(errors.ErrInternalError, job.EntityJob, fmt.Sprintf("job %s failed to be deleted", jobName.String()))
+	}
 	return nil
 }
 
@@ -651,6 +654,9 @@ WHERE project_name = ? AND name = ?
 	result := j.db.WithContext(ctx).Exec(query, projectName.String(), jobName.String())
 	if result.Error != nil {
 		return errors.Wrap(job.EntityJob, "error during job deletion", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return errors.NewError(errors.ErrInternalError, job.EntityJob, fmt.Sprintf("job %s failed to be deleted", jobName.String()))
 	}
 	return nil
 }

@@ -125,7 +125,7 @@ func (j JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName
 	}
 
 	if len(downstreamFullNames) > 0 && !forceFlag {
-		errorMsg := fmt.Sprintf("job is being used by %s", downstreamFullNames)
+		errorMsg := fmt.Sprintf("job is being used by %s", job.FullNames(downstreamFullNames).String())
 		return nil, errors.NewError(errors.ErrFailedPrecond, job.EntityJob, errorMsg)
 	}
 

@@ -3,6 +3,7 @@ package job
 import (
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
+	"strings"
 )
 
 const (
@@ -261,4 +262,18 @@ type FullName string
 
 func FullNameFrom(projectName tenant.ProjectName, jobName Name) FullName {
 	return FullName(projectName.String() + "/" + jobName.String())
+}
+
+func (f FullName) String() string {
+	return string(f)
+}
+
+type FullNames []FullName
+
+func (f FullNames) String() string {
+	var fullNamesStr []string
+	for _, fullName := range f {
+		fullNamesStr = append(fullNamesStr, fullName.String())
+	}
+	return strings.Join(fullNamesStr, ", ")
 }
