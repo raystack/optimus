@@ -102,10 +102,11 @@ func TestTenantService(t *testing.T) {
 		t.Run("returns error when project name is invalid", func(t *testing.T) {
 			secretsGetter := new(secretGetter)
 			tenantService := service.NewTenantService(nil, nil, secretsGetter)
+			invalidTenant := tenant.Tenant{}
 
-			_, err := tenantService.GetSecrets(ctx, "", ns.Name().String())
+			_, err := tenantService.GetSecrets(ctx, invalidTenant)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity tenant: invalid project name")
+			assert.EqualError(t, err, "invalid argument for entity tenant: tenant is invalid")
 		})
 		t.Run("calls secrets getter to get all the secrets for tenant", func(t *testing.T) {
 			pts, _ := tenant.NewPlainTextSecret("secret_name", "secret_value")
@@ -115,7 +116,7 @@ func TestTenantService(t *testing.T) {
 
 			tenantService := service.NewTenantService(nil, nil, secretsGetter)
 
-			secrets, err := tenantService.GetSecrets(ctx, proj.Name(), ns.Name().String())
+			secrets, err := tenantService.GetSecrets(ctx, tnnt)
 			assert.Nil(t, err)
 			assert.Equal(t, 1, len(secrets))
 		})
@@ -124,10 +125,11 @@ func TestTenantService(t *testing.T) {
 		t.Run("return error when project name is invalid", func(t *testing.T) {
 			secretsGetter := new(secretGetter)
 			tenantService := service.NewTenantService(nil, nil, secretsGetter)
+			invalidTenant := tenant.Tenant{}
 
-			_, err := tenantService.GetSecret(ctx, "", ns.Name().String(), "secret")
+			_, err := tenantService.GetSecret(ctx, invalidTenant, "secret")
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity tenant: invalid project name")
+			assert.EqualError(t, err, "invalid argument for entity tenant: tenant is invalid")
 		})
 		t.Run("calls secrets getter to get the secret for tenant", func(t *testing.T) {
 			pts, _ := tenant.NewPlainTextSecret("secret_name", "secret_value")
@@ -137,7 +139,7 @@ func TestTenantService(t *testing.T) {
 
 			tenantService := service.NewTenantService(nil, nil, secretsGetter)
 
-			secret, err := tenantService.GetSecret(ctx, proj.Name(), ns.Name().String(), pts.Name().String())
+			secret, err := tenantService.GetSecret(ctx, tnnt, pts.Name().String())
 			assert.Nil(t, err)
 			assert.Equal(t, "secret_value", secret.Value())
 		})

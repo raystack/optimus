@@ -53,6 +53,7 @@ linters:
     - dupl
     - gofumpt
     - nolintlint
+    - contextcheck
 linters-settings:
   gofumpt:
     lang-version: "1.17"
