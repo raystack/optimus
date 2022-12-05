@@ -66,7 +66,7 @@ func (v ViewHandle) Update(ctx context.Context, res *resource.Resource) error {
 }
 
 func (v ViewHandle) Exists(ctx context.Context) bool {
-	_, err := v.bqView.Metadata(ctx)
+	_, err := v.bqView.Metadata(ctx, bigquery.WithMetadataView(bigquery.BasicMetadataView))
 	// There can be connection issue, we return false for now
 	return err == nil
 }

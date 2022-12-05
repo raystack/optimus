@@ -76,7 +76,7 @@ func (et ExternalTableHandle) Update(ctx context.Context, res *resource.Resource
 }
 
 func (et ExternalTableHandle) Exists(ctx context.Context) bool {
-	_, err := et.bqExternalTable.Metadata(ctx)
+	_, err := et.bqExternalTable.Metadata(ctx, bigquery.WithMetadataView(bigquery.BasicMetadataView))
 	// There can be connection issue, we return false for now
 	return err == nil
 }

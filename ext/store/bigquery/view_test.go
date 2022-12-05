@@ -137,7 +137,7 @@ func TestViewHandle(t *testing.T) {
 		t.Run("returns error when view not present on bigquery", func(t *testing.T) {
 			bqErr := &googleapi.Error{Code: 404}
 			v := new(mockBigQueryTable)
-			v.On("Update", ctx, mock.Anything, "").Return(nil, bqErr)
+			v.On("Update", ctx, mock.Anything, "", emptyUpdateOptions).Return(nil, bqErr)
 			defer v.AssertExpectations(t)
 
 			vHandle := bigquery.NewViewHandle(v)
@@ -152,7 +152,7 @@ func TestViewHandle(t *testing.T) {
 		})
 		t.Run("returns error when bigquery returns error", func(t *testing.T) {
 			v := new(mockBigQueryTable)
-			v.On("Update", ctx, mock.Anything, "").Return(nil, errors.New("some error"))
+			v.On("Update", ctx, mock.Anything, "", emptyUpdateOptions).Return(nil, errors.New("some error"))
 			defer v.AssertExpectations(t)
 
 			vHandle := bigquery.NewViewHandle(v)
@@ -170,7 +170,7 @@ func TestViewHandle(t *testing.T) {
 				Description: "test update",
 			}
 			v := new(mockBigQueryTable)
-			v.On("Update", ctx, mock.Anything, "").Return(meta, nil)
+			v.On("Update", ctx, mock.Anything, "", emptyUpdateOptions).Return(meta, nil)
 			defer v.AssertExpectations(t)
 
 			vHandle := bigquery.NewViewHandle(v)
@@ -190,7 +190,7 @@ func TestViewHandle(t *testing.T) {
 	t.Run("Exists", func(t *testing.T) {
 		t.Run("returns false when error in getting metadata", func(t *testing.T) {
 			v := new(mockBigQueryTable)
-			v.On("Metadata", ctx).Return(nil, errors.New("error in get"))
+			v.On("Metadata", ctx, mock.Anything).Return(nil, errors.New("error in get"))
 			defer v.AssertExpectations(t)
 
 			vHandle := bigquery.NewViewHandle(v)
@@ -203,7 +203,7 @@ func TestViewHandle(t *testing.T) {
 				Description: "test update",
 			}
 			v := new(mockBigQueryTable)
-			v.On("Metadata", ctx).Return(meta, nil)
+			v.On("Metadata", ctx, mock.Anything).Return(meta, nil)
 			defer v.AssertExpectations(t)
 
 			vHandle := bigquery.NewViewHandle(v)

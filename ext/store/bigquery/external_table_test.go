@@ -15,6 +15,10 @@ import (
 	"github.com/odpf/optimus/ext/store/bigquery"
 )
 
+var (
+	emptyUpdateOptions []bq.TableUpdateOption
+)
+
 func TestExternalTableHandle(t *testing.T) {
 	ctx := context.Background()
 	bqStore := resource.Bigquery
@@ -192,7 +196,7 @@ func TestExternalTableHandle(t *testing.T) {
 		t.Run("returns error when external table not present on bigquery", func(t *testing.T) {
 			bqErr := &googleapi.Error{Code: 404}
 			et := new(mockBigQueryTable)
-			et.On("Update", ctx, mock.Anything, "").Return(nil, bqErr)
+			et.On("Update", ctx, mock.Anything, "", emptyUpdateOptions).Return(nil, bqErr)
 			defer et.AssertExpectations(t)
 
 			etHandle := bigquery.NewExternalTableHandle(et)
@@ -207,7 +211,7 @@ func TestExternalTableHandle(t *testing.T) {
 		})
 		t.Run("returns error when bigquery returns error", func(t *testing.T) {
 			et := new(mockBigQueryTable)
-			et.On("Update", ctx, mock.Anything, "").Return(nil, errors.New("some error"))
+			et.On("Update", ctx, mock.Anything, "", emptyUpdateOptions).Return(nil, errors.New("some error"))
 			defer et.AssertExpectations(t)
 
 			etHandle := bigquery.NewExternalTableHandle(et)
@@ -225,7 +229,7 @@ func TestExternalTableHandle(t *testing.T) {
 				Description: "test update",
 			}
 			et := new(mockBigQueryTable)
-			et.On("Update", ctx, mock.Anything, "").Return(meta, nil)
+			et.On("Update", ctx, mock.Anything, "", emptyUpdateOptions).Return(meta, nil)
 			defer et.AssertExpectations(t)
 
 			etHandle := bigquery.NewExternalTableHandle(et)
@@ -241,7 +245,7 @@ func TestExternalTableHandle(t *testing.T) {
 	t.Run("Exists", func(t *testing.T) {
 		t.Run("returns false when error in getting metadata", func(t *testing.T) {
 			extTable := new(mockBigQueryTable)
-			extTable.On("Metadata", ctx).Return(nil, errors.New("error in get"))
+			extTable.On("Metadata", ctx, mock.Anything).Return(nil, errors.New("error in get"))
 			defer extTable.AssertExpectations(t)
 
 			etHandle := bigquery.NewExternalTableHandle(extTable)
@@ -254,7 +258,7 @@ func TestExternalTableHandle(t *testing.T) {
 				Description: "test update",
 			}
 			extTable := new(mockBigQueryTable)
-			extTable.On("Metadata", ctx).Return(meta, nil)
+			extTable.On("Metadata", ctx, mock.Anything).Return(meta, nil)
 			defer extTable.AssertExpectations(t)
 
 			etHandle := bigquery.NewExternalTableHandle(extTable)
