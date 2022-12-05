@@ -35,6 +35,7 @@ type operatorRun struct {
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
+	// TODO:  add a remarks colum to capture failure reason
 	DeletedAt gorm.DeletedAt
 }
 

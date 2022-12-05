@@ -38,7 +38,6 @@ type jobRun struct {
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
-	DeletedAt gorm.DeletedAt
 }
 
 func (j jobRun) toJobRun() (*scheduler.JobRun, error) {
