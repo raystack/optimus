@@ -17,6 +17,11 @@ type BqTable interface {
 	Create(context.Context, *bigquery.TableMetadata) error
 	Update(context.Context, bigquery.TableMetadataToUpdate, string) (*bigquery.TableMetadata, error)
 	Metadata(ctx context.Context) (*bigquery.TableMetadata, error)
+	CopierFrom(srcs ...*bigquery.Table) *bigquery.Copier
+}
+
+type TableCopier interface {
+	Run(ctx context.Context) (CopyJob, error)
 }
 
 type TableHandle struct {
@@ -82,6 +87,42 @@ func (t TableHandle) Exists(ctx context.Context) bool {
 	_, err := t.bqTable.Metadata(ctx)
 	// There can be connection issue, we return false for now
 	return err == nil
+}
+
+func (t TableHandle) CopierFrom(source TableResourceHandle) (TableCopier, error) {
+	if source == nil {
+		return nil, errors.InvalidArgument(EntityTable, "source handle is nil")
+	}
+
+	sourceTable, err := source.GetBQTable()
+	if err != nil {
+		return nil, err
+	}
+
+	return NewCopier(t.bqTable.CopierFrom(sourceTable)), nil
+}
+
+func (t TableHandle) UpdateExpiry(ctx context.Context, name string, expiry time.Time) error {
+	metadataToUpdate := bigquery.TableMetadataToUpdate{
+		ExpirationTime: expiry,
+	}
+
+	if _, err := t.bqTable.Update(ctx, metadataToUpdate, ""); err != nil {
+		var metaErr *googleapi.Error
+		if errors.As(err, &metaErr) && metaErr.Code == http.StatusNotFound {
+			return errors.NotFound(EntityTable, "failed to update table in bigquery for "+name)
+		}
+		return errors.InternalError(EntityTable, "failed to update table on bigquery for "+name, err)
+	}
+	return nil
+}
+
+func (t TableHandle) GetBQTable() (*bigquery.Table, error) {
+	bqTable, ok := t.bqTable.(*bigquery.Table)
+	if !ok {
+		return nil, errors.InternalError(EntityTable, "not able to convert to bigquery table", nil)
+	}
+	return bqTable, nil
 }
 
 func NewTableHandle(bq BqTable) *TableHandle {

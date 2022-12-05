@@ -16,6 +16,7 @@ type DataStore interface {
 	BatchUpdate(context.Context, []*resource.Resource) error
 	Validate(*resource.Resource) error
 	GetURN(res *resource.Resource) (string, error)
+	Backup(context.Context, *resource.Backup, []*resource.Resource) (*resource.BackupResult, error)
 }
 
 type ResourceStatusRepo interface {
@@ -115,6 +116,15 @@ func (m *ResourceMgr) BatchUpdate(ctx context.Context, store resource.Store, res
 	err.Append(m.repo.UpdateStatus(ctx, resources...))
 
 	return errors.MultiToError(err)
+}
+
+func (m *ResourceMgr) Backup(ctx context.Context, details *resource.Backup, resources []*resource.Resource) (*resource.BackupResult, error) {
+	datastore, ok := m.datastoreMap[details.Store()]
+	if !ok {
+		return nil, errors.InvalidArgument(resource.EntityResource, "data store service not found for "+details.Store().String())
+	}
+
+	return datastore.Backup(ctx, details, resources)
 }
 
 func (m *ResourceMgr) RegisterDatastore(store resource.Store, dataStore DataStore) {

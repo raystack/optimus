@@ -59,8 +59,6 @@ func TestBqClient(t *testing.T) {
 			dataset, err := bigquery.DataSetFrom("project", "dataset")
 			assert.Nil(t, err)
 
-			assert.Nil(t, err)
-
 			handle := c.TableHandleFrom(dataset, "table")
 			assert.NotNil(t, handle)
 		})

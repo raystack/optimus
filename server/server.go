@@ -27,7 +27,6 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/odpf/optimus/config"
-	_ "github.com/odpf/optimus/ext/datastore"
 	"github.com/odpf/optimus/plugin"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )

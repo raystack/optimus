@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
@@ -403,6 +404,50 @@ func TestResourceManager(t *testing.T) {
 			assert.Nil(t, err)
 		})
 	})
+	t.Run("Backup", func(t *testing.T) {
+		t.Run("return error when service not found for datastore", func(t *testing.T) {
+			repo := new(mockRepo)
+			logger := log.NewLogrus()
+			manager := service.NewResourceManager(repo, logger)
+
+			spec := map[string]any{"description": "test spec"}
+			res, err := resource.NewResource("proj.ds.name1", "table", store, tnnt, meta, spec)
+			assert.Nil(t, err)
+
+			createdAt := time.Date(2022, 11, 18, 1, 0, 0, 0, time.UTC)
+			backup, err := resource.NewBackup(store, tnnt, []string{"p.d.t"}, "", createdAt, nil)
+			assert.NoError(t, err)
+
+			_, err = manager.Backup(ctx, backup, []*resource.Resource{res})
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "invalid argument for entity resource: data store service not found "+
+				"for snowflake")
+		})
+		t.Run("runs backup in datastore", func(t *testing.T) {
+			spec := map[string]any{"description": "test spec"}
+			res, err := resource.NewResource("proj.ds.name1", "table", store, tnnt, meta, spec)
+			assert.Nil(t, err)
+
+			createdAt := time.Date(2022, 11, 18, 1, 0, 0, 0, time.UTC)
+			backup, err := resource.NewBackup(store, tnnt, []string{"p.d.t"}, "", createdAt, nil)
+			assert.NoError(t, err)
+
+			logger := log.NewLogrus()
+			manager := service.NewResourceManager(nil, logger)
+
+			storeService := new(mockDataStore)
+			storeService.On("Backup", ctx, backup, []*resource.Resource{res}).Return(&resource.BackupResult{
+				ResourceNames: []string{"proj.ds.name1"},
+			}, nil)
+			defer storeService.AssertExpectations(t)
+
+			manager.RegisterDatastore(store, storeService)
+
+			result, err := manager.Backup(ctx, backup, []*resource.Resource{res})
+			assert.NoError(t, err)
+			assert.Equal(t, "proj.ds.name1", result.ResourceNames[0])
+		})
+	})
 }
 
 type mockRepo struct {
@@ -437,4 +482,12 @@ func (m *mockDataStore) Validate(r *resource.Resource) error {
 func (m *mockDataStore) GetURN(r *resource.Resource) (string, error) {
 	args := m.Called(r)
 	return args.Get(0).(string), args.Error(1)
+}
+
+func (m *mockDataStore) Backup(ctx context.Context, backup *resource.Backup, resources []*resource.Resource) (*resource.BackupResult, error) {
+	args := m.Called(ctx, backup, resources)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*resource.BackupResult), args.Error(1)
 }

@@ -2,7 +2,9 @@ package bigquery
 
 import (
 	"context"
+	"time"
 
+	bq "cloud.google.com/go/bigquery"
 	"github.com/kushsharma/parallel"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
@@ -26,10 +28,17 @@ type ResourceHandle interface {
 	Exists(ctx context.Context) bool
 }
 
+type TableResourceHandle interface {
+	ResourceHandle
+	GetBQTable() (*bq.Table, error)
+	CopierFrom(source TableResourceHandle) (TableCopier, error)
+	UpdateExpiry(ctx context.Context, name string, expiry time.Time) error
+}
+
 type Client interface {
 	DatasetHandleFrom(dataset Dataset) ResourceHandle
+	TableHandleFrom(dataset Dataset, name string) TableResourceHandle
 	ExternalTableHandleFrom(dataset Dataset, name string) ResourceHandle
-	TableHandleFrom(dataset Dataset, name string) ResourceHandle
 	ViewHandleFrom(dataset Dataset, name string) ResourceHandle
 	Close()
 }
@@ -219,6 +228,21 @@ func (Store) Validate(r *resource.Resource) error {
 
 func (Store) GetURN(res *resource.Resource) (string, error) {
 	return URNFor(res)
+}
+
+func (s Store) Backup(ctx context.Context, backup *resource.Backup, resources []*resource.Resource) (*resource.BackupResult, error) {
+	account, err := s.secretProvider.GetSecret(ctx, backup.Tenant(), accountKey)
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := s.clientProvider.Get(ctx, account.Value())
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
+	return BackupResources(ctx, backup, resources, client)
 }
 
 func startChildSpan(ctx context.Context, name string) (context.Context, trace.Span) {

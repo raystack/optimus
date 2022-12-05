@@ -43,7 +43,7 @@ func (c *BqClient) DatasetHandleFrom(ds Dataset) ResourceHandle {
 	return NewDatasetHandle(dsHandle)
 }
 
-func (c *BqClient) TableHandleFrom(ds Dataset, name string) ResourceHandle {
+func (c *BqClient) TableHandleFrom(ds Dataset, name string) TableResourceHandle {
 	t := c.bq.DatasetInProject(ds.Project, ds.DatasetName).Table(name)
 	return NewTableHandle(t)
 }
