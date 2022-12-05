@@ -1,0 +1,58 @@
+project_name: optimus
+
+before:
+  hooks:
+    - make install
+builds:
+  - main: ./main.go
+    id: "optimus"
+    binary: optimus
+    flags:
+      - -a
+    ldflags:
+      - -s -w -X github.com/odpf/optimus/config.BuildVersion=latest -X github.com/odpf/optimus/config.BuildCommit={{.FullCommit}} -X github.com/odpf/optimus/config.BuildDate={{.Date}}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+archives:
+  - replacements:
+      darwin: macos
+      linux: linux
+      windows: windows
+      amd64: x86_64
+    format_overrides:
+      - goos: windows
+        format: zip
+release:
+  disable: true
+  name_template: "{{.ProjectName}}-latest"
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "latest"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs'
+      - '^test'
+      - '^build'
+      - '^chore'
+dockers:
+  -
+    goos: linux
+    goarch: amd64
+    ids:
+      - optimus
+    dockerfile: Dockerfile
+    image_templates:
+      - 'docker.io/odpf/{{.ProjectName}}:latest'
+      - 'docker.io/odpf/{{.ProjectName}}:latest-amd64'
+    extra_files:
+      - entrypoint_init_container.sh
