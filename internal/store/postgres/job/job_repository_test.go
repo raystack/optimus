@@ -662,6 +662,33 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.NoError(t, err)
 			assert.EqualValues(t, []job.FullName{"test-proj/sample-job-A"}, downstreamFullNames)
 		})
+		t.Run("returns job downstream full names ignoring the soft deleted jobs", func(t *testing.T) {
+			db := dbSetup()
+
+			upstreamCStatic := job.NewUpstreamResolved("sample-job-C", "host-1", "dev.resource.sample_c", sampleTenant, "static", taskName, false)
+
+			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstreamCStatic})
+			jobBWithUpstream := job.NewWithUpstream(jobB, []*job.Upstream{upstreamCStatic})
+
+			jobRepo := postgres.NewJobRepository(db)
+
+			_, err := jobRepo.Add(ctx, []*job.Job{jobA, jobB, jobC})
+			assert.NoError(t, err)
+
+			err = jobRepo.ReplaceUpstreams(ctx, []*job.WithUpstream{jobAWithUpstream, jobBWithUpstream})
+			assert.NoError(t, err)
+
+			downstreamFullNames, err := jobRepo.GetDownstreamFullNames(ctx, proj.Name(), "sample-job-C")
+			assert.NoError(t, err)
+			assert.EqualValues(t, []job.FullName{"test-proj/sample-job-A", "test-proj/sample-job-B"}, downstreamFullNames)
+
+			err = jobRepo.Delete(ctx, proj.Name(), jobA.Spec().Name(), false)
+			assert.NoError(t, err)
+
+			downstreamFullNames, err = jobRepo.GetDownstreamFullNames(ctx, proj.Name(), "sample-job-C")
+			assert.NoError(t, err)
+			assert.EqualValues(t, []job.FullName{"test-proj/sample-job-B"}, downstreamFullNames)
+		})
 	})
 
 	t.Run("Delete", func(t *testing.T) {

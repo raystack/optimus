@@ -587,11 +587,18 @@ type ProjectAndJobNames struct {
 
 func (j JobRepository) GetDownstreamFullNames(ctx context.Context, subjectProjectName tenant.ProjectName, subjectJobName job.Name) ([]job.FullName, error) {
 	query := `
+WITH resolved_upstream AS (
+	SELECT 
+	project_name, job_name
+	FROM job_upstream
+	WHERE upstream_project_name = ? AND upstream_job_name = ?
+	AND upstream_state = 'resolved'
+)
 SELECT 
-project_name, job_name
-FROM job_upstream
-WHERE upstream_project_name = ? AND upstream_job_name = ?
-AND upstream_state = 'resolved'
+	ru.project_name, ru.job_name
+FROM resolved_upstream ru
+JOIN job j ON (ru.project_name = j.project_name AND ru.job_name = j.name)
+WHERE j.deleted_at IS NULL
 `
 
 	var projectAndJobNames []ProjectAndJobNames
