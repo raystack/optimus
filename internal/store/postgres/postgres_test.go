@@ -85,6 +85,7 @@ func dropTables(db *gorm.DB) error {
 		"schema_migrations",
 		"job_upstream",
 		"job_old",
+		"job_source",
 		"job",
 		"resource",
 		"resource_old",
