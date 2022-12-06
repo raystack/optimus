@@ -19,6 +19,10 @@ import (
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
+const (
+	configIgnoreDownstream = "ignore_downstream"
+)
+
 type listCommand struct {
 	logger         log.Logger
 	configFilePath string
@@ -127,7 +131,7 @@ func (l *listCommand) printReplayListResponse(replayListResponse *pb.ListReplays
 			replaySpec.JobName,
 			replaySpec.StartDate.AsTime().Format(models.JobDatetimeLayout),
 			replaySpec.EndDate.AsTime().Format(models.JobDatetimeLayout),
-			replaySpec.Config[models.ConfigIgnoreDownstream],
+			replaySpec.Config[configIgnoreDownstream],
 			replaySpec.CreatedAt.AsTime().Format(time.RFC3339),
 			replaySpec.State,
 		}

@@ -55,7 +55,6 @@ type OptimusServer struct {
 	conf   config.ServerConfig
 	logger log.Logger
 
-	appKey models.ApplicationKey
 	dbConn *gorm.DB
 	key    *[keyLength]byte
 
@@ -135,11 +134,6 @@ func (s *OptimusServer) setupTelemetry() error {
 
 func (s *OptimusServer) setupAppKey() error {
 	var err error
-	s.appKey, err = models.NewApplicationSecret(s.conf.Serve.AppKey)
-	if err != nil {
-		return fmt.Errorf("NewApplicationSecret: %w", err)
-	}
-
 	s.key, err = applicationKeyFromString(s.conf.Serve.AppKey)
 	if err != nil {
 		return err

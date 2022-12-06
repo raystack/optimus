@@ -1,13 +1,7 @@
 package models
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
-	"strings"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 const (
@@ -29,32 +23,6 @@ const (
 	// InstanceType is the kind of execution happening at the time
 	InstanceTypeTask InstanceType = "task"
 	InstanceTypeHook InstanceType = "hook"
-
-	// job run created by a batch schedule
-	TriggerSchedule JobRunTrigger = "schedule"
-	// job run created by a manual user request
-	TriggerManual JobRunTrigger = "manual"
-)
-
-type JobRunTrigger string
-
-func (j JobRunTrigger) String() string {
-	return string(j)
-}
-
-const (
-
-	// assignment , non terminating state
-	RunStatePending JobRunState = "pending"
-
-	// non assignment, non terminating states
-	RunStateAccepted JobRunState = "accepted"
-	RunStateRunning  JobRunState = "running"
-	RunStateQueued   JobRunState = "queued"
-
-	// terminate states
-	RunStateSuccess JobRunState = "success"
-	RunStateFailed  JobRunState = "failed"
 )
 
 type JobRunState string
@@ -63,77 +31,16 @@ func (j JobRunState) String() string {
 	return string(j)
 }
 
-// JobRun is a representation of job in execution state, this is created
-// when a run is requested and shared for all tasks/hooks in a job
-type JobRun struct {
-	ID          uuid.UUID
-	Spec        JobSpec
-	Trigger     JobRunTrigger
-	Status      JobRunState
-	Instances   []InstanceSpec
-	ScheduledAt time.Time
-	ExecutedAt  time.Time
-}
-
-func (j *JobRun) GetInstance(instanceName string, instanceType InstanceType) (InstanceSpec, error) {
-	for _, instance := range j.Instances {
-		if instance.Name == instanceName && instance.Type == instanceType {
-			return instance, nil
-		}
-	}
-	return InstanceSpec{}, errors.New("instance not found")
-}
-
-func (j JobRun) String() string {
-	return fmt.Sprintf("id_%s:trigger_%s:scheduled_at_%s", j.ID, j.Trigger, j.ScheduledAt)
-}
-
 type InstanceType string
 
 func (i InstanceType) String() string {
 	return string(i)
 }
 
-func ToInstanceType(val string) (InstanceType, error) {
-	switch strings.ToLower(val) {
-	case "task":
-		return InstanceTypeTask, nil
-	case "hook":
-		return InstanceTypeHook, nil
-	}
-	return "", fmt.Errorf("failed to convert to instance type, invalid val: %s", val)
-}
-
-// InstanceSpec is a representation of task/hook in execution state
-type InstanceSpec struct {
-	ID   uuid.UUID
-	Name string
-	Type InstanceType
-
-	Status JobRunState
-	Data   []JobRunSpecData
-
-	ExecutedAt time.Time
-	UpdatedAt  time.Time
-}
-
 type JobRunSpecData struct {
 	Name  string
 	Value string
 	Type  string
-}
-
-func (j *InstanceSpec) DataToJSON() ([]byte, error) {
-	if len(j.Data) == 0 {
-		return nil, nil
-	}
-	return json.Marshal(j.Data)
-}
-
-type JobRunInput struct {
-	ConfigMap  map[string]string
-	FileMap    map[string]string
-	SecretsMap map[string]string
 }
 
 // TemplateEngine compiles raw text templates using provided values

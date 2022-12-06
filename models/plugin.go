@@ -48,8 +48,6 @@ func (ht HookType) String() string {
 	return string(ht)
 }
 
-type PluginInfoRequest struct{}
-
 type PluginInfoResponse struct {
 	// Name should as simple as possible with no special characters
 	// should start with a character, better if all lowercase
@@ -242,14 +240,6 @@ func (c PluginConfigs) Get(name string) (PluginConfig, bool) {
 	return PluginConfig{}, false
 }
 
-func (PluginConfigs) FromJobSpec(jobSpecConfig JobSpecConfigs) PluginConfigs {
-	taskPluginConfigs := PluginConfigs{}
-	for _, c := range jobSpecConfig {
-		taskPluginConfigs = append(taskPluginConfigs, PluginConfig(c))
-	}
-	return taskPluginConfigs
-}
-
 func (PluginConfigs) FromMap(configMap map[string]string) PluginConfigs {
 	taskPluginConfigs := PluginConfigs{}
 	for key, value := range configMap {
@@ -322,14 +312,6 @@ func (c PluginAssets) ToJobSpec() *JobAssets {
 	return JobAssets{}.New(jsAssets)
 }
 
-func (c PluginAssets) ToMap() map[string]string {
-	assetsMap := make(map[string]string)
-	for _, asset := range c {
-		assetsMap[asset.Name] = asset.Value
-	}
-	return assetsMap
-}
-
 type DefaultAssetsRequest struct {
 	PluginOptions
 
@@ -366,9 +348,6 @@ type GenerateDestinationRequest struct {
 	// Job assets
 	Assets PluginAssets
 
-	// Deprecated: Do not use.
-	Project ProjectSpec
-
 	PluginOptions
 }
 
@@ -393,9 +372,6 @@ type GenerateDependenciesRequest struct {
 
 	// Job assets
 	Assets PluginAssets
-
-	// Deprecated: Do not use.
-	Project ProjectSpec
 
 	PluginOptions
 }

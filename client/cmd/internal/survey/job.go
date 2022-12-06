@@ -14,14 +14,6 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-// JobSpecRepository represents a storage interface for Job specifications locally
-type JobSpecRepository interface {
-	SaveAt(models.JobSpec, string) error
-	Save(models.JobSpec) error
-	GetByName(string) (models.JobSpec, error)
-	GetAll() ([]models.JobSpec, error)
-}
-
 // JobSurvey defines survey for job specification in general
 type JobSurvey struct {
 }

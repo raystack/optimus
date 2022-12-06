@@ -17,7 +17,6 @@ import (
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/internal/progressbar"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
@@ -116,7 +115,7 @@ func (s *statusCommand) stringifyBackupDetailResponse(backupDetailResponse *pb.G
 	table := tablewriter.NewWriter(buff)
 	table.SetBorder(false)
 
-	ttl := backupDetailResponse.Spec.Config[models.ConfigTTL]
+	ttl := backupDetailResponse.Spec.Config[configTTL]
 	expiry := backupDetailResponse.Spec.CreatedAt.AsTime()
 	if ttl != "" {
 		ttlDuration, err := time.ParseDuration(ttl)

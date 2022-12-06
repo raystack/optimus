@@ -14,7 +14,7 @@ import (
 	postgres "github.com/odpf/optimus/internal/store/postgres/resource"
 )
 
-func TestBackupRepository(t *testing.T) {
+func TestPostgresBackupRepository(t *testing.T) {
 	ctx := context.Background()
 	tnnt, _ := tenant.NewTenant("proj", "namespace")
 	resNames := []string{"bigquery-project.playground.test-table", "bigquery-project.playground.table1"}
