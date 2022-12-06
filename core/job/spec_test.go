@@ -12,7 +12,15 @@ import (
 func TestEntitySpec(t *testing.T) {
 	jobVersion, _ := job.VersionFrom(1)
 	startDate, _ := job.ScheduleDateFrom("2022-10-01")
-	jobSchedule, _ := job.NewScheduleBuilder(startDate).Build()
+	endDate, _ := job.ScheduleDateFrom("2022-10-02")
+	retry := job.NewRetry(0, int32(0), false)
+	jobSchedule, _ := job.NewScheduleBuilder(startDate).
+		WithEndDate(endDate).
+		WithInterval("0 2 * * *").
+		WithCatchUp(true).
+		WithRetry(retry).
+		WithDependsOnPast(false).
+		Build()
 	jobWindow, _ := models.NewWindow(jobVersion.Int(), "d", "24h", "24h")
 	jobTaskConfig, _ := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
 	jobTask := job.NewTaskBuilder("bq2bq", jobTaskConfig).Build()
@@ -45,16 +53,63 @@ func TestEntitySpec(t *testing.T) {
 			assert.Equal(t, job.Name("job-A"), specA.Name())
 			assert.Equal(t, jobVersion, specA.Version())
 			assert.Equal(t, job.Owner("sample-owner"), specA.Owner())
+
 			assert.Equal(t, jobSchedule, specA.Schedule())
+			assert.Equal(t, jobSchedule.Retry(), specA.Schedule().Retry())
+			assert.Equal(t, jobSchedule.Retry().Delay(), specA.Schedule().Retry().Delay())
+			assert.Equal(t, jobSchedule.Retry().Count(), specA.Schedule().Retry().Count())
+			assert.Equal(t, jobSchedule.Retry().ExponentialBackoff(), specA.Schedule().Retry().ExponentialBackoff())
+			assert.Equal(t, jobSchedule.EndDate(), specA.Schedule().EndDate())
+			assert.Equal(t, jobSchedule.StartDate(), specA.Schedule().StartDate())
+			assert.Equal(t, jobSchedule.DependsOnPast(), specA.Schedule().DependsOnPast())
+			assert.Equal(t, jobSchedule.CatchUp(), specA.Schedule().CatchUp())
+			assert.Equal(t, jobSchedule.Interval(), specA.Schedule().Interval())
+
 			assert.Equal(t, jobWindow, specA.Window())
+
 			assert.Equal(t, jobTask, specA.Task())
+			assert.Equal(t, jobTask.Name(), specA.Task().Name())
+			assert.Equal(t, jobTask.Info(), specA.Task().Info())
+			assert.Equal(t, jobTask.Config(), specA.Task().Config())
+			assert.Equal(t, jobTask.Config().Configs(), specA.Task().Config().Configs())
+
 			assert.Equal(t, description, specA.Description())
 			assert.Equal(t, labels, specA.Labels())
+
 			assert.Equal(t, []*job.Hook{hook}, specA.Hooks())
+			assert.Equal(t, hook.Name(), specA.Hooks()[0].Name())
+			assert.Equal(t, hook.Config(), specA.Hooks()[0].Config())
+
 			assert.Equal(t, []*job.Alert{alert}, specA.Alerts())
+			assert.Equal(t, alert.Config(), specA.Alerts()[0].Config())
+
 			assert.Equal(t, specUpstream, specA.Upstream())
+			assert.Equal(t, specUpstream.UpstreamNames(), specA.Upstream().UpstreamNames())
+			assert.Equal(t, specUpstream.HTTPUpstreams(), specA.Upstream().HTTPUpstreams())
+
 			assert.Equal(t, asset, specA.Asset())
+			assert.Equal(t, asset.Assets(), specA.Asset().Assets())
+
 			assert.Equal(t, jobMetadata, specA.Metadata())
+			assert.Equal(t, jobMetadata.Resource(), specA.Metadata().Resource())
+			assert.Equal(t, jobMetadata.Scheduler(), specA.Metadata().Scheduler())
+		})
+	})
+
+	t.Run("Specs", func(t *testing.T) {
+		t.Run("ToNameAndSpecMap should return map with name key and spec value", func(t *testing.T) {
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			specB := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+
+			expectedMap := map[job.Name]*job.Spec{
+				specA.Name(): specA,
+				specB.Name(): specB,
+			}
+
+			specs := job.Specs([]*job.Spec{specA, specB})
+			resultMap := specs.ToNameAndSpecMap()
+
+			assert.EqualValues(t, expectedMap, resultMap)
 		})
 	})
 

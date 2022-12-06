@@ -147,12 +147,6 @@ type SpecBuilder struct {
 	spec *Spec
 }
 
-func NewSpecBuilderFromSpec(spec *Spec) *SpecBuilder {
-	return &SpecBuilder{
-		spec: spec,
-	}
-}
-
 func NewSpecBuilder(
 	version Version,
 	name Name,
