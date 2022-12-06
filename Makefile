@@ -18,7 +18,7 @@ build: # build optimus binary
 	@go build -ldflags "-X ${NAME}/config.BuildVersion=${OPMS_VERSION} -X ${NAME}/config.BuildCommit=${LAST_COMMIT}" -o optimus .
 	@echo " - build complete"
 
-test-ci: unit-test-ci vet scheduler-resource-test ## run tests
+test-ci: unit-test-ci vet ## run tests
 
 scheduler-resource-test:
 	cd ./ext/scheduler/airflow2/tests && pip3 install -r requirements.txt && python3 -m unittest discover .
