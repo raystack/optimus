@@ -523,7 +523,7 @@ func (m Metadata) Scheduler() map[string]string {
 	return m.scheduler
 }
 
-func (m Metadata) Validate() error {
+func (m Metadata) validate() error {
 	return validateMap(m.scheduler)
 }
 
@@ -537,8 +537,11 @@ func NewMetadataBuilder() *MetadataBuilder {
 	}
 }
 
-func (m MetadataBuilder) Build() *Metadata {
-	return m.metadata
+func (m MetadataBuilder) Build() (*Metadata, error) {
+	if err := m.metadata.validate(); err != nil {
+		return nil, err
+	}
+	return m.metadata, nil
 }
 
 func (m MetadataBuilder) WithResource(resource *MetadataResource) *MetadataBuilder {
@@ -593,30 +596,18 @@ type Asset struct {
 
 func NewAsset(fileNameToContent map[string]string) (*Asset, error) {
 	asset := &Asset{assets: fileNameToContent}
-	if err := asset.Validate(); err != nil {
+	if err := asset.validate(); err != nil {
 		return nil, err
 	}
 	return asset, nil
 }
 
-func (a Asset) Validate() error {
+func (a Asset) validate() error {
 	return validateMap(a.assets)
 }
 
 func (a Asset) Assets() map[string]string {
 	return a.assets
-}
-
-func (a Asset) IsEqual(otherAsset *Asset) bool {
-	if reflect.DeepEqual(a, otherAsset) {
-		return true
-	}
-	if otherAsset == nil {
-		if a.Assets() == nil {
-			return true
-		}
-	}
-	return false
 }
 
 type EventType string
@@ -664,7 +655,7 @@ func (a Alert) Config() *Config {
 	return a.config
 }
 
-func (a Alert) Validate() error {
+func (a Alert) validate() error {
 	if a.config != nil {
 		if err := validateMap(a.config.configs); err != nil {
 			return err
@@ -686,8 +677,11 @@ func NewAlertBuilder(on EventType, channels []string) *AlertBuilder {
 	}
 }
 
-func (a AlertBuilder) Build() *Alert {
-	return a.alert
+func (a AlertBuilder) Build() (*Alert, error) {
+	if err := a.alert.validate(); err != nil {
+		return nil, err
+	}
+	return a.alert, nil
 }
 
 func (a AlertBuilder) WithConfig(config *Config) *AlertBuilder {
@@ -722,7 +716,7 @@ func (s SpecHTTPUpstream) Params() map[string]string {
 	return s.params
 }
 
-func (s SpecHTTPUpstream) Validate() error {
+func (s SpecHTTPUpstream) validate() error {
 	me := errors.NewMultiError("errors on spec http upstream")
 	me.Append(validateMap(s.headers))
 	me.Append(validateMap(s.params))
@@ -742,8 +736,11 @@ func NewSpecHTTPUpstreamBuilder(name Name, url string) *SpecHTTPUpstreamBuilder 
 	}
 }
 
-func (s SpecHTTPUpstreamBuilder) Build() *SpecHTTPUpstream {
-	return s.upstream
+func (s SpecHTTPUpstreamBuilder) Build() (*SpecHTTPUpstream, error) {
+	if err := s.upstream.validate(); err != nil {
+		return nil, err
+	}
+	return s.upstream, nil
 }
 
 func (s SpecHTTPUpstreamBuilder) WithHeaders(headers map[string]string) *SpecHTTPUpstreamBuilder {
@@ -805,10 +802,10 @@ func (s SpecUpstream) HTTPUpstreams() []*SpecHTTPUpstream {
 	return s.httpUpstreams
 }
 
-func (s SpecUpstream) Validate() error {
+func (s SpecUpstream) validate() error {
 	me := errors.NewMultiError("errors on spec upstream")
 	for _, u := range s.httpUpstreams {
-		me.Append(u.Validate())
+		me.Append(u.validate())
 	}
 	return errors.MultiToError(me)
 }
@@ -823,8 +820,11 @@ func NewSpecUpstreamBuilder() *SpecUpstreamBuilder {
 	}
 }
 
-func (s SpecUpstreamBuilder) Build() *SpecUpstream {
-	return s.upstream
+func (s SpecUpstreamBuilder) Build() (*SpecUpstream, error) {
+	if err := s.upstream.validate(); err != nil {
+		return nil, err
+	}
+	return s.upstream, nil
 }
 
 func (s SpecUpstreamBuilder) WithUpstreamNames(names []SpecUpstreamName) *SpecUpstreamBuilder {

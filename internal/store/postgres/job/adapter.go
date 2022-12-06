@@ -402,7 +402,10 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 
 	var upstreams *job.SpecUpstream
 	if upstreamNames != nil || httpUpstreams != nil {
-		upstreams = job.NewSpecUpstreamBuilder().WithUpstreamNames(upstreamNames).WithSpecHTTPUpstream(httpUpstreams).Build()
+		upstreams, err = job.NewSpecUpstreamBuilder().WithUpstreamNames(upstreamNames).WithSpecHTTPUpstream(httpUpstreams).Build()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var metadata *job.Metadata
@@ -427,7 +430,10 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 		if storeMetadata.Scheduler != nil {
 			metadataBuilder = metadataBuilder.WithScheduler(storeMetadata.Scheduler)
 		}
-		metadata = metadataBuilder.Build()
+		metadata, err = metadataBuilder.Build()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	version, err := job.VersionFrom(jobSpec.Version)
@@ -529,9 +535,12 @@ func fromStorageAlerts(raw []byte) ([]*job.Alert, error) {
 		if err != nil {
 			return nil, err
 		}
-		jobAlert := job.NewAlertBuilder(job.EventType(alert.On), alert.Channels).
+		jobAlert, err := job.NewAlertBuilder(job.EventType(alert.On), alert.Channels).
 			WithConfig(config).
 			Build()
+		if err != nil {
+			return nil, err
+		}
 		jobAlerts = append(jobAlerts, jobAlert)
 	}
 

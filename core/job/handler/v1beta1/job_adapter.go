@@ -222,8 +222,8 @@ func toAlerts(notifiers []*pb.JobSpecification_Behavior_Notifiers) ([]*job.Alert
 		if err != nil {
 			return nil, err
 		}
-		alertConfig := job.NewAlertBuilder(alertOn, notify.Channels).WithConfig(config).Build()
-		if err := alertConfig.Validate(); err != nil {
+		alertConfig, err := job.NewAlertBuilder(alertOn, notify.Channels).WithConfig(config).Build()
+		if err != nil {
 			return nil, err
 		}
 		alerts[i] = alertConfig
@@ -257,14 +257,17 @@ func toSpecUpstreams(upstreamProtos []*pb.JobDependency) (*job.SpecUpstream, err
 		if err != nil {
 			return nil, err
 		}
-		httpUpstream := job.NewSpecHTTPUpstreamBuilder(httpUpstreamName, httpUpstreamProto.Url).
+		httpUpstream, err := job.NewSpecHTTPUpstreamBuilder(httpUpstreamName, httpUpstreamProto.Url).
 			WithHeaders(httpUpstreamProto.Headers).
 			WithParams(httpUpstreamProto.Params).
 			Build()
+		if err != nil {
+			return nil, err
+		}
 		httpUpstreams = append(httpUpstreams, httpUpstream)
 	}
-	upstream := job.NewSpecUpstreamBuilder().WithUpstreamNames(upstreamNames).WithSpecHTTPUpstream(httpUpstreams).Build()
-	if err := upstream.Validate(); err != nil {
+	upstream, err := job.NewSpecUpstreamBuilder().WithUpstreamNames(upstreamNames).WithSpecHTTPUpstream(httpUpstreams).Build()
+	if err != nil {
 		return nil, err
 	}
 	return upstream, nil
@@ -306,8 +309,8 @@ func toMetadata(jobMetadata *pb.JobMetadata) (*job.Metadata, error) {
 		schedulerMetadata["pool"] = metadataSchedulerProto.Pool
 		schedulerMetadata["queue"] = metadataSchedulerProto.Queue
 	}
-	metadata := job.NewMetadataBuilder().WithResource(resourceMetadata).WithScheduler(schedulerMetadata).Build()
-	if err := metadata.Validate(); err != nil {
+	metadata, err := job.NewMetadataBuilder().WithResource(resourceMetadata).WithScheduler(schedulerMetadata).Build()
+	if err != nil {
 		return nil, err
 	}
 	return metadata, nil

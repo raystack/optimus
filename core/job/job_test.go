@@ -163,7 +163,7 @@ func TestEntityJob(t *testing.T) {
 
 	t.Run("Job", func(t *testing.T) {
 		t.Run("should return values as inserted", func(t *testing.T) {
-			specUpstream := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"job-E"}).Build()
+			specUpstream, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"job-E"}).Build()
 			specC := job.NewSpecBuilder(jobVersion, "job-C", "sample-owner", jobSchedule, jobWindow, jobTask).WithSpecUpstream(specUpstream).Build()
 			jobCDestination := job.ResourceURN("project.dataset.sample-c")
 			jobCSources := []job.ResourceURN{"project.dataset.sample-d"}

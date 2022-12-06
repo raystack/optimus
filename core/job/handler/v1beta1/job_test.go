@@ -1151,8 +1151,8 @@ func TestNewJobHandler(t *testing.T) {
 		t.Run("should return basic info, upstream, downstream of an existing job", func(t *testing.T) {
 			jobService := new(JobService)
 
-			httpUpstream := job.NewSpecHTTPUpstreamBuilder("sample-upstream", "sample-url").Build()
-			upstreamSpec := job.NewSpecUpstreamBuilder().WithSpecHTTPUpstream([]*job.SpecHTTPUpstream{httpUpstream}).Build()
+			httpUpstream, _ := job.NewSpecHTTPUpstreamBuilder("sample-upstream", "sample-url").Build()
+			upstreamSpec, _ := job.NewSpecUpstreamBuilder().WithSpecHTTPUpstream([]*job.SpecHTTPUpstream{httpUpstream}).Build()
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobA := job.NewJob(sampleTenant, specA, "resource-A", nil)
 
@@ -1507,8 +1507,8 @@ func TestNewJobHandler(t *testing.T) {
 		t.Run("should return error if job basic info is not found", func(t *testing.T) {
 			jobService := new(JobService)
 
-			httpUpstream := job.NewSpecHTTPUpstreamBuilder("sample-upstream", "sample-url").Build()
-			upstreamSpec := job.NewSpecUpstreamBuilder().WithSpecHTTPUpstream([]*job.SpecHTTPUpstream{httpUpstream}).Build()
+			httpUpstream, _ := job.NewSpecHTTPUpstreamBuilder("sample-upstream", "sample-url").Build()
+			upstreamSpec, _ := job.NewSpecUpstreamBuilder().WithSpecHTTPUpstream([]*job.SpecHTTPUpstream{httpUpstream}).Build()
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 
 			basicInfoLogger := writer.BufferedLogger{Messages: []*pb.Log{

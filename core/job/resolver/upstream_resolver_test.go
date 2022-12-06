@@ -52,7 +52,7 @@ func TestUpstreamResolver(t *testing.T) {
 			defer logWriter.AssertExpectations(t)
 
 			upstreamName := job.SpecUpstreamName("test-proj/job-c")
-			upstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName}).Build()
+			upstreamSpec, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName}).Build()
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobADestination := job.ResourceURN("resource-A")
 			jobAUpstreams := []job.ResourceURN{"resource-B"}
@@ -88,7 +88,7 @@ func TestUpstreamResolver(t *testing.T) {
 			defer logWriter.AssertExpectations(t)
 
 			upstreamName := job.SpecUpstreamNameFrom("job-c")
-			upstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName}).Build()
+			upstreamSpec, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName}).Build()
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobADestination := job.ResourceURN("resource-A")
 			jobAUpstreams := []job.ResourceURN{"resource-B", "resource-D"}
@@ -149,7 +149,7 @@ func TestUpstreamResolver(t *testing.T) {
 			defer logWriter.AssertExpectations(t)
 
 			upstreamName := job.SpecUpstreamNameFrom("job-c")
-			upstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName}).Build()
+			upstreamSpec, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName}).Build()
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobADestination := job.ResourceURN("resource-A")
 			jobAUpstreams := []job.ResourceURN{"resource-B", "resource-D"}
@@ -189,7 +189,7 @@ func TestUpstreamResolver(t *testing.T) {
 			defer logWriter.AssertExpectations(t)
 
 			upstreamName := job.SpecUpstreamNameFrom("job-c")
-			upstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName}).Build()
+			upstreamSpec, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName}).Build()
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobADestination := job.ResourceURN("resource-A")
 			jobAUpstreams := []job.ResourceURN{"resource-B", "resource-D"}
@@ -227,7 +227,7 @@ func TestUpstreamResolver(t *testing.T) {
 			defer logWriter.AssertExpectations(t)
 
 			upstreamName := job.SpecUpstreamName("job-c")
-			upstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName}).Build()
+			upstreamSpec, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName}).Build()
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 			jobADestination := job.ResourceURN("resource-A")
 			jobAUpstreams := []job.ResourceURN{"resource-B", "resource-D"}
@@ -269,7 +269,7 @@ func TestUpstreamResolver(t *testing.T) {
 			defer logWriter.AssertExpectations(t)
 
 			jobAUpstreamCName := job.SpecUpstreamNameFrom("job-C")
-			jobAUpstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{jobAUpstreamCName}).Build()
+			jobAUpstreamSpec, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{jobAUpstreamCName}).Build()
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(jobAUpstreamSpec).Build()
 			jobADestination := job.ResourceURN("resource-A")
 			jobASources := []job.ResourceURN{"resource-B", "resource-D"}
@@ -308,7 +308,7 @@ func TestUpstreamResolver(t *testing.T) {
 			defer logWriter.AssertExpectations(t)
 
 			jobAUpstreamCName := job.SpecUpstreamNameFrom("")
-			jobAUpstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{jobAUpstreamCName}).Build()
+			jobAUpstreamSpec, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{jobAUpstreamCName}).Build()
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(jobAUpstreamSpec).Build()
 			jobADestination := job.ResourceURN("resource-A")
 			jobASources := []job.ResourceURN{"resource-B", "resource-D"}
@@ -340,7 +340,7 @@ func TestUpstreamResolver(t *testing.T) {
 			defer logWriter.AssertExpectations(t)
 
 			jobAUpstreamCName := job.SpecUpstreamNameFrom("job-C")
-			jobAUpstreamSpec := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{jobAUpstreamCName}).Build()
+			jobAUpstreamSpec, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{jobAUpstreamCName}).Build()
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(jobAUpstreamSpec).Build()
 			jobADestination := job.ResourceURN("resource-A")
 			jobASources := []job.ResourceURN{"resource-B", "resource-D"}
