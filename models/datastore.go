@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/odpf/optimus/api/writer"
+	"github.com/odpf/optimus/internal/writer"
 )
 
 const (

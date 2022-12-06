@@ -11,9 +11,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 
-	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/internal/lib/progress"
 	"github.com/odpf/optimus/internal/store"
+	"github.com/odpf/optimus/internal/writer"
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/service"
 )

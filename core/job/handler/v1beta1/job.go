@@ -9,12 +9,12 @@ import (
 	"github.com/odpf/salt/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/writer"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )

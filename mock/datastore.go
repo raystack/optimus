@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/internal/store"
+	"github.com/odpf/optimus/internal/writer"
 	"github.com/odpf/optimus/models"
 )
 

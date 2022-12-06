@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/odpf/optimus/api/writer"
+	"github.com/odpf/optimus/internal/writer"
 )
 
 var (

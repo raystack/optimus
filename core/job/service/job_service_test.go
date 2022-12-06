@@ -8,13 +8,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/service"
 	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
 	optErrors "github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/writer"
 	optMock "github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 )

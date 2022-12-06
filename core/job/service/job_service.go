@@ -9,13 +9,13 @@ import (
 	"github.com/kushsharma/parallel"
 	"github.com/odpf/salt/log"
 
-	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/lib/tree"
+	"github.com/odpf/optimus/internal/writer"
 	"github.com/odpf/optimus/models"
 )
 
