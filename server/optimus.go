@@ -17,7 +17,6 @@ import (
 	"google.golang.org/grpc"
 	"gorm.io/gorm"
 
-	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
 	jobRunCompiler "github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"
 	jHandler "github.com/odpf/optimus/core/job/handler/v1beta1"
@@ -45,6 +44,7 @@ import (
 	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	oHandler "github.com/odpf/optimus/server/handler/v1beta1"
 )
 
 const keyLength = 32
@@ -324,8 +324,9 @@ func (s *OptimusServer) setupHandlers() error {
 
 	// backup service
 	pb.RegisterBackupServiceServer(s.grpcServer, rHandler.NewBackupHandler(s.logger, backupService))
-	// runtime service instance over grpc
-	pb.RegisterRuntimeServiceServer(s.grpcServer, v1handler.NewRuntimeServiceServer(s.logger, config.BuildVersion))
+
+	// version service
+	pb.RegisterRuntimeServiceServer(s.grpcServer, oHandler.NewVersionHandler(s.logger, config.BuildVersion))
 
 	// Core Job Handler
 	pb.RegisterJobSpecificationServiceServer(s.grpcServer, jHandler.NewJobHandler(jJobService, s.logger))
