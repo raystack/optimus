@@ -10,7 +10,6 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/deploy"
 	"github.com/odpf/optimus/client/cmd/internal"
 	"github.com/odpf/optimus/client/cmd/internal/connectivity"
 	"github.com/odpf/optimus/client/cmd/internal/logger"
@@ -20,8 +19,6 @@ import (
 
 const (
 	refreshTimeout = time.Minute * 30
-	deployTimeout  = time.Minute * 30
-	pollInterval   = time.Second * 15
 )
 
 type refreshCommand struct {
@@ -100,7 +97,7 @@ func (r *refreshCommand) RunE(_ *cobra.Command, _ []string) error {
 	if err := r.refreshJobSpecificationRequest(); err != nil {
 		return err
 	}
-	r.logger.Info("Job refresh & deployment finished, took %s", time.Since(start).Round(time.Second))
+	r.logger.Info("Job refresh finished, took %s", time.Since(start).Round(time.Second))
 	return nil
 }
 
@@ -112,6 +109,7 @@ func (r *refreshCommand) refreshJobSpecificationRequest() error {
 	defer conn.Close()
 
 	jobSpecService := pb.NewJobSpecificationServiceClient(conn.GetConnection())
+
 	respStream, err := jobSpecService.RefreshJobs(conn.GetContext(), &pb.RefreshJobsRequest{
 		ProjectName:    r.projectName,
 		NamespaceNames: r.selectedNamespaceNames,
@@ -123,24 +121,17 @@ func (r *refreshCommand) refreshJobSpecificationRequest() error {
 		}
 		return fmt.Errorf("refresh request failed: %w", err)
 	}
-
-	deployID, err := r.getRefreshDeploymentID(respStream)
-	if err != nil {
-		return err
-	}
-	return deploy.PollJobDeployment(conn.GetContext(), r.logger, jobSpecService, deployTimeout, pollInterval, deployID)
+	return r.handleRefreshResponse(respStream)
 }
 
-func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationService_RefreshJobsClient) (string, error) {
-	deployID := ""
-
+func (r *refreshCommand) handleRefreshResponse(stream pb.JobSpecificationService_RefreshJobsClient) error {
 	for {
 		resp, err := stream.Recv()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			return deployID, err
+			return err
 		}
 
 		if logStatus := resp.GetLogStatus(); logStatus != nil {
@@ -151,9 +142,7 @@ func (r *refreshCommand) getRefreshDeploymentID(stream pb.JobSpecificationServic
 			}
 			continue
 		}
-
-		deployID = resp.GetDeploymentId()
 	}
 
-	return deployID, nil
+	return nil
 }

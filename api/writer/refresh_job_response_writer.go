@@ -6,7 +6,6 @@ import (
 
 type RefreshJobResponseWriter interface {
 	LogWriter
-	SendDeploymentID(string) error
 }
 
 type refreshJobResponseWriter struct {
@@ -23,13 +22,6 @@ func (s *refreshJobResponseWriter) Write(level LogLevel, message string) error {
 	logStatus := newLogStatusProto(level, message)
 	resp := pb.RefreshJobsResponse{
 		LogStatus: logStatus,
-	}
-	return s.stream.Send(&resp)
-}
-
-func (s *refreshJobResponseWriter) SendDeploymentID(deployID string) error {
-	resp := pb.RefreshJobsResponse{
-		DeploymentId: deployID,
 	}
 	return s.stream.Send(&resp)
 }

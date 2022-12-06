@@ -119,6 +119,14 @@ func As(err error, target any) bool {
 	return errors.As(err, target)
 }
 
+func IsInType(err error, errType ErrorType) bool {
+	var de *DomainError
+	if errors.As(err, &de) {
+		return de.IsInType(errType)
+	}
+	return false
+}
+
 func (e *DomainError) Error() string {
 	subError := ""
 	if errors.Is(e.WrappedErr, &DomainError{}) {
@@ -143,6 +151,10 @@ func (e *DomainError) DebugString() string {
 
 	return fmt.Sprintf("%v for %v: %v (%s)",
 		e.ErrorType.String(), e.Entity, e.Message, msg)
+}
+
+func (e *DomainError) IsInType(errType ErrorType) bool {
+	return e.ErrorType == errType
 }
 
 func Wrap(entity, msg string, err error) error {

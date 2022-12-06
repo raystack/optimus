@@ -81,6 +81,8 @@ func dropTables(db *gorm.DB) error {
 		"job_source",
 		"replay",
 		"schema_migrations",
+		"job_old",
+		"job_upstream",
 		"job",
 		"resource",
 		"resource_old",
@@ -122,5 +124,5 @@ func TruncateTables(db *gorm.DB) {
 
 	db.Exec("TRUNCATE TABLE job_deployment CASCADE")
 
-	db.Exec("TRUNCATE TABLE job_source CASCADE")
+	db.Exec("TRUNCATE TABLE job_upstream CASCADE")
 }

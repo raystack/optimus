@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
-	"time"
 
-	"github.com/odpf/salt/log"
 	"go.opentelemetry.io/otel"
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/fileblob"
@@ -16,23 +14,9 @@ import (
 	"gocloud.dev/gcp"
 	"golang.org/x/oauth2/google"
 
-	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/ext/scheduler/airflow2"
-	"github.com/odpf/optimus/internal/lib/progress"
-	"github.com/odpf/optimus/internal/store"
-	"github.com/odpf/optimus/job"
 	"github.com/odpf/optimus/models"
 )
-
-type replayWorkerFact struct {
-	replaySpecRepoFac store.ReplaySpecRepository
-	scheduler         models.SchedulerUnit
-	logger            log.Logger
-}
-
-func (fac *replayWorkerFact) New() job.ReplayWorker {
-	return job.NewReplayWorker(fac.logger, fac.replaySpecRepoFac, fac.scheduler)
-}
 
 type airflowBucketFactory struct{}
 
@@ -87,22 +71,4 @@ func (*airflowBucketFactory) New(ctx context.Context, projectSpec models.Project
 		return memblob.OpenBucket(nil), nil
 	}
 	return nil, fmt.Errorf("unsupported storage config %s", storagePath)
-}
-
-type pipelineLogObserver struct {
-	log log.Logger
-}
-
-func (obs *pipelineLogObserver) Notify(evt progress.Event) {
-	obs.log.Info("observing pipeline log", "progress event", evt.String(), "reporter", "pipeline")
-}
-
-func jobSpecAssetDump(engine models.TemplateEngine) func(ctx context.Context, jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
-	return func(ctx context.Context, jobSpec models.JobSpec, scheduledAt time.Time) (models.JobAssets, error) {
-		aMap, err := compiler.DumpAssets(ctx, jobSpec, scheduledAt, engine)
-		if err != nil {
-			return models.JobAssets{}, err
-		}
-		return models.JobAssets{}.FromMap(aMap), nil
-	}
 }
