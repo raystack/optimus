@@ -3,8 +3,6 @@ package job_test
 import (
 	"testing"
 
-	"github.com/odpf/optimus/core/tenant"
-
 	"github.com/stretchr/testify/assert"
 
 	"github.com/odpf/optimus/core/job"
