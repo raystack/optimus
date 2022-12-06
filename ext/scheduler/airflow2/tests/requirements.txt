@@ -1,4 +1,0 @@
-apache-airflow[postgres,statsd]==2.1.0
-apache-airflow-providers-cncf-kubernetes==1.1.0
-slack-sdk==3.5.1
-apache-airflow-providers-slack==3.0.0

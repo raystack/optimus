@@ -306,12 +306,6 @@ func (s *OptimusServer) setupHandlers() error {
 	jUpstreamResolver := jResolver.NewUpstreamResolver(jJobRepo, jExternalUpstreamResolver)
 	jJobService := jService.NewJobService(jJobRepo, jPluginService, jUpstreamResolver, tenantService, s.logger)
 
-	scheduler, err := initScheduler(s.conf)
-	if err != nil {
-		return err
-	}
-	models.BatchScheduler = scheduler // TODO: remove global
-
 	// Tenant Handlers
 	pb.RegisterSecretServiceServer(s.grpcServer, tHandler.NewSecretsHandler(s.logger, tSecretService))
 	pb.RegisterProjectServiceServer(s.grpcServer, tHandler.NewProjectHandler(s.logger, tProjectService))
