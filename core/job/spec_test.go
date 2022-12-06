@@ -1,10 +1,12 @@
 package job_test
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/models"
-	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestEntitySpec(t *testing.T) {

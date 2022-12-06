@@ -1,11 +1,13 @@
 package job_test
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/models"
-	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestEntityJob(t *testing.T) {
@@ -87,7 +89,6 @@ func TestEntityJob(t *testing.T) {
 	})
 	t.Run("GetUnresolvedUpstreams", func(t *testing.T) {
 		t.Run("should return upstreams with state unresolved", func(t *testing.T) {
-
 			upstreamUnresolved1 := job.NewUpstreamUnresolved("job-B", "", project.Name())
 			upstreamUnresolved2 := job.NewUpstreamUnresolved("", "project.dataset.sample-c", "")
 			upstreamResolved := job.NewUpstreamResolved("job-d", "host-sample", "project.dataset.sample-d", sampleTenant, job.UpstreamTypeStatic, "", false)
