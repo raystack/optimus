@@ -454,6 +454,7 @@ func (jh *JobHandler) JobInspect(ctx context.Context, req *pb.JobInspectRequest)
 		downstreamLogs.Write(writer.LogLevelError, fmt.Sprintf("unable to get downstream jobs: %v", err.Error()))
 	}
 
+	// TODO: return pb.JobInspectResponse_UpstreamSection
 	internalUpstreamProto, externalUpstreamProto, unknownUpstreamProto := toUpstreamProtos(upstreams)
 	downstreamProto := toDownstreamProtos(downstreams)
 

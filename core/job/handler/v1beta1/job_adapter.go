@@ -385,6 +385,7 @@ func toBasicInfoSectionProto(jobDetail *job.Job, logMessages []*pb.Log) *pb.JobI
 func toUpstreamProtos(upstreams []*job.Upstream) ([]*pb.JobInspectResponse_JobDependency, []*pb.JobInspectResponse_JobDependency, []*pb.JobInspectResponse_UpstreamSection_UnknownDependencies) {
 	var internalUpstreamProtos []*pb.JobInspectResponse_JobDependency
 	var externalUpstreamProtos []*pb.JobInspectResponse_JobDependency
+	// TODO: add resource URN in unknown dependencies
 	var unknownUpstreamProtos []*pb.JobInspectResponse_UpstreamSection_UnknownDependencies
 	for _, upstream := range upstreams {
 		if upstream.State() != job.UpstreamStateResolved {

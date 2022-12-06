@@ -43,6 +43,8 @@ func (u UpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.Pr
 
 	// get internal inferred and static upstreams in bulk
 	jobNames := job.Jobs(jobs).GetJobNames()
+
+	// TODO: internalUpstreams := jobRepo.ResolveUpstreams(ctx, proj, jobNames)
 	jobsWithInternalUpstreams, err := u.jobRepository.GetJobNameWithInternalUpstreams(ctx, projectName, jobNames)
 	if err != nil {
 		errorMsg := fmt.Sprintf("unable to resolve upstream: %s", err.Error())
@@ -101,15 +103,18 @@ func (u UpstreamResolver) resolveFromInternal(ctx context.Context, subjectJob *j
 	return internalUpstream, errors.MultiToError(me)
 }
 
+// TODO: remove this function. pass all jobs to external upstream resolver including the logWriter. Merging will be in another method
 func (u UpstreamResolver) getJobsWithAllUpstreams(ctx context.Context, jobs []*job.Job, jobsWithInternalUpstreams map[job.Name][]*job.Upstream, logWriter writer.LogWriter) ([]*job.WithUpstream, error) {
 	me := errors.NewMultiError("get jobs with all upstreams errors")
 
+	// TODO: reduce scope of this map to only resolve from external, there will be another for merging all upstreams
 	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
 	for _, jobEntity := range jobs {
 		runner.Add(func(currentJob *job.Job, lw writer.LogWriter) func() (interface{}, error) {
 			return func() (interface{}, error) {
 				internalUpstreams := jobsWithInternalUpstreams[currentJob.Spec().Name()]
 				upstreamsToResolve := u.getUpstreamsToResolve(internalUpstreams, currentJob)
+
 				var wrappedErr error
 				externalUpstreams, unresolvedUpstreams, err := u.externalUpstreamResolver.Resolve(ctx, upstreamsToResolve)
 				if err != nil {

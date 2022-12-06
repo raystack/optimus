@@ -26,8 +26,12 @@ type Spec struct {
 	metadata    *Metadata
 	hooks       []*Hook
 	asset       *Asset
-	alerts      []*Alert
-	upstream    *SpecUpstream
+
+	//TODO: rename to AlertSpec
+	alerts []*Alert
+
+	//TODO: rename to UpstreamSpec
+	upstream *SpecUpstream
 }
 
 func (s Spec) Version() Version {
@@ -612,6 +616,7 @@ func (a Asset) Assets() map[string]string {
 
 type EventType string
 
+// TODO: Check which event type that is valid. There should be a validation and also added in the documentation.
 const (
 	SLAMissEvent EventType = "sla_miss"
 

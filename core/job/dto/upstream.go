@@ -1,5 +1,6 @@
 package dto
 
+// TODO: remove RawUpstream and use Upstream (Unresolved)
 type RawUpstream struct {
 	ProjectName string
 	JobName     string
