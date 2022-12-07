@@ -80,7 +80,7 @@ func BenchmarkNamespaceRepository(b *testing.B) {
 			}
 		}
 	})
-	b.Run("GetAll", func(b *testing.B) {
+	b.Run("GetAllWithUpstreams", func(b *testing.B) {
 		db := dbSetup()
 		var repo store.NamespaceRepository = postgres.NewNamespaceRepository(db, hash)
 		for i := 0; i < 10; i++ {

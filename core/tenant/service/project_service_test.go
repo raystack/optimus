@@ -48,10 +48,10 @@ func TestProjectService(t *testing.T) {
 			assert.Nil(t, err)
 		})
 	})
-	t.Run("GetAll", func(t *testing.T) {
+	t.Run("GetAllWithUpstreams", func(t *testing.T) {
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			projectRepo := new(projectRepo)
-			projectRepo.On("GetAll", ctx).
+			projectRepo.On("GetAllWithUpstreams", ctx).
 				Return(nil, errors.New("error in getting all"))
 			defer projectRepo.AssertExpectations(t)
 
@@ -63,7 +63,7 @@ func TestProjectService(t *testing.T) {
 		})
 		t.Run("returns the list of saved projects", func(t *testing.T) {
 			projectRepo := new(projectRepo)
-			projectRepo.On("GetAll", ctx).
+			projectRepo.On("GetAllWithUpstreams", ctx).
 				Return([]*tenant.Project{savedProject}, nil)
 			defer projectRepo.AssertExpectations(t)
 

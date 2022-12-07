@@ -10,7 +10,7 @@ import (
 )
 
 func (s JobRunService) UploadToScheduler(ctx context.Context, projectName tenant.ProjectName, namespaceName string) error {
-	allJobsWithDetails, err := s.jobRepo.GetAll(ctx, projectName)
+	allJobsWithDetails, err := s.jobRepo.GetAllWithUpstreams(ctx, projectName)
 	if err != nil {
 		return err
 	}

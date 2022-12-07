@@ -78,7 +78,7 @@ func BenchmarkSecretRepo(b *testing.B) {
 		}
 	})
 
-	b.Run("GetAll", func(b *testing.B) {
+	b.Run("GetAllWithUpstreams", func(b *testing.B) {
 		dbConn := dbSetup()
 		var repo store.SecretRepository = postgres.NewSecretRepository(dbConn, key)
 		for i := 0; i < 20; i++ {

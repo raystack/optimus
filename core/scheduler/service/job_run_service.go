@@ -18,7 +18,7 @@ import (
 type JobRepository interface {
 	GetJob(ctx context.Context, name tenant.ProjectName, jobName scheduler.JobName) (*scheduler.Job, error)
 	GetJobDetails(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName) (*scheduler.JobWithDetails, error)
-	GetAll(ctx context.Context, projectName tenant.ProjectName) ([]*scheduler.JobWithDetails, error)
+	GetAllWithUpstreams(ctx context.Context, projectName tenant.ProjectName) ([]*scheduler.JobWithDetails, error)
 }
 
 type JobRunRepository interface {

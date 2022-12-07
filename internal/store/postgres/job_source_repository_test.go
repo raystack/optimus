@@ -112,7 +112,7 @@ func TestIntegrationJobSourceRepository(t *testing.T) {
 		})
 	})
 
-	t.Run("GetAll", func(t *testing.T) {
+	t.Run("GetAllWithUpstreams", func(t *testing.T) {
 		t.Run("should return nil and error if context is nil", func(t *testing.T) {
 			db := DBSetup()
 			repo := postgres.NewJobSourceRepository(db)

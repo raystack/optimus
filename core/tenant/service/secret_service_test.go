@@ -172,7 +172,7 @@ func TestSecretService(t *testing.T) {
 			assert.Equal(t, "value", s.Value())
 		})
 	})
-	t.Run("GetAll", func(t *testing.T) {
+	t.Run("GetAllWithUpstreams", func(t *testing.T) {
 		t.Run("returns error when project name is invalid", func(t *testing.T) {
 			secretRepo := new(secretRepo)
 
@@ -183,7 +183,7 @@ func TestSecretService(t *testing.T) {
 		})
 		t.Run("returns error when repo returns error", func(t *testing.T) {
 			secretRepo := new(secretRepo)
-			secretRepo.On("GetAll", ctx, projectName, nsName).Return(nil, errors.New("error in get all"))
+			secretRepo.On("GetAllWithUpstreams", ctx, projectName, nsName).Return(nil, errors.New("error in get all"))
 			defer secretRepo.AssertExpectations(t)
 
 			secretService := service.NewSecretService(key, secretRepo)
@@ -193,7 +193,7 @@ func TestSecretService(t *testing.T) {
 		})
 		t.Run("returns error when not able to decode", func(t *testing.T) {
 			secretRepo := new(secretRepo)
-			secretRepo.On("GetAll", ctx, projectName, nsName).
+			secretRepo.On("GetAllWithUpstreams", ctx, projectName, nsName).
 				Return([]*tenant.Secret{&invalidSecret}, nil)
 			defer secretRepo.AssertExpectations(t)
 
@@ -207,7 +207,7 @@ func TestSecretService(t *testing.T) {
 				182, 124, 36, 80, 59, 94, 141, 238, 154, 6, 197, 70, 227, 117, 185}
 			sec, _ := tenant.NewSecret("name", tenant.UserDefinedSecret, string(encodedArr), projectName, nsName)
 			secretRepo := new(secretRepo)
-			secretRepo.On("GetAll", ctx, projectName, nsName).Return([]*tenant.Secret{sec}, nil)
+			secretRepo.On("GetAllWithUpstreams", ctx, projectName, nsName).Return([]*tenant.Secret{sec}, nil)
 			defer secretRepo.AssertExpectations(t)
 
 			secretService := service.NewSecretService(key, secretRepo)

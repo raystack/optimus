@@ -110,7 +110,7 @@ func TestNamespaceHandler(t *testing.T) {
 		})
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			namespaceService := new(namespaceService)
-			namespaceService.On("GetAll", ctx, savedProject.Name()).
+			namespaceService.On("GetAllWithUpstreams", ctx, savedProject.Name()).
 				Return(nil, errors.New("unable to fetch"))
 			defer namespaceService.AssertExpectations(t)
 
@@ -124,7 +124,7 @@ func TestNamespaceHandler(t *testing.T) {
 		})
 		t.Run("returns the list of saved namespaces", func(t *testing.T) {
 			namespaceService := new(namespaceService)
-			namespaceService.On("GetAll", ctx, savedProject.Name()).Return([]*tenant.Namespace{savedNS}, nil)
+			namespaceService.On("GetAllWithUpstreams", ctx, savedProject.Name()).Return([]*tenant.Namespace{savedNS}, nil)
 			defer namespaceService.AssertExpectations(t)
 
 			handler := v1beta1.NewNamespaceHandler(logger, namespaceService)

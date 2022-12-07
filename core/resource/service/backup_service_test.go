@@ -153,7 +153,7 @@ func TestBackupService(t *testing.T) {
 	t.Run("List", func(t *testing.T) {
 		t.Run("returns error when error in service", func(t *testing.T) {
 			repo := new(mockBackupRepo)
-			repo.On("GetAll", ctx, tnnt, store).Return(nil, errors.NotFound("backup", "error in list backups"))
+			repo.On("GetAllWithUpstreams", ctx, tnnt, store).Return(nil, errors.NotFound("backup", "error in list backups"))
 			defer repo.AssertExpectations(t)
 
 			backupService := service.NewBackupService(repo, nil, nil)
@@ -172,7 +172,7 @@ func TestBackupService(t *testing.T) {
 			assert.Nil(t, err2)
 
 			repo := new(mockBackupRepo)
-			repo.On("GetAll", ctx, tnnt, store).Return([]*resource.Backup{bk1, bk2}, nil)
+			repo.On("GetAllWithUpstreams", ctx, tnnt, store).Return([]*resource.Backup{bk1, bk2}, nil)
 			defer repo.AssertExpectations(t)
 
 			backupService := service.NewBackupService(repo, nil, nil)

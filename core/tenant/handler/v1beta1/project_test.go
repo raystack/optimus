@@ -75,7 +75,7 @@ func TestProjectHandler(t *testing.T) {
 	t.Run("ListProjects", func(t *testing.T) {
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			projectService := new(projectService)
-			projectService.On("GetAll", ctx).Return(nil, errors.New("unable to fetch"))
+			projectService.On("GetAllWithUpstreams", ctx).Return(nil, errors.New("unable to fetch"))
 			defer projectService.AssertExpectations(t)
 
 			handler := v1beta1.NewProjectHandler(logger, projectService)
@@ -87,7 +87,7 @@ func TestProjectHandler(t *testing.T) {
 		})
 		t.Run("returns the list of saved projects", func(t *testing.T) {
 			projectService := new(projectService)
-			projectService.On("GetAll", ctx).
+			projectService.On("GetAllWithUpstreams", ctx).
 				Return([]*tenant.Project{savedProject}, nil)
 			defer projectService.AssertExpectations(t)
 

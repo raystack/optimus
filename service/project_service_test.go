@@ -85,10 +85,10 @@ func TestProjectService(t *testing.T) {
 			assert.Nil(t, err)
 		})
 	})
-	t.Run("GetAll", func(t *testing.T) {
+	t.Run("GetAllWithUpstreams", func(t *testing.T) {
 		t.Run("return error when repo has error", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetAll", ctx).
+			projectRepository.On("GetAllWithUpstreams", ctx).
 				Return([]models.ProjectSpec{}, errors.New("random error"))
 			defer projectRepository.AssertExpectations(t)
 
@@ -100,7 +100,7 @@ func TestProjectService(t *testing.T) {
 		})
 		t.Run("return projects successfully", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetAll", ctx).Return([]models.ProjectSpec{project}, nil)
+			projectRepository.On("GetAllWithUpstreams", ctx).Return([]models.ProjectSpec{project}, nil)
 			defer projectRepository.AssertExpectations(t)
 
 			svc := service.NewProjectService(projectRepository)
