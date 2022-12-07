@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,11 +14,48 @@ import (
 	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/utils"
 )
 
 type JobRepository struct {
 	db *gorm.DB
 }
+type JobUpstreams struct {
+	JobID                 uuid.UUID
+	JobName               string
+	ProjectName           string
+	UpstreamJobID         uuid.UUID
+	UpstreamJobName       string
+	UpstreamResourceUrn   string
+	UpstreamProjectName   string
+	UpstreamNamespaceName string
+	UpstreamTaskName      string
+	UpstreamHost          string
+	UpstreamType          string
+	UpstreamState         string
+	UpstreamExternal      bool
+
+	CreatedAt time.Time `gorm:"not null" json:"created_at"`
+	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
+}
+
+func (j *JobUpstreams) toJobUpstreams() (*scheduler.JobUpstream, error) {
+	t, err := tenant.NewTenant(j.UpstreamProjectName, j.UpstreamNamespaceName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &scheduler.JobUpstream{
+		JobName:        j.UpstreamJobName,
+		Host:           j.UpstreamHost,
+		TaskName:       j.UpstreamTaskName,
+		DestinationURN: j.UpstreamResourceUrn,
+		Tenant:         t,
+		Type:           j.UpstreamType,
+		State:          j.UpstreamState,
+	}, err
+}
+
 type Job struct {
 	ID          uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
 	Name        string    `gorm:"not null" json:"name"`
@@ -133,11 +171,8 @@ func (j *Job) toJobWithDetails() (*scheduler.JobWithDetails, error) {
 			StartDate:     j.StartDate,
 			EndDate:       j.EndDate,
 		},
-		Retry:         &retry,
-		Alerts:        alerts,
-		RuntimeConfig: scheduler.RuntimeConfig{}, //todo: fix later
-		//Priority: j.Priority, //todo: fix later
-		//Upstreams: j.Upstreams, //todo: fix later
+		Retry:  &retry,
+		Alerts: alerts,
 	}, err
 }
 
@@ -168,7 +203,38 @@ func (j *JobRepository) GetJobDetails(ctx context.Context, projectName tenant.Pr
 	}
 	return spec.toJobWithDetails()
 }
-func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectName) ([]*scheduler.JobWithDetails, error) {
+
+func groupUpstreamsByJobName(jobUpstreams []JobUpstreams) (map[string][]*scheduler.JobUpstream, error) {
+	multiError := errors.NewMultiError("errorsInGroupUpstreamsByJobName")
+
+	jobUpstreamGroup := map[string][]*scheduler.JobUpstream{}
+
+	for _, upstream := range jobUpstreams {
+		schedulerUpstream, err := upstream.toJobUpstreams()
+		if err != nil {
+			multiError.Append(err) // TODO: ask sandeep should we append errors or return
+			continue
+		}
+		jobUpstreamGroup[upstream.JobName] = append(jobUpstreamGroup[upstream.JobName], schedulerUpstream)
+	}
+	return jobUpstreamGroup, multiError
+}
+
+func (j *JobRepository) getJobsUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []string) (map[string][]*scheduler.JobUpstream, error) {
+	var jobsUpstreams []JobUpstreams
+	getJobUpstreamsByNameAtProject := `SELECT * FROM job_upstreams WHERE project_name = ? and job_name in ?`
+	jobNameListString := "(" + strings.Join(jobNames, ", ") + ")"
+	err := j.db.WithContext(ctx).Raw(getJobUpstreamsByNameAtProject, projectName.String(), jobNameListString).Find(&jobsUpstreams).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.NotFound(scheduler.EntityJobRun, "unable to find jobsUpstreams in project:"+projectName.String()+" for:"+jobNameListString)
+		}
+		return nil, err
+	}
+	return groupUpstreamsByJobName(jobsUpstreams)
+}
+
+func (j *JobRepository) GetAllWithUpstreams(ctx context.Context, projectName tenant.ProjectName) ([]*scheduler.JobWithDetails, error) {
 	var specs []Job
 	getJobByNameAtProject := `SELECT * FROM job WHERE project_name = ?`
 	err := j.db.WithContext(ctx).Raw(getJobByNameAtProject, projectName.String()).Find(&specs).Error
@@ -178,15 +244,29 @@ func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectNa
 		}
 		return nil, err
 	}
-	var jobs []*scheduler.JobWithDetails
+	jobsMap := map[string]*scheduler.JobWithDetails{}
+	var jobNameList []string
+	multiError := errors.NewMultiError("errorInGetAllWithUpstreams")
 	for _, spec := range specs {
 		job, err := spec.toJobWithDetails()
 		if err != nil {
-			return nil, err
+			multiError.Append(err)
+			continue
 		}
-		jobs = append(jobs, job)
+		jobNameList = append(jobNameList, job.GetName())
+		jobsMap[job.GetName()] = job
 	}
-	return jobs, nil
+
+	// TODO: ask sandeep should use what is resolved and return a partial error msg, or stop the operation and return error
+	jobUpstreamGroupedByName, err := j.getJobsUpstreams(ctx, projectName, jobNameList)
+	if err != nil {
+		return nil, err
+	}
+	for jobName, upstreamList := range jobUpstreamGroupedByName {
+		jobsMap[jobName].Upstreams.UpstreamJobs = upstreamList
+	}
+
+	return utils.MapToList[*scheduler.JobWithDetails](jobsMap), err
 }
 
 func NewJobProviderRepository(db *gorm.DB) *JobRepository {

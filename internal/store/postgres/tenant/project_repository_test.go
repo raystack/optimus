@@ -81,7 +81,7 @@ func TestPostgresProjectRepository(t *testing.T) {
 			assert.Equal(t, "gs://some_place", config)
 		})
 	})
-	t.Run("GetAll", func(t *testing.T) {
+	t.Run("GetAllWithUpstreams", func(t *testing.T) {
 		t.Run("returns all the projects in db", func(t *testing.T) {
 			db := dbSetup()
 			repo := postgres.NewProjectRepository(db)

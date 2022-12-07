@@ -102,7 +102,7 @@ package bench
 //		}
 //	})
 //
-//	b.Run("GetAll", func(b *testing.B) {
+//	b.Run("GetAllWithUpstreams", func(b *testing.B) {
 //		db := DBSetup()
 //
 //		projectResourceSpecRepo := postgres.NewProjectResourceSpecRepository(db, project, bigqueryStore)
@@ -117,7 +117,7 @@ package bench
 //		b.ResetTimer()
 //
 //		for i := 0; i < b.N; i++ {
-//			res, err := repo.GetAll(ctx)
+//			res, err := repo.GetAllWithUpstreams(ctx)
 //			if err != nil {
 //				panic(err)
 //			}

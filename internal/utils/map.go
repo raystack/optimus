@@ -22,6 +22,14 @@ func MergeMaps(maps ...map[string]string) map[string]string {
 	return smp
 }
 
+func MapToList[V any](inputMap map[string]V) []V {
+	var smp []V
+	for _, value := range inputMap {
+		smp = append(smp, value)
+	}
+	return smp
+}
+
 func AppendToMap(gmap map[string]interface{}, mp map[string]string) {
 	for k, v := range mp {
 		gmap[k] = v

@@ -206,7 +206,7 @@ func TestNamespaceService(t *testing.T) {
 			assert.Nil(t, err)
 		})
 	})
-	t.Run("GetAll", func(t *testing.T) {
+	t.Run("GetAllWithUpstreams", func(t *testing.T) {
 		t.Run("return error when getting project fails", func(t *testing.T) {
 			projService := new(mock.ProjectService)
 			projService.On("Get", ctx, "invalid").
@@ -223,7 +223,7 @@ func TestNamespaceService(t *testing.T) {
 			defer projService.AssertExpectations(t)
 
 			namespaceRepo := new(mock.NamespaceRepository)
-			namespaceRepo.On("GetAll", ctx, project).
+			namespaceRepo.On("GetAllWithUpstreams", ctx, project).
 				Return([]models.NamespaceSpec{}, errors.New("random error"))
 			defer namespaceRepo.AssertExpectations(t)
 
@@ -237,7 +237,7 @@ func TestNamespaceService(t *testing.T) {
 			defer projService.AssertExpectations(t)
 
 			namespaceRepo := new(mock.NamespaceRepository)
-			namespaceRepo.On("GetAll", ctx, project).
+			namespaceRepo.On("GetAllWithUpstreams", ctx, project).
 				Return([]models.NamespaceSpec{namespace}, nil)
 			defer namespaceRepo.AssertExpectations(t)
 

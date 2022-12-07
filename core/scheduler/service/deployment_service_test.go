@@ -50,18 +50,18 @@ func TestDeploymentService(t *testing.T) {
 	t.Run("UploadToScheduler", func(t *testing.T) {
 		t.Run("should return error if unable to get all jobs from job repo", func(t *testing.T) {
 			jobRepo := new(JobRepository)
-			jobRepo.On("GetAll", ctx, proj1Name).Return(nil, fmt.Errorf("GetAll error"))
+			jobRepo.On("GetAllWithUpstreams", ctx, proj1Name).Return(nil, fmt.Errorf("GetAllWithUpstreams error"))
 			defer jobRepo.AssertExpectations(t)
 			runService := service.NewJobRunService(nil,
 				jobRepo, nil, nil, nil, nil, nil)
 
 			err := runService.UploadToScheduler(ctx, proj1Name, namespace1Name.String())
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "GetAll error")
+			assert.EqualError(t, err, "GetAllWithUpstreams error")
 		})
 		t.Run("should return error if error in priority resolution", func(t *testing.T) {
 			jobRepo := new(JobRepository)
-			jobRepo.On("GetAll", ctx, proj1Name).Return(jobsWithDetails, nil)
+			jobRepo.On("GetAllWithUpstreams", ctx, proj1Name).Return(jobsWithDetails, nil)
 			defer jobRepo.AssertExpectations(t)
 
 			priorityResolver := new(mockPriorityResolver)
@@ -77,7 +77,7 @@ func TestDeploymentService(t *testing.T) {
 		})
 		t.Run("should deploy Jobs Per Namespace returning error", func(t *testing.T) {
 			jobRepo := new(JobRepository)
-			jobRepo.On("GetAll", ctx, proj1Name).Return([]*scheduler.JobWithDetails{jobsWithDetails[0], jobsWithDetails[2]}, nil)
+			jobRepo.On("GetAllWithUpstreams", ctx, proj1Name).Return([]*scheduler.JobWithDetails{jobsWithDetails[0], jobsWithDetails[2]}, nil)
 			defer jobRepo.AssertExpectations(t)
 
 			priorityResolver := new(mockPriorityResolver)
@@ -98,7 +98,7 @@ func TestDeploymentService(t *testing.T) {
 		})
 		t.Run("should deploy Jobs Per Namespace and cleanPerNamespace, appropriately", func(t *testing.T) {
 			jobRepo := new(JobRepository)
-			jobRepo.On("GetAll", ctx, proj1Name).Return(jobsWithDetails, nil)
+			jobRepo.On("GetAllWithUpstreams", ctx, proj1Name).Return(jobsWithDetails, nil)
 			defer jobRepo.AssertExpectations(t)
 
 			priorityResolver := new(mockPriorityResolver)
@@ -125,7 +125,7 @@ func TestDeploymentService(t *testing.T) {
 		})
 		t.Run("should deploy Jobs Per Namespace and cleanPerNamespace, appropriately", func(t *testing.T) {
 			jobRepo := new(JobRepository)
-			jobRepo.On("GetAll", ctx, proj1Name).Return(jobsWithDetails, nil)
+			jobRepo.On("GetAllWithUpstreams", ctx, proj1Name).Return(jobsWithDetails, nil)
 			defer jobRepo.AssertExpectations(t)
 
 			priorityResolver := new(mockPriorityResolver)

@@ -230,7 +230,7 @@ func TestIntegrationNamespaceRepository(t *testing.T) {
 		assert.Equal(t, "g-optimus", namespace.ProjectSpec.Secret[0].Name)
 	})
 
-	t.Run("GetAll", func(t *testing.T) {
+	t.Run("GetAllWithUpstreams", func(t *testing.T) {
 		db := DBSetup()
 		testModels := []models.NamespaceSpec{}
 		testModels = append(testModels, namespaceSpecs...)

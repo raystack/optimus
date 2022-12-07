@@ -184,7 +184,7 @@ func TestIntegrationProjectRepository(t *testing.T) {
 		sec, _ := checkModel.Secret.GetByName("t1")
 		assert.Equal(t, "v1", sec)
 	})
-	t.Run("GetAll", func(t *testing.T) {
+	t.Run("GetAllWithUpstreams", func(t *testing.T) {
 		db := DBSetup()
 
 		var testModels []models.ProjectSpec
