@@ -15,7 +15,6 @@ import (
 	"github.com/odpf/optimus/core/tenant"
 	optErrors "github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/writer"
-	optMock "github.com/odpf/optimus/mock"
 	"github.com/odpf/optimus/models"
 )
 
@@ -737,7 +736,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
@@ -787,7 +786,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
@@ -837,7 +836,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
@@ -876,7 +875,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
@@ -939,7 +938,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
@@ -1004,7 +1003,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
@@ -1043,7 +1042,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
@@ -1085,7 +1084,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
@@ -1139,7 +1138,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
@@ -1191,7 +1190,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
@@ -1233,7 +1232,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
@@ -1272,7 +1271,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
@@ -1313,7 +1312,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
@@ -1362,7 +1361,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
@@ -1410,7 +1409,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
@@ -2706,4 +2705,12 @@ func (_m *TenantDetailsGetter) GetDetails(ctx context.Context, jobTenant tenant.
 	}
 
 	return r0, r1
+}
+
+type mockWriter struct {
+	mock.Mock
+}
+
+func (m *mockWriter) Write(level writer.LogLevel, s string) error {
+	return m.Called(level, s).Error(0)
 }

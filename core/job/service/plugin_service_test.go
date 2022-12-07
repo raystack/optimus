@@ -46,10 +46,9 @@ func TestPluginService(t *testing.T) {
 
 	t.Run("Info", func(t *testing.T) {
 		t.Run("returns error when no plugin", func(t *testing.T) {
-			pluginRepo := mockOpt.NewPluginRepository(t)
-			defer pluginRepo.AssertExpectations(t)
-
+			pluginRepo := new(mockPluginRepo)
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(nil, errors.New("some error when fetch plugin"))
+			defer pluginRepo.AssertExpectations(t)
 
 			pluginService := service.NewJobPluginService(nil, pluginRepo, nil, nil)
 			result, err := pluginService.Info(ctx, jobTask)
@@ -58,7 +57,7 @@ func TestPluginService(t *testing.T) {
 			assert.Equal(t, "some error when fetch plugin", err.Error())
 		})
 		t.Run("returns error when yaml mod not supported", func(t *testing.T) {
-			pluginRepo := mockOpt.NewPluginRepository(t)
+			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
 			depMod := new(mockOpt.DependencyResolverMod)
@@ -77,7 +76,7 @@ func TestPluginService(t *testing.T) {
 			assert.Equal(t, "yaml mod not found for plugin", err.Error())
 		})
 		t.Run("returns plugin info", func(t *testing.T) {
-			pluginRepo := mockOpt.NewPluginRepository(t)
+			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
 			depMod := new(mockOpt.DependencyResolverMod)
@@ -113,7 +112,7 @@ func TestPluginService(t *testing.T) {
 			secretsGetter := new(SecretsGetter)
 			defer secretsGetter.AssertExpectations(t)
 
-			pluginRepo := mockOpt.NewPluginRepository(t)
+			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
 			engine := compiler.NewGoEngine()
@@ -154,7 +153,7 @@ func TestPluginService(t *testing.T) {
 			secretsGetter := new(SecretsGetter)
 			defer secretsGetter.AssertExpectations(t)
 
-			pluginRepo := mockOpt.NewPluginRepository(t)
+			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
 			engine := compiler.NewGoEngine()
@@ -173,7 +172,7 @@ func TestPluginService(t *testing.T) {
 			secretsGetter := new(SecretsGetter)
 			defer secretsGetter.AssertExpectations(t)
 
-			pluginRepo := mockOpt.NewPluginRepository(t)
+			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
 			engine := compiler.NewGoEngine()
@@ -199,11 +198,10 @@ func TestPluginService(t *testing.T) {
 			secretsGetter := new(SecretsGetter)
 			defer secretsGetter.AssertExpectations(t)
 
-			pluginRepo := mockOpt.NewPluginRepository(t)
+			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
 			engine := compiler.NewGoEngine()
-			defer pluginRepo.AssertExpectations(t)
 
 			depMod := new(mockOpt.DependencyResolverMod)
 			defer depMod.AssertExpectations(t)
@@ -235,7 +233,7 @@ func TestPluginService(t *testing.T) {
 			secretsGetter := new(SecretsGetter)
 			defer secretsGetter.AssertExpectations(t)
 
-			pluginRepo := mockOpt.NewPluginRepository(t)
+			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
 			engine := compiler.NewGoEngine()
@@ -266,7 +264,7 @@ func TestPluginService(t *testing.T) {
 			secretsGetter := new(SecretsGetter)
 			defer secretsGetter.AssertExpectations(t)
 
-			pluginRepo := mockOpt.NewPluginRepository(t)
+			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
 			engine := compiler.NewGoEngine()
@@ -309,7 +307,7 @@ func TestPluginService(t *testing.T) {
 			secretsGetter := new(SecretsGetter)
 			defer secretsGetter.AssertExpectations(t)
 
-			pluginRepo := mockOpt.NewPluginRepository(t)
+			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
 			engine := compiler.NewGoEngine()
@@ -330,7 +328,7 @@ func TestPluginService(t *testing.T) {
 			secretsGetter := new(SecretsGetter)
 			defer secretsGetter.AssertExpectations(t)
 
-			pluginRepo := mockOpt.NewPluginRepository(t)
+			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
 			engine := compiler.NewGoEngine()
@@ -358,7 +356,7 @@ func TestPluginService(t *testing.T) {
 			secretsGetter := new(SecretsGetter)
 			defer secretsGetter.AssertExpectations(t)
 
-			pluginRepo := mockOpt.NewPluginRepository(t)
+			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
 			engine := compiler.NewGoEngine()
@@ -394,7 +392,7 @@ func TestPluginService(t *testing.T) {
 			secretsGetter := new(SecretsGetter)
 			defer secretsGetter.AssertExpectations(t)
 
-			pluginRepo := mockOpt.NewPluginRepository(t)
+			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
 			engine := compiler.NewGoEngine()
@@ -479,4 +477,16 @@ func (_m *SecretsGetter) GetAll(ctx context.Context, projName tenant.ProjectName
 	}
 
 	return r0, r1
+}
+
+type mockPluginRepo struct {
+	mock.Mock
+}
+
+func (m *mockPluginRepo) GetByName(name string) (*models.Plugin, error) {
+	args := m.Called(name)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Plugin), args.Error(1)
 }

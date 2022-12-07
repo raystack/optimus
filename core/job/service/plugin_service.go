@@ -26,10 +26,14 @@ type SecretsGetter interface {
 	GetAll(ctx context.Context, projName tenant.ProjectName, namespaceName string) ([]*tenant.PlainTextSecret, error)
 }
 
+type PluginRepo interface {
+	GetByName(string) (*models.Plugin, error)
+}
+
 type JobPluginService struct {
 	secretsGetter SecretsGetter
 
-	pluginRepo models.PluginRepository
+	pluginRepo PluginRepo
 	engine     models.TemplateEngine
 
 	now func() time.Time
@@ -37,7 +41,7 @@ type JobPluginService struct {
 	logger log.Logger
 }
 
-func NewJobPluginService(secretsGetter SecretsGetter, pluginRepo models.PluginRepository, engine models.TemplateEngine, logger log.Logger) *JobPluginService {
+func NewJobPluginService(secretsGetter SecretsGetter, pluginRepo PluginRepo, engine models.TemplateEngine, logger log.Logger) *JobPluginService {
 	return &JobPluginService{secretsGetter: secretsGetter, pluginRepo: pluginRepo, engine: engine, logger: logger, now: time.Now}
 }
 
@@ -90,6 +94,7 @@ func (p JobPluginService) GenerateUpstreams(ctx context.Context, jobTenant *tena
 		return nil, ErrUpstreamModNotFound
 	}
 
+	// TODO: this now will always be a same time for start of service, is it correct ?
 	assets, err := p.compileAsset(ctx, plugin, spec, p.now())
 	if err != nil {
 		return nil, fmt.Errorf("asset compilation failure: %w", err)
