@@ -458,8 +458,8 @@ func (jh *JobHandler) JobInspect(ctx context.Context, req *pb.JobInspectRequest)
 	downstreamProto := toDownstreamProtos(downstreams)
 
 	var httpUpstreamProto []*pb.HttpDependency
-	if subjectJob.Spec().Upstream() != nil {
-		httpUpstreamProto = toHTTPUpstreamProtos(subjectJob.Spec().Upstream().HTTPUpstreams())
+	if subjectJob.Spec().UpstreamSpec() != nil {
+		httpUpstreamProto = toHTTPUpstreamProtos(subjectJob.Spec().UpstreamSpec().HTTPUpstreams())
 	}
 
 	return &pb.JobInspectResponse{

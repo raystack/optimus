@@ -24,12 +24,12 @@ func toJobProto(jobEntity *job.Job) *pb.JobSpecification {
 		WindowSize:       jobEntity.Spec().Window().GetSize(),
 		WindowOffset:     jobEntity.Spec().Window().GetOffset(),
 		WindowTruncateTo: jobEntity.Spec().Window().GetTruncateTo(),
-		Dependencies:     fromSpecUpstreams(jobEntity.Spec().Upstream()),
+		Dependencies:     fromSpecUpstreams(jobEntity.Spec().UpstreamSpec()),
 		Assets:           fromAsset(jobEntity.Spec().Asset()),
 		Hooks:            fromHooks(jobEntity.Spec().Hooks()),
 		Description:      jobEntity.Spec().Description(),
 		Labels:           jobEntity.Spec().Labels(),
-		Behavior:         fromRetryAndAlerts(jobEntity.Spec().Schedule().Retry(), jobEntity.Spec().Alerts()),
+		Behavior:         fromRetryAndAlerts(jobEntity.Spec().Schedule().Retry(), jobEntity.Spec().AlertSpecs()),
 		Metadata:         fromMetadata(jobEntity.Spec().Metadata()),
 		Destination:      jobEntity.Destination().String(),
 		Sources:          fromResourceURNs(jobEntity.Sources()),
@@ -38,7 +38,7 @@ func toJobProto(jobEntity *job.Job) *pb.JobSpecification {
 
 func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
 	var retry *job.Retry
-	var alerts []*job.Alert
+	var alerts []*job.AlertSpec
 	if js.Behavior != nil {
 		retry = toRetry(js.Behavior.Retry)
 		a, err := toAlerts(js.Behavior.Notify)
@@ -148,7 +148,7 @@ func fromResourceURNs(resourceURNs []job.ResourceURN) []string {
 	return resources
 }
 
-func fromRetryAndAlerts(jobRetry *job.Retry, alerts []*job.Alert) *pb.JobSpecification_Behavior {
+func fromRetryAndAlerts(jobRetry *job.Retry, alerts []*job.AlertSpec) *pb.JobSpecification_Behavior {
 	retryProto := fromRetry(jobRetry)
 	notifierProto := fromAlerts(alerts)
 	if retryProto == nil && len(notifierProto) == 0 {
@@ -213,8 +213,8 @@ func fromAsset(jobAsset *job.Asset) map[string]string {
 	return assets
 }
 
-func toAlerts(notifiers []*pb.JobSpecification_Behavior_Notifiers) ([]*job.Alert, error) {
-	alerts := make([]*job.Alert, len(notifiers))
+func toAlerts(notifiers []*pb.JobSpecification_Behavior_Notifiers) ([]*job.AlertSpec, error) {
+	alerts := make([]*job.AlertSpec, len(notifiers))
 	for i, notify := range notifiers {
 		alertOn := job.EventType(utils.FromEnumProto(notify.On.String(), "type"))
 		config, err := job.NewConfig(notify.Config)
@@ -230,7 +230,7 @@ func toAlerts(notifiers []*pb.JobSpecification_Behavior_Notifiers) ([]*job.Alert
 	return alerts, nil
 }
 
-func fromAlerts(jobAlerts []*job.Alert) []*pb.JobSpecification_Behavior_Notifiers {
+func fromAlerts(jobAlerts []*job.AlertSpec) []*pb.JobSpecification_Behavior_Notifiers {
 	var notifiers []*pb.JobSpecification_Behavior_Notifiers
 	for _, alert := range jobAlerts {
 		notifiers = append(notifiers, &pb.JobSpecification_Behavior_Notifiers{
@@ -242,7 +242,7 @@ func fromAlerts(jobAlerts []*job.Alert) []*pb.JobSpecification_Behavior_Notifier
 	return notifiers
 }
 
-func toSpecUpstreams(upstreamProtos []*pb.JobDependency) (*job.SpecUpstream, error) {
+func toSpecUpstreams(upstreamProtos []*pb.JobDependency) (*job.UpstreamSpec, error) {
 	var upstreamNames []job.SpecUpstreamName
 	var httpUpstreams []*job.SpecHTTPUpstream
 	for _, upstream := range upstreamProtos {
@@ -272,7 +272,7 @@ func toSpecUpstreams(upstreamProtos []*pb.JobDependency) (*job.SpecUpstream, err
 	return upstream, nil
 }
 
-func fromSpecUpstreams(upstreams *job.SpecUpstream) []*pb.JobDependency {
+func fromSpecUpstreams(upstreams *job.UpstreamSpec) []*pb.JobDependency {
 	if upstreams == nil {
 		return nil
 	}

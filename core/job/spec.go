@@ -21,17 +21,13 @@ type Spec struct {
 	window   models.Window
 	task     *Task
 
-	description string
-	labels      map[string]string
-	metadata    *Metadata
-	hooks       []*Hook
-	asset       *Asset
-
-	//TODO: rename to AlertSpec
-	alerts []*Alert
-
-	//TODO: rename to UpstreamSpec
-	upstream *SpecUpstream
+	description  string
+	labels       map[string]string
+	metadata     *Metadata
+	hooks        []*Hook
+	asset        *Asset
+	alertSpecs   []*AlertSpec
+	upstreamSpec *UpstreamSpec
 }
 
 func (s Spec) Version() Version {
@@ -70,12 +66,12 @@ func (s Spec) Hooks() []*Hook {
 	return s.hooks
 }
 
-func (s Spec) Alerts() []*Alert {
-	return s.alerts
+func (s Spec) AlertSpecs() []*AlertSpec {
+	return s.alertSpecs
 }
 
-func (s Spec) Upstream() *SpecUpstream {
-	return s.upstream
+func (s Spec) UpstreamSpec() *UpstreamSpec {
+	return s.upstreamSpec
 }
 
 func (s Spec) Asset() *Asset {
@@ -130,21 +126,21 @@ func (s Spec) IsEqual(otherSpec *Spec) bool {
 		}
 	}
 
-	if !reflect.DeepEqual(s.upstream, otherSpec.upstream) {
-		if s.upstream == nil && (otherSpec.upstream.UpstreamNames() != nil || otherSpec.upstream.HTTPUpstreams() != nil) {
+	if !reflect.DeepEqual(s.upstreamSpec, otherSpec.upstreamSpec) {
+		if s.upstreamSpec == nil && (otherSpec.upstreamSpec.UpstreamNames() != nil || otherSpec.upstreamSpec.HTTPUpstreams() != nil) {
 			return false
 		}
-		if otherSpec.upstream == nil && (s.upstream.UpstreamNames() != nil || s.upstream.HTTPUpstreams() != nil) {
+		if otherSpec.upstreamSpec == nil && (s.upstreamSpec.UpstreamNames() != nil || s.upstreamSpec.HTTPUpstreams() != nil) {
 			return false
 		}
-		if s.upstream != nil && otherSpec.upstream != nil {
-			if !reflect.DeepEqual(s.upstream.httpUpstreams, otherSpec.upstream.httpUpstreams) || !reflect.DeepEqual(s.upstream.upstreamNames, otherSpec.upstream.upstreamNames) {
+		if s.upstreamSpec != nil && otherSpec.upstreamSpec != nil {
+			if !reflect.DeepEqual(s.upstreamSpec.httpUpstreams, otherSpec.upstreamSpec.httpUpstreams) || !reflect.DeepEqual(s.upstreamSpec.upstreamNames, otherSpec.upstreamSpec.upstreamNames) {
 				return false
 			}
 		}
 	}
 
-	return reflect.DeepEqual(s.alerts, otherSpec.alerts)
+	return reflect.DeepEqual(s.alertSpecs, otherSpec.alertSpecs)
 }
 
 type SpecBuilder struct {
@@ -183,17 +179,17 @@ func (s *SpecBuilder) WithHooks(hooks []*Hook) *SpecBuilder {
 	}
 }
 
-func (s *SpecBuilder) WithAlerts(alerts []*Alert) *SpecBuilder {
+func (s *SpecBuilder) WithAlerts(alerts []*AlertSpec) *SpecBuilder {
 	spec := *s.spec
-	spec.alerts = alerts
+	spec.alertSpecs = alerts
 	return &SpecBuilder{
 		spec: &spec,
 	}
 }
 
-func (s *SpecBuilder) WithSpecUpstream(specUpstream *SpecUpstream) *SpecBuilder {
+func (s *SpecBuilder) WithSpecUpstream(specUpstream *UpstreamSpec) *SpecBuilder {
 	spec := *s.spec
-	spec.upstream = specUpstream
+	spec.upstreamSpec = specUpstream
 	return &SpecBuilder{
 		spec: &spec,
 	}
@@ -642,25 +638,25 @@ const (
 	SensorSuccessEvent EventType = "sensor_success"
 )
 
-type Alert struct {
+type AlertSpec struct {
 	on       EventType
 	channels []string
 	config   *Config
 }
 
-func (a Alert) On() EventType {
+func (a AlertSpec) On() EventType {
 	return a.on
 }
 
-func (a Alert) Channels() []string {
+func (a AlertSpec) Channels() []string {
 	return a.channels
 }
 
-func (a Alert) Config() *Config {
+func (a AlertSpec) Config() *Config {
 	return a.config
 }
 
-func (a Alert) validate() error {
+func (a AlertSpec) validate() error {
 	if a.config != nil {
 		if err := validateMap(a.config.configs); err != nil {
 			return err
@@ -670,19 +666,19 @@ func (a Alert) validate() error {
 }
 
 type AlertBuilder struct {
-	alert *Alert
+	alert *AlertSpec
 }
 
 func NewAlertBuilder(on EventType, channels []string) *AlertBuilder {
 	return &AlertBuilder{
-		alert: &Alert{
+		alert: &AlertSpec{
 			on:       on,
 			channels: channels,
 		},
 	}
 }
 
-func (a AlertBuilder) Build() (*Alert, error) {
+func (a AlertBuilder) Build() (*AlertSpec, error) {
 	if err := a.alert.validate(); err != nil {
 		return nil, err
 	}
@@ -794,20 +790,20 @@ func (s SpecUpstreamName) GetJobName() (Name, error) {
 	return NameFrom(s.String())
 }
 
-type SpecUpstream struct {
+type UpstreamSpec struct {
 	upstreamNames []SpecUpstreamName
 	httpUpstreams []*SpecHTTPUpstream
 }
 
-func (s SpecUpstream) UpstreamNames() []SpecUpstreamName {
+func (s UpstreamSpec) UpstreamNames() []SpecUpstreamName {
 	return s.upstreamNames
 }
 
-func (s SpecUpstream) HTTPUpstreams() []*SpecHTTPUpstream {
+func (s UpstreamSpec) HTTPUpstreams() []*SpecHTTPUpstream {
 	return s.httpUpstreams
 }
 
-func (s SpecUpstream) validate() error {
+func (s UpstreamSpec) validate() error {
 	me := errors.NewMultiError("errors on spec upstream")
 	for _, u := range s.httpUpstreams {
 		me.Append(u.validate())
@@ -816,16 +812,16 @@ func (s SpecUpstream) validate() error {
 }
 
 type SpecUpstreamBuilder struct {
-	upstream *SpecUpstream
+	upstream *UpstreamSpec
 }
 
 func NewSpecUpstreamBuilder() *SpecUpstreamBuilder {
 	return &SpecUpstreamBuilder{
-		upstream: &SpecUpstream{},
+		upstream: &UpstreamSpec{},
 	}
 }
 
-func (s SpecUpstreamBuilder) Build() (*SpecUpstream, error) {
+func (s SpecUpstreamBuilder) Build() (*UpstreamSpec, error) {
 	if err := s.upstream.validate(); err != nil {
 		return nil, err
 	}

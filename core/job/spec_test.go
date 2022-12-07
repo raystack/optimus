@@ -49,7 +49,7 @@ func TestEntitySpec(t *testing.T) {
 		t.Run("should return values as inserted", func(t *testing.T) {
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).
 				WithDescription(description).
-				WithLabels(labels).WithHooks([]*job.Hook{hook}).WithAlerts([]*job.Alert{alert}).
+				WithLabels(labels).WithHooks([]*job.Hook{hook}).WithAlerts([]*job.AlertSpec{alert}).
 				WithSpecUpstream(specUpstream).
 				WithAsset(asset).
 				WithMetadata(jobMetadata).
@@ -90,19 +90,19 @@ func TestEntitySpec(t *testing.T) {
 			assert.Equal(t, hook.Config(), specA.Hooks()[0].Config())
 			assert.Equal(t, hook.Config().Configs(), specA.Hooks()[0].Config().Configs())
 
-			assert.Equal(t, []*job.Alert{alert}, specA.Alerts())
-			assert.Equal(t, alert.Config(), specA.Alerts()[0].Config())
-			assert.Equal(t, alert.Config().Configs(), specA.Alerts()[0].Config().Configs())
-			assert.Equal(t, alert.Channels(), specA.Alerts()[0].Channels())
-			assert.Equal(t, alert.On(), specA.Alerts()[0].On())
+			assert.Equal(t, []*job.AlertSpec{alert}, specA.AlertSpecs())
+			assert.Equal(t, alert.Config(), specA.AlertSpecs()[0].Config())
+			assert.Equal(t, alert.Config().Configs(), specA.AlertSpecs()[0].Config().Configs())
+			assert.Equal(t, alert.Channels(), specA.AlertSpecs()[0].Channels())
+			assert.Equal(t, alert.On(), specA.AlertSpecs()[0].On())
 
-			assert.Equal(t, specUpstream, specA.Upstream())
-			assert.Equal(t, specUpstream.UpstreamNames(), specA.Upstream().UpstreamNames())
-			assert.Equal(t, specUpstream.HTTPUpstreams(), specA.Upstream().HTTPUpstreams())
-			assert.Equal(t, specUpstream.HTTPUpstreams()[0].URL(), specA.Upstream().HTTPUpstreams()[0].URL())
-			assert.Equal(t, specUpstream.HTTPUpstreams()[0].Name(), specA.Upstream().HTTPUpstreams()[0].Name())
-			assert.Equal(t, specUpstream.HTTPUpstreams()[0].Params(), specA.Upstream().HTTPUpstreams()[0].Params())
-			assert.Equal(t, specUpstream.HTTPUpstreams()[0].Headers(), specA.Upstream().HTTPUpstreams()[0].Headers())
+			assert.Equal(t, specUpstream, specA.UpstreamSpec())
+			assert.Equal(t, specUpstream.UpstreamNames(), specA.UpstreamSpec().UpstreamNames())
+			assert.Equal(t, specUpstream.HTTPUpstreams(), specA.UpstreamSpec().HTTPUpstreams())
+			assert.Equal(t, specUpstream.HTTPUpstreams()[0].URL(), specA.UpstreamSpec().HTTPUpstreams()[0].URL())
+			assert.Equal(t, specUpstream.HTTPUpstreams()[0].Name(), specA.UpstreamSpec().HTTPUpstreams()[0].Name())
+			assert.Equal(t, specUpstream.HTTPUpstreams()[0].Params(), specA.UpstreamSpec().HTTPUpstreams()[0].Params())
+			assert.Equal(t, specUpstream.HTTPUpstreams()[0].Headers(), specA.UpstreamSpec().HTTPUpstreams()[0].Headers())
 
 			assert.Equal(t, asset, specA.Asset())
 			assert.Equal(t, asset.Assets(), specA.Asset().Assets())
@@ -139,7 +139,7 @@ func TestEntitySpec(t *testing.T) {
 		t.Run("should return true if specs are equal", func(t *testing.T) {
 			existingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).
 				WithDescription(description).
-				WithLabels(labels).WithHooks([]*job.Hook{hook}).WithAlerts([]*job.Alert{alert}).
+				WithLabels(labels).WithHooks([]*job.Hook{hook}).WithAlerts([]*job.AlertSpec{alert}).
 				WithSpecUpstream(specUpstream).
 				WithAsset(asset).
 				WithMetadata(jobMetadata).
@@ -147,7 +147,7 @@ func TestEntitySpec(t *testing.T) {
 
 			incomingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).
 				WithDescription(description).
-				WithLabels(labels).WithHooks([]*job.Hook{hook}).WithAlerts([]*job.Alert{alert}).
+				WithLabels(labels).WithHooks([]*job.Hook{hook}).WithAlerts([]*job.AlertSpec{alert}).
 				WithSpecUpstream(specUpstream).
 				WithAsset(asset).
 				WithMetadata(jobMetadata).

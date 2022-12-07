@@ -93,7 +93,7 @@ func (u UpstreamResolver) resolveFromInternal(ctx context.Context, subjectJob *j
 		upstream := job.NewUpstreamResolved(jobUpstreams[0].Spec().Name(), "", jobUpstreams[0].Destination(), jobUpstreams[0].Tenant(), job.UpstreamTypeInferred, jobUpstreams[0].Spec().Task().Name(), false)
 		internalUpstream = append(internalUpstream, upstream)
 	}
-	for _, upstreamName := range subjectJob.Spec().Upstream().UpstreamNames() {
+	for _, upstreamName := range subjectJob.Spec().UpstreamSpec().UpstreamNames() {
 		upstreamJobName, err := upstreamName.GetJobName()
 		if err != nil {
 			me.Append(err)

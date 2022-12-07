@@ -133,7 +133,7 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		return nil, err
 	}
 
-	alertsBytes, err := toStorageAlerts(jobSpec.Alerts())
+	alertsBytes, err := toStorageAlerts(jobSpec.AlertSpecs())
 	if err != nil {
 		return nil, err
 	}
@@ -164,12 +164,12 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 
 	var staticUpstreams []string
 	var httpUpstreamsInBytes []byte
-	if jobSpec.Upstream() != nil {
-		for _, name := range jobSpec.Upstream().UpstreamNames() {
+	if jobSpec.UpstreamSpec() != nil {
+		for _, name := range jobSpec.UpstreamSpec().UpstreamNames() {
 			staticUpstreams = append(staticUpstreams, name.String())
 		}
-		if jobSpec.Upstream().HTTPUpstreams() != nil {
-			httpUpstreamsInBytes, err = json.Marshal(jobSpec.Upstream().HTTPUpstreams())
+		if jobSpec.UpstreamSpec().HTTPUpstreams() != nil {
+			httpUpstreamsInBytes, err = json.Marshal(jobSpec.UpstreamSpec().HTTPUpstreams())
 			if err != nil {
 				return nil, err
 			}
@@ -261,7 +261,7 @@ func toStorageAsset(assetSpecs map[string]string) ([]byte, error) {
 	return assetsJSON, nil
 }
 
-func toStorageAlerts(alertSpecs []*job.Alert) ([]byte, error) {
+func toStorageAlerts(alertSpecs []*job.AlertSpec) ([]byte, error) {
 	if alertSpecs == nil {
 		return nil, nil
 	}
@@ -400,7 +400,7 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 		upstreamNames = append(upstreamNames, job.SpecUpstreamNameFrom(staticUpstream))
 	}
 
-	var upstreams *job.SpecUpstream
+	var upstreams *job.UpstreamSpec
 	if upstreamNames != nil || httpUpstreams != nil {
 		upstreams, err = job.NewSpecUpstreamBuilder().WithUpstreamNames(upstreamNames).WithSpecHTTPUpstream(httpUpstreams).Build()
 		if err != nil {
@@ -519,7 +519,7 @@ func fromStorageHook(hook Hook) (*job.Hook, error) {
 	return job.NewHook(hookName, config), nil
 }
 
-func fromStorageAlerts(raw []byte) ([]*job.Alert, error) {
+func fromStorageAlerts(raw []byte) ([]*job.AlertSpec, error) {
 	if raw == nil {
 		return nil, nil
 	}
@@ -529,7 +529,7 @@ func fromStorageAlerts(raw []byte) ([]*job.Alert, error) {
 		return nil, err
 	}
 
-	jobAlerts := []*job.Alert{}
+	jobAlerts := []*job.AlertSpec{}
 	for _, alert := range alerts {
 		config, err := job.NewConfig(alert.Config)
 		if err != nil {

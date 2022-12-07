@@ -57,10 +57,10 @@ func (j Job) Sources() []ResourceURN {
 }
 
 func (j Job) StaticUpstreamNames() []SpecUpstreamName {
-	if j.spec.upstream == nil {
+	if j.spec.upstreamSpec == nil {
 		return nil
 	}
-	return j.spec.upstream.UpstreamNames()
+	return j.spec.upstreamSpec.UpstreamNames()
 }
 
 func (j Job) ProjectName() tenant.ProjectName {
