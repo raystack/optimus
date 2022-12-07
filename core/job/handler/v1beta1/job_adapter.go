@@ -4,7 +4,6 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
@@ -426,14 +425,14 @@ func toHTTPUpstreamProtos(httpUpstreamSpecs []*job.SpecHTTPUpstream) []*pb.HttpD
 	return httpUpstreamProtos
 }
 
-func toDownstreamProtos(downstreamJobs []*dto.Downstream) []*pb.JobInspectResponse_JobDependency {
+func toDownstreamProtos(downstreamJobs []*job.Downstream) []*pb.JobInspectResponse_JobDependency {
 	var downstreamProtos []*pb.JobInspectResponse_JobDependency
 	for _, downstreamJob := range downstreamJobs {
 		downstreamProtos = append(downstreamProtos, &pb.JobInspectResponse_JobDependency{
-			Name:          downstreamJob.Name,
-			ProjectName:   downstreamJob.ProjectName,
-			NamespaceName: downstreamJob.NamespaceName,
-			TaskName:      downstreamJob.TaskName,
+			Name:          downstreamJob.Name().String(),
+			ProjectName:   downstreamJob.ProjectName().String(),
+			NamespaceName: downstreamJob.NamespaceName().String(),
+			TaskName:      downstreamJob.TaskName().String(),
 		})
 	}
 	return downstreamProtos

@@ -6,7 +6,6 @@ import (
 
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/ext/resourcemanager"
 	"github.com/odpf/optimus/internal/errors"
@@ -37,29 +36,17 @@ func NewExternalUpstreamResolver(resourceManagerConfigs []config.ResourceManager
 }
 
 type ResourceManager interface {
-	GetOptimusUpstreams(ctx context.Context, unresolvedDependency *dto.RawUpstream) ([]*job.Upstream, error)
+	GetOptimusUpstreams(ctx context.Context, unresolvedDependency *job.Upstream) ([]*job.Upstream, error)
 }
 
-func (e *extUpstreamResolver) Resolve(ctx context.Context, upstreamsToResolve []*dto.RawUpstream) ([]*job.Upstream, []*job.Upstream, error) {
-	externalUpstreams, unresolvedUpstreams, err := e.fetchExternalUpstreams(ctx, upstreamsToResolve)
+func (e *extUpstreamResolver) Resolve(ctx context.Context, subjectJob *job.Job, internalUpstream []*job.Upstream) ([]*job.Upstream, []*job.Upstream, error) {
+	me := errors.NewMultiError("external upstream resolution errors")
 
 	var unknownUpstreams []*job.Upstream
-	for _, upstream := range unresolvedUpstreams {
-		// allow empty upstreamName and upstreamProjectName
-		upstreamName, _ := job.NameFrom(upstream.JobName)
-		upstreamProjectName, _ := tenant.ProjectNameFrom(upstream.ProjectName)
-		upstreamResourceURN := job.ResourceURN(upstream.ResourceURN)
-		unknownUpstreams = append(unknownUpstreams, job.NewUpstreamUnresolved(upstreamName, upstreamResourceURN, upstreamProjectName))
-	}
-
-	return externalUpstreams, unknownUpstreams, err
-}
-
-func (e *extUpstreamResolver) fetchExternalUpstreams(ctx context.Context, unresolvedUpstreams []*dto.RawUpstream) ([]*job.Upstream, []*dto.RawUpstream, error) {
-	me := errors.NewMultiError("external upstream resolution errors")
-	var unknownUpstreams []*dto.RawUpstream
 	var externalUpstreams []*job.Upstream
-	for _, toBeResolvedUpstream := range unresolvedUpstreams {
+
+	upstreamsToResolve := e.getUpstreamsToResolve(internalUpstream, subjectJob)
+	for _, toBeResolvedUpstream := range upstreamsToResolve {
 		optimusUpstreams, err := e.fetchOptimusUpstreams(ctx, toBeResolvedUpstream)
 		if err != nil || len(optimusUpstreams) == 0 {
 			unknownUpstreams = append(unknownUpstreams, toBeResolvedUpstream)
@@ -71,7 +58,49 @@ func (e *extUpstreamResolver) fetchExternalUpstreams(ctx context.Context, unreso
 	return externalUpstreams, unknownUpstreams, errors.MultiToError(me)
 }
 
-func (e *extUpstreamResolver) fetchOptimusUpstreams(ctx context.Context, unresolvedUpstream *dto.RawUpstream) ([]*job.Upstream, error) {
+func (e *extUpstreamResolver) getUpstreamsToResolve(resolvedUpstreams []*job.Upstream, jobEntity *job.Job) (upstreamsToResolve []*job.Upstream) {
+	unresolvedStaticUpstreams := e.getStaticUpstreamsToResolve(resolvedUpstreams, jobEntity.StaticUpstreamNames(), jobEntity.ProjectName())
+	upstreamsToResolve = append(upstreamsToResolve, unresolvedStaticUpstreams...)
+
+	unresolvedInferredUpstreams := e.getInferredUpstreamsToResolve(resolvedUpstreams, jobEntity.Sources())
+	upstreamsToResolve = append(upstreamsToResolve, unresolvedInferredUpstreams...)
+
+	return upstreamsToResolve
+}
+
+func (extUpstreamResolver) getInferredUpstreamsToResolve(resolvedUpstreams []*job.Upstream, sources []job.ResourceURN) []*job.Upstream {
+	var unresolvedInferredUpstreams []*job.Upstream
+	resolvedUpstreamDestinationMap := job.Upstreams(resolvedUpstreams).ToUpstreamDestinationMap()
+	for _, source := range sources {
+		if !resolvedUpstreamDestinationMap[source] {
+			unresolvedInferredUpstreams = append(unresolvedInferredUpstreams, job.NewUpstreamUnresolvedInferred(source))
+		}
+	}
+	return unresolvedInferredUpstreams
+}
+
+func (extUpstreamResolver) getStaticUpstreamsToResolve(resolvedUpstreams []*job.Upstream, staticUpstreamNames []job.SpecUpstreamName, projectName tenant.ProjectName) []*job.Upstream {
+	var unresolvedStaticUpstreams []*job.Upstream
+	resolvedUpstreamFullNameMap := job.Upstreams(resolvedUpstreams).ToUpstreamFullNameMap()
+	for _, upstreamName := range staticUpstreamNames {
+		jobUpstreamName, _ := upstreamName.GetJobName()
+
+		var projectUpstreamName tenant.ProjectName
+		if upstreamName.IsWithProjectName() {
+			projectUpstreamName, _ = upstreamName.GetProjectName()
+		} else {
+			projectUpstreamName = projectName
+		}
+
+		fullUpstreamName := projectName.String() + "/" + upstreamName.String()
+		if !resolvedUpstreamFullNameMap[fullUpstreamName] {
+			unresolvedStaticUpstreams = append(unresolvedStaticUpstreams, job.NewUpstreamUnresolvedStatic(jobUpstreamName, projectUpstreamName))
+		}
+	}
+	return unresolvedStaticUpstreams
+}
+
+func (e *extUpstreamResolver) fetchOptimusUpstreams(ctx context.Context, unresolvedUpstream *job.Upstream) ([]*job.Upstream, error) {
 	me := errors.NewMultiError("fetch external optimus job errors")
 	var upstreams []*job.Upstream
 	for _, manager := range e.optimusResourceManagers {

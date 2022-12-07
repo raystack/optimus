@@ -15,7 +15,6 @@ import (
 
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/handler/v1beta1"
 	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
@@ -1163,13 +1162,8 @@ func TestNewJobHandler(t *testing.T) {
 				upstreamB,
 				upstreamC,
 			}
-			jobADownstream := []*dto.Downstream{
-				{
-					Name:          "job-x",
-					ProjectName:   project.Name().String(),
-					NamespaceName: namespace.Name().String(),
-					TaskName:      jobTask.Name().String(),
-				},
+			jobADownstream := []*job.Downstream{
+				job.NewDownstream("job-x", project.Name(), namespace.Name(), jobTask.Name()),
 			}
 
 			var basicInfoLogger writer.BufferedLogger
@@ -1242,10 +1236,10 @@ func TestNewJobHandler(t *testing.T) {
 				Downstreams: &pb.JobInspectResponse_DownstreamSection{
 					DownstreamJobs: []*pb.JobInspectResponse_JobDependency{
 						{
-							Name:          jobADownstream[0].Name,
-							ProjectName:   jobADownstream[0].ProjectName,
-							NamespaceName: jobADownstream[0].NamespaceName,
-							TaskName:      jobADownstream[0].TaskName,
+							Name:          jobADownstream[0].Name().String(),
+							ProjectName:   jobADownstream[0].ProjectName().String(),
+							NamespaceName: jobADownstream[0].NamespaceName().String(),
+							TaskName:      jobADownstream[0].TaskName().String(),
 						},
 					},
 				},
@@ -1269,13 +1263,8 @@ func TestNewJobHandler(t *testing.T) {
 				upstreamB,
 				upstreamC,
 			}
-			jobADownstream := []*dto.Downstream{
-				{
-					Name:          "job-x",
-					ProjectName:   project.Name().String(),
-					NamespaceName: namespace.Name().String(),
-					TaskName:      jobTask.Name().String(),
-				},
+			jobADownstream := []*job.Downstream{
+				job.NewDownstream("job-x", project.Name(), namespace.Name(), jobTask.Name()),
 			}
 
 			var basicInfoLogger writer.BufferedLogger
@@ -1349,10 +1338,10 @@ func TestNewJobHandler(t *testing.T) {
 				Downstreams: &pb.JobInspectResponse_DownstreamSection{
 					DownstreamJobs: []*pb.JobInspectResponse_JobDependency{
 						{
-							Name:          jobADownstream[0].Name,
-							ProjectName:   jobADownstream[0].ProjectName,
-							NamespaceName: jobADownstream[0].NamespaceName,
-							TaskName:      jobADownstream[0].TaskName,
+							Name:          jobADownstream[0].Name().String(),
+							ProjectName:   jobADownstream[0].ProjectName().String(),
+							NamespaceName: jobADownstream[0].NamespaceName().String(),
+							TaskName:      jobADownstream[0].TaskName().String(),
 						},
 					},
 				},
@@ -1419,13 +1408,8 @@ func TestNewJobHandler(t *testing.T) {
 				upstreamB,
 				upstreamC,
 			}
-			jobADownstream := []*dto.Downstream{
-				{
-					Name:          "job-x",
-					ProjectName:   project.Name().String(),
-					NamespaceName: namespace.Name().String(),
-					TaskName:      jobTask.Name().String(),
-				},
+			jobADownstream := []*job.Downstream{
+				job.NewDownstream("job-x", project.Name(), namespace.Name(), jobTask.Name()),
 			}
 
 			var basicInfoLogger writer.BufferedLogger
@@ -1489,10 +1473,10 @@ func TestNewJobHandler(t *testing.T) {
 				Downstreams: &pb.JobInspectResponse_DownstreamSection{
 					DownstreamJobs: []*pb.JobInspectResponse_JobDependency{
 						{
-							Name:          jobADownstream[0].Name,
-							ProjectName:   jobADownstream[0].ProjectName,
-							NamespaceName: jobADownstream[0].NamespaceName,
-							TaskName:      jobADownstream[0].TaskName,
+							Name:          jobADownstream[0].Name().String(),
+							ProjectName:   jobADownstream[0].ProjectName().String(),
+							NamespaceName: jobADownstream[0].NamespaceName().String(),
+							TaskName:      jobADownstream[0].TaskName().String(),
 						},
 					},
 					Notice: []*pb.Log{{Level: pb.Level_LEVEL_ERROR, Message: "unable to get downstream jobs: sample downstream error"}},
@@ -1717,15 +1701,15 @@ func (_m *JobService) GetByFilter(ctx context.Context, filters ...filter.FilterO
 }
 
 // GetDownstream provides a mock function with given fields: ctx, _a1, localJob
-func (_m *JobService) GetDownstream(ctx context.Context, _a1 *job.Job, localJob bool) ([]*dto.Downstream, error) {
+func (_m *JobService) GetDownstream(ctx context.Context, _a1 *job.Job, localJob bool) ([]*job.Downstream, error) {
 	ret := _m.Called(ctx, _a1, localJob)
 
-	var r0 []*dto.Downstream
-	if rf, ok := ret.Get(0).(func(context.Context, *job.Job, bool) []*dto.Downstream); ok {
+	var r0 []*job.Downstream
+	if rf, ok := ret.Get(0).(func(context.Context, *job.Job, bool) []*job.Downstream); ok {
 		r0 = rf(ctx, _a1, localJob)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*dto.Downstream)
+			r0 = ret.Get(0).([]*job.Downstream)
 		}
 	}
 

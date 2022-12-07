@@ -89,8 +89,8 @@ func TestEntityJob(t *testing.T) {
 	})
 	t.Run("GetUnresolvedUpstreams", func(t *testing.T) {
 		t.Run("should return upstreams with state unresolved", func(t *testing.T) {
-			upstreamUnresolved1 := job.NewUpstreamUnresolved("job-B", "", project.Name())
-			upstreamUnresolved2 := job.NewUpstreamUnresolved("", "project.dataset.sample-c", "")
+			upstreamUnresolved1 := job.NewUpstreamUnresolvedStatic("job-B", project.Name())
+			upstreamUnresolved2 := job.NewUpstreamUnresolvedInferred("project.dataset.sample-c")
 			upstreamResolved := job.NewUpstreamResolved("job-d", "host-sample", "project.dataset.sample-d", sampleTenant, job.UpstreamTypeStatic, "", false)
 
 			expected := []*job.Upstream{upstreamUnresolved1, upstreamUnresolved2}
@@ -194,7 +194,7 @@ func TestEntityJob(t *testing.T) {
 			assert.Equal(t, job.TaskName("bq2bq"), upstreamResolved.TaskName())
 			assert.Equal(t, "test-proj/job-d", upstreamResolved.FullName())
 
-			upstreamUnresolved := job.NewUpstreamUnresolved("", "project.dataset.sample-c", "")
+			upstreamUnresolved := job.NewUpstreamUnresolvedInferred("project.dataset.sample-c")
 
 			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstreamResolved, upstreamUnresolved})
 			assert.Equal(t, jobA, jobAWithUpstream.Job())

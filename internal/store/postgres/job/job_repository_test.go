@@ -10,7 +10,6 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/tenant"
 	postgres "github.com/odpf/optimus/internal/store/postgres/job"
 	tenantPostgres "github.com/odpf/optimus/internal/store/postgres/tenant"
@@ -398,7 +397,7 @@ func TestPostgresJobRepository(t *testing.T) {
 		})
 	})
 
-	t.Run("GetJobNameWithInternalUpstreams", func(t *testing.T) {
+	t.Run("ResolveUpstreams", func(t *testing.T) {
 		t.Run("returns job with inferred upstreams", func(t *testing.T) {
 			db := dbSetup()
 
@@ -417,7 +416,7 @@ func TestPostgresJobRepository(t *testing.T) {
 
 			expectedUpstream := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), tenantDetails.ToTenant(), "inferred", taskName, false)
 
-			upstreams, err := jobRepo.GetJobNameWithInternalUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
+			upstreams, err := jobRepo.ResolveUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
 			assert.NoError(t, err)
 			assert.Equal(t, expectedUpstream, upstreams[jobSpecA.Name()][0])
 		})
@@ -444,7 +443,7 @@ func TestPostgresJobRepository(t *testing.T) {
 
 			expectedUpstream := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), tenantDetails.ToTenant(), "static", taskName, false)
 
-			upstreams, err := jobRepo.GetJobNameWithInternalUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
+			upstreams, err := jobRepo.ResolveUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
 			assert.NoError(t, err)
 			assert.Equal(t, expectedUpstream, upstreams[jobSpecA.Name()][0])
 		})
@@ -480,7 +479,7 @@ func TestPostgresJobRepository(t *testing.T) {
 				upstreamC,
 			}
 
-			upstreams, err := jobRepo.GetJobNameWithInternalUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
+			upstreams, err := jobRepo.ResolveUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
 			assert.NoError(t, err)
 			assert.EqualValues(t, expectedUpstreams, upstreams[jobSpecA.Name()])
 		})
@@ -528,7 +527,7 @@ func TestPostgresJobRepository(t *testing.T) {
 				upstreamE,
 			}
 
-			upstreams, err := jobRepo.GetJobNameWithInternalUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
+			upstreams, err := jobRepo.ResolveUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
 			assert.NoError(t, err)
 			assert.EqualValues(t, expectedUpstreams, upstreams[jobSpecA.Name()])
 		})
@@ -563,7 +562,7 @@ func TestPostgresJobRepository(t *testing.T) {
 
 			upstreamB := job.NewUpstreamResolved("jobB", host, "resource-B", sampleTenant, upstreamType, taskName, false)
 			upstreamC := job.NewUpstreamResolved("jobC", host, "resource-C", sampleTenant, upstreamType, taskName, false)
-			upstreamD := job.NewUpstreamUnresolved("", "resource-D", "")
+			upstreamD := job.NewUpstreamUnresolvedInferred("resource-D")
 			upstreams := []*job.Upstream{upstreamB, upstreamC, upstreamD}
 			jobWithUpstream := job.NewWithUpstream(jobA, upstreams)
 
@@ -633,7 +632,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			db := dbSetup()
 
 			upstreamCStatic := job.NewUpstreamResolved("sample-job-C", "host-1", "dev.resource.sample_c", sampleTenant, "static", taskName, false)
-			upstreamCUnresolved := job.NewUpstreamUnresolved("sample-job-C", "", proj.Name())
+			upstreamCUnresolved := job.NewUpstreamUnresolvedStatic("sample-job-C", proj.Name())
 
 			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstreamCStatic})
 			jobBWithUpstream := job.NewWithUpstream(jobB, []*job.Upstream{upstreamCUnresolved})
@@ -893,7 +892,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
 			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_general", []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
 			jobAUpstreamResolved := job.NewUpstreamResolved("sample-job-B", "", "", sampleTenant, "inferred", taskName, false)
-			jobAUpstreamUnresolved := job.NewUpstreamUnresolved("", "dev.resource.sample_c", "")
+			jobAUpstreamUnresolved := job.NewUpstreamUnresolvedInferred("dev.resource.sample_c")
 
 			jobSpecB := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
 			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", nil)
@@ -932,13 +931,8 @@ func TestPostgresJobRepository(t *testing.T) {
 			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB, jobC})
 			assert.NoError(t, err)
 
-			expectedDownstream := []*dto.Downstream{
-				{
-					Name:          jobSpecA.Name().String(),
-					ProjectName:   proj.Name().String(),
-					NamespaceName: namespace.Name().String(),
-					TaskName:      jobSpecA.Task().Name().String(),
-				},
+			expectedDownstream := []*job.Downstream{
+				job.NewDownstream(jobSpecA.Name(), proj.Name(), namespace.Name(), jobSpecA.Task().Name()),
 			}
 			result, err := jobRepo.GetDownstreamByDestination(ctx, proj.Name(), "dev.resource.sample_c")
 			assert.NoError(t, err)
@@ -953,7 +947,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
 			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
 			jobAUpstreamResolved := job.NewUpstreamResolved("sample-job-B", "", "", sampleTenant, "inferred", taskName, false)
-			jobAUpstreamUnresolved := job.NewUpstreamUnresolved("", "dev.resource.sample_c", "")
+			jobAUpstreamUnresolved := job.NewUpstreamUnresolvedInferred("dev.resource.sample_c")
 
 			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{jobAUpstreamResolved, jobAUpstreamUnresolved})
 
@@ -966,13 +960,8 @@ func TestPostgresJobRepository(t *testing.T) {
 			err = jobRepo.ReplaceUpstreams(ctx, []*job.WithUpstream{jobAWithUpstream})
 			assert.NoError(t, err)
 
-			expectedDownstream := []*dto.Downstream{
-				{
-					Name:          jobSpecA.Name().String(),
-					ProjectName:   proj.Name().String(),
-					NamespaceName: namespace.Name().String(),
-					TaskName:      jobSpecA.Task().Name().String(),
-				},
+			expectedDownstream := []*job.Downstream{
+				job.NewDownstream(jobSpecA.Name(), proj.Name(), namespace.Name(), jobSpecA.Task().Name()),
 			}
 			result, err := jobRepo.GetDownstreamByJobName(ctx, proj.Name(), jobSpecB.Name())
 			assert.NoError(t, err)

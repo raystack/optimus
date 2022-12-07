@@ -31,6 +31,8 @@ type jobSpecification struct {
 	Labels           map[string]string        `json:"labels"`
 	Behavior         jobSpecificationBehavior `json:"behavior"`
 	Metadata         jobMetadata              `json:"metadata"`
+	Destination      string                   `json:"destination"`
+	Sources          []string                 `json:"sources"`
 }
 
 type jobMetadata struct {

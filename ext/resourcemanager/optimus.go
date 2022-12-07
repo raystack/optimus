@@ -12,13 +12,12 @@ import (
 
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/tenant"
 )
 
 // ResourceManager is repository for external job spec
 type ResourceManager interface {
-	GetOptimusUpstreams(ctx context.Context, unresolvedDependency *dto.RawUpstream) ([]*job.Upstream, error)
+	GetOptimusUpstreams(ctx context.Context, unresolvedDependency *job.Upstream) ([]*job.Upstream, error)
 }
 
 type OptimusResourceManager struct {
@@ -44,7 +43,7 @@ func NewOptimusResourceManager(resourceManagerConfig config.ResourceManager) (*O
 	}, nil
 }
 
-func (o *OptimusResourceManager) GetOptimusUpstreams(ctx context.Context, unresolvedDependency *dto.RawUpstream) ([]*job.Upstream, error) {
+func (o *OptimusResourceManager) GetOptimusUpstreams(ctx context.Context, unresolvedDependency *job.Upstream) ([]*job.Upstream, error) {
 	if ctx == nil {
 		return nil, errors.New("context is nil")
 	}
@@ -72,16 +71,16 @@ func (o *OptimusResourceManager) GetOptimusUpstreams(ctx context.Context, unreso
 	return o.toOptimusDependencies(jobSpecResponse.JobSpecificationResponses, unresolvedDependency)
 }
 
-func (o *OptimusResourceManager) constructGetJobSpecificationsRequest(ctx context.Context, unresolvedDependency *dto.RawUpstream) (*http.Request, error) {
+func (o *OptimusResourceManager) constructGetJobSpecificationsRequest(ctx context.Context, unresolvedDependency *job.Upstream) (*http.Request, error) {
 	var filters []string
-	if unresolvedDependency.JobName != "" {
-		filters = append(filters, fmt.Sprintf("job_name=%s", unresolvedDependency.JobName))
+	if unresolvedDependency.Name() != "" {
+		filters = append(filters, fmt.Sprintf("job_name=%s", unresolvedDependency.Name().String()))
 	}
-	if unresolvedDependency.ProjectName != "" {
-		filters = append(filters, fmt.Sprintf("project_name=%s", unresolvedDependency.ProjectName))
+	if unresolvedDependency.ProjectName() != "" {
+		filters = append(filters, fmt.Sprintf("project_name=%s", unresolvedDependency.ProjectName().String()))
 	}
-	if unresolvedDependency.ResourceURN != "" {
-		filters = append(filters, fmt.Sprintf("resource_destination=%s", unresolvedDependency.ResourceURN))
+	if unresolvedDependency.Resource() != "" {
+		filters = append(filters, fmt.Sprintf("resource_destination=%s", unresolvedDependency.Resource().String()))
 	}
 
 	path := "/api/v1beta1/jobs"
@@ -99,7 +98,7 @@ func (o *OptimusResourceManager) constructGetJobSpecificationsRequest(ctx contex
 	return request, nil
 }
 
-func (o *OptimusResourceManager) toOptimusDependencies(responses []jobSpecificationResponse, unresolvedDependency *dto.RawUpstream) ([]*job.Upstream, error) {
+func (o *OptimusResourceManager) toOptimusDependencies(responses []jobSpecificationResponse, unresolvedDependency *job.Upstream) ([]*job.Upstream, error) {
 	output := make([]*job.Upstream, len(responses))
 	for i, r := range responses {
 		dependency, err := o.toOptimusDependency(r, unresolvedDependency)
@@ -111,16 +110,10 @@ func (o *OptimusResourceManager) toOptimusDependencies(responses []jobSpecificat
 	return output, nil
 }
 
-func (o *OptimusResourceManager) toOptimusDependency(response jobSpecificationResponse, unresolvedDependency *dto.RawUpstream) (*job.Upstream, error) {
+func (o *OptimusResourceManager) toOptimusDependency(response jobSpecificationResponse, unresolvedDependency *job.Upstream) (*job.Upstream, error) {
 	jobTenant, err := tenant.NewTenant(response.ProjectName, response.NamespaceName)
 	if err != nil {
 		return nil, err
-	}
-	var dependencyType job.UpstreamType
-	if unresolvedDependency.IsStatic() {
-		dependencyType = job.UpstreamTypeStatic
-	} else {
-		dependencyType = job.UpstreamTypeInferred
 	}
 	jobName, err := job.NameFrom(response.Job.Name)
 	if err != nil {
@@ -130,6 +123,6 @@ func (o *OptimusResourceManager) toOptimusDependency(response jobSpecificationRe
 	if err != nil {
 		return nil, err
 	}
-	resourceURN := job.ResourceURN(unresolvedDependency.ResourceURN)
-	return job.NewUpstreamResolved(jobName, o.config.Host, resourceURN, jobTenant, dependencyType, taskName, true), nil
+	resourceURN := job.ResourceURN(response.Job.Destination)
+	return job.NewUpstreamResolved(jobName, o.config.Host, resourceURN, jobTenant, unresolvedDependency.Type(), taskName, true), nil
 }

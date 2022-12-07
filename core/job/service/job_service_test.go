@@ -10,7 +10,6 @@ import (
 
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/service"
 	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
@@ -2222,13 +2221,8 @@ func TestJobService(t *testing.T) {
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
 			jobA := job.NewJob(sampleTenant, specA, "resource-A", nil)
 
-			jobADownstream := []*dto.Downstream{
-				{
-					Name:          "job-B",
-					ProjectName:   project.Name().String(),
-					NamespaceName: namespace.Name().String(),
-					TaskName:      taskName.String(),
-				},
+			jobADownstream := []*job.Downstream{
+				job.NewDownstream("job-B", project.Name(), namespace.Name(), taskName),
 			}
 			jobRepo.On("GetDownstreamByDestination", ctx, project.Name(), jobA.Destination()).Return(jobADownstream, nil)
 
@@ -2253,13 +2247,8 @@ func TestJobService(t *testing.T) {
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
 			jobA := job.NewJob(sampleTenant, specA, "resource-A", nil)
 
-			jobADownstream := []*dto.Downstream{
-				{
-					Name:          "job-B",
-					ProjectName:   project.Name().String(),
-					NamespaceName: namespace.Name().String(),
-					TaskName:      taskName.String(),
-				},
+			jobADownstream := []*job.Downstream{
+				job.NewDownstream("job-B", project.Name(), namespace.Name(), taskName),
 			}
 			jobRepo.On("GetDownstreamByJobName", ctx, project.Name(), specA.Name()).Return(jobADownstream, nil)
 
@@ -2406,15 +2395,15 @@ func (_m *JobRepository) GetByJobName(ctx context.Context, projectName tenant.Pr
 }
 
 // GetDownstreamByDestination provides a mock function with given fields: ctx, projectName, destination
-func (_m *JobRepository) GetDownstreamByDestination(ctx context.Context, projectName tenant.ProjectName, destination job.ResourceURN) ([]*dto.Downstream, error) {
+func (_m *JobRepository) GetDownstreamByDestination(ctx context.Context, projectName tenant.ProjectName, destination job.ResourceURN) ([]*job.Downstream, error) {
 	ret := _m.Called(ctx, projectName, destination)
 
-	var r0 []*dto.Downstream
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, job.ResourceURN) []*dto.Downstream); ok {
+	var r0 []*job.Downstream
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, job.ResourceURN) []*job.Downstream); ok {
 		r0 = rf(ctx, projectName, destination)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*dto.Downstream)
+			r0 = ret.Get(0).([]*job.Downstream)
 		}
 	}
 
@@ -2429,15 +2418,15 @@ func (_m *JobRepository) GetDownstreamByDestination(ctx context.Context, project
 }
 
 // GetDownstreamByJobName provides a mock function with given fields: ctx, projectName, jobName
-func (_m *JobRepository) GetDownstreamByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*dto.Downstream, error) {
+func (_m *JobRepository) GetDownstreamByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*job.Downstream, error) {
 	ret := _m.Called(ctx, projectName, jobName)
 
-	var r0 []*dto.Downstream
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, job.Name) []*dto.Downstream); ok {
+	var r0 []*job.Downstream
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, job.Name) []*job.Downstream); ok {
 		r0 = rf(ctx, projectName, jobName)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*dto.Downstream)
+			r0 = ret.Get(0).([]*job.Downstream)
 		}
 	}
 
@@ -2475,7 +2464,7 @@ func (_m *JobRepository) GetDownstreamFullNames(_a0 context.Context, _a1 tenant.
 }
 
 // GetJobNameWithInternalUpstreams provides a mock function with given fields: _a0, _a1, _a2
-func (_m *JobRepository) GetJobNameWithInternalUpstreams(_a0 context.Context, _a1 tenant.ProjectName, _a2 []job.Name) (map[job.Name][]*job.Upstream, error) {
+func (_m *JobRepository) ResolveUpstreams(_a0 context.Context, _a1 tenant.ProjectName, _a2 []job.Name) (map[job.Name][]*job.Upstream, error) {
 	ret := _m.Called(_a0, _a1, _a2)
 
 	var r0 map[job.Name][]*job.Upstream

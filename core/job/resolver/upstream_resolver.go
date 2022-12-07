@@ -8,7 +8,6 @@ import (
 
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 )
@@ -28,11 +27,11 @@ func NewUpstreamResolver(jobRepository JobRepository, externalUpstreamResolver E
 }
 
 type ExternalUpstreamResolver interface {
-	Resolve(ctx context.Context, unresolvedUpstreams []*dto.RawUpstream) ([]*job.Upstream, []*job.Upstream, error)
+	Resolve(ctx context.Context, subjectJob *job.Job, internalUpstream []*job.Upstream) ([]*job.Upstream, []*job.Upstream, error)
 }
 
 type JobRepository interface {
-	GetJobNameWithInternalUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error)
+	ResolveUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error)
 
 	GetAllByResourceDestination(ctx context.Context, resourceDestination job.ResourceURN) ([]*job.Job, error)
 	GetByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) (*job.Job, error)
@@ -41,20 +40,29 @@ type JobRepository interface {
 func (u UpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job, logWriter writer.LogWriter) ([]*job.WithUpstream, error) {
 	me := errors.NewMultiError("bulk resolve jobs errors")
 
-	// get internal inferred and static upstreams in bulk
 	jobNames := job.Jobs(jobs).GetJobNames()
-
-	// TODO: internalUpstreams := jobRepo.ResolveUpstreams(ctx, proj, jobNames)
-	jobsWithInternalUpstreams, err := u.jobRepository.GetJobNameWithInternalUpstreams(ctx, projectName, jobNames)
+	allInternalUpstream, err := u.jobRepository.ResolveUpstreams(ctx, projectName, jobNames)
 	if err != nil {
 		errorMsg := fmt.Sprintf("unable to resolve upstream: %s", err.Error())
 		logWriter.Write(writer.LogLevelError, errorMsg)
 		return nil, errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg)
 	}
 
-	// merge with external upstreams
-	jobsWithAllUpstreams, err := u.getJobsWithAllUpstreams(ctx, jobs, jobsWithInternalUpstreams, logWriter)
-	me.Append(err)
+	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
+	for _, jobEntity := range jobs {
+		runner.Add(func(currentJob *job.Job, lw writer.LogWriter) func() (interface{}, error) {
+			return u.getJobWithAllUpstream(ctx, currentJob, allInternalUpstream[currentJob.Spec().Name()], lw)
+		}(jobEntity, logWriter))
+	}
+
+	var jobsWithAllUpstreams []*job.WithUpstream
+	for _, result := range runner.Run() {
+		if result.Val != nil {
+			specVal := result.Val.(*job.WithUpstream)
+			jobsWithAllUpstreams = append(jobsWithAllUpstreams, specVal)
+		}
+		me.Append(result.Err)
+	}
 
 	me.Append(u.getUnresolvedUpstreamsErrors(jobsWithAllUpstreams, logWriter))
 
@@ -67,8 +75,7 @@ func (u UpstreamResolver) Resolve(ctx context.Context, subjectJob *job.Job) ([]*
 	internalUpstream, err := u.resolveFromInternal(ctx, subjectJob)
 	me.Append(err)
 
-	upstreamsToResolve := u.getUpstreamsToResolve(internalUpstream, subjectJob)
-	externalUpstreams, unresolvedUpstreams, err := u.externalUpstreamResolver.Resolve(ctx, upstreamsToResolve)
+	externalUpstreams, unresolvedUpstreams, err := u.externalUpstreamResolver.Resolve(ctx, subjectJob, internalUpstream)
 	me.Append(err)
 
 	return mergeUpstreams(internalUpstream, externalUpstreams, unresolvedUpstreams), errors.MultiToError(me)
@@ -103,93 +110,21 @@ func (u UpstreamResolver) resolveFromInternal(ctx context.Context, subjectJob *j
 	return internalUpstream, errors.MultiToError(me)
 }
 
-// TODO: remove this function. pass all jobs to external upstream resolver including the logWriter. Merging will be in another method
-func (u UpstreamResolver) getJobsWithAllUpstreams(ctx context.Context, jobs []*job.Job, jobsWithInternalUpstreams map[job.Name][]*job.Upstream, logWriter writer.LogWriter) ([]*job.WithUpstream, error) {
-	me := errors.NewMultiError("get jobs with all upstreams errors")
-
-	// TODO: reduce scope of this map to only resolve from external, there will be another for merging all upstreams
-	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
-	for _, jobEntity := range jobs {
-		runner.Add(func(currentJob *job.Job, lw writer.LogWriter) func() (interface{}, error) {
-			return func() (interface{}, error) {
-				internalUpstreams := jobsWithInternalUpstreams[currentJob.Spec().Name()]
-				upstreamsToResolve := u.getUpstreamsToResolve(internalUpstreams, currentJob)
-
-				var wrappedErr error
-				externalUpstreams, unresolvedUpstreams, err := u.externalUpstreamResolver.Resolve(ctx, upstreamsToResolve)
-				if err != nil {
-					errorMsg := fmt.Sprintf("job %s upstream resolution failed: %s", currentJob.Spec().Name().String(), err.Error())
-					wrappedErr = errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg)
-					lw.Write(writer.LogLevelError, fmt.Sprintf("[%s] %s", currentJob.Tenant().NamespaceName().String(), errorMsg))
-				} else {
-					lw.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] job %s upstream resolved", currentJob.Tenant().NamespaceName().String(), currentJob.Spec().Name().String()))
-				}
-
-				allUpstreams := mergeUpstreams(internalUpstreams, externalUpstreams, unresolvedUpstreams)
-				return job.NewWithUpstream(currentJob, allUpstreams), wrappedErr
-			}
-		}(jobEntity, logWriter))
-	}
-
-	var jobsWithAllUpstreams []*job.WithUpstream
-	for _, result := range runner.Run() {
-		if result.Err != nil {
-			me.Append(result.Err)
-		}
-		if result.Val != nil {
-			specVal := result.Val.(*job.WithUpstream)
-			jobsWithAllUpstreams = append(jobsWithAllUpstreams, specVal)
-		}
-	}
-
-	return jobsWithAllUpstreams, errors.MultiToError(me)
-}
-
-func (u UpstreamResolver) getUpstreamsToResolve(resolvedUpstreams []*job.Upstream, jobEntity *job.Job) (upstreamsToResolve []*dto.RawUpstream) {
-	unresolvedStaticUpstreams := u.getStaticUpstreamsToResolve(resolvedUpstreams, jobEntity.StaticUpstreamNames(), jobEntity.ProjectName())
-	upstreamsToResolve = append(upstreamsToResolve, unresolvedStaticUpstreams...)
-
-	unresolvedInferredUpstreams := u.getInferredUpstreamsToResolve(resolvedUpstreams, jobEntity.Sources())
-	upstreamsToResolve = append(upstreamsToResolve, unresolvedInferredUpstreams...)
-
-	return upstreamsToResolve
-}
-
-func (UpstreamResolver) getInferredUpstreamsToResolve(resolvedUpstreams []*job.Upstream, sources []job.ResourceURN) []*dto.RawUpstream {
-	var unresolvedInferredUpstreams []*dto.RawUpstream
-	resolvedUpstreamDestinationMap := job.Upstreams(resolvedUpstreams).ToUpstreamDestinationMap()
-	for _, source := range sources {
-		if !resolvedUpstreamDestinationMap[source] {
-			unresolvedInferredUpstreams = append(unresolvedInferredUpstreams, &dto.RawUpstream{
-				ResourceURN: source.String(),
-			})
-		}
-	}
-	return unresolvedInferredUpstreams
-}
-
-func (UpstreamResolver) getStaticUpstreamsToResolve(resolvedUpstreams []*job.Upstream, staticUpstreamNames []job.SpecUpstreamName, projectName tenant.ProjectName) []*dto.RawUpstream {
-	var unresolvedStaticUpstreams []*dto.RawUpstream
-	resolvedUpstreamFullNameMap := job.Upstreams(resolvedUpstreams).ToUpstreamFullNameMap()
-	for _, upstreamName := range staticUpstreamNames {
-		jobUpstreamName, _ := upstreamName.GetJobName()
-
-		var projectUpstreamName tenant.ProjectName
-		if upstreamName.IsWithProjectName() {
-			projectUpstreamName, _ = upstreamName.GetProjectName()
+func (u UpstreamResolver) getJobWithAllUpstream(ctx context.Context, currentJob *job.Job, internalUpstream []*job.Upstream, lw writer.LogWriter) func() (interface{}, error) {
+	return func() (interface{}, error) {
+		var wrappedErr error
+		externalUpstreams, unresolvedUpstreams, err := u.externalUpstreamResolver.Resolve(ctx, currentJob, internalUpstream)
+		if err != nil {
+			errorMsg := fmt.Sprintf("job %s upstream resolution failed: %s", currentJob.Spec().Name().String(), err.Error())
+			wrappedErr = errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg)
+			lw.Write(writer.LogLevelError, fmt.Sprintf("[%s] %s", currentJob.Tenant().NamespaceName().String(), errorMsg))
 		} else {
-			projectUpstreamName = projectName
+			lw.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] job %s upstream resolved", currentJob.Tenant().NamespaceName().String(), currentJob.Spec().Name().String()))
 		}
 
-		fullUpstreamName := projectName.String() + "/" + upstreamName.String()
-		if !resolvedUpstreamFullNameMap[fullUpstreamName] {
-			unresolvedStaticUpstreams = append(unresolvedStaticUpstreams, &dto.RawUpstream{
-				ProjectName: projectUpstreamName.String(),
-				JobName:     jobUpstreamName.String(),
-			})
-		}
+		allUpstreams := mergeUpstreams(internalUpstream, externalUpstreams, unresolvedUpstreams)
+		return job.NewWithUpstream(currentJob, allUpstreams), wrappedErr
 	}
-	return unresolvedStaticUpstreams
 }
 
 func (UpstreamResolver) getUnresolvedUpstreamsErrors(jobsWithUpstreams []*job.WithUpstream, logWriter writer.LogWriter) error {

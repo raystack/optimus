@@ -165,16 +165,12 @@ func NewUpstreamResolved(name Name, host string, resource ResourceURN, jobTenant
 	}
 }
 
-func NewUpstreamUnresolved(name Name, resource ResourceURN, projectName tenant.ProjectName) *Upstream {
-	var _type UpstreamType
-	if name != "" {
-		_type = UpstreamTypeStatic
-	} else {
-		_type = UpstreamTypeInferred
-	}
+func NewUpstreamUnresolvedInferred(resource ResourceURN) *Upstream {
+	return &Upstream{resource: resource, _type: UpstreamTypeInferred, state: UpstreamStateUnresolved}
+}
 
-	return &Upstream{name: name, resource: resource, projectName: projectName, _type: _type,
-		state: UpstreamStateUnresolved}
+func NewUpstreamUnresolvedStatic(name Name, projectName tenant.ProjectName) *Upstream {
+	return &Upstream{name: name, projectName: projectName, _type: UpstreamTypeStatic, state: UpstreamStateUnresolved}
 }
 
 func (u Upstream) Name() Name {
@@ -277,4 +273,33 @@ func (f FullNames) String() string {
 		fullNamesStr = append(fullNamesStr, fullName.String())
 	}
 	return strings.Join(fullNamesStr, ", ")
+}
+
+type Downstream struct {
+	name Name
+
+	projectName   tenant.ProjectName
+	namespaceName tenant.NamespaceName
+
+	taskName TaskName
+}
+
+func NewDownstream(name Name, projectName tenant.ProjectName, namespaceName tenant.NamespaceName, taskName TaskName) *Downstream {
+	return &Downstream{name: name, projectName: projectName, namespaceName: namespaceName, taskName: taskName}
+}
+
+func (d Downstream) Name() Name {
+	return d.name
+}
+
+func (d Downstream) ProjectName() tenant.ProjectName {
+	return d.projectName
+}
+
+func (d Downstream) NamespaceName() tenant.NamespaceName {
+	return d.namespaceName
+}
+
+func (d Downstream) TaskName() TaskName {
+	return d.taskName
 }

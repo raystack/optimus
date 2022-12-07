@@ -11,7 +11,6 @@ import (
 
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
@@ -46,7 +45,7 @@ type JobService interface {
 
 	GetJobBasicInfo(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, spec *job.Spec) (*job.Job, writer.BufferedLogger)
 	GetUpstreamsToInspect(ctx context.Context, subjectJob *job.Job, localJob bool) ([]*job.Upstream, error)
-	GetDownstream(ctx context.Context, job *job.Job, localJob bool) ([]*dto.Downstream, error)
+	GetDownstream(ctx context.Context, job *job.Job, localJob bool) ([]*job.Downstream, error)
 }
 
 func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *pb.AddJobSpecificationsRequest) (*pb.AddJobSpecificationsResponse, error) {

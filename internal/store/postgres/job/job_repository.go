@@ -7,7 +7,6 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 )
@@ -201,7 +200,7 @@ AND project_name = ?
 	return &spec, err
 }
 
-func (j JobRepository) GetJobNameWithInternalUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error) {
+func (j JobRepository) ResolveUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error) {
 	query := `
 WITH static_upstreams AS (
 	SELECT j.name, j.project_name, d.static_upstream
@@ -313,8 +312,13 @@ func (JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstr
 		upstreamName, _ := job.NameFrom(storeUpstream.UpstreamJobName)
 		projectName, _ := tenant.ProjectNameFrom(storeUpstream.UpstreamProjectName)
 
-		if storeUpstream.UpstreamState == job.UpstreamStateUnresolved.String() {
-			upstreams = append(upstreams, job.NewUpstreamUnresolved(upstreamName, resourceURN, projectName))
+		if storeUpstream.UpstreamState == job.UpstreamStateUnresolved.String() && storeUpstream.UpstreamJobName != "" {
+			upstreams = append(upstreams, job.NewUpstreamUnresolvedStatic(upstreamName, projectName))
+			continue
+		}
+
+		if storeUpstream.UpstreamState == job.UpstreamStateUnresolved.String() && storeUpstream.UpstreamResourceURN != "" {
+			upstreams = append(upstreams, job.NewUpstreamUnresolvedInferred(resourceURN))
 			continue
 		}
 
@@ -709,7 +713,7 @@ WHERE project_name=? AND job_name=?;
 	return j.toUpstreams(storeJobsWithUpstreams)
 }
 
-func (j JobRepository) GetDownstreamByDestination(ctx context.Context, projectName tenant.ProjectName, destination job.ResourceURN) ([]*dto.Downstream, error) {
+func (j JobRepository) GetDownstreamByDestination(ctx context.Context, projectName tenant.ProjectName, destination job.ResourceURN) ([]*job.Downstream, error) {
 	query := `
 SELECT
 	name as job_name, project_name, namespace_name, task_name
@@ -718,22 +722,13 @@ WHERE project_name = ? AND ? = ANY(sources)
 AND deleted_at IS NULL;
 `
 
-	var storeDownstreams []Downstream
+	var storeDownstream []Downstream
 	if err := j.db.WithContext(ctx).Raw(query, projectName.String(), destination.String()).
-		Scan(&storeDownstreams).Error; err != nil {
+		Scan(&storeDownstream).Error; err != nil {
 		return nil, errors.Wrap(job.EntityJob, "error while getting downstream by destination", err)
 	}
 
-	var downstreams []*dto.Downstream
-	for _, storeDownstream := range storeDownstreams {
-		downstreams = append(downstreams, &dto.Downstream{
-			Name:          storeDownstream.JobName,
-			ProjectName:   storeDownstream.ProjectName,
-			NamespaceName: storeDownstream.NamespaceName,
-			TaskName:      storeDownstream.TaskName,
-		})
-	}
-	return downstreams, nil
+	return fromStoreDownstream(storeDownstream)
 }
 
 type Downstream struct {
@@ -743,7 +738,7 @@ type Downstream struct {
 	TaskName      string `json:"task_name"`
 }
 
-func (j JobRepository) GetDownstreamByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*dto.Downstream, error) {
+func (j JobRepository) GetDownstreamByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*job.Downstream, error) {
 	query := `
 SELECT
 	j.name as job_name, j.project_name, j.namespace_name, j.task_name
@@ -753,20 +748,40 @@ WHERE upstream_project_name=? AND upstream_job_name=?
 AND j.deleted_at IS NULL;
 `
 
-	var storeDownstreams []Downstream
+	var storeDownstream []Downstream
 	if err := j.db.WithContext(ctx).Raw(query, projectName.String(), jobName.String()).
-		Scan(&storeDownstreams).Error; err != nil {
+		Scan(&storeDownstream).Error; err != nil {
 		return nil, errors.Wrap(job.EntityJob, "error while getting downstream by job name", err)
 	}
 
-	var downstreams []*dto.Downstream
-	for _, storeDownstream := range storeDownstreams {
-		downstreams = append(downstreams, &dto.Downstream{
-			Name:          storeDownstream.JobName,
-			ProjectName:   storeDownstream.ProjectName,
-			NamespaceName: storeDownstream.NamespaceName,
-			TaskName:      storeDownstream.TaskName,
-		})
+	return fromStoreDownstream(storeDownstream)
+}
+
+func fromStoreDownstream(storeDownstreamList []Downstream) ([]*job.Downstream, error) {
+	var downstreamList []*job.Downstream
+	me := errors.NewMultiError("get downstream by destination errors")
+	for _, storeDownstream := range storeDownstreamList {
+		downstreamJobName, err := job.NameFrom(storeDownstream.JobName)
+		if err != nil {
+			me.Append(err)
+			continue
+		}
+		downstreamProjectName, err := tenant.ProjectNameFrom(storeDownstream.ProjectName)
+		if err != nil {
+			me.Append(err)
+			continue
+		}
+		downstreamNamespaceName, err := tenant.NamespaceNameFrom(storeDownstream.NamespaceName)
+		if err != nil {
+			me.Append(err)
+			continue
+		}
+		downstreamTaskName, err := job.TaskNameFrom(storeDownstream.TaskName)
+		if err != nil {
+			me.Append(err)
+			continue
+		}
+		downstreamList = append(downstreamList, job.NewDownstream(downstreamJobName, downstreamProjectName, downstreamNamespaceName, downstreamTaskName))
 	}
-	return downstreams, nil
+	return downstreamList, errors.MultiToError(me)
 }

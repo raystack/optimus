@@ -11,7 +11,6 @@ import (
 
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
@@ -59,7 +58,7 @@ type JobRepository interface {
 	// TODO: remove `savedJobs` since the method's main purpose is to add, not to get
 	Add(context.Context, []*job.Job) (addedJobs []*job.Job, err error)
 	Update(context.Context, []*job.Job) (updatedJobs []*job.Job, err error)
-	GetJobNameWithInternalUpstreams(context.Context, tenant.ProjectName, []job.Name) (map[job.Name][]*job.Upstream, error)
+	ResolveUpstreams(context.Context, tenant.ProjectName, []job.Name) (map[job.Name][]*job.Upstream, error)
 	ReplaceUpstreams(context.Context, []*job.WithUpstream) error
 
 	GetDownstreamFullNames(context.Context, tenant.ProjectName, job.Name) ([]job.FullName, error)
@@ -71,8 +70,8 @@ type JobRepository interface {
 	GetAllByProjectName(ctx context.Context, projectName tenant.ProjectName) ([]*job.Job, error)
 
 	GetUpstreams(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*job.Upstream, error)
-	GetDownstreamByDestination(ctx context.Context, projectName tenant.ProjectName, destination job.ResourceURN) ([]*dto.Downstream, error)
-	GetDownstreamByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*dto.Downstream, error)
+	GetDownstreamByDestination(ctx context.Context, projectName tenant.ProjectName, destination job.ResourceURN) ([]*job.Downstream, error)
+	GetDownstreamByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*job.Downstream, error)
 }
 
 type UpstreamResolver interface {
@@ -718,7 +717,7 @@ func (j JobService) GetUpstreamsToInspect(ctx context.Context, subjectJob *job.J
 	return j.repo.GetUpstreams(ctx, subjectJob.ProjectName(), subjectJob.Spec().Name())
 }
 
-func (j JobService) GetDownstream(ctx context.Context, subjectJob *job.Job, localJob bool) ([]*dto.Downstream, error) {
+func (j JobService) GetDownstream(ctx context.Context, subjectJob *job.Job, localJob bool) ([]*job.Downstream, error) {
 	if localJob {
 		return j.repo.GetDownstreamByDestination(ctx, subjectJob.ProjectName(), subjectJob.Destination())
 	}
