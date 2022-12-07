@@ -74,7 +74,7 @@ func BenchmarkProjectRepository(b *testing.B) {
 		}
 	})
 
-	b.Run("GetAllWithUpstreams", func(b *testing.B) {
+	b.Run("GetAll", func(b *testing.B) {
 		db := dbSetup()
 		var repo store.ProjectRepository = postgres.NewProjectRepository(db, hash)
 		secretRepo := postgres.NewSecretRepository(db, hash)

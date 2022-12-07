@@ -111,7 +111,7 @@ func TestTenantService(t *testing.T) {
 		t.Run("calls secrets getter to get all the secrets for tenant", func(t *testing.T) {
 			pts, _ := tenant.NewPlainTextSecret("secret_name", "secret_value")
 			secretsGetter := new(secretGetter)
-			secretsGetter.On("GetAllWithUpstreams", ctx, proj.Name(), ns.Name().String()).Return([]*tenant.PlainTextSecret{pts}, nil)
+			secretsGetter.On("GetAll", ctx, proj.Name(), ns.Name().String()).Return([]*tenant.PlainTextSecret{pts}, nil)
 			defer secretsGetter.AssertExpectations(t)
 
 			tenantService := service.NewTenantService(nil, nil, secretsGetter)

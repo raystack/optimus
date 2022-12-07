@@ -98,7 +98,7 @@ func (repo ProjectRepository) GetAll(ctx context.Context) ([]*tenant.Project, er
 
 	getAllProjects := `SELECT ` + projectColumns + ` FROM project WHERE deleted_at IS NULL`
 	if err := repo.db.WithContext(ctx).Raw(getAllProjects).Scan(&projects).Error; err != nil {
-		return nil, errors.Wrap(tenant.EntityProject, "error in GetAllWithUpstreams", err)
+		return nil, errors.Wrap(tenant.EntityProject, "error in GetAll", err)
 	}
 
 	var tenantProjects []*tenant.Project

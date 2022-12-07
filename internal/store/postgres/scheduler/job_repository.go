@@ -235,7 +235,7 @@ func (j *JobRepository) getJobsUpstreams(ctx context.Context, projectName tenant
 	return groupUpstreamsByJobName(jobsUpstreams)
 }
 
-func (j *JobRepository) GetAllWithUpstreams(ctx context.Context, projectName tenant.ProjectName) ([]*scheduler.JobWithDetails, error) {
+func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectName) ([]*scheduler.JobWithDetails, error) {
 	var specs []Job
 	getJobByNameAtProject := `SELECT * FROM job WHERE project_name = ?`
 	err := j.db.WithContext(ctx).Raw(getJobByNameAtProject, projectName.String()).Find(&specs).Error
@@ -247,7 +247,7 @@ func (j *JobRepository) GetAllWithUpstreams(ctx context.Context, projectName ten
 	}
 	jobsMap := map[string]*scheduler.JobWithDetails{}
 	var jobNameList []string
-	multiError := errors.NewMultiError("errorInGetAllWithUpstreams")
+	multiError := errors.NewMultiError("errorInGetAll")
 	for _, spec := range specs {
 		job, err := spec.toJobWithDetails()
 		if err != nil {

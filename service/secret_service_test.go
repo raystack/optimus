@@ -161,7 +161,7 @@ func TestSecretService(t *testing.T) {
 			defer projService.AssertExpectations(t)
 
 			secretRepo := new(mock.ProjectSecretRepository)
-			secretRepo.On("GetAllWithUpstreams", ctx, project).Return(secretItems, nil)
+			secretRepo.On("GetAll", ctx, project).Return(secretItems, nil)
 			defer secretRepo.AssertExpectations(t)
 
 			svc := service.NewSecretService(projService, nil, secretRepo)

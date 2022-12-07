@@ -108,7 +108,7 @@ func TestPostgresNamespaceRepository(t *testing.T) {
 			assert.EqualError(t, err, "failed precondition for entity namespace: empty config")
 		})
 	})
-	t.Run("GetAllWithUpstreams", func(t *testing.T) {
+	t.Run("GetAll", func(t *testing.T) {
 		t.Run("returns all the namespaces in db", func(t *testing.T) {
 			db := dbSetup()
 			repo := postgres.NewNamespaceRepository(db)

@@ -217,7 +217,7 @@ func TestPostgresSecretRepository(t *testing.T) {
 			assert.Equal(t, "secret_name3", secret.Name().String())
 		})
 	})
-	t.Run("GetAllWithUpstreams", func(t *testing.T) {
+	t.Run("GetAll", func(t *testing.T) {
 		t.Run("returns all the secrets for a project", func(t *testing.T) {
 			db := dbSetup()
 

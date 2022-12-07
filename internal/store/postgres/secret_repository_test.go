@@ -231,7 +231,7 @@ func TestIntegrationSecretRepository(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, "g-optimus", checkModel.Name)
 	})
-	t.Run("GetAllWithUpstreams", func(t *testing.T) {
+	t.Run("GetAll", func(t *testing.T) {
 		t.Run("should get all the secrets for a project", func(t *testing.T) {
 			db := DBSetup()
 

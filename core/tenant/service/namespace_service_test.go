@@ -49,10 +49,10 @@ func TestNamespaceService(t *testing.T) {
 			assert.Nil(t, err)
 		})
 	})
-	t.Run("GetAllWithUpstreams", func(t *testing.T) {
+	t.Run("GetAll", func(t *testing.T) {
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			namespaceRepo := new(namespaceRepo)
-			namespaceRepo.On("GetAllWithUpstreams", ctx, savedProject.Name()).
+			namespaceRepo.On("GetAll", ctx, savedProject.Name()).
 				Return(nil, errors.New("error in getting all"))
 			defer namespaceRepo.AssertExpectations(t)
 
@@ -64,7 +64,7 @@ func TestNamespaceService(t *testing.T) {
 		})
 		t.Run("returns the list of saved projects", func(t *testing.T) {
 			namespaceRepo := new(namespaceRepo)
-			namespaceRepo.On("GetAllWithUpstreams", ctx, savedProject.Name()).
+			namespaceRepo.On("GetAll", ctx, savedProject.Name()).
 				Return([]*tenant.Namespace{savedNS}, nil)
 			defer namespaceRepo.AssertExpectations(t)
 

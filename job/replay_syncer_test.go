@@ -86,7 +86,7 @@ func TestReplaySyncer(t *testing.T) {
 	t.Run("Sync", func(t *testing.T) {
 		t.Run("should not return error when no replay with sync criteria found", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetAllWithUpstreams", ctx).Return(projectSpecs, nil)
+			projectRepository.On("GetAll", ctx).Return(projectSpecs, nil)
 			defer projectRepository.AssertExpectations(t)
 
 			replayRepository := new(mock.ReplayRepository)
@@ -100,7 +100,7 @@ func TestReplaySyncer(t *testing.T) {
 		})
 		t.Run("should return error when fetching replays failed", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetAllWithUpstreams", ctx).Return(projectSpecs, nil)
+			projectRepository.On("GetAll", ctx).Return(projectSpecs, nil)
 			defer projectRepository.AssertExpectations(t)
 
 			replayRepository := new(mock.ReplayRepository)
@@ -115,7 +115,7 @@ func TestReplaySyncer(t *testing.T) {
 		})
 		t.Run("should mark state of running replay to success if all instances are success", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetAllWithUpstreams", ctx).Return(projectSpecs, nil)
+			projectRepository.On("GetAll", ctx).Return(projectSpecs, nil)
 			defer projectRepository.AssertExpectations(t)
 
 			replayRepository := new(mock.ReplayRepository)
@@ -150,7 +150,7 @@ func TestReplaySyncer(t *testing.T) {
 		})
 		t.Run("should mark state of running replay to failed if no longer running instance and one of instances is failed", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetAllWithUpstreams", ctx).Return(projectSpecs, nil)
+			projectRepository.On("GetAll", ctx).Return(projectSpecs, nil)
 			defer projectRepository.AssertExpectations(t)
 
 			replayRepository := new(mock.ReplayRepository)
@@ -185,7 +185,7 @@ func TestReplaySyncer(t *testing.T) {
 		})
 		t.Run("should not update replay status if instances are still running", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetAllWithUpstreams", ctx).Return(projectSpecs, nil)
+			projectRepository.On("GetAll", ctx).Return(projectSpecs, nil)
 			defer projectRepository.AssertExpectations(t)
 
 			replayRepository := new(mock.ReplayRepository)
@@ -214,7 +214,7 @@ func TestReplaySyncer(t *testing.T) {
 		})
 		t.Run("should mark timeout replay as failed", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetAllWithUpstreams", ctx).Return(projectSpecs, nil)
+			projectRepository.On("GetAll", ctx).Return(projectSpecs, nil)
 			defer projectRepository.AssertExpectations(t)
 
 			replayCreatedAt := time.Now().Add(time.Hour * -5)
@@ -246,7 +246,7 @@ func TestReplaySyncer(t *testing.T) {
 		})
 		t.Run("should return error when unable to get dag run status from batchScheduler", func(t *testing.T) {
 			projectRepository := new(mock.ProjectRepository)
-			projectRepository.On("GetAllWithUpstreams", ctx).Return(projectSpecs, nil)
+			projectRepository.On("GetAll", ctx).Return(projectSpecs, nil)
 			defer projectRepository.AssertExpectations(t)
 
 			replayRepository := new(mock.ReplayRepository)

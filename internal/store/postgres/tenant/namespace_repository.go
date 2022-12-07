@@ -117,7 +117,7 @@ JOIN project p ON p.id = n.project_id WHERE p.name = ? AND n.deleted_at IS NULL`
 	err := n.db.WithContext(ctx).Raw(getAllNamespaceInProject, projectName.String()).
 		Scan(&namespaces).Error
 	if err != nil {
-		return nil, errors.Wrap(tenant.EntityNamespace, "error in GetAllWithUpstreams", err)
+		return nil, errors.Wrap(tenant.EntityNamespace, "error in GetAll", err)
 	}
 
 	var tenantNamespace []*tenant.Namespace

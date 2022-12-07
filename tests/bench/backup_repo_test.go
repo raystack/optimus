@@ -57,7 +57,7 @@ package bench
 //			}
 //		}
 //	})
-//	b.Run("GetAllWithUpstreams", func(b *testing.B) {
+//	b.Run("GetAll", func(b *testing.B) {
 //		db := DBSetup()
 //
 //		var repo store.BackupRepository = postgres.NewBackupRepository(db)
@@ -71,7 +71,7 @@ package bench
 //		b.ResetTimer()
 //
 //		for i := 0; i < b.N; i++ {
-//			bkp, err := repo.GetAllWithUpstreams(ctx, project, bigqueryStore)
+//			bkp, err := repo.GetAll(ctx, project, bigqueryStore)
 //			if err != nil {
 //				panic(err)
 //			}

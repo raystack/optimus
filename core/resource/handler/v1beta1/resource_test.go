@@ -225,7 +225,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("GetAllWithUpstreams", ctx, mock.Anything, resource.Bigquery).
+			service.On("GetAll", ctx, mock.Anything, resource.Bigquery).
 				Return(nil, errors.New("error in getAll"))
 			defer service.AssertExpectations(t)
 
@@ -243,7 +243,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("returns error when unable to convert", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("GetAllWithUpstreams", ctx, mock.Anything, resource.Bigquery).
+			service.On("GetAll", ctx, mock.Anything, resource.Bigquery).
 				Return([]*resource.Resource{{}}, nil)
 			defer service.AssertExpectations(t)
 
@@ -267,7 +267,7 @@ func TestResourceHandler(t *testing.T) {
 			assert.Nil(t, err)
 
 			service := new(resourceService)
-			service.On("GetAllWithUpstreams", ctx, mock.Anything, resource.Bigquery).
+			service.On("GetAll", ctx, mock.Anything, resource.Bigquery).
 				Return([]*resource.Resource{dbRes}, nil)
 			defer service.AssertExpectations(t)
 

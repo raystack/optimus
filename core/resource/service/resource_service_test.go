@@ -440,7 +440,7 @@ func TestResourceService(t *testing.T) {
 		})
 	})
 
-	t.Run("GetAllWithUpstreams", func(t *testing.T) {
+	t.Run("GetAll", func(t *testing.T) {
 		t.Run("returns nil and error if error is encountered when getting all from repo", func(t *testing.T) {
 			repo := newResourceRepository(t)
 			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return(nil, errors.New("unknown error"))
