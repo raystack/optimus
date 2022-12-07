@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -217,14 +218,14 @@ func groupUpstreamsByJobName(jobUpstreams []JobUpstreams) (map[string][]*schedul
 		}
 		jobUpstreamGroup[upstream.JobName] = append(jobUpstreamGroup[upstream.JobName], schedulerUpstream)
 	}
-	return jobUpstreamGroup, multiError
+	return jobUpstreamGroup, errors.MultiToError(multiError)
 }
 
 func (j *JobRepository) getJobsUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []string) (map[string][]*scheduler.JobUpstream, error) {
 	var jobsUpstreams []JobUpstreams
-	getJobUpstreamsByNameAtProject := `SELECT * FROM job_upstreams WHERE project_name = ? and job_name in ?`
-	jobNameListString := "(" + strings.Join(jobNames, ", ") + ")"
-	err := j.db.WithContext(ctx).Raw(getJobUpstreamsByNameAtProject, projectName.String(), jobNameListString).Find(&jobsUpstreams).Error
+	jobNameListString := strings.Join(jobNames, "', '")
+	getJobUpstreamsByNameAtProject := fmt.Sprintf("SELECT * FROM job_upstream WHERE project_name = '%s' and job_name in ('%s')", projectName.String(), jobNameListString)
+	err := j.db.WithContext(ctx).Raw(getJobUpstreamsByNameAtProject, projectName.String()).Find(&jobsUpstreams).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.NotFound(scheduler.EntityJobRun, "unable to find jobsUpstreams in project:"+projectName.String()+" for:"+jobNameListString)

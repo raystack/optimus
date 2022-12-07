@@ -443,7 +443,6 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.NoError(t, err)
 
 			expectedUpstream := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), tenantDetails.ToTenant(), "static", taskName, false)
-
 			upstreams, err := jobRepo.GetJobNameWithInternalUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
 			assert.NoError(t, err)
 			assert.Equal(t, expectedUpstream, upstreams[jobSpecA.Name()][0])
