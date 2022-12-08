@@ -1,0 +1,241 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "odpf/optimus/plugins/v1beta1/cli.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "CLIModService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {},
+  "definitions": {
+    "AssetsAsset": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "ConfigsConfig": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "PluginQuestionSubQuestion": {
+      "type": "object",
+      "properties": {
+        "ifValue": {
+          "type": "string"
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1PluginQuestion"
+          }
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "typeUrl": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1beta1Assets": {
+      "type": "object",
+      "properties": {
+        "assets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AssetsAsset"
+          }
+        }
+      }
+    },
+    "v1beta1CompileAssetsResponse": {
+      "type": "object",
+      "properties": {
+        "assets": {
+          "$ref": "#/definitions/v1beta1Assets"
+        }
+      }
+    },
+    "v1beta1Configs": {
+      "type": "object",
+      "properties": {
+        "configs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ConfigsConfig"
+          }
+        }
+      }
+    },
+    "v1beta1DefaultAssetsResponse": {
+      "type": "object",
+      "properties": {
+        "assets": {
+          "$ref": "#/definitions/v1beta1Assets"
+        }
+      }
+    },
+    "v1beta1DefaultConfigResponse": {
+      "type": "object",
+      "properties": {
+        "config": {
+          "$ref": "#/definitions/v1beta1Configs"
+        }
+      }
+    },
+    "v1beta1GetQuestionsResponse": {
+      "type": "object",
+      "properties": {
+        "questions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1PluginQuestion"
+          }
+        }
+      }
+    },
+    "v1beta1InstanceSpecData": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/v1beta1InstanceSpecDataType"
+        }
+      }
+    },
+    "v1beta1InstanceSpecDataType": {
+      "type": "string",
+      "enum": [
+        "TYPE_UNSPECIFIED",
+        "TYPE_ENV",
+        "TYPE_FILE"
+      ],
+      "default": "TYPE_UNSPECIFIED",
+      "title": "type of data, could be an env var or file"
+    },
+    "v1beta1PluginAnswer": {
+      "type": "object",
+      "properties": {
+        "question": {
+          "$ref": "#/definitions/v1beta1PluginQuestion"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1PluginOptions": {
+      "type": "object",
+      "properties": {
+        "dryRun": {
+          "type": "boolean"
+        }
+      }
+    },
+    "v1beta1PluginQuestion": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "help": {
+          "type": "string"
+        },
+        "default": {
+          "type": "string"
+        },
+        "multiselect": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subQuestions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PluginQuestionSubQuestion"
+          }
+        }
+      }
+    },
+    "v1beta1TaskWindow": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "string"
+        },
+        "offset": {
+          "type": "string"
+        },
+        "truncateTo": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1ValidateQuestionResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

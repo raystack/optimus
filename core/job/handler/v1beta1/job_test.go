@@ -547,7 +547,7 @@ func TestNewJobHandler(t *testing.T) {
 		})
 	})
 	t.Run("GetWindow", func(t *testing.T) {
-		t.Run("returns error if sheduleAt is not valid", func(t *testing.T) {
+		t.Run("returns error if sheduledAt is not valid", func(t *testing.T) {
 			req := &pb.GetWindowRequest{
 				ScheduledAt: nil,
 			}
@@ -583,6 +583,19 @@ func TestNewJobHandler(t *testing.T) {
 		t.Run("returns dstart and dend", func(t *testing.T) {
 			req := &pb.GetWindowRequest{
 				Version:     2,
+				ScheduledAt: timestamppb.New(time.Date(2022, 11, 18, 13, 0, 0, 0, time.UTC)),
+				Size:        "24h",
+				Offset:      "0",
+				TruncateTo:  "d",
+			}
+			jobHandler := v1beta1.NewJobHandler(nil, nil)
+
+			resp, err := jobHandler.GetWindow(ctx, req)
+			assert.NoError(t, err)
+			assert.NotNil(t, resp)
+		})
+		t.Run("should default to version 1 if not provided", func(t *testing.T) {
+			req := &pb.GetWindowRequest{
 				ScheduledAt: timestamppb.New(time.Date(2022, 11, 18, 13, 0, 0, 0, time.UTC)),
 				Size:        "24h",
 				Offset:      "0",

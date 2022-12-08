@@ -1,0 +1,131 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "odpf/optimus/plugins/base.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "Base"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {},
+  "definitions": {
+    "pluginsHookType": {
+      "type": "string",
+      "enum": [
+        "HookType_UNKNOWN",
+        "HookType_PRE",
+        "HookType_POST",
+        "HookType_FAIL"
+      ],
+      "default": "HookType_UNKNOWN",
+      "title": "HookType enumerates the type of hook Optimus supports"
+    },
+    "pluginsPluginInfoResponse": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "pluginType": {
+          "$ref": "#/definitions/pluginsPluginType"
+        },
+        "pluginMods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/pluginsPluginMod"
+          }
+        },
+        "pluginVersion": {
+          "type": "string",
+          "title": "plugin_version is the semver version of this individual plugin"
+        },
+        "apiVersion": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "api_versions indicates the versions of the Optimus Plugin API\nthis plugin supports"
+        },
+        "image": {
+          "type": "string",
+          "title": "docker image including version if this executes a docker image"
+        },
+        "dependsOn": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "HOOK specific\nname of hooks on which this should depend on before executing"
+        },
+        "hookType": {
+          "$ref": "#/definitions/pluginsHookType"
+        },
+        "secretPath": {
+          "type": "string",
+          "title": "Experimental\nwill be mounted inside the container as volume"
+        }
+      }
+    },
+    "pluginsPluginMod": {
+      "type": "string",
+      "enum": [
+        "PluginMod_UNKNOWN",
+        "PluginMod_CLI",
+        "PluginMod_DEPENDENCYRESOLVER"
+      ],
+      "default": "PluginMod_UNKNOWN",
+      "title": "PluginMod enumerates the type of mods this plugin supports"
+    },
+    "pluginsPluginType": {
+      "type": "string",
+      "enum": [
+        "PluginType_UNKNOWN",
+        "PluginType_TASK",
+        "PluginType_HOOK"
+      ],
+      "default": "PluginType_UNKNOWN",
+      "title": "PluginType enumerates the type of plugins Optimus supports"
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "typeUrl": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    }
+  }
+}
