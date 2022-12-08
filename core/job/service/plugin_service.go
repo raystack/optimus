@@ -14,7 +14,16 @@ import (
 	"github.com/odpf/optimus/models"
 )
 
-const projectConfigPrefix = "GLOBAL__"
+const (
+	projectConfigPrefix = "GLOBAL__"
+
+	configKeyDstart        = "DSTART"
+	configKeyDend          = "DEND"
+	configKeyExecutionTime = "EXECUTION_TIME"
+	configKeyDestination   = "JOB_DESTINATION"
+
+	TimeISOFormat = time.RFC3339
+)
 
 var (
 	ErrUpstreamModNotFound = errors.New("upstream mod not found for plugin")
@@ -186,10 +195,10 @@ func (p JobPluginService) compileAsset(ctx context.Context, plugin *models.Plugi
 	}
 
 	templates, err := p.engine.CompileFiles(assets, map[string]interface{}{
-		models.ConfigKeyDstart:        startTime.Format(models.InstanceScheduledAtTimeLayout),
-		models.ConfigKeyDend:          endTime.Format(models.InstanceScheduledAtTimeLayout),
-		models.ConfigKeyExecutionTime: scheduledAt.Format(models.InstanceScheduledAtTimeLayout),
-		models.ConfigKeyDestination:   jobDestination,
+		configKeyDstart:        startTime.Format(TimeISOFormat),
+		configKeyDend:          endTime.Format(TimeISOFormat),
+		configKeyExecutionTime: scheduledAt.Format(TimeISOFormat),
+		configKeyDestination:   jobDestination,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile templates: %w", err)

@@ -37,21 +37,18 @@ func TestErrors(t *testing.T) {
 
 			assert.Error(t, internalError)
 			assert.ErrorContains(t, internalError, "object has error")
-
 		})
 		t.Run("creates error for invalid argument", func(t *testing.T) {
 			invalidArgument := errors.InvalidArgument(testEntity, "argument is not valid")
 
 			assert.Error(t, invalidArgument)
 			assert.ErrorContains(t, invalidArgument, "argument is not valid")
-
 		})
 		t.Run("creates error for invalid state transition", func(t *testing.T) {
 			invalidStateTransition := errors.InvalidStateTransition(testEntity, "transition is invalid")
 
 			assert.Error(t, invalidStateTransition)
 			assert.ErrorContains(t, invalidStateTransition, "transition is invalid")
-
 		})
 		t.Run("creates a domain error", func(t *testing.T) {
 			domainError := errors.NewError(errors.ErrFailedPrecond, testEntity, "random error")

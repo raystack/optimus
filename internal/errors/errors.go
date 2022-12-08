@@ -32,8 +32,8 @@ type DomainError struct {
 	WrappedErr error
 }
 
-func (e *DomainError) Is(tgt error) bool {
-	_, ok := tgt.(*DomainError)
+func (*DomainError) Is(tgt error) bool {
+	_, ok := tgt.(*DomainError) // nolint
 	return ok
 }
 
