@@ -57,7 +57,7 @@ func (d defaultLogger) write(c *color.Color, msg string, args ...interface{}) {
 // NewClientLogger initializes client logger
 func NewClientLogger() log.Logger {
 	return &defaultLogger{
-		writer:   os.Stdin,
+		writer:   os.Stdout,
 		exitFunc: os.Exit,
 	}
 }
