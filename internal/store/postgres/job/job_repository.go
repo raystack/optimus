@@ -36,15 +36,16 @@ func (j JobRepository) insertJobSpec(ctx context.Context, jobEntity *job.Job) er
 	existingJob, err := j.get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name(), false)
 	if err != nil && !errors.IsInType(err, errors.ErrNotFound) {
 		return errors.NewError(errors.ErrInternalError, job.EntityJob, fmt.Sprintf("failed to check job %s in db: %s", jobEntity.Spec().Name().String(), err.Error()))
-	} else if err == nil {
-		if existingJob.DeletedAt.Valid {
-			if existingJob.NamespaceName != jobEntity.Tenant().NamespaceName().String() {
-				errorMsg := fmt.Sprintf("job %s already exists and soft deleted in namespace %s. consider hard delete the job before inserting to this namespace.", existingJob.Name, existingJob.NamespaceName)
-				return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, errorMsg)
-			}
-			return j.triggerUpdate(ctx, jobEntity)
-		}
-		return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, fmt.Sprintf("job %s already exists", existingJob.Name))
+	}
+	if err == nil && !existingJob.DeletedAt.Valid {
+		return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, fmt.Sprintf("job %s already exists in namespace %s", existingJob.Name, existingJob.NamespaceName))
+	}
+	if err == nil && existingJob.DeletedAt.Valid && existingJob.NamespaceName != jobEntity.Tenant().NamespaceName().String() {
+		errorMsg := fmt.Sprintf("job %s already exists and soft deleted in namespace %s. consider hard delete the job before inserting to this namespace.", existingJob.Name, existingJob.NamespaceName)
+		return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, errorMsg)
+	}
+	if err == nil && existingJob.DeletedAt.Valid && existingJob.NamespaceName == jobEntity.Tenant().NamespaceName().String() {
+		return j.triggerUpdate(ctx, jobEntity)
 	}
 	return j.triggerInsert(ctx, jobEntity)
 }
@@ -119,22 +120,24 @@ func (j JobRepository) Update(ctx context.Context, jobs []*job.Job) ([]*job.Job,
 
 func (j JobRepository) preCheckUpdate(ctx context.Context, jobEntity *job.Job) error {
 	existingJob, err := j.get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name(), false)
+	if err != nil && errors.IsInType(err, errors.ErrNotFound) {
+		return errors.NewError(errors.ErrNotFound, job.EntityJob, fmt.Sprintf("job %s not exists yet", jobEntity.Spec().Name()))
+	}
 	if err != nil {
-		if errors.IsInType(err, errors.ErrNotFound) {
-			return errors.NewError(errors.ErrNotFound, job.EntityJob, fmt.Sprintf("job %s not exists yet", jobEntity.Spec().Name()))
-		}
 		return errors.NewError(errors.ErrInternalError, job.EntityJob, fmt.Sprintf("failed to check job %s in db: %s", jobEntity.Spec().Name().String(), err.Error()))
 	}
-
-	if existingJob.DeletedAt.Valid {
-		if existingJob.NamespaceName != jobEntity.Tenant().NamespaceName().String() {
-			errorMsg := fmt.Sprintf("job %s already exists and soft deleted in namespace %s. consider hard delete the job and do add to this namespace.", existingJob.Name, existingJob.NamespaceName)
-			return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, errorMsg)
-		}
-		errorMsg := fmt.Sprintf("update is not allowed as job %s has been soft deleted. please do add operation.", existingJob.Name)
+	if existingJob.NamespaceName != jobEntity.Tenant().NamespaceName().String() && existingJob.DeletedAt.Valid {
+		errorMsg := fmt.Sprintf("job %s already exists and soft deleted in namespace %s.", existingJob.Name, existingJob.NamespaceName)
 		return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, errorMsg)
 	}
-
+	if existingJob.NamespaceName != jobEntity.Tenant().NamespaceName().String() && !existingJob.DeletedAt.Valid {
+		errorMsg := fmt.Sprintf("job %s already exists in namespace %s.", existingJob.Name, existingJob.NamespaceName)
+		return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, errorMsg)
+	}
+	if existingJob.DeletedAt.Valid {
+		errorMsg := fmt.Sprintf("update is not allowed as job %s has been soft deleted. please re-add the job before updating.", existingJob.Name)
+		return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, errorMsg)
+	}
 	return nil
 }
 

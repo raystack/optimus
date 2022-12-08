@@ -395,6 +395,27 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.ErrorContains(t, err, "already exists and soft deleted in namespace test-ns")
 			assert.Nil(t, updatedJobs)
 		})
+		t.Run("should not update job if it is owned by different namespace", func(t *testing.T) {
+			db := dbSetup()
+
+			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).Build()
+			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"resource-3"})
+
+			jobs := []*job.Job{jobA}
+
+			jobRepo := postgres.NewJobRepository(db)
+			addedJobs, err := jobRepo.Add(ctx, jobs)
+			assert.NoError(t, err)
+			assert.EqualValues(t, jobs, addedJobs)
+
+			otherTenant, err := tenant.NewTenant(proj.Name().String(), otherNamespace.Name().String())
+			assert.NoError(t, err)
+			jobAToUpdate := job.NewJob(otherTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"resource-3"})
+
+			updatedJobs, err := jobRepo.Update(ctx, []*job.Job{jobAToUpdate})
+			assert.ErrorContains(t, err, "job sample-job-A already exists in namespace test-ns")
+			assert.Nil(t, updatedJobs)
+		})
 	})
 
 	t.Run("ResolveUpstreams", func(t *testing.T) {
