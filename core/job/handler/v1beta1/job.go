@@ -453,24 +453,12 @@ func (jh *JobHandler) JobInspect(ctx context.Context, req *pb.JobInspectRequest)
 		downstreamLogs.Write(writer.LogLevelError, fmt.Sprintf("unable to get downstream jobs: %v", err.Error()))
 	}
 
-	// TODO: return pb.JobInspectResponse_UpstreamSection
-	internalUpstreamProto, externalUpstreamProto, unknownUpstreamProto := toUpstreamProtos(upstreams)
+	upstreamProto := toUpstreamProtos(upstreams, subjectJob.Spec().UpstreamSpec(), upstreamLogs.Messages)
 	downstreamProto := toDownstreamProtos(downstreams)
-
-	var httpUpstreamProto []*pb.HttpDependency
-	if subjectJob.Spec().UpstreamSpec() != nil {
-		httpUpstreamProto = toHTTPUpstreamProtos(subjectJob.Spec().UpstreamSpec().HTTPUpstreams())
-	}
 
 	return &pb.JobInspectResponse{
 		BasicInfo: toBasicInfoSectionProto(subjectJob, basicInfoLogger.Messages),
-		Upstreams: &pb.JobInspectResponse_UpstreamSection{
-			ExternalDependency:  externalUpstreamProto,
-			InternalDependency:  internalUpstreamProto,
-			HttpDependency:      httpUpstreamProto,
-			UnknownDependencies: unknownUpstreamProto,
-			Notice:              upstreamLogs.Messages,
-		},
+		Upstreams: upstreamProto,
 		Downstreams: &pb.JobInspectResponse_DownstreamSection{
 			DownstreamJobs: downstreamProto,
 			Notice:         downstreamLogs.Messages,

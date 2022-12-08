@@ -381,17 +381,17 @@ func toBasicInfoSectionProto(jobDetail *job.Job, logMessages []*pb.Log) *pb.JobI
 	}
 }
 
-func toUpstreamProtos(upstreams []*job.Upstream) ([]*pb.JobInspectResponse_JobDependency, []*pb.JobInspectResponse_JobDependency, []*pb.JobInspectResponse_UpstreamSection_UnknownDependencies) {
+func toUpstreamProtos(upstreams []*job.Upstream, upstreamSpec *job.UpstreamSpec, upstreamLogs []*pb.Log) *pb.JobInspectResponse_UpstreamSection {
 	var internalUpstreamProtos []*pb.JobInspectResponse_JobDependency
 	var externalUpstreamProtos []*pb.JobInspectResponse_JobDependency
-	// TODO: add resource URN in unknown dependencies
 	var unknownUpstreamProtos []*pb.JobInspectResponse_UpstreamSection_UnknownDependencies
 	for _, upstream := range upstreams {
 		if upstream.State() != job.UpstreamStateResolved {
 			if upstream.Type() == job.UpstreamTypeStatic {
 				unknownUpstreamProtos = append(unknownUpstreamProtos, &pb.JobInspectResponse_UpstreamSection_UnknownDependencies{
-					JobName:     upstream.Name().String(),
-					ProjectName: upstream.ProjectName().String(),
+					JobName:             upstream.Name().String(),
+					ProjectName:         upstream.ProjectName().String(),
+					ResourceDestination: upstream.Resource().String(),
 				})
 			}
 			continue
@@ -409,7 +409,19 @@ func toUpstreamProtos(upstreams []*job.Upstream) ([]*pb.JobInspectResponse_JobDe
 			internalUpstreamProtos = append(internalUpstreamProtos, upstreamProto)
 		}
 	}
-	return internalUpstreamProtos, externalUpstreamProtos, unknownUpstreamProtos
+
+	var httpUpstreamProto []*pb.HttpDependency
+	if upstreamSpec != nil {
+		httpUpstreamProto = toHTTPUpstreamProtos(upstreamSpec.HTTPUpstreams())
+	}
+
+	return &pb.JobInspectResponse_UpstreamSection{
+		ExternalDependency:  externalUpstreamProtos,
+		InternalDependency:  internalUpstreamProtos,
+		HttpDependency:      httpUpstreamProto,
+		UnknownDependencies: unknownUpstreamProtos,
+		Notice:              upstreamLogs,
+	}
 }
 
 func toHTTPUpstreamProtos(httpUpstreamSpecs []*job.SpecHTTPUpstream) []*pb.HttpDependency {
