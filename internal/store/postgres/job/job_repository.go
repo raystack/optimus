@@ -594,43 +594,6 @@ type ProjectAndJobNames struct {
 	JobName     string `json:"job_name"`
 }
 
-func (j JobRepository) GetDownstreamFullNames(ctx context.Context, subjectProjectName tenant.ProjectName, subjectJobName job.Name) ([]job.FullName, error) {
-	query := `
-WITH resolved_upstream AS (
-	SELECT 
-	project_name, job_name
-	FROM job_upstream
-	WHERE upstream_project_name = ? AND upstream_job_name = ?
-	AND upstream_state = 'resolved'
-)
-SELECT 
-	ru.project_name, ru.job_name
-FROM resolved_upstream ru
-JOIN job j ON (ru.project_name = j.project_name AND ru.job_name = j.name)
-WHERE j.deleted_at IS NULL
-`
-
-	var projectAndJobNames []ProjectAndJobNames
-	if err := j.db.WithContext(ctx).Raw(query, subjectProjectName.String(), subjectJobName.String()).
-		Scan(&projectAndJobNames).Error; err != nil {
-		return nil, errors.Wrap(job.EntityJob, "error while getting job downstream", err)
-	}
-
-	var fullNames []job.FullName
-	for _, projectAndJobName := range projectAndJobNames {
-		projectName, err := tenant.ProjectNameFrom(projectAndJobName.ProjectName)
-		if err != nil {
-			return nil, errors.Wrap(job.EntityJob, "error while getting job downstream", err)
-		}
-		jobName, err := job.NameFrom(projectAndJobName.JobName)
-		if err != nil {
-			return nil, errors.Wrap(job.EntityJob, "error while getting job downstream", err)
-		}
-		fullNames = append(fullNames, job.FullNameFrom(projectName, jobName))
-	}
-	return fullNames, nil
-}
-
 func (j JobRepository) Delete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, cleanHistory bool) error {
 	if cleanHistory {
 		return j.hardDelete(ctx, projectName, jobName)

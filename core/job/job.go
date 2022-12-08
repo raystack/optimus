@@ -303,3 +303,17 @@ func (d Downstream) NamespaceName() tenant.NamespaceName {
 func (d Downstream) TaskName() TaskName {
 	return d.taskName
 }
+
+func (d Downstream) FullName() FullName {
+	return FullNameFrom(d.projectName, d.name)
+}
+
+type DownstreamList []*Downstream
+
+func (d DownstreamList) GetDownstreamFullNames() FullNames {
+	var fullNames []FullName
+	for _, downstream := range d {
+		fullNames = append(fullNames, downstream.FullName())
+	}
+	return fullNames
+}
