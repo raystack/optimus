@@ -180,7 +180,7 @@ func (j JobService) GetByFilter(ctx context.Context, filters ...filter.FilterOpt
 			jobName, _ := job.NameFrom(jobNameStr)
 			fetchedJob, err := j.repo.GetByJobName(ctx, projectName, jobName)
 			if err != nil {
-				if !errors.IsInType(err, errors.ErrNotFound) {
+				if !errors.IsErrorType(err, errors.ErrNotFound) {
 					me.Append(err)
 				}
 				continue
@@ -196,7 +196,7 @@ func (j JobService) GetByFilter(ctx context.Context, filters ...filter.FilterOpt
 		jobName, _ := job.NameFrom(f.GetStringValue(filter.JobName))
 		fetchedJob, err := j.repo.GetByJobName(ctx, projectName, jobName)
 		if err != nil {
-			if errors.IsInType(err, errors.ErrNotFound) {
+			if errors.IsErrorType(err, errors.ErrNotFound) {
 				return []*job.Job{}, nil
 			}
 			return nil, err

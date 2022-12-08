@@ -32,6 +32,11 @@ type DomainError struct {
 	WrappedErr error
 }
 
+func (e *DomainError) Is(tgt error) bool {
+	_, ok := tgt.(*DomainError)
+	return ok
+}
+
 func AddErrContext(err error, entity string, msg string) *DomainError {
 	errType := ErrInternalError
 	var de *DomainError
@@ -119,14 +124,6 @@ func As(err error, target any) bool {
 	return errors.As(err, target)
 }
 
-func IsInType(err error, errType ErrorType) bool {
-	var de *DomainError
-	if errors.As(err, &de) {
-		return de.IsInType(errType)
-	}
-	return false
-}
-
 func (e *DomainError) Error() string {
 	subError := ""
 	if errors.Is(e.WrappedErr, &DomainError{}) {
@@ -153,15 +150,7 @@ func (e *DomainError) DebugString() string {
 		e.ErrorType.String(), e.Entity, e.Message, msg)
 }
 
-func (e *DomainError) IsInType(errType ErrorType) bool {
-	return e.ErrorType == errType
-}
-
 func Wrap(entity, msg string, err error) error {
-	if errors.Is(err, &DomainError{}) {
-		return err
-	}
-
 	return &DomainError{
 		ErrorType:  ErrInternalError,
 		Entity:     entity,
