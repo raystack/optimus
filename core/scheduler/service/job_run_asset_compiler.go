@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 )
 
 type FilesCompiler interface {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 )
 
 // IgnoreTemplateRenderExtension used as extension on a file will skip template

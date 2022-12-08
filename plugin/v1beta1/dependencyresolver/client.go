@@ -12,8 +12,8 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/internal/utils"
-	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 	pbp "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
 )

@@ -7,7 +7,7 @@ import (
 
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 )
 
 func TestEntitySpec(t *testing.T) {

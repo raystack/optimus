@@ -11,7 +11,7 @@ import (
 	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 )
 
 const (

@@ -3,8 +3,8 @@ package dependencyresolver
 import (
 	"context"
 
+	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/internal/utils"
-	"github.com/odpf/optimus/models"
 	pbp "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
 )
 

@@ -7,7 +7,7 @@ import (
 	hPlugin "github.com/hashicorp/go-plugin"
 
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 	oPlugin "github.com/odpf/optimus/plugin"
 )
 

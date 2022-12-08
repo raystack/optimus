@@ -11,8 +11,8 @@ import (
 
 	"github.com/odpf/optimus/client/local"
 	"github.com/odpf/optimus/client/local/model"
+	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/internal/utils"
-	"github.com/odpf/optimus/models"
 )
 
 var (

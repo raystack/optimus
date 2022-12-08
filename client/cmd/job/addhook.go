@@ -12,7 +12,7 @@ import (
 	"github.com/odpf/optimus/client/cmd/internal/survey"
 	"github.com/odpf/optimus/client/local/specio"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 )
 
 type addHookCommand struct {

@@ -12,8 +12,8 @@ import (
 	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/resolver"
 	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/internal/writer"
-	"github.com/odpf/optimus/models"
 )
 
 func TestUpstreamResolver(t *testing.T) {

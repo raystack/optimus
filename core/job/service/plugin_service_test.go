@@ -13,8 +13,8 @@ import (
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/service"
 	"github.com/odpf/optimus/core/tenant"
-	mockOpt "github.com/odpf/optimus/mock"
-	"github.com/odpf/optimus/models"
+	mockOpt "github.com/odpf/optimus/internal/mock"
+	"github.com/odpf/optimus/internal/models"
 )
 
 func TestPluginService(t *testing.T) {

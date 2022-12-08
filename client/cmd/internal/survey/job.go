@@ -11,7 +11,7 @@ import (
 
 	"github.com/odpf/optimus/client/local"
 	"github.com/odpf/optimus/client/local/model"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 )
 
 // JobSurvey defines survey for job specification in general

@@ -23,7 +23,7 @@ import (
 	"github.com/odpf/optimus/client/cmd/resource"
 	"github.com/odpf/optimus/client/local/specio"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 

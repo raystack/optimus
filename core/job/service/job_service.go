@@ -15,8 +15,8 @@ import (
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/lib/tree"
+	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/internal/writer"
-	"github.com/odpf/optimus/models"
 )
 
 const (

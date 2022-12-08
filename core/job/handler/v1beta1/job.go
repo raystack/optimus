@@ -14,8 +14,8 @@ import (
 	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/internal/writer"
-	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 

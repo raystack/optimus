@@ -11,8 +11,8 @@ import (
 	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/ext/scheduler/airflow/dag"
-	"github.com/odpf/optimus/mock"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/mock"
+	"github.com/odpf/optimus/internal/models"
 )
 
 //go:embed expected_dag.py

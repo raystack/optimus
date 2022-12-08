@@ -8,7 +8,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 
 	"github.com/odpf/optimus/client/local/model"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 )
 
 // JobAddHookSurvey defines survey for job add hook
