@@ -37,8 +37,8 @@ func NewJobCreateSurvey() *JobCreateSurvey {
 }
 
 // AskToCreateJob asks questions to create job
-func (j *JobCreateSurvey) AskToCreateJob(jobSpecReader local.SpecReader[*model.JobSpec], jobDir, defaultJobName string) (model.JobSpec, error) {
-	availableTaskNames := j.getAvailableTaskNames()
+func (j *JobCreateSurvey) AskToCreateJob(pluginRepo models.PluginRepository, jobSpecReader local.SpecReader[*model.JobSpec], jobDir, defaultJobName string) (model.JobSpec, error) {
+	availableTaskNames := j.getAvailableTaskNames(pluginRepo)
 	if len(availableTaskNames) == 0 {
 		return model.JobSpec{}, errors.New("no supported task plugin found")
 	}
@@ -49,7 +49,7 @@ func (j *JobCreateSurvey) AskToCreateJob(jobSpecReader local.SpecReader[*model.J
 		return model.JobSpec{}, err
 	}
 
-	cliMod, err := j.getPluginCliMod(jobInput.Task.Name)
+	cliMod, err := j.getPluginCliMod(pluginRepo, jobInput.Task.Name)
 	if err != nil {
 		return jobInput, err
 	}
@@ -111,8 +111,7 @@ func (*JobCreateSurvey) getTaskConfig(cliMod models.CommandLineMod, answers mode
 	return taskConfig, nil
 }
 
-func (*JobCreateSurvey) getAvailableTaskNames() []string {
-	pluginRepo := models.PluginRegistry
+func (*JobCreateSurvey) getAvailableTaskNames(pluginRepo models.PluginRepository) []string {
 	plugins := pluginRepo.GetTasks()
 	var output []string
 	for _, task := range plugins {
@@ -216,8 +215,7 @@ func (j *JobCreateSurvey) askCreateQuestions(questions []*survey.Question) (mode
 	}, nil
 }
 
-func (*JobCreateSurvey) getPluginCliMod(taskName string) (models.CommandLineMod, error) {
-	pluginRepo := models.PluginRegistry
+func (*JobCreateSurvey) getPluginCliMod(pluginRepo models.PluginRepository, taskName string) (models.CommandLineMod, error) {
 	plugin, err := pluginRepo.GetByName(taskName)
 	if err != nil {
 		return nil, err

@@ -381,9 +381,7 @@ type GenerateDependenciesResponse struct {
 }
 
 var (
-	// PluginRegistry holds all supported plugins for this run
-	PluginRegistry       PluginRepository = NewPluginRepository()
-	ErrUnsupportedPlugin                  = errors.New("unsupported plugin requested, make sure its correctly installed")
+	ErrUnsupportedPlugin = errors.New("unsupported plugin requested, make sure its correctly installed")
 )
 
 type PluginRepository interface {
@@ -418,12 +416,12 @@ func (p *Plugin) Info() *PluginInfoResponse {
 	return nil
 }
 
-type registeredPlugins struct {
+type RegisteredPlugins struct {
 	data       map[string]*Plugin
 	sortedKeys []string
 }
 
-func (s *registeredPlugins) lazySortPluginKeys() {
+func (s *RegisteredPlugins) lazySortPluginKeys() {
 	// already sorted
 	if len(s.data) == 0 || len(s.sortedKeys) > 0 {
 		return
@@ -435,14 +433,14 @@ func (s *registeredPlugins) lazySortPluginKeys() {
 	sort.Strings(s.sortedKeys)
 }
 
-func (s *registeredPlugins) GetByName(name string) (*Plugin, error) {
+func (s *RegisteredPlugins) GetByName(name string) (*Plugin, error) {
 	if unit, ok := s.data[name]; ok {
 		return unit, nil
 	}
 	return nil, fmt.Errorf("%s: %w", name, ErrUnsupportedPlugin)
 }
 
-func (s *registeredPlugins) GetAll() []*Plugin {
+func (s *RegisteredPlugins) GetAll() []*Plugin {
 	var list []*Plugin
 	s.lazySortPluginKeys() // sorts keys if not sorted
 	for _, pluginName := range s.sortedKeys {
@@ -451,7 +449,7 @@ func (s *registeredPlugins) GetAll() []*Plugin {
 	return list
 }
 
-func (s *registeredPlugins) GetTasks() []*Plugin {
+func (s *RegisteredPlugins) GetTasks() []*Plugin {
 	var list []*Plugin
 	s.lazySortPluginKeys() // sorts keys if not sorted
 	for _, pluginName := range s.sortedKeys {
@@ -463,7 +461,7 @@ func (s *registeredPlugins) GetTasks() []*Plugin {
 	return list
 }
 
-func (s *registeredPlugins) GetHooks() []*Plugin {
+func (s *RegisteredPlugins) GetHooks() []*Plugin {
 	var list []*Plugin
 	s.lazySortPluginKeys()
 	for _, pluginName := range s.sortedKeys {
@@ -476,7 +474,7 @@ func (s *registeredPlugins) GetHooks() []*Plugin {
 }
 
 // for addin yaml plugins
-func (s *registeredPlugins) AddYaml(yamlMod YamlMod) error {
+func (s *RegisteredPlugins) AddYaml(yamlMod YamlMod) error {
 	info := yamlMod.PluginInfo()
 	if err := validateYamlPluginInfo(info); err != nil {
 		return err
@@ -492,7 +490,7 @@ func (s *registeredPlugins) AddYaml(yamlMod YamlMod) error {
 }
 
 // for addin binary plugins
-func (s *registeredPlugins) AddBinary(drMod DependencyResolverMod) error {
+func (s *RegisteredPlugins) AddBinary(drMod DependencyResolverMod) error {
 	name, err := drMod.GetName(context.Background())
 	if err != nil {
 		return err
@@ -535,6 +533,6 @@ func validateYamlPluginInfo(info *PluginInfoResponse) error {
 	return nil
 }
 
-func NewPluginRepository() *registeredPlugins {
-	return &registeredPlugins{data: map[string]*Plugin{}}
+func NewPluginRepository() *RegisteredPlugins {
+	return &RegisteredPlugins{data: map[string]*Plugin{}}
 }

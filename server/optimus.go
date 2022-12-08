@@ -62,7 +62,8 @@ type OptimusServer struct {
 	grpcServer *grpc.Server
 	httpServer *http.Server
 
-	cleanupFn []func()
+	pluginRepo *models.RegisteredPlugins
+	cleanupFn  []func()
 }
 
 func New(conf config.ServerConfig) (*OptimusServer, error) {
@@ -119,7 +120,9 @@ func (s *OptimusServer) setupPlugins() error {
 		pluginArgs = append(pluginArgs, "-t", s.conf.Telemetry.JaegerAddr)
 	}
 	// discover and load plugins.
-	return plugin.Initialize(pluginLogger, pluginArgs...)
+	var err error
+	s.pluginRepo, err = plugin.Initialize(pluginLogger, pluginArgs...)
+	return err
 }
 
 func (s *OptimusServer) setupTelemetry() error {
@@ -282,10 +285,10 @@ func (s *OptimusServer) setupHandlers() error {
 
 	newPriorityResolver := schedulerResolver.NewPriorityResolver()
 	newEngine := compiler.NewEngine()
-	assetCompiler := schedulerService.NewJobAssetsCompiler(newEngine, models.PluginRegistry)
+	assetCompiler := schedulerService.NewJobAssetsCompiler(newEngine, s.pluginRepo)
 	jobInputCompiler := schedulerService.NewJobInputCompiler(tenantService, newEngine, assetCompiler)
 	notificationService := schedulerService.NewNotifyService(s.logger, jobProviderRepo, tenantService, notifierChanels)
-	newScheduler, err := NewScheduler(s.conf, models.PluginRegistry, tProjectService, tSecretService)
+	newScheduler, err := NewScheduler(s.conf, s.pluginRepo, tProjectService, tSecretService)
 	if err != nil {
 		return err
 	}
@@ -295,7 +298,7 @@ func (s *OptimusServer) setupHandlers() error {
 
 	// Job Bounded Context Setup
 	jJobRepo := jRepo.NewJobRepository(s.dbConn)
-	jPluginService := jService.NewJobPluginService(tSecretService, models.PluginRegistry, engine, s.logger)
+	jPluginService := jService.NewJobPluginService(tSecretService, s.pluginRepo, engine, s.logger)
 	jExternalUpstreamResolver, _ := jResolver.NewExternalUpstreamResolver(s.conf.ResourceManagers)
 	jUpstreamResolver := jResolver.NewUpstreamResolver(jJobRepo, jExternalUpstreamResolver)
 	jJobService := jService.NewJobService(jJobRepo, jPluginService, jUpstreamResolver, tenantService, s.logger)

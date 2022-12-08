@@ -24,10 +24,9 @@ func NewJobAddHookSurvey() *JobAddHookSurvey {
 }
 
 // AskToAddHook asks questions to add hook to a job
-func (j *JobAddHookSurvey) AskToAddHook(jobSpec *model.JobSpec) (*model.JobSpec, error) {
-	pluginRepo := models.PluginRegistry
+func (j *JobAddHookSurvey) AskToAddHook(pluginRepo models.PluginRepository, jobSpec *model.JobSpec) (*model.JobSpec, error) {
 	newJobSpec := *jobSpec
-	availableHookNames := j.getAvailableHookNames()
+	availableHookNames := j.getAvailableHookNames(pluginRepo)
 	if len(availableHookNames) == 0 {
 		return nil, errors.New("no supported hook plugin found")
 	}
@@ -86,8 +85,7 @@ func (*JobAddHookSurvey) getHookConfig(cliMod models.CommandLineMod, answers mod
 	return config, nil
 }
 
-func (*JobAddHookSurvey) getAvailableHookNames() []string {
-	pluginRepo := models.PluginRegistry
+func (*JobAddHookSurvey) getAvailableHookNames(pluginRepo models.PluginRepository) []string {
 	var output []string
 	for _, hook := range pluginRepo.GetHooks() {
 		output = append(output, hook.Info().Name)

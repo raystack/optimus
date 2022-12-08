@@ -12,7 +12,6 @@ import (
 	"github.com/odpf/optimus/client/cmd/internal/connectivity"
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/internal/progressbar"
-	"github.com/odpf/optimus/client/cmd/plugin"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
@@ -27,7 +26,7 @@ type versionCommand struct {
 	isWithServer bool
 	host         string
 
-	pluginCleanFn func()
+	pluginRepo models.PluginRepository
 }
 
 // NewVersionCommand initializes command to get version
@@ -75,7 +74,7 @@ func (v *versionCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	}
 
 	var err error
-	v.pluginCleanFn, err = plugin.TriggerClientPluginsInit(config.LogLevel(v.logger.Level()))
+	v.pluginRepo, err = internal.InitPlugins(config.LogLevel(v.logger.Level()))
 	return err
 }
 
@@ -101,14 +100,13 @@ func (v *versionCommand) RunE(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func (v *versionCommand) PostRunE(_ *cobra.Command, _ []string) error {
-	v.pluginCleanFn()
+func (*versionCommand) PostRunE(_ *cobra.Command, _ []string) error {
+	internal.CleanupPlugins()
 	return nil
 }
 
 func (v *versionCommand) printAllPluginInfos() {
-	pluginRepo := models.PluginRegistry
-	plugins := pluginRepo.GetAll()
+	plugins := v.pluginRepo.GetAll()
 	v.logger.Info("\nDiscovered plugins: %d", len(plugins))
 	for taskIdx, tasks := range plugins {
 		schema := tasks.Info()

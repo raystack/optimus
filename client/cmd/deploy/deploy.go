@@ -15,10 +15,10 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/multierr"
 
+	"github.com/odpf/optimus/client/cmd/internal"
 	"github.com/odpf/optimus/client/cmd/internal/connectivity"
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/namespace"
-	"github.com/odpf/optimus/client/cmd/plugin"
 	"github.com/odpf/optimus/client/cmd/project"
 	"github.com/odpf/optimus/client/cmd/resource"
 	"github.com/odpf/optimus/client/local/specio"
@@ -42,7 +42,7 @@ type deployCommand struct {
 	verbose                  bool
 	configFilePath           string
 
-	pluginCleanFn func()
+	pluginRepo *models.RegisteredPlugins
 }
 
 // NewDeployCommand initializes command for deployment
@@ -80,7 +80,7 @@ func (d *deployCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	}
 
 	d.logger.Info("Initializing client plugins")
-	d.pluginCleanFn, err = plugin.TriggerClientPluginsInit(d.clientConfig.Log.Level)
+	d.pluginRepo, err = internal.InitPlugins(d.clientConfig.Log.Level)
 	d.logger.Info("initialization finished!\n")
 	return err
 }
@@ -111,8 +111,8 @@ func (d *deployCommand) RunE(_ *cobra.Command, _ []string) error {
 	return d.deploy(selectedNamespaces)
 }
 
-func (d *deployCommand) PostRunE(_ *cobra.Command, _ []string) error {
-	d.pluginCleanFn()
+func (*deployCommand) PostRunE(*cobra.Command, []string) error {
+	internal.CleanupPlugins()
 	return nil
 }
 
