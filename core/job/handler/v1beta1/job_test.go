@@ -547,7 +547,7 @@ func TestNewJobHandler(t *testing.T) {
 		})
 	})
 	t.Run("GetWindow", func(t *testing.T) {
-		t.Run("returns error if sheduledAt is not valid", func(t *testing.T) {
+		t.Run("returns error if scheduledAt is not valid", func(t *testing.T) {
 			req := &pb.GetWindowRequest{
 				ScheduledAt: nil,
 			}
