@@ -116,7 +116,7 @@ resources = k8s.V1ResourceRequirements (
 )
 {{- end }}
 JOB_DIR = "/data"
-IMAGE_PULL_POLICY="Always"
+IMAGE_PULL_POLICY="IfNotPresent"
 INIT_CONTAINER_IMAGE="odpf/optimus:{{.Version}}"
 INIT_CONTAINER_ENTRYPOINT = "/opt/entrypoint_init_container.sh"
 
@@ -240,6 +240,7 @@ hook_{{$hookSchema.Name | replace "-" "__dash__"}} = SuperKubernetesPodOperator(
 {{- $dependencySchema := $dependency.Job.Task.Unit.Info }}
 wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
     optimus_hostname="{{$.Hostname}}",
+    upstream_optimus_hostname="{{$.Hostname}}",
     upstream_optimus_project="{{$dependency.Project.Name}}",
     upstream_optimus_namespace="{{$dependency.Job.NamespaceSpec.Name}}",
     upstream_optimus_job="{{$dependency.Job.Name}}",
@@ -255,7 +256,8 @@ wait_{{$dependency.Job.Name | replace "-" "__dash__" | replace "." "__dot__"}} =
 {{- range $_, $dependency := $.Job.ExternalDependencies.OptimusDependencies}}
 {{ $identity := print $dependency.Name "-" $dependency.ProjectName "-" $dependency.JobName }}
 wait_{{ $identity | replace "-" "__dash__" | replace "." "__dot__"}} = SuperExternalTaskSensor(
-    optimus_hostname="{{$dependency.Host}}",
+    optimus_hostname="{{$.Hostname}}",
+    upstream_optimus_hostname="{{$dependency.Host}}",
     upstream_optimus_project="{{$dependency.ProjectName}}",
     upstream_optimus_namespace="{{$dependency.NamespaceName}}",
     upstream_optimus_job="{{$dependency.JobName}}",

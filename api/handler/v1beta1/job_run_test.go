@@ -27,7 +27,6 @@ const (
 func TestJobRunServiceServer(t *testing.T) {
 	log := log.NewNoop()
 	ctx := context.Background()
-	monitoringService := new(mock.MonitoringService)
 
 	t.Run("GetJobTask", func(t *testing.T) {
 		t.Run("should read a job spec task details", func(t *testing.T) {
@@ -44,7 +43,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			}
 
 			namespaceSpec := models.NamespaceSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   uuid.New(),
 				Name: "dev-test-namespace-1",
 				Config: map[string]string{
 					"bucket": "gs://some_folder",
@@ -109,7 +108,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				allTasksRepo,
 				nil,
 				nil,
-				monitoringService,
+				nil,
 				nil,
 			)
 
@@ -146,7 +145,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			}
 
 			namespaceSpec := models.NamespaceSpec{
-				ID:   uuid.Must(uuid.NewRandom()),
+				ID:   uuid.New(),
 				Name: "dev-test-namespace-1",
 				Config: map[string]string{
 					"bucket": "gs://some_folder",
@@ -207,7 +206,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				allTasksRepo,
 				nil,
 				nil,
-				monitoringService,
+				nil,
 				nil,
 			)
 
@@ -233,7 +232,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			}
 
 			namespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
+				ID:          uuid.New(),
 				Name:        "game_jam",
 				ProjectSpec: projectSpec,
 			}
@@ -270,7 +269,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				nil,
 				nil,
 				nil,
-				monitoringService,
+				nil,
 				scheduler,
 			)
 
@@ -298,14 +297,14 @@ func TestJobRunServiceServer(t *testing.T) {
 	})
 
 	t.Run("GetWindow", func(t *testing.T) {
-		t.Run("should return the correct window date range", func(t *testing.T) {
+		t.Run("should return the correct window date range for version 1", func(t *testing.T) {
 			JobRunServiceServer := v1.NewJobRunServiceServer(
 				log,
 				nil, nil, nil, nil,
 				nil,
 				nil,
 				nil,
-				monitoringService,
+				nil,
 				nil,
 			)
 
@@ -324,6 +323,57 @@ func TestJobRunServiceServer(t *testing.T) {
 			assert.Equal(t, "2020-11-11T00:00:00Z", resp.GetStart().AsTime().Format(time.RFC3339))
 			assert.Equal(t, "2020-11-12T00:00:00Z", resp.GetEnd().AsTime().Format(time.RFC3339))
 		})
+		t.Run("should fetch window date range for version 2", func(t *testing.T) {
+			JobRunServiceServer := v1.NewJobRunServiceServer(
+				log,
+				nil, nil, nil, nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+
+			scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
+			scheduledAtTimestamp := timestamppb.New(scheduledAt)
+			req := pb.GetWindowRequest{
+				ScheduledAt: scheduledAtTimestamp,
+				Version:     2,
+				Size:        "24h",
+				Offset:      "24h",
+				TruncateTo:  "d",
+			}
+			resp, err := JobRunServiceServer.GetWindow(ctx, &req)
+			assert.Nil(t, err)
+
+			assert.Equal(t, "2020-11-11T00:00:00Z", resp.GetStart().AsTime().Format(time.RFC3339))
+			assert.Equal(t, "2020-11-12T00:00:00Z", resp.GetEnd().AsTime().Format(time.RFC3339))
+		})
+		t.Run("should ensure backward compatibility for previous fetch window configurations", func(t *testing.T) {
+			JobRunServiceServer := v1.NewJobRunServiceServer(
+				log,
+				nil, nil, nil, nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			)
+
+			scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
+			scheduledAtTimestamp := timestamppb.New(scheduledAt)
+			req := pb.GetWindowRequest{
+				ScheduledAt: scheduledAtTimestamp,
+				Size:        "24h",
+				Offset:      "",
+				TruncateTo:  "m",
+			}
+			resp, err := JobRunServiceServer.GetWindow(ctx, &req)
+			assert.Nil(t, err)
+
+			assert.Equal(t, "2020-11-10T00:00:00Z", resp.GetStart().AsTime().Format(time.RFC3339))
+			assert.Equal(t, "2020-11-11T00:00:00Z", resp.GetEnd().AsTime().Format(time.RFC3339))
+		})
 	})
 	t.Run("JobRun", func(t *testing.T) {
 		date, err := time.Parse(AirflowDateFormat, "2022-03-25T02:00:00+00:00")
@@ -337,7 +387,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			}
 
 			namespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
+				ID:          uuid.New(),
 				Name:        "game_jam",
 				ProjectSpec: projectSpec,
 			}
@@ -375,7 +425,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				jobService, projectService, nil, nil, nil,
 				instsvc,
 				nil,
-				monitoringService,
+				nil,
 				nil,
 			)
 
@@ -418,7 +468,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				nil, projectService, nil, nil, nil,
 				nil,
 				nil,
-				monitoringService,
+				nil,
 				nil,
 			)
 			req := &pb.JobRunRequest{
@@ -455,7 +505,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				jobService, projectService, nil, nil, nil,
 				nil,
 				nil,
-				monitoringService,
+				nil,
 				nil,
 			)
 
@@ -477,7 +527,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			}
 
 			namespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
+				ID:          uuid.New(),
 				Name:        "game_jam",
 				ProjectSpec: projectSpec,
 			}
@@ -499,7 +549,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				jobService, projectService, nil, nil, nil,
 				nil,
 				nil,
-				monitoringService,
+				nil,
 				nil,
 			)
 
@@ -520,7 +570,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				Name: "a-data-project",
 			}
 			namespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
+				ID:          uuid.New(),
 				Name:        "game_jam",
 				ProjectSpec: projectSpec,
 			}
@@ -541,7 +591,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				jobService, projectService, nil, nil, nil,
 				nil,
 				nil,
-				monitoringService,
+				nil,
 				nil,
 			)
 
@@ -567,7 +617,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				Name: "a-data-project",
 			}
 			namespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
+				ID:          uuid.New(),
 				Name:        "game_jam",
 				ProjectSpec: projectSpec,
 			}
@@ -596,7 +646,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				jobService, projectService, nil, nil, nil,
 				instsvc,
 				nil,
-				monitoringService,
+				nil,
 				nil,
 			)
 
@@ -622,7 +672,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				Name: "a-data-project",
 			}
 			namespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
+				ID:          uuid.New(),
 				Name:        "game_jam",
 				ProjectSpec: projectSpec,
 			}
@@ -651,7 +701,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				jobService, projectService, nil, nil, nil,
 				instsvc,
 				nil,
-				monitoringService,
+				nil,
 				nil,
 			)
 
@@ -677,7 +727,7 @@ func TestJobRunServiceServer(t *testing.T) {
 			}
 
 			namespaceSpec := models.NamespaceSpec{
-				ID:          uuid.Must(uuid.NewRandom()),
+				ID:          uuid.New(),
 				Name:        "game_jam",
 				ProjectSpec: projectSpec,
 			}
@@ -713,7 +763,7 @@ func TestJobRunServiceServer(t *testing.T) {
 				jobService, projectService, nil, nil, nil,
 				instsvc,
 				nil,
-				monitoringService,
+				nil,
 				nil,
 			)
 			req := &pb.JobRunRequest{
@@ -745,6 +795,7 @@ func TestJobRunServiceServer(t *testing.T) {
 	t.Run("JobRunInput", func(t *testing.T) {
 		projectName := "a-data-project"
 		jobName := "a-data-job"
+		jobDestination := "bigquery://project.dataset.table"
 
 		mockedTimeNow := time.Now()
 		scheduledAt := time.Date(2020, 11, 11, 0, 0, 0, 0, time.UTC)
@@ -759,7 +810,7 @@ func TestJobRunServiceServer(t *testing.T) {
 		}
 
 		namespaceSpec := models.NamespaceSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
+			ID:   uuid.New(),
 			Name: "namespace-124",
 			Config: map[string]string{
 				"bucket": "gs://some_folder",
@@ -772,8 +823,9 @@ func TestJobRunServiceServer(t *testing.T) {
 		window, err := models.NewWindow(1, "h", "24h", "24h")
 		assert.Nil(t, err)
 		jobSpec := models.JobSpec{
-			ID:   uuid.Must(uuid.NewRandom()),
-			Name: jobName,
+			ID:                  uuid.New(),
+			Name:                jobName,
+			ResourceDestination: jobDestination,
 			Task: models.JobSpecTask{
 				Window: window,
 				Unit: &models.Plugin{
@@ -851,65 +903,126 @@ func TestJobRunServiceServer(t *testing.T) {
 		secretService.On("GetSecrets", ctx, namespaceSpec).Return(secrets, nil)
 		defer secretService.AssertExpectations(t)
 
-		monitoringService.On("GetJobRunByScheduledAt", ctx, namespaceSpec, jobSpec, scheduledAt).Return(jobRunSpec, nil)
-		defer monitoringService.AssertExpectations(t)
+		t.Run("handles error when GetJobRunByScheduledAt fails", func(t *testing.T) {
+			monitoringService := new(mock.MonitoringService)
+			monitoringService.On("GetJobRunByScheduledAt", ctx, namespaceSpec, jobSpec, scheduledAt).
+				Return(models.JobRunSpec{}, fmt.Errorf("some error while getting jobrunByScheduledAt"))
+			defer monitoringService.AssertExpectations(t)
+			startTime, err = jobSpec.Task.Window.GetStartTime(scheduledAt)
+			assert.Nil(t, err)
+			endTime, err = jobSpec.Task.Window.GetEndTime(scheduledAt)
+			assert.Nil(t, err)
 
-		jobRunService := new(mock.JobRunService)
+			jobRunSpecData := []models.JobRunSpecData{
+				{
+					Name:  models.ConfigKeyExecutionTime,
+					Value: scheduledAt.Format(models.InstanceScheduledAtTimeLayout),
+					Type:  models.InstanceDataTypeEnv,
+				},
+				{
+					Name:  models.ConfigKeyDstart,
+					Value: startTime.Format(models.InstanceScheduledAtTimeLayout),
+					Type:  models.InstanceDataTypeEnv,
+				},
+				{
+					Name:  models.ConfigKeyDend,
+					Value: endTime.Format(models.InstanceScheduledAtTimeLayout),
+					Type:  models.InstanceDataTypeEnv,
+				},
+				{
+					Name:  models.ConfigKeyDestination,
+					Value: jobDestination,
+					Type:  models.InstanceDataTypeEnv,
+				},
+			}
+			jobRunInputCompiler := new(mock.JobInputCompiler)
+			jobRunInputCompiler.On("Compile", ctx, namespaceSpec, models.ProjectSecrets(secrets), jobSpec, scheduledAt, jobRunSpecData, instanceType, instanceName).Return(
+				&models.JobRunInput{
+					ConfigMap: map[string]string{
+						models.ConfigKeyExecutionTime: scheduledAt.Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDstart:        startTime.Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDend:          endTime.Format(models.InstanceScheduledAtTimeLayout),
+					},
+					FileMap: map[string]string{"query.sql": "select * from 1"},
+				}, nil)
+			defer jobRunInputCompiler.AssertExpectations(t)
 
-		jobRunInputCompiler := new(mock.JobInputCompiler)
-		startTime, err = jobSpec.Task.Window.GetStartTime(scheduledAt)
-		assert.Nil(t, err)
-		endTime, err = jobSpec.Task.Window.GetEndTime(scheduledAt)
-		assert.Nil(t, err)
-		jobRunInputCompiler.On("Compile", ctx, namespaceSpec, models.ProjectSecrets(secrets), jobSpec, scheduledAt, jobRunSpec.Data, instanceType, instanceName).Return(
-			&models.JobRunInput{
-				ConfigMap: map[string]string{
+			JobRunServiceServer := v1.NewJobRunServiceServer(log, jobService, projectService, nil,
+				secretService, nil, new(mock.JobRunService), jobRunInputCompiler, monitoringService, nil)
+
+			jobRunInputRequest := pb.JobRunInputRequest{
+				ProjectName:  projectName,
+				JobName:      jobName,
+				InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[utils.ToEnumProto(string(models.InstanceTypeTask), "TYPE")]),
+				ScheduledAt:  scheduledAtTimestamp,
+				InstanceName: instanceName,
+			}
+			resp, err := JobRunServiceServer.JobRunInput(ctx, &jobRunInputRequest)
+			assert.Nil(t, err)
+
+			startTime, err = jobSpec.Task.Window.GetStartTime(scheduledAt)
+			assert.Nil(t, err)
+			endTime, err = jobSpec.Task.Window.GetEndTime(scheduledAt)
+			assert.Nil(t, err)
+			expectedResponse := &pb.JobRunInputResponse{
+				Envs: map[string]string{
+					models.ConfigKeyExecutionTime: scheduledAt.Format(models.InstanceScheduledAtTimeLayout),
+					models.ConfigKeyDstart:        startTime.Format(models.InstanceScheduledAtTimeLayout),
+					models.ConfigKeyDend:          endTime.Format(models.InstanceScheduledAtTimeLayout),
+				},
+				Files: map[string]string{"query.sql": "select * from 1"},
+			}
+
+			assert.Equal(t, expectedResponse, resp)
+		})
+		t.Run("happy flow ", func(t *testing.T) {
+			monitoringService := new(mock.MonitoringService)
+			monitoringService.On("GetJobRunByScheduledAt", ctx, namespaceSpec, jobSpec, scheduledAt).Return(jobRunSpec, nil)
+			defer monitoringService.AssertExpectations(t)
+
+			startTime, err = jobSpec.Task.Window.GetStartTime(scheduledAt)
+			assert.Nil(t, err)
+			endTime, err = jobSpec.Task.Window.GetEndTime(scheduledAt)
+			assert.Nil(t, err)
+
+			jobRunInputCompiler := new(mock.JobInputCompiler)
+			jobRunInputCompiler.On("Compile", ctx, namespaceSpec, models.ProjectSecrets(secrets), jobSpec, scheduledAt, jobRunSpec.Data, instanceType, instanceName).Return(
+				&models.JobRunInput{
+					ConfigMap: map[string]string{
+						models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDstart:        startTime.Format(models.InstanceScheduledAtTimeLayout),
+						models.ConfigKeyDend:          endTime.Format(models.InstanceScheduledAtTimeLayout),
+					},
+					FileMap: map[string]string{"query.sql": "select * from 1"},
+				}, nil)
+			defer jobRunInputCompiler.AssertExpectations(t)
+
+			JobRunServiceServer := v1.NewJobRunServiceServer(log, jobService, projectService, nil,
+				secretService, nil, new(mock.JobRunService), jobRunInputCompiler, monitoringService, nil)
+
+			jobRunInputRequest := pb.JobRunInputRequest{
+				ProjectName:  projectName,
+				JobName:      jobName,
+				InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[utils.ToEnumProto(string(models.InstanceTypeTask), "TYPE")]),
+				ScheduledAt:  scheduledAtTimestamp,
+				InstanceName: instanceName,
+			}
+			resp, err := JobRunServiceServer.JobRunInput(ctx, &jobRunInputRequest)
+			assert.Nil(t, err)
+
+			startTime, err = jobSpec.Task.Window.GetStartTime(scheduledAt)
+			assert.Nil(t, err)
+			endTime, err = jobSpec.Task.Window.GetEndTime(scheduledAt)
+			assert.Nil(t, err)
+			expectedResponse := &pb.JobRunInputResponse{
+				Envs: map[string]string{
 					models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
 					models.ConfigKeyDstart:        startTime.Format(models.InstanceScheduledAtTimeLayout),
 					models.ConfigKeyDend:          endTime.Format(models.InstanceScheduledAtTimeLayout),
 				},
-				FileMap: map[string]string{
-					"query.sql": "select * from 1",
-				},
-			}, nil)
-		defer jobRunInputCompiler.AssertExpectations(t)
-
-		JobRunServiceServer := v1.NewJobRunServiceServer(
-			log,
-			jobService,
-			projectService, nil, secretService,
-			nil,
-			jobRunService,
-			jobRunInputCompiler,
-			monitoringService,
-			nil,
-		)
-
-		jobRunInputRequest := pb.JobRunInputRequest{
-			ProjectName:  projectName,
-			JobName:      jobName,
-			InstanceType: pb.InstanceSpec_Type(pb.InstanceSpec_Type_value[utils.ToEnumProto(string(models.InstanceTypeTask), "TYPE")]),
-			ScheduledAt:  scheduledAtTimestamp,
-			InstanceName: instanceName,
-		}
-		resp, err := JobRunServiceServer.JobRunInput(ctx, &jobRunInputRequest)
-		assert.Nil(t, err)
-
-		//TODO get stringified time
-		startTime, err = jobSpec.Task.Window.GetStartTime(scheduledAt)
-		assert.Nil(t, err)
-		endTime, err = jobSpec.Task.Window.GetEndTime(scheduledAt)
-		assert.Nil(t, err)
-		expectedResponse := &pb.JobRunInputResponse{
-			Envs: map[string]string{
-				models.ConfigKeyExecutionTime: mockedTimeNow.Format(models.InstanceScheduledAtTimeLayout),
-				models.ConfigKeyDstart:        startTime.Format(models.InstanceScheduledAtTimeLayout),
-				models.ConfigKeyDend:          endTime.Format(models.InstanceScheduledAtTimeLayout),
-			},
-			Files: map[string]string{
-				"query.sql": "select * from 1",
-			},
-		}
-		assert.Equal(t, expectedResponse, resp)
+				Files: map[string]string{"query.sql": "select * from 1"},
+			}
+			assert.Equal(t, expectedResponse, resp)
+		})
 	})
 }
