@@ -17,7 +17,6 @@ import (
 	"google.golang.org/grpc"
 	"gorm.io/gorm"
 
-	jobRunCompiler "github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"
 	jHandler "github.com/odpf/optimus/core/job/handler/v1beta1"
 	jResolver "github.com/odpf/optimus/core/job/resolver"
@@ -283,8 +282,9 @@ func (s *OptimusServer) setupHandlers() error {
 		),
 	}
 
-	newPriorityResolver := schedulerResolver.NewPriorityResolver()
 	newEngine := compiler.NewEngine()
+
+	newPriorityResolver := schedulerResolver.NewPriorityResolver()
 	assetCompiler := schedulerService.NewJobAssetsCompiler(newEngine, s.pluginRepo)
 	jobInputCompiler := schedulerService.NewJobInputCompiler(tenantService, newEngine, assetCompiler)
 	notificationService := schedulerService.NewNotifyService(s.logger, jobProviderRepo, tenantService, notifierChanels)
@@ -294,11 +294,9 @@ func (s *OptimusServer) setupHandlers() error {
 	}
 	newJobRunService := schedulerService.NewJobRunService(s.logger, jobProviderRepo, jobRunRepo, operatorRunRepository, newScheduler, newPriorityResolver, jobInputCompiler)
 
-	engine := jobRunCompiler.NewGoEngine()
-
 	// Job Bounded Context Setup
 	jJobRepo := jRepo.NewJobRepository(s.dbConn)
-	jPluginService := jService.NewJobPluginService(tSecretService, s.pluginRepo, engine, s.logger)
+	jPluginService := jService.NewJobPluginService(tSecretService, s.pluginRepo, newEngine, s.logger)
 	jExternalUpstreamResolver, _ := jResolver.NewExternalUpstreamResolver(s.conf.ResourceManagers)
 	jUpstreamResolver := jResolver.NewUpstreamResolver(jJobRepo, jExternalUpstreamResolver)
 	jJobService := jService.NewJobService(jJobRepo, jPluginService, jUpstreamResolver, tenantService, s.logger)

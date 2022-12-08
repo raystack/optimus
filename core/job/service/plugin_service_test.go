@@ -9,10 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/service"
 	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/compiler"
 	mockOpt "github.com/odpf/optimus/internal/mock"
 	"github.com/odpf/optimus/internal/models"
 )
@@ -115,7 +115,7 @@ func TestPluginService(t *testing.T) {
 			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
-			engine := compiler.NewGoEngine()
+			engine := compiler.NewEngine()
 			defer pluginRepo.AssertExpectations(t)
 
 			depMod := new(mockOpt.DependencyResolverMod)
@@ -156,7 +156,7 @@ func TestPluginService(t *testing.T) {
 			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
-			engine := compiler.NewGoEngine()
+			engine := compiler.NewEngine()
 			defer pluginRepo.AssertExpectations(t)
 
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(nil, errors.New("not found"))
@@ -175,7 +175,7 @@ func TestPluginService(t *testing.T) {
 			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
-			engine := compiler.NewGoEngine()
+			engine := compiler.NewEngine()
 			defer pluginRepo.AssertExpectations(t)
 
 			depMod := new(mockOpt.DependencyResolverMod)
@@ -201,7 +201,7 @@ func TestPluginService(t *testing.T) {
 			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
-			engine := compiler.NewGoEngine()
+			engine := compiler.NewEngine()
 
 			depMod := new(mockOpt.DependencyResolverMod)
 			defer depMod.AssertExpectations(t)
@@ -236,7 +236,7 @@ func TestPluginService(t *testing.T) {
 			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
-			engine := compiler.NewGoEngine()
+			engine := compiler.NewEngine()
 			defer pluginRepo.AssertExpectations(t)
 
 			depMod := new(mockOpt.DependencyResolverMod)
@@ -267,7 +267,7 @@ func TestPluginService(t *testing.T) {
 			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
-			engine := compiler.NewGoEngine()
+			engine := compiler.NewEngine()
 			defer pluginRepo.AssertExpectations(t)
 
 			depMod := new(mockOpt.DependencyResolverMod)
@@ -310,7 +310,7 @@ func TestPluginService(t *testing.T) {
 			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
-			engine := compiler.NewGoEngine()
+			engine := compiler.NewEngine()
 			defer pluginRepo.AssertExpectations(t)
 
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(nil, errors.New("not found"))
@@ -331,7 +331,7 @@ func TestPluginService(t *testing.T) {
 			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
-			engine := compiler.NewGoEngine()
+			engine := compiler.NewEngine()
 			defer pluginRepo.AssertExpectations(t)
 
 			depMod := new(mockOpt.DependencyResolverMod)
@@ -359,7 +359,7 @@ func TestPluginService(t *testing.T) {
 			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
-			engine := compiler.NewGoEngine()
+			engine := compiler.NewEngine()
 			defer pluginRepo.AssertExpectations(t)
 
 			depMod := new(mockOpt.DependencyResolverMod)
@@ -395,7 +395,7 @@ func TestPluginService(t *testing.T) {
 			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
-			engine := compiler.NewGoEngine()
+			engine := compiler.NewEngine()
 			defer pluginRepo.AssertExpectations(t)
 
 			depMod := new(mockOpt.DependencyResolverMod)
