@@ -52,7 +52,7 @@ func TestJobService(t *testing.T) {
 	taskName, _ := job.TaskNameFrom("bq2bq")
 	jobTask := job.NewTaskBuilder(taskName, jobTaskConfig).Build()
 
-	var jobNamesToSkip []job.Name
+	var jobNamesWithValidationError []job.Name
 
 	t.Run("Add", func(t *testing.T) {
 		t.Run("add jobs", func(t *testing.T) {
@@ -775,7 +775,7 @@ func TestJobService(t *testing.T) {
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesToSkip, logWriter)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
 			assert.NoError(t, err)
 		})
 		t.Run("updates modified existing jobs", func(t *testing.T) {
@@ -825,7 +825,7 @@ func TestJobService(t *testing.T) {
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesToSkip, logWriter)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
 			assert.NoError(t, err)
 		})
 		t.Run("deletes the removed jobs", func(t *testing.T) {
@@ -864,7 +864,7 @@ func TestJobService(t *testing.T) {
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesToSkip, logWriter)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
 			assert.NoError(t, err)
 		})
 		t.Run("adds, updates, and deletes jobs in a request", func(t *testing.T) {
@@ -927,7 +927,7 @@ func TestJobService(t *testing.T) {
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesToSkip, logWriter)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
 			assert.NoError(t, err)
 		})
 		t.Run("skips invalid job when classifying specs as added, modified, or deleted", func(t *testing.T) {
@@ -1031,7 +1031,7 @@ func TestJobService(t *testing.T) {
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesToSkip, logWriter)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
 			assert.ErrorContains(t, err, "internal error")
 		})
 		t.Run("skips invalid modified jobs", func(t *testing.T) {
@@ -1073,7 +1073,7 @@ func TestJobService(t *testing.T) {
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesToSkip, logWriter)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
 			assert.ErrorContains(t, err, "internal error")
 		})
 		t.Run("skips to delete jobs with downstream", func(t *testing.T) {
@@ -1131,7 +1131,7 @@ func TestJobService(t *testing.T) {
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesToSkip, logWriter)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
 			assert.ErrorContains(t, err, "job is being used by")
 		})
 		t.Run("should not break process if one of job failed to be added", func(t *testing.T) {
@@ -1183,7 +1183,7 @@ func TestJobService(t *testing.T) {
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesToSkip, logWriter)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
 			assert.ErrorContains(t, err, "internal error")
 		})
 		t.Run("should not break process if one of job failed to be updated", func(t *testing.T) {
@@ -1225,7 +1225,7 @@ func TestJobService(t *testing.T) {
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesToSkip, logWriter)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
 			assert.ErrorContains(t, err, "internal error")
 		})
 		t.Run("should not break process if one of job failed to be deleted", func(t *testing.T) {
@@ -1264,7 +1264,7 @@ func TestJobService(t *testing.T) {
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil).Times(3)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesToSkip, logWriter)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
 			assert.ErrorContains(t, err, "internal error")
 		})
 		t.Run("should not delete job if unable to check downstream of the job", func(t *testing.T) {
@@ -1302,7 +1302,7 @@ func TestJobService(t *testing.T) {
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil).Twice()
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesToSkip, logWriter)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
 			assert.ErrorContains(t, err, "internal error")
 		})
 	})

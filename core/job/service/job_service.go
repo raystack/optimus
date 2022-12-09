@@ -231,10 +231,10 @@ func (j JobService) GetByFilter(ctx context.Context, filters ...filter.FilterOpt
 	return nil, fmt.Errorf("no filter matched")
 }
 
-func (j JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec, jobNamesToSkip []job.Name, logWriter writer.LogWriter) error {
+func (j JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec, jobNamesWithValidationError []job.Name, logWriter writer.LogWriter) error {
 	me := errors.NewMultiError("replace all specs errors")
 
-	toAdd, toUpdate, toDelete, err := j.differentiateSpecs(ctx, jobTenant, specs, jobNamesToSkip)
+	toAdd, toUpdate, toDelete, err := j.differentiateSpecs(ctx, jobTenant, specs, jobNamesWithValidationError)
 	logWriter.Write(writer.LogLevelInfo, fmt.Sprintf("[%s] found %d new, %d modified, and %d deleted job specs", jobTenant.NamespaceName().String(), len(toAdd), len(toUpdate), len(toDelete)))
 	me.Append(err)
 
@@ -544,7 +544,7 @@ func (j JobService) bulkDelete(ctx context.Context, jobTenant tenant.Tenant, toD
 	return errors.MultiToError(me)
 }
 
-func (j JobService) differentiateSpecs(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec, jobNamesToSkip []job.Name) (added []*job.Spec, modified []*job.Spec, deleted []*job.Spec, err error) {
+func (j JobService) differentiateSpecs(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec, jobNamesWithValidationError []job.Name) (added []*job.Spec, modified []*job.Spec, deleted []*job.Spec, err error) {
 	me := errors.NewMultiError("differentiate specs errors")
 
 	existingJobs, err := j.repo.GetAllByTenant(ctx, jobTenant)
@@ -553,7 +553,7 @@ func (j JobService) differentiateSpecs(ctx context.Context, jobTenant tenant.Ten
 	var addedSpecs, modifiedSpecs, deletedSpecs []*job.Spec
 
 	existingSpecsMap := job.Jobs(existingJobs).GetNameAndSpecMap()
-	for _, jobNameToSkip := range jobNamesToSkip {
+	for _, jobNameToSkip := range jobNamesWithValidationError {
 		delete(existingSpecsMap, jobNameToSkip)
 	}
 
