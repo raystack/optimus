@@ -172,8 +172,11 @@ func (j *Job) toJobWithDetails() (*scheduler.JobWithDetails, error) {
 			DependsOnPast: j.DependsOnPast,
 			CatchUp:       j.CatchUp,
 			StartDate:     j.StartDate,
-			EndDate:       j.EndDate,
+			Interval:      j.Interval,
 		},
+	}
+	if !j.EndDate.IsZero() {
+		schedulerJobWithDetails.Schedule.EndDate = j.EndDate
 	}
 	if j.Labels != nil {
 		var labels map[string]string
