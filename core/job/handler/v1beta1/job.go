@@ -40,7 +40,7 @@ type JobService interface {
 	GetTaskInfo(ctx context.Context, task *job.Task) (*job.Task, error)
 	GetByFilter(ctx context.Context, filters ...filter.FilterOpt) (jobSpecs []*job.Job, err error)
 	ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, jobNamesToSkip []job.Name, logWriter writer.LogWriter) error
-	Refresh(ctx context.Context, projectName tenant.ProjectName, logWriter writer.LogWriter, filters ...filter.FilterOpt) error
+	Refresh(ctx context.Context, projectName tenant.ProjectName, namespaceNames []string, jobNames []string, logWriter writer.LogWriter) error
 	Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, logWriter writer.LogWriter) error
 
 	GetJobBasicInfo(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, spec *job.Spec) (*job.Job, writer.BufferedLogger)
@@ -303,12 +303,7 @@ func (jh *JobHandler) RefreshJobs(request *pb.RefreshJobsRequest, stream pb.JobS
 		return err
 	}
 
-	// TODO: remove filters from here and pass the original values
-	projectFilter := filter.WithString(filter.ProjectName, projectName.String())
-	namespacesFilter := filter.WithStringArray(filter.NamespaceNames, request.NamespaceNames)
-	jobNamesFilter := filter.WithStringArray(filter.JobNames, request.JobNames)
-
-	if err = jh.jobService.Refresh(stream.Context(), projectName, responseWriter, projectFilter, namespacesFilter, jobNamesFilter); err != nil {
+	if err = jh.jobService.Refresh(stream.Context(), projectName, request.NamespaceNames, request.JobNames, responseWriter); err != nil {
 		errMsg := fmt.Sprintf("job refresh failed for project %s: %s", request.ProjectName, err.Error())
 		jh.l.Error(errMsg)
 		responseWriter.Write(writer.LogLevelError, errMsg)

@@ -317,9 +317,12 @@ func (j JobService) bulkRefreshSources(ctx context.Context, tenantWithDetails *t
 	return jobsToProceed, errors.MultiToError(me)
 }
 
-func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, logWriter writer.LogWriter, filters ...filter.FilterOpt) (err error) {
-	//TODO: avoid accepting filters from handler. create the filters here
-	allJobs, err := j.GetByFilter(ctx, filters...)
+func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, namespaceNames []string, jobNames []string, logWriter writer.LogWriter) (err error) {
+	projectFilter := filter.WithString(filter.ProjectName, projectName.String())
+	namespacesFilter := filter.WithStringArray(filter.NamespaceNames, namespaceNames)
+	jobNamesFilter := filter.WithStringArray(filter.JobNames, jobNames)
+
+	allJobs, err := j.GetByFilter(ctx, projectFilter, namespacesFilter, jobNamesFilter)
 	if err != nil {
 		return err
 	}

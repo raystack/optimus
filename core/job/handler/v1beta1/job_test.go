@@ -848,7 +848,7 @@ func TestNewJobHandler(t *testing.T) {
 			stream := new(RefreshJobsServer)
 			stream.On("Context").Return(ctx)
 
-			jobService.On("Refresh", ctx, project.Name(), mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+			jobService.On("Refresh", ctx, project.Name(), request.NamespaceNames, request.JobNames, mock.Anything).Return(nil)
 
 			stream.On("Send", mock.AnythingOfType("*optimus.RefreshJobsResponse")).Return(nil)
 
@@ -885,7 +885,7 @@ func TestNewJobHandler(t *testing.T) {
 			stream := new(RefreshJobsServer)
 			stream.On("Context").Return(ctx)
 
-			jobService.On("Refresh", ctx, project.Name(), mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("internal error"))
+			jobService.On("Refresh", ctx, project.Name(), request.NamespaceNames, request.JobNames, mock.Anything).Return(errors.New("internal error"))
 
 			stream.On("Send", mock.AnythingOfType("*optimus.RefreshJobsResponse")).Return(nil)
 
@@ -1792,20 +1792,13 @@ func (_m *JobService) GetUpstreamsToInspect(ctx context.Context, subjectJob *job
 	return r0, r1
 }
 
-// Refresh provides a mock function with given fields: ctx, projectName, logWriter, filters
-func (_m *JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, logWriter writer.LogWriter, filters ...filter.FilterOpt) error {
-	_va := make([]interface{}, len(filters))
-	for _i := range filters {
-		_va[_i] = filters[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx, projectName, logWriter)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
+// Refresh provides a mock function with given fields: ctx, projectName, namespaceNames, jobNames, logWriter
+func (_m *JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, namespaceNames []string, jobNames []string, logWriter writer.LogWriter) error {
+	ret := _m.Called(ctx, projectName, namespaceNames, jobNames, logWriter)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, writer.LogWriter, ...filter.FilterOpt) error); ok {
-		r0 = rf(ctx, projectName, logWriter, filters...)
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, []string, []string, writer.LogWriter) error); ok {
+		r0 = rf(ctx, projectName, namespaceNames, jobNames, logWriter)
 	} else {
 		r0 = ret.Error(0)
 	}

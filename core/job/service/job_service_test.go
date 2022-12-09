@@ -52,9 +52,6 @@ func TestJobService(t *testing.T) {
 	taskName, _ := job.TaskNameFrom("bq2bq")
 	jobTask := job.NewTaskBuilder(taskName, jobTaskConfig).Build()
 
-	projectFilter := filter.WithString(filter.ProjectName, project.Name().String())
-	namespacesFilter := filter.WithStringArray(filter.NamespaceNames, []string{namespace.Name().String()})
-
 	var jobNamesToSkip []job.Name
 
 	t.Run("Add", func(t *testing.T) {
@@ -1357,7 +1354,7 @@ func TestJobService(t *testing.T) {
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil).Once()
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
-			err := jobService.Refresh(ctx, project.Name(), logWriter, projectFilter, namespacesFilter)
+			err := jobService.Refresh(ctx, project.Name(), []string{namespace.Name().String()}, nil, logWriter)
 			assert.NoError(t, err)
 		})
 		t.Run("resolves and saves upstream for all existing jobs in the given tenant", func(t *testing.T) {
@@ -1405,7 +1402,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobAWithUpstream, jobBWithUpstream}).Return(nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
-			err := jobService.Refresh(ctx, project.Name(), logWriter, projectFilter, namespacesFilter)
+			err := jobService.Refresh(ctx, project.Name(), []string{namespace.Name().String()}, nil, logWriter)
 			assert.NoError(t, err)
 		})
 		t.Run("resolves and saves upstream for all existing jobs for multiple tenant", func(t *testing.T) {
@@ -1459,9 +1456,8 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobAWithUpstream}).Return(nil)
 			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobBWithUpstream}).Return(nil)
 
-			multiNamespacesFilter := filter.WithStringArray(filter.NamespaceNames, []string{namespace.Name().String(), otherNamespace.Name().String()})
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
-			err := jobService.Refresh(ctx, project.Name(), logWriter, projectFilter, multiNamespacesFilter)
+			err := jobService.Refresh(ctx, project.Name(), []string{namespace.Name().String(), otherNamespace.Name().String()}, nil, logWriter)
 			assert.NoError(t, err)
 		})
 		t.Run("returns error if unable to get existing jobs", func(t *testing.T) {
@@ -1480,7 +1476,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(nil, errors.New("internal error"))
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
-			err := jobService.Refresh(ctx, project.Name(), nil, projectFilter, namespacesFilter)
+			err := jobService.Refresh(ctx, project.Name(), []string{namespace.Name().String()}, nil, nil)
 			assert.ErrorContains(t, err, "internal error")
 		})
 	})
