@@ -342,11 +342,11 @@ func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName,
 			continue
 		}
 
-		// TODO: use bulkUpdate
-		refreshedJobs, err := j.bulkRefreshSources(ctx, tenantWithDetails, jobs, logWriter)
+		specs := job.Jobs(jobs).GetSpecs()
+		updatedJobs, err := j.bulkUpdate(ctx, tenantWithDetails, specs, logWriter)
 		me.Append(err)
 
-		jobsWithUpstreams, err := j.upstreamResolver.BulkResolve(ctx, projectName, refreshedJobs, logWriter)
+		jobsWithUpstreams, err := j.upstreamResolver.BulkResolve(ctx, projectName, updatedJobs, logWriter)
 		me.Append(err)
 
 		err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
@@ -503,7 +503,7 @@ func (j JobService) bulkUpdate(ctx context.Context, tenantWithDetails *tenant.Wi
 	}
 
 	if len(updatedJobs) > 0 {
-		logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] successfully modified %d jobs", tenantWithDetails.Namespace().Name().String(), len(updatedJobs)))
+		logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] successfully updated %d jobs", tenantWithDetails.Namespace().Name().String(), len(updatedJobs)))
 	}
 
 	return updatedJobs, errors.MultiToError(me)

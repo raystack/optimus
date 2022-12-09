@@ -105,6 +105,14 @@ func (j Jobs) GetNamespaceNameAndJobsMap() map[tenant.NamespaceName][]*Job {
 	return jobsPerNamespaceName
 }
 
+func (j Jobs) GetSpecs() []*Spec {
+	var specs []*Spec
+	for _, currentJob := range j {
+		specs = append(specs, currentJob.spec)
+	}
+	return specs
+}
+
 type WithUpstream struct {
 	job       *Job
 	upstreams []*Upstream
