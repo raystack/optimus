@@ -99,7 +99,7 @@ resources = k8s.V1ResourceRequirements(
 {{- end }}
 
 JOB_DIR = "/data"
-IMAGE_PULL_POLICY = "Always"
+IMAGE_PULL_POLICY = "IfNotPresent"
 INIT_CONTAINER_IMAGE = "odpf/optimus:{{.Version}}"
 INIT_CONTAINER_ENTRYPOINT = "/opt/entrypoint_init_container.sh"
 
@@ -224,7 +224,8 @@ hook_{{$hookName}} = SuperKubernetesPodOperator(
 {{- range $_, $upstream := .Upstreams.Upstreams}}
 {{- $dependencyName := $upstream.JobName | DisplayName }}
 wait_{{ $dependencyName }} = SuperExternalTaskSensor(
-    optimus_hostname="{{$upstream.Host}}",
+    optimus_hostname="{{$.Hostname}}",
+    upstream_optimus_hostname="{{$upstream.Host}}",
     upstream_optimus_project="{{$upstream.Tenant.ProjectName.String}}",
     upstream_optimus_namespace="{{$upstream.Tenant.NamespaceName.String}}",
     upstream_optimus_job="{{$upstream.JobName}}",
@@ -285,8 +286,8 @@ hook_{{$h.Name | ReplaceDash}} >> {{$transformationName}}
 {{- if .Hooks.Fail }} [
 {{- range $_, $h := .Hooks.Fail -}}
    hook_{{$h.Name | ReplaceDash}},
-{{- end -}} ] >>
-{{- end }} 
+{{- end -}} ]
+{{- end }}
 
 # set inter-dependencies between hooks and hooks
 {{- range $before, $after := .Hooks.Dependencies }}
