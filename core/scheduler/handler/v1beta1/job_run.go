@@ -136,7 +136,7 @@ func (h JobRunHandler) UploadToScheduler(ctx context.Context, req *pb.UploadToSc
 	}
 	err = h.service.UploadToScheduler(ctx, projectName, req.GetNamespaceName())
 	if err != nil {
-		return nil, errors.GRPCErr(err, "unable to upload to scheduler for "+projectName.String())
+		return nil, errors.GRPCErr(err, "unsuccessful upload to scheduler for "+projectName.String())
 	}
 	return &pb.UploadToSchedulerResponse{
 		Status:       true,

@@ -74,7 +74,7 @@ type JobWithDetails struct {
 	Job           *Job
 	JobMetadata   *JobMetadata
 	Schedule      *Schedule
-	Retry         *Retry
+	Retry         Retry
 	Alerts        []Alert
 	RuntimeConfig RuntimeConfig
 	Priority      int

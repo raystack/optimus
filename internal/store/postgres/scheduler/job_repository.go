@@ -183,13 +183,11 @@ func (j *Job) toJobWithDetails() (*scheduler.JobWithDetails, error) {
 		schedulerJobWithDetails.JobMetadata.Labels = labels
 	}
 
-	var retry scheduler.Retry
 	if j.Retry != nil {
-		if err := json.Unmarshal(j.Retry, &retry); err != nil {
+		if err := json.Unmarshal(j.Retry, &schedulerJobWithDetails.Retry); err != nil {
 			return nil, err
 		}
 	}
-	schedulerJobWithDetails.Retry = &retry
 
 	if j.Alert != nil {
 		var alerts []scheduler.Alert
@@ -232,13 +230,16 @@ func (j *JobRepository) GetJobDetails(ctx context.Context, projectName tenant.Pr
 
 func groupUpstreamsByJobName(jobUpstreams []JobUpstreams) (map[string][]*scheduler.JobUpstream, error) {
 	multiError := errors.NewMultiError("errorsInGroupUpstreamsByJobName")
-
 	jobUpstreamGroup := map[string][]*scheduler.JobUpstream{}
 
 	for _, upstream := range jobUpstreams {
 		schedulerUpstream, err := upstream.toJobUpstreams()
 		if err != nil {
-			multiError.Append(err) // TODO: ask sandeep should we append errors or return
+			multiError.Append(
+				errors.Wrap(
+					scheduler.EntityJobRun,
+					fmt.Sprintf("unable to parse upstream:%s for job:%s", upstream.UpstreamJobName, upstream.JobName),
+					err))
 			continue
 		}
 		jobUpstreamGroup[upstream.JobName] = append(jobUpstreamGroup[upstream.JobName], schedulerUpstream)
@@ -276,23 +277,21 @@ func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectNa
 	for _, spec := range specs {
 		job, err := spec.toJobWithDetails()
 		if err != nil {
-			multiError.Append(err)
+			multiError.Append(errors.Wrap(scheduler.EntityJobRun, "error parsing job:"+spec.Name, err))
 			continue
 		}
 		jobNameList = append(jobNameList, job.GetName())
 		jobsMap[job.GetName()] = job
 	}
 
-	// TODO: ask sandeep should use what is resolved and return a partial error msg, or stop the operation and return error
 	jobUpstreamGroupedByName, err := j.getJobsUpstreams(ctx, projectName, jobNameList)
-	if err != nil {
-		return nil, err
-	}
+	multiError.Append(err)
+
 	for jobName, upstreamList := range jobUpstreamGroupedByName {
 		jobsMap[jobName].Upstreams.UpstreamJobs = upstreamList
 	}
 
-	return utils.MapToList[*scheduler.JobWithDetails](jobsMap), err
+	return utils.MapToList[*scheduler.JobWithDetails](jobsMap), errors.MultiToError(multiError)
 }
 
 func NewJobProviderRepository(db *gorm.DB) *JobRepository {
