@@ -47,7 +47,6 @@ default_args = {
     "end_date": datetime.strptime({{ .JobDetails.Schedule.EndDate.Format "2006-01-02T15:04:05" | quote}}, "%Y-%m-%dT%H:%M:%S"),
     {{- end}}
     "weight_rule": WeightRule.ABSOLUTE,
-
     "on_execute_callback": operator_start_event,
     "on_success_callback": operator_success_event,
     "on_retry_callback"  : operator_retry_event,
@@ -264,29 +263,24 @@ wait_{{ $t.JobName | DisplayName }} >> {{$transformationName}}
 wait_{{ $t.Name }} >> {{$transformationName}}
 {{- end}}
 
-{{if .Upstreams.Empty }}
-# if no sensor and dependency is configured
-{{$transformationName}}
-{{- end -}}
-
 # setup hooks and dependencies
-# start_event -> [Dependency/HttpDep/ExternalDep/PreHook] -> Task -> [Post Hook -> Fail Hook] -> end_event
+# [Dependency/HttpDep/ExternalDep/PreHook] -> Task -> [Post Hook -> Fail Hook]
 
 # setup hook dependencies
 {{- range $_, $h := .Hooks.Pre }}
 hook_{{$h.Name | ReplaceDash}} >> {{$transformationName}}
 {{- end }}
 
-{{$transformationName}} >>
-{{- if .Hooks.Post }} [
-{{- range $_, $h := .Hooks.Post -}}
-    hook_{{$h.Name | ReplaceDash}},
-{{- end -}} ] >>
+{{$transformationName}}
+{{- if .Hooks.Post }} >> [
+    {{- range $_, $h := .Hooks.Post -}}
+        hook_{{$h.Name | ReplaceDash}},
+    {{- end -}} ]
 {{- end -}}
-{{- if .Hooks.Fail }} [
-{{- range $_, $h := .Hooks.Fail -}}
-   hook_{{$h.Name | ReplaceDash}},
-{{- end -}} ]
+{{- if .Hooks.Fail }} >> [
+    {{- range $_, $h := .Hooks.Fail -}}
+       hook_{{$h.Name | ReplaceDash}},
+    {{- end -}} ]
 {{- end }}
 
 # set inter-dependencies between hooks and hooks
