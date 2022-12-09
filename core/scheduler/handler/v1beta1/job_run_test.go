@@ -394,7 +394,7 @@ func TestJobRunHandler(t *testing.T) {
 
 			resp, err := jobRunHandler.UploadToScheduler(ctx, req)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "rpc error: code = Internal desc = some error: unable to upload to scheduler for a-data-proj")
+			assert.EqualError(t, err, "rpc error: code = Internal desc = some error: unsuccessful upload to scheduler for a-data-proj")
 			assert.Nil(t, resp)
 		})
 		t.Run("should return success if deployment succeeds", func(t *testing.T) {

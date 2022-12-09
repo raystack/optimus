@@ -12,7 +12,6 @@ import (
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/lib/cron"
-	"github.com/odpf/optimus/internal/models"
 )
 
 type JobRepository interface {
@@ -173,7 +172,7 @@ func filterRuns(runs []*scheduler.JobRunStatus, filter map[string]struct{}) []*s
 func createFilterSet(filter []string) map[string]struct{} {
 	m := map[string]struct{}{}
 	for _, v := range filter {
-		m[models.JobRunState(v).String()] = struct{}{}
+		m[v] = struct{}{}
 	}
 	return m
 }

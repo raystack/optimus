@@ -20,7 +20,6 @@ func NewJobCommand() *cobra.Command {
 		NewRefreshCommand(),
 		NewRunListCommand(),
 		NewValidateCommand(),
-		NewJobRunInputCommand(),
 		NewInspectCommand(),
 		NewReplaceAllCommand(),
 	)

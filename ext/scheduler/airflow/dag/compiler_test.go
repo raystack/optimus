@@ -50,7 +50,7 @@ func setupJobDetails(tnnt tenant.Tenant) *scheduler.JobWithDetails {
 		CatchUp:       true,
 	}
 
-	retry := &scheduler.Retry{
+	retry := scheduler.Retry{
 		Count:              2,
 		Delay:              100,
 		ExponentialBackoff: true,

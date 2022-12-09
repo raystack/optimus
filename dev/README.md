@@ -5,6 +5,7 @@
 + `brew install colima`
 + `make start-colima`
 + check kubernetes context
++ `cd dev`
 + `make apply`
 + expose the port to local machine:
     + `kubectl port-forward svc/optimus-dev 9100:80`
