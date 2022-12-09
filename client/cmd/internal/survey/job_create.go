@@ -15,6 +15,11 @@ import (
 	"github.com/odpf/optimus/internal/utils"
 )
 
+const (
+	ISODateLayout         = "2006-01-02"
+	jobSpecDefaultVersion = 1
+)
+
 var (
 	validateDate         = utils.ValidatorFactory.NewFromRegex(`\d{4}-\d{2}-\d{2}`, "date must be in YYYY-MM-DD format")
 	validateNoSlash      = utils.ValidatorFactory.NewFromRegex(`^[^/]+$`, "`/` is disallowed")
@@ -89,7 +94,7 @@ func (*JobCreateSurvey) getJobAsset(cliMod models.CommandLineMod, answers models
 	}
 	var asset map[string]string
 	if generatedAssetResponse.Assets != nil {
-		asset = generatedAssetResponse.Assets.ToJobSpec().ToMap()
+		asset = generatedAssetResponse.Assets.ToMap()
 	}
 	return asset, nil
 }
@@ -101,10 +106,10 @@ func (*JobCreateSurvey) getTaskConfig(cliMod models.CommandLineMod, answers mode
 	if err != nil {
 		return nil, err
 	}
+
 	taskConfig := make(map[string]string)
-	if generatedConfigResponse.Config != nil {
-		jobSpecConfigs := generatedConfigResponse.Config.ToJobSpec()
-		for _, conf := range []models.JobSpecConfigItem(jobSpecConfigs) {
+	if generatedConfigResponse != nil {
+		for _, conf := range generatedConfigResponse.Config {
 			taskConfig[conf.Name] = conf.Value
 		}
 	}
@@ -153,7 +158,7 @@ func (j *JobCreateSurvey) getCreateQuestions(jobSpecReader local.SpecReader[*mod
 			Prompt: &survey.Input{
 				Message: "Specify the schedule start date",
 				Help:    "Format: (YYYY-MM-DD)",
-				Default: time.Now().AddDate(0, 0, -1).UTC().Format(models.JobDatetimeLayout),
+				Default: time.Now().AddDate(0, 0, -1).UTC().Format(ISODateLayout),
 			},
 			Validate: validateDate,
 		},
@@ -191,7 +196,7 @@ func (j *JobCreateSurvey) askCreateQuestions(questions []*survey.Question) (mode
 	}
 
 	return model.JobSpec{
-		Version: models.JobSpecDefaultVersion,
+		Version: jobSpecDefaultVersion,
 		Name:    baseInputs["name"],
 		Owner:   baseInputs["owner"],
 		Schedule: model.JobSpecSchedule{

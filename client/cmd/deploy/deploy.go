@@ -30,6 +30,12 @@ import (
 const (
 	deployTimeout = time.Minute * 30
 	pollInterval  = time.Second * 15
+
+	deploymentCancelled  = "Cancelled"
+	deploymentInQueue    = "In Queue"
+	deploymentInProgress = "In Progress"
+	deploymentSucceed    = "Succeed"
+	deploymentFailed     = "Failed"
 )
 
 type deployCommand struct {
@@ -435,17 +441,17 @@ func PollJobDeployment(ctx context.Context, l log.Logger, jobSpecService pb.JobS
 		}
 
 		switch resp.Status {
-		case models.JobDeploymentStatusInProgress.String():
+		case deploymentInProgress:
 			l.Info("Deployment request for deployID %s is in progress...", deployID)
-		case models.JobDeploymentStatusInQueue.String():
+		case deploymentInQueue:
 			l.Info("Deployment request for deployID %s is in queue...", deployID)
-		case models.JobDeploymentStatusCancelled.String():
+		case deploymentCancelled:
 			l.Error("Deployment request for deployID %s is cancelled.", deployID)
 			return errors.New("job deployment cancelled")
-		case models.JobDeploymentStatusSucceed.String():
+		case deploymentSucceed:
 			l.Info("Success deploying %d jobs for deployID %s", resp.SuccessCount, deployID)
 			return nil
-		case models.JobDeploymentStatusFailed.String():
+		case deploymentFailed:
 			if len(resp.Failures) > 0 {
 				for _, failedJob := range resp.Failures {
 					if failedJob.GetJobName() != "" {

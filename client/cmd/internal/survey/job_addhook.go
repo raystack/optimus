@@ -73,15 +73,14 @@ func (*JobAddHookSurvey) getHookConfig(cliMod models.CommandLineMod, answers mod
 	if err != nil {
 		return nil, err
 	}
-	var jobSpecConfig models.JobSpecConfigs
-	if generatedConfigResponse.Config != nil {
-		jobSpecConfig = generatedConfigResponse.Config.ToJobSpec()
-	}
 
 	config := map[string]string{}
-	for _, cfg := range jobSpecConfig {
-		config[cfg.Name] = cfg.Value
+	if generatedConfigResponse != nil {
+		for _, cfg := range generatedConfigResponse.Config {
+			config[cfg.Name] = cfg.Value
+		}
 	}
+
 	return config, nil
 }
 

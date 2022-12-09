@@ -9,6 +9,10 @@ import (
 	"github.com/odpf/optimus/internal/models"
 )
 
+const (
+	typeEnv = "env"
+)
+
 type FilesCompiler interface {
 	Compile(fileMap map[string]string, context map[string]any) (map[string]string, error)
 }
@@ -58,7 +62,7 @@ func (c *JobRunAssetsCompiler) CompileJobRunAssets(ctx context.Context, job *sch
 		if err != nil {
 			return nil, err
 		}
-		inputFiles = compiledAssetResponse.Assets.ToJobSpec().ToMap()
+		inputFiles = compiledAssetResponse.Assets.ToMap()
 	}
 
 	fileMap, err := c.compiler.Compile(inputFiles, contextForTask)
@@ -75,7 +79,7 @@ func toJobRunSpecData(mapping map[string]string) []models.JobRunSpecData {
 		jrData := models.JobRunSpecData{
 			Name:  name,
 			Value: value,
-			Type:  models.InstanceDataTypeEnv,
+			Type:  typeEnv,
 		}
 		jobRunData = append(jobRunData, jrData)
 	}
