@@ -54,17 +54,13 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 		return nil, errors.GRPCErr(err, "failed to add job specifications")
 	}
 
-	var jobSpecs []*job.Spec
 	me := errors.NewMultiError("add specs errors")
-	for _, jobProto := range jobSpecRequest.Specs {
-		jobSpec, err := fromJobProto(jobProto)
-		if err != nil {
-			errMsg := fmt.Sprintf("cannot adapt job specification %s: %s", jobProto.Name, err.Error())
-			jh.l.Error(errMsg)
-			me.Append(err)
-			continue
-		}
-		jobSpecs = append(jobSpecs, jobSpec)
+
+	jobSpecs, _, err := fromJobProtos(jobSpecRequest.Specs)
+	if err != nil {
+		errorMsg := fmt.Sprintf("failure when adapting job specifications: %s", err.Error())
+		jh.l.Error(errorMsg)
+		me.Append(err)
 	}
 
 	if len(jobSpecs) == 0 {
@@ -130,17 +126,12 @@ func (jh *JobHandler) UpdateJobSpecifications(ctx context.Context, jobSpecReques
 		return nil, errors.GRPCErr(err, errorMsg)
 	}
 
-	var jobSpecs []*job.Spec
 	me := errors.NewMultiError("update specs errors")
-	for _, jobProto := range jobSpecRequest.Specs {
-		jobSpec, err := fromJobProto(jobProto)
-		if err != nil {
-			errMsg := fmt.Sprintf("cannot adapt job specification %s: %s", jobProto.Name, err.Error())
-			jh.l.Error(errMsg)
-			me.Append(err)
-			continue
-		}
-		jobSpecs = append(jobSpecs, jobSpec)
+	jobSpecs, _, err := fromJobProtos(jobSpecRequest.Specs)
+	if err != nil {
+		errorMsg := fmt.Sprintf("failure when adapting job specifications: %s", err.Error())
+		jh.l.Error(errorMsg)
+		me.Append(err)
 	}
 
 	if len(jobSpecs) == 0 {
@@ -279,27 +270,15 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 			continue
 		}
 
-		var jobSpecs []*job.Spec
-		var jobNamesToSkip []job.Name
-		for _, jobProto := range request.Jobs {
-			jobSpec, err := fromJobProto(jobProto)
-			if err != nil {
-				errMsg := fmt.Sprintf("[%s] cannot adapt job specification %s: %s", request.GetNamespaceName(), jobProto.Name, err.Error())
-				jh.l.Error(errMsg)
-				responseWriter.Write(writer.LogLevelError, errMsg)
-
-				jobNameToSkip, err := job.NameFrom(jobProto.Name)
-				if err == nil {
-					jobNamesToSkip = append(jobNamesToSkip, jobNameToSkip)
-				}
-
-				errNamespaces = append(errNamespaces, request.NamespaceName)
-				continue
-			}
-			jobSpecs = append(jobSpecs, jobSpec)
+		jobSpecs, jobNamesWithValidationErrors, err := fromJobProtos(request.Jobs)
+		if err != nil {
+			errMsg := fmt.Sprintf("[%s] failed to adapt job specifications: %s", request.GetNamespaceName(), err.Error())
+			jh.l.Error(errMsg)
+			responseWriter.Write(writer.LogLevelError, errMsg)
+			errNamespaces = append(errNamespaces, request.NamespaceName)
 		}
 
-		if err := jh.jobService.ReplaceAll(stream.Context(), jobTenant, jobSpecs, jobNamesToSkip, responseWriter); err != nil {
+		if err := jh.jobService.ReplaceAll(stream.Context(), jobTenant, jobSpecs, jobNamesWithValidationErrors, responseWriter); err != nil {
 			errMsg := fmt.Sprintf("replace all job specifications failure for namespace %s: %s", request.NamespaceName, err.Error())
 			jh.l.Error(errMsg)
 			responseWriter.Write(writer.LogLevelError, errMsg)
@@ -324,6 +303,7 @@ func (jh *JobHandler) RefreshJobs(request *pb.RefreshJobsRequest, stream pb.JobS
 		return err
 	}
 
+	// TODO: remove filters from here and pass the original values
 	projectFilter := filter.WithString(filter.ProjectName, projectName.String())
 	namespacesFilter := filter.WithStringArray(filter.NamespaceNames, request.NamespaceNames)
 	jobNamesFilter := filter.WithStringArray(filter.JobNames, request.JobNames)

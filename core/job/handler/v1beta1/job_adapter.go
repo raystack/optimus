@@ -1,9 +1,11 @@
 package v1beta1
 
 import (
+	"fmt"
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/utils"
 	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
@@ -34,6 +36,27 @@ func toJobProto(jobEntity *job.Job) *pb.JobSpecification {
 		Destination:      jobEntity.Destination().String(),
 		Sources:          fromResourceURNs(jobEntity.Sources()),
 	}
+}
+
+func fromJobProtos(protoJobSpecs []*pb.JobSpecification) ([]*job.Spec, []job.Name, error) {
+	me := errors.NewMultiError("adapting specs errors")
+	var jobSpecs []*job.Spec
+	var jobNameWithValidationErrors []job.Name
+	for _, jobProto := range protoJobSpecs {
+		jobSpec, err := fromJobProto(jobProto)
+		if err != nil {
+			errorMsg := fmt.Sprintf("job %s not passed validation: %s", jobProto.Name, err.Error())
+			me.Append(errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg))
+
+			jobNameWithValidationError, err := job.NameFrom(jobProto.Name)
+			if err == nil {
+				jobNameWithValidationErrors = append(jobNameWithValidationErrors, jobNameWithValidationError)
+			}
+			continue
+		}
+		jobSpecs = append(jobSpecs, jobSpec)
+	}
+	return jobSpecs, jobNameWithValidationErrors, errors.MultiToError(me)
 }
 
 func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
