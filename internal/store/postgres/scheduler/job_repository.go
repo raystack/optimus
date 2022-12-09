@@ -16,6 +16,7 @@ import (
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/utils"
+	"github.com/odpf/optimus/models"
 )
 
 type JobRepository struct {
@@ -108,33 +109,49 @@ func (j *Job) toJob() (*scheduler.Job, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	taskConfig := map[string]string{}
-	if err := json.Unmarshal(j.TaskConfig, &taskConfig); err != nil {
+	window, err := models.NewWindow(j.Version, j.WindowTruncateTo, j.WindowOffset, j.WindowSize)
+	if err != nil {
 		return nil, err
 	}
-
-	var hookConfig []*scheduler.Hook
-	if err := json.Unmarshal(j.Hooks, &hookConfig); err != nil {
-		return nil, err
-	}
-
-	assets := map[string]string{}
-	if err := json.Unmarshal(j.Assets, &assets); err != nil {
-		return nil, err
-	}
-
-	return &scheduler.Job{
+	schedulerJob := scheduler.Job{
 		Name:        scheduler.JobName(j.Name),
 		Tenant:      t,
 		Destination: j.Destination,
-		Task: &scheduler.Task{
+		Window:      window,
+	}
+
+	if j.TaskConfig != nil {
+		taskConfig := map[string]map[string]string{} // todo: later make a simple map
+		if err := json.Unmarshal(j.TaskConfig, &taskConfig); err != nil {
+			return nil, err
+		}
+		schedulerJob.Task = &scheduler.Task{
 			Name:   j.TaskName,
-			Config: taskConfig,
-		},
-		Hooks:  hookConfig,
-		Assets: assets,
-	}, err
+			Config: taskConfig["Configs"], // todo: discuss and get sorted
+		}
+	}
+
+	if j.Hooks != nil {
+		var hookConfig []*scheduler.Hook
+		if err := json.Unmarshal(j.Hooks, &hookConfig); err != nil {
+			return nil, err
+		}
+		schedulerJob.Hooks = hookConfig
+	}
+
+	if j.Assets != nil {
+		assetsTemp := []map[string]string{} // todo: fix, assets temp should not be needed after JOB BC change
+		if err := json.Unmarshal(j.Assets, &assetsTemp); err != nil {
+			return nil, err
+		}
+		assets := map[string]string{}
+		for _, m := range assetsTemp {
+			assets[m["Name"]] = m["Value"]
+		}
+		schedulerJob.Assets = assets
+	}
+
+	return &schedulerJob, nil
 }
 
 func (j *Job) toJobWithDetails() (*scheduler.JobWithDetails, error) {
@@ -143,28 +160,13 @@ func (j *Job) toJobWithDetails() (*scheduler.JobWithDetails, error) {
 		return nil, err
 	}
 
-	var labels map[string]string
-	if err := json.Unmarshal(j.Labels, &labels); err != nil {
-		return nil, err
-	}
-
-	var retry scheduler.Retry
-	if err := json.Unmarshal(j.Retry, &retry); err != nil {
-		return nil, err
-	}
-	var alerts []scheduler.Alert
-	if err := json.Unmarshal(j.Alert, &alerts); err != nil {
-		return nil, err
-	}
-
-	return &scheduler.JobWithDetails{
+	schedulerJobWithDetails := &scheduler.JobWithDetails{
 		Name: job.Name,
 		Job:  job,
 		JobMetadata: &scheduler.JobMetadata{
 			Version:     j.Version,
 			Owner:       j.Owner,
 			Description: j.Description,
-			Labels:      labels,
 		},
 		Schedule: &scheduler.Schedule{
 			DependsOnPast: j.DependsOnPast,
@@ -172,9 +174,32 @@ func (j *Job) toJobWithDetails() (*scheduler.JobWithDetails, error) {
 			StartDate:     j.StartDate,
 			EndDate:       j.EndDate,
 		},
-		Retry:  &retry,
-		Alerts: alerts,
-	}, err
+	}
+	if j.Labels != nil {
+		var labels map[string]string
+		if err := json.Unmarshal(j.Labels, &labels); err != nil {
+			return nil, err
+		}
+		schedulerJobWithDetails.JobMetadata.Labels = labels
+	}
+
+	var retry scheduler.Retry
+	if j.Retry != nil {
+		if err := json.Unmarshal(j.Retry, &retry); err != nil {
+			return nil, err
+		}
+	}
+	schedulerJobWithDetails.Retry = &retry
+
+	if j.Alert != nil {
+		var alerts []scheduler.Alert
+		if err := json.Unmarshal(j.Alert, &alerts); err != nil {
+			return nil, err
+		}
+		schedulerJobWithDetails.Alerts = alerts
+	}
+
+	return schedulerJobWithDetails, nil
 }
 
 func (j *JobRepository) GetJob(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName) (*scheduler.Job, error) {

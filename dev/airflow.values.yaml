@@ -1,8 +1,13 @@
 scheduler:
+  replicas: 2
   extraVolumeMounts: # this will get the volume and mount it to that path in the container
     - name: dags-path
       mountPath: /opt/airflow/dags  # location in the container it will put the directory mentioned below.
-
+  livenessProbe:
+    initialDelaySeconds: 100
+    timeoutSeconds: 200
+    # failureThreshold: 5
+    # periodSeconds: 60
   extraVolumes: # this will create the volume from the directory
     - name: dags-path
       hostPath:
@@ -11,7 +16,7 @@ scheduler:
 
 config:
   core:
-    dags_folder: /opt/airflow/dags/dags
+    dags_folder: /opt/airflow/dags
   webserver:
     expose_config: 'True'  # by default this is 'False'
 

@@ -692,6 +692,9 @@
         },
         "projectName": {
           "type": "string"
+        },
+        "resourceDestination": {
+          "type": "string"
         }
       }
     },
