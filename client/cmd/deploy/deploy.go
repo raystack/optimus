@@ -15,7 +15,6 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/multierr"
 
-	"github.com/odpf/optimus/client/cmd/internal"
 	"github.com/odpf/optimus/client/cmd/internal/connectivity"
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/namespace"
@@ -47,8 +46,6 @@ type deployCommand struct {
 	ignoreResourceDeployment bool
 	verbose                  bool
 	configFilePath           string
-
-	pluginRepo *models.RegisteredPlugins
 }
 
 // NewDeployCommand initializes command for deployment
@@ -66,9 +63,8 @@ func NewDeployCommand() *cobra.Command {
 		Annotations: map[string]string{
 			"group:core": "true",
 		},
-		RunE:     deploy.RunE,
-		PreRunE:  deploy.PreRunE,
-		PostRunE: deploy.PostRunE,
+		RunE:    deploy.RunE,
+		PreRunE: deploy.PreRunE,
 	}
 	cmd.Flags().StringVarP(&deploy.configFilePath, "config", "c", deploy.configFilePath, "File path for client configuration")
 	cmd.Flags().StringSliceVarP(&deploy.selectedNamespaceNames, "namespace-names", "N", nil, "Selected namespaces of optimus project")
@@ -85,8 +81,6 @@ func (d *deployCommand) PreRunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	d.logger.Info("Initializing client plugins")
-	d.pluginRepo, err = internal.InitPlugins(d.clientConfig.Log.Level)
 	d.logger.Info("initialization finished!\n")
 	return err
 }
@@ -115,11 +109,6 @@ func (d *deployCommand) RunE(_ *cobra.Command, _ []string) error {
 	d.logger.Info("namespace registration finished!\n")
 
 	return d.deploy(selectedNamespaces)
-}
-
-func (*deployCommand) PostRunE(*cobra.Command, []string) error {
-	internal.CleanupPlugins()
-	return nil
 }
 
 func (d *deployCommand) deploy(selectedNamespaces []*config.Namespace) error {
