@@ -80,6 +80,7 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
                  optimus_namespacename,
                  optimus_jobname,
                  optimus_jobtype,
+                 optimus_instancename,
                  *args,
                  **kwargs):
         super(SuperKubernetesPodOperator, self).__init__(*args, **kwargs)
@@ -94,6 +95,7 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
         self.optimus_hostname = optimus_hostname
         self.optimus_namespacename = optimus_namespacename
         self.optimus_jobname  = optimus_jobname
+        self.optimus_instancename = optimus_instancename
         self.optimus_projectname = optimus_projectname
         self.optimus_jobtype = optimus_jobtype
         self._optimus_client = OptimusAPIClient(optimus_hostname)
@@ -106,7 +108,7 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
 
     def fetch_env_from_optimus(self, context):
         scheduled_at = context["next_execution_date"].strftime(TIMESTAMP_FORMAT)
-        job_meta = self._optimus_client.get_job_run_input(scheduled_at, self.optimus_projectname, self.optimus_jobname, self.optimus_jobtype)
+        job_meta = self._optimus_client.get_job_run_input(scheduled_at, self.optimus_projectname, self.optimus_jobname, self.optimus_jobtype, self.optimus_instancename)
         return [ 
             k8s.V1EnvVar(name=key,value=val) for key, val in job_meta["envs"].items()
         ] + [
@@ -245,10 +247,10 @@ class OptimusAPIClient:
         return response.json()
 
 
-    def get_job_run_input(self, execution_date: str, project_name: str, job_name: str, job_type: str) -> dict:
+    def get_job_run_input(self, execution_date: str, project_name: str, job_name: str, job_type: str, instance_name: str) -> dict:
         response = requests.post(url="{}/api/v1beta1/project/{}/job/{}/run_input".format(self.host, project_name, job_name),
                       json={'scheduled_at': execution_date,
-                            'instance_name': job_name,
+                            'instance_name': instance_name,
                             'instance_type': "TYPE_" + job_type.upper()})
 
         self._raise_error_if_request_failed(response)
