@@ -39,7 +39,6 @@ default_args = {
     "start_date": datetime.strptime("2022-11-10T05:02:00", "%Y-%m-%dT%H:%M:%S"),
     "end_date": datetime.strptime("2022-11-10T10:02:00", "%Y-%m-%dT%H:%M:%S"),
     "weight_rule": WeightRule.ABSOLUTE,
-
     "on_execute_callback": operator_start_event,
     "on_success_callback": operator_success_event,
     "on_retry_callback"  : operator_retry_event,
@@ -302,7 +301,7 @@ wait_foo__dash__inter__dash__dep__dash__job >> transformation_bq__dash__bq
 wait_foo__dash__external__dash__optimus__dash__dep__dash__job >> transformation_bq__dash__bq
 
 # setup hooks and dependencies
-# start_event -> [Dependency/HttpDep/ExternalDep/PreHook] -> Task -> [Post Hook -> Fail Hook] -> end_event
+# [Dependency/HttpDep/ExternalDep/PreHook] -> Task -> [Post Hook -> Fail Hook]
 
 # setup hook dependencies
 hook_transporter >> transformation_bq__dash__bq

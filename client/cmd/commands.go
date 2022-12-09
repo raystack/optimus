@@ -17,6 +17,7 @@ import (
 	"github.com/odpf/optimus/client/cmd/project"
 	"github.com/odpf/optimus/client/cmd/replay"
 	"github.com/odpf/optimus/client/cmd/resource"
+	"github.com/odpf/optimus/client/cmd/scheduler"
 	"github.com/odpf/optimus/client/cmd/secret"
 	"github.com/odpf/optimus/client/cmd/version"
 )
@@ -71,6 +72,7 @@ func New() *cli.Command {
 		secret.NewSecretCommand(),
 		version.NewVersionCommand(),
 		playground.NewPlaygroundCommand(),
+		scheduler.NewSchedulerCommand(),
 
 		// Will decide later, to add it server side or not
 		plugin.NewPluginCommand(),

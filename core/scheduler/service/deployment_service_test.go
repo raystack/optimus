@@ -52,12 +52,13 @@ func TestDeploymentService(t *testing.T) {
 			jobRepo := new(JobRepository)
 			jobRepo.On("GetAll", ctx, proj1Name).Return(nil, fmt.Errorf("GetAll error"))
 			defer jobRepo.AssertExpectations(t)
+
 			runService := service.NewJobRunService(nil,
 				jobRepo, nil, nil, nil, nil, nil)
 
 			err := runService.UploadToScheduler(ctx, proj1Name, namespace1Name.String())
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "GetAll error")
+			assert.EqualError(t, err, "ErrorInUploadToScheduler:\n GetAll error")
 		})
 		t.Run("should return error if error in priority resolution", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -73,7 +74,7 @@ func TestDeploymentService(t *testing.T) {
 
 			err := runService.UploadToScheduler(ctx, proj1Name, namespace1Name.String())
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "priority resolution error")
+			assert.EqualError(t, err, "ErrorInUploadToScheduler:\n priority resolution error")
 		})
 		t.Run("should deploy Jobs Per Namespace returning error", func(t *testing.T) {
 			jobRepo := new(JobRepository)
