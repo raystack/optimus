@@ -136,6 +136,16 @@ func (w WithUpstream) GetUnresolvedUpstreams() []*Upstream {
 	return unresolvedUpstreams
 }
 
+type WithUpstreamList []*WithUpstream
+
+func (w WithUpstreamList) GetSubjectJobNames() []Name {
+	names := make([]Name, len(w))
+	for _, withUpstream := range w {
+		names = append(names, withUpstream.Name())
+	}
+	return names
+}
+
 type Upstream struct {
 	name     Name
 	host     string
@@ -253,6 +263,26 @@ func (u Upstreams) ToUpstreamDestinationMap() map[ResourceURN]bool {
 		upstreamDestinationMap[upstream.resource] = true
 	}
 	return upstreamDestinationMap
+}
+
+func (u Upstreams) ToFullNameAndUpstreamMap() map[string]*Upstream {
+	fullNameUpstreamMap := make(map[string]*Upstream)
+	for _, upstream := range u {
+		fullName := upstream.ProjectName().String() + "/" + upstream.name.String()
+		fullNameUpstreamMap[fullName] = upstream
+	}
+	return fullNameUpstreamMap
+}
+
+func (u Upstreams) ToResourceDestinationAndUpstreamMap() map[string]*Upstream {
+	resourceDestinationUpstreamMap := make(map[string]*Upstream)
+	for _, upstream := range u {
+		if upstream.resource == "" {
+			continue
+		}
+		resourceDestinationUpstreamMap[upstream.resource.String()] = upstream
+	}
+	return resourceDestinationUpstreamMap
 }
 
 type FullName string

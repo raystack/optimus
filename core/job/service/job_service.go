@@ -75,7 +75,7 @@ type JobRepository interface {
 
 type UpstreamResolver interface {
 	BulkResolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job, logWriter writer.LogWriter) (jobWithUpstreams []*job.WithUpstream, err error)
-	Resolve(ctx context.Context, subjectJob *job.Job) ([]*job.Upstream, error)
+	Resolve(ctx context.Context, subjectJob *job.Job, logWriter writer.LogWriter) ([]*job.Upstream, error)
 }
 
 func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) error {
@@ -318,6 +318,7 @@ func (j JobService) bulkRefreshSources(ctx context.Context, tenantWithDetails *t
 }
 
 func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, logWriter writer.LogWriter, filters ...filter.FilterOpt) (err error) {
+	//TODO: avoid accepting filters from handler. create the filters here
 	allJobs, err := j.GetByFilter(ctx, filters...)
 	if err != nil {
 		return err
@@ -338,6 +339,7 @@ func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName,
 			continue
 		}
 
+		// TODO: use bulkUpdate
 		refreshedJobs, err := j.bulkRefreshSources(ctx, tenantWithDetails, jobs, logWriter)
 		me.Append(err)
 
@@ -415,6 +417,7 @@ func (j JobService) resolveAndSaveUpstreams(ctx context.Context, projectName ten
 func (j JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.WithDetails, specsToAdd []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {
 	me := errors.NewMultiError("bulk add specs errors")
 
+	// TODO: avoid duplicate code in here and bulk update
 	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
 	for _, spec := range specsToAdd {
 		runner.Add(func(currentSpec *job.Spec, lw writer.LogWriter) func() (interface{}, error) {
@@ -444,6 +447,7 @@ func (j JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.WithD
 		return nil, errors.MultiToError(me)
 	}
 
+	// TODO: consider do add inside parallel
 	addedJobs, err := j.repo.Add(ctx, jobsToAdd)
 	if err != nil {
 		logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] add jobs failure found: %s", tenantWithDetails.Namespace().Name().String(), err.Error()))
@@ -506,6 +510,7 @@ func (j JobService) bulkDelete(ctx context.Context, jobTenant tenant.Tenant, toD
 	me := errors.NewMultiError("bulk delete specs errors")
 	deletedJob := 0
 	for _, spec := range toDelete {
+		// TODO: reuse Delete method and pass forceFlag as false
 		downstreamList, err := j.repo.GetDownstreamByJobName(ctx, jobTenant.ProjectName(), spec.Name())
 		if err != nil {
 			logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] pre-delete check for job %s failed: %s", jobTenant.NamespaceName().String(), spec.Name().String(), err.Error()))
@@ -713,8 +718,9 @@ func (j JobService) getJobNamesWithSameDestination(ctx context.Context, subjectJ
 }
 
 func (j JobService) GetUpstreamsToInspect(ctx context.Context, subjectJob *job.Job, localJob bool) ([]*job.Upstream, error) {
+	logWriter := writer.NewLogWriter(j.logger)
 	if localJob {
-		return j.upstreamResolver.Resolve(ctx, subjectJob)
+		return j.upstreamResolver.Resolve(ctx, subjectJob, logWriter)
 	}
 	return j.repo.GetUpstreams(ctx, subjectJob.ProjectName(), subjectJob.Spec().Name())
 }

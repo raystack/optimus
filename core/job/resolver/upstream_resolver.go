@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/kushsharma/parallel"
-
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/tenant"
@@ -20,14 +18,21 @@ const (
 type UpstreamResolver struct {
 	jobRepository            JobRepository
 	externalUpstreamResolver ExternalUpstreamResolver
+	internalUpstreamResolver InternalUpstreamResolver
 }
 
-func NewUpstreamResolver(jobRepository JobRepository, externalUpstreamResolver ExternalUpstreamResolver) *UpstreamResolver {
-	return &UpstreamResolver{jobRepository: jobRepository, externalUpstreamResolver: externalUpstreamResolver}
+func NewUpstreamResolver(jobRepository JobRepository, externalUpstreamResolver ExternalUpstreamResolver, internalUpstreamResolver InternalUpstreamResolver) *UpstreamResolver {
+	return &UpstreamResolver{jobRepository: jobRepository, externalUpstreamResolver: externalUpstreamResolver, internalUpstreamResolver: internalUpstreamResolver}
 }
 
 type ExternalUpstreamResolver interface {
-	Resolve(ctx context.Context, subjectJob *job.Job, internalUpstream []*job.Upstream) ([]*job.Upstream, []*job.Upstream, error)
+	Resolve(ctx context.Context, jobWithUpstream *job.WithUpstream, lw writer.LogWriter) (*job.WithUpstream, error)
+	BulkResolve(context.Context, []*job.WithUpstream, writer.LogWriter) ([]*job.WithUpstream, error)
+}
+
+type InternalUpstreamResolver interface {
+	Resolve(context.Context, *job.WithUpstream) (*job.WithUpstream, error)
+	BulkResolve(context.Context, tenant.ProjectName, []*job.WithUpstream) ([]*job.WithUpstream, error)
 }
 
 type JobRepository interface {
@@ -40,91 +45,85 @@ type JobRepository interface {
 func (u UpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job, logWriter writer.LogWriter) ([]*job.WithUpstream, error) {
 	me := errors.NewMultiError("bulk resolve jobs errors")
 
-	jobNames := job.Jobs(jobs).GetJobNames()
-	allInternalUpstream, err := u.jobRepository.ResolveUpstreams(ctx, projectName, jobNames)
+	var jobsWithUnresolvedUpstream []*job.WithUpstream
+	for _, subjectJob := range jobs {
+		jobWithUnresolvedUpstream, err := u.getJobWithUnresolvedUpstream(subjectJob)
+		me.Append(err)
+		jobsWithUnresolvedUpstream = append(jobsWithUnresolvedUpstream, jobWithUnresolvedUpstream)
+	}
+
+	jobsWithInternalUpstream, err := u.internalUpstreamResolver.BulkResolve(ctx, projectName, jobsWithUnresolvedUpstream)
 	if err != nil {
 		errorMsg := fmt.Sprintf("unable to resolve upstream: %s", err.Error())
 		logWriter.Write(writer.LogLevelError, errorMsg)
 		return nil, errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg)
 	}
 
-	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
-	for _, jobEntity := range jobs {
-		runner.Add(func(currentJob *job.Job, lw writer.LogWriter) func() (interface{}, error) {
-			return u.getJobWithAllUpstream(ctx, currentJob, allInternalUpstream[currentJob.Spec().Name()], lw)
-		}(jobEntity, logWriter))
-	}
+	jobsWithInternalExternalUpstream, err := u.externalUpstreamResolver.BulkResolve(ctx, jobsWithInternalUpstream, logWriter)
+	me.Append(err)
 
-	var jobsWithAllUpstreams []*job.WithUpstream
-	for _, result := range runner.Run() {
-		if result.Val != nil {
-			specVal := result.Val.(*job.WithUpstream)
-			jobsWithAllUpstreams = append(jobsWithAllUpstreams, specVal)
-		}
-		me.Append(result.Err)
-	}
+	me.Append(u.getUnresolvedUpstreamsErrors(jobsWithInternalExternalUpstream, logWriter))
 
-	me.Append(u.getUnresolvedUpstreamsErrors(jobsWithAllUpstreams, logWriter))
-
-	return jobsWithAllUpstreams, errors.MultiToError(me)
+	return jobsWithInternalExternalUpstream, errors.MultiToError(me)
 }
 
-func (u UpstreamResolver) Resolve(ctx context.Context, subjectJob *job.Job) ([]*job.Upstream, error) {
+func (u UpstreamResolver) Resolve(ctx context.Context, subjectJob *job.Job, logWriter writer.LogWriter) ([]*job.Upstream, error) {
 	me := errors.NewMultiError("upstream resolution errors")
 
-	internalUpstream, err := u.resolveFromInternal(ctx, subjectJob)
+	jobWithUnresolvedUpstream, err := u.getJobWithUnresolvedUpstream(subjectJob)
 	me.Append(err)
 
-	externalUpstreams, unresolvedUpstreams, err := u.externalUpstreamResolver.Resolve(ctx, subjectJob, internalUpstream)
+	jobWithInternalUpstream, err := u.internalUpstreamResolver.Resolve(ctx, jobWithUnresolvedUpstream)
 	me.Append(err)
 
-	return mergeUpstreams(internalUpstream, externalUpstreams, unresolvedUpstreams), errors.MultiToError(me)
+	jobWithInternalExternalUpstream, err := u.externalUpstreamResolver.Resolve(ctx, jobWithInternalUpstream, logWriter)
+	me.Append(err)
+
+	return jobWithInternalExternalUpstream.Upstreams(), errors.MultiToError(me)
 }
 
-func (u UpstreamResolver) resolveFromInternal(ctx context.Context, subjectJob *job.Job) ([]*job.Upstream, error) {
-	var internalUpstream []*job.Upstream
-	me := errors.NewMultiError("internal upstream resolution errors")
-	for _, source := range subjectJob.Sources() {
-		jobUpstreams, err := u.jobRepository.GetAllByResourceDestination(ctx, source)
-		me.Append(err)
-		if len(jobUpstreams) == 0 {
-			continue
-		}
-		upstream := job.NewUpstreamResolved(jobUpstreams[0].Spec().Name(), "", jobUpstreams[0].Destination(), jobUpstreams[0].Tenant(), job.UpstreamTypeInferred, jobUpstreams[0].Spec().Task().Name(), false)
-		internalUpstream = append(internalUpstream, upstream)
+func (u UpstreamResolver) getJobWithUnresolvedUpstream(subjectJob *job.Job) (*job.WithUpstream, error) {
+	unresolvedStaticUpstreams, err := u.getStaticUpstreamsToResolve(subjectJob.StaticUpstreamNames(), subjectJob.ProjectName())
+
+	unresolvedInferredUpstreams := u.getInferredUpstreamsToResolve(subjectJob.Sources())
+
+	unresolvedUpstreams := mergeUpstreams(unresolvedInferredUpstreams, unresolvedStaticUpstreams)
+	return job.NewWithUpstream(subjectJob, unresolvedUpstreams), err
+}
+
+func (u UpstreamResolver) getInferredUpstreamsToResolve(sources []job.ResourceURN) []*job.Upstream {
+	var unresolvedInferredUpstreams []*job.Upstream
+	for _, source := range sources {
+		unresolvedInferredUpstreams = append(unresolvedInferredUpstreams, job.NewUpstreamUnresolvedInferred(source))
 	}
-	for _, upstreamName := range subjectJob.Spec().UpstreamSpec().UpstreamNames() {
-		upstreamJobName, err := upstreamName.GetJobName()
+	return unresolvedInferredUpstreams
+}
+
+func (u UpstreamResolver) getStaticUpstreamsToResolve(staticUpstreamNames []job.SpecUpstreamName, projectName tenant.ProjectName) ([]*job.Upstream, error) {
+	var unresolvedStaticUpstreams []*job.Upstream
+	me := errors.NewMultiError("get static upstream to resolve errors")
+
+	for _, upstreamName := range staticUpstreamNames {
+		jobUpstreamName, err := upstreamName.GetJobName()
 		if err != nil {
 			me.Append(err)
 			continue
 		}
-		jobUpstream, err := u.jobRepository.GetByJobName(ctx, subjectJob.Tenant().ProjectName(), upstreamJobName)
-		if err != nil || jobUpstream == nil {
-			me.Append(err)
-			continue
-		}
-		upstream := job.NewUpstreamResolved(upstreamJobName, "", jobUpstream.Destination(), jobUpstream.Tenant(), job.UpstreamTypeStatic, jobUpstream.Spec().Task().Name(), false)
-		internalUpstream = append(internalUpstream, upstream)
-	}
-	return internalUpstream, errors.MultiToError(me)
-}
 
-func (u UpstreamResolver) getJobWithAllUpstream(ctx context.Context, currentJob *job.Job, internalUpstream []*job.Upstream, lw writer.LogWriter) func() (interface{}, error) {
-	return func() (interface{}, error) {
-		var wrappedErr error
-		externalUpstreams, unresolvedUpstreams, err := u.externalUpstreamResolver.Resolve(ctx, currentJob, internalUpstream)
-		if err != nil {
-			errorMsg := fmt.Sprintf("job %s upstream resolution failed: %s", currentJob.Spec().Name().String(), err.Error())
-			wrappedErr = errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg)
-			lw.Write(writer.LogLevelError, fmt.Sprintf("[%s] %s", currentJob.Tenant().NamespaceName().String(), errorMsg))
+		var projectUpstreamName tenant.ProjectName
+		if upstreamName.IsWithProjectName() {
+			projectUpstreamName, err = upstreamName.GetProjectName()
+			if err != nil {
+				me.Append(err)
+				continue
+			}
 		} else {
-			lw.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] job %s upstream resolved", currentJob.Tenant().NamespaceName().String(), currentJob.Spec().Name().String()))
+			projectUpstreamName = projectName
 		}
 
-		allUpstreams := mergeUpstreams(internalUpstream, externalUpstreams, unresolvedUpstreams)
-		return job.NewWithUpstream(currentJob, allUpstreams), wrappedErr
+		unresolvedStaticUpstreams = append(unresolvedStaticUpstreams, job.NewUpstreamUnresolvedStatic(jobUpstreamName, projectUpstreamName))
 	}
+	return unresolvedStaticUpstreams, errors.MultiToError(me)
 }
 
 func (UpstreamResolver) getUnresolvedUpstreamsErrors(jobsWithUpstreams []*job.WithUpstream, logWriter writer.LogWriter) error {
@@ -139,12 +138,4 @@ func (UpstreamResolver) getUnresolvedUpstreamsErrors(jobsWithUpstreams []*job.Wi
 		}
 	}
 	return errors.MultiToError(me)
-}
-
-func mergeUpstreams(upstreamGroups ...[]*job.Upstream) []*job.Upstream {
-	var allUpstreams []*job.Upstream
-	for _, group := range upstreamGroups {
-		allUpstreams = append(allUpstreams, group...)
-	}
-	return allUpstreams
 }

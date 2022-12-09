@@ -3,6 +3,7 @@ package resolver_test
 import (
 	"context"
 	"errors"
+	optMock "github.com/odpf/optimus/mock"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -36,31 +37,43 @@ func TestExternalUpstreamResolver(t *testing.T) {
 
 	t.Run("Resolve", func(t *testing.T) {
 		t.Run("resolves upstream externally", func(t *testing.T) {
+			logWriter := new(optMock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			unresolvedUpstreamB := job.NewUpstreamUnresolvedStatic("job-B", externalTenant.ProjectName())
 			unresolvedUpstreamC := job.NewUpstreamUnresolvedInferred("resource-C")
+			jobWithUnresolvedUpstream := job.NewWithUpstream(jobA, []*job.Upstream{unresolvedUpstreamB, unresolvedUpstreamC})
 
 			upstreamB := job.NewUpstreamResolved("job-B", "external-host", "resource-B", externalTenant, "static", taskName, true)
 			upstreamC := job.NewUpstreamResolved("job-C", "external-host", "resource-C", externalTenant, "inferred", taskName, true)
 			resourceManager.On("GetOptimusUpstreams", ctx, unresolvedUpstreamB).Return([]*job.Upstream{upstreamB}, nil).Once()
 			resourceManager.On("GetOptimusUpstreams", ctx, unresolvedUpstreamC).Return([]*job.Upstream{upstreamC}, nil).Once()
 
+			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+
 			extUpstreamResolver := resolver.NewTestExternalUpstreamResolver(optimusResourceManagers)
-			result, unresolvedDep, err := extUpstreamResolver.Resolve(ctx, jobA, []*job.Upstream{})
-			assert.Nil(t, unresolvedDep)
+			result, err := extUpstreamResolver.BulkResolve(ctx, []*job.WithUpstream{jobWithUnresolvedUpstream}, logWriter)
+			assert.Nil(t, result[0].GetUnresolvedUpstreams())
 			assert.Nil(t, err)
-			assert.EqualValues(t, []*job.Upstream{upstreamB, upstreamC}, result)
+			assert.EqualValues(t, []*job.Upstream{upstreamB, upstreamC}, result[0].Upstreams())
 		})
 		t.Run("returns unresolved upstream and upstream error if unable to fetch upstreams from external", func(t *testing.T) {
+			logWriter := new(optMock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			unresolvedUpstreamB := job.NewUpstreamUnresolvedStatic("job-B", externalTenant.ProjectName())
 			unresolvedUpstreamC := job.NewUpstreamUnresolvedInferred("resource-C")
+			jobWithUnresolvedUpstream := job.NewWithUpstream(jobA, []*job.Upstream{unresolvedUpstreamB, unresolvedUpstreamC})
+
 			resourceManager.On("GetOptimusUpstreams", ctx, unresolvedUpstreamB).Return([]*job.Upstream{}, errors.New("connection error")).Once()
 			resourceManager.On("GetOptimusUpstreams", ctx, unresolvedUpstreamC).Return([]*job.Upstream{}, nil).Once()
 
+			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+
 			extUpstreamResolver := resolver.NewTestExternalUpstreamResolver(optimusResourceManagers)
-			result, unresolvedDep, err := extUpstreamResolver.Resolve(ctx, jobA, []*job.Upstream{})
-			assert.EqualValues(t, []*job.Upstream{unresolvedUpstreamB, unresolvedUpstreamC}, unresolvedDep)
+			result, err := extUpstreamResolver.BulkResolve(ctx, []*job.WithUpstream{jobWithUnresolvedUpstream}, logWriter)
+			assert.EqualValues(t, []*job.Upstream{unresolvedUpstreamB, unresolvedUpstreamC}, result[0].Upstreams())
 			assert.NotNil(t, err)
-			assert.Empty(t, result)
 		})
 	})
 	t.Run("NewExternalUpstreamResolver", func(t *testing.T) {

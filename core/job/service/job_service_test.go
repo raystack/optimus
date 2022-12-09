@@ -1960,12 +1960,15 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
+			logWriter := new(optMock.LogWriter)
+			defer logWriter.AssertExpectations(t)
+
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
 			jobA := job.NewJob(sampleTenant, specA, "resource-A", []job.ResourceURN{"resource-B"})
 
 			upstreamB := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "inferred", taskName, false)
 
-			upstreamResolver.On("Resolve", ctx, jobA).Return([]*job.Upstream{upstreamB}, nil)
+			upstreamResolver.On("Resolve", ctx, jobA, mock.Anything).Return([]*job.Upstream{upstreamB}, nil)
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil)
 			result, err := jobService.GetUpstreamsToInspect(ctx, jobA, true)
@@ -2635,13 +2638,13 @@ func (_m *UpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.
 	return r0, r1
 }
 
-// Resolve provides a mock function with given fields: ctx, subjectJob
-func (_m *UpstreamResolver) Resolve(ctx context.Context, subjectJob *job.Job) ([]*job.Upstream, error) {
-	ret := _m.Called(ctx, subjectJob)
+// Resolve provides a mock function with given fields: ctx, subjectJob, logWriter
+func (_m *UpstreamResolver) Resolve(ctx context.Context, subjectJob *job.Job, logWriter writer.LogWriter) ([]*job.Upstream, error) {
+	ret := _m.Called(ctx, subjectJob, logWriter)
 
 	var r0 []*job.Upstream
-	if rf, ok := ret.Get(0).(func(context.Context, *job.Job) []*job.Upstream); ok {
-		r0 = rf(ctx, subjectJob)
+	if rf, ok := ret.Get(0).(func(context.Context, *job.Job, writer.LogWriter) []*job.Upstream); ok {
+		r0 = rf(ctx, subjectJob, logWriter)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*job.Upstream)
@@ -2649,8 +2652,8 @@ func (_m *UpstreamResolver) Resolve(ctx context.Context, subjectJob *job.Job) ([
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *job.Job) error); ok {
-		r1 = rf(ctx, subjectJob)
+	if rf, ok := ret.Get(1).(func(context.Context, *job.Job, writer.LogWriter) error); ok {
+		r1 = rf(ctx, subjectJob, logWriter)
 	} else {
 		r1 = ret.Error(1)
 	}
