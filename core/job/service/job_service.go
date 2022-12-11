@@ -82,7 +82,12 @@ func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*j
 	logWriter := writer.NewLogWriter(j.logger)
 	me := errors.NewMultiError("add specs errors")
 
-	jobs, err := j.generateJobs(ctx, jobTenant, specs)
+	tenantWithDetails, err := j.tenantDetailsGetter.GetDetails(ctx, jobTenant)
+	if err != nil {
+		return err
+	}
+
+	jobs, err := j.generateJobs(ctx, tenantWithDetails, specs, logWriter)
 	me.Append(err)
 
 	addedJobs, err := j.repo.Add(ctx, jobs)
@@ -101,7 +106,12 @@ func (j JobService) Update(ctx context.Context, jobTenant tenant.Tenant, specs [
 	logWriter := writer.NewLogWriter(j.logger)
 	me := errors.NewMultiError("update specs errors")
 
-	jobs, err := j.generateJobs(ctx, jobTenant, specs)
+	tenantWithDetails, err := j.tenantDetailsGetter.GetDetails(ctx, jobTenant)
+	if err != nil {
+		return err
+	}
+
+	jobs, err := j.generateJobs(ctx, tenantWithDetails, specs, logWriter)
 	me.Append(err)
 
 	updatedJobs, err := j.repo.Update(ctx, jobs)
@@ -358,8 +368,14 @@ func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName,
 
 func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, _ writer.LogWriter) error {
 	me := errors.NewMultiError("validate specs errors")
+	logWriter := writer.NewLogWriter(j.logger)
 
-	jobs, err := j.generateJobs(ctx, jobTenant, jobSpecs)
+	tenantWithDetails, err := j.tenantDetailsGetter.GetDetails(ctx, jobTenant)
+	if err != nil {
+		return err
+	}
+
+	jobs, err := j.generateJobs(ctx, tenantWithDetails, jobSpecs, logWriter)
 	me.Append(err)
 
 	if len(me.Errors) > 0 {
@@ -420,31 +436,8 @@ func (j JobService) resolveAndSaveUpstreams(ctx context.Context, projectName ten
 func (j JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.WithDetails, specsToAdd []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {
 	me := errors.NewMultiError("bulk add specs errors")
 
-	// TODO: avoid duplicate code in here and bulk update
-	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
-	for _, spec := range specsToAdd {
-		runner.Add(func(currentSpec *job.Spec, lw writer.LogWriter) func() (interface{}, error) {
-			return func() (interface{}, error) {
-				generatedJob, err := j.generateJob(ctx, tenantWithDetails, currentSpec)
-				if err != nil {
-					lw.Write(writer.LogLevelError, fmt.Sprintf("[%s] unable to add job %s: %s", tenantWithDetails.Namespace().Name().String(), currentSpec.Name().String(), err.Error()))
-					return nil, err
-				}
-				lw.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] adding job %s", tenantWithDetails.Namespace().Name().String(), currentSpec.Name().String()))
-				return generatedJob, nil
-			}
-		}(spec, logWriter))
-	}
-
-	var jobsToAdd []*job.Job
-	for _, result := range runner.Run() {
-		if result.Err != nil {
-			me.Append(result.Err)
-		} else {
-			specVal := result.Val.(*job.Job)
-			jobsToAdd = append(jobsToAdd, specVal)
-		}
-	}
+	jobsToAdd, err := j.generateJobs(ctx, tenantWithDetails, specsToAdd, logWriter)
+	me.Append(err)
 
 	if len(jobsToAdd) == 0 {
 		return nil, errors.MultiToError(me)
@@ -467,30 +460,8 @@ func (j JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.WithD
 func (j JobService) bulkUpdate(ctx context.Context, tenantWithDetails *tenant.WithDetails, specsToUpdate []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {
 	me := errors.NewMultiError("bulk update specs errors")
 
-	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
-	for _, spec := range specsToUpdate {
-		runner.Add(func(currentSpec *job.Spec, lw writer.LogWriter) func() (interface{}, error) {
-			return func() (interface{}, error) {
-				generatedJob, err := j.generateJob(ctx, tenantWithDetails, currentSpec)
-				if err != nil {
-					lw.Write(writer.LogLevelError, fmt.Sprintf("[%s] unable to update job %s: %s", tenantWithDetails.Namespace().Name().String(), currentSpec.Name().String(), err.Error()))
-					return nil, err
-				}
-				lw.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] updating job %s", tenantWithDetails.Namespace().Name().String(), currentSpec.Name().String()))
-				return generatedJob, nil
-			}
-		}(spec, logWriter))
-	}
-
-	var jobsToUpdate []*job.Job
-	for _, result := range runner.Run() {
-		if result.Err != nil {
-			me.Append(result.Err)
-		} else {
-			specVal := result.Val.(*job.Job)
-			jobsToUpdate = append(jobsToUpdate, specVal)
-		}
-	}
+	jobsToUpdate, err := j.generateJobs(ctx, tenantWithDetails, specsToUpdate, logWriter)
+	me.Append(err)
 
 	if len(jobsToUpdate) == 0 {
 		return nil, errors.MultiToError(me)
@@ -574,23 +545,34 @@ func (j JobService) differentiateSpecs(ctx context.Context, jobTenant tenant.Ten
 	return addedSpecs, modifiedSpecs, deletedSpecs, errors.MultiToError(me)
 }
 
-func (j JobService) generateJobs(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) ([]*job.Job, error) {
-	tenantWithDetails, err := j.tenantDetailsGetter.GetDetails(ctx, jobTenant)
-	if err != nil {
-		return nil, err
+func (j JobService) generateJobs(ctx context.Context, tenantWithDetails *tenant.WithDetails, specs []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {
+	me := errors.NewMultiError("bulk generate jobs errors")
+
+	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
+	for _, spec := range specs {
+		runner.Add(func(currentSpec *job.Spec, lw writer.LogWriter) func() (interface{}, error) {
+			return func() (interface{}, error) {
+				generatedJob, err := j.generateJob(ctx, tenantWithDetails, currentSpec)
+				if err != nil {
+					lw.Write(writer.LogLevelError, fmt.Sprintf("[%s] unable to generate job %s: %s", tenantWithDetails.Namespace().Name().String(), currentSpec.Name().String(), err.Error()))
+					return nil, err
+				}
+				lw.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] processing job %s", tenantWithDetails.Namespace().Name().String(), currentSpec.Name().String()))
+				return generatedJob, nil
+			}
+		}(spec, logWriter))
 	}
 
-	me := errors.NewMultiError("generate jobs errors")
-	var output []*job.Job
-	for _, spec := range specs {
-		generatedJob, err := j.generateJob(ctx, tenantWithDetails, spec)
-		if err != nil {
-			me.Append(err)
-			continue
+	var generatedJobs []*job.Job
+	for _, result := range runner.Run() {
+		if result.Err != nil {
+			me.Append(result.Err)
+		} else {
+			specVal := result.Val.(*job.Job)
+			generatedJobs = append(generatedJobs, specVal)
 		}
-		output = append(output, generatedJob)
 	}
-	return output, errors.MultiToError(me)
+	return generatedJobs, errors.MultiToError(me)
 }
 
 func (j JobService) generateJob(ctx context.Context, tenantWithDetails *tenant.WithDetails, spec *job.Spec) (*job.Job, error) {
