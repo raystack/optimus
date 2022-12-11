@@ -91,7 +91,7 @@ func (u UpstreamResolver) getJobWithUnresolvedUpstream(subjectJob *job.Job) (*jo
 	return job.NewWithUpstream(subjectJob, unresolvedUpstreams), err
 }
 
-func (u UpstreamResolver) getInferredUpstreamsToResolve(sources []job.ResourceURN) []*job.Upstream {
+func (UpstreamResolver) getInferredUpstreamsToResolve(sources []job.ResourceURN) []*job.Upstream {
 	var unresolvedInferredUpstreams []*job.Upstream
 	for _, source := range sources {
 		unresolvedInferredUpstreams = append(unresolvedInferredUpstreams, job.NewUpstreamUnresolvedInferred(source))
@@ -99,7 +99,7 @@ func (u UpstreamResolver) getInferredUpstreamsToResolve(sources []job.ResourceUR
 	return unresolvedInferredUpstreams
 }
 
-func (u UpstreamResolver) getStaticUpstreamsToResolve(staticUpstreamNames []job.SpecUpstreamName, projectName tenant.ProjectName) ([]*job.Upstream, error) {
+func (UpstreamResolver) getStaticUpstreamsToResolve(staticUpstreamNames []job.SpecUpstreamName, projectName tenant.ProjectName) ([]*job.Upstream, error) {
 	var unresolvedStaticUpstreams []*job.Upstream
 	me := errors.NewMultiError("get static upstream to resolve errors")
 

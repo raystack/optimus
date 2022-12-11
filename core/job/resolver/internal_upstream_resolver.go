@@ -2,10 +2,12 @@ package resolver
 
 import (
 	"fmt"
+
+	"golang.org/x/net/context"
+
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
-	"golang.org/x/net/context"
 )
 
 type internalUpstreamResolver struct {

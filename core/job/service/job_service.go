@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/kushsharma/parallel"
@@ -264,67 +263,6 @@ func (j JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, spe
 	me.Append(err)
 
 	return errors.MultiToError(me)
-}
-
-func (j JobService) bulkRefreshSources(ctx context.Context, tenantWithDetails *tenant.WithDetails, jobs []*job.Job, logWriter writer.LogWriter) ([]*job.Job, error) {
-	me := errors.NewMultiError("bulk update specs errors")
-
-	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
-	for _, subjectJob := range jobs {
-		runner.Add(func(currentJob *job.Job, lw writer.LogWriter) func() (interface{}, error) {
-			return func() (interface{}, error) {
-				freshSources, err := j.pluginService.GenerateUpstreams(ctx, tenantWithDetails, currentJob.Spec(), true)
-				if err != nil && !errors.Is(err, ErrUpstreamModNotFound) {
-					errorMsg := fmt.Sprintf("unable to identify sources for %s: %s", currentJob.Spec().Name().String(), err.Error())
-					return nil, errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg)
-				}
-				if !reflect.DeepEqual(currentJob.Sources(), freshSources) {
-					if len(currentJob.Sources()) == 0 && len(freshSources) == 0 {
-						return nil, nil
-					}
-					lw.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] identified new sources for job %s", tenantWithDetails.Namespace().Name().String(), currentJob.Spec().Name().String()))
-					return job.NewJob(tenantWithDetails.ToTenant(), currentJob.Spec(), currentJob.Destination(), freshSources), nil
-				}
-				return nil, nil
-			}
-		}(subjectJob, logWriter))
-	}
-
-	var jobsToUpdate []*job.Job
-	for _, result := range runner.Run() {
-		if result.Err != nil {
-			me.Append(result.Err)
-		} else {
-			if result.Val == nil {
-				continue
-			}
-			specVal := result.Val.(*job.Job)
-			jobsToUpdate = append(jobsToUpdate, specVal)
-		}
-	}
-
-	updatedJobs, err := j.repo.Update(ctx, jobsToUpdate)
-	if err != nil {
-		logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] update jobs failure found: %s", tenantWithDetails.Namespace().Name().String(), err.Error()))
-		me.Append(err)
-	}
-
-	if len(updatedJobs) > 0 {
-		logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] successfully modified %d jobs", tenantWithDetails.Namespace().Name().String(), len(updatedJobs)))
-	}
-
-	// return all jobs, not only updated ones
-	var jobsToProceed []*job.Job
-	updatedJobsMap := job.Jobs(updatedJobs).GetNameAndJobMap()
-	for _, existingJob := range jobs {
-		if updatedJob, ok := updatedJobsMap[existingJob.Spec().Name()]; ok {
-			jobsToProceed = append(jobsToProceed, updatedJob)
-			continue
-		}
-		jobsToProceed = append(jobsToProceed, existingJob)
-	}
-
-	return jobsToProceed, errors.MultiToError(me)
 }
 
 func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, namespaceNames []string, jobNames []string, logWriter writer.LogWriter) (err error) {

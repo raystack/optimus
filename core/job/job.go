@@ -148,8 +148,8 @@ type WithUpstreamList []*WithUpstream
 
 func (w WithUpstreamList) GetSubjectJobNames() []Name {
 	names := make([]Name, len(w))
-	for _, withUpstream := range w {
-		names = append(names, withUpstream.Name())
+	for i, withUpstream := range w {
+		names[i] = withUpstream.Name()
 	}
 	return names
 }

@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"fmt"
+
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/odpf/optimus/core/job"

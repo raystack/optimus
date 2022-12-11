@@ -3,7 +3,9 @@ package resolver
 import (
 	"context"
 	"fmt"
+
 	"github.com/kushsharma/parallel"
+
 	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/job"

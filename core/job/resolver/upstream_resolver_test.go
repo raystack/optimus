@@ -3,12 +3,12 @@ package resolver_test
 import (
 	"context"
 	"errors"
-	"github.com/odpf/optimus/api/writer"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/resolver"
 	"github.com/odpf/optimus/core/tenant"
