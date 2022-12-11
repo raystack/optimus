@@ -126,6 +126,7 @@ func (s Spec) IsEqual(otherSpec *Spec) bool {
 		}
 	}
 
+	// TODO: avoid this complexity. make sure constructing from proto and reading from db are similar.
 	if !reflect.DeepEqual(s.upstreamSpec, otherSpec.upstreamSpec) {
 		if s.upstreamSpec == nil && (otherSpec.upstreamSpec.UpstreamNames() != nil || otherSpec.upstreamSpec.HTTPUpstreams() != nil) {
 			return false

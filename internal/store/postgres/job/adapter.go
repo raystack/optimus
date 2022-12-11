@@ -308,6 +308,7 @@ func toConfig(configSpec *job.Config) ([]byte, error) {
 	if configSpec == nil {
 		return nil, nil
 	}
+	// TODO: avoid wrapping with Config
 	config := Config{
 		Configs: configSpec.Configs(),
 	}
