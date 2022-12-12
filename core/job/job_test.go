@@ -119,35 +119,35 @@ func TestEntityJob(t *testing.T) {
 		})
 	})
 
-	t.Run("ToUpstreamFullNameMap", func(t *testing.T) {
+	t.Run("ToFullNameAndUpstreamMap", func(t *testing.T) {
 		t.Run("should return a map with full name as key and boolean as value", func(t *testing.T) {
 			upstreamResolved1 := job.NewUpstreamResolved("job-a", "host-sample", "project.dataset.sample-a", sampleTenant, job.UpstreamTypeStatic, "", false)
 			upstreamResolved2 := job.NewUpstreamResolved("job-b", "host-sample", "project.dataset.sample-b", sampleTenant, job.UpstreamTypeInferred, "", false)
 
-			expectedMap := map[string]bool{
-				"test-proj/job-a": true,
-				"test-proj/job-b": true,
+			expectedMap := map[string]*job.Upstream{
+				"test-proj/job-a": upstreamResolved1,
+				"test-proj/job-b": upstreamResolved2,
 			}
 
 			upstreams := job.Upstreams([]*job.Upstream{upstreamResolved1, upstreamResolved2})
-			resultMap := upstreams.ToUpstreamFullNameMap()
+			resultMap := upstreams.ToFullNameAndUpstreamMap()
 
 			assert.EqualValues(t, expectedMap, resultMap)
 		})
 	})
 
-	t.Run("ToUpstreamDestinationMap", func(t *testing.T) {
+	t.Run("ToResourceDestinationAndUpstreamMap", func(t *testing.T) {
 		t.Run("should return a map with destination resource urn as key and boolean as value", func(t *testing.T) {
 			upstreamResolved1 := job.NewUpstreamResolved("job-a", "host-sample", "project.dataset.sample-a", sampleTenant, job.UpstreamTypeStatic, "", false)
 			upstreamResolved2 := job.NewUpstreamResolved("job-b", "host-sample", "project.dataset.sample-b", sampleTenant, job.UpstreamTypeInferred, "", false)
 
-			expectedMap := map[job.ResourceURN]bool{
-				"project.dataset.sample-a": true,
-				"project.dataset.sample-b": true,
+			expectedMap := map[string]*job.Upstream{
+				"project.dataset.sample-a": upstreamResolved1,
+				"project.dataset.sample-b": upstreamResolved2,
 			}
 
 			upstreams := job.Upstreams([]*job.Upstream{upstreamResolved1, upstreamResolved2})
-			resultMap := upstreams.ToUpstreamDestinationMap()
+			resultMap := upstreams.ToResourceDestinationAndUpstreamMap()
 
 			assert.EqualValues(t, expectedMap, resultMap)
 		})

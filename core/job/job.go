@@ -256,23 +256,6 @@ func (d UpstreamState) String() string {
 
 type Upstreams []*Upstream
 
-func (u Upstreams) ToUpstreamFullNameMap() map[string]bool {
-	fullNameUpstreamMap := make(map[string]bool)
-	for _, upstream := range u {
-		fullName := upstream.ProjectName().String() + "/" + upstream.name.String()
-		fullNameUpstreamMap[fullName] = true
-	}
-	return fullNameUpstreamMap
-}
-
-func (u Upstreams) ToUpstreamDestinationMap() map[ResourceURN]bool {
-	upstreamDestinationMap := make(map[ResourceURN]bool)
-	for _, upstream := range u {
-		upstreamDestinationMap[upstream.resource] = true
-	}
-	return upstreamDestinationMap
-}
-
 func (u Upstreams) ToFullNameAndUpstreamMap() map[string]*Upstream {
 	fullNameUpstreamMap := make(map[string]*Upstream)
 	for _, upstream := range u {
