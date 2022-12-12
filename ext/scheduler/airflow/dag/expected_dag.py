@@ -39,7 +39,6 @@ default_args = {
     "start_date": datetime.strptime("2022-11-10T05:02:00", "%Y-%m-%dT%H:%M:%S"),
     "end_date": datetime.strptime("2022-11-10T10:02:00", "%Y-%m-%dT%H:%M:%S"),
     "weight_rule": WeightRule.ABSOLUTE,
-
     "on_execute_callback": operator_start_event,
     "on_success_callback": operator_success_event,
     "on_retry_callback"  : operator_retry_event,
@@ -69,7 +68,7 @@ resources = k8s.V1ResourceRequirements(
 )
 
 JOB_DIR = "/data"
-IMAGE_PULL_POLICY = "Always"
+IMAGE_PULL_POLICY = "IfNotPresent"
 INIT_CONTAINER_IMAGE = "odpf/optimus:dev"
 INIT_CONTAINER_ENTRYPOINT = "/opt/entrypoint_init_container.sh"
 
@@ -254,6 +253,7 @@ hook_failureHook = SuperKubernetesPodOperator(
 # create upstream sensors
 wait_foo__dash__intra__dash__dep__dash__job = SuperExternalTaskSensor(
     optimus_hostname="http://optimus.example.com",
+    upstream_optimus_hostname="http://optimus.example.com",
     upstream_optimus_project="example-proj",
     upstream_optimus_namespace="billing",
     upstream_optimus_job="foo-intra-dep-job",
@@ -267,6 +267,7 @@ wait_foo__dash__intra__dash__dep__dash__job = SuperExternalTaskSensor(
 
 wait_foo__dash__inter__dash__dep__dash__job = SuperExternalTaskSensor(
     optimus_hostname="http://optimus.example.com",
+    upstream_optimus_hostname="http://optimus.example.com",
     upstream_optimus_project="project",
     upstream_optimus_namespace="namespace",
     upstream_optimus_job="foo-inter-dep-job",
@@ -279,7 +280,8 @@ wait_foo__dash__inter__dash__dep__dash__job = SuperExternalTaskSensor(
 )
 
 wait_foo__dash__external__dash__optimus__dash__dep__dash__job = SuperExternalTaskSensor(
-    optimus_hostname="http://optimus.external.io",
+    optimus_hostname="http://optimus.example.com",
+    upstream_optimus_hostname="http://optimus.external.io",
     upstream_optimus_project="external-project",
     upstream_optimus_namespace="external-namespace",
     upstream_optimus_job="foo-external-optimus-dep-job",
@@ -299,12 +301,12 @@ wait_foo__dash__inter__dash__dep__dash__job >> transformation_bq__dash__bq
 wait_foo__dash__external__dash__optimus__dash__dep__dash__job >> transformation_bq__dash__bq
 
 # setup hooks and dependencies
-# start_event -> [Dependency/HttpDep/ExternalDep/PreHook] -> Task -> [Post Hook -> Fail Hook] -> end_event
+# [Dependency/HttpDep/ExternalDep/PreHook] -> Task -> [Post Hook -> Fail Hook]
 
 # setup hook dependencies
 hook_transporter >> transformation_bq__dash__bq
 
-transformation_bq__dash__bq >> [hook_predator,] >> [hook_failureHook,] >> 
+transformation_bq__dash__bq >> [hook_predator,] >> [hook_failureHook,]
 
 # set inter-dependencies between hooks and hooks
 hook_predator >> hook_transporter

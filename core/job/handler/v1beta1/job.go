@@ -216,11 +216,16 @@ func (jh *JobHandler) ListJobSpecification(ctx context.Context, req *pb.ListJobS
 }
 
 func (*JobHandler) GetWindow(_ context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
+	// TODO the default version to be deprecated & made mandatory in future releases
+	version := 1
 	if err := req.GetScheduledAt().CheckValid(); err != nil {
 		return nil, fmt.Errorf("%w: failed to parse schedule time %s", err, req.GetScheduledAt())
 	}
 
-	window, err := models.NewWindow(int(req.Version), req.GetTruncateTo(), req.GetOffset(), req.GetSize())
+	if req.Version != 0 {
+		version = int(req.Version)
+	}
+	window, err := models.NewWindow(version, req.GetTruncateTo(), req.GetOffset(), req.GetSize())
 	if err != nil {
 		return nil, err
 	}

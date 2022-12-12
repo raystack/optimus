@@ -1,4 +1,4 @@
-package job
+package scheduler
 
 import (
 	"fmt"
@@ -104,8 +104,8 @@ func (j *jobRunInputCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 
 func (j *jobRunInputCommand) RunE(_ *cobra.Command, args []string) error {
 	jobName := args[0]
-	j.logger.Info("Requesting resources for project %s, job %s at %s", j.projectName, jobName, j.host)
-	j.logger.Info("Run name %s, run type %s, scheduled at %s\n", j.runName, j.runType, j.scheduledAt)
+	j.logger.Info(fmt.Sprintf("Requesting resources for project %s, job %s at %s", j.projectName, jobName, j.host))
+	j.logger.Info(fmt.Sprintf("Run name %s, run type %s, scheduled at %s\n", j.runName, j.runType, j.scheduledAt))
 	j.logger.Info("please wait...")
 
 	jobScheduledTimeProto, err := j.getJobScheduledTimeProto()
@@ -138,7 +138,7 @@ func (j *jobRunInputCommand) writeInstanceResponse(jobResponse *pb.JobRunInputRe
 	}
 
 	if len(j.keysWithUnsubstitutedValue) > 0 {
-		j.logger.Warn("Value not substituted for keys:\n%s", strings.Join(j.keysWithUnsubstitutedValue, "\n"))
+		j.logger.Warn("Value not substituted for keys:\n" + strings.Join(j.keysWithUnsubstitutedValue, "\n"))
 	}
 	return nil
 }

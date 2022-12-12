@@ -10,16 +10,18 @@ import (
 )
 
 func (s JobRunService) UploadToScheduler(ctx context.Context, projectName tenant.ProjectName, namespaceName string) error {
+	multiError := errors.NewMultiError("ErrorInUploadToScheduler")
 	allJobsWithDetails, err := s.jobRepo.GetAll(ctx, projectName)
-	if err != nil {
-		return err
+	multiError.Append(err)
+	if allJobsWithDetails == nil {
+		return errors.MultiToError(multiError)
 	}
 	err = s.priorityResolver.Resolve(ctx, allJobsWithDetails)
 	if err != nil {
-		return err
+		multiError.Append(err)
+		return errors.MultiToError(multiError)
 	}
 	jobGroupByTenant := scheduler.GroupJobsByTenant(allJobsWithDetails)
-	multiError := errors.NewMultiError("ErrorInUploadToScheduler")
 	for t, jobs := range jobGroupByTenant {
 		if err = s.deployJobsPerNamespace(ctx, t, jobs); err == nil {
 			s.l.Debug(fmt.Sprintf("namespace %s deployed", namespaceName), "project name", projectName)
