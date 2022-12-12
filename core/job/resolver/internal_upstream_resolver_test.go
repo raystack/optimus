@@ -10,8 +10,7 @@ import (
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/resolver"
 	"github.com/odpf/optimus/core/tenant"
-	optMock "github.com/odpf/optimus/mock"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 )
 
 func TestInternalUpstreamResolver(t *testing.T) {
@@ -50,7 +49,7 @@ func TestInternalUpstreamResolver(t *testing.T) {
 		t.Run("resolves upstream internally", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			jobRepo.On("GetAllByResourceDestination", ctx, jobASources[0]).Return([]*job.Job{jobB}, nil)
@@ -70,7 +69,7 @@ func TestInternalUpstreamResolver(t *testing.T) {
 		t.Run("should not stop the process but keep appending error when unable to resolve inferred upstream", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			jobRepo.On("GetAllByResourceDestination", ctx, jobASources[0]).Return([]*job.Job{}, errors.New("internal error"))
@@ -90,7 +89,7 @@ func TestInternalUpstreamResolver(t *testing.T) {
 		t.Run("should not stop the process but keep appending error when unable to resolve static upstream", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			specEUpstreamSpec, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"job-unknown", "job-C"}).Build()
@@ -114,7 +113,7 @@ func TestInternalUpstreamResolver(t *testing.T) {
 		t.Run("should not stop the process but keep appending error when static upstream name is invalid", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			specEUpstreamSpec, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"/", "job-C"}).Build()
@@ -143,7 +142,7 @@ func TestInternalUpstreamResolver(t *testing.T) {
 		t.Run("resolves upstream internally in bulk", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			internalUpstreamMap := map[job.Name][]*job.Upstream{
@@ -170,7 +169,7 @@ func TestInternalUpstreamResolver(t *testing.T) {
 		t.Run("returns error if unable to resolve upstream internally", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			jobRepo.On("ResolveUpstreams", ctx, sampleTenant.ProjectName(), []job.Name{"job-A", "job-X"}).Return(nil, errors.New("internal error"))

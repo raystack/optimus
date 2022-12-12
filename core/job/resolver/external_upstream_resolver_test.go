@@ -13,8 +13,7 @@ import (
 	"github.com/odpf/optimus/core/job/resolver"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/ext/resourcemanager"
-	optMock "github.com/odpf/optimus/mock"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 )
 
 func TestExternalUpstreamResolver(t *testing.T) {
@@ -37,7 +36,7 @@ func TestExternalUpstreamResolver(t *testing.T) {
 
 	t.Run("Resolve", func(t *testing.T) {
 		t.Run("resolves upstream externally", func(t *testing.T) {
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			unresolvedUpstreamB := job.NewUpstreamUnresolvedStatic("job-B", externalTenant.ProjectName())
@@ -58,7 +57,7 @@ func TestExternalUpstreamResolver(t *testing.T) {
 			assert.EqualValues(t, []*job.Upstream{upstreamB, upstreamC}, result[0].Upstreams())
 		})
 		t.Run("returns unresolved upstream and upstream error if unable to fetch upstreams from external", func(t *testing.T) {
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			unresolvedUpstreamB := job.NewUpstreamUnresolvedStatic("job-B", externalTenant.ProjectName())

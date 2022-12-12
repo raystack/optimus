@@ -1905,7 +1905,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
