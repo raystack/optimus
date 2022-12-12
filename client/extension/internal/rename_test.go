@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/odpf/optimus/client/extension/internal"
+	"github.com/odpf/optimus/client/extension/mock"
 	"github.com/odpf/optimus/client/extension/model"
-	"github.com/odpf/optimus/mock"
 )
 
 type RenameManagerTestSuite struct {

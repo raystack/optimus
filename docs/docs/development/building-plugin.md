@@ -362,7 +362,7 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/plugin"
 	"github.com/odpf/optimus/plugin/base"
 )

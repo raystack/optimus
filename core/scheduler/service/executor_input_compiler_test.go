@@ -12,7 +12,7 @@ import (
 	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/scheduler/service"
 	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 )
 
 func TestExecutorCompiler(t *testing.T) {

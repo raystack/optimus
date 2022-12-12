@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 )
 
 const jobDatetimeLayout = "2006-01-02"

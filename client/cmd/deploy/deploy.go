@@ -18,18 +18,23 @@ import (
 	"github.com/odpf/optimus/client/cmd/internal/connectivity"
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/namespace"
-	"github.com/odpf/optimus/client/cmd/plugin"
 	"github.com/odpf/optimus/client/cmd/project"
 	"github.com/odpf/optimus/client/cmd/resource"
 	"github.com/odpf/optimus/client/local/specio"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
 const (
 	deployTimeout = time.Minute * 30
 	pollInterval  = time.Second * 15
+
+	deploymentCancelled  = "Cancelled"
+	deploymentInQueue    = "In Queue"
+	deploymentInProgress = "In Progress"
+	deploymentSucceed    = "Succeed"
+	deploymentFailed     = "Failed"
 )
 
 type deployCommand struct {
@@ -41,8 +46,6 @@ type deployCommand struct {
 	ignoreResourceDeployment bool
 	verbose                  bool
 	configFilePath           string
-
-	pluginCleanFn func()
 }
 
 // NewDeployCommand initializes command for deployment
@@ -60,9 +63,8 @@ func NewDeployCommand() *cobra.Command {
 		Annotations: map[string]string{
 			"group:core": "true",
 		},
-		RunE:     deploy.RunE,
-		PreRunE:  deploy.PreRunE,
-		PostRunE: deploy.PostRunE,
+		RunE:    deploy.RunE,
+		PreRunE: deploy.PreRunE,
 	}
 	cmd.Flags().StringVarP(&deploy.configFilePath, "config", "c", deploy.configFilePath, "File path for client configuration")
 	cmd.Flags().StringSliceVarP(&deploy.selectedNamespaceNames, "namespace-names", "N", nil, "Selected namespaces of optimus project")
@@ -79,8 +81,6 @@ func (d *deployCommand) PreRunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	d.logger.Info("Initializing client plugins")
-	d.pluginCleanFn, err = plugin.TriggerClientPluginsInit(d.clientConfig.Log.Level)
 	d.logger.Info("initialization finished!\n")
 	return err
 }
@@ -109,11 +109,6 @@ func (d *deployCommand) RunE(_ *cobra.Command, _ []string) error {
 	d.logger.Info("namespace registration finished!\n")
 
 	return d.deploy(selectedNamespaces)
-}
-
-func (d *deployCommand) PostRunE(_ *cobra.Command, _ []string) error {
-	d.pluginCleanFn()
-	return nil
 }
 
 func (d *deployCommand) deploy(selectedNamespaces []*config.Namespace) error {
@@ -435,17 +430,17 @@ func PollJobDeployment(ctx context.Context, l log.Logger, jobSpecService pb.JobS
 		}
 
 		switch resp.Status {
-		case models.JobDeploymentStatusInProgress.String():
+		case deploymentInProgress:
 			l.Info("Deployment request for deployID %s is in progress...", deployID)
-		case models.JobDeploymentStatusInQueue.String():
+		case deploymentInQueue:
 			l.Info("Deployment request for deployID %s is in queue...", deployID)
-		case models.JobDeploymentStatusCancelled.String():
+		case deploymentCancelled:
 			l.Error("Deployment request for deployID %s is cancelled.", deployID)
 			return errors.New("job deployment cancelled")
-		case models.JobDeploymentStatusSucceed.String():
+		case deploymentSucceed:
 			l.Info("Success deploying %d jobs for deployID %s", resp.SuccessCount, deployID)
 			return nil
-		case models.JobDeploymentStatusFailed.String():
+		case deploymentFailed:
 			if len(resp.Failures) > 0 {
 				for _, failedJob := range resp.Failures {
 					if failedJob.GetJobName() != "" {

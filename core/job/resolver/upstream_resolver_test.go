@@ -8,12 +8,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/resolver"
 	"github.com/odpf/optimus/core/tenant"
-	optMock "github.com/odpf/optimus/mock"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
+	"github.com/odpf/optimus/internal/writer"
 )
 
 func TestUpstreamResolver(t *testing.T) {
@@ -49,7 +48,7 @@ func TestUpstreamResolver(t *testing.T) {
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 			internalUpstreamResolver := new(InternalUpstreamResolver)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			upstreamName := job.SpecUpstreamName("test-proj/job-c")
@@ -82,7 +81,7 @@ func TestUpstreamResolver(t *testing.T) {
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 			internalUpstreamResolver := new(InternalUpstreamResolver)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			upstreamName := job.SpecUpstreamNameFrom("job-c")
@@ -122,7 +121,7 @@ func TestUpstreamResolver(t *testing.T) {
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 			internalUpstreamResolver := new(InternalUpstreamResolver)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
@@ -146,7 +145,7 @@ func TestUpstreamResolver(t *testing.T) {
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 			internalUpstreamResolver := new(InternalUpstreamResolver)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			upstreamName := job.SpecUpstreamNameFrom("job-c")
@@ -184,7 +183,7 @@ func TestUpstreamResolver(t *testing.T) {
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 			internalUpstreamResolver := new(InternalUpstreamResolver)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			upstreamName := job.SpecUpstreamNameFrom("job-c")
@@ -224,7 +223,7 @@ func TestUpstreamResolver(t *testing.T) {
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 			internalUpstreamResolver := new(InternalUpstreamResolver)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			jobAUpstreamCName := job.SpecUpstreamNameFrom("job-C")
@@ -261,7 +260,7 @@ func TestUpstreamResolver(t *testing.T) {
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 			internalUpstreamResolver := new(InternalUpstreamResolver)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			jobAUpstreamCName := job.SpecUpstreamNameFrom("")
@@ -298,7 +297,7 @@ func TestUpstreamResolver(t *testing.T) {
 			externalUpstreamResolver := new(ExternalUpstreamResolver)
 			internalUpstreamResolver := new(InternalUpstreamResolver)
 
-			logWriter := new(optMock.LogWriter)
+			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			jobAUpstreamCName := job.SpecUpstreamNameFrom("job-C")
@@ -509,4 +508,12 @@ func (_m *JobRepository) ResolveUpstreams(ctx context.Context, projectName tenan
 	}
 
 	return r0, r1
+}
+
+type mockWriter struct {
+	mock.Mock
+}
+
+func (m *mockWriter) Write(level writer.LogLevel, s string) error {
+	return m.Called(level, s).Error(0)
 }

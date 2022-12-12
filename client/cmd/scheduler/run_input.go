@@ -17,7 +17,6 @@ import (
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/internal/utils"
-	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
@@ -26,6 +25,11 @@ const (
 
 	taskInputDirectory = "in"
 	unsubstitutedValue = "<no value>"
+
+	typeEnvFileName    = ".env"
+	typeSecretFileName = ".secret"
+
+	ISOTimeLayout = time.RFC3339
 )
 
 type jobRunInputCommand struct {
@@ -110,7 +114,7 @@ func (j *jobRunInputCommand) RunE(_ *cobra.Command, args []string) error {
 
 	jobScheduledTimeProto, err := j.getJobScheduledTimeProto()
 	if err != nil {
-		return fmt.Errorf("invalid time format, please use %s: %w", models.InstanceScheduledAtTimeLayout, err)
+		return fmt.Errorf("invalid time format, please use %s: %w", ISOTimeLayout, err)
 	}
 
 	jobResponse, err := j.sendJobRunInputRequest(jobName, jobScheduledTimeProto)
@@ -155,7 +159,7 @@ func (j *jobRunInputCommand) writeJobResponseSecretToFile(
 		secretsFileContent += fmt.Sprintf("%s='%s'\n", key, val)
 	}
 
-	filePath := filepath.Join(dirPath, models.InstanceDataTypeSecretFileName)
+	filePath := filepath.Join(dirPath, typeSecretFileName)
 	writeToFileFn := utils.WriteStringToFileIndexed()
 	if err := writeToFileFn(filePath, secretsFileContent, j.logger.Writer()); err != nil {
 		return fmt.Errorf("failed to write asset file at %s: %w", filePath, err)
@@ -172,7 +176,7 @@ func (j *jobRunInputCommand) writeJobResponseEnvToFile(jobResponse *pb.JobRunInp
 		envFileBlob += fmt.Sprintf("%s='%s'\n", key, val)
 	}
 
-	filePath := filepath.Join(dirPath, models.InstanceDataTypeEnvFileName)
+	filePath := filepath.Join(dirPath, typeEnvFileName)
 	writeToFileFn := utils.WriteStringToFileIndexed()
 	if err := writeToFileFn(filePath, envFileBlob, j.logger.Writer()); err != nil {
 		return fmt.Errorf("failed to write asset file at %s: %w", filePath, err)
@@ -219,7 +223,7 @@ func (j *jobRunInputCommand) sendJobRunInputRequest(jobName string, jobScheduled
 }
 
 func (j *jobRunInputCommand) getJobScheduledTimeProto() (*timestamppb.Timestamp, error) {
-	jobScheduledTime, err := time.Parse(models.InstanceScheduledAtTimeLayout, j.scheduledAt)
+	jobScheduledTime, err := time.Parse(ISOTimeLayout, j.scheduledAt)
 	if err != nil {
 		return nil, err
 	}

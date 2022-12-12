@@ -15,8 +15,13 @@ import (
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/internal/progressbar"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+)
+
+const (
+	statusReplayed = "replayed"
+	statusFailed   = "failed"
+	statusSuccess  = "success"
 )
 
 type statusCommand struct {
@@ -112,12 +117,12 @@ func (s *statusCommand) RunE(_ *cobra.Command, args []string) error {
 }
 
 func (s *statusCommand) printReplayStatusResponse(replayStatusResponse *pb.GetReplayStatusResponse) {
-	if replayStatusResponse.State == models.ReplayStatusFailed {
-		s.logger.Info("\nThis replay has been marked as %s", models.ReplayStatusFailed)
-	} else if replayStatusResponse.State == models.ReplayStatusReplayed {
+	if replayStatusResponse.State == statusFailed {
+		s.logger.Info("\nThis replay has been marked as %s", statusFailed)
+	} else if replayStatusResponse.State == statusReplayed {
 		s.logger.Info("\nThis replay is still running")
-	} else if replayStatusResponse.State == models.ReplayStatusSuccess {
-		s.logger.Info("\nThis replay has been marked as %s", models.ReplayStatusSuccess)
+	} else if replayStatusResponse.State == statusSuccess {
+		s.logger.Info("\nThis replay has been marked as %s", statusSuccess)
 	}
 	s.logger.Info("Latest Instances Status")
 	s.logger.Info(s.printStatusTree(replayStatusResponse.Response, treeprint.New()).String())

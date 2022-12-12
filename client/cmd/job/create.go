@@ -9,10 +9,12 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
+	"github.com/odpf/optimus/client/cmd/internal"
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/internal/survey"
 	"github.com/odpf/optimus/client/local/specio"
 	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/internal/models"
 )
 
 type createCommand struct {
@@ -21,6 +23,7 @@ type createCommand struct {
 	clientConfig    *config.ClientConfig
 	namespaceSurvey *survey.NamespaceSurvey
 	jobCreateSurvey *survey.JobCreateSurvey
+	pluginRepo      *models.RegisteredPlugins
 }
 
 // NewCreateCommand initializes job create command
@@ -32,11 +35,12 @@ func NewCreateCommand() *cobra.Command {
 		jobCreateSurvey: survey.NewJobCreateSurvey(),
 	}
 	cmd := &cobra.Command{
-		Use:     "create",
-		Short:   "Create a new Job",
-		Example: "optimus job create",
-		RunE:    create.RunE,
-		PreRunE: create.PreRunE,
+		Use:      "create",
+		Short:    "Create a new Job",
+		Example:  "optimus job create",
+		RunE:     create.RunE,
+		PreRunE:  create.PreRunE,
+		PostRunE: create.PostRunE,
 	}
 	// Config filepath flag
 	cmd.Flags().StringVarP(&create.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
@@ -52,7 +56,9 @@ func (c *createCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	}
 
 	c.clientConfig = conf
-	return nil
+
+	c.pluginRepo, err = internal.InitPlugins(config.LogLevel(c.logger.Level()))
+	return err
 }
 
 func (c *createCommand) RunE(_ *cobra.Command, _ []string) error {
@@ -79,7 +85,7 @@ func (c *createCommand) RunE(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	jobSpec, err := c.jobCreateSurvey.AskToCreateJob(jobSpecReadWriter, jobDirectory, defaultJobName)
+	jobSpec, err := c.jobCreateSurvey.AskToCreateJob(c.pluginRepo, jobSpecReadWriter, jobDirectory, defaultJobName)
 	if err != nil {
 		return err
 	}
@@ -89,5 +95,10 @@ func (c *createCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 
 	c.logger.Info("Job successfully created at %s", jobDirectory)
+	return nil
+}
+
+func (*createCommand) PostRunE(*cobra.Command, []string) error {
+	internal.CleanupPlugins()
 	return nil
 }

@@ -34,7 +34,7 @@ func (j JobRepository) Add(ctx context.Context, jobs []*job.Job) ([]*job.Job, er
 
 func (j JobRepository) insertJobSpec(ctx context.Context, jobEntity *job.Job) error {
 	existingJob, err := j.get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name(), false)
-	if err != nil && !errors.IsInType(err, errors.ErrNotFound) {
+	if err != nil && !errors.IsErrorType(err, errors.ErrNotFound) {
 		return errors.NewError(errors.ErrInternalError, job.EntityJob, fmt.Sprintf("failed to check job %s in db: %s", jobEntity.Spec().Name().String(), err.Error()))
 	}
 	if err == nil && !existingJob.DeletedAt.Valid {
@@ -120,7 +120,7 @@ func (j JobRepository) Update(ctx context.Context, jobs []*job.Job) ([]*job.Job,
 
 func (j JobRepository) preCheckUpdate(ctx context.Context, jobEntity *job.Job) error {
 	existingJob, err := j.get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name(), false)
-	if err != nil && errors.IsInType(err, errors.ErrNotFound) {
+	if err != nil && errors.IsErrorType(err, errors.ErrNotFound) {
 		return errors.NewError(errors.ErrNotFound, job.EntityJob, fmt.Sprintf("job %s not exists yet", jobEntity.Spec().Name()))
 	}
 	if err != nil {

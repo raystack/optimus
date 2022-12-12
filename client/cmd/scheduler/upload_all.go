@@ -10,7 +10,6 @@ import (
 
 	"github.com/odpf/optimus/client/cmd/internal/connectivity"
 	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/client/cmd/plugin"
 	"github.com/odpf/optimus/config"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
@@ -24,8 +23,6 @@ type uploadCommand struct {
 	clientConfig *config.ClientConfig
 
 	configFilePath string
-
-	pluginCleanFn func()
 }
 
 // UploadCommand initializes command for scheduler DAG deployment
@@ -42,9 +39,8 @@ func UploadCommand() *cobra.Command {
 		Annotations: map[string]string{
 			"group:core": "true",
 		},
-		RunE:     upload.RunE,
-		PreRunE:  upload.PreRunE,
-		PostRunE: upload.PostRunE,
+		RunE:    upload.RunE,
+		PreRunE: upload.PreRunE,
 	}
 	cmd.Flags().StringVarP(&upload.configFilePath, "config", "c", upload.configFilePath, "File path for client configuration")
 	return cmd
@@ -57,8 +53,6 @@ func (u *uploadCommand) PreRunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	u.logger.Info("Initializing client plugins")
-	u.pluginCleanFn, err = plugin.TriggerClientPluginsInit(u.clientConfig.Log.Level)
 	u.logger.Info("initialization finished!\n")
 	return err
 }
@@ -91,9 +85,4 @@ func (u *uploadCommand) sendUploadAllRequest(projectName string) (*pb.UploadToSc
 	}
 	jobRunServiceClient := pb.NewJobRunServiceClient(conn.GetConnection())
 	return jobRunServiceClient.UploadToScheduler(conn.GetContext(), request)
-}
-
-func (u *uploadCommand) PostRunE(_ *cobra.Command, _ []string) error {
-	u.pluginCleanFn()
-	return nil
 }

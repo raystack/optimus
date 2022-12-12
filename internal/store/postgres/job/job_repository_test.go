@@ -11,9 +11,9 @@ import (
 
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/models"
 	postgres "github.com/odpf/optimus/internal/store/postgres/job"
 	tenantPostgres "github.com/odpf/optimus/internal/store/postgres/tenant"
-	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/tests/setup"
 )
 

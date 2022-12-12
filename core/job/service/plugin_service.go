@@ -8,13 +8,22 @@ import (
 	"github.com/odpf/salt/log"
 	"golang.org/x/net/context"
 
-	"github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/compiler"
+	"github.com/odpf/optimus/internal/models"
 )
 
-const projectConfigPrefix = "GLOBAL__"
+const (
+	projectConfigPrefix = "GLOBAL__"
+
+	configKeyDstart        = "DSTART"
+	configKeyDend          = "DEND"
+	configKeyExecutionTime = "EXECUTION_TIME"
+	configKeyDestination   = "JOB_DESTINATION"
+
+	TimeISOFormat = time.RFC3339
+)
 
 var (
 	ErrUpstreamModNotFound = errors.New("upstream mod not found for plugin")
@@ -26,18 +35,27 @@ type SecretsGetter interface {
 	GetAll(ctx context.Context, projName tenant.ProjectName, namespaceName string) ([]*tenant.PlainTextSecret, error)
 }
 
+type PluginRepo interface {
+	GetByName(string) (*models.Plugin, error)
+}
+
+type Engine interface {
+	Compile(templateMap map[string]string, context map[string]any) (map[string]string, error)
+	CompileString(input string, context map[string]any) (string, error)
+}
+
 type JobPluginService struct {
 	secretsGetter SecretsGetter
 
-	pluginRepo models.PluginRepository
-	engine     models.TemplateEngine
+	pluginRepo PluginRepo
+	engine     Engine
 
 	now func() time.Time
 
 	logger log.Logger
 }
 
-func NewJobPluginService(secretsGetter SecretsGetter, pluginRepo models.PluginRepository, engine models.TemplateEngine, logger log.Logger) *JobPluginService {
+func NewJobPluginService(secretsGetter SecretsGetter, pluginRepo PluginRepo, engine Engine, logger log.Logger) *JobPluginService {
 	return &JobPluginService{secretsGetter: secretsGetter, pluginRepo: pluginRepo, engine: engine, logger: logger, now: time.Now}
 }
 
@@ -90,6 +108,7 @@ func (p JobPluginService) GenerateUpstreams(ctx context.Context, jobTenant *tena
 		return nil, ErrUpstreamModNotFound
 	}
 
+	// TODO: this now will always be a same time for start of service, is it correct ?
 	assets, err := p.compileAsset(ctx, plugin, spec, p.now())
 	if err != nil {
 		return nil, fmt.Errorf("asset compilation failure: %w", err)
@@ -180,11 +199,11 @@ func (p JobPluginService) compileAsset(ctx context.Context, plugin *models.Plugi
 		assets = spec.Asset().Assets()
 	}
 
-	templates, err := p.engine.CompileFiles(assets, map[string]interface{}{
-		models.ConfigKeyDstart:        startTime.Format(models.InstanceScheduledAtTimeLayout),
-		models.ConfigKeyDend:          endTime.Format(models.InstanceScheduledAtTimeLayout),
-		models.ConfigKeyExecutionTime: scheduledAt.Format(models.InstanceScheduledAtTimeLayout),
-		models.ConfigKeyDestination:   jobDestination,
+	templates, err := p.engine.Compile(assets, map[string]interface{}{
+		configKeyDstart:        startTime.Format(TimeISOFormat),
+		configKeyDend:          endTime.Format(TimeISOFormat),
+		configKeyExecutionTime: scheduledAt.Format(TimeISOFormat),
+		configKeyDestination:   jobDestination,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile templates: %w", err)

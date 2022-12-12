@@ -13,7 +13,7 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
 
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 )
 
 type model struct {

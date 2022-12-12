@@ -18,8 +18,11 @@ import (
 	"github.com/odpf/optimus/client/cmd/internal/progressbar"
 	"github.com/odpf/optimus/client/cmd/internal/survey"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+)
+
+const (
+	configTTL = "ttl"
 )
 
 type listCommand struct {
@@ -142,7 +145,7 @@ func (*listCommand) stringifyBackupListResponse(listBackupsResponse *pb.ListBack
 	})
 
 	for _, backupSpec := range listBackupsResponse.Backups {
-		ttl := backupSpec.Config[models.ConfigTTL]
+		ttl := backupSpec.Config[configTTL]
 		table.Append([]string{
 			backupSpec.Id,
 			strings.Join(backupSpec.ResourceNames, ", "),
