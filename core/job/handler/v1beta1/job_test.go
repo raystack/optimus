@@ -13,13 +13,13 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/handler/v1beta1"
 	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
+	"github.com/odpf/optimus/internal/writer"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 

@@ -8,6 +8,7 @@ const (
 	SecretStorageKey    = "STORAGE"
 	SecretSchedulerAuth = "SCHEDULER_AUTH"
 
+	// SystemDefinedSecret TODO: get rid of system defined secrets
 	SystemDefinedSecret SecretType = "system"
 	UserDefinedSecret   SecretType = "user"
 

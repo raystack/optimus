@@ -17,8 +17,6 @@ import (
 	"google.golang.org/grpc"
 	"gorm.io/gorm"
 
-	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
-	jobRunCompiler "github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"
 	jHandler "github.com/odpf/optimus/core/job/handler/v1beta1"
 	jResolver "github.com/odpf/optimus/core/job/resolver"
@@ -36,15 +34,16 @@ import (
 	bqStore "github.com/odpf/optimus/ext/store/bigquery"
 	"github.com/odpf/optimus/internal/compiler"
 	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/internal/store/postgres"
 	jRepo "github.com/odpf/optimus/internal/store/postgres/job"
 	"github.com/odpf/optimus/internal/store/postgres/resource"
 	schedulerRepo "github.com/odpf/optimus/internal/store/postgres/scheduler"
 	"github.com/odpf/optimus/internal/store/postgres/tenant"
 	"github.com/odpf/optimus/internal/telemetry"
-	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	oHandler "github.com/odpf/optimus/server/handler/v1beta1"
 )
 
 const keyLength = 32
@@ -55,7 +54,6 @@ type OptimusServer struct {
 	conf   config.ServerConfig
 	logger log.Logger
 
-	appKey models.ApplicationKey
 	dbConn *gorm.DB
 	key    *[keyLength]byte
 
@@ -63,7 +61,8 @@ type OptimusServer struct {
 	grpcServer *grpc.Server
 	httpServer *http.Server
 
-	cleanupFn []func()
+	pluginRepo *models.RegisteredPlugins
+	cleanupFn  []func()
 }
 
 func New(conf config.ServerConfig) (*OptimusServer, error) {
@@ -120,7 +119,9 @@ func (s *OptimusServer) setupPlugins() error {
 		pluginArgs = append(pluginArgs, "-t", s.conf.Telemetry.JaegerAddr)
 	}
 	// discover and load plugins.
-	return plugin.Initialize(pluginLogger, pluginArgs...)
+	var err error
+	s.pluginRepo, err = plugin.Initialize(pluginLogger, pluginArgs...)
+	return err
 }
 
 func (s *OptimusServer) setupTelemetry() error {
@@ -135,11 +136,6 @@ func (s *OptimusServer) setupTelemetry() error {
 
 func (s *OptimusServer) setupAppKey() error {
 	var err error
-	s.appKey, err = models.NewApplicationSecret(s.conf.Serve.AppKey)
-	if err != nil {
-		return fmt.Errorf("NewApplicationSecret: %w", err)
-	}
-
 	s.key, err = applicationKeyFromString(s.conf.Serve.AppKey)
 	if err != nil {
 		return err
@@ -286,31 +282,24 @@ func (s *OptimusServer) setupHandlers() error {
 		),
 	}
 
-	newPriorityResolver := schedulerResolver.NewPriorityResolver()
 	newEngine := compiler.NewEngine()
-	assetCompiler := schedulerService.NewJobAssetsCompiler(newEngine, models.PluginRegistry)
+
+	newPriorityResolver := schedulerResolver.NewPriorityResolver()
+	assetCompiler := schedulerService.NewJobAssetsCompiler(newEngine, s.pluginRepo)
 	jobInputCompiler := schedulerService.NewJobInputCompiler(tenantService, newEngine, assetCompiler)
 	notificationService := schedulerService.NewNotifyService(s.logger, jobProviderRepo, tenantService, notifierChanels)
-	newScheduler, err := NewScheduler(s.conf, models.PluginRegistry, tProjectService, tSecretService)
+	newScheduler, err := NewScheduler(s.conf, s.pluginRepo, tProjectService, tSecretService)
 	if err != nil {
 		return err
 	}
 	newJobRunService := schedulerService.NewJobRunService(s.logger, jobProviderRepo, jobRunRepo, operatorRunRepository, newScheduler, newPriorityResolver, jobInputCompiler)
 
-	engine := jobRunCompiler.NewGoEngine()
-
 	// Job Bounded Context Setup
 	jJobRepo := jRepo.NewJobRepository(s.dbConn)
-	jPluginService := jService.NewJobPluginService(tSecretService, models.PluginRegistry, engine, s.logger)
+	jPluginService := jService.NewJobPluginService(tSecretService, s.pluginRepo, newEngine, s.logger)
 	jExternalUpstreamResolver, _ := jResolver.NewExternalUpstreamResolver(s.conf.ResourceManagers)
 	jUpstreamResolver := jResolver.NewUpstreamResolver(jJobRepo, jExternalUpstreamResolver)
 	jJobService := jService.NewJobService(jJobRepo, jPluginService, jUpstreamResolver, tenantService, s.logger)
-
-	scheduler, err := initScheduler(s.conf)
-	if err != nil {
-		return err
-	}
-	models.BatchScheduler = scheduler // TODO: remove global
 
 	// Tenant Handlers
 	pb.RegisterSecretServiceServer(s.grpcServer, tHandler.NewSecretsHandler(s.logger, tSecretService))
@@ -324,8 +313,9 @@ func (s *OptimusServer) setupHandlers() error {
 
 	// backup service
 	pb.RegisterBackupServiceServer(s.grpcServer, rHandler.NewBackupHandler(s.logger, backupService))
-	// runtime service instance over grpc
-	pb.RegisterRuntimeServiceServer(s.grpcServer, v1handler.NewRuntimeServiceServer(s.logger, config.BuildVersion))
+
+	// version service
+	pb.RegisterRuntimeServiceServer(s.grpcServer, oHandler.NewVersionHandler(s.logger, config.BuildVersion))
 
 	// Core Job Handler
 	pb.RegisterJobSpecificationServiceServer(s.grpcServer, jHandler.NewJobHandler(jJobService, s.logger))

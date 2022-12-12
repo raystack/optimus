@@ -9,12 +9,13 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-
-	"github.com/odpf/optimus/models"
 )
 
 const (
 	secretTimeout = time.Minute * 2
+
+	// TODO: get rid of system defined secrets
+	systemDefinedSecretPrefix = "_OPTIMUS_"
 )
 
 // NewSecretCommand initializes command for secret
@@ -36,8 +37,8 @@ func getSecretName(args []string) (string, error) {
 	if len(args) < 1 {
 		return "", errors.New("secret name is required")
 	}
-	if strings.HasPrefix(args[0], models.SecretTypeSystemDefinedPrefix) {
-		return "", fmt.Errorf("secret name cannot be started with %s", models.SecretTypeSystemDefinedPrefix)
+	if strings.HasPrefix(args[0], systemDefinedSecretPrefix) {
+		return "", fmt.Errorf("secret name cannot be started with %s", systemDefinedSecretPrefix)
 	}
 	return args[0], nil
 }

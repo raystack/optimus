@@ -1,7 +1,7 @@
 package dependencyresolver
 
 import (
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
 )
 

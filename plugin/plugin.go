@@ -9,24 +9,27 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/plugin/binary"
 	"github.com/odpf/optimus/plugin/v1beta1/dependencyresolver"
 	"github.com/odpf/optimus/plugin/yaml"
 )
 
-func Initialize(pluginLogger hclog.Logger, arg ...string) error {
+func Initialize(pluginLogger hclog.Logger, arg ...string) (*models.RegisteredPlugins, error) {
+	pluginRepository := models.NewPluginRepository()
 	// fetch yaml plugins first, it holds detailed information about the plugin
 	discoveredYamlPlugins := discoverPluginsGivenFilePattern(pluginLogger, yaml.Prefix, yaml.Suffix)
 	pluginLogger.Debug(fmt.Sprintf("discovering yaml   plugins(%d)...", len(discoveredYamlPlugins)))
-	if err := yaml.Init(models.PluginRegistry, discoveredYamlPlugins, pluginLogger); err != nil {
-		return err
+	if err := yaml.Init(pluginRepository, discoveredYamlPlugins, pluginLogger); err != nil {
+		return pluginRepository, err
 	}
 
 	// fetch binary plugins. Any binary plugin which doesn't have its yaml version will be failed
 	discoveredBinaryPlugins := discoverPluginsGivenFilePattern(pluginLogger, binary.Prefix, binary.Suffix)
 	pluginLogger.Debug(fmt.Sprintf("discovering binary   plugins(%d)...", len(discoveredBinaryPlugins)))
-	return binary.Init(models.PluginRegistry, discoveredBinaryPlugins, pluginLogger, arg...)
+	err := binary.Init(pluginRepository, discoveredBinaryPlugins, pluginLogger, arg...)
+
+	return pluginRepository, err
 }
 
 // discoverPluginsGivenFilePattern look for plugin with the specific pattern in following folders

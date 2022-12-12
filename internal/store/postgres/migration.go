@@ -13,8 +13,6 @@ import (
 	"github.com/odpf/salt/log"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-
-	"github.com/odpf/optimus/internal/store"
 )
 
 //go:embed migrations
@@ -27,6 +25,11 @@ type migrationStep struct {
 	CreatedAt               time.Time
 }
 
+type Migration interface {
+	Up(context.Context) error
+	Rollback(context.Context) error
+}
+
 type migration struct {
 	incomingOptimusVersion string
 	dbConnURL              string
@@ -35,7 +38,7 @@ type migration struct {
 }
 
 // NewMigration initializes migration mechanism specific for postgres
-func NewMigration(logger log.Logger, incomingOptimusVersion, dbConnURL string) (store.Migration, error) {
+func NewMigration(logger log.Logger, incomingOptimusVersion, dbConnURL string) (Migration, error) {
 	if logger == nil {
 		return nil, errors.New("logger is nil")
 	}

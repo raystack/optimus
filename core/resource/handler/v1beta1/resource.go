@@ -12,10 +12,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/resource"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/writer"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 

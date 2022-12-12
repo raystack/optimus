@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/plugin/v1beta1/dependencyresolver"
 )
 

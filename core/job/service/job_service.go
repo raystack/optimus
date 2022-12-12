@@ -9,14 +9,14 @@ import (
 	"github.com/kushsharma/parallel"
 	"github.com/odpf/salt/log"
 
-	"github.com/odpf/optimus/api/writer"
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/lib/tree"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
+	"github.com/odpf/optimus/internal/writer"
 )
 
 const (
@@ -180,7 +180,7 @@ func (j JobService) GetByFilter(ctx context.Context, filters ...filter.FilterOpt
 			jobName, _ := job.NameFrom(jobNameStr)
 			fetchedJob, err := j.repo.GetByJobName(ctx, projectName, jobName)
 			if err != nil {
-				if !errors.IsInType(err, errors.ErrNotFound) {
+				if !errors.IsErrorType(err, errors.ErrNotFound) {
 					me.Append(err)
 				}
 				continue
@@ -196,7 +196,7 @@ func (j JobService) GetByFilter(ctx context.Context, filters ...filter.FilterOpt
 		jobName, _ := job.NameFrom(f.GetStringValue(filter.JobName))
 		fetchedJob, err := j.repo.GetByJobName(ctx, projectName, jobName)
 		if err != nil {
-			if errors.IsInType(err, errors.ErrNotFound) {
+			if errors.IsErrorType(err, errors.ErrNotFound) {
 				return []*job.Job{}, nil
 			}
 			return nil, err

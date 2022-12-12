@@ -37,9 +37,7 @@ func TestTableHandle(t *testing.T) {
 
 			err = tHandle.Create(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource: 1 error(s) decoding:\n\n* "+
-				"'description' expected type 'string', got unconvertible type '[]string', value: '[a b]': not able to "+
-				"decode spec for proj.dataset.table1")
+			assert.ErrorContains(t, err, "not able to decode spec for proj.dataset.table1")
 		})
 		t.Run("returns error when cannot cannot get metadata", func(t *testing.T) {
 			table := new(mockBigQueryTable)
@@ -54,8 +52,7 @@ func TestTableHandle(t *testing.T) {
 
 			err = tHandle.Create(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource_table: failed to get "+
-				"metadata to create for proj.dataset.table1")
+			assert.ErrorContains(t, err, "failed to get metadata to create for proj.dataset.table1")
 		})
 		t.Run("returns error when table already present on bigquery", func(t *testing.T) {
 			bqErr := &googleapi.Error{Code: 409, Message: "Already Exists project.dataset.table1"}
@@ -71,8 +68,7 @@ func TestTableHandle(t *testing.T) {
 
 			err = tHandle.Create(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "resource already exists for entity resource_table: table already "+
-				"exists on bigquery: proj.dataset.table1")
+			assert.ErrorContains(t, err, "table already exists on bigquery: proj.dataset.table1")
 		})
 		t.Run("returns error when bigquery returns error", func(t *testing.T) {
 			table := new(mockBigQueryTable)
@@ -87,8 +83,7 @@ func TestTableHandle(t *testing.T) {
 
 			err = tHandle.Create(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "internal error for entity resource_table: failed to create "+
-				"resource proj.dataset.table1")
+			assert.ErrorContains(t, err, "failed to create resource proj.dataset.table1")
 		})
 		t.Run("successfully creates the resource with range partition", func(t *testing.T) {
 			table := new(mockBigQueryTable)
@@ -175,9 +170,7 @@ func TestTableHandle(t *testing.T) {
 
 			err = tHandle.Update(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource: 1 error(s) decoding:\n\n* "+
-				"'description' expected type 'string', got unconvertible type '[]string', value: '[a b]': not able to "+
-				"decode spec for proj.dataset.table1")
+			assert.ErrorContains(t, err, "not able to decode spec for proj.dataset.table1")
 		})
 		t.Run("returns error when creating metadata fails", func(t *testing.T) {
 			table := new(mockBigQueryTable)
@@ -192,8 +185,7 @@ func TestTableHandle(t *testing.T) {
 
 			err = tHandle.Update(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource_table: failed to get metadata "+
-				"to update for proj.dataset.table1")
+			assert.ErrorContains(t, err, "failed to get metadata to update for proj.dataset.table1")
 		})
 		t.Run("returns error when table not present on bigquery", func(t *testing.T) {
 			bqErr := &googleapi.Error{Code: 404}
@@ -209,8 +201,7 @@ func TestTableHandle(t *testing.T) {
 
 			err = tHandle.Update(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "not found for entity resource_table: failed to update table in "+
-				"bigquery for proj.dataset.table1")
+			assert.ErrorContains(t, err, "failed to update table in bigquery for proj.dataset.table1")
 		})
 		t.Run("returns error when bigquery returns error", func(t *testing.T) {
 			table := new(mockBigQueryTable)
@@ -225,8 +216,7 @@ func TestTableHandle(t *testing.T) {
 
 			err = tHandle.Update(ctx, res)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "internal error for entity resource_table: failed to update table on "+
-				"bigquery for proj.dataset.table1")
+			assert.ErrorContains(t, err, "failed to update table on bigquery for proj.dataset.table1")
 		})
 		t.Run("successfully updates the resource", func(t *testing.T) {
 			meta := &bq.TableMetadata{
@@ -318,8 +308,7 @@ func TestTableHandle(t *testing.T) {
 
 			err := tHandle.UpdateExpiry(ctx, tableName, expiry)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "not found for entity resource_table: failed to update table in "+
-				"bigquery for proj.dataset.table1")
+			assert.ErrorContains(t, err, "failed to update table in bigquery for proj.dataset.table1")
 		})
 		t.Run("returns error when error during update", func(t *testing.T) {
 			table := new(mockBigQueryTable)
@@ -333,8 +322,7 @@ func TestTableHandle(t *testing.T) {
 
 			err := tHandle.UpdateExpiry(ctx, tableName, expiry)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "internal error for entity resource_table: failed to update table on "+
-				"bigquery for proj.dataset.table1")
+			assert.ErrorContains(t, err, "failed to update table on bigquery for proj.dataset.table1")
 		})
 		t.Run("updates the expiry successfully", func(t *testing.T) {
 			meta := &bq.TableMetadata{

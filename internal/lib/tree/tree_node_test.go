@@ -6,37 +6,44 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/odpf/optimus/internal/lib/tree"
-	"github.com/odpf/optimus/models"
 )
+
+type testNode struct {
+	Name string
+}
+
+func (t testNode) GetName() string {
+	return t.Name
+}
 
 func TestDagNode(t *testing.T) {
 	t.Run("GetNameAndDependents", func(t *testing.T) {
 		jobName := "job-name"
-		jobSpec := models.JobSpec{
+		jobNode := testNode{
 			Name: jobName,
 		}
 		dependentJobName := "dependent-job-name"
-		dependentJobSpec := models.JobSpec{
+		dependentJobSpec := testNode{
 			Name: dependentJobName,
 		}
-		dagNode := tree.NewTreeNode(jobSpec)
+		dagNode := tree.NewTreeNode(jobNode)
 		dependentDagNode := tree.NewTreeNode(dependentJobSpec)
 		dagNode.AddDependent(dependentDagNode)
 		assert.Equal(t, jobName, dagNode.GetName())
 	})
 	t.Run("GetAllNodes", func(t *testing.T) {
 		treeNode := tree.TreeNode{
-			Data: models.JobSpec{
+			Data: testNode{
 				Name: "job-level-0",
 			},
 			Dependents: []*tree.TreeNode{
 				{
-					Data: models.JobSpec{
+					Data: testNode{
 						Name: "job-level-1",
 					},
 					Dependents: []*tree.TreeNode{
 						{
-							Data: models.JobSpec{
+							Data: testNode{
 								Name: "job-level-2",
 							},
 						},
