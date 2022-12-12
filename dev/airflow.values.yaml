@@ -13,7 +13,10 @@ scheduler:
       hostPath:
           path: /tmp/colima/dags
           type: Directory
-
+  livenessProbe:
+    command: ["bash", "-c", "airflow jobs check --job-type SchedulerJob --allow-multiple --limit 100"]
+    initialDelaySeconds: 10
+    timeoutSeconds: 60
 config:
   core:
     dags_folder: /opt/airflow/dags

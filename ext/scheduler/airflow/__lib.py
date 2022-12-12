@@ -70,6 +70,7 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
                  optimus_namespacename,
                  optimus_jobname,
                  optimus_jobtype,
+                 optimus_instancename,
                  *args,
                  **kwargs):
         super(SuperKubernetesPodOperator, self).__init__(*args, **kwargs)
@@ -84,6 +85,7 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
         self.optimus_hostname = optimus_hostname
         self.optimus_namespacename = optimus_namespacename
         self.optimus_jobname = optimus_jobname
+        self.optimus_instancename = optimus_instancename
         self.optimus_projectname = optimus_projectname
         self.optimus_jobtype = optimus_jobtype
         self._optimus_client = OptimusAPIClient(optimus_hostname)
@@ -96,8 +98,7 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
 
     def fetch_env_from_optimus(self, context):
         scheduled_at = context["next_execution_date"].strftime(TIMESTAMP_FORMAT)
-        job_meta = self._optimus_client.get_job_run_input(scheduled_at, self.optimus_projectname, self.optimus_jobname,
-                                                          self.optimus_jobtype)
+        job_meta = self._optimus_client.get_job_run_input(scheduled_at, self.optimus_projectname, self.optimus_jobname, self.optimus_jobtype, self.optimus_instancename)
         return [
                    k8s.V1EnvVar(name=key, value=val) for key, val in job_meta["envs"].items()
                ] + [
@@ -235,12 +236,12 @@ class OptimusAPIClient:
         self._raise_error_if_request_failed(response)
         return response.json()
 
-    def get_job_run_input(self, execution_date: str, project_name: str, job_name: str, job_type: str) -> dict:
-        response = requests.post(
-            url="{}/api/v1beta1/project/{}/job/{}/run_input".format(self.host, project_name, job_name),
-            json={'scheduled_at': execution_date,
-                  'instance_name': job_name,
-                  'instance_type': "TYPE_" + job_type.upper()})
+
+    def get_job_run_input(self, execution_date: str, project_name: str, job_name: str, job_type: str, instance_name: str) -> dict:
+        response = requests.post(url="{}/api/v1beta1/project/{}/job/{}/run_input".format(self.host, project_name, job_name),
+                      json={'scheduled_at': execution_date,
+                            'instance_name': instance_name,
+                            'instance_type': "TYPE_" + job_type.upper()})
 
         self._raise_error_if_request_failed(response)
         return response.json()
@@ -446,7 +447,7 @@ def optimus_notify(context, event_meta):
         "scheduled_at": current_schedule_date.strftime(TIMESTAMP_FORMAT),
         "attempt": context['task_instance'].try_number,
         "event_time": datetime.now().timestamp(),
-        
+
         "run_id": context.get('run_id'),                        # do we need this ?
         "duration": str(context.get('task_instance').duration), # do we need this ?
         "job_run_id": context.get('dag_run').run_id,            # do we need this ?
@@ -549,37 +550,40 @@ def operator_failure_event(context):
 
 
 def optimus_sla_miss_notify(dag, task_list, blocking_task_list, slas, blocking_tis):
-    params = dag.params
-    optimus_client = OptimusAPIClient(params["optimus_hostname"])
+    try:
+        params = dag.params
+        optimus_client = OptimusAPIClient(params["optimus_hostname"])
 
-    slamiss_alert = int(Variable.get("slamiss_alert", default_var=1))
-    if slamiss_alert != 1:
-        return "suppressed slamiss alert"
+        slamiss_alert = int(Variable.get("slamiss_alert", default_var=1))
+        if slamiss_alert != 1:
+            return "suppressed slamiss alert"
 
-    sla_list = []
-    for sla in slas:
-        sla_list.append({
-            'task_id': sla.task_id,
-            'dag_id': sla.dag_id,
-            'scheduled_at': sla.execution_date.strftime(TIMESTAMP_FORMAT),
-            'timestamp': sla.timestamp.strftime(TIMESTAMP_FORMAT)
-        })
+        sla_list = []
+        for sla in slas:
+            sla_list.append({
+                'task_id': sla.task_id,
+                'dag_id': sla.dag_id,
+                'scheduled_at': sla.execution_date.strftime(TIMESTAMP_FORMAT),
+                'timestamp': sla.timestamp.strftime(TIMESTAMP_FORMAT)
+            })
 
-    current_dag_id = dag.dag_id
-    webserver_url = conf.get(section='webserver', key='base_url')
-    message = {
-        "slas": sla_list,
-        "job_url": "{}/tree?dag_id={}".format(webserver_url, current_dag_id),
-    }
+        current_dag_id = dag.dag_id
+        webserver_url = conf.get(section='webserver', key='base_url')
+        message = {
+            "slas": sla_list,
+            "job_url": "{}/tree?dag_id={}".format(webserver_url, current_dag_id),
+        }
 
-    event = {
-        "type": "TYPE_SLA_MISS",
-        "value": message,
-    }
-    # post event
-    resp = optimus_client.notify_event(params["project_name"], params["namespace"], params["job_name"], event)
-    print("posted event ", params, event, resp)
-    return
+        event = {
+            "type": "TYPE_SLA_MISS",
+            "value": message,
+        }
+        # post event
+        resp = optimus_client.notify_event(params["project_name"], params["namespace"], params["job_name"], event)
+        print("posted event ", params, event, resp)
+        return
+    except Exception as e:
+        print(e)
 
 
 # everything below this is here for legacy reasons, should be cleaned up in future
