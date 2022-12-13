@@ -55,26 +55,7 @@ func (i internalUpstreamResolver) BulkResolve(ctx context.Context, projectName t
 		return nil, errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg)
 	}
 
-	var jobsWithMergedUpstream []*job.WithUpstream
-	for _, jobWithUnresolvedUpstream := range jobsWithUnresolvedUpstream {
-		internalUpstream := allInternalUpstreamMap[jobWithUnresolvedUpstream.Name()]
-		internalUpstreamMapByFullName := job.Upstreams(internalUpstream).ToFullNameAndUpstreamMap()
-		internalUpstreamMapByDestination := job.Upstreams(internalUpstream).ToResourceDestinationAndUpstreamMap()
-
-		var mergedUpstream []*job.Upstream
-		for _, unresolvedUpstream := range jobWithUnresolvedUpstream.Upstreams() {
-			if resolvedUpstream, ok := internalUpstreamMapByFullName[unresolvedUpstream.FullName()]; ok {
-				mergedUpstream = append(mergedUpstream, resolvedUpstream)
-				continue
-			}
-			if resolvedUpstream, ok := internalUpstreamMapByDestination[unresolvedUpstream.Resource().String()]; ok {
-				mergedUpstream = append(mergedUpstream, resolvedUpstream)
-				continue
-			}
-			mergedUpstream = append(mergedUpstream, unresolvedUpstream)
-		}
-		jobsWithMergedUpstream = append(jobsWithMergedUpstream, job.NewWithUpstream(jobWithUnresolvedUpstream.Job(), mergedUpstream))
-	}
+	jobsWithMergedUpstream := job.WithUpstreamList(jobsWithUnresolvedUpstream).MergeWithResolvedUpstream(allInternalUpstreamMap)
 	return jobsWithMergedUpstream, nil
 }
 

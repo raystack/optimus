@@ -154,6 +154,30 @@ func (w WithUpstreamList) GetSubjectJobNames() []Name {
 	return names
 }
 
+func (w WithUpstreamList) MergeWithResolvedUpstream(resolvedUpstreamMap map[Name][]*Upstream) []*WithUpstream {
+	var jobsWithMergedUpstream []*WithUpstream
+	for _, jobWithUnresolvedUpstream := range w {
+		resolvedUpstreams := resolvedUpstreamMap[jobWithUnresolvedUpstream.Name()]
+		resolvedUpstreamMapByFullName := Upstreams(resolvedUpstreams).ToFullNameAndUpstreamMap()
+		resolvedUpstreamMapByDestination := Upstreams(resolvedUpstreams).ToResourceDestinationAndUpstreamMap()
+
+		var mergedUpstream []*Upstream
+		for _, unresolvedUpstream := range jobWithUnresolvedUpstream.Upstreams() {
+			if resolvedUpstream, ok := resolvedUpstreamMapByFullName[unresolvedUpstream.FullName()]; ok {
+				mergedUpstream = append(mergedUpstream, resolvedUpstream)
+				continue
+			}
+			if resolvedUpstream, ok := resolvedUpstreamMapByDestination[unresolvedUpstream.Resource().String()]; ok {
+				mergedUpstream = append(mergedUpstream, resolvedUpstream)
+				continue
+			}
+			mergedUpstream = append(mergedUpstream, unresolvedUpstream)
+		}
+		jobsWithMergedUpstream = append(jobsWithMergedUpstream, NewWithUpstream(jobWithUnresolvedUpstream.Job(), mergedUpstream))
+	}
+	return jobsWithMergedUpstream
+}
+
 type Upstream struct {
 	name     Name
 	host     string

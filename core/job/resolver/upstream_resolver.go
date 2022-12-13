@@ -52,19 +52,19 @@ func (u UpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.Pr
 		jobsWithUnresolvedUpstream = append(jobsWithUnresolvedUpstream, jobWithUnresolvedUpstream)
 	}
 
-	jobsWithInternalUpstream, err := u.internalUpstreamResolver.BulkResolve(ctx, projectName, jobsWithUnresolvedUpstream)
+	jobsWithResolvedInternalUpstreams, err := u.internalUpstreamResolver.BulkResolve(ctx, projectName, jobsWithUnresolvedUpstream)
 	if err != nil {
 		errorMsg := fmt.Sprintf("unable to resolve upstream: %s", err.Error())
 		logWriter.Write(writer.LogLevelError, errorMsg)
 		return nil, errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg)
 	}
 
-	jobsWithInternalExternalUpstream, err := u.externalUpstreamResolver.BulkResolve(ctx, jobsWithInternalUpstream, logWriter)
+	jobsWithResolvedExternalUpstreams, err := u.externalUpstreamResolver.BulkResolve(ctx, jobsWithResolvedInternalUpstreams, logWriter)
 	me.Append(err)
 
-	me.Append(u.getUnresolvedUpstreamsErrors(jobsWithInternalExternalUpstream, logWriter))
+	me.Append(u.getUnresolvedUpstreamsErrors(jobsWithResolvedExternalUpstreams, logWriter))
 
-	return jobsWithInternalExternalUpstream, errors.MultiToError(me)
+	return jobsWithResolvedExternalUpstreams, errors.MultiToError(me)
 }
 
 func (u UpstreamResolver) Resolve(ctx context.Context, subjectJob *job.Job, logWriter writer.LogWriter) ([]*job.Upstream, error) {

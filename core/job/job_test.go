@@ -238,6 +238,33 @@ func TestEntityJob(t *testing.T) {
 				assert.EqualValues(t, []job.Name{"job-A", "job-B"}, result)
 			})
 		})
+		t.Run("MergeWithResolvedUpstream", func(t *testing.T) {
+			upstreamCUnresolved := job.NewUpstreamUnresolvedStatic("job-C", project.Name())
+			upstreamDUnresolved := job.NewUpstreamUnresolvedInferred("project.dataset.sample-d")
+			upstreamEUnresolved := job.NewUpstreamUnresolvedStatic("job-E", project.Name())
+			upstreamFUnresolved := job.NewUpstreamUnresolvedInferred("project.dataset.sample-f")
+
+			upstreamCResolved := job.NewUpstreamResolved("job-C", "host-sample", "project.dataset.sample-c", sampleTenant, job.UpstreamTypeStatic, "bq2bq", false)
+			upstreamDResolved := job.NewUpstreamResolved("job-D", "host-sample", "project.dataset.sample-d", sampleTenant, job.UpstreamTypeInferred, "bq2bq", false)
+
+			resolvedUpstreamMap := map[job.Name][]*job.Upstream{
+				"job-A": {upstreamCResolved, upstreamDResolved},
+				"job-B": {upstreamDResolved},
+			}
+
+			expected := []*job.WithUpstream{
+				job.NewWithUpstream(jobA, []*job.Upstream{upstreamCResolved, upstreamDResolved, upstreamEUnresolved}),
+				job.NewWithUpstream(jobB, []*job.Upstream{upstreamDResolved, upstreamEUnresolved, upstreamFUnresolved}),
+			}
+
+			jobsWithUnresolvedUpstream := []*job.WithUpstream{
+				job.NewWithUpstream(jobA, []*job.Upstream{upstreamCUnresolved, upstreamDUnresolved, upstreamEUnresolved}),
+				job.NewWithUpstream(jobB, []*job.Upstream{upstreamDUnresolved, upstreamEUnresolved, upstreamFUnresolved}),
+			}
+
+			result := job.WithUpstreamList(jobsWithUnresolvedUpstream).MergeWithResolvedUpstream(resolvedUpstreamMap)
+			assert.EqualValues(t, expected, result)
+		})
 	})
 
 	t.Run("Downstream", func(t *testing.T) {
