@@ -248,11 +248,16 @@ func (j *JobSpec) MergeFrom(anotherJobSpec JobSpec) {
 	j.Schedule.Interval = getValue(j.Schedule.Interval, anotherJobSpec.Schedule.Interval)
 	j.Schedule.StartDate = getValue(j.Schedule.StartDate, anotherJobSpec.Schedule.StartDate)
 	j.Schedule.EndDate = getValue(j.Schedule.EndDate, anotherJobSpec.Schedule.EndDate)
-	if j.Behavior.Retry != nil {
-		j.Behavior.Retry.ExponentialBackoff = getValue(j.Behavior.Retry.ExponentialBackoff, anotherJobSpec.Behavior.Retry.ExponentialBackoff)
-		j.Behavior.Retry.Delay = getValue(j.Behavior.Retry.Delay, anotherJobSpec.Behavior.Retry.Delay)
-		j.Behavior.Retry.Count = getValue(j.Behavior.Retry.Count, anotherJobSpec.Behavior.Retry.Count)
+
+	if anotherJobSpec.Behavior.Retry == nil {
+		anotherJobSpec.Behavior.Retry = &JobSpecBehaviorRetry{}
 	}
+	if j.Behavior.Retry == nil {
+		j.Behavior.Retry = &JobSpecBehaviorRetry{}
+	}
+	j.Behavior.Retry.ExponentialBackoff = getValue(j.Behavior.Retry.ExponentialBackoff, anotherJobSpec.Behavior.Retry.ExponentialBackoff)
+	j.Behavior.Retry.Delay = getValue(j.Behavior.Retry.Delay, anotherJobSpec.Behavior.Retry.Delay)
+	j.Behavior.Retry.Count = getValue(j.Behavior.Retry.Count, anotherJobSpec.Behavior.Retry.Count)
 	j.Behavior.DependsOnPast = getValue(j.Behavior.DependsOnPast, anotherJobSpec.Behavior.DependsOnPast)
 	j.Behavior.Catchup = getValue(j.Behavior.Catchup, anotherJobSpec.Behavior.Catchup)
 

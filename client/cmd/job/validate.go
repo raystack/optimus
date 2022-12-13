@@ -68,7 +68,7 @@ func (v *validateCommand) RunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	jobSpecReadWriter, err := specio.NewJobSpecReadWriter(afero.NewOsFs())
+	jobSpecReadWriter, err := specio.NewJobSpecReadWriter(afero.NewOsFs(), specio.WithJobSpecParentReading())
 	if err != nil {
 		return err
 	}
