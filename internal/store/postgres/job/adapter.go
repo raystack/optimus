@@ -308,12 +308,30 @@ func toConfig(configSpec *job.Config) ([]byte, error) {
 }
 
 func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
+	version, err := job.VersionFrom(jobSpec.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	jobName, err := job.NameFrom(jobSpec.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	owner, err := job.OwnerFrom(jobSpec.Owner)
+	if err != nil {
+		return nil, err
+	}
+
 	startDate, err := job.ScheduleDateFrom(jobSpec.StartDate.Format(job.DateLayout))
 	if err != nil {
 		return nil, err
 	}
 
-	scheduleBuilder := job.NewScheduleBuilder(startDate).WithCatchUp(jobSpec.CatchUp).WithDependsOnPast(jobSpec.DependsOnPast).WithInterval(jobSpec.Interval)
+	scheduleBuilder := job.NewScheduleBuilder(startDate).
+		WithCatchUp(jobSpec.CatchUp).
+		WithDependsOnPast(jobSpec.DependsOnPast).
+		WithInterval(jobSpec.Interval)
 
 	if !jobSpec.EndDate.IsZero() {
 		endDate, err := job.ScheduleDateFrom(jobSpec.EndDate.Format(job.DateLayout))
@@ -363,45 +381,57 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 		return nil, err
 	}
 	task := job.NewTaskBuilder(taskName, taskConfig).Build()
+	jobSpecBuilder := job.NewSpecBuilder(version, jobName, owner, schedule, window, task).WithDescription(jobSpec.Description)
 
-	var labels map[string]string
 	if jobSpec.Labels != nil {
+		var labels map[string]string
 		if err := json.Unmarshal(jobSpec.Labels, &labels); err != nil {
 			return nil, err
 		}
+		jobSpecBuilder = jobSpecBuilder.WithLabels(labels)
 	}
 
-	hooks, err := fromStorageHooks(jobSpec.Hooks)
-	if err != nil {
-		return nil, err
+	if jobSpec.Hooks != nil {
+		hooks, err := fromStorageHooks(jobSpec.Hooks)
+		if err != nil {
+			return nil, err
+		}
+		jobSpecBuilder = jobSpecBuilder.WithHooks(hooks)
 	}
 
-	alerts, err := fromStorageAlerts(jobSpec.Alert)
-	if err != nil {
-		return nil, err
+	if jobSpec.Alert != nil {
+		alerts, err := fromStorageAlerts(jobSpec.Alert)
+		if err != nil {
+			return nil, err
+		}
+		jobSpecBuilder = jobSpecBuilder.WithAlerts(alerts)
 	}
 
+	upstreamSpecBuilder := job.NewSpecUpstreamBuilder()
 	var httpUpstreams []*job.SpecHTTPUpstream
 	if jobSpec.HTTPUpstreams != nil {
 		if err := json.Unmarshal(jobSpec.HTTPUpstreams, &httpUpstreams); err != nil {
 			return nil, err
 		}
+		upstreamSpecBuilder = upstreamSpecBuilder.WithSpecHTTPUpstream(httpUpstreams)
 	}
 
 	var upstreamNames []job.SpecUpstreamName
-	for _, staticUpstream := range jobSpec.StaticUpstreams {
-		upstreamNames = append(upstreamNames, job.SpecUpstreamNameFrom(staticUpstream))
+	if jobSpec.StaticUpstreams != nil {
+		for _, staticUpstream := range jobSpec.StaticUpstreams {
+			upstreamNames = append(upstreamNames, job.SpecUpstreamNameFrom(staticUpstream))
+		}
+		upstreamSpecBuilder = upstreamSpecBuilder.WithUpstreamNames(upstreamNames)
 	}
 
-	var upstreams *job.UpstreamSpec
-	if upstreamNames != nil || httpUpstreams != nil {
-		upstreams, err = job.NewSpecUpstreamBuilder().WithUpstreamNames(upstreamNames).WithSpecHTTPUpstream(httpUpstreams).Build()
+	if httpUpstreams != nil || upstreamNames != nil {
+		upstreamSpec, err := upstreamSpecBuilder.Build()
 		if err != nil {
 			return nil, err
 		}
+		jobSpecBuilder = jobSpecBuilder.WithSpecUpstream(upstreamSpec)
 	}
 
-	var metadata *job.Metadata
 	if jobSpec.Metadata != nil {
 		var storeMetadata Metadata
 		if err := json.Unmarshal(jobSpec.Metadata, &storeMetadata); err != nil {
@@ -423,55 +453,26 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 		if storeMetadata.Scheduler != nil {
 			metadataBuilder = metadataBuilder.WithScheduler(storeMetadata.Scheduler)
 		}
-		metadata, err = metadataBuilder.Build()
+		metadata, err := metadataBuilder.Build()
 		if err != nil {
 			return nil, err
 		}
+		jobSpecBuilder = jobSpecBuilder.WithMetadata(metadata)
 	}
 
-	version, err := job.VersionFrom(jobSpec.Version)
-	if err != nil {
-		return nil, err
-	}
-
-	jobName, err := job.NameFrom(jobSpec.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	owner, err := job.OwnerFrom(jobSpec.Owner)
-	if err != nil {
-		return nil, err
-	}
-
-	var asset *job.Asset
 	if jobSpec.Assets != nil {
 		assetsMap, err := fromStorageAssets(jobSpec.Assets)
 		if err != nil {
 			return nil, err
 		}
-		asset, err = job.NewAsset(assetsMap)
+		asset, err := job.NewAsset(assetsMap)
 		if err != nil {
 			return nil, err
 		}
+		jobSpecBuilder = jobSpecBuilder.WithAsset(asset)
 	}
 
-	return job.NewSpecBuilder(
-		version,
-		jobName,
-		owner,
-		schedule,
-		window,
-		task,
-	).
-		WithDescription(jobSpec.Description).
-		WithLabels(labels).
-		WithHooks(hooks).
-		WithAlerts(alerts).
-		WithSpecUpstream(upstreams).
-		WithMetadata(metadata).
-		WithAsset(asset).
-		Build(), nil
+	return jobSpecBuilder.Build(), nil
 }
 
 func fromStorageHooks(raw []byte) ([]*job.Hook, error) {

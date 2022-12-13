@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/kushsharma/parallel"
@@ -469,7 +470,7 @@ func (j JobService) differentiateSpecs(ctx context.Context, jobTenant tenant.Ten
 	for _, incomingSpec := range specs {
 		if spec, ok := existingSpecsMap[incomingSpec.Name()]; !ok {
 			addedSpecs = append(addedSpecs, incomingSpec)
-		} else if !spec.IsEqual(incomingSpec) {
+		} else if !reflect.DeepEqual(spec, incomingSpec) {
 			modifiedSpecs = append(modifiedSpecs, incomingSpec)
 		}
 	}

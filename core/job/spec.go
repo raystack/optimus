@@ -2,7 +2,6 @@ package job
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
@@ -80,68 +79,6 @@ func (s Spec) Asset() *Asset {
 
 func (s Spec) Metadata() *Metadata {
 	return s.metadata
-}
-
-func (s Spec) IsEqual(otherSpec *Spec) bool {
-	if s.version != otherSpec.version {
-		return false
-	}
-	if s.name != otherSpec.name {
-		return false
-	}
-	if s.owner != otherSpec.owner {
-		return false
-	}
-	if !reflect.DeepEqual(s.schedule, otherSpec.schedule) {
-		return false
-	}
-	if !reflect.DeepEqual(s.window, otherSpec.window) {
-		return false
-	}
-	if !reflect.DeepEqual(s.task, otherSpec.task) {
-		return false
-	}
-	if s.description != otherSpec.description {
-		return false
-	}
-	if !reflect.DeepEqual(s.labels, otherSpec.labels) {
-		return false
-	}
-	if !reflect.DeepEqual(s.metadata, otherSpec.metadata) {
-		return false
-	}
-	if !reflect.DeepEqual(s.hooks, otherSpec.hooks) {
-		return false
-	}
-
-	if !reflect.DeepEqual(s.asset, otherSpec.asset) {
-		if s.asset == nil && otherSpec.asset.assets != nil {
-			return false
-		}
-		if otherSpec.asset == nil && s.asset.assets != nil {
-			return false
-		}
-		if !reflect.DeepEqual(s.asset.assets, otherSpec.asset.assets) {
-			return false
-		}
-	}
-
-	// TODO: avoid this complexity. make sure constructing from proto and reading from db are similar.
-	if !reflect.DeepEqual(s.upstreamSpec, otherSpec.upstreamSpec) {
-		if s.upstreamSpec == nil && (otherSpec.upstreamSpec.UpstreamNames() != nil || otherSpec.upstreamSpec.HTTPUpstreams() != nil) {
-			return false
-		}
-		if otherSpec.upstreamSpec == nil && (s.upstreamSpec.UpstreamNames() != nil || s.upstreamSpec.HTTPUpstreams() != nil) {
-			return false
-		}
-		if s.upstreamSpec != nil && otherSpec.upstreamSpec != nil {
-			if !reflect.DeepEqual(s.upstreamSpec.httpUpstreams, otherSpec.upstreamSpec.httpUpstreams) || !reflect.DeepEqual(s.upstreamSpec.upstreamNames, otherSpec.upstreamSpec.upstreamNames) {
-				return false
-			}
-		}
-	}
-
-	return reflect.DeepEqual(s.alertSpecs, otherSpec.alertSpecs)
 }
 
 type SpecBuilder struct {
