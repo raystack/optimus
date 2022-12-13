@@ -250,11 +250,7 @@ func toStorageHook(spec *job.Hook) (Hook, error) {
 }
 
 func toStorageAsset(assetSpecs map[string]string) ([]byte, error) {
-	var assets []Asset
-	for key, val := range assetSpecs {
-		assets = append(assets, Asset{Name: key, Value: val})
-	}
-	assetsJSON, err := json.Marshal(assets)
+	assetsJSON, err := json.Marshal(assetSpecs)
 	if err != nil {
 		return nil, err
 	}
@@ -308,11 +304,7 @@ func toConfig(configSpec *job.Config) ([]byte, error) {
 	if configSpec == nil {
 		return nil, nil
 	}
-	// TODO: avoid wrapping with Config
-	config := Config{
-		Configs: configSpec.Configs(),
-	}
-	return json.Marshal(config)
+	return json.Marshal(configSpec.Configs())
 }
 
 func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
@@ -357,11 +349,11 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 
 	var taskConfig *job.Config
 	if jobSpec.TaskConfig != nil {
-		storageTaskConfig := &Config{}
-		if err := json.Unmarshal(jobSpec.TaskConfig, storageTaskConfig); err != nil {
+		var configMap map[string]string
+		if err := json.Unmarshal(jobSpec.TaskConfig, &configMap); err != nil {
 			return nil, err
 		}
-		taskConfig, err = job.NewConfig(storageTaskConfig.Configs)
+		taskConfig, err = job.NewConfig(configMap)
 		if err != nil {
 			return nil, err
 		}
@@ -487,12 +479,12 @@ func fromStorageHooks(raw []byte) ([]*job.Hook, error) {
 		return nil, nil
 	}
 
-	hooks := []Hook{}
+	var hooks []Hook
 	if err := json.Unmarshal(raw, &hooks); err != nil {
 		return nil, err
 	}
 
-	jobHooks := []*job.Hook{}
+	var jobHooks []*job.Hook
 	for _, hook := range hooks {
 		jobHook, err := fromStorageHook(hook)
 		if err != nil {
@@ -505,11 +497,11 @@ func fromStorageHooks(raw []byte) ([]*job.Hook, error) {
 }
 
 func fromStorageHook(hook Hook) (*job.Hook, error) {
-	mapConfig := map[string]string{}
-	if err := json.Unmarshal(hook.Config, &mapConfig); err != nil {
+	var configMap map[string]string
+	if err := json.Unmarshal(hook.Config, &configMap); err != nil {
 		return nil, err
 	}
-	config, err := job.NewConfig(mapConfig)
+	config, err := job.NewConfig(configMap)
 	if err != nil {
 		return nil, err
 	}
@@ -525,12 +517,12 @@ func fromStorageAlerts(raw []byte) ([]*job.AlertSpec, error) {
 		return nil, nil
 	}
 
-	alerts := []Alert{}
+	var alerts []Alert
 	if err := json.Unmarshal(raw, &alerts); err != nil {
 		return nil, err
 	}
 
-	jobAlerts := []*job.AlertSpec{}
+	var jobAlerts []*job.AlertSpec
 	for _, alert := range alerts {
 		config, err := job.NewConfig(alert.Config)
 		if err != nil {
@@ -549,18 +541,9 @@ func fromStorageAlerts(raw []byte) ([]*job.AlertSpec, error) {
 }
 
 func fromStorageAssets(raw []byte) (map[string]string, error) {
-	jobAssets := make(map[string]string)
-	assets := []Asset{}
-	if err := json.Unmarshal(raw, &assets); err != nil {
+	var assetsMap map[string]string
+	if err := json.Unmarshal(raw, &assetsMap); err != nil {
 		return nil, err
 	}
-
-	if len(assets) == 0 {
-		return jobAssets, nil
-	}
-
-	for _, asset := range assets {
-		jobAssets[asset.Name] = asset.Value
-	}
-	return jobAssets, nil
+	return assetsMap, nil
 }

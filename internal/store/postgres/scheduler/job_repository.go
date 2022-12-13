@@ -121,13 +121,13 @@ func (j *Job) toJob() (*scheduler.Job, error) {
 	}
 
 	if j.TaskConfig != nil {
-		taskConfig := map[string]map[string]string{} // todo: later make a simple map
+		taskConfig := map[string]string{}
 		if err := json.Unmarshal(j.TaskConfig, &taskConfig); err != nil {
 			return nil, err
 		}
 		schedulerJob.Task = &scheduler.Task{
 			Name:   j.TaskName,
-			Config: taskConfig["Configs"], // todo: discuss and get sorted
+			Config: taskConfig,
 		}
 	}
 
@@ -140,13 +140,9 @@ func (j *Job) toJob() (*scheduler.Job, error) {
 	}
 
 	if j.Assets != nil {
-		assetsTemp := []map[string]string{} // todo: fix, assets temp should not be needed after JOB BC change
-		if err := json.Unmarshal(j.Assets, &assetsTemp); err != nil {
-			return nil, err
-		}
 		assets := map[string]string{}
-		for _, m := range assetsTemp {
-			assets[m["Name"]] = m["Value"]
+		if err := json.Unmarshal(j.Assets, &assets); err != nil {
+			return nil, err
 		}
 		schedulerJob.Assets = assets
 	}
