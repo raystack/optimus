@@ -434,13 +434,11 @@ func toUpstreamProtos(upstreams []*job.Upstream, upstreamSpec *job.UpstreamSpec,
 	var unknownUpstreamProtos []*pb.JobInspectResponse_UpstreamSection_UnknownDependencies
 	for _, upstream := range upstreams {
 		if upstream.State() != job.UpstreamStateResolved {
-			if upstream.Type() == job.UpstreamTypeStatic {
-				unknownUpstreamProtos = append(unknownUpstreamProtos, &pb.JobInspectResponse_UpstreamSection_UnknownDependencies{
-					JobName:             upstream.Name().String(),
-					ProjectName:         upstream.ProjectName().String(),
-					ResourceDestination: upstream.Resource().String(),
-				})
-			}
+			unknownUpstreamProtos = append(unknownUpstreamProtos, &pb.JobInspectResponse_UpstreamSection_UnknownDependencies{
+				JobName:             upstream.Name().String(),
+				ProjectName:         upstream.ProjectName().String(),
+				ResourceDestination: upstream.Resource().String(),
+			})
 			continue
 		}
 		upstreamProto := &pb.JobInspectResponse_JobDependency{

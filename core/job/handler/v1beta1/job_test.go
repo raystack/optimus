@@ -1271,10 +1271,14 @@ func TestNewJobHandler(t *testing.T) {
 
 			upstreamB := job.NewUpstreamResolved("job-B", "", "resource-b", sampleTenant, "static", "bq2bq", false)
 			upstreamC := job.NewUpstreamResolved("job-C", "other-host", "resource-c", sampleTenant, "inferred", "bq2bq", true)
+			upstreamD := job.NewUpstreamUnresolvedInferred("resource-d")
+			upstreamE := job.NewUpstreamUnresolvedStatic("job-e", project.Name())
 
 			jobAUpstream := []*job.Upstream{
 				upstreamB,
 				upstreamC,
+				upstreamD,
+				upstreamE,
 			}
 			jobADownstream := []*job.Downstream{
 				job.NewDownstream("job-x", project.Name(), namespace.Name(), jobTask.Name()),
@@ -1345,6 +1349,15 @@ func TestNewJobHandler(t *testing.T) {
 							ProjectName:   upstreamB.ProjectName().String(),
 							NamespaceName: upstreamB.NamespaceName().String(),
 							TaskName:      upstreamB.TaskName().String(),
+						},
+					},
+					UnknownDependencies: []*pb.JobInspectResponse_UpstreamSection_UnknownDependencies{
+						{
+							ResourceDestination: upstreamD.Resource().String(),
+						},
+						{
+							JobName:     upstreamE.Name().String(),
+							ProjectName: upstreamE.ProjectName().String(),
 						},
 					},
 				},
