@@ -28,7 +28,7 @@ type operatorRun struct {
 
 	Name         string
 	OperatorType string
-	State        string
+	Status       string
 
 	StartTime time.Time `gorm:"not null"`
 	EndTime   time.Time `gorm:"default:TIMESTAMP '3000-01-01 00:00:00'"`
@@ -58,7 +58,7 @@ func (o operatorRun) toOperatorRun() *scheduler.OperatorRun {
 		JobRunID:     o.JobRunID,
 		Name:         o.Name,
 		OperatorType: scheduler.OperatorType(o.OperatorType),
-		State:        o.State,
+		Status:       o.Status,
 		StartTime:    o.StartTime,
 		EndTime:      o.EndTime,
 	}
@@ -70,7 +70,7 @@ func (o *OperatorRunRepository) GetOperatorRun(ctx context.Context, name string,
 	if err != nil {
 		return nil, err
 	}
-	getJobRunByID := `SELECT id, name, job_run_id, state, start_time, end_time FROM ` + operatorTableName + ` j where job_run_id = ? and name =?`
+	getJobRunByID := `SELECT id, name, job_run_id, status, start_time, end_time FROM ` + operatorTableName + ` j where job_run_id = ? and name =?`
 	err = o.db.WithContext(ctx).Raw(getJobRunByID, jobRunID, name).
 		Order(clause.OrderByColumn{Column: clause.Column{Name: "created_at"}, Desc: true}).
 		First(&opRun).Error
@@ -86,10 +86,8 @@ func (o *OperatorRunRepository) CreateOperatorRun(ctx context.Context, name stri
 	if err != nil {
 		return err
 	}
-	insertOperatorRun := `INSERT INTO ? ( job_run_id , name , state, start_time, end_time ) 
-	values (?,?, ?, ?, TIMESTAMP '3000-01-01 00:00:00' )`
-	return o.db.WithContext(ctx).Exec(insertOperatorRun, operatorTableName,
-		jobRunID, name, scheduler.StateRunning, startTime).Error
+	insertOperatorRun := `INSERT INTO ` + operatorTableName + ` ( job_run_id , name , status, start_time, end_time, created_at, updated_at) values ( ?, ?, ?, ?, TIMESTAMP '3000-01-01 00:00:00', NOW(), NOW())`
+	return o.db.WithContext(ctx).Exec(insertOperatorRun, jobRunID, name, scheduler.StateRunning, startTime).Error
 }
 
 func (o *OperatorRunRepository) UpdateOperatorRun(ctx context.Context, operatorType scheduler.OperatorType, operatorRunID uuid.UUID, eventTime time.Time, state string) error {
@@ -97,7 +95,7 @@ func (o *OperatorRunRepository) UpdateOperatorRun(ctx context.Context, operatorT
 	if err != nil {
 		return err
 	}
-	updateJobRun := "update ? set state = ? and end_time = ? where id = ?"
+	updateJobRun := "update ? set status = ?, end_time = ?, updated_at = NOW() where id = ?"
 	return o.db.WithContext(ctx).Exec(updateJobRun, operatorTableName, state, eventTime, operatorRunID).Error
 }
 

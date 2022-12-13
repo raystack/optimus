@@ -89,10 +89,10 @@ func (h JobRunHandler) JobRun(ctx context.Context, req *pb.JobRunRequest) (*pb.J
 	}
 
 	var jobRuns []*scheduler.JobRunStatus
-	jobRuns, err = h.service.GetJobRuns(ctx, projectName, jobName, criteria) // TODO: return not found if not runs found
+	jobRuns, err = h.service.GetJobRuns(ctx, projectName, jobName, criteria)
 	if err != nil {
 		if errors.IsErrorType(err, errors.ErrNotFound) {
-			return &pb.JobRunResponse{}, nil //todo: need strict review
+			return &pb.JobRunResponse{}, nil
 		}
 		return nil, errors.GRPCErr(err, "unable to get job run for "+req.GetJobName())
 	}
@@ -171,7 +171,7 @@ func (h JobRunHandler) RegisterJobEvent(ctx context.Context, req *pb.RegisterJob
 	if err != nil {
 		jobEventByteString, _ := json.Marshal(req.GetEvent())
 		h.l.Error(errors.InternalError(scheduler.EntityJobRun, "scheduler could not update job run state, event Payload::"+string(jobEventByteString), err).Error())
-		multiError.Append(errors.InternalError(scheduler.EntityJobRun, "scheduler could not update job run state", err))
+		multiError.Append(errors.InternalError(scheduler.EntityJobRun, "scheduler could not update job run state, err:"+err.Error(), err))
 	}
 
 	err = h.notifier.Push(ctx, event)

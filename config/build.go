@@ -9,7 +9,7 @@ const (
 
 var (
 	// overridden by the build system
-	BuildVersion = "dev"
+	BuildVersion = "v0.4.5-next"
 	BuildCommit  = ""
 	BuildDate    = ""
 )

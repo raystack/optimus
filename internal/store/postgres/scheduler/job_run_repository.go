@@ -14,7 +14,6 @@ import (
 )
 
 const (
-	jobRunColumns   = "job_name, namespace_name, project_name, scheduled_at, start_time, end_time, status, sla_definition"
 	jobRunTableName = "job_run"
 )
 
@@ -55,7 +54,7 @@ func (j jobRun) toJobRun() (*scheduler.JobRun, error) {
 
 func (j *JobRunRepository) GetByID(ctx context.Context, id scheduler.JobRunID) (*scheduler.JobRun, error) {
 	var jobRun jobRun
-	getJobRunByID := `SELECT ` + jobRunColumns + ` FROM ` + jobRunTableName + ` j where id = ?`
+	getJobRunByID := `SELECT  job_name, namespace_name, project_name, scheduled_at, start_time, end_time, status, sla_definition FROM ` + jobRunTableName + ` j where id = ?`
 	err := j.db.WithContext(ctx).Raw(getJobRunByID, id).First(&jobRun).Error
 	if err != nil {
 		return &scheduler.JobRun{}, err
@@ -65,9 +64,7 @@ func (j *JobRunRepository) GetByID(ctx context.Context, id scheduler.JobRunID) (
 
 func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) (*scheduler.JobRun, error) {
 	var jobRun jobRun
-	getJobRunByID := `SELECT ` + jobRunColumns + ` FROM job_run j 
-						where project_id = ? and namespace_id =?
-						job_name = ? and schedule_at = ?`
+	getJobRunByID := `SELECT id, job_name, namespace_name, project_name, scheduled_at, start_time, end_time, status, sla_definition FROM job_run j where project_name = ? and namespace_name = ? and job_name = ? and scheduled_at = ?`
 	err := j.db.WithContext(ctx).Raw(getJobRunByID, t.ProjectName(), t.NamespaceName(), jobName, scheduledAt).
 		Order(clause.OrderByColumn{Column: clause.Column{Name: "created_at"}, Desc: true}).
 		First(&jobRun).Error
@@ -81,15 +78,13 @@ func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t tenant.Tenant
 }
 
 func (j *JobRunRepository) Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, status string) error {
-	updateJobRun := "update" + jobRunTableName + "set status = " + status + " end_time = " + endTime.String() + " where id = " + jobRunID.String()
+	updateJobRun := "update" + jobRunTableName + "set status = " + status + ", end_time = " + endTime.String() + ", updated_at = NOW() where id = " + jobRunID.String()
 	return j.db.WithContext(ctx).Exec(updateJobRun).Error
 }
 
 func (j *JobRunRepository) Create(ctx context.Context, t tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error {
-	insertJobRun := `INSERT INTO job_run (` + jobRunColumns + `) values (?, ?, ?, ?, now(), TIMESTAMP '3000-01-01 00:00:00' , ?, ?) `
-	return j.db.WithContext(ctx).Exec(insertJobRun,
-		jobName.String(), t.NamespaceName().String(), t.ProjectName().String(),
-		scheduledAt, scheduler.StateRunning, slaDefinitionInSec).Error
+	insertJobRun := `INSERT INTO job_run (job_name, namespace_name, project_name, scheduled_at, start_time, end_time, status, sla_definition, created_at, updated_at) values (?, ?, ?, ?, NOW(), TIMESTAMP '3000-01-01 00:00:00', ?, ?, NOW(), NOW())`
+	return j.db.WithContext(ctx).Exec(insertJobRun, jobName.String(), t.NamespaceName().String(), t.ProjectName().String(), scheduledAt, scheduler.StateRunning, slaDefinitionInSec).Error
 }
 
 func NewJobRunRepository(db *gorm.DB) *JobRunRepository {

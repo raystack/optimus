@@ -246,7 +246,7 @@ func (s JobRunService) createOperatorRun(ctx context.Context, event scheduler.Ev
 			return err
 		}
 	} else {
-		if operatorRun.State == scheduler.StateRunning.String() {
+		if operatorRun.Status == scheduler.StateRunning.String() {
 			// operator run exists but is not yet finished
 			// this is a scenario where the old run has not concluded and a new create request rises
 			// this is done to takle the sensor poke scenario, until the airflow task operator either fails/succeeds/retries

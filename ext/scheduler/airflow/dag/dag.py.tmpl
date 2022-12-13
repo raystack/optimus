@@ -144,6 +144,7 @@ init_container = k8s.V1Container(
     optimus_namespacename="{{$.Tenant.NamespaceName.String}}",
     optimus_jobname="{{.JobDetails.Name}}",
     optimus_jobtype="{{$.ExecutorTask}}",
+    optimus_instancename="{{.Task.Name}}",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image={{  .Task.Image | quote}},

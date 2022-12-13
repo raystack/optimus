@@ -3,8 +3,8 @@ app:
     environment: dev
 
 image:
-  repository: odpf/optimus
-  tag: "0.4.1"
+  repository: optimus-dev
+  tag: "latest"
   pullPolicy: IfNotPresent
 
 container:

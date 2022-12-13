@@ -18,6 +18,12 @@ build: # build optimus binary
 	@go build -ldflags "-X ${NAME}/config.BuildVersion=${OPMS_VERSION} -X ${NAME}/config.BuildCommit=${LAST_COMMIT}" -o optimus .
 	@echo " - build complete"
 
+build-linux: # build optimus binary for linux
+	@echo " > notice: skipped proto generation, use 'generate-proto' make command"
+	@echo " > building optimus version ${OPMS_VERSION}"
+	@GOOS=linux GOARCH=arm64 go build -ldflags "-X ${NAME}/config.BuildVersion=${OPMS_VERSION} -X ${NAME}/config.BuildCommit=${LAST_COMMIT}" -o optimus .
+	@echo " - build complete"
+
 test-ci: unit-test-ci vet ## run tests
 
 scheduler-resource-test:

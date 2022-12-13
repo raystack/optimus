@@ -113,6 +113,7 @@ transformation_bq__dash__bq = SuperKubernetesPodOperator(
     optimus_namespacename="billing",
     optimus_jobname="infra.billing.weekly-status-reports",
     optimus_jobtype="task",
+    optimus_instancename="bq-bq",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="example.io/namespace/bq2bq-executor:latest",

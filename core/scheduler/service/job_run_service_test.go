@@ -426,7 +426,7 @@ func TestJobRunService(t *testing.T) {
 						Name:         "task_bq2bq",
 						JobRunID:     jobRun.ID,
 						OperatorType: scheduler.OperatorTask,
-						State:        scheduler.StateRunning.String(),
+						Status:       scheduler.StateRunning.String(),
 					}
 					operatorRunRepository := new(mockOperatorRunRepository)
 					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(&operatorRun, nil)
@@ -444,7 +444,7 @@ func TestJobRunService(t *testing.T) {
 						Name:         "task_bq2bq",
 						JobRunID:     jobRun.ID,
 						OperatorType: scheduler.OperatorTask,
-						State:        scheduler.StateFailed.String(),
+						Status:       scheduler.StateFailed.String(),
 					}
 					operatorRunRepository := new(mockOperatorRunRepository)
 					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(&operatorRun, nil)
@@ -491,7 +491,7 @@ func TestJobRunService(t *testing.T) {
 					Name:         "task_bq2bq",
 					JobRunID:     jobRun.ID,
 					OperatorType: scheduler.OperatorTask,
-					State:        scheduler.StateRunning.String(),
+					Status:       scheduler.StateRunning.String(),
 				}
 				t.Run("scenario OperatorRun not found and new operator creation fails", func(t *testing.T) {
 					operatorRunRepository := new(mockOperatorRunRepository)
