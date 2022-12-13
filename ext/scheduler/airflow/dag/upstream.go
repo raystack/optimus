@@ -24,16 +24,22 @@ type Upstream struct {
 	TaskName string
 }
 
-func SetupUpstreams(upstreams scheduler.Upstreams) Upstreams {
+func SetupUpstreams(upstreams scheduler.Upstreams, host string) Upstreams {
 	var ups []Upstream
 	for _, u := range upstreams.UpstreamJobs {
 		if u.State != "resolved" {
 			continue
 		}
+		var upstreamHost string
+		if !u.External {
+			upstreamHost = host
+		} else {
+			upstreamHost = u.Host
+		}
 		upstream := Upstream{
 			JobName:  u.JobName,
 			Tenant:   u.Tenant,
-			Host:     u.Host,
+			Host:     upstreamHost,
 			TaskName: u.TaskName,
 		}
 		ups = append(ups, upstream)

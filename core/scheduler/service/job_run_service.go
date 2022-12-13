@@ -292,6 +292,7 @@ func (s JobRunService) updateOperatorRun(ctx context.Context, event scheduler.Ev
 }
 
 func (s JobRunService) UpdateJobState(ctx context.Context, event scheduler.Event) error {
+	s.l.Debug(fmt.Sprintf("received event: %#v ", event))
 	switch event.Type {
 	case scheduler.JobSuccessEvent, scheduler.JobFailureEvent:
 		return s.updateJobRun(ctx, event)

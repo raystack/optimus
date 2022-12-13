@@ -43,7 +43,7 @@ func (c *Compiler) Compile(jobDetails *scheduler.JobWithDetails) ([]byte, error)
 
 	runtimeConfig := SetupRuntimeConfig(jobDetails)
 
-	upstreams := SetupUpstreams(jobDetails.Upstreams)
+	upstreams := SetupUpstreams(jobDetails.Upstreams, c.hostname)
 
 	templateContext := TemplateContext{
 		JobDetails:      jobDetails,

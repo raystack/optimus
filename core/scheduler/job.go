@@ -180,5 +180,6 @@ type JobUpstream struct {
 	DestinationURN string        //- bigquery://pilot.playground.table
 	Tenant         tenant.Tenant // Current or external tenant
 	Type           string
+	External       bool
 	State          string
 }

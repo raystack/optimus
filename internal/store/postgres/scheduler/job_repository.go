@@ -54,6 +54,7 @@ func (j *JobUpstreams) toJobUpstreams() (*scheduler.JobUpstream, error) {
 		DestinationURN: j.UpstreamResourceUrn,
 		Tenant:         t,
 		Type:           j.UpstreamType,
+		External:       j.UpstreamExternal,
 		State:          j.UpstreamState,
 	}, err
 }
