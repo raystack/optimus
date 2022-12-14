@@ -468,7 +468,6 @@ func (j JobRepository) ReplaceUpstreams(ctx context.Context, jobsWithUpstreams [
 		storageJobUpstreams = append(storageJobUpstreams, upstream...)
 	}
 
-	// TODO: check how to optimize lock: row level not table level lock
 	return j.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var jobFullName []string
 		for _, upstream := range storageJobUpstreams {
