@@ -65,7 +65,7 @@ func (repo ProjectRepository) get(ctx context.Context, name tenant.ProjectName) 
 	var project Project
 
 	getProjectByNameQuery := `SELECT ` + projectColumns + ` FROM project WHERE name = $1 AND deleted_at IS NULL`
-	err := repo.pool.QueryRow(ctx, getProjectByNameQuery, name.String()).
+	err := repo.pool.QueryRow(ctx, getProjectByNameQuery, name).
 		Scan(&project.ID, &project.Name, &project.Config, &project.CreatedAt, &project.UpdatedAt)
 	if err != nil {
 		return Project{}, err
