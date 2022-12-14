@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/odpf/salt/log"
 	"gorm.io/gorm"
 
@@ -16,6 +17,7 @@ import (
 
 var (
 	optimusDB  *gorm.DB
+	dbPool     *pgxpool.Pool
 	initDBOnce sync.Once
 )
 
@@ -23,6 +25,12 @@ func TestDB() *gorm.DB {
 	initDBOnce.Do(migrateDB)
 
 	return optimusDB
+}
+
+func TestPool() *pgxpool.Pool {
+	initDBOnce.Do(migrateDB)
+
+	return dbPool
 }
 
 func mustReadDBConfig() string {
@@ -41,8 +49,8 @@ func migrateDB() {
 
 	dbConf := config.DBConfig{
 		DSN:               dbURL,
-		MaxIdleConnection: 1,
-		MaxOpenConnection: 1,
+		MinOpenConnection: 1,
+		MaxOpenConnection: 2,
 	}
 	dbConn, err := postgres.Connect(dbConf, os.Stdout)
 	if err != nil {
@@ -62,6 +70,12 @@ func migrateDB() {
 	if err := m.Up(ctx); err != nil {
 		panic(err)
 	}
+
+	pool, err := postgres.Open(dbConf)
+	if err != nil {
+		panic(err)
+	}
+	dbPool = pool
 
 	optimusDB = dbConn
 }
@@ -125,4 +139,27 @@ func TruncateTables(db *gorm.DB) {
 	db.Exec("TRUNCATE TABLE job_deployment CASCADE")
 
 	db.Exec("TRUNCATE TABLE job_upstream CASCADE")
+}
+
+func TruncateTablesWith(pool *pgxpool.Pool) {
+	ctx := context.Background()
+	pool.Exec(ctx, "TRUNCATE TABLE backup_old, resource_old CASCADE")
+	pool.Exec(ctx, "TRUNCATE TABLE backup CASCADE")
+	pool.Exec(ctx, "TRUNCATE TABLE replay CASCADE")
+	pool.Exec(ctx, "TRUNCATE TABLE resource CASCADE")
+
+	pool.Exec(ctx, "TRUNCATE TABLE job_run CASCADE")
+	pool.Exec(ctx, "TRUNCATE TABLE sensor_run CASCADE")
+	pool.Exec(ctx, "TRUNCATE TABLE task_run CASCADE")
+	pool.Exec(ctx, "TRUNCATE TABLE hook_run CASCADE")
+
+	pool.Exec(ctx, "TRUNCATE TABLE job CASCADE")
+
+	pool.Exec(ctx, "TRUNCATE TABLE secret CASCADE")
+	pool.Exec(ctx, "TRUNCATE TABLE namespace CASCADE")
+	pool.Exec(ctx, "TRUNCATE TABLE project CASCADE")
+
+	pool.Exec(ctx, "TRUNCATE TABLE job_deployment CASCADE")
+
+	pool.Exec(ctx, "TRUNCATE TABLE job_upstream CASCADE")
 }

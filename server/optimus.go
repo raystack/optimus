@@ -11,6 +11,7 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/hashicorp/go-hclog"
 	hPlugin "github.com/hashicorp/go-plugin"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	slackapi "github.com/slack-go/slack"
@@ -54,6 +55,7 @@ type OptimusServer struct {
 	conf   config.ServerConfig
 	logger log.Logger
 
+	dbPool *pgxpool.Pool
 	dbConn *gorm.DB
 	key    *[keyLength]byte
 
@@ -168,6 +170,12 @@ func (s *OptimusServer) setupDB() error {
 	if err != nil {
 		return fmt.Errorf("postgres.Connect: %w", err)
 	}
+
+	s.dbPool, err = postgres.Open(s.conf.Serve.DB)
+	if err != nil {
+		return fmt.Errorf("postgres.Open: %w", err)
+	}
+
 	return nil
 }
 
@@ -236,7 +244,7 @@ func (s *OptimusServer) Shutdown() {
 
 func (s *OptimusServer) setupHandlers() error {
 	// Tenant Bounded Context Setup
-	tProjectRepo := tenant.NewProjectRepository(s.dbConn)
+	tProjectRepo := tenant.NewProjectRepository(s.dbPool)
 	tNamespaceRepo := tenant.NewNamespaceRepository(s.dbConn)
 	tSecretRepo := tenant.NewSecretRepository(s.dbConn)
 

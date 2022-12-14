@@ -26,7 +26,7 @@ import (
 
 const tracingSpanKey = "otel:span"
 
-var tracer = otel.Tracer("optimus/store/postgres")
+var tracerOtel = otel.Tracer("optimus/store/postgres")
 
 // Connect connect to the DB with custom configuration.
 func Connect(dbConf config.DBConfig, writer io.Writer) (*gorm.DB, error) {
@@ -56,7 +56,7 @@ func Connect(dbConf config.DBConfig, writer io.Writer) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	sqlDB.SetMaxIdleConns(dbConf.MaxIdleConnection)
+	//sqlDB.SetMaxIdleConns(dbConf.MaxIdleConnection)
 	sqlDB.SetMaxOpenConns(dbConf.MaxOpenConnection)
 	return db, nil
 }
@@ -119,7 +119,7 @@ func beforeCallback(operation string) func(db *gorm.DB) {
 		if !trace.SpanFromContext(db.Statement.Context).IsRecording() {
 			return
 		}
-		_, span := tracer.Start(db.Statement.Context, operation)
+		_, span := tracerOtel.Start(db.Statement.Context, operation)
 		db.InstanceSet(tracingSpanKey, span)
 	}
 }

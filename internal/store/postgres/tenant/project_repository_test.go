@@ -6,8 +6,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/tenant"
 	postgres "github.com/odpf/optimus/internal/store/postgres/tenant"
@@ -25,11 +25,11 @@ func TestPostgresProjectRepository(t *testing.T) {
 		})
 
 	ctx := context.Background()
-	dbSetup := func() *gorm.DB {
-		dbConn := setup.TestDB()
-		setup.TruncateTables(dbConn)
+	dbSetup := func() *pgxpool.Pool {
+		dbPool := setup.TestPool()
+		setup.TruncateTablesWith(dbPool)
 
-		return dbConn
+		return dbPool
 	}
 
 	t.Run("Save", func(t *testing.T) {
@@ -108,7 +108,7 @@ func TestPostgresProjectRepository(t *testing.T) {
 
 			_, err := repo.GetByName(ctx, proj.Name())
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "not found for entity project: no record for t-optimus-1")
+			assert.EqualError(t, err, "not found for entity project: no project for t-optimus-1")
 		})
 		t.Run("returns the saved project with same name", func(t *testing.T) {
 			db := dbSetup()
