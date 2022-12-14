@@ -44,7 +44,6 @@ func ConvertSpecTo[T DatasetDetails | Table | View | ExternalTable](res *resourc
 		msg := fmt.Sprintf("%s: not able to decode spec for %s", err, res.FullName())
 		return nil, errors.InvalidArgument(resource.EntityResource, msg)
 	}
-
 	return &spec, nil
 }
 

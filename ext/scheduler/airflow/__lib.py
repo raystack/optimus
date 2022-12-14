@@ -447,11 +447,6 @@ def optimus_notify(context, event_meta):
         "scheduled_at": current_schedule_date.strftime(TIMESTAMP_FORMAT),
         "attempt": context['task_instance'].try_number,
         "event_time": datetime.now().timestamp(),
-
-        "run_id": context.get('run_id'),                        # do we need this ?
-        "duration": str(context.get('task_instance').duration), # do we need this ?
-        "job_run_id": context.get('dag_run').run_id,            # do we need this ?
-        "task_run_id": context.get('run_id'),                   # do we need this ?
     }
     message.update(event_meta)
 
@@ -484,7 +479,7 @@ def job_success_event(context):
     try:
         meta = {
             "event_type": "TYPE_JOB_SUCCESS",
-            "status": "FINISHED"
+            "status": "success"
         }
         optimus_notify(context, meta)
     except Exception as e:
@@ -494,7 +489,7 @@ def job_failure_event(context):
     try:
         meta = {
             "event_type": "TYPE_FAILURE",
-            "status": "FAIL"
+            "status": "failed"
         }
         optimus_notify(context, meta)
     except Exception as e:
@@ -507,7 +502,7 @@ def operator_start_event(context):
         run_type = get_run_type(context)
         meta = {
             "event_type": "TYPE_{}_START".format(run_type),
-            "status": "STARTED"
+            "status": "running"
         }
         optimus_notify(context, meta)
     except Exception as e:
@@ -517,7 +512,8 @@ def operator_success_event(context):
     try:
         run_type = get_run_type(context)
         meta = {
-            "event_type": "TYPE_{}_SUCCESS".format(run_type)
+            "event_type": "TYPE_{}_SUCCESS".format(run_type),
+            "status": "success"
         }
         optimus_notify(context, meta)
     except Exception as e:
@@ -528,7 +524,8 @@ def operator_retry_event(context):
     try:
         run_type = get_run_type(context)
         meta = {
-            "event_type": "TYPE_{}_RETRY".format(run_type)
+            "event_type": "TYPE_{}_RETRY".format(run_type),
+            "status": "retried"
         }
         optimus_notify(context, meta)
     except Exception as e:
@@ -539,7 +536,8 @@ def operator_failure_event(context):
     try:
         run_type = get_run_type(context)
         meta = {
-            "event_type": "TYPE_{}_FAIL".format(run_type)
+            "event_type": "TYPE_{}_FAIL".format(run_type),
+            "status": "failed"
         }
         if SCHEDULER_ERR_MSG in context.keys():
             meta[SCHEDULER_ERR_MSG] = context[SCHEDULER_ERR_MSG]

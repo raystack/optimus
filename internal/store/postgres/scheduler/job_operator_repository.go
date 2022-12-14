@@ -52,16 +52,20 @@ func operatorTypeToTableName(operatorType scheduler.OperatorType) (string, error
 	}
 }
 
-func (o operatorRun) toOperatorRun() *scheduler.OperatorRun {
+func (o operatorRun) toOperatorRun() (*scheduler.OperatorRun, error) {
+	status, err := scheduler.StateFromString(o.Status)
+	if err != nil {
+		return nil, errors.NewError(scheduler.EntityJobRun, "invalid job run state in database", err.Error())
+	}
 	return &scheduler.OperatorRun{
 		ID:           o.ID,
 		JobRunID:     o.JobRunID,
 		Name:         o.Name,
 		OperatorType: scheduler.OperatorType(o.OperatorType),
-		Status:       o.Status,
+		Status:       status,
 		StartTime:    o.StartTime,
 		EndTime:      o.EndTime,
-	}
+	}, nil
 }
 
 func (o *OperatorRunRepository) GetOperatorRun(ctx context.Context, name string, operatorType scheduler.OperatorType, jobRunID uuid.UUID) (*scheduler.OperatorRun, error) {
@@ -79,7 +83,7 @@ func (o *OperatorRunRepository) GetOperatorRun(ctx context.Context, name string,
 			return nil, errors.NotFound(scheduler.EntityJobRun, "no record for "+operatorType.String()+"/"+name+" for job_run ID: "+jobRunID.String())
 		}
 	}
-	return opRun.toOperatorRun(), nil
+	return opRun.toOperatorRun()
 }
 func (o *OperatorRunRepository) CreateOperatorRun(ctx context.Context, name string, operatorType scheduler.OperatorType, jobRunID uuid.UUID, startTime time.Time) error {
 	operatorTableName, err := operatorTypeToTableName(operatorType)
@@ -90,13 +94,13 @@ func (o *OperatorRunRepository) CreateOperatorRun(ctx context.Context, name stri
 	return o.db.WithContext(ctx).Exec(insertOperatorRun, jobRunID, name, scheduler.StateRunning, startTime).Error
 }
 
-func (o *OperatorRunRepository) UpdateOperatorRun(ctx context.Context, operatorType scheduler.OperatorType, operatorRunID uuid.UUID, eventTime time.Time, state string) error {
+func (o *OperatorRunRepository) UpdateOperatorRun(ctx context.Context, operatorType scheduler.OperatorType, operatorRunID uuid.UUID, eventTime time.Time, state scheduler.State) error {
 	operatorTableName, err := operatorTypeToTableName(operatorType)
 	if err != nil {
 		return err
 	}
-	updateJobRun := "update ? set status = ?, end_time = ?, updated_at = NOW() where id = ?"
-	return o.db.WithContext(ctx).Exec(updateJobRun, operatorTableName, state, eventTime, operatorRunID).Error
+	updateJobRun := "update " + operatorTableName + " set status = ?, end_time = ?, updated_at = NOW() where id = ?"
+	return o.db.WithContext(ctx).Exec(updateJobRun, state.String(), eventTime, operatorRunID).Error
 }
 
 func NewOperatorRunRepository(db *gorm.DB) *OperatorRunRepository {

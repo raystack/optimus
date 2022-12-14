@@ -52,6 +52,7 @@ func TestFromStringToEventType(t *testing.T) {
 				"someKey":      "someValue",
 				"event_time":   16000631600.0,
 				"task_id":      "some_txbq",
+				"status":       "running",
 				"scheduled_at": "2022--01-02T15:04:05Z",
 			}
 			jobName := JobName("some_job")
@@ -70,6 +71,7 @@ func TestFromStringToEventType(t *testing.T) {
 				"someKey":    "someValue",
 				"event_time": 16000631600.0,
 				"task_id":    "some_txbq",
+				"status":     "running",
 			}
 			jobName := JobName("some_job")
 			tnnt, err := tenant.NewTenant("someProject", "someNamespace")
@@ -86,6 +88,7 @@ func TestFromStringToEventType(t *testing.T) {
 			eventValues := map[string]any{
 				"someKey":      "someValue",
 				"event_time":   16000631600.0,
+				"status":       "running",
 				"scheduled_at": "2022-01-02T15:04:05Z",
 			}
 			jobName := JobName("some_job")
@@ -104,6 +107,7 @@ func TestFromStringToEventType(t *testing.T) {
 				"someKey":      "someValue",
 				"event_time":   "16000631600.0",
 				"task_id":      "some_txbq",
+				"status":       "running",
 				"scheduled_at": "2022-01-02T15:04:05Z",
 			}
 			jobName := JobName("some_job")
@@ -122,6 +126,7 @@ func TestFromStringToEventType(t *testing.T) {
 				"someKey":      "someValue",
 				"event_time":   16000631600.0,
 				"task_id":      "some_txbq",
+				"status":       "running",
 				"scheduled_at": "2022-01-02T15:04:05Z",
 			}
 			jobName := JobName("some_job")
@@ -140,6 +145,7 @@ func TestFromStringToEventType(t *testing.T) {
 				"someKey":      "someValue",
 				"event_time":   16000631600.0,
 				"task_id":      "some_txbq",
+				"status":       "running",
 				"scheduled_at": "2022-01-02T15:04:05Z",
 			}
 			jobName := JobName("some_job")
@@ -147,16 +153,16 @@ func TestFromStringToEventType(t *testing.T) {
 			eventTypeName := "TYPE_TASK_RETRY"
 			assert.Nil(t, err)
 
-			outputObj := Event{
+			var outputObj = Event{
 				JobName:        jobName,
 				Tenant:         tnnt,
 				Type:           TaskRetryEvent,
 				EventTime:      time.Date(2477, time.January, 14, 11, 53, 20, 0, time.UTC),
 				OperatorName:   "some_txbq",
+				Status:         StateRunning,
 				JobScheduledAt: time.Date(2022, time.January, 2, 15, 04, 05, 0, time.UTC),
 				Values:         eventValues,
 			}
-
 			output, err := EventFrom(eventTypeName, eventValues, jobName, tnnt)
 			assert.Nil(t, err)
 			assert.Equal(t, outputObj.JobScheduledAt, output.JobScheduledAt)

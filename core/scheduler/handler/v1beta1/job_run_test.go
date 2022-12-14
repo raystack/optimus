@@ -515,6 +515,7 @@ func TestJobRunHandler(t *testing.T) {
 					"url":          "https://example.io",
 					"event_time":   1600361600,
 					"task_id":      "wait_sample_select",
+					"status":       "success",
 					"scheduled_at": "2022-01-02T15:04:05Z",
 				},
 			)
@@ -557,6 +558,7 @@ func TestJobRunHandler(t *testing.T) {
 				map[string]interface{}{
 					"url":          "https://example.io",
 					"event_time":   1600361600,
+					"status":       "success",
 					"scheduled_at": "2022-01-02T15:04:05Z",
 					"task_id":      "wait_sample_select",
 				},

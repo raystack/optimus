@@ -46,7 +46,7 @@ type OperatorRun struct {
 	Name         string
 	JobRunID     uuid.UUID
 	OperatorType OperatorType
-	Status       string
+	Status       State
 	StartTime    time.Time
 	EndTime      time.Time
 }

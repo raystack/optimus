@@ -164,7 +164,6 @@ func (h JobRunHandler) RegisterJobEvent(ctx context.Context, req *pb.RegisterJob
 	if err != nil {
 		return nil, errors.GRPCErr(err, "unable to parse event")
 	}
-
 	multiError := errors.NewMultiError("errors in RegisterJobEvent")
 
 	err = h.service.UpdateJobState(ctx, event)

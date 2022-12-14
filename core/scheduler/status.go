@@ -15,6 +15,8 @@ const (
 	StateRunning  State = "running"
 	StateQueued   State = "queued"
 
+	StateRetry State = "retried"
+
 	StateSuccess State = "success"
 	StateFailed  State = "failed"
 )
@@ -29,6 +31,8 @@ func StateFromString(state string) (State, error) {
 		return StateAccepted, nil
 	case string(StateRunning):
 		return StateRunning, nil
+	case string(StateRetry):
+		return StateRetry, nil
 	case string(StateQueued):
 		return StateQueued, nil
 	case string(StateSuccess):

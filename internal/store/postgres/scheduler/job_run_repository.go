@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,10 +12,6 @@ import (
 	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
-)
-
-const (
-	jobRunTableName = "job_run"
 )
 
 type JobRunRepository struct {
@@ -54,7 +51,7 @@ func (j jobRun) toJobRun() (*scheduler.JobRun, error) {
 
 func (j *JobRunRepository) GetByID(ctx context.Context, id scheduler.JobRunID) (*scheduler.JobRun, error) {
 	var jobRun jobRun
-	getJobRunByID := `SELECT  job_name, namespace_name, project_name, scheduled_at, start_time, end_time, status, sla_definition FROM ` + jobRunTableName + ` j where id = ?`
+	getJobRunByID := `SELECT  job_name, namespace_name, project_name, scheduled_at, start_time, end_time, status, sla_definition FROM job_run j where id = ?`
 	err := j.db.WithContext(ctx).Raw(getJobRunByID, id).First(&jobRun).Error
 	if err != nil {
 		return &scheduler.JobRun{}, err
@@ -77,9 +74,22 @@ func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t tenant.Tenant
 	return jobRun.toJobRun()
 }
 
-func (j *JobRunRepository) Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, status string) error {
-	updateJobRun := "update" + jobRunTableName + "set status = " + status + ", end_time = " + endTime.String() + ", updated_at = NOW() where id = " + jobRunID.String()
-	return j.db.WithContext(ctx).Exec(updateJobRun).Error
+func (j *JobRunRepository) Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, status scheduler.State) error {
+	updateJobRun := "update job_run set status = ?, end_time = ? , updated_at = NOW() where id = ?"
+	return j.db.WithContext(ctx).Exec(updateJobRun, status.String(), endTime, jobRunID).Error
+}
+
+func (j *JobRunRepository) UpdateSLA(ctx context.Context, slaObjects []*scheduler.SLAObject) error {
+	jobIDListString := ""
+	totalIds := len(slaObjects)
+	for i, slaObject := range slaObjects {
+		jobIDListString += fmt.Sprintf("('%s','%s')", slaObject.JobName, slaObject.JobScheduledAt.Format("2006-01-02 15:04:05"))
+		if !(i == totalIds-1) {
+			jobIDListString += ", "
+		}
+	}
+	query := "update job_run set sla_alert = True, updated_at = NOW() where (job_name, scheduled_at) in (" + jobIDListString + ")"
+	return j.db.WithContext(ctx).Exec(query).Error
 }
 
 func (j *JobRunRepository) Create(ctx context.Context, t tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error {

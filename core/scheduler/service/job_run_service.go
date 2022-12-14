@@ -24,13 +24,14 @@ type JobRunRepository interface {
 	GetByID(ctx context.Context, id scheduler.JobRunID) (*scheduler.JobRun, error)
 	GetByScheduledAt(ctx context.Context, tenant tenant.Tenant, name scheduler.JobName, scheduledAt time.Time) (*scheduler.JobRun, error)
 	Create(ctx context.Context, tenant tenant.Tenant, name scheduler.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error
-	Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, jobRunStatus string) error
+	Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, jobRunStatus scheduler.State) error
+	UpdateSLA(ctx context.Context, slaObjects []*scheduler.SLAObject) error
 }
 
 type OperatorRunRepository interface {
 	GetOperatorRun(ctx context.Context, operatorName string, operator scheduler.OperatorType, jobRunID uuid.UUID) (*scheduler.OperatorRun, error)
 	CreateOperatorRun(ctx context.Context, operatorName string, operator scheduler.OperatorType, jobRunID uuid.UUID, startTime time.Time) error
-	UpdateOperatorRun(ctx context.Context, operator scheduler.OperatorType, jobRunID uuid.UUID, eventTime time.Time, state string) error
+	UpdateOperatorRun(ctx context.Context, operator scheduler.OperatorType, jobRunID uuid.UUID, eventTime time.Time, state scheduler.State) error
 }
 
 type JobInputCompiler interface {
@@ -228,10 +229,14 @@ func (s JobRunService) updateJobRun(ctx context.Context, event scheduler.Event) 
 	if err != nil {
 		return err
 	}
-	jobRunStatus := event.Values["status"].(string)
-	endTime := event.EventTime
+	return s.repo.Update(ctx, jobRun.ID, event.EventTime, event.Status)
+}
 
-	return s.repo.Update(ctx, jobRun.ID, endTime, jobRunStatus)
+func (s JobRunService) updateJobRunSLA(ctx context.Context, event scheduler.Event) error {
+	if len(event.SLAObjectList) > 0 {
+		return s.repo.UpdateSLA(ctx, event.SLAObjectList)
+	}
+	return nil
 }
 
 func (s JobRunService) createOperatorRun(ctx context.Context, event scheduler.Event, operatorType scheduler.OperatorType) error {
@@ -246,7 +251,7 @@ func (s JobRunService) createOperatorRun(ctx context.Context, event scheduler.Ev
 			return err
 		}
 	} else {
-		if operatorRun.Status == scheduler.StateRunning.String() {
+		if operatorRun.Status == scheduler.StateRunning {
 			// operator run exists but is not yet finished
 			// this is a scenario where the old run has not concluded and a new create request rises
 			// this is done to takle the sensor poke scenario, until the airflow task operator either fails/succeeds/retries
@@ -286,14 +291,14 @@ func (s JobRunService) updateOperatorRun(ctx context.Context, event scheduler.Ev
 	if err != nil {
 		return err
 	}
-	status := event.Values["status"].(string)
-
-	return s.operatorRunRepo.UpdateOperatorRun(ctx, operatorType, operatorRun.ID, event.EventTime, status)
+	return s.operatorRunRepo.UpdateOperatorRun(ctx, operatorType, operatorRun.ID, event.EventTime, event.Status)
 }
 
 func (s JobRunService) UpdateJobState(ctx context.Context, event scheduler.Event) error {
 	s.l.Debug(fmt.Sprintf("received event: %#v ", event))
 	switch event.Type {
+	case scheduler.SLAMissEvent:
+		return s.updateJobRunSLA(ctx, event)
 	case scheduler.JobSuccessEvent, scheduler.JobFailureEvent:
 		return s.updateJobRun(ctx, event)
 	case scheduler.TaskStartEvent:
