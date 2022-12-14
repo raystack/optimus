@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/spf13/afero"
+	yamlV2 "gopkg.in/yaml.v2"
 	"gopkg.in/yaml.v3"
 
 	"github.com/odpf/optimus/client/local"
@@ -71,7 +72,7 @@ func ReadSpec[S local.ValidSpec](specFS afero.Fs, filePath string) (S, error) {
 	defer fileSpec.Close()
 
 	var spec S
-	if err := yaml.NewDecoder(fileSpec).Decode(&spec); err != nil {
+	if err := yamlV2.NewDecoder(fileSpec).Decode(&spec); err != nil {
 		return nil, fmt.Errorf("error decoding spec under [%s]: %w", filePath, err)
 	}
 	return spec, nil
