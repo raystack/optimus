@@ -6,7 +6,6 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/internal/errors"
@@ -74,10 +73,9 @@ func (o *OperatorRunRepository) GetOperatorRun(ctx context.Context, name string,
 	if err != nil {
 		return nil, err
 	}
-	getJobRunByID := `SELECT id, name, job_run_id, status, start_time, end_time FROM ` + operatorTableName + ` j where job_run_id = ? and name =?`
-	err = o.db.WithContext(ctx).Raw(getJobRunByID, jobRunID, name).
-		Order(clause.OrderByColumn{Column: clause.Column{Name: "created_at"}, Desc: true}).
-		First(&opRun).Error
+	getJobRunByID := `SELECT id, name, job_run_id, status, start_time, end_time FROM ` + operatorTableName + ` j where job_run_id = ? and name = ? order by created_at desc limit 1`
+	k := o.db.WithContext(ctx).Raw(getJobRunByID, jobRunID, name).First(&opRun)
+	err = k.Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.NotFound(scheduler.EntityJobRun, "no record for "+operatorType.String()+"/"+name+" for job_run ID: "+jobRunID.String())

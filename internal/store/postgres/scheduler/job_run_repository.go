@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
@@ -61,10 +60,8 @@ func (j *JobRunRepository) GetByID(ctx context.Context, id scheduler.JobRunID) (
 
 func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) (*scheduler.JobRun, error) {
 	var jobRun jobRun
-	getJobRunByID := `SELECT id, job_name, namespace_name, project_name, scheduled_at, start_time, end_time, status, sla_definition FROM job_run j where project_name = ? and namespace_name = ? and job_name = ? and scheduled_at = ?`
-	err := j.db.WithContext(ctx).Raw(getJobRunByID, t.ProjectName(), t.NamespaceName(), jobName, scheduledAt).
-		Order(clause.OrderByColumn{Column: clause.Column{Name: "created_at"}, Desc: true}).
-		First(&jobRun).Error
+	getJobRunByID := `SELECT id, job_name, namespace_name, project_name, scheduled_at, start_time, end_time, status, sla_definition FROM job_run j where project_name = ? and namespace_name = ? and job_name = ? and scheduled_at = ? order by created_at desc limit 1`
+	err := j.db.WithContext(ctx).Raw(getJobRunByID, t.ProjectName(), t.NamespaceName(), jobName, scheduledAt).First(&jobRun).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.NotFound(scheduler.EntityJobRun, "no record for job:"+jobName.String()+" scheduled at: "+scheduledAt.String())
