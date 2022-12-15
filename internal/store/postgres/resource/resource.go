@@ -20,7 +20,7 @@ type Resource struct {
 	NamespaceName string
 
 	Metadata datatypes.JSON
-	Spec     datatypes.JSON
+	Spec     map[string]any
 
 	URN string
 
@@ -30,9 +30,9 @@ type Resource struct {
 	UpdatedAt time.Time
 }
 
-func fromResourceToModel(r *resource.Resource) *Resource {
+func FromResourceToModel(r *resource.Resource) *Resource {
 	metadata, _ := json.Marshal(r.Metadata())
-	spec, _ := json.Marshal(r.Spec())
+
 	return &Resource{
 		FullName:      r.FullName(),
 		Kind:          r.Kind(),
@@ -40,15 +40,13 @@ func fromResourceToModel(r *resource.Resource) *Resource {
 		ProjectName:   r.Tenant().ProjectName().String(),
 		NamespaceName: r.Tenant().NamespaceName().String(),
 		Metadata:      metadata,
-		Spec:          spec,
+		Spec:          r.Spec(),
 		URN:           r.URN(),
 		Status:        r.Status().String(),
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
 	}
 }
 
-func fromModelToResource(r *Resource) (*resource.Resource, error) {
+func FromModelToResource(r *Resource) (*resource.Resource, error) {
 	store, err := resource.FromStringToStore(r.Store)
 	if err != nil {
 		return nil, errors.Wrap(resource.EntityResource, "error constructing kind", err)
@@ -61,11 +59,8 @@ func fromModelToResource(r *Resource) (*resource.Resource, error) {
 	if err := json.Unmarshal(r.Metadata, &metadata); err != nil {
 		return nil, errors.Wrap(resource.EntityResource, "error unmarshalling metadata", err)
 	}
-	var spec map[string]any
-	if err := json.Unmarshal(r.Spec, &spec); err != nil {
-		return nil, errors.Wrap(resource.EntityResource, "error unmarshalling spec", err)
-	}
-	output, err := resource.NewResource(r.FullName, r.Kind, store, tnnt, metadata, spec)
+
+	output, err := resource.NewResource(r.FullName, r.Kind, store, tnnt, metadata, r.Spec)
 	if err == nil {
 		output = resource.FromExisting(output, resource.ReplaceStatus(resource.FromStringToStatus(r.Status)))
 		output.UpdateURN(r.URN)

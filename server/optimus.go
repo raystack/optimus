@@ -254,8 +254,8 @@ func (s *OptimusServer) setupHandlers() error {
 	tenantService := tService.NewTenantService(tProjectService, tNamespaceService, tSecretService)
 
 	// Resource Bounded Context
-	resourceRepository := resource.NewRepository(s.dbConn)
-	backupRepository := resource.NewBackupRepository(s.dbConn)
+	resourceRepository := resource.NewRepository(s.dbPool)
+	backupRepository := resource.NewBackupRepository(s.dbPool)
 	resourceManager := rService.NewResourceManager(resourceRepository, s.logger)
 	resourceService := rService.NewResourceService(s.logger, resourceRepository, resourceManager, tenantService)
 	backupService := rService.NewBackupService(backupRepository, resourceRepository, resourceManager)
