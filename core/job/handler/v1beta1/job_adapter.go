@@ -367,7 +367,7 @@ func fromMetadata(metadata *job.Metadata) *pb.JobMetadata {
 		return nil
 	}
 
-	var metadataResourceProto *pb.JobSpecMetadataResource
+	metadataResourceProto := &pb.JobSpecMetadataResource{}
 	if metadata.Resource() != nil {
 		if metadata.Resource().Request() != nil {
 			metadataResourceProto.Request = &pb.JobSpecMetadataResourceConfig{
@@ -383,7 +383,7 @@ func fromMetadata(metadata *job.Metadata) *pb.JobMetadata {
 		}
 	}
 
-	var metadataSchedulerProto *pb.JobSpecMetadataAirflow
+	metadataSchedulerProto := &pb.JobSpecMetadataAirflow{}
 	if metadata.Scheduler() != nil {
 		scheduler := metadata.Scheduler()
 		if _, ok := scheduler["pool"]; ok {
