@@ -208,4 +208,73 @@ func TestEntitySpec(t *testing.T) {
 			assert.Nil(t, invalidAsset)
 		})
 	})
+
+	t.Run("VersionFrom", func(t *testing.T) {
+		t.Run("should return error if version is less than or equals to zero", func(t *testing.T) {
+			version, err := job.VersionFrom(0)
+			assert.ErrorContains(t, err, "version is less than or equal to zero")
+			assert.Zero(t, version)
+		})
+	})
+
+	t.Run("NameFrom", func(t *testing.T) {
+		t.Run("should return error if name is empty", func(t *testing.T) {
+			name, err := job.NameFrom("")
+			assert.ErrorContains(t, err, "name is empty")
+			assert.Empty(t, name)
+		})
+	})
+
+	t.Run("OwnerFrom", func(t *testing.T) {
+		t.Run("should return error if owner is empty", func(t *testing.T) {
+			owner, err := job.OwnerFrom("")
+			assert.ErrorContains(t, err, "owner is empty")
+			assert.Empty(t, owner)
+		})
+	})
+
+	t.Run("ScheduleDateFrom", func(t *testing.T) {
+		t.Run("should not return error if date is empty", func(t *testing.T) {
+			scheduleDate, err := job.ScheduleDateFrom("")
+			assert.NoError(t, err)
+			assert.Empty(t, scheduleDate)
+		})
+		t.Run("should return error if date is invalid", func(t *testing.T) {
+			scheduleDate, err := job.ScheduleDateFrom("invalid date format")
+			assert.ErrorContains(t, err, "error is encountered when validating date with layout")
+			assert.Empty(t, scheduleDate)
+		})
+	})
+
+	t.Run("TaskNameFrom", func(t *testing.T) {
+		t.Run("should return error if task name is empty", func(t *testing.T) {
+			owner, err := job.TaskNameFrom("")
+			assert.ErrorContains(t, err, "task name is empty")
+			assert.Empty(t, owner)
+		})
+	})
+
+	t.Run("HookNameFrom", func(t *testing.T) {
+		t.Run("should return error if hook name is empty", func(t *testing.T) {
+			owner, err := job.HookNameFrom("")
+			assert.ErrorContains(t, err, "name is empty")
+			assert.Empty(t, owner)
+		})
+	})
+
+	t.Run("NewConfig", func(t *testing.T) {
+		t.Run("should return error if the config map is invalid", func(t *testing.T) {
+			jobConfig, err := job.NewConfig(map[string]string{"": ""})
+			assert.Error(t, err)
+			assert.Empty(t, jobConfig)
+		})
+	})
+
+	t.Run("NewLabels", func(t *testing.T) {
+		t.Run("should return error if the labels map is invalid", func(t *testing.T) {
+			jobLabels, err := job.NewLabels(map[string]string{"": ""})
+			assert.Error(t, err)
+			assert.Empty(t, jobLabels)
+		})
+	})
 }
