@@ -91,9 +91,6 @@ func (h JobRunHandler) JobRun(ctx context.Context, req *pb.JobRunRequest) (*pb.J
 	var jobRuns []*scheduler.JobRunStatus
 	jobRuns, err = h.service.GetJobRuns(ctx, projectName, jobName, criteria)
 	if err != nil {
-		if errors.IsErrorType(err, errors.ErrNotFound) {
-			return &pb.JobRunResponse{}, nil
-		}
 		return nil, errors.GRPCErr(err, "unable to get job run for "+req.GetJobName())
 	}
 

@@ -110,7 +110,8 @@ func (s JobRunService) GetJobRuns(ctx context.Context, projectName tenant.Projec
 	// call to airflow for get runs
 	actualRuns, err := s.scheduler.GetJobRuns(ctx, jobWithDetails.Job.Tenant, criteria, jobCron)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get job runs from airflow %w", err)
+		s.l.Error(fmt.Sprintf("unable to get job runs from airflow err: %v", err.Error()))
+		actualRuns = []*scheduler.JobRunStatus{}
 	}
 	// mergeRuns
 	totalRuns := mergeRuns(expectedRuns, actualRuns)
@@ -293,9 +294,19 @@ func (s JobRunService) updateOperatorRun(ctx context.Context, event scheduler.Ev
 	}
 	return s.operatorRunRepo.UpdateOperatorRun(ctx, operatorType, operatorRun.ID, event.EventTime, event.Status)
 }
+func (s JobRunService) logEvent(event scheduler.Event) {
+	if event.Type.IsOfType(scheduler.EventCategorySLAMiss) {
+		s.l.Debug(fmt.Sprintf("received event: %v, jobName: %v , slaPayload: %#v",
+			event.Type, event.JobName, event.SLAObjectList))
+	} else {
+		s.l.Debug(fmt.Sprintf("received event: %v, eventTime: %s, jobName: %v, Operator: %v, schedule: %s, status: %s",
+			event.Type, event.EventTime.Format("01/02/06 15:04:05 MST"), event.JobName, event.OperatorName, event.JobScheduledAt.Format("01/02/06 15:04:05 MST"), event.Status))
+	}
+}
 
 func (s JobRunService) UpdateJobState(ctx context.Context, event scheduler.Event) error {
-	s.l.Debug(fmt.Sprintf("received event: %#v ", event))
+	s.logEvent(event)
+
 	switch event.Type {
 	case scheduler.SLAMissEvent:
 		return s.updateJobRunSLA(ctx, event)

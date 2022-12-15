@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -84,6 +85,10 @@ func FromStringToEventType(name string) (JobEventType, error) {
 type SLAObject struct {
 	JobName        JobName
 	JobScheduledAt time.Time
+}
+
+func (s *SLAObject) String() string {
+	return fmt.Sprintf("(job: %s,scheduledAt: %s)", s.JobName, s.JobScheduledAt.Format(time.RFC3339))
 }
 
 type Event struct {

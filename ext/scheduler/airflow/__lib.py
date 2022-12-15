@@ -438,15 +438,17 @@ def optimus_notify(context, event_meta):
     if SCHEDULER_ERR_MSG in event_meta.keys():
         failure_message = failure_message + ", " + event_meta[SCHEDULER_ERR_MSG]
     print("failures: {}".format(failure_message))
-
+    
+    task_instance = context.get('task_instance')
     message = {
-        "log_url": context.get('task_instance').log_url,
-        "task_id": context.get('task_instance').task_id,
-        "exception": str(context.get('exception')) or "",
-        "message": failure_message,
-        "scheduled_at": current_schedule_date.strftime(TIMESTAMP_FORMAT),
-        "attempt": context['task_instance'].try_number,
-        "event_time": datetime.now().timestamp(),
+        "log_url": task_instance.log_url,
+        "task_id": task_instance.task_id,
+        "attempt": task_instance.try_number,
+        "duration"  : str(task_instance.duration),
+        "exception" : str(context.get('exception')) or "",
+        "message"   : failure_message,
+        "scheduled_at"  : current_schedule_date.strftime(TIMESTAMP_FORMAT),
+        "event_time"    : datetime.now().timestamp(),
     }
     message.update(event_meta)
 
