@@ -52,10 +52,11 @@ func TestPostgresJobRepository(t *testing.T) {
 		dbConn := setup.TestDB()
 		setup.TruncateTables(dbConn)
 
-		projRepo := tenantPostgres.NewProjectRepository(dbConn)
+		pool := setup.TestPool()
+		projRepo := tenantPostgres.NewProjectRepository(pool)
 		assert.NoError(t, projRepo.Save(ctx, proj))
 
-		namespaceRepo := tenantPostgres.NewNamespaceRepository(dbConn)
+		namespaceRepo := tenantPostgres.NewNamespaceRepository(pool)
 		assert.NoError(t, namespaceRepo.Save(ctx, namespace))
 		assert.NoError(t, namespaceRepo.Save(ctx, otherNamespace))
 

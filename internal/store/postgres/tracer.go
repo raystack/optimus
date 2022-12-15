@@ -14,9 +14,8 @@ import (
 // tracer is a wrapper around the pgx tracer interfaces which instrument
 // queries.
 type tracer struct {
-	tracer          trace.Tracer
-	attrs           []attribute.KeyValue
-	logSQLStatement bool
+	tracer trace.Tracer
+	attrs  []attribute.KeyValue
 }
 
 // NewTracer returns a new Tracer.
@@ -56,7 +55,7 @@ func (t *tracer) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx.Trac
 }
 
 // TraceQueryEnd is called at the end of Query, QueryRow, and Exec calls.
-func (t *tracer) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryEndData) {
+func (*tracer) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryEndData) {
 	span := trace.SpanFromContext(ctx)
 	recordError(span, data.Err)
 
@@ -83,7 +82,7 @@ func (t *tracer) TraceCopyFromStart(ctx context.Context, _ *pgx.Conn, data pgx.T
 }
 
 // TraceCopyFromEnd is called at the end of CopyFrom calls.
-func (t *tracer) TraceCopyFromEnd(ctx context.Context, _ *pgx.Conn, data pgx.TraceCopyFromEndData) {
+func (*tracer) TraceCopyFromEnd(ctx context.Context, _ *pgx.Conn, data pgx.TraceCopyFromEndData) {
 	span := trace.SpanFromContext(ctx)
 	recordError(span, data.Err)
 
@@ -130,7 +129,7 @@ func (t *tracer) TraceBatchQuery(ctx context.Context, _ *pgx.Conn, data pgx.Trac
 }
 
 // TraceBatchEnd is called at the end of SendBatch calls.
-func (t *tracer) TraceBatchEnd(ctx context.Context, _ *pgx.Conn, data pgx.TraceBatchEndData) {
+func (*tracer) TraceBatchEnd(ctx context.Context, _ *pgx.Conn, data pgx.TraceBatchEndData) {
 	span := trace.SpanFromContext(ctx)
 	recordError(span, data.Err)
 
@@ -163,7 +162,7 @@ func (t *tracer) TraceConnectStart(ctx context.Context, data pgx.TraceConnectSta
 }
 
 // TraceConnectEnd is called at the end of Connect and ConnectConfig calls.
-func (t *tracer) TraceConnectEnd(ctx context.Context, data pgx.TraceConnectEndData) {
+func (*tracer) TraceConnectEnd(ctx context.Context, data pgx.TraceConnectEndData) {
 	span := trace.SpanFromContext(ctx)
 	recordError(span, data.Err)
 
@@ -190,7 +189,7 @@ func (t *tracer) TracePrepareStart(ctx context.Context, _ *pgx.Conn, data pgx.Tr
 }
 
 // TracePrepareEnd is called at the end of Prepare calls.
-func (t *tracer) TracePrepareEnd(ctx context.Context, _ *pgx.Conn, data pgx.TracePrepareEndData) {
+func (*tracer) TracePrepareEnd(ctx context.Context, _ *pgx.Conn, data pgx.TracePrepareEndData) {
 	span := trace.SpanFromContext(ctx)
 	recordError(span, data.Err)
 

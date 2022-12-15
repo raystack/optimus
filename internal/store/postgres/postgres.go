@@ -56,7 +56,7 @@ func Connect(dbConf config.DBConfig, writer io.Writer) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	//sqlDB.SetMaxIdleConns(dbConf.MaxIdleConnection)
+	// sqlDB.SetMaxIdleConns(dbConf.MaxIdleConnection)
 	sqlDB.SetMaxOpenConns(dbConf.MaxOpenConnection)
 	return db, nil
 }

@@ -2,7 +2,6 @@ package tenant
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -45,7 +44,6 @@ func (n *Namespace) toTenantNamespace() (*tenant.Namespace, error) {
 func (n *NamespaceRepository) Save(ctx context.Context, namespace *tenant.Namespace) error {
 	_, err := n.get(ctx, namespace.ProjectName(), namespace.Name())
 	if err != nil {
-		fmt.Println(err)
 		if errors.Is(err, pgx.ErrNoRows) {
 			insertNamespace := `INSERT INTO namespace (name, config, project_name, created_at, updated_at)
 VALUES ($1, $2, $3, now(), now())`

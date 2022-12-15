@@ -245,8 +245,8 @@ func (s *OptimusServer) Shutdown() {
 func (s *OptimusServer) setupHandlers() error {
 	// Tenant Bounded Context Setup
 	tProjectRepo := tenant.NewProjectRepository(s.dbPool)
-	tNamespaceRepo := tenant.NewNamespaceRepository(s.dbConn)
-	tSecretRepo := tenant.NewSecretRepository(s.dbConn)
+	tNamespaceRepo := tenant.NewNamespaceRepository(s.dbPool)
+	tSecretRepo := tenant.NewSecretRepository(s.dbPool)
 
 	tProjectService := tService.NewProjectService(tProjectRepo)
 	tNamespaceService := tService.NewNamespaceService(tNamespaceRepo)
