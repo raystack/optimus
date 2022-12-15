@@ -154,6 +154,7 @@ func (j JobService) Get(ctx context.Context, jobTenant tenant.Tenant, jobName jo
 		return jobs[0], nil
 	}
 
+	// TODO: should not return dummy job
 	return &job.Job{}, nil
 }
 
@@ -305,9 +306,8 @@ func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName,
 	return errors.MultiToError(me)
 }
 
-func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, _ writer.LogWriter) error {
+func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, logWriter writer.LogWriter) error {
 	me := errors.NewMultiError("validate specs errors")
-	logWriter := writer.NewLogWriter(j.logger)
 
 	tenantWithDetails, err := j.tenantDetailsGetter.GetDetails(ctx, jobTenant)
 	if err != nil {
@@ -318,11 +318,11 @@ func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSp
 	me.Append(err)
 
 	if len(me.Errors) > 0 {
-		return me
+		return errors.MultiToError(me)
 	}
 
 	// NOTE: only check cyclic deps across internal upstreams (sources), need further discussion to check cyclic deps for external upstream
-	// asumption, all job specs from input are also the job within same project
+	// assumption, all job specs from input are also the job within same project
 
 	// populate all jobs in project
 	jobsInProject, err := j.GetByFilter(ctx, filter.WithString(filter.ProjectName, jobTenant.ProjectName().String()))
