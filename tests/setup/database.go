@@ -91,6 +91,7 @@ func dropTables(db *gorm.DB) error {
 		"backup",
 		"backup_old",
 		"secret",
+		"secret_old",
 		"job_deployment",
 		"job_source",
 		"replay",
@@ -160,7 +161,7 @@ func TruncateTablesWith(pool *pgxpool.Pool) {
 	pool.Exec(ctx, "TRUNCATE TABLE secret CASCADE")
 	pool.Exec(ctx, "TRUNCATE TABLE namespace CASCADE")
 	pool.Exec(ctx, "TRUNCATE TABLE project CASCADE")
-	pool.Exec(ctx, "TRUNCATE TABLE project_old, namespace_old CASCADE")
+	pool.Exec(ctx, "TRUNCATE TABLE project_old, namespace_old, secret_old CASCADE")
 
 	pool.Exec(ctx, "TRUNCATE TABLE job_deployment CASCADE")
 
