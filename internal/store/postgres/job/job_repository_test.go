@@ -27,18 +27,6 @@ func TestPostgresJobRepository(t *testing.T) {
 			tenant.ProjectStoragePathKey: "gs://location",
 		})
 	assert.NoError(t, err)
-	namespace, err := tenant.NewNamespace("test-ns", proj.Name(),
-		map[string]string{
-			"bucket": "gs://ns_bucket",
-		})
-	assert.NoError(t, err)
-	otherNamespace, err := tenant.NewNamespace("other-ns", proj.Name(),
-		map[string]string{
-			"bucket": "gs://ns_bucket",
-		})
-	assert.NoError(t, err)
-	sampleTenant, err := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
-	assert.NoError(t, err)
 
 	otherProj, err := tenant.NewProject("test-other-proj",
 		map[string]string{
@@ -48,6 +36,25 @@ func TestPostgresJobRepository(t *testing.T) {
 		})
 	assert.NoError(t, err)
 
+	namespace, err := tenant.NewNamespace("test-ns", proj.Name(),
+		map[string]string{
+			"bucket": "gs://ns_bucket",
+		})
+	assert.NoError(t, err)
+
+	otherNamespace, err := tenant.NewNamespace("other-ns", proj.Name(),
+		map[string]string{
+			"bucket": "gs://ns_bucket",
+		})
+
+	otherNamespace2, err := tenant.NewNamespace("other-ns", otherProj.Name(),
+		map[string]string{
+			"bucket": "gs://ns_bucket",
+		})
+	assert.NoError(t, err)
+	sampleTenant, err := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
+	assert.NoError(t, err)
+
 	dbSetup := func() *gorm.DB {
 		dbConn := setup.TestDB()
 		setup.TruncateTables(dbConn)
@@ -55,10 +62,12 @@ func TestPostgresJobRepository(t *testing.T) {
 		pool := setup.TestPool()
 		projRepo := tenantPostgres.NewProjectRepository(pool)
 		assert.NoError(t, projRepo.Save(ctx, proj))
+		assert.NoError(t, projRepo.Save(ctx, otherProj))
 
 		namespaceRepo := tenantPostgres.NewNamespaceRepository(pool)
 		assert.NoError(t, namespaceRepo.Save(ctx, namespace))
 		assert.NoError(t, namespaceRepo.Save(ctx, otherNamespace))
+		assert.NoError(t, namespaceRepo.Save(ctx, otherNamespace2))
 
 		return dbConn
 	}

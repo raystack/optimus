@@ -15,12 +15,13 @@ import (
 	serviceResource "github.com/odpf/optimus/core/resource"
 	"github.com/odpf/optimus/core/tenant"
 	repoResource "github.com/odpf/optimus/internal/store/postgres/resource"
+	tenantPostgres "github.com/odpf/optimus/internal/store/postgres/tenant"
 	"github.com/odpf/optimus/tests/setup"
 )
 
 func TestPostgresResourceRepository(t *testing.T) {
 	ctx := context.Background()
-	tnnt, err := tenant.NewTenant("project_test", "namespace_test")
+	tnnt, err := tenant.NewTenant("t-optimus-1", "n-optimus-1")
 	assert.NoError(t, err)
 	spec := map[string]any{
 		"description": "spec for test",
@@ -328,5 +329,30 @@ func fromModelToResource(r *repoResource.Resource) (*serviceResource.Resource, e
 func dbSetup() *gorm.DB {
 	dbConn := setup.TestDB()
 	setup.TruncateTables(dbConn)
+
+	pool := setup.TestPool()
+	ctx := context.Background()
+	proj, _ := tenant.NewProject("t-optimus-1",
+		map[string]string{
+			"bucket":                     "gs://some_folder-2",
+			tenant.ProjectSchedulerHost:  "host",
+			tenant.ProjectStoragePathKey: "gs://location",
+		})
+	projRepo := tenantPostgres.NewProjectRepository(pool)
+	err := projRepo.Save(ctx, proj)
+	if err != nil {
+		panic(err)
+	}
+
+	namespaceRepo := tenantPostgres.NewNamespaceRepository(pool)
+	ns, _ := tenant.NewNamespace("n-optimus-1", proj.Name(),
+		map[string]string{
+			"bucket": "gs://ns_bucket",
+		})
+	err = namespaceRepo.Save(ctx, ns)
+	if err != nil {
+		panic(err)
+	}
+
 	return dbConn
 }
