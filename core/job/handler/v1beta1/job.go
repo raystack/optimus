@@ -329,15 +329,11 @@ func (jh *JobHandler) CheckJobSpecifications(req *pb.CheckJobSpecificationsReque
 	}
 
 	me := errors.NewMultiError("check / validate job spec errors")
-	// TODO: use fromJobProtos
-	var jobSpecs []*job.Spec
-	for _, js := range req.Jobs {
-		jobSpec, err := fromJobProto(js)
-		if err != nil {
-			me.Append(err)
-			continue
-		}
-		jobSpecs = append(jobSpecs, jobSpec)
+	jobSpecs, _, err := fromJobProtos(req.Jobs)
+	if err != nil {
+		errorMsg := fmt.Sprintf("failure when adapting job specifications: %s", err.Error())
+		jh.l.Error(errorMsg)
+		me.Append(err)
 	}
 
 	if err := jh.jobService.Validate(stream.Context(), jobTenant, jobSpecs, responseWriter); err != nil {
