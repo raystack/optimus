@@ -1,10 +1,12 @@
 package v1beta1
 
 import (
+	"fmt"
+
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
+	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/internal/utils"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
@@ -25,45 +27,88 @@ func toJobProto(jobEntity *job.Job) *pb.JobSpecification {
 		WindowSize:       jobEntity.Spec().Window().GetSize(),
 		WindowOffset:     jobEntity.Spec().Window().GetOffset(),
 		WindowTruncateTo: jobEntity.Spec().Window().GetTruncateTo(),
-		Dependencies:     fromSpecUpstreams(jobEntity.Spec().Upstream()),
+		Dependencies:     fromSpecUpstreams(jobEntity.Spec().UpstreamSpec()),
 		Assets:           fromAsset(jobEntity.Spec().Asset()),
 		Hooks:            fromHooks(jobEntity.Spec().Hooks()),
 		Description:      jobEntity.Spec().Description(),
 		Labels:           jobEntity.Spec().Labels(),
-		Behavior:         fromRetryAndAlerts(jobEntity.Spec().Schedule().Retry(), jobEntity.Spec().Alerts()),
+		Behavior:         fromRetryAndAlerts(jobEntity.Spec().Schedule().Retry(), jobEntity.Spec().AlertSpecs()),
 		Metadata:         fromMetadata(jobEntity.Spec().Metadata()),
 		Destination:      jobEntity.Destination().String(),
 		Sources:          fromResourceURNs(jobEntity.Sources()),
 	}
 }
 
-func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
-	var retry *job.Retry
-	var alerts []*job.Alert
-	if js.Behavior != nil {
-		retry = toRetry(js.Behavior.Retry)
-		a, err := toAlerts(js.Behavior.Notify)
+func fromJobProtos(protoJobSpecs []*pb.JobSpecification) ([]*job.Spec, []job.Name, error) {
+	me := errors.NewMultiError("adapting specs errors")
+	var jobSpecs []*job.Spec
+	var jobNameWithValidationErrors []job.Name
+	for _, jobProto := range protoJobSpecs {
+		jobSpec, err := fromJobProto(jobProto)
 		if err != nil {
-			return nil, err
+			errorMsg := fmt.Sprintf("job %s not passed validation: %s", jobProto.Name, err.Error())
+			me.Append(errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg))
+
+			jobNameWithValidationError, err := job.NameFrom(jobProto.Name)
+			if err == nil {
+				jobNameWithValidationErrors = append(jobNameWithValidationErrors, jobNameWithValidationError)
+			}
+			continue
 		}
-		alerts = a
+		jobSpecs = append(jobSpecs, jobSpec)
+	}
+	return jobSpecs, jobNameWithValidationErrors, errors.MultiToError(me)
+}
+
+func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
+	version, err := job.VersionFrom(int(js.Version))
+	if err != nil {
+		return nil, err
+	}
+
+	name, err := job.NameFrom(js.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	owner, err := job.OwnerFrom(js.Owner)
+	if err != nil {
+		return nil, err
 	}
 
 	startDate, err := job.ScheduleDateFrom(js.StartDate)
 	if err != nil {
 		return nil, err
 	}
-	endDate, err := job.ScheduleDateFrom(js.EndDate)
-	if err != nil {
-		return nil, err
-	}
-	schedule, err := job.NewScheduleBuilder(startDate).
-		WithInterval(js.Interval).
-		WithEndDate(endDate).
-		WithDependsOnPast(js.DependsOnPast).
+
+	scheduleBuilder := job.NewScheduleBuilder(startDate).
 		WithCatchUp(js.CatchUp).
-		WithRetry(retry).
-		Build()
+		WithDependsOnPast(js.DependsOnPast).
+		WithInterval(js.Interval)
+
+	if js.EndDate != "" {
+		endDate, err := job.ScheduleDateFrom(js.EndDate)
+		if err != nil {
+			return nil, err
+		}
+		scheduleBuilder = scheduleBuilder.WithEndDate(endDate)
+	}
+
+	var alerts []*job.AlertSpec
+	if js.Behavior != nil {
+		if js.Behavior.Retry != nil {
+			retry := toRetry(js.Behavior.Retry)
+			scheduleBuilder = scheduleBuilder.WithRetry(retry)
+		}
+		if js.Behavior.Notify != nil {
+			alerts, err = toAlerts(js.Behavior.Notify)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	schedule, err := scheduleBuilder.Build()
 	if err != nil {
 		return nil, err
 	}
@@ -76,9 +121,12 @@ func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
 		return nil, err
 	}
 
-	taskConfig, err := toConfig(js.Config)
-	if err != nil {
-		return nil, err
+	var taskConfig *job.Config
+	if js.Config != nil {
+		taskConfig, err = toConfig(js.Config)
+		if err != nil {
+			return nil, err
+		}
 	}
 	taskName, err := job.TaskNameFrom(js.TaskName)
 	if err != nil {
@@ -86,59 +134,53 @@ func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
 	}
 	task := job.NewTaskBuilder(taskName, taskConfig).Build()
 
-	hooks, err := toHooks(js.Hooks)
-	if err != nil {
-		return nil, err
+	jobSpecBuilder := job.NewSpecBuilder(version, name, owner, schedule, window, task).WithDescription(js.Description)
+
+	if js.Labels != nil {
+		labels, err := job.NewLabels(js.Labels)
+		if err != nil {
+			return nil, err
+		}
+		jobSpecBuilder = jobSpecBuilder.WithLabels(labels)
 	}
 
-	upstream, err := toSpecUpstreams(js.Dependencies)
-	if err != nil {
-		return nil, err
+	if js.Hooks != nil {
+		hooks, err := toHooks(js.Hooks)
+		if err != nil {
+			return nil, err
+		}
+		jobSpecBuilder = jobSpecBuilder.WithHooks(hooks)
 	}
 
-	var metadata *job.Metadata
+	if alerts != nil {
+		jobSpecBuilder = jobSpecBuilder.WithAlerts(alerts)
+	}
+
+	if js.Dependencies != nil {
+		upstream, err := toSpecUpstreams(js.Dependencies)
+		if err != nil {
+			return nil, err
+		}
+		jobSpecBuilder = jobSpecBuilder.WithSpecUpstream(upstream)
+	}
+
 	if js.Metadata != nil {
-		metadata, err = toMetadata(js.Metadata)
+		metadata, err := toMetadata(js.Metadata)
 		if err != nil {
 			return nil, err
 		}
+		jobSpecBuilder = jobSpecBuilder.WithMetadata(metadata)
 	}
 
-	version, err := job.VersionFrom(int(js.Version))
-	if err != nil {
-		return nil, err
-	}
-	name, err := job.NameFrom(js.Name)
-	if err != nil {
-		return nil, err
-	}
-	owner, err := job.OwnerFrom(js.Owner)
-	if err != nil {
-		return nil, err
-	}
-
-	labels, err := job.NewLabels(js.Labels)
-	if err != nil {
-		return nil, err
-	}
-
-	var asset *job.Asset
 	if js.Assets != nil {
-		asset, err = job.NewAsset(js.Assets)
+		asset, err := job.NewAsset(js.Assets)
 		if err != nil {
 			return nil, err
 		}
+		jobSpecBuilder = jobSpecBuilder.WithAsset(asset)
 	}
 
-	return job.NewSpecBuilder(version, name, owner, schedule, window, task).
-		WithDescription(js.Description).
-		WithLabels(labels).
-		WithHooks(hooks).
-		WithAlerts(alerts).
-		WithSpecUpstream(upstream).
-		WithAsset(asset).
-		WithMetadata(metadata).
-		Build(), nil
+	return jobSpecBuilder.Build(), nil
 }
 
 func fromResourceURNs(resourceURNs []job.ResourceURN) []string {
@@ -149,7 +191,7 @@ func fromResourceURNs(resourceURNs []job.ResourceURN) []string {
 	return resources
 }
 
-func fromRetryAndAlerts(jobRetry *job.Retry, alerts []*job.Alert) *pb.JobSpecification_Behavior {
+func fromRetryAndAlerts(jobRetry *job.Retry, alerts []*job.AlertSpec) *pb.JobSpecification_Behavior {
 	retryProto := fromRetry(jobRetry)
 	notifierProto := fromAlerts(alerts)
 	if retryProto == nil && len(notifierProto) == 0 {
@@ -214,8 +256,8 @@ func fromAsset(jobAsset *job.Asset) map[string]string {
 	return assets
 }
 
-func toAlerts(notifiers []*pb.JobSpecification_Behavior_Notifiers) ([]*job.Alert, error) {
-	alerts := make([]*job.Alert, len(notifiers))
+func toAlerts(notifiers []*pb.JobSpecification_Behavior_Notifiers) ([]*job.AlertSpec, error) {
+	alerts := make([]*job.AlertSpec, len(notifiers))
 	for i, notify := range notifiers {
 		alertOn := job.EventType(utils.FromEnumProto(notify.On.String(), "type"))
 		config, err := job.NewConfig(notify.Config)
@@ -231,7 +273,7 @@ func toAlerts(notifiers []*pb.JobSpecification_Behavior_Notifiers) ([]*job.Alert
 	return alerts, nil
 }
 
-func fromAlerts(jobAlerts []*job.Alert) []*pb.JobSpecification_Behavior_Notifiers {
+func fromAlerts(jobAlerts []*job.AlertSpec) []*pb.JobSpecification_Behavior_Notifiers {
 	var notifiers []*pb.JobSpecification_Behavior_Notifiers
 	for _, alert := range jobAlerts {
 		notifiers = append(notifiers, &pb.JobSpecification_Behavior_Notifiers{
@@ -243,7 +285,7 @@ func fromAlerts(jobAlerts []*job.Alert) []*pb.JobSpecification_Behavior_Notifier
 	return notifiers
 }
 
-func toSpecUpstreams(upstreamProtos []*pb.JobDependency) (*job.SpecUpstream, error) {
+func toSpecUpstreams(upstreamProtos []*pb.JobDependency) (*job.UpstreamSpec, error) {
 	var upstreamNames []job.SpecUpstreamName
 	var httpUpstreams []*job.SpecHTTPUpstream
 	for _, upstream := range upstreamProtos {
@@ -273,7 +315,7 @@ func toSpecUpstreams(upstreamProtos []*pb.JobDependency) (*job.SpecUpstream, err
 	return upstream, nil
 }
 
-func fromSpecUpstreams(upstreams *job.SpecUpstream) []*pb.JobDependency {
+func fromSpecUpstreams(upstreams *job.UpstreamSpec) []*pb.JobDependency {
 	if upstreams == nil {
 		return nil
 	}
@@ -295,21 +337,25 @@ func fromSpecUpstreams(upstreams *job.SpecUpstream) []*pb.JobDependency {
 }
 
 func toMetadata(jobMetadata *pb.JobMetadata) (*job.Metadata, error) {
-	var resourceMetadata *job.MetadataResource
+	metadataBuilder := job.NewMetadataBuilder()
+
 	if jobMetadata.Resource != nil {
 		metadataResourceProto := jobMetadata.Resource
 		request := job.NewMetadataResourceConfig(metadataResourceProto.Request.Cpu, metadataResourceProto.Request.Memory)
 		limit := job.NewMetadataResourceConfig(metadataResourceProto.Limit.Cpu, metadataResourceProto.Limit.Memory)
-		resourceMetadata = job.NewResourceMetadata(request, limit)
+		resourceMetadata := job.NewResourceMetadata(request, limit)
+		metadataBuilder = metadataBuilder.WithResource(resourceMetadata)
 	}
 
-	schedulerMetadata := make(map[string]string)
 	if jobMetadata.Airflow != nil {
 		metadataSchedulerProto := jobMetadata.Airflow
-		schedulerMetadata["pool"] = metadataSchedulerProto.Pool
-		schedulerMetadata["queue"] = metadataSchedulerProto.Queue
+		schedulerMetadata := map[string]string{
+			"pool":  metadataSchedulerProto.Pool,
+			"queue": metadataSchedulerProto.Queue,
+		}
+		metadataBuilder = metadataBuilder.WithScheduler(schedulerMetadata)
 	}
-	metadata, err := job.NewMetadataBuilder().WithResource(resourceMetadata).WithScheduler(schedulerMetadata).Build()
+	metadata, err := metadataBuilder.Build()
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +367,7 @@ func fromMetadata(metadata *job.Metadata) *pb.JobMetadata {
 		return nil
 	}
 
-	var metadataResourceProto *pb.JobSpecMetadataResource
+	metadataResourceProto := &pb.JobSpecMetadataResource{}
 	if metadata.Resource() != nil {
 		if metadata.Resource().Request() != nil {
 			metadataResourceProto.Request = &pb.JobSpecMetadataResourceConfig{
@@ -337,7 +383,7 @@ func fromMetadata(metadata *job.Metadata) *pb.JobMetadata {
 		}
 	}
 
-	var metadataSchedulerProto *pb.JobSpecMetadataAirflow
+	metadataSchedulerProto := &pb.JobSpecMetadataAirflow{}
 	if metadata.Scheduler() != nil {
 		scheduler := metadata.Scheduler()
 		if _, ok := scheduler["pool"]; ok {
@@ -382,19 +428,17 @@ func toBasicInfoSectionProto(jobDetail *job.Job, logMessages []*pb.Log) *pb.JobI
 	}
 }
 
-func toUpstreamProtos(upstreams []*job.Upstream) ([]*pb.JobInspectResponse_JobDependency, []*pb.JobInspectResponse_JobDependency, []*pb.JobInspectResponse_UpstreamSection_UnknownDependencies) {
+func toUpstreamProtos(upstreams []*job.Upstream, upstreamSpec *job.UpstreamSpec, upstreamLogs []*pb.Log) *pb.JobInspectResponse_UpstreamSection {
 	var internalUpstreamProtos []*pb.JobInspectResponse_JobDependency
 	var externalUpstreamProtos []*pb.JobInspectResponse_JobDependency
-	// TODO: add resource URN in unknown dependencies
 	var unknownUpstreamProtos []*pb.JobInspectResponse_UpstreamSection_UnknownDependencies
 	for _, upstream := range upstreams {
 		if upstream.State() != job.UpstreamStateResolved {
-			if upstream.Type() == job.UpstreamTypeStatic {
-				unknownUpstreamProtos = append(unknownUpstreamProtos, &pb.JobInspectResponse_UpstreamSection_UnknownDependencies{
-					JobName:     upstream.Name().String(),
-					ProjectName: upstream.ProjectName().String(),
-				})
-			}
+			unknownUpstreamProtos = append(unknownUpstreamProtos, &pb.JobInspectResponse_UpstreamSection_UnknownDependencies{
+				JobName:             upstream.Name().String(),
+				ProjectName:         upstream.ProjectName().String(),
+				ResourceDestination: upstream.Resource().String(),
+			})
 			continue
 		}
 		upstreamProto := &pb.JobInspectResponse_JobDependency{
@@ -410,7 +454,19 @@ func toUpstreamProtos(upstreams []*job.Upstream) ([]*pb.JobInspectResponse_JobDe
 			internalUpstreamProtos = append(internalUpstreamProtos, upstreamProto)
 		}
 	}
-	return internalUpstreamProtos, externalUpstreamProtos, unknownUpstreamProtos
+
+	var httpUpstreamProto []*pb.HttpDependency
+	if upstreamSpec != nil {
+		httpUpstreamProto = toHTTPUpstreamProtos(upstreamSpec.HTTPUpstreams())
+	}
+
+	return &pb.JobInspectResponse_UpstreamSection{
+		ExternalDependency:  externalUpstreamProtos,
+		InternalDependency:  internalUpstreamProtos,
+		HttpDependency:      httpUpstreamProto,
+		UnknownDependencies: unknownUpstreamProtos,
+		Notice:              upstreamLogs,
+	}
 }
 
 func toHTTPUpstreamProtos(httpUpstreamSpecs []*job.SpecHTTPUpstream) []*pb.HttpDependency {
@@ -426,14 +482,14 @@ func toHTTPUpstreamProtos(httpUpstreamSpecs []*job.SpecHTTPUpstream) []*pb.HttpD
 	return httpUpstreamProtos
 }
 
-func toDownstreamProtos(downstreamJobs []*dto.Downstream) []*pb.JobInspectResponse_JobDependency {
+func toDownstreamProtos(downstreamJobs []*job.Downstream) []*pb.JobInspectResponse_JobDependency {
 	var downstreamProtos []*pb.JobInspectResponse_JobDependency
 	for _, downstreamJob := range downstreamJobs {
 		downstreamProtos = append(downstreamProtos, &pb.JobInspectResponse_JobDependency{
-			Name:          downstreamJob.Name,
-			ProjectName:   downstreamJob.ProjectName,
-			NamespaceName: downstreamJob.NamespaceName,
-			TaskName:      downstreamJob.TaskName,
+			Name:          downstreamJob.Name().String(),
+			ProjectName:   downstreamJob.ProjectName().String(),
+			NamespaceName: downstreamJob.NamespaceName().String(),
+			TaskName:      downstreamJob.TaskName().String(),
 		})
 	}
 	return downstreamProtos

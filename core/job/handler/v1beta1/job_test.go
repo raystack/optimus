@@ -14,7 +14,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/handler/v1beta1"
 	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
@@ -44,9 +43,9 @@ func TestNewJobHandler(t *testing.T) {
 	assert.NoError(t, err)
 	jobWindow, err := models.NewWindow(jobVersion.Int(), "d", "24h", "24h")
 	assert.NoError(t, err)
-	jobTaskConfig, err := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+	jobConfig, err := job.NewConfig(map[string]string{"sample_key": "sample_value"})
 	assert.NoError(t, err)
-	jobTask := job.NewTaskBuilder("bq2bq", jobTaskConfig).Build()
+	jobTask := job.NewTaskBuilder("bq2bq", jobConfig).Build()
 	jobBehavior := &pb.JobSpecification_Behavior{
 		Retry: &pb.JobSpecification_Behavior_Retry{ExponentialBackoff: false},
 		Notify: []*pb.JobSpecification_Behavior_Notifiers{
@@ -63,6 +62,15 @@ func TestNewJobHandler(t *testing.T) {
 		},
 		Airflow: &pb.JobSpecMetadataAirflow{Pool: "100", Queue: "50"},
 	}
+
+	resourceRequestConfig := job.NewMetadataResourceConfig("1", "8")
+	resourceLimitConfig := job.NewMetadataResourceConfig(".5", "4")
+	resourceMetadata := job.NewResourceMetadata(resourceRequestConfig, resourceLimitConfig)
+	metadataSpec, _ := job.NewMetadataBuilder().
+		WithResource(resourceMetadata).
+		WithScheduler(map[string]string{"pool": "100", "queue": "50"}).
+		Build()
+
 	log := log.NewNoop()
 
 	t.Run("AddJobSpecifications", func(t *testing.T) {
@@ -147,46 +155,185 @@ func TestNewJobHandler(t *testing.T) {
 			assert.Nil(t, resp)
 		})
 		t.Run("skips job if unable to parse from proto", func(t *testing.T) {
-			jobService := new(JobService)
+			t.Run("due to empty owner", func(t *testing.T) {
+				jobService := new(JobService)
 
-			jobHandler := v1beta1.NewJobHandler(jobService, log)
+				jobHandler := v1beta1.NewJobHandler(jobService, log)
 
-			jobSpecProtos := []*pb.JobSpecification{
-				{
-					Version:          int32(0),
-					Name:             "job-A",
-					StartDate:        jobSchedule.StartDate().String(),
-					EndDate:          jobSchedule.EndDate().String(),
-					Interval:         jobSchedule.Interval(),
-					TaskName:         jobTask.Name().String(),
-					WindowSize:       jobWindow.GetSize(),
-					WindowOffset:     jobWindow.GetOffset(),
-					WindowTruncateTo: jobWindow.GetTruncateTo(),
-				},
-				{
-					Version:          int32(jobVersion),
-					Name:             "job-B",
-					Owner:            "sample-owner",
-					StartDate:        jobSchedule.StartDate().String(),
-					EndDate:          jobSchedule.EndDate().String(),
-					Interval:         jobSchedule.Interval(),
-					TaskName:         jobTask.Name().String(),
-					WindowSize:       jobWindow.GetSize(),
-					WindowOffset:     jobWindow.GetOffset(),
-					WindowTruncateTo: jobWindow.GetTruncateTo(),
-				},
-			}
-			request := pb.AddJobSpecificationsRequest{
-				ProjectName:   project.Name().String(),
-				NamespaceName: namespace.Name().String(),
-				Specs:         jobSpecProtos,
-			}
+				jobSpecProtos := []*pb.JobSpecification{
+					{
+						Version:          int32(0),
+						Name:             "job-A",
+						StartDate:        jobSchedule.StartDate().String(),
+						EndDate:          jobSchedule.EndDate().String(),
+						Interval:         jobSchedule.Interval(),
+						TaskName:         jobTask.Name().String(),
+						WindowSize:       jobWindow.GetSize(),
+						WindowOffset:     jobWindow.GetOffset(),
+						WindowTruncateTo: jobWindow.GetTruncateTo(),
+					},
+					{
+						Version:          int32(jobVersion),
+						Name:             "job-B",
+						Owner:            "sample-owner",
+						StartDate:        jobSchedule.StartDate().String(),
+						EndDate:          jobSchedule.EndDate().String(),
+						Interval:         jobSchedule.Interval(),
+						TaskName:         jobTask.Name().String(),
+						WindowSize:       jobWindow.GetSize(),
+						WindowOffset:     jobWindow.GetOffset(),
+						WindowTruncateTo: jobWindow.GetTruncateTo(),
+					},
+				}
+				request := pb.AddJobSpecificationsRequest{
+					ProjectName:   project.Name().String(),
+					NamespaceName: namespace.Name().String(),
+					Specs:         jobSpecProtos,
+				}
 
-			jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(nil)
+				jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(nil)
 
-			resp, err := jobHandler.AddJobSpecifications(ctx, &request)
-			assert.Nil(t, err)
-			assert.Contains(t, resp.Log, "error")
+				resp, err := jobHandler.AddJobSpecifications(ctx, &request)
+				assert.Nil(t, err)
+				assert.Contains(t, resp.Log, "error")
+			})
+			t.Run("due to invalid start date", func(t *testing.T) {
+				jobService := new(JobService)
+
+				jobHandler := v1beta1.NewJobHandler(jobService, log)
+
+				jobSpecProtos := []*pb.JobSpecification{
+					{
+						Version:          int32(jobVersion),
+						Name:             "job-A",
+						StartDate:        "invalid",
+						Owner:            "sample-owner",
+						EndDate:          jobSchedule.EndDate().String(),
+						Interval:         jobSchedule.Interval(),
+						TaskName:         jobTask.Name().String(),
+						WindowSize:       jobWindow.GetSize(),
+						WindowOffset:     jobWindow.GetOffset(),
+						WindowTruncateTo: jobWindow.GetTruncateTo(),
+					},
+					{
+						Version:          int32(jobVersion),
+						Name:             "job-B",
+						Owner:            "sample-owner",
+						StartDate:        jobSchedule.StartDate().String(),
+						EndDate:          jobSchedule.EndDate().String(),
+						Interval:         jobSchedule.Interval(),
+						TaskName:         jobTask.Name().String(),
+						WindowSize:       jobWindow.GetSize(),
+						WindowOffset:     jobWindow.GetOffset(),
+						WindowTruncateTo: jobWindow.GetTruncateTo(),
+					},
+				}
+				request := pb.AddJobSpecificationsRequest{
+					ProjectName:   project.Name().String(),
+					NamespaceName: namespace.Name().String(),
+					Specs:         jobSpecProtos,
+				}
+
+				jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(nil)
+
+				resp, err := jobHandler.AddJobSpecifications(ctx, &request)
+				assert.Nil(t, err)
+				assert.Contains(t, resp.Log, "error")
+			})
+			t.Run("due to invalid end date", func(t *testing.T) {
+				jobService := new(JobService)
+
+				jobHandler := v1beta1.NewJobHandler(jobService, log)
+
+				jobSpecProtos := []*pb.JobSpecification{
+					{
+						Version:          int32(jobVersion),
+						Name:             "job-A",
+						StartDate:        jobSchedule.StartDate().String(),
+						EndDate:          "invalid",
+						Owner:            "sample-owner",
+						Interval:         jobSchedule.Interval(),
+						TaskName:         jobTask.Name().String(),
+						WindowSize:       jobWindow.GetSize(),
+						WindowOffset:     jobWindow.GetOffset(),
+						WindowTruncateTo: jobWindow.GetTruncateTo(),
+					},
+					{
+						Version:          int32(jobVersion),
+						Name:             "job-B",
+						Owner:            "sample-owner",
+						StartDate:        jobSchedule.StartDate().String(),
+						EndDate:          jobSchedule.EndDate().String(),
+						Interval:         jobSchedule.Interval(),
+						TaskName:         jobTask.Name().String(),
+						WindowSize:       jobWindow.GetSize(),
+						WindowOffset:     jobWindow.GetOffset(),
+						WindowTruncateTo: jobWindow.GetTruncateTo(),
+					},
+				}
+				request := pb.AddJobSpecificationsRequest{
+					ProjectName:   project.Name().String(),
+					NamespaceName: namespace.Name().String(),
+					Specs:         jobSpecProtos,
+				}
+
+				jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(nil)
+
+				resp, err := jobHandler.AddJobSpecifications(ctx, &request)
+				assert.Nil(t, err)
+				assert.Contains(t, resp.Log, "error")
+			})
+			t.Run("due to invalid alert configuration", func(t *testing.T) {
+				jobService := new(JobService)
+
+				jobHandler := v1beta1.NewJobHandler(jobService, log)
+
+				behaviorWithInvalidAlertConf := &pb.JobSpecification_Behavior{
+					Retry: &pb.JobSpecification_Behavior_Retry{ExponentialBackoff: false},
+					Notify: []*pb.JobSpecification_Behavior_Notifiers{
+						{On: 0, Channels: []string{"sample"}, Config: map[string]string{"": ""}},
+					},
+				}
+
+				jobSpecProtos := []*pb.JobSpecification{
+					{
+						Version:          int32(jobVersion),
+						Name:             "job-A",
+						Owner:            "sample-owner",
+						StartDate:        jobSchedule.StartDate().String(),
+						EndDate:          jobSchedule.EndDate().String(),
+						Interval:         jobSchedule.Interval(),
+						TaskName:         jobTask.Name().String(),
+						WindowSize:       jobWindow.GetSize(),
+						WindowOffset:     jobWindow.GetOffset(),
+						WindowTruncateTo: jobWindow.GetTruncateTo(),
+						Behavior:         behaviorWithInvalidAlertConf,
+					},
+					{
+						Version:          int32(jobVersion),
+						Name:             "job-B",
+						Owner:            "sample-owner",
+						StartDate:        jobSchedule.StartDate().String(),
+						EndDate:          jobSchedule.EndDate().String(),
+						Interval:         jobSchedule.Interval(),
+						TaskName:         jobTask.Name().String(),
+						WindowSize:       jobWindow.GetSize(),
+						WindowOffset:     jobWindow.GetOffset(),
+						WindowTruncateTo: jobWindow.GetTruncateTo(),
+					},
+				}
+				request := pb.AddJobSpecificationsRequest{
+					ProjectName:   project.Name().String(),
+					NamespaceName: namespace.Name().String(),
+					Specs:         jobSpecProtos,
+				}
+
+				jobService.On("Add", ctx, sampleTenant, mock.Anything).Return(nil)
+
+				resp, err := jobHandler.AddJobSpecifications(ctx, &request)
+				assert.Nil(t, err)
+				assert.Contains(t, resp.Log, "error")
+			})
 		})
 		t.Run("returns error when all jobs failed to be added", func(t *testing.T) {
 			jobService := new(JobService)
@@ -609,7 +756,7 @@ func TestNewJobHandler(t *testing.T) {
 		})
 	})
 	t.Run("ReplaceAllJobSpecifications", func(t *testing.T) {
-		var jobNamesToSkip []job.Name
+		var jobNamesWithValidationError []job.Name
 		t.Run("replaces all job specifications of a tenant", func(t *testing.T) {
 			jobService := new(JobService)
 
@@ -652,7 +799,7 @@ func TestNewJobHandler(t *testing.T) {
 			stream.On("Recv").Return(request, nil).Once()
 			stream.On("Recv").Return(nil, io.EOF).Once()
 
-			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesToSkip, mock.Anything).Return(nil)
+			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesWithValidationError, mock.Anything).Return(nil)
 
 			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Twice()
 
@@ -697,8 +844,8 @@ func TestNewJobHandler(t *testing.T) {
 			stream.On("Recv").Return(request2, nil).Once()
 			stream.On("Recv").Return(nil, io.EOF).Once()
 
-			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesToSkip, mock.Anything).Return(nil)
-			jobService.On("ReplaceAll", ctx, otherTenant, mock.Anything, jobNamesToSkip, mock.Anything).Return(nil)
+			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesWithValidationError, mock.Anything).Return(nil)
+			jobService.On("ReplaceAll", ctx, otherTenant, mock.Anything, jobNamesWithValidationError, mock.Anything).Return(nil)
 
 			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Twice()
 
@@ -791,7 +938,7 @@ func TestNewJobHandler(t *testing.T) {
 			stream.On("Recv").Return(request2, nil).Once()
 			stream.On("Recv").Return(nil, io.EOF).Once()
 
-			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesToSkip, mock.Anything).Return(nil)
+			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesWithValidationError, mock.Anything).Return(nil)
 
 			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Times(3)
 
@@ -840,7 +987,7 @@ func TestNewJobHandler(t *testing.T) {
 			stream.On("Recv").Return(request, nil).Once()
 			stream.On("Recv").Return(nil, io.EOF).Once()
 
-			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesToSkip, mock.Anything).Return(errors.New("internal error"))
+			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesWithValidationError, mock.Anything).Return(errors.New("internal error"))
 
 			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Twice()
 
@@ -862,7 +1009,7 @@ func TestNewJobHandler(t *testing.T) {
 			stream := new(RefreshJobsServer)
 			stream.On("Context").Return(ctx)
 
-			jobService.On("Refresh", ctx, project.Name(), mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+			jobService.On("Refresh", ctx, project.Name(), request.NamespaceNames, request.JobNames, mock.Anything).Return(nil)
 
 			stream.On("Send", mock.AnythingOfType("*optimus.RefreshJobsResponse")).Return(nil)
 
@@ -899,7 +1046,7 @@ func TestNewJobHandler(t *testing.T) {
 			stream := new(RefreshJobsServer)
 			stream.On("Context").Return(ctx)
 
-			jobService.On("Refresh", ctx, project.Name(), mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("internal error"))
+			jobService.On("Refresh", ctx, project.Name(), request.NamespaceNames, request.JobNames, mock.Anything).Return(errors.New("internal error"))
 
 			stream.On("Send", mock.AnythingOfType("*optimus.RefreshJobsResponse")).Return(nil)
 
@@ -1161,12 +1308,18 @@ func TestNewJobHandler(t *testing.T) {
 		})
 	})
 	t.Run("JobInspect", func(t *testing.T) {
+		configs := []*pb.JobConfigItem{
+			{
+				Name:  "sample_key",
+				Value: "sample_value",
+			},
+		}
 		t.Run("should return basic info, upstream, downstream of an existing job", func(t *testing.T) {
 			jobService := new(JobService)
 
 			httpUpstream, _ := job.NewSpecHTTPUpstreamBuilder("sample-upstream", "sample-url").Build()
 			upstreamSpec, _ := job.NewSpecUpstreamBuilder().WithSpecHTTPUpstream([]*job.SpecHTTPUpstream{httpUpstream}).Build()
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).WithMetadata(metadataSpec).Build()
 			jobA := job.NewJob(sampleTenant, specA, "resource-A", nil)
 
 			upstreamB := job.NewUpstreamResolved("job-B", "", "resource-b", sampleTenant, "static", "bq2bq", false)
@@ -1176,13 +1329,8 @@ func TestNewJobHandler(t *testing.T) {
 				upstreamB,
 				upstreamC,
 			}
-			jobADownstream := []*dto.Downstream{
-				{
-					Name:          "job-x",
-					ProjectName:   project.Name().String(),
-					NamespaceName: namespace.Name().String(),
-					TaskName:      jobTask.Name().String(),
-				},
+			jobADownstream := []*job.Downstream{
+				job.NewDownstream("job-x", project.Name(), namespace.Name(), jobTask.Name()),
 			}
 
 			var basicInfoLogger writer.BufferedLogger
@@ -1212,7 +1360,7 @@ func TestNewJobHandler(t *testing.T) {
 						WindowTruncateTo: specA.Window().GetTruncateTo(),
 						Destination:      "resource-A",
 						Config: []*pb.JobConfigItem{{
-							Name:  "sample_task_key",
+							Name:  "sample_key",
 							Value: "sample_value",
 						}},
 						Dependencies: []*pb.JobDependency{
@@ -1223,6 +1371,7 @@ func TestNewJobHandler(t *testing.T) {
 								},
 							},
 						},
+						Metadata: jobMetadata,
 					},
 					Destination: "resource-A",
 				},
@@ -1255,10 +1404,10 @@ func TestNewJobHandler(t *testing.T) {
 				Downstreams: &pb.JobInspectResponse_DownstreamSection{
 					DownstreamJobs: []*pb.JobInspectResponse_JobDependency{
 						{
-							Name:          jobADownstream[0].Name,
-							ProjectName:   jobADownstream[0].ProjectName,
-							NamespaceName: jobADownstream[0].NamespaceName,
-							TaskName:      jobADownstream[0].TaskName,
+							Name:          jobADownstream[0].Name().String(),
+							ProjectName:   jobADownstream[0].ProjectName().String(),
+							NamespaceName: jobADownstream[0].NamespaceName().String(),
+							TaskName:      jobADownstream[0].TaskName().String(),
 						},
 					},
 				},
@@ -1272,29 +1421,46 @@ func TestNewJobHandler(t *testing.T) {
 		t.Run("should return basic info, upstream, downstream of a user given job spec", func(t *testing.T) {
 			jobService := new(JobService)
 
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			httpUpstream, _ := job.NewSpecHTTPUpstreamBuilder("sample-upstream", "sample-url").Build()
+			upstreamSpec, _ := job.NewSpecUpstreamBuilder().
+				WithSpecHTTPUpstream([]*job.SpecHTTPUpstream{httpUpstream}).
+				WithUpstreamNames([]job.SpecUpstreamName{"job-B"}).Build()
+
+			hook1 := job.NewHook("hook-1", jobConfig)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).
+				WithSpecUpstream(upstreamSpec).
+				WithHooks([]*job.Hook{hook1}).Build()
 			jobA := job.NewJob(sampleTenant, specA, "resource-A", nil)
 
 			upstreamB := job.NewUpstreamResolved("job-B", "", "resource-b", sampleTenant, "static", "bq2bq", false)
 			upstreamC := job.NewUpstreamResolved("job-C", "other-host", "resource-c", sampleTenant, "inferred", "bq2bq", true)
+			upstreamD := job.NewUpstreamUnresolvedInferred("resource-d")
+			upstreamE := job.NewUpstreamUnresolvedStatic("job-e", project.Name())
 
 			jobAUpstream := []*job.Upstream{
 				upstreamB,
 				upstreamC,
+				upstreamD,
+				upstreamE,
 			}
-			jobADownstream := []*dto.Downstream{
-				{
-					Name:          "job-x",
-					ProjectName:   project.Name().String(),
-					NamespaceName: namespace.Name().String(),
-					TaskName:      jobTask.Name().String(),
-				},
+			jobADownstream := []*job.Downstream{
+				job.NewDownstream("job-x", project.Name(), namespace.Name(), jobTask.Name()),
 			}
 
 			var basicInfoLogger writer.BufferedLogger
 			jobService.On("GetJobBasicInfo", ctx, sampleTenant, mock.Anything, mock.Anything).Return(jobA, basicInfoLogger)
 			jobService.On("GetUpstreamsToInspect", ctx, jobA, true).Return(jobAUpstream, nil)
 			jobService.On("GetDownstream", ctx, jobA, true).Return(jobADownstream, nil)
+
+			jobDependenciesWithHTTPProto := []*pb.JobDependency{
+				{Name: "job-B"},
+				{HttpDependency: &pb.HttpDependency{Name: "sample-upstream", Url: "sample-url"}},
+			}
+
+			jobHooksProto := []*pb.JobSpecHook{
+				{Name: "hook-1", Config: configs},
+			}
 
 			jobSpecProto := &pb.JobSpecification{
 				Version:          int32(jobVersion),
@@ -1307,8 +1473,9 @@ func TestNewJobHandler(t *testing.T) {
 				WindowOffset:     jobWindow.GetOffset(),
 				WindowTruncateTo: jobWindow.GetTruncateTo(),
 				Behavior:         jobBehavior,
-				Dependencies:     jobDependencies,
+				Dependencies:     jobDependenciesWithHTTPProto,
 				Metadata:         jobMetadata,
+				Hooks:            jobHooksProto,
 			}
 			req := &pb.JobInspectRequest{
 				ProjectName:   project.Name().String(),
@@ -1332,10 +1499,9 @@ func TestNewJobHandler(t *testing.T) {
 						WindowOffset:     specA.Window().GetOffset(),
 						WindowTruncateTo: specA.Window().GetTruncateTo(),
 						Destination:      "resource-A",
-						Config: []*pb.JobConfigItem{{
-							Name:  "sample_task_key",
-							Value: "sample_value",
-						}},
+						Config:           configs,
+						Dependencies:     jobDependenciesWithHTTPProto,
+						Hooks:            jobHooksProto,
 					},
 					Destination: "resource-A",
 				},
@@ -1358,14 +1524,26 @@ func TestNewJobHandler(t *testing.T) {
 							TaskName:      upstreamB.TaskName().String(),
 						},
 					},
+					UnknownDependencies: []*pb.JobInspectResponse_UpstreamSection_UnknownDependencies{
+						{
+							ResourceDestination: upstreamD.Resource().String(),
+						},
+						{
+							JobName:     upstreamE.Name().String(),
+							ProjectName: upstreamE.ProjectName().String(),
+						},
+					},
+					HttpDependency: []*pb.HttpDependency{
+						{Name: "sample-upstream", Url: "sample-url"},
+					},
 				},
 				Downstreams: &pb.JobInspectResponse_DownstreamSection{
 					DownstreamJobs: []*pb.JobInspectResponse_JobDependency{
 						{
-							Name:          jobADownstream[0].Name,
-							ProjectName:   jobADownstream[0].ProjectName,
-							NamespaceName: jobADownstream[0].NamespaceName,
-							TaskName:      jobADownstream[0].TaskName,
+							Name:          jobADownstream[0].Name().String(),
+							ProjectName:   jobADownstream[0].ProjectName().String(),
+							NamespaceName: jobADownstream[0].NamespaceName().String(),
+							TaskName:      jobADownstream[0].TaskName().String(),
 						},
 					},
 				},
@@ -1432,13 +1610,8 @@ func TestNewJobHandler(t *testing.T) {
 				upstreamB,
 				upstreamC,
 			}
-			jobADownstream := []*dto.Downstream{
-				{
-					Name:          "job-x",
-					ProjectName:   project.Name().String(),
-					NamespaceName: namespace.Name().String(),
-					TaskName:      jobTask.Name().String(),
-				},
+			jobADownstream := []*job.Downstream{
+				job.NewDownstream("job-x", project.Name(), namespace.Name(), jobTask.Name()),
 			}
 
 			var basicInfoLogger writer.BufferedLogger
@@ -1472,7 +1645,7 @@ func TestNewJobHandler(t *testing.T) {
 						WindowTruncateTo: specA.Window().GetTruncateTo(),
 						Destination:      "resource-A",
 						Config: []*pb.JobConfigItem{{
-							Name:  "sample_task_key",
+							Name:  "sample_key",
 							Value: "sample_value",
 						}},
 					},
@@ -1502,10 +1675,10 @@ func TestNewJobHandler(t *testing.T) {
 				Downstreams: &pb.JobInspectResponse_DownstreamSection{
 					DownstreamJobs: []*pb.JobInspectResponse_JobDependency{
 						{
-							Name:          jobADownstream[0].Name,
-							ProjectName:   jobADownstream[0].ProjectName,
-							NamespaceName: jobADownstream[0].NamespaceName,
-							TaskName:      jobADownstream[0].TaskName,
+							Name:          jobADownstream[0].Name().String(),
+							ProjectName:   jobADownstream[0].ProjectName().String(),
+							NamespaceName: jobADownstream[0].NamespaceName().String(),
+							TaskName:      jobADownstream[0].TaskName().String(),
 						},
 					},
 					Notice: []*pb.Log{{Level: pb.Level_LEVEL_ERROR, Message: "unable to get downstream jobs: sample downstream error"}},
@@ -1599,7 +1772,7 @@ func TestNewJobHandler(t *testing.T) {
 			}
 
 			jobService.On("Get", ctx, sampleTenant, jobA.Spec().Name()).Return(jobA, nil)
-			jobService.On("GetTaskInfo", ctx, jobA.Spec().Task()).Return(nil, errors.New("error encountered"))
+			jobService.On("GetTaskWithInfo", ctx, jobA.Spec().Task()).Return(nil, errors.New("error encountered"))
 			handler := v1beta1.NewJobHandler(jobService, nil)
 			resp, err := handler.GetJobTask(ctx, req)
 			assert.Error(t, err)
@@ -1624,7 +1797,7 @@ func TestNewJobHandler(t *testing.T) {
 				Image:       "odpf/bq2bq:latest",
 			}).Build()
 			jobService.On("Get", ctx, sampleTenant, jobA.Spec().Name()).Return(jobA, nil)
-			jobService.On("GetTaskInfo", ctx, jobA.Spec().Task()).Return(jobTask, nil)
+			jobService.On("GetTaskWithInfo", ctx, jobA.Spec().Task()).Return(jobTask, nil)
 			handler := v1beta1.NewJobHandler(jobService, nil)
 			resp, err := handler.GetJobTask(ctx, req)
 			assert.NoError(t, err)
@@ -1730,15 +1903,15 @@ func (_m *JobService) GetByFilter(ctx context.Context, filters ...filter.FilterO
 }
 
 // GetDownstream provides a mock function with given fields: ctx, _a1, localJob
-func (_m *JobService) GetDownstream(ctx context.Context, _a1 *job.Job, localJob bool) ([]*dto.Downstream, error) {
+func (_m *JobService) GetDownstream(ctx context.Context, _a1 *job.Job, localJob bool) ([]*job.Downstream, error) {
 	ret := _m.Called(ctx, _a1, localJob)
 
-	var r0 []*dto.Downstream
-	if rf, ok := ret.Get(0).(func(context.Context, *job.Job, bool) []*dto.Downstream); ok {
+	var r0 []*job.Downstream
+	if rf, ok := ret.Get(0).(func(context.Context, *job.Job, bool) []*job.Downstream); ok {
 		r0 = rf(ctx, _a1, localJob)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*dto.Downstream)
+			r0 = ret.Get(0).([]*job.Downstream)
 		}
 	}
 
@@ -1776,7 +1949,7 @@ func (_m *JobService) GetJobBasicInfo(ctx context.Context, jobTenant tenant.Tena
 }
 
 // GetTaskInfo provides a mock function with given fields: ctx, task
-func (_m *JobService) GetTaskInfo(ctx context.Context, task *job.Task) (*job.Task, error) {
+func (_m *JobService) GetTaskWithInfo(ctx context.Context, task *job.Task) (*job.Task, error) {
 	ret := _m.Called(ctx, task)
 
 	var r0 *job.Task
@@ -1821,20 +1994,13 @@ func (_m *JobService) GetUpstreamsToInspect(ctx context.Context, subjectJob *job
 	return r0, r1
 }
 
-// Refresh provides a mock function with given fields: ctx, projectName, logWriter, filters
-func (_m *JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, logWriter writer.LogWriter, filters ...filter.FilterOpt) error {
-	_va := make([]interface{}, len(filters))
-	for _i := range filters {
-		_va[_i] = filters[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx, projectName, logWriter)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
+// Refresh provides a mock function with given fields: ctx, projectName, namespaceNames, jobNames, logWriter
+func (_m *JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, namespaceNames []string, jobNames []string, logWriter writer.LogWriter) error {
+	ret := _m.Called(ctx, projectName, namespaceNames, jobNames, logWriter)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, writer.LogWriter, ...filter.FilterOpt) error); ok {
-		r0 = rf(ctx, projectName, logWriter, filters...)
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, []string, []string, writer.LogWriter) error); ok {
+		r0 = rf(ctx, projectName, namespaceNames, jobNames, logWriter)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1842,13 +2008,13 @@ func (_m *JobService) Refresh(ctx context.Context, projectName tenant.ProjectNam
 	return r0
 }
 
-// ReplaceAll provides a mock function with given fields: ctx, jobTenant, jobs, jobNamesToSkip, logWriter
-func (_m *JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, jobNamesToSkip []job.Name, logWriter writer.LogWriter) error {
-	ret := _m.Called(ctx, jobTenant, jobs, jobNamesToSkip, logWriter)
+// ReplaceAll provides a mock function with given fields: ctx, jobTenant, jobs, jobNamesWithValidationError, logWriter
+func (_m *JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, jobNamesWithValidationError []job.Name, logWriter writer.LogWriter) error {
+	ret := _m.Called(ctx, jobTenant, jobs, jobNamesWithValidationError, logWriter)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []*job.Spec, []job.Name, writer.LogWriter) error); ok {
-		r0 = rf(ctx, jobTenant, jobs, jobNamesToSkip, logWriter)
+		r0 = rf(ctx, jobTenant, jobs, jobNamesWithValidationError, logWriter)
 	} else {
 		r0 = ret.Error(0)
 	}

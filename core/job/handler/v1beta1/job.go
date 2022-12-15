@@ -10,7 +10,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/service/filter"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
@@ -38,15 +37,15 @@ type JobService interface {
 	Update(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error
 	Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) (affectedDownstream []job.FullName, err error)
 	Get(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name) (jobSpec *job.Job, err error)
-	GetTaskInfo(ctx context.Context, task *job.Task) (*job.Task, error)
+	GetTaskWithInfo(ctx context.Context, task *job.Task) (*job.Task, error)
 	GetByFilter(ctx context.Context, filters ...filter.FilterOpt) (jobSpecs []*job.Job, err error)
-	ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, jobNamesToSkip []job.Name, logWriter writer.LogWriter) error
-	Refresh(ctx context.Context, projectName tenant.ProjectName, logWriter writer.LogWriter, filters ...filter.FilterOpt) error
+	ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, jobNamesWithValidationError []job.Name, logWriter writer.LogWriter) error
+	Refresh(ctx context.Context, projectName tenant.ProjectName, namespaceNames []string, jobNames []string, logWriter writer.LogWriter) error
 	Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, logWriter writer.LogWriter) error
 
 	GetJobBasicInfo(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, spec *job.Spec) (*job.Job, writer.BufferedLogger)
 	GetUpstreamsToInspect(ctx context.Context, subjectJob *job.Job, localJob bool) ([]*job.Upstream, error)
-	GetDownstream(ctx context.Context, job *job.Job, localJob bool) ([]*dto.Downstream, error)
+	GetDownstream(ctx context.Context, job *job.Job, localJob bool) ([]*job.Downstream, error)
 }
 
 func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *pb.AddJobSpecificationsRequest) (*pb.AddJobSpecificationsResponse, error) {
@@ -55,17 +54,13 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 		return nil, errors.GRPCErr(err, "failed to add job specifications")
 	}
 
-	var jobSpecs []*job.Spec
 	me := errors.NewMultiError("add specs errors")
-	for _, jobProto := range jobSpecRequest.Specs {
-		jobSpec, err := fromJobProto(jobProto)
-		if err != nil {
-			errMsg := fmt.Sprintf("cannot adapt job specification %s: %s", jobProto.Name, err.Error())
-			jh.l.Error(errMsg)
-			me.Append(err)
-			continue
-		}
-		jobSpecs = append(jobSpecs, jobSpec)
+
+	jobSpecs, _, err := fromJobProtos(jobSpecRequest.Specs)
+	if err != nil {
+		errorMsg := fmt.Sprintf("failure when adapting job specifications: %s", err.Error())
+		jh.l.Error(errorMsg)
+		me.Append(err)
 	}
 
 	if len(jobSpecs) == 0 {
@@ -131,17 +126,12 @@ func (jh *JobHandler) UpdateJobSpecifications(ctx context.Context, jobSpecReques
 		return nil, errors.GRPCErr(err, errorMsg)
 	}
 
-	var jobSpecs []*job.Spec
 	me := errors.NewMultiError("update specs errors")
-	for _, jobProto := range jobSpecRequest.Specs {
-		jobSpec, err := fromJobProto(jobProto)
-		if err != nil {
-			errMsg := fmt.Sprintf("cannot adapt job specification %s: %s", jobProto.Name, err.Error())
-			jh.l.Error(errMsg)
-			me.Append(err)
-			continue
-		}
-		jobSpecs = append(jobSpecs, jobSpec)
+	jobSpecs, _, err := fromJobProtos(jobSpecRequest.Specs)
+	if err != nil {
+		errorMsg := fmt.Sprintf("failure when adapting job specifications: %s", err.Error())
+		jh.l.Error(errorMsg)
+		me.Append(err)
 	}
 
 	if len(jobSpecs) == 0 {
@@ -183,6 +173,7 @@ func (jh *JobHandler) GetJobSpecification(ctx context.Context, req *pb.GetJobSpe
 		return nil, errors.GRPCErr(err, errorMsg)
 	}
 
+	// TODO: return 404 if job is not found
 	return &pb.GetJobSpecificationResponse{
 		Spec: toJobProto(jobSpec),
 	}, nil
@@ -204,6 +195,7 @@ func (jh *JobHandler) GetJobSpecifications(ctx context.Context, req *pb.GetJobSp
 		})
 	}
 
+	// TODO: return 404 if job is not found
 	return &pb.GetJobSpecificationsResponse{
 		JobSpecificationResponses: jobSpecResponseProtos,
 	}, merr
@@ -220,13 +212,14 @@ func (jh *JobHandler) ListJobSpecification(ctx context.Context, req *pb.ListJobS
 		jobSpecificationProtos[i] = toJobProto(jobSpec)
 	}
 
+	// TODO: make a stream response
 	return &pb.ListJobSpecificationResponse{
 		Jobs: jobSpecificationProtos,
 	}, merr
 }
 
 func (*JobHandler) GetWindow(_ context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
-	// TODO the default version to be deprecated & made mandatory in future releases
+	// TODO: the default version to be deprecated & made mandatory in future releases
 	version := 1
 	if err := req.GetScheduledAt().CheckValid(); err != nil {
 		return nil, fmt.Errorf("%w: failed to parse schedule time %s", err, req.GetScheduledAt())
@@ -285,27 +278,15 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 			continue
 		}
 
-		var jobSpecs []*job.Spec
-		var jobNamesToSkip []job.Name
-		for _, jobProto := range request.Jobs {
-			jobSpec, err := fromJobProto(jobProto)
-			if err != nil {
-				errMsg := fmt.Sprintf("[%s] cannot adapt job specification %s: %s", request.GetNamespaceName(), jobProto.Name, err.Error())
-				jh.l.Error(errMsg)
-				responseWriter.Write(writer.LogLevelError, errMsg)
-
-				jobNameToSkip, err := job.NameFrom(jobProto.Name)
-				if err == nil {
-					jobNamesToSkip = append(jobNamesToSkip, jobNameToSkip)
-				}
-
-				errNamespaces = append(errNamespaces, request.NamespaceName)
-				continue
-			}
-			jobSpecs = append(jobSpecs, jobSpec)
+		jobSpecs, jobNamesWithValidationErrors, err := fromJobProtos(request.Jobs)
+		if err != nil {
+			errMsg := fmt.Sprintf("[%s] failed to adapt job specifications: %s", request.GetNamespaceName(), err.Error())
+			jh.l.Error(errMsg)
+			responseWriter.Write(writer.LogLevelError, errMsg)
+			errNamespaces = append(errNamespaces, request.NamespaceName)
 		}
 
-		if err := jh.jobService.ReplaceAll(stream.Context(), jobTenant, jobSpecs, jobNamesToSkip, responseWriter); err != nil {
+		if err := jh.jobService.ReplaceAll(stream.Context(), jobTenant, jobSpecs, jobNamesWithValidationErrors, responseWriter); err != nil {
 			errMsg := fmt.Sprintf("replace all job specifications failure for namespace %s: %s", request.NamespaceName, err.Error())
 			jh.l.Error(errMsg)
 			responseWriter.Write(writer.LogLevelError, errMsg)
@@ -330,11 +311,7 @@ func (jh *JobHandler) RefreshJobs(request *pb.RefreshJobsRequest, stream pb.JobS
 		return err
 	}
 
-	projectFilter := filter.WithString(filter.ProjectName, projectName.String())
-	namespacesFilter := filter.WithStringArray(filter.NamespaceNames, request.NamespaceNames)
-	jobNamesFilter := filter.WithStringArray(filter.JobNames, request.JobNames)
-
-	if err = jh.jobService.Refresh(stream.Context(), projectName, responseWriter, projectFilter, namespacesFilter, jobNamesFilter); err != nil {
+	if err = jh.jobService.Refresh(stream.Context(), projectName, request.NamespaceNames, request.JobNames, responseWriter); err != nil {
 		errMsg := fmt.Sprintf("job refresh failed for project %s: %s", request.ProjectName, err.Error())
 		jh.l.Error(errMsg)
 		responseWriter.Write(writer.LogLevelError, errMsg)
@@ -352,14 +329,11 @@ func (jh *JobHandler) CheckJobSpecifications(req *pb.CheckJobSpecificationsReque
 	}
 
 	me := errors.NewMultiError("check / validate job spec errors")
-	jobSpecs := []*job.Spec{}
-	for _, js := range req.Jobs {
-		jobSpec, err := fromJobProto(js)
-		if err != nil {
-			me.Append(err)
-			continue
-		}
-		jobSpecs = append(jobSpecs, jobSpec)
+	jobSpecs, _, err := fromJobProtos(req.Jobs)
+	if err != nil {
+		errorMsg := fmt.Sprintf("failure when adapting job specifications: %s", err.Error())
+		jh.l.Error(errorMsg)
+		me.Append(err)
 	}
 
 	if err := jh.jobService.Validate(stream.Context(), jobTenant, jobSpecs, responseWriter); err != nil {
@@ -385,7 +359,7 @@ func (jh *JobHandler) GetJobTask(ctx context.Context, req *pb.GetJobTaskRequest)
 		return nil, err
 	}
 
-	jobTask, err := jh.jobService.GetTaskInfo(ctx, jobResult.Spec().Task())
+	jobTask, err := jh.jobService.GetTaskWithInfo(ctx, jobResult.Spec().Task())
 	if err != nil {
 		return nil, err
 	}
@@ -459,24 +433,12 @@ func (jh *JobHandler) JobInspect(ctx context.Context, req *pb.JobInspectRequest)
 		downstreamLogs.Write(writer.LogLevelError, fmt.Sprintf("unable to get downstream jobs: %v", err.Error()))
 	}
 
-	// TODO: return pb.JobInspectResponse_UpstreamSection
-	internalUpstreamProto, externalUpstreamProto, unknownUpstreamProto := toUpstreamProtos(upstreams)
+	upstreamProto := toUpstreamProtos(upstreams, subjectJob.Spec().UpstreamSpec(), upstreamLogs.Messages)
 	downstreamProto := toDownstreamProtos(downstreams)
-
-	var httpUpstreamProto []*pb.HttpDependency
-	if subjectJob.Spec().Upstream() != nil {
-		httpUpstreamProto = toHTTPUpstreamProtos(subjectJob.Spec().Upstream().HTTPUpstreams())
-	}
 
 	return &pb.JobInspectResponse{
 		BasicInfo: toBasicInfoSectionProto(subjectJob, basicInfoLogger.Messages),
-		Upstreams: &pb.JobInspectResponse_UpstreamSection{
-			ExternalDependency:  externalUpstreamProto,
-			InternalDependency:  internalUpstreamProto,
-			HttpDependency:      httpUpstreamProto,
-			UnknownDependencies: unknownUpstreamProto,
-			Notice:              upstreamLogs.Messages,
-		},
+		Upstreams: upstreamProto,
 		Downstreams: &pb.JobInspectResponse_DownstreamSection{
 			DownstreamJobs: downstreamProto,
 			Notice:         downstreamLogs.Messages,

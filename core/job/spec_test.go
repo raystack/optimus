@@ -49,7 +49,7 @@ func TestEntitySpec(t *testing.T) {
 		t.Run("should return values as inserted", func(t *testing.T) {
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).
 				WithDescription(description).
-				WithLabels(labels).WithHooks([]*job.Hook{hook}).WithAlerts([]*job.Alert{alert}).
+				WithLabels(labels).WithHooks([]*job.Hook{hook}).WithAlerts([]*job.AlertSpec{alert}).
 				WithSpecUpstream(specUpstream).
 				WithAsset(asset).
 				WithMetadata(jobMetadata).
@@ -90,19 +90,19 @@ func TestEntitySpec(t *testing.T) {
 			assert.Equal(t, hook.Config(), specA.Hooks()[0].Config())
 			assert.Equal(t, hook.Config().Configs(), specA.Hooks()[0].Config().Configs())
 
-			assert.Equal(t, []*job.Alert{alert}, specA.Alerts())
-			assert.Equal(t, alert.Config(), specA.Alerts()[0].Config())
-			assert.Equal(t, alert.Config().Configs(), specA.Alerts()[0].Config().Configs())
-			assert.Equal(t, alert.Channels(), specA.Alerts()[0].Channels())
-			assert.Equal(t, alert.On(), specA.Alerts()[0].On())
+			assert.Equal(t, []*job.AlertSpec{alert}, specA.AlertSpecs())
+			assert.Equal(t, alert.Config(), specA.AlertSpecs()[0].Config())
+			assert.Equal(t, alert.Config().Configs(), specA.AlertSpecs()[0].Config().Configs())
+			assert.Equal(t, alert.Channels(), specA.AlertSpecs()[0].Channels())
+			assert.Equal(t, alert.On(), specA.AlertSpecs()[0].On())
 
-			assert.Equal(t, specUpstream, specA.Upstream())
-			assert.Equal(t, specUpstream.UpstreamNames(), specA.Upstream().UpstreamNames())
-			assert.Equal(t, specUpstream.HTTPUpstreams(), specA.Upstream().HTTPUpstreams())
-			assert.Equal(t, specUpstream.HTTPUpstreams()[0].URL(), specA.Upstream().HTTPUpstreams()[0].URL())
-			assert.Equal(t, specUpstream.HTTPUpstreams()[0].Name(), specA.Upstream().HTTPUpstreams()[0].Name())
-			assert.Equal(t, specUpstream.HTTPUpstreams()[0].Params(), specA.Upstream().HTTPUpstreams()[0].Params())
-			assert.Equal(t, specUpstream.HTTPUpstreams()[0].Headers(), specA.Upstream().HTTPUpstreams()[0].Headers())
+			assert.Equal(t, specUpstream, specA.UpstreamSpec())
+			assert.Equal(t, specUpstream.UpstreamNames(), specA.UpstreamSpec().UpstreamNames())
+			assert.Equal(t, specUpstream.HTTPUpstreams(), specA.UpstreamSpec().HTTPUpstreams())
+			assert.Equal(t, specUpstream.HTTPUpstreams()[0].URL(), specA.UpstreamSpec().HTTPUpstreams()[0].URL())
+			assert.Equal(t, specUpstream.HTTPUpstreams()[0].Name(), specA.UpstreamSpec().HTTPUpstreams()[0].Name())
+			assert.Equal(t, specUpstream.HTTPUpstreams()[0].Params(), specA.UpstreamSpec().HTTPUpstreams()[0].Params())
+			assert.Equal(t, specUpstream.HTTPUpstreams()[0].Headers(), specA.UpstreamSpec().HTTPUpstreams()[0].Headers())
 
 			assert.Equal(t, asset, specA.Asset())
 			assert.Equal(t, asset.Assets(), specA.Asset().Assets())
@@ -132,144 +132,6 @@ func TestEntitySpec(t *testing.T) {
 			resultMap := specs.ToNameAndSpecMap()
 
 			assert.EqualValues(t, expectedMap, resultMap)
-		})
-	})
-
-	t.Run("IsEqual", func(t *testing.T) {
-		t.Run("should return true if specs are equal", func(t *testing.T) {
-			existingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).
-				WithDescription(description).
-				WithLabels(labels).WithHooks([]*job.Hook{hook}).WithAlerts([]*job.Alert{alert}).
-				WithSpecUpstream(specUpstream).
-				WithAsset(asset).
-				WithMetadata(jobMetadata).
-				Build()
-
-			incomingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).
-				WithDescription(description).
-				WithLabels(labels).WithHooks([]*job.Hook{hook}).WithAlerts([]*job.Alert{alert}).
-				WithSpecUpstream(specUpstream).
-				WithAsset(asset).
-				WithMetadata(jobMetadata).
-				Build()
-
-			equal := existingSpec.IsEqual(incomingSpec)
-			assert.True(t, equal)
-		})
-		t.Run("should return false if version is not equal", func(t *testing.T) {
-			existingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
-			jobVersion2, err := job.VersionFrom(2)
-			assert.NoError(t, err)
-			incomingSpec := job.NewSpecBuilder(jobVersion2, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
-
-			equal := existingSpec.IsEqual(incomingSpec)
-			assert.False(t, equal)
-		})
-		t.Run("should return false if name is not equal", func(t *testing.T) {
-			existingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
-			jobName, err := job.NameFrom("job-B")
-			assert.NoError(t, err)
-			incomingSpec := job.NewSpecBuilder(jobVersion, jobName, "sample-owner", jobSchedule, jobWindow, jobTask).Build()
-
-			equal := existingSpec.IsEqual(incomingSpec)
-			assert.False(t, equal)
-		})
-		t.Run("should return false if owner is not equal", func(t *testing.T) {
-			existingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
-			owner, err := job.OwnerFrom("sample-owner-2")
-			assert.NoError(t, err)
-			incomingSpec := job.NewSpecBuilder(jobVersion, "job-A", owner, jobSchedule, jobWindow, jobTask).Build()
-
-			equal := existingSpec.IsEqual(incomingSpec)
-			assert.False(t, equal)
-		})
-		t.Run("should return false if schedule is not equal", func(t *testing.T) {
-			existingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
-
-			updatedEndDate, err := job.ScheduleDateFrom("2022-01-01")
-			assert.NoError(t, err)
-			jobScheduleUpdated, _ := job.NewScheduleBuilder(startDate).WithEndDate(updatedEndDate).Build()
-			incomingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobScheduleUpdated, jobWindow, jobTask).Build()
-
-			equal := existingSpec.IsEqual(incomingSpec)
-			assert.False(t, equal)
-		})
-		t.Run("should return false if window is not equal", func(t *testing.T) {
-			existingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
-
-			jobWindowUpdated, _ := models.NewWindow(jobVersion.Int(), "h", "24h", "24h")
-			incomingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindowUpdated, jobTask).Build()
-
-			equal := existingSpec.IsEqual(incomingSpec)
-			assert.False(t, equal)
-		})
-		t.Run("should return false if task is not equal", func(t *testing.T) {
-			existingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
-
-			taskNameUpdated, err := job.TaskNameFrom("changed-task")
-			assert.NoError(t, err)
-			jobTaskUpdated := job.NewTaskBuilder(taskNameUpdated, jobTaskConfig).Build()
-			incomingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskUpdated).Build()
-
-			equal := existingSpec.IsEqual(incomingSpec)
-			assert.False(t, equal)
-		})
-		t.Run("should return false if description is not equal", func(t *testing.T) {
-			existingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithDescription(description).Build()
-			incomingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithDescription("updated description").Build()
-
-			equal := existingSpec.IsEqual(incomingSpec)
-			assert.False(t, equal)
-		})
-		t.Run("should return false if labels are not equal", func(t *testing.T) {
-			existingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithLabels(labels).Build()
-
-			labelsUpdated := map[string]string{"key": "value2"}
-			incomingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithLabels(labelsUpdated).Build()
-
-			equal := existingSpec.IsEqual(incomingSpec)
-			assert.False(t, equal)
-		})
-		t.Run("should return false if metadata is not equal", func(t *testing.T) {
-			existingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithMetadata(jobMetadata).Build()
-
-			jobMetadataUpdated, _ := job.NewMetadataBuilder().
-				WithResource(resourceMetadata).
-				WithScheduler(map[string]string{"scheduler_config_key": "value2"}).
-				Build()
-			incomingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithMetadata(jobMetadataUpdated).Build()
-
-			equal := existingSpec.IsEqual(incomingSpec)
-			assert.False(t, equal)
-		})
-		t.Run("should return false if hooks are not equal", func(t *testing.T) {
-			existingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithHooks([]*job.Hook{hook}).Build()
-
-			hookNameUpdated, err := job.HookNameFrom("sample-hook2")
-			assert.NoError(t, err)
-			hookUpdated := job.NewHook(hookNameUpdated, jobTaskConfig)
-			incomingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithHooks([]*job.Hook{hookUpdated}).Build()
-
-			equal := existingSpec.IsEqual(incomingSpec)
-			assert.False(t, equal)
-		})
-		t.Run("should return false if assets are not equal", func(t *testing.T) {
-			existingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithAsset(asset).Build()
-
-			assetUpdated, _ := job.NewAsset(map[string]string{"key2": "value2"})
-			incomingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithAsset(assetUpdated).Build()
-
-			equal := existingSpec.IsEqual(incomingSpec)
-			assert.False(t, equal)
-		})
-		t.Run("should return false if upstreams are not equal", func(t *testing.T) {
-			existingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithSpecUpstream(specUpstream).Build()
-
-			specUpstreamUpdated, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"job-e"}).Build()
-			incomingSpec := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithSpecUpstream(specUpstreamUpdated).Build()
-
-			equal := existingSpec.IsEqual(incomingSpec)
-			assert.False(t, equal)
 		})
 	})
 
@@ -344,6 +206,75 @@ func TestEntitySpec(t *testing.T) {
 			invalidAsset, err := job.NewAsset(invalidAssetMap)
 			assert.Error(t, err)
 			assert.Nil(t, invalidAsset)
+		})
+	})
+
+	t.Run("VersionFrom", func(t *testing.T) {
+		t.Run("should return error if version is less than or equals to zero", func(t *testing.T) {
+			version, err := job.VersionFrom(0)
+			assert.ErrorContains(t, err, "version is less than or equal to zero")
+			assert.Zero(t, version)
+		})
+	})
+
+	t.Run("NameFrom", func(t *testing.T) {
+		t.Run("should return error if name is empty", func(t *testing.T) {
+			name, err := job.NameFrom("")
+			assert.ErrorContains(t, err, "name is empty")
+			assert.Empty(t, name)
+		})
+	})
+
+	t.Run("OwnerFrom", func(t *testing.T) {
+		t.Run("should return error if owner is empty", func(t *testing.T) {
+			owner, err := job.OwnerFrom("")
+			assert.ErrorContains(t, err, "owner is empty")
+			assert.Empty(t, owner)
+		})
+	})
+
+	t.Run("ScheduleDateFrom", func(t *testing.T) {
+		t.Run("should not return error if date is empty", func(t *testing.T) {
+			scheduleDate, err := job.ScheduleDateFrom("")
+			assert.NoError(t, err)
+			assert.Empty(t, scheduleDate)
+		})
+		t.Run("should return error if date is invalid", func(t *testing.T) {
+			scheduleDate, err := job.ScheduleDateFrom("invalid date format")
+			assert.ErrorContains(t, err, "error is encountered when validating date with layout")
+			assert.Empty(t, scheduleDate)
+		})
+	})
+
+	t.Run("TaskNameFrom", func(t *testing.T) {
+		t.Run("should return error if task name is empty", func(t *testing.T) {
+			owner, err := job.TaskNameFrom("")
+			assert.ErrorContains(t, err, "task name is empty")
+			assert.Empty(t, owner)
+		})
+	})
+
+	t.Run("HookNameFrom", func(t *testing.T) {
+		t.Run("should return error if hook name is empty", func(t *testing.T) {
+			owner, err := job.HookNameFrom("")
+			assert.ErrorContains(t, err, "name is empty")
+			assert.Empty(t, owner)
+		})
+	})
+
+	t.Run("NewConfig", func(t *testing.T) {
+		t.Run("should return error if the config map is invalid", func(t *testing.T) {
+			jobConfig, err := job.NewConfig(map[string]string{"": ""})
+			assert.Error(t, err)
+			assert.Empty(t, jobConfig)
+		})
+	})
+
+	t.Run("NewLabels", func(t *testing.T) {
+		t.Run("should return error if the labels map is invalid", func(t *testing.T) {
+			jobLabels, err := job.NewLabels(map[string]string{"": ""})
+			assert.Error(t, err)
+			assert.Empty(t, jobLabels)
 		})
 	})
 }

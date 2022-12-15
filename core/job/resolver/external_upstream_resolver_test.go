@@ -10,54 +10,69 @@ import (
 
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/job/resolver"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/ext/resourcemanager"
+	"github.com/odpf/optimus/internal/models"
 )
 
 func TestExternalUpstreamResolver(t *testing.T) {
 	ctx := context.Background()
+	sampleTenant, _ := tenant.NewTenant("project", "namespace")
 	externalTenant, _ := tenant.NewTenant("external-project", "external-namespace")
 	resourceManager := new(ResourceManager)
 	optimusResourceManagers := []resourcemanager.ResourceManager{resourceManager}
+
+	jobVersion, _ := job.VersionFrom(1)
+	startDate, _ := job.ScheduleDateFrom("2022-10-01")
+	jobSchedule, _ := job.NewScheduleBuilder(startDate).Build()
+	jobWindow, _ := models.NewWindow(jobVersion.Int(), "d", "24h", "24h")
 	taskName, _ := job.TaskNameFrom("sample-task")
+	jobTaskConfig, _ := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+	jobTask := job.NewTaskBuilder(taskName, jobTaskConfig).Build()
+	upstreamSpec, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"external-project/job-B"}).Build()
+	specA := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
+	jobA := job.NewJob(sampleTenant, specA, "", []job.ResourceURN{"resource-C"})
 
 	t.Run("Resolve", func(t *testing.T) {
 		t.Run("resolves upstream externally", func(t *testing.T) {
-			rawUpstreams := []*dto.RawUpstream{
-				{JobName: "job-B", ProjectName: externalTenant.ProjectName().String()},
-				{ResourceURN: "resource-C"},
-			}
+			logWriter := new(mockWriter)
+			defer logWriter.AssertExpectations(t)
+
+			unresolvedUpstreamB := job.NewUpstreamUnresolvedStatic("job-B", externalTenant.ProjectName())
+			unresolvedUpstreamC := job.NewUpstreamUnresolvedInferred("resource-C")
+			jobWithUnresolvedUpstream := job.NewWithUpstream(jobA, []*job.Upstream{unresolvedUpstreamB, unresolvedUpstreamC})
+
 			upstreamB := job.NewUpstreamResolved("job-B", "external-host", "resource-B", externalTenant, "static", taskName, true)
 			upstreamC := job.NewUpstreamResolved("job-C", "external-host", "resource-C", externalTenant, "inferred", taskName, true)
-			resourceManager.On("GetOptimusUpstreams", ctx, rawUpstreams[0]).Return([]*job.Upstream{upstreamB}, nil).Once()
-			resourceManager.On("GetOptimusUpstreams", ctx, rawUpstreams[1]).Return([]*job.Upstream{upstreamC}, nil).Once()
+			resourceManager.On("GetOptimusUpstreams", ctx, unresolvedUpstreamB).Return([]*job.Upstream{upstreamB}, nil).Once()
+			resourceManager.On("GetOptimusUpstreams", ctx, unresolvedUpstreamC).Return([]*job.Upstream{upstreamC}, nil).Once()
+
+			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
 			extUpstreamResolver := resolver.NewTestExternalUpstreamResolver(optimusResourceManagers)
-			result, unresolvedDep, err := extUpstreamResolver.Resolve(ctx, rawUpstreams)
-			assert.Nil(t, unresolvedDep)
+			result, err := extUpstreamResolver.BulkResolve(ctx, []*job.WithUpstream{jobWithUnresolvedUpstream}, logWriter)
+			assert.Nil(t, result[0].GetUnresolvedUpstreams())
 			assert.Nil(t, err)
-			assert.EqualValues(t, []*job.Upstream{upstreamB, upstreamC}, result)
+			assert.EqualValues(t, []*job.Upstream{upstreamB, upstreamC}, result[0].Upstreams())
 		})
 		t.Run("returns unresolved upstream and upstream error if unable to fetch upstreams from external", func(t *testing.T) {
-			rawUpstreams := []*dto.RawUpstream{
-				{JobName: "job-B", ProjectName: externalTenant.ProjectName().String()},
-				{ResourceURN: "resource-C"},
-				{ResourceURN: "resource-D"},
-			}
-			unresolvedUpstreamC := job.NewUpstreamUnresolved("", "resource-C", "")
-			unresolvedUpstreamD := job.NewUpstreamUnresolved("", "resource-D", "")
-			upstreamB := job.NewUpstreamResolved("job-B", "external-host", "resource-B", externalTenant, "static", taskName, true)
-			resourceManager.On("GetOptimusUpstreams", ctx, rawUpstreams[0]).Return([]*job.Upstream{upstreamB}, nil).Once()
-			resourceManager.On("GetOptimusUpstreams", ctx, rawUpstreams[1]).Return([]*job.Upstream{}, errors.New("connection error")).Once()
-			resourceManager.On("GetOptimusUpstreams", ctx, rawUpstreams[2]).Return([]*job.Upstream{}, nil).Once()
+			logWriter := new(mockWriter)
+			defer logWriter.AssertExpectations(t)
+
+			unresolvedUpstreamB := job.NewUpstreamUnresolvedStatic("job-B", externalTenant.ProjectName())
+			unresolvedUpstreamC := job.NewUpstreamUnresolvedInferred("resource-C")
+			jobWithUnresolvedUpstream := job.NewWithUpstream(jobA, []*job.Upstream{unresolvedUpstreamB, unresolvedUpstreamC})
+
+			resourceManager.On("GetOptimusUpstreams", ctx, unresolvedUpstreamB).Return([]*job.Upstream{}, errors.New("connection error")).Once()
+			resourceManager.On("GetOptimusUpstreams", ctx, unresolvedUpstreamC).Return([]*job.Upstream{}, nil).Once()
+
+			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
 			extUpstreamResolver := resolver.NewTestExternalUpstreamResolver(optimusResourceManagers)
-			result, unresolvedDep, err := extUpstreamResolver.Resolve(ctx, rawUpstreams)
-			assert.EqualValues(t, []*job.Upstream{unresolvedUpstreamC, unresolvedUpstreamD}, unresolvedDep)
+			result, err := extUpstreamResolver.BulkResolve(ctx, []*job.WithUpstream{jobWithUnresolvedUpstream}, logWriter)
+			assert.EqualValues(t, []*job.Upstream{unresolvedUpstreamB, unresolvedUpstreamC}, result[0].Upstreams())
 			assert.NotNil(t, err)
-			assert.Equal(t, []*job.Upstream{upstreamB}, result)
 		})
 	})
 	t.Run("NewExternalUpstreamResolver", func(t *testing.T) {
@@ -101,11 +116,11 @@ type ResourceManager struct {
 }
 
 // GetOptimusUpstreams provides a mock function with given fields: ctx, unresolvedDependency
-func (_m *ResourceManager) GetOptimusUpstreams(ctx context.Context, unresolvedDependency *dto.RawUpstream) ([]*job.Upstream, error) {
+func (_m *ResourceManager) GetOptimusUpstreams(ctx context.Context, unresolvedDependency *job.Upstream) ([]*job.Upstream, error) {
 	ret := _m.Called(ctx, unresolvedDependency)
 
 	var r0 []*job.Upstream
-	if rf, ok := ret.Get(0).(func(context.Context, *dto.RawUpstream) []*job.Upstream); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *job.Upstream) []*job.Upstream); ok {
 		r0 = rf(ctx, unresolvedDependency)
 	} else {
 		if ret.Get(0) != nil {
@@ -114,7 +129,7 @@ func (_m *ResourceManager) GetOptimusUpstreams(ctx context.Context, unresolvedDe
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *dto.RawUpstream) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *job.Upstream) error); ok {
 		r1 = rf(ctx, unresolvedDependency)
 	} else {
 		r1 = ret.Error(1)

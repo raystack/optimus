@@ -7,7 +7,6 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 )
@@ -37,15 +36,16 @@ func (j JobRepository) insertJobSpec(ctx context.Context, jobEntity *job.Job) er
 	existingJob, err := j.get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name(), false)
 	if err != nil && !errors.IsErrorType(err, errors.ErrNotFound) {
 		return errors.NewError(errors.ErrInternalError, job.EntityJob, fmt.Sprintf("failed to check job %s in db: %s", jobEntity.Spec().Name().String(), err.Error()))
-	} else if err == nil {
-		if existingJob.DeletedAt.Valid {
-			if existingJob.NamespaceName != jobEntity.Tenant().NamespaceName().String() {
-				errorMsg := fmt.Sprintf("job %s already exists and soft deleted in namespace %s. consider hard delete the job before inserting to this namespace.", existingJob.Name, existingJob.NamespaceName)
-				return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, errorMsg)
-			}
-			return j.triggerUpdate(ctx, jobEntity)
-		}
-		return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, fmt.Sprintf("job %s already exists", existingJob.Name))
+	}
+	if err == nil && !existingJob.DeletedAt.Valid {
+		return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, fmt.Sprintf("job %s already exists in namespace %s", existingJob.Name, existingJob.NamespaceName))
+	}
+	if err == nil && existingJob.DeletedAt.Valid && existingJob.NamespaceName != jobEntity.Tenant().NamespaceName().String() {
+		errorMsg := fmt.Sprintf("job %s already exists and soft deleted in namespace %s. consider hard delete the job before inserting to this namespace.", existingJob.Name, existingJob.NamespaceName)
+		return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, errorMsg)
+	}
+	if err == nil && existingJob.DeletedAt.Valid && existingJob.NamespaceName == jobEntity.Tenant().NamespaceName().String() {
+		return j.triggerUpdate(ctx, jobEntity)
 	}
 	return j.triggerInsert(ctx, jobEntity)
 }
@@ -120,22 +120,24 @@ func (j JobRepository) Update(ctx context.Context, jobs []*job.Job) ([]*job.Job,
 
 func (j JobRepository) preCheckUpdate(ctx context.Context, jobEntity *job.Job) error {
 	existingJob, err := j.get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name(), false)
+	if err != nil && errors.IsErrorType(err, errors.ErrNotFound) {
+		return errors.NewError(errors.ErrNotFound, job.EntityJob, fmt.Sprintf("job %s not exists yet", jobEntity.Spec().Name()))
+	}
 	if err != nil {
-		if errors.IsErrorType(err, errors.ErrNotFound) {
-			return errors.NewError(errors.ErrNotFound, job.EntityJob, fmt.Sprintf("job %s not exists yet", jobEntity.Spec().Name()))
-		}
 		return errors.NewError(errors.ErrInternalError, job.EntityJob, fmt.Sprintf("failed to check job %s in db: %s", jobEntity.Spec().Name().String(), err.Error()))
 	}
-
-	if existingJob.DeletedAt.Valid {
-		if existingJob.NamespaceName != jobEntity.Tenant().NamespaceName().String() {
-			errorMsg := fmt.Sprintf("job %s already exists and soft deleted in namespace %s. consider hard delete the job and do add to this namespace.", existingJob.Name, existingJob.NamespaceName)
-			return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, errorMsg)
-		}
-		errorMsg := fmt.Sprintf("update is not allowed as job %s has been soft deleted. please do add operation.", existingJob.Name)
+	if existingJob.NamespaceName != jobEntity.Tenant().NamespaceName().String() && existingJob.DeletedAt.Valid {
+		errorMsg := fmt.Sprintf("job %s already exists and soft deleted in namespace %s.", existingJob.Name, existingJob.NamespaceName)
 		return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, errorMsg)
 	}
-
+	if existingJob.NamespaceName != jobEntity.Tenant().NamespaceName().String() && !existingJob.DeletedAt.Valid {
+		errorMsg := fmt.Sprintf("job %s already exists in namespace %s.", existingJob.Name, existingJob.NamespaceName)
+		return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, errorMsg)
+	}
+	if existingJob.DeletedAt.Valid {
+		errorMsg := fmt.Sprintf("update is not allowed as job %s has been soft deleted. please re-add the job before updating.", existingJob.Name)
+		return errors.NewError(errors.ErrAlreadyExists, job.EntityJob, errorMsg)
+	}
 	return nil
 }
 
@@ -201,7 +203,7 @@ AND project_name = ?
 	return &spec, err
 }
 
-func (j JobRepository) GetJobNameWithInternalUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error) {
+func (j JobRepository) ResolveUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error) {
 	query := `
 WITH static_upstreams AS (
 	SELECT j.name, j.project_name, d.static_upstream
@@ -313,8 +315,13 @@ func (JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstr
 		upstreamName, _ := job.NameFrom(storeUpstream.UpstreamJobName)
 		projectName, _ := tenant.ProjectNameFrom(storeUpstream.UpstreamProjectName)
 
-		if storeUpstream.UpstreamState == job.UpstreamStateUnresolved.String() {
-			upstreams = append(upstreams, job.NewUpstreamUnresolved(upstreamName, resourceURN, projectName))
+		if storeUpstream.UpstreamState == job.UpstreamStateUnresolved.String() && storeUpstream.UpstreamJobName != "" {
+			upstreams = append(upstreams, job.NewUpstreamUnresolvedStatic(upstreamName, projectName))
+			continue
+		}
+
+		if storeUpstream.UpstreamState == job.UpstreamStateUnresolved.String() && storeUpstream.UpstreamResourceURN != "" {
+			upstreams = append(upstreams, job.NewUpstreamUnresolvedInferred(resourceURN))
 			continue
 		}
 
@@ -461,7 +468,6 @@ func (j JobRepository) ReplaceUpstreams(ctx context.Context, jobsWithUpstreams [
 		storageJobUpstreams = append(storageJobUpstreams, upstream...)
 	}
 
-	// TODO: check how to optimize lock: row level not table level lock
 	return j.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var jobFullName []string
 		for _, upstream := range storageJobUpstreams {
@@ -587,43 +593,6 @@ type ProjectAndJobNames struct {
 	JobName     string `json:"job_name"`
 }
 
-func (j JobRepository) GetDownstreamFullNames(ctx context.Context, subjectProjectName tenant.ProjectName, subjectJobName job.Name) ([]job.FullName, error) {
-	query := `
-WITH resolved_upstream AS (
-	SELECT 
-	project_name, job_name
-	FROM job_upstream
-	WHERE upstream_project_name = ? AND upstream_job_name = ?
-	AND upstream_state = 'resolved'
-)
-SELECT 
-	ru.project_name, ru.job_name
-FROM resolved_upstream ru
-JOIN job j ON (ru.project_name = j.project_name AND ru.job_name = j.name)
-WHERE j.deleted_at IS NULL
-`
-
-	var projectAndJobNames []ProjectAndJobNames
-	if err := j.db.WithContext(ctx).Raw(query, subjectProjectName.String(), subjectJobName.String()).
-		Scan(&projectAndJobNames).Error; err != nil {
-		return nil, errors.Wrap(job.EntityJob, "error while getting job downstream", err)
-	}
-
-	var fullNames []job.FullName
-	for _, projectAndJobName := range projectAndJobNames {
-		projectName, err := tenant.ProjectNameFrom(projectAndJobName.ProjectName)
-		if err != nil {
-			return nil, errors.Wrap(job.EntityJob, "error while getting job downstream", err)
-		}
-		jobName, err := job.NameFrom(projectAndJobName.JobName)
-		if err != nil {
-			return nil, errors.Wrap(job.EntityJob, "error while getting job downstream", err)
-		}
-		fullNames = append(fullNames, job.FullNameFrom(projectName, jobName))
-	}
-	return fullNames, nil
-}
-
 func (j JobRepository) Delete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, cleanHistory bool) error {
 	if cleanHistory {
 		return j.hardDelete(ctx, projectName, jobName)
@@ -709,7 +678,7 @@ WHERE project_name=? AND job_name=?;
 	return j.toUpstreams(storeJobsWithUpstreams)
 }
 
-func (j JobRepository) GetDownstreamByDestination(ctx context.Context, projectName tenant.ProjectName, destination job.ResourceURN) ([]*dto.Downstream, error) {
+func (j JobRepository) GetDownstreamByDestination(ctx context.Context, projectName tenant.ProjectName, destination job.ResourceURN) ([]*job.Downstream, error) {
 	query := `
 SELECT
 	name as job_name, project_name, namespace_name, task_name
@@ -718,22 +687,13 @@ WHERE project_name = ? AND ? = ANY(sources)
 AND deleted_at IS NULL;
 `
 
-	var storeDownstreams []Downstream
+	var storeDownstream []Downstream
 	if err := j.db.WithContext(ctx).Raw(query, projectName.String(), destination.String()).
-		Scan(&storeDownstreams).Error; err != nil {
+		Scan(&storeDownstream).Error; err != nil {
 		return nil, errors.Wrap(job.EntityJob, "error while getting downstream by destination", err)
 	}
 
-	var downstreams []*dto.Downstream
-	for _, storeDownstream := range storeDownstreams {
-		downstreams = append(downstreams, &dto.Downstream{
-			Name:          storeDownstream.JobName,
-			ProjectName:   storeDownstream.ProjectName,
-			NamespaceName: storeDownstream.NamespaceName,
-			TaskName:      storeDownstream.TaskName,
-		})
-	}
-	return downstreams, nil
+	return fromStoreDownstream(storeDownstream)
 }
 
 type Downstream struct {
@@ -743,7 +703,7 @@ type Downstream struct {
 	TaskName      string `json:"task_name"`
 }
 
-func (j JobRepository) GetDownstreamByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*dto.Downstream, error) {
+func (j JobRepository) GetDownstreamByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*job.Downstream, error) {
 	query := `
 SELECT
 	j.name as job_name, j.project_name, j.namespace_name, j.task_name
@@ -753,20 +713,40 @@ WHERE upstream_project_name=? AND upstream_job_name=?
 AND j.deleted_at IS NULL;
 `
 
-	var storeDownstreams []Downstream
+	var storeDownstream []Downstream
 	if err := j.db.WithContext(ctx).Raw(query, projectName.String(), jobName.String()).
-		Scan(&storeDownstreams).Error; err != nil {
+		Scan(&storeDownstream).Error; err != nil {
 		return nil, errors.Wrap(job.EntityJob, "error while getting downstream by job name", err)
 	}
 
-	var downstreams []*dto.Downstream
-	for _, storeDownstream := range storeDownstreams {
-		downstreams = append(downstreams, &dto.Downstream{
-			Name:          storeDownstream.JobName,
-			ProjectName:   storeDownstream.ProjectName,
-			NamespaceName: storeDownstream.NamespaceName,
-			TaskName:      storeDownstream.TaskName,
-		})
+	return fromStoreDownstream(storeDownstream)
+}
+
+func fromStoreDownstream(storeDownstreamList []Downstream) ([]*job.Downstream, error) {
+	var downstreamList []*job.Downstream
+	me := errors.NewMultiError("get downstream by destination errors")
+	for _, storeDownstream := range storeDownstreamList {
+		downstreamJobName, err := job.NameFrom(storeDownstream.JobName)
+		if err != nil {
+			me.Append(err)
+			continue
+		}
+		downstreamProjectName, err := tenant.ProjectNameFrom(storeDownstream.ProjectName)
+		if err != nil {
+			me.Append(err)
+			continue
+		}
+		downstreamNamespaceName, err := tenant.NamespaceNameFrom(storeDownstream.NamespaceName)
+		if err != nil {
+			me.Append(err)
+			continue
+		}
+		downstreamTaskName, err := job.TaskNameFrom(storeDownstream.TaskName)
+		if err != nil {
+			me.Append(err)
+			continue
+		}
+		downstreamList = append(downstreamList, job.NewDownstream(downstreamJobName, downstreamProjectName, downstreamNamespaceName, downstreamTaskName))
 	}
-	return downstreams, nil
+	return downstreamList, errors.MultiToError(me)
 }

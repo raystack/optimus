@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/kushsharma/parallel"
+
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/dto"
-	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/ext/resourcemanager"
 	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/writer"
 )
 
 type extUpstreamResolver struct {
@@ -37,41 +38,55 @@ func NewExternalUpstreamResolver(resourceManagerConfigs []config.ResourceManager
 }
 
 type ResourceManager interface {
-	GetOptimusUpstreams(ctx context.Context, unresolvedDependency *dto.RawUpstream) ([]*job.Upstream, error)
+	GetOptimusUpstreams(ctx context.Context, unresolvedDependency *job.Upstream) ([]*job.Upstream, error)
 }
 
-func (e *extUpstreamResolver) Resolve(ctx context.Context, upstreamsToResolve []*dto.RawUpstream) ([]*job.Upstream, []*job.Upstream, error) {
-	externalUpstreams, unresolvedUpstreams, err := e.fetchExternalUpstreams(ctx, upstreamsToResolve)
-
-	var unknownUpstreams []*job.Upstream
-	for _, upstream := range unresolvedUpstreams {
-		// allow empty upstreamName and upstreamProjectName
-		upstreamName, _ := job.NameFrom(upstream.JobName)
-		upstreamProjectName, _ := tenant.ProjectNameFrom(upstream.ProjectName)
-		upstreamResourceURN := job.ResourceURN(upstream.ResourceURN)
-		unknownUpstreams = append(unknownUpstreams, job.NewUpstreamUnresolved(upstreamName, upstreamResourceURN, upstreamProjectName))
-	}
-
-	return externalUpstreams, unknownUpstreams, err
-}
-
-func (e *extUpstreamResolver) fetchExternalUpstreams(ctx context.Context, unresolvedUpstreams []*dto.RawUpstream) ([]*job.Upstream, []*dto.RawUpstream, error) {
-	me := errors.NewMultiError("external upstream resolution errors")
-	var unknownUpstreams []*dto.RawUpstream
-	var externalUpstreams []*job.Upstream
-	for _, toBeResolvedUpstream := range unresolvedUpstreams {
-		optimusUpstreams, err := e.fetchOptimusUpstreams(ctx, toBeResolvedUpstream)
-		if err != nil || len(optimusUpstreams) == 0 {
-			unknownUpstreams = append(unknownUpstreams, toBeResolvedUpstream)
+func (e *extUpstreamResolver) Resolve(ctx context.Context, jobWithUpstream *job.WithUpstream, lw writer.LogWriter) (*job.WithUpstream, error) {
+	me := errors.NewMultiError(fmt.Sprintf("external upstream resolution errors for job %s", jobWithUpstream.Name().String()))
+	unresolvedUpstreams := jobWithUpstream.GetUnresolvedUpstreams()
+	var mergedUpstream []*job.Upstream
+	for _, unresolvedUpstream := range unresolvedUpstreams {
+		externalUpstream, err := e.fetchOptimusUpstreams(ctx, unresolvedUpstream)
+		if err != nil || len(externalUpstream) == 0 {
+			mergedUpstream = append(mergedUpstream, unresolvedUpstream)
 			me.Append(err)
 			continue
 		}
-		externalUpstreams = append(externalUpstreams, optimusUpstreams...)
+		mergedUpstream = append(mergedUpstream, externalUpstream...)
 	}
-	return externalUpstreams, unknownUpstreams, errors.MultiToError(me)
+	if len(me.Errors) > 0 {
+		lw.Write(writer.LogLevelError, errors.MultiToError(me).Error())
+	} else {
+		lw.Write(writer.LogLevelDebug, fmt.Sprintf("resolved job %s upstream from external", jobWithUpstream.Name().String()))
+	}
+	return job.NewWithUpstream(jobWithUpstream.Job(), mergedUpstream), errors.MultiToError(me)
 }
 
-func (e *extUpstreamResolver) fetchOptimusUpstreams(ctx context.Context, unresolvedUpstream *dto.RawUpstream) ([]*job.Upstream, error) {
+func (e *extUpstreamResolver) BulkResolve(ctx context.Context, jobsWithUpstream []*job.WithUpstream, lw writer.LogWriter) ([]*job.WithUpstream, error) {
+	me := errors.NewMultiError("external upstream resolution errors")
+
+	var jobsWithAllUpstream []*job.WithUpstream
+	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
+	for _, jobWithUpstream := range jobsWithUpstream {
+		runner.Add(func(currentJobWithUpstream *job.WithUpstream, lw writer.LogWriter) func() (interface{}, error) {
+			return func() (interface{}, error) {
+				return e.Resolve(ctx, currentJobWithUpstream, lw)
+			}
+		}(jobWithUpstream, lw))
+	}
+
+	for _, result := range runner.Run() {
+		if result.Val != nil {
+			specVal := result.Val.(*job.WithUpstream)
+			jobsWithAllUpstream = append(jobsWithAllUpstream, specVal)
+		}
+		me.Append(result.Err)
+	}
+
+	return jobsWithAllUpstream, errors.MultiToError(me)
+}
+
+func (e *extUpstreamResolver) fetchOptimusUpstreams(ctx context.Context, unresolvedUpstream *job.Upstream) ([]*job.Upstream, error) {
 	me := errors.NewMultiError("fetch external optimus job errors")
 	var upstreams []*job.Upstream
 	for _, manager := range e.optimusResourceManagers {

@@ -51,7 +51,7 @@ func TestPluginService(t *testing.T) {
 			defer pluginRepo.AssertExpectations(t)
 
 			pluginService := service.NewJobPluginService(nil, pluginRepo, nil, nil)
-			result, err := pluginService.Info(ctx, jobTask)
+			result, err := pluginService.Info(ctx, jobTask.Name())
 			assert.Error(t, err)
 			assert.Nil(t, result)
 			assert.Equal(t, "some error when fetch plugin", err.Error())
@@ -70,7 +70,7 @@ func TestPluginService(t *testing.T) {
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(newPlugin, nil)
 
 			pluginService := service.NewJobPluginService(nil, pluginRepo, nil, nil)
-			result, err := pluginService.Info(ctx, jobTask)
+			result, err := pluginService.Info(ctx, jobTask.Name())
 			assert.Error(t, err)
 			assert.Nil(t, result)
 			assert.Equal(t, "yaml mod not found for plugin", err.Error())
@@ -96,7 +96,7 @@ func TestPluginService(t *testing.T) {
 			defer yamlMod.AssertExpectations(t)
 
 			pluginService := service.NewJobPluginService(nil, pluginRepo, nil, nil)
-			result, err := pluginService.Info(ctx, jobTask)
+			result, err := pluginService.Info(ctx, jobTask.Name())
 			assert.NoError(t, err)
 			assert.NotNil(t, result)
 			assert.Equal(t, jobTask.Name().String(), result.Name)
@@ -257,7 +257,7 @@ func TestPluginService(t *testing.T) {
 		})
 	})
 
-	t.Run("GenerateDependencies", func(t *testing.T) {
+	t.Run("GenerateUpstreams", func(t *testing.T) {
 		t.Run("returns upstreams", func(t *testing.T) {
 			logger := log.NewLogrus()
 
@@ -384,6 +384,36 @@ func TestPluginService(t *testing.T) {
 			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
 			result, err := pluginService.GenerateUpstreams(ctx, tenantDetails, specA, false)
 			assert.ErrorContains(t, err, "getting secret error")
+			assert.Nil(t, result)
+		})
+		t.Run("returns error if unable to generate destination successfully", func(t *testing.T) {
+			logger := log.NewLogrus()
+
+			secretsGetter := new(SecretsGetter)
+			defer secretsGetter.AssertExpectations(t)
+
+			pluginRepo := new(mockPluginRepo)
+			defer pluginRepo.AssertExpectations(t)
+
+			engine := compiler.NewEngine()
+			defer pluginRepo.AssertExpectations(t)
+
+			depMod := new(mockOpt.DependencyResolverMod)
+			defer depMod.AssertExpectations(t)
+
+			yamlMod := new(mockOpt.YamlMod)
+			defer yamlMod.AssertExpectations(t)
+
+			plugin := &models.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
+			pluginRepo.On("GetByName", jobTask.Name().String()).Return(plugin, nil)
+
+			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&models.GenerateDestinationResponse{}, errors.New("generate destination error"))
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+
+			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
+			result, err := pluginService.GenerateUpstreams(ctx, tenantDetails, specA, false)
+			assert.ErrorContains(t, err, "generate destination error")
 			assert.Nil(t, result)
 		})
 		t.Run("returns error if unable to generate dependencies successfully", func(t *testing.T) {

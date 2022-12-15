@@ -57,10 +57,10 @@ func (j Job) Sources() []ResourceURN {
 }
 
 func (j Job) StaticUpstreamNames() []SpecUpstreamName {
-	if j.spec.upstream == nil {
+	if j.spec.upstreamSpec == nil {
 		return nil
 	}
-	return j.spec.upstream.UpstreamNames()
+	return j.spec.upstreamSpec.UpstreamNames()
 }
 
 func (j Job) ProjectName() tenant.ProjectName {
@@ -105,6 +105,14 @@ func (j Jobs) GetNamespaceNameAndJobsMap() map[tenant.NamespaceName][]*Job {
 	return jobsPerNamespaceName
 }
 
+func (j Jobs) GetSpecs() []*Spec {
+	var specs []*Spec
+	for _, currentJob := range j {
+		specs = append(specs, currentJob.spec)
+	}
+	return specs
+}
+
 type WithUpstream struct {
 	job       *Job
 	upstreams []*Upstream
@@ -136,6 +144,40 @@ func (w WithUpstream) GetUnresolvedUpstreams() []*Upstream {
 	return unresolvedUpstreams
 }
 
+type WithUpstreams []*WithUpstream
+
+func (w WithUpstreams) GetSubjectJobNames() []Name {
+	names := make([]Name, len(w))
+	for i, withUpstream := range w {
+		names[i] = withUpstream.Name()
+	}
+	return names
+}
+
+func (w WithUpstreams) MergeWithResolvedUpstreams(resolvedUpstreamMap map[Name][]*Upstream) []*WithUpstream {
+	var jobsWithMergedUpstream []*WithUpstream
+	for _, jobWithUnresolvedUpstream := range w {
+		resolvedUpstreams := resolvedUpstreamMap[jobWithUnresolvedUpstream.Name()]
+		resolvedUpstreamMapByFullName := Upstreams(resolvedUpstreams).ToFullNameAndUpstreamMap()
+		resolvedUpstreamMapByDestination := Upstreams(resolvedUpstreams).ToResourceDestinationAndUpstreamMap()
+
+		var mergedUpstream []*Upstream
+		for _, unresolvedUpstream := range jobWithUnresolvedUpstream.Upstreams() {
+			if resolvedUpstream, ok := resolvedUpstreamMapByFullName[unresolvedUpstream.FullName()]; ok {
+				mergedUpstream = append(mergedUpstream, resolvedUpstream)
+				continue
+			}
+			if resolvedUpstream, ok := resolvedUpstreamMapByDestination[unresolvedUpstream.Resource().String()]; ok {
+				mergedUpstream = append(mergedUpstream, resolvedUpstream)
+				continue
+			}
+			mergedUpstream = append(mergedUpstream, unresolvedUpstream)
+		}
+		jobsWithMergedUpstream = append(jobsWithMergedUpstream, NewWithUpstream(jobWithUnresolvedUpstream.Job(), mergedUpstream))
+	}
+	return jobsWithMergedUpstream
+}
+
 type Upstream struct {
 	name     Name
 	host     string
@@ -165,16 +207,12 @@ func NewUpstreamResolved(name Name, host string, resource ResourceURN, jobTenant
 	}
 }
 
-func NewUpstreamUnresolved(name Name, resource ResourceURN, projectName tenant.ProjectName) *Upstream {
-	var _type UpstreamType
-	if name != "" {
-		_type = UpstreamTypeStatic
-	} else {
-		_type = UpstreamTypeInferred
-	}
+func NewUpstreamUnresolvedInferred(resource ResourceURN) *Upstream {
+	return &Upstream{resource: resource, _type: UpstreamTypeInferred, state: UpstreamStateUnresolved}
+}
 
-	return &Upstream{name: name, resource: resource, projectName: projectName, _type: _type,
-		state: UpstreamStateUnresolved}
+func NewUpstreamUnresolvedStatic(name Name, projectName tenant.ProjectName) *Upstream {
+	return &Upstream{name: name, projectName: projectName, _type: UpstreamTypeStatic, state: UpstreamStateUnresolved}
 }
 
 func (u Upstream) Name() Name {
@@ -242,21 +280,24 @@ func (d UpstreamState) String() string {
 
 type Upstreams []*Upstream
 
-func (u Upstreams) ToUpstreamFullNameMap() map[string]bool {
-	fullNameUpstreamMap := make(map[string]bool)
+func (u Upstreams) ToFullNameAndUpstreamMap() map[string]*Upstream {
+	fullNameUpstreamMap := make(map[string]*Upstream)
 	for _, upstream := range u {
 		fullName := upstream.ProjectName().String() + "/" + upstream.name.String()
-		fullNameUpstreamMap[fullName] = true
+		fullNameUpstreamMap[fullName] = upstream
 	}
 	return fullNameUpstreamMap
 }
 
-func (u Upstreams) ToUpstreamDestinationMap() map[ResourceURN]bool {
-	upstreamDestinationMap := make(map[ResourceURN]bool)
+func (u Upstreams) ToResourceDestinationAndUpstreamMap() map[string]*Upstream {
+	resourceDestinationUpstreamMap := make(map[string]*Upstream)
 	for _, upstream := range u {
-		upstreamDestinationMap[upstream.resource] = true
+		if upstream.resource == "" {
+			continue
+		}
+		resourceDestinationUpstreamMap[upstream.resource.String()] = upstream
 	}
-	return upstreamDestinationMap
+	return resourceDestinationUpstreamMap
 }
 
 type FullName string
@@ -277,4 +318,47 @@ func (f FullNames) String() string {
 		fullNamesStr = append(fullNamesStr, fullName.String())
 	}
 	return strings.Join(fullNamesStr, ", ")
+}
+
+type Downstream struct {
+	name Name
+
+	projectName   tenant.ProjectName
+	namespaceName tenant.NamespaceName
+
+	taskName TaskName
+}
+
+func NewDownstream(name Name, projectName tenant.ProjectName, namespaceName tenant.NamespaceName, taskName TaskName) *Downstream {
+	return &Downstream{name: name, projectName: projectName, namespaceName: namespaceName, taskName: taskName}
+}
+
+func (d Downstream) Name() Name {
+	return d.name
+}
+
+func (d Downstream) ProjectName() tenant.ProjectName {
+	return d.projectName
+}
+
+func (d Downstream) NamespaceName() tenant.NamespaceName {
+	return d.namespaceName
+}
+
+func (d Downstream) TaskName() TaskName {
+	return d.taskName
+}
+
+func (d Downstream) FullName() FullName {
+	return FullNameFrom(d.projectName, d.name)
+}
+
+type DownstreamList []*Downstream
+
+func (d DownstreamList) GetDownstreamFullNames() FullNames {
+	var fullNames []FullName
+	for _, downstream := range d {
+		fullNames = append(fullNames, downstream.FullName())
+	}
+	return fullNames
 }

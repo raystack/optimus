@@ -87,10 +87,23 @@ func TestEntityJob(t *testing.T) {
 			assert.EqualValues(t, expectedMap, resultMap)
 		})
 	})
+	t.Run("GetSpecs", func(t *testing.T) {
+		t.Run("should return job specifications", func(t *testing.T) {
+			expectedSpecs := []*job.Spec{
+				jobA.Spec(),
+				jobB.Spec(),
+			}
+
+			jobs := job.Jobs([]*job.Job{jobA, jobB})
+			resultMap := jobs.GetSpecs()
+
+			assert.EqualValues(t, expectedSpecs, resultMap)
+		})
+	})
 	t.Run("GetUnresolvedUpstreams", func(t *testing.T) {
 		t.Run("should return upstreams with state unresolved", func(t *testing.T) {
-			upstreamUnresolved1 := job.NewUpstreamUnresolved("job-B", "", project.Name())
-			upstreamUnresolved2 := job.NewUpstreamUnresolved("", "project.dataset.sample-c", "")
+			upstreamUnresolved1 := job.NewUpstreamUnresolvedStatic("job-B", project.Name())
+			upstreamUnresolved2 := job.NewUpstreamUnresolvedInferred("project.dataset.sample-c")
 			upstreamResolved := job.NewUpstreamResolved("job-d", "host-sample", "project.dataset.sample-d", sampleTenant, job.UpstreamTypeStatic, "", false)
 
 			expected := []*job.Upstream{upstreamUnresolved1, upstreamUnresolved2}
@@ -119,35 +132,35 @@ func TestEntityJob(t *testing.T) {
 		})
 	})
 
-	t.Run("ToUpstreamFullNameMap", func(t *testing.T) {
+	t.Run("ToFullNameAndUpstreamMap", func(t *testing.T) {
 		t.Run("should return a map with full name as key and boolean as value", func(t *testing.T) {
 			upstreamResolved1 := job.NewUpstreamResolved("job-a", "host-sample", "project.dataset.sample-a", sampleTenant, job.UpstreamTypeStatic, "", false)
 			upstreamResolved2 := job.NewUpstreamResolved("job-b", "host-sample", "project.dataset.sample-b", sampleTenant, job.UpstreamTypeInferred, "", false)
 
-			expectedMap := map[string]bool{
-				"test-proj/job-a": true,
-				"test-proj/job-b": true,
+			expectedMap := map[string]*job.Upstream{
+				"test-proj/job-a": upstreamResolved1,
+				"test-proj/job-b": upstreamResolved2,
 			}
 
 			upstreams := job.Upstreams([]*job.Upstream{upstreamResolved1, upstreamResolved2})
-			resultMap := upstreams.ToUpstreamFullNameMap()
+			resultMap := upstreams.ToFullNameAndUpstreamMap()
 
 			assert.EqualValues(t, expectedMap, resultMap)
 		})
 	})
 
-	t.Run("ToUpstreamDestinationMap", func(t *testing.T) {
+	t.Run("ToResourceDestinationAndUpstreamMap", func(t *testing.T) {
 		t.Run("should return a map with destination resource urn as key and boolean as value", func(t *testing.T) {
 			upstreamResolved1 := job.NewUpstreamResolved("job-a", "host-sample", "project.dataset.sample-a", sampleTenant, job.UpstreamTypeStatic, "", false)
 			upstreamResolved2 := job.NewUpstreamResolved("job-b", "host-sample", "project.dataset.sample-b", sampleTenant, job.UpstreamTypeInferred, "", false)
 
-			expectedMap := map[job.ResourceURN]bool{
-				"project.dataset.sample-a": true,
-				"project.dataset.sample-b": true,
+			expectedMap := map[string]*job.Upstream{
+				"project.dataset.sample-a": upstreamResolved1,
+				"project.dataset.sample-b": upstreamResolved2,
 			}
 
 			upstreams := job.Upstreams([]*job.Upstream{upstreamResolved1, upstreamResolved2})
-			resultMap := upstreams.ToUpstreamDestinationMap()
+			resultMap := upstreams.ToResourceDestinationAndUpstreamMap()
 
 			assert.EqualValues(t, expectedMap, resultMap)
 		})
@@ -158,6 +171,16 @@ func TestEntityJob(t *testing.T) {
 			fullName := job.FullNameFrom(project.Name(), specA.Name())
 			assert.Equal(t, job.FullName("test-proj/job-A"), fullName)
 			assert.Equal(t, "test-proj/job-A", fullName.String())
+		})
+	})
+
+	t.Run("FullNames", func(t *testing.T) {
+		t.Run("String() should return joined full names", func(t *testing.T) {
+			names := []job.FullName{"proj1/job-A", "proj2/job-B", "proj1/job-C"}
+
+			expectedNames := "proj1/job-A, proj2/job-B, proj1/job-C"
+
+			assert.Equal(t, expectedNames, job.FullNames(names).String())
 		})
 	})
 
@@ -181,7 +204,7 @@ func TestEntityJob(t *testing.T) {
 	})
 
 	t.Run("WithUpstream", func(t *testing.T) {
-		t.Run("should return values as inserted", func(t *testing.T) {
+		t.Run("should return values as constructed", func(t *testing.T) {
 			upstreamResolved := job.NewUpstreamResolved("job-d", "host-sample", "project.dataset.sample-d", sampleTenant, job.UpstreamTypeStatic, "bq2bq", false)
 			assert.Equal(t, job.Name("job-d"), upstreamResolved.Name())
 			assert.Equal(t, "host-sample", upstreamResolved.Host())
@@ -194,12 +217,77 @@ func TestEntityJob(t *testing.T) {
 			assert.Equal(t, job.TaskName("bq2bq"), upstreamResolved.TaskName())
 			assert.Equal(t, "test-proj/job-d", upstreamResolved.FullName())
 
-			upstreamUnresolved := job.NewUpstreamUnresolved("", "project.dataset.sample-c", "")
+			upstreamUnresolved := job.NewUpstreamUnresolvedInferred("project.dataset.sample-c")
 
 			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstreamResolved, upstreamUnresolved})
 			assert.Equal(t, jobA, jobAWithUpstream.Job())
 			assert.EqualValues(t, []*job.Upstream{upstreamResolved, upstreamUnresolved}, jobAWithUpstream.Upstreams())
 			assert.EqualValues(t, specA.Name(), jobAWithUpstream.Name())
+		})
+	})
+
+	t.Run("WithUpstreams", func(t *testing.T) {
+		t.Run("GetSubjectJobNames", func(t *testing.T) {
+			t.Run("should return job names of WithUpstream list", func(t *testing.T) {
+				upstreamResolved := job.NewUpstreamResolved("job-d", "host-sample", "project.dataset.sample-d", sampleTenant, job.UpstreamTypeStatic, "bq2bq", false)
+				jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstreamResolved})
+				jobBWithUpstream := job.NewWithUpstream(jobB, []*job.Upstream{upstreamResolved})
+				jobsWithUpstream := []*job.WithUpstream{jobAWithUpstream, jobBWithUpstream}
+				result := job.WithUpstreams(jobsWithUpstream).GetSubjectJobNames()
+
+				assert.EqualValues(t, []job.Name{"job-A", "job-B"}, result)
+			})
+		})
+		t.Run("MergeWithResolvedUpstreams", func(t *testing.T) {
+			upstreamCUnresolved := job.NewUpstreamUnresolvedStatic("job-C", project.Name())
+			upstreamDUnresolved := job.NewUpstreamUnresolvedInferred("project.dataset.sample-d")
+			upstreamEUnresolved := job.NewUpstreamUnresolvedStatic("job-E", project.Name())
+			upstreamFUnresolved := job.NewUpstreamUnresolvedInferred("project.dataset.sample-f")
+
+			upstreamCResolved := job.NewUpstreamResolved("job-C", "host-sample", "project.dataset.sample-c", sampleTenant, job.UpstreamTypeStatic, "bq2bq", false)
+			upstreamDResolved := job.NewUpstreamResolved("job-D", "host-sample", "project.dataset.sample-d", sampleTenant, job.UpstreamTypeInferred, "bq2bq", false)
+
+			resolvedUpstreamMap := map[job.Name][]*job.Upstream{
+				"job-A": {upstreamCResolved, upstreamDResolved},
+				"job-B": {upstreamDResolved},
+			}
+
+			expected := []*job.WithUpstream{
+				job.NewWithUpstream(jobA, []*job.Upstream{upstreamCResolved, upstreamDResolved, upstreamEUnresolved}),
+				job.NewWithUpstream(jobB, []*job.Upstream{upstreamDResolved, upstreamEUnresolved, upstreamFUnresolved}),
+			}
+
+			jobsWithUnresolvedUpstream := []*job.WithUpstream{
+				job.NewWithUpstream(jobA, []*job.Upstream{upstreamCUnresolved, upstreamDUnresolved, upstreamEUnresolved}),
+				job.NewWithUpstream(jobB, []*job.Upstream{upstreamDUnresolved, upstreamEUnresolved, upstreamFUnresolved}),
+			}
+
+			result := job.WithUpstreams(jobsWithUnresolvedUpstream).MergeWithResolvedUpstreams(resolvedUpstreamMap)
+			assert.EqualValues(t, expected, result)
+		})
+	})
+
+	t.Run("Downstream", func(t *testing.T) {
+		t.Run("should return value as constructed", func(t *testing.T) {
+			downstream := job.NewDownstream(specA.Name(), project.Name(), namespace.Name(), jobTask.Name())
+			assert.Equal(t, specA.Name(), downstream.Name())
+			assert.Equal(t, project.Name(), downstream.ProjectName())
+			assert.Equal(t, namespace.Name(), downstream.NamespaceName())
+			assert.Equal(t, jobTask.Name(), downstream.TaskName())
+			assert.Equal(t, job.FullName("test-proj/job-A"), downstream.FullName())
+		})
+	})
+
+	t.Run("GetDownstreamFullNames", func(t *testing.T) {
+		t.Run("should return full names of downstream list", func(t *testing.T) {
+			downstreamA := job.NewDownstream(specA.Name(), project.Name(), namespace.Name(), jobTask.Name())
+			downstreamB := job.NewDownstream(specB.Name(), project.Name(), namespace.Name(), jobTask.Name())
+			downstreamList := []*job.Downstream{downstreamA, downstreamB}
+
+			expectedFullNames := []job.FullName{"test-proj/job-A", "test-proj/job-B"}
+
+			result := job.DownstreamList(downstreamList).GetDownstreamFullNames()
+			assert.EqualValues(t, expectedFullNames, result)
 		})
 	})
 }
