@@ -51,7 +51,7 @@ func TestPluginService(t *testing.T) {
 			defer pluginRepo.AssertExpectations(t)
 
 			pluginService := service.NewJobPluginService(nil, pluginRepo, nil, nil)
-			result, err := pluginService.Info(ctx, jobTask)
+			result, err := pluginService.Info(ctx, jobTask.Name())
 			assert.Error(t, err)
 			assert.Nil(t, result)
 			assert.Equal(t, "some error when fetch plugin", err.Error())
@@ -70,7 +70,7 @@ func TestPluginService(t *testing.T) {
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(newPlugin, nil)
 
 			pluginService := service.NewJobPluginService(nil, pluginRepo, nil, nil)
-			result, err := pluginService.Info(ctx, jobTask)
+			result, err := pluginService.Info(ctx, jobTask.Name())
 			assert.Error(t, err)
 			assert.Nil(t, result)
 			assert.Equal(t, "yaml mod not found for plugin", err.Error())
@@ -96,7 +96,7 @@ func TestPluginService(t *testing.T) {
 			defer yamlMod.AssertExpectations(t)
 
 			pluginService := service.NewJobPluginService(nil, pluginRepo, nil, nil)
-			result, err := pluginService.Info(ctx, jobTask)
+			result, err := pluginService.Info(ctx, jobTask.Name())
 			assert.NoError(t, err)
 			assert.NotNil(t, result)
 			assert.Equal(t, jobTask.Name().String(), result.Name)

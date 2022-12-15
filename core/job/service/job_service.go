@@ -45,7 +45,7 @@ func NewJobService(repo JobRepository, pluginService PluginService, upstreamReso
 }
 
 type PluginService interface {
-	Info(context.Context, *job.Task) (*models.PluginInfoResponse, error)
+	Info(context.Context, job.TaskName) (*models.PluginInfoResponse, error)
 	GenerateDestination(context.Context, *tenant.WithDetails, *job.Task) (job.ResourceURN, error)
 	GenerateUpstreams(ctx context.Context, jobTenant *tenant.WithDetails, spec *job.Spec, dryRun bool) ([]job.ResourceURN, error)
 }
@@ -158,8 +158,8 @@ func (j JobService) Get(ctx context.Context, jobTenant tenant.Tenant, jobName jo
 	return &job.Job{}, nil
 }
 
-func (j JobService) GetTaskInfo(ctx context.Context, task *job.Task) (*job.Task, error) {
-	taskInfo, err := j.pluginService.Info(ctx, task)
+func (j JobService) GetTaskWithInfo(ctx context.Context, task *job.Task) (*job.Task, error) {
+	taskInfo, err := j.pluginService.Info(ctx, task.Name())
 	if err != nil {
 		return nil, err
 	}

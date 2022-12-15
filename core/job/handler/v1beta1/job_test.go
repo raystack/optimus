@@ -1772,7 +1772,7 @@ func TestNewJobHandler(t *testing.T) {
 			}
 
 			jobService.On("Get", ctx, sampleTenant, jobA.Spec().Name()).Return(jobA, nil)
-			jobService.On("GetTaskInfo", ctx, jobA.Spec().Task()).Return(nil, errors.New("error encountered"))
+			jobService.On("GetTaskWithInfo", ctx, jobA.Spec().Task()).Return(nil, errors.New("error encountered"))
 			handler := v1beta1.NewJobHandler(jobService, nil)
 			resp, err := handler.GetJobTask(ctx, req)
 			assert.Error(t, err)
@@ -1797,7 +1797,7 @@ func TestNewJobHandler(t *testing.T) {
 				Image:       "odpf/bq2bq:latest",
 			}).Build()
 			jobService.On("Get", ctx, sampleTenant, jobA.Spec().Name()).Return(jobA, nil)
-			jobService.On("GetTaskInfo", ctx, jobA.Spec().Task()).Return(jobTask, nil)
+			jobService.On("GetTaskWithInfo", ctx, jobA.Spec().Task()).Return(jobTask, nil)
 			handler := v1beta1.NewJobHandler(jobService, nil)
 			resp, err := handler.GetJobTask(ctx, req)
 			assert.NoError(t, err)
@@ -1949,7 +1949,7 @@ func (_m *JobService) GetJobBasicInfo(ctx context.Context, jobTenant tenant.Tena
 }
 
 // GetTaskInfo provides a mock function with given fields: ctx, task
-func (_m *JobService) GetTaskInfo(ctx context.Context, task *job.Task) (*job.Task, error) {
+func (_m *JobService) GetTaskWithInfo(ctx context.Context, task *job.Task) (*job.Task, error) {
 	ret := _m.Called(ctx, task)
 
 	var r0 *job.Task

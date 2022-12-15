@@ -37,7 +37,7 @@ type JobService interface {
 	Update(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error
 	Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) (affectedDownstream []job.FullName, err error)
 	Get(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name) (jobSpec *job.Job, err error)
-	GetTaskInfo(ctx context.Context, task *job.Task) (*job.Task, error)
+	GetTaskWithInfo(ctx context.Context, task *job.Task) (*job.Task, error)
 	GetByFilter(ctx context.Context, filters ...filter.FilterOpt) (jobSpecs []*job.Job, err error)
 	ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, jobNamesWithValidationError []job.Name, logWriter writer.LogWriter) error
 	Refresh(ctx context.Context, projectName tenant.ProjectName, namespaceNames []string, jobNames []string, logWriter writer.LogWriter) error
@@ -173,6 +173,7 @@ func (jh *JobHandler) GetJobSpecification(ctx context.Context, req *pb.GetJobSpe
 		return nil, errors.GRPCErr(err, errorMsg)
 	}
 
+	// TODO: return 404 if job is not found
 	return &pb.GetJobSpecificationResponse{
 		Spec: toJobProto(jobSpec),
 	}, nil
@@ -194,6 +195,7 @@ func (jh *JobHandler) GetJobSpecifications(ctx context.Context, req *pb.GetJobSp
 		})
 	}
 
+	// TODO: return 404 if job is not found
 	return &pb.GetJobSpecificationsResponse{
 		JobSpecificationResponses: jobSpecResponseProtos,
 	}, merr
@@ -210,13 +212,14 @@ func (jh *JobHandler) ListJobSpecification(ctx context.Context, req *pb.ListJobS
 		jobSpecificationProtos[i] = toJobProto(jobSpec)
 	}
 
+	// TODO: make a stream response
 	return &pb.ListJobSpecificationResponse{
 		Jobs: jobSpecificationProtos,
 	}, merr
 }
 
 func (*JobHandler) GetWindow(_ context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
-	// TODO the default version to be deprecated & made mandatory in future releases
+	// TODO: the default version to be deprecated & made mandatory in future releases
 	version := 1
 	if err := req.GetScheduledAt().CheckValid(); err != nil {
 		return nil, fmt.Errorf("%w: failed to parse schedule time %s", err, req.GetScheduledAt())
@@ -326,7 +329,8 @@ func (jh *JobHandler) CheckJobSpecifications(req *pb.CheckJobSpecificationsReque
 	}
 
 	me := errors.NewMultiError("check / validate job spec errors")
-	jobSpecs := []*job.Spec{}
+	// TODO: use fromJobProtos
+	var jobSpecs []*job.Spec
 	for _, js := range req.Jobs {
 		jobSpec, err := fromJobProto(js)
 		if err != nil {
@@ -359,7 +363,7 @@ func (jh *JobHandler) GetJobTask(ctx context.Context, req *pb.GetJobTaskRequest)
 		return nil, err
 	}
 
-	jobTask, err := jh.jobService.GetTaskInfo(ctx, jobResult.Spec().Task())
+	jobTask, err := jh.jobService.GetTaskWithInfo(ctx, jobResult.Spec().Task())
 	if err != nil {
 		return nil, err
 	}

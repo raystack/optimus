@@ -59,8 +59,8 @@ func NewJobPluginService(secretsGetter SecretsGetter, pluginRepo PluginRepo, eng
 	return &JobPluginService{secretsGetter: secretsGetter, pluginRepo: pluginRepo, engine: engine, logger: logger, now: time.Now}
 }
 
-func (p JobPluginService) Info(_ context.Context, task *job.Task) (*models.PluginInfoResponse, error) {
-	plugin, err := p.pluginRepo.GetByName(task.Name().String())
+func (p JobPluginService) Info(_ context.Context, taskName job.TaskName) (*models.PluginInfoResponse, error) {
+	plugin, err := p.pluginRepo.GetByName(taskName.String())
 	if err != nil {
 		return nil, err
 	}

@@ -1694,15 +1694,15 @@ func TestJobService(t *testing.T) {
 		})
 	})
 
-	t.Run("GetTaskInfo", func(t *testing.T) {
+	t.Run("GetTaskWithInfo", func(t *testing.T) {
 		t.Run("return error when plugin could not retrieve info", func(t *testing.T) {
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
 
-			pluginService.On("Info", ctx, jobTask).Return(nil, errors.New("error encountered"))
+			pluginService.On("Info", ctx, jobTask.Name()).Return(nil, errors.New("error encountered"))
 
 			jobService := service.NewJobService(nil, pluginService, nil, nil, nil)
-			actual, err := jobService.GetTaskInfo(ctx, jobTask)
+			actual, err := jobService.GetTaskWithInfo(ctx, jobTask)
 			assert.Error(t, err, "error encountered")
 			assert.Nil(t, actual)
 		})
@@ -1715,11 +1715,11 @@ func TestJobService(t *testing.T) {
 				Description: "plugin desc",
 				Image:       "odpf/bq2bq:latest",
 			}
-			pluginService.On("Info", ctx, jobTask).Return(pluginInfoResp, nil)
+			pluginService.On("Info", ctx, jobTask.Name()).Return(pluginInfoResp, nil)
 
 			expected := job.NewTaskBuilder(jobTask.Name(), jobTask.Config()).WithInfo(pluginInfoResp).Build()
 			jobService := service.NewJobService(nil, pluginService, nil, nil, nil)
-			actual, err := jobService.GetTaskInfo(ctx, jobTask)
+			actual, err := jobService.GetTaskWithInfo(ctx, jobTask)
 			assert.NoError(t, err)
 			assert.NotNil(t, actual)
 			assert.Equal(t, expected, actual)
@@ -2558,11 +2558,11 @@ func (_m *PluginService) GenerateUpstreams(ctx context.Context, jobTenant *tenan
 }
 
 // Info provides a mock function with given fields: _a0, _a1
-func (_m *PluginService) Info(_a0 context.Context, _a1 *job.Task) (*models.PluginInfoResponse, error) {
+func (_m *PluginService) Info(_a0 context.Context, _a1 job.TaskName) (*models.PluginInfoResponse, error) {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 *models.PluginInfoResponse
-	if rf, ok := ret.Get(0).(func(context.Context, *job.Task) *models.PluginInfoResponse); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, job.TaskName) *models.PluginInfoResponse); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
@@ -2571,7 +2571,7 @@ func (_m *PluginService) Info(_a0 context.Context, _a1 *job.Task) (*models.Plugi
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *job.Task) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, job.TaskName) error); ok {
 		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
