@@ -43,9 +43,9 @@ type ResourceManager interface {
 
 func (e *extUpstreamResolver) Resolve(ctx context.Context, jobWithUpstream *job.WithUpstream, lw writer.LogWriter) (*job.WithUpstream, error) {
 	me := errors.NewMultiError(fmt.Sprintf("external upstream resolution errors for job %s", jobWithUpstream.Name().String()))
-	unresolvedUpstreamList := jobWithUpstream.GetUnresolvedUpstreams()
+	unresolvedUpstreams := jobWithUpstream.GetUnresolvedUpstreams()
 	var mergedUpstream []*job.Upstream
-	for _, unresolvedUpstream := range unresolvedUpstreamList {
+	for _, unresolvedUpstream := range unresolvedUpstreams {
 		externalUpstream, err := e.fetchOptimusUpstreams(ctx, unresolvedUpstream)
 		if err != nil || len(externalUpstream) == 0 {
 			mergedUpstream = append(mergedUpstream, unresolvedUpstream)

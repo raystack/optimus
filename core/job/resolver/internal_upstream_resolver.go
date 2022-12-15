@@ -47,7 +47,7 @@ func (i internalUpstreamResolver) Resolve(ctx context.Context, jobWithUnresolved
 }
 
 func (i internalUpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.ProjectName, jobsWithUnresolvedUpstream []*job.WithUpstream) ([]*job.WithUpstream, error) {
-	jobNames := job.WithUpstreamList(jobsWithUnresolvedUpstream).GetSubjectJobNames()
+	jobNames := job.WithUpstreams(jobsWithUnresolvedUpstream).GetSubjectJobNames()
 
 	allInternalUpstreamMap, err := i.jobRepository.ResolveUpstreams(ctx, projectName, jobNames)
 	if err != nil {
@@ -55,7 +55,7 @@ func (i internalUpstreamResolver) BulkResolve(ctx context.Context, projectName t
 		return nil, errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg)
 	}
 
-	jobsWithMergedUpstream := job.WithUpstreamList(jobsWithUnresolvedUpstream).MergeWithResolvedUpstream(allInternalUpstreamMap)
+	jobsWithMergedUpstream := job.WithUpstreams(jobsWithUnresolvedUpstream).MergeWithResolvedUpstreams(allInternalUpstreamMap)
 	return jobsWithMergedUpstream, nil
 }
 

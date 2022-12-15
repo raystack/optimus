@@ -144,9 +144,9 @@ func (w WithUpstream) GetUnresolvedUpstreams() []*Upstream {
 	return unresolvedUpstreams
 }
 
-type WithUpstreamList []*WithUpstream
+type WithUpstreams []*WithUpstream
 
-func (w WithUpstreamList) GetSubjectJobNames() []Name {
+func (w WithUpstreams) GetSubjectJobNames() []Name {
 	names := make([]Name, len(w))
 	for i, withUpstream := range w {
 		names[i] = withUpstream.Name()
@@ -154,7 +154,7 @@ func (w WithUpstreamList) GetSubjectJobNames() []Name {
 	return names
 }
 
-func (w WithUpstreamList) MergeWithResolvedUpstream(resolvedUpstreamMap map[Name][]*Upstream) []*WithUpstream {
+func (w WithUpstreams) MergeWithResolvedUpstreams(resolvedUpstreamMap map[Name][]*Upstream) []*WithUpstream {
 	var jobsWithMergedUpstream []*WithUpstream
 	for _, jobWithUnresolvedUpstream := range w {
 		resolvedUpstreams := resolvedUpstreamMap[jobWithUnresolvedUpstream.Name()]
