@@ -43,23 +43,23 @@ type ResourceManager interface {
 
 func (e *extUpstreamResolver) Resolve(ctx context.Context, jobWithUpstream *job.WithUpstream, lw writer.LogWriter) (*job.WithUpstream, error) {
 	me := errors.NewMultiError(fmt.Sprintf("external upstream resolution errors for job %s", jobWithUpstream.Name().String()))
+	mergedUpstreams := jobWithUpstream.GetResolvedUpstreams()
 	unresolvedUpstreams := jobWithUpstream.GetUnresolvedUpstreams()
-	var mergedUpstream []*job.Upstream
 	for _, unresolvedUpstream := range unresolvedUpstreams {
 		externalUpstream, err := e.fetchOptimusUpstreams(ctx, unresolvedUpstream)
 		if err != nil || len(externalUpstream) == 0 {
-			mergedUpstream = append(mergedUpstream, unresolvedUpstream)
+			mergedUpstreams = append(mergedUpstreams, unresolvedUpstream)
 			me.Append(err)
 			continue
 		}
-		mergedUpstream = append(mergedUpstream, externalUpstream...)
+		mergedUpstreams = append(mergedUpstreams, externalUpstream...)
 	}
 	if len(me.Errors) > 0 {
 		lw.Write(writer.LogLevelError, errors.MultiToError(me).Error())
 	} else {
 		lw.Write(writer.LogLevelDebug, fmt.Sprintf("resolved job %s upstream from external", jobWithUpstream.Name().String()))
 	}
-	return job.NewWithUpstream(jobWithUpstream.Job(), mergedUpstream), errors.MultiToError(me)
+	return job.NewWithUpstream(jobWithUpstream.Job(), mergedUpstreams), errors.MultiToError(me)
 }
 
 func (e *extUpstreamResolver) BulkResolve(ctx context.Context, jobsWithUpstream []*job.WithUpstream, lw writer.LogWriter) ([]*job.WithUpstream, error) {

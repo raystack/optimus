@@ -1295,6 +1295,40 @@ func TestJobService(t *testing.T) {
 			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
 			assert.ErrorContains(t, err, "internal error")
 		})
+		t.Run("returns error if unable to get tenant details", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			logWriter := new(mockWriter)
+			defer logWriter.AssertExpectations(t)
+
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, jobWindow, jobTask).Build()
+			jobB := job.NewJob(sampleTenant, specB, "", nil)
+
+			incomingSpecs := []*job.Spec{specA, specB}
+			existingJobs := []*job.Job{jobB}
+
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(existingJobs, nil)
+
+			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+
+			errorMsg := "project/namespace error"
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(nil, errors.New(errorMsg))
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
+			assert.ErrorContains(t, err, errorMsg)
+		})
 	})
 
 	t.Run("Refresh", func(t *testing.T) {

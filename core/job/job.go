@@ -144,6 +144,16 @@ func (w WithUpstream) GetUnresolvedUpstreams() []*Upstream {
 	return unresolvedUpstreams
 }
 
+func (w WithUpstream) GetResolvedUpstreams() []*Upstream {
+	var resolvedUpstreams []*Upstream
+	for _, upstream := range w.upstreams {
+		if upstream.state == UpstreamStateResolved {
+			resolvedUpstreams = append(resolvedUpstreams, upstream)
+		}
+	}
+	return resolvedUpstreams
+}
+
 type WithUpstreams []*WithUpstream
 
 func (w WithUpstreams) GetSubjectJobNames() []Name {

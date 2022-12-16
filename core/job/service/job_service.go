@@ -250,7 +250,10 @@ func (j JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, spe
 	me.Append(err)
 
 	tenantWithDetails, err := j.tenantDetailsGetter.GetDetails(ctx, jobTenant)
-	me.Append(err)
+	if err != nil {
+		me.Append(err)
+		return errors.MultiToError(me)
+	}
 
 	addedJobs, err := j.bulkAdd(ctx, tenantWithDetails, toAdd, logWriter)
 	me.Append(err)
