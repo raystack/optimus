@@ -434,7 +434,7 @@ func specToJob(spec *Spec) (*job.Job, error) {
 
 	destination := job.ResourceURN(spec.Destination)
 
-	sources := []job.ResourceURN{}
+	var sources []job.ResourceURN
 	for _, source := range spec.Sources {
 		resourceURN := job.ResourceURN(source)
 		sources = append(sources, resourceURN)
