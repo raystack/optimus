@@ -1,6 +1,9 @@
 import json
 import logging
 from datetime import datetime, timedelta
+
+import time
+
 from typing import Any, Dict, Optional
 
 import pendulum
@@ -502,6 +505,9 @@ def job_failure_event(context):
 def operator_start_event(context):
     try:
         run_type = get_run_type(context)
+        if run_type == "SENSOR":
+            if not shouldSendSensorStartEvent(context):
+                return
         meta = {
             "event_type": "TYPE_{}_START".format(run_type),
             "status": "running"
@@ -513,6 +519,9 @@ def operator_start_event(context):
 def operator_success_event(context):
     try:
         run_type = get_run_type(context)
+        if run_type == "SENSOR":
+            print("clearing sensor xcom")
+            cleanup_xcom(context)
         meta = {
             "event_type": "TYPE_{}_SUCCESS".format(run_type),
             "status": "success"
@@ -525,6 +534,9 @@ def operator_success_event(context):
 def operator_retry_event(context):
     try:
         run_type = get_run_type(context)
+        if run_type == "SENSOR":
+            print("clearing sensor xcom")
+            cleanup_xcom(context)
         meta = {
             "event_type": "TYPE_{}_RETRY".format(run_type),
             "status": "retried"
@@ -537,6 +549,9 @@ def operator_retry_event(context):
 def operator_failure_event(context):
     try:
         run_type = get_run_type(context)
+        if run_type == "SENSOR":
+            print("clearing sensor xcom")
+            cleanup_xcom(context)
         meta = {
             "event_type": "TYPE_{}_FAIL".format(run_type),
             "status": "failed"
@@ -585,6 +600,32 @@ def optimus_sla_miss_notify(dag, task_list, blocking_task_list, slas, blocking_t
     except Exception as e:
         print(e)
 
+def shouldSendSensorStartEvent(ctx):
+    try:
+        ti = ctx.get('task_instance')
+        key = "sensorEvt/{}/{}/{}".format(ti.task_id , ctx.get('next_execution_date').strftime(TIMESTAMP_FORMAT) , ti.try_number)
+        
+        ti.xcom_pull(key=key)
+        result = ti.xcom_pull(key=key)
+        if not result:
+            print("sending NEW sensor start event for attempt number ", ti.try_number)
+            ti.xcom_push(key=key, value=True)
+            return True
+        print("ignoring sending sensor start event as its already sent")
+        return False
+    except Exception as e:
+        print(e)
+
+
+def cleanup_xcom(ctx):
+    try:
+        from airflow import settings
+        session = settings.Session()
+        ti = ctx.get('task_instance')
+        key = "sensorEvt/{}/{}/{}".format(ti.task_id , ctx.get('next_execution_date').strftime(TIMESTAMP_FORMAT) , ti.try_number)
+        session.query(XCom).filter(XCom.key == key).delete()
+    except Exception as e:
+        print(e)
 
 # everything below this is here for legacy reasons, should be cleaned up in future
 
