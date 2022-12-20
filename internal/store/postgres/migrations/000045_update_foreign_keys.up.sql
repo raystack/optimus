@@ -1,3 +1,5 @@
+ALTER TABLE resource ADD IF NOT EXISTS id UUID DEFAULT uuid_generate_v4();
+
 ALTER TABLE resource
 ADD CONSTRAINT pk_resource PRIMARY KEY (project_name, namespace_name, store, full_name);
 

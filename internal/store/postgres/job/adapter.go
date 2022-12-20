@@ -5,11 +5,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/lib/pq"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/resource"
+	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/models"
 )
 
@@ -565,4 +568,42 @@ func fromStorageAssets(raw []byte) (map[string]string, error) {
 		return nil, err
 	}
 	return assetsMap, nil
+}
+
+func FromRow(row pgx.Row) (*Spec, error) {
+	var js Spec
+
+	err := row.Scan(&js.ID, &js.Name, &js.Version, &js.Owner, &js.Description,
+		&js.Labels, &js.StartDate, &js.EndDate, &js.Interval, &js.DependsOnPast,
+		&js.CatchUp, &js.Retry, &js.Alert, &js.StaticUpstreams, &js.HTTPUpstreams,
+		&js.TaskName, &js.TaskConfig, &js.WindowSize, &js.WindowOffset, &js.WindowTruncateTo,
+		&js.Assets, &js.Hooks, &js.Metadata, &js.Destination, &js.Sources,
+		&js.ProjectName, &js.NamespaceName, &js.CreatedAt, &js.UpdatedAt, &js.DeletedAt)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.NotFound(job.EntityJob, "job not found")
+		}
+
+		return nil, errors.Wrap(resource.EntityResource, "error in reading row for resource", err)
+	}
+
+	return &js, nil
+}
+
+func UpstreamFromRow(row pgx.Row) (*JobWithUpstream, error) {
+	var js JobWithUpstream
+
+	err := row.Scan(&js.JobName, &js.ProjectName, &js.UpstreamJobName, &js.UpstreamResourceURN,
+		&js.UpstreamProjectName, &js.UpstreamNamespaceName, &js.UpstreamTaskName, &js.UpstreamHost,
+		&js.UpstreamType, &js.UpstreamState, &js.UpstreamExternal)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.NotFound(job.EntityJob, "job upstream not found")
+		}
+
+		return nil, errors.Wrap(resource.EntityResource, "error in reading row for resource", err)
+	}
+
+	return &js, nil
 }

@@ -1,3 +1,5 @@
+ALTER TABLE resource DROP IF EXISTS id;
+
 ALTER TABLE resource
     DROP CONSTRAINT IF EXISTS pk_resource;
 

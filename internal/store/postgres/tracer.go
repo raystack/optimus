@@ -59,6 +59,10 @@ func (*tracer) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, data pgx.TraceQue
 	span := trace.SpanFromContext(ctx)
 	recordError(span, data.Err)
 
+	span.SetAttributes(
+		attribute.String("result", data.CommandTag.String()),
+	)
+
 	span.End()
 }
 

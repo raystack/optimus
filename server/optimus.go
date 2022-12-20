@@ -303,7 +303,7 @@ func (s *OptimusServer) setupHandlers() error {
 	newJobRunService := schedulerService.NewJobRunService(s.logger, jobProviderRepo, jobRunRepo, operatorRunRepository, newScheduler, newPriorityResolver, jobInputCompiler)
 
 	// Job Bounded Context Setup
-	jJobRepo := jRepo.NewJobRepository(s.dbConn)
+	jJobRepo := jRepo.NewJobRepository(s.dbPool)
 	jPluginService := jService.NewJobPluginService(tSecretService, s.pluginRepo, newEngine, s.logger)
 	jExternalUpstreamResolver, _ := jResolver.NewExternalUpstreamResolver(s.conf.ResourceManagers)
 	jInternalUpstreamResolver := jResolver.NewInternalUpstreamResolver(jJobRepo)

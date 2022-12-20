@@ -6,8 +6,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/tenant"
@@ -56,11 +56,9 @@ func TestPostgresJobRepository(t *testing.T) {
 	sampleTenant, err := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
 	assert.NoError(t, err)
 
-	dbSetup := func() *gorm.DB {
-		dbConn := setup.TestDB()
-		setup.TruncateTables(dbConn)
-
+	dbSetup := func() *pgxpool.Pool {
 		pool := setup.TestPool()
+		setup.TruncateTablesWith(pool)
 		projRepo := tenantPostgres.NewProjectRepository(pool)
 		assert.NoError(t, projRepo.Save(ctx, proj))
 		assert.NoError(t, projRepo.Save(ctx, otherProj))
@@ -70,7 +68,7 @@ func TestPostgresJobRepository(t *testing.T) {
 		assert.NoError(t, namespaceRepo.Save(ctx, otherNamespace))
 		assert.NoError(t, namespaceRepo.Save(ctx, otherNamespace2))
 
-		return dbConn
+		return pool
 	}
 
 	jobVersion, err := job.VersionFrom(1)
@@ -841,6 +839,7 @@ func TestPostgresJobRepository(t *testing.T) {
 
 	t.Run("GetUpstreams", func(t *testing.T) {
 		t.Run("returns upstream given project and job name", func(t *testing.T) {
+			// TODO: test is failing for nullable fields in upstream
 			db := dbSetup()
 
 			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
