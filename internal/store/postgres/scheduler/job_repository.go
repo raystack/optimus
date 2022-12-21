@@ -2,16 +2,18 @@ package scheduler
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lib/pq"
-	"gorm.io/datatypes"
-	"gorm.io/gorm"
 
+	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/resource"
 	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
@@ -20,7 +22,7 @@ import (
 )
 
 type JobRepository struct {
-	db *gorm.DB
+	pool *pgxpool.Pool
 }
 type JobUpstreams struct {
 	JobID                 uuid.UUID
@@ -39,6 +41,23 @@ type JobUpstreams struct {
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
+}
+
+func UpstreamFromRow(row pgx.Row) (*JobUpstreams, error) {
+	var js JobUpstreams
+
+	err := row.Scan(&js.JobName, &js.ProjectName, &js.UpstreamJobName, &js.UpstreamResourceUrn,
+		&js.UpstreamProjectName, &js.UpstreamNamespaceName, &js.UpstreamTaskName, &js.UpstreamHost,
+		&js.UpstreamType, &js.UpstreamState, &js.UpstreamExternal)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.NotFound(job.EntityJob, "job upstream not found")
+		}
+
+		return nil, errors.Wrap(resource.EntityResource, "error in reading row for resource", err)
+	}
+
+	return &js, nil
 }
 
 func (j *JobUpstreams) toJobUpstreams() (*scheduler.JobUpstream, error) {
@@ -65,7 +84,7 @@ type Job struct {
 	Version     int
 	Owner       string
 	Description string
-	Labels      datatypes.JSON
+	Labels      json.RawMessage
 
 	StartDate time.Time
 	EndDate   *time.Time
@@ -74,25 +93,25 @@ type Job struct {
 	// Behavior
 	DependsOnPast bool `json:"depends_on_past"`
 	CatchUp       bool `json:"catch_up"`
-	Retry         datatypes.JSON
-	Alert         datatypes.JSON
+	Retry         json.RawMessage
+	Alert         json.RawMessage
 
 	// Upstreams
 	StaticUpstreams pq.StringArray `gorm:"type:varchar(220)[]" json:"static_upstreams"`
 
 	// ExternalUpstreams
-	HTTPUpstreams datatypes.JSON `json:"http_upstreams"`
+	HTTPUpstreams json.RawMessage `json:"http_upstreams"`
 
 	TaskName   string
-	TaskConfig datatypes.JSON
+	TaskConfig json.RawMessage
 
 	WindowSize       string
 	WindowOffset     string
 	WindowTruncateTo string
 
-	Assets   datatypes.JSON
-	Hooks    datatypes.JSON
-	Metadata datatypes.JSON
+	Assets   json.RawMessage
+	Hooks    json.RawMessage
+	Metadata json.RawMessage
 
 	Destination string
 	Sources     pq.StringArray `gorm:"type:varchar(300)[]"`
@@ -102,7 +121,7 @@ type Job struct {
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
-	DeletedAt gorm.DeletedAt
+	DeletedAt sql.NullTime
 }
 
 func (j *Job) toJob() (*scheduler.Job, error) {
@@ -200,29 +219,40 @@ func (j *Job) toJobWithDetails() (*scheduler.JobWithDetails, error) {
 	return schedulerJobWithDetails, nil
 }
 
-func (j *JobRepository) GetJob(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName) (*scheduler.Job, error) {
-	var spec Job
+func FromRow(row pgx.Row) (*Job, error) {
+	var js Job
 
-	getJobByNameAtProject := `SELECT * FROM job WHERE name = ? AND project_name = ?`
-	err := j.db.WithContext(ctx).Raw(getJobByNameAtProject, jobName.String(), projectName.String()).
-		First(&spec).Error
+	err := row.Scan(&js.ID, &js.Name, &js.Version, &js.Owner, &js.Description,
+		&js.Labels, &js.StartDate, &js.EndDate, &js.Interval, &js.DependsOnPast,
+		&js.CatchUp, &js.Retry, &js.Alert, &js.StaticUpstreams, &js.HTTPUpstreams,
+		&js.TaskName, &js.TaskConfig, &js.WindowSize, &js.WindowOffset, &js.WindowTruncateTo,
+		&js.Assets, &js.Hooks, &js.Metadata, &js.Destination, &js.Sources,
+		&js.ProjectName, &js.NamespaceName, &js.CreatedAt, &js.UpdatedAt, &js.DeletedAt)
+
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.NotFound(scheduler.EntityJobRun, "unable to find job:"+jobName.String()+" in project:"+projectName.String())
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.NotFound(job.EntityJob, "job not found")
 		}
+
+		return nil, errors.Wrap(scheduler.EntityJobRun, "error in reading row for resource", err)
+	}
+
+	return &js, nil
+}
+
+func (j *JobRepository) GetJob(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName) (*scheduler.Job, error) {
+	getJobByNameAtProject := `SELECT * FROM job WHERE name = $1 AND project_name = $2`
+	spec, err := FromRow(j.pool.QueryRow(ctx, getJobByNameAtProject, jobName, projectName))
+	if err != nil {
 		return nil, err
 	}
 	return spec.toJob()
 }
+
 func (j *JobRepository) GetJobDetails(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName) (*scheduler.JobWithDetails, error) {
-	var spec Job
-	getJobByNameAtProject := `SELECT * FROM job WHERE name = ? AND project_name = ?`
-	err := j.db.WithContext(ctx).Raw(getJobByNameAtProject, jobName.String(), projectName.String()).
-		First(&spec).Error
+	getJobByNameAtProject := `SELECT * FROM job WHERE name = $1 AND project_name = $2`
+	spec, err := FromRow(j.pool.QueryRow(ctx, getJobByNameAtProject, jobName, projectName))
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.NotFound(scheduler.EntityJobRun, "unable to find job:"+jobName.String()+" in project:"+projectName.String())
-		}
 		return nil, err
 	}
 	return spec.toJobWithDetails()
@@ -248,29 +278,39 @@ func groupUpstreamsByJobName(jobUpstreams []JobUpstreams) (map[string][]*schedul
 }
 
 func (j *JobRepository) getJobsUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []string) (map[string][]*scheduler.JobUpstream, error) {
-	var jobsUpstreams []JobUpstreams
-	jobNameListString := strings.Join(jobNames, "', '")
-	getJobUpstreamsByNameAtProject := fmt.Sprintf("SELECT * FROM job_upstream WHERE project_name = '%s' and job_name in ('%s')", projectName.String(), jobNameListString)
-	err := j.db.WithContext(ctx).Raw(getJobUpstreamsByNameAtProject, projectName.String()).Find(&jobsUpstreams).Error
+	getJobUpstreamsByNameAtProject := "SELECT * FROM job_upstream WHERE project_name = $1 and job_name = any ($2)"
+	rows, err := j.pool.Query(ctx, getJobUpstreamsByNameAtProject, projectName, jobNames)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.NotFound(scheduler.EntityJobRun, "unable to find jobsUpstreams in project:"+projectName.String()+" for:"+jobNameListString)
-		}
-		return nil, err
+		return nil, errors.Wrap(job.EntityJob, "error while getting job with upstreams", err)
 	}
-	return groupUpstreamsByJobName(jobsUpstreams)
+	defer rows.Close()
+
+	var upstreams []JobUpstreams
+	for rows.Next() {
+		var jwu JobUpstreams
+		err := rows.Scan(&jwu.JobName, &jwu.ProjectName, &jwu.UpstreamJobName, &jwu.UpstreamProjectName,
+			&jwu.UpstreamNamespaceName, &jwu.UpstreamResourceUrn, &jwu.UpstreamTaskName, &jwu.UpstreamType, &jwu.UpstreamExternal)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, errors.NotFound(scheduler.EntityJobRun, "job upstream not found")
+			}
+
+			return nil, errors.Wrap(scheduler.EntityJobRun, "error in reading row for resource", err)
+		}
+		upstreams = append(upstreams, jwu)
+	}
+
+	return groupUpstreamsByJobName(upstreams)
 }
 
 func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectName) ([]*scheduler.JobWithDetails, error) {
 	var specs []Job
-	getJobByNameAtProject := `SELECT * FROM job WHERE project_name = ?`
-	err := j.db.WithContext(ctx).Raw(getJobByNameAtProject, projectName.String()).Find(&specs).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.NotFound(scheduler.EntityJobRun, "unable to find jobs in project:"+projectName.String())
-		}
-		return nil, err
-	}
+	// getJobByNameAtProject := `SELECT * FROM job WHERE project_name = $1`
+	//rows, err := j.pool.Query(ctx, getJobByNameAtProject, projectName)
+	//if err != nil {
+	//	return nil, errors.Wrap(job.EntityJob, "error while getting all jobs", err)
+	//}
+
 	jobsMap := map[string]*scheduler.JobWithDetails{}
 	var jobNameList []string
 	multiError := errors.NewMultiError("errorInGetAll")
@@ -294,8 +334,8 @@ func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectNa
 	return utils.MapToList[*scheduler.JobWithDetails](jobsMap), errors.MultiToError(multiError)
 }
 
-func NewJobProviderRepository(db *gorm.DB) *JobRepository {
+func NewJobProviderRepository(pool *pgxpool.Pool) *JobRepository {
 	return &JobRepository{
-		db: db,
+		pool: pool,
 	}
 }
