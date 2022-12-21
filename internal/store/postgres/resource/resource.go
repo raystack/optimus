@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"gorm.io/datatypes"
-
 	"github.com/odpf/optimus/core/resource"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
@@ -19,7 +17,7 @@ type Resource struct {
 	ProjectName   string
 	NamespaceName string
 
-	Metadata datatypes.JSON
+	Metadata json.RawMessage
 	Spec     map[string]any
 
 	URN string

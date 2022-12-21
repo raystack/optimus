@@ -16,7 +16,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	slackapi "github.com/slack-go/slack"
 	"google.golang.org/grpc"
-	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/config"
 	jHandler "github.com/odpf/optimus/core/job/handler/v1beta1"
@@ -56,7 +55,6 @@ type OptimusServer struct {
 	logger log.Logger
 
 	dbPool *pgxpool.Pool
-	dbConn *gorm.DB
 	key    *[keyLength]byte
 
 	serverAddr string
@@ -157,18 +155,9 @@ func applicationKeyFromString(appKey string) (*[keyLength]byte, error) {
 }
 
 func (s *OptimusServer) setupDB() error {
-	migration, err := postgres.NewMigration(s.logger, config.BuildVersion, s.conf.Serve.DB.DSN)
+	err := postgres.Migrate(s.conf.Serve.DB.DSN)
 	if err != nil {
 		return fmt.Errorf("error initializing migration: %w", err)
-	}
-	ctx := context.Background()
-	if err := migration.Up(ctx); err != nil {
-		return fmt.Errorf("error executing migration up: %w", err)
-	}
-
-	s.dbConn, err = postgres.Connect(s.conf.Serve.DB, s.logger.Writer())
-	if err != nil {
-		return fmt.Errorf("postgres.Connect: %w", err)
 	}
 
 	s.dbPool, err = postgres.Open(s.conf.Serve.DB)
@@ -230,13 +219,8 @@ func (s *OptimusServer) Shutdown() {
 		fn() // Todo: log all the errors from cleanup before exit
 	}
 
-	if s.dbConn != nil {
-		sqlConn, err := s.dbConn.DB()
-		if err != nil {
-			s.logger.Error("Error while getting sqlConn", err)
-		} else if err := sqlConn.Close(); err != nil {
-			s.logger.Error("Error in sqlConn.Close", err)
-		}
+	if s.dbPool != nil {
+		s.dbPool.Close()
 	}
 
 	s.logger.Info("Server shutdown complete")
@@ -266,9 +250,9 @@ func (s *OptimusServer) setupHandlers() error {
 	resourceManager.RegisterDatastore(rModel.Bigquery, bigqueryStore)
 
 	// Scheduler bounded context
-	jobRunRepo := schedulerRepo.NewJobRunRepository(s.dbConn)
-	operatorRunRepository := schedulerRepo.NewOperatorRunRepository(s.dbConn)
-	jobProviderRepo := schedulerRepo.NewJobProviderRepository(s.dbConn)
+	jobRunRepo := schedulerRepo.NewJobRunRepository(s.dbPool)
+	operatorRunRepository := schedulerRepo.NewOperatorRunRepository(s.dbPool)
+	jobProviderRepo := schedulerRepo.NewJobProviderRepository(s.dbPool)
 
 	notificationContext, cancelNotifiers := context.WithCancel(context.Background())
 	s.cleanupFn = append(s.cleanupFn, cancelNotifiers)

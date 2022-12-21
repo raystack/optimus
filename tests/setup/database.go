@@ -6,26 +6,19 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/golang-migrate/migrate/v4"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/odpf/salt/log"
-	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/internal/store/postgres"
 )
 
 var (
-	optimusDB  *gorm.DB
 	dbPool     *pgxpool.Pool
 	initDBOnce sync.Once
 )
-
-func TestDB() *gorm.DB {
-	initDBOnce.Do(migrateDB)
-
-	return optimusDB
-}
 
 func TestPool() *pgxpool.Pool {
 	initDBOnce.Do(migrateDB)
@@ -52,24 +45,6 @@ func migrateDB() {
 		MinOpenConnection: 1,
 		MaxOpenConnection: 2,
 	}
-	dbConn, err := postgres.Connect(dbConf, os.Stdout)
-	if err != nil {
-		panic(err)
-	}
-	if err := dropTables(dbConn); err != nil {
-		panic(err)
-	}
-
-	logger := log.NewLogrus(log.LogrusWithWriter(os.Stdout))
-	optimusVersion := "integration_test"
-	m, err := postgres.NewMigration(logger, optimusVersion, dbURL)
-	if err != nil {
-		panic(err)
-	}
-	ctx := context.Background()
-	if err := m.Up(ctx); err != nil {
-		panic(err)
-	}
 
 	pool, err := postgres.Open(dbConf)
 	if err != nil {
@@ -77,10 +52,41 @@ func migrateDB() {
 	}
 	dbPool = pool
 
-	optimusDB = dbConn
+	m, err := postgres.NewMigrator(dbURL)
+	if err != nil {
+		panic(err)
+	}
+
+	cleanDB(m, pool)
+
+	if err = postgres.Migrate(dbURL); err != nil {
+		panic(err)
+	}
 }
 
-func dropTables(db *gorm.DB) error {
+func cleanDB(m *migrate.Migrate, pool *pgxpool.Pool) {
+	shouldDrop := false
+	_, ok := os.LookupEnv("TEST_OPTIMUS_DROP_DB")
+	if !ok {
+		shouldDrop = true
+	}
+
+	if shouldDrop {
+		if err := m.Drop(); err != nil {
+			panic(err)
+		}
+		return
+	}
+
+	if err := dropTables(pool); err != nil {
+		panic(err)
+	}
+}
+
+func dropTables(db *pgxpool.Pool) error {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Minute*5)
+	defer cancelFunc()
+
 	tablesToDelete := []string{
 		"instance",
 		"hook_run",
@@ -109,8 +115,8 @@ func dropTables(db *gorm.DB) error {
 	}
 	var errMsgs []string
 	for _, table := range tablesToDelete {
-		if err := db.Exec(fmt.Sprintf("drop table if exists %s", table)).Error; err != nil {
-			toleratedErrMsg := fmt.Sprintf("table \"%s\" does not exist", table)
+		if _, err := db.Exec(ctx, "drop table if exists "+table); err != nil {
+			toleratedErrMsg := fmt.Sprintf("table %q does not exist", table)
 			if !strings.Contains(err.Error(), toleratedErrMsg) {
 				errMsgs = append(errMsgs, err.Error())
 			}
@@ -120,28 +126,6 @@ func dropTables(db *gorm.DB) error {
 		return fmt.Errorf("error encountered when dropping tables: %s", strings.Join(errMsgs, ","))
 	}
 	return nil
-}
-
-func TruncateTables(db *gorm.DB) {
-	db.Exec("TRUNCATE TABLE backup_old, resource_old CASCADE")
-	db.Exec("TRUNCATE TABLE backup CASCADE")
-	db.Exec("TRUNCATE TABLE replay CASCADE")
-	db.Exec("TRUNCATE TABLE resource CASCADE")
-
-	db.Exec("TRUNCATE TABLE job_run CASCADE")
-	db.Exec("TRUNCATE TABLE sensor_run CASCADE")
-	db.Exec("TRUNCATE TABLE task_run CASCADE")
-	db.Exec("TRUNCATE TABLE hook_run CASCADE")
-
-	db.Exec("TRUNCATE TABLE job CASCADE")
-
-	db.Exec("TRUNCATE TABLE secret CASCADE")
-	db.Exec("TRUNCATE TABLE namespace CASCADE")
-	db.Exec("TRUNCATE TABLE project CASCADE")
-
-	db.Exec("TRUNCATE TABLE job_deployment CASCADE")
-
-	db.Exec("TRUNCATE TABLE job_upstream CASCADE")
 }
 
 func TruncateTablesWith(pool *pgxpool.Pool) {

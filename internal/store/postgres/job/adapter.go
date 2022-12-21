@@ -1,17 +1,15 @@
 package job
 
 import (
+	"database/sql"
 	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/lib/pq"
-	"gorm.io/datatypes"
-	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/resource"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/models"
 )
@@ -19,12 +17,12 @@ import (
 const jobDatetimeLayout = "2006-01-02"
 
 type Spec struct {
-	ID          uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
-	Name        string    `gorm:"not null" json:"name"`
+	ID          uuid.UUID
+	Name        string
 	Version     int
 	Owner       string
 	Description string
-	Labels      datatypes.JSON
+	Labels      json.RawMessage
 
 	StartDate time.Time
 	EndDate   *time.Time
@@ -33,35 +31,35 @@ type Spec struct {
 	// Behavior
 	DependsOnPast bool `json:"depends_on_past"`
 	CatchUp       bool `json:"catch_up"`
-	Retry         datatypes.JSON
-	Alert         datatypes.JSON
+	Retry         json.RawMessage
+	Alert         json.RawMessage
 
 	// Upstreams
-	StaticUpstreams pq.StringArray `gorm:"type:varchar(220)[]" json:"static_upstreams"`
+	StaticUpstreams pq.StringArray `json:"static_upstreams"`
 
 	// ExternalUpstreams
-	HTTPUpstreams datatypes.JSON `json:"http_upstreams"`
+	HTTPUpstreams json.RawMessage `json:"http_upstreams"`
 
 	TaskName   string
-	TaskConfig datatypes.JSON
+	TaskConfig json.RawMessage
 
 	WindowSize       string
 	WindowOffset     string
 	WindowTruncateTo string
 
-	Assets   datatypes.JSON
-	Hooks    datatypes.JSON
-	Metadata datatypes.JSON
+	Assets   json.RawMessage
+	Hooks    json.RawMessage
+	Metadata json.RawMessage
 
 	Destination string
-	Sources     pq.StringArray `gorm:"type:varchar(300)[]"`
+	Sources     pq.StringArray
 
 	ProjectName   string `json:"project_name"`
 	NamespaceName string `json:"namespace_name"`
 
-	CreatedAt time.Time `gorm:"not null" json:"created_at"`
-	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
-	DeletedAt gorm.DeletedAt
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt sql.NullTime
 }
 
 type Retry struct {
@@ -83,7 +81,7 @@ type Asset struct {
 
 type Hook struct {
 	Name   string
-	Config datatypes.JSON
+	Config json.RawMessage
 }
 
 type Metadata struct {
@@ -585,7 +583,7 @@ func FromRow(row pgx.Row) (*Spec, error) {
 			return nil, errors.NotFound(job.EntityJob, "job not found")
 		}
 
-		return nil, errors.Wrap(resource.EntityResource, "error in reading row for resource", err)
+		return nil, errors.Wrap(job.EntityJob, "error in reading row for job", err)
 	}
 
 	return &js, nil
@@ -602,7 +600,7 @@ func UpstreamFromRow(row pgx.Row) (*JobWithUpstream, error) {
 			return nil, errors.NotFound(job.EntityJob, "job upstream not found")
 		}
 
-		return nil, errors.Wrap(resource.EntityResource, "error in reading row for resource", err)
+		return nil, errors.Wrap(job.EntityJob, "error in reading row for upstream", err)
 	}
 
 	return &js, nil
