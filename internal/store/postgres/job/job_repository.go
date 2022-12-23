@@ -14,12 +14,21 @@ import (
 	"github.com/odpf/optimus/internal/errors"
 )
 
+const (
+	jobColumnsToStore = `name, version, owner, description, labels, start_date, end_date, interval, 
+	depends_on_past, catch_up, retry, alert, static_upstreams, http_upstreams, task_name, task_config, 
+	window_size, window_offset, window_truncate_to, assets, hooks, metadata, destination, sources,
+	project_name, namespace_name, created_at, updated_at`
+
+	jobColumns = `id, ` + jobColumnsToStore
+)
+
 type JobRepository struct {
-	pool *pgxpool.Pool
+	db *pgxpool.Pool
 }
 
 func NewJobRepository(pool *pgxpool.Pool) *JobRepository {
-	return &JobRepository{pool: pool}
+	return &JobRepository{db: pool}
 }
 
 func (j JobRepository) Add(ctx context.Context, jobs []*job.Job) ([]*job.Job, error) {
@@ -59,31 +68,11 @@ func (j JobRepository) triggerInsert(ctx context.Context, jobEntity *job.Job) er
 		return err
 	}
 
-	insertJobQuery := `
-INSERT INTO job (
-	name, version, owner, description,
-	labels, start_date, end_date, interval, 
-	depends_on_past, catch_up, retry, alert, 
-	static_upstreams, http_upstreams, task_name, task_config, 
-	window_size, window_offset, window_truncate_to,
-	assets, hooks, metadata,
-	destination, sources,
-	project_name, namespace_name,
-	created_at, updated_at
-)
-VALUES (
-	$1, $2, $3, $4,
-	$5, $6, $7, $8,
-	$9, $10, $11, $12,
-	$13, $14, $15, $16,
-	$17, $18, $19,
-	$20, $21, $22,
-	$23, $24,
-	$25, $26,
-	NOW(), NOW()
-);`
+	insertJobQuery := `INSERT INTO job (` + jobColumnsToStore + `)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
+	$17, $18, $19, $20, $21, $22, $23, $24, $25, $26, NOW(), NOW());`
 
-	tag, err := j.pool.Exec(ctx, insertJobQuery,
+	tag, err := j.db.Exec(ctx, insertJobQuery,
 		storageJob.Name, storageJob.Version, storageJob.Owner, storageJob.Description,
 		storageJob.Labels, storageJob.StartDate, storageJob.EndDate, storageJob.Interval,
 		storageJob.DependsOnPast, storageJob.CatchUp, storageJob.Retry, storageJob.Alert,
@@ -163,7 +152,7 @@ WHERE
 	name = $24 AND
 	project_name = $25;`
 
-	tag, err := j.pool.Exec(ctx, updateJobQuery,
+	tag, err := j.db.Exec(ctx, updateJobQuery,
 		storageJob.Version, storageJob.Owner, storageJob.Description,
 		storageJob.Labels, storageJob.StartDate, storageJob.EndDate, storageJob.Interval,
 		storageJob.DependsOnPast, storageJob.CatchUp, storageJob.Retry, storageJob.Alert,
@@ -184,17 +173,14 @@ WHERE
 }
 
 func (j JobRepository) get(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, onlyActiveJob bool) (*Spec, error) {
-	getJobByNameAtProject := `SELECT *
-FROM job
-WHERE name = $1
-AND project_name = $2`
+	getJobByNameAtProject := `SELECT ` + jobColumns + ` FROM job WHERE name = $1 AND project_name = $2`
 
 	if onlyActiveJob {
 		jobDeletedFilter := " AND deleted_at IS NULL"
 		getJobByNameAtProject += jobDeletedFilter
 	}
 
-	return FromRow(j.pool.QueryRow(ctx, getJobByNameAtProject, jobName.String(), projectName.String()))
+	return FromRow(j.db.QueryRow(ctx, getJobByNameAtProject, jobName.String(), projectName.String()))
 }
 
 func (j JobRepository) ResolveUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error) {
@@ -249,7 +235,7 @@ FROM inferred_upstreams id
 JOIN job j ON id.source = j.destination
 WHERE j.deleted_at IS NULL;`
 
-	rows, err := j.pool.Query(ctx, query, projectName, jobNames)
+	rows, err := j.db.Query(ctx, query, projectName, jobNames)
 	if err != nil {
 		return nil, errors.Wrap(job.EntityJob, "error while getting job with upstreams", err)
 	}
@@ -369,12 +355,9 @@ func (j JobRepository) GetByJobName(ctx context.Context, projectName tenant.Proj
 func (j JobRepository) GetAllByProjectName(ctx context.Context, projectName tenant.ProjectName) ([]*job.Job, error) {
 	me := errors.NewMultiError("get all job specs by project name errors")
 
-	getAllByProjectName := `SELECT *
-FROM job
-WHERE project_name = $1
-AND deleted_at IS NULL;`
+	getAllByProjectName := `SELECT ` + jobColumns + ` FROM job WHERE project_name = $1 AND deleted_at IS NULL;`
 
-	rows, err := j.pool.Query(ctx, getAllByProjectName, projectName)
+	rows, err := j.db.Query(ctx, getAllByProjectName, projectName)
 	if err != nil {
 		return nil, errors.Wrap(job.EntityJob, "error while jobs for project:  "+projectName.String(), err)
 	}
@@ -403,12 +386,9 @@ AND deleted_at IS NULL;`
 func (j JobRepository) GetAllByResourceDestination(ctx context.Context, resourceDestination job.ResourceURN) ([]*job.Job, error) {
 	me := errors.NewMultiError("get all job specs by resource destination")
 
-	getAllByDestination := `SELECT *
-FROM job
-WHERE destination = $1
-AND deleted_at IS NULL;`
+	getAllByDestination := `SELECT ` + jobColumns + ` FROM job WHERE destination = $1 AND deleted_at IS NULL;`
 
-	rows, err := j.pool.Query(ctx, getAllByDestination, resourceDestination)
+	rows, err := j.db.Query(ctx, getAllByDestination, resourceDestination)
 	if err != nil {
 		return nil, errors.Wrap(job.EntityJob, "error while jobs for destination:  "+resourceDestination.String(), err)
 	}
@@ -481,7 +461,7 @@ func (j JobRepository) ReplaceUpstreams(ctx context.Context, jobsWithUpstreams [
 		storageJobUpstreams = append(storageJobUpstreams, upstream...)
 	}
 
-	tx, err := j.pool.Begin(ctx)
+	tx, err := j.db.Begin(ctx)
 	if err != nil {
 		return errors.InternalError(job.EntityJob, "unable to update upstreams", err)
 	}
@@ -620,12 +600,9 @@ func (j JobRepository) Delete(ctx context.Context, projectName tenant.ProjectNam
 }
 
 func (j JobRepository) hardDelete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) error {
-	query := `
-DELETE
-FROM job
-WHERE project_name = $1 AND name = $2`
+	query := `DELETE FROM job WHERE project_name = $1 AND name = $2`
 
-	tag, err := j.pool.Exec(ctx, query, projectName, jobName)
+	tag, err := j.db.Exec(ctx, query, projectName, jobName)
 	if err != nil {
 		return errors.Wrap(job.EntityJob, "error during job deletion", err)
 	}
@@ -636,12 +613,9 @@ WHERE project_name = $1 AND name = $2`
 }
 
 func (j JobRepository) softDelete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) error {
-	query := `
-UPDATE job
-SET deleted_at = current_timestamp
-WHERE project_name = $1 AND name = $2`
+	query := `UPDATE job SET deleted_at = current_timestamp WHERE project_name = $1 AND name = $2`
 
-	tag, err := j.pool.Exec(ctx, query, projectName, jobName)
+	tag, err := j.db.Exec(ctx, query, projectName, jobName)
 	if err != nil {
 		return errors.Wrap(job.EntityJob, "error during job deletion", err)
 	}
@@ -654,13 +628,10 @@ WHERE project_name = $1 AND name = $2`
 func (j JobRepository) GetAllByTenant(ctx context.Context, jobTenant tenant.Tenant) ([]*job.Job, error) {
 	me := errors.NewMultiError("get all job specs by project name errors")
 
-	getAllByProjectName := `SELECT *
-FROM job
-WHERE project_name = $1
-AND namespace_name = $2
-AND deleted_at IS NULL;`
+	getAllByProjectName := `SELECT ` + jobColumns + ` FROM job
+	WHERE project_name = $1 AND namespace_name = $2 AND deleted_at IS NULL;`
 
-	rows, err := j.pool.Query(ctx, getAllByProjectName, jobTenant.ProjectName(), jobTenant.NamespaceName())
+	rows, err := j.db.Query(ctx, getAllByProjectName, jobTenant.ProjectName(), jobTenant.NamespaceName())
 	if err != nil {
 		return nil, errors.Wrap(job.EntityJob, "error while jobs for project:  "+jobTenant.ProjectName().String(), err)
 	}
@@ -694,7 +665,7 @@ SELECT
 FROM job_upstream
 WHERE project_name=$1 AND job_name=$2;`
 
-	rows, err := j.pool.Query(ctx, query, projectName, jobName)
+	rows, err := j.db.Query(ctx, query, projectName, jobName)
 	if err != nil {
 		return nil, errors.Wrap(job.EntityJob, "error while getting jobs with upstreams", err)
 	}
@@ -720,7 +691,7 @@ FROM job
 WHERE project_name = $1 AND $2 = ANY(sources)
 AND deleted_at IS NULL;`
 
-	rows, err := j.pool.Query(ctx, query, projectName, destination)
+	rows, err := j.db.Query(ctx, query, projectName, destination)
 	if err != nil {
 		return nil, errors.Wrap(job.EntityJob, "error while getting job downstream", err)
 	}
@@ -755,7 +726,7 @@ JOIN job j ON (ju.job_name = j.name AND ju.project_name = j.project_name)
 WHERE upstream_project_name=$1 AND upstream_job_name=$2
 AND j.deleted_at IS NULL;`
 
-	rows, err := j.pool.Query(ctx, query, projectName, jobName)
+	rows, err := j.db.Query(ctx, query, projectName, jobName)
 	if err != nil {
 		return nil, errors.Wrap(job.EntityJob, "error while getting job downstream by job name", err)
 	}

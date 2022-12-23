@@ -22,7 +22,7 @@ type Spec struct {
 	Version     int
 	Owner       string
 	Description string
-	Labels      json.RawMessage
+	Labels      map[string]string
 
 	StartDate time.Time
 	EndDate   *time.Time
@@ -41,13 +41,13 @@ type Spec struct {
 	HTTPUpstreams json.RawMessage `json:"http_upstreams"`
 
 	TaskName   string
-	TaskConfig json.RawMessage
+	TaskConfig map[string]string
 
 	WindowSize       string
 	WindowOffset     string
 	WindowTruncateTo string
 
-	Assets   json.RawMessage
+	Assets   map[string]string
 	Hooks    json.RawMessage
 	Metadata json.RawMessage
 
@@ -81,7 +81,7 @@ type Asset struct {
 
 type Hook struct {
 	Name   string
-	Config json.RawMessage
+	Config map[string]string
 }
 
 type Metadata struct {
@@ -108,14 +108,6 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 
 	jobSpec := jobEntity.Spec()
 
-	var labelsBytes []byte
-	if jobSpec.Labels() != nil {
-		labelsBytes, err = json.Marshal(jobSpec.Labels())
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	startDate, err := time.Parse(jobDatetimeLayout, jobSpec.Schedule().StartDate().String())
 	if err != nil {
 		return nil, err
@@ -137,20 +129,6 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 	alertsBytes, err := toStorageAlerts(jobSpec.AlertSpecs())
 	if err != nil {
 		return nil, err
-	}
-
-	taskConfigBytes, err := toConfig(jobSpec.Task().Config())
-	if err != nil {
-		return nil, err
-	}
-
-	var assetsBytes []byte
-	if jobSpec.Asset() != nil {
-		a, err := toStorageAsset(jobSpec.Asset().Assets())
-		if err != nil {
-			return nil, err
-		}
-		assetsBytes = a
 	}
 
 	hooksBytes, err := toStorageHooks(jobSpec.Hooks())
@@ -187,8 +165,8 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		Version:     jobSpec.Version().Int(),
 		Owner:       jobSpec.Owner().String(),
 		Description: jobSpec.Description(),
-		Labels:      labelsBytes,
-		Assets:      assetsBytes,
+		Labels:      jobSpec.Labels(),
+		Assets:      jobSpec.Asset().Assets(),
 		Metadata:    metadataBytes,
 
 		StartDate: startDate,
@@ -196,7 +174,7 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		Interval:  jobSpec.Schedule().Interval(),
 
 		TaskName:   jobSpec.Task().Name().String(),
-		TaskConfig: taskConfigBytes,
+		TaskConfig: jobSpec.Task().Config().Configs(),
 
 		Hooks: hooksBytes,
 
@@ -240,22 +218,10 @@ func toStorageHooks(hookSpecs []*job.Hook) ([]byte, error) {
 }
 
 func toStorageHook(spec *job.Hook) (Hook, error) {
-	configJSON, err := json.Marshal(spec.Config().Configs())
-	if err != nil {
-		return Hook{}, err
-	}
 	return Hook{
 		Name:   spec.Name().String(),
-		Config: configJSON,
+		Config: spec.Config().Configs(),
 	}, nil
-}
-
-func toStorageAsset(assetSpecs map[string]string) ([]byte, error) {
-	assetsJSON, err := json.Marshal(assetSpecs)
-	if err != nil {
-		return nil, err
-	}
-	return assetsJSON, nil
 }
 
 func toStorageAlerts(alertSpecs []*job.AlertSpec) ([]byte, error) {
@@ -319,13 +285,6 @@ func toStorageMetadata(metadataSpec *job.Metadata) ([]byte, error) {
 	return json.Marshal(metadata)
 }
 
-func toConfig(configSpec *job.Config) ([]byte, error) {
-	if configSpec == nil {
-		return nil, nil
-	}
-	return json.Marshal(configSpec.Configs())
-}
-
 func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 	version, err := job.VersionFrom(jobSpec.Version)
 	if err != nil {
@@ -386,11 +345,7 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 
 	var taskConfig *job.Config
 	if jobSpec.TaskConfig != nil {
-		var configMap map[string]string
-		if err := json.Unmarshal(jobSpec.TaskConfig, &configMap); err != nil {
-			return nil, err
-		}
-		taskConfig, err = job.NewConfig(configMap)
+		taskConfig, err = job.NewConfig(jobSpec.TaskConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -403,11 +358,7 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 	jobSpecBuilder := job.NewSpecBuilder(version, jobName, owner, schedule, window, task).WithDescription(jobSpec.Description)
 
 	if jobSpec.Labels != nil {
-		var labels map[string]string
-		if err := json.Unmarshal(jobSpec.Labels, &labels); err != nil {
-			return nil, err
-		}
-		jobSpecBuilder = jobSpecBuilder.WithLabels(labels)
+		jobSpecBuilder = jobSpecBuilder.WithLabels(jobSpec.Labels)
 	}
 
 	if jobSpec.Hooks != nil {
@@ -480,11 +431,7 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 	}
 
 	if jobSpec.Assets != nil {
-		assetsMap, err := fromStorageAssets(jobSpec.Assets)
-		if err != nil {
-			return nil, err
-		}
-		asset, err := job.NewAsset(assetsMap)
+		asset, err := job.NewAsset(jobSpec.Assets)
 		if err != nil {
 			return nil, err
 		}
@@ -517,11 +464,7 @@ func fromStorageHooks(raw []byte) ([]*job.Hook, error) {
 }
 
 func fromStorageHook(hook Hook) (*job.Hook, error) {
-	var configMap map[string]string
-	if err := json.Unmarshal(hook.Config, &configMap); err != nil {
-		return nil, err
-	}
-	config, err := job.NewConfig(configMap)
+	config, err := job.NewConfig(hook.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -558,14 +501,6 @@ func fromStorageAlerts(raw []byte) ([]*job.AlertSpec, error) {
 	}
 
 	return jobAlerts, nil
-}
-
-func fromStorageAssets(raw []byte) (map[string]string, error) {
-	var assetsMap map[string]string
-	if err := json.Unmarshal(raw, &assetsMap); err != nil {
-		return nil, err
-	}
-	return assetsMap, nil
 }
 
 func FromRow(row pgx.Row) (*Spec, error) {
