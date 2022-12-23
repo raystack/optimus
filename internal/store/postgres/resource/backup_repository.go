@@ -71,14 +71,14 @@ func (b Backup) ToResourceBackup() (*resource.Backup, error) {
 }
 
 type BackupRepository struct {
-	pool *pgxpool.Pool
+	db *pgxpool.Pool
 }
 
 func (repo BackupRepository) Create(ctx context.Context, resourceBackup *resource.Backup) error {
 	backup := NewBackup(resourceBackup)
 
 	insertBackup := `INSERT INTO backup (` + backupToStoreColumns + `) VALUES ($1, $2, $3, $4, $5, $6, $7, now()) returning id`
-	err := repo.pool.QueryRow(ctx, insertBackup, backup.Store, backup.ProjectName, backup.NamespaceName,
+	err := repo.db.QueryRow(ctx, insertBackup, backup.Store, backup.ProjectName, backup.NamespaceName,
 		backup.Description, backup.ResourceNames, backup.Config, backup.CreatedAt).Scan(&backup.ID)
 
 	if err != nil {
@@ -91,7 +91,7 @@ func (repo BackupRepository) Create(ctx context.Context, resourceBackup *resourc
 func (repo BackupRepository) GetByID(ctx context.Context, id resource.BackupID) (*resource.Backup, error) {
 	var b Backup
 	getByID := `SELECT ` + backupColumns + ` FROM backup WHERE id = $1`
-	err := repo.pool.QueryRow(ctx, getByID, id.String()).
+	err := repo.db.QueryRow(ctx, getByID, id.String()).
 		Scan(&b.ID, &b.Store, &b.ProjectName, &b.NamespaceName,
 			&b.Description, &b.ResourceNames, &b.Config, &b.CreatedAt, &b.UpdatedAt)
 
@@ -107,7 +107,7 @@ func (repo BackupRepository) GetByID(ctx context.Context, id resource.BackupID) 
 
 func (repo BackupRepository) GetAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Backup, error) {
 	getAllBackups := `SELECT ` + backupColumns + ` FROM backup WHERE project_name = $1 AND namespace_name = $2 AND store = $3`
-	rows, err := repo.pool.Query(ctx, getAllBackups, tnnt.ProjectName(), tnnt.NamespaceName(), store)
+	rows, err := repo.db.Query(ctx, getAllBackups, tnnt.ProjectName(), tnnt.NamespaceName(), store)
 	if err != nil {
 		return nil, errors.Wrap(resource.EntityBackup, "error while getting backup", err)
 	}
@@ -133,5 +133,5 @@ func (repo BackupRepository) GetAll(ctx context.Context, tnnt tenant.Tenant, sto
 }
 
 func NewBackupRepository(pool *pgxpool.Pool) *BackupRepository {
-	return &BackupRepository{pool: pool}
+	return &BackupRepository{db: pool}
 }

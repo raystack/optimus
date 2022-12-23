@@ -4,12 +4,16 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/odpf/optimus/core/resource"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 )
 
 type Resource struct {
+	ID uuid.UUID
+
 	FullName string
 	Kind     string
 	Store    string
