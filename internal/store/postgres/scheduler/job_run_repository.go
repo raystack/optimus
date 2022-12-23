@@ -14,26 +14,31 @@ import (
 	"github.com/odpf/optimus/internal/errors"
 )
 
+const (
+	columnsToStore = `job_name, namespace_name, project_name, scheduled_at, start_time, end_time, status, sla_definition`
+	jobRunColumns  = `id, ` + columnsToStore
+)
+
 type JobRunRepository struct {
-	pool *pgxpool.Pool
+	db *pgxpool.Pool
 }
 
 type jobRun struct {
-	ID uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
+	ID uuid.UUID
 
 	JobName       string
 	NamespaceName string
 	ProjectName   string
 
-	ScheduledAt time.Time `gorm:"not null"`
-	StartTime   time.Time `gorm:"not null"`
-	EndTime     time.Time `gorm:"default:TIMESTAMP '3000-01-01 00:00:00'"`
+	ScheduledAt time.Time
+	StartTime   time.Time
+	EndTime     time.Time
 
 	Status        string
 	SLADefinition int64
 
-	CreatedAt time.Time `gorm:"not null" json:"created_at"`
-	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func (j jobRun) toJobRun() (*scheduler.JobRun, error) {
@@ -51,9 +56,9 @@ func (j jobRun) toJobRun() (*scheduler.JobRun, error) {
 
 func (j *JobRunRepository) GetByID(ctx context.Context, id scheduler.JobRunID) (*scheduler.JobRun, error) {
 	var jr jobRun
-	getJobRunByID := `SELECT  job_name, namespace_name, project_name, scheduled_at, start_time, end_time, status, sla_definition FROM job_run where id = $1`
-	err := j.pool.QueryRow(ctx, getJobRunByID, id).
-		Scan(&jr.JobName, &jr.NamespaceName, &jr.ProjectName, &jr.ScheduledAt, &jr.StartTime, &jr.EndTime,
+	getJobRunByID := `SELECT ` + jobRunColumns + ` FROM job_run where id = $1`
+	err := j.db.QueryRow(ctx, getJobRunByID, id).
+		Scan(&jr.ID, &jr.JobName, &jr.NamespaceName, &jr.ProjectName, &jr.ScheduledAt, &jr.StartTime, &jr.EndTime,
 			&jr.Status, &jr.SLADefinition)
 	if err != nil {
 		return nil, err
@@ -63,9 +68,9 @@ func (j *JobRunRepository) GetByID(ctx context.Context, id scheduler.JobRunID) (
 
 func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) (*scheduler.JobRun, error) {
 	var jr jobRun
-	getJobRunByID := `SELECT id, job_name, namespace_name, project_name, scheduled_at, start_time, end_time, status, sla_definition FROM job_run j where project_name = $1 and namespace_name = $2 and job_name = $3 and scheduled_at = $4 order by created_at desc limit 1`
-	err := j.pool.QueryRow(ctx, getJobRunByID, t.ProjectName(), t.NamespaceName(), jobName, scheduledAt).
-		Scan(&jr.JobName, &jr.NamespaceName, &jr.ProjectName, &jr.ScheduledAt, &jr.StartTime, &jr.EndTime,
+	getJobRunByID := `SELECT ` + jobRunColumns + ` FROM job_run j where project_name = $1 and namespace_name = $2 and job_name = $3 and scheduled_at = $4 order by created_at desc limit 1`
+	err := j.db.QueryRow(ctx, getJobRunByID, t.ProjectName(), t.NamespaceName(), jobName, scheduledAt).
+		Scan(&jr.ID, &jr.JobName, &jr.NamespaceName, &jr.ProjectName, &jr.ScheduledAt, &jr.StartTime, &jr.EndTime,
 			&jr.Status, &jr.SLADefinition)
 
 	if err != nil {
@@ -78,8 +83,8 @@ func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t tenant.Tenant
 }
 
 func (j *JobRunRepository) Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, status scheduler.State) error {
-	updateJobRun := "update job_run set status = ?, end_time = ? , updated_at = NOW() where id = ?"
-	_, err := j.pool.Exec(ctx, updateJobRun, status, endTime, jobRunID)
+	updateJobRun := "update job_run set status = $1, end_time = $2, updated_at = NOW() where id = $3"
+	_, err := j.db.Exec(ctx, updateJobRun, status, endTime, jobRunID)
 	return errors.WrapIfErr(scheduler.EntityJobRun, "unable to update job run", err)
 }
 
@@ -91,18 +96,18 @@ func (j *JobRunRepository) UpdateSLA(ctx context.Context, slaObjects []*schedule
 	}
 
 	query := "update job_run set sla_alert = True, updated_at = NOW() where (job_name, scheduled_at) = any ($1)"
-	_, err := j.pool.Exec(ctx, query, jobIDList)
+	_, err := j.db.Exec(ctx, query, jobIDList)
 	return errors.WrapIfErr(scheduler.EntityJobRun, "unable to update SLA", err)
 }
 
 func (j *JobRunRepository) Create(ctx context.Context, t tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error {
-	insertJobRun := `INSERT INTO job_run (job_name, namespace_name, project_name, scheduled_at, start_time, end_time, status, sla_definition, created_at, updated_at) values ($1, $2, $3, $4, NOW(), TIMESTAMP '3000-01-01 00:00:00', ?, ?, NOW(), NOW())`
-	_, err := j.pool.Exec(ctx, insertJobRun, jobName, t.NamespaceName(), t.ProjectName(), scheduledAt, scheduler.StateRunning, slaDefinitionInSec)
+	insertJobRun := `INSERT INTO job_run (` + columnsToStore + ` created_at, updated_at) values ($1, $2, $3, $4, NOW(), TIMESTAMP '3000-01-01 00:00:00', $5, $6, NOW(), NOW())`
+	_, err := j.db.Exec(ctx, insertJobRun, jobName, t.NamespaceName(), t.ProjectName(), scheduledAt, scheduler.StateRunning, slaDefinitionInSec)
 	return errors.WrapIfErr(scheduler.EntityJobRun, "unable to create job run", err)
 }
 
 func NewJobRunRepository(pool *pgxpool.Pool) *JobRunRepository {
 	return &JobRunRepository{
-		pool: pool,
+		db: pool,
 	}
 }
