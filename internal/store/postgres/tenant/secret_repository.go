@@ -18,7 +18,7 @@ import (
 )
 
 type SecretRepository struct {
-	pool *pgxpool.Pool
+	db *pgxpool.Pool
 }
 
 const (
@@ -127,7 +127,7 @@ func (s SecretRepository) Save(ctx context.Context, tenantSecret *tenant.Secret)
 
 	insertSecret := `INSERT INTO secret (name, value, type, project_name, namespace_name, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, NOW(), NOW())`
-	_, err = s.pool.Exec(ctx, insertSecret, secret.Name, secret.Value, secret.Type, secret.ProjectName, secret.NamespaceName)
+	_, err = s.db.Exec(ctx, insertSecret, secret.Name, secret.Value, secret.Type, secret.ProjectName, secret.NamespaceName)
 
 	if err != nil {
 		return errors.Wrap(tenant.EntitySecret, "unable to save secret", err)
@@ -150,7 +150,7 @@ func (s SecretRepository) Update(ctx context.Context, tenantSecret *tenant.Secre
 	updateSecret := `UPDATE secret SET value=$1, type=$2, updated_at=NOW()
 WHERE project_name = $3 AND name=$4`
 
-	_, err = s.pool.Exec(ctx, updateSecret, secret.Value, secret.Type, secret.ProjectName, secret.Name)
+	_, err = s.db.Exec(ctx, updateSecret, secret.Value, secret.Type, secret.ProjectName, secret.Name)
 	if err != nil {
 		return errors.Wrap(tenant.EntitySecret, "unable to update secret", err)
 	}
@@ -166,7 +166,7 @@ FROM secret s WHERE name = $1
 AND project_name = $2
 AND (namespace_name IS NULL OR namespace_name = $3)`
 
-	err := s.pool.QueryRow(ctx, getSecretByNameQuery, name, projName, nsName).
+	err := s.db.QueryRow(ctx, getSecretByNameQuery, name, projName, nsName).
 		Scan(&secret.ID, &secret.Name, &secret.Value, &secret.Type,
 			&secret.ProjectName, &secret.NamespaceName, &secret.CreatedAt, &secret.UpdatedAt)
 	if err != nil {
@@ -183,7 +183,7 @@ AND (namespace_name IS NULL OR namespace_name = $3)`
 func (s SecretRepository) get(ctx context.Context, projName tenant.ProjectName, name tenant.SecretName) error {
 	var dummyName string
 	getSecretByNameAtProject := `SELECT s.name FROM secret s WHERE name = $1 AND project_name = $2`
-	err := s.pool.QueryRow(ctx, getSecretByNameAtProject, name, projName).Scan(&dummyName)
+	err := s.db.QueryRow(ctx, getSecretByNameAtProject, name, projName).Scan(&dummyName)
 	return err
 }
 
@@ -194,9 +194,9 @@ func (s SecretRepository) GetAll(ctx context.Context, projName tenant.ProjectNam
 	if nsName != "" {
 		getAllSecretsAvailableForNamespace := `SELECT ` + secretColumns + ` FROM secret
 WHERE project_name = $1 AND (namespace_name IS NULL or namespace_name = $2)`
-		rows, queryErr = s.pool.Query(ctx, getAllSecretsAvailableForNamespace, projName, nsName)
+		rows, queryErr = s.db.Query(ctx, getAllSecretsAvailableForNamespace, projName, nsName)
 	} else {
-		rows, queryErr = s.pool.Query(ctx, getAllSecretsInProject, projName)
+		rows, queryErr = s.db.Query(ctx, getAllSecretsInProject, projName)
 	}
 
 	if queryErr != nil {
@@ -230,11 +230,11 @@ func (s SecretRepository) Delete(ctx context.Context, projName tenant.ProjectNam
 	if nsName != "" {
 		deleteForNamespaceScope := `DELETE FROM secret
 WHERE name = $1 AND project_name = $2 AND namespace_name = $3`
-		result, err = s.pool.Exec(ctx, deleteForNamespaceScope, name, projName, nsName)
+		result, err = s.db.Exec(ctx, deleteForNamespaceScope, name, projName, nsName)
 	} else {
 		deleteForProjectScope := `DELETE FROM secret
 WHERE project_name = $1 AND name = $2 AND namespace_name IS NULL`
-		result, err = s.pool.Exec(ctx, deleteForProjectScope, projName, name)
+		result, err = s.db.Exec(ctx, deleteForProjectScope, projName, name)
 	}
 
 	if err != nil {
@@ -248,7 +248,7 @@ WHERE project_name = $1 AND name = $2 AND namespace_name IS NULL`
 }
 
 func (s SecretRepository) GetSecretsInfo(ctx context.Context, projName tenant.ProjectName) ([]*dto.SecretInfo, error) {
-	rows, err := s.pool.Query(ctx, getAllSecretsInProject, projName)
+	rows, err := s.db.Query(ctx, getAllSecretsInProject, projName)
 
 	if err != nil {
 		return nil, errors.Wrap(tenant.EntitySecret, "unable to get all secrets info", err)
@@ -275,5 +275,5 @@ func (s SecretRepository) GetSecretsInfo(ctx context.Context, projName tenant.Pr
 }
 
 func NewSecretRepository(pool *pgxpool.Pool) *SecretRepository {
-	return &SecretRepository{pool: pool}
+	return &SecretRepository{db: pool}
 }

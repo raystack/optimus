@@ -13,7 +13,7 @@ import (
 )
 
 type ProjectRepository struct {
-	pool *pgxpool.Pool
+	db *pgxpool.Pool
 }
 
 const (
@@ -27,7 +27,6 @@ type Project struct {
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	DeletedAt time.Time
 }
 
 func (p *Project) toTenantProject() (*tenant.Project, error) {
@@ -39,14 +38,14 @@ func (repo ProjectRepository) Save(ctx context.Context, tenantProject *tenant.Pr
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			insertProjectQuery := `INSERT INTO project (name, config, created_at, updated_at) VALUES ($1, $2, now(), now())`
-			_, err = repo.pool.Exec(ctx, insertProjectQuery, tenantProject.Name(), tenantProject.GetConfigs())
+			_, err = repo.db.Exec(ctx, insertProjectQuery, tenantProject.Name(), tenantProject.GetConfigs())
 			return errors.WrapIfErr(tenant.EntityProject, "unable to save project", err)
 		}
 		return errors.Wrap(tenant.EntityProject, "unable to save project", err)
 	}
 
 	updateProjectQuery := `UPDATE project SET config=$1, updated_at=now() WHERE name=$2`
-	_, err = repo.pool.Exec(ctx, updateProjectQuery, tenantProject.GetConfigs(), tenantProject.Name())
+	_, err = repo.db.Exec(ctx, updateProjectQuery, tenantProject.GetConfigs(), tenantProject.Name())
 	return errors.WrapIfErr(tenant.EntityProject, "unable to update project", err)
 }
 
@@ -65,7 +64,7 @@ func (repo ProjectRepository) get(ctx context.Context, name tenant.ProjectName) 
 	var project Project
 
 	getProjectByNameQuery := `SELECT ` + projectColumns + ` FROM project WHERE name = $1 AND deleted_at IS NULL`
-	err := repo.pool.QueryRow(ctx, getProjectByNameQuery, name).
+	err := repo.db.QueryRow(ctx, getProjectByNameQuery, name).
 		Scan(&project.ID, &project.Name, &project.Config, &project.CreatedAt, &project.UpdatedAt)
 	if err != nil {
 		return Project{}, err
@@ -77,7 +76,7 @@ func (repo ProjectRepository) GetAll(ctx context.Context) ([]*tenant.Project, er
 	var projects []*tenant.Project
 
 	getAllProjects := `SELECT ` + projectColumns + ` FROM project WHERE deleted_at IS NULL`
-	rows, err := repo.pool.Query(ctx, getAllProjects)
+	rows, err := repo.db.Query(ctx, getAllProjects)
 	if err != nil {
 		return nil, errors.Wrap(tenant.EntityProject, "error in GetAll", err)
 	}
@@ -102,6 +101,6 @@ func (repo ProjectRepository) GetAll(ctx context.Context) ([]*tenant.Project, er
 
 func NewProjectRepository(pool *pgxpool.Pool) *ProjectRepository {
 	return &ProjectRepository{
-		pool: pool,
+		db: pool,
 	}
 }

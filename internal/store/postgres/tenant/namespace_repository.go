@@ -13,7 +13,7 @@ import (
 )
 
 type NamespaceRepository struct {
-	pool *pgxpool.Pool
+	db *pgxpool.Pool
 }
 
 const (
@@ -29,7 +29,6 @@ type Namespace struct {
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	DeletedAt time.Time
 }
 
 func (n *Namespace) toTenantNamespace() (*tenant.Namespace, error) {
@@ -48,7 +47,7 @@ func (n *NamespaceRepository) Save(ctx context.Context, namespace *tenant.Namesp
 			insertNamespace := `INSERT INTO namespace (name, config, project_name, created_at, updated_at)
 VALUES ($1, $2, $3, now(), now())`
 
-			_, err = n.pool.Exec(ctx, insertNamespace, namespace.Name(), namespace.GetConfigs(), namespace.ProjectName())
+			_, err = n.db.Exec(ctx, insertNamespace, namespace.Name(), namespace.GetConfigs(), namespace.ProjectName())
 			return errors.WrapIfErr(tenant.EntityNamespace, "unable to save namespace", err)
 		}
 		return errors.Wrap(tenant.EntityNamespace, "unable to save namespace", err)
@@ -58,7 +57,7 @@ VALUES ($1, $2, $3, now(), now())`
 		return errors.NewError(errors.ErrFailedPrecond, tenant.EntityNamespace, "empty config")
 	}
 	updateNamespaceQuery := `UPDATE namespace n SET config=$1, updated_at=now() WHERE n.name = $2 AND n.project_name=$3`
-	_, err = n.pool.Exec(ctx, updateNamespaceQuery, namespace.GetConfigs(), namespace.Name(), namespace.ProjectName())
+	_, err = n.db.Exec(ctx, updateNamespaceQuery, namespace.GetConfigs(), namespace.Name(), namespace.ProjectName())
 	return errors.WrapIfErr(tenant.EntityProject, "unable to update namespace", err)
 }
 
@@ -77,7 +76,7 @@ func (n *NamespaceRepository) get(ctx context.Context, projName tenant.ProjectNa
 	var namespace Namespace
 
 	getNamespaceByNameQuery := `SELECT ` + namespaceColumns + ` FROM namespace WHERE project_name = $1 AND name = $2 AND deleted_at IS NULL`
-	err := n.pool.QueryRow(ctx, getNamespaceByNameQuery, projName, name).
+	err := n.db.QueryRow(ctx, getNamespaceByNameQuery, projName, name).
 		Scan(&namespace.ID, &namespace.Name, &namespace.Config, &namespace.ProjectName, &namespace.CreatedAt, &namespace.UpdatedAt)
 	if err != nil {
 		return Namespace{}, err
@@ -90,7 +89,7 @@ func (n *NamespaceRepository) GetAll(ctx context.Context, projectName tenant.Pro
 
 	getAllNamespaceInProject := `SELECT ` + namespaceColumns + ` FROM namespace n
 WHERE project_name = $1 AND deleted_at IS NULL`
-	rows, err := n.pool.Query(ctx, getAllNamespaceInProject, projectName)
+	rows, err := n.db.Query(ctx, getAllNamespaceInProject, projectName)
 	if err != nil {
 		return nil, errors.Wrap(tenant.EntityNamespace, "error in GetAll", err)
 	}
@@ -115,6 +114,6 @@ WHERE project_name = $1 AND deleted_at IS NULL`
 
 func NewNamespaceRepository(pool *pgxpool.Pool) *NamespaceRepository {
 	return &NamespaceRepository{
-		pool: pool,
+		db: pool,
 	}
 }
