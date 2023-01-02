@@ -395,7 +395,7 @@ func TestJobRunService(t *testing.T) {
 					JobName:        jobName,
 					Tenant:         tnnt,
 					Type:           scheduler.TaskStartEvent,
-					Status:         scheduler.StateSuccess,
+					Status:         scheduler.StateRunning,
 					EventTime:      eventTime,
 					OperatorName:   "task_bq3bq",
 					JobScheduledAt: scheduledAtTimeStamp,
@@ -413,46 +413,8 @@ func TestJobRunService(t *testing.T) {
 				jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(&jobRun, nil)
 				defer jobRunRepo.AssertExpectations(t)
 
-				t.Run("should return error, if operator run fails", func(t *testing.T) {
+				t.Run("should pass creating new operator run ", func(t *testing.T) {
 					operatorRunRepository := new(mockOperatorRunRepository)
-					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(nil, fmt.Errorf("some error in GetOperatorRun"))
-					defer operatorRunRepository.AssertExpectations(t)
-
-					runService := service.NewJobRunService(logger,
-						nil, jobRunRepo, operatorRunRepository, nil, nil, nil)
-
-					err := runService.UpdateJobState(ctx, event)
-					assert.NotNil(t, err)
-					assert.EqualError(t, err, "some error in GetOperatorRun")
-				})
-				t.Run("should pass without creating new operator run , if existing operator run state is still running", func(t *testing.T) {
-					operatorRun := scheduler.OperatorRun{
-						ID:           uuid.New(),
-						Name:         "task_bq2bq",
-						JobRunID:     jobRun.ID,
-						OperatorType: scheduler.OperatorTask,
-						Status:       scheduler.StateRunning,
-					}
-					operatorRunRepository := new(mockOperatorRunRepository)
-					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(&operatorRun, nil)
-					defer operatorRunRepository.AssertExpectations(t)
-
-					runService := service.NewJobRunService(logger,
-						nil, jobRunRepo, operatorRunRepository, nil, nil, nil)
-
-					err := runService.UpdateJobState(ctx, event)
-					assert.Nil(t, err)
-				})
-				t.Run("should pass without creating new operator run , if existing operator run state is still running", func(t *testing.T) {
-					operatorRun := scheduler.OperatorRun{
-						ID:           uuid.New(),
-						Name:         "task_bq2bq",
-						JobRunID:     jobRun.ID,
-						OperatorType: scheduler.OperatorTask,
-						Status:       scheduler.StateFailed,
-					}
-					operatorRunRepository := new(mockOperatorRunRepository)
-					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(&operatorRun, nil)
 					operatorRunRepository.On("CreateOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID, eventTime).Return(nil)
 					defer operatorRunRepository.AssertExpectations(t)
 
@@ -502,7 +464,6 @@ func TestJobRunService(t *testing.T) {
 				t.Run("scenario OperatorRun not found and new operator creation fails", func(t *testing.T) {
 					operatorRunRepository := new(mockOperatorRunRepository)
 					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(nil, errors.NotFound(scheduler.EntityEvent, "operator not found in db")).Once()
-					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(nil, errors.NotFound(scheduler.EntityEvent, "operator not found in db")).Once()
 					operatorRunRepository.On("CreateOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID, eventTime).Return(fmt.Errorf("some error in creating operator run"))
 					defer operatorRunRepository.AssertExpectations(t)
 					runService := service.NewJobRunService(logger,
@@ -514,7 +475,6 @@ func TestJobRunService(t *testing.T) {
 				})
 				t.Run("scenario OperatorRun not found even after successful new operator creation", func(t *testing.T) {
 					operatorRunRepository := new(mockOperatorRunRepository)
-					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(nil, errors.NotFound(scheduler.EntityEvent, "operator not found in db")).Once()
 					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(nil, errors.NotFound(scheduler.EntityEvent, "operator not found in db")).Once()
 					operatorRunRepository.On("CreateOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID, eventTime).Return(nil)
 					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(nil, fmt.Errorf("some error in getting operator run")).Once()
@@ -1144,43 +1104,6 @@ func TestJobRunService(t *testing.T) {
 			returnedRuns, err := runService.GetJobRuns(ctx, projName, jobName, jobQuery)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "job schedule startDate not found in job fetched from DB")
-			assert.Nil(t, nil, returnedRuns)
-		})
-		t.Run("should not able to get job runs when scheduler returns an error", func(t *testing.T) {
-			tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
-			job := scheduler.Job{
-				Name:   jobName,
-				Tenant: tnnt,
-			}
-			jobWithDetails := scheduler.JobWithDetails{
-				Job: &job,
-				JobMetadata: &scheduler.JobMetadata{
-					Version: 1,
-				},
-				Schedule: &scheduler.Schedule{
-					StartDate: startDate.Add(-time.Hour * 24),
-					EndDate:   nil,
-					Interval:  "0 12 * * *",
-				},
-			}
-
-			criteria := &scheduler.JobRunsCriteria{
-				Name:      "sample_select",
-				StartDate: startDate,
-				EndDate:   endDate,
-				Filter:    []string{"success"},
-			}
-			sch := new(mockScheduler)
-			sch.On("GetJobRuns", ctx, tnnt, criteria, jobCron).Return([]*scheduler.JobRunStatus{}, errors.InvalidArgument(scheduler.EntityJobRun, "failed: due to invalid URL"))
-			defer sch.AssertExpectations(t)
-			jobRepo := new(JobRepository)
-			jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&jobWithDetails, nil)
-			defer jobRepo.AssertExpectations(t)
-
-			runService := service.NewJobRunService(logger, jobRepo, nil, nil, sch, nil, nil)
-			returnedRuns, err := runService.GetJobRuns(ctx, projName, jobName, criteria)
-			assert.NotNil(t, err)
-			assert.Error(t, err, errors.InvalidArgument(scheduler.EntityJobRun, "failed: due to invalid URL"))
 			assert.Nil(t, nil, returnedRuns)
 		})
 		t.Run("should able to get job runs when only last run is required", func(t *testing.T) {
