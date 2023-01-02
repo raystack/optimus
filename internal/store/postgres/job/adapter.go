@@ -62,9 +62,9 @@ type Spec struct {
 }
 
 type Retry struct {
-	Count              int   `json:"count"`
-	Delay              int32 `json:"delay"`
-	ExponentialBackoff bool  `json:"exponential_backoff"`
+	Count              int
+	Delay              int32
+	ExponentialBackoff bool
 }
 
 type Alert struct {
