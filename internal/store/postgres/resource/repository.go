@@ -111,7 +111,7 @@ store = $3 AND full_name = any ($4)`
 	var resources []*resource.Resource
 	for rows.Next() {
 		var res Resource
-		err = rows.Scan(&res.FullName, &res.Kind, &res.Store, &res.Status, &res.URN,
+		err = rows.Scan(&res.ID, &res.FullName, &res.Kind, &res.Store, &res.Status, &res.URN,
 			&res.ProjectName, &res.NamespaceName, &res.Metadata, &res.Spec, &res.CreatedAt, &res.UpdatedAt)
 		if err != nil {
 			return nil, errors.Wrap(resource.EntityResource, "error in GetAll", err)

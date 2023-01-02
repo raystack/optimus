@@ -160,13 +160,18 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		sources[i] = source.String()
 	}
 
+	assets := map[string]string{}
+	if jobSpec.Asset() != nil {
+		assets = jobSpec.Asset().Assets()
+	}
+
 	return &Spec{
 		Name:        jobSpec.Name().String(),
 		Version:     jobSpec.Version().Int(),
 		Owner:       jobSpec.Owner().String(),
 		Description: jobSpec.Description(),
 		Labels:      jobSpec.Labels(),
-		Assets:      jobSpec.Asset().Assets(),
+		Assets:      assets,
 		Metadata:    metadataBytes,
 
 		StartDate: startDate,
@@ -508,7 +513,7 @@ func FromRow(row pgx.Row) (*Spec, error) {
 		&js.CatchUp, &js.Retry, &js.Alert, &js.StaticUpstreams, &js.HTTPUpstreams,
 		&js.TaskName, &js.TaskConfig, &js.WindowSize, &js.WindowOffset, &js.WindowTruncateTo,
 		&js.Assets, &js.Hooks, &js.Metadata, &js.Destination, &js.Sources,
-		&js.ProjectName, &js.NamespaceName, &js.CreatedAt, &js.UpdatedAt, &js.DeletedAt)
+		&js.ProjectName, &js.NamespaceName, &js.CreatedAt, &js.UpdatedAt)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
