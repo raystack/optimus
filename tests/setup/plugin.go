@@ -5,8 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/odpf/optimus/mock"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 )
 
 type MockPluginBQ struct{}
@@ -38,25 +37,25 @@ func (MockPluginBQ) CompileAssets(_ context.Context, _ models.CompileAssetsReque
 	return &models.CompileAssetsResponse{}, nil
 }
 
-func InMemoryPluginRegistry() models.PluginRepository {
-	bq2bq := MockPluginBQ{}
-
-	transporterHook := "transporter"
-	hookUnit := new(mock.YamlMod)
-	hookUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
-		Name:       transporterHook,
-		HookType:   models.HookTypePre,
-		PluginType: models.PluginTypeHook,
-		Image:      "example.io/namespace/hook-image:latest",
-	}, nil)
-
-	pluginRepo := new(mock.PluginRepository)
-	pluginRepo.On("GetByName", "bq2bq").Return(&models.Plugin{
-		YamlMod:       hookUnit,
-		DependencyMod: bq2bq,
-	}, nil)
-	pluginRepo.On("GetByName", "transporter").Return(&models.Plugin{
-		YamlMod: hookUnit,
-	}, nil)
-	return pluginRepo
-}
+//func InMemoryPluginRegistry() models.PluginRepository {
+//	bq2bq := MockPluginBQ{}
+//
+//	transporterHook := "transporter"
+//	hookUnit := new(mock.YamlMod)
+//	hookUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
+//		Name:       transporterHook,
+//		HookType:   models.HookTypePre,
+//		PluginType: models.PluginTypeHook,
+//		Image:      "example.io/namespace/hook-image:latest",
+//	}, nil)
+//
+//	pluginRepo := new(mock.PluginRepository)
+//	pluginRepo.On("GetByName", "bq2bq").Return(&models.Plugin{
+//		YamlMod:       hookUnit,
+//		DependencyMod: bq2bq,
+//	}, nil)
+//	pluginRepo.On("GetByName", "transporter").Return(&models.Plugin{
+//		YamlMod: hookUnit,
+//	}, nil)
+//	return pluginRepo
+//}

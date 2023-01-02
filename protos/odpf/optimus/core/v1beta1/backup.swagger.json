@@ -152,14 +152,8 @@
             "schema": {
               "type": "object",
               "properties": {
-                "resourceName": {
-                  "type": "string"
-                },
                 "description": {
                   "type": "string"
-                },
-                "ignoreDownstream": {
-                  "type": "boolean"
                 },
                 "config": {
                   "type": "object",
@@ -167,80 +161,11 @@
                     "type": "string"
                   }
                 },
-                "allowedDownstreamNamespaces": {
+                "resourceNames": {
                   "type": "array",
                   "items": {
                     "type": "string"
-                  },
-                  "description": "represents which downstream to be backed up.\npossible values are the namespace names, *, or empty.\n'*' means all namespaces are allowed, empty list means all downstream will be ignored."
-                }
-              }
-            }
-          }
-        ],
-        "tags": [
-          "BackupService"
-        ]
-      }
-    },
-    "/v1beta1/project/{projectName}/namespace/{namespaceName}/datastore/{datastoreName}/backupDryrun": {
-      "post": {
-        "operationId": "BackupService_BackupDryRun",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1beta1BackupDryRunResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "namespaceName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "datastoreName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "resourceName": {
-                  "type": "string"
-                },
-                "description": {
-                  "type": "string"
-                },
-                "ignoreDownstream": {
-                  "type": "boolean"
-                },
-                "allowedDownstreamNamespaces": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "represents which downstream to be backed up.\npossible values are the namespace names, *, or empty.\n'*' means all namespaces are allowed, empty list means all downstream will be ignored."
+                  }
                 }
               }
             }
@@ -283,30 +208,10 @@
         }
       }
     },
-    "v1beta1BackupDryRunResponse": {
-      "type": "object",
-      "properties": {
-        "resourceName": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "ignoredResources": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "v1beta1BackupSpec": {
       "type": "object",
       "properties": {
         "id": {
-          "type": "string"
-        },
-        "resourceName": {
           "type": "string"
         },
         "createdAt": {
@@ -321,13 +226,19 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "resourceNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
     "v1beta1CreateBackupResponse": {
       "type": "object",
       "properties": {
-        "urn": {
+        "resourceNames": {
           "type": "array",
           "items": {
             "type": "string"
@@ -336,8 +247,11 @@
         "ignoredResources": {
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/v1beta1IgnoredResource"
           }
+        },
+        "backupId": {
+          "type": "string"
         }
       }
     },
@@ -346,12 +260,17 @@
       "properties": {
         "spec": {
           "$ref": "#/definitions/v1beta1BackupSpec"
+        }
+      }
+    },
+    "v1beta1IgnoredResource": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
         },
-        "urn": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+        "reason": {
+          "type": "string"
         }
       }
     },

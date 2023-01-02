@@ -34,6 +34,8 @@ type JobSpecificationServiceClient interface {
 	CreateJobSpecification(ctx context.Context, in *CreateJobSpecificationRequest, opts ...grpc.CallOption) (*CreateJobSpecificationResponse, error)
 	// AddJobSpecification registers new jobs for a namespace which belongs to the given project
 	AddJobSpecifications(ctx context.Context, in *AddJobSpecificationsRequest, opts ...grpc.CallOption) (*AddJobSpecificationsResponse, error)
+	// UpdateJobSpecifications modify jobs for a namespace which belongs to the given project
+	UpdateJobSpecifications(ctx context.Context, in *UpdateJobSpecificationsRequest, opts ...grpc.CallOption) (*UpdateJobSpecificationsResponse, error)
 	// GetJobSpecification reads a provided job spec of a namespace
 	GetJobSpecification(ctx context.Context, in *GetJobSpecificationRequest, opts ...grpc.CallOption) (*GetJobSpecificationResponse, error)
 	// GetJobSpecifications read a job spec for provided filters
@@ -52,6 +54,13 @@ type JobSpecificationServiceClient interface {
 	// GetDeployJobsStatus check status of job deployment.
 	// It will returns status of the job deployment and the failure details.
 	GetDeployJobsStatus(ctx context.Context, in *GetDeployJobsStatusRequest, opts ...grpc.CallOption) (*GetDeployJobsStatusResponse, error)
+	// ReplaceAllJobSpecifications replaces all jobs in server for a given tenant
+	ReplaceAllJobSpecifications(ctx context.Context, opts ...grpc.CallOption) (JobSpecificationService_ReplaceAllJobSpecificationsClient, error)
+	// GetJobTask provides task details specific to plugin used in a job
+	GetJobTask(ctx context.Context, in *GetJobTaskRequest, opts ...grpc.CallOption) (*GetJobTaskResponse, error)
+	// GetWindow provides the start and end dates provided a scheduled date
+	// of the execution window
+	GetWindow(ctx context.Context, in *GetWindowRequest, opts ...grpc.CallOption) (*GetWindowResponse, error)
 }
 
 type jobSpecificationServiceClient struct {
@@ -114,6 +123,15 @@ func (c *jobSpecificationServiceClient) CreateJobSpecification(ctx context.Conte
 func (c *jobSpecificationServiceClient) AddJobSpecifications(ctx context.Context, in *AddJobSpecificationsRequest, opts ...grpc.CallOption) (*AddJobSpecificationsResponse, error) {
 	out := new(AddJobSpecificationsResponse)
 	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobSpecificationService/AddJobSpecifications", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *jobSpecificationServiceClient) UpdateJobSpecifications(ctx context.Context, in *UpdateJobSpecificationsRequest, opts ...grpc.CallOption) (*UpdateJobSpecificationsResponse, error) {
+	out := new(UpdateJobSpecificationsResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobSpecificationService/UpdateJobSpecifications", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -238,6 +256,55 @@ func (c *jobSpecificationServiceClient) GetDeployJobsStatus(ctx context.Context,
 	return out, nil
 }
 
+func (c *jobSpecificationServiceClient) ReplaceAllJobSpecifications(ctx context.Context, opts ...grpc.CallOption) (JobSpecificationService_ReplaceAllJobSpecificationsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &JobSpecificationService_ServiceDesc.Streams[3], "/odpf.optimus.core.v1beta1.JobSpecificationService/ReplaceAllJobSpecifications", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &jobSpecificationServiceReplaceAllJobSpecificationsClient{stream}
+	return x, nil
+}
+
+type JobSpecificationService_ReplaceAllJobSpecificationsClient interface {
+	Send(*ReplaceAllJobSpecificationsRequest) error
+	Recv() (*ReplaceAllJobSpecificationsResponse, error)
+	grpc.ClientStream
+}
+
+type jobSpecificationServiceReplaceAllJobSpecificationsClient struct {
+	grpc.ClientStream
+}
+
+func (x *jobSpecificationServiceReplaceAllJobSpecificationsClient) Send(m *ReplaceAllJobSpecificationsRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *jobSpecificationServiceReplaceAllJobSpecificationsClient) Recv() (*ReplaceAllJobSpecificationsResponse, error) {
+	m := new(ReplaceAllJobSpecificationsResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *jobSpecificationServiceClient) GetJobTask(ctx context.Context, in *GetJobTaskRequest, opts ...grpc.CallOption) (*GetJobTaskResponse, error) {
+	out := new(GetJobTaskResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobSpecificationService/GetJobTask", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *jobSpecificationServiceClient) GetWindow(ctx context.Context, in *GetWindowRequest, opts ...grpc.CallOption) (*GetWindowResponse, error) {
+	out := new(GetWindowResponse)
+	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.JobSpecificationService/GetWindow", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // JobSpecificationServiceServer is the server API for JobSpecificationService service.
 // All implementations must embed UnimplementedJobSpecificationServiceServer
 // for forward compatibility
@@ -254,6 +321,8 @@ type JobSpecificationServiceServer interface {
 	CreateJobSpecification(context.Context, *CreateJobSpecificationRequest) (*CreateJobSpecificationResponse, error)
 	// AddJobSpecification registers new jobs for a namespace which belongs to the given project
 	AddJobSpecifications(context.Context, *AddJobSpecificationsRequest) (*AddJobSpecificationsResponse, error)
+	// UpdateJobSpecifications modify jobs for a namespace which belongs to the given project
+	UpdateJobSpecifications(context.Context, *UpdateJobSpecificationsRequest) (*UpdateJobSpecificationsResponse, error)
 	// GetJobSpecification reads a provided job spec of a namespace
 	GetJobSpecification(context.Context, *GetJobSpecificationRequest) (*GetJobSpecificationResponse, error)
 	// GetJobSpecifications read a job spec for provided filters
@@ -272,6 +341,13 @@ type JobSpecificationServiceServer interface {
 	// GetDeployJobsStatus check status of job deployment.
 	// It will returns status of the job deployment and the failure details.
 	GetDeployJobsStatus(context.Context, *GetDeployJobsStatusRequest) (*GetDeployJobsStatusResponse, error)
+	// ReplaceAllJobSpecifications replaces all jobs in server for a given tenant
+	ReplaceAllJobSpecifications(JobSpecificationService_ReplaceAllJobSpecificationsServer) error
+	// GetJobTask provides task details specific to plugin used in a job
+	GetJobTask(context.Context, *GetJobTaskRequest) (*GetJobTaskResponse, error)
+	// GetWindow provides the start and end dates provided a scheduled date
+	// of the execution window
+	GetWindow(context.Context, *GetWindowRequest) (*GetWindowResponse, error)
 	mustEmbedUnimplementedJobSpecificationServiceServer()
 }
 
@@ -290,6 +366,9 @@ func (UnimplementedJobSpecificationServiceServer) CreateJobSpecification(context
 }
 func (UnimplementedJobSpecificationServiceServer) AddJobSpecifications(context.Context, *AddJobSpecificationsRequest) (*AddJobSpecificationsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddJobSpecifications not implemented")
+}
+func (UnimplementedJobSpecificationServiceServer) UpdateJobSpecifications(context.Context, *UpdateJobSpecificationsRequest) (*UpdateJobSpecificationsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateJobSpecifications not implemented")
 }
 func (UnimplementedJobSpecificationServiceServer) GetJobSpecification(context.Context, *GetJobSpecificationRequest) (*GetJobSpecificationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetJobSpecification not implemented")
@@ -314,6 +393,15 @@ func (UnimplementedJobSpecificationServiceServer) RefreshJobs(*RefreshJobsReques
 }
 func (UnimplementedJobSpecificationServiceServer) GetDeployJobsStatus(context.Context, *GetDeployJobsStatusRequest) (*GetDeployJobsStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetDeployJobsStatus not implemented")
+}
+func (UnimplementedJobSpecificationServiceServer) ReplaceAllJobSpecifications(JobSpecificationService_ReplaceAllJobSpecificationsServer) error {
+	return status.Errorf(codes.Unimplemented, "method ReplaceAllJobSpecifications not implemented")
+}
+func (UnimplementedJobSpecificationServiceServer) GetJobTask(context.Context, *GetJobTaskRequest) (*GetJobTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetJobTask not implemented")
+}
+func (UnimplementedJobSpecificationServiceServer) GetWindow(context.Context, *GetWindowRequest) (*GetWindowResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetWindow not implemented")
 }
 func (UnimplementedJobSpecificationServiceServer) mustEmbedUnimplementedJobSpecificationServiceServer() {
 }
@@ -405,6 +493,24 @@ func _JobSpecificationService_AddJobSpecifications_Handler(srv interface{}, ctx 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(JobSpecificationServiceServer).AddJobSpecifications(ctx, req.(*AddJobSpecificationsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _JobSpecificationService_UpdateJobSpecifications_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateJobSpecificationsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(JobSpecificationServiceServer).UpdateJobSpecifications(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/odpf.optimus.core.v1beta1.JobSpecificationService/UpdateJobSpecifications",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(JobSpecificationServiceServer).UpdateJobSpecifications(ctx, req.(*UpdateJobSpecificationsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -559,6 +665,68 @@ func _JobSpecificationService_GetDeployJobsStatus_Handler(srv interface{}, ctx c
 	return interceptor(ctx, in, info, handler)
 }
 
+func _JobSpecificationService_ReplaceAllJobSpecifications_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(JobSpecificationServiceServer).ReplaceAllJobSpecifications(&jobSpecificationServiceReplaceAllJobSpecificationsServer{stream})
+}
+
+type JobSpecificationService_ReplaceAllJobSpecificationsServer interface {
+	Send(*ReplaceAllJobSpecificationsResponse) error
+	Recv() (*ReplaceAllJobSpecificationsRequest, error)
+	grpc.ServerStream
+}
+
+type jobSpecificationServiceReplaceAllJobSpecificationsServer struct {
+	grpc.ServerStream
+}
+
+func (x *jobSpecificationServiceReplaceAllJobSpecificationsServer) Send(m *ReplaceAllJobSpecificationsResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *jobSpecificationServiceReplaceAllJobSpecificationsServer) Recv() (*ReplaceAllJobSpecificationsRequest, error) {
+	m := new(ReplaceAllJobSpecificationsRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func _JobSpecificationService_GetJobTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetJobTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(JobSpecificationServiceServer).GetJobTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/odpf.optimus.core.v1beta1.JobSpecificationService/GetJobTask",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(JobSpecificationServiceServer).GetJobTask(ctx, req.(*GetJobTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _JobSpecificationService_GetWindow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWindowRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(JobSpecificationServiceServer).GetWindow(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/odpf.optimus.core.v1beta1.JobSpecificationService/GetWindow",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(JobSpecificationServiceServer).GetWindow(ctx, req.(*GetWindowRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // JobSpecificationService_ServiceDesc is the grpc.ServiceDesc for JobSpecificationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -577,6 +745,10 @@ var JobSpecificationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddJobSpecifications",
 			Handler:    _JobSpecificationService_AddJobSpecifications_Handler,
+		},
+		{
+			MethodName: "UpdateJobSpecifications",
+			Handler:    _JobSpecificationService_UpdateJobSpecifications_Handler,
 		},
 		{
 			MethodName: "GetJobSpecification",
@@ -602,6 +774,14 @@ var JobSpecificationService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "GetDeployJobsStatus",
 			Handler:    _JobSpecificationService_GetDeployJobsStatus_Handler,
 		},
+		{
+			MethodName: "GetJobTask",
+			Handler:    _JobSpecificationService_GetJobTask_Handler,
+		},
+		{
+			MethodName: "GetWindow",
+			Handler:    _JobSpecificationService_GetWindow_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -619,6 +799,12 @@ var JobSpecificationService_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "RefreshJobs",
 			Handler:       _JobSpecificationService_RefreshJobs_Handler,
 			ServerStreams: true,
+		},
+		{
+			StreamName:    "ReplaceAllJobSpecifications",
+			Handler:       _JobSpecificationService_ReplaceAllJobSpecifications_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "odpf/optimus/core/v1beta1/job_spec.proto",

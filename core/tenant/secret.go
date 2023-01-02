@@ -8,6 +8,7 @@ const (
 	SecretStorageKey    = "STORAGE"
 	SecretSchedulerAuth = "SCHEDULER_AUTH"
 
+	// SystemDefinedSecret TODO: get rid of system defined secrets
 	SystemDefinedSecret SecretType = "system"
 	UserDefinedSecret   SecretType = "user"
 
@@ -54,6 +55,16 @@ func (p *PlainTextSecret) Value() string {
 
 func (p *PlainTextSecret) Name() SecretName {
 	return p.name
+}
+
+type PlainTextSecrets []*PlainTextSecret
+
+func (p PlainTextSecrets) ToMap() map[string]string {
+	secretMap := map[string]string{}
+	for _, item := range p {
+		secretMap[item.Name().String()] = item.Value()
+	}
+	return secretMap
 }
 
 type SecretType string

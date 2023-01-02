@@ -7,36 +7,43 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"time"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/hashicorp/go-hclog"
 	hPlugin "github.com/hashicorp/go-plugin"
 	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/robfig/cron/v3"
 	slackapi "github.com/slack-go/slack"
 	"google.golang.org/grpc"
 	"gorm.io/gorm"
 
-	v1handler "github.com/odpf/optimus/api/handler/v1beta1"
-	jobRunCompiler "github.com/odpf/optimus/compiler"
 	"github.com/odpf/optimus/config"
+	jHandler "github.com/odpf/optimus/core/job/handler/v1beta1"
+	jResolver "github.com/odpf/optimus/core/job/resolver"
+	jService "github.com/odpf/optimus/core/job/service"
+	rModel "github.com/odpf/optimus/core/resource"
+	rHandler "github.com/odpf/optimus/core/resource/handler/v1beta1"
+	rService "github.com/odpf/optimus/core/resource/service"
+	schedulerHandler "github.com/odpf/optimus/core/scheduler/handler/v1beta1"
+	schedulerResolver "github.com/odpf/optimus/core/scheduler/resolver"
+	schedulerService "github.com/odpf/optimus/core/scheduler/service"
 	tHandler "github.com/odpf/optimus/core/tenant/handler/v1beta1"
 	tService "github.com/odpf/optimus/core/tenant/service"
-	"github.com/odpf/optimus/datastore"
 	"github.com/odpf/optimus/ext/notify/pagerduty"
 	"github.com/odpf/optimus/ext/notify/slack"
+	bqStore "github.com/odpf/optimus/ext/store/bigquery"
+	"github.com/odpf/optimus/internal/compiler"
 	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/internal/store/postgres"
+	jRepo "github.com/odpf/optimus/internal/store/postgres/job"
+	"github.com/odpf/optimus/internal/store/postgres/resource"
+	schedulerRepo "github.com/odpf/optimus/internal/store/postgres/scheduler"
 	"github.com/odpf/optimus/internal/store/postgres/tenant"
 	"github.com/odpf/optimus/internal/telemetry"
-	"github.com/odpf/optimus/internal/utils"
-	"github.com/odpf/optimus/job"
-	"github.com/odpf/optimus/models"
 	"github.com/odpf/optimus/plugin"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/service"
+	oHandler "github.com/odpf/optimus/server/handler/v1beta1"
 )
 
 const keyLength = 32
@@ -47,7 +54,6 @@ type OptimusServer struct {
 	conf   config.ServerConfig
 	logger log.Logger
 
-	appKey models.ApplicationKey
 	dbConn *gorm.DB
 	key    *[keyLength]byte
 
@@ -55,7 +61,8 @@ type OptimusServer struct {
 	grpcServer *grpc.Server
 	httpServer *http.Server
 
-	cleanupFn []func()
+	pluginRepo *models.RegisteredPlugins
+	cleanupFn  []func()
 }
 
 func New(conf config.ServerConfig) (*OptimusServer, error) {
@@ -112,7 +119,9 @@ func (s *OptimusServer) setupPlugins() error {
 		pluginArgs = append(pluginArgs, "-t", s.conf.Telemetry.JaegerAddr)
 	}
 	// discover and load plugins.
-	return plugin.Initialize(pluginLogger, pluginArgs...)
+	var err error
+	s.pluginRepo, err = plugin.Initialize(pluginLogger, pluginArgs...)
+	return err
 }
 
 func (s *OptimusServer) setupTelemetry() error {
@@ -127,11 +136,6 @@ func (s *OptimusServer) setupTelemetry() error {
 
 func (s *OptimusServer) setupAppKey() error {
 	var err error
-	s.appKey, err = models.NewApplicationSecret(s.conf.Serve.AppKey)
-	if err != nil {
-		return fmt.Errorf("NewApplicationSecret: %w", err)
-	}
-
 	s.key, err = applicationKeyFromString(s.conf.Serve.AppKey)
 	if err != nil {
 		return err
@@ -231,22 +235,6 @@ func (s *OptimusServer) Shutdown() {
 }
 
 func (s *OptimusServer) setupHandlers() error {
-	projectRepo := postgres.NewProjectRepository(s.dbConn, s.appKey)
-	namespaceRepository := postgres.NewNamespaceRepository(s.dbConn, s.appKey)
-	projectSecretRepo := postgres.NewSecretRepository(s.dbConn, s.appKey)
-	jobRunMetricsRepository := postgres.NewJobRunMetricsRepository(s.dbConn)
-	taskRunRepository := postgres.NewTaskRunRepository(s.dbConn)
-	sensorRunRepository := postgres.NewSensorRunRepository(s.dbConn)
-	hookRunRepository := postgres.NewHookRunRepository(s.dbConn)
-
-	dbAdapter := postgres.NewAdapter(models.PluginRegistry)
-	replaySpecRepo := postgres.NewReplayRepository(s.dbConn, dbAdapter)
-	jobSpecRepo, err := postgres.NewJobSpecRepository(s.dbConn, dbAdapter)
-	if err != nil {
-		return err
-	}
-	jobSourceRepository := postgres.NewJobSourceRepository(s.dbConn)
-
 	// Tenant Bounded Context Setup
 	tProjectRepo := tenant.NewProjectRepository(s.dbConn)
 	tNamespaceRepo := tenant.NewNamespaceRepository(s.dbConn)
@@ -255,52 +243,29 @@ func (s *OptimusServer) setupHandlers() error {
 	tProjectService := tService.NewProjectService(tProjectRepo)
 	tNamespaceService := tService.NewNamespaceService(tNamespaceRepo)
 	tSecretService := tService.NewSecretService(s.key, tSecretRepo)
+	tenantService := tService.NewTenantService(tProjectService, tNamespaceService, tSecretService)
 
-	scheduler, err := initScheduler(s.conf)
-	if err != nil {
-		return err
-	}
-	models.BatchScheduler = scheduler // TODO: remove global
+	// Resource Bounded Context
+	resourceRepository := resource.NewRepository(s.dbConn)
+	backupRepository := resource.NewBackupRepository(s.dbConn)
+	resourceManager := rService.NewResourceManager(resourceRepository, s.logger)
+	resourceService := rService.NewResourceService(s.logger, resourceRepository, resourceManager, tenantService)
+	backupService := rService.NewBackupService(backupRepository, resourceRepository, resourceManager)
 
-	engine := jobRunCompiler.NewGoEngine()
-	// services
-	projectService := service.NewProjectService(projectRepo)
-	namespaceService := service.NewNamespaceService(projectService, namespaceRepository)
-	secretService := service.NewSecretService(projectService, namespaceService, projectSecretRepo)
-	pluginService := service.NewPluginService(secretService, models.PluginRegistry, engine, s.logger, jobSpecAssetDump(engine))
+	// Register datastore
+	bqClientProvider := bqStore.NewClientProvider()
+	bigqueryStore := bqStore.NewBigqueryDataStore(tenantService, bqClientProvider)
+	resourceManager.RegisterDatastore(rModel.Bigquery, bigqueryStore)
 
-	externalDependencyResolver, err := job.NewExternalDependencyResolver(s.conf.ResourceManagers)
-	if err != nil {
-		return err
-	}
-	dependencyResolver := job.NewDependencyResolver(jobSpecRepo, jobSourceRepository, pluginService, externalDependencyResolver)
-	priorityResolver := job.NewPriorityResolver()
-
-	replayWorkerFactory := &replayWorkerFact{
-		replaySpecRepoFac: replaySpecRepo,
-		scheduler:         scheduler,
-		logger:            s.logger,
-	}
-	replayValidator := job.NewReplayValidator(scheduler)
-	replaySyncer := job.NewReplaySyncer(
-		s.logger,
-		replaySpecRepo,
-		projectRepo,
-		scheduler,
-		func() time.Time {
-			return time.Now().UTC()
-		},
-	)
-
-	replayManager := job.NewManager(s.logger, replayWorkerFactory, replaySpecRepo, utils.NewUUIDProvider(), job.ReplayManagerConfig{
-		NumWorkers:    s.conf.Serve.Replay.NumWorkers,
-		WorkerTimeout: s.conf.Serve.Replay.WorkerTimeout,
-		RunTimeout:    s.conf.Serve.Replay.RunTimeout,
-	}, scheduler, replayValidator, replaySyncer)
+	// Scheduler bounded context
+	jobRunRepo := schedulerRepo.NewJobRunRepository(s.dbConn)
+	operatorRunRepository := schedulerRepo.NewOperatorRunRepository(s.dbConn)
+	jobProviderRepo := schedulerRepo.NewJobProviderRepository(s.dbConn)
 
 	notificationContext, cancelNotifiers := context.WithCancel(context.Background())
 	s.cleanupFn = append(s.cleanupFn, cancelNotifiers)
-	eventService := job.NewEventService(s.logger, map[string]models.Notifier{
+
+	notifierChanels := map[string]schedulerService.Notifier{
 		"slack": slack.NewNotifier(notificationContext, slackapi.APIURL,
 			slack.DefaultEventBatchInterval,
 			func(err error) {
@@ -315,127 +280,49 @@ func (s *OptimusServer) setupHandlers() error {
 			},
 			new(pagerduty.PagerDutyServiceImpl),
 		),
-	})
-
-	jobDeploymentRepository := postgres.NewJobDeploymentRepository(s.dbConn)
-	deployer := job.NewDeployer(
-		s.logger,
-		dependencyResolver,
-		priorityResolver,
-		namespaceService,
-		jobDeploymentRepository,
-		scheduler,
-	)
-	assignerScheduler := cron.New(cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)))
-	deployManager := job.NewDeployManager(s.logger, s.conf.Serve.Deployer, deployer, utils.NewUUIDProvider(), jobDeploymentRepository, assignerScheduler)
-
-	// runtime service instance over grpc
-	manualScheduler := models.ManualScheduler
-	jobService := job.NewService(
-		scheduler,
-		manualScheduler,
-		dependencyResolver,
-		priorityResolver,
-		replayManager,
-		namespaceService,
-		projectService,
-		deployManager,
-		pluginService,
-		jobSpecRepo,
-		jobSourceRepository,
-	)
-
-	// job run service
-	jobRunService := service.NewJobRunService(
-		models.BatchScheduler,
-	)
-
-	progressObs := &pipelineLogObserver{
-		log: s.logger,
 	}
 
-	projectResourceSpecRepoFac := projectResourceSpecRepoFactory{
-		db: s.dbConn,
-	}
-	resourceSpecRepoFac := resourceSpecRepoFactory{
-		db:                         s.dbConn,
-		projectResourceSpecRepoFac: projectResourceSpecRepoFac,
-	}
-	backupRepo := postgres.NewBackupRepository(s.dbConn)
-	dataStoreService := datastore.NewService(s.logger, &resourceSpecRepoFac, models.DatastoreRegistry)
-	backupService := datastore.NewBackupService(&projectResourceSpecRepoFac, models.DatastoreRegistry, utils.NewUUIDProvider(), backupRepo, pluginService)
-	// adapter service
-	// adapterService := v1handler.NewAdapter(models.PluginRegistry, models.DatastoreRegistry)
-	pluginRepo := models.PluginRegistry
+	newEngine := compiler.NewEngine()
 
-	jobConfigCompiler := jobRunCompiler.NewJobConfigCompiler(engine)
-	assetCompiler := jobRunCompiler.NewJobAssetsCompiler(engine, pluginRepo)
-	runInputCompiler := jobRunCompiler.NewJobRunInputCompiler(jobConfigCompiler, assetCompiler)
+	newPriorityResolver := schedulerResolver.NewPriorityResolver()
+	assetCompiler := schedulerService.NewJobAssetsCompiler(newEngine, s.pluginRepo)
+	jobInputCompiler := schedulerService.NewJobInputCompiler(tenantService, newEngine, assetCompiler)
+	notificationService := schedulerService.NewNotifyService(s.logger, jobProviderRepo, tenantService, notifierChanels)
+	newScheduler, err := NewScheduler(s.conf, s.pluginRepo, tProjectService, tSecretService)
+	if err != nil {
+		return err
+	}
+	newJobRunService := schedulerService.NewJobRunService(s.logger, jobProviderRepo, jobRunRepo, operatorRunRepository, newScheduler, newPriorityResolver, jobInputCompiler)
 
-	monitoringService := service.NewMonitoringService(
-		jobRunMetricsRepository,
-		sensorRunRepository,
-		hookRunRepository,
-		taskRunRepository)
+	// Job Bounded Context Setup
+	jJobRepo := jRepo.NewJobRepository(s.dbConn)
+	jPluginService := jService.NewJobPluginService(tSecretService, s.pluginRepo, newEngine, s.logger)
+	jExternalUpstreamResolver, _ := jResolver.NewExternalUpstreamResolver(s.conf.ResourceManagers)
+	jInternalUpstreamResolver := jResolver.NewInternalUpstreamResolver(jJobRepo)
+	jUpstreamResolver := jResolver.NewUpstreamResolver(jJobRepo, jExternalUpstreamResolver, jInternalUpstreamResolver)
+	jJobService := jService.NewJobService(jJobRepo, jPluginService, jUpstreamResolver, tenantService, s.logger)
 
 	// Tenant Handlers
 	pb.RegisterSecretServiceServer(s.grpcServer, tHandler.NewSecretsHandler(s.logger, tSecretService))
 	pb.RegisterProjectServiceServer(s.grpcServer, tHandler.NewProjectHandler(s.logger, tProjectService))
 	pb.RegisterNamespaceServiceServer(s.grpcServer, tHandler.NewNamespaceHandler(s.logger, tNamespaceService))
 
-	// resource service
-	pb.RegisterResourceServiceServer(s.grpcServer, v1handler.NewResourceServiceServer(s.logger,
-		dataStoreService,
-		namespaceService,
-		models.DatastoreRegistry,
-		progressObs))
-	// replay service
-	pb.RegisterReplayServiceServer(s.grpcServer, v1handler.NewReplayServiceServer(s.logger,
-		jobService,
-		namespaceService,
-		projectService,
-		jobService)) // TODO: Replace with replayService after extracting
-	// job Spec service
-	pb.RegisterJobSpecificationServiceServer(s.grpcServer, v1handler.NewJobSpecServiceServer(s.logger,
-		jobService,
-		jobRunService,
-		pluginRepo,
-		projectService,
-		namespaceService,
-		progressObs))
-	// job run service
-	pb.RegisterJobRunServiceServer(s.grpcServer, v1handler.NewJobRunServiceServer(s.logger,
-		jobService,
-		projectService,
-		namespaceService,
-		secretService,
-		pluginRepo,
-		jobRunService,
-		runInputCompiler,
-		monitoringService,
-		models.BatchScheduler))
+	// Resource Handler
+	pb.RegisterResourceServiceServer(s.grpcServer, rHandler.NewResourceHandler(s.logger, resourceService))
+
+	pb.RegisterJobRunServiceServer(s.grpcServer, schedulerHandler.NewJobRunHandler(s.logger, newJobRunService, notificationService))
+
 	// backup service
-	pb.RegisterBackupServiceServer(s.grpcServer, v1handler.NewBackupServiceServer(s.logger,
-		jobService,
-		dataStoreService,
-		namespaceService,
-		projectService,
-		backupService))
-	// runtime service instance over grpc
-	pb.RegisterRuntimeServiceServer(s.grpcServer, v1handler.NewRuntimeServiceServer(
-		s.logger,
-		config.BuildVersion,
-		jobService,
-		eventService,
-		namespaceService,
-		monitoringService,
-	))
+	pb.RegisterBackupServiceServer(s.grpcServer, rHandler.NewBackupHandler(s.logger, backupService))
+
+	// version service
+	pb.RegisterRuntimeServiceServer(s.grpcServer, oHandler.NewVersionHandler(s.logger, config.BuildVersion))
+
+	// Core Job Handler
+	pb.RegisterJobSpecificationServiceServer(s.grpcServer, jHandler.NewJobHandler(jJobService, s.logger))
 
 	s.cleanupFn = append(s.cleanupFn, func() {
-		replayManager.Close() // err is nil
-	})
-	s.cleanupFn = append(s.cleanupFn, func() {
-		err = eventService.Close()
+		err = notificationService.Close()
 		if err != nil {
 			s.logger.Error("Error while closing event service: %s", err)
 		}

@@ -31,114 +31,6 @@ var _ = runtime.String
 var _ = utilities.NewDoubleArray
 var _ = metadata.Join
 
-func request_BackupService_BackupDryRun_0(ctx context.Context, marshaler runtime.Marshaler, client BackupServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq BackupDryRunRequest
-	var metadata runtime.ServerMetadata
-
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["project_name"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "project_name")
-	}
-
-	protoReq.ProjectName, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
-	}
-
-	val, ok = pathParams["namespace_name"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
-	}
-
-	protoReq.NamespaceName, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
-	}
-
-	val, ok = pathParams["datastore_name"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "datastore_name")
-	}
-
-	protoReq.DatastoreName, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "datastore_name", err)
-	}
-
-	msg, err := client.BackupDryRun(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return msg, metadata, err
-
-}
-
-func local_request_BackupService_BackupDryRun_0(ctx context.Context, marshaler runtime.Marshaler, server BackupServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq BackupDryRunRequest
-	var metadata runtime.ServerMetadata
-
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["project_name"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "project_name")
-	}
-
-	protoReq.ProjectName, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_name", err)
-	}
-
-	val, ok = pathParams["namespace_name"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "namespace_name")
-	}
-
-	protoReq.NamespaceName, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "namespace_name", err)
-	}
-
-	val, ok = pathParams["datastore_name"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "datastore_name")
-	}
-
-	protoReq.DatastoreName, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "datastore_name", err)
-	}
-
-	msg, err := server.BackupDryRun(ctx, &protoReq)
-	return msg, metadata, err
-
-}
-
 func request_BackupService_CreateBackup_0(ctx context.Context, marshaler runtime.Marshaler, client BackupServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq CreateBackupRequest
 	var metadata runtime.ServerMetadata
@@ -457,29 +349,6 @@ func local_request_BackupService_GetBackup_0(ctx context.Context, marshaler runt
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterBackupServiceHandlerFromEndpoint instead.
 func RegisterBackupServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server BackupServiceServer) error {
 
-	mux.Handle("POST", pattern_BackupService_BackupDryRun_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		var stream runtime.ServerTransportStream
-		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.BackupService/BackupDryRun", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/datastore/{datastore_name}/backupDryrun"))
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := local_request_BackupService_BackupDryRun_0(rctx, inboundMarshaler, server, req, pathParams)
-		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_BackupService_BackupDryRun_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
-	})
-
 	mux.Handle("POST", pattern_BackupService_CreateBackup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -590,26 +459,6 @@ func RegisterBackupServiceHandler(ctx context.Context, mux *runtime.ServeMux, co
 // "BackupServiceClient" to call the correct interceptors.
 func RegisterBackupServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client BackupServiceClient) error {
 
-	mux.Handle("POST", pattern_BackupService_BackupDryRun_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/odpf.optimus.core.v1beta1.BackupService/BackupDryRun", runtime.WithHTTPPathPattern("/v1beta1/project/{project_name}/namespace/{namespace_name}/datastore/{datastore_name}/backupDryrun"))
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := request_BackupService_BackupDryRun_0(rctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_BackupService_BackupDryRun_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
-	})
-
 	mux.Handle("POST", pattern_BackupService_CreateBackup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -674,8 +523,6 @@ func RegisterBackupServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 }
 
 var (
-	pattern_BackupService_BackupDryRun_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "datastore", "datastore_name", "backupDryrun"}, ""))
-
 	pattern_BackupService_CreateBackup_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "datastore", "datastore_name", "backup"}, ""))
 
 	pattern_BackupService_ListBackups_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5, 1, 0, 4, 1, 5, 6, 2, 7}, []string{"v1beta1", "project", "project_name", "namespace", "namespace_name", "datastore", "datastore_name", "backup"}, ""))
@@ -684,8 +531,6 @@ var (
 )
 
 var (
-	forward_BackupService_BackupDryRun_0 = runtime.ForwardResponseMessage
-
 	forward_BackupService_CreateBackup_0 = runtime.ForwardResponseMessage
 
 	forward_BackupService_ListBackups_0 = runtime.ForwardResponseMessage

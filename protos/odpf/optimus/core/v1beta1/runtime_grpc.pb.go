@@ -24,8 +24,6 @@ const _ = grpc.SupportPackageIsVersion7
 type RuntimeServiceClient interface {
 	// server ping with version
 	Version(ctx context.Context, in *VersionRequest, opts ...grpc.CallOption) (*VersionResponse, error)
-	// RegisterJobEvent notifies optimus service about an event related to job
-	RegisterJobEvent(ctx context.Context, in *RegisterJobEventRequest, opts ...grpc.CallOption) (*RegisterJobEventResponse, error)
 }
 
 type runtimeServiceClient struct {
@@ -45,23 +43,12 @@ func (c *runtimeServiceClient) Version(ctx context.Context, in *VersionRequest, 
 	return out, nil
 }
 
-func (c *runtimeServiceClient) RegisterJobEvent(ctx context.Context, in *RegisterJobEventRequest, opts ...grpc.CallOption) (*RegisterJobEventResponse, error) {
-	out := new(RegisterJobEventResponse)
-	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.RuntimeService/RegisterJobEvent", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // RuntimeServiceServer is the server API for RuntimeService service.
 // All implementations must embed UnimplementedRuntimeServiceServer
 // for forward compatibility
 type RuntimeServiceServer interface {
 	// server ping with version
 	Version(context.Context, *VersionRequest) (*VersionResponse, error)
-	// RegisterJobEvent notifies optimus service about an event related to job
-	RegisterJobEvent(context.Context, *RegisterJobEventRequest) (*RegisterJobEventResponse, error)
 	mustEmbedUnimplementedRuntimeServiceServer()
 }
 
@@ -71,9 +58,6 @@ type UnimplementedRuntimeServiceServer struct {
 
 func (UnimplementedRuntimeServiceServer) Version(context.Context, *VersionRequest) (*VersionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Version not implemented")
-}
-func (UnimplementedRuntimeServiceServer) RegisterJobEvent(context.Context, *RegisterJobEventRequest) (*RegisterJobEventResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RegisterJobEvent not implemented")
 }
 func (UnimplementedRuntimeServiceServer) mustEmbedUnimplementedRuntimeServiceServer() {}
 
@@ -106,24 +90,6 @@ func _RuntimeService_Version_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RuntimeService_RegisterJobEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RegisterJobEventRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(RuntimeServiceServer).RegisterJobEvent(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/odpf.optimus.core.v1beta1.RuntimeService/RegisterJobEvent",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RuntimeServiceServer).RegisterJobEvent(ctx, req.(*RegisterJobEventRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // RuntimeService_ServiceDesc is the grpc.ServiceDesc for RuntimeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -134,10 +100,6 @@ var RuntimeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Version",
 			Handler:    _RuntimeService_Version_Handler,
-		},
-		{
-			MethodName: "RegisterJobEvent",
-			Handler:    _RuntimeService_RegisterJobEvent_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

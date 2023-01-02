@@ -21,6 +21,8 @@ const (
 	ErrAlreadyExists   ErrorType = "Resource Already Exists"
 	ErrInvalidArgument ErrorType = "Invalid Argument"
 	ErrFailedPrecond   ErrorType = "Failed Precondition"
+
+	ErrInvalidState ErrorType = "Invalid State"
 )
 
 type DomainError struct {
@@ -28,6 +30,36 @@ type DomainError struct {
 	Entity     string
 	Message    string
 	WrappedErr error
+}
+
+func (*DomainError) Is(tgt error) bool {
+	_, ok := tgt.(*DomainError) // nolint
+	return ok
+}
+
+func AddErrContext(err error, entity string, msg string) *DomainError {
+	errType := ErrInternalError
+	var de *DomainError
+	if errors.As(err, &de) {
+		errType = de.ErrorType
+	}
+
+	return &DomainError{
+		ErrorType:  errType,
+		Entity:     entity,
+		Message:    msg,
+		WrappedErr: err,
+	}
+}
+
+func IsErrorType(err error, errType ErrorType) bool {
+	var de *DomainError
+	if errors.As(err, &de) {
+		if de.ErrorType == errType {
+			return true
+		}
+	}
+	return false
 }
 
 func NewError(errType ErrorType, entity string, msg string) *DomainError {
@@ -48,9 +80,27 @@ func InternalError(entity string, msg string, err error) *DomainError {
 	}
 }
 
+func InvalidStateTransition(entity string, msg string) *DomainError {
+	return &DomainError{
+		ErrorType:  ErrInvalidState,
+		Entity:     entity,
+		Message:    msg,
+		WrappedErr: nil,
+	}
+}
+
 func InvalidArgument(entity string, msg string) *DomainError {
 	return &DomainError{
 		ErrorType:  ErrInvalidArgument,
+		Entity:     entity,
+		Message:    msg,
+		WrappedErr: nil,
+	}
+}
+
+func AlreadyExists(entity string, msg string) *DomainError {
+	return &DomainError{
+		ErrorType:  ErrAlreadyExists,
 		Entity:     entity,
 		Message:    msg,
 		WrappedErr: nil,
@@ -75,8 +125,12 @@ func As(err error, target any) bool {
 }
 
 func (e *DomainError) Error() string {
-	return fmt.Sprintf("%v for entity %v: %v",
-		e.ErrorType.String(), e.Entity, e.Message)
+	subError := ""
+	if errors.Is(e.WrappedErr, &DomainError{}) {
+		subError = ": " + e.WrappedErr.Error()
+	}
+	return fmt.Sprintf("%v for entity %v: %v%s",
+		e.ErrorType.String(), e.Entity, e.Message, subError)
 }
 
 func (e *DomainError) Unwrap() error {
@@ -97,10 +151,6 @@ func (e *DomainError) DebugString() string {
 }
 
 func Wrap(entity, msg string, err error) error {
-	if errors.Is(err, &DomainError{}) {
-		return err
-	}
-
 	return &DomainError{
 		ErrorType:  ErrInternalError,
 		Entity:     entity,

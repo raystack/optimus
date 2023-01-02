@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/plugin/yaml"
 )
 

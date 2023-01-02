@@ -12,9 +12,8 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	v1 "github.com/odpf/optimus/api/handler/v1beta1"
+	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/internal/utils"
-	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 	pbp "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
 )
@@ -51,18 +50,10 @@ func (m *GRPCClient) GenerateDestination(ctx context.Context, request models.Gen
 	defer span.End()
 
 	outCtx := propagateMetadata(spanCtx)
-	// Remove this, once fallback for secrets is no longer required
-	name, err := m.GetName(outCtx)
-	if err != nil {
-		m.makeFatalOnConnErr(err)
-		return nil, err
-	}
 	resp, err := m.client.GenerateDestination(outCtx, &pbp.GenerateDestinationRequest{
 		Config:  adaptConfigsToProto(request.Config),
 		Assets:  adaptAssetsToProto(request.Assets),
 		Options: &pbp.PluginOptions{DryRun: request.DryRun},
-		// Fallback for secrets, please do not remove until secrets cleanup
-		Project: v1.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, name),
 	}, grpc_retry.WithBackoff(grpc_retry.BackoffExponential(BackoffDuration)),
 		grpc_retry.WithMax(PluginGRPCMaxRetry))
 	if err != nil {
@@ -80,18 +71,10 @@ func (m *GRPCClient) GenerateDependencies(ctx context.Context, request models.Ge
 	defer span.End()
 
 	outCtx := propagateMetadata(spanCtx)
-	// Remove this, once fallback for secrets is no longer required
-	name, err := m.GetName(outCtx)
-	if err != nil {
-		m.makeFatalOnConnErr(err)
-		return nil, err
-	}
 	resp, err := m.client.GenerateDependencies(outCtx, &pbp.GenerateDependenciesRequest{
 		Config:  adaptConfigsToProto(request.Config),
 		Assets:  adaptAssetsToProto(request.Assets),
 		Options: &pbp.PluginOptions{DryRun: request.DryRun},
-		// Fallback for secrets, please do not remove until secrets cleanup
-		Project: v1.ToProjectProtoWithSecret(request.Project, models.InstanceTypeTask, name),
 	}, grpc_retry.WithBackoff(grpc_retry.BackoffExponential(BackoffDuration)),
 		grpc_retry.WithMax(PluginGRPCMaxRetry))
 	if err != nil {

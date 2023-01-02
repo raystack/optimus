@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/odpf/salt/log"
@@ -17,16 +18,23 @@ import (
 	"github.com/odpf/optimus/client/cmd/internal/progressbar"
 	"github.com/odpf/optimus/client/cmd/internal/survey"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+)
+
+const (
+	configTTL = "ttl"
 )
 
 type listCommand struct {
 	logger         log.Logger
 	configFilePath string
 
-	projectName string
-	host        string
+	namespaceSurvey *survey.NamespaceSurvey
+
+	projectName   string
+	namespaceName string
+	host          string
+	storeName     string
 }
 
 // NewListCommand initialize command to list backup
@@ -54,6 +62,8 @@ func (l *listCommand) injectFlags(cmd *cobra.Command) {
 	// Mandatory flags if config is not set
 	cmd.Flags().StringVarP(&l.projectName, "project-name", "p", "", "project name of optimus managed repository")
 	cmd.Flags().StringVar(&l.host, "host", "", "Optimus service endpoint url")
+	cmd.Flags().StringVar(&l.storeName, "datastore", "bigquery", "Name of datastore for backup")
+	cmd.Flags().StringVarP(&l.namespaceName, "namespace", "n", "", "Namespace name within project to be backed up")
 }
 
 func (l *listCommand) PreRunE(cmd *cobra.Command, _ []string) error {
@@ -74,19 +84,23 @@ func (l *listCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	if l.host == "" {
 		l.host = conf.Host
 	}
+	// use flag or ask namespace name
+	if l.namespaceName == "" {
+		namespace, err := l.namespaceSurvey.AskToSelectNamespace(conf)
+		if err != nil {
+			return err
+		}
+		l.namespaceName = namespace.Name
+	}
+
 	return nil
 }
 
 func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
-	availableStorer := getAvailableDatastorers()
-	storerName, err := survey.AskToSelectDatastorer(availableStorer)
-	if err != nil {
-		return err
-	}
-
 	listBackupsRequest := &pb.ListBackupsRequest{
 		ProjectName:   l.projectName,
-		DatastoreName: storerName,
+		DatastoreName: l.storeName,
+		NamespaceName: l.namespaceName,
 	}
 
 	conn, err := connectivity.NewConnectivity(l.host, backupTimeout)
@@ -126,19 +140,16 @@ func (*listCommand) stringifyBackupListResponse(listBackupsResponse *pb.ListBack
 		"ID",
 		"Resource",
 		"Created at",
-		"Ignore Downstream?",
 		"TTL",
 		"Description",
 	})
 
 	for _, backupSpec := range listBackupsResponse.Backups {
-		ignoreDownstream := backupSpec.Config[models.ConfigIgnoreDownstream]
-		ttl := backupSpec.Config[models.ConfigTTL]
+		ttl := backupSpec.Config[configTTL]
 		table.Append([]string{
 			backupSpec.Id,
-			backupSpec.ResourceName,
+			strings.Join(backupSpec.ResourceNames, ", "),
 			backupSpec.CreatedAt.AsTime().Format(time.RFC3339),
-			ignoreDownstream,
 			ttl,
 			backupSpec.Description,
 		})

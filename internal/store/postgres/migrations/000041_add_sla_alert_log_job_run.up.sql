@@ -1,0 +1,1 @@
+ALTER TABLE job_run ADD IF NOT EXISTS sla_alert boolean default false;

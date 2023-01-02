@@ -15,8 +15,13 @@ import (
 	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/client/cmd/internal/progressbar"
 	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+)
+
+const (
+	configIgnoreDownstream = "ignore_downstream"
+
+	ISODateLayout = "2006-01-02"
 )
 
 type listCommand struct {
@@ -125,9 +130,9 @@ func (l *listCommand) printReplayListResponse(replayListResponse *pb.ListReplays
 		row := []string{
 			replaySpec.Id,
 			replaySpec.JobName,
-			replaySpec.StartDate.AsTime().Format(models.JobDatetimeLayout),
-			replaySpec.EndDate.AsTime().Format(models.JobDatetimeLayout),
-			replaySpec.Config[models.ConfigIgnoreDownstream],
+			replaySpec.StartDate.AsTime().Format(ISODateLayout),
+			replaySpec.EndDate.AsTime().Format(ISODateLayout),
+			replaySpec.Config[configIgnoreDownstream],
 			replaySpec.CreatedAt.AsTime().Format(time.RFC3339),
 			replaySpec.State,
 		}

@@ -8,7 +8,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 
 	"github.com/odpf/optimus/client/local/model"
-	"github.com/odpf/optimus/models"
+	"github.com/odpf/optimus/internal/models"
 )
 
 // JobAddHookSurvey defines survey for job add hook
@@ -24,10 +24,9 @@ func NewJobAddHookSurvey() *JobAddHookSurvey {
 }
 
 // AskToAddHook asks questions to add hook to a job
-func (j *JobAddHookSurvey) AskToAddHook(jobSpec *model.JobSpec) (*model.JobSpec, error) {
-	pluginRepo := models.PluginRegistry
+func (j *JobAddHookSurvey) AskToAddHook(pluginRepo models.PluginRepository, jobSpec *model.JobSpec) (*model.JobSpec, error) {
 	newJobSpec := *jobSpec
-	availableHookNames := j.getAvailableHookNames()
+	availableHookNames := j.getAvailableHookNames(pluginRepo)
 	if len(availableHookNames) == 0 {
 		return nil, errors.New("no supported hook plugin found")
 	}
@@ -74,20 +73,18 @@ func (*JobAddHookSurvey) getHookConfig(cliMod models.CommandLineMod, answers mod
 	if err != nil {
 		return nil, err
 	}
-	var jobSpecConfig models.JobSpecConfigs
-	if generatedConfigResponse.Config != nil {
-		jobSpecConfig = generatedConfigResponse.Config.ToJobSpec()
-	}
 
 	config := map[string]string{}
-	for _, cfg := range jobSpecConfig {
-		config[cfg.Name] = cfg.Value
+	if generatedConfigResponse != nil {
+		for _, cfg := range generatedConfigResponse.Config {
+			config[cfg.Name] = cfg.Value
+		}
 	}
+
 	return config, nil
 }
 
-func (*JobAddHookSurvey) getAvailableHookNames() []string {
-	pluginRepo := models.PluginRegistry
+func (*JobAddHookSurvey) getAvailableHookNames(pluginRepo models.PluginRepository) []string {
 	var output []string
 	for _, hook := range pluginRepo.GetHooks() {
 		output = append(output, hook.Info().Name)

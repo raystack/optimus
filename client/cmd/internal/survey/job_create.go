@@ -11,8 +11,13 @@ import (
 
 	"github.com/odpf/optimus/client/local"
 	"github.com/odpf/optimus/client/local/model"
+	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/internal/utils"
-	"github.com/odpf/optimus/models"
+)
+
+const (
+	ISODateLayout         = "2006-01-02"
+	jobSpecDefaultVersion = 1
 )
 
 var (
@@ -37,8 +42,8 @@ func NewJobCreateSurvey() *JobCreateSurvey {
 }
 
 // AskToCreateJob asks questions to create job
-func (j *JobCreateSurvey) AskToCreateJob(jobSpecReader local.SpecReader[*model.JobSpec], jobDir, defaultJobName string) (model.JobSpec, error) {
-	availableTaskNames := j.getAvailableTaskNames()
+func (j *JobCreateSurvey) AskToCreateJob(pluginRepo models.PluginRepository, jobSpecReader local.SpecReader[*model.JobSpec], jobDir, defaultJobName string) (model.JobSpec, error) {
+	availableTaskNames := j.getAvailableTaskNames(pluginRepo)
 	if len(availableTaskNames) == 0 {
 		return model.JobSpec{}, errors.New("no supported task plugin found")
 	}
@@ -49,7 +54,7 @@ func (j *JobCreateSurvey) AskToCreateJob(jobSpecReader local.SpecReader[*model.J
 		return model.JobSpec{}, err
 	}
 
-	cliMod, err := j.getPluginCliMod(jobInput.Task.Name)
+	cliMod, err := j.getPluginCliMod(pluginRepo, jobInput.Task.Name)
 	if err != nil {
 		return jobInput, err
 	}
@@ -89,7 +94,7 @@ func (*JobCreateSurvey) getJobAsset(cliMod models.CommandLineMod, answers models
 	}
 	var asset map[string]string
 	if generatedAssetResponse.Assets != nil {
-		asset = generatedAssetResponse.Assets.ToJobSpec().ToMap()
+		asset = generatedAssetResponse.Assets.ToMap()
 	}
 	return asset, nil
 }
@@ -101,18 +106,17 @@ func (*JobCreateSurvey) getTaskConfig(cliMod models.CommandLineMod, answers mode
 	if err != nil {
 		return nil, err
 	}
+
 	taskConfig := make(map[string]string)
-	if generatedConfigResponse.Config != nil {
-		jobSpecConfigs := generatedConfigResponse.Config.ToJobSpec()
-		for _, conf := range []models.JobSpecConfigItem(jobSpecConfigs) {
+	if generatedConfigResponse != nil {
+		for _, conf := range generatedConfigResponse.Config {
 			taskConfig[conf.Name] = conf.Value
 		}
 	}
 	return taskConfig, nil
 }
 
-func (*JobCreateSurvey) getAvailableTaskNames() []string {
-	pluginRepo := models.PluginRegistry
+func (*JobCreateSurvey) getAvailableTaskNames(pluginRepo models.PluginRepository) []string {
 	plugins := pluginRepo.GetTasks()
 	var output []string
 	for _, task := range plugins {
@@ -154,7 +158,7 @@ func (j *JobCreateSurvey) getCreateQuestions(jobSpecReader local.SpecReader[*mod
 			Prompt: &survey.Input{
 				Message: "Specify the schedule start date",
 				Help:    "Format: (YYYY-MM-DD)",
-				Default: time.Now().AddDate(0, 0, -1).UTC().Format(models.JobDatetimeLayout),
+				Default: time.Now().AddDate(0, 0, -1).UTC().Format(ISODateLayout),
 			},
 			Validate: validateDate,
 		},
@@ -192,7 +196,7 @@ func (j *JobCreateSurvey) askCreateQuestions(questions []*survey.Question) (mode
 	}
 
 	return model.JobSpec{
-		Version: models.JobSpecDefaultVersion,
+		Version: jobSpecDefaultVersion,
 		Name:    baseInputs["name"],
 		Owner:   baseInputs["owner"],
 		Schedule: model.JobSpecSchedule{
@@ -216,8 +220,7 @@ func (j *JobCreateSurvey) askCreateQuestions(questions []*survey.Question) (mode
 	}, nil
 }
 
-func (*JobCreateSurvey) getPluginCliMod(taskName string) (models.CommandLineMod, error) {
-	pluginRepo := models.PluginRegistry
+func (*JobCreateSurvey) getPluginCliMod(pluginRepo models.PluginRepository, taskName string) (models.CommandLineMod, error) {
 	plugin, err := pluginRepo.GetByName(taskName)
 	if err != nil {
 		return nil, err

@@ -314,6 +314,61 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "cleanHistory",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "force",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          }
+        ],
+        "tags": [
+          "JobSpecificationService"
+        ]
+      }
+    },
+    "/v1beta1/project/{projectName}/namespace/{namespaceName}/job/{jobName}/task": {
+      "get": {
+        "summary": "GetJobTask provides task details specific to plugin used in a job",
+        "operationId": "JobSpecificationService_GetJobTask",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1GetJobTaskResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
           }
         ],
         "tags": [
@@ -367,6 +422,114 @@
                 }
               }
             }
+          }
+        ],
+        "tags": [
+          "JobSpecificationService"
+        ]
+      },
+      "put": {
+        "summary": "UpdateJobSpecifications modify jobs for a namespace which belongs to the given project",
+        "operationId": "JobSpecificationService_UpdateJobSpecifications",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1UpdateJobSpecificationsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "specs": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/v1beta1JobSpecification"
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "JobSpecificationService"
+        ]
+      }
+    },
+    "/v1beta1/window": {
+      "get": {
+        "summary": "GetWindow provides the start and end dates provided a scheduled date\nof the execution window",
+        "operationId": "JobSpecificationService_GetWindow",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1GetWindowResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scheduledAt",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "truncateTo",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
           }
         ],
         "tags": [
@@ -502,6 +665,25 @@
         }
       }
     },
+    "JobTaskDependency": {
+      "type": "object",
+      "properties": {
+        "dependency": {
+          "type": "string"
+        }
+      }
+    },
+    "JobTaskDestination": {
+      "type": "object",
+      "properties": {
+        "destination": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    },
     "UpstreamSectionUnknownDependencies": {
       "type": "object",
       "properties": {
@@ -509,6 +691,9 @@
           "type": "string"
         },
         "projectName": {
+          "type": "string"
+        },
+        "resourceDestination": {
           "type": "string"
         }
       }
@@ -560,9 +745,6 @@
     "v1beta1AddJobSpecificationsResponse": {
       "type": "object",
       "properties": {
-        "deploymentId": {
-          "type": "string"
-        },
         "log": {
           "type": "string"
         }
@@ -682,6 +864,27 @@
         }
       }
     },
+    "v1beta1GetJobTaskResponse": {
+      "type": "object",
+      "properties": {
+        "task": {
+          "$ref": "#/definitions/v1beta1JobTask"
+        }
+      }
+    },
+    "v1beta1GetWindowResponse": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
     "v1beta1HttpDependency": {
       "type": "object",
       "properties": {
@@ -721,12 +924,8 @@
       "enum": [
         "TYPE_UNSPECIFIED",
         "TYPE_SLA_MISS",
-        "TYPE_FAILURE",
-        "TYPE_SUCCESS",
-        "TYPE_RETRY",
-        "TYPE_JOB_START",
         "TYPE_JOB_SUCCESS",
-        "TYPE_JOB_FAIL",
+        "TYPE_FAILURE",
         "TYPE_TASK_RETRY",
         "TYPE_TASK_SUCCESS",
         "TYPE_TASK_START",
@@ -930,6 +1129,15 @@
         },
         "metadata": {
           "$ref": "#/definitions/v1beta1JobMetadata"
+        },
+        "destination": {
+          "type": "string"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -946,6 +1154,30 @@
           "$ref": "#/definitions/v1beta1JobSpecification"
         }
       }
+    },
+    "v1beta1JobTask": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "image": {
+          "type": "string"
+        },
+        "destination": {
+          "$ref": "#/definitions/JobTaskDestination"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/JobTaskDependency"
+          }
+        }
+      },
+      "title": "JobTask is part of a job that dictates main transformation\neach job has exactly one task"
     },
     "v1beta1Level": {
       "type": "string",
@@ -985,11 +1217,24 @@
     "v1beta1RefreshJobsResponse": {
       "type": "object",
       "properties": {
-        "deploymentId": {
-          "type": "string"
-        },
         "logStatus": {
           "$ref": "#/definitions/v1beta1Log"
+        }
+      }
+    },
+    "v1beta1ReplaceAllJobSpecificationsResponse": {
+      "type": "object",
+      "properties": {
+        "logStatus": {
+          "$ref": "#/definitions/v1beta1Log"
+        }
+      }
+    },
+    "v1beta1UpdateJobSpecificationsResponse": {
+      "type": "object",
+      "properties": {
+        "log": {
+          "type": "string"
         }
       }
     }

@@ -6,15 +6,14 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	tree2 "github.com/odpf/optimus/internal/lib/tree"
-	"github.com/odpf/optimus/models"
 )
 
 func TestMultiRootDagTree(t *testing.T) {
 	t.Run("GetNameAndDependents", func(t *testing.T) {
-		treeNode1 := tree2.NewTreeNode(models.JobSpec{
+		treeNode1 := tree2.NewTreeNode(testNode{
 			Name: "job1",
 		})
-		treeNode2 := tree2.NewTreeNode(models.JobSpec{
+		treeNode2 := tree2.NewTreeNode(testNode{
 			Name: "job2",
 		})
 		multiRootTree := tree2.NewMultiRootTree()
@@ -28,7 +27,7 @@ func TestMultiRootDagTree(t *testing.T) {
 		assert.Contains(t, err.Error(), tree2.ErrCyclicDependencyEncountered.Error())
 	})
 	t.Run("MarkRoot", func(t *testing.T) {
-		treeNode1 := tree2.NewTreeNode(models.JobSpec{
+		treeNode1 := tree2.NewTreeNode(testNode{
 			Name: "job1",
 		})
 		multiRootTree := tree2.NewMultiRootTree()
@@ -40,16 +39,16 @@ func TestMultiRootDagTree(t *testing.T) {
 	})
 	t.Run("ValidateCyclic", func(t *testing.T) {
 		t.Run("should throw an error if cyclic", func(t *testing.T) {
-			treeNode1 := tree2.NewTreeNode(models.JobSpec{
+			treeNode1 := tree2.NewTreeNode(testNode{
 				Name: "pilotdata-integration.playground.job1",
 			})
-			treeNode2 := tree2.NewTreeNode(models.JobSpec{
+			treeNode2 := tree2.NewTreeNode(testNode{
 				Name: "pilotdata-integration.playground.job2",
 			})
-			treeNode3 := tree2.NewTreeNode(models.JobSpec{
+			treeNode3 := tree2.NewTreeNode(testNode{
 				Name: "pilotdata-integration.playground.job3",
 			})
-			treeNode4 := tree2.NewTreeNode(models.JobSpec{
+			treeNode4 := tree2.NewTreeNode(testNode{
 				Name: "pilotdata-integration.playground.job4",
 			})
 			multiRootTree := tree2.NewMultiRootTree()
@@ -71,10 +70,10 @@ pilotdata-integration.playground.job2
 `, err.Error())
 		})
 		t.Run("should not return error if not cyclic", func(t *testing.T) {
-			treeNode1 := tree2.NewTreeNode(models.JobSpec{
+			treeNode1 := tree2.NewTreeNode(testNode{
 				Name: "job1",
 			})
-			treeNode2 := tree2.NewTreeNode(models.JobSpec{
+			treeNode2 := tree2.NewTreeNode(testNode{
 				Name: "job2",
 			})
 			multiRootTree := tree2.NewMultiRootTree()
