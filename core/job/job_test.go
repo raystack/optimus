@@ -114,6 +114,21 @@ func TestEntityJob(t *testing.T) {
 			assert.EqualValues(t, expected, unresolvedUpstreams)
 		})
 	})
+	t.Run("GetResolvedUpstreams", func(t *testing.T) {
+		t.Run("should return upstreams with state resolved", func(t *testing.T) {
+			upstreamUnresolved1 := job.NewUpstreamUnresolvedStatic("job-B", project.Name())
+			upstreamUnresolved2 := job.NewUpstreamUnresolvedInferred("project.dataset.sample-c")
+			upstreamResolved1 := job.NewUpstreamResolved("job-d", "host-sample", "project.dataset.sample-d", sampleTenant, job.UpstreamTypeStatic, "", false)
+			upstreamResolved2 := job.NewUpstreamResolved("job-e", "host-sample", "project.dataset.sample-e", sampleTenant, job.UpstreamTypeInferred, "", true)
+
+			expected := []*job.Upstream{upstreamResolved1, upstreamResolved2}
+
+			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstreamUnresolved1, upstreamResolved1, upstreamResolved2, upstreamUnresolved2})
+
+			resolvedUpstreams := jobAWithUpstream.GetResolvedUpstreams()
+			assert.EqualValues(t, expected, resolvedUpstreams)
+		})
+	})
 	t.Run("UpstreamTypeFrom", func(t *testing.T) {
 		t.Run("should create static upstream type from string", func(t *testing.T) {
 			upstreamType, err := job.UpstreamTypeFrom("static")
