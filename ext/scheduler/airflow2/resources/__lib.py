@@ -200,7 +200,7 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
 
             if len(pod_list.items) == 1:
                 try_numbers_match = self._try_numbers_match(context, pod_list.items[0])
-                final_state, result = self.handle_pod_overlap(labels, try_numbers_match, launcher, pod_list.items[0])
+                final_state, _, result = self.handle_pod_overlap(labels, try_numbers_match, launcher, pod_list.items[0])
             else:
                 final_state, _, result = self.create_new_pod_for_operator(labels, launcher)
 
