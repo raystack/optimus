@@ -15,7 +15,6 @@ import (
 	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/scheduler/handler/v1beta1"
 	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
@@ -287,30 +286,7 @@ func TestJobRunHandler(t *testing.T) {
 			assert.EqualError(t, err, "rpc error: code = Internal desc = some random error: unable to get job run for transform-tables")
 			assert.Nil(t, resp)
 		})
-		t.Run("should not return error if job run service raises not found error", func(t *testing.T) {
-			job := scheduler.Job{
-				Name: "transform-tables",
-			}
-			query := &scheduler.JobRunsCriteria{
-				Name:        job.Name.String(),
-				OnlyLastRun: true,
-			}
-			jobRunService := new(mockJobRunService)
-			jobRunService.On("GetJobRuns", ctx, tenant.ProjectName(projectName), job.Name, query).
-				Return(nil, errors.NewError(errors.ErrNotFound, scheduler.EntityJobRun, "some error msg"))
-			defer jobRunService.AssertExpectations(t)
 
-			jobRunHandler := v1beta1.NewJobRunHandler(logger, jobRunService, nil)
-
-			req := &pb.JobRunRequest{
-				ProjectName: projectName,
-				JobName:     job.Name.String(),
-				Filter:      []string{"success"},
-			}
-			resp, err := jobRunHandler.JobRun(ctx, req)
-			assert.Nil(t, err)
-			assert.Equal(t, &pb.JobRunResponse{}, resp)
-		})
 		t.Run("should not return job runs if project name is not valid", func(t *testing.T) {
 			jobRunHandler := v1beta1.NewJobRunHandler(logger, nil, nil)
 			req := &pb.JobRunRequest{

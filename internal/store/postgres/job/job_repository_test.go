@@ -137,6 +137,10 @@ func TestPostgresJobRepository(t *testing.T) {
 			addedJobs, err := jobRepo.Add(ctx, jobs)
 			assert.NoError(t, err)
 			assert.EqualValues(t, jobs, addedJobs)
+
+			storedJobs, err := jobRepo.GetAllByProjectName(ctx, proj.Name())
+			assert.NoError(t, err)
+			assert.EqualValues(t, jobs, storedJobs)
 		})
 		t.Run("inserts job spec with optional fields empty", func(t *testing.T) {
 			db := dbSetup()

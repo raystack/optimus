@@ -288,9 +288,27 @@ func toStorageMetadata(metadataSpec *job.Metadata) ([]byte, error) {
 	if metadataSpec == nil {
 		return nil, nil
 	}
-	metadataResource := &MetadataResource{
-		Request: nil,
-		Limit:   nil,
+
+	var metadataResource *MetadataResource
+	if metadataSpec.Resource() != nil {
+		var resourceRequest *MetadataResourceConfig
+		if metadataSpec.Resource().Request() != nil {
+			resourceRequest = &MetadataResourceConfig{
+				CPU:    metadataSpec.Resource().Request().CPU(),
+				Memory: metadataSpec.Resource().Request().Memory(),
+			}
+		}
+		var resourceLimit *MetadataResourceConfig
+		if metadataSpec.Resource().Limit() != nil {
+			resourceLimit = &MetadataResourceConfig{
+				CPU:    metadataSpec.Resource().Limit().CPU(),
+				Memory: metadataSpec.Resource().Limit().Memory(),
+			}
+		}
+		metadataResource = &MetadataResource{
+			Request: resourceRequest,
+			Limit:   resourceLimit,
+		}
 	}
 
 	metadata := Metadata{
