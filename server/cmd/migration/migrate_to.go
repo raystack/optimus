@@ -39,11 +39,11 @@ func (m *migrateTo) RunE(_ *cobra.Command, _ []string) error {
 
 	dsn := clientConfig.Serve.DB.DSN
 
-	fmt.Printf("Executing migration to version %d \n", m.version)
+	fmt.Printf("Executing migration to version %d \n", m.version) // nolint:forbidigo
 	err = postgres.ToVersion(uint(m.version), dsn)
 	if err != nil {
 		return fmt.Errorf("error during migration: %w", err)
 	}
-	fmt.Println("Migration finished successfully")
+	fmt.Println("Migration finished successfully") // nolint:forbidigo
 	return nil
 }

@@ -204,10 +204,7 @@ func toStorageHooks(hookSpecs []*job.Hook) ([]byte, error) {
 	}
 	var hooks []Hook
 	for _, hookSpec := range hookSpecs {
-		hook, err := toStorageHook(hookSpec)
-		if err != nil {
-			return nil, err
-		}
+		hook := toStorageHook(hookSpec)
 		hooks = append(hooks, hook)
 	}
 	hooksJSON, err := json.Marshal(hooks)
@@ -217,11 +214,11 @@ func toStorageHooks(hookSpecs []*job.Hook) ([]byte, error) {
 	return hooksJSON, nil
 }
 
-func toStorageHook(spec *job.Hook) (Hook, error) {
+func toStorageHook(spec *job.Hook) Hook {
 	return Hook{
 		Name:   spec.Name().String(),
 		Config: spec.Config().Configs(),
-	}, nil
+	}
 }
 
 func toStorageAlerts(alertSpecs []*job.AlertSpec) ([]byte, error) {

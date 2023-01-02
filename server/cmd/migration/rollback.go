@@ -35,11 +35,11 @@ func (r *rollbackCommand) RunE(_ *cobra.Command, _ []string) error {
 
 	dsn := clientConfig.Serve.DB.DSN
 
-	fmt.Printf("Executing rollback for %d migrations\n", r.count)
+	fmt.Printf("Executing rollback for %d migrations\n", r.count) // nolint:forbidigo
 	err = postgres.Rollback(dsn, r.count)
 	if err != nil {
 		return fmt.Errorf("error rolling back migration: %w", err)
 	}
-	fmt.Println("Rollback finished successfully")
+	fmt.Println("Rollback finished successfully") // nolint:forbidigo
 	return nil
 }
