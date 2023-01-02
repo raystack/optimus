@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/odpf/optimus/core/job"
@@ -43,15 +44,25 @@ func TestNewJobHandler(t *testing.T) {
 	assert.NoError(t, err)
 	jobWindow, err := models.NewWindow(jobVersion.Int(), "d", "24h", "24h")
 	assert.NoError(t, err)
-	jobConfig, err := job.NewConfig(map[string]string{"sample_key": "sample_value"})
+	sampleConfigMap := map[string]string{"sample_key": "sample_value"}
+	jobConfig, err := job.NewConfig(sampleConfigMap)
 	assert.NoError(t, err)
 	jobTask := job.NewTaskBuilder("bq2bq", jobConfig).Build()
-	jobBehavior := &pb.JobSpecification_Behavior{
-		Retry: &pb.JobSpecification_Behavior_Retry{ExponentialBackoff: false},
+	jobBehaviorProto := &pb.JobSpecification_Behavior{
+		Retry: &pb.JobSpecification_Behavior_Retry{
+			Count:              10,
+			Delay:              durationpb.New(0),
+			ExponentialBackoff: false,
+		},
 		Notify: []*pb.JobSpecification_Behavior_Notifiers{
-			{On: 0, Channels: []string{"sample"}},
+			{On: 1, Channels: []string{"sample"}, Config: sampleConfigMap},
 		},
 	}
+	retrySpec := job.NewRetry(10, int32(0), false)
+	sampleConfig, err := job.NewConfig(sampleConfigMap)
+	assert.NoError(t, err)
+	alertSpec, err := job.NewAlertBuilder(job.SLAMissEvent, []string{"sample"}).WithConfig(sampleConfig).Build()
+	assert.NoError(t, err)
 	jobDependencies := []*pb.JobDependency{
 		{Name: "job-B", Type: "static"},
 	}
@@ -122,7 +133,7 @@ func TestNewJobHandler(t *testing.T) {
 				WindowSize:       jobWindow.GetSize(),
 				WindowOffset:     jobWindow.GetOffset(),
 				WindowTruncateTo: jobWindow.GetTruncateTo(),
-				Behavior:         jobBehavior,
+				Behavior:         jobBehaviorProto,
 				Dependencies:     jobDependencies,
 				Metadata:         jobMetadata,
 			}
@@ -340,10 +351,27 @@ func TestNewJobHandler(t *testing.T) {
 
 			jobHandler := v1beta1.NewJobHandler(jobService, log)
 
+			invalidConfigs := []*pb.JobConfigItem{
+				{
+					Name:  "",
+					Value: "",
+				},
+			}
+			invalidJobBehaviorProto := &pb.JobSpecification_Behavior{
+				Retry: &pb.JobSpecification_Behavior_Retry{
+					Count:              10,
+					Delay:              durationpb.New(0),
+					ExponentialBackoff: false,
+				},
+				Notify: []*pb.JobSpecification_Behavior_Notifiers{
+					{On: 1, Channels: []string{"sample"}, Config: map[string]string{"": ""}},
+				},
+			}
 			jobSpecProtos := []*pb.JobSpecification{
 				{
 					Version:          int32(0),
 					Name:             "job-A",
+					Owner:            "sample-owner",
 					StartDate:        jobSchedule.StartDate().String(),
 					EndDate:          jobSchedule.EndDate().String(),
 					Interval:         jobSchedule.Interval(),
@@ -351,6 +379,102 @@ func TestNewJobHandler(t *testing.T) {
 					WindowSize:       jobWindow.GetSize(),
 					WindowOffset:     jobWindow.GetOffset(),
 					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+				{
+					Version:          int32(1),
+					Name:             "job-B",
+					Owner:            "sample-owner",
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name().String(),
+					Config:           invalidConfigs,
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+				{
+					Version:          int32(1),
+					Name:             "job-C",
+					Owner:            "sample-owner",
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
+					Interval:         jobSchedule.Interval(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+				},
+				{
+					Version:          int32(1),
+					Name:             "job-D",
+					Owner:            "sample-owner",
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name().String(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+					Labels:           map[string]string{"": ""},
+				},
+				{
+					Version:          int32(1),
+					Name:             "job-E",
+					Owner:            "sample-owner",
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name().String(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+					Hooks: []*pb.JobSpecHook{
+						{Name: "sample-hook", Config: invalidConfigs},
+					},
+				},
+				{
+					Version:          int32(1),
+					Name:             "job-F",
+					Owner:            "sample-owner",
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name().String(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+					Hooks: []*pb.JobSpecHook{
+						{Config: []*pb.JobConfigItem{{
+							Name:  "sample_key",
+							Value: "sample_value",
+						}}},
+					},
+				},
+				{
+					Version:          int32(1),
+					Name:             "job-G",
+					Owner:            "sample-owner",
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name().String(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+					Assets:           map[string]string{"": ""},
+				},
+				{
+					Version:          int32(1),
+					Name:             "job-H",
+					Owner:            "sample-owner",
+					StartDate:        jobSchedule.StartDate().String(),
+					EndDate:          jobSchedule.EndDate().String(),
+					Interval:         jobSchedule.Interval(),
+					TaskName:         jobTask.Name().String(),
+					WindowSize:       jobWindow.GetSize(),
+					WindowOffset:     jobWindow.GetOffset(),
+					WindowTruncateTo: jobWindow.GetTruncateTo(),
+					Behavior:         invalidJobBehaviorProto,
 				},
 			}
 			request := pb.AddJobSpecificationsRequest{
@@ -455,7 +579,7 @@ func TestNewJobHandler(t *testing.T) {
 				WindowSize:       jobWindow.GetSize(),
 				WindowOffset:     jobWindow.GetOffset(),
 				WindowTruncateTo: jobWindow.GetTruncateTo(),
-				Behavior:         jobBehavior,
+				Behavior:         jobBehaviorProto,
 				Dependencies:     jobDependencies,
 				Metadata:         jobMetadata,
 			}
@@ -1317,10 +1441,24 @@ func TestNewJobHandler(t *testing.T) {
 		t.Run("should return basic info, upstream, downstream of an existing job", func(t *testing.T) {
 			jobService := new(JobService)
 
+			endDate, _ := job.ScheduleDateFrom("2022-10-02")
+			completeJobSchedule, _ := job.NewScheduleBuilder(startDate).
+				WithCatchUp(true).
+				WithRetry(retrySpec).
+				WithEndDate(endDate).
+				WithInterval("0 2 * * *").
+				WithDependsOnPast(true).Build()
+
 			httpUpstream, _ := job.NewSpecHTTPUpstreamBuilder("sample-upstream", "sample-url").Build()
 			upstreamSpec, _ := job.NewSpecUpstreamBuilder().WithSpecHTTPUpstream([]*job.SpecHTTPUpstream{httpUpstream}).Build()
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).WithMetadata(metadataSpec).Build()
-			jobA := job.NewJob(sampleTenant, specA, "resource-A", nil)
+			assets, _ := job.NewAsset(sampleConfigMap)
+			specA := job.NewSpecBuilder(jobVersion, "job-A", "", completeJobSchedule, jobWindow, jobTask).
+				WithSpecUpstream(upstreamSpec).
+				WithMetadata(metadataSpec).
+				WithAlerts([]*job.AlertSpec{alertSpec}).
+				WithAsset(assets).
+				Build()
+			jobA := job.NewJob(sampleTenant, specA, "resource-A", []job.ResourceURN{"resource-B", "resource-C"})
 
 			upstreamB := job.NewUpstreamResolved("job-B", "", "resource-b", sampleTenant, "static", "bq2bq", false)
 			upstreamC := job.NewUpstreamResolved("job-C", "other-host", "resource-c", sampleTenant, "inferred", "bq2bq", true)
@@ -1359,6 +1497,7 @@ func TestNewJobHandler(t *testing.T) {
 						WindowOffset:     specA.Window().GetOffset(),
 						WindowTruncateTo: specA.Window().GetTruncateTo(),
 						Destination:      "resource-A",
+						Sources:          []string{"resource-B", "resource-C"},
 						Config: []*pb.JobConfigItem{{
 							Name:  "sample_key",
 							Value: "sample_value",
@@ -1372,8 +1511,11 @@ func TestNewJobHandler(t *testing.T) {
 							},
 						},
 						Metadata: jobMetadata,
+						Behavior: jobBehaviorProto,
+						Assets:   sampleConfigMap,
 					},
 					Destination: "resource-A",
+					Source:      []string{"resource-B", "resource-C"},
 				},
 				Upstreams: &pb.JobInspectResponse_UpstreamSection{
 					ExternalDependency: []*pb.JobInspectResponse_JobDependency{
@@ -1472,7 +1614,7 @@ func TestNewJobHandler(t *testing.T) {
 				WindowSize:       jobWindow.GetSize(),
 				WindowOffset:     jobWindow.GetOffset(),
 				WindowTruncateTo: jobWindow.GetTruncateTo(),
-				Behavior:         jobBehavior,
+				Behavior:         jobBehaviorProto,
 				Dependencies:     jobDependenciesWithHTTPProto,
 				Metadata:         jobMetadata,
 				Hooks:            jobHooksProto,

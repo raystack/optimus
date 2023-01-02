@@ -179,6 +179,19 @@ func TestEntityJob(t *testing.T) {
 
 			assert.EqualValues(t, expectedMap, resultMap)
 		})
+		t.Run("should skip a job if resource destination is not found and should not return error", func(t *testing.T) {
+			upstreamResolved1 := job.NewUpstreamResolved("job-a", "host-sample", "", sampleTenant, job.UpstreamTypeStatic, "", false)
+			upstreamResolved2 := job.NewUpstreamResolved("job-b", "host-sample", "project.dataset.sample-b", sampleTenant, job.UpstreamTypeInferred, "", false)
+
+			expectedMap := map[string]*job.Upstream{
+				"project.dataset.sample-b": upstreamResolved2,
+			}
+
+			upstreams := job.Upstreams([]*job.Upstream{upstreamResolved1, upstreamResolved2})
+			resultMap := upstreams.ToResourceDestinationAndUpstreamMap()
+
+			assert.EqualValues(t, expectedMap, resultMap)
+		})
 	})
 
 	t.Run("FullNameFrom", func(t *testing.T) {
@@ -215,6 +228,12 @@ func TestEntityJob(t *testing.T) {
 			assert.Equal(t, specC.Name().String(), jobC.GetName())
 			assert.Equal(t, "test-proj/job-C", jobC.FullName())
 			assert.Equal(t, specUpstream.UpstreamNames(), jobC.StaticUpstreamNames())
+		})
+
+		t.Run("StaticUpstreamNames", func(t *testing.T) {
+			t.Run("should return nil if no static upstream spec specified", func(t *testing.T) {
+				assert.Nil(t, jobA.StaticUpstreamNames())
+			})
 		})
 	})
 

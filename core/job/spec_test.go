@@ -26,8 +26,9 @@ func TestEntitySpec(t *testing.T) {
 	jobTaskConfig, _ := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
 	jobTask := job.NewTaskBuilder("bq2bq", jobTaskConfig).Build()
 	description := "sample description"
-	labels := map[string]string{"key": "value"}
-	hook := job.NewHook("sample-hook", jobTaskConfig)
+	labelsMap := map[string]string{"key": "value"}
+	hookName, _ := job.HookNameFrom("sample-hook")
+	hook := job.NewHook(hookName, jobTaskConfig)
 	jobAlertConfig, _ := job.NewConfig(map[string]string{"sample_alert_key": "sample_value"})
 
 	httpUpstreamConfig := map[string]string{"host": "sample-host"}
@@ -47,9 +48,13 @@ func TestEntitySpec(t *testing.T) {
 
 	t.Run("Spec", func(t *testing.T) {
 		t.Run("should return values as inserted", func(t *testing.T) {
+			labels, err := job.NewLabels(labelsMap)
+			assert.NoError(t, err)
+
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).
 				WithDescription(description).
-				WithLabels(labels).WithHooks([]*job.Hook{hook}).WithAlerts([]*job.AlertSpec{alert}).
+				WithLabels(labels).
+				WithHooks([]*job.Hook{hook}).WithAlerts([]*job.AlertSpec{alert}).
 				WithSpecUpstream(specUpstream).
 				WithAsset(asset).
 				WithMetadata(jobMetadata).
@@ -226,6 +231,11 @@ func TestEntitySpec(t *testing.T) {
 	})
 
 	t.Run("OwnerFrom", func(t *testing.T) {
+		t.Run("should return owner and nil error if no error found", func(t *testing.T) {
+			owner, err := job.OwnerFrom("sample-owner")
+			assert.NoError(t, err)
+			assert.Equal(t, "sample-owner", owner.String())
+		})
 		t.Run("should return error if owner is empty", func(t *testing.T) {
 			owner, err := job.OwnerFrom("")
 			assert.ErrorContains(t, err, "owner is empty")
