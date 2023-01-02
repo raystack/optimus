@@ -245,22 +245,6 @@ func (s JobRunService) createOperatorRun(ctx context.Context, event scheduler.Ev
 	if err != nil {
 		return err
 	}
-
-	operatorRun, err := s.operatorRunRepo.GetOperatorRun(ctx, event.OperatorName, operatorType, jobRun.ID)
-	if err != nil {
-		if !errors.IsErrorType(err, errors.ErrNotFound) {
-			return err
-		}
-	} else {
-		if operatorRun.Status == scheduler.StateRunning {
-			// operator run exists but is not yet finished
-			// this is a scenario where the old run has not concluded and a new create request rises
-			// this is done to takle the sensor poke scenario, until the airflow task operator either fails/succeeds/retries
-			// optimus will not create newer entries on every poke cycle from the Scheduler
-			return nil
-		}
-	}
-
 	return s.operatorRunRepo.CreateOperatorRun(ctx, event.OperatorName, operatorType, jobRun.ID, event.EventTime)
 }
 
