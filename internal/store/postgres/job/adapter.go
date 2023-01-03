@@ -513,7 +513,7 @@ func FromRow(row pgx.Row) (*Spec, error) {
 		&js.CatchUp, &js.Retry, &js.Alert, &js.StaticUpstreams, &js.HTTPUpstreams,
 		&js.TaskName, &js.TaskConfig, &js.WindowSize, &js.WindowOffset, &js.WindowTruncateTo,
 		&js.Assets, &js.Hooks, &js.Metadata, &js.Destination, &js.Sources,
-		&js.ProjectName, &js.NamespaceName, &js.CreatedAt, &js.UpdatedAt)
+		&js.ProjectName, &js.NamespaceName, &js.CreatedAt, &js.UpdatedAt, &js.DeletedAt)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

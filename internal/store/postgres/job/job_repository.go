@@ -20,7 +20,7 @@ const (
 	window_size, window_offset, window_truncate_to, assets, hooks, metadata, destination, sources,
 	project_name, namespace_name, created_at, updated_at`
 
-	jobColumns = `id, ` + jobColumnsToStore
+	jobColumns = `id, ` + jobColumnsToStore + `, deleted_at`
 )
 
 type JobRepository struct {
