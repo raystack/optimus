@@ -13,9 +13,10 @@ import (
 	"github.com/odpf/optimus/plugin/binary"
 	"github.com/odpf/optimus/plugin/v1beta1/dependencyresolver"
 	"github.com/odpf/optimus/plugin/yaml"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
-func Initialize(pluginLogger hclog.Logger, arg ...string) (*models.RegisteredPlugins, error) {
+func Initialize(pluginLogger hclog.Logger, arg ...string) (*models.PluginRepository, error) {
 	pluginRepository := models.NewPluginRepository()
 	// fetch yaml plugins first, it holds detailed information about the plugin
 	discoveredYamlPlugins := discoverPluginsGivenFilePattern(pluginLogger, yaml.Prefix, yaml.Suffix)
@@ -136,7 +137,7 @@ func Serve(f Factory) {
 
 func servePlugin(optimusPlugin interface{}, logger hclog.Logger) {
 	switch p := optimusPlugin.(type) {
-	case models.DependencyResolverMod:
+	case plugin.DependencyResolverMod:
 		dependencyresolver.Serve(p, logger)
 	default:
 		logger.Error("Unsupported plugin type interface")

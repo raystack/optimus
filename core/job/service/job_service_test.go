@@ -16,6 +16,7 @@ import (
 	optErrors "github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/internal/writer"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 func TestJobService(t *testing.T) {
@@ -1744,7 +1745,7 @@ func TestJobService(t *testing.T) {
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
 
-			pluginInfoResp := &models.PluginInfoResponse{
+			pluginInfoResp := &plugin.Info{
 				Name:        "bq2bq",
 				Description: "plugin desc",
 				Image:       "odpf/bq2bq:latest",
@@ -2592,15 +2593,15 @@ func (_m *PluginService) GenerateUpstreams(ctx context.Context, jobTenant *tenan
 }
 
 // Info provides a mock function with given fields: _a0, _a1
-func (_m *PluginService) Info(_a0 context.Context, _a1 job.TaskName) (*models.PluginInfoResponse, error) {
+func (_m *PluginService) Info(_a0 context.Context, _a1 job.TaskName) (*plugin.Info, error) {
 	ret := _m.Called(_a0, _a1)
 
-	var r0 *models.PluginInfoResponse
-	if rf, ok := ret.Get(0).(func(context.Context, job.TaskName) *models.PluginInfoResponse); ok {
+	var r0 *plugin.Info
+	if rf, ok := ret.Get(0).(func(context.Context, job.TaskName) *plugin.Info); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*models.PluginInfoResponse)
+			r0 = ret.Get(0).(*plugin.Info)
 		}
 	}
 

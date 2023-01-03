@@ -12,7 +12,7 @@ import (
 )
 
 // InitPlugins triggers initialization of all available plugins
-func InitPlugins(logLevel config.LogLevel) (*models.RegisteredPlugins, error) {
+func InitPlugins(logLevel config.LogLevel) (*models.PluginRepository, error) {
 	pluginLogLevel := hclog.Info
 	if logLevel == config.LogLevelDebug {
 		pluginLogLevel = hclog.Debug

@@ -8,8 +8,8 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 
-	"github.com/odpf/optimus/internal/models"
 	pbp "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
+	oplugin "github.com/odpf/optimus/sdk/plugin"
 )
 
 var _ plugin.GRPCPlugin = &Connector{}
@@ -18,7 +18,7 @@ type Connector struct {
 	plugin.NetRPCUnsupportedPlugin
 	plugin.GRPCPlugin
 
-	impl models.DependencyResolverMod
+	impl oplugin.DependencyResolverMod
 
 	logger hclog.Logger
 }
@@ -37,7 +37,7 @@ func (p *Connector) GRPCClient(_ context.Context, _ *plugin.GRPCBroker, c *grpc.
 	}, nil
 }
 
-func NewPlugin(impl models.DependencyResolverMod, logger hclog.Logger) *Connector {
+func NewPlugin(impl oplugin.DependencyResolverMod, logger hclog.Logger) *Connector {
 	return &Connector{
 		impl:   impl,
 		logger: logger,
@@ -50,9 +50,9 @@ func NewPluginClient(logger hclog.Logger) *Connector {
 	}
 }
 
-func Serve(t models.DependencyResolverMod, logger hclog.Logger) {
+func Serve(t oplugin.DependencyResolverMod, logger hclog.Logger) {
 	pluginsMap := map[string]plugin.Plugin{
-		models.ModTypeDependencyResolver.String(): NewPlugin(t, logger),
+		oplugin.ModTypeDependencyResolver.String(): NewPlugin(t, logger),
 	}
 	grpcServer := func(options []grpc.ServerOption) *grpc.Server {
 		traceOpt := []grpc.ServerOption{

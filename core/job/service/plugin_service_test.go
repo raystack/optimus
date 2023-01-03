@@ -13,8 +13,10 @@ import (
 	"github.com/odpf/optimus/core/job/service"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/compiler"
-	mockOpt "github.com/odpf/optimus/internal/mock"
 	"github.com/odpf/optimus/internal/models"
+
+	"github.com/odpf/optimus/sdk/plugin"
+	mockOpt "github.com/odpf/optimus/sdk/plugin/mock"
 )
 
 func TestPluginService(t *testing.T) {
@@ -66,7 +68,7 @@ func TestPluginService(t *testing.T) {
 			yamlMod := new(mockOpt.YamlMod)
 			defer yamlMod.AssertExpectations(t)
 
-			newPlugin := &models.Plugin{DependencyMod: depMod}
+			newPlugin := &plugin.Plugin{DependencyMod: depMod}
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(newPlugin, nil)
 
 			pluginService := service.NewJobPluginService(nil, pluginRepo, nil, nil)
@@ -85,10 +87,10 @@ func TestPluginService(t *testing.T) {
 			yamlMod := new(mockOpt.YamlMod)
 			defer yamlMod.AssertExpectations(t)
 
-			plugin := &models.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
+			taskPlugin := &plugin.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
 
-			pluginRepo.On("GetByName", jobTask.Name().String()).Return(plugin, nil)
-			yamlMod.On("PluginInfo").Return(&models.PluginInfoResponse{
+			pluginRepo.On("GetByName", jobTask.Name().String()).Return(taskPlugin, nil)
+			yamlMod.On("PluginInfo").Return(&plugin.Info{
 				Name:        jobTask.Name().String(),
 				Description: "example",
 				Image:       "http://to.repo",
@@ -124,8 +126,8 @@ func TestPluginService(t *testing.T) {
 			yamlMod := new(mockOpt.YamlMod)
 			defer yamlMod.AssertExpectations(t)
 
-			plugin := &models.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
-			pluginRepo.On("GetByName", jobTask.Name().String()).Return(plugin, nil)
+			taskPlugin := &plugin.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
+			pluginRepo.On("GetByName", jobTask.Name().String()).Return(taskPlugin, nil)
 
 			secret1, err := tenant.NewPlainTextSecret("table_name", "secret_table")
 			assert.Nil(t, err)
@@ -137,9 +139,9 @@ func TestPluginService(t *testing.T) {
 
 			destination := "project.dataset.table"
 			destinationURN := job.ResourceURN("bigquery://project.dataset.table")
-			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&models.GenerateDestinationResponse{
+			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&plugin.GenerateDestinationResponse{
 				Destination: destination,
-				Type:        models.DestinationTypeBigquery,
+				Type:        "bigquery",
 			}, nil)
 
 			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
@@ -184,7 +186,7 @@ func TestPluginService(t *testing.T) {
 			yamlMod := new(mockOpt.YamlMod)
 			defer yamlMod.AssertExpectations(t)
 
-			pluginWithoutDependencyMod := &models.Plugin{YamlMod: yamlMod}
+			pluginWithoutDependencyMod := &plugin.Plugin{YamlMod: yamlMod}
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(pluginWithoutDependencyMod, nil)
 
 			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
@@ -209,8 +211,8 @@ func TestPluginService(t *testing.T) {
 			yamlMod := new(mockOpt.YamlMod)
 			defer yamlMod.AssertExpectations(t)
 
-			plugin := &models.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
-			pluginRepo.On("GetByName", jobTask.Name().String()).Return(plugin, nil)
+			taskPlugin := &plugin.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
+			pluginRepo.On("GetByName", jobTask.Name().String()).Return(taskPlugin, nil)
 
 			secret1, err := tenant.NewPlainTextSecret("table_name", "secret_table")
 			assert.Nil(t, err)
@@ -220,7 +222,7 @@ func TestPluginService(t *testing.T) {
 
 			secretsGetter.On("GetAll", ctx, project.Name(), namespace.Name().String()).Return([]*tenant.PlainTextSecret{secret1, secret2}, nil)
 
-			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&models.GenerateDestinationResponse{}, errors.New("generate destination error"))
+			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&plugin.GenerateDestinationResponse{}, errors.New("generate destination error"))
 
 			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
 			result, err := pluginService.GenerateDestination(ctx, tenantDetails, jobTask)
@@ -245,8 +247,8 @@ func TestPluginService(t *testing.T) {
 			yamlMod := new(mockOpt.YamlMod)
 			defer yamlMod.AssertExpectations(t)
 
-			plugin := &models.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
-			pluginRepo.On("GetByName", jobTask.Name().String()).Return(plugin, nil)
+			taskPlugin := &plugin.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
+			pluginRepo.On("GetByName", jobTask.Name().String()).Return(taskPlugin, nil)
 
 			secretsGetter.On("GetAll", ctx, project.Name(), namespace.Name().String()).Return([]*tenant.PlainTextSecret{}, errors.New("getting secret error"))
 
@@ -276,19 +278,19 @@ func TestPluginService(t *testing.T) {
 			yamlMod := new(mockOpt.YamlMod)
 			defer yamlMod.AssertExpectations(t)
 
-			plugin := &models.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
-			pluginRepo.On("GetByName", jobTask.Name().String()).Return(plugin, nil)
+			taskPlugin := &plugin.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
+			pluginRepo.On("GetByName", jobTask.Name().String()).Return(taskPlugin, nil)
 
 			secretsGetter.On("GetAll", ctx, project.Name(), namespace.Name().String()).Return(nil, nil)
 
 			destination := "project.dataset.table"
-			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&models.GenerateDestinationResponse{
+			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&plugin.GenerateDestinationResponse{
 				Destination: destination,
-				Type:        models.DestinationTypeBigquery,
+				Type:        "bigquery",
 			}, nil)
 
 			jobSource := job.ResourceURN("project.dataset.table_upstream")
-			depMod.On("GenerateDependencies", ctx, mock.Anything).Return(&models.GenerateDependenciesResponse{
+			depMod.On("GenerateDependencies", ctx, mock.Anything).Return(&plugin.GenerateDependenciesResponse{
 				Dependencies: []string{jobSource.String()}},
 				nil)
 
@@ -340,7 +342,7 @@ func TestPluginService(t *testing.T) {
 			yamlMod := new(mockOpt.YamlMod)
 			defer yamlMod.AssertExpectations(t)
 
-			pluginWithoutDependencyMod := &models.Plugin{YamlMod: yamlMod}
+			pluginWithoutDependencyMod := &plugin.Plugin{YamlMod: yamlMod}
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(pluginWithoutDependencyMod, nil)
 
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
@@ -368,13 +370,13 @@ func TestPluginService(t *testing.T) {
 			yamlMod := new(mockOpt.YamlMod)
 			defer yamlMod.AssertExpectations(t)
 
-			plugin := &models.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
-			pluginRepo.On("GetByName", jobTask.Name().String()).Return(plugin, nil)
+			taskPlugin := &plugin.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
+			pluginRepo.On("GetByName", jobTask.Name().String()).Return(taskPlugin, nil)
 
 			destination := "project.dataset.table"
-			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&models.GenerateDestinationResponse{
+			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&plugin.GenerateDestinationResponse{
 				Destination: destination,
-				Type:        models.DestinationTypeBigquery,
+				Type:        "bigquery",
 			}, nil)
 
 			secretsGetter.On("GetAll", ctx, project.Name(), namespace.Name().String()).Return([]*tenant.PlainTextSecret{}, errors.New("getting secret error"))
@@ -404,10 +406,10 @@ func TestPluginService(t *testing.T) {
 			yamlMod := new(mockOpt.YamlMod)
 			defer yamlMod.AssertExpectations(t)
 
-			plugin := &models.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
-			pluginRepo.On("GetByName", jobTask.Name().String()).Return(plugin, nil)
+			taskPlugin := &plugin.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
+			pluginRepo.On("GetByName", jobTask.Name().String()).Return(taskPlugin, nil)
 
-			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&models.GenerateDestinationResponse{}, errors.New("generate destination error"))
+			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&plugin.GenerateDestinationResponse{}, errors.New("generate destination error"))
 
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
 
@@ -434,18 +436,18 @@ func TestPluginService(t *testing.T) {
 			yamlMod := new(mockOpt.YamlMod)
 			defer yamlMod.AssertExpectations(t)
 
-			plugin := &models.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
-			pluginRepo.On("GetByName", jobTask.Name().String()).Return(plugin, nil)
+			taskPlugin := &plugin.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
+			pluginRepo.On("GetByName", jobTask.Name().String()).Return(taskPlugin, nil)
 
 			secretsGetter.On("GetAll", ctx, project.Name(), namespace.Name().String()).Return(nil, nil)
 
 			destination := "project.dataset.table"
-			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&models.GenerateDestinationResponse{
+			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&plugin.GenerateDestinationResponse{
 				Destination: destination,
-				Type:        models.DestinationTypeBigquery,
+				Type:        "bigquery",
 			}, nil)
 
-			depMod.On("GenerateDependencies", ctx, mock.Anything).Return(&models.GenerateDependenciesResponse{},
+			depMod.On("GenerateDependencies", ctx, mock.Anything).Return(&plugin.GenerateDependenciesResponse{},
 				errors.New("generate dependencies error"))
 
 			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
@@ -513,10 +515,10 @@ type mockPluginRepo struct {
 	mock.Mock
 }
 
-func (m *mockPluginRepo) GetByName(name string) (*models.Plugin, error) {
+func (m *mockPluginRepo) GetByName(name string) (*plugin.Plugin, error) {
 	args := m.Called(name)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*models.Plugin), args.Error(1)
+	return args.Get(0).(*plugin.Plugin), args.Error(1)
 }

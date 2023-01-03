@@ -20,6 +20,7 @@ import (
 	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/internal/writer"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 func TestNewJobHandler(t *testing.T) {
@@ -1791,7 +1792,7 @@ func TestNewJobHandler(t *testing.T) {
 				JobName:       jobA.Spec().Name().String(),
 			}
 
-			jobTask := job.NewTaskBuilder(jobTask.Name(), jobTask.Config()).WithInfo(&models.PluginInfoResponse{
+			jobTask := job.NewTaskBuilder(jobTask.Name(), jobTask.Config()).WithInfo(&plugin.Info{
 				Name:        "bq2bq",
 				Description: "task info desc",
 				Image:       "odpf/bq2bq:latest",

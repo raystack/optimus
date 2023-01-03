@@ -8,6 +8,7 @@ import (
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/models"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 const DateLayout = "2006-01-02"
@@ -375,7 +376,7 @@ func (t TaskName) String() string {
 }
 
 type Task struct {
-	info   *models.PluginInfoResponse
+	info   *plugin.Info
 	name   TaskName
 	config *Config
 }
@@ -388,7 +389,7 @@ func (t Task) Config() *Config {
 	return t.config
 }
 
-func (t Task) Info() *models.PluginInfoResponse {
+func (t Task) Info() *plugin.Info {
 	return t.info
 }
 
@@ -402,7 +403,7 @@ func NewTaskBuilder(name TaskName, config *Config) *TaskBuilder {
 	}
 }
 
-func (t TaskBuilder) WithInfo(info *models.PluginInfoResponse) *TaskBuilder {
+func (t TaskBuilder) WithInfo(info *plugin.Info) *TaskBuilder {
 	task := *t.task
 	task.info = info
 	return &TaskBuilder{

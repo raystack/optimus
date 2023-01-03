@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/odpf/optimus/internal/models"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 const (
@@ -19,20 +20,19 @@ const (
 )
 
 type PluginSpec struct {
-	models.PluginInfoResponse    `yaml:",inline,omitempty"`
-	models.GetQuestionsResponse  `yaml:",inline,omitempty"`
-	models.DefaultAssetsResponse `yaml:",inline,omitempty"`
-	models.DefaultConfigResponse `yaml:",inline,omitempty"`
+	plugin.Info                  `yaml:",inline,omitempty"`
+	plugin.GetQuestionsResponse  `yaml:",inline,omitempty"`
+	plugin.DefaultAssetsResponse `yaml:",inline,omitempty"`
+	plugin.DefaultConfigResponse `yaml:",inline,omitempty"`
 }
 
-func (p *PluginSpec) PluginInfo() *models.PluginInfoResponse {
-	return &models.PluginInfoResponse{
+func (p *PluginSpec) PluginInfo() *plugin.Info {
+	return &plugin.Info{
 		Name:          p.Name,
 		Description:   p.Description,
 		Image:         p.Image,
-		SecretPath:    p.SecretPath,
 		PluginType:    p.PluginType,
-		PluginMods:    []models.PluginMod{models.ModTypeCLI},
+		PluginMods:    []plugin.Mod{plugin.ModTypeCLI},
 		PluginVersion: p.PluginVersion,
 		HookType:      p.HookType,
 		DependsOn:     p.DependsOn,
@@ -40,32 +40,32 @@ func (p *PluginSpec) PluginInfo() *models.PluginInfoResponse {
 	}
 }
 
-func (p *PluginSpec) GetQuestions(context.Context, models.GetQuestionsRequest) (*models.GetQuestionsResponse, error) {
-	return &models.GetQuestionsResponse{
+func (p *PluginSpec) GetQuestions(context.Context, plugin.GetQuestionsRequest) (*plugin.GetQuestionsResponse, error) {
+	return &plugin.GetQuestionsResponse{
 		Questions: p.Questions,
 	}, nil
 }
 
-func (*PluginSpec) ValidateQuestion(_ context.Context, req models.ValidateQuestionRequest) (*models.ValidateQuestionResponse, error) {
+func (*PluginSpec) ValidateQuestion(_ context.Context, req plugin.ValidateQuestionRequest) (*plugin.ValidateQuestionResponse, error) {
 	question := req.Answer.Question
 	value := req.Answer.Value
 	if err := question.IsValid(value); err != nil {
-		return &models.ValidateQuestionResponse{
+		return &plugin.ValidateQuestionResponse{
 			Success: false,
 			Error:   err.Error(),
 		}, nil
 	}
-	return &models.ValidateQuestionResponse{
+	return &plugin.ValidateQuestionResponse{
 		Success: true,
 	}, nil
 }
 
-func (p *PluginSpec) DefaultConfig(_ context.Context, req models.DefaultConfigRequest) (*models.DefaultConfigResponse, error) {
-	var conf []models.PluginConfig
+func (p *PluginSpec) DefaultConfig(_ context.Context, req plugin.DefaultConfigRequest) (*plugin.DefaultConfigResponse, error) {
+	var conf []plugin.Config
 
 	// config from survey answers
 	for _, ans := range req.Answers {
-		conf = append(conf, models.PluginConfig{
+		conf = append(conf, plugin.Config{
 			Name:  ans.Question.Name,
 			Value: ans.Value,
 		})
@@ -74,13 +74,13 @@ func (p *PluginSpec) DefaultConfig(_ context.Context, req models.DefaultConfigRe
 	// adding defaultconfig (static, macros & referential config) from yaml
 	conf = append(conf, p.Config...)
 
-	return &models.DefaultConfigResponse{
+	return &plugin.DefaultConfigResponse{
 		Config: conf,
 	}, nil
 }
 
-func (p *PluginSpec) DefaultAssets(context.Context, models.DefaultAssetsRequest) (*models.DefaultAssetsResponse, error) {
-	return &models.DefaultAssetsResponse{
+func (p *PluginSpec) DefaultAssets(context.Context, plugin.DefaultAssetsRequest) (*plugin.DefaultAssetsResponse, error) {
+	return &plugin.DefaultAssetsResponse{
 		Assets: p.Assets,
 	}, nil
 }
@@ -108,7 +108,7 @@ func NewPluginSpec(pluginPath string) (*PluginSpec, error) {
 
 // if error in loading, initializing or adding to pluginsrepo , skipping that particular plugin
 // NOTE: binary plugins are loaded after yaml plugins loaded
-func Init(pluginsRepo models.PluginRepository, discoveredYamlPlugins []string, pluginLogger hclog.Logger) error {
+func Init(pluginsRepo *models.PluginRepository, discoveredYamlPlugins []string, pluginLogger hclog.Logger) error {
 	for _, yamlPluginPath := range discoveredYamlPlugins {
 		yamlPluginSpec, err := NewPluginSpec(yamlPluginPath)
 		if err != nil {
