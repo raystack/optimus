@@ -20,6 +20,10 @@ const (
 
 type Type string
 
+func (t Type) String() string {
+	return string(t)
+}
+
 type HookType string
 
 func (ht HookType) String() string {

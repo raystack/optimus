@@ -12,24 +12,24 @@ import (
 func TestPlugins(t *testing.T) {
 	t.Run("Plugin", func(t *testing.T) {
 		t.Run("IsYamlPlugin", func(t *testing.T) {
-			binaryTask := mock.NewMockBinaryPlugin("abc", plugin.TypeTask)
+			binaryTask := mock.NewMockBinaryPlugin("abc", plugin.TypeTask.String())
 			assert.True(t, binaryTask.IsYamlPlugin())
 
-			yamlTask := mock.NewMockYamlPlugin("abc", plugin.TypeTask)
+			yamlTask := mock.NewMockYamlPlugin("abc", plugin.TypeTask.String())
 			assert.True(t, yamlTask.IsYamlPlugin())
 		})
 		t.Run("GetSurveyMethod", func(t *testing.T) {
-			binaryTask := mock.NewMockBinaryPlugin("abc", plugin.TypeTask)
+			binaryTask := mock.NewMockBinaryPlugin("abc", plugin.TypeTask.String())
 			assert.Equal(t, binaryTask.YamlMod, binaryTask.GetSurveyMod())
 
-			yamlTask := mock.NewMockYamlPlugin("abc", plugin.TypeTask)
+			yamlTask := mock.NewMockYamlPlugin("abc", plugin.TypeTask.String())
 			assert.Equal(t, yamlTask.YamlMod, yamlTask.GetSurveyMod())
 		})
 		t.Run("Info", func(t *testing.T) {
-			binaryPlugin := mock.NewMockBinaryPlugin("abc", plugin.TypeTask)
+			binaryPlugin := mock.NewMockBinaryPlugin("abc", plugin.TypeTask.String())
 			assert.Equal(t, "abc", binaryPlugin.Info().Name)
 
-			yamlPlugin := mock.NewMockYamlPlugin("abcd", plugin.TypeTask)
+			yamlPlugin := mock.NewMockYamlPlugin("abcd", plugin.TypeTask.String())
 			assert.Equal(t, "abcd", yamlPlugin.Info().Name)
 		})
 	})

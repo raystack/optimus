@@ -35,6 +35,7 @@ linters:
     - sqlclosecheck
     - structcheck
     - wastedassign
+    - gomoddirectives
 
     # Following linters should be enabled after fixing the code
     - testpackage
