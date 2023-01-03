@@ -14,7 +14,6 @@ import (
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/compiler"
 	"github.com/odpf/optimus/internal/models"
-
 	"github.com/odpf/optimus/sdk/plugin"
 	mockOpt "github.com/odpf/optimus/sdk/plugin/mock"
 )

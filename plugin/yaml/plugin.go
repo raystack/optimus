@@ -100,7 +100,7 @@ func NewPluginSpec(pluginPath string) (*PluginSpec, error) {
 		return nil, err
 	}
 	var plugin PluginSpec
-	if err := yaml.UnmarshalStrict(pluginBytes, &plugin); err != nil {
+	if err := yaml.Unmarshal(pluginBytes, &plugin); err != nil { // TODO: check if strict marshal is required
 		return &plugin, err
 	}
 	return &plugin, nil

@@ -58,5 +58,8 @@ func (repo *DependencyResolverMod) GenerateDependencies(ctx context.Context, inp
 
 func (repo *DependencyResolverMod) CompileAssets(ctx context.Context, inp plugin.CompileAssetsRequest) (*plugin.CompileAssetsResponse, error) {
 	args := repo.Called(ctx, inp)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).(*plugin.CompileAssetsResponse), args.Error(1)
 }
