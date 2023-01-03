@@ -28,6 +28,10 @@ func (ht HookType) String() string {
 
 type Mod string
 
+func (m Mod) String() string {
+	return string(m)
+}
+
 type Info struct {
 	// Name should as simple as possible with no special characters
 	// should start with a character, better if all lowercase
