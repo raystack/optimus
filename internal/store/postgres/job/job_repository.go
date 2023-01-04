@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -15,10 +16,8 @@ import (
 )
 
 const (
-	jobColumnsToStore = `name, version, owner, description, labels, start_date, end_date, interval, 
-	depends_on_past, catch_up, retry, alert, static_upstreams, http_upstreams, task_name, task_config, 
-	window_size, window_offset, window_truncate_to, assets, hooks, metadata, destination, sources,
-	project_name, namespace_name, created_at, updated_at`
+	jobColumnsToStore = `name, version, owner, description, labels, schedule, alert, static_upstreams, http_upstreams, 
+	task_name, task_config, window_spec, assets, hooks, metadata, destination, sources, project_name, namespace_name, created_at, updated_at`
 
 	jobColumns = `id, ` + jobColumnsToStore + `, deleted_at`
 )
@@ -70,16 +69,13 @@ func (j JobRepository) triggerInsert(ctx context.Context, jobEntity *job.Job) er
 
 	insertJobQuery := `INSERT INTO job (` + jobColumnsToStore + `)
 	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
-	$17, $18, $19, $20, $21, $22, $23, $24, $25, $26, NOW(), NOW());`
+	$17, $18, $19, NOW(), NOW());`
 
 	tag, err := j.db.Exec(ctx, insertJobQuery,
-		storageJob.Name, storageJob.Version, storageJob.Owner, storageJob.Description,
-		storageJob.Labels, storageJob.StartDate, storageJob.EndDate, storageJob.Interval,
-		storageJob.DependsOnPast, storageJob.CatchUp, storageJob.Retry, storageJob.Alert,
-		storageJob.StaticUpstreams, storageJob.HTTPUpstreams, storageJob.TaskName, storageJob.TaskConfig,
-		storageJob.WindowSize, storageJob.WindowOffset, storageJob.WindowTruncateTo,
-		storageJob.Assets, storageJob.Hooks, storageJob.Metadata,
-		storageJob.Destination, storageJob.Sources,
+		storageJob.Name, storageJob.Version, storageJob.Owner, storageJob.Description, storageJob.Labels,
+		storageJob.Schedule, storageJob.Alert, storageJob.StaticUpstreams, storageJob.HTTPUpstreams,
+		storageJob.TaskName, storageJob.TaskConfig, storageJob.WindowSpec, storageJob.Assets,
+		storageJob.Hooks, storageJob.Metadata, storageJob.Destination, storageJob.Sources,
 		storageJob.ProjectName, storageJob.NamespaceName)
 
 	if err != nil {
@@ -140,25 +136,19 @@ func (j JobRepository) triggerUpdate(ctx context.Context, jobEntity *job.Job) er
 
 	updateJobQuery := `
 UPDATE job SET
-	version = $1, owner = $2, description = $3,
-	labels = $4, start_date = $5, end_date = $6, interval = $7,
-	depends_on_past = $8, catch_up = $9, retry = $10, alert = $11,
-	static_upstreams = $12, http_upstreams = $13, task_name = $14, task_config = $15,
-	window_size = $16, window_offset = $17, window_truncate_to = $18,
-	assets = $19, hooks = $20, metadata = $21,
-	destination = $22, sources = $23,
+	version = $1, owner = $2, description = $3, labels = $4, schedule = $5, alert = $6,
+	static_upstreams = $7, http_upstreams = $8, task_name = $9, task_config = $10,
+	window_spec = $11, assets = $12, hooks = $13, metadata = $14, destination = $15, sources = $16,
 	updated_at = NOW(), deleted_at = null
 WHERE
-	name = $24 AND
-	project_name = $25;`
+	name = $17 AND
+	project_name = $18;`
 
 	tag, err := j.db.Exec(ctx, updateJobQuery,
 		storageJob.Version, storageJob.Owner, storageJob.Description,
-		storageJob.Labels, storageJob.StartDate, storageJob.EndDate, storageJob.Interval,
-		storageJob.DependsOnPast, storageJob.CatchUp, storageJob.Retry, storageJob.Alert,
+		storageJob.Labels, storageJob.Schedule, storageJob.Alert,
 		storageJob.StaticUpstreams, storageJob.HTTPUpstreams, storageJob.TaskName, storageJob.TaskConfig,
-		storageJob.WindowSize, storageJob.WindowOffset, storageJob.WindowTruncateTo,
-		storageJob.Assets, storageJob.Hooks, storageJob.Metadata,
+		storageJob.WindowSpec, storageJob.Assets, storageJob.Hooks, storageJob.Metadata,
 		storageJob.Destination, storageJob.Sources,
 		storageJob.Name, storageJob.ProjectName)
 
@@ -300,36 +290,66 @@ func (JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstr
 
 	var upstreams []*job.Upstream
 	for _, storeUpstream := range storeUpstreams {
-		resourceURN := job.ResourceURN(storeUpstream.UpstreamResourceURN)
-		upstreamName, _ := job.NameFrom(storeUpstream.UpstreamJobName)
-		projectName, _ := tenant.ProjectNameFrom(storeUpstream.UpstreamProjectName)
+		var resourceURN job.ResourceURN
+		if storeUpstream.UpstreamResourceURN.Valid {
+			resourceURN = job.ResourceURN(storeUpstream.UpstreamResourceURN.String)
+		}
 
-		if storeUpstream.UpstreamState == job.UpstreamStateUnresolved.String() && storeUpstream.UpstreamJobName != "" {
-			upstreams = append(upstreams, job.NewUpstreamUnresolvedStatic(upstreamName, projectName))
+		var upstreamName job.Name
+		if storeUpstream.UpstreamJobName.Valid {
+			upstreamName, _ = job.NameFrom(storeUpstream.UpstreamJobName.String)
+		}
+
+		var upstreamProjectName tenant.ProjectName
+		if storeUpstream.UpstreamProjectName.Valid {
+			upstreamProjectName, _ = tenant.ProjectNameFrom(storeUpstream.UpstreamProjectName.String)
+		}
+
+		if storeUpstream.UpstreamState == job.UpstreamStateUnresolved.String() && storeUpstream.UpstreamJobName.Valid {
+			upstreams = append(upstreams, job.NewUpstreamUnresolvedStatic(upstreamName, upstreamProjectName))
 			continue
 		}
 
-		if storeUpstream.UpstreamState == job.UpstreamStateUnresolved.String() && storeUpstream.UpstreamResourceURN != "" {
+		if storeUpstream.UpstreamState == job.UpstreamStateUnresolved.String() && storeUpstream.UpstreamResourceURN.Valid {
 			upstreams = append(upstreams, job.NewUpstreamUnresolvedInferred(resourceURN))
 			continue
 		}
 
-		upstreamTenant, err := tenant.NewTenant(storeUpstream.UpstreamProjectName, storeUpstream.UpstreamNamespaceName)
-		if err != nil {
-			me.Append(err)
-			continue
+		var upstreamTenant tenant.Tenant
+		var err error
+		if storeUpstream.UpstreamProjectName.Valid && storeUpstream.UpstreamNamespaceName.Valid {
+			upstreamTenant, err = tenant.NewTenant(storeUpstream.UpstreamProjectName.String, storeUpstream.UpstreamNamespaceName.String)
+			if err != nil {
+				me.Append(err)
+				continue
+			}
 		}
-		taskName, err := job.TaskNameFrom(storeUpstream.UpstreamTaskName)
-		if err != nil {
-			me.Append(err)
-			continue
+
+		var taskName job.TaskName
+		if storeUpstream.UpstreamTaskName.Valid {
+			taskName, err = job.TaskNameFrom(storeUpstream.UpstreamTaskName.String)
+			if err != nil {
+				me.Append(err)
+				continue
+			}
 		}
 
 		upstreamType, err := job.UpstreamTypeFrom(storeUpstream.UpstreamType)
 		if err != nil {
 			continue
 		}
-		upstream := job.NewUpstreamResolved(upstreamName, storeUpstream.UpstreamHost, resourceURN, upstreamTenant, upstreamType, taskName, storeUpstream.UpstreamExternal)
+
+		var upstreamHost string
+		if storeUpstream.UpstreamHost.Valid {
+			upstreamHost = storeUpstream.UpstreamHost.String
+		}
+
+		var upstreamExternal bool
+		if storeUpstream.UpstreamExternal.Valid {
+			upstreamExternal = storeUpstream.UpstreamExternal.Bool
+		}
+
+		upstream := job.NewUpstreamResolved(upstreamName, upstreamHost, resourceURN, upstreamTenant, upstreamType, taskName, upstreamExternal)
 		upstreams = append(upstreams, upstream)
 	}
 	if err := me.ToErr(); err != nil {
@@ -437,17 +457,17 @@ func specToJob(spec *Spec) (*job.Job, error) {
 }
 
 type JobWithUpstream struct {
-	JobName               string `json:"job_name"`
-	ProjectName           string `json:"project_name"`
-	UpstreamJobName       string `json:"upstream_job_name"`
-	UpstreamResourceURN   string `json:"upstream_resource_urn"`
-	UpstreamProjectName   string `json:"upstream_project_name"`
-	UpstreamNamespaceName string `json:"upstream_namespace_name"`
-	UpstreamTaskName      string `json:"upstream_task_name"`
-	UpstreamHost          string `json:"upstream_host"`
-	UpstreamType          string `json:"upstream_type"`
-	UpstreamState         string `json:"upstream_state"`
-	UpstreamExternal      bool   `json:"upstream_external"`
+	JobName               string         `json:"job_name"`
+	ProjectName           string         `json:"project_name"`
+	UpstreamJobName       sql.NullString `json:"upstream_job_name"`
+	UpstreamResourceURN   sql.NullString `json:"upstream_resource_urn"`
+	UpstreamProjectName   sql.NullString `json:"upstream_project_name"`
+	UpstreamNamespaceName sql.NullString `json:"upstream_namespace_name"`
+	UpstreamTaskName      sql.NullString `json:"upstream_task_name"`
+	UpstreamHost          sql.NullString `json:"upstream_host"`
+	UpstreamType          string         `json:"upstream_type"`
+	UpstreamState         string         `json:"upstream_state"`
+	UpstreamExternal      sql.NullBool   `json:"upstream_external"`
 }
 
 func (j JobWithUpstream) getJobFullName() string {
@@ -573,18 +593,35 @@ func toJobUpstream(jobWithUpstream *job.WithUpstream) []*JobWithUpstream {
 		jobUpstreams = append(jobUpstreams, &JobWithUpstream{
 			JobName:               jobWithUpstream.Name().String(),
 			ProjectName:           jobWithUpstream.Job().ProjectName().String(),
-			UpstreamJobName:       upstream.Name().String(),
-			UpstreamResourceURN:   upstream.Resource().String(),
-			UpstreamProjectName:   upstreamProjectName,
-			UpstreamNamespaceName: upstreamNamespaceName,
-			UpstreamTaskName:      upstream.TaskName().String(),
-			UpstreamHost:          upstream.Host(),
+			UpstreamJobName:       toNullString(upstream.Name().String()),
+			UpstreamResourceURN:   toNullString(upstream.Resource().String()),
+			UpstreamProjectName:   toNullString(upstreamProjectName),
+			UpstreamNamespaceName: toNullString(upstreamNamespaceName),
+			UpstreamTaskName:      toNullString(upstream.TaskName().String()),
+			UpstreamHost:          toNullString(upstream.Host()),
 			UpstreamType:          upstream.Type().String(),
 			UpstreamState:         upstream.State().String(),
-			UpstreamExternal:      upstream.External(),
+			UpstreamExternal:      toNullBool(upstream.External()),
 		})
 	}
 	return jobUpstreams
+}
+
+func toNullString(val string) sql.NullString {
+	if val == "" {
+		return sql.NullString{}
+	}
+	return sql.NullString{
+		String: val,
+		Valid:  true,
+	}
+}
+
+func toNullBool(val bool) sql.NullBool {
+	return sql.NullBool{
+		Bool:  val,
+		Valid: true,
+	}
 }
 
 type ProjectAndJobNames struct {
