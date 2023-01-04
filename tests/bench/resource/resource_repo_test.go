@@ -146,6 +146,34 @@ func BenchmarkResourceRepository(b *testing.B) {
 		}
 	})
 
+	b.Run("GetResources", func(b *testing.B) {
+		db := dbSetup()
+		repository := repoResource.NewRepository(db)
+		maxNumberOfResources := 50
+		fullNames := make([]string, maxNumberOfResources)
+		for i := 0; i < maxNumberOfResources; i++ {
+			fullName := fmt.Sprintf("project.dataset_%d", i)
+			resourceToCreate, err := serviceResource.NewResource(fullName, bigquery.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
+			assert.NoError(b, err)
+			urn := fmt.Sprintf("%s:%s.%s", projectName, namespaceName, fullName)
+			err = resourceToCreate.UpdateURN(urn)
+			assert.NoError(b, err)
+
+			err = repository.Create(ctx, resourceToCreate)
+			assert.NoError(b, err)
+
+			fullNames[i] = fullName
+		}
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			actualResources, actualError := repository.GetResources(ctx, tnnt, serviceResource.Bigquery, fullNames)
+			assert.Len(b, actualResources, maxNumberOfResources)
+			assert.NoError(b, actualError)
+		}
+	})
+
 	b.Run("UpdateStatus", func(b *testing.B) {
 		db := dbSetup()
 		repository := repoResource.NewRepository(db)
