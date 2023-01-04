@@ -29,6 +29,7 @@ type jobRun struct {
 	EndTime     time.Time `gorm:"default:TIMESTAMP '3000-01-01 00:00:00'"`
 
 	Status        string
+	SLAAlert      bool
 	SLADefinition int64
 
 	CreatedAt time.Time `gorm:"not null" json:"created_at"`
@@ -40,18 +41,25 @@ func (j jobRun) toJobRun() (*scheduler.JobRun, error) {
 	if err != nil {
 		return nil, err
 	}
+	state, err := scheduler.StateFromString(j.Status)
+	if err != nil {
+		return nil, err
+	}
 	return &scheduler.JobRun{
 		ID:        j.ID,
 		JobName:   scheduler.JobName(j.JobName),
 		Tenant:    t,
+		State:     state,
 		StartTime: j.StartTime,
+		SLAAlert:  j.SLAAlert,
+		EndTime:   j.EndTime,
 	}, nil
 }
 
 func (j *JobRunRepository) GetByID(ctx context.Context, id scheduler.JobRunID) (*scheduler.JobRun, error) {
 	var jobRun jobRun
-	getJobRunByID := `SELECT  job_name, namespace_name, project_name, scheduled_at, start_time, end_time, status, sla_definition FROM job_run j where id = ?`
-	err := j.db.WithContext(ctx).Raw(getJobRunByID, id).First(&jobRun).Error
+	getJobRunByID := `SELECT id, job_name, namespace_name, project_name, scheduled_at, start_time, end_time, status, sla_definition , sla_alert FROM job_run j where id = ?`
+	err := j.db.WithContext(ctx).Raw(getJobRunByID, id.UUID()).First(&jobRun).Error
 	if err != nil {
 		return &scheduler.JobRun{}, err
 	}
@@ -80,7 +88,7 @@ func (j *JobRunRepository) UpdateSLA(ctx context.Context, slaObjects []*schedule
 	jobIDListString := ""
 	totalIds := len(slaObjects)
 	for i, slaObject := range slaObjects {
-		jobIDListString += fmt.Sprintf("('%s','%s')", slaObject.JobName, slaObject.JobScheduledAt.Format("2006-01-02 15:04:05"))
+		jobIDListString += fmt.Sprintf("('%s','%s')", slaObject.JobName, slaObject.JobScheduledAt.UTC().Format("2006-01-02 15:04:05.000000"))
 		if !(i == totalIds-1) {
 			jobIDListString += ", "
 		}

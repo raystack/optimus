@@ -266,10 +266,10 @@ func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectNa
 	getJobByNameAtProject := `SELECT * FROM job WHERE project_name = ?`
 	err := j.db.WithContext(ctx).Raw(getJobByNameAtProject, projectName.String()).Find(&specs).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.NotFound(scheduler.EntityJobRun, "unable to find jobs in project:"+projectName.String())
-		}
 		return nil, err
+	}
+	if len(specs) == 0 {
+		return nil, errors.NotFound(scheduler.EntityJobRun, "unable to find jobs in project:"+projectName.String())
 	}
 	jobsMap := map[string]*scheduler.JobWithDetails{}
 	var jobNameList []string
