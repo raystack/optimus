@@ -107,19 +107,17 @@ func dbSetup() *pgxpool.Pool {
 
 func addJobs(ctx context.Context, t *testing.T, pool *pgxpool.Pool) map[string]*job.Job {
 	t.Helper()
-	jobVersion, err := job.VersionFrom(1)
-	assert.NoError(t, err)
-	jobOwner, err := job.OwnerFrom("dev_test")
-	assert.NoError(t, err)
+	jobVersion := 1
+	jobOwner := "dev_test"
 	jobDescription := "sample job"
 	jobRetry := job.NewRetry(5, 0, false)
 	startDate, err := job.ScheduleDateFrom("2022-10-01")
 	assert.NoError(t, err)
 	jobSchedule, err := job.NewScheduleBuilder(startDate).WithRetry(jobRetry).Build()
 	assert.NoError(t, err)
-	jobWindow, err := models.NewWindow(jobVersion.Int(), "d", "24h", "24h")
+	jobWindow, err := models.NewWindow(jobVersion, "d", "24h", "24h")
 	assert.NoError(t, err)
-	jobTaskConfig, err := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+	jobTaskConfig, err := job.ConfigFrom(map[string]string{"sample_task_key": "sample_value"})
 	assert.NoError(t, err)
 	taskName, err := job.TaskNameFrom("bq2bq")
 	assert.NoError(t, err)
@@ -149,17 +147,19 @@ func addJobs(ctx context.Context, t *testing.T, pool *pgxpool.Pool) map[string]*
 	namespaceRepo := tenantPostgres.NewNamespaceRepository(pool)
 	assert.NoError(t, namespaceRepo.Save(ctx, namespace))
 
-	jobHookConfig, err := job.NewConfig(map[string]string{"sample_hook_key": "sample_value"})
+	jobHookConfig, err := job.ConfigFrom(map[string]string{"sample_hook_key": "sample_value"})
 	assert.NoError(t, err)
-	jobHooks := []*job.Hook{job.NewHook("sample_hook", jobHookConfig)}
-	jobAlertConfig, err := job.NewConfig(map[string]string{"sample_alert_key": "sample_value"})
+	hookSpec, err := job.NewHook("sample_hook", jobHookConfig)
 	assert.NoError(t, err)
-	alert, _ := job.NewAlertBuilder(job.SLAMissEvent, []string{"sample-channel"}).WithConfig(jobAlertConfig).Build()
+	jobHooks := []*job.Hook{hookSpec}
+	jobAlertConfig, err := job.ConfigFrom(map[string]string{"sample_alert_key": "sample_value"})
+	assert.NoError(t, err)
+	alert, _ := job.NewAlertBuilder("sla_miss", []string{"sample-channel"}).WithConfig(jobAlertConfig).Build()
 	jobAlerts := []*job.AlertSpec{alert}
 	upstreamName1 := job.SpecUpstreamNameFrom("job-upstream-1")
 	upstreamName2 := job.SpecUpstreamNameFrom("job-upstream-2")
 	jobUpstream, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName1, upstreamName2}).Build()
-	jobAsset, err := job.NewAsset(map[string]string{"sample-asset": "value-asset"})
+	jobAsset, err := job.AssetFrom(map[string]string{"sample-asset": "value-asset"})
 	assert.NoError(t, err)
 	resourceRequestConfig := job.NewMetadataResourceConfig("250m", "128Mi")
 	resourceLimitConfig := job.NewMetadataResourceConfig("250m", "128Mi")
@@ -168,7 +168,7 @@ func addJobs(ctx context.Context, t *testing.T, pool *pgxpool.Pool) map[string]*
 		WithResource(resourceMetadata).
 		WithScheduler(map[string]string{"scheduler_config_key": "value"}).
 		Build()
-	jobSpecA := job.NewSpecBuilder(jobVersion, jobAName, jobOwner, jobSchedule, jobWindow, jobTask).
+	jobSpecA, err := job.NewSpecBuilder(jobVersion, jobAName, jobOwner, jobSchedule, jobWindow, jobTask).
 		WithDescription(jobDescription).
 		WithLabels(jobLabels).
 		WithHooks(jobHooks).
@@ -177,11 +177,12 @@ func addJobs(ctx context.Context, t *testing.T, pool *pgxpool.Pool) map[string]*
 		WithAsset(jobAsset).
 		WithMetadata(jobMetadata).
 		Build()
+	assert.NoError(t, err)
 	sampleTenant, err := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
 	assert.NoError(t, err)
 	jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"resource-3"})
 
-	jobSpecB := job.NewSpecBuilder(jobVersion, jobBName, jobOwner, jobSchedule, jobWindow, jobTask).
+	jobSpecB, err := job.NewSpecBuilder(jobVersion, jobBName, jobOwner, jobSchedule, jobWindow, jobTask).
 		WithDescription(jobDescription).
 		WithLabels(jobLabels).
 		WithHooks(jobHooks).
@@ -189,6 +190,7 @@ func addJobs(ctx context.Context, t *testing.T, pool *pgxpool.Pool) map[string]*
 		WithAsset(jobAsset).
 		WithMetadata(jobMetadata).
 		Build()
+	assert.NoError(t, err)
 	jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", nil)
 
 	jobs := []*job.Job{jobA, jobB}
@@ -214,7 +216,7 @@ func compareEqualJob(j *job.Job, s *scheduler.Job) bool {
 func compareEqualJobWithDetails(j *job.Job, s *scheduler.JobWithDetails) bool {
 	return compareEqualJob(j, s.Job) &&
 		j.GetName() == s.Name.String() &&
-		j.Spec().Version().Int() == s.JobMetadata.Version &&
-		j.Spec().Owner().String() == s.JobMetadata.Owner &&
+		j.Spec().Version() == s.JobMetadata.Version &&
+		j.Spec().Owner() == s.JobMetadata.Owner &&
 		j.Spec().Schedule().Interval() == s.Schedule.Interval
 }
