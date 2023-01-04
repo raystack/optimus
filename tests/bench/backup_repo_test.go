@@ -3,136 +3,47 @@
 
 package bench
 
-// TODO: change the benchmark to test the new version of repo
+import (
+	"context"
+	"testing"
+	"time"
 
-//func BenchmarkDatastoreBackupRepository(b *testing.B) {
-//	ctx := context.Background()
-//	hash, _ := models.NewApplicationSecret("32charshtesthashtesthashtesthash")
-//
-//	bigqueryStore := setup.MockBigQueryDataStore()
-//
-//	project := setup.Project(1)
-//	project.ID = models.ProjectID(uuid.New())
-//
-//	namespace := setup.Namespace(1, project)
-//	namespace.ID = uuid.New()
-//
-//	resource := getResourceSpec(1, bigqueryStore)
-//	resource.ID = uuid.New()
-//
-//	DBSetup := func() *gorm.DB {
-//		dbConn := setup.TestDB()
-//		setup.TruncateTables(dbConn)
-//
-//		projRepo := postgres.NewProjectRepository(dbConn, hash)
-//		assert.Nil(b, projRepo.Save(ctx, project))
-//
-//		nsRepo := postgres.NewNamespaceRepository(dbConn, hash)
-//		assert.Nil(b, nsRepo.Save(ctx, project, namespace))
-//
-//		secretRepo := postgres.NewSecretRepository(dbConn, hash)
-//		for i := 0; i < 5; i++ {
-//			assert.Nil(b, secretRepo.Save(ctx, project, namespace, setup.Secret(i)))
-//		}
-//
-//		projectResourceSpecRepo := postgres.NewProjectResourceSpecRepository(dbConn, project, bigqueryStore)
-//		resourceRepo := postgres.NewResourceSpecRepository(dbConn, namespace, bigqueryStore, projectResourceSpecRepo)
-//
-//		err := resourceRepo.Insert(ctx, resource)
-//		assert.Nil(b, err)
-//
-//		return dbConn
-//	}
-//	b.Run("Save", func(b *testing.B) {
-//		db := DBSetup()
-//
-//		var repo store.BackupRepository = postgres.NewBackupRepository(db)
-//		b.ResetTimer()
-//
-//		for i := 0; i < b.N; i++ {
-//			backup := getBackupSpec(i, resource)
-//			err := repo.Save(ctx, backup)
-//			if err != nil {
-//				panic(err)
-//			}
-//		}
-//	})
-//	b.Run("GetAll", func(b *testing.B) {
-//		db := DBSetup()
-//
-//		var repo store.BackupRepository = postgres.NewBackupRepository(db)
-//		for i := 0; i < 100; i++ {
-//			backup := getBackupSpec(i, resource)
-//			err := repo.Save(ctx, backup)
-//			if err != nil {
-//				panic(err)
-//			}
-//		}
-//		b.ResetTimer()
-//
-//		for i := 0; i < b.N; i++ {
-//			bkp, err := repo.GetAll(ctx, project, bigqueryStore)
-//			if err != nil {
-//				panic(err)
-//			}
-//			if len(bkp) != 100 {
-//				panic("Not all result returned")
-//			}
-//		}
-//	})
-//	b.Run("GetByID", func(b *testing.B) {
-//		db := DBSetup()
-//
-//		var repo store.BackupRepository = postgres.NewBackupRepository(db)
-//		var ids []uuid.UUID
-//		for i := 0; i < 10; i++ {
-//			backup := getBackupSpec(i, resource)
-//			id := uuid.New()
-//			ids = append(ids, id)
-//			backup.ID = id
-//			err := repo.Save(ctx, backup)
-//			if err != nil {
-//				panic(err)
-//			}
-//		}
-//
-//		b.ResetTimer()
-//
-//		for i := 0; i < b.N; i++ {
-//			num := i % 10
-//			id := ids[num]
-//			bk, err := repo.GetByID(ctx, id, bigqueryStore)
-//			if err != nil {
-//				panic(err)
-//			}
-//			if bk.ID != id {
-//				panic("Id should be same")
-//			}
-//		}
-//	})
-//}
-//
-//func getBackupSpec(i int, resourceSpec models.ResourceSpec) models.BackupSpec {
-//	projectName := "project"
-//	destinationDataset := "optimus_backup"
-//	destinationTable := fmt.Sprintf("backup_playground_table_%d", i)
-//
-//	backupResult := map[string]interface{}{
-//		"project": projectName,
-//		"dataset": destinationDataset,
-//		"table":   destinationTable,
-//	}
-//
-//	return models.BackupSpec{
-//		ID:          uuid.New(),
-//		Resource:    resourceSpec,
-//		Result:      backupResult,
-//		Description: "description",
-//		Config: map[string]string{
-//			"ttl":     "30",
-//			"dataset": destinationDataset,
-//			"prefix":  "backup",
-//		},
-//		CreatedAt: time.Date(2022, 3, 10, 5, 5, 5, 0, time.UTC),
-//	}
-//}
+	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
+
+	serviceResource "github.com/odpf/optimus/core/resource"
+	"github.com/odpf/optimus/core/tenant"
+	repoResource "github.com/odpf/optimus/internal/store/postgres/resource"
+	"github.com/odpf/optimus/tests/setup"
+)
+
+func BenchmarkBackupRepository(b *testing.B) {
+	ctx := context.Background()
+	projectName := "project_test"
+	namespaceName := "namespace_test"
+	tnnt, err := tenant.NewTenant(projectName, namespaceName)
+	assert.NoError(b, err)
+	resourceNames := []string{"project.dataset.resource1", "project.dataset.resource2"}
+	description := "backup for benchmark testing"
+
+	dbSetup := func() *gorm.DB {
+		dbConn := setup.TestDB()
+		setup.TruncateTables(dbConn)
+		return dbConn
+	}
+
+	b.Run("Create", func(b *testing.B) {
+		db := dbSetup()
+		repository := repoResource.NewBackupRepository(db)
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			backup, err := serviceResource.NewBackup(serviceResource.Bigquery, tnnt, resourceNames, description, time.Now(), nil)
+			assert.NoError(b, err)
+
+			actualError := repository.Create(ctx, backup)
+			assert.NoError(b, actualError)
+		}
+	})
+}
