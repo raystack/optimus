@@ -17,7 +17,7 @@ import (
 func TestPostgresJobRunRepository(t *testing.T) {
 	ctx := context.Background()
 	tnnt, _ := tenant.NewTenant("test-proj", "test-ns")
-	currentTime := time.Now()
+	currentTime := time.Now().UTC()
 	scheduledAt := currentTime.Add(-time.Hour)
 	slaDefinitionInSec := int64(3600) //seconds
 
