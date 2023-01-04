@@ -67,4 +67,29 @@ func BenchmarkBackupRepository(b *testing.B) {
 			assert.NoError(b, actualError)
 		}
 	})
+
+	b.Run("GetByID", func(b *testing.B) {
+		db := dbSetup()
+		repository := repoResource.NewBackupRepository(db)
+		maxNumberOfBackups := 50
+		for i := 0; i < maxNumberOfBackups; i++ {
+			backup, err := serviceResource.NewBackup(serviceResource.Bigquery, tnnt, resourceNames, description, time.Now(), nil)
+			assert.NoError(b, err)
+
+			err = repository.Create(ctx, backup)
+			assert.NoError(b, err)
+		}
+		storedBackups, err := repository.GetAll(ctx, tnnt, serviceResource.Bigquery)
+		assert.NoError(b, err)
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			for j := 0; j < len(storedBackups); j++ {
+				actualBackup, actualError := repository.GetByID(ctx, storedBackups[j].ID())
+				assert.NotNil(b, actualBackup)
+				assert.NoError(b, actualError)
+			}
+		}
+	})
 }
