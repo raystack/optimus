@@ -108,9 +108,18 @@ func AssetsFromMap(assetsMap map[string]string) Assets {
 	return taskPluginAssets
 }
 
-func (c Assets) ToMap() map[string]string {
+func (a Assets) Get(name string) (Asset, bool) {
+	for _, con := range a {
+		if strings.EqualFold(con.Name, name) {
+			return con, true
+		}
+	}
+	return Asset{}, false
+}
+
+func (a Assets) ToMap() map[string]string {
 	mapping := map[string]string{}
-	for _, asset := range c {
+	for _, asset := range a {
 		mapping[asset.Name] = asset.Value
 	}
 	return mapping
