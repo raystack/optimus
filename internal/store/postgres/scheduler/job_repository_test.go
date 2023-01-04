@@ -6,8 +6,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/scheduler"
@@ -16,6 +16,7 @@ import (
 	"github.com/odpf/optimus/internal/models"
 	jobRepo "github.com/odpf/optimus/internal/store/postgres/job"
 	postgres "github.com/odpf/optimus/internal/store/postgres/scheduler"
+	tenantPostgres "github.com/odpf/optimus/internal/store/postgres/tenant"
 	"github.com/odpf/optimus/tests/setup"
 )
 
@@ -98,13 +99,13 @@ func TestPostgresJobRepository(t *testing.T) {
 	})
 }
 
-func dbSetup() *gorm.DB {
-	dbConn := setup.TestDB()
-	setup.TruncateTables(dbConn)
-	return dbConn
+func dbSetup() *pgxpool.Pool {
+	pool := setup.TestPool()
+	setup.TruncateTablesWith(pool)
+	return pool
 }
 
-func addJobs(ctx context.Context, t *testing.T, db *gorm.DB) map[string]*job.Job {
+func addJobs(ctx context.Context, t *testing.T, pool *pgxpool.Pool) map[string]*job.Job {
 	t.Helper()
 	jobVersion, err := job.VersionFrom(1)
 	assert.NoError(t, err)
@@ -124,8 +125,6 @@ func addJobs(ctx context.Context, t *testing.T, db *gorm.DB) map[string]*job.Job
 	assert.NoError(t, err)
 	jobTask := job.NewTaskBuilder(taskName, jobTaskConfig).Build()
 
-	//host := "sample-host"
-	//upstreamType := job.UpstreamTypeInferred
 	jobLabels := map[string]string{
 		"environment": "integration",
 	}
@@ -137,11 +136,18 @@ func addJobs(ctx context.Context, t *testing.T, db *gorm.DB) map[string]*job.Job
 			tenant.ProjectStoragePathKey: "gs://location",
 		})
 	assert.NoError(t, err)
+
+	projRepo := tenantPostgres.NewProjectRepository(pool)
+	assert.NoError(t, projRepo.Save(ctx, proj))
+
 	namespace, err := tenant.NewNamespace("test-ns", proj.Name(),
 		map[string]string{
 			"bucket": "gs://ns_bucket",
 		})
 	assert.NoError(t, err)
+
+	namespaceRepo := tenantPostgres.NewNamespaceRepository(pool)
+	assert.NoError(t, namespaceRepo.Save(ctx, namespace))
 
 	jobHookConfig, err := job.NewConfig(map[string]string{"sample_hook_key": "sample_value"})
 	assert.NoError(t, err)
@@ -187,7 +193,7 @@ func addJobs(ctx context.Context, t *testing.T, db *gorm.DB) map[string]*job.Job
 
 	jobs := []*job.Job{jobA, jobB}
 
-	jobRepository := jobRepo.NewJobRepository(db)
+	jobRepository := jobRepo.NewJobRepository(pool)
 	addedJobs, err := jobRepository.Add(ctx, jobs)
 	assert.NoError(t, err)
 	assert.EqualValues(t, jobs, addedJobs)

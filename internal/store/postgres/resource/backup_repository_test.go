@@ -16,7 +16,7 @@ import (
 
 func TestPostgresBackupRepository(t *testing.T) {
 	ctx := context.Background()
-	tnnt, _ := tenant.NewTenant("proj", "namespace")
+	tnnt, _ := tenant.NewTenant("t-optimus-1", "n-optimus-1")
 	resNames := []string{"bigquery-project.playground.test-table", "bigquery-project.playground.table1"}
 	created := time.Date(2022, 11, 22, 5, 0, 0, 0, time.UTC)
 	conf := map[string]string{"config1": "value1", "ttl": "720h"}

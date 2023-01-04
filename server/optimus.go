@@ -11,11 +11,11 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/hashicorp/go-hclog"
 	hPlugin "github.com/hashicorp/go-plugin"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	slackapi "github.com/slack-go/slack"
 	"google.golang.org/grpc"
-	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/config"
 	jHandler "github.com/odpf/optimus/core/job/handler/v1beta1"
@@ -54,7 +54,7 @@ type OptimusServer struct {
 	conf   config.ServerConfig
 	logger log.Logger
 
-	dbConn *gorm.DB
+	dbPool *pgxpool.Pool
 	key    *[keyLength]byte
 
 	serverAddr string
@@ -155,19 +155,16 @@ func applicationKeyFromString(appKey string) (*[keyLength]byte, error) {
 }
 
 func (s *OptimusServer) setupDB() error {
-	migration, err := postgres.NewMigration(s.logger, config.BuildVersion, s.conf.Serve.DB.DSN)
+	err := postgres.Migrate(s.conf.Serve.DB.DSN)
 	if err != nil {
 		return fmt.Errorf("error initializing migration: %w", err)
 	}
-	ctx := context.Background()
-	if err := migration.Up(ctx); err != nil {
-		return fmt.Errorf("error executing migration up: %w", err)
+
+	s.dbPool, err = postgres.Open(s.conf.Serve.DB)
+	if err != nil {
+		return fmt.Errorf("postgres.Open: %w", err)
 	}
 
-	s.dbConn, err = postgres.Connect(s.conf.Serve.DB, s.logger.Writer())
-	if err != nil {
-		return fmt.Errorf("postgres.Connect: %w", err)
-	}
 	return nil
 }
 
@@ -222,13 +219,8 @@ func (s *OptimusServer) Shutdown() {
 		fn() // Todo: log all the errors from cleanup before exit
 	}
 
-	if s.dbConn != nil {
-		sqlConn, err := s.dbConn.DB()
-		if err != nil {
-			s.logger.Error("Error while getting sqlConn", err)
-		} else if err := sqlConn.Close(); err != nil {
-			s.logger.Error("Error in sqlConn.Close", err)
-		}
+	if s.dbPool != nil {
+		s.dbPool.Close()
 	}
 
 	s.logger.Info("Server shutdown complete")
@@ -236,9 +228,9 @@ func (s *OptimusServer) Shutdown() {
 
 func (s *OptimusServer) setupHandlers() error {
 	// Tenant Bounded Context Setup
-	tProjectRepo := tenant.NewProjectRepository(s.dbConn)
-	tNamespaceRepo := tenant.NewNamespaceRepository(s.dbConn)
-	tSecretRepo := tenant.NewSecretRepository(s.dbConn)
+	tProjectRepo := tenant.NewProjectRepository(s.dbPool)
+	tNamespaceRepo := tenant.NewNamespaceRepository(s.dbPool)
+	tSecretRepo := tenant.NewSecretRepository(s.dbPool)
 
 	tProjectService := tService.NewProjectService(tProjectRepo)
 	tNamespaceService := tService.NewNamespaceService(tNamespaceRepo)
@@ -246,8 +238,8 @@ func (s *OptimusServer) setupHandlers() error {
 	tenantService := tService.NewTenantService(tProjectService, tNamespaceService, tSecretService)
 
 	// Resource Bounded Context
-	resourceRepository := resource.NewRepository(s.dbConn)
-	backupRepository := resource.NewBackupRepository(s.dbConn)
+	resourceRepository := resource.NewRepository(s.dbPool)
+	backupRepository := resource.NewBackupRepository(s.dbPool)
 	resourceManager := rService.NewResourceManager(resourceRepository, s.logger)
 	resourceService := rService.NewResourceService(s.logger, resourceRepository, resourceManager, tenantService)
 	backupService := rService.NewBackupService(backupRepository, resourceRepository, resourceManager)
@@ -258,9 +250,9 @@ func (s *OptimusServer) setupHandlers() error {
 	resourceManager.RegisterDatastore(rModel.Bigquery, bigqueryStore)
 
 	// Scheduler bounded context
-	jobRunRepo := schedulerRepo.NewJobRunRepository(s.dbConn)
-	operatorRunRepository := schedulerRepo.NewOperatorRunRepository(s.dbConn)
-	jobProviderRepo := schedulerRepo.NewJobProviderRepository(s.dbConn)
+	jobRunRepo := schedulerRepo.NewJobRunRepository(s.dbPool)
+	operatorRunRepository := schedulerRepo.NewOperatorRunRepository(s.dbPool)
+	jobProviderRepo := schedulerRepo.NewJobProviderRepository(s.dbPool)
 
 	notificationContext, cancelNotifiers := context.WithCancel(context.Background())
 	s.cleanupFn = append(s.cleanupFn, cancelNotifiers)
@@ -295,7 +287,7 @@ func (s *OptimusServer) setupHandlers() error {
 	newJobRunService := schedulerService.NewJobRunService(s.logger, jobProviderRepo, jobRunRepo, operatorRunRepository, newScheduler, newPriorityResolver, jobInputCompiler)
 
 	// Job Bounded Context Setup
-	jJobRepo := jRepo.NewJobRepository(s.dbConn)
+	jJobRepo := jRepo.NewJobRepository(s.dbPool)
 	jPluginService := jService.NewJobPluginService(tSecretService, s.pluginRepo, newEngine, s.logger)
 	jExternalUpstreamResolver, _ := jResolver.NewExternalUpstreamResolver(s.conf.ResourceManagers)
 	jInternalUpstreamResolver := jResolver.NewInternalUpstreamResolver(jJobRepo)

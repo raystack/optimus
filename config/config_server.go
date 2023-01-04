@@ -38,7 +38,7 @@ type Deployer struct {
 
 type DBConfig struct {
 	DSN               string `mapstructure:"dsn"`                              // data source name e.g.: postgres://user:password@host:123/database?sslmode=disable
-	MaxIdleConnection int    `mapstructure:"max_idle_connection" default:"10"` // maximum allowed idle DB connections
+	MinOpenConnection int    `mapstructure:"min_open_connection" default:"5"`  // minimum open DB connections
 	MaxOpenConnection int    `mapstructure:"max_open_connection" default:"20"` // maximum allowed open DB connections
 }
 

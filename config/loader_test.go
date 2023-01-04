@@ -271,7 +271,7 @@ func (s *ConfigTestSuite) initExpectedServerConfig() {
 	s.expectedServerConfig.Serve.Deployer.QueueCapacity = 10
 	s.expectedServerConfig.Serve.DB = config.DBConfig{}
 	s.expectedServerConfig.Serve.DB.DSN = "postgres://user:password@localhost:5432/database?sslmode=disable"
-	s.expectedServerConfig.Serve.DB.MaxIdleConnection = 5
+	s.expectedServerConfig.Serve.DB.MinOpenConnection = 5
 	s.expectedServerConfig.Serve.DB.MaxOpenConnection = 10
 
 	s.expectedServerConfig.Scheduler = config.SchedulerConfig{}

@@ -6,8 +6,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/tenant"
@@ -27,18 +27,6 @@ func TestPostgresJobRepository(t *testing.T) {
 			tenant.ProjectStoragePathKey: "gs://location",
 		})
 	assert.NoError(t, err)
-	namespace, err := tenant.NewNamespace("test-ns", proj.Name(),
-		map[string]string{
-			"bucket": "gs://ns_bucket",
-		})
-	assert.NoError(t, err)
-	otherNamespace, err := tenant.NewNamespace("other-ns", proj.Name(),
-		map[string]string{
-			"bucket": "gs://ns_bucket",
-		})
-	assert.NoError(t, err)
-	sampleTenant, err := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
-	assert.NoError(t, err)
 
 	otherProj, err := tenant.NewProject("test-other-proj",
 		map[string]string{
@@ -48,18 +36,39 @@ func TestPostgresJobRepository(t *testing.T) {
 		})
 	assert.NoError(t, err)
 
-	dbSetup := func() *gorm.DB {
-		dbConn := setup.TestDB()
-		setup.TruncateTables(dbConn)
+	namespace, err := tenant.NewNamespace("test-ns", proj.Name(),
+		map[string]string{
+			"bucket": "gs://ns_bucket",
+		})
+	assert.NoError(t, err)
 
-		projRepo := tenantPostgres.NewProjectRepository(dbConn)
+	otherNamespace, err := tenant.NewNamespace("other-ns", proj.Name(),
+		map[string]string{
+			"bucket": "gs://ns_bucket",
+		})
+	assert.NoError(t, err)
+
+	otherNamespace2, err := tenant.NewNamespace("other-ns", otherProj.Name(),
+		map[string]string{
+			"bucket": "gs://ns_bucket",
+		})
+	assert.NoError(t, err)
+	sampleTenant, err := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
+	assert.NoError(t, err)
+
+	dbSetup := func() *pgxpool.Pool {
+		pool := setup.TestPool()
+		setup.TruncateTablesWith(pool)
+		projRepo := tenantPostgres.NewProjectRepository(pool)
 		assert.NoError(t, projRepo.Save(ctx, proj))
+		assert.NoError(t, projRepo.Save(ctx, otherProj))
 
-		namespaceRepo := tenantPostgres.NewNamespaceRepository(dbConn)
+		namespaceRepo := tenantPostgres.NewNamespaceRepository(pool)
 		assert.NoError(t, namespaceRepo.Save(ctx, namespace))
 		assert.NoError(t, namespaceRepo.Save(ctx, otherNamespace))
+		assert.NoError(t, namespaceRepo.Save(ctx, otherNamespace2))
 
-		return dbConn
+		return pool
 	}
 
 	jobVersion, err := job.VersionFrom(1)
@@ -830,6 +839,7 @@ func TestPostgresJobRepository(t *testing.T) {
 
 	t.Run("GetUpstreams", func(t *testing.T) {
 		t.Run("returns upstream given project and job name", func(t *testing.T) {
+			// TODO: test is failing for nullable fields in upstream
 			db := dbSetup()
 
 			jobSpecA := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()

@@ -38,10 +38,14 @@ func (m *MultiError) Error() string {
 func MultiToError(e error) error {
 	var me *MultiError
 	if errors.As(e, &me) {
-		if len(me.Errors) == 0 {
-			return nil
-		}
-		return me
+		return me.ToErr()
 	}
 	return e
+}
+
+func (m *MultiError) ToErr() error {
+	if len(m.Errors) == 0 {
+		return nil
+	}
+	return m
 }

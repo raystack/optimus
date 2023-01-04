@@ -1,64 +1,70 @@
 package job
 
 import (
+	"database/sql"
 	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/lib/pq"
-	"gorm.io/datatypes"
-	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/models"
 )
 
 const jobDatetimeLayout = "2006-01-02"
 
 type Spec struct {
-	ID          uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
-	Name        string    `gorm:"not null" json:"name"`
+	ID          uuid.UUID
+	Name        string
 	Version     int
 	Owner       string
 	Description string
-	Labels      datatypes.JSON
+	Labels      map[string]string
 
-	StartDate time.Time
-	EndDate   *time.Time
-	Interval  string
+	Schedule   json.RawMessage
+	WindowSpec json.RawMessage
 
-	// Behavior
-	DependsOnPast bool `json:"depends_on_past"`
-	CatchUp       bool `json:"catch_up"`
-	Retry         datatypes.JSON
-	Alert         datatypes.JSON
+	Alert json.RawMessage
 
-	// Upstreams
-	StaticUpstreams pq.StringArray `gorm:"type:varchar(220)[]" json:"static_upstreams"`
-
-	// ExternalUpstreams
-	HTTPUpstreams datatypes.JSON `json:"http_upstreams"`
+	StaticUpstreams pq.StringArray
+	HTTPUpstreams   json.RawMessage
 
 	TaskName   string
-	TaskConfig datatypes.JSON
+	TaskConfig map[string]string
 
-	WindowSize       string
-	WindowOffset     string
-	WindowTruncateTo string
+	Hooks json.RawMessage
 
-	Assets   datatypes.JSON
-	Hooks    datatypes.JSON
-	Metadata datatypes.JSON
+	Assets map[string]string
+
+	Metadata json.RawMessage
 
 	Destination string
-	Sources     pq.StringArray `gorm:"type:varchar(300)[]"`
+	Sources     pq.StringArray
 
 	ProjectName   string `json:"project_name"`
 	NamespaceName string `json:"namespace_name"`
 
-	CreatedAt time.Time `gorm:"not null" json:"created_at"`
-	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
-	DeletedAt gorm.DeletedAt
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt sql.NullTime
+}
+
+type Schedule struct {
+	StartDate     time.Time
+	EndDate       *time.Time
+	Interval      string
+	DependsOnPast bool `json:"depends_on_past"`
+	CatchUp       bool `json:"catch_up"`
+	Retry         *Retry
+}
+
+type Window struct {
+	WindowSize       string
+	WindowOffset     string
+	WindowTruncateTo string
 }
 
 type Retry struct {
@@ -80,7 +86,7 @@ type Asset struct {
 
 type Hook struct {
 	Name   string
-	Config datatypes.JSON
+	Config map[string]string
 }
 
 type Metadata struct {
@@ -107,49 +113,9 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 
 	jobSpec := jobEntity.Spec()
 
-	var labelsBytes []byte
-	if jobSpec.Labels() != nil {
-		labelsBytes, err = json.Marshal(jobSpec.Labels())
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	startDate, err := time.Parse(jobDatetimeLayout, jobSpec.Schedule().StartDate().String())
-	if err != nil {
-		return nil, err
-	}
-
-	var endDate time.Time
-	if jobSpec.Schedule().EndDate() != "" {
-		endDate, err = time.Parse(jobDatetimeLayout, jobSpec.Schedule().EndDate().String())
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	retryBytes, err := toStorageRetry(jobSpec.Schedule().Retry())
-	if err != nil {
-		return nil, err
-	}
-
 	alertsBytes, err := toStorageAlerts(jobSpec.AlertSpecs())
 	if err != nil {
 		return nil, err
-	}
-
-	taskConfigBytes, err := toConfig(jobSpec.Task().Config())
-	if err != nil {
-		return nil, err
-	}
-
-	var assetsBytes []byte
-	if jobSpec.Asset() != nil {
-		a, err := toStorageAsset(jobSpec.Asset().Assets())
-		if err != nil {
-			return nil, err
-		}
-		assetsBytes = a
 	}
 
 	hooksBytes, err := toStorageHooks(jobSpec.Hooks())
@@ -181,32 +147,39 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		sources[i] = source.String()
 	}
 
+	var assets map[string]string
+	if jobSpec.Asset() != nil {
+		assets = jobSpec.Asset().Assets()
+	}
+
+	schedule, err := toStorageSchedule(jobSpec.Schedule())
+	if err != nil {
+		return nil, err
+	}
+
+	windowBytes, err := toStorageWindow(jobSpec.Window())
+	if err != nil {
+		return nil, err
+	}
+
 	return &Spec{
 		Name:        jobSpec.Name().String(),
 		Version:     jobSpec.Version().Int(),
 		Owner:       jobSpec.Owner().String(),
 		Description: jobSpec.Description(),
-		Labels:      labelsBytes,
-		Assets:      assetsBytes,
+		Labels:      jobSpec.Labels(),
+		Assets:      assets,
 		Metadata:    metadataBytes,
 
-		StartDate: startDate,
-		EndDate:   &endDate,
-		Interval:  jobSpec.Schedule().Interval(),
+		Schedule:   schedule,
+		WindowSpec: windowBytes,
+
+		Alert: alertsBytes,
 
 		TaskName:   jobSpec.Task().Name().String(),
-		TaskConfig: taskConfigBytes,
+		TaskConfig: jobSpec.Task().Config().Configs(),
 
 		Hooks: hooksBytes,
-
-		WindowSize:       jobSpec.Window().GetSize(),
-		WindowOffset:     jobSpec.Window().GetOffset(),
-		WindowTruncateTo: jobSpec.Window().GetTruncateTo(),
-
-		DependsOnPast: jobSpec.Schedule().DependsOnPast(),
-		CatchUp:       jobSpec.Schedule().CatchUp(),
-		Retry:         retryBytes,
-		Alert:         alertsBytes,
 
 		StaticUpstreams: staticUpstreams,
 		HTTPUpstreams:   httpUpstreamsInBytes,
@@ -219,16 +192,26 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 	}, nil
 }
 
+func toStorageWindow(windowSpec models.Window) ([]byte, error) {
+	window := Window{
+		WindowSize:       windowSpec.GetSize(),
+		WindowOffset:     windowSpec.GetOffset(),
+		WindowTruncateTo: windowSpec.GetTruncateTo(),
+	}
+	windowJSON, err := json.Marshal(window)
+	if err != nil {
+		return nil, err
+	}
+	return windowJSON, nil
+}
+
 func toStorageHooks(hookSpecs []*job.Hook) ([]byte, error) {
 	if hookSpecs == nil {
 		return nil, nil
 	}
 	var hooks []Hook
 	for _, hookSpec := range hookSpecs {
-		hook, err := toStorageHook(hookSpec)
-		if err != nil {
-			return nil, err
-		}
+		hook := toStorageHook(hookSpec)
 		hooks = append(hooks, hook)
 	}
 	hooksJSON, err := json.Marshal(hooks)
@@ -238,23 +221,11 @@ func toStorageHooks(hookSpecs []*job.Hook) ([]byte, error) {
 	return hooksJSON, nil
 }
 
-func toStorageHook(spec *job.Hook) (Hook, error) {
-	configJSON, err := json.Marshal(spec.Config().Configs())
-	if err != nil {
-		return Hook{}, err
-	}
+func toStorageHook(spec *job.Hook) Hook {
 	return Hook{
 		Name:   spec.Name().String(),
-		Config: configJSON,
-	}, nil
-}
-
-func toStorageAsset(assetSpecs map[string]string) ([]byte, error) {
-	assetsJSON, err := json.Marshal(assetSpecs)
-	if err != nil {
-		return nil, err
+		Config: spec.Config().Configs(),
 	}
-	return assetsJSON, nil
 }
 
 func toStorageAlerts(alertSpecs []*job.AlertSpec) ([]byte, error) {
@@ -272,16 +243,42 @@ func toStorageAlerts(alertSpecs []*job.AlertSpec) ([]byte, error) {
 	return json.Marshal(alerts)
 }
 
-func toStorageRetry(retrySpec *job.Retry) ([]byte, error) {
-	if retrySpec == nil {
+func toStorageSchedule(scheduleSpec *job.Schedule) ([]byte, error) {
+	if scheduleSpec == nil {
 		return nil, nil
 	}
-	retry := Retry{
-		Count:              retrySpec.Count(),
-		Delay:              retrySpec.Delay(),
-		ExponentialBackoff: retrySpec.ExponentialBackoff(),
+
+	startDate, err := time.Parse(jobDatetimeLayout, scheduleSpec.StartDate().String())
+	if err != nil {
+		return nil, err
 	}
-	return json.Marshal(retry)
+
+	var endDate time.Time
+	if scheduleSpec.EndDate() != "" {
+		endDate, err = time.Parse(jobDatetimeLayout, scheduleSpec.EndDate().String())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var retry *Retry
+	if scheduleSpec.Retry() != nil {
+		retry = &Retry{
+			Count:              scheduleSpec.Retry().Count(),
+			Delay:              scheduleSpec.Retry().Delay(),
+			ExponentialBackoff: scheduleSpec.Retry().ExponentialBackoff(),
+		}
+	}
+
+	schedule := Schedule{
+		StartDate:     startDate,
+		EndDate:       &endDate,
+		Interval:      scheduleSpec.Interval(),
+		DependsOnPast: scheduleSpec.DependsOnPast(),
+		CatchUp:       scheduleSpec.CatchUp(),
+		Retry:         retry,
+	}
+	return json.Marshal(schedule)
 }
 
 func toStorageMetadata(metadataSpec *job.Metadata) ([]byte, error) {
@@ -318,13 +315,6 @@ func toStorageMetadata(metadataSpec *job.Metadata) ([]byte, error) {
 	return json.Marshal(metadata)
 }
 
-func toConfig(configSpec *job.Config) ([]byte, error) {
-	if configSpec == nil {
-		return nil, nil
-	}
-	return json.Marshal(configSpec.Configs())
-}
-
 func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 	version, err := job.VersionFrom(jobSpec.Version)
 	if err != nil {
@@ -341,55 +331,25 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 		return nil, err
 	}
 
-	startDate, err := job.ScheduleDateFrom(jobSpec.StartDate.Format(job.DateLayout))
-	if err != nil {
-		return nil, err
-	}
-
-	scheduleBuilder := job.NewScheduleBuilder(startDate).
-		WithCatchUp(jobSpec.CatchUp).
-		WithDependsOnPast(jobSpec.DependsOnPast).
-		WithInterval(jobSpec.Interval)
-
-	if !jobSpec.EndDate.IsZero() {
-		endDate, err := job.ScheduleDateFrom(jobSpec.EndDate.Format(job.DateLayout))
+	var schedule *job.Schedule
+	if jobSpec.Schedule != nil {
+		schedule, err = fromStorageSchedule(jobSpec.Schedule)
 		if err != nil {
 			return nil, err
 		}
-		scheduleBuilder = scheduleBuilder.WithEndDate(endDate)
 	}
 
-	if jobSpec.Retry != nil {
-		var storageRetry Retry
-		if err := json.Unmarshal(jobSpec.Retry, &storageRetry); err != nil {
+	var window models.Window
+	if jobSpec.WindowSpec != nil {
+		window, err = fromStorageWindow(jobSpec.WindowSpec, jobSpec.Version)
+		if err != nil {
 			return nil, err
 		}
-		retry := job.NewRetry(storageRetry.Count, storageRetry.Delay, storageRetry.ExponentialBackoff)
-		scheduleBuilder = scheduleBuilder.WithRetry(retry)
-	}
-
-	schedule, err := scheduleBuilder.Build()
-	if err != nil {
-		return nil, err
-	}
-
-	window, err := models.NewWindow(
-		jobSpec.Version,
-		jobSpec.WindowTruncateTo,
-		jobSpec.WindowOffset,
-		jobSpec.WindowSize,
-	)
-	if err != nil {
-		return nil, err
 	}
 
 	var taskConfig *job.Config
 	if jobSpec.TaskConfig != nil {
-		var configMap map[string]string
-		if err := json.Unmarshal(jobSpec.TaskConfig, &configMap); err != nil {
-			return nil, err
-		}
-		taskConfig, err = job.NewConfig(configMap)
+		taskConfig, err = job.NewConfig(jobSpec.TaskConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -399,14 +359,11 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 		return nil, err
 	}
 	task := job.NewTaskBuilder(taskName, taskConfig).Build()
+
 	jobSpecBuilder := job.NewSpecBuilder(version, jobName, owner, schedule, window, task).WithDescription(jobSpec.Description)
 
 	if jobSpec.Labels != nil {
-		var labels map[string]string
-		if err := json.Unmarshal(jobSpec.Labels, &labels); err != nil {
-			return nil, err
-		}
-		jobSpecBuilder = jobSpecBuilder.WithLabels(labels)
+		jobSpecBuilder = jobSpecBuilder.WithLabels(jobSpec.Labels)
 	}
 
 	if jobSpec.Hooks != nil {
@@ -479,11 +436,7 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 	}
 
 	if jobSpec.Assets != nil {
-		assetsMap, err := fromStorageAssets(jobSpec.Assets)
-		if err != nil {
-			return nil, err
-		}
-		asset, err := job.NewAsset(assetsMap)
+		asset, err := job.NewAsset(jobSpec.Assets)
 		if err != nil {
 			return nil, err
 		}
@@ -491,6 +444,50 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 	}
 
 	return jobSpecBuilder.Build(), nil
+}
+
+func fromStorageWindow(raw []byte, jobVersion int) (models.Window, error) {
+	var storageWindow Window
+	if err := json.Unmarshal(raw, &storageWindow); err != nil {
+		return nil, err
+	}
+
+	return models.NewWindow(
+		jobVersion,
+		storageWindow.WindowTruncateTo,
+		storageWindow.WindowOffset,
+		storageWindow.WindowSize,
+	)
+}
+
+func fromStorageSchedule(raw []byte) (*job.Schedule, error) {
+	var storageSchedule Schedule
+	if err := json.Unmarshal(raw, &storageSchedule); err != nil {
+		return nil, err
+	}
+	startDate, err := job.ScheduleDateFrom(storageSchedule.StartDate.Format(job.DateLayout))
+	if err != nil {
+		return nil, err
+	}
+	scheduleBuilder := job.NewScheduleBuilder(startDate).
+		WithCatchUp(storageSchedule.CatchUp).
+		WithDependsOnPast(storageSchedule.DependsOnPast).
+		WithInterval(storageSchedule.Interval)
+
+	if !storageSchedule.EndDate.IsZero() {
+		endDate, err := job.ScheduleDateFrom(storageSchedule.EndDate.Format(job.DateLayout))
+		if err != nil {
+			return nil, err
+		}
+		scheduleBuilder = scheduleBuilder.WithEndDate(endDate)
+	}
+
+	if storageSchedule.Retry != nil {
+		retry := job.NewRetry(storageSchedule.Retry.Count, storageSchedule.Retry.Delay, storageSchedule.Retry.ExponentialBackoff)
+		scheduleBuilder = scheduleBuilder.WithRetry(retry)
+	}
+
+	return scheduleBuilder.Build()
 }
 
 func fromStorageHooks(raw []byte) ([]*job.Hook, error) {
@@ -516,11 +513,7 @@ func fromStorageHooks(raw []byte) ([]*job.Hook, error) {
 }
 
 func fromStorageHook(hook Hook) (*job.Hook, error) {
-	var configMap map[string]string
-	if err := json.Unmarshal(hook.Config, &configMap); err != nil {
-		return nil, err
-	}
-	config, err := job.NewConfig(configMap)
+	config, err := job.NewConfig(hook.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -559,10 +552,38 @@ func fromStorageAlerts(raw []byte) ([]*job.AlertSpec, error) {
 	return jobAlerts, nil
 }
 
-func fromStorageAssets(raw []byte) (map[string]string, error) {
-	var assetsMap map[string]string
-	if err := json.Unmarshal(raw, &assetsMap); err != nil {
-		return nil, err
+func FromRow(row pgx.Row) (*Spec, error) {
+	var js Spec
+
+	err := row.Scan(&js.ID, &js.Name, &js.Version, &js.Owner, &js.Description,
+		&js.Labels, &js.Schedule, &js.Alert, &js.StaticUpstreams, &js.HTTPUpstreams,
+		&js.TaskName, &js.TaskConfig, &js.WindowSpec, &js.Assets, &js.Hooks, &js.Metadata, &js.Destination, &js.Sources,
+		&js.ProjectName, &js.NamespaceName, &js.CreatedAt, &js.UpdatedAt, &js.DeletedAt)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.NotFound(job.EntityJob, "job not found")
+		}
+
+		return nil, errors.Wrap(job.EntityJob, "error in reading row for job", err)
 	}
-	return assetsMap, nil
+
+	return &js, nil
+}
+
+func UpstreamFromRow(row pgx.Row) (*JobWithUpstream, error) {
+	var js JobWithUpstream
+
+	err := row.Scan(&js.JobName, &js.ProjectName, &js.UpstreamJobName, &js.UpstreamResourceURN,
+		&js.UpstreamProjectName, &js.UpstreamNamespaceName, &js.UpstreamTaskName, &js.UpstreamHost,
+		&js.UpstreamType, &js.UpstreamState, &js.UpstreamExternal)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.NotFound(job.EntityJob, "job upstream not found")
+		}
+
+		return nil, errors.Wrap(job.EntityJob, "error in reading row for upstream", err)
+	}
+
+	return &js, nil
 }

@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS secret;
+
+ALTER TABLE IF EXISTS secret_old
+    RENAME TO secret;
