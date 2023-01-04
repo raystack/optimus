@@ -46,4 +46,25 @@ func BenchmarkBackupRepository(b *testing.B) {
 			assert.NoError(b, actualError)
 		}
 	})
+
+	b.Run("GetAll", func(b *testing.B) {
+		db := dbSetup()
+		repository := repoResource.NewBackupRepository(db)
+		maxNumberOfBackups := 50
+		for i := 0; i < maxNumberOfBackups; i++ {
+			backup, err := serviceResource.NewBackup(serviceResource.Bigquery, tnnt, resourceNames, description, time.Now(), nil)
+			assert.NoError(b, err)
+
+			err = repository.Create(ctx, backup)
+			assert.NoError(b, err)
+		}
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			actualBackups, actualError := repository.GetAll(ctx, tnnt, serviceResource.Bigquery)
+			assert.Len(b, actualBackups, maxNumberOfBackups)
+			assert.NoError(b, actualError)
+		}
+	})
 }
