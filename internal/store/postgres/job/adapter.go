@@ -149,7 +149,7 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 
 	var assets map[string]string
 	if jobSpec.Asset() != nil {
-		assets = jobSpec.Asset().Assets()
+		assets = jobSpec.Asset()
 	}
 
 	schedule, err := toStorageSchedule(jobSpec.Schedule())
@@ -164,8 +164,8 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 
 	return &Spec{
 		Name:        jobSpec.Name().String(),
-		Version:     jobSpec.Version().Int(),
-		Owner:       jobSpec.Owner().String(),
+		Version:     jobSpec.Version(),
+		Owner:       jobSpec.Owner(),
 		Description: jobSpec.Description(),
 		Labels:      jobSpec.Labels(),
 		Assets:      assets,
@@ -177,7 +177,7 @@ func toStorageSpec(jobEntity *job.Job) (*Spec, error) {
 		Alert: alertsBytes,
 
 		TaskName:   jobSpec.Task().Name().String(),
-		TaskConfig: jobSpec.Task().Config().Configs(),
+		TaskConfig: jobSpec.Task().Config(),
 
 		Hooks: hooksBytes,
 
@@ -223,8 +223,8 @@ func toStorageHooks(hookSpecs []*job.Hook) ([]byte, error) {
 
 func toStorageHook(spec *job.Hook) Hook {
 	return Hook{
-		Name:   spec.Name().String(),
-		Config: spec.Config().Configs(),
+		Name:   spec.Name(),
+		Config: spec.Config(),
 	}
 }
 
@@ -235,8 +235,8 @@ func toStorageAlerts(alertSpecs []*job.AlertSpec) ([]byte, error) {
 	var alerts []Alert
 	for _, alertSpec := range alertSpecs {
 		alerts = append(alerts, Alert{
-			On:       string(alertSpec.On()),
-			Config:   alertSpec.Config().Configs(),
+			On:       alertSpec.On(),
+			Config:   alertSpec.Config(),
 			Channels: alertSpec.Channels(),
 		})
 	}
@@ -316,20 +316,14 @@ func toStorageMetadata(metadataSpec *job.Metadata) ([]byte, error) {
 }
 
 func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
-	version, err := job.VersionFrom(jobSpec.Version)
-	if err != nil {
-		return nil, err
-	}
+	version := jobSpec.Version
 
 	jobName, err := job.NameFrom(jobSpec.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	owner, err := job.OwnerFrom(jobSpec.Owner)
-	if err != nil {
-		return nil, err
-	}
+	owner := jobSpec.Owner
 
 	var schedule *job.Schedule
 	if jobSpec.Schedule != nil {
@@ -347,9 +341,9 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 		}
 	}
 
-	var taskConfig *job.Config
+	var taskConfig job.Config
 	if jobSpec.TaskConfig != nil {
-		taskConfig, err = job.NewConfig(jobSpec.TaskConfig)
+		taskConfig, err = job.ConfigFrom(jobSpec.TaskConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -436,14 +430,14 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 	}
 
 	if jobSpec.Assets != nil {
-		asset, err := job.NewAsset(jobSpec.Assets)
+		asset, err := job.AssetFrom(jobSpec.Assets)
 		if err != nil {
 			return nil, err
 		}
 		jobSpecBuilder = jobSpecBuilder.WithAsset(asset)
 	}
 
-	return jobSpecBuilder.Build(), nil
+	return jobSpecBuilder.Build()
 }
 
 func fromStorageWindow(raw []byte, jobVersion int) (models.Window, error) {
@@ -513,15 +507,11 @@ func fromStorageHooks(raw []byte) ([]*job.Hook, error) {
 }
 
 func fromStorageHook(hook Hook) (*job.Hook, error) {
-	config, err := job.NewConfig(hook.Config)
+	config, err := job.ConfigFrom(hook.Config)
 	if err != nil {
 		return nil, err
 	}
-	hookName, err := job.HookNameFrom(hook.Name)
-	if err != nil {
-		return nil, err
-	}
-	return job.NewHook(hookName, config), nil
+	return job.NewHook(hook.Name, config)
 }
 
 func fromStorageAlerts(raw []byte) ([]*job.AlertSpec, error) {
@@ -536,11 +526,11 @@ func fromStorageAlerts(raw []byte) ([]*job.AlertSpec, error) {
 
 	var jobAlerts []*job.AlertSpec
 	for _, alert := range alerts {
-		config, err := job.NewConfig(alert.Config)
+		config, err := job.ConfigFrom(alert.Config)
 		if err != nil {
 			return nil, err
 		}
-		jobAlert, err := job.NewAlertBuilder(job.EventType(alert.On), alert.Channels).
+		jobAlert, err := job.NewAlertBuilder(alert.On, alert.Channels).
 			WithConfig(config).
 			Build()
 		if err != nil {

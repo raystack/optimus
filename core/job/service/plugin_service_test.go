@@ -34,11 +34,11 @@ func TestPluginService(t *testing.T) {
 	assert.NoError(t, err)
 	jobSchedule, err := job.NewScheduleBuilder(startDate).Build()
 	assert.NoError(t, err)
-	jobVersion, err := job.VersionFrom(1)
+	jobVersion := 1
 	assert.NoError(t, err)
-	jobWindow, err := models.NewWindow(jobVersion.Int(), "d", "24h", "24h")
+	jobWindow, err := models.NewWindow(jobVersion, "d", "24h", "24h")
 	assert.NoError(t, err)
-	jobTaskConfig, err := job.NewConfig(map[string]string{
+	jobTaskConfig, err := job.ConfigFrom(map[string]string{
 		"SECRET_TABLE_NAME": "{{.secret.table_name}}",
 	})
 	assert.NoError(t, err)
@@ -292,9 +292,10 @@ func TestPluginService(t *testing.T) {
 				Dependencies: []string{jobSource.String()}},
 				nil)
 
-			asset, err := job.NewAsset(map[string]string{"sample-key": "sample-value"})
+			asset, err := job.AssetFrom(map[string]string{"sample-key": "sample-value"})
 			assert.NoError(t, err)
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithAsset(asset).Build()
+			specA, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithAsset(asset).Build()
+			assert.NoError(t, err)
 
 			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
 			result, err := pluginService.GenerateUpstreams(ctx, tenantDetails, specA, false)
@@ -315,7 +316,8 @@ func TestPluginService(t *testing.T) {
 
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(nil, errors.New("not found"))
 
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specA, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
 
 			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
 			result, err := pluginService.GenerateUpstreams(ctx, tenantDetails, specA, false)
@@ -343,7 +345,8 @@ func TestPluginService(t *testing.T) {
 			pluginWithoutDependencyMod := &models.Plugin{YamlMod: yamlMod}
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(pluginWithoutDependencyMod, nil)
 
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specA, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
 
 			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
 			result, err := pluginService.GenerateUpstreams(ctx, tenantDetails, specA, false)
@@ -379,7 +382,8 @@ func TestPluginService(t *testing.T) {
 
 			secretsGetter.On("GetAll", ctx, project.Name(), namespace.Name().String()).Return([]*tenant.PlainTextSecret{}, errors.New("getting secret error"))
 
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specA, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
 
 			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
 			result, err := pluginService.GenerateUpstreams(ctx, tenantDetails, specA, false)
@@ -409,7 +413,8 @@ func TestPluginService(t *testing.T) {
 
 			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&models.GenerateDestinationResponse{}, errors.New("generate destination error"))
 
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specA, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
 
 			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
 			result, err := pluginService.GenerateUpstreams(ctx, tenantDetails, specA, false)
@@ -448,7 +453,8 @@ func TestPluginService(t *testing.T) {
 			depMod.On("GenerateDependencies", ctx, mock.Anything).Return(&models.GenerateDependenciesResponse{},
 				errors.New("generate dependencies error"))
 
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specA, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
 
 			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
 			result, err := pluginService.GenerateUpstreams(ctx, tenantDetails, specA, false)
