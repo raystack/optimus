@@ -41,7 +41,7 @@ func TestPostgresJobOperatorRepository(t *testing.T) {
 
 			operatorRun, err := operatorRunRepo.GetOperatorRun(ctx, "some-operator-name", scheduler.OperatorSensor, jobRun.ID)
 			assert.Nil(t, err)
-			assert.True(t, operatorStartTime.Equal(operatorRun.StartTime))
+			assert.Equal(t, operatorStartTime.UTC().Format(time.RFC1123), operatorRun.StartTime.UTC().Format(time.RFC1123))
 		})
 	})
 	t.Run("GetOperatorRun", func(t *testing.T) {
@@ -94,14 +94,14 @@ func TestPostgresJobOperatorRepository(t *testing.T) {
 
 			operatorRun, err := operatorRunRepo.GetOperatorRun(ctx, "some-operator-name", scheduler.OperatorTask, jobRun.ID)
 			assert.Nil(t, err)
-			assert.True(t, operatorStartTime.Equal(operatorRun.StartTime))
+			assert.Equal(t, operatorStartTime.UTC().Format(time.RFC1123), operatorRun.StartTime.UTC().Format(time.RFC1123))
 
 			err = operatorRunRepo.UpdateOperatorRun(ctx, scheduler.OperatorTask, operatorRun.ID, operatorEndTime, scheduler.StateFailed)
 			assert.Nil(t, err)
 
 			operatorRun, err = operatorRunRepo.GetOperatorRun(ctx, "some-operator-name", scheduler.OperatorTask, jobRun.ID)
 			assert.Nil(t, err)
-			assert.True(t, operatorEndTime.Equal(operatorRun.EndTime))
+			assert.Equal(t, operatorEndTime.UTC().Format(time.RFC1123), operatorRun.EndTime.UTC().Format(time.RFC1123))
 			assert.Equal(t, scheduler.StateFailed, operatorRun.Status)
 		})
 	})

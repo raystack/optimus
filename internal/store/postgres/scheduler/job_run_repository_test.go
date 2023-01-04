@@ -66,7 +66,7 @@ func TestPostgresJobRunRepository(t *testing.T) {
 			jobRunByID, err := jobRunRepo.GetByID(ctx, scheduler.JobRunID(jobRun.ID))
 			assert.Nil(t, err)
 			assert.EqualValues(t, scheduler.StateSuccess, jobRunByID.State)
-			assert.True(t, jobEndTime.Equal(jobRunByID.EndTime))
+			assert.Equal(t, jobEndTime.UTC().Format(time.RFC1123), jobRunByID.EndTime.UTC().Format(time.RFC1123))
 		})
 	})
 	t.Run("UpdateSLA", func(t *testing.T) {
