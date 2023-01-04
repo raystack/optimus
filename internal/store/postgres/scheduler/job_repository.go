@@ -21,12 +21,8 @@ import (
 )
 
 const (
-	jobColumns = `id, name, version, owner, description,
-				labels, start_date, end_date, interval, depends_on_past,
-				catch_up, retry, alert, static_upstreams, http_upstreams,
-				task_name, task_config, window_size, window_offset, window_truncate_to,
-				assets, hooks, metadata, destination, sources,
-				project_name, namespace_name, created_at, updated_at`
+	jobColumns = `id, name, version, owner, description, labels, schedule, alert, static_upstreams, http_upstreams,
+				  task_name, task_config, window_spec, assets, hooks, metadata, destination, sources, project_name, namespace_name, created_at, updated_at`
 	upstreamColumns = `
     job_name, project_name, upstream_job_name, upstream_project_name,
     upstream_namespace_name, upstream_resource_urn, upstream_task_name, upstream_type, upstream_external`
@@ -34,6 +30,20 @@ const (
 
 type JobRepository struct {
 	db *pgxpool.Pool
+}
+
+type Schedule struct {
+	StartDate     time.Time
+	EndDate       *time.Time
+	Interval      string
+	DependsOnPast bool `json:"depends_on_past"`
+	CatchUp       bool `json:"catch_up"`
+	Retry         *Retry
+}
+type Retry struct {
+	Count              int   `json:"count"`
+	Delay              int32 `json:"delay"`
+	ExponentialBackoff bool  `json:"exponential_backoff"`
 }
 
 type JobUpstreams struct {
@@ -81,52 +91,63 @@ type Job struct {
 	Description string
 	Labels      map[string]string
 
-	StartDate time.Time
-	EndDate   *time.Time
-	Interval  string
+	Schedule   json.RawMessage
+	WindowSpec json.RawMessage
 
-	// Behavior
-	DependsOnPast bool `json:"depends_on_past"`
-	CatchUp       bool `json:"catch_up"`
-	Retry         json.RawMessage
-	Alert         json.RawMessage
+	Alert json.RawMessage
 
-	// Upstreams
-	StaticUpstreams pq.StringArray `json:"static_upstreams"`
-
-	// ExternalUpstreams
-	HTTPUpstreams json.RawMessage `json:"http_upstreams"`
+	StaticUpstreams pq.StringArray
+	HTTPUpstreams   json.RawMessage
 
 	TaskName   string
 	TaskConfig map[string]string
 
-	WindowSize       string
-	WindowOffset     string
-	WindowTruncateTo string
+	Hooks json.RawMessage
 
-	Assets   map[string]string
-	Hooks    json.RawMessage
+	Assets map[string]string
+
 	Metadata json.RawMessage
 
 	Destination string
 	Sources     pq.StringArray
 
-	ProjectName   string
-	NamespaceName string
+	ProjectName   string `json:"project_name"`
+	NamespaceName string `json:"namespace_name"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt sql.NullTime
 }
+type Window struct {
+	WindowSize       string
+	WindowOffset     string
+	WindowTruncateTo string
+}
 
+func fromStorageWindow(raw []byte, jobVersion int) (models.Window, error) {
+	var storageWindow Window
+	if err := json.Unmarshal(raw, &storageWindow); err != nil {
+		return nil, err
+	}
+
+	return models.NewWindow(
+		jobVersion,
+		storageWindow.WindowTruncateTo,
+		storageWindow.WindowOffset,
+		storageWindow.WindowSize,
+	)
+}
 func (j *Job) toJob() (*scheduler.Job, error) {
 	t, err := tenant.NewTenant(j.ProjectName, j.NamespaceName)
 	if err != nil {
 		return nil, err
 	}
-	window, err := models.NewWindow(j.Version, j.WindowTruncateTo, j.WindowOffset, j.WindowSize)
-	if err != nil {
-		return nil, err
+	var window models.Window
+	if j.WindowSpec != nil {
+		window, err = fromStorageWindow(j.WindowSpec, j.Version)
+		if err != nil {
+			return nil, err
+		}
 	}
 	schedulerJob := scheduler.Job{
 		Name:        scheduler.JobName(j.Name),
@@ -156,6 +177,10 @@ func (j *Job) toJobWithDetails() (*scheduler.JobWithDetails, error) {
 	if err != nil {
 		return nil, err
 	}
+	var storageSchedule Schedule
+	if err := json.Unmarshal(j.Schedule, &storageSchedule); err != nil {
+		return nil, err
+	}
 
 	schedulerJobWithDetails := &scheduler.JobWithDetails{
 		Name: job.Name,
@@ -167,19 +192,21 @@ func (j *Job) toJobWithDetails() (*scheduler.JobWithDetails, error) {
 			Labels:      j.Labels,
 		},
 		Schedule: &scheduler.Schedule{
-			DependsOnPast: j.DependsOnPast,
-			CatchUp:       j.CatchUp,
-			StartDate:     j.StartDate,
-			Interval:      j.Interval,
+			DependsOnPast: storageSchedule.DependsOnPast,
+			CatchUp:       storageSchedule.CatchUp,
+			StartDate:     storageSchedule.StartDate,
+			Interval:      storageSchedule.Interval,
 		},
 	}
-	if !j.EndDate.IsZero() {
-		schedulerJobWithDetails.Schedule.EndDate = j.EndDate
+	if !storageSchedule.EndDate.IsZero() {
+		schedulerJobWithDetails.Schedule.EndDate = storageSchedule.EndDate
 	}
 
-	if j.Retry != nil {
-		if err := json.Unmarshal(j.Retry, &schedulerJobWithDetails.Retry); err != nil {
-			return nil, err
+	if storageSchedule.Retry != nil {
+		schedulerJobWithDetails.Retry = scheduler.Retry{
+			ExponentialBackoff: storageSchedule.Retry.ExponentialBackoff,
+			Count:              storageSchedule.Retry.Count,
+			Delay:              storageSchedule.Retry.Delay,
 		}
 	}
 
@@ -198,11 +225,9 @@ func FromRow(row pgx.Row) (*Job, error) {
 	var js Job
 
 	err := row.Scan(&js.ID, &js.Name, &js.Version, &js.Owner, &js.Description,
-		&js.Labels, &js.StartDate, &js.EndDate, &js.Interval, &js.DependsOnPast,
-		&js.CatchUp, &js.Retry, &js.Alert, &js.StaticUpstreams, &js.HTTPUpstreams,
-		&js.TaskName, &js.TaskConfig, &js.WindowSize, &js.WindowOffset, &js.WindowTruncateTo,
-		&js.Assets, &js.Hooks, &js.Metadata, &js.Destination, &js.Sources,
-		&js.ProjectName, &js.NamespaceName, &js.CreatedAt, &js.UpdatedAt, &js.DeletedAt)
+		&js.Labels, &js.Schedule, &js.Alert, &js.StaticUpstreams, &js.HTTPUpstreams,
+		&js.TaskName, &js.TaskConfig, &js.WindowSpec, &js.Assets, &js.Hooks, &js.Metadata, &js.Destination, &js.Sources,
+		&js.ProjectName, &js.NamespaceName, &js.CreatedAt, &js.UpdatedAt)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -300,6 +325,9 @@ func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectNa
 		}
 		jobNameList = append(jobNameList, job.GetName())
 		jobsMap[job.GetName()] = job
+	}
+	if len(jobNameList) == 0 {
+		return nil, errors.NotFound(scheduler.EntityJobRun, "unable to find jobs in project:"+projectName.String())
 	}
 
 	jobUpstreamGroupedByName, err := j.getJobsUpstreams(ctx, projectName, jobNameList)
