@@ -111,8 +111,8 @@ func (s SecretRepository) Save(ctx context.Context, tenantSecret *tenant.Secret)
 		return errors.Wrap(tenant.EntitySecret, "unable to save secret", err)
 	}
 
-	insertSecret := `INSERT INTO secret (name, value, project_name, namespace_name, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, NOW(), NOW())`
+	insertSecret := `INSERT INTO secret (name, value, type, project_name, namespace_name, created_at, updated_at)
+VALUES ($1, $2, 'user', $3, $4, NOW(), NOW())`
 	_, err = s.db.Exec(ctx, insertSecret, secret.Name, secret.Value, secret.ProjectName, secret.NamespaceName)
 
 	if err != nil {
@@ -134,7 +134,7 @@ func (s SecretRepository) Update(ctx context.Context, tenantSecret *tenant.Secre
 	}
 
 	updateSecret := `UPDATE secret SET value=$1, updated_at=NOW()
-WHERE project_name = $3 AND name=$4`
+WHERE project_name = $2 AND name=$3`
 
 	_, err = s.db.Exec(ctx, updateSecret, secret.Value, secret.ProjectName, secret.Name)
 	if err != nil {
