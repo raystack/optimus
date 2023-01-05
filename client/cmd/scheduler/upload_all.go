@@ -35,7 +35,7 @@ func UploadCommand() *cobra.Command {
 		Use:     "upload-all",
 		Short:   "Deploy current optimus project to server",
 		Long:    heredoc.Doc(`Apply changes to destination server which includes creating/updating/deleting jobs`),
-		Example: "optimus scheduler upload",
+		Example: "optimus scheduler upload-all",
 		Annotations: map[string]string{
 			"group:core": "true",
 		},
