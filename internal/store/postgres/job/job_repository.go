@@ -516,7 +516,7 @@ INSERT INTO job_upstream (
 )
 VALUES (
 	(select id FROM job WHERE name = $1 and project_name = $2), $1, $2,
-	(select id FROM job WHERE name = $3 and project_name = $4), $3, $4,
+	(select id FROM job WHERE name = $3 and project_name = $5), $3, $4,
 	$5, $6, $7,
 	$8, $9,
 	$10, $11,
