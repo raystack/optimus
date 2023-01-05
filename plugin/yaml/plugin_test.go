@@ -10,6 +10,7 @@ import (
 
 	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/plugin/yaml"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 type mockYamlMod struct {
@@ -19,60 +20,59 @@ type mockYamlMod struct {
 	PluginType    string
 }
 
-func (p *mockYamlMod) PluginInfo() *models.PluginInfoResponse {
-	return &models.PluginInfoResponse{
+func (p *mockYamlMod) PluginInfo() *plugin.Info {
+	return &plugin.Info{
 		Name:          p.Name,
 		Image:         p.Image,
 		PluginVersion: p.PluginVersion,
-		PluginType:    models.PluginType(p.PluginType),
+		PluginType:    plugin.Type(p.PluginType),
 	}
 }
 
-func (*mockYamlMod) GetQuestions(context.Context, models.GetQuestionsRequest) (*models.GetQuestionsResponse, error) {
-	return &models.GetQuestionsResponse{Questions: models.PluginQuestions{}}, nil
+func (*mockYamlMod) GetQuestions(context.Context, plugin.GetQuestionsRequest) (*plugin.GetQuestionsResponse, error) {
+	return &plugin.GetQuestionsResponse{Questions: plugin.Questions{}}, nil
 }
 
-func (*mockYamlMod) ValidateQuestion(context.Context, models.ValidateQuestionRequest) (*models.ValidateQuestionResponse, error) {
-	return &models.ValidateQuestionResponse{Success: true}, nil
+func (*mockYamlMod) ValidateQuestion(context.Context, plugin.ValidateQuestionRequest) (*plugin.ValidateQuestionResponse, error) {
+	return &plugin.ValidateQuestionResponse{Success: true}, nil
 }
 
-func (*mockYamlMod) DefaultConfig(context.Context, models.DefaultConfigRequest) (*models.DefaultConfigResponse, error) {
-	return &models.DefaultConfigResponse{Config: models.PluginConfigs{}}, nil
+func (*mockYamlMod) DefaultConfig(context.Context, plugin.DefaultConfigRequest) (*plugin.DefaultConfigResponse, error) {
+	return &plugin.DefaultConfigResponse{Config: plugin.Configs{}}, nil
 }
 
-func (*mockYamlMod) DefaultAssets(context.Context, models.DefaultAssetsRequest) (*models.DefaultAssetsResponse, error) {
-	return &models.DefaultAssetsResponse{Assets: models.PluginAssets{}}, nil
+func (*mockYamlMod) DefaultAssets(context.Context, plugin.DefaultAssetsRequest) (*plugin.DefaultAssetsResponse, error) {
+	return &plugin.DefaultAssetsResponse{Assets: plugin.Assets{}}, nil
 }
 
 func TestYamlPlugin(t *testing.T) {
 	testYamlPluginPath := "tests/sample_plugin.yaml" // success
 	testYamlPluginName := "bq2bqtest"
-	expectedInfo := &models.PluginInfoResponse{
+	expectedInfo := &plugin.Info{
 		Name:          "bq2bqtest",
 		Description:   "Testing",
 		Image:         "docker.io/odpf/optimus-task-bq2bq-executor:latest",
-		SecretPath:    "/tmp/auth.json",
 		PluginType:    "task",
-		PluginMods:    []models.PluginMod{"cli"},
+		PluginMods:    []plugin.Mod{"cli"},
 		PluginVersion: "latest",
 		HookType:      "",
 		DependsOn:     []string(nil),
 		APIVersion:    []string(nil),
 	}
-	testPluginQuestion := models.PluginQuestion{
+	testPluginQuestion := plugin.Question{
 		Name:      "PROJECT",
 		Prompt:    "Project ID",
 		Regexp:    `^[a-zA-Z0-9_\-]+$`,
 		MinLength: 3,
 	}
-	expectedQuestions := &models.GetQuestionsResponse{
-		Questions: models.PluginQuestions{
+	expectedQuestions := &plugin.GetQuestionsResponse{
+		Questions: plugin.Questions{
 			testPluginQuestion,
 		},
 	}
-	expectedAssets := &models.DefaultAssetsResponse{
-		Assets: models.PluginAssets{
-			models.PluginAsset{
+	expectedAssets := &plugin.DefaultAssetsResponse{
+		Assets: plugin.Assets{
+			plugin.Asset{
 				Name:  "query.sql",
 				Value: `Select * from "project.dataset.table";`,
 			},
@@ -80,63 +80,63 @@ func TestYamlPlugin(t *testing.T) {
 	}
 
 	t.Run("PluginSpec", func(t *testing.T) {
-		plugin, _ := yaml.NewPluginSpec(testYamlPluginPath)
+		yamlPlugin, _ := yaml.NewPluginSpec(testYamlPluginPath)
 		t.Run("PluginInfo", func(t *testing.T) {
-			actual := plugin.PluginInfo()
+			actual := yamlPlugin.PluginInfo()
 			assert.Equal(t, expectedInfo, actual)
 		})
 		t.Run("GetQuestions", func(t *testing.T) {
 			ctx := context.Background()
-			questReq := models.GetQuestionsRequest{JobName: "test"}
-			actual, err := plugin.GetQuestions(ctx, questReq)
+			questReq := plugin.GetQuestionsRequest{JobName: "test"}
+			actual, err := yamlPlugin.GetQuestions(ctx, questReq)
 			assert.Nil(t, err)
 			assert.Equal(t, expectedQuestions, actual)
 		})
 
 		t.Run("ValidateQuestionSuccess", func(t *testing.T) {
 			ctx := context.Background()
-			req := models.ValidateQuestionRequest{
-				Answer: models.PluginAnswer{
+			req := plugin.ValidateQuestionRequest{
+				Answer: plugin.Answer{
 					Question: testPluginQuestion,
 					Value:    "test_project",
 				},
 			}
-			actual, err := plugin.ValidateQuestion(ctx, req)
-			expected := models.ValidateQuestionResponse{Success: true}
+			actual, err := yamlPlugin.ValidateQuestion(ctx, req)
+			expected := plugin.ValidateQuestionResponse{Success: true}
 			assert.Nil(t, err)
 			assert.Equal(t, expected.Success, actual.Success)
 		})
 		t.Run("ValidateQuestionFailure", func(t *testing.T) {
 			ctx := context.Background()
-			req := models.ValidateQuestionRequest{
-				Answer: models.PluginAnswer{
+			req := plugin.ValidateQuestionRequest{
+				Answer: plugin.Answer{
 					Question: testPluginQuestion,
 					Value:    "",
 				},
 			}
-			actual, err := plugin.ValidateQuestion(ctx, req)
-			expected := models.ValidateQuestionResponse{Success: false}
+			actual, err := yamlPlugin.ValidateQuestion(ctx, req)
+			expected := plugin.ValidateQuestionResponse{Success: false}
 			assert.Nil(t, err)
 			assert.Equal(t, expected.Success, actual.Success)
 		})
 		t.Run("DefaultConfig", func(t *testing.T) {
 			ctx := context.Background()
-			req := models.DefaultConfigRequest{
-				Answers: models.PluginAnswers{
-					models.PluginAnswer{
-						Question: models.PluginQuestion{Name: "PROJECT"},
+			req := plugin.DefaultConfigRequest{
+				Answers: plugin.Answers{
+					plugin.Answer{
+						Question: plugin.Question{Name: "PROJECT"},
 						Value:    "test_project",
 					},
 				},
 			}
-			actual, err := plugin.DefaultConfig(ctx, req)
-			expected := &models.DefaultConfigResponse{
-				Config: models.PluginConfigs{
-					models.PluginConfig{
+			actual, err := yamlPlugin.DefaultConfig(ctx, req)
+			expected := &plugin.DefaultConfigResponse{
+				Config: plugin.Configs{
+					plugin.Config{
 						Name:  "PROJECT",
 						Value: "test_project",
 					},
-					models.PluginConfig{
+					plugin.Config{
 						Name:  "TEST",
 						Value: "{{.test}}",
 					},
@@ -147,8 +147,8 @@ func TestYamlPlugin(t *testing.T) {
 		})
 		t.Run("DefaultAssets", func(t *testing.T) {
 			ctx := context.Background()
-			req := models.DefaultAssetsRequest{}
-			actual, err := plugin.DefaultAssets(ctx, req)
+			req := plugin.DefaultAssetsRequest{}
+			actual, err := yamlPlugin.DefaultAssets(ctx, req)
 			assert.Nil(t, err)
 			assert.Equal(t, expectedAssets, actual)
 		})
@@ -171,7 +171,7 @@ func TestYamlPlugin(t *testing.T) {
 				Name:          testYamlPluginName,
 				Image:         "sdsd",
 				PluginVersion: "asdasd",
-				PluginType:    string(models.PluginTypeTask),
+				PluginType:    plugin.TypeTask.String(),
 			})
 			assert.Nil(t, err)
 			assert.Len(t, repoWithBinayPlugin.GetAll(), 1)

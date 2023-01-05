@@ -8,14 +8,14 @@ import (
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/models"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 //go:embed dag.py.tmpl
 var dagTemplate []byte
 
 type PluginRepo interface {
-	GetByName(name string) (*models.Plugin, error)
+	GetByName(name string) (*plugin.Plugin, error)
 }
 
 type Compiler struct {

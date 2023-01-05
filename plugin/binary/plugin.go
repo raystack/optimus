@@ -11,6 +11,7 @@ import (
 
 	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/plugin/v1beta1/dependencyresolver"
+	oplugin "github.com/odpf/optimus/sdk/plugin"
 )
 
 var (
@@ -18,10 +19,10 @@ var (
 	Suffix = fmt.Sprintf("_%s_%s", runtime.GOOS, runtime.GOARCH)
 )
 
-func Init(pluginsRepo models.PluginRepository, discoveredBinaryPlugins []string, pluginLogger hclog.Logger, args ...string) error {
+func Init(pluginsRepo *models.PluginRepository, discoveredBinaryPlugins []string, pluginLogger hclog.Logger, args ...string) error {
 	// pluginMap is the map of plugins we can dispense.
 	pluginMap := map[string]plugin.Plugin{
-		models.ModTypeDependencyResolver.String(): dependencyresolver.NewPluginClient(pluginLogger),
+		oplugin.ModTypeDependencyResolver.String(): dependencyresolver.NewPluginClient(pluginLogger),
 	}
 
 	for _, pluginPath := range discoveredBinaryPlugins {
@@ -42,14 +43,14 @@ func Init(pluginsRepo models.PluginRepository, discoveredBinaryPlugins []string,
 		}
 		pluginLogger.Debug("plugin connection established: ", pluginPath)
 
-		var drClient models.DependencyResolverMod
+		var drClient oplugin.DependencyResolverMod
 		// create a client with dependency resolver mod
-		rawMod, err := rpcClient.Dispense(models.ModTypeDependencyResolver.String())
+		rawMod, err := rpcClient.Dispense(oplugin.ModTypeDependencyResolver.String())
 		if err != nil {
 			return fmt.Errorf("rpcClient.Dispense(): %s: %w", pluginPath, err)
 		}
-		drClient = rawMod.(models.DependencyResolverMod)
-		pluginLogger.Debug(fmt.Sprintf("%s mod found for: %s", models.ModTypeDependencyResolver, pluginPath))
+		drClient = rawMod.(oplugin.DependencyResolverMod)
+		pluginLogger.Debug(fmt.Sprintf("%s mod found for: %s", oplugin.ModTypeDependencyResolver, pluginPath))
 
 		pluginName, err := drClient.GetName(context.Background())
 		if err != nil {

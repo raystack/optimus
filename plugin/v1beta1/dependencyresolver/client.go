@@ -12,10 +12,10 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/internal/utils"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 	pbp "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 const (
@@ -45,7 +45,7 @@ func (m *GRPCClient) GetName(ctx context.Context) (string, error) {
 	return resp.GetName(), nil
 }
 
-func (m *GRPCClient) GenerateDestination(ctx context.Context, request models.GenerateDestinationRequest) (*models.GenerateDestinationResponse, error) {
+func (m *GRPCClient) GenerateDestination(ctx context.Context, request plugin.GenerateDestinationRequest) (*plugin.GenerateDestinationResponse, error) {
 	spanCtx, span := tracer.Start(ctx, "GenerateDestination")
 	defer span.End()
 
@@ -60,13 +60,13 @@ func (m *GRPCClient) GenerateDestination(ctx context.Context, request models.Gen
 		m.makeFatalOnConnErr(err)
 		return nil, err
 	}
-	return &models.GenerateDestinationResponse{
+	return &plugin.GenerateDestinationResponse{
 		Destination: resp.Destination,
-		Type:        models.DestinationType(resp.DestinationType),
+		Type:        resp.DestinationType,
 	}, nil
 }
 
-func (m *GRPCClient) GenerateDependencies(ctx context.Context, request models.GenerateDependenciesRequest) (*models.GenerateDependenciesResponse, error) {
+func (m *GRPCClient) GenerateDependencies(ctx context.Context, request plugin.GenerateDependenciesRequest) (*plugin.GenerateDependenciesResponse, error) {
 	spanCtx, span := tracer.Start(ctx, "GenerateDependencies")
 	defer span.End()
 
@@ -81,12 +81,12 @@ func (m *GRPCClient) GenerateDependencies(ctx context.Context, request models.Ge
 		m.makeFatalOnConnErr(err)
 		return nil, err
 	}
-	return &models.GenerateDependenciesResponse{
+	return &plugin.GenerateDependenciesResponse{
 		Dependencies: resp.Dependencies,
 	}, nil
 }
 
-func (m *GRPCClient) CompileAssets(ctx context.Context, request models.CompileAssetsRequest) (*models.CompileAssetsResponse, error) {
+func (m *GRPCClient) CompileAssets(ctx context.Context, request plugin.CompileAssetsRequest) (*plugin.CompileAssetsResponse, error) {
 	_, span := tracer.Start(ctx, "CompileAssets")
 	defer span.End()
 
@@ -112,7 +112,7 @@ func (m *GRPCClient) CompileAssets(ctx context.Context, request models.CompileAs
 		m.makeFatalOnConnErr(err)
 		return nil, err
 	}
-	return &models.CompileAssetsResponse{
+	return &plugin.CompileAssetsResponse{
 		Assets: adaptAssetsFromProto(resp.Assets),
 	}, nil
 }

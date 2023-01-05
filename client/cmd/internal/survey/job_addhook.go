@@ -9,6 +9,7 @@ import (
 
 	"github.com/odpf/optimus/client/local/model"
 	"github.com/odpf/optimus/internal/models"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 // JobAddHookSurvey defines survey for job add hook
@@ -24,7 +25,7 @@ func NewJobAddHookSurvey() *JobAddHookSurvey {
 }
 
 // AskToAddHook asks questions to add hook to a job
-func (j *JobAddHookSurvey) AskToAddHook(pluginRepo models.PluginRepository, jobSpec *model.JobSpec) (*model.JobSpec, error) {
+func (j *JobAddHookSurvey) AskToAddHook(pluginRepo *models.PluginRepository, jobSpec *model.JobSpec) (*model.JobSpec, error) {
 	newJobSpec := *jobSpec
 	availableHookNames := j.getAvailableHookNames(pluginRepo)
 	if len(availableHookNames) == 0 {
@@ -66,9 +67,9 @@ func (j *JobAddHookSurvey) AskToAddHook(pluginRepo models.PluginRepository, jobS
 	return &newJobSpec, nil
 }
 
-func (*JobAddHookSurvey) getHookConfig(cliMod models.CommandLineMod, answers models.PluginAnswers) (map[string]string, error) {
+func (*JobAddHookSurvey) getHookConfig(cliMod plugin.CommandLineMod, answers plugin.Answers) (map[string]string, error) {
 	ctx := context.Background()
-	configRequest := models.DefaultConfigRequest{Answers: answers}
+	configRequest := plugin.DefaultConfigRequest{Answers: answers}
 	generatedConfigResponse, err := cliMod.DefaultConfig(ctx, configRequest)
 	if err != nil {
 		return nil, err
@@ -84,7 +85,7 @@ func (*JobAddHookSurvey) getHookConfig(cliMod models.CommandLineMod, answers mod
 	return config, nil
 }
 
-func (*JobAddHookSurvey) getAvailableHookNames(pluginRepo models.PluginRepository) []string {
+func (*JobAddHookSurvey) getAvailableHookNames(pluginRepo *models.PluginRepository) []string {
 	var output []string
 	for _, hook := range pluginRepo.GetHooks() {
 		output = append(output, hook.Info().Name)
@@ -113,14 +114,14 @@ func (*JobAddHookSurvey) isSelectedHookAlreadyInJob(jobSpec *model.JobSpec, sele
 	return false
 }
 
-func (j *JobAddHookSurvey) askHookQuestions(ctx context.Context, cliMod models.CommandLineMod, jobName string) (models.PluginAnswers, error) {
-	questionRequest := models.GetQuestionsRequest{JobName: jobName}
+func (j *JobAddHookSurvey) askHookQuestions(ctx context.Context, cliMod plugin.CommandLineMod, jobName string) (plugin.Answers, error) {
+	questionRequest := plugin.GetQuestionsRequest{JobName: jobName}
 	questionResponse, err := cliMod.GetQuestions(ctx, questionRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	answers := models.PluginAnswers{}
+	answers := plugin.Answers{}
 	for _, question := range questionResponse.Questions {
 		responseAnswer, err := j.jobSurvey.askCliModSurveyQuestion(ctx, cliMod, question)
 		if err != nil {
