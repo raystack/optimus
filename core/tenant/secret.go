@@ -8,10 +8,6 @@ const (
 	SecretStorageKey    = "STORAGE"
 	SecretSchedulerAuth = "SCHEDULER_AUTH"
 
-	// SystemDefinedSecret TODO: get rid of system defined secrets
-	SystemDefinedSecret SecretType = "system"
-	UserDefinedSecret   SecretType = "user"
-
 	SecretTypeSystemDefinedPrefix = "_OPTIMUS_"
 )
 
@@ -67,28 +63,9 @@ func (p PlainTextSecrets) ToMap() map[string]string {
 	return secretMap
 }
 
-type SecretType string
-
-func SecretTypeFromString(str string) (SecretType, error) {
-	switch str {
-	case UserDefinedSecret.String():
-		return UserDefinedSecret, nil
-	case SystemDefinedSecret.String():
-		return SystemDefinedSecret, nil
-	default:
-		return "", errors.InvalidArgument(EntitySecret, "unknown type for secret type: "+str)
-	}
-}
-
-func (s SecretType) String() string {
-	return string(s)
-}
-
 type Secret struct {
 	name         SecretName
 	encodedValue string
-
-	_type SecretType
 
 	projName      ProjectName
 	namespaceName string
@@ -96,10 +73,6 @@ type Secret struct {
 
 func (s *Secret) Name() SecretName {
 	return s.name
-}
-
-func (s *Secret) Type() SecretType {
-	return s._type
 }
 
 func (s *Secret) EncodedValue() string {
@@ -114,14 +87,10 @@ func (s *Secret) NamespaceName() string {
 	return s.namespaceName
 }
 
-func NewSecret(name string, _type SecretType, encodedValue string, projName ProjectName, nsName string) (*Secret, error) {
+func NewSecret(name string, encodedValue string, projName ProjectName, nsName string) (*Secret, error) {
 	secretName, err := SecretNameFrom(name)
 	if err != nil {
 		return nil, err
-	}
-
-	if _type != UserDefinedSecret && _type != SystemDefinedSecret {
-		return nil, errors.InvalidArgument(EntitySecret, "invalid secret type")
 	}
 
 	if encodedValue == "" {
@@ -135,7 +104,6 @@ func NewSecret(name string, _type SecretType, encodedValue string, projName Proj
 	return &Secret{
 		name:          secretName,
 		encodedValue:  encodedValue,
-		_type:         _type,
 		projName:      projName,
 		namespaceName: nsName,
 	}, nil

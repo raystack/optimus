@@ -22,7 +22,7 @@ type SecretRepository struct {
 }
 
 const (
-	secretColumns = `id, name, value, type, project_name, namespace_name, created_at, updated_at`
+	secretColumns = `id, name, value, project_name, namespace_name, created_at, updated_at`
 
 	getAllSecretsInProject = `SELECT ` + secretColumns + `
 FROM secret s WHERE project_name = $1`
@@ -33,8 +33,6 @@ type Secret struct {
 
 	Name  string
 	Value string
-
-	Type string
 
 	ProjectName   string
 	NamespaceName sql.NullString
@@ -54,7 +52,6 @@ func NewSecret(secret *tenant.Secret) Secret {
 	return Secret{
 		Name:          secret.Name().String(),
 		Value:         base64cipher,
-		Type:          secret.Type().String(),
 		ProjectName:   secret.ProjectName().String(),
 		NamespaceName: nsName,
 	}
@@ -72,17 +69,12 @@ func (s Secret) ToTenantSecret() (*tenant.Secret, error) {
 		return nil, err
 	}
 
-	typ, err := tenant.SecretTypeFromString(s.Type)
-	if err != nil {
-		return nil, err
-	}
-
 	nsName := ""
 	if s.NamespaceName.Valid {
 		nsName = s.NamespaceName.String
 	}
 
-	return tenant.NewSecret(s.Name, typ, string(encrypted), projName, nsName)
+	return tenant.NewSecret(s.Name, string(encrypted), projName, nsName)
 }
 
 func (s Secret) ToSecretInfo() (*dto.SecretInfo, error) {
@@ -94,11 +86,6 @@ func (s Secret) ToSecretInfo() (*dto.SecretInfo, error) {
 	digest := cryptopasta.Hash("user defined secrets", encrypted)
 	base64encoded := base64.StdEncoding.EncodeToString(digest)
 
-	typ, err := tenant.SecretTypeFromString(s.Type)
-	if err != nil {
-		return nil, err
-	}
-
 	nsName := ""
 	if s.NamespaceName.Valid {
 		nsName = s.NamespaceName.String
@@ -107,7 +94,6 @@ func (s Secret) ToSecretInfo() (*dto.SecretInfo, error) {
 	return &dto.SecretInfo{
 		Name:      s.Name,
 		Digest:    base64encoded,
-		Type:      typ,
 		Namespace: nsName,
 		UpdatedAt: s.UpdatedAt,
 	}, nil
@@ -125,9 +111,9 @@ func (s SecretRepository) Save(ctx context.Context, tenantSecret *tenant.Secret)
 		return errors.Wrap(tenant.EntitySecret, "unable to save secret", err)
 	}
 
-	insertSecret := `INSERT INTO secret (name, value, type, project_name, namespace_name, created_at, updated_at)
+	insertSecret := `INSERT INTO secret (name, value, project_name, namespace_name, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, NOW(), NOW())`
-	_, err = s.db.Exec(ctx, insertSecret, secret.Name, secret.Value, secret.Type, secret.ProjectName, secret.NamespaceName)
+	_, err = s.db.Exec(ctx, insertSecret, secret.Name, secret.Value, secret.ProjectName, secret.NamespaceName)
 
 	if err != nil {
 		return errors.Wrap(tenant.EntitySecret, "unable to save secret", err)
@@ -147,10 +133,10 @@ func (s SecretRepository) Update(ctx context.Context, tenantSecret *tenant.Secre
 		return errors.Wrap(tenant.EntitySecret, "unable to update secret", err)
 	}
 
-	updateSecret := `UPDATE secret SET value=$1, type=$2, updated_at=NOW()
+	updateSecret := `UPDATE secret SET value=$1, updated_at=NOW()
 WHERE project_name = $3 AND name=$4`
 
-	_, err = s.db.Exec(ctx, updateSecret, secret.Value, secret.Type, secret.ProjectName, secret.Name)
+	_, err = s.db.Exec(ctx, updateSecret, secret.Value, secret.ProjectName, secret.Name)
 	if err != nil {
 		return errors.Wrap(tenant.EntitySecret, "unable to update secret", err)
 	}
@@ -167,7 +153,7 @@ AND project_name = $2
 AND (namespace_name IS NULL OR namespace_name = $3)`
 
 	err := s.db.QueryRow(ctx, getSecretByNameQuery, name, projName, nsName).
-		Scan(&secret.ID, &secret.Name, &secret.Value, &secret.Type,
+		Scan(&secret.ID, &secret.Name, &secret.Value,
 			&secret.ProjectName, &secret.NamespaceName, &secret.CreatedAt, &secret.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -207,7 +193,7 @@ WHERE project_name = $1 AND (namespace_name IS NULL or namespace_name = $2)`
 	var tenantSecrets []*tenant.Secret
 	for rows.Next() {
 		var sec Secret
-		err := rows.Scan(&sec.ID, &sec.Name, &sec.Value, &sec.Type,
+		err := rows.Scan(&sec.ID, &sec.Name, &sec.Value,
 			&sec.ProjectName, &sec.NamespaceName, &sec.CreatedAt, &sec.UpdatedAt)
 		if err != nil {
 			return nil, errors.Wrap(tenant.EntitySecret, "error in GetAll", err)
@@ -258,7 +244,7 @@ func (s SecretRepository) GetSecretsInfo(ctx context.Context, projName tenant.Pr
 	var secretInfo []*dto.SecretInfo
 	for rows.Next() {
 		var sec Secret
-		err := rows.Scan(&sec.ID, &sec.Name, &sec.Value, &sec.Type,
+		err := rows.Scan(&sec.ID, &sec.Name, &sec.Value,
 			&sec.ProjectName, &sec.NamespaceName, &sec.CreatedAt, &sec.UpdatedAt)
 		if err != nil {
 			return nil, errors.Wrap(tenant.EntitySecret, "error in GetAll", err)

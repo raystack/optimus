@@ -247,7 +247,6 @@ func TestNewSecretsHandler(t *testing.T) {
 			secretInfo := dto.SecretInfo{
 				Name:      "secret",
 				Digest:    "abcde",
-				Type:      tenant.UserDefinedSecret,
 				Namespace: ns.String(),
 				UpdatedAt: time.Date(2022, 9, 22, 0, 0, 0, 0, time.UTC),
 			}
