@@ -35,10 +35,12 @@ func (i JobRunID) IsEmpty() bool {
 type JobRun struct {
 	ID uuid.UUID
 
-	JobName JobName
-	Tenant  tenant.Tenant
-
+	JobName   JobName
+	Tenant    tenant.Tenant
+	State     State
 	StartTime time.Time
+	SLAAlert  bool
+	EndTime   time.Time
 }
 
 type OperatorRun struct {

@@ -16,6 +16,7 @@ import (
 	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/internal/writer"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 type JobHandler struct {
@@ -37,7 +38,7 @@ type JobService interface {
 	Update(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error
 	Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) (affectedDownstream []job.FullName, err error)
 	Get(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name) (jobSpec *job.Job, err error)
-	GetTaskWithInfo(ctx context.Context, task *job.Task) (*job.Task, error)
+	GetTaskInfo(ctx context.Context, task job.Task) (*plugin.Info, error)
 	GetByFilter(ctx context.Context, filters ...filter.FilterOpt) (jobSpecs []*job.Job, err error)
 	ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, jobNamesWithValidationError []job.Name, logWriter writer.LogWriter) error
 	Refresh(ctx context.Context, projectName tenant.ProjectName, namespaceNames []string, jobNames []string, logWriter writer.LogWriter) error
@@ -359,15 +360,15 @@ func (jh *JobHandler) GetJobTask(ctx context.Context, req *pb.GetJobTaskRequest)
 		return nil, err
 	}
 
-	jobTask, err := jh.jobService.GetTaskWithInfo(ctx, jobResult.Spec().Task())
+	taskInfo, err := jh.jobService.GetTaskInfo(ctx, jobResult.Spec().Task())
 	if err != nil {
 		return nil, err
 	}
 
 	jobTaskSpec := &pb.JobTask{
-		Name:        jobTask.Info().Name,
-		Description: jobTask.Info().Description,
-		Image:       jobTask.Info().Image,
+		Name:        taskInfo.Name,
+		Description: taskInfo.Description,
+		Image:       taskInfo.Image,
 	}
 
 	jobTaskSpec.Destination = &pb.JobTask_Destination{

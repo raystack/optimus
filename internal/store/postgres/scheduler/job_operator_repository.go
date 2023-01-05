@@ -2,10 +2,12 @@ package scheduler
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/internal/errors"
@@ -15,27 +17,31 @@ const (
 	sensorRunTableName = "sensor_run"
 	taskRunTableName   = "task_run"
 	hookRunTableName   = "hook_run"
+
+	jobOperatorColumnsToStore = `name, job_run_id, status, start_time, end_time`
+	jobOperatorColumns        = `id, ` + jobOperatorColumnsToStore
 )
 
 type OperatorRunRepository struct {
-	db *gorm.DB
+	// TODO: Add test
+	db *pgxpool.Pool
 }
 
 type operatorRun struct {
-	ID       uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
+	ID       uuid.UUID
 	JobRunID uuid.UUID
 
 	Name         string
 	OperatorType string
 	Status       string
 
-	StartTime time.Time `gorm:"not null"`
-	EndTime   time.Time `gorm:"default:TIMESTAMP '3000-01-01 00:00:00'"`
+	StartTime time.Time
+	EndTime   time.Time
 
-	CreatedAt time.Time `gorm:"not null" json:"created_at"`
-	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 	// TODO:  add a remarks colum to capture failure reason
-	DeletedAt gorm.DeletedAt
+	DeletedAt sql.NullTime
 }
 
 func operatorTypeToTableName(operatorType scheduler.OperatorType) (string, error) {
@@ -73,13 +79,15 @@ func (o *OperatorRunRepository) GetOperatorRun(ctx context.Context, name string,
 	if err != nil {
 		return nil, err
 	}
-	getJobRunByID := `SELECT id, name, job_run_id, status, start_time, end_time FROM ` + operatorTableName + ` j where job_run_id = ? and name = ? order by created_at desc limit 1`
-	k := o.db.WithContext(ctx).Raw(getJobRunByID, jobRunID, name).First(&opRun)
-	err = k.Error
+	getJobRunByID := "SELECT " + jobOperatorColumns + " FROM " + operatorTableName + " j where job_run_id = $1 and name = $2 order by created_at desc limit 1"
+	err = o.db.QueryRow(ctx, getJobRunByID, jobRunID, name).
+		Scan(&opRun.ID, &opRun.Name, &opRun.JobRunID, &opRun.Status, &opRun.StartTime, &opRun.EndTime)
+
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.NotFound(scheduler.EntityJobRun, "no record for "+operatorType.String()+"/"+name+" for job_run ID: "+jobRunID.String())
 		}
+		return nil, errors.Wrap(scheduler.EntityJobRun, "error while getting operator run", err)
 	}
 	return opRun.toOperatorRun()
 }
@@ -88,8 +96,9 @@ func (o *OperatorRunRepository) CreateOperatorRun(ctx context.Context, name stri
 	if err != nil {
 		return err
 	}
-	insertOperatorRun := `INSERT INTO ` + operatorTableName + ` ( job_run_id , name , status, start_time, end_time, created_at, updated_at) values ( ?, ?, ?, ?, TIMESTAMP '3000-01-01 00:00:00', NOW(), NOW())`
-	return o.db.WithContext(ctx).Exec(insertOperatorRun, jobRunID, name, scheduler.StateRunning, startTime).Error
+	insertOperatorRun := "INSERT INTO " + operatorTableName + " ( " + jobOperatorColumnsToStore + ", created_at, updated_at) values ( $1, $2, $3, $4, TIMESTAMP '3000-01-01 00:00:00', NOW(), NOW())"
+	_, err = o.db.Exec(ctx, insertOperatorRun, name, jobRunID, scheduler.StateRunning, startTime)
+	return errors.WrapIfErr(scheduler.EntityJobRun, "error while inserting the run", err)
 }
 
 func (o *OperatorRunRepository) UpdateOperatorRun(ctx context.Context, operatorType scheduler.OperatorType, operatorRunID uuid.UUID, eventTime time.Time, state scheduler.State) error {
@@ -97,12 +106,13 @@ func (o *OperatorRunRepository) UpdateOperatorRun(ctx context.Context, operatorT
 	if err != nil {
 		return err
 	}
-	updateJobRun := "update " + operatorTableName + " set status = ?, end_time = ?, updated_at = NOW() where id = ?"
-	return o.db.WithContext(ctx).Exec(updateJobRun, state.String(), eventTime, operatorRunID).Error
+	updateJobRun := "UPDATE " + operatorTableName + " SET status = $1, end_time = $2, updated_at = NOW() where id = $3"
+	_, err = o.db.Exec(ctx, updateJobRun, state, eventTime, operatorRunID)
+	return errors.WrapIfErr(scheduler.EntityJobRun, "error while updating the run", err)
 }
 
-func NewOperatorRunRepository(db *gorm.DB) *OperatorRunRepository {
+func NewOperatorRunRepository(pool *pgxpool.Pool) *OperatorRunRepository {
 	return &OperatorRunRepository{
-		db: db,
+		db: pool,
 	}
 }

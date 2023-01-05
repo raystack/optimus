@@ -36,15 +36,14 @@ func TestNewJobHandler(t *testing.T) {
 			"bucket": "gs://ns_bucket",
 		})
 	sampleTenant, _ := tenant.NewTenant(project.Name().String(), namespace.Name().String())
-	jobVersion, err := job.VersionFrom(1)
-	assert.NoError(t, err)
+	jobVersion := 1
 	startDate, err := job.ScheduleDateFrom("2022-10-01")
 	assert.NoError(t, err)
 	jobSchedule, err := job.NewScheduleBuilder(startDate).Build()
 	assert.NoError(t, err)
-	jobWindow, err := models.NewWindow(jobVersion.Int(), "d", "24h", "24h")
+	jobWindow, err := models.NewWindow(jobVersion, "d", "24h", "24h")
 	assert.NoError(t, err)
-	jobConfig, err := job.NewConfig(map[string]string{"sample_key": "sample_value"})
+	jobConfig, err := job.ConfigFrom(map[string]string{"sample_key": "sample_value"})
 	assert.NoError(t, err)
 	jobTask := job.NewTaskBuilder("bq2bq", jobConfig).Build()
 	jobBehavior := &pb.JobSpecification_Behavior{
@@ -73,6 +72,7 @@ func TestNewJobHandler(t *testing.T) {
 		Build()
 
 	log := log.NewNoop()
+	sampleOwner := "sample-owner"
 
 	t.Run("AddJobSpecifications", func(t *testing.T) {
 		t.Run("adds job", func(t *testing.T) {
@@ -83,7 +83,7 @@ func TestNewJobHandler(t *testing.T) {
 			jobSpecProto := &pb.JobSpecification{
 				Version:          int32(jobVersion),
 				Name:             "job-A",
-				Owner:            "sample-owner",
+				Owner:            sampleOwner,
 				StartDate:        jobSchedule.StartDate().String(),
 				EndDate:          jobSchedule.EndDate().String(),
 				Interval:         jobSchedule.Interval(),
@@ -115,7 +115,7 @@ func TestNewJobHandler(t *testing.T) {
 			jobSpecProto := &pb.JobSpecification{
 				Version:          int32(jobVersion),
 				Name:             "job-A",
-				Owner:            "sample-owner",
+				Owner:            sampleOwner,
 				StartDate:        jobSchedule.StartDate().String(),
 				EndDate:          jobSchedule.EndDate().String(),
 				Interval:         jobSchedule.Interval(),
@@ -176,7 +176,7 @@ func TestNewJobHandler(t *testing.T) {
 					{
 						Version:          int32(jobVersion),
 						Name:             "job-B",
-						Owner:            "sample-owner",
+						Owner:            sampleOwner,
 						StartDate:        jobSchedule.StartDate().String(),
 						EndDate:          jobSchedule.EndDate().String(),
 						Interval:         jobSchedule.Interval(),
@@ -208,7 +208,7 @@ func TestNewJobHandler(t *testing.T) {
 						Version:          int32(jobVersion),
 						Name:             "job-A",
 						StartDate:        "invalid",
-						Owner:            "sample-owner",
+						Owner:            sampleOwner,
 						EndDate:          jobSchedule.EndDate().String(),
 						Interval:         jobSchedule.Interval(),
 						TaskName:         jobTask.Name().String(),
@@ -219,7 +219,7 @@ func TestNewJobHandler(t *testing.T) {
 					{
 						Version:          int32(jobVersion),
 						Name:             "job-B",
-						Owner:            "sample-owner",
+						Owner:            sampleOwner,
 						StartDate:        jobSchedule.StartDate().String(),
 						EndDate:          jobSchedule.EndDate().String(),
 						Interval:         jobSchedule.Interval(),
@@ -252,7 +252,7 @@ func TestNewJobHandler(t *testing.T) {
 						Name:             "job-A",
 						StartDate:        jobSchedule.StartDate().String(),
 						EndDate:          "invalid",
-						Owner:            "sample-owner",
+						Owner:            sampleOwner,
 						Interval:         jobSchedule.Interval(),
 						TaskName:         jobTask.Name().String(),
 						WindowSize:       jobWindow.GetSize(),
@@ -262,7 +262,7 @@ func TestNewJobHandler(t *testing.T) {
 					{
 						Version:          int32(jobVersion),
 						Name:             "job-B",
-						Owner:            "sample-owner",
+						Owner:            sampleOwner,
 						StartDate:        jobSchedule.StartDate().String(),
 						EndDate:          jobSchedule.EndDate().String(),
 						Interval:         jobSchedule.Interval(),
@@ -300,7 +300,7 @@ func TestNewJobHandler(t *testing.T) {
 					{
 						Version:          int32(jobVersion),
 						Name:             "job-A",
-						Owner:            "sample-owner",
+						Owner:            sampleOwner,
 						StartDate:        jobSchedule.StartDate().String(),
 						EndDate:          jobSchedule.EndDate().String(),
 						Interval:         jobSchedule.Interval(),
@@ -313,7 +313,7 @@ func TestNewJobHandler(t *testing.T) {
 					{
 						Version:          int32(jobVersion),
 						Name:             "job-B",
-						Owner:            "sample-owner",
+						Owner:            sampleOwner,
 						StartDate:        jobSchedule.StartDate().String(),
 						EndDate:          jobSchedule.EndDate().String(),
 						Interval:         jobSchedule.Interval(),
@@ -373,7 +373,7 @@ func TestNewJobHandler(t *testing.T) {
 				{
 					Version:          int32(jobVersion),
 					Name:             "job-A",
-					Owner:            "sample-owner",
+					Owner:            sampleOwner,
 					StartDate:        jobSchedule.StartDate().String(),
 					EndDate:          jobSchedule.EndDate().String(),
 					Interval:         jobSchedule.Interval(),
@@ -416,7 +416,7 @@ func TestNewJobHandler(t *testing.T) {
 			jobSpecProto := &pb.JobSpecification{
 				Version:          int32(jobVersion),
 				Name:             "job-A",
-				Owner:            "sample-owner",
+				Owner:            sampleOwner,
 				StartDate:        jobSchedule.StartDate().String(),
 				EndDate:          jobSchedule.EndDate().String(),
 				Interval:         jobSchedule.Interval(),
@@ -448,7 +448,7 @@ func TestNewJobHandler(t *testing.T) {
 			jobSpecProto := &pb.JobSpecification{
 				Version:          int32(jobVersion),
 				Name:             "job-A",
-				Owner:            "sample-owner",
+				Owner:            sampleOwner,
 				StartDate:        jobSchedule.StartDate().String(),
 				EndDate:          jobSchedule.EndDate().String(),
 				Interval:         jobSchedule.Interval(),
@@ -508,7 +508,7 @@ func TestNewJobHandler(t *testing.T) {
 				{
 					Version:          int32(jobVersion),
 					Name:             "job-B",
-					Owner:            "sample-owner",
+					Owner:            sampleOwner,
 					StartDate:        jobSchedule.StartDate().String(),
 					EndDate:          jobSchedule.EndDate().String(),
 					Interval:         jobSchedule.Interval(),
@@ -569,7 +569,7 @@ func TestNewJobHandler(t *testing.T) {
 				{
 					Version:          int32(jobVersion),
 					Name:             "job-A",
-					Owner:            "sample-owner",
+					Owner:            sampleOwner,
 					StartDate:        jobSchedule.StartDate().String(),
 					EndDate:          jobSchedule.EndDate().String(),
 					Interval:         jobSchedule.Interval(),
@@ -767,7 +767,7 @@ func TestNewJobHandler(t *testing.T) {
 				{
 					Version:          int32(jobVersion),
 					Name:             "job-A",
-					Owner:            "sample-owner",
+					Owner:            sampleOwner,
 					StartDate:        jobSchedule.StartDate().String(),
 					EndDate:          jobSchedule.EndDate().String(),
 					Interval:         jobSchedule.Interval(),
@@ -779,7 +779,7 @@ func TestNewJobHandler(t *testing.T) {
 				{
 					Version:          int32(jobVersion),
 					Name:             "job-B",
-					Owner:            "sample-owner",
+					Owner:            sampleOwner,
 					StartDate:        jobSchedule.StartDate().String(),
 					EndDate:          jobSchedule.EndDate().String(),
 					Interval:         jobSchedule.Interval(),
@@ -816,7 +816,7 @@ func TestNewJobHandler(t *testing.T) {
 				{
 					Version:          int32(jobVersion),
 					Name:             "job-A",
-					Owner:            "sample-owner",
+					Owner:            sampleOwner,
 					StartDate:        jobSchedule.StartDate().String(),
 					EndDate:          jobSchedule.EndDate().String(),
 					Interval:         jobSchedule.Interval(),
@@ -862,12 +862,12 @@ func TestNewJobHandler(t *testing.T) {
 				{
 					Version: int32(jobVersion),
 					Name:    "job-A",
-					Owner:   "sample-owner",
+					Owner:   sampleOwner,
 				},
 				{
 					Version:          int32(jobVersion),
 					Name:             "job-B",
-					Owner:            "sample-owner",
+					Owner:            sampleOwner,
 					StartDate:        jobSchedule.StartDate().String(),
 					EndDate:          jobSchedule.EndDate().String(),
 					Interval:         jobSchedule.Interval(),
@@ -904,7 +904,7 @@ func TestNewJobHandler(t *testing.T) {
 				{
 					Version:          int32(jobVersion),
 					Name:             "job-A",
-					Owner:            "sample-owner",
+					Owner:            sampleOwner,
 					StartDate:        jobSchedule.StartDate().String(),
 					EndDate:          jobSchedule.EndDate().String(),
 					Interval:         jobSchedule.Interval(),
@@ -916,7 +916,7 @@ func TestNewJobHandler(t *testing.T) {
 				{
 					Version:          int32(jobVersion),
 					Name:             "job-B",
-					Owner:            "sample-owner",
+					Owner:            sampleOwner,
 					StartDate:        jobSchedule.StartDate().String(),
 					EndDate:          jobSchedule.EndDate().String(),
 					Interval:         jobSchedule.Interval(),
@@ -955,7 +955,7 @@ func TestNewJobHandler(t *testing.T) {
 				{
 					Version:          int32(jobVersion),
 					Name:             "job-A",
-					Owner:            "sample-owner",
+					Owner:            sampleOwner,
 					StartDate:        jobSchedule.StartDate().String(),
 					EndDate:          jobSchedule.EndDate().String(),
 					Interval:         jobSchedule.Interval(),
@@ -967,7 +967,7 @@ func TestNewJobHandler(t *testing.T) {
 				{
 					Version:          int32(jobVersion),
 					Name:             "job-B",
-					Owner:            "sample-owner",
+					Owner:            sampleOwner,
 					StartDate:        jobSchedule.StartDate().String(),
 					EndDate:          jobSchedule.EndDate().String(),
 					Interval:         jobSchedule.Interval(),
@@ -1101,7 +1101,7 @@ func TestNewJobHandler(t *testing.T) {
 			jobService := new(JobService)
 			defer jobService.AssertExpectations(t)
 
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", sampleOwner, jobSchedule, jobWindow, jobTask).Build()
 			jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-B"})
 
 			request := pb.GetJobSpecificationRequest{
@@ -1137,9 +1137,9 @@ func TestNewJobHandler(t *testing.T) {
 
 			request := pb.GetJobSpecificationsRequest{}
 
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", sampleOwner, jobSchedule, jobWindow, jobTask).Build()
 			jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-B"})
-			specB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, jobWindow, jobTask).Build()
+			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", sampleOwner, jobSchedule, jobWindow, jobTask).Build()
 			jobB := job.NewJob(sampleTenant, specB, "table-B", []job.ResourceURN{"table-C"})
 
 			jobService.On("GetByFilter", ctx, mock.Anything, mock.Anything, mock.Anything).Return([]*job.Job{jobA, jobB}, nil)
@@ -1174,9 +1174,9 @@ func TestNewJobHandler(t *testing.T) {
 				NamespaceName: sampleTenant.NamespaceName().String(),
 			}
 
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", sampleOwner, jobSchedule, jobWindow, jobTask).Build()
 			jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-B"})
-			specB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, jobWindow, jobTask).Build()
+			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", sampleOwner, jobSchedule, jobWindow, jobTask).Build()
 			jobB := job.NewJob(sampleTenant, specB, "table-B", []job.ResourceURN{"table-C"})
 
 			jobService.On("GetByFilter", ctx, mock.Anything, mock.Anything).Return([]*job.Job{jobA, jobB}, nil)
@@ -1213,7 +1213,7 @@ func TestNewJobHandler(t *testing.T) {
 			jobSpecProto := &pb.JobSpecification{
 				Version:          int32(jobVersion),
 				Name:             "",
-				Owner:            "sample-owner",
+				Owner:            sampleOwner,
 				StartDate:        jobSchedule.StartDate().String(),
 				EndDate:          jobSchedule.EndDate().String(),
 				Interval:         jobSchedule.Interval(),
@@ -1248,7 +1248,7 @@ func TestNewJobHandler(t *testing.T) {
 			jobSpecProto := &pb.JobSpecification{
 				Version:          int32(jobVersion),
 				Name:             "job-A",
-				Owner:            "sample-owner",
+				Owner:            sampleOwner,
 				StartDate:        jobSchedule.StartDate().String(),
 				EndDate:          jobSchedule.EndDate().String(),
 				Interval:         jobSchedule.Interval(),
@@ -1283,7 +1283,7 @@ func TestNewJobHandler(t *testing.T) {
 			jobSpecProto := &pb.JobSpecification{
 				Version:          int32(jobVersion),
 				Name:             "job-A",
-				Owner:            "sample-owner",
+				Owner:            sampleOwner,
 				StartDate:        jobSchedule.StartDate().String(),
 				EndDate:          jobSchedule.EndDate().String(),
 				Interval:         jobSchedule.Interval(),
@@ -1320,7 +1320,7 @@ func TestNewJobHandler(t *testing.T) {
 
 			httpUpstream, _ := job.NewSpecHTTPUpstreamBuilder("sample-upstream", "sample-url").Build()
 			upstreamSpec, _ := job.NewSpecUpstreamBuilder().WithSpecHTTPUpstream([]*job.SpecHTTPUpstream{httpUpstream}).Build()
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).WithMetadata(metadataSpec).Build()
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", sampleOwner, jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).WithMetadata(metadataSpec).Build()
 			jobA := job.NewJob(sampleTenant, specA, "resource-A", nil)
 
 			upstreamB := job.NewUpstreamResolved("job-B", "", "resource-b", sampleTenant, "static", "bq2bq", false)
@@ -1350,6 +1350,7 @@ func TestNewJobHandler(t *testing.T) {
 					Job: &pb.JobSpecification{
 						Version:          int32(jobVersion),
 						Name:             specA.Name().String(),
+						Owner:            sampleOwner,
 						StartDate:        specA.Schedule().StartDate().String(),
 						EndDate:          specA.Schedule().EndDate().String(),
 						Interval:         specA.Schedule().Interval(),
@@ -1367,7 +1368,7 @@ func TestNewJobHandler(t *testing.T) {
 						Dependencies: []*pb.JobDependency{
 							{
 								HttpDependency: &pb.HttpDependency{
-									Name: httpUpstream.Name().String(),
+									Name: httpUpstream.Name(),
 									Url:  httpUpstream.URL(),
 								},
 							},
@@ -1397,7 +1398,7 @@ func TestNewJobHandler(t *testing.T) {
 					},
 					HttpDependency: []*pb.HttpDependency{
 						{
-							Name: httpUpstream.Name().String(),
+							Name: httpUpstream.Name(),
 							Url:  httpUpstream.URL(),
 						},
 					},
@@ -1427,9 +1428,9 @@ func TestNewJobHandler(t *testing.T) {
 				WithSpecHTTPUpstream([]*job.SpecHTTPUpstream{httpUpstream}).
 				WithUpstreamNames([]job.SpecUpstreamName{"job-B"}).Build()
 
-			hook1 := job.NewHook("hook-1", jobConfig)
+			hook1, _ := job.NewHook("hook-1", jobConfig)
 
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", sampleOwner, jobSchedule, jobWindow, jobTask).
 				WithSpecUpstream(upstreamSpec).
 				WithHooks([]*job.Hook{hook1}).Build()
 			jobA := job.NewJob(sampleTenant, specA, "resource-A", nil)
@@ -1466,7 +1467,7 @@ func TestNewJobHandler(t *testing.T) {
 			jobSpecProto := &pb.JobSpecification{
 				Version:          int32(jobVersion),
 				Name:             "job-A",
-				Owner:            "sample-owner",
+				Owner:            sampleOwner,
 				StartDate:        jobSchedule.StartDate().String(),
 				Interval:         jobSchedule.Interval(),
 				TaskName:         jobTask.Name().String(),
@@ -1489,7 +1490,7 @@ func TestNewJobHandler(t *testing.T) {
 					Job: &pb.JobSpecification{
 						Version:          int32(jobVersion),
 						Name:             specA.Name().String(),
-						Owner:            "sample-owner",
+						Owner:            sampleOwner,
 						StartDate:        specA.Schedule().StartDate().String(),
 						EndDate:          specA.Schedule().EndDate().String(),
 						Interval:         specA.Schedule().Interval(),
@@ -1601,7 +1602,7 @@ func TestNewJobHandler(t *testing.T) {
 		t.Run("should return downstream and upstream error log messages if exist", func(t *testing.T) {
 			jobService := new(JobService)
 
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", sampleOwner, jobSchedule, jobWindow, jobTask).Build()
 			jobA := job.NewJob(sampleTenant, specA, "resource-A", nil)
 
 			upstreamB := job.NewUpstreamResolved("job-B", "", "resource-b", sampleTenant, "static", "bq2bq", false)
@@ -1635,6 +1636,7 @@ func TestNewJobHandler(t *testing.T) {
 					Job: &pb.JobSpecification{
 						Version:          int32(jobVersion),
 						Name:             specA.Name().String(),
+						Owner:            sampleOwner,
 						StartDate:        specA.Schedule().StartDate().String(),
 						EndDate:          specA.Schedule().EndDate().String(),
 						Interval:         specA.Schedule().Interval(),
@@ -1696,7 +1698,7 @@ func TestNewJobHandler(t *testing.T) {
 
 			httpUpstream, _ := job.NewSpecHTTPUpstreamBuilder("sample-upstream", "sample-url").Build()
 			upstreamSpec, _ := job.NewSpecUpstreamBuilder().WithSpecHTTPUpstream([]*job.SpecHTTPUpstream{httpUpstream}).Build()
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", sampleOwner, jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 
 			basicInfoLogger := writer.BufferedLogger{Messages: []*pb.Log{
 				{Message: "not found"},
@@ -1763,7 +1765,7 @@ func TestNewJobHandler(t *testing.T) {
 			jobService := new(JobService)
 			defer jobService.AssertExpectations(t)
 
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", sampleOwner, jobSchedule, jobWindow, jobTask).Build()
 			jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-B"})
 
 			req := &pb.GetJobTaskRequest{
@@ -1773,7 +1775,7 @@ func TestNewJobHandler(t *testing.T) {
 			}
 
 			jobService.On("Get", ctx, sampleTenant, jobA.Spec().Name()).Return(jobA, nil)
-			jobService.On("GetTaskWithInfo", ctx, jobA.Spec().Task()).Return(nil, errors.New("error encountered"))
+			jobService.On("GetTaskInfo", ctx, jobA.Spec().Task()).Return(nil, errors.New("error encountered"))
 			handler := v1beta1.NewJobHandler(jobService, nil)
 			resp, err := handler.GetJobTask(ctx, req)
 			assert.Error(t, err)
@@ -1783,7 +1785,7 @@ func TestNewJobHandler(t *testing.T) {
 			jobService := new(JobService)
 			defer jobService.AssertExpectations(t)
 
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", sampleOwner, jobSchedule, jobWindow, jobTask).Build()
 			jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-B"})
 
 			req := &pb.GetJobTaskRequest{
@@ -1792,13 +1794,13 @@ func TestNewJobHandler(t *testing.T) {
 				JobName:       jobA.Spec().Name().String(),
 			}
 
-			jobTask := job.NewTaskBuilder(jobTask.Name(), jobTask.Config()).WithInfo(&plugin.Info{
+			taskInfo := &plugin.Info{
 				Name:        "bq2bq",
 				Description: "task info desc",
 				Image:       "odpf/bq2bq:latest",
-			}).Build()
+			}
 			jobService.On("Get", ctx, sampleTenant, jobA.Spec().Name()).Return(jobA, nil)
-			jobService.On("GetTaskWithInfo", ctx, jobA.Spec().Task()).Return(jobTask, nil)
+			jobService.On("GetTaskInfo", ctx, jobA.Spec().Task()).Return(taskInfo, nil)
 			handler := v1beta1.NewJobHandler(jobService, nil)
 			resp, err := handler.GetJobTask(ctx, req)
 			assert.NoError(t, err)
@@ -1873,7 +1875,7 @@ func (_m *JobService) Get(ctx context.Context, jobTenant tenant.Tenant, jobName 
 	return r0, r1
 }
 
-// GetAll provides a mock function with given fields: ctx, filters
+// GetByFilter provides a mock function with given fields: ctx, filters
 func (_m *JobService) GetByFilter(ctx context.Context, filters ...filter.FilterOpt) ([]*job.Job, error) {
 	_va := make([]interface{}, len(filters))
 	for _i := range filters {
@@ -1950,20 +1952,20 @@ func (_m *JobService) GetJobBasicInfo(ctx context.Context, jobTenant tenant.Tena
 }
 
 // GetTaskInfo provides a mock function with given fields: ctx, task
-func (_m *JobService) GetTaskWithInfo(ctx context.Context, task *job.Task) (*job.Task, error) {
+func (_m *JobService) GetTaskInfo(ctx context.Context, task job.Task) (*plugin.Info, error) {
 	ret := _m.Called(ctx, task)
 
-	var r0 *job.Task
-	if rf, ok := ret.Get(0).(func(context.Context, *job.Task) *job.Task); ok {
+	var r0 *plugin.Info
+	if rf, ok := ret.Get(0).(func(context.Context, job.Task) *plugin.Info); ok {
 		r0 = rf(ctx, task)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*job.Task)
+			r0 = ret.Get(0).(*plugin.Info)
 		}
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *job.Task) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, job.Task) error); ok {
 		r1 = rf(ctx, task)
 	} else {
 		r1 = ret.Error(1)

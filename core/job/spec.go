@@ -8,29 +8,28 @@ import (
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/models"
-	"github.com/odpf/optimus/sdk/plugin"
 )
 
 const DateLayout = "2006-01-02"
 
 type Spec struct {
-	version  Version
+	version  int
 	name     Name
-	owner    Owner
+	owner    string
 	schedule *Schedule
 	window   models.Window
-	task     *Task
+	task     Task
 
 	description  string
 	labels       map[string]string
 	metadata     *Metadata
 	hooks        []*Hook
-	asset        *Asset
+	asset        Asset
 	alertSpecs   []*AlertSpec
 	upstreamSpec *UpstreamSpec
 }
 
-func (s Spec) Version() Version {
+func (s Spec) Version() int {
 	return s.version
 }
 
@@ -38,7 +37,7 @@ func (s Spec) Name() Name {
 	return s.name
 }
 
-func (s Spec) Owner() Owner {
+func (s Spec) Owner() string {
 	return s.owner
 }
 
@@ -50,7 +49,7 @@ func (s Spec) Window() models.Window {
 	return s.window
 }
 
-func (s Spec) Task() *Task {
+func (s Spec) Task() Task {
 	return s.task
 }
 
@@ -74,7 +73,7 @@ func (s Spec) UpstreamSpec() *UpstreamSpec {
 	return s.upstreamSpec
 }
 
-func (s Spec) Asset() *Asset {
+func (s Spec) Asset() Asset {
 	return s.asset
 }
 
@@ -87,12 +86,12 @@ type SpecBuilder struct {
 }
 
 func NewSpecBuilder(
-	version Version,
+	version int,
 	name Name,
-	owner Owner,
+	owner string,
 	schedule *Schedule,
 	window models.Window,
-	task *Task,
+	task Task,
 ) *SpecBuilder {
 	return &SpecBuilder{
 		spec: &Spec{
@@ -106,8 +105,14 @@ func NewSpecBuilder(
 	}
 }
 
-func (s *SpecBuilder) Build() *Spec {
-	return s.spec
+func (s *SpecBuilder) Build() (*Spec, error) {
+	if s.spec.version <= 0 {
+		return nil, errors.InvalidArgument(EntityJob, "version is less than or equal to zero")
+	}
+	if s.spec.owner == "" {
+		return nil, errors.InvalidArgument(EntityJob, "owner is empty")
+	}
+	return s.spec, nil
 }
 
 func (s *SpecBuilder) WithHooks(hooks []*Hook) *SpecBuilder {
@@ -134,7 +139,7 @@ func (s *SpecBuilder) WithSpecUpstream(specUpstream *UpstreamSpec) *SpecBuilder 
 	}
 }
 
-func (s *SpecBuilder) WithAsset(asset *Asset) *SpecBuilder {
+func (s *SpecBuilder) WithAsset(asset Asset) *SpecBuilder {
 	spec := *s.spec
 	spec.asset = asset
 	return &SpecBuilder{
@@ -176,19 +181,6 @@ func (s Specs) ToNameAndSpecMap() map[Name]*Spec {
 	return nameAndSpecMap
 }
 
-type Version int
-
-func VersionFrom(version int) (Version, error) {
-	if version <= 0 {
-		return 0, errors.InvalidArgument(EntityJob, "version is less than or equal to zero")
-	}
-	return Version(version), nil
-}
-
-func (v Version) Int() int {
-	return int(v)
-}
-
 type Name string
 
 func NameFrom(name string) (Name, error) {
@@ -202,24 +194,11 @@ func (n Name) String() string {
 	return string(n)
 }
 
-type Owner string
-
-func OwnerFrom(owner string) (Owner, error) {
-	if owner == "" {
-		return "", errors.InvalidArgument(EntityJob, "owner is empty")
-	}
-	return Owner(owner), nil
-}
-
-func (o Owner) String() string {
-	return string(o)
-}
-
 type ScheduleDate string
 
 func ScheduleDateFrom(date string) (ScheduleDate, error) {
 	if date == "" {
-		return ScheduleDate(""), nil
+		return "", nil
 	}
 	if _, err := time.Parse(DateLayout, date); err != nil {
 		msg := fmt.Sprintf("error is encountered when validating date with layout [%s]: %s", DateLayout, err)
@@ -347,19 +326,17 @@ func (s ScheduleBuilder) WithRetry(retry *Retry) *ScheduleBuilder {
 	}
 }
 
-type Config struct {
-	configs map[string]string
-}
+type Config map[string]string
 
-func NewConfig(configs map[string]string) (*Config, error) {
+func ConfigFrom(configs map[string]string) (Config, error) {
 	if err := validateMap(configs); err != nil {
 		return nil, err
 	}
-	return &Config{configs: configs}, nil
+	return configs, nil
 }
 
-func (c Config) Configs() map[string]string {
-	return c.configs
+func (c Config) Map() map[string]string {
+	return c
 }
 
 type TaskName string
@@ -376,42 +353,29 @@ func (t TaskName) String() string {
 }
 
 type Task struct {
-	info   *plugin.Info
 	name   TaskName
-	config *Config
+	config Config
 }
 
 func (t Task) Name() TaskName {
 	return t.name
 }
 
-func (t Task) Config() *Config {
+func (t Task) Config() Config {
 	return t.config
 }
 
-func (t Task) Info() *plugin.Info {
-	return t.info
-}
-
 type TaskBuilder struct {
-	task *Task
+	task Task
 }
 
-func NewTaskBuilder(name TaskName, config *Config) *TaskBuilder {
+func NewTaskBuilder(name TaskName, config Config) *TaskBuilder {
 	return &TaskBuilder{
-		task: &Task{name: name, config: config},
+		task: Task{name: name, config: config},
 	}
 }
 
-func (t TaskBuilder) WithInfo(info *plugin.Info) *TaskBuilder {
-	task := *t.task
-	task.info = info
-	return &TaskBuilder{
-		task: &task,
-	}
-}
-
-func (t TaskBuilder) Build() *Task {
+func (t TaskBuilder) Build() Task {
 	return t.task
 }
 
@@ -499,91 +463,52 @@ func (m MetadataBuilder) WithScheduler(scheduler map[string]string) *MetadataBui
 	}
 }
 
-type HookName string
-
-func HookNameFrom(name string) (HookName, error) {
-	if name == "" {
-		return "", errors.InvalidArgument(EntityJob, "name is empty")
-	}
-	return HookName(name), nil
-}
-
-func (h HookName) String() string {
-	return string(h)
-}
-
 type Hook struct {
-	name   HookName
-	config *Config
+	name   string
+	config Config
 }
 
-func NewHook(name HookName, config *Config) *Hook {
-	return &Hook{name: name, config: config}
+func NewHook(name string, config Config) (*Hook, error) {
+	if name == "" {
+		return nil, errors.InvalidArgument(EntityJob, "name is empty")
+	}
+	return &Hook{name: name, config: config}, nil
 }
 
-func (h Hook) Name() HookName {
+func (h Hook) Name() string {
 	return h.name
 }
 
-func (h Hook) Config() *Config {
+func (h Hook) Config() Config {
 	return h.config
 }
 
-type Asset struct {
-	assets map[string]string
-}
+type Asset map[string]string
 
-func NewAsset(fileNameToContent map[string]string) (*Asset, error) {
-	asset := &Asset{assets: fileNameToContent}
+func AssetFrom(fileNameToContent map[string]string) (Asset, error) {
+	asset := Asset(fileNameToContent)
 	if err := asset.validate(); err != nil {
 		return nil, err
 	}
 	return asset, nil
 }
 
+func (a Asset) Map() map[string]string {
+	return a
+}
+
 func (a Asset) validate() error {
-	return validateMap(a.assets)
+	return validateMap(a)
 }
-
-func (a Asset) Assets() map[string]string {
-	return a.assets
-}
-
-type EventType string
-
-// TODO: Check which event type that is valid. There should be a validation and also added in the documentation.
-const (
-	SLAMissEvent EventType = "sla_miss"
-
-	JobFailureEvent EventType = "failure"
-	JobStartEvent   EventType = "job_start"
-	JobFailEvent    EventType = "job_fail"
-	JobSuccessEvent EventType = "job_success"
-	JobRetryEvent   EventType = "retry"
-
-	TaskStartEvent   EventType = "task_start"
-	TaskRetryEvent   EventType = "task_retry"
-	TaskFailEvent    EventType = "task_fail"
-	TaskSuccessEvent EventType = "task_success"
-
-	HookStartEvent   EventType = "hook_start"
-	HookRetryEvent   EventType = "hook_retry"
-	HookFailEvent    EventType = "hook_fail"
-	HookSuccessEvent EventType = "hook_success"
-
-	SensorStartEvent   EventType = "sensor_start"
-	SensorRetryEvent   EventType = "sensor_retry"
-	SensorFailEvent    EventType = "sensor_fail"
-	SensorSuccessEvent EventType = "sensor_success"
-)
 
 type AlertSpec struct {
-	on       EventType
+	on string
+
 	channels []string
-	config   *Config
+	config   Config
 }
 
-func (a AlertSpec) On() EventType {
+func (a AlertSpec) On() string {
 	return a.on
 }
 
@@ -591,13 +516,13 @@ func (a AlertSpec) Channels() []string {
 	return a.channels
 }
 
-func (a AlertSpec) Config() *Config {
+func (a AlertSpec) Config() Config {
 	return a.config
 }
 
 func (a AlertSpec) validate() error {
 	if a.config != nil {
-		if err := validateMap(a.config.configs); err != nil {
+		if err := validateMap(a.config); err != nil {
 			return err
 		}
 	}
@@ -608,7 +533,7 @@ type AlertBuilder struct {
 	alert *AlertSpec
 }
 
-func NewAlertBuilder(on EventType, channels []string) *AlertBuilder {
+func NewAlertBuilder(on string, channels []string) *AlertBuilder {
 	return &AlertBuilder{
 		alert: &AlertSpec{
 			on:       on,
@@ -624,7 +549,7 @@ func (a AlertBuilder) Build() (*AlertSpec, error) {
 	return a.alert, nil
 }
 
-func (a AlertBuilder) WithConfig(config *Config) *AlertBuilder {
+func (a AlertBuilder) WithConfig(config Config) *AlertBuilder {
 	alert := *a.alert
 	alert.config = config
 	return &AlertBuilder{
@@ -634,13 +559,13 @@ func (a AlertBuilder) WithConfig(config *Config) *AlertBuilder {
 
 // TODO: reconsider whether we still need it or not
 type SpecHTTPUpstream struct {
-	name    Name
+	name    string
 	url     string
 	headers map[string]string
 	params  map[string]string
 }
 
-func (s SpecHTTPUpstream) Name() Name {
+func (s SpecHTTPUpstream) Name() string {
 	return s.name
 }
 
@@ -667,7 +592,7 @@ type SpecHTTPUpstreamBuilder struct {
 	upstream *SpecHTTPUpstream
 }
 
-func NewSpecHTTPUpstreamBuilder(name Name, url string) *SpecHTTPUpstreamBuilder {
+func NewSpecHTTPUpstreamBuilder(name string, url string) *SpecHTTPUpstreamBuilder {
 	return &SpecHTTPUpstreamBuilder{
 		upstream: &SpecHTTPUpstream{
 			name: name,

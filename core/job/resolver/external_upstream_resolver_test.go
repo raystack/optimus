@@ -23,15 +23,15 @@ func TestExternalUpstreamResolver(t *testing.T) {
 	resourceManager := new(ResourceManager)
 	optimusResourceManagers := []resourcemanager.ResourceManager{resourceManager}
 
-	jobVersion, _ := job.VersionFrom(1)
+	jobVersion := 1
 	startDate, _ := job.ScheduleDateFrom("2022-10-01")
 	jobSchedule, _ := job.NewScheduleBuilder(startDate).Build()
-	jobWindow, _ := models.NewWindow(jobVersion.Int(), "d", "24h", "24h")
+	jobWindow, _ := models.NewWindow(jobVersion, "d", "24h", "24h")
 	taskName, _ := job.TaskNameFrom("sample-task")
-	jobTaskConfig, _ := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+	jobTaskConfig, _ := job.ConfigFrom(map[string]string{"sample_task_key": "sample_value"})
 	jobTask := job.NewTaskBuilder(taskName, jobTaskConfig).Build()
 	upstreamSpec, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"external-project/job-B"}).Build()
-	specA := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
+	specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 	jobA := job.NewJob(sampleTenant, specA, "", []job.ResourceURN{"resource-C"})
 
 	t.Run("Resolve", func(t *testing.T) {
