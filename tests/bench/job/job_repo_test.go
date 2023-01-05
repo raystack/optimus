@@ -382,4 +382,53 @@ func BenchmarkJobRepository(b *testing.B) {
 			assert.NoError(b, actualError)
 		}
 	})
+
+	b.Run("GetDownstreamByDestination", func(b *testing.B) {
+		db := dbSetup()
+		repo := repoJob.NewJobRepository(db)
+
+		rootJobName, err := serviceJob.NameFrom("root_job")
+		assert.NoError(b, err)
+		rootJobDestination := serviceJob.ResourceURN("root_job_destination")
+		rootJob := setup.Job(tnnt, rootJobName, rootJobDestination)
+
+		_, err = repo.Add(ctx, []*serviceJob.Job{rootJob})
+		assert.NoError(b, err)
+
+		maxNumberOfDownstream := 50
+		for i := 0; i < maxNumberOfDownstream; i++ {
+			currentJobName, err := serviceJob.NameFrom(fmt.Sprintf("downstream_job_%d", i))
+			assert.NoError(b, err)
+			currentDestinationURN := serviceJob.ResourceURN(fmt.Sprintf("dev.resource.sample_%d", i))
+
+			version, err := serviceJob.VersionFrom(1)
+			assert.NoError(b, err)
+			owner, err := serviceJob.OwnerFrom("dev_test")
+			assert.NoError(b, err)
+			retry := serviceJob.NewRetry(5, 0, false)
+			startDate, err := serviceJob.ScheduleDateFrom("2022-10-01")
+			assert.NoError(b, err)
+			schedule, err := serviceJob.NewScheduleBuilder(startDate).WithRetry(retry).Build()
+			assert.NoError(b, err)
+			window, err := models.NewWindow(version.Int(), "d", "24h", "24h")
+			assert.NoError(b, err)
+			taskConfig, err := serviceJob.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+			assert.NoError(b, err)
+			task := serviceJob.NewTaskBuilder("bq2bq", taskConfig).Build()
+
+			currentJobSpec := serviceJob.NewSpecBuilder(version, currentJobName, owner, schedule, window, task).Build()
+			currentJob := serviceJob.NewJob(tnnt, currentJobSpec, currentDestinationURN, []serviceJob.ResourceURN{rootJobDestination})
+
+			_, err = repo.Add(ctx, []*serviceJob.Job{currentJob})
+			assert.NoError(b, err)
+		}
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			actualDownstreams, actualError := repo.GetDownstreamByDestination(ctx, tnnt.ProjectName(), rootJobDestination)
+			assert.Len(b, actualDownstreams, maxNumberOfDownstream)
+			assert.NoError(b, actualError)
+		}
+	})
 }
