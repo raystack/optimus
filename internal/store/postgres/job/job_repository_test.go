@@ -675,6 +675,28 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.NoError(t, err)
 			assert.EqualValues(t, []*job.Upstream{upstreamC}, upstreamsOfJobA)
 		})
+		t.Run("inserts job upstreams with exact name across projects exists", func(t *testing.T) {
+			db := dbSetup()
+
+			upstreamB := job.NewUpstreamResolved("jobB", host, "resource-B", sampleTenant, upstreamType, taskName, false)
+			upstreamC := job.NewUpstreamResolved("jobC", host, "resource-C", sampleTenant, upstreamType, taskName, false)
+			upstreams := []*job.Upstream{upstreamB, upstreamC}
+			jobWithUpstream := job.NewWithUpstream(jobA, upstreams)
+
+			jobUpstreamRepo := postgres.NewJobRepository(db)
+			_, err := jobUpstreamRepo.Add(ctx, []*job.Job{jobA, jobB, jobC})
+			assert.NoError(t, err)
+
+			otherTenant, err := tenant.NewTenant(otherProj.Name().String(), otherNamespace.Name().String())
+			assert.NoError(t, err)
+
+			otherProjectJobA := job.NewJob(otherTenant, jobSpecA, "dev-external.resource.sample_a", []job.ResourceURN{"dev-external.resource.sample_c"})
+			otherProjectJobB := job.NewJob(otherTenant, jobSpecB, "dev-external.resource.sample_b", nil)
+			_, err = jobUpstreamRepo.Add(ctx, []*job.Job{otherProjectJobA, otherProjectJobB})
+			assert.NoError(t, err)
+
+			assert.Nil(t, jobUpstreamRepo.ReplaceUpstreams(ctx, []*job.WithUpstream{jobWithUpstream}))
+		})
 	})
 
 	t.Run("Delete", func(t *testing.T) {

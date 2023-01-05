@@ -515,8 +515,8 @@ INSERT INTO job_upstream (
 	created_at
 )
 VALUES (
-	(select id FROM job WHERE name = $1), $1, $2,
-	(select id FROM job WHERE name = $3), $3, $4,
+	(select id FROM job WHERE name = $1 and project_name = $2), $1, $2,
+	(select id FROM job WHERE name = $3 and project_name = $4), $3, $4,
 	$5, $6, $7,
 	$8, $9,
 	$10, $11,
@@ -531,7 +531,7 @@ INSERT INTO job_upstream (
 	created_at
 )
 VALUES (
-	(select id FROM job WHERE name = $1), $1, $2, 
+	(select id FROM job WHERE name = $1 and project_name = $2), $1, $2, 
 	$3, $4, $5,
 	$6, $7, 
 	NOW()
