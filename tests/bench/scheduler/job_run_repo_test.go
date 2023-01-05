@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 
@@ -111,6 +112,45 @@ func BenchmarkJobRunRepository(b *testing.B) {
 			assert.NoError(b, err)
 
 			actualJobRun, actualError := schedulerJobRunRepo.GetByScheduledAt(ctx, tnnt, jobNameForJobRun, scheduledAts[jobRunIdx])
+			assert.NotNil(b, actualJobRun)
+			assert.NoError(b, actualError)
+		}
+	})
+
+	b.Run("GetByID", func(b *testing.B) {
+		db := dbSetup()
+		jobRepo := repoJob.NewJobRepository(db)
+		schedulerJobRunRepo := repoScheduler.NewJobRunRepository(db)
+
+		jobName, err := serviceJob.NameFrom("job_test")
+		assert.NoError(b, err)
+		destination := serviceJob.ResourceURN("dev.resource.sample")
+		job := setup.Job(tnnt, jobName, destination)
+		storedJobs, err := jobRepo.Add(ctx, []*serviceJob.Job{job})
+		assert.Len(b, storedJobs, 1)
+		assert.NoError(b, err)
+
+		maxNumberOfJobRun := 50
+		jobRunIDs := make([]uuid.UUID, maxNumberOfJobRun)
+		for i := 0; i < maxNumberOfJobRun; i++ {
+			jobNameForJobRun, err := serviceScheduler.JobNameFrom(jobName.String())
+			assert.NoError(b, err)
+			scheduledAt := time.Now().Add(time.Second * time.Duration(i))
+			actualError := schedulerJobRunRepo.Create(ctx, tnnt, jobNameForJobRun, scheduledAt, int64(time.Second))
+			assert.NoError(b, actualError)
+
+			storedJobRun, err := schedulerJobRunRepo.GetByScheduledAt(ctx, tnnt, jobNameForJobRun, scheduledAt)
+			assert.NoError(b, err)
+			jobRunIDs[i] = storedJobRun.ID
+		}
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			jobRunIdx := i % maxNumberOfJobRun
+			id := jobRunIDs[jobRunIdx]
+
+			actualJobRun, actualError := schedulerJobRunRepo.GetByID(ctx, serviceScheduler.JobRunID(id))
 			assert.NotNil(b, actualJobRun)
 			assert.NoError(b, actualError)
 		}
