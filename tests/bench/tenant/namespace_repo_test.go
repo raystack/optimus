@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 
 	serviceTenant "github.com/odpf/optimus/core/tenant"
 	repoTenant "github.com/odpf/optimus/internal/store/postgres/tenant"
@@ -28,17 +28,17 @@ func BenchmarkNamespaceRepository(b *testing.B) {
 	assert.NoError(b, err)
 
 	ctx := context.Background()
-	dbSetup := func() *gorm.DB {
-		dbConn := setup.TestDB()
-		setup.TruncateTables(dbConn)
+	dbSetup := func() *pgxpool.Pool {
+		pool := setup.TestPool()
+		setup.TruncateTablesWith(pool)
 
-		prjRepo := repoTenant.NewProjectRepository(dbConn)
+		prjRepo := repoTenant.NewProjectRepository(pool)
 		err := prjRepo.Save(ctx, proj)
 		if err != nil {
 			panic(err)
 		}
 
-		return dbConn
+		return pool
 	}
 
 	b.Run("Save", func(b *testing.B) {

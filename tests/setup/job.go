@@ -7,14 +7,8 @@ import (
 )
 
 func Job(tnnt tenant.Tenant, name job.Name, destination job.ResourceURN) *job.Job {
-	version, err := job.VersionFrom(1)
-	if err != nil {
-		panic(err)
-	}
-	owner, err := job.OwnerFrom("dev_test")
-	if err != nil {
-		panic(err)
-	}
+	version := 1
+	owner := "dev_test"
 	description := "sample job"
 	retry := job.NewRetry(5, 0, false)
 	startDate, err := job.ScheduleDateFrom("2022-10-01")
@@ -25,11 +19,11 @@ func Job(tnnt tenant.Tenant, name job.Name, destination job.ResourceURN) *job.Jo
 	if err != nil {
 		panic(err)
 	}
-	window, err := models.NewWindow(version.Int(), "d", "24h", "24h")
+	window, err := models.NewWindow(version, "d", "24h", "24h")
 	if err != nil {
 		panic(err)
 	}
-	taskConfig, err := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+	taskConfig, err := job.ConfigFrom(map[string]string{"sample_task_key": "sample_value"})
 	if err != nil {
 		panic(err)
 	}
@@ -38,21 +32,25 @@ func Job(tnnt tenant.Tenant, name job.Name, destination job.ResourceURN) *job.Jo
 	labels := map[string]string{
 		"environment": "integration",
 	}
-	hookConfig, err := job.NewConfig(map[string]string{"sample_hook_key": "sample_value"})
+	hookConfig, err := job.ConfigFrom(map[string]string{"sample_hook_key": "sample_value"})
 	if err != nil {
 		panic(err)
 	}
-	hooks := []*job.Hook{job.NewHook("sample_hook", hookConfig)}
-	alertConfig, err := job.NewConfig(map[string]string{"sample_alert_key": "sample_value"})
+	hook, err := job.NewHook("sample_hook", hookConfig)
 	if err != nil {
 		panic(err)
 	}
-	alert, err := job.NewAlertBuilder(job.SLAMissEvent, []string{"sample-channel"}).WithConfig(alertConfig).Build()
+	hooks := []*job.Hook{hook}
+	alertConfig, err := job.ConfigFrom(map[string]string{"sample_alert_key": "sample_value"})
+	if err != nil {
+		panic(err)
+	}
+	alert, err := job.NewAlertBuilder("sla_miss", []string{"sample-channel"}).WithConfig(alertConfig).Build()
 	if err != nil {
 		panic(err)
 	}
 	alerts := []*job.AlertSpec{alert}
-	asset, err := job.NewAsset(map[string]string{"sample-asset": "value-asset"})
+	asset, err := job.AssetFrom(map[string]string{"sample-asset": "value-asset"})
 	if err != nil {
 		panic(err)
 	}
@@ -67,7 +65,7 @@ func Job(tnnt tenant.Tenant, name job.Name, destination job.ResourceURN) *job.Jo
 		panic(err)
 	}
 
-	spec := job.NewSpecBuilder(version, name, owner, schedule, window, task).
+	spec, err := job.NewSpecBuilder(version, name, owner, schedule, window, task).
 		WithDescription(description).
 		WithLabels(labels).
 		WithHooks(hooks).
@@ -75,5 +73,8 @@ func Job(tnnt tenant.Tenant, name job.Name, destination job.ResourceURN) *job.Jo
 		WithAsset(asset).
 		WithMetadata(metadata).
 		Build()
+	if err != nil {
+		panic(err)
+	}
 	return job.NewJob(tnnt, spec, destination, nil)
 }

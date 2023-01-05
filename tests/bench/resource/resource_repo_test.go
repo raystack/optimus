@@ -8,13 +8,14 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 
 	serviceResource "github.com/odpf/optimus/core/resource"
-	"github.com/odpf/optimus/core/tenant"
+	serviceTenant "github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/ext/store/bigquery"
 	repoResource "github.com/odpf/optimus/internal/store/postgres/resource"
+	repoTenant "github.com/odpf/optimus/internal/store/postgres/tenant"
 	"github.com/odpf/optimus/tests/setup"
 )
 
@@ -22,7 +23,19 @@ func BenchmarkResourceRepository(b *testing.B) {
 	ctx := context.Background()
 	projectName := "project_test"
 	namespaceName := "namespace_test"
-	tnnt, err := tenant.NewTenant(projectName, namespaceName)
+	proj, err := serviceTenant.NewProject(projectName,
+		map[string]string{
+			"bucket":                            "gs://some_folder-2",
+			serviceTenant.ProjectSchedulerHost:  "host",
+			serviceTenant.ProjectStoragePathKey: "gs://location",
+		})
+	assert.NoError(b, err)
+	namespace, err := serviceTenant.NewNamespace(namespaceName, proj.Name(),
+		map[string]string{
+			"bucket": "gs://ns_bucket",
+		})
+	assert.NoError(b, err)
+	tnnt, err := serviceTenant.NewTenant(proj.Name().String(), namespace.Name().String())
 	assert.NoError(b, err)
 	spec := map[string]any{
 		"description": "spec for test",
@@ -35,10 +48,20 @@ func BenchmarkResourceRepository(b *testing.B) {
 		},
 	}
 
-	dbSetup := func() *gorm.DB {
-		dbConn := setup.TestDB()
-		setup.TruncateTables(dbConn)
-		return dbConn
+	dbSetup := func() *pgxpool.Pool {
+		pool := setup.TestPool()
+		setup.TruncateTablesWith(pool)
+
+		projRepo := repoTenant.NewProjectRepository(pool)
+		if err := projRepo.Save(ctx, proj); err != nil {
+			panic(err)
+		}
+
+		namespaceRepo := repoTenant.NewNamespaceRepository(pool)
+		if err := namespaceRepo.Save(ctx, namespace); err != nil {
+			panic(err)
+		}
+		return pool
 	}
 
 	b.Run("Create", func(b *testing.B) {

@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 
 	serviceJob "github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/tenant"
+	serviceTenant "github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/models"
 	repoJob "github.com/odpf/optimus/internal/store/postgres/job"
 	repoTenant "github.com/odpf/optimus/internal/store/postgres/tenant"
@@ -22,35 +22,35 @@ import (
 func BenchmarkJobRepository(b *testing.B) {
 	ctx := context.Background()
 
-	proj, err := tenant.NewProject("test-proj",
+	proj, err := serviceTenant.NewProject("test-proj",
 		map[string]string{
-			"bucket":                     "gs://some_folder-2",
-			tenant.ProjectSchedulerHost:  "host",
-			tenant.ProjectStoragePathKey: "gs://location",
+			"bucket":                            "gs://some_folder-2",
+			serviceTenant.ProjectSchedulerHost:  "host",
+			serviceTenant.ProjectStoragePathKey: "gs://location",
 		})
 	assert.NoError(b, err)
-	namespace, err := tenant.NewNamespace("test-ns", proj.Name(),
+	namespace, err := serviceTenant.NewNamespace("test-ns", proj.Name(),
 		map[string]string{
 			"bucket": "gs://ns_bucket",
 		})
 	assert.NoError(b, err)
-	tnnt, err := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
+	tnnt, err := serviceTenant.NewTenant(proj.Name().String(), namespace.Name().String())
 	assert.NoError(b, err)
 
-	dbSetup := func() *gorm.DB {
-		dbConn := setup.TestDB()
-		setup.TruncateTables(dbConn)
+	dbSetup := func() *pgxpool.Pool {
+		pool := setup.TestPool()
+		setup.TruncateTablesWith(pool)
 
-		projRepo := repoTenant.NewProjectRepository(dbConn)
+		projRepo := repoTenant.NewProjectRepository(pool)
 		if err := projRepo.Save(ctx, proj); err != nil {
 			panic(err)
 		}
 
-		namespaceRepo := repoTenant.NewNamespaceRepository(dbConn)
+		namespaceRepo := repoTenant.NewNamespaceRepository(pool)
 		if err := namespaceRepo.Save(ctx, namespace); err != nil {
 			panic(err)
 		}
-		return dbConn
+		return pool
 	}
 
 	b.Run("Add", func(b *testing.B) {
@@ -118,21 +118,19 @@ func BenchmarkJobRepository(b *testing.B) {
 			inferredUpstreamDestination := serviceJob.ResourceURN(fmt.Sprintf("dev.resource.sample_inferred_upstream_%d", i))
 			jobTreatedAsInferredUpstream := setup.Job(tnnt, inferredUpstreamName, inferredUpstreamDestination)
 
-			version, err := serviceJob.VersionFrom(1)
-			assert.NoError(b, err)
+			version := 1
 			name = fmt.Sprintf("current_job_%d", i)
 			currentJobName, err := serviceJob.NameFrom(name)
 			assert.NoError(b, err)
-			owner, err := serviceJob.OwnerFrom("dev_test")
-			assert.NoError(b, err)
+			owner := "dev_test"
 			retry := serviceJob.NewRetry(5, 0, false)
 			startDate, err := serviceJob.ScheduleDateFrom("2022-10-01")
 			assert.NoError(b, err)
 			schedule, err := serviceJob.NewScheduleBuilder(startDate).WithRetry(retry).Build()
 			assert.NoError(b, err)
-			window, err := models.NewWindow(version.Int(), "d", "24h", "24h")
+			window, err := models.NewWindow(version, "d", "24h", "24h")
 			assert.NoError(b, err)
-			taskConfig, err := serviceJob.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+			taskConfig, err := serviceJob.ConfigFrom(map[string]string{"sample_task_key": "sample_value"})
 			assert.NoError(b, err)
 			task := serviceJob.NewTaskBuilder("bq2bq", taskConfig).Build()
 
@@ -141,9 +139,10 @@ func BenchmarkJobRepository(b *testing.B) {
 					serviceJob.SpecUpstreamNameFrom(staticUpstreamName.String()),
 				}).Build()
 			assert.NoError(b, err)
-			spec := serviceJob.NewSpecBuilder(version, currentJobName, owner, schedule, window, task).
+			spec, err := serviceJob.NewSpecBuilder(version, currentJobName, owner, schedule, window, task).
 				WithSpecUpstream(specUpstream).
 				Build()
+			assert.NoError(b, err)
 			currentDestination := serviceJob.ResourceURN(fmt.Sprintf("dev.resource.sample_current_job_%d", i))
 			currentJob := serviceJob.NewJob(tnnt, spec, currentDestination, []serviceJob.ResourceURN{inferredUpstreamDestination})
 
@@ -401,22 +400,23 @@ func BenchmarkJobRepository(b *testing.B) {
 			assert.NoError(b, err)
 			currentDestinationURN := serviceJob.ResourceURN(fmt.Sprintf("dev.resource.sample_%d", i))
 
-			version, err := serviceJob.VersionFrom(1)
+			version := 1
 			assert.NoError(b, err)
-			owner, err := serviceJob.OwnerFrom("dev_test")
+			owner := "dev_test"
 			assert.NoError(b, err)
 			retry := serviceJob.NewRetry(5, 0, false)
 			startDate, err := serviceJob.ScheduleDateFrom("2022-10-01")
 			assert.NoError(b, err)
 			schedule, err := serviceJob.NewScheduleBuilder(startDate).WithRetry(retry).Build()
 			assert.NoError(b, err)
-			window, err := models.NewWindow(version.Int(), "d", "24h", "24h")
+			window, err := models.NewWindow(version, "d", "24h", "24h")
 			assert.NoError(b, err)
-			taskConfig, err := serviceJob.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+			taskConfig, err := serviceJob.ConfigFrom(map[string]string{"sample_task_key": "sample_value"})
 			assert.NoError(b, err)
 			task := serviceJob.NewTaskBuilder("bq2bq", taskConfig).Build()
 
-			currentJobSpec := serviceJob.NewSpecBuilder(version, currentJobName, owner, schedule, window, task).Build()
+			currentJobSpec, err := serviceJob.NewSpecBuilder(version, currentJobName, owner, schedule, window, task).Build()
+			assert.NoError(b, err)
 			currentJob := serviceJob.NewJob(tnnt, currentJobSpec, currentDestinationURN, []serviceJob.ResourceURN{rootJobDestination})
 
 			_, err = repo.Add(ctx, []*serviceJob.Job{currentJob})
@@ -450,18 +450,18 @@ func BenchmarkJobRepository(b *testing.B) {
 			assert.NoError(b, err)
 			currentDestinationURN := serviceJob.ResourceURN(fmt.Sprintf("dev.resource.sample_%d", i))
 
-			version, err := serviceJob.VersionFrom(1)
+			version := 1
 			assert.NoError(b, err)
-			owner, err := serviceJob.OwnerFrom("dev_test")
+			owner := "dev_test"
 			assert.NoError(b, err)
 			retry := serviceJob.NewRetry(5, 0, false)
 			startDate, err := serviceJob.ScheduleDateFrom("2022-10-01")
 			assert.NoError(b, err)
 			schedule, err := serviceJob.NewScheduleBuilder(startDate).WithRetry(retry).Build()
 			assert.NoError(b, err)
-			window, err := models.NewWindow(version.Int(), "d", "24h", "24h")
+			window, err := models.NewWindow(version, "d", "24h", "24h")
 			assert.NoError(b, err)
-			taskConfig, err := serviceJob.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+			taskConfig, err := serviceJob.ConfigFrom(map[string]string{"sample_task_key": "sample_value"})
 			assert.NoError(b, err)
 			task := serviceJob.NewTaskBuilder("bq2bq", taskConfig).Build()
 
@@ -470,9 +470,10 @@ func BenchmarkJobRepository(b *testing.B) {
 				Build()
 			assert.NoError(b, err)
 
-			currentJobSpec := serviceJob.NewSpecBuilder(version, currentJobName, owner, schedule, window, task).
+			currentJobSpec, err := serviceJob.NewSpecBuilder(version, currentJobName, owner, schedule, window, task).
 				WithSpecUpstream(currentUpstreamSpec).
 				Build()
+			assert.NoError(b, err)
 
 			currentJob := serviceJob.NewJob(tnnt, currentJobSpec, currentDestinationURN, nil)
 			_, err = repo.Add(ctx, []*serviceJob.Job{currentJob})

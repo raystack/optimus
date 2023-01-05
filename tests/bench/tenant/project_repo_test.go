@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 
 	serviceTenant "github.com/odpf/optimus/core/tenant"
 	repoTenant "github.com/odpf/optimus/internal/store/postgres/tenant"
@@ -18,11 +18,10 @@ import (
 
 func BenchmarkProjectRepository(b *testing.B) {
 	ctx := context.Background()
-	dbSetup := func() *gorm.DB {
-		dbConn := setup.TestDB()
-		setup.TruncateTables(dbConn)
-
-		return dbConn
+	dbSetup := func() *pgxpool.Pool {
+		pool := setup.TestPool()
+		setup.TruncateTablesWith(pool)
+		return pool
 	}
 
 	transporterKafkaBrokerKey := "KAFKA_BROKERS"
