@@ -17,24 +17,24 @@ func TestInternalUpstreamResolver(t *testing.T) {
 	ctx := context.Background()
 	sampleTenant, _ := tenant.NewTenant("project", "namespace")
 
-	jobVersion, _ := job.VersionFrom(1)
+	jobVersion := 1
 	startDate, _ := job.ScheduleDateFrom("2022-10-01")
 	jobSchedule, _ := job.NewScheduleBuilder(startDate).Build()
-	jobWindow, _ := models.NewWindow(jobVersion.Int(), "d", "24h", "24h")
+	jobWindow, _ := models.NewWindow(jobVersion, "d", "24h", "24h")
 	taskName, _ := job.TaskNameFrom("sample-task")
-	jobTaskConfig, _ := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+	jobTaskConfig := map[string]string{"sample_task_key": "sample_value"}
 	jobTask := job.NewTaskBuilder(taskName, jobTaskConfig).Build()
 	upstreamSpec, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"job-C"}).Build()
-	specA := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
+	specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 	jobADestination := job.ResourceURN("resource-A")
 	jobASources := []job.ResourceURN{"resource-B", "resource-D"}
 	jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
 
-	specB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, jobWindow, jobTask).Build()
+	specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 	jobBDestination := job.ResourceURN("resource-B")
 	jobB := job.NewJob(sampleTenant, specB, jobBDestination, nil)
 
-	specC := job.NewSpecBuilder(jobVersion, "job-C", "", jobSchedule, jobWindow, jobTask).Build()
+	specC, _ := job.NewSpecBuilder(jobVersion, "job-C", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 	jobCDestination := job.ResourceURN("resource-C")
 	jobC := job.NewJob(sampleTenant, specC, jobCDestination, nil)
 
@@ -93,7 +93,8 @@ func TestInternalUpstreamResolver(t *testing.T) {
 			defer logWriter.AssertExpectations(t)
 
 			specEUpstreamSpec, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"job-unknown", "job-C"}).Build()
-			specE := job.NewSpecBuilder(jobVersion, "job-E", "sample-owner", jobSchedule, jobWindow, jobTask).WithSpecUpstream(specEUpstreamSpec).Build()
+			specE, err := job.NewSpecBuilder(jobVersion, "job-E", "sample-owner", jobSchedule, jobWindow, jobTask).WithSpecUpstream(specEUpstreamSpec).Build()
+			assert.NoError(t, err)
 			jobEDestination := job.ResourceURN("resource-E")
 			jobE := job.NewJob(sampleTenant, specE, jobEDestination, nil)
 
@@ -116,8 +117,12 @@ func TestInternalUpstreamResolver(t *testing.T) {
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
-			specEUpstreamSpec, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"/", "job-C"}).Build()
-			specE := job.NewSpecBuilder(jobVersion, "job-E", "sample-owner", jobSchedule, jobWindow, jobTask).WithSpecUpstream(specEUpstreamSpec).Build()
+			specEUpstreamSpec, err := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"/", "job-C"}).Build()
+			assert.NoError(t, err)
+
+			specE, err := job.NewSpecBuilder(jobVersion, "job-E", "sample-owner", jobSchedule, jobWindow, jobTask).WithSpecUpstream(specEUpstreamSpec).Build()
+			assert.NoError(t, err)
+
 			jobEDestination := job.ResourceURN("resource-E")
 			jobE := job.NewJob(sampleTenant, specE, jobEDestination, nil)
 
@@ -135,7 +140,9 @@ func TestInternalUpstreamResolver(t *testing.T) {
 		})
 	})
 	t.Run("BulkResolve", func(t *testing.T) {
-		specX := job.NewSpecBuilder(jobVersion, "job-X", "", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
+		specX, err := job.NewSpecBuilder(jobVersion, "job-X", "sample-owner", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
+		assert.NoError(t, err)
+
 		jobXDestination := job.ResourceURN("resource-X")
 		jobX := job.NewJob(sampleTenant, specX, jobXDestination, []job.ResourceURN{"resource-B"})
 
