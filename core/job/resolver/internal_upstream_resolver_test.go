@@ -46,20 +46,55 @@ func TestInternalUpstreamResolver(t *testing.T) {
 	unresolvedUpstreamD := job.NewUpstreamUnresolvedInferred("resource-D")
 
 	t.Run("Resolve", func(t *testing.T) {
-		t.Run("resolves upstream internally", func(t *testing.T) {
+		t.Run("resolves inferred and static upstream internally", func(t *testing.T) {
 			jobRepo := new(JobRepository)
-
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			jobRepo.On("GetAllByResourceDestination", ctx, jobASources[0]).Return([]*job.Job{jobB}, nil)
 			jobRepo.On("GetAllByResourceDestination", ctx, jobASources[1]).Return([]*job.Job{}, nil)
-
 			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specC.Name()).Return(jobC, nil)
 
 			jobWithUnresolvedUpstream := job.NewWithUpstream(jobA, []*job.Upstream{unresolvedUpstreamB, unresolvedUpstreamC, unresolvedUpstreamD})
-
 			expectedJobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{internalUpstreamB, internalUpstreamC, unresolvedUpstreamD})
+
+			internalUpstreamResolver := resolver.NewInternalUpstreamResolver(jobRepo)
+			result, err := internalUpstreamResolver.Resolve(ctx, jobWithUnresolvedUpstream)
+			assert.NoError(t, err)
+			assert.EqualValues(t, expectedJobWithUpstream.Upstreams(), result.Upstreams())
+		})
+		t.Run("resolves inferred upstream internally", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			logWriter := new(mockWriter)
+			defer logWriter.AssertExpectations(t)
+
+			specX, _ := job.NewSpecBuilder(jobVersion, "job-X", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			jobXDestination := job.ResourceURN("resource-X")
+			jobX := job.NewJob(sampleTenant, specX, jobXDestination, []job.ResourceURN{"resource-B"})
+
+			jobRepo.On("GetAllByResourceDestination", ctx, jobX.Sources()[0]).Return([]*job.Job{jobB}, nil)
+
+			jobWithUnresolvedUpstream := job.NewWithUpstream(jobX, []*job.Upstream{unresolvedUpstreamB})
+			expectedJobWithUpstream := job.NewWithUpstream(jobX, []*job.Upstream{internalUpstreamB})
+
+			internalUpstreamResolver := resolver.NewInternalUpstreamResolver(jobRepo)
+			result, err := internalUpstreamResolver.Resolve(ctx, jobWithUnresolvedUpstream)
+			assert.NoError(t, err)
+			assert.EqualValues(t, expectedJobWithUpstream.Upstreams(), result.Upstreams())
+		})
+		t.Run("resolves static upstream internally", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			logWriter := new(mockWriter)
+			defer logWriter.AssertExpectations(t)
+
+			specX, _ := job.NewSpecBuilder(jobVersion, "job-X", "sample-owner", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
+			jobXDestination := job.ResourceURN("resource-X")
+			jobX := job.NewJob(sampleTenant, specX, jobXDestination, nil)
+
+			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specC.Name()).Return(jobC, nil)
+
+			jobWithUnresolvedUpstream := job.NewWithUpstream(jobX, []*job.Upstream{unresolvedUpstreamC})
+			expectedJobWithUpstream := job.NewWithUpstream(jobX, []*job.Upstream{internalUpstreamC})
 
 			internalUpstreamResolver := resolver.NewInternalUpstreamResolver(jobRepo)
 			result, err := internalUpstreamResolver.Resolve(ctx, jobWithUnresolvedUpstream)

@@ -20,11 +20,15 @@ func NewInternalUpstreamResolver(jobRepository JobRepository) *internalUpstreamR
 
 func (i internalUpstreamResolver) Resolve(ctx context.Context, jobWithUnresolvedUpstream *job.WithUpstream) (*job.WithUpstream, error) {
 	me := errors.NewMultiError("internal upstream resolution errors")
+
 	internalUpstreamInferred, err := i.resolveInferredUpstream(ctx, jobWithUnresolvedUpstream.Job().Sources())
 	me.Append(err)
 
-	internalUpstreamStatic, err := i.resolveStaticUpstream(ctx, jobWithUnresolvedUpstream.Job().Tenant().ProjectName(), jobWithUnresolvedUpstream.Job().Spec().UpstreamSpec())
-	me.Append(err)
+	var internalUpstreamStatic []*job.Upstream
+	if staticUpstreamSpec := jobWithUnresolvedUpstream.Job().Spec().UpstreamSpec(); staticUpstreamSpec != nil {
+		internalUpstreamStatic, err = i.resolveStaticUpstream(ctx, jobWithUnresolvedUpstream.Job().Tenant().ProjectName(), staticUpstreamSpec)
+		me.Append(err)
+	}
 
 	internalUpstream := mergeUpstreams(internalUpstreamInferred, internalUpstreamStatic)
 	fullNameUpstreamMap := job.Upstreams(internalUpstream).ToFullNameAndUpstreamMap()
