@@ -2,108 +2,82 @@ package tenant
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
-	"gorm.io/datatypes"
-	"gorm.io/gorm"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 )
 
 type NamespaceRepository struct {
-	db *gorm.DB
+	db *pgxpool.Pool
 }
 
 const (
-	namespaceColumns = `n.id, n.name, n.config, p.name as project_name, n.created_at, n.updated_at`
+	namespaceColumns = `id, name, config, project_name, created_at, updated_at`
 )
 
 type Namespace struct {
-	ID     uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
-	Name   string    `gorm:"not null;unique"`
-	Config datatypes.JSON
+	ID     uuid.UUID
+	Name   string
+	Config map[string]string
 
-	ProjectName string `json:"project_name"`
+	ProjectName string
 
-	CreatedAt time.Time `gorm:"not null" json:"created_at"`
-	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
-	DeletedAt gorm.DeletedAt
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
-func NewNamespace(spec *tenant.Namespace) (Namespace, error) {
-	jsonBytes, err := json.Marshal(spec.GetConfigs())
-	if err != nil {
-		return Namespace{}, err
-	}
-	namespace := Namespace{
-		Name:        spec.Name().String(),
-		ProjectName: spec.ProjectName().String(),
-		Config:      jsonBytes,
-	}
-	return namespace, nil
-}
-
-func (n Namespace) ToTenantNamespace() (*tenant.Namespace, error) {
-	var conf map[string]string
-	err := json.Unmarshal(n.Config, &conf)
-	if err != nil {
-		return nil, err
-	}
+func (n *Namespace) toTenantNamespace() (*tenant.Namespace, error) {
 	projName, err := tenant.ProjectNameFrom(n.ProjectName)
 	if err != nil {
 		return nil, err
 	}
 
-	return tenant.NewNamespace(n.Name, projName, conf)
+	return tenant.NewNamespace(n.Name, projName, n.Config)
 }
 
-func (n *NamespaceRepository) Save(ctx context.Context, tenantNamespace *tenant.Namespace) error {
-	namespace, err := NewNamespace(tenantNamespace)
+func (n *NamespaceRepository) Save(ctx context.Context, namespace *tenant.Namespace) error {
+	_, err := n.get(ctx, namespace.ProjectName(), namespace.Name())
 	if err != nil {
-		return errors.Wrap(tenant.EntityNamespace, "not able to convert namespace", err)
-	}
+		if errors.Is(err, pgx.ErrNoRows) {
+			insertNamespace := `INSERT INTO namespace (name, config, project_name, created_at, updated_at)
+VALUES ($1, $2, $3, now(), now())`
 
-	_, err = n.get(ctx, tenantNamespace.ProjectName(), tenantNamespace.Name())
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			insertNamespace := `INSERT INTO namespace (name, config, project_id, updated_at, created_at)
-SELECT ?, ?, id, now(), now() FROM project p WHERE p.name = ?;`
-			return n.db.WithContext(ctx).
-				Exec(insertNamespace, namespace.Name, namespace.Config, namespace.ProjectName).Error
+			_, err = n.db.Exec(ctx, insertNamespace, namespace.Name(), namespace.GetConfigs(), namespace.ProjectName())
+			return errors.WrapIfErr(tenant.EntityNamespace, "unable to save namespace", err)
 		}
-		return errors.Wrap(tenant.EntityProject, "unable to save project", err)
+		return errors.Wrap(tenant.EntityNamespace, "unable to save namespace", err)
 	}
 
-	if len(tenantNamespace.GetConfigs()) == 0 {
+	if len(namespace.GetConfigs()) == 0 {
 		return errors.NewError(errors.ErrFailedPrecond, tenant.EntityNamespace, "empty config")
 	}
-	updateNamespaceQuery := `UPDATE namespace SET config=?, updated_at=now() FROM namespace n
-JOIN project p ON p.id = n.project_id  WHERE p.name = ? AND n.name=?`
-	return n.db.WithContext(ctx).
-		Exec(updateNamespaceQuery, namespace.Config, namespace.ProjectName, namespace.Name).Error
+	updateNamespaceQuery := `UPDATE namespace n SET config=$1, updated_at=now() WHERE n.name = $2 AND n.project_name=$3`
+	_, err = n.db.Exec(ctx, updateNamespaceQuery, namespace.GetConfigs(), namespace.Name(), namespace.ProjectName())
+	return errors.WrapIfErr(tenant.EntityProject, "unable to update namespace", err)
 }
 
 func (n *NamespaceRepository) GetByName(ctx context.Context, projectName tenant.ProjectName, name tenant.NamespaceName) (*tenant.Namespace, error) {
 	ns, err := n.get(ctx, projectName, name)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.NotFound(tenant.EntityNamespace, "no record for "+name.String())
 		}
 		return nil, errors.Wrap(tenant.EntityNamespace, "error while getting project", err)
 	}
-	return ns.ToTenantNamespace()
+	return ns.toTenantNamespace()
 }
 
 func (n *NamespaceRepository) get(ctx context.Context, projName tenant.ProjectName, name tenant.NamespaceName) (Namespace, error) {
 	var namespace Namespace
 
-	getNamespaceByNameQuery := `SELECT ` + namespaceColumns + ` FROM namespace n
-JOIN PROJECT p ON p.id = n.project_id WHERE p.name = ? AND n.name = ? AND n.deleted_at IS NULL`
-	err := n.db.WithContext(ctx).Raw(getNamespaceByNameQuery, projName.String(), name.String()).
-		First(&namespace).Error
+	getNamespaceByNameQuery := `SELECT ` + namespaceColumns + ` FROM namespace WHERE project_name = $1 AND name = $2 AND deleted_at IS NULL`
+	err := n.db.QueryRow(ctx, getNamespaceByNameQuery, projName, name).
+		Scan(&namespace.ID, &namespace.Name, &namespace.Config, &namespace.ProjectName, &namespace.CreatedAt, &namespace.UpdatedAt)
 	if err != nil {
 		return Namespace{}, err
 	}
@@ -111,28 +85,35 @@ JOIN PROJECT p ON p.id = n.project_id WHERE p.name = ? AND n.name = ? AND n.dele
 }
 
 func (n *NamespaceRepository) GetAll(ctx context.Context, projectName tenant.ProjectName) ([]*tenant.Namespace, error) {
-	var namespaces []Namespace
+	var namespaces []*tenant.Namespace
+
 	getAllNamespaceInProject := `SELECT ` + namespaceColumns + ` FROM namespace n
-JOIN project p ON p.id = n.project_id WHERE p.name = ? AND n.deleted_at IS NULL`
-	err := n.db.WithContext(ctx).Raw(getAllNamespaceInProject, projectName.String()).
-		Scan(&namespaces).Error
+WHERE project_name = $1 AND deleted_at IS NULL`
+	rows, err := n.db.Query(ctx, getAllNamespaceInProject, projectName)
 	if err != nil {
 		return nil, errors.Wrap(tenant.EntityNamespace, "error in GetAll", err)
 	}
+	defer rows.Close()
 
-	var tenantNamespace []*tenant.Namespace
-	for _, ns := range namespaces {
-		tenantNS, err := ns.ToTenantNamespace()
+	for rows.Next() {
+		var ns Namespace
+		err = rows.Scan(&ns.ID, &ns.Name, &ns.Config, &ns.ProjectName, &ns.CreatedAt, &ns.UpdatedAt)
+		if err != nil {
+			return nil, errors.Wrap(tenant.EntityNamespace, "error in GetAll", err)
+		}
+
+		namespace, err := ns.toTenantNamespace()
 		if err != nil {
 			return nil, err
 		}
-		tenantNamespace = append(tenantNamespace, tenantNS)
+		namespaces = append(namespaces, namespace)
 	}
-	return tenantNamespace, nil
+
+	return namespaces, nil
 }
 
-func NewNamespaceRepository(db *gorm.DB) *NamespaceRepository {
+func NewNamespaceRepository(pool *pgxpool.Pool) *NamespaceRepository {
 	return &NamespaceRepository{
-		db: db,
+		db: pool,
 	}
 }

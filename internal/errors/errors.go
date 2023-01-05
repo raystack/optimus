@@ -159,6 +159,14 @@ func Wrap(entity, msg string, err error) error {
 	}
 }
 
+func WrapIfErr(entity, msg string, err error) error {
+	if err == nil {
+		return nil
+	}
+
+	return Wrap(entity, msg, err)
+}
+
 func GRPCErr(err error, msg string) error {
 	code := codes.Internal
 	var de *DomainError

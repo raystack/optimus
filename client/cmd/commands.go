@@ -10,7 +10,6 @@ import (
 	"github.com/odpf/optimus/client/cmd/extension"
 	"github.com/odpf/optimus/client/cmd/initialize"
 	"github.com/odpf/optimus/client/cmd/job"
-	"github.com/odpf/optimus/client/cmd/migration"
 	"github.com/odpf/optimus/client/cmd/namespace"
 	"github.com/odpf/optimus/client/cmd/playground"
 	"github.com/odpf/optimus/client/cmd/plugin"
@@ -64,7 +63,6 @@ func New() *cli.Command {
 		deploy.NewDeployCommand(),
 		initialize.NewInitializeCommand(),
 		job.NewJobCommand(),
-		migration.NewMigrationCommand(),
 		namespace.NewNamespaceCommand(),
 		project.NewProjectCommand(),
 		replay.NewReplayCommand(),

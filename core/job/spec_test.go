@@ -11,7 +11,7 @@ import (
 )
 
 func TestEntitySpec(t *testing.T) {
-	jobVersion, _ := job.VersionFrom(1)
+	jobVersion := 1
 	startDate, _ := job.ScheduleDateFrom("2022-10-01")
 	endDate, _ := job.ScheduleDateFrom("2022-10-02")
 	retry := job.NewRetry(0, int32(0), false)
@@ -22,22 +22,21 @@ func TestEntitySpec(t *testing.T) {
 		WithRetry(retry).
 		WithDependsOnPast(false).
 		Build()
-	jobWindow, _ := models.NewWindow(jobVersion.Int(), "d", "24h", "24h")
-	jobTaskConfig, _ := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+	jobWindow, _ := models.NewWindow(jobVersion, "d", "24h", "24h")
+	jobTaskConfig, _ := job.ConfigFrom(map[string]string{"sample_task_key": "sample_value"})
 	jobTask := job.NewTaskBuilder("bq2bq", jobTaskConfig).Build()
 	description := "sample description"
-	labelsMap := map[string]string{"key": "value"}
-	hookName, _ := job.HookNameFrom("sample-hook")
-	hook := job.NewHook(hookName, jobTaskConfig)
-	jobAlertConfig, _ := job.NewConfig(map[string]string{"sample_alert_key": "sample_value"})
+	labels := map[string]string{"key": "value"}
+	hook, _ := job.NewHook("sample-hook", jobTaskConfig)
+	jobAlertConfig, _ := job.ConfigFrom(map[string]string{"sample_alert_key": "sample_value"})
 
 	httpUpstreamConfig := map[string]string{"host": "sample-host"}
 	httpUpstreamHeader := map[string]string{"header-key": "sample-header-val"}
 	httpUpstream, _ := job.NewSpecHTTPUpstreamBuilder("sample-name", "sample-url").WithParams(httpUpstreamConfig).WithHeaders(httpUpstreamHeader).Build()
 	specUpstream, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"job-d"}).WithSpecHTTPUpstream([]*job.SpecHTTPUpstream{httpUpstream}).Build()
-	alert, _ := job.NewAlertBuilder(job.SLAMissEvent, []string{"sample-channel"}).WithConfig(jobAlertConfig).Build()
+	alert, _ := job.NewAlertBuilder("sla_miss", []string{"sample-channel"}).WithConfig(jobAlertConfig).Build()
 	assetMap := map[string]string{"key": "value"}
-	asset, _ := job.NewAsset(assetMap)
+	asset, _ := job.AssetFrom(assetMap)
 	resourceRequestConfig := job.NewMetadataResourceConfig("250m", "128Mi")
 	resourceLimitConfig := job.NewMetadataResourceConfig("250m", "128Mi")
 	resourceMetadata := job.NewResourceMetadata(resourceRequestConfig, resourceLimitConfig)
@@ -48,22 +47,18 @@ func TestEntitySpec(t *testing.T) {
 
 	t.Run("Spec", func(t *testing.T) {
 		t.Run("should return values as inserted", func(t *testing.T) {
-			labels, err := job.NewLabels(labelsMap)
-			assert.NoError(t, err)
-
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).
+			specA, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).
 				WithDescription(description).
-				WithLabels(labels).
-				WithHooks([]*job.Hook{hook}).WithAlerts([]*job.AlertSpec{alert}).
+				WithLabels(labels).WithHooks([]*job.Hook{hook}).WithAlerts([]*job.AlertSpec{alert}).
 				WithSpecUpstream(specUpstream).
 				WithAsset(asset).
 				WithMetadata(jobMetadata).
 				Build()
+			assert.NoError(t, err)
 
 			assert.Equal(t, job.Name("job-A"), specA.Name())
 			assert.Equal(t, jobVersion, specA.Version())
-			assert.Equal(t, job.Owner("sample-owner"), specA.Owner())
-			assert.Equal(t, "sample-owner", specA.Owner().String())
+			assert.Equal(t, "sample-owner", specA.Owner())
 
 			assert.Equal(t, jobSchedule, specA.Schedule())
 			assert.Equal(t, jobSchedule.Retry(), specA.Schedule().Retry())
@@ -82,22 +77,21 @@ func TestEntitySpec(t *testing.T) {
 			assert.Equal(t, jobTask, specA.Task())
 			assert.Equal(t, jobTask.Name(), specA.Task().Name())
 			assert.Equal(t, jobTask.Name().String(), specA.Task().Name().String())
-			assert.Equal(t, jobTask.Info(), specA.Task().Info())
 			assert.Equal(t, jobTask.Config(), specA.Task().Config())
-			assert.Equal(t, jobTask.Config().Configs(), specA.Task().Config().Configs())
+			assert.Equal(t, jobTask.Config(), specA.Task().Config())
 
 			assert.Equal(t, description, specA.Description())
 			assert.Equal(t, labels, specA.Labels())
 
 			assert.Equal(t, []*job.Hook{hook}, specA.Hooks())
 			assert.Equal(t, hook.Name(), specA.Hooks()[0].Name())
-			assert.Equal(t, hook.Name().String(), specA.Hooks()[0].Name().String())
+			assert.Equal(t, hook.Name(), specA.Hooks()[0].Name())
 			assert.Equal(t, hook.Config(), specA.Hooks()[0].Config())
-			assert.Equal(t, hook.Config().Configs(), specA.Hooks()[0].Config().Configs())
+			assert.Equal(t, hook.Config(), specA.Hooks()[0].Config())
 
 			assert.Equal(t, []*job.AlertSpec{alert}, specA.AlertSpecs())
 			assert.Equal(t, alert.Config(), specA.AlertSpecs()[0].Config())
-			assert.Equal(t, alert.Config().Configs(), specA.AlertSpecs()[0].Config().Configs())
+			assert.Equal(t, alert.Config(), specA.AlertSpecs()[0].Config())
 			assert.Equal(t, alert.Channels(), specA.AlertSpecs()[0].Channels())
 			assert.Equal(t, alert.On(), specA.AlertSpecs()[0].On())
 
@@ -110,7 +104,7 @@ func TestEntitySpec(t *testing.T) {
 			assert.Equal(t, specUpstream.HTTPUpstreams()[0].Headers(), specA.UpstreamSpec().HTTPUpstreams()[0].Headers())
 
 			assert.Equal(t, asset, specA.Asset())
-			assert.Equal(t, asset.Assets(), specA.Asset().Assets())
+			assert.Equal(t, asset, specA.Asset())
 
 			assert.Equal(t, jobMetadata, specA.Metadata())
 			assert.Equal(t, jobMetadata.Resource(), specA.Metadata().Resource())
@@ -125,8 +119,11 @@ func TestEntitySpec(t *testing.T) {
 
 	t.Run("Specs", func(t *testing.T) {
 		t.Run("ToNameAndSpecMap should return map with name key and spec value", func(t *testing.T) {
-			specA := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
-			specB := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			specA, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+
+			specB, err := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
 
 			expectedMap := map[job.Name]*job.Spec{
 				specA.Name(): specA,
@@ -202,23 +199,16 @@ func TestEntitySpec(t *testing.T) {
 	t.Run("Asset", func(t *testing.T) {
 		t.Run("should return asset and nil error if no error found", func(t *testing.T) {
 			validAssetMap := map[string]string{"key": "value"}
-			validAsset, err := job.NewAsset(validAssetMap)
+			validAsset, err := job.AssetFrom(validAssetMap)
 			assert.NoError(t, err)
-			assert.Equal(t, validAssetMap, validAsset.Assets())
+			assert.Equal(t, job.Asset(validAssetMap), validAsset)
+			assert.Equal(t, validAssetMap, validAsset.Map())
 		})
 		t.Run("should return nil and error if asset map is invalid", func(t *testing.T) {
 			invalidAssetMap := map[string]string{"": ""}
-			invalidAsset, err := job.NewAsset(invalidAssetMap)
+			invalidAsset, err := job.AssetFrom(invalidAssetMap)
 			assert.Error(t, err)
 			assert.Nil(t, invalidAsset)
-		})
-	})
-
-	t.Run("VersionFrom", func(t *testing.T) {
-		t.Run("should return error if version is less than or equals to zero", func(t *testing.T) {
-			version, err := job.VersionFrom(0)
-			assert.ErrorContains(t, err, "version is less than or equal to zero")
-			assert.Zero(t, version)
 		})
 	})
 
@@ -227,19 +217,6 @@ func TestEntitySpec(t *testing.T) {
 			name, err := job.NameFrom("")
 			assert.ErrorContains(t, err, "name is empty")
 			assert.Empty(t, name)
-		})
-	})
-
-	t.Run("OwnerFrom", func(t *testing.T) {
-		t.Run("should return owner and nil error if no error found", func(t *testing.T) {
-			owner, err := job.OwnerFrom("sample-owner")
-			assert.NoError(t, err)
-			assert.Equal(t, "sample-owner", owner.String())
-		})
-		t.Run("should return error if owner is empty", func(t *testing.T) {
-			owner, err := job.OwnerFrom("")
-			assert.ErrorContains(t, err, "owner is empty")
-			assert.Empty(t, owner)
 		})
 	})
 
@@ -264,17 +241,9 @@ func TestEntitySpec(t *testing.T) {
 		})
 	})
 
-	t.Run("HookNameFrom", func(t *testing.T) {
-		t.Run("should return error if hook name is empty", func(t *testing.T) {
-			owner, err := job.HookNameFrom("")
-			assert.ErrorContains(t, err, "name is empty")
-			assert.Empty(t, owner)
-		})
-	})
-
-	t.Run("NewConfig", func(t *testing.T) {
+	t.Run("ConfigFrom", func(t *testing.T) {
 		t.Run("should return error if the config map is invalid", func(t *testing.T) {
-			jobConfig, err := job.NewConfig(map[string]string{"": ""})
+			jobConfig, err := job.ConfigFrom(map[string]string{"": ""})
 			assert.Error(t, err)
 			assert.Empty(t, jobConfig)
 		})

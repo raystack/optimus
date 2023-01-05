@@ -22,19 +22,19 @@ func TestEntityJob(t *testing.T) {
 			"bucket": "gs://ns_bucket",
 		})
 	sampleTenant, _ := tenant.NewTenant(project.Name().String(), namespace.Name().String())
-	jobVersion, _ := job.VersionFrom(1)
+	jobVersion := 1
 	startDate, _ := job.ScheduleDateFrom("2022-10-01")
 	jobSchedule, _ := job.NewScheduleBuilder(startDate).Build()
-	jobWindow, _ := models.NewWindow(jobVersion.Int(), "d", "24h", "24h")
-	jobTaskConfig, _ := job.NewConfig(map[string]string{"sample_task_key": "sample_value"})
+	jobWindow, _ := models.NewWindow(jobVersion, "d", "24h", "24h")
+	jobTaskConfig, _ := job.ConfigFrom(map[string]string{"sample_task_key": "sample_value"})
 	jobTask := job.NewTaskBuilder("bq2bq", jobTaskConfig).Build()
 
-	specA := job.NewSpecBuilder(jobVersion, "job-A", "", jobSchedule, jobWindow, jobTask).Build()
+	specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 	jobADestination := job.ResourceURN("project.dataset.sample-a")
 	jobASources := []job.ResourceURN{"project.dataset.sample-b"}
 	jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
 
-	specB := job.NewSpecBuilder(jobVersion, "job-B", "", jobSchedule, jobWindow, jobTask).Build()
+	specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 	jobBDestination := job.ResourceURN("project.dataset.sample-b")
 	jobBSources := []job.ResourceURN{"project.dataset.sample-c"}
 	jobB := job.NewJob(sampleTenant, specB, jobBDestination, jobBSources)
@@ -215,7 +215,7 @@ func TestEntityJob(t *testing.T) {
 	t.Run("Job", func(t *testing.T) {
 		t.Run("should return values as inserted", func(t *testing.T) {
 			specUpstream, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"job-E"}).Build()
-			specC := job.NewSpecBuilder(jobVersion, "job-C", "sample-owner", jobSchedule, jobWindow, jobTask).WithSpecUpstream(specUpstream).Build()
+			specC, _ := job.NewSpecBuilder(jobVersion, "job-C", "sample-owner", jobSchedule, jobWindow, jobTask).WithSpecUpstream(specUpstream).Build()
 			jobCDestination := job.ResourceURN("project.dataset.sample-c")
 			jobCSources := []job.ResourceURN{"project.dataset.sample-d"}
 			jobC := job.NewJob(sampleTenant, specC, jobCDestination, jobCSources)
