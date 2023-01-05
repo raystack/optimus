@@ -20,6 +20,7 @@ import (
 	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/internal/writer"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 func TestNewJobHandler(t *testing.T) {
@@ -1793,7 +1794,7 @@ func TestNewJobHandler(t *testing.T) {
 				JobName:       jobA.Spec().Name().String(),
 			}
 
-			taskInfo := &models.PluginInfoResponse{
+			taskInfo := &plugin.Info{
 				Name:        "bq2bq",
 				Description: "task info desc",
 				Image:       "odpf/bq2bq:latest",
@@ -1951,15 +1952,15 @@ func (_m *JobService) GetJobBasicInfo(ctx context.Context, jobTenant tenant.Tena
 }
 
 // GetTaskInfo provides a mock function with given fields: ctx, task
-func (_m *JobService) GetTaskInfo(ctx context.Context, task job.Task) (*models.PluginInfoResponse, error) {
+func (_m *JobService) GetTaskInfo(ctx context.Context, task job.Task) (*plugin.Info, error) {
 	ret := _m.Called(ctx, task)
 
-	var r0 *models.PluginInfoResponse
-	if rf, ok := ret.Get(0).(func(context.Context, job.Task) *models.PluginInfoResponse); ok {
+	var r0 *plugin.Info
+	if rf, ok := ret.Get(0).(func(context.Context, job.Task) *plugin.Info); ok {
 		r0 = rf(ctx, task)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*models.PluginInfoResponse)
+			r0 = ret.Get(0).(*plugin.Info)
 		}
 	}
 

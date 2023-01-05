@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/odpf/optimus/internal/models"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 type MockPluginBQ struct{}
@@ -14,27 +14,27 @@ func (MockPluginBQ) GetName(_ context.Context) (string, error) {
 	return "bq2bq", nil
 }
 
-func (MockPluginBQ) GenerateDestination(_ context.Context, request models.GenerateDestinationRequest) (*models.GenerateDestinationResponse, error) {
+func (MockPluginBQ) GenerateDestination(_ context.Context, request plugin.GenerateDestinationRequest) (*plugin.GenerateDestinationResponse, error) {
 	proj, ok1 := request.Config.Get("PROJECT")
 	dataset, ok2 := request.Config.Get("DATASET")
 	tab, ok3 := request.Config.Get("TABLE")
 	if ok1 && ok2 && ok3 {
-		return &models.GenerateDestinationResponse{
+		return &plugin.GenerateDestinationResponse{
 			Destination: fmt.Sprintf("%s:%s.%s", proj.Value, dataset.Value, tab.Value),
-			Type:        models.DestinationTypeBigquery,
+			Type:        "bigquery",
 		}, nil
 	}
 	return nil, errors.New("missing config key required to generate destination")
 }
 
-func (MockPluginBQ) GenerateDependencies(_ context.Context, req models.GenerateDependenciesRequest) (*models.GenerateDependenciesResponse, error) {
+func (MockPluginBQ) GenerateDependencies(_ context.Context, req plugin.GenerateDependenciesRequest) (*plugin.GenerateDependenciesResponse, error) {
 	c, _ := req.Config.Get("DEST")
-	return &models.GenerateDependenciesResponse{Dependencies: []string{c.Value}}, nil
+	return &plugin.GenerateDependenciesResponse{Dependencies: []string{c.Value}}, nil
 }
 
-func (MockPluginBQ) CompileAssets(_ context.Context, _ models.CompileAssetsRequest) (*models.CompileAssetsResponse, error) {
+func (MockPluginBQ) CompileAssets(_ context.Context, _ plugin.CompileAssetsRequest) (*plugin.CompileAssetsResponse, error) {
 	// TODO: implement mock
-	return &models.CompileAssetsResponse{}, nil
+	return &plugin.CompileAssetsResponse{}, nil
 }
 
 //func InMemoryPluginRegistry() models.PluginRepository {

@@ -13,6 +13,7 @@ import (
 	"github.com/odpf/optimus/client/local/model"
 	"github.com/odpf/optimus/internal/models"
 	"github.com/odpf/optimus/internal/utils"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 const (
@@ -42,7 +43,7 @@ func NewJobCreateSurvey() *JobCreateSurvey {
 }
 
 // AskToCreateJob asks questions to create job
-func (j *JobCreateSurvey) AskToCreateJob(pluginRepo models.PluginRepository, jobSpecReader local.SpecReader[*model.JobSpec], jobDir, defaultJobName string) (model.JobSpec, error) {
+func (j *JobCreateSurvey) AskToCreateJob(pluginRepo *models.PluginRepository, jobSpecReader local.SpecReader[*model.JobSpec], jobDir, defaultJobName string) (model.JobSpec, error) {
 	availableTaskNames := j.getAvailableTaskNames(pluginRepo)
 	if len(availableTaskNames) == 0 {
 		return model.JobSpec{}, errors.New("no supported task plugin found")
@@ -85,9 +86,9 @@ func (j *JobCreateSurvey) AskToCreateJob(pluginRepo models.PluginRepository, job
 	return jobInput, nil
 }
 
-func (*JobCreateSurvey) getJobAsset(cliMod models.CommandLineMod, answers models.PluginAnswers) (map[string]string, error) {
+func (*JobCreateSurvey) getJobAsset(cliMod plugin.CommandLineMod, answers plugin.Answers) (map[string]string, error) {
 	ctx := context.Background()
-	defaultAssetRequest := models.DefaultAssetsRequest{Answers: answers}
+	defaultAssetRequest := plugin.DefaultAssetsRequest{Answers: answers}
 	generatedAssetResponse, err := cliMod.DefaultAssets(ctx, defaultAssetRequest)
 	if err != nil {
 		return nil, err
@@ -99,9 +100,9 @@ func (*JobCreateSurvey) getJobAsset(cliMod models.CommandLineMod, answers models
 	return asset, nil
 }
 
-func (*JobCreateSurvey) getTaskConfig(cliMod models.CommandLineMod, answers models.PluginAnswers) (map[string]string, error) {
+func (*JobCreateSurvey) getTaskConfig(cliMod plugin.CommandLineMod, answers plugin.Answers) (map[string]string, error) {
 	ctx := context.Background()
-	defaultConfigRequest := models.DefaultConfigRequest{Answers: answers}
+	defaultConfigRequest := plugin.DefaultConfigRequest{Answers: answers}
 	generatedConfigResponse, err := cliMod.DefaultConfig(ctx, defaultConfigRequest)
 	if err != nil {
 		return nil, err
@@ -116,7 +117,7 @@ func (*JobCreateSurvey) getTaskConfig(cliMod models.CommandLineMod, answers mode
 	return taskConfig, nil
 }
 
-func (*JobCreateSurvey) getAvailableTaskNames(pluginRepo models.PluginRepository) []string {
+func (*JobCreateSurvey) getAvailableTaskNames(pluginRepo *models.PluginRepository) []string {
 	plugins := pluginRepo.GetTasks()
 	var output []string
 	for _, task := range plugins {
@@ -220,7 +221,7 @@ func (j *JobCreateSurvey) askCreateQuestions(questions []*survey.Question) (mode
 	}, nil
 }
 
-func (*JobCreateSurvey) getPluginCliMod(pluginRepo models.PluginRepository, taskName string) (models.CommandLineMod, error) {
+func (*JobCreateSurvey) getPluginCliMod(pluginRepo *models.PluginRepository, taskName string) (plugin.CommandLineMod, error) {
 	plugin, err := pluginRepo.GetByName(taskName)
 	if err != nil {
 		return nil, err
@@ -228,15 +229,15 @@ func (*JobCreateSurvey) getPluginCliMod(pluginRepo models.PluginRepository, task
 	return plugin.GetSurveyMod(), nil
 }
 
-func (j *JobCreateSurvey) askPluginQuestions(cliMod models.CommandLineMod, jobName string) (models.PluginAnswers, error) {
+func (j *JobCreateSurvey) askPluginQuestions(cliMod plugin.CommandLineMod, jobName string) (plugin.Answers, error) {
 	ctx := context.Background()
-	questionRequest := models.GetQuestionsRequest{JobName: jobName}
+	questionRequest := plugin.GetQuestionsRequest{JobName: jobName}
 	questionResponse, err := cliMod.GetQuestions(ctx, questionRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	answers := models.PluginAnswers{}
+	answers := plugin.Answers{}
 	for _, question := range questionResponse.Questions {
 		subAnswers, err := j.jobSurvey.askCliModSurveyQuestion(ctx, cliMod, question)
 		if err != nil {

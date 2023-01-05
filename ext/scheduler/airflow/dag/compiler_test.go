@@ -11,8 +11,9 @@ import (
 	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/ext/scheduler/airflow/dag"
-	"github.com/odpf/optimus/internal/mock"
 	"github.com/odpf/optimus/internal/models"
+	"github.com/odpf/optimus/sdk/plugin"
+	"github.com/odpf/optimus/sdk/plugin/mock"
 )
 
 //go:embed expected_dag.py
@@ -148,10 +149,10 @@ func setupJobDetails(tnnt tenant.Tenant) *scheduler.JobWithDetails {
 }
 
 type mockPluginRepo struct {
-	plugins []*models.Plugin
+	plugins []*plugin.Plugin
 }
 
-func (m mockPluginRepo) GetByName(name string) (*models.Plugin, error) {
+func (m mockPluginRepo) GetByName(name string) (*plugin.Plugin, error) {
 	for _, plugin := range m.plugins {
 		if plugin.Info().Name == name {
 			return plugin, nil
@@ -162,36 +163,36 @@ func (m mockPluginRepo) GetByName(name string) (*models.Plugin, error) {
 
 func setupPluginRepo() mockPluginRepo {
 	execUnit := new(mock.YamlMod)
-	execUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
+	execUnit.On("PluginInfo").Return(&plugin.Info{
 		Name:  "bq-bq",
 		Image: "example.io/namespace/bq2bq-executor:latest",
 	}, nil)
 
 	transporterHook := "transporter"
 	hookUnit := new(mock.YamlMod)
-	hookUnit.On("PluginInfo").Return(&models.PluginInfoResponse{
+	hookUnit.On("PluginInfo").Return(&plugin.Info{
 		Name:      transporterHook,
-		HookType:  models.HookTypePre,
+		HookType:  plugin.HookTypePre,
 		Image:     "example.io/namespace/transporter-executor:latest",
 		DependsOn: []string{"predator"},
 	}, nil)
 
 	predatorHook := "predator"
 	hookUnit2 := new(mock.YamlMod)
-	hookUnit2.On("PluginInfo").Return(&models.PluginInfoResponse{
+	hookUnit2.On("PluginInfo").Return(&plugin.Info{
 		Name:     predatorHook,
-		HookType: models.HookTypePost,
+		HookType: plugin.HookTypePost,
 		Image:    "example.io/namespace/predator-image:latest",
 	}, nil)
 
 	hookUnit3 := new(mock.YamlMod)
-	hookUnit3.On("PluginInfo").Return(&models.PluginInfoResponse{
+	hookUnit3.On("PluginInfo").Return(&plugin.Info{
 		Name:     "failureHook",
-		HookType: models.HookTypeFail,
+		HookType: plugin.HookTypeFail,
 		Image:    "example.io/namespace/failure-hook-image:latest",
 	}, nil)
 
-	repo := mockPluginRepo{plugins: []*models.Plugin{
+	repo := mockPluginRepo{plugins: []*plugin.Plugin{
 		{YamlMod: execUnit}, {YamlMod: hookUnit}, {YamlMod: hookUnit2}, {YamlMod: hookUnit3},
 	}}
 	return repo

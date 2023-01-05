@@ -23,7 +23,7 @@ type createCommand struct {
 	clientConfig    *config.ClientConfig
 	namespaceSurvey *survey.NamespaceSurvey
 	jobCreateSurvey *survey.JobCreateSurvey
-	pluginRepo      *models.RegisteredPlugins
+	pluginRepo      *models.PluginRepository
 }
 
 // NewCreateCommand initializes job create command

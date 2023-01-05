@@ -6,7 +6,7 @@ import (
 	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/models"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 const (
@@ -85,11 +85,11 @@ func PrepareHooksForJob(job *scheduler.Job, pluginRepo PluginRepo) (Hooks, error
 			Image: info.Image,
 		}
 		switch info.HookType {
-		case models.HookTypePre:
+		case plugin.HookTypePre:
 			hooks.Pre = append(hooks.Pre, hk)
-		case models.HookTypePost:
+		case plugin.HookTypePost:
 			hooks.Post = append(hooks.Post, hk)
-		case models.HookTypeFail:
+		case plugin.HookTypeFail:
 			hk.IsFailHook = true
 			hooks.Fail = append(hooks.Fail, hk)
 		}

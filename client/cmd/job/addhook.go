@@ -22,7 +22,7 @@ type addHookCommand struct {
 	jobSurvey        *survey.JobSurvey
 	jobAddHookSurvey *survey.JobAddHookSurvey
 	namespaceSurvey  *survey.NamespaceSurvey
-	pluginRepo       *models.RegisteredPlugins
+	pluginRepo       *models.PluginRepository
 }
 
 // NewAddHookCommand initializes command for adding hook

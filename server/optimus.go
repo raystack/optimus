@@ -61,7 +61,7 @@ type OptimusServer struct {
 	grpcServer *grpc.Server
 	httpServer *http.Server
 
-	pluginRepo *models.RegisteredPlugins
+	pluginRepo *models.PluginRepository
 	cleanupFn  []func()
 }
 

@@ -11,7 +11,7 @@ import (
 
 	"github.com/odpf/optimus/client/local"
 	"github.com/odpf/optimus/client/local/model"
-	"github.com/odpf/optimus/internal/models"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 // JobSurvey defines survey for job specification in general
@@ -43,7 +43,7 @@ func (*JobSurvey) AskToSelectJobName(jobSpecReader local.SpecReader[*model.JobSp
 	return selectedJobName, nil
 }
 
-func (j *JobSurvey) askCliModSurveyQuestion(ctx context.Context, cliMod models.CommandLineMod, question models.PluginQuestion) (models.PluginAnswers, error) {
+func (j *JobSurvey) askCliModSurveyQuestion(ctx context.Context, cliMod plugin.CommandLineMod, question plugin.Question) (plugin.Answers, error) {
 	surveyPrompt := j.getSurveyPromptFromPluginQuestion(question)
 
 	var responseStr string
@@ -55,8 +55,8 @@ func (j *JobSurvey) askCliModSurveyQuestion(ctx context.Context, cliMod models.C
 		return nil, fmt.Errorf("AskSurveyQuestion: %w", err)
 	}
 
-	answers := models.PluginAnswers{
-		models.PluginAnswer{
+	answers := plugin.Answers{
+		plugin.Answer{
 			Question: question,
 			Value:    responseStr,
 		},
@@ -78,7 +78,7 @@ func (j *JobSurvey) askCliModSurveyQuestion(ctx context.Context, cliMod models.C
 	return answers, nil
 }
 
-func (*JobSurvey) getSurveyPromptFromPluginQuestion(question models.PluginQuestion) survey.Prompt {
+func (*JobSurvey) getSurveyPromptFromPluginQuestion(question plugin.Question) survey.Prompt {
 	var surveyPrompt survey.Prompt
 	if len(question.Multiselect) > 0 {
 		sel := &survey.Select{
@@ -103,14 +103,14 @@ func (*JobSurvey) getSurveyPromptFromPluginQuestion(question models.PluginQuesti
 	return surveyPrompt
 }
 
-func (j *JobSurvey) getValidatePluginQuestion(ctx context.Context, cliMod models.CommandLineMod, question models.PluginQuestion) survey.Validator {
+func (j *JobSurvey) getValidatePluginQuestion(ctx context.Context, cliMod plugin.CommandLineMod, question plugin.Question) survey.Validator {
 	return func(val interface{}) error {
 		str, err := j.convertUserInputPluginToString(val)
 		if err != nil {
 			return err
 		}
-		resp, err := cliMod.ValidateQuestion(ctx, models.ValidateQuestionRequest{
-			Answer: models.PluginAnswer{
+		resp, err := cliMod.ValidateQuestion(ctx, plugin.ValidateQuestionRequest{
+			Answer: plugin.Answer{
 				Question: question,
 				Value:    str,
 			},
