@@ -6,8 +6,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/tenant"
 	postgres "github.com/odpf/optimus/internal/store/postgres/tenant"
@@ -29,17 +29,17 @@ func TestPostgresNamespaceRepository(t *testing.T) {
 		})
 
 	ctx := context.Background()
-	dbSetup := func() *gorm.DB {
-		dbConn := setup.TestDB()
-		setup.TruncateTables(dbConn)
+	dbSetup := func() *pgxpool.Pool {
+		pool := setup.TestPool()
+		setup.TruncateTablesWith(pool)
 
-		prjRepo := postgres.NewProjectRepository(dbConn)
+		prjRepo := postgres.NewProjectRepository(pool)
 		err := prjRepo.Save(ctx, proj)
 		if err != nil {
 			panic(err)
 		}
 
-		return dbConn
+		return pool
 	}
 
 	t.Run("Save", func(t *testing.T) {
@@ -135,7 +135,7 @@ func TestPostgresNamespaceRepository(t *testing.T) {
 
 			_, err := repo.GetByName(ctx, proj.Name(), ns.Name())
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "not found for entity namespace: no record for n-optimus-1")
+			assert.ErrorContains(t, err, "no record for n-optimus-1")
 		})
 		t.Run("returns the saved namespace with same name", func(t *testing.T) {
 			db := dbSetup()

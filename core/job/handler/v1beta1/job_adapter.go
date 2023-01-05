@@ -14,9 +14,9 @@ import (
 
 func toJobProto(jobEntity *job.Job) *pb.JobSpecification {
 	return &pb.JobSpecification{
-		Version:          int32(jobEntity.Spec().Version().Int()),
+		Version:          int32(jobEntity.Spec().Version()),
 		Name:             jobEntity.Spec().Name().String(),
-		Owner:            jobEntity.Spec().Owner().String(),
+		Owner:            jobEntity.Spec().Owner(),
 		StartDate:        jobEntity.Spec().Schedule().StartDate().String(),
 		EndDate:          jobEntity.Spec().Schedule().EndDate().String(),
 		Interval:         jobEntity.Spec().Schedule().Interval(),
@@ -61,20 +61,14 @@ func fromJobProtos(protoJobSpecs []*pb.JobSpecification) ([]*job.Spec, []job.Nam
 }
 
 func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
-	version, err := job.VersionFrom(int(js.Version))
-	if err != nil {
-		return nil, err
-	}
+	version := int(js.Version)
 
 	name, err := job.NameFrom(js.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	owner, err := job.OwnerFrom(js.Owner)
-	if err != nil {
-		return nil, err
-	}
+	owner := js.Owner
 
 	startDate, err := job.ScheduleDateFrom(js.StartDate)
 	if err != nil {
@@ -121,7 +115,7 @@ func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
 		return nil, err
 	}
 
-	var taskConfig *job.Config
+	var taskConfig job.Config
 	if js.Config != nil {
 		taskConfig, err = toConfig(js.Config)
 		if err != nil {
@@ -173,14 +167,14 @@ func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
 	}
 
 	if js.Assets != nil {
-		asset, err := job.NewAsset(js.Assets)
+		asset, err := job.AssetFrom(js.Assets)
 		if err != nil {
 			return nil, err
 		}
 		jobSpecBuilder = jobSpecBuilder.WithAsset(asset)
 	}
 
-	return jobSpecBuilder.Build(), nil
+	return jobSpecBuilder.Build()
 }
 
 func fromResourceURNs(resourceURNs []job.ResourceURN) []string {
@@ -228,11 +222,11 @@ func toHooks(hooksProto []*pb.JobSpecHook) ([]*job.Hook, error) {
 		if err != nil {
 			return nil, err
 		}
-		hookName, err := job.HookNameFrom(hookProto.Name)
+		hookSpec, err := job.NewHook(hookProto.Name, hookConfig)
 		if err != nil {
 			return nil, err
 		}
-		hooks[i] = job.NewHook(hookName, hookConfig)
+		hooks[i] = hookSpec
 	}
 	return hooks, nil
 }
@@ -241,17 +235,17 @@ func fromHooks(hooks []*job.Hook) []*pb.JobSpecHook {
 	var hooksProto []*pb.JobSpecHook
 	for _, hook := range hooks {
 		hooksProto = append(hooksProto, &pb.JobSpecHook{
-			Name:   hook.Name().String(),
+			Name:   hook.Name(),
 			Config: fromConfig(hook.Config()),
 		})
 	}
 	return hooksProto
 }
 
-func fromAsset(jobAsset *job.Asset) map[string]string {
+func fromAsset(jobAsset job.Asset) map[string]string {
 	var assets map[string]string
 	if jobAsset != nil {
-		assets = jobAsset.Assets()
+		assets = jobAsset
 	}
 	return assets
 }
@@ -259,8 +253,8 @@ func fromAsset(jobAsset *job.Asset) map[string]string {
 func toAlerts(notifiers []*pb.JobSpecification_Behavior_Notifiers) ([]*job.AlertSpec, error) {
 	alerts := make([]*job.AlertSpec, len(notifiers))
 	for i, notify := range notifiers {
-		alertOn := job.EventType(utils.FromEnumProto(notify.On.String(), "type"))
-		config, err := job.NewConfig(notify.Config)
+		alertOn := utils.FromEnumProto(notify.On.String(), "type")
+		config, err := job.ConfigFrom(notify.Config)
 		if err != nil {
 			return nil, err
 		}
@@ -277,9 +271,9 @@ func fromAlerts(jobAlerts []*job.AlertSpec) []*pb.JobSpecification_Behavior_Noti
 	var notifiers []*pb.JobSpecification_Behavior_Notifiers
 	for _, alert := range jobAlerts {
 		notifiers = append(notifiers, &pb.JobSpecification_Behavior_Notifiers{
-			On:       pb.JobEvent_Type(pb.JobEvent_Type_value[utils.ToEnumProto(string(alert.On()), "type")]),
+			On:       pb.JobEvent_Type(pb.JobEvent_Type_value[utils.ToEnumProto(alert.On(), "type")]),
 			Channels: alert.Channels(),
-			Config:   alert.Config().Configs(),
+			Config:   alert.Config(),
 		})
 	}
 	return notifiers
@@ -295,11 +289,7 @@ func toSpecUpstreams(upstreamProtos []*pb.JobDependency) (*job.UpstreamSpec, err
 			continue
 		}
 		httpUpstreamProto := upstream.HttpDependency
-		httpUpstreamName, err := job.NameFrom(httpUpstreamProto.Name)
-		if err != nil {
-			return nil, err
-		}
-		httpUpstream, err := job.NewSpecHTTPUpstreamBuilder(httpUpstreamName, httpUpstreamProto.Url).
+		httpUpstream, err := job.NewSpecHTTPUpstreamBuilder(httpUpstreamProto.Name, httpUpstreamProto.Url).
 			WithHeaders(httpUpstreamProto.Headers).
 			WithParams(httpUpstreamProto.Params).
 			Build()
@@ -326,7 +316,7 @@ func fromSpecUpstreams(upstreams *job.UpstreamSpec) []*pb.JobDependency {
 	for _, httpUpstream := range upstreams.HTTPUpstreams() {
 		dependencies = append(dependencies, &pb.JobDependency{
 			HttpDependency: &pb.HttpDependency{
-				Name:    httpUpstream.Name().String(),
+				Name:    httpUpstream.Name(),
 				Url:     httpUpstream.URL(),
 				Headers: httpUpstream.Headers(),
 				Params:  httpUpstream.Params(),
@@ -399,17 +389,17 @@ func fromMetadata(metadata *job.Metadata) *pb.JobMetadata {
 	}
 }
 
-func toConfig(configs []*pb.JobConfigItem) (*job.Config, error) {
+func toConfig(configs []*pb.JobConfigItem) (job.Config, error) {
 	configMap := make(map[string]string, len(configs))
 	for _, config := range configs {
 		configMap[config.Name] = config.Value
 	}
-	return job.NewConfig(configMap)
+	return job.ConfigFrom(configMap)
 }
 
-func fromConfig(jobConfig *job.Config) []*pb.JobConfigItem {
+func fromConfig(jobConfig job.Config) []*pb.JobConfigItem {
 	configs := []*pb.JobConfigItem{}
-	for configName, configValue := range jobConfig.Configs() {
+	for configName, configValue := range jobConfig {
 		configs = append(configs, &pb.JobConfigItem{Name: configName, Value: configValue})
 	}
 	return configs
@@ -473,7 +463,7 @@ func toHTTPUpstreamProtos(httpUpstreamSpecs []*job.SpecHTTPUpstream) []*pb.HttpD
 	var httpUpstreamProtos []*pb.HttpDependency
 	for _, httpUpstream := range httpUpstreamSpecs {
 		httpUpstreamProtos = append(httpUpstreamProtos, &pb.HttpDependency{
-			Name:    httpUpstream.Name().String(),
+			Name:    httpUpstream.Name(),
 			Url:     httpUpstream.URL(),
 			Headers: httpUpstream.Headers(),
 			Params:  httpUpstream.Params(),

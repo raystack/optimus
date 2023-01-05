@@ -2,16 +2,17 @@ package scheduler
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lib/pq"
-	"gorm.io/datatypes"
-	"gorm.io/gorm"
 
+	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
@@ -19,9 +20,32 @@ import (
 	"github.com/odpf/optimus/internal/utils"
 )
 
+const (
+	jobColumns = `id, name, version, owner, description, labels, schedule, alert, static_upstreams, http_upstreams,
+				  task_name, task_config, window_spec, assets, hooks, metadata, destination, sources, project_name, namespace_name, created_at, updated_at`
+	upstreamColumns = `
+    job_name, project_name, upstream_job_name, upstream_project_name,
+    upstream_namespace_name, upstream_resource_urn, upstream_task_name, upstream_type, upstream_external`
+)
+
 type JobRepository struct {
-	db *gorm.DB
+	db *pgxpool.Pool
 }
+
+type Schedule struct {
+	StartDate     time.Time
+	EndDate       *time.Time
+	Interval      string
+	DependsOnPast bool `json:"depends_on_past"`
+	CatchUp       bool `json:"catch_up"`
+	Retry         *Retry
+}
+type Retry struct {
+	Count              int   `json:"count"`
+	Delay              int32 `json:"delay"`
+	ExponentialBackoff bool  `json:"exponential_backoff"`
+}
+
 type JobUpstreams struct {
 	JobID                 uuid.UUID
 	JobName               string
@@ -37,8 +61,8 @@ type JobUpstreams struct {
 	UpstreamState         string
 	UpstreamExternal      bool
 
-	CreatedAt time.Time `gorm:"not null" json:"created_at"`
-	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func (j *JobUpstreams) toJobUpstreams() (*scheduler.JobUpstream, error) {
@@ -60,76 +84,81 @@ func (j *JobUpstreams) toJobUpstreams() (*scheduler.JobUpstream, error) {
 }
 
 type Job struct {
-	ID          uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
-	Name        string    `gorm:"not null" json:"name"`
+	ID          uuid.UUID
+	Name        string
 	Version     int
 	Owner       string
 	Description string
-	Labels      datatypes.JSON
+	Labels      map[string]string
 
-	StartDate time.Time
-	EndDate   *time.Time
-	Interval  string
+	Schedule   json.RawMessage
+	WindowSpec json.RawMessage
 
-	// Behavior
-	DependsOnPast bool `json:"depends_on_past"`
-	CatchUp       bool `json:"catch_up"`
-	Retry         datatypes.JSON
-	Alert         datatypes.JSON
+	Alert json.RawMessage
 
-	// Upstreams
-	StaticUpstreams pq.StringArray `gorm:"type:varchar(220)[]" json:"static_upstreams"`
-
-	// ExternalUpstreams
-	HTTPUpstreams datatypes.JSON `json:"http_upstreams"`
+	StaticUpstreams pq.StringArray
+	HTTPUpstreams   json.RawMessage
 
 	TaskName   string
-	TaskConfig datatypes.JSON
+	TaskConfig map[string]string
 
-	WindowSize       string
-	WindowOffset     string
-	WindowTruncateTo string
+	Hooks json.RawMessage
 
-	Assets   datatypes.JSON
-	Hooks    datatypes.JSON
-	Metadata datatypes.JSON
+	Assets map[string]string
+
+	Metadata json.RawMessage
 
 	Destination string
-	Sources     pq.StringArray `gorm:"type:varchar(300)[]"`
+	Sources     pq.StringArray
 
 	ProjectName   string `json:"project_name"`
 	NamespaceName string `json:"namespace_name"`
 
-	CreatedAt time.Time `gorm:"not null" json:"created_at"`
-	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
-	DeletedAt gorm.DeletedAt
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt sql.NullTime
+}
+type Window struct {
+	WindowSize       string
+	WindowOffset     string
+	WindowTruncateTo string
 }
 
+func fromStorageWindow(raw []byte, jobVersion int) (models.Window, error) {
+	var storageWindow Window
+	if err := json.Unmarshal(raw, &storageWindow); err != nil {
+		return nil, err
+	}
+
+	return models.NewWindow(
+		jobVersion,
+		storageWindow.WindowTruncateTo,
+		storageWindow.WindowOffset,
+		storageWindow.WindowSize,
+	)
+}
 func (j *Job) toJob() (*scheduler.Job, error) {
 	t, err := tenant.NewTenant(j.ProjectName, j.NamespaceName)
 	if err != nil {
 		return nil, err
 	}
-	window, err := models.NewWindow(j.Version, j.WindowTruncateTo, j.WindowOffset, j.WindowSize)
-	if err != nil {
-		return nil, err
+	var window models.Window
+	if j.WindowSpec != nil {
+		window, err = fromStorageWindow(j.WindowSpec, j.Version)
+		if err != nil {
+			return nil, err
+		}
 	}
 	schedulerJob := scheduler.Job{
 		Name:        scheduler.JobName(j.Name),
 		Tenant:      t,
 		Destination: j.Destination,
 		Window:      window,
-	}
-
-	if j.TaskConfig != nil {
-		taskConfig := map[string]string{}
-		if err := json.Unmarshal(j.TaskConfig, &taskConfig); err != nil {
-			return nil, err
-		}
-		schedulerJob.Task = &scheduler.Task{
+		Assets:      j.Assets,
+		Task: &scheduler.Task{
 			Name:   j.TaskName,
-			Config: taskConfig,
-		}
+			Config: j.TaskConfig,
+		},
 	}
 
 	if j.Hooks != nil {
@@ -140,20 +169,16 @@ func (j *Job) toJob() (*scheduler.Job, error) {
 		schedulerJob.Hooks = hookConfig
 	}
 
-	if j.Assets != nil {
-		assets := map[string]string{}
-		if err := json.Unmarshal(j.Assets, &assets); err != nil {
-			return nil, err
-		}
-		schedulerJob.Assets = assets
-	}
-
 	return &schedulerJob, nil
 }
 
 func (j *Job) toJobWithDetails() (*scheduler.JobWithDetails, error) {
 	job, err := j.toJob()
 	if err != nil {
+		return nil, err
+	}
+	var storageSchedule Schedule
+	if err := json.Unmarshal(j.Schedule, &storageSchedule); err != nil {
 		return nil, err
 	}
 
@@ -164,28 +189,24 @@ func (j *Job) toJobWithDetails() (*scheduler.JobWithDetails, error) {
 			Version:     j.Version,
 			Owner:       j.Owner,
 			Description: j.Description,
+			Labels:      j.Labels,
 		},
 		Schedule: &scheduler.Schedule{
-			DependsOnPast: j.DependsOnPast,
-			CatchUp:       j.CatchUp,
-			StartDate:     j.StartDate,
-			Interval:      j.Interval,
+			DependsOnPast: storageSchedule.DependsOnPast,
+			CatchUp:       storageSchedule.CatchUp,
+			StartDate:     storageSchedule.StartDate,
+			Interval:      storageSchedule.Interval,
 		},
 	}
-	if !j.EndDate.IsZero() {
-		schedulerJobWithDetails.Schedule.EndDate = j.EndDate
-	}
-	if j.Labels != nil {
-		var labels map[string]string
-		if err := json.Unmarshal(j.Labels, &labels); err != nil {
-			return nil, err
-		}
-		schedulerJobWithDetails.JobMetadata.Labels = labels
+	if !storageSchedule.EndDate.IsZero() {
+		schedulerJobWithDetails.Schedule.EndDate = storageSchedule.EndDate
 	}
 
-	if j.Retry != nil {
-		if err := json.Unmarshal(j.Retry, &schedulerJobWithDetails.Retry); err != nil {
-			return nil, err
+	if storageSchedule.Retry != nil {
+		schedulerJobWithDetails.Retry = scheduler.Retry{
+			ExponentialBackoff: storageSchedule.Retry.ExponentialBackoff,
+			Count:              storageSchedule.Retry.Count,
+			Delay:              storageSchedule.Retry.Delay,
 		}
 	}
 
@@ -200,29 +221,38 @@ func (j *Job) toJobWithDetails() (*scheduler.JobWithDetails, error) {
 	return schedulerJobWithDetails, nil
 }
 
-func (j *JobRepository) GetJob(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName) (*scheduler.Job, error) {
-	var spec Job
+func FromRow(row pgx.Row) (*Job, error) {
+	var js Job
 
-	getJobByNameAtProject := `SELECT * FROM job WHERE name = ? AND project_name = ?`
-	err := j.db.WithContext(ctx).Raw(getJobByNameAtProject, jobName.String(), projectName.String()).
-		First(&spec).Error
+	err := row.Scan(&js.ID, &js.Name, &js.Version, &js.Owner, &js.Description,
+		&js.Labels, &js.Schedule, &js.Alert, &js.StaticUpstreams, &js.HTTPUpstreams,
+		&js.TaskName, &js.TaskConfig, &js.WindowSpec, &js.Assets, &js.Hooks, &js.Metadata, &js.Destination, &js.Sources,
+		&js.ProjectName, &js.NamespaceName, &js.CreatedAt, &js.UpdatedAt)
+
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.NotFound(scheduler.EntityJobRun, "unable to find job:"+jobName.String()+" in project:"+projectName.String())
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.NotFound(job.EntityJob, "job not found")
 		}
+
+		return nil, errors.Wrap(scheduler.EntityJobRun, "error in reading row for resource", err)
+	}
+
+	return &js, nil
+}
+
+func (j *JobRepository) GetJob(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName) (*scheduler.Job, error) {
+	getJobByNameAtProject := `SELECT ` + jobColumns + ` FROM job WHERE name = $1 AND project_name = $2`
+	spec, err := FromRow(j.db.QueryRow(ctx, getJobByNameAtProject, jobName, projectName))
+	if err != nil {
 		return nil, err
 	}
 	return spec.toJob()
 }
+
 func (j *JobRepository) GetJobDetails(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName) (*scheduler.JobWithDetails, error) {
-	var spec Job
-	getJobByNameAtProject := `SELECT * FROM job WHERE name = ? AND project_name = ?`
-	err := j.db.WithContext(ctx).Raw(getJobByNameAtProject, jobName.String(), projectName.String()).
-		First(&spec).Error
+	getJobByNameAtProject := `SELECT ` + jobColumns + ` FROM job WHERE name = $1 AND project_name = $2`
+	spec, err := FromRow(j.db.QueryRow(ctx, getJobByNameAtProject, jobName, projectName))
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.NotFound(scheduler.EntityJobRun, "unable to find job:"+jobName.String()+" in project:"+projectName.String())
-		}
 		return nil, err
 	}
 	return spec.toJobWithDetails()
@@ -235,46 +265,59 @@ func groupUpstreamsByJobName(jobUpstreams []JobUpstreams) (map[string][]*schedul
 	for _, upstream := range jobUpstreams {
 		schedulerUpstream, err := upstream.toJobUpstreams()
 		if err != nil {
-			multiError.Append(
-				errors.Wrap(
-					scheduler.EntityJobRun,
-					fmt.Sprintf("unable to parse upstream:%s for job:%s", upstream.UpstreamJobName, upstream.JobName),
-					err))
+			msg := fmt.Sprintf("unable to parse upstream:%s for job:%s", upstream.UpstreamJobName, upstream.JobName)
+			multiError.Append(errors.Wrap(scheduler.EntityJobRun, msg, err))
 			continue
 		}
 		jobUpstreamGroup[upstream.JobName] = append(jobUpstreamGroup[upstream.JobName], schedulerUpstream)
 	}
-	return jobUpstreamGroup, errors.MultiToError(multiError)
+	return jobUpstreamGroup, multiError.ToErr()
 }
 
 func (j *JobRepository) getJobsUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []string) (map[string][]*scheduler.JobUpstream, error) {
-	var jobsUpstreams []JobUpstreams
-	jobNameListString := strings.Join(jobNames, "', '")
-	getJobUpstreamsByNameAtProject := fmt.Sprintf("SELECT * FROM job_upstream WHERE project_name = '%s' and job_name in ('%s')", projectName.String(), jobNameListString)
-	err := j.db.WithContext(ctx).Raw(getJobUpstreamsByNameAtProject, projectName.String()).Find(&jobsUpstreams).Error
+	getJobUpstreamsByNameAtProject := "SELECT " + upstreamColumns + " FROM job_upstream WHERE project_name = $1 and job_name = any ($2)"
+	rows, err := j.db.Query(ctx, getJobUpstreamsByNameAtProject, projectName, jobNames)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.NotFound(scheduler.EntityJobRun, "unable to find jobsUpstreams in project:"+projectName.String()+" for:"+jobNameListString)
-		}
-		return nil, err
+		return nil, errors.Wrap(job.EntityJob, "error while getting job with upstreams", err)
 	}
-	return groupUpstreamsByJobName(jobsUpstreams)
+	defer rows.Close()
+
+	var upstreams []JobUpstreams
+	for rows.Next() {
+		var jwu JobUpstreams
+		err := rows.Scan(&jwu.JobName, &jwu.ProjectName, &jwu.UpstreamJobName, &jwu.UpstreamProjectName,
+			&jwu.UpstreamNamespaceName, &jwu.UpstreamResourceUrn, &jwu.UpstreamTaskName, &jwu.UpstreamType, &jwu.UpstreamExternal)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, errors.NotFound(scheduler.EntityJobRun, "job upstream not found")
+			}
+
+			return nil, errors.Wrap(scheduler.EntityJobRun, "error in reading row for resource", err)
+		}
+		upstreams = append(upstreams, jwu)
+	}
+
+	return groupUpstreamsByJobName(upstreams)
 }
 
 func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectName) ([]*scheduler.JobWithDetails, error) {
-	var specs []Job
-	getJobByNameAtProject := `SELECT * FROM job WHERE project_name = ?`
-	err := j.db.WithContext(ctx).Raw(getJobByNameAtProject, projectName.String()).Find(&specs).Error
+	getJobByNameAtProject := `SELECT ` + jobColumns + ` FROM job WHERE project_name = $1`
+	rows, err := j.db.Query(ctx, getJobByNameAtProject, projectName)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.NotFound(scheduler.EntityJobRun, "unable to find jobs in project:"+projectName.String())
-		}
-		return nil, err
+		return nil, errors.Wrap(job.EntityJob, "error while getting all jobs", err)
 	}
+	defer rows.Close()
+
 	jobsMap := map[string]*scheduler.JobWithDetails{}
 	var jobNameList []string
 	multiError := errors.NewMultiError("errorInGetAll")
-	for _, spec := range specs {
+	for rows.Next() {
+		spec, err := FromRow(rows)
+		if err != nil {
+			multiError.Append(errors.Wrap(scheduler.EntityJobRun, "error parsing job:"+spec.Name, err))
+			continue
+		}
+
 		job, err := spec.toJobWithDetails()
 		if err != nil {
 			multiError.Append(errors.Wrap(scheduler.EntityJobRun, "error parsing job:"+spec.Name, err))
@@ -282,6 +325,9 @@ func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectNa
 		}
 		jobNameList = append(jobNameList, job.GetName())
 		jobsMap[job.GetName()] = job
+	}
+	if len(jobNameList) == 0 {
+		return nil, errors.NotFound(scheduler.EntityJobRun, "unable to find jobs in project:"+projectName.String())
 	}
 
 	jobUpstreamGroupedByName, err := j.getJobsUpstreams(ctx, projectName, jobNameList)
@@ -294,8 +340,8 @@ func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectNa
 	return utils.MapToList[*scheduler.JobWithDetails](jobsMap), errors.MultiToError(multiError)
 }
 
-func NewJobProviderRepository(db *gorm.DB) *JobRepository {
+func NewJobProviderRepository(pool *pgxpool.Pool) *JobRepository {
 	return &JobRepository{
-		db: db,
+		db: pool,
 	}
 }

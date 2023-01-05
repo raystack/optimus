@@ -9,5 +9,6 @@ func NewMigrationCommand() *cobra.Command {
 		Short: "Command to do migration activity",
 	}
 	cmd.AddCommand(NewRollbackCommand())
+	cmd.AddCommand(NewMigrateToCommand())
 	return cmd
 }

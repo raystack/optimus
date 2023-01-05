@@ -30,7 +30,7 @@ log:
 #    # database connection string
 #    dsn: postgres://user:password@localhost:5432/database?sslmode=disable
 #
-#    max_idle_connection: 5
+#    min_open_connection: 5
 #    max_open_connection: 10
 
 # optimus supports multiple scheduler types

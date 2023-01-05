@@ -2,19 +2,18 @@ package tenant
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
-	"gorm.io/datatypes"
-	"gorm.io/gorm"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 )
 
 type ProjectRepository struct {
-	db *gorm.DB
+	db *pgxpool.Pool
 }
 
 const (
@@ -22,71 +21,51 @@ const (
 )
 
 type Project struct {
-	ID     uuid.UUID `gorm:"primary_key;type:uuid;default:uuid_generate_v4()"`
-	Name   string    `gorm:"not null;unique"`
-	Config datatypes.JSON
+	ID     uuid.UUID
+	Name   string
+	Config map[string]string
 
-	CreatedAt time.Time `gorm:"not null" json:"created_at"`
-	UpdatedAt time.Time `gorm:"not null" json:"updated_at"`
-	DeletedAt gorm.DeletedAt
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
-func NewProject(spec *tenant.Project) (Project, error) {
-	jsonBytes, err := json.Marshal(spec.GetConfigs())
-	if err != nil {
-		return Project{}, err
-	}
-	project := Project{
-		Name:   spec.Name().String(),
-		Config: jsonBytes,
-	}
-	return project, nil
-}
-
-func (p Project) ToTenantProject() (*tenant.Project, error) {
-	var conf map[string]string
-	err := json.Unmarshal(p.Config, &conf)
-	if err != nil {
-		return nil, err
-	}
-	return tenant.NewProject(p.Name, conf)
+func (p *Project) toTenantProject() (*tenant.Project, error) {
+	return tenant.NewProject(p.Name, p.Config)
 }
 
 func (repo ProjectRepository) Save(ctx context.Context, tenantProject *tenant.Project) error {
-	project, err := NewProject(tenantProject)
+	_, err := repo.get(ctx, tenantProject.Name())
 	if err != nil {
-		return err
-	}
-
-	_, err = repo.get(ctx, tenantProject.Name())
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			insertProjectQuery := `INSERT INTO project (name, config, created_at, updated_at) VALUES (?, ?, now(), now())`
-			return repo.db.WithContext(ctx).Exec(insertProjectQuery, project.Name, project.Config).Error
+		if errors.Is(err, pgx.ErrNoRows) {
+			insertProjectQuery := `INSERT INTO project (name, config, created_at, updated_at) VALUES ($1, $2, now(), now())`
+			_, err = repo.db.Exec(ctx, insertProjectQuery, tenantProject.Name(), tenantProject.GetConfigs())
+			return errors.WrapIfErr(tenant.EntityProject, "unable to save project", err)
 		}
 		return errors.Wrap(tenant.EntityProject, "unable to save project", err)
 	}
 
-	updateProjectQuery := `UPDATE project SET config=?, updated_at=now() WHERE name=?`
-	return repo.db.WithContext(ctx).Exec(updateProjectQuery, project.Config, project.Name).Error
+	updateProjectQuery := `UPDATE project SET config=$1, updated_at=now() WHERE name=$2`
+	_, err = repo.db.Exec(ctx, updateProjectQuery, tenantProject.GetConfigs(), tenantProject.Name())
+	return errors.WrapIfErr(tenant.EntityProject, "unable to update project", err)
 }
 
 func (repo ProjectRepository) GetByName(ctx context.Context, name tenant.ProjectName) (*tenant.Project, error) {
 	project, err := repo.get(ctx, name)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.NotFound(tenant.EntityProject, "no record for "+name.String())
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.NotFound(tenant.EntityProject, "no project for "+name.String())
 		}
 		return nil, errors.Wrap(tenant.EntityProject, "error while getting project", err)
 	}
-	return project.ToTenantProject()
+	return project.toTenantProject()
 }
 
 func (repo ProjectRepository) get(ctx context.Context, name tenant.ProjectName) (Project, error) {
 	var project Project
 
-	getProjectByNameQuery := `SELECT ` + projectColumns + ` FROM project WHERE name = ? AND deleted_at IS NULL`
-	err := repo.db.WithContext(ctx).Raw(getProjectByNameQuery, name.String()).First(&project).Error
+	getProjectByNameQuery := `SELECT ` + projectColumns + ` FROM project WHERE name = $1 AND deleted_at IS NULL`
+	err := repo.db.QueryRow(ctx, getProjectByNameQuery, name).
+		Scan(&project.ID, &project.Name, &project.Config, &project.CreatedAt, &project.UpdatedAt)
 	if err != nil {
 		return Project{}, err
 	}
@@ -94,26 +73,34 @@ func (repo ProjectRepository) get(ctx context.Context, name tenant.ProjectName) 
 }
 
 func (repo ProjectRepository) GetAll(ctx context.Context) ([]*tenant.Project, error) {
-	var projects []Project
+	var projects []*tenant.Project
 
 	getAllProjects := `SELECT ` + projectColumns + ` FROM project WHERE deleted_at IS NULL`
-	if err := repo.db.WithContext(ctx).Raw(getAllProjects).Scan(&projects).Error; err != nil {
+	rows, err := repo.db.Query(ctx, getAllProjects)
+	if err != nil {
 		return nil, errors.Wrap(tenant.EntityProject, "error in GetAll", err)
 	}
+	defer rows.Close()
 
-	var tenantProjects []*tenant.Project
-	for _, proj := range projects {
-		tenantProject, err := proj.ToTenantProject()
+	for rows.Next() {
+		var prj Project
+		err = rows.Scan(&prj.ID, &prj.Name, &prj.Config, &prj.CreatedAt, &prj.UpdatedAt)
+		if err != nil {
+			return nil, errors.Wrap(tenant.EntityProject, "error in GetAll", err)
+		}
+
+		project, err := prj.toTenantProject()
 		if err != nil {
 			return nil, err
 		}
-		tenantProjects = append(tenantProjects, tenantProject)
+		projects = append(projects, project)
 	}
-	return tenantProjects, nil
+
+	return projects, nil
 }
 
-func NewProjectRepository(db *gorm.DB) *ProjectRepository {
+func NewProjectRepository(pool *pgxpool.Pool) *ProjectRepository {
 	return &ProjectRepository{
-		db: db,
+		db: pool,
 	}
 }

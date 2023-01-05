@@ -1,18 +1,17 @@
 package migration
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/internal/logger"
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/internal/store/postgres"
 )
 
 type rollbackCommand struct {
 	configFilePath string
+	count          int
 }
 
 // NewRollbackCommand initializes command for migration rollback
@@ -24,6 +23,7 @@ func NewRollbackCommand() *cobra.Command {
 		RunE:  rollback.RunE,
 	}
 	cmd.Flags().StringVarP(&rollback.configFilePath, "config", "c", rollback.configFilePath, "File path for server configuration")
+	cmd.Flags().IntVarP(&rollback.count, "count", "n", 1, "Number of migrations to rollback")
 	return cmd
 }
 
@@ -33,19 +33,13 @@ func (r *rollbackCommand) RunE(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("error loading client config: %w", err)
 	}
 
-	l := logger.NewClientLogger()
 	dsn := clientConfig.Serve.DB.DSN
 
-	l.Info("initiating migration")
-	migration, err := postgres.NewMigration(l, config.BuildVersion, dsn)
+	fmt.Printf("Executing rollback for %d migrations\n", r.count) // nolint:forbidigo
+	err = postgres.Rollback(dsn, r.count)
 	if err != nil {
-		return fmt.Errorf("error initializing migration: %w", err)
-	}
-
-	l.Info("executing rollback")
-	if err := migration.Rollback(context.Background()); err != nil {
 		return fmt.Errorf("error rolling back migration: %w", err)
 	}
-	l.Info("rollback finished successfully")
+	fmt.Println("Rollback finished successfully") // nolint:forbidigo
 	return nil
 }

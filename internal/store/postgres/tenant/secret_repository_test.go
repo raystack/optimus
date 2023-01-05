@@ -6,8 +6,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 
 	"github.com/odpf/optimus/core/tenant"
 	postgres "github.com/odpf/optimus/internal/store/postgres/tenant"
@@ -32,18 +32,18 @@ func TestPostgresSecretRepository(t *testing.T) {
 			"bucket": "gs://ns_bucket",
 		})
 
-	dbSetup := func() *gorm.DB {
-		dbConn := setup.TestDB()
-		setup.TruncateTables(dbConn)
+	dbSetup := func() *pgxpool.Pool {
+		pool := setup.TestPool()
+		setup.TruncateTablesWith(pool)
 
-		projRepo := postgres.NewProjectRepository(dbConn)
+		projRepo := postgres.NewProjectRepository(pool)
 		assert.Nil(t, projRepo.Save(ctx, proj))
 
-		namespaceRepo := postgres.NewNamespaceRepository(dbConn)
+		namespaceRepo := postgres.NewNamespaceRepository(pool)
 		assert.Nil(t, namespaceRepo.Save(ctx, namespace))
 		assert.Nil(t, namespaceRepo.Save(ctx, otherNamespace))
 
-		return dbConn
+		return pool
 	}
 
 	t.Run("Save", func(t *testing.T) {
