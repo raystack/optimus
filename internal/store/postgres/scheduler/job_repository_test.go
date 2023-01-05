@@ -49,6 +49,17 @@ func TestPostgresJobRepository(t *testing.T) {
 				}
 				assert.True(t, found)
 			}
+			for _, job := range allJobs {
+				if job.Name.String() == jobAName {
+					assert.Len(t, job.Upstreams.UpstreamJobs, 1)
+					assert.Equal(t, jobBName, job.Upstreams.UpstreamJobs[0].JobName)
+					assert.Equal(t, "internal", job.Upstreams.UpstreamJobs[0].Host)
+					assert.Equal(t, "resolved", job.Upstreams.UpstreamJobs[0].State)
+					assert.Equal(t, false, job.Upstreams.UpstreamJobs[0].External)
+					assert.Equal(t, "bq2bq", job.Upstreams.UpstreamJobs[0].TaskName)
+					assert.Equal(t, "dev.resource.sample_b", job.Upstreams.UpstreamJobs[0].DestinationURN)
+				}
+			}
 		})
 
 		t.Run("return not found error when jobs not found", func(t *testing.T) {
@@ -198,7 +209,14 @@ func addJobs(ctx context.Context, t *testing.T, pool *pgxpool.Pool) map[string]*
 	jobRepository := jobRepo.NewJobRepository(pool)
 	addedJobs, err := jobRepository.Add(ctx, jobs)
 	assert.NoError(t, err)
+	assert.Nil(t, err)
 	assert.EqualValues(t, jobs, addedJobs)
+
+	upstreamB := job.NewUpstreamResolved(jobBName, "internal", "dev.resource.sample_b", sampleTenant, job.UpstreamTypeStatic, taskName, false)
+	upstreams := []*job.Upstream{upstreamB}
+	jobWithUpstream := job.NewWithUpstream(jobA, upstreams)
+	err = jobRepository.ReplaceUpstreams(ctx, []*job.WithUpstream{jobWithUpstream})
+	assert.Nil(t, err)
 	jobMap := make(map[string]*job.Job)
 	for _, jobSpec := range jobs {
 		jobMap[jobSpec.GetName()] = jobSpec
