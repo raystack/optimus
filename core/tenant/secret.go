@@ -7,8 +7,7 @@ const (
 
 	SecretStorageKey    = "STORAGE"
 	SecretSchedulerAuth = "SCHEDULER_AUTH"
-
-	SecretTypeSystemDefinedPrefix = "_OPTIMUS_"
+	SecretNotifySlack   = "NOTIFY_SLACK"
 )
 
 type SecretName string

@@ -1,0 +1,2 @@
+ALTER TABLE secret
+ADD COLUMN type VARCHAR(15);

@@ -31,7 +31,6 @@ const (
 	airflowDateFormat = "2006-01-02T15:04:05+00:00"
 
 	schedulerHostKey = "SCHEDULER_HOST"
-	schedulerAuthKey = "SCHEDULER_AUTH"
 
 	baseLibFileName = "__lib.py"
 	jobsDir         = "dags"
@@ -283,7 +282,7 @@ func (s *Scheduler) getSchedulerAuth(ctx context.Context, tnnt tenant.Tenant) (S
 		return SchedulerAuth{}, err
 	}
 
-	auth, err := s.secretGetter.Get(ctx, tnnt.ProjectName(), tnnt.NamespaceName().String(), schedulerAuthKey)
+	auth, err := s.secretGetter.Get(ctx, tnnt.ProjectName(), tnnt.NamespaceName().String(), tenant.SecretSchedulerAuth)
 	if err != nil {
 		return SchedulerAuth{}, err
 	}
