@@ -351,4 +351,35 @@ func BenchmarkJobRepository(b *testing.B) {
 			assert.NoError(b, actualError)
 		}
 	})
+
+	b.Run("GetUpstreams", func(b *testing.B) {
+		db := dbSetup()
+		repo := repoJob.NewJobRepository(db)
+
+		jobName, err := serviceJob.NameFrom("job_test")
+		assert.NoError(b, err)
+		destination := serviceJob.ResourceURN("dev.resource.sample")
+		currentJob := setup.Job(tnnt, jobName, destination)
+
+		maxNumberOfUpstreams := 50
+		upstreams := make([]*serviceJob.Upstream, maxNumberOfUpstreams)
+		for i := 0; i < maxNumberOfUpstreams; i++ {
+			resourceURN := fmt.Sprintf("dev.resource.sample_%d", i)
+			upstreams[i] = serviceJob.NewUpstreamUnresolvedInferred(serviceJob.ResourceURN(resourceURN))
+		}
+		withUpstream := serviceJob.NewWithUpstream(currentJob, upstreams)
+
+		_, err = repo.Add(ctx, []*serviceJob.Job{currentJob})
+		assert.NoError(b, err)
+		err = repo.ReplaceUpstreams(ctx, []*serviceJob.WithUpstream{withUpstream})
+		assert.NoError(b, err)
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			actualUpstreams, actualError := repo.GetUpstreams(ctx, tnnt.ProjectName(), jobName)
+			assert.Len(b, actualUpstreams, maxNumberOfUpstreams)
+			assert.NoError(b, actualError)
+		}
+	})
 }
