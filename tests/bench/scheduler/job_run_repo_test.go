@@ -155,4 +155,36 @@ func BenchmarkJobRunRepository(b *testing.B) {
 			assert.NoError(b, actualError)
 		}
 	})
+
+	b.Run("Update", func(b *testing.B) {
+		db := dbSetup()
+		jobRepo := repoJob.NewJobRepository(db)
+		schedulerJobRunRepo := repoScheduler.NewJobRunRepository(db)
+
+		jobName, err := serviceJob.NameFrom("job_test")
+		assert.NoError(b, err)
+		destination := serviceJob.ResourceURN("dev.resource.sample")
+		job := setup.Job(tnnt, jobName, destination)
+		storedJobs, err := jobRepo.Add(ctx, []*serviceJob.Job{job})
+		assert.Len(b, storedJobs, 1)
+		assert.NoError(b, err)
+
+		jobNameForJobRun, err := serviceScheduler.JobNameFrom(jobName.String())
+		assert.NoError(b, err)
+		scheduledAt := time.Now()
+		actualError := schedulerJobRunRepo.Create(ctx, tnnt, jobNameForJobRun, scheduledAt, int64(time.Second))
+		assert.NoError(b, actualError)
+
+		storedJobRun, err := schedulerJobRunRepo.GetByScheduledAt(ctx, tnnt, jobNameForJobRun, scheduledAt)
+		assert.NoError(b, err)
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			endTime := time.Now().Add(time.Second * time.Duration(i))
+
+			actualError := schedulerJobRunRepo.Update(ctx, storedJobRun.ID, endTime, serviceScheduler.StateAccepted)
+			assert.NoError(b, actualError)
+		}
+	})
 }
