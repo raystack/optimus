@@ -6,7 +6,6 @@ import (
 	cli "github.com/spf13/cobra"
 
 	"github.com/odpf/optimus/client/cmd/backup"
-	"github.com/odpf/optimus/client/cmd/deploy"
 	"github.com/odpf/optimus/client/cmd/extension"
 	"github.com/odpf/optimus/client/cmd/initialize"
 	"github.com/odpf/optimus/client/cmd/job"
@@ -60,7 +59,6 @@ func New() *cli.Command {
 	// Client related commands
 	cmd.AddCommand(
 		backup.NewBackupCommand(),
-		deploy.NewDeployCommand(),
 		initialize.NewInitializeCommand(),
 		job.NewJobCommand(),
 		namespace.NewNamespaceCommand(),
