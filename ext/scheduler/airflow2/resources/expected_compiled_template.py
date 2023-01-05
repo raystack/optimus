@@ -92,6 +92,7 @@ asset_volume_mounts = [
 executor_env_vars = [
     k8s.V1EnvVar(name="JOB_LABELS",value='orchestrator=optimus'),
     k8s.V1EnvVar(name="JOB_DIR",value=JOB_DIR),
+    k8s.V1EnvVar(name="JOB_NAME",value='foo'),
 ]
 
 init_env_vars = [
