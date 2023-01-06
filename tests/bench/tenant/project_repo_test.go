@@ -17,6 +17,8 @@ import (
 )
 
 func BenchmarkProjectRepository(b *testing.B) {
+	const maxNumberOfProjects = 64
+
 	ctx := context.Background()
 	dbSetup := func() *pgxpool.Pool {
 		pool := setup.TestPool()
@@ -26,9 +28,9 @@ func BenchmarkProjectRepository(b *testing.B) {
 
 	transporterKafkaBrokerKey := "KAFKA_BROKERS"
 	config := map[string]string{
-		"bucket":                            "gs://some_folder-2",
-		transporterKafkaBrokerKey:           "10.12.12.12:6668,10.12.12.13:6668",
-		serviceTenant.ProjectSchedulerHost:  "host",
+		"bucket":                            "gs://folder_for_test",
+		transporterKafkaBrokerKey:           "192.168.1.1:8080,192.168.1.1:8081",
+		serviceTenant.ProjectSchedulerHost:  "http://localhost:8082",
 		serviceTenant.ProjectStoragePathKey: "gs://location",
 	}
 
@@ -39,7 +41,7 @@ func BenchmarkProjectRepository(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			name := fmt.Sprintf("t-optimus-%d", i)
+			name := fmt.Sprintf("project_for_test_%d", i)
 			project, err := serviceTenant.NewProject(name, config)
 			assert.NoError(b, err)
 
@@ -51,21 +53,23 @@ func BenchmarkProjectRepository(b *testing.B) {
 	b.Run("GetByName", func(b *testing.B) {
 		db := dbSetup()
 		repo := repoTenant.NewProjectRepository(db)
-		maxNumberOfProjects := 50
+		projectNames := make([]string, maxNumberOfProjects)
 		for i := 0; i < maxNumberOfProjects; i++ {
-			name := fmt.Sprintf("t-optimus-%d", i)
+			name := fmt.Sprintf("project_for_test_%d", i)
 			project, err := serviceTenant.NewProject(name, config)
 			assert.NoError(b, err)
 
 			actualError := repo.Save(ctx, project)
 			assert.NoError(b, actualError)
+
+			projectNames[i] = name
 		}
 
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
 			projectIdx := i % maxNumberOfProjects
-			name := fmt.Sprintf("t-optimus-%d", projectIdx)
+			name := projectNames[projectIdx]
 			projectName, err := serviceTenant.ProjectNameFrom(name)
 			assert.NoError(b, err)
 
@@ -78,9 +82,8 @@ func BenchmarkProjectRepository(b *testing.B) {
 	b.Run("GetAll", func(b *testing.B) {
 		db := dbSetup()
 		repo := repoTenant.NewProjectRepository(db)
-		maxNumberOfProjects := 50
 		for i := 0; i < maxNumberOfProjects; i++ {
-			name := fmt.Sprintf("t-optimus-%d", i)
+			name := fmt.Sprintf("project_for_test_%d", i)
 			project, err := serviceTenant.NewProject(name, config)
 			assert.NoError(b, err)
 
