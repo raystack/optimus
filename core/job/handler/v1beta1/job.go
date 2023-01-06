@@ -258,6 +258,7 @@ func (*JobHandler) GetWindow(_ context.Context, req *pb.GetWindowRequest) (*pb.G
 func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationService_ReplaceAllJobSpecificationsServer) error {
 	responseWriter := writer.NewReplaceAllJobSpecificationsResponseWriter(stream)
 	var errNamespaces []string
+	var errMessages []string
 
 	for {
 		request, err := stream.Recv()
@@ -272,10 +273,11 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 
 		jobTenant, err := tenant.NewTenant(request.ProjectName, request.NamespaceName)
 		if err != nil {
-			errMsg := fmt.Sprintf("invalid replace all job specifications request for %s: %s", request.GetNamespaceName(), err.Error())
+			errMsg := fmt.Sprintf("[%s] invalid replace all job specifications request: %s", request.GetNamespaceName(), err.Error())
 			jh.l.Error(errMsg)
 			responseWriter.Write(writer.LogLevelError, errMsg)
 			errNamespaces = append(errNamespaces, request.NamespaceName)
+			errMessages = append(errMessages, errMsg)
 			continue
 		}
 
@@ -285,16 +287,21 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 			jh.l.Error(errMsg)
 			responseWriter.Write(writer.LogLevelError, errMsg)
 			errNamespaces = append(errNamespaces, request.NamespaceName)
+			errMessages = append(errMessages, errMsg)
 		}
 
 		if err := jh.jobService.ReplaceAll(stream.Context(), jobTenant, jobSpecs, jobNamesWithValidationErrors, responseWriter); err != nil {
-			errMsg := fmt.Sprintf("replace all job specifications failure for namespace %s: %s", request.NamespaceName, err.Error())
+			errMsg := fmt.Sprintf("[%s] replace all job specifications failure: %s", request.NamespaceName, err.Error())
 			jh.l.Error(errMsg)
 			responseWriter.Write(writer.LogLevelError, errMsg)
 			errNamespaces = append(errNamespaces, request.NamespaceName)
+			errMessages = append(errMessages, errMsg)
 		}
 	}
 	if len(errNamespaces) > 0 {
+		errMessageSummary := strings.Join(errMessages, "\n")
+		responseWriter.Write(writer.LogLevelError, fmt.Sprintf("\njob replace all finished with errors:\n%s", errMessageSummary))
+
 		namespacesWithError := strings.Join(errNamespaces, ", ")
 		return fmt.Errorf("error when replacing job specifications: [%s]", namespacesWithError)
 	}
