@@ -133,12 +133,9 @@ func (h JobRunHandler) UploadToScheduler(ctx context.Context, req *pb.UploadToSc
 	}
 	err = h.service.UploadToScheduler(ctx, projectName, req.GetNamespaceName())
 	if err != nil {
-		return nil, errors.GRPCErr(err, "unsuccessful upload to scheduler for "+projectName.String())
+		return nil, errors.GRPCErr(err, "\nuploaded to scheduler with error")
 	}
-	return &pb.UploadToSchedulerResponse{
-		Status:       true,
-		ErrorMessage: "",
-	}, nil
+	return &pb.UploadToSchedulerResponse{}, nil
 }
 
 // TODO: check in jaeger if this api takes time, then we can make this async
