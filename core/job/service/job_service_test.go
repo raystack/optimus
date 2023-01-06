@@ -2156,11 +2156,11 @@ func TestJobService(t *testing.T) {
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 
-			jobRepo.On("GetByJobName", ctx, project.Name(), specA.Name()).Return(nil, nil)
+			jobRepo.On("GetByJobName", ctx, project.Name(), specA.Name()).Return(nil, errors.New("job not found"))
 
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
 			result, logger := jobService.GetJobBasicInfo(ctx, sampleTenant, specA.Name(), nil)
-			assert.Contains(t, logger.Messages[0].Message, "job job-A not found in the server")
+			assert.Contains(t, logger.Messages[0].Message, "job not found")
 			assert.Nil(t, result)
 		})
 		t.Run("should write log if found existing job with same resource destination", func(t *testing.T) {

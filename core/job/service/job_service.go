@@ -150,12 +150,10 @@ func (j JobService) Get(ctx context.Context, jobTenant tenant.Tenant, jobName jo
 	if err != nil {
 		return nil, err
 	}
-	if len(jobs) > 0 {
-		return jobs[0], nil
+	if len(jobs) == 0 {
+		return nil, errors.NotFound(job.EntityJob, fmt.Sprintf("job %s is not found", jobName))
 	}
-
-	// TODO: should not return dummy job
-	return &job.Job{}, nil
+	return jobs[0], nil
 }
 
 func (j JobService) GetTaskInfo(ctx context.Context, task job.Task) (*plugin.Info, error) {
@@ -597,10 +595,6 @@ func (j JobService) GetJobBasicInfo(ctx context.Context, jobTenant tenant.Tenant
 		subjectJob, err = j.Get(ctx, jobTenant, jobName)
 		if err != nil {
 			logger.Write(writer.LogLevelError, fmt.Sprintf("unable to get job, err: %v", err))
-			return nil, logger
-		}
-		if subjectJob == nil {
-			logger.Write(writer.LogLevelError, fmt.Sprintf("job %s not found in the server", jobName.String()))
 			return nil, logger
 		}
 	}

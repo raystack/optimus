@@ -168,7 +168,7 @@ func (jh *JobHandler) GetJobSpecification(ctx context.Context, req *pb.GetJobSpe
 	}
 
 	jobSpec, err := jh.jobService.Get(ctx, jobTenant, jobName)
-	if err != nil {
+	if err != nil && !errors.IsErrorType(err, errors.ErrNotFound) {
 		errorMsg := "failed to get job specification"
 		jh.l.Error(fmt.Sprintf("%s: %s", err.Error(), errorMsg))
 		return nil, errors.GRPCErr(err, errorMsg)
