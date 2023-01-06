@@ -198,7 +198,7 @@ func (j *Job) toJobWithDetails() (*scheduler.JobWithDetails, error) {
 			Interval:      storageSchedule.Interval,
 		},
 	}
-	if !storageSchedule.EndDate.IsZero() {
+	if !(storageSchedule.EndDate == nil || storageSchedule.EndDate.IsZero()) {
 		schedulerJobWithDetails.Schedule.EndDate = storageSchedule.EndDate
 	}
 

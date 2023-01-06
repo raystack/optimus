@@ -170,7 +170,11 @@ func (j JobRepository) get(ctx context.Context, projectName tenant.ProjectName, 
 		getJobByNameAtProject += jobDeletedFilter
 	}
 
-	return FromRow(j.db.QueryRow(ctx, getJobByNameAtProject, jobName.String(), projectName.String()))
+	spec, err := FromRow(j.db.QueryRow(ctx, getJobByNameAtProject, jobName.String(), projectName.String()))
+	if errors.IsErrorType(err, errors.ErrNotFound) {
+		err = errors.NotFound(job.EntityJob, fmt.Sprintf("unable to get job %s", jobName))
+	}
+	return spec, err
 }
 
 func (j JobRepository) ResolveUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error) {
@@ -516,7 +520,7 @@ INSERT INTO job_upstream (
 )
 VALUES (
 	(select id FROM job WHERE name = $1 and project_name = $2), $1, $2,
-	(select id FROM job WHERE name = $3 and project_name = $4), $3, $4,
+	(select id FROM job WHERE name = $3 and project_name = $5), $3, $4,
 	$5, $6, $7,
 	$8, $9,
 	$10, $11,

@@ -890,7 +890,7 @@ func TestNewJobHandler(t *testing.T) {
 
 			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, []job.Name{"job-A"}, mock.Anything).Return(nil)
 
-			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Twice()
+			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Times(3)
 
 			err := jobHandler.ReplaceAllJobSpecifications(stream)
 			assert.ErrorContains(t, err, "error when replacing job specifications")
@@ -941,7 +941,7 @@ func TestNewJobHandler(t *testing.T) {
 
 			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesWithValidationError, mock.Anything).Return(nil)
 
-			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Times(3)
+			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Times(4)
 
 			err := jobHandler.ReplaceAllJobSpecifications(stream)
 			assert.Error(t, err)
@@ -990,7 +990,7 @@ func TestNewJobHandler(t *testing.T) {
 
 			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesWithValidationError, mock.Anything).Return(errors.New("internal error"))
 
-			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Twice()
+			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Times(3)
 
 			err := jobHandler.ReplaceAllJobSpecifications(stream)
 			assert.Error(t, err)
