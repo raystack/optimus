@@ -87,4 +87,46 @@ func BenchmarkOperatorRunRepository(b *testing.B) {
 			assert.NoError(b, actualError)
 		}
 	})
+
+	b.Run("GetOperatorRun", func(b *testing.B) {
+		db := dbSetup()
+		jobRepo := repoJob.NewJobRepository(db)
+		schedulerJobRunRepo := repoScheduler.NewJobRunRepository(db)
+		schedulerOperatorRunRepo := repoScheduler.NewOperatorRunRepository(db)
+
+		jobName, err := serviceJob.NameFrom("job_test")
+		assert.NoError(b, err)
+		destination := serviceJob.ResourceURN("dev.resource.sample")
+		job := setup.Job(tnnt, jobName, destination)
+		storedJobs, err := jobRepo.Add(ctx, []*serviceJob.Job{job})
+		assert.Len(b, storedJobs, 1)
+		assert.NoError(b, err)
+
+		jobNameForRun, err := serviceScheduler.JobNameFrom(jobName.String())
+		assert.NoError(b, err)
+		scheduledAt := time.Now()
+		err = schedulerJobRunRepo.Create(ctx, tnnt, jobNameForRun, scheduledAt, int64(time.Second))
+		assert.NoError(b, err)
+
+		storedJobRun, err := schedulerJobRunRepo.GetByScheduledAt(ctx, tnnt, jobNameForRun, scheduledAt)
+		assert.NotNil(b, storedJobRun)
+		assert.NoError(b, err)
+
+		maxNumberOfOperatorRun := 50
+		for i := 0; i < maxNumberOfOperatorRun; i++ {
+			name := fmt.Sprintf("operator_for_test_%d", i)
+			err = schedulerOperatorRunRepo.CreateOperatorRun(ctx, name, serviceScheduler.OperatorTask, storedJobRun.ID, time.Now())
+			assert.NoError(b, err)
+		}
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			operatorRunIdx := i % maxNumberOfOperatorRun
+			name := fmt.Sprintf("operator_for_test_%d", operatorRunIdx)
+			actualOperatorRun, actualError := schedulerOperatorRunRepo.GetOperatorRun(ctx, name, serviceScheduler.OperatorTask, storedJobRun.ID)
+			assert.NotNil(b, actualOperatorRun)
+			assert.NoError(b, actualError)
+		}
+	})
 }
