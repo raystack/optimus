@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/internal/models"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 const (
@@ -18,7 +18,7 @@ type FilesCompiler interface {
 }
 
 type PluginRepo interface {
-	GetByName(name string) (*models.Plugin, error)
+	GetByName(name string) (*plugin.Plugin, error)
 }
 
 type JobRunAssetsCompiler struct {
@@ -34,7 +34,7 @@ func NewJobAssetsCompiler(engine FilesCompiler, pluginRepo PluginRepo) *JobRunAs
 }
 
 func (c *JobRunAssetsCompiler) CompileJobRunAssets(ctx context.Context, job *scheduler.Job, systemEnvVars map[string]string, scheduledAt time.Time, contextForTask map[string]interface{}) (map[string]string, error) {
-	plugin, err := c.pluginRepo.GetByName(job.Task.Name)
+	taskPlugin, err := c.pluginRepo.GetByName(job.Task.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -50,9 +50,9 @@ func (c *JobRunAssetsCompiler) CompileJobRunAssets(ctx context.Context, job *sch
 
 	inputFiles := job.Assets
 
-	if plugin.DependencyMod != nil {
+	if taskPlugin.DependencyMod != nil {
 		// check if task needs to override the compilation behaviour
-		compiledAssetResponse, err := plugin.DependencyMod.CompileAssets(ctx, models.CompileAssetsRequest{
+		compiledAssetResponse, err := taskPlugin.DependencyMod.CompileAssets(ctx, plugin.CompileAssetsRequest{
 			StartTime:    startTime,
 			EndTime:      endTime,
 			Config:       toPluginConfig(job.Task.Config),
@@ -73,10 +73,10 @@ func (c *JobRunAssetsCompiler) CompileJobRunAssets(ctx context.Context, job *sch
 }
 
 // TODO: deprecate after changing type for plugin
-func toJobRunSpecData(mapping map[string]string) []models.JobRunSpecData {
-	var jobRunData []models.JobRunSpecData
+func toJobRunSpecData(mapping map[string]string) []plugin.JobRunSpecData {
+	var jobRunData []plugin.JobRunSpecData
 	for name, value := range mapping {
-		jrData := models.JobRunSpecData{
+		jrData := plugin.JobRunSpecData{
 			Name:  name,
 			Value: value,
 			Type:  typeEnv,
@@ -87,10 +87,10 @@ func toJobRunSpecData(mapping map[string]string) []models.JobRunSpecData {
 }
 
 // TODO: deprecate
-func toPluginAssets(assets map[string]string) models.PluginAssets {
-	var modelAssets models.PluginAssets
+func toPluginAssets(assets map[string]string) plugin.Assets {
+	var modelAssets plugin.Assets
 	for name, val := range assets {
-		pa := models.PluginAsset{
+		pa := plugin.Asset{
 			Name:  name,
 			Value: val,
 		}
@@ -100,10 +100,10 @@ func toPluginAssets(assets map[string]string) models.PluginAssets {
 }
 
 // TODO: deprecate
-func toPluginConfig(conf map[string]string) models.PluginConfigs {
-	var pluginConfigs models.PluginConfigs
+func toPluginConfig(conf map[string]string) plugin.Configs {
+	var pluginConfigs plugin.Configs
 	for name, val := range conf {
-		pc := models.PluginConfig{
+		pc := plugin.Config{
 			Name:  name,
 			Value: val,
 		}

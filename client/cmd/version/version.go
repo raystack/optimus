@@ -26,7 +26,7 @@ type versionCommand struct {
 	isWithServer bool
 	host         string
 
-	pluginRepo models.PluginRepository
+	pluginRepo *models.PluginRepository
 }
 
 // NewVersionCommand initializes command to get version

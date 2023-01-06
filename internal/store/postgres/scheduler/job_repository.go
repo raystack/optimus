@@ -24,8 +24,8 @@ const (
 	jobColumns = `id, name, version, owner, description, labels, schedule, alert, static_upstreams, http_upstreams,
 				  task_name, task_config, window_spec, assets, hooks, metadata, destination, sources, project_name, namespace_name, created_at, updated_at`
 	upstreamColumns = `
-    job_name, project_name, upstream_job_name, upstream_project_name,
-    upstream_namespace_name, upstream_resource_urn, upstream_task_name, upstream_type, upstream_external`
+    job_name, project_name, upstream_job_name, upstream_project_name, upstream_host,
+    upstream_namespace_name, upstream_resource_urn, upstream_task_name, upstream_type, upstream_external, upstream_state`
 )
 
 type JobRepository struct {
@@ -285,8 +285,8 @@ func (j *JobRepository) getJobsUpstreams(ctx context.Context, projectName tenant
 	var upstreams []JobUpstreams
 	for rows.Next() {
 		var jwu JobUpstreams
-		err := rows.Scan(&jwu.JobName, &jwu.ProjectName, &jwu.UpstreamJobName, &jwu.UpstreamProjectName,
-			&jwu.UpstreamNamespaceName, &jwu.UpstreamResourceUrn, &jwu.UpstreamTaskName, &jwu.UpstreamType, &jwu.UpstreamExternal)
+		err := rows.Scan(&jwu.JobName, &jwu.ProjectName, &jwu.UpstreamJobName, &jwu.UpstreamProjectName, &jwu.UpstreamHost,
+			&jwu.UpstreamNamespaceName, &jwu.UpstreamResourceUrn, &jwu.UpstreamTaskName, &jwu.UpstreamType, &jwu.UpstreamExternal, &jwu.UpstreamState)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return nil, errors.NotFound(scheduler.EntityJobRun, "job upstream not found")

@@ -1,11 +1,11 @@
 package dependencyresolver
 
 import (
-	"github.com/odpf/optimus/internal/models"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
-func adaptConfigsToProto(c models.PluginConfigs) *pb.Configs {
+func adaptConfigsToProto(c plugin.Configs) *pb.Configs {
 	tc := &pb.Configs{
 		Configs: []*pb.Configs_Config{},
 	}
@@ -18,10 +18,10 @@ func adaptConfigsToProto(c models.PluginConfigs) *pb.Configs {
 	return tc
 }
 
-func adaptConfigsFromProto(a *pb.Configs) models.PluginConfigs {
-	tc := models.PluginConfigs{}
+func adaptConfigsFromProto(a *pb.Configs) plugin.Configs {
+	tc := plugin.Configs{}
 	for _, c := range a.Configs {
-		tc = append(tc, models.PluginConfig{
+		tc = append(tc, plugin.Config{
 			Name:  c.Name,
 			Value: c.Value,
 		})
@@ -29,7 +29,7 @@ func adaptConfigsFromProto(a *pb.Configs) models.PluginConfigs {
 	return tc
 }
 
-func adaptAssetsToProto(a models.PluginAssets) *pb.Assets {
+func adaptAssetsToProto(a plugin.Assets) *pb.Assets {
 	tc := &pb.Assets{
 		Assets: []*pb.Assets_Asset{},
 	}
@@ -42,10 +42,10 @@ func adaptAssetsToProto(a models.PluginAssets) *pb.Assets {
 	return tc
 }
 
-func adaptAssetsFromProto(a *pb.Assets) models.PluginAssets {
-	tc := models.PluginAssets{}
+func adaptAssetsFromProto(a *pb.Assets) plugin.Assets {
+	tc := plugin.Assets{}
 	for _, c := range a.Assets {
-		tc = append(tc, models.PluginAsset{
+		tc = append(tc, plugin.Asset{
 			Name:  c.Name,
 			Value: c.Value,
 		})
