@@ -17,47 +17,50 @@ import (
 )
 
 func BenchmarkSecretRepository(b *testing.B) {
+	const maxNumberOfSecrets = 64
+
+	transporterKafkaBrokerKey := "KAFKA_BROKERS"
+	config := map[string]string{
+		"bucket":                            "gs://folder_for_test",
+		transporterKafkaBrokerKey:           "192.168.1.1:8080,192.168.1.1:8081",
+		serviceTenant.ProjectSchedulerHost:  "http://localhost:8082",
+		serviceTenant.ProjectStoragePathKey: "gs://location",
+	}
+	project, err := serviceTenant.NewProject("project_for_test", config)
+	assert.NoError(b, err)
+	namespace, err := serviceTenant.NewNamespace("namespace_for_test", project.Name(), config)
+	assert.NoError(b, err)
+
 	ctx := context.Background()
 
-	proj, err := serviceTenant.NewProject("test-proj",
-		map[string]string{
-			"bucket":                            "gs://some_folder-2",
-			serviceTenant.ProjectSchedulerHost:  "host",
-			serviceTenant.ProjectStoragePathKey: "gs://location",
-		})
-	assert.NoError(b, err)
-	namespace, err := serviceTenant.NewNamespace("test-ns", proj.Name(),
-		map[string]string{
-			"bucket": "gs://ns_bucket",
-		})
-	assert.NoError(b, err)
+	dbSetup := func(b *testing.B) *pgxpool.Pool {
+		b.Helper()
 
-	dbSetup := func() *pgxpool.Pool {
 		pool := setup.TestPool()
 		setup.TruncateTablesWith(pool)
 
-		prjRepo := repoTenant.NewProjectRepository(pool)
-		if err := prjRepo.Save(ctx, proj); err != nil {
-			panic(err)
-		}
+		projectRepo := repoTenant.NewProjectRepository(pool)
+		err := projectRepo.Save(ctx, project)
+		assert.NoError(b, err)
 
 		namespaceRepo := repoTenant.NewNamespaceRepository(pool)
-		if err := namespaceRepo.Save(ctx, namespace); err != nil {
-			panic(err)
-		}
+		err = namespaceRepo.Save(ctx, namespace)
+		assert.NoError(b, err)
+
 		return pool
 	}
 
 	b.Run("Save", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repo := repoTenant.NewSecretRepository(db)
 
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			name := fmt.Sprintf("secret_name_%d", i)
-			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, "abcd", proj.Name(), namespace.Name().String())
-			assert.Nil(b, err)
+			name := fmt.Sprintf("secret_for_test_%d", i)
+			encodedValue := "encoded_secret_value"
+			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, encodedValue, project.Name(), namespace.Name().String())
+			assert.NoError(b, err)
 
 			actualError := repo.Save(ctx, secret)
 			assert.NoError(b, actualError)
@@ -65,25 +68,29 @@ func BenchmarkSecretRepository(b *testing.B) {
 	})
 
 	b.Run("Update", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repo := repoTenant.NewSecretRepository(db)
-		maxNumberOfSecrets := 50
+		secretNames := make([]string, maxNumberOfSecrets)
 		for i := 0; i < maxNumberOfSecrets; i++ {
-			name := fmt.Sprintf("secret_name_%d", i)
-			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, "abcd", proj.Name(), namespace.Name().String())
-			assert.Nil(b, err)
+			name := fmt.Sprintf("secret_for_test_%d", i)
+			encodedValue := "encoded_secret_value"
+			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, encodedValue, project.Name(), namespace.Name().String())
+			assert.NoError(b, err)
 
 			actualError := repo.Save(ctx, secret)
 			assert.NoError(b, actualError)
+
+			secretNames[i] = name
 		}
 
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
 			secretIdx := i % maxNumberOfSecrets
-			name := fmt.Sprintf("secret_name_%d", secretIdx)
-			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, "abcd", proj.Name(), namespace.Name().String())
-			assert.Nil(b, err)
+			name := secretNames[secretIdx]
+			newEncodedValue := "new_encoded_secret_value"
+			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, newEncodedValue, project.Name(), namespace.Name().String())
+			assert.NoError(b, err)
 
 			actualError := repo.Update(ctx, secret)
 			assert.NoError(b, actualError)
@@ -91,40 +98,43 @@ func BenchmarkSecretRepository(b *testing.B) {
 	})
 
 	b.Run("Get", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repo := repoTenant.NewSecretRepository(db)
-		maxNumberOfSecrets := 50
+		secretNames := make([]string, maxNumberOfSecrets)
 		for i := 0; i < maxNumberOfSecrets; i++ {
-			name := fmt.Sprintf("secret_name_%d", i)
-			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, "abcd", proj.Name(), namespace.Name().String())
-			assert.Nil(b, err)
+			name := fmt.Sprintf("secret_for_test_%d", i)
+			encodedValue := "encoded_secret_value"
+			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, encodedValue, project.Name(), namespace.Name().String())
+			assert.NoError(b, err)
 
 			actualError := repo.Save(ctx, secret)
 			assert.NoError(b, actualError)
+
+			secretNames[i] = name
 		}
 
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
 			secretIdx := i % maxNumberOfSecrets
-			name := fmt.Sprintf("secret_name_%d", secretIdx)
+			name := secretNames[secretIdx]
 			secretName, err := serviceTenant.SecretNameFrom(name)
 			assert.NoError(b, err)
 
-			actualSecret, actualError := repo.Get(ctx, proj.Name(), namespace.Name().String(), secretName)
+			actualSecret, actualError := repo.Get(ctx, project.Name(), namespace.Name().String(), secretName)
 			assert.NotNil(b, actualSecret)
 			assert.NoError(b, actualError)
 		}
 	})
 
 	b.Run("GetAll", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repo := repoTenant.NewSecretRepository(db)
-		maxNumberOfSecrets := 50
 		for i := 0; i < maxNumberOfSecrets; i++ {
-			name := fmt.Sprintf("secret_name_%d", i)
-			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, "abcd", proj.Name(), namespace.Name().String())
-			assert.Nil(b, err)
+			name := fmt.Sprintf("secret_for_test_%d", i)
+			encodedValue := "encoded_secret_value"
+			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, encodedValue, project.Name(), namespace.Name().String())
+			assert.NoError(b, err)
 
 			actualError := repo.Save(ctx, secret)
 			assert.NoError(b, actualError)
@@ -133,20 +143,20 @@ func BenchmarkSecretRepository(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			actualSecrets, actualError := repo.GetAll(ctx, proj.Name(), namespace.Name().String())
+			actualSecrets, actualError := repo.GetAll(ctx, project.Name(), namespace.Name().String())
 			assert.Len(b, actualSecrets, maxNumberOfSecrets)
 			assert.NoError(b, actualError)
 		}
 	})
 
-	b.Run("GetSecrets", func(b *testing.B) {
-		db := dbSetup()
+	b.Run("GetSecretsInfo", func(b *testing.B) {
+		db := dbSetup(b)
 		repo := repoTenant.NewSecretRepository(db)
-		maxNumberOfSecrets := 50
 		for i := 0; i < maxNumberOfSecrets; i++ {
-			name := fmt.Sprintf("secret_name_%d", i)
-			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, "abcd", proj.Name(), namespace.Name().String())
-			assert.Nil(b, err)
+			name := fmt.Sprintf("secret_for_test_%d", i)
+			encodedValue := "encoded_secret_value"
+			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, encodedValue, project.Name(), namespace.Name().String())
+			assert.NoError(b, err)
 
 			actualError := repo.Save(ctx, secret)
 			assert.NoError(b, actualError)
@@ -155,26 +165,31 @@ func BenchmarkSecretRepository(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			actualSecretInfos, actualError := repo.GetSecretsInfo(ctx, proj.Name())
+			actualSecretInfos, actualError := repo.GetSecretsInfo(ctx, project.Name())
 			assert.Len(b, actualSecretInfos, maxNumberOfSecrets)
 			assert.NoError(b, actualError)
 		}
 	})
 
 	b.Run("Delete", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repo := repoTenant.NewSecretRepository(db)
+
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			name := fmt.Sprintf("secret_name_%d", i)
-			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, "abcd", proj.Name(), namespace.Name().String())
-			assert.Nil(b, err)
+			name := fmt.Sprintf("secret_for_test_%d", i)
+			encodedValue := "encoded_secret_value"
+			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, encodedValue, project.Name(), namespace.Name().String())
+			assert.NoError(b, err)
 
 			err = repo.Save(ctx, secret)
 			assert.NoError(b, err)
 
-			actualError := repo.Delete(ctx, proj.Name(), namespace.Name().String(), secret.Name())
+			secretName, err := serviceTenant.SecretNameFrom(name)
+			assert.NoError(b, err)
+
+			actualError := repo.Delete(ctx, project.Name(), namespace.Name().String(), secretName)
 			assert.NoError(b, actualError)
 		}
 	})
