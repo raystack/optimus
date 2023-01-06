@@ -54,7 +54,7 @@ type Spec struct {
 
 type Schedule struct {
 	StartDate     time.Time
-	EndDate       *time.Time
+	EndDate       *time.Time `json:",omitempty"`
 	Interval      string
 	DependsOnPast bool
 	CatchUp       bool
