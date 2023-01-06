@@ -370,7 +370,7 @@ func TestJobRunHandler(t *testing.T) {
 
 			resp, err := jobRunHandler.UploadToScheduler(ctx, req)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "rpc error: code = Internal desc = some error: unsuccessful upload to scheduler for a-data-proj")
+			assert.EqualError(t, err, "rpc error: code = Internal desc = some error: \nuploaded to scheduler with error")
 			assert.Nil(t, resp)
 		})
 		t.Run("should return success if deployment succeeds", func(t *testing.T) {
@@ -385,9 +385,8 @@ func TestJobRunHandler(t *testing.T) {
 			defer jobRunService.AssertExpectations(t)
 			jobRunHandler := v1beta1.NewJobRunHandler(logger, jobRunService, nil)
 
-			resp, err := jobRunHandler.UploadToScheduler(ctx, req)
+			_, err := jobRunHandler.UploadToScheduler(ctx, req)
 			assert.Nil(t, err)
-			assert.Equal(t, true, resp.Status)
 		})
 		t.Run("should return error if projectName is not valid", func(t *testing.T) {
 			namespaceName := "namespace-name"

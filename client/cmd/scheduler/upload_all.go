@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
@@ -61,14 +60,10 @@ func (u *uploadCommand) RunE(_ *cobra.Command, _ []string) error {
 	u.logger.Info("Uploading jobs for project " + u.clientConfig.Project.Name)
 	u.logger.Info("please wait...")
 
-	uploadResponse, err := u.sendUploadAllRequest(u.clientConfig.Project.Name)
+	_, err := u.sendUploadAllRequest(u.clientConfig.Project.Name)
+	u.logger.Info("Finished uploading to scheduler")
 	if err != nil {
-		return fmt.Errorf("request failed for project %s: %w", u.clientConfig.Project.Name, err)
-	}
-	if uploadResponse.Status {
-		u.logger.Info("Uploaded jobs for project " + u.clientConfig.Project.Name)
-	} else {
-		u.logger.Error("Error Uploading jobs for project: "+u.clientConfig.Project.Name+", error: ", uploadResponse.ErrorMessage)
+		u.logger.Error("With %v", err.Error())
 	}
 	return nil
 }

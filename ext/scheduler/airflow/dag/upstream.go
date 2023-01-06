@@ -27,9 +27,6 @@ type Upstream struct {
 func SetupUpstreams(upstreams scheduler.Upstreams, host string) Upstreams {
 	var ups []Upstream
 	for _, u := range upstreams.UpstreamJobs {
-		if u.State != "resolved" {
-			continue
-		}
 		var upstreamHost string
 		if !u.External {
 			upstreamHost = host

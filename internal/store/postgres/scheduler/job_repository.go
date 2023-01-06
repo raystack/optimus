@@ -51,36 +51,36 @@ type JobUpstreams struct {
 	JobName               string
 	ProjectName           string
 	UpstreamJobID         uuid.UUID
-	UpstreamJobName       string
-	UpstreamResourceUrn   string
-	UpstreamProjectName   string
-	UpstreamNamespaceName string
-	UpstreamTaskName      string
-	UpstreamHost          string
+	UpstreamJobName       sql.NullString
+	UpstreamResourceUrn   sql.NullString
+	UpstreamProjectName   sql.NullString
+	UpstreamNamespaceName sql.NullString
+	UpstreamTaskName      sql.NullString
+	UpstreamHost          sql.NullString
 	UpstreamType          string
 	UpstreamState         string
-	UpstreamExternal      bool
+	UpstreamExternal      sql.NullBool
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
 func (j *JobUpstreams) toJobUpstreams() (*scheduler.JobUpstream, error) {
-	t, err := tenant.NewTenant(j.UpstreamProjectName, j.UpstreamNamespaceName)
+	t, err := tenant.NewTenant(j.UpstreamProjectName.String, j.UpstreamNamespaceName.String)
 	if err != nil {
 		return nil, err
 	}
 
 	return &scheduler.JobUpstream{
-		JobName:        j.UpstreamJobName,
-		Host:           j.UpstreamHost,
-		TaskName:       j.UpstreamTaskName,
-		DestinationURN: j.UpstreamResourceUrn,
+		JobName:        j.UpstreamJobName.String,
+		Host:           j.UpstreamHost.String,
+		TaskName:       j.UpstreamTaskName.String,
+		DestinationURN: j.UpstreamResourceUrn.String,
 		Tenant:         t,
 		Type:           j.UpstreamType,
-		External:       j.UpstreamExternal,
+		External:       j.UpstreamExternal.Bool,
 		State:          j.UpstreamState,
-	}, err
+	}, nil
 }
 
 type Job struct {
@@ -234,7 +234,7 @@ func FromRow(row pgx.Row) (*Job, error) {
 			return nil, errors.NotFound(job.EntityJob, "job not found")
 		}
 
-		return nil, errors.Wrap(scheduler.EntityJobRun, "error in reading row for resource", err)
+		return nil, errors.Wrap(scheduler.EntityJobRun, "error in reading row for job", err)
 	}
 
 	return &js, nil
@@ -263,9 +263,13 @@ func groupUpstreamsByJobName(jobUpstreams []JobUpstreams) (map[string][]*schedul
 	jobUpstreamGroup := map[string][]*scheduler.JobUpstream{}
 
 	for _, upstream := range jobUpstreams {
+		if upstream.UpstreamState != "resolved" {
+			multiError.Append(errors.NewError(errors.ErrInvalidState, scheduler.EntityJobRun, "unresolved upstream "+upstream.UpstreamJobName.String+" for "+upstream.JobName))
+			continue
+		}
 		schedulerUpstream, err := upstream.toJobUpstreams()
 		if err != nil {
-			msg := fmt.Sprintf("unable to parse upstream:%s for job:%s", upstream.UpstreamJobName, upstream.JobName)
+			msg := fmt.Sprintf("unable to parse upstream:%s for job:%s", upstream.UpstreamJobName.String, upstream.JobName)
 			multiError.Append(errors.Wrap(scheduler.EntityJobRun, msg, err))
 			continue
 		}

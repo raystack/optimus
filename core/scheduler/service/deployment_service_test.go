@@ -58,7 +58,7 @@ func TestDeploymentService(t *testing.T) {
 
 			err := runService.UploadToScheduler(ctx, proj1Name, namespace1Name.String())
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "ErrorInUploadToScheduler:\n GetAll error")
+			assert.EqualError(t, err, "errorInUploadToScheduler:\n GetAll error")
 		})
 		t.Run("should return error if error in priority resolution", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -74,7 +74,7 @@ func TestDeploymentService(t *testing.T) {
 
 			err := runService.UploadToScheduler(ctx, proj1Name, namespace1Name.String())
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "ErrorInUploadToScheduler:\n priority resolution error")
+			assert.EqualError(t, err, "errorInUploadToScheduler:\n priority resolution error")
 		})
 		t.Run("should deploy Jobs Per Namespace returning error", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -95,7 +95,7 @@ func TestDeploymentService(t *testing.T) {
 
 			err := runService.UploadToScheduler(ctx, proj1Name, namespace1Name.String())
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "ErrorInUploadToScheduler:\n DeployJobs tnnt1 error")
+			assert.EqualError(t, err, "errorInUploadToScheduler:\n DeployJobs tnnt1 error")
 		})
 		t.Run("should deploy Jobs Per Namespace and cleanPerNamespace, appropriately", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -148,7 +148,7 @@ func TestDeploymentService(t *testing.T) {
 
 			err := runService.UploadToScheduler(ctx, proj1Name, namespace1Name.String())
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "ErrorInUploadToScheduler:\n listJobs error")
+			assert.EqualError(t, err, "errorInUploadToScheduler:\n listJobs error")
 		})
 	})
 }
