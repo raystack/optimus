@@ -63,7 +63,7 @@ func (u *uploadCommand) RunE(_ *cobra.Command, _ []string) error {
 
 	uploadResponse, err := u.sendUploadAllRequest(u.clientConfig.Project.Name)
 	if err != nil {
-		return fmt.Errorf("request failed for project %s: %w, %s", u.clientConfig.Project.Name, err, uploadResponse.ErrorMessage)
+		return fmt.Errorf("request failed for project %s: %w", u.clientConfig.Project.Name, err)
 	}
 	if uploadResponse.Status {
 		u.logger.Info("Uploaded jobs for project " + u.clientConfig.Project.Name)
