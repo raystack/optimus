@@ -20,23 +20,26 @@ import (
 )
 
 func BenchmarkResourceRepository(b *testing.B) {
-	ctx := context.Background()
+	const maxNumberOfResources = 64
+
 	projectName := "project_test"
+	transporterKafkaBrokerKey := "KAFKA_BROKERS"
+	config := map[string]string{
+		"bucket":                            "gs://folder_for_test",
+		transporterKafkaBrokerKey:           "192.168.1.1:8080,192.168.1.1:8081",
+		serviceTenant.ProjectSchedulerHost:  "http://localhost:8082",
+		serviceTenant.ProjectStoragePathKey: "gs://location",
+	}
+	project, err := serviceTenant.NewProject(projectName, config)
+	assert.NoError(b, err)
+
 	namespaceName := "namespace_test"
-	proj, err := serviceTenant.NewProject(projectName,
-		map[string]string{
-			"bucket":                            "gs://some_folder-2",
-			serviceTenant.ProjectSchedulerHost:  "host",
-			serviceTenant.ProjectStoragePathKey: "gs://location",
-		})
+	namespace, err := serviceTenant.NewNamespace(namespaceName, project.Name(), config)
 	assert.NoError(b, err)
-	namespace, err := serviceTenant.NewNamespace(namespaceName, proj.Name(),
-		map[string]string{
-			"bucket": "gs://ns_bucket",
-		})
+
+	tnnt, err := serviceTenant.NewTenant(project.Name().String(), namespace.Name().String())
 	assert.NoError(b, err)
-	tnnt, err := serviceTenant.NewTenant(proj.Name().String(), namespace.Name().String())
-	assert.NoError(b, err)
+
 	spec := map[string]any{
 		"description": "spec for test",
 	}
@@ -48,24 +51,26 @@ func BenchmarkResourceRepository(b *testing.B) {
 		},
 	}
 
-	dbSetup := func() *pgxpool.Pool {
+	ctx := context.Background()
+	dbSetup := func(b *testing.B) *pgxpool.Pool {
+		b.Helper()
+
 		pool := setup.TestPool()
 		setup.TruncateTablesWith(pool)
 
-		projRepo := repoTenant.NewProjectRepository(pool)
-		if err := projRepo.Save(ctx, proj); err != nil {
-			panic(err)
-		}
+		projectRepo := repoTenant.NewProjectRepository(pool)
+		err := projectRepo.Save(ctx, project)
+		assert.NoError(b, err)
 
 		namespaceRepo := repoTenant.NewNamespaceRepository(pool)
-		if err := namespaceRepo.Save(ctx, namespace); err != nil {
-			panic(err)
-		}
+		err = namespaceRepo.Save(ctx, namespace)
+		assert.NoError(b, err)
+
 		return pool
 	}
 
 	b.Run("Create", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repository := repoResource.NewRepository(db)
 
 		b.ResetTimer()
@@ -74,6 +79,7 @@ func BenchmarkResourceRepository(b *testing.B) {
 			fullName := fmt.Sprintf("project.dataset_%d", i)
 			resourceToCreate, err := serviceResource.NewResource(fullName, bigquery.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
 			assert.NoError(b, err)
+
 			urn := fmt.Sprintf("%s:%s.%s", projectName, namespaceName, fullName)
 			err = resourceToCreate.UpdateURN(urn)
 			assert.NoError(b, err)
@@ -84,31 +90,51 @@ func BenchmarkResourceRepository(b *testing.B) {
 	})
 
 	b.Run("Update", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repository := repoResource.NewRepository(db)
-		maxNumberOfResources := 50
+		fullNames := make([]string, maxNumberOfResources)
 		for i := 0; i < maxNumberOfResources; i++ {
 			fullName := fmt.Sprintf("project.dataset_%d", i)
 			resourceToCreate, err := serviceResource.NewResource(fullName, bigquery.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
 			assert.NoError(b, err)
+
 			urn := fmt.Sprintf("%s:%s.%s", projectName, namespaceName, fullName)
 			err = resourceToCreate.UpdateURN(urn)
 			assert.NoError(b, err)
 
 			err = repository.Create(ctx, resourceToCreate)
 			assert.NoError(b, err)
+
+			fullNames[i] = fullName
+		}
+
+		updatedMeta := &serviceResource.Metadata{
+			Version:     1,
+			Description: "updated metadata for test",
+			Labels: map[string]string{
+				"orchestrator": "optimus",
+			},
+		}
+		resourcesToUpdate := make([]*serviceResource.Resource, maxNumberOfResources)
+		for i := 0; i < maxNumberOfResources; i++ {
+			resourceIdx := i % maxNumberOfResources
+			fullName := fullNames[resourceIdx]
+
+			resourceToUpdate, err := serviceResource.NewResource(fullName, bigquery.KindDataset, serviceResource.Bigquery, tnnt, updatedMeta, spec)
+			assert.NoError(b, err)
+
+			urn := fmt.Sprintf("%s:%s.%s", projectName, namespaceName, fullName)
+			err = resourceToUpdate.UpdateURN(urn)
+			assert.NoError(b, err)
+
+			resourcesToUpdate[i] = resourceToUpdate
 		}
 
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
 			resourceIdx := i % maxNumberOfResources
-			fullName := fmt.Sprintf("project.dataset_%d", resourceIdx)
-			resourceToUpdate, err := serviceResource.NewResource(fullName, bigquery.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
-			assert.NoError(b, err)
-			urn := fmt.Sprintf("%s:%s.%s", projectName, namespaceName, fullName)
-			err = resourceToUpdate.UpdateURN(urn)
-			assert.NoError(b, err)
+			resourceToUpdate := resourcesToUpdate[resourceIdx]
 
 			actualError := repository.Update(ctx, resourceToUpdate)
 			assert.NoError(b, actualError)
@@ -116,26 +142,29 @@ func BenchmarkResourceRepository(b *testing.B) {
 	})
 
 	b.Run("ReadByFullName", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repository := repoResource.NewRepository(db)
-		maxNumberOfResources := 50
+		fullNames := make([]string, maxNumberOfResources)
 		for i := 0; i < maxNumberOfResources; i++ {
 			fullName := fmt.Sprintf("project.dataset_%d", i)
 			resourceToCreate, err := serviceResource.NewResource(fullName, bigquery.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
 			assert.NoError(b, err)
+
 			urn := fmt.Sprintf("%s:%s.%s", projectName, namespaceName, fullName)
 			err = resourceToCreate.UpdateURN(urn)
 			assert.NoError(b, err)
 
 			err = repository.Create(ctx, resourceToCreate)
 			assert.NoError(b, err)
+
+			fullNames[i] = fullName
 		}
 
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
 			resourceIdx := i % maxNumberOfResources
-			fullName := fmt.Sprintf("project.dataset_%d", resourceIdx)
+			fullName := fullNames[resourceIdx]
 
 			actualResource, actualError := repository.ReadByFullName(ctx, tnnt, serviceResource.Bigquery, fullName)
 			assert.NotNil(b, actualResource)
@@ -145,13 +174,13 @@ func BenchmarkResourceRepository(b *testing.B) {
 	})
 
 	b.Run("ReadAll", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repository := repoResource.NewRepository(db)
-		maxNumberOfResources := 50
 		for i := 0; i < maxNumberOfResources; i++ {
 			fullName := fmt.Sprintf("project.dataset_%d", i)
 			resourceToCreate, err := serviceResource.NewResource(fullName, bigquery.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
 			assert.NoError(b, err)
+
 			urn := fmt.Sprintf("%s:%s.%s", projectName, namespaceName, fullName)
 			err = resourceToCreate.UpdateURN(urn)
 			assert.NoError(b, err)
@@ -170,14 +199,14 @@ func BenchmarkResourceRepository(b *testing.B) {
 	})
 
 	b.Run("GetResources", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repository := repoResource.NewRepository(db)
-		maxNumberOfResources := 50
 		fullNames := make([]string, maxNumberOfResources)
 		for i := 0; i < maxNumberOfResources; i++ {
 			fullName := fmt.Sprintf("project.dataset_%d", i)
 			resourceToCreate, err := serviceResource.NewResource(fullName, bigquery.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
 			assert.NoError(b, err)
+
 			urn := fmt.Sprintf("%s:%s.%s", projectName, namespaceName, fullName)
 			err = resourceToCreate.UpdateURN(urn)
 			assert.NoError(b, err)
@@ -198,19 +227,22 @@ func BenchmarkResourceRepository(b *testing.B) {
 	})
 
 	b.Run("UpdateStatus", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repository := repoResource.NewRepository(db)
-		maxNumberOfResources := 50
+		resources := make([]*serviceResource.Resource, maxNumberOfResources)
 		for i := 0; i < maxNumberOfResources; i++ {
 			fullName := fmt.Sprintf("project.dataset_%d", i)
 			resourceToCreate, err := serviceResource.NewResource(fullName, bigquery.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
 			assert.NoError(b, err)
+
 			urn := fmt.Sprintf("%s:%s.%s", projectName, namespaceName, fullName)
 			err = resourceToCreate.UpdateURN(urn)
 			assert.NoError(b, err)
 
 			err = repository.Create(ctx, resourceToCreate)
 			assert.NoError(b, err)
+
+			resources[i] = resourceToCreate
 		}
 
 		b.ResetTimer()
@@ -218,13 +250,8 @@ func BenchmarkResourceRepository(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			incomingResources := make([]*serviceResource.Resource, maxNumberOfResources)
 			for j := 0; j < maxNumberOfResources; j++ {
-				fullName := fmt.Sprintf("project.dataset_%d", j)
-				resourceToCreateOrUpdate, err := serviceResource.NewResource(fullName, bigquery.KindDataset, serviceResource.Bigquery, tnnt, meta, spec)
-				assert.NoError(b, err)
-				urn := fmt.Sprintf("%s:%s.%s", projectName, namespaceName, fullName)
-				err = resourceToCreateOrUpdate.UpdateURN(urn)
-				assert.NoError(b, err)
-				incomingResources[j] = serviceResource.FromExisting(resourceToCreateOrUpdate, serviceResource.ReplaceStatus(serviceResource.StatusSuccess))
+				resourceToUpdate := resources[j]
+				incomingResources[j] = serviceResource.FromExisting(resourceToUpdate, serviceResource.ReplaceStatus(serviceResource.StatusSuccess))
 			}
 
 			actualError := repository.UpdateStatus(ctx, incomingResources...)
