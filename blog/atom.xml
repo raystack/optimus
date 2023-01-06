@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://odpf.github.io/optimus/blog</id>
+    <title>Optimus Blog</title>
+    <updated>2021-10-02T00:00:00.000Z</updated>
+    <generator>https://github.com/jpmonette/feed</generator>
+    <link rel="alternate" href="https://odpf.github.io/optimus/blog"/>
+    <subtitle>Optimus Blog</subtitle>
+    <icon>https://odpf.github.io/optimus/img/favicon.ico</icon>
+    <entry>
+        <title type="html"><![CDATA[Introducing Optimus]]></title>
+        <id>introducing-optimus</id>
+        <link href="https://odpf.github.io/optimus/blog/introducing-optimus"/>
+        <updated>2021-10-02T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[We are live!]]></summary>
+        <author>
+            <name>Ravi Suhag</name>
+            <uri>https://github.com/ravisuhag</uri>
+        </author>
+    </entry>
+</feed>
