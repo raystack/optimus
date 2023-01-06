@@ -20,46 +20,50 @@ import (
 )
 
 func BenchmarkJobRepository(b *testing.B) {
+	const maxNumberOfJobs = 64
+
+	projectName := "project_test"
+	transporterKafkaBrokerKey := "KAFKA_BROKERS"
+	config := map[string]string{
+		"bucket":                            "gs://folder_for_test",
+		transporterKafkaBrokerKey:           "192.168.1.1:8080,192.168.1.1:8081",
+		serviceTenant.ProjectSchedulerHost:  "http://localhost:8082",
+		serviceTenant.ProjectStoragePathKey: "gs://location",
+	}
+	project, err := serviceTenant.NewProject(projectName, config)
+	assert.NoError(b, err)
+
+	namespaceName := "namespace_test"
+	namespace, err := serviceTenant.NewNamespace(namespaceName, project.Name(), config)
+	assert.NoError(b, err)
+
+	tnnt, err := serviceTenant.NewTenant(project.Name().String(), namespace.Name().String())
+	assert.NoError(b, err)
+
 	ctx := context.Background()
+	dbSetup := func(b *testing.B) *pgxpool.Pool {
+		b.Helper()
 
-	proj, err := serviceTenant.NewProject("test-proj",
-		map[string]string{
-			"bucket":                            "gs://some_folder-2",
-			serviceTenant.ProjectSchedulerHost:  "host",
-			serviceTenant.ProjectStoragePathKey: "gs://location",
-		})
-	assert.NoError(b, err)
-	namespace, err := serviceTenant.NewNamespace("test-ns", proj.Name(),
-		map[string]string{
-			"bucket": "gs://ns_bucket",
-		})
-	assert.NoError(b, err)
-	tnnt, err := serviceTenant.NewTenant(proj.Name().String(), namespace.Name().String())
-	assert.NoError(b, err)
-
-	dbSetup := func() *pgxpool.Pool {
 		pool := setup.TestPool()
 		setup.TruncateTablesWith(pool)
 
-		projRepo := repoTenant.NewProjectRepository(pool)
-		if err := projRepo.Save(ctx, proj); err != nil {
-			panic(err)
-		}
+		projectRepo := repoTenant.NewProjectRepository(pool)
+		err := projectRepo.Save(ctx, project)
+		assert.NoError(b, err)
 
 		namespaceRepo := repoTenant.NewNamespaceRepository(pool)
-		if err := namespaceRepo.Save(ctx, namespace); err != nil {
-			panic(err)
-		}
+		err = namespaceRepo.Save(ctx, namespace)
+		assert.NoError(b, err)
+
 		return pool
 	}
 
 	b.Run("Add", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repo := repoJob.NewJobRepository(db)
 
 		b.ResetTimer()
 
-		maxNumberOfJobs := 50
 		for i := 0; i < b.N; i++ {
 			jobs := make([]*serviceJob.Job, maxNumberOfJobs)
 			for j := 0; j < maxNumberOfJobs; j++ {
@@ -77,9 +81,8 @@ func BenchmarkJobRepository(b *testing.B) {
 	})
 
 	b.Run("Update", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repo := repoJob.NewJobRepository(db)
-		maxNumberOfJobs := 50
 		jobs := make([]*serviceJob.Job, maxNumberOfJobs)
 		for i := 0; i < maxNumberOfJobs; i++ {
 			name := fmt.Sprintf("job_test_%d", i)
@@ -102,9 +105,8 @@ func BenchmarkJobRepository(b *testing.B) {
 	})
 
 	b.Run("ResolveUpstreams", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repo := repoJob.NewJobRepository(db)
-		maxNumberOfJobs := 50
 		for i := 0; i < maxNumberOfJobs; i++ {
 			name := fmt.Sprintf("job_treated_as_static_upstream_%d", i)
 			staticUpstreamName, err := serviceJob.NameFrom(name)
@@ -163,7 +165,7 @@ func BenchmarkJobRepository(b *testing.B) {
 			currentJobName, err := serviceJob.NameFrom(name)
 			assert.NoError(b, err)
 
-			actualUpstreamsPerJobName, actualError := repo.ResolveUpstreams(ctx, proj.Name(), []serviceJob.Name{currentJobName})
+			actualUpstreamsPerJobName, actualError := repo.ResolveUpstreams(ctx, project.Name(), []serviceJob.Name{currentJobName})
 			assert.Len(b, actualUpstreamsPerJobName, 1)
 			assert.Len(b, actualUpstreamsPerJobName[currentJobName], 2)
 			assert.NoError(b, actualError)
@@ -171,9 +173,8 @@ func BenchmarkJobRepository(b *testing.B) {
 	})
 
 	b.Run("GetByJobName", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repo := repoJob.NewJobRepository(db)
-		maxNumberOfJobs := 50
 		jobs := make([]*serviceJob.Job, maxNumberOfJobs)
 		for i := 0; i < maxNumberOfJobs; i++ {
 			name := fmt.Sprintf("job_test_%d", i)
@@ -194,16 +195,15 @@ func BenchmarkJobRepository(b *testing.B) {
 			jobName, err := serviceJob.NameFrom(name)
 			assert.NoError(b, err)
 
-			actualJob, actualError := repo.GetByJobName(ctx, proj.Name(), jobName)
+			actualJob, actualError := repo.GetByJobName(ctx, project.Name(), jobName)
 			assert.NotNil(b, actualJob)
 			assert.NoError(b, actualError)
 		}
 	})
 
 	b.Run("GetAllByProjectName", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repo := repoJob.NewJobRepository(db)
-		maxNumberOfJobs := 50
 		jobs := make([]*serviceJob.Job, maxNumberOfJobs)
 		for i := 0; i < maxNumberOfJobs; i++ {
 			name := fmt.Sprintf("job_test_%d", i)
@@ -219,16 +219,15 @@ func BenchmarkJobRepository(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			actualJobs, actualError := repo.GetAllByProjectName(ctx, proj.Name())
+			actualJobs, actualError := repo.GetAllByProjectName(ctx, project.Name())
 			assert.Len(b, actualJobs, maxNumberOfJobs)
 			assert.NoError(b, actualError)
 		}
 	})
 
 	b.Run("GetAllByResourceDestination", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repo := repoJob.NewJobRepository(db)
-		maxNumberOfJobs := 50
 		jobs := make([]*serviceJob.Job, maxNumberOfJobs)
 		for i := 0; i < maxNumberOfJobs; i++ {
 			name := fmt.Sprintf("job_test_%d", i)
@@ -254,9 +253,8 @@ func BenchmarkJobRepository(b *testing.B) {
 	})
 
 	b.Run("ReplaceUpstreams", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repo := repoJob.NewJobRepository(db)
-		maxNumberOfJobs := 50
 		jobs := make([]*serviceJob.Job, maxNumberOfJobs)
 		for i := 0; i < maxNumberOfJobs; i++ {
 			name := fmt.Sprintf("job_test_%d", i)
@@ -294,9 +292,8 @@ func BenchmarkJobRepository(b *testing.B) {
 	})
 
 	b.Run("Delete", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repo := repoJob.NewJobRepository(db)
-		maxNumberOfJobs := 50
 		jobs := make([]*serviceJob.Job, maxNumberOfJobs)
 		for i := 0; i < maxNumberOfJobs; i++ {
 			name := fmt.Sprintf("job_test_%d", i)
@@ -327,9 +324,8 @@ func BenchmarkJobRepository(b *testing.B) {
 	})
 
 	b.Run("GetAllByTenant", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repo := repoJob.NewJobRepository(db)
-		maxNumberOfJobs := 50
 		jobs := make([]*serviceJob.Job, maxNumberOfJobs)
 		for i := 0; i < maxNumberOfJobs; i++ {
 			name := fmt.Sprintf("job_test_%d", i)
@@ -352,7 +348,7 @@ func BenchmarkJobRepository(b *testing.B) {
 	})
 
 	b.Run("GetUpstreams", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repo := repoJob.NewJobRepository(db)
 
 		jobName, err := serviceJob.NameFrom("job_test")
@@ -383,7 +379,7 @@ func BenchmarkJobRepository(b *testing.B) {
 	})
 
 	b.Run("GetDownstreamByDestination", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repo := repoJob.NewJobRepository(db)
 
 		rootJobName, err := serviceJob.NameFrom("root_job")
@@ -433,7 +429,7 @@ func BenchmarkJobRepository(b *testing.B) {
 	})
 
 	b.Run("GetDownstreamByJobName", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		repo := repoJob.NewJobRepository(db)
 
 		rootJobName, err := serviceJob.NameFrom("root_job")
