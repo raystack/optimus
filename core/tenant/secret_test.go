@@ -29,41 +29,18 @@ func TestEntitySecret(t *testing.T) {
 		})
 	})
 	t.Run("Secret", func(t *testing.T) {
-		t.Run("SecretType", func(t *testing.T) {
-			t.Run("returns error when unknown type", func(t *testing.T) {
-				unknown := "unknown"
-				_, err := tenant.SecretTypeFromString(unknown)
-				assert.NotNil(t, err)
-				assert.EqualError(t, err, "invalid argument for entity secret: unknown type for secret type: unknown")
-			})
-			t.Run("returns user defined type for valid string", func(t *testing.T) {
-				typ, err := tenant.SecretTypeFromString(tenant.UserDefinedSecret.String())
-				assert.Nil(t, err)
-				assert.Equal(t, tenant.UserDefinedSecret.String(), typ.String())
-			})
-			t.Run("returns system defined type for valid string", func(t *testing.T) {
-				typ, err := tenant.SecretTypeFromString(tenant.SystemDefinedSecret.String())
-				assert.Nil(t, err)
-				assert.Equal(t, tenant.SystemDefinedSecret.String(), typ.String())
-			})
-		})
 		t.Run("returns error when name is empty", func(t *testing.T) {
-			_, err := tenant.NewSecret("", tenant.UserDefinedSecret, "", "", "")
+			_, err := tenant.NewSecret("", "", "", "")
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity secret: secret name is empty")
 		})
-		t.Run("returns error when type is invalid", func(t *testing.T) {
-			_, err := tenant.NewSecret("name", "unknown", "", "", "")
-			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity secret: invalid secret type")
-		})
 		t.Run("returns error when encodedValue is empty", func(t *testing.T) {
-			_, err := tenant.NewSecret("name", tenant.UserDefinedSecret, "", "", "")
+			_, err := tenant.NewSecret("name", "", "", "")
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity secret: empty encoded secret")
 		})
 		t.Run("returns error when tenant is invalid", func(t *testing.T) {
-			_, err := tenant.NewSecret("name", tenant.UserDefinedSecret, "encoded==", "", "")
+			_, err := tenant.NewSecret("name", "encoded==", "", "")
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity secret: invalid tenant details")
 		})
@@ -71,11 +48,10 @@ func TestEntitySecret(t *testing.T) {
 			projName, _ := tenant.ProjectNameFrom("test-project")
 			nsName := "test-ns"
 
-			s, err := tenant.NewSecret("name", tenant.UserDefinedSecret, "encoded==", projName, nsName)
+			s, err := tenant.NewSecret("name", "encoded==", projName, nsName)
 
 			assert.Nil(t, err)
 			assert.Equal(t, "name", s.Name().String())
-			assert.Equal(t, "user", s.Type().String())
 			assert.Equal(t, "encoded==", s.EncodedValue())
 			assert.Equal(t, projName.String(), s.ProjectName().String())
 			assert.Equal(t, nsName, s.NamespaceName())

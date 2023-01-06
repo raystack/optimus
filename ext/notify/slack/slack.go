@@ -16,7 +16,6 @@ import (
 )
 
 const (
-	OAuthTokenSecretName      = "NOTIFY_SLACK"
 	DefaultEventBatchInterval = time.Second * 10
 	MaxSLAEventsToProcess     = 6
 )

@@ -17,15 +17,14 @@ import (
 )
 
 const (
-	gcsStorageKey = "STORAGE"
-	scope         = "https://www.googleapis.com/auth/cloud-platform"
+	scope = "https://www.googleapis.com/auth/cloud-platform"
 )
 
 func (f *Factory) GetGCSBucket(ctx context.Context, tnnt tenant.Tenant, parsedURL *url.URL) (airflow.Bucket, error) {
 	spanCtx, span := otel.Tracer("airflow/bucketFactory").Start(ctx, "GetGCSBucket")
 	defer span.End()
 
-	storageSecret, err := f.secretsGetter.Get(spanCtx, tnnt.ProjectName(), tnnt.NamespaceName().String(), gcsStorageKey)
+	storageSecret, err := f.secretsGetter.Get(spanCtx, tnnt.ProjectName(), tnnt.NamespaceName().String(), tenant.SecretStorageKey)
 	if err != nil {
 		return nil, err
 	}

@@ -73,7 +73,7 @@ func (n NotifyService) Push(ctx context.Context, event scheduler.Event) error {
 				var secret string
 				switch scheme {
 				case NotificationSchemeSlack:
-					secret = secretMap["NOTIFY_SLACK"]
+					secret = secretMap[tenant.SecretNotifySlack]
 				case NotificationSchemePagerDuty:
 					secret = secretMap[strings.ReplaceAll(route, "#", "notify_")]
 				}

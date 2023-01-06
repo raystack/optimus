@@ -36,7 +36,7 @@ func (s SecretService) Save(ctx context.Context, projName tenant.ProjectName, ns
 		return errors.InternalError(tenant.EntitySecret, "unable to encrypt the secret", err)
 	}
 
-	item, err := tenant.NewSecret(secret.Name().String(), tenant.UserDefinedSecret, string(encoded), projName, nsName)
+	item, err := tenant.NewSecret(secret.Name().String(), string(encoded), projName, nsName)
 	if err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func (s SecretService) Update(ctx context.Context, projName tenant.ProjectName, 
 		return errors.InternalError(tenant.EntitySecret, "unable to encrypt the secret", err)
 	}
 
-	item, err := tenant.NewSecret(secret.Name().String(), tenant.UserDefinedSecret, string(encoded), projName, nsName)
+	item, err := tenant.NewSecret(secret.Name().String(), string(encoded), projName, nsName)
 	if err != nil {
 		return err
 	}
