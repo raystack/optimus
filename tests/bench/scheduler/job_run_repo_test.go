@@ -22,48 +22,47 @@ import (
 )
 
 func BenchmarkJobRunRepository(b *testing.B) {
+	const maxNumberOfJobRuns = 64
+
+	transporterKafkaBrokerKey := "KAFKA_BROKERS"
+	config := map[string]string{
+		"bucket":                            "gs://folder_for_test",
+		transporterKafkaBrokerKey:           "192.168.1.1:8080,192.168.1.1:8081",
+		serviceTenant.ProjectSchedulerHost:  "http://localhost:8082",
+		serviceTenant.ProjectStoragePathKey: "gs://location",
+	}
+	project, err := serviceTenant.NewProject("project_for_test", config)
+	assert.NoError(b, err)
+	namespace, err := serviceTenant.NewNamespace("namespace_for_test", project.Name(), config)
+	assert.NoError(b, err)
+	tnnt, err := serviceTenant.NewTenant(project.Name().String(), namespace.Name().String())
+	assert.NoError(b, err)
+
 	ctx := context.Background()
 
-	proj, err := serviceTenant.NewProject("test-proj",
-		map[string]string{
-			"bucket":                            "gs://some_folder-2",
-			serviceTenant.ProjectSchedulerHost:  "host",
-			serviceTenant.ProjectStoragePathKey: "gs://location",
-		})
-	assert.NoError(b, err)
-	namespace, err := serviceTenant.NewNamespace("test-ns", proj.Name(),
-		map[string]string{
-			"bucket": "gs://ns_bucket",
-		})
-	assert.NoError(b, err)
-	tnnt, err := serviceTenant.NewTenant(proj.Name().String(), namespace.Name().String())
-	assert.NoError(b, err)
+	dbSetup := func(b *testing.B) *pgxpool.Pool {
+		b.Helper()
 
-	dbSetup := func() *pgxpool.Pool {
 		pool := setup.TestPool()
 		setup.TruncateTablesWith(pool)
 
-		projRepo := repoTenant.NewProjectRepository(pool)
-		if err := projRepo.Save(ctx, proj); err != nil {
-			panic(err)
-		}
+		projectRepo := repoTenant.NewProjectRepository(pool)
+		err := projectRepo.Save(ctx, project)
+		assert.NoError(b, err)
 
 		namespaceRepo := repoTenant.NewNamespaceRepository(pool)
-		if err := namespaceRepo.Save(ctx, namespace); err != nil {
-			panic(err)
-		}
+		err = namespaceRepo.Save(ctx, namespace)
+		assert.NoError(b, err)
+
 		return pool
 	}
 
 	b.Run("Create", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		jobRepo := repoJob.NewJobRepository(db)
 		schedulerJobRunRepo := repoScheduler.NewJobRunRepository(db)
 
-		jobName, err := serviceJob.NameFrom("job_test")
-		assert.NoError(b, err)
-		destination := serviceJob.ResourceURN("dev.resource.sample")
-		job := setup.Job(tnnt, jobName, destination)
+		job := setup.NewDummyJobBuilder().Build(tnnt)
 		storedJobs, err := jobRepo.Add(ctx, []*serviceJob.Job{job})
 		assert.Len(b, storedJobs, 1)
 		assert.NoError(b, err)
@@ -71,33 +70,33 @@ func BenchmarkJobRunRepository(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			jobNameForJobRun, err := serviceScheduler.JobNameFrom(jobName.String())
+			jobNameForJobRun, err := serviceScheduler.JobNameFrom(job.GetName())
 			assert.NoError(b, err)
+
 			scheduledAt := time.Now().Add(time.Second * time.Duration(i))
+
 			actualError := schedulerJobRunRepo.Create(ctx, tnnt, jobNameForJobRun, scheduledAt, int64(time.Second))
 			assert.NoError(b, actualError)
 		}
 	})
 
 	b.Run("GetByScheduledAt", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		jobRepo := repoJob.NewJobRepository(db)
 		schedulerJobRunRepo := repoScheduler.NewJobRunRepository(db)
 
-		jobName, err := serviceJob.NameFrom("job_test")
-		assert.NoError(b, err)
-		destination := serviceJob.ResourceURN("dev.resource.sample")
-		job := setup.Job(tnnt, jobName, destination)
+		job := setup.NewDummyJobBuilder().Build(tnnt)
 		storedJobs, err := jobRepo.Add(ctx, []*serviceJob.Job{job})
 		assert.Len(b, storedJobs, 1)
 		assert.NoError(b, err)
 
-		maxNumberOfJobRun := 50
-		scheduledAts := make([]time.Time, maxNumberOfJobRun)
-		for i := 0; i < maxNumberOfJobRun; i++ {
-			jobNameForJobRun, err := serviceScheduler.JobNameFrom(jobName.String())
+		scheduledAts := make([]time.Time, maxNumberOfJobRuns)
+		for i := 0; i < maxNumberOfJobRuns; i++ {
+			jobNameForJobRun, err := serviceScheduler.JobNameFrom(job.GetName())
 			assert.NoError(b, err)
+
 			scheduledAt := time.Now().Add(time.Second * time.Duration(i))
+
 			actualError := schedulerJobRunRepo.Create(ctx, tnnt, jobNameForJobRun, scheduledAt, int64(time.Second))
 			assert.NoError(b, actualError)
 
@@ -107,8 +106,8 @@ func BenchmarkJobRunRepository(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			jobRunIdx := i % maxNumberOfJobRun
-			jobNameForJobRun, err := serviceScheduler.JobNameFrom(jobName.String())
+			jobRunIdx := i % maxNumberOfJobRuns
+			jobNameForJobRun, err := serviceScheduler.JobNameFrom(job.GetName())
 			assert.NoError(b, err)
 
 			actualJobRun, actualError := schedulerJobRunRepo.GetByScheduledAt(ctx, tnnt, jobNameForJobRun, scheduledAts[jobRunIdx])
@@ -118,36 +117,35 @@ func BenchmarkJobRunRepository(b *testing.B) {
 	})
 
 	b.Run("GetByID", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		jobRepo := repoJob.NewJobRepository(db)
 		schedulerJobRunRepo := repoScheduler.NewJobRunRepository(db)
 
-		jobName, err := serviceJob.NameFrom("job_test")
-		assert.NoError(b, err)
-		destination := serviceJob.ResourceURN("dev.resource.sample")
-		job := setup.Job(tnnt, jobName, destination)
+		job := setup.NewDummyJobBuilder().Build(tnnt)
 		storedJobs, err := jobRepo.Add(ctx, []*serviceJob.Job{job})
 		assert.Len(b, storedJobs, 1)
 		assert.NoError(b, err)
 
-		maxNumberOfJobRun := 50
-		jobRunIDs := make([]uuid.UUID, maxNumberOfJobRun)
-		for i := 0; i < maxNumberOfJobRun; i++ {
-			jobNameForJobRun, err := serviceScheduler.JobNameFrom(jobName.String())
+		jobRunIDs := make([]uuid.UUID, maxNumberOfJobRuns)
+		for i := 0; i < maxNumberOfJobRuns; i++ {
+			jobNameForJobRun, err := serviceScheduler.JobNameFrom(job.GetName())
 			assert.NoError(b, err)
+
 			scheduledAt := time.Now().Add(time.Second * time.Duration(i))
+
 			actualError := schedulerJobRunRepo.Create(ctx, tnnt, jobNameForJobRun, scheduledAt, int64(time.Second))
 			assert.NoError(b, actualError)
 
 			storedJobRun, err := schedulerJobRunRepo.GetByScheduledAt(ctx, tnnt, jobNameForJobRun, scheduledAt)
 			assert.NoError(b, err)
+
 			jobRunIDs[i] = storedJobRun.ID
 		}
 
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			jobRunIdx := i % maxNumberOfJobRun
+			jobRunIdx := i % maxNumberOfJobRuns
 			id := jobRunIDs[jobRunIdx]
 
 			actualJobRun, actualError := schedulerJobRunRepo.GetByID(ctx, serviceScheduler.JobRunID(id))
@@ -157,20 +155,18 @@ func BenchmarkJobRunRepository(b *testing.B) {
 	})
 
 	b.Run("Update", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		jobRepo := repoJob.NewJobRepository(db)
 		schedulerJobRunRepo := repoScheduler.NewJobRunRepository(db)
 
-		jobName, err := serviceJob.NameFrom("job_test")
-		assert.NoError(b, err)
-		destination := serviceJob.ResourceURN("dev.resource.sample")
-		job := setup.Job(tnnt, jobName, destination)
+		job := setup.NewDummyJobBuilder().Build(tnnt)
 		storedJobs, err := jobRepo.Add(ctx, []*serviceJob.Job{job})
 		assert.Len(b, storedJobs, 1)
 		assert.NoError(b, err)
 
-		jobNameForJobRun, err := serviceScheduler.JobNameFrom(jobName.String())
+		jobNameForJobRun, err := serviceScheduler.JobNameFrom(job.GetName())
 		assert.NoError(b, err)
+
 		scheduledAt := time.Now()
 		actualError := schedulerJobRunRepo.Create(ctx, tnnt, jobNameForJobRun, scheduledAt, int64(time.Second))
 		assert.NoError(b, actualError)
@@ -189,24 +185,22 @@ func BenchmarkJobRunRepository(b *testing.B) {
 	})
 
 	b.Run("UpdateSLA", func(b *testing.B) {
-		db := dbSetup()
+		db := dbSetup(b)
 		jobRepo := repoJob.NewJobRepository(db)
 		schedulerJobRunRepo := repoScheduler.NewJobRunRepository(db)
 
-		jobName, err := serviceJob.NameFrom("job_test")
-		assert.NoError(b, err)
-		destination := serviceJob.ResourceURN("dev.resource.sample")
-		job := setup.Job(tnnt, jobName, destination)
+		job := setup.NewDummyJobBuilder().Build(tnnt)
 		storedJobs, err := jobRepo.Add(ctx, []*serviceJob.Job{job})
 		assert.Len(b, storedJobs, 1)
 		assert.NoError(b, err)
 
-		maxNumberOfJobRun := 50
-		scheduledAts := make([]time.Time, maxNumberOfJobRun)
-		for i := 0; i < maxNumberOfJobRun; i++ {
-			jobNameForJobRun, err := serviceScheduler.JobNameFrom(jobName.String())
+		scheduledAts := make([]time.Time, maxNumberOfJobRuns)
+		for i := 0; i < maxNumberOfJobRuns; i++ {
+			jobNameForJobRun, err := serviceScheduler.JobNameFrom(job.GetName())
 			assert.NoError(b, err)
-			scheduledAt := time.Now()
+
+			scheduledAt := time.Now().Add(time.Second * time.Duration(i))
+
 			actualError := schedulerJobRunRepo.Create(ctx, tnnt, jobNameForJobRun, scheduledAt, int64(time.Second))
 			assert.NoError(b, actualError)
 
@@ -216,9 +210,10 @@ func BenchmarkJobRunRepository(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			jobRunIdx := i % maxNumberOfJobRun
-			jobNameForJobRun, err := serviceScheduler.JobNameFrom(jobName.String())
+			jobRunIdx := i % maxNumberOfJobRuns
+			jobNameForJobRun, err := serviceScheduler.JobNameFrom(job.GetName())
 			assert.NoError(b, err)
+
 			slaObject := serviceScheduler.SLAObject{
 				JobName:        jobNameForJobRun,
 				JobScheduledAt: scheduledAts[jobRunIdx],
