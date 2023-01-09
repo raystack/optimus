@@ -42,7 +42,7 @@ type ResourceManager interface {
 }
 
 func (e *extUpstreamResolver) Resolve(ctx context.Context, jobWithUpstream *job.WithUpstream, lw writer.LogWriter) (*job.WithUpstream, error) {
-	me := errors.NewMultiError(fmt.Sprintf("external upstream resolution errors for job %s", jobWithUpstream.Name().String()))
+	me := errors.NewMultiError(fmt.Sprintf("[%s] external upstream resolution errors for job %s", jobWithUpstream.Job().Tenant().NamespaceName().String(), jobWithUpstream.Name().String()))
 	mergedUpstreams := jobWithUpstream.GetResolvedUpstreams()
 	unresolvedUpstreams := jobWithUpstream.GetUnresolvedUpstreams()
 	for _, unresolvedUpstream := range unresolvedUpstreams {
@@ -57,7 +57,7 @@ func (e *extUpstreamResolver) Resolve(ctx context.Context, jobWithUpstream *job.
 	if len(me.Errors) > 0 {
 		lw.Write(writer.LogLevelError, errors.MultiToError(me).Error())
 	} else {
-		lw.Write(writer.LogLevelDebug, fmt.Sprintf("resolved job %s upstream from external", jobWithUpstream.Name().String()))
+		lw.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] resolved job %s upstream from external", jobWithUpstream.Job().Tenant().NamespaceName().String(), jobWithUpstream.Name().String()))
 	}
 	return job.NewWithUpstream(jobWithUpstream.Job(), mergedUpstreams), errors.MultiToError(me)
 }
