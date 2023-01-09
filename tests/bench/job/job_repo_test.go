@@ -13,7 +13,6 @@ import (
 
 	serviceJob "github.com/odpf/optimus/core/job"
 	serviceTenant "github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/models"
 	repoJob "github.com/odpf/optimus/internal/store/postgres/job"
 	repoTenant "github.com/odpf/optimus/internal/store/postgres/tenant"
 	"github.com/odpf/optimus/tests/setup"
@@ -21,6 +20,8 @@ import (
 
 func BenchmarkJobRepository(b *testing.B) {
 	const maxNumberOfJobs = 64
+	const maxNumberOfUpstreams = 64
+	const maxNumberOfDownstreams = 64
 
 	projectName := "project_test"
 	transporterKafkaBrokerKey := "KAFKA_BROKERS"
@@ -70,8 +71,8 @@ func BenchmarkJobRepository(b *testing.B) {
 				name := fmt.Sprintf("job_test_%d_%d", i, j)
 				jobName, err := serviceJob.NameFrom(name)
 				assert.NoError(b, err)
-				destination := serviceJob.ResourceURN("dev.resource.sample")
-				jobs[j] = setup.Job(tnnt, jobName, destination)
+
+				jobs[j] = setup.NewDummyJobBuilder().OverrideName(jobName).Build(tnnt)
 			}
 
 			actualStoredJobs, actualError := repo.Add(ctx, jobs)
@@ -88,8 +89,8 @@ func BenchmarkJobRepository(b *testing.B) {
 			name := fmt.Sprintf("job_test_%d", i)
 			jobName, err := serviceJob.NameFrom(name)
 			assert.NoError(b, err)
-			destination := serviceJob.ResourceURN("dev.resource.sample")
-			jobs[i] = setup.Job(tnnt, jobName, destination)
+
+			jobs[i] = setup.NewDummyJobBuilder().OverrideName(jobName).Build(tnnt)
 		}
 		storedJobs, err := repo.Add(ctx, jobs)
 		assert.Len(b, storedJobs, maxNumberOfJobs)
@@ -107,46 +108,35 @@ func BenchmarkJobRepository(b *testing.B) {
 	b.Run("ResolveUpstreams", func(b *testing.B) {
 		db := dbSetup(b)
 		repo := repoJob.NewJobRepository(db)
+		currentJobNames := make([]serviceJob.Name, maxNumberOfJobs)
 		for i := 0; i < maxNumberOfJobs; i++ {
 			name := fmt.Sprintf("job_treated_as_static_upstream_%d", i)
 			staticUpstreamName, err := serviceJob.NameFrom(name)
 			assert.NoError(b, err)
-			staticUpstreamDestination := serviceJob.ResourceURN(fmt.Sprintf("dev.resource.sample_static_upstream_%d", i))
-			jobTreatedAsStaticUpstream := setup.Job(tnnt, staticUpstreamName, staticUpstreamDestination)
+
+			jobTreatedAsStaticUpstream := setup.NewDummyJobBuilder().
+				OverrideName(staticUpstreamName).
+				Build(tnnt)
 
 			name = fmt.Sprintf("job_treated_as_inferred_upstream_%d", i)
 			inferredUpstreamName, err := serviceJob.NameFrom(name)
 			assert.NoError(b, err)
-			inferredUpstreamDestination := serviceJob.ResourceURN(fmt.Sprintf("dev.resource.sample_inferred_upstream_%d", i))
-			jobTreatedAsInferredUpstream := setup.Job(tnnt, inferredUpstreamName, inferredUpstreamDestination)
 
-			version := 1
+			inferredUpstreamDestination := serviceJob.ResourceURN(fmt.Sprintf("dev.resource.sample_inferred_upstream_%d", i))
+			jobTreatedAsInferredUpstream := setup.NewDummyJobBuilder().
+				OverrideName(inferredUpstreamName).
+				OverrideDestinationURN(inferredUpstreamDestination).
+				Build(tnnt)
+
 			name = fmt.Sprintf("current_job_%d", i)
 			currentJobName, err := serviceJob.NameFrom(name)
 			assert.NoError(b, err)
-			owner := "dev_test"
-			retry := serviceJob.NewRetry(5, 0, false)
-			startDate, err := serviceJob.ScheduleDateFrom("2022-10-01")
-			assert.NoError(b, err)
-			schedule, err := serviceJob.NewScheduleBuilder(startDate).WithRetry(retry).Build()
-			assert.NoError(b, err)
-			window, err := models.NewWindow(version, "d", "24h", "24h")
-			assert.NoError(b, err)
-			taskConfig, err := serviceJob.ConfigFrom(map[string]string{"sample_task_key": "sample_value"})
-			assert.NoError(b, err)
-			task := serviceJob.NewTaskBuilder("bq2bq", taskConfig).Build()
 
-			specUpstream, err := serviceJob.NewSpecUpstreamBuilder().
-				WithUpstreamNames([]serviceJob.SpecUpstreamName{
-					serviceJob.SpecUpstreamNameFrom(staticUpstreamName.String()),
-				}).Build()
-			assert.NoError(b, err)
-			spec, err := serviceJob.NewSpecBuilder(version, currentJobName, owner, schedule, window, task).
-				WithSpecUpstream(specUpstream).
-				Build()
-			assert.NoError(b, err)
-			currentDestination := serviceJob.ResourceURN(fmt.Sprintf("dev.resource.sample_current_job_%d", i))
-			currentJob := serviceJob.NewJob(tnnt, spec, currentDestination, []serviceJob.ResourceURN{inferredUpstreamDestination})
+			currentJob := setup.NewDummyJobBuilder().
+				OverrideName(currentJobName).
+				OverrideSpecUpstreamNames([]serviceJob.SpecUpstreamName{serviceJob.SpecUpstreamNameFrom(staticUpstreamName.String())}).
+				OverrideSourceURNs([]serviceJob.ResourceURN{inferredUpstreamDestination}).
+				Build(tnnt)
 
 			storedJobs, err := repo.Add(ctx, []*serviceJob.Job{
 				jobTreatedAsStaticUpstream,
@@ -155,15 +145,15 @@ func BenchmarkJobRepository(b *testing.B) {
 			})
 			assert.Len(b, storedJobs, 3)
 			assert.NoError(b, err)
+
+			currentJobNames[i] = currentJobName
 		}
 
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
 			jobIdx := i % maxNumberOfJobs
-			name := fmt.Sprintf("current_job_%d", jobIdx)
-			currentJobName, err := serviceJob.NameFrom(name)
-			assert.NoError(b, err)
+			currentJobName := currentJobNames[jobIdx]
 
 			actualUpstreamsPerJobName, actualError := repo.ResolveUpstreams(ctx, project.Name(), []serviceJob.Name{currentJobName})
 			assert.Len(b, actualUpstreamsPerJobName, 1)
@@ -180,8 +170,8 @@ func BenchmarkJobRepository(b *testing.B) {
 			name := fmt.Sprintf("job_test_%d", i)
 			jobName, err := serviceJob.NameFrom(name)
 			assert.NoError(b, err)
-			destination := serviceJob.ResourceURN("dev.resource.sample")
-			jobs[i] = setup.Job(tnnt, jobName, destination)
+
+			jobs[i] = setup.NewDummyJobBuilder().OverrideName(jobName).Build(tnnt)
 		}
 		storedJobs, err := repo.Add(ctx, jobs)
 		assert.Len(b, storedJobs, maxNumberOfJobs)
@@ -191,9 +181,7 @@ func BenchmarkJobRepository(b *testing.B) {
 
 		for i := 0; i < b.N; i++ {
 			jobIdx := i % maxNumberOfJobs
-			name := fmt.Sprintf("job_test_%d", jobIdx)
-			jobName, err := serviceJob.NameFrom(name)
-			assert.NoError(b, err)
+			jobName := jobs[jobIdx].Spec().Name()
 
 			actualJob, actualError := repo.GetByJobName(ctx, project.Name(), jobName)
 			assert.NotNil(b, actualJob)
@@ -209,8 +197,8 @@ func BenchmarkJobRepository(b *testing.B) {
 			name := fmt.Sprintf("job_test_%d", i)
 			jobName, err := serviceJob.NameFrom(name)
 			assert.NoError(b, err)
-			destination := serviceJob.ResourceURN("dev.resource.sample")
-			jobs[i] = setup.Job(tnnt, jobName, destination)
+
+			jobs[i] = setup.NewDummyJobBuilder().OverrideName(jobName).Build(tnnt)
 		}
 		storedJobs, err := repo.Add(ctx, jobs)
 		assert.Len(b, storedJobs, maxNumberOfJobs)
@@ -233,8 +221,12 @@ func BenchmarkJobRepository(b *testing.B) {
 			name := fmt.Sprintf("job_test_%d", i)
 			jobName, err := serviceJob.NameFrom(name)
 			assert.NoError(b, err)
+
 			destination := serviceJob.ResourceURN(fmt.Sprintf("dev.resource.sample_%d", i))
-			jobs[i] = setup.Job(tnnt, jobName, destination)
+			jobs[i] = setup.NewDummyJobBuilder().
+				OverrideName(jobName).
+				OverrideDestinationURN(destination).
+				Build(tnnt)
 		}
 		storedJobs, err := repo.Add(ctx, jobs)
 		assert.Len(b, storedJobs, maxNumberOfJobs)
@@ -244,7 +236,7 @@ func BenchmarkJobRepository(b *testing.B) {
 
 		for i := 0; i < b.N; i++ {
 			jobIdx := i % maxNumberOfJobs
-			destination := serviceJob.ResourceURN(fmt.Sprintf("dev.resource.sample_%d", jobIdx))
+			destination := jobs[jobIdx].Destination()
 
 			actualJobs, actualError := repo.GetAllByResourceDestination(ctx, destination)
 			assert.Len(b, actualJobs, 1)
@@ -260,33 +252,38 @@ func BenchmarkJobRepository(b *testing.B) {
 			name := fmt.Sprintf("job_test_%d", i)
 			jobName, err := serviceJob.NameFrom(name)
 			assert.NoError(b, err)
+
 			destination := serviceJob.ResourceURN(fmt.Sprintf("dev.resource.sample_%d", i))
-			jobs[i] = setup.Job(tnnt, jobName, destination)
+			jobs[i] = setup.NewDummyJobBuilder().
+				OverrideName(jobName).
+				OverrideDestinationURN(destination).
+				Build(tnnt)
 		}
 		storedJobs, err := repo.Add(ctx, jobs)
 		assert.Len(b, storedJobs, maxNumberOfJobs)
 		assert.NoError(b, err)
 
+		withUpstreams := make([]*serviceJob.WithUpstream, maxNumberOfJobs)
+		for i := 0; i < maxNumberOfJobs; i++ {
+			job := jobs[i]
+			jobName := job.Spec().Name()
+
+			upstreams := make([]*serviceJob.Upstream, maxNumberOfUpstreams)
+			for j := 0; j < maxNumberOfUpstreams; j++ {
+				resourceURN := serviceJob.ResourceURN(fmt.Sprintf("dev.resource.resource_%d_%d", i, j))
+				upstream := serviceJob.NewUpstreamResolved(jobName, "http://optimus.io", resourceURN, tnnt, serviceJob.UpstreamTypeInferred, "bq2bq", false)
+				upstreams[j] = upstream
+			}
+			withUpstreams[i] = serviceJob.NewWithUpstream(job, upstreams)
+		}
+
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			withUpstreams := make([]*serviceJob.WithUpstream, maxNumberOfJobs)
-			for j := 0; j < maxNumberOfJobs; j++ {
-				jobIdx := i % maxNumberOfJobs
-				currentJob := jobs[jobIdx]
-				currentJobName := currentJob.Spec().Name()
+			jobIdx := i % maxNumberOfJobs
+			withUpstream := withUpstreams[jobIdx]
 
-				maxNumberOfUpstreams := 50
-				upstreams := make([]*serviceJob.Upstream, maxNumberOfUpstreams)
-				for k := 0; k < maxNumberOfUpstreams; k++ {
-					resourceURN := serviceJob.ResourceURN(fmt.Sprintf("dev.resource.resource_%d_%d_%d", i, j, k))
-					upstream := serviceJob.NewUpstreamResolved(currentJobName, "http://optimus.io", resourceURN, tnnt, serviceJob.UpstreamTypeInferred, "bq2bq", false)
-					upstreams[k] = upstream
-				}
-				withUpstreams[j] = serviceJob.NewWithUpstream(currentJob, upstreams)
-			}
-
-			actualError := repo.ReplaceUpstreams(ctx, withUpstreams)
+			actualError := repo.ReplaceUpstreams(ctx, []*serviceJob.WithUpstream{withUpstream})
 			assert.NoError(b, actualError)
 		}
 	})
@@ -299,8 +296,10 @@ func BenchmarkJobRepository(b *testing.B) {
 			name := fmt.Sprintf("job_test_%d", i)
 			jobName, err := serviceJob.NameFrom(name)
 			assert.NoError(b, err)
-			destination := serviceJob.ResourceURN("dev.resource.sample")
-			jobs[i] = setup.Job(tnnt, jobName, destination)
+
+			jobs[i] = setup.NewDummyJobBuilder().
+				OverrideName(jobName).
+				Build(tnnt)
 		}
 		storedJobs, err := repo.Add(ctx, jobs)
 		assert.Len(b, storedJobs, maxNumberOfJobs)
@@ -314,11 +313,9 @@ func BenchmarkJobRepository(b *testing.B) {
 				cleanHistory = true
 			}
 			jobIdx := i % maxNumberOfJobs
-			name := fmt.Sprintf("job_test_%d", jobIdx)
-			jobName, err := serviceJob.NameFrom(name)
-			assert.NoError(b, err)
+			job := jobs[jobIdx]
 
-			actualError := repo.Delete(ctx, tnnt.ProjectName(), jobName, cleanHistory)
+			actualError := repo.Delete(ctx, tnnt.ProjectName(), job.Spec().Name(), cleanHistory)
 			assert.NoError(b, actualError)
 		}
 	})
@@ -331,8 +328,10 @@ func BenchmarkJobRepository(b *testing.B) {
 			name := fmt.Sprintf("job_test_%d", i)
 			jobName, err := serviceJob.NameFrom(name)
 			assert.NoError(b, err)
-			destination := serviceJob.ResourceURN("dev.resource.sample")
-			jobs[i] = setup.Job(tnnt, jobName, destination)
+
+			jobs[i] = setup.NewDummyJobBuilder().
+				OverrideName(jobName).
+				Build(tnnt)
 		}
 		storedJobs, err := repo.Add(ctx, jobs)
 		assert.Len(b, storedJobs, maxNumberOfJobs)
@@ -353,10 +352,11 @@ func BenchmarkJobRepository(b *testing.B) {
 
 		jobName, err := serviceJob.NameFrom("job_test")
 		assert.NoError(b, err)
-		destination := serviceJob.ResourceURN("dev.resource.sample")
-		currentJob := setup.Job(tnnt, jobName, destination)
+		currentJob := setup.NewDummyJobBuilder().OverrideName(jobName).Build(tnnt)
 
-		maxNumberOfUpstreams := 50
+		_, err = repo.Add(ctx, []*serviceJob.Job{currentJob})
+		assert.NoError(b, err)
+
 		upstreams := make([]*serviceJob.Upstream, maxNumberOfUpstreams)
 		for i := 0; i < maxNumberOfUpstreams; i++ {
 			resourceURN := fmt.Sprintf("dev.resource.sample_%d", i)
@@ -364,8 +364,6 @@ func BenchmarkJobRepository(b *testing.B) {
 		}
 		withUpstream := serviceJob.NewWithUpstream(currentJob, upstreams)
 
-		_, err = repo.Add(ctx, []*serviceJob.Job{currentJob})
-		assert.NoError(b, err)
 		err = repo.ReplaceUpstreams(ctx, []*serviceJob.WithUpstream{withUpstream})
 		assert.NoError(b, err)
 
@@ -385,35 +383,24 @@ func BenchmarkJobRepository(b *testing.B) {
 		rootJobName, err := serviceJob.NameFrom("root_job")
 		assert.NoError(b, err)
 		rootJobDestination := serviceJob.ResourceURN("root_job_destination")
-		rootJob := setup.Job(tnnt, rootJobName, rootJobDestination)
+		rootJob := setup.NewDummyJobBuilder().
+			OverrideName(rootJobName).
+			OverrideDestinationURN(rootJobDestination).
+			Build(tnnt)
 
 		_, err = repo.Add(ctx, []*serviceJob.Job{rootJob})
 		assert.NoError(b, err)
 
-		maxNumberOfDownstream := 50
-		for i := 0; i < maxNumberOfDownstream; i++ {
+		for i := 0; i < maxNumberOfDownstreams; i++ {
 			currentJobName, err := serviceJob.NameFrom(fmt.Sprintf("downstream_job_%d", i))
 			assert.NoError(b, err)
 			currentDestinationURN := serviceJob.ResourceURN(fmt.Sprintf("dev.resource.sample_%d", i))
 
-			version := 1
-			assert.NoError(b, err)
-			owner := "dev_test"
-			assert.NoError(b, err)
-			retry := serviceJob.NewRetry(5, 0, false)
-			startDate, err := serviceJob.ScheduleDateFrom("2022-10-01")
-			assert.NoError(b, err)
-			schedule, err := serviceJob.NewScheduleBuilder(startDate).WithRetry(retry).Build()
-			assert.NoError(b, err)
-			window, err := models.NewWindow(version, "d", "24h", "24h")
-			assert.NoError(b, err)
-			taskConfig, err := serviceJob.ConfigFrom(map[string]string{"sample_task_key": "sample_value"})
-			assert.NoError(b, err)
-			task := serviceJob.NewTaskBuilder("bq2bq", taskConfig).Build()
-
-			currentJobSpec, err := serviceJob.NewSpecBuilder(version, currentJobName, owner, schedule, window, task).Build()
-			assert.NoError(b, err)
-			currentJob := serviceJob.NewJob(tnnt, currentJobSpec, currentDestinationURN, []serviceJob.ResourceURN{rootJobDestination})
+			currentJob := setup.NewDummyJobBuilder().
+				OverrideName(currentJobName).
+				OverrideDestinationURN(currentDestinationURN).
+				OverrideSourceURNs([]serviceJob.ResourceURN{rootJobDestination}).
+				Build(tnnt)
 
 			_, err = repo.Add(ctx, []*serviceJob.Job{currentJob})
 			assert.NoError(b, err)
@@ -423,7 +410,7 @@ func BenchmarkJobRepository(b *testing.B) {
 
 		for i := 0; i < b.N; i++ {
 			actualDownstreams, actualError := repo.GetDownstreamByDestination(ctx, tnnt.ProjectName(), rootJobDestination)
-			assert.Len(b, actualDownstreams, maxNumberOfDownstream)
+			assert.Len(b, actualDownstreams, maxNumberOfDownstreams)
 			assert.NoError(b, actualError)
 		}
 	})
@@ -435,43 +422,26 @@ func BenchmarkJobRepository(b *testing.B) {
 		rootJobName, err := serviceJob.NameFrom("root_job")
 		assert.NoError(b, err)
 		rootJobDestination := serviceJob.ResourceURN("root_job_destination")
-		rootJob := setup.Job(tnnt, rootJobName, rootJobDestination)
+		rootJob := setup.NewDummyJobBuilder().
+			OverrideName(rootJobName).
+			OverrideDestinationURN(rootJobDestination).
+			Build(tnnt)
 
 		_, err = repo.Add(ctx, []*serviceJob.Job{rootJob})
 		assert.NoError(b, err)
 
-		maxNumberOfDownstream := 50
-		for i := 0; i < maxNumberOfDownstream; i++ {
+		for i := 0; i < maxNumberOfDownstreams; i++ {
 			currentJobName, err := serviceJob.NameFrom(fmt.Sprintf("downstream_job_%d", i))
 			assert.NoError(b, err)
 			currentDestinationURN := serviceJob.ResourceURN(fmt.Sprintf("dev.resource.sample_%d", i))
 
-			version := 1
-			assert.NoError(b, err)
-			owner := "dev_test"
-			assert.NoError(b, err)
-			retry := serviceJob.NewRetry(5, 0, false)
-			startDate, err := serviceJob.ScheduleDateFrom("2022-10-01")
-			assert.NoError(b, err)
-			schedule, err := serviceJob.NewScheduleBuilder(startDate).WithRetry(retry).Build()
-			assert.NoError(b, err)
-			window, err := models.NewWindow(version, "d", "24h", "24h")
-			assert.NoError(b, err)
-			taskConfig, err := serviceJob.ConfigFrom(map[string]string{"sample_task_key": "sample_value"})
-			assert.NoError(b, err)
-			task := serviceJob.NewTaskBuilder("bq2bq", taskConfig).Build()
+			currentJob := setup.NewDummyJobBuilder().
+				OverrideName(currentJobName).
+				OverrideDestinationURN(currentDestinationURN).
+				OverrideSpecUpstreamNames([]serviceJob.SpecUpstreamName{
+					serviceJob.SpecUpstreamName(rootJobName),
+				}).Build(tnnt)
 
-			currentUpstreamSpec, err := serviceJob.NewSpecUpstreamBuilder().
-				WithUpstreamNames([]serviceJob.SpecUpstreamName{serviceJob.SpecUpstreamName(rootJobName)}).
-				Build()
-			assert.NoError(b, err)
-
-			currentJobSpec, err := serviceJob.NewSpecBuilder(version, currentJobName, owner, schedule, window, task).
-				WithSpecUpstream(currentUpstreamSpec).
-				Build()
-			assert.NoError(b, err)
-
-			currentJob := serviceJob.NewJob(tnnt, currentJobSpec, currentDestinationURN, nil)
 			_, err = repo.Add(ctx, []*serviceJob.Job{currentJob})
 			assert.NoError(b, err)
 
@@ -485,7 +455,7 @@ func BenchmarkJobRepository(b *testing.B) {
 
 		for i := 0; i < b.N; i++ {
 			actualDownstreams, actualError := repo.GetDownstreamByJobName(ctx, tnnt.ProjectName(), rootJobName)
-			assert.Len(b, actualDownstreams, maxNumberOfDownstream)
+			assert.Len(b, actualDownstreams, maxNumberOfDownstreams)
 			assert.NoError(b, actualError)
 		}
 	})
