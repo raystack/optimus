@@ -105,7 +105,7 @@ func (j *JobRunRepository) UpdateSLA(ctx context.Context, slaObjects []*schedule
 			jobIDListString += ", "
 		}
 	}
-	query := "update job_run set sla_alert = True, updated_at = NOW() where (job_name, scheduled_at) = (" + jobIDListString + ")"
+	query := "update job_run set sla_alert = True, updated_at = NOW() where (job_name, scheduled_at) IN (" + jobIDListString + ")"
 	_, err := j.db.Exec(ctx, query)
 	return errors.WrapIfErr(scheduler.EntityJobRun, "unable to update SLA", err)
 }

@@ -117,13 +117,6 @@ func setupJobDetails(tnnt tenant.Tenant) *scheduler.JobWithDetails {
 				State:    "resolved",
 			},
 			{
-				Host:     "http://optimus.example.com",
-				Tenant:   tnnt1,
-				JobName:  "foo-inter-dep-job-unresolved",
-				TaskName: "bq-bq",
-				State:    "unresolved",
-			},
-			{
 				JobName:  "foo-external-optimus-dep-job",
 				Host:     "http://optimus.external.io",
 				TaskName: "bq-bq",

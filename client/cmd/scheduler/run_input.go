@@ -195,6 +195,12 @@ func (j *jobRunInputCommand) writeJobAssetsToFiles(
 	writeToFileFn := utils.WriteStringToFileIndexed()
 	for fileName, fileContent := range jobResponse.Files {
 		filePath := filepath.Join(dirPath, fileName)
+
+		assetSubDir := filepath.Dir(filePath)
+		if err := os.MkdirAll(assetSubDir, fs.FileMode(permission)); err != nil {
+			return fmt.Errorf("failed to create asset sub-directory at %s: %w", assetSubDir, err)
+		}
+
 		if err := writeToFileFn(filePath, fileContent, j.logger.Writer()); err != nil {
 			return fmt.Errorf("failed to write asset file at %s: %w", filePath, err)
 		}

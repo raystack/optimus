@@ -769,15 +769,26 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.NoError(t, err)
 			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"dev.resource.sample_b"})
 
+			jobSpecX, err := job.NewSpecBuilder(jobVersion, "sample-job-X", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobX := job.NewJob(sampleTenant, jobSpecX, "dev.resource.sample_x", []job.ResourceURN{"dev.resource.sample_a"})
+
 			jobRepo := postgres.NewJobRepository(db)
 
-			addedJob, err := jobRepo.Add(ctx, []*job.Job{jobA})
+			addedJob, err := jobRepo.Add(ctx, []*job.Job{jobA, jobX})
 			assert.NoError(t, err)
 			assert.NotNil(t, addedJob)
 
-			upstreamCInferred := job.NewUpstreamResolved("sample-job-B", "host-1", "dev.resource.sample_b", sampleTenant, "inferred", taskName, false)
-			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstreamCInferred})
-			err = jobRepo.ReplaceUpstreams(ctx, []*job.WithUpstream{jobAWithUpstream})
+			upstreamBInferred := job.NewUpstreamResolved("sample-job-B", "host-1", "dev.resource.sample_b", sampleTenant, "inferred", taskName, false)
+			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstreamBInferred})
+			upstreamAInferred := job.NewUpstreamResolved("sample-job-A", "host-1", "dev.resource.sample_a", sampleTenant, "inferred", taskName, false)
+			jobXWithUpstream := job.NewWithUpstream(jobX, []*job.Upstream{upstreamAInferred})
+
+			err = jobRepo.ReplaceUpstreams(ctx, []*job.WithUpstream{jobAWithUpstream, jobXWithUpstream})
+			assert.NoError(t, err)
+
+			upstreams, err := jobRepo.GetUpstreams(ctx, proj.Name(), jobSpecX.Name())
+			assert.Equal(t, 1, len(upstreams))
 			assert.NoError(t, err)
 
 			err = jobRepo.Delete(ctx, proj.Name(), jobSpecA.Name(), true)
@@ -787,6 +798,11 @@ func TestPostgresJobRepository(t *testing.T) {
 			addedJob, err = jobRepo.Add(ctx, []*job.Job{jobA})
 			assert.NoError(t, err)
 			assert.NotNil(t, addedJob)
+
+			// data in upstream should already be deleted
+			upstreams, err = jobRepo.GetUpstreams(ctx, proj.Name(), jobSpecX.Name())
+			assert.Equal(t, 0, len(upstreams))
+			assert.NoError(t, err)
 		})
 	})
 

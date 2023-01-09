@@ -54,7 +54,7 @@ type Spec struct {
 
 type Schedule struct {
 	StartDate     time.Time
-	EndDate       *time.Time
+	EndDate       *time.Time `json:",omitempty"`
 	Interval      string
 	DependsOnPast bool
 	CatchUp       bool
@@ -253,14 +253,6 @@ func toStorageSchedule(scheduleSpec *job.Schedule) ([]byte, error) {
 		return nil, err
 	}
 
-	var endDate time.Time
-	if scheduleSpec.EndDate() != "" {
-		endDate, err = time.Parse(jobDatetimeLayout, scheduleSpec.EndDate().String())
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	var retry *Retry
 	if scheduleSpec.Retry() != nil {
 		retry = &Retry{
@@ -272,11 +264,17 @@ func toStorageSchedule(scheduleSpec *job.Schedule) ([]byte, error) {
 
 	schedule := Schedule{
 		StartDate:     startDate,
-		EndDate:       &endDate,
 		Interval:      scheduleSpec.Interval(),
 		DependsOnPast: scheduleSpec.DependsOnPast(),
 		CatchUp:       scheduleSpec.CatchUp(),
 		Retry:         retry,
+	}
+	if scheduleSpec.EndDate() != "" {
+		endDate, err := time.Parse(jobDatetimeLayout, scheduleSpec.EndDate().String())
+		if err != nil {
+			return nil, err
+		}
+		schedule.EndDate = &endDate
 	}
 	return json.Marshal(schedule)
 }
@@ -468,7 +466,7 @@ func fromStorageSchedule(raw []byte) (*job.Schedule, error) {
 		WithDependsOnPast(storageSchedule.DependsOnPast).
 		WithInterval(storageSchedule.Interval)
 
-	if !storageSchedule.EndDate.IsZero() {
+	if storageSchedule.EndDate != nil && !storageSchedule.EndDate.IsZero() {
 		endDate, err := job.ScheduleDateFrom(storageSchedule.EndDate.Format(job.DateLayout))
 		if err != nil {
 			return nil, err

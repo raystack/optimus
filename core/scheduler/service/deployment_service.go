@@ -10,7 +10,7 @@ import (
 )
 
 func (s JobRunService) UploadToScheduler(ctx context.Context, projectName tenant.ProjectName, namespaceName string) error {
-	multiError := errors.NewMultiError("ErrorInUploadToScheduler")
+	multiError := errors.NewMultiError("errorInUploadToScheduler")
 	allJobsWithDetails, err := s.jobRepo.GetAll(ctx, projectName)
 	multiError.Append(err)
 	if allJobsWithDetails == nil {
@@ -28,7 +28,7 @@ func (s JobRunService) UploadToScheduler(ctx context.Context, projectName tenant
 		}
 		multiError.Append(err)
 	}
-	return errors.MultiToError(multiError)
+	return multiError.ToErr()
 }
 
 func (s JobRunService) deployJobsPerNamespace(ctx context.Context, t tenant.Tenant, jobs []*scheduler.JobWithDetails) error {
