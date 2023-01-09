@@ -45,7 +45,7 @@ func NewReplaceAllCommand() *cobra.Command {
 		Short: "Replace all current optimus project to server",
 		Long: heredoc.Doc(`Apply local changes to destination server which includes creating/updating/deleting
 				jobs`),
-		Example: "optimus job replace-all [--ignore-resources|--ignore-jobs]",
+		Example: "optimus job replace-all [--verbose]",
 		Annotations: map[string]string{
 			"group:core": "true",
 		},
@@ -97,7 +97,7 @@ func (r *replaceAllCommand) replaceAll(selectedNamespaces []*config.Namespace) e
 }
 
 func (r *replaceAllCommand) replaceAllJobs(conn *connectivity.Connectivity, selectedNamespaces []*config.Namespace) error {
-	namespaceNames := []string{}
+	var namespaceNames []string
 	for _, namespace := range selectedNamespaces {
 		namespaceNames = append(namespaceNames, namespace.Name)
 	}
