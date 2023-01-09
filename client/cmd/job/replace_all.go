@@ -45,7 +45,7 @@ func NewReplaceAllCommand() *cobra.Command {
 		Short: "Replace all current optimus project to server",
 		Long: heredoc.Doc(`Apply local changes to destination server which includes creating/updating/deleting
 				jobs`),
-		Example: "optimus job replace-all [--ignore-resources|--ignore-jobs]",
+		Example: "optimus job replace-all",
 		Annotations: map[string]string{
 			"group:core": "true",
 		},
