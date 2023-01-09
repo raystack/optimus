@@ -59,7 +59,7 @@ func BenchmarkSecretRepository(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			name := fmt.Sprintf("secret_for_test_%d", i)
 			encodedValue := "encoded_secret_value"
-			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, encodedValue, project.Name(), namespace.Name().String())
+			secret, err := serviceTenant.NewSecret(name, encodedValue, project.Name(), namespace.Name().String())
 			assert.NoError(b, err)
 
 			actualError := repo.Save(ctx, secret)
@@ -74,7 +74,7 @@ func BenchmarkSecretRepository(b *testing.B) {
 		for i := 0; i < maxNumberOfSecrets; i++ {
 			name := fmt.Sprintf("secret_for_test_%d", i)
 			encodedValue := "encoded_secret_value"
-			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, encodedValue, project.Name(), namespace.Name().String())
+			secret, err := serviceTenant.NewSecret(name, encodedValue, project.Name(), namespace.Name().String())
 			assert.NoError(b, err)
 
 			actualError := repo.Save(ctx, secret)
@@ -89,7 +89,7 @@ func BenchmarkSecretRepository(b *testing.B) {
 			secretIdx := i % maxNumberOfSecrets
 			name := secretNames[secretIdx]
 			newEncodedValue := "new_encoded_secret_value"
-			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, newEncodedValue, project.Name(), namespace.Name().String())
+			secret, err := serviceTenant.NewSecret(name, newEncodedValue, project.Name(), namespace.Name().String())
 			assert.NoError(b, err)
 
 			actualError := repo.Update(ctx, secret)
@@ -104,7 +104,7 @@ func BenchmarkSecretRepository(b *testing.B) {
 		for i := 0; i < maxNumberOfSecrets; i++ {
 			name := fmt.Sprintf("secret_for_test_%d", i)
 			encodedValue := "encoded_secret_value"
-			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, encodedValue, project.Name(), namespace.Name().String())
+			secret, err := serviceTenant.NewSecret(name, encodedValue, project.Name(), namespace.Name().String())
 			assert.NoError(b, err)
 
 			actualError := repo.Save(ctx, secret)
@@ -133,7 +133,7 @@ func BenchmarkSecretRepository(b *testing.B) {
 		for i := 0; i < maxNumberOfSecrets; i++ {
 			name := fmt.Sprintf("secret_for_test_%d", i)
 			encodedValue := "encoded_secret_value"
-			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, encodedValue, project.Name(), namespace.Name().String())
+			secret, err := serviceTenant.NewSecret(name, encodedValue, project.Name(), namespace.Name().String())
 			assert.NoError(b, err)
 
 			actualError := repo.Save(ctx, secret)
@@ -155,7 +155,7 @@ func BenchmarkSecretRepository(b *testing.B) {
 		for i := 0; i < maxNumberOfSecrets; i++ {
 			name := fmt.Sprintf("secret_for_test_%d", i)
 			encodedValue := "encoded_secret_value"
-			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, encodedValue, project.Name(), namespace.Name().String())
+			secret, err := serviceTenant.NewSecret(name, encodedValue, project.Name(), namespace.Name().String())
 			assert.NoError(b, err)
 
 			actualError := repo.Save(ctx, secret)
@@ -180,7 +180,7 @@ func BenchmarkSecretRepository(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			name := fmt.Sprintf("secret_for_test_%d", i)
 			encodedValue := "encoded_secret_value"
-			secret, err := serviceTenant.NewSecret(name, serviceTenant.UserDefinedSecret, encodedValue, project.Name(), namespace.Name().String())
+			secret, err := serviceTenant.NewSecret(name, encodedValue, project.Name(), namespace.Name().String())
 			assert.NoError(b, err)
 
 			err = repo.Save(ctx, secret)
