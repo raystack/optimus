@@ -6,7 +6,6 @@ import (
 
 // NewResourceCommand initializes command for resource
 func NewResourceCommand() *cobra.Command {
-
 	cmd := &cobra.Command{
 		Use:   "resource",
 		Short: "Interact with data resource",
