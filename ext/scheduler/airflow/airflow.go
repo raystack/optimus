@@ -89,7 +89,6 @@ func (s *Scheduler) DeployJobs(ctx context.Context, tenant tenant.Tenant, jobs [
 
 	err = bucket.WriteAll(spanCtx, filepath.Join(jobsDir, baseLibFileName), SharedLib, nil)
 	if err != nil {
-
 		return err
 	}
 	multiError := errors.NewMultiError("ErrorsInDeployJobs")
