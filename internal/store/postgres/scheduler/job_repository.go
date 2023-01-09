@@ -241,7 +241,7 @@ func FromRow(row pgx.Row) (*Job, error) {
 }
 
 func (j *JobRepository) GetJob(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName) (*scheduler.Job, error) {
-	getJobByNameAtProject := `SELECT ` + jobColumns + ` FROM job WHERE name = $1 AND project_name = $2`
+	getJobByNameAtProject := `SELECT ` + jobColumns + ` FROM job WHERE name = $1 AND project_name = $2 deleted_at is null`
 	spec, err := FromRow(j.db.QueryRow(ctx, getJobByNameAtProject, jobName, projectName))
 	if err != nil {
 		return nil, err
@@ -250,7 +250,7 @@ func (j *JobRepository) GetJob(ctx context.Context, projectName tenant.ProjectNa
 }
 
 func (j *JobRepository) GetJobDetails(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName) (*scheduler.JobWithDetails, error) {
-	getJobByNameAtProject := `SELECT ` + jobColumns + ` FROM job WHERE name = $1 AND project_name = $2`
+	getJobByNameAtProject := `SELECT ` + jobColumns + ` FROM job WHERE name = $1 AND project_name = $2 deleted_at is null`
 	spec, err := FromRow(j.db.QueryRow(ctx, getJobByNameAtProject, jobName, projectName))
 	if err != nil {
 		return nil, err
@@ -305,7 +305,7 @@ func (j *JobRepository) getJobsUpstreams(ctx context.Context, projectName tenant
 }
 
 func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectName) ([]*scheduler.JobWithDetails, error) {
-	getJobByNameAtProject := `SELECT ` + jobColumns + ` FROM job WHERE project_name = $1`
+	getJobByNameAtProject := `SELECT ` + jobColumns + ` FROM job WHERE project_name = $1 and deleted_at is null`
 	rows, err := j.db.Query(ctx, getJobByNameAtProject, projectName)
 	if err != nil {
 		return nil, errors.Wrap(job.EntityJob, "error while getting all jobs", err)
