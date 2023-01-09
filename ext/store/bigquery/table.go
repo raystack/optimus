@@ -164,13 +164,13 @@ func toBQRangePartitioning(t *Partition) *bigquery.RangePartitioning {
 
 func toBQTimePartitioning(t *Partition) *bigquery.TimePartitioning {
 	info := &bigquery.TimePartitioning{
-		Field:      t.Field,
-		Expiration: time.Duration(t.Expiration) * time.Hour,
+		Field: t.Field,
 	}
-	if strings.EqualFold(t.Type, string(bigquery.HourPartitioningType)) {
-		info.Type = bigquery.HourPartitioningType
-	} else {
-		info.Type = bigquery.DayPartitioningType
+	if t.Expiration > 0 {
+		info.Expiration = time.Duration(t.Expiration) * time.Hour
+	}
+	if t.Type != "" {
+		info.Type = bigquery.TimePartitioningType(strings.ToUpper(t.Type))
 	}
 	return info
 }
