@@ -83,12 +83,14 @@ func (s *Scheduler) DeployJobs(ctx context.Context, tenant tenant.Tenant, jobs [
 
 	bucket, err := s.bucketFac.New(spanCtx, tenant)
 	if err != nil {
-		return err
+		return errors.AddErrContext(err, EntityAirflow, "error in creating storage client instance")
 	}
 	defer bucket.Close()
 
-	bucket.WriteAll(spanCtx, filepath.Join(jobsDir, baseLibFileName), SharedLib, nil)
-
+	err = bucket.WriteAll(spanCtx, filepath.Join(jobsDir, baseLibFileName), SharedLib, nil)
+	if err != nil {
+		return errors.AddErrContext(err, EntityAirflow, "error in writing __lib.py file")
+	}
 	multiError := errors.NewMultiError("ErrorsInDeployJobs")
 	runner := parallel.NewRunner(parallel.WithTicket(concurrentTicketPerSec), parallel.WithLimit(concurrentLimit))
 	for _, job := range jobs {
