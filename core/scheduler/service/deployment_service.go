@@ -9,7 +9,7 @@ import (
 	"github.com/odpf/optimus/internal/errors"
 )
 
-func (s JobRunService) UploadToScheduler(ctx context.Context, projectName tenant.ProjectName, namespaceName string) error {
+func (s JobRunService) UploadToScheduler(ctx context.Context, projectName tenant.ProjectName) error {
 	multiError := errors.NewMultiError("errorInUploadToScheduler")
 	allJobsWithDetails, err := s.jobRepo.GetAll(ctx, projectName)
 	multiError.Append(err)
@@ -24,7 +24,7 @@ func (s JobRunService) UploadToScheduler(ctx context.Context, projectName tenant
 	jobGroupByTenant := scheduler.GroupJobsByTenant(allJobsWithDetails)
 	for t, jobs := range jobGroupByTenant {
 		if err = s.deployJobsPerNamespace(ctx, t, jobs); err == nil {
-			s.l.Debug(fmt.Sprintf("namespace %s deployed", namespaceName), "project name", projectName)
+			s.l.Debug(fmt.Sprintf("[success] namespace: %s, project: %s, deployed", t.NamespaceName().String(), t.ProjectName().String()))
 		}
 		multiError.Append(err)
 	}

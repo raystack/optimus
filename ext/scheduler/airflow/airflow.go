@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/kushsharma/parallel"
+	"github.com/odpf/salt/log"
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 
@@ -69,6 +70,7 @@ type ProjectGetter interface {
 }
 
 type Scheduler struct {
+	l         log.Logger
 	bucketFac BucketFactory
 	client    Client
 	compiler  DagCompiler
@@ -102,7 +104,9 @@ func (s *Scheduler) DeployJobs(ctx context.Context, tenant tenant.Tenant, jobs [
 	}
 
 	for _, result := range runner.Run() {
-		multiError.Append(result.Err)
+		if err, ok := result.Val.(error); ok {
+			multiError.Append(err)
+		}
 	}
 	return errors.MultiToError(multiError)
 }
@@ -296,8 +300,9 @@ func (s *Scheduler) getSchedulerAuth(ctx context.Context, tnnt tenant.Tenant) (S
 	}, nil
 }
 
-func NewScheduler(bucketFac BucketFactory, client Client, compiler DagCompiler, projectGetter ProjectGetter, secretGetter SecretGetter) *Scheduler {
+func NewScheduler(l log.Logger, bucketFac BucketFactory, client Client, compiler DagCompiler, projectGetter ProjectGetter, secretGetter SecretGetter) *Scheduler {
 	return &Scheduler{
+		l:             l,
 		bucketFac:     bucketFac,
 		compiler:      compiler,
 		client:        client,

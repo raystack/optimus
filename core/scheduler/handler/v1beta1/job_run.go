@@ -17,7 +17,7 @@ type JobRunService interface {
 	JobRunInput(context.Context, tenant.ProjectName, scheduler.JobName, scheduler.RunConfig) (*scheduler.ExecutorInput, error)
 	UpdateJobState(context.Context, scheduler.Event) error
 	GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName, criteria *scheduler.JobRunsCriteria) ([]*scheduler.JobRunStatus, error)
-	UploadToScheduler(ctx context.Context, projectName tenant.ProjectName, namespaceName string) error
+	UploadToScheduler(ctx context.Context, projectName tenant.ProjectName) error
 }
 
 type Notifier interface {
@@ -131,14 +131,14 @@ func (h JobRunHandler) UploadToScheduler(ctx context.Context, req *pb.UploadToSc
 	if err != nil {
 		return nil, errors.GRPCErr(err, "unable to get projectName")
 	}
-	err = h.service.UploadToScheduler(ctx, projectName, req.GetNamespaceName())
+	err = h.service.UploadToScheduler(ctx, projectName)
 	if err != nil {
 		return nil, errors.GRPCErr(err, "\nuploaded to scheduler with error")
 	}
 	return &pb.UploadToSchedulerResponse{}, nil
 }
 
-// TODO: check in jaeger if this api takes time, then we can make this async
+// RegisterJobEvent TODO: check in jaeger if this api takes time, then we can make this async
 func (h JobRunHandler) RegisterJobEvent(ctx context.Context, req *pb.RegisterJobEventRequest) (*pb.RegisterJobEventResponse, error) {
 	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
