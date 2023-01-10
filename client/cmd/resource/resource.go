@@ -15,5 +15,6 @@ func NewResourceCommand() *cobra.Command {
 	}
 
 	cmd.AddCommand(NewCreateCommand())
+	cmd.AddCommand(NewExportCommand())
 	return cmd
 }
