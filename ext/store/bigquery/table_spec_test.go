@@ -34,18 +34,6 @@ func TestRelationalTable(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.ErrorContains(t, err, "invalid schema for table t-optimus.playground.characters")
 		})
-		t.Run("returns validation error for invalid partition", func(t *testing.T) {
-			table := bigquery.Table{
-				Name:        "t-optimus.playground.characters",
-				Schema:      bigquery.Schema{{Name: "id", Type: "string", Mode: "nullable"}},
-				Cluster:     &bigquery.Cluster{Using: []string{"tags"}},
-				Partition:   &bigquery.Partition{Field: "", Type: "DAY"},
-				ExtraConfig: nil,
-			}
-			err := table.Validate()
-			assert.NotNil(t, err)
-			assert.ErrorContains(t, err, "invalid partition for table t-optimus.playground.characters")
-		})
 		t.Run("returns validation error for invalid cluster", func(t *testing.T) {
 			table := bigquery.Table{
 				Name:        "t-optimus.playground.characters",
@@ -72,6 +60,17 @@ func TestRelationalTable(t *testing.T) {
 
 		assert.Equal(t, "t-optimus.playground.characters", table.FullName())
 	})
+	t.Run("passes validation for empty field name in partition", func(t *testing.T) {
+		table := bigquery.Table{
+			Name:        "t-optimus.playground.characters",
+			Schema:      bigquery.Schema{{Name: "id", Type: "string", Mode: "nullable"}},
+			Cluster:     &bigquery.Cluster{Using: []string{"tags"}},
+			Partition:   &bigquery.Partition{Field: "", Type: "DAY"},
+			ExtraConfig: nil,
+		}
+		err := table.Validate()
+		assert.Nil(t, err)
+	})
 }
 
 func TestTableClustering(t *testing.T) {
@@ -97,24 +96,6 @@ func TestTableClustering(t *testing.T) {
 
 func TestTablePartitioning(t *testing.T) {
 	t.Run("when invalid", func(t *testing.T) {
-		t.Run("returns error for invalid field", func(t *testing.T) {
-			p := bigquery.Partition{
-				Field: "",
-				Type:  "DAY",
-			}
-			err := p.Validate()
-			assert.NotNil(t, err)
-			assert.ErrorContains(t, err, "partition field name is empty")
-		})
-		t.Run("returns error for invalid type", func(t *testing.T) {
-			p := bigquery.Partition{
-				Field: "TIME",
-				Type:  "",
-			}
-			err := p.Validate()
-			assert.NotNil(t, err)
-			assert.ErrorContains(t, err, "partition type is empty for TIME")
-		})
 		t.Run("returns error for invalid range", func(t *testing.T) {
 			p := bigquery.Partition{
 				Field: "TIME",
@@ -131,6 +112,22 @@ func TestTablePartitioning(t *testing.T) {
 			Field: "TIME",
 			Type:  "range",
 			Range: &bigquery.Range{Start: 0, End: 5},
+		}
+		err := p.Validate()
+		assert.Nil(t, err)
+	})
+	t.Run("returns no error for empty field", func(t *testing.T) {
+		p := bigquery.Partition{
+			Field: "",
+			Type:  "DAY",
+		}
+		err := p.Validate()
+		assert.Nil(t, err)
+	})
+	t.Run("returns no error for empty type", func(t *testing.T) {
+		p := bigquery.Partition{
+			Field: "TIME",
+			Type:  "",
 		}
 		err := p.Validate()
 		assert.Nil(t, err)

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -264,7 +265,9 @@ func groupUpstreamsByJobName(jobUpstreams []JobUpstreams) (map[string][]*schedul
 
 	for _, upstream := range jobUpstreams {
 		if upstream.UpstreamState != "resolved" {
-			multiError.Append(errors.NewError(errors.ErrInvalidState, scheduler.EntityJobRun, "unresolved upstream "+upstream.UpstreamJobName.String+" for "+upstream.JobName))
+			if strings.EqualFold(upstream.UpstreamType, "static") {
+				multiError.Append(errors.NewError(errors.ErrInvalidState, scheduler.EntityJobRun, "unresolved upstream "+upstream.UpstreamJobName.String+" for "+upstream.JobName))
+			}
 			continue
 		}
 		schedulerUpstream, err := upstream.toJobUpstreams()

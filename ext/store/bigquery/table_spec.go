@@ -77,14 +77,6 @@ type Partition struct {
 }
 
 func (p Partition) Validate() error {
-	if p.Field == "" {
-		return errors.InvalidArgument(EntityTable, "partition field name is empty")
-	}
-
-	if p.Type == "" {
-		return errors.InvalidArgument(EntityTable, "partition type is empty for "+p.Field)
-	}
-
 	if strings.EqualFold(p.Type, "range") {
 		if p.Range == nil {
 			return errors.InvalidArgument(EntityTable, "partition type range have no range config for "+p.Field)
