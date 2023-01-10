@@ -401,6 +401,7 @@ type JobSpecFilter struct {
 	ProjectName         string
 	JobName             string
 	ResourceDestination string
+	NamespaceName       string
 }
 
 type JobEventType string
