@@ -31,20 +31,20 @@ func (_m *JobSpecRepository) DeleteByID(ctx context.Context, id uuid.UUID) error
 	return r0
 }
 
-// GetAllByProjectName provides a mock function with given fields: ctx, projectName
-func (_m *JobSpecRepository) GetAllByProjectName(ctx context.Context, projectName string) ([]models.JobSpec, error) {
-	ret := _m.Called(ctx, projectName)
+// GetAllByProjectName provides a mock function with given fields: ctx, projectName, includeDeleted
+func (_m *JobSpecRepository) GetAllByProjectName(ctx context.Context, projectName string, includeDeleted bool) ([]models.JobSpec, error) {
+	ret := _m.Called(ctx, projectName, includeDeleted)
 
 	var r0 []models.JobSpec
-	if rf, ok := ret.Get(0).(func(context.Context, string) []models.JobSpec); ok {
-		r0 = rf(ctx, projectName)
+	if rf, ok := ret.Get(0).(func(context.Context, string, bool) []models.JobSpec); ok {
+		r0 = rf(ctx, projectName, includeDeleted)
 	} else if ret.Get(0) != nil {
 		r0 = ret.Get(0).([]models.JobSpec)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, projectName)
+	if rf, ok := ret.Get(1).(func(context.Context, string, bool) error); ok {
+		r1 = rf(ctx, projectName, includeDeleted)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -52,20 +52,20 @@ func (_m *JobSpecRepository) GetAllByProjectName(ctx context.Context, projectNam
 	return r0, r1
 }
 
-// GetAllByProjectNameAndNamespaceName provides a mock function with given fields: ctx, projectName, namespaceName
-func (_m *JobSpecRepository) GetAllByProjectNameAndNamespaceName(ctx context.Context, projectName string, namespaceName string) ([]models.JobSpec, error) {
-	ret := _m.Called(ctx, projectName, namespaceName)
+// GetAllByProjectNameAndNamespaceName provides a mock function with given fields: ctx, projectName, namespaceName, includeDeleted
+func (_m *JobSpecRepository) GetAllByProjectNameAndNamespaceName(ctx context.Context, projectName string, namespaceName string, includeDeleted bool) ([]models.JobSpec, error) {
+	ret := _m.Called(ctx, projectName, namespaceName, includeDeleted)
 
 	var r0 []models.JobSpec
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) []models.JobSpec); ok {
-		r0 = rf(ctx, projectName, namespaceName)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, bool) []models.JobSpec); ok {
+		r0 = rf(ctx, projectName, namespaceName, includeDeleted)
 	} else if ret.Get(0) != nil {
 		r0 = ret.Get(0).([]models.JobSpec)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
-		r1 = rf(ctx, projectName, namespaceName)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, bool) error); ok {
+		r1 = rf(ctx, projectName, namespaceName, includeDeleted)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -73,20 +73,20 @@ func (_m *JobSpecRepository) GetAllByProjectNameAndNamespaceName(ctx context.Con
 	return r0, r1
 }
 
-// GetByNameAndProjectName provides a mock function with given fields: ctx, name, projectName
-func (_m *JobSpecRepository) GetByNameAndProjectName(ctx context.Context, name string, projectName string) (models.JobSpec, error) {
-	ret := _m.Called(ctx, name, projectName)
+// GetByNameAndProjectName provides a mock function with given fields: ctx, name, projectName, includeDeleted
+func (_m *JobSpecRepository) GetByNameAndProjectName(ctx context.Context, name string, projectName string, includeDeleted bool) (models.JobSpec, error) {
+	ret := _m.Called(ctx, name, projectName, includeDeleted)
 
 	var r0 models.JobSpec
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) models.JobSpec); ok {
-		r0 = rf(ctx, name, projectName)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, bool) models.JobSpec); ok {
+		r0 = rf(ctx, name, projectName, includeDeleted)
 	} else {
 		r0 = ret.Get(0).(models.JobSpec)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
-		r1 = rf(ctx, name, projectName)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, bool) error); ok {
+		r1 = rf(ctx, name, projectName, includeDeleted)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -94,20 +94,20 @@ func (_m *JobSpecRepository) GetByNameAndProjectName(ctx context.Context, name s
 	return r0, r1
 }
 
-// GetByResourceDestinationURN provides a mock function with given fields: ctx, resourceDestinationURN
-func (_m *JobSpecRepository) GetByResourceDestinationURN(ctx context.Context, resourceDestinationURN string) ([]models.JobSpec, error) {
-	ret := _m.Called(ctx, resourceDestinationURN)
+// GetByResourceDestinationURN provides a mock function with given fields: ctx, resourceDestinationURN, includeDeleted
+func (_m *JobSpecRepository) GetByResourceDestinationURN(ctx context.Context, resourceDestinationURN string, includeDeleted bool) ([]models.JobSpec, error) {
+	ret := _m.Called(ctx, resourceDestinationURN, includeDeleted)
 
 	var r0 []models.JobSpec
-	if rf, ok := ret.Get(0).(func(context.Context, string) []models.JobSpec); ok {
-		r0 = rf(ctx, resourceDestinationURN)
-	} else {
+	if rf, ok := ret.Get(0).(func(context.Context, string, bool) []models.JobSpec); ok {
+		r0 = rf(ctx, resourceDestinationURN, includeDeleted)
+	} else if ret.Get(0) != nil {
 		r0 = ret.Get(0).([]models.JobSpec)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, resourceDestinationURN)
+	if rf, ok := ret.Get(1).(func(context.Context, string, bool) error); ok {
+		r1 = rf(ctx, resourceDestinationURN, includeDeleted)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -115,20 +115,20 @@ func (_m *JobSpecRepository) GetByResourceDestinationURN(ctx context.Context, re
 	return r0, r1
 }
 
-// GetDependentJobs provides a mock function with given fields: ctx, jobName, projectName, resourceDestinationURN
-func (_m *JobSpecRepository) GetDependentJobs(ctx context.Context, jobName string, projectName string, resourceDestinationURN string) ([]models.JobSpec, error) {
-	ret := _m.Called(ctx, jobName, projectName, resourceDestinationURN)
+// GetDependentJobs provides a mock function with given fields: ctx, jobName, resourceDestinationURN, projectName
+func (_m *JobSpecRepository) GetDependentJobs(ctx context.Context, jobName string, resourceDestinationURN string, projectName string) ([]models.JobSpec, error) {
+	ret := _m.Called(ctx, jobName, resourceDestinationURN, projectName)
 
 	var r0 []models.JobSpec
 	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) []models.JobSpec); ok {
-		r0 = rf(ctx, jobName, projectName, resourceDestinationURN)
+		r0 = rf(ctx, jobName, resourceDestinationURN, projectName)
 	} else if ret.Get(0) != nil {
 		r0 = ret.Get(0).([]models.JobSpec)
 	}
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
-		r1 = rf(ctx, jobName, projectName, resourceDestinationURN)
+		r1 = rf(ctx, jobName, resourceDestinationURN, projectName)
 	} else {
 		r1 = ret.Error(1)
 	}

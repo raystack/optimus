@@ -399,6 +399,7 @@ func (sv *JobSpecServiceServer) GetJobSpecifications(ctx context.Context, req *p
 		JobName:             req.GetJobName(),
 		ResourceDestination: req.GetResourceDestination(),
 		NamespaceName:       req.GetNamespaceName(),
+		IncludeDeleted:      req.GetIncludeDeleted(),
 	}
 	jobSpecs, err := sv.jobSvc.GetByFilter(ctx, jobSpecFilter)
 	if err != nil {

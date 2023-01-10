@@ -92,7 +92,7 @@ func BenchmarkJobRepository(b *testing.B) {
 			num := i % 1000
 			name := fmt.Sprintf("job_%d", num)
 
-			jb, err := jobSpecRepository.GetByNameAndProjectName(ctx, name, project.Name)
+			jb, err := jobSpecRepository.GetByNameAndProjectName(ctx, name, project.Name, false)
 			if err != nil {
 				panic(err)
 			}
@@ -122,7 +122,7 @@ func BenchmarkJobRepository(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			jbs, err := jobSpecRepository.GetAllByProjectName(ctx, project.Name)
+			jbs, err := jobSpecRepository.GetAllByProjectName(ctx, project.Name, false)
 			if err != nil {
 				panic(err)
 			}

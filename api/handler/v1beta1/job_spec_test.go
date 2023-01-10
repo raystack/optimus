@@ -375,8 +375,8 @@ func (s *JobSpecServiceServerTestSuite) TestGetJobSpecification_Fail_JobServiceG
 }
 
 func (s *JobSpecServiceServerTestSuite) TestGetJobSpecifications_Success() {
-	req := &pb.GetJobSpecificationsRequest{JobName: "job-1", NamespaceName: "namespace-1"}
-	jobSpecFilter := models.JobSpecFilter{JobName: req.GetJobName(), NamespaceName: req.GetNamespaceName()}
+	req := &pb.GetJobSpecificationsRequest{JobName: "job-1", NamespaceName: "namespace-1", IncludeDeleted: true}
+	jobSpecFilter := models.JobSpecFilter{JobName: req.GetJobName(), NamespaceName: req.GetNamespaceName(), IncludeDeleted: req.GetIncludeDeleted()}
 
 	execUnit1 := new(mock.YamlMod)
 	execUnit1.On("PluginInfo").Return(&models.PluginInfoResponse{Name: "task"}, nil)

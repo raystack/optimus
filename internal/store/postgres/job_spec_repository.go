@@ -32,52 +32,67 @@ func NewJobSpecRepository(db *gorm.DB, adapter *JobSpecAdapter) (store.JobSpecRe
 	}, nil
 }
 
-func (j jobSpecRepository) GetAllByProjectName(ctx context.Context, projectName string) ([]models.JobSpec, error) {
-	var jobs []Job
-	if err := j.db.WithContext(ctx).
+func (j jobSpecRepository) GetAllByProjectName(ctx context.Context, projectName string, includeDeleted bool) ([]models.JobSpec, error) {
+	query := j.db.WithContext(ctx).
 		Preload("Namespace").
 		Preload("Project").
 		Joins("Project").
-		Where(`"Project"."name" = ?`, projectName).
-		Find(&jobs).Error; err != nil {
+		Where(`"Project"."name" = ?`, projectName)
+
+	if includeDeleted {
+		query = query.Unscoped()
+	}
+
+	var jobs []Job
+	if err := query.Find(&jobs).Error; err != nil {
 		return nil, err
 	}
 	return j.toJobSpecs(jobs)
 }
 
-func (j jobSpecRepository) GetAllByProjectNameAndNamespaceName(ctx context.Context, projectName, namespaceName string) ([]models.JobSpec, error) {
-	var jobs []Job
-	if err := j.db.WithContext(ctx).
+func (j jobSpecRepository) GetAllByProjectNameAndNamespaceName(ctx context.Context, projectName, namespaceName string, includeDeleted bool) ([]models.JobSpec, error) {
+	query := j.db.WithContext(ctx).
 		Preload("Namespace").
 		Preload("Project").
 		Joins("Project").
 		Joins("Namespace").
-		Where(`"Project"."name" = ? and "Namespace"."name" = ?`, projectName, namespaceName).
-		Find(&jobs).Error; err != nil {
+		Where(`"Project"."name" = ? and "Namespace"."name" = ?`, projectName, namespaceName)
+
+	if includeDeleted {
+		query = query.Unscoped()
+	}
+
+	var jobs []Job
+	if err := query.Find(&jobs).Error; err != nil {
 		return nil, err
 	}
 	return j.toJobSpecs(jobs)
 }
 
-func (j jobSpecRepository) GetByNameAndProjectName(ctx context.Context, name, projectName string) (models.JobSpec, error) {
-	job, err := j.getByNameAndProjectName(ctx, name, projectName)
+func (j jobSpecRepository) GetByNameAndProjectName(ctx context.Context, name, projectName string, includeDeleted bool) (models.JobSpec, error) {
+	job, err := j.getByNameAndProjectName(ctx, name, projectName, includeDeleted)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
 	return j.adapter.ToSpec(job)
 }
 
-func (j jobSpecRepository) GetByResourceDestinationURN(ctx context.Context, resourceDestinationURN string) ([]models.JobSpec, error) {
-	var jobs []Job
-	if err := j.db.WithContext(ctx).
+func (j jobSpecRepository) GetByResourceDestinationURN(ctx context.Context, resourceDestinationURN string, includeDeleted bool) ([]models.JobSpec, error) {
+	query := j.db.WithContext(ctx).
 		Preload("Namespace").
 		Preload("Project").
-		Where("destination = ?", resourceDestinationURN).
-		Find(&jobs).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return []models.JobSpec{}, store.ErrResourceNotFound
-		}
+		Where("destination = ?", resourceDestinationURN)
+
+	if includeDeleted {
+		query = query.Unscoped()
+	}
+
+	var jobs []Job
+	if err := query.Find(&jobs).Error; err != nil {
 		return []models.JobSpec{}, err
+	}
+	if len(jobs) == 0 {
+		return []models.JobSpec{}, store.ErrResourceNotFound
 	}
 	return j.toJobSpecs(jobs)
 }
@@ -156,7 +171,7 @@ func (j jobSpecRepository) Save(ctx context.Context, incomingJobSpec models.JobS
 		return err
 	}
 
-	existingJob, err := j.getByNameAndProjectName(ctx, incomingJob.Name, incomingJob.Project.Name)
+	existingJob, err := j.getByNameAndProjectName(ctx, incomingJob.Name, incomingJob.Project.Name, false)
 	if errors.Is(err, store.ErrResourceNotFound) {
 		return j.insert(ctx, incomingJob)
 	} else if err != nil {
@@ -181,14 +196,19 @@ func (j jobSpecRepository) DeleteByID(ctx context.Context, id uuid.UUID) error {
 	})
 }
 
-func (j jobSpecRepository) getByNameAndProjectName(ctx context.Context, name, projectName string) (Job, error) {
-	var job Job
-	if err := j.db.WithContext(ctx).
+func (j jobSpecRepository) getByNameAndProjectName(ctx context.Context, name, projectName string, includeDeleted bool) (Job, error) {
+	query := j.db.WithContext(ctx).
 		Preload("Namespace").
 		Preload("Project").
 		Joins("Project").
-		Where(`"job"."name" = ? and "Project"."name" = ?`, name, projectName).
-		First(&job).Error; err != nil {
+		Where(`"job"."name" = ? and "Project"."name" = ?`, name, projectName)
+
+	if includeDeleted {
+		query = query.Unscoped()
+	}
+
+	var job Job
+	if err := query.First(&job).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return Job{}, store.ErrResourceNotFound
 		}

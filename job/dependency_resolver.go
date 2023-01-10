@@ -107,7 +107,7 @@ func (d *dependencyResolver) GetStaticDependencies(ctx context.Context, jobSpec 
 		if depSpec.Job == nil {
 			switch depSpec.Type {
 			case models.JobSpecDependencyTypeIntra:
-				job, getJobError := d.jobSpecRepo.GetByNameAndProjectName(ctx, depName, projectSpec.Name)
+				job, getJobError := d.jobSpecRepo.GetByNameAndProjectName(ctx, depName, projectSpec.Name, false)
 				if getJobError != nil {
 					err = multierror.Append(err, fmt.Errorf("%s for job %s: %w", ErrUnknownLocalDependency, depName, getJobError))
 				} else {
@@ -126,7 +126,7 @@ func (d *dependencyResolver) GetStaticDependencies(ctx context.Context, jobSpec 
 				} else {
 					projectName := depParts[0]
 					jobName := depParts[1]
-					job, getJobError := d.jobSpecRepo.GetByNameAndProjectName(ctx, jobName, projectName)
+					job, getJobError := d.jobSpecRepo.GetByNameAndProjectName(ctx, jobName, projectName, false)
 					if getJobError != nil {
 						unresolvedDependency, _ := convertDependencyNamesToUnresolvedJobDependency(depName)
 
@@ -190,7 +190,7 @@ func (d *dependencyResolver) resolveInferredDependencies(ctx context.Context, jo
 
 	// get job spec of these destinations and append to current jobSpec
 	for _, depDestination := range jobDependencies {
-		dependencyJobSpecs, err := d.jobSpecRepo.GetByResourceDestinationURN(ctx, depDestination)
+		dependencyJobSpecs, err := d.jobSpecRepo.GetByResourceDestinationURN(ctx, depDestination, false)
 		if err != nil {
 			if errors.Is(err, store.ErrResourceNotFound) {
 				// should not fail for unknown dependency, its okay to not have a upstream job
@@ -251,7 +251,7 @@ func (d *dependencyResolver) GetJobSpecsWithDependencies(ctx context.Context, pr
 	if projectName == "" {
 		return nil, nil, errors.New("project name is empty")
 	}
-	jobSpecs, err := d.jobSpecRepo.GetAllByProjectName(ctx, projectName)
+	jobSpecs, err := d.jobSpecRepo.GetAllByProjectName(ctx, projectName, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -301,7 +301,7 @@ func (d *dependencyResolver) getJobsByResourceDestinations(ctx context.Context, 
 	subjectJobName string, logWriter writer.LogWriter) ([]models.JobSpec, error) {
 	jobSpecDependencyList := []models.JobSpec{}
 	for _, depDestination := range upstreamDestinations {
-		dependencyJobSpec, err := d.jobSpecRepo.GetByResourceDestinationURN(ctx, depDestination)
+		dependencyJobSpec, err := d.jobSpecRepo.GetByResourceDestinationURN(ctx, depDestination, false)
 		if err != nil {
 			if errors.Is(err, store.ErrResourceNotFound) {
 				// should not fail for unknown dependency, its okay to not have a upstream job

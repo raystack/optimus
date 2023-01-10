@@ -72,14 +72,69 @@ func (j *JobSpecRepositoryTestSuite) TestGetAllByProjectName() {
 		ctx := context.Background()
 		projectName := projectTarget.Name
 
-		actualJobSpecs, actualError := repository.GetAllByProjectName(ctx, projectName)
-
+		actualJobSpecs, actualError := repository.GetAllByProjectName(ctx, projectName, false)
 		j.NoError(actualError)
 		j.Len(actualJobSpecs, 2)
 		j.Equal(job1Target.Name, actualJobSpecs[0].Name)
 		j.Equal(job1Target.Project.Name, actualJobSpecs[0].NamespaceSpec.ProjectSpec.Name)
 		j.Equal(job2Target.Name, actualJobSpecs[1].Name)
 		j.Equal(job2Target.Project.Name, actualJobSpecs[1].NamespaceSpec.ProjectSpec.Name)
+	})
+
+	j.Run("should return all jobs within a project including the deleted and nil", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+		pluginRepository.On("GetByName", "").Return(nil, nil)
+
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		projectName := projectTarget.Name
+
+		jobToDelete, err := repository.GetByNameAndProjectName(ctx, job2Target.Name, projectName, false)
+		j.NoError(err)
+
+		err = repository.DeleteByID(ctx, jobToDelete.ID)
+		j.NoError(err)
+
+		actualJobSpecs, actualError := repository.GetAllByProjectName(ctx, projectName, true)
+		j.NoError(actualError)
+		j.Len(actualJobSpecs, 2)
+		j.Equal(job1Target.Name, actualJobSpecs[0].Name)
+		j.Equal(job1Target.Project.Name, actualJobSpecs[0].NamespaceSpec.ProjectSpec.Name)
+		j.Equal(job2Target.Name, actualJobSpecs[1].Name)
+		j.Equal(job2Target.Project.Name, actualJobSpecs[1].NamespaceSpec.ProjectSpec.Name)
+	})
+
+	j.Run("should return all jobs within a project excluding the deleted and nil", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+		pluginRepository.On("GetByName", "").Return(nil, nil)
+
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		projectName := projectTarget.Name
+
+		jobToDelete, err := repository.GetByNameAndProjectName(ctx, job2Target.Name, projectName, false)
+		j.NoError(err)
+
+		err = repository.DeleteByID(ctx, jobToDelete.ID)
+		j.NoError(err)
+
+		actualJobSpecs, actualError := repository.GetAllByProjectName(ctx, projectName, false)
+		j.NoError(actualError)
+		j.Len(actualJobSpecs, 1)
+		j.Equal(job1Target.Name, actualJobSpecs[0].Name)
+		j.Equal(job1Target.Project.Name, actualJobSpecs[0].NamespaceSpec.ProjectSpec.Name)
 	})
 }
 
@@ -110,14 +165,71 @@ func (j *JobSpecRepositoryTestSuite) TestGetAllByProjectNameAndNamespaceName() {
 		projectName := projectTarget.Name
 		namespaceName := namespaceTarget.Name
 
-		actualJobSpecs, actualError := repository.GetAllByProjectNameAndNamespaceName(ctx, projectName, namespaceName)
-
+		actualJobSpecs, actualError := repository.GetAllByProjectNameAndNamespaceName(ctx, projectName, namespaceName, false)
 		j.NoError(actualError)
 		j.Len(actualJobSpecs, 2)
 		j.Equal(job1Target.Name, actualJobSpecs[0].Name)
 		j.Equal(job1Target.Namespace.Name, actualJobSpecs[0].NamespaceSpec.Name)
 		j.Equal(job2Target.Name, actualJobSpecs[1].Name)
 		j.Equal(job2Target.Namespace.Name, actualJobSpecs[1].NamespaceSpec.Name)
+	})
+
+	j.Run("should return all jobs including deleted jobs within a project with the specified namespace and nil", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+		pluginRepository.On("GetByName", "").Return(nil, nil)
+
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		projectName := projectTarget.Name
+		namespaceName := namespaceTarget.Name
+
+		jobToDelete, err := repository.GetByNameAndProjectName(ctx, job2Target.Name, projectName, false)
+		j.NoError(err)
+
+		err = repository.DeleteByID(ctx, jobToDelete.ID)
+		j.NoError(err)
+
+		actualJobSpecs, actualError := repository.GetAllByProjectNameAndNamespaceName(ctx, projectName, namespaceName, true)
+		j.NoError(actualError)
+		j.Len(actualJobSpecs, 2)
+		j.Equal(job1Target.Name, actualJobSpecs[0].Name)
+		j.Equal(job1Target.Namespace.Name, actualJobSpecs[0].NamespaceSpec.Name)
+		j.Equal(job2Target.Name, actualJobSpecs[1].Name)
+		j.Equal(job2Target.Namespace.Name, actualJobSpecs[1].NamespaceSpec.Name)
+	})
+
+	j.Run("should return all jobs excluding deleted jobs within a project with the specified namespace and nil", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+		pluginRepository.On("GetByName", "").Return(nil, nil)
+
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		projectName := projectTarget.Name
+		namespaceName := namespaceTarget.Name
+
+		jobToDelete, err := repository.GetByNameAndProjectName(ctx, job2Target.Name, projectName, false)
+		j.NoError(err)
+
+		err = repository.DeleteByID(ctx, jobToDelete.ID)
+		j.NoError(err)
+
+		actualJobSpecs, actualError := repository.GetAllByProjectNameAndNamespaceName(ctx, projectName, namespaceName, false)
+		j.NoError(actualError)
+		j.Len(actualJobSpecs, 1)
+		j.Equal(job1Target.Name, actualJobSpecs[0].Name)
+		j.Equal(job1Target.Namespace.Name, actualJobSpecs[0].NamespaceSpec.Name)
 	})
 }
 
@@ -144,8 +256,7 @@ func (j *JobSpecRepositoryTestSuite) TestGetByNameAndProjectName() {
 		jobName := "unknown_job"
 		projectName := storedProject.Name
 
-		actualJobSpec, actualError := repository.GetByNameAndProjectName(ctx, jobName, projectName)
-
+		actualJobSpec, actualError := repository.GetByNameAndProjectName(ctx, jobName, projectName, false)
 		j.Error(actualError)
 		j.Empty(actualJobSpec)
 	})
@@ -165,10 +276,61 @@ func (j *JobSpecRepositoryTestSuite) TestGetByNameAndProjectName() {
 		jobName := storedJob.Name
 		projectName := storedProject.Name
 
-		actualJobSpec, actualError := repository.GetByNameAndProjectName(ctx, jobName, projectName)
-
+		actualJobSpec, actualError := repository.GetByNameAndProjectName(ctx, jobName, projectName, false)
 		j.NoError(actualError)
 		j.Equal(jobName, actualJobSpec.Name)
+	})
+
+	j.Run("should return deleted job spec and nil if no error is encountered and include deleted is true", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+		pluginRepository.On("GetByName", "").Return(nil, nil)
+
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		jobName := storedJob.Name
+		projectName := storedProject.Name
+
+		jobToDelete, err := repository.GetByNameAndProjectName(ctx, jobName, storedProject.Name, false)
+		j.NoError(err)
+
+		err = repository.DeleteByID(ctx, jobToDelete.ID)
+		j.NoError(err)
+
+		actualJobSpec, actualError := repository.GetByNameAndProjectName(ctx, jobName, projectName, true)
+		j.NoError(actualError)
+		j.Equal(jobName, actualJobSpec.Name)
+	})
+
+	j.Run("should return job spec excluding the deleted and nil if no error is encountered and include deleted is false", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+		pluginRepository.On("GetByName", "").Return(nil, nil)
+
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		jobName := storedJob.Name
+		projectName := storedProject.Name
+
+		jobToDelete, err := repository.GetByNameAndProjectName(ctx, jobName, storedProject.Name, false)
+		j.NoError(err)
+
+		err = repository.DeleteByID(ctx, jobToDelete.ID)
+		j.NoError(err)
+
+		actualJobSpec, actualError := repository.GetByNameAndProjectName(ctx, jobName, projectName, false)
+		j.Error(actualError)
+		j.Empty(actualJobSpec)
 	})
 }
 
@@ -180,24 +342,6 @@ func (j *JobSpecRepositoryTestSuite) TestGetByResourceDestinationURN() {
 	insertRecords(j.db, []*postgres.Project{storedProject})
 	insertRecords(j.db, []*postgres.Namespace{storedNamespace})
 	insertRecords(j.db, []*postgres.Job{storedJob})
-
-	j.Run("should return empty and error if error is encountered", func() {
-		pluginRepository := mock.NewPluginRepository(j.T())
-		db := j.db
-		adapter := postgres.NewAdapter(pluginRepository)
-		repository, err := postgres.NewJobSpecRepository(db, adapter)
-		if err != nil {
-			panic(err)
-		}
-
-		ctx := context.Background()
-		destination := "unknown_destination"
-
-		actualJobSpec, actualError := repository.GetByResourceDestinationURN(ctx, destination)
-
-		j.Error(actualError)
-		j.Empty(actualJobSpec)
-	})
 
 	j.Run("should return job and nil if no error encountered", func() {
 		pluginRepository := mock.NewPluginRepository(j.T())
@@ -213,8 +357,32 @@ func (j *JobSpecRepositoryTestSuite) TestGetByResourceDestinationURN() {
 		ctx := context.Background()
 		destination := storedJob.Destination
 
-		actualJobSpec, actualError := repository.GetByResourceDestinationURN(ctx, destination)
+		actualJobSpec, actualError := repository.GetByResourceDestinationURN(ctx, destination, false)
+		j.NoError(actualError)
+		j.Equal(storedJob.Name, actualJobSpec[0].Name)
+	})
 
+	j.Run("should return job including the deleted and nil if no error encountered", func() {
+		pluginRepository := mock.NewPluginRepository(j.T())
+		pluginRepository.On("GetByName", "").Return(nil, nil)
+
+		db := j.db
+		adapter := postgres.NewAdapter(pluginRepository)
+		repository, err := postgres.NewJobSpecRepository(db, adapter)
+		if err != nil {
+			panic(err)
+		}
+
+		ctx := context.Background()
+		destination := storedJob.Destination
+
+		jobToDelete, err := repository.GetByNameAndProjectName(ctx, storedJob.Name, storedProject.Name, false)
+		j.NoError(err)
+
+		err = repository.DeleteByID(ctx, jobToDelete.ID)
+		j.NoError(err)
+
+		actualJobSpec, actualError := repository.GetByResourceDestinationURN(ctx, destination, true)
 		j.NoError(actualError)
 		j.Equal(storedJob.Name, actualJobSpec[0].Name)
 	})
