@@ -223,6 +223,15 @@ func (j JobService) GetByFilter(ctx context.Context, filters ...filter.FilterOpt
 		return jobs, nil
 	}
 
+	// when project name and namespace name exist, filter by tenant
+	if f.Contains(filter.ProjectName, filter.NamespaceName) {
+		jobTenant, err := tenant.NewTenant(f.GetStringValue(filter.ProjectName), f.GetStringValue(filter.NamespaceName))
+		if err != nil {
+			return nil, err
+		}
+		return j.repo.GetAllByTenant(ctx, jobTenant)
+	}
+
 	// when project name exist, filter by project name
 	if f.Contains(filter.ProjectName) {
 		projectName, _ := tenant.ProjectNameFrom(f.GetStringValue(filter.ProjectName))

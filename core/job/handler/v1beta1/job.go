@@ -185,6 +185,7 @@ func (jh *JobHandler) GetJobSpecifications(ctx context.Context, req *pb.GetJobSp
 		filter.WithString(filter.ResourceDestination, req.GetResourceDestination()),
 		filter.WithString(filter.ProjectName, req.GetProjectName()),
 		filter.WithString(filter.JobName, req.GetJobName()),
+		filter.WithString(filter.NamespaceName, req.GetNamespaceName()),
 	)
 
 	jobSpecResponseProtos := []*pb.JobSpecificationResponse{}
