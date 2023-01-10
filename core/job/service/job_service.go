@@ -60,10 +60,10 @@ type JobRepository interface {
 	Update(context.Context, []*job.Job) (updatedJobs []*job.Job, err error)
 	Delete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, cleanHistory bool) error
 
-	GetByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) (*job.Job, error)
-	GetAllByResourceDestination(ctx context.Context, resourceDestination job.ResourceURN) ([]*job.Job, error)
-	GetAllByTenant(ctx context.Context, jobTenant tenant.Tenant) ([]*job.Job, error)
-	GetAllByProjectName(ctx context.Context, projectName tenant.ProjectName) ([]*job.Job, error)
+	GetByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, includeDeleted bool) (*job.Job, error)
+	GetAllByResourceDestination(ctx context.Context, resourceDestination job.ResourceURN, includeDeleted bool) ([]*job.Job, error)
+	GetAllByTenant(ctx context.Context, jobTenant tenant.Tenant, includeDeleted bool) ([]*job.Job, error)
+	GetAllByProjectName(ctx context.Context, projectName tenant.ProjectName, includeDeleted bool) ([]*job.Job, error)
 
 	ResolveUpstreams(context.Context, tenant.ProjectName, []job.Name) (map[job.Name][]*job.Upstream, error)
 	ReplaceUpstreams(context.Context, []*job.WithUpstream) error
@@ -166,7 +166,7 @@ func (j JobService) GetByFilter(ctx context.Context, filters ...filter.FilterOpt
 	// when resource destination exist, filter by destination
 	if f.Contains(filter.ResourceDestination) {
 		resourceDestination := job.ResourceURN(f.GetStringValue(filter.ResourceDestination))
-		return j.repo.GetAllByResourceDestination(ctx, resourceDestination)
+		return j.repo.GetAllByResourceDestination(ctx, resourceDestination, f.GetBoolValue(filter.IncludeDeleted))
 	}
 
 	// when project name and job names exist, filter by project and job names
@@ -179,7 +179,7 @@ func (j JobService) GetByFilter(ctx context.Context, filters ...filter.FilterOpt
 		var jobs []*job.Job
 		for _, jobNameStr := range jobNames {
 			jobName, _ := job.NameFrom(jobNameStr)
-			fetchedJob, err := j.repo.GetByJobName(ctx, projectName, jobName)
+			fetchedJob, err := j.repo.GetByJobName(ctx, projectName, jobName, f.GetBoolValue(filter.IncludeDeleted))
 			if err != nil {
 				if !errors.IsErrorType(err, errors.ErrNotFound) {
 					me.Append(err)
@@ -195,7 +195,7 @@ func (j JobService) GetByFilter(ctx context.Context, filters ...filter.FilterOpt
 	if f.Contains(filter.ProjectName, filter.JobName) {
 		projectName, _ := tenant.ProjectNameFrom(f.GetStringValue(filter.ProjectName))
 		jobName, _ := job.NameFrom(f.GetStringValue(filter.JobName))
-		fetchedJob, err := j.repo.GetByJobName(ctx, projectName, jobName)
+		fetchedJob, err := j.repo.GetByJobName(ctx, projectName, jobName, f.GetBoolValue(filter.IncludeDeleted))
 		if err != nil {
 			if errors.IsErrorType(err, errors.ErrNotFound) {
 				return []*job.Job{}, nil
@@ -214,7 +214,7 @@ func (j JobService) GetByFilter(ctx context.Context, filters ...filter.FilterOpt
 			if err != nil {
 				return nil, err
 			}
-			tenantJobs, err := j.repo.GetAllByTenant(ctx, jobTenant)
+			tenantJobs, err := j.repo.GetAllByTenant(ctx, jobTenant, f.GetBoolValue(filter.IncludeDeleted))
 			if err != nil {
 				return nil, err
 			}
@@ -229,13 +229,13 @@ func (j JobService) GetByFilter(ctx context.Context, filters ...filter.FilterOpt
 		if err != nil {
 			return nil, err
 		}
-		return j.repo.GetAllByTenant(ctx, jobTenant)
+		return j.repo.GetAllByTenant(ctx, jobTenant, f.GetBoolValue(filter.IncludeDeleted))
 	}
 
 	// when project name exist, filter by project name
 	if f.Contains(filter.ProjectName) {
 		projectName, _ := tenant.ProjectNameFrom(f.GetStringValue(filter.ProjectName))
-		return j.repo.GetAllByProjectName(ctx, projectName)
+		return j.repo.GetAllByProjectName(ctx, projectName, f.GetBoolValue(filter.IncludeDeleted))
 	}
 
 	return nil, fmt.Errorf("no filter matched")
@@ -459,7 +459,7 @@ func (j JobService) bulkDelete(ctx context.Context, jobTenant tenant.Tenant, toD
 func (j JobService) differentiateSpecs(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec, jobNamesWithValidationError []job.Name) (added []*job.Spec, modified []*job.Spec, deleted []*job.Spec, err error) {
 	me := errors.NewMultiError("differentiate specs errors")
 
-	existingJobs, err := j.repo.GetAllByTenant(ctx, jobTenant)
+	existingJobs, err := j.repo.GetAllByTenant(ctx, jobTenant, false)
 	me.Append(err)
 
 	var addedSpecs, modifiedSpecs, deletedSpecs []*job.Spec
@@ -625,7 +625,7 @@ func (j JobService) GetJobBasicInfo(ctx context.Context, jobTenant tenant.Tenant
 }
 
 func (j JobService) getJobNamesWithSameDestination(ctx context.Context, subjectJob *job.Job) (string, error) {
-	sameDestinationJobs, err := j.repo.GetAllByResourceDestination(ctx, subjectJob.Destination())
+	sameDestinationJobs, err := j.repo.GetAllByResourceDestination(ctx, subjectJob.Destination(), false)
 	if err != nil {
 		return "", err
 	}

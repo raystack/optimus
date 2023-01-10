@@ -51,9 +51,9 @@ func TestInternalUpstreamResolver(t *testing.T) {
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
-			jobRepo.On("GetAllByResourceDestination", ctx, jobASources[0]).Return([]*job.Job{jobB}, nil)
-			jobRepo.On("GetAllByResourceDestination", ctx, jobASources[1]).Return([]*job.Job{}, nil)
-			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specC.Name()).Return(jobC, nil)
+			jobRepo.On("GetAllByResourceDestination", ctx, jobASources[0], false).Return([]*job.Job{jobB}, nil)
+			jobRepo.On("GetAllByResourceDestination", ctx, jobASources[1], false).Return([]*job.Job{}, nil)
+			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specC.Name(), false).Return(jobC, nil)
 
 			jobWithUnresolvedUpstream := job.NewWithUpstream(jobA, []*job.Upstream{unresolvedUpstreamB, unresolvedUpstreamC, unresolvedUpstreamD})
 			expectedJobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{internalUpstreamB, internalUpstreamC, unresolvedUpstreamD})
@@ -72,7 +72,7 @@ func TestInternalUpstreamResolver(t *testing.T) {
 			jobXDestination := job.ResourceURN("resource-X")
 			jobX := job.NewJob(sampleTenant, specX, jobXDestination, []job.ResourceURN{"resource-B"})
 
-			jobRepo.On("GetAllByResourceDestination", ctx, jobX.Sources()[0]).Return([]*job.Job{jobB}, nil)
+			jobRepo.On("GetAllByResourceDestination", ctx, jobX.Sources()[0], false).Return([]*job.Job{jobB}, nil)
 
 			jobWithUnresolvedUpstream := job.NewWithUpstream(jobX, []*job.Upstream{unresolvedUpstreamB})
 			expectedJobWithUpstream := job.NewWithUpstream(jobX, []*job.Upstream{internalUpstreamB})
@@ -91,7 +91,7 @@ func TestInternalUpstreamResolver(t *testing.T) {
 			jobXDestination := job.ResourceURN("resource-X")
 			jobX := job.NewJob(sampleTenant, specX, jobXDestination, nil)
 
-			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specC.Name()).Return(jobC, nil)
+			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specC.Name(), false).Return(jobC, nil)
 
 			jobWithUnresolvedUpstream := job.NewWithUpstream(jobX, []*job.Upstream{unresolvedUpstreamC})
 			expectedJobWithUpstream := job.NewWithUpstream(jobX, []*job.Upstream{internalUpstreamC})
@@ -107,10 +107,10 @@ func TestInternalUpstreamResolver(t *testing.T) {
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
-			jobRepo.On("GetAllByResourceDestination", ctx, jobASources[0]).Return([]*job.Job{}, errors.New("internal error"))
-			jobRepo.On("GetAllByResourceDestination", ctx, jobASources[1]).Return([]*job.Job{}, nil)
+			jobRepo.On("GetAllByResourceDestination", ctx, jobASources[0], false).Return([]*job.Job{}, errors.New("internal error"))
+			jobRepo.On("GetAllByResourceDestination", ctx, jobASources[1], false).Return([]*job.Job{}, nil)
 
-			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specC.Name()).Return(jobC, nil)
+			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specC.Name(), false).Return(jobC, nil)
 
 			jobWithUnresolvedUpstream := job.NewWithUpstream(jobA, []*job.Upstream{unresolvedUpstreamB, unresolvedUpstreamC, unresolvedUpstreamD})
 
@@ -133,8 +133,8 @@ func TestInternalUpstreamResolver(t *testing.T) {
 			jobEDestination := job.ResourceURN("resource-E")
 			jobE := job.NewJob(sampleTenant, specE, jobEDestination, nil)
 
-			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), job.Name("job-unknown")).Return(nil, errors.New("not found"))
-			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specC.Name()).Return(jobC, nil)
+			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), job.Name("job-unknown"), false).Return(nil, errors.New("not found"))
+			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specC.Name(), false).Return(jobC, nil)
 
 			unresolvedUpstreamUnknown := job.NewUpstreamUnresolvedStatic("job-unknown", sampleTenant.ProjectName())
 			jobWithUnresolvedUpstream := job.NewWithUpstream(jobE, []*job.Upstream{unresolvedUpstreamUnknown, unresolvedUpstreamC})
@@ -161,7 +161,7 @@ func TestInternalUpstreamResolver(t *testing.T) {
 			jobEDestination := job.ResourceURN("resource-E")
 			jobE := job.NewJob(sampleTenant, specE, jobEDestination, nil)
 
-			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specC.Name()).Return(jobC, nil)
+			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specC.Name(), false).Return(jobC, nil)
 
 			unresolvedUpstreamUnknown := job.NewUpstreamUnresolvedStatic("job-unknown", sampleTenant.ProjectName())
 			jobWithUnresolvedUpstream := job.NewWithUpstream(jobE, []*job.Upstream{unresolvedUpstreamUnknown, unresolvedUpstreamC})

@@ -38,8 +38,8 @@ type InternalUpstreamResolver interface {
 type JobRepository interface {
 	ResolveUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error)
 
-	GetAllByResourceDestination(ctx context.Context, resourceDestination job.ResourceURN) ([]*job.Job, error)
-	GetByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) (*job.Job, error)
+	GetAllByResourceDestination(ctx context.Context, resourceDestination job.ResourceURN, includeDeleted bool) ([]*job.Job, error)
+	GetByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, includeDeleted bool) (*job.Job, error)
 }
 
 func (u UpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job, logWriter writer.LogWriter) ([]*job.WithUpstream, error) {

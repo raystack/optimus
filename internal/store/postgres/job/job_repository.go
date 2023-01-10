@@ -20,6 +20,8 @@ const (
 	task_name, task_config, window_spec, assets, hooks, metadata, destination, sources, project_name, namespace_name, created_at, updated_at`
 
 	jobColumns = `id, ` + jobColumnsToStore + `, deleted_at`
+
+	nullDeletedAtFilter = " AND deleted_at IS NULL"
 )
 
 type JobRepository struct {
@@ -44,7 +46,7 @@ func (j JobRepository) Add(ctx context.Context, jobs []*job.Job) ([]*job.Job, er
 }
 
 func (j JobRepository) insertJobSpec(ctx context.Context, jobEntity *job.Job) error {
-	existingJob, err := j.get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name(), false)
+	existingJob, err := j.get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name(), true)
 	if err != nil && !errors.IsErrorType(err, errors.ErrNotFound) {
 		return errors.NewError(errors.ErrInternalError, job.EntityJob, fmt.Sprintf("failed to check job %s in db: %s", jobEntity.Spec().Name().String(), err.Error()))
 	}
@@ -106,7 +108,7 @@ func (j JobRepository) Update(ctx context.Context, jobs []*job.Job) ([]*job.Job,
 }
 
 func (j JobRepository) preCheckUpdate(ctx context.Context, jobEntity *job.Job) error {
-	existingJob, err := j.get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name(), false)
+	existingJob, err := j.get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name(), true)
 	if err != nil && errors.IsErrorType(err, errors.ErrNotFound) {
 		return errors.NewError(errors.ErrNotFound, job.EntityJob, fmt.Sprintf("job %s not exists yet", jobEntity.Spec().Name()))
 	}
@@ -162,12 +164,11 @@ WHERE
 	return nil
 }
 
-func (j JobRepository) get(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, onlyActiveJob bool) (*Spec, error) {
+func (j JobRepository) get(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, includeDeleted bool) (*Spec, error) {
 	getJobByNameAtProject := `SELECT ` + jobColumns + ` FROM job WHERE name = $1 AND project_name = $2`
 
-	if onlyActiveJob {
-		jobDeletedFilter := " AND deleted_at IS NULL"
-		getJobByNameAtProject += jobDeletedFilter
+	if !includeDeleted {
+		getJobByNameAtProject += nullDeletedAtFilter
 	}
 
 	spec, err := FromRow(j.db.QueryRow(ctx, getJobByNameAtProject, jobName.String(), projectName.String()))
@@ -362,8 +363,8 @@ func (JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstr
 	return upstreams, nil
 }
 
-func (j JobRepository) GetByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) (*job.Job, error) {
-	spec, err := j.get(ctx, projectName, jobName, true)
+func (j JobRepository) GetByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, includeDeleted bool) (*job.Job, error) {
+	spec, err := j.get(ctx, projectName, jobName, includeDeleted)
 	if err != nil {
 		return nil, err
 	}
@@ -376,10 +377,14 @@ func (j JobRepository) GetByJobName(ctx context.Context, projectName tenant.Proj
 	return job, nil
 }
 
-func (j JobRepository) GetAllByProjectName(ctx context.Context, projectName tenant.ProjectName) ([]*job.Job, error) {
+func (j JobRepository) GetAllByProjectName(ctx context.Context, projectName tenant.ProjectName, includeDeleted bool) ([]*job.Job, error) {
 	me := errors.NewMultiError("get all job specs by project name errors")
 
-	getAllByProjectName := `SELECT ` + jobColumns + ` FROM job WHERE project_name = $1 AND deleted_at IS NULL;`
+	getAllByProjectName := `SELECT ` + jobColumns + ` FROM job WHERE project_name = $1`
+
+	if !includeDeleted {
+		getAllByProjectName += nullDeletedAtFilter
+	}
 
 	rows, err := j.db.Query(ctx, getAllByProjectName, projectName)
 	if err != nil {
@@ -407,10 +412,14 @@ func (j JobRepository) GetAllByProjectName(ctx context.Context, projectName tena
 	return jobs, me.ToErr()
 }
 
-func (j JobRepository) GetAllByResourceDestination(ctx context.Context, resourceDestination job.ResourceURN) ([]*job.Job, error) {
+func (j JobRepository) GetAllByResourceDestination(ctx context.Context, resourceDestination job.ResourceURN, includeDeleted bool) ([]*job.Job, error) {
 	me := errors.NewMultiError("get all job specs by resource destination")
 
-	getAllByDestination := `SELECT ` + jobColumns + ` FROM job WHERE destination = $1 AND deleted_at IS NULL;`
+	getAllByDestination := `SELECT ` + jobColumns + ` FROM job WHERE destination = $1`
+
+	if !includeDeleted {
+		getAllByDestination += nullDeletedAtFilter
+	}
 
 	rows, err := j.db.Query(ctx, getAllByDestination, resourceDestination)
 	if err != nil {
@@ -666,13 +675,17 @@ func (j JobRepository) softDelete(ctx context.Context, projectName tenant.Projec
 	return nil
 }
 
-func (j JobRepository) GetAllByTenant(ctx context.Context, jobTenant tenant.Tenant) ([]*job.Job, error) {
+func (j JobRepository) GetAllByTenant(ctx context.Context, jobTenant tenant.Tenant, includeDeleted bool) ([]*job.Job, error) {
 	me := errors.NewMultiError("get all job specs by project name errors")
 
-	getAllByProjectName := `SELECT ` + jobColumns + ` FROM job
-	WHERE project_name = $1 AND namespace_name = $2 AND deleted_at IS NULL;`
+	getAllByTenant := `SELECT ` + jobColumns + ` FROM job
+	WHERE project_name = $1 AND namespace_name = $2`
 
-	rows, err := j.db.Query(ctx, getAllByProjectName, jobTenant.ProjectName(), jobTenant.NamespaceName())
+	if !includeDeleted {
+		getAllByTenant += nullDeletedAtFilter
+	}
+
+	rows, err := j.db.Query(ctx, getAllByTenant, jobTenant.ProjectName(), jobTenant.NamespaceName())
 	if err != nil {
 		return nil, errors.Wrap(job.EntityJob, "error while jobs for project:  "+jobTenant.ProjectName().String(), err)
 	}
@@ -729,8 +742,7 @@ func (j JobRepository) GetDownstreamByDestination(ctx context.Context, projectNa
 SELECT
 	name as job_name, project_name, namespace_name, task_name
 FROM job
-WHERE project_name = $1 AND $2 = ANY(sources)
-AND deleted_at IS NULL;`
+WHERE project_name = $1 AND $2 = ANY(sources)` + nullDeletedAtFilter
 
 	rows, err := j.db.Query(ctx, query, projectName, destination)
 	if err != nil {

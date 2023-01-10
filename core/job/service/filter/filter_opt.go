@@ -10,6 +10,7 @@ const (
 	bitOnNamespaceNames      uint64 = 1 << 3
 	bitOnJobNames            uint64 = 1 << 4
 	bitOnNamespaceName       uint64 = 1 << 5
+	bitOnIncludeDeleted      uint64 = 1 << 6
 )
 
 const (
@@ -19,6 +20,7 @@ const (
 	JobName             = Operand(bitOnJobName)
 	JobNames            = Operand(bitOnJobNames)
 	ResourceDestination = Operand(bitOnResourceDestination)
+	IncludeDeleted      = Operand(bitOnIncludeDeleted)
 )
 
 func WithString(operand Operand, value string) FilterOpt {
@@ -36,5 +38,12 @@ func WithStringArray(operand Operand, value []string) FilterOpt {
 			f.bits |= uint64(operand)
 			f.value[operand] = value
 		}
+	}
+}
+
+func WithBool(operand Operand, value bool) FilterOpt {
+	return func(f *filter) {
+		f.bits |= uint64(operand)
+		f.value[operand] = value
 	}
 }

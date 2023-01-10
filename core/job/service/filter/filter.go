@@ -40,6 +40,18 @@ func (f *filter) GetStringArrayValue(operand Operand) []string {
 	return val
 }
 
+func (f *filter) GetBoolValue(operand Operand) bool {
+	v, ok := f.value[operand]
+	if !ok {
+		return false
+	}
+	val, ok := v.(bool)
+	if !ok {
+		return false
+	}
+	return val
+}
+
 // Contains provide conditional check for the filter if all operands satisfied by the filter.
 func (f *filter) Contains(operands ...Operand) bool {
 	for _, operand := range operands {
