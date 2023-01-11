@@ -42,14 +42,25 @@ type JobRepository interface {
 	GetByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) (*job.Job, error)
 }
 
-func (u UpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job, logWriter writer.LogWriter) ([]*job.WithUpstream, error) {
-	me := errors.NewMultiError("bulk resolve jobs errors")
+func (u UpstreamResolver) GetUnresolved(jobs []*job.Job) ([]*job.WithUpstream, error) {
+	me := errors.NewMultiError("get unresolved upstream errors")
 
 	var jobsWithUnresolvedUpstream []*job.WithUpstream
 	for _, subjectJob := range jobs {
 		jobWithUnresolvedUpstream, err := u.getJobWithUnresolvedUpstream(subjectJob)
 		me.Append(err)
 		jobsWithUnresolvedUpstream = append(jobsWithUnresolvedUpstream, jobWithUnresolvedUpstream)
+	}
+
+	return jobsWithUnresolvedUpstream, errors.MultiToError(me)
+}
+
+func (u UpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job, logWriter writer.LogWriter) ([]*job.WithUpstream, error) {
+	me := errors.NewMultiError("bulk resolve jobs errors")
+
+	jobsWithUnresolvedUpstream, err := u.GetUnresolved(jobs)
+	if err != nil {
+		me.Append(err)
 	}
 
 	jobsWithResolvedInternalUpstreams, err := u.internalUpstreamResolver.BulkResolve(ctx, projectName, jobsWithUnresolvedUpstream)

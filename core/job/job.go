@@ -34,7 +34,7 @@ func (j Job) Spec() *Spec {
 	return j.spec
 }
 
-func (j Job) GetName() string { // to support multiroot DataTree
+func (j Job) GetName() string {
 	return j.spec.name.String()
 }
 
@@ -120,6 +120,10 @@ type WithUpstream struct {
 
 func NewWithUpstream(job *Job, upstreams []*Upstream) *WithUpstream {
 	return &WithUpstream{job: job, upstreams: upstreams}
+}
+
+func (w WithUpstream) GetName() string { // to support multiroot DataTree
+	return w.job.spec.name.String()
 }
 
 func (w WithUpstream) Job() *Job {
