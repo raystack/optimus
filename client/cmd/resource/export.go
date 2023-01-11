@@ -75,9 +75,10 @@ func (e *exportCommand) PreRunE(_ *cobra.Command, _ []string) error {
 		return nil
 	}
 
+	e.logger.Info("Loading client config from %s", e.configFilePath)
 	cfg, err := config.LoadClientConfig(e.configFilePath)
 	if err != nil {
-		e.logger.Warn("error is encountered when reading config file: %s", err)
+		e.logger.Warn("error is encountered when loading config file: %s", err)
 	} else {
 		e.host = cfg.Host
 	}
@@ -88,28 +89,36 @@ func (e *exportCommand) PreRunE(_ *cobra.Command, _ []string) error {
 }
 
 func (e *exportCommand) RunE(_ *cobra.Command, _ []string) error {
+	e.logger.Info("Validating input")
 	if err := e.validate(); err != nil {
 		return err
 	}
 
 	var success bool
 	if e.projectName != "" && e.namespaceName != "" && e.resourceName != "" {
+		e.logger.Info("Downloading resource with project [%s] namespace [%s] resource [%s]", e.projectName, e.namespaceName, e.resourceName)
 		success = e.downloadSpecificResource(e.projectName, e.namespaceName, e.resourceName)
 	} else if e.projectName != "" && e.namespaceName != "" {
+		e.logger.Info("Downloading all resources within project [%s] namespace [%s]", e.projectName, e.namespaceName)
 		success = e.downloadByProjectNameAndNamespaceName(e.projectName, e.namespaceName)
 	} else if e.projectName != "" {
+		e.logger.Info("Downloading all resources within project [%s]", e.projectName)
 		success = e.downloadByProjectName(e.projectName)
 	} else {
+		e.logger.Info("Downloading all resources")
 		success = e.downloadAll()
 	}
 
 	if !success {
+		e.logger.Error("Download process failed")
 		return errors.New("encountered one or more errors during download resources")
 	}
+	e.logger.Info("Download process success")
 	return nil
 }
 
 func (e *exportCommand) downloadAll() bool {
+	e.logger.Info("Fetching all project names")
 	projectNames, err := e.fetchProjectNames()
 	if err != nil {
 		e.logger.Error("error is encountered when fetching project names: %s", err)
@@ -130,6 +139,7 @@ func (e *exportCommand) downloadAll() bool {
 }
 
 func (e *exportCommand) downloadByProjectName(projectName string) bool {
+	e.logger.Info("Fetching all namespace names for project [%s]", projectName)
 	namespaceNames, err := e.fetchNamespaceNames(projectName)
 	if err != nil {
 		e.logger.Error("error is encountered when fetching namespace names for project [%s]: %s", projectName, err)
@@ -146,6 +156,7 @@ func (e *exportCommand) downloadByProjectName(projectName string) bool {
 }
 
 func (e *exportCommand) downloadByProjectNameAndNamespaceName(projectName, namespaceName string) bool {
+	e.logger.Info("Fetching all resources for project [%s] namespace [%s]", projectName, namespaceName)
 	resources, err := e.fetchAllResources(projectName, namespaceName)
 	if err != nil {
 		e.logger.Error("error is encountered when fetching resource for project [%s] namespace [%s]: %s", projectName, namespaceName, err)
@@ -159,6 +170,7 @@ func (e *exportCommand) downloadByProjectNameAndNamespaceName(projectName, names
 }
 
 func (e *exportCommand) downloadSpecificResource(projectName, namespaceName, resourceName string) bool {
+	e.logger.Info("Fetching resource [%s] for project [%s] namespace [%s]", resourceName, projectName, namespaceName)
 	resource, err := e.fetchSpecificResource(projectName, namespaceName, resourceName)
 	if err != nil {
 		e.logger.Error("error is encountered when fetching resource for project [%s] namespace [%s]: %s", projectName, namespaceName, err)
@@ -172,9 +184,13 @@ func (e *exportCommand) downloadSpecificResource(projectName, namespaceName, res
 }
 
 func (e *exportCommand) writeResources(projectName, namespaceName string, resources []*model.ResourceSpec) error {
+	e.logger.Info("Writing resources for project [%s] namespace [%s]", projectName, namespaceName)
+
 	var errMsgs []string
 	for _, res := range resources {
 		dirPath := path.Join(e.outputDirPath, projectName, namespaceName, "resources", e.storeName, res.Name)
+
+		e.logger.Info("Writing resource [%s] to [%s]", res.Name, dirPath)
 		if err := e.writer.Write(dirPath, res); err != nil {
 			errMsgs = append(errMsgs, err.Error())
 		}
