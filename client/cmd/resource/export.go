@@ -68,24 +68,26 @@ func NewExportCommand() *cobra.Command {
 }
 
 func (e *exportCommand) PreRunE(_ *cobra.Command, _ []string) error {
+	readWriter, err := specio.NewResourceSpecReadWriter(afero.NewOsFs())
+	if err != nil {
+		return err
+	}
+	e.writer = readWriter
+
 	if e.host != "" {
 		return nil
 	}
-	if e.configFilePath == "" {
-		return nil
-	}
 
-	e.logger.Info("Loading client config from %s", e.configFilePath)
+	if e.configFilePath != "" {
+		e.logger.Info("Loading client config from %s", e.configFilePath)
+	}
 	cfg, err := config.LoadClientConfig(e.configFilePath)
 	if err != nil {
 		e.logger.Warn("error is encountered when loading config file: %s", err)
 	} else {
 		e.host = cfg.Host
 	}
-
-	readWriter, err := specio.NewResourceSpecReadWriter(afero.NewOsFs())
-	e.writer = readWriter
-	return err
+	return nil
 }
 
 func (e *exportCommand) RunE(_ *cobra.Command, _ []string) error {
@@ -190,7 +192,7 @@ func (e *exportCommand) writeResources(projectName, namespaceName string, resour
 	for _, res := range resources {
 		dirPath := path.Join(e.outputDirPath, projectName, namespaceName, "resources", e.storeName, res.Name)
 
-		e.logger.Info("Writing resource [%s] to [%s]", res.Name, dirPath)
+		e.logger.Info("Writing resource to [%s]", dirPath)
 		if err := e.writer.Write(dirPath, res); err != nil {
 			errMsgs = append(errMsgs, err.Error())
 		}
