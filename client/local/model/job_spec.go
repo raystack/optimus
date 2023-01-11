@@ -536,7 +536,7 @@ func toJobSpecBehavior(protoBehavior *pb.JobSpecification_Behavior, dependsOnPas
 		if protoBehavior.Notify != nil {
 			for _, protoNotifier := range protoBehavior.Notify {
 				notifier := JobSpecBehaviorNotifier{
-					On:       protoNotifier.On.String(),
+					On:       utils.FromEnumProto(protoNotifier.On.String(), "type"),
 					Config:   protoNotifier.Config,
 					Channels: protoNotifier.Channels,
 				}
