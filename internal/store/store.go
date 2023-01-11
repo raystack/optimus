@@ -20,11 +20,11 @@ const (
 )
 
 type JobSpecRepository interface {
-	GetAllByProjectName(ctx context.Context, projectName string, includeDeleted bool) ([]models.JobSpec, error)
-	GetAllByProjectNameAndNamespaceName(ctx context.Context, projectName, namespaceName string, includeDeleted bool) ([]models.JobSpec, error)
+	GetAllByProjectName(ctx context.Context, projectName string) ([]models.JobSpec, error)
+	GetAllByProjectNameAndNamespaceName(ctx context.Context, projectName, namespaceName string) ([]models.JobSpec, error)
 
-	GetByNameAndProjectName(ctx context.Context, name, projectName string, includeDeleted bool) (models.JobSpec, error)
-	GetByResourceDestinationURN(ctx context.Context, resourceDestinationURN string, includeDeleted bool) ([]models.JobSpec, error)
+	GetByNameAndProjectName(ctx context.Context, name, projectName string) (models.JobSpec, error)
+	GetByResourceDestinationURN(ctx context.Context, resourceDestinationURN string) ([]models.JobSpec, error)
 
 	GetDependentJobs(ctx context.Context, jobName, resourceDestinationURN, projectName string) ([]models.JobSpec, error)
 	GetInferredDependenciesPerJobID(ctx context.Context, projectName string) (map[uuid.UUID][]models.JobSpec, error)

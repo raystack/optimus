@@ -145,7 +145,7 @@ func (srv *Service) Create(ctx context.Context, namespace models.NamespaceSpec, 
 		return models.JobSpec{}, fmt.Errorf("failed to save job: %s: %w", spec.Name, err)
 	}
 
-	result, err := srv.jobSpecRepository.GetByNameAndProjectName(ctx, spec.Name, spec.GetProjectSpec().Name, false)
+	result, err := srv.jobSpecRepository.GetByNameAndProjectName(ctx, spec.Name, spec.GetProjectSpec().Name)
 	if err != nil {
 		return models.JobSpec{}, fmt.Errorf("failed to fetch job on create: %s: %w", spec.Name, err)
 	}
@@ -209,7 +209,7 @@ func (srv *Service) bulkCreate(ctx context.Context, namespace models.NamespaceSp
 // GetByName fetches a Job by name for a specific namespace
 // TODO: replace namespace with project name
 func (srv *Service) GetByName(ctx context.Context, name string, namespace models.NamespaceSpec) (models.JobSpec, error) {
-	jobSpec, err := srv.jobSpecRepository.GetByNameAndProjectName(ctx, name, namespace.ProjectSpec.Name, false)
+	jobSpec, err := srv.jobSpecRepository.GetByNameAndProjectName(ctx, name, namespace.ProjectSpec.Name)
 	if err != nil {
 		return models.JobSpec{}, fmt.Errorf("failed to retrieve job: %w", err)
 	}
@@ -218,7 +218,7 @@ func (srv *Service) GetByName(ctx context.Context, name string, namespace models
 
 func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter) ([]models.JobSpec, error) {
 	if filter.ResourceDestination != "" {
-		jobSpecs, err := srv.jobSpecRepository.GetByResourceDestinationURN(ctx, filter.ResourceDestination, filter.IncludeDeleted)
+		jobSpecs, err := srv.jobSpecRepository.GetByResourceDestinationURN(ctx, filter.ResourceDestination)
 		if err != nil {
 			if errors.Is(err, store.ErrResourceNotFound) {
 				return []models.JobSpec{}, nil
@@ -228,7 +228,7 @@ func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter
 		return jobSpecs, nil
 	}
 	if filter.JobName != "" && filter.ProjectName != "" {
-		jobSpec, err := srv.jobSpecRepository.GetByNameAndProjectName(ctx, filter.JobName, filter.ProjectName, filter.IncludeDeleted)
+		jobSpec, err := srv.jobSpecRepository.GetByNameAndProjectName(ctx, filter.JobName, filter.ProjectName)
 		if err != nil {
 			if errors.Is(err, store.ErrResourceNotFound) {
 				return []models.JobSpec{}, nil
@@ -238,7 +238,7 @@ func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter
 		return []models.JobSpec{jobSpec}, nil
 	}
 	if filter.NamespaceName != "" && filter.ProjectName != "" {
-		jobSpecs, err := srv.jobSpecRepository.GetAllByProjectNameAndNamespaceName(ctx, filter.ProjectName, filter.NamespaceName, filter.IncludeDeleted)
+		jobSpecs, err := srv.jobSpecRepository.GetAllByProjectNameAndNamespaceName(ctx, filter.ProjectName, filter.NamespaceName)
 		if err != nil {
 			if errors.Is(err, store.ErrResourceNotFound) {
 				return []models.JobSpec{}, nil
@@ -248,7 +248,7 @@ func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter
 		return jobSpecs, nil
 	}
 	if filter.ProjectName != "" {
-		return srv.jobSpecRepository.GetAllByProjectName(ctx, filter.ProjectName, filter.IncludeDeleted)
+		return srv.jobSpecRepository.GetAllByProjectName(ctx, filter.ProjectName)
 	}
 	return nil, fmt.Errorf("filters not specified")
 }
@@ -256,7 +256,7 @@ func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter
 // GetByNameForProject fetches a Job by name for a specific project
 // TODO: replace project spec with project name, and remove namespace from return
 func (srv *Service) GetByNameForProject(ctx context.Context, name string, proj models.ProjectSpec) (models.JobSpec, models.NamespaceSpec, error) {
-	jobSpec, err := srv.jobSpecRepository.GetByNameAndProjectName(ctx, name, proj.Name, false)
+	jobSpec, err := srv.jobSpecRepository.GetByNameAndProjectName(ctx, name, proj.Name)
 	if err != nil {
 		return models.JobSpec{}, models.NamespaceSpec{}, fmt.Errorf("failed to retrieve job: %w", err)
 	}
@@ -265,7 +265,7 @@ func (srv *Service) GetByNameForProject(ctx context.Context, name string, proj m
 
 // TODO: use project name and namespace name instead
 func (srv *Service) GetAll(ctx context.Context, namespace models.NamespaceSpec) ([]models.JobSpec, error) {
-	jobSpecs, err := srv.jobSpecRepository.GetAllByProjectNameAndNamespaceName(ctx, namespace.ProjectSpec.Name, namespace.Name, false)
+	jobSpecs, err := srv.jobSpecRepository.GetAllByProjectNameAndNamespaceName(ctx, namespace.ProjectSpec.Name, namespace.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve jobs: %w", err)
 	}
@@ -482,7 +482,7 @@ func (srv *Service) GetDownstreamJobs(ctx context.Context, jobName, resourceDest
 
 func (srv *Service) GetByDestination(ctx context.Context, projectSpec models.ProjectSpec, destination string) (models.JobSpec, error) {
 	// generate job spec using datastore destination. if a destination can be owned by multiple jobs, need to change to list
-	jobSpecs, err := srv.jobSpecRepository.GetByResourceDestinationURN(ctx, destination, false)
+	jobSpecs, err := srv.jobSpecRepository.GetByResourceDestinationURN(ctx, destination)
 	if err != nil {
 		return models.JobSpec{}, err
 	}
@@ -546,7 +546,7 @@ func (srv *Service) prepareJobSpecMap(ctx context.Context, projectSpec models.Pr
 }
 
 func (srv *Service) prepareNamespaceJobSpecMap(ctx context.Context, projectSpec models.ProjectSpec) (map[string]string, error) {
-	jobSpecs, err := srv.jobSpecRepository.GetAllByProjectName(ctx, projectSpec.Name, false)
+	jobSpecs, err := srv.jobSpecRepository.GetAllByProjectName(ctx, projectSpec.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -705,7 +705,7 @@ func (srv *Service) fetchJobSpecs(ctx context.Context, projectSpec models.Projec
 	} else if len(namespaceNames) > 0 {
 		return srv.fetchAllJobSpecsForGivenNamespaces(ctx, projectSpec, namespaceNames)
 	}
-	return srv.jobSpecRepository.GetAllByProjectName(ctx, projectSpec.Name, false)
+	return srv.jobSpecRepository.GetAllByProjectName(ctx, projectSpec.Name)
 }
 
 func (srv *Service) fetchAllJobSpecsForGivenNamespaces(ctx context.Context, projectSpec models.ProjectSpec, namespaceNames []string) ([]models.JobSpec, error) {
@@ -737,7 +737,7 @@ func (srv *Service) fetchSpecsForGivenJobNames(ctx context.Context, projectSpec 
 }
 
 func (srv *Service) GetJobNamesWithDuplicateDestination(ctx context.Context, jobFullName, resourceDestination string) (string, error) {
-	jobsWithSameDestination, err := srv.jobSpecRepository.GetByResourceDestinationURN(ctx, resourceDestination, false)
+	jobsWithSameDestination, err := srv.jobSpecRepository.GetByResourceDestinationURN(ctx, resourceDestination)
 	if err != nil {
 		if errors.Is(err, store.ErrResourceNotFound) {
 			return "", nil
@@ -860,7 +860,7 @@ func (srv *Service) Deploy(ctx context.Context, projectName string, namespaceNam
 }
 
 func (srv *Service) getJobsDiff(ctx context.Context, namespace models.NamespaceSpec, requestedJobSpecs []models.JobSpec) ([]models.JobSpec, []models.JobSpec, []models.JobSpec, error) {
-	existingJobSpecs, err := srv.jobSpecRepository.GetAllByProjectNameAndNamespaceName(ctx, namespace.ProjectSpec.Name, namespace.Name, false)
+	existingJobSpecs, err := srv.jobSpecRepository.GetAllByProjectNameAndNamespaceName(ctx, namespace.ProjectSpec.Name, namespace.Name)
 	if err != nil {
 		return nil, nil, nil, err
 	}

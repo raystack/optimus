@@ -129,7 +129,7 @@ func TestReplay(t *testing.T) {
 			cyclicDagSpec = append(cyclicDagSpec, cyclicDag1, cyclicDag2)
 
 			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name, false).Return(cyclicDagSpec, nil)
+			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name).Return(cyclicDagSpec, nil)
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
@@ -155,7 +155,7 @@ func TestReplay(t *testing.T) {
 
 		t.Run("resolve create replay tree for a dag with three day task window and mentioned dependencies", func(t *testing.T) {
 			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name, false).Return(jobSpecs, nil)
+			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name).Return(jobSpecs, nil)
 
 			depenResolver := new(mock.DependencyResolver)
 			depenResolver.On("GetJobSpecsWithDependencies", ctx, projSpec.Name).Return(jobSpecs, nil, nil)
@@ -201,7 +201,7 @@ func TestReplay(t *testing.T) {
 
 		t.Run("resolve create replay tree for a dag with three day task window and mentioned dependencies", func(t *testing.T) {
 			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name, false).Return(jobSpecs, nil)
+			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name).Return(jobSpecs, nil)
 
 			depenResolver := new(mock.DependencyResolver)
 			depenResolver.On("GetJobSpecsWithDependencies", ctx, projSpec.Name).Return(jobSpecs, nil, nil)
@@ -257,7 +257,7 @@ func TestReplay(t *testing.T) {
 
 		t.Run("should able to exclude downstream from replay dry run tree if ignored", func(t *testing.T) {
 			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name, false).Return(jobSpecs, nil)
+			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name).Return(jobSpecs, nil)
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
@@ -296,7 +296,7 @@ func TestReplay(t *testing.T) {
 		t.Run("should able to exclude downstream of same namespace from replay dry run tree if not directly "+
 			"dependent to same namespace", func(t *testing.T) {
 			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name, false).Return(jobSpecs, nil)
+			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name).Return(jobSpecs, nil)
 
 			// resolve dependencies
 			depenResolver := new(mock.DependencyResolver)
@@ -355,7 +355,7 @@ func TestReplay(t *testing.T) {
 
 		t.Run("should fail if replay manager throws an error", func(t *testing.T) {
 			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name, false).Return(jobSpecs, nil)
+			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name).Return(jobSpecs, nil)
 
 			depenResolver := new(mock.DependencyResolver)
 			depenResolver.On("GetJobSpecsWithDependencies", ctx, projSpec.Name).Return(jobSpecs, nil, nil)
@@ -391,7 +391,7 @@ func TestReplay(t *testing.T) {
 
 		t.Run("should succeed if replay manager successfully processes request", func(t *testing.T) {
 			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name, false).Return(jobSpecs, nil)
+			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name).Return(jobSpecs, nil)
 
 			depenResolver := new(mock.DependencyResolver)
 			depenResolver.On("GetJobSpecsWithDependencies", ctx, projSpec.Name).Return(jobSpecs, nil, nil)

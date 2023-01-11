@@ -402,7 +402,6 @@ type JobSpecFilter struct {
 	JobName             string
 	ResourceDestination string
 	NamespaceName       string
-	IncludeDeleted      bool
 }
 
 type JobEventType string

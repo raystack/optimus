@@ -56,7 +56,7 @@ func TestService(t *testing.T) {
 
 			jobSpecRepository := mock.NewJobSpecRepository(t)
 			jobSpecRepository.On("Save", ctx, jobSpec).Return(nil)
-			jobSpecRepository.On("GetByNameAndProjectName", ctx, jobSpec.Name, jobSpec.GetProjectSpec().Name, false).Return(enrichedJobSpec, nil)
+			jobSpecRepository.On("GetByNameAndProjectName", ctx, jobSpec.Name, jobSpec.GetProjectSpec().Name).Return(enrichedJobSpec, nil)
 
 			svc := job.NewService(nil, nil, nil, nil, nil, nil, nil, nil, pluginService, jobSpecRepository, nil)
 			_, err := svc.Create(ctx, namespaceSpec, jobSpec)
@@ -91,7 +91,7 @@ func TestService(t *testing.T) {
 
 			jobSpecRepository := mock.NewJobSpecRepository(t)
 			jobSpecRepository.On("Save", ctx, jobSpec).Return(nil)
-			jobSpecRepository.On("GetByNameAndProjectName", ctx, jobSpec.Name, jobSpec.GetProjectSpec().Name, false).Return(enrichedJobSpec, nil)
+			jobSpecRepository.On("GetByNameAndProjectName", ctx, jobSpec.Name, jobSpec.GetProjectSpec().Name).Return(enrichedJobSpec, nil)
 
 			svc := job.NewService(nil, nil, nil, nil, nil, nil, nil, nil, pluginService, jobSpecRepository, nil)
 			_, err := svc.Create(ctx, namespaceSpec, jobSpec)
@@ -166,7 +166,7 @@ func TestService(t *testing.T) {
 
 			jobSpecRepository := mock.NewJobSpecRepository(t)
 			jobSpecRepository.On("Save", ctx, jobSpec).Return(nil)
-			jobSpecRepository.On("GetByNameAndProjectName", ctx, jobSpec.Name, projSpec.Name, false).Return(models.JobSpec{}, errors.New("unknown error"))
+			jobSpecRepository.On("GetByNameAndProjectName", ctx, jobSpec.Name, projSpec.Name).Return(models.JobSpec{}, errors.New("unknown error"))
 
 			svc := job.NewService(nil, nil, nil, nil, nil, nil, nil, nil, pluginService, jobSpecRepository, nil)
 			_, err := svc.Create(ctx, namespaceSpec, jobSpec)
@@ -197,7 +197,7 @@ func TestService(t *testing.T) {
 			}
 
 			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetByNameAndProjectName", ctx, jobSpec.Name, namespaceSpec.ProjectSpec.Name, false).Return(jobSpec, nil)
+			jobSpecRepository.On("GetByNameAndProjectName", ctx, jobSpec.Name, namespaceSpec.ProjectSpec.Name).Return(jobSpec, nil)
 
 			svc := job.NewService(nil, nil, nil, nil, nil, nil, nil, nil, nil, jobSpecRepository, nil)
 			_, err := svc.GetByName(ctx, jobSpec.Name, namespaceSpec)
@@ -227,7 +227,7 @@ func TestService(t *testing.T) {
 			}
 
 			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetByNameAndProjectName", ctx, jobSpec.Name, namespaceSpec.ProjectSpec.Name, false).Return(models.JobSpec{}, errors.New("unknown error"))
+			jobSpecRepository.On("GetByNameAndProjectName", ctx, jobSpec.Name, namespaceSpec.ProjectSpec.Name).Return(models.JobSpec{}, errors.New("unknown error"))
 
 			svc := job.NewService(nil, nil, nil, nil, nil, nil, nil, nil, nil, jobSpecRepository, nil)
 			_, err := svc.GetByName(ctx, jobSpec.Name, namespaceSpec)
@@ -547,7 +547,7 @@ func TestService(t *testing.T) {
 			defer logWriter.AssertExpectations(t)
 
 			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetAllByProjectNameAndNamespaceName", ctx, namespaceSpec.ProjectSpec.Name, namespaceSpec.Name, false).Return(nil, errors.New("unknown error"))
+			jobSpecRepository.On("GetAllByProjectNameAndNamespaceName", ctx, namespaceSpec.ProjectSpec.Name, namespaceSpec.Name).Return(nil, errors.New("unknown error"))
 
 			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
@@ -595,7 +595,7 @@ func TestService(t *testing.T) {
 					NamespaceSpec: namespaceSpec,
 				},
 			}
-			jobSpecRepository.On("GetAllByProjectNameAndNamespaceName", ctx, inputProjectName, inputNamespaceName, false).Return(existingJobSpecs, nil)
+			jobSpecRepository.On("GetAllByProjectNameAndNamespaceName", ctx, inputProjectName, inputNamespaceName).Return(existingJobSpecs, nil)
 
 			logWriter := new(mock.LogWriter)
 			logWriter.On("Write", tMock.Anything, tMock.Anything).Return(nil)
@@ -623,7 +623,7 @@ func TestService(t *testing.T) {
 			}
 			destination := "destination_test"
 
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, destination, false).Return([]models.JobSpec{}, errors.New("unknown error"))
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, destination).Return([]models.JobSpec{}, errors.New("unknown error"))
 
 			actualJobSpec, actualError := svc.GetByDestination(ctx, projSpec, destination)
 
@@ -646,7 +646,7 @@ func TestService(t *testing.T) {
 			}
 			destination := "destination_test"
 
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, destination, false).Return([]models.JobSpec{jobSpec}, nil)
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, destination).Return([]models.JobSpec{jobSpec}, nil)
 
 			actualJobSpec, actualError := svc.GetByDestination(ctx, projSpec, destination)
 
@@ -672,7 +672,7 @@ func TestService(t *testing.T) {
 			}
 			destination := "destination_test"
 
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, destination, false).Return([]models.JobSpec{jobSpec}, nil)
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, destination).Return([]models.JobSpec{jobSpec}, nil)
 
 			actualJobSpec, actualError := svc.GetByDestination(ctx, projSpec2, destination)
 
@@ -691,7 +691,7 @@ func TestService(t *testing.T) {
 				ResourceDestination: "destination_test",
 			}
 
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, filter.ResourceDestination, filter.IncludeDeleted).Return([]models.JobSpec{}, errors.New("unknown error"))
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, filter.ResourceDestination).Return([]models.JobSpec{}, errors.New("unknown error"))
 
 			actualJobSpecs, actualError := service.GetByFilter(ctx, filter)
 
@@ -708,7 +708,7 @@ func TestService(t *testing.T) {
 				ResourceDestination: "destination_test",
 			}
 
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, filter.ResourceDestination, filter.IncludeDeleted).Return([]models.JobSpec{}, store.ErrResourceNotFound)
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, filter.ResourceDestination).Return([]models.JobSpec{}, store.ErrResourceNotFound)
 
 			actualJobSpecs, actualError := service.GetByFilter(ctx, filter)
 
@@ -725,7 +725,7 @@ func TestService(t *testing.T) {
 				ResourceDestination: "destination_test",
 			}
 
-			jobSpecRepository.On("GetByResourceDestinationURN", ctx, filter.ResourceDestination, filter.IncludeDeleted).Return([]models.JobSpec{{}}, nil)
+			jobSpecRepository.On("GetByResourceDestinationURN", ctx, filter.ResourceDestination).Return([]models.JobSpec{{}}, nil)
 
 			actualJobSpecs, actualError := service.GetByFilter(ctx, filter)
 
@@ -742,7 +742,7 @@ func TestService(t *testing.T) {
 				ProjectName: "project_test",
 			}
 
-			jobSpecRepository.On("GetAllByProjectName", ctx, filter.ProjectName, filter.IncludeDeleted).Return([]models.JobSpec{}, nil)
+			jobSpecRepository.On("GetAllByProjectName", ctx, filter.ProjectName).Return([]models.JobSpec{}, nil)
 
 			actualJobSpecs, actualError := service.GetByFilter(ctx, filter)
 
@@ -760,7 +760,7 @@ func TestService(t *testing.T) {
 				JobName:     "job_test",
 			}
 
-			jobSpecRepository.On("GetByNameAndProjectName", ctx, filter.JobName, filter.ProjectName, filter.IncludeDeleted).Return(models.JobSpec{}, errors.New("unknown error"))
+			jobSpecRepository.On("GetByNameAndProjectName", ctx, filter.JobName, filter.ProjectName).Return(models.JobSpec{}, errors.New("unknown error"))
 
 			actualJobSpecs, actualError := service.GetByFilter(ctx, filter)
 
@@ -778,7 +778,7 @@ func TestService(t *testing.T) {
 				JobName:     "job_test",
 			}
 
-			jobSpecRepository.On("GetByNameAndProjectName", ctx, filter.JobName, filter.ProjectName, filter.IncludeDeleted).Return(models.JobSpec{}, store.ErrResourceNotFound)
+			jobSpecRepository.On("GetByNameAndProjectName", ctx, filter.JobName, filter.ProjectName).Return(models.JobSpec{}, store.ErrResourceNotFound)
 
 			actualJobSpecs, actualError := service.GetByFilter(ctx, filter)
 
@@ -796,7 +796,7 @@ func TestService(t *testing.T) {
 				JobName:     "job_test",
 			}
 
-			jobSpecRepository.On("GetByNameAndProjectName", ctx, filter.JobName, filter.ProjectName, filter.IncludeDeleted).Return(models.JobSpec{}, nil)
+			jobSpecRepository.On("GetByNameAndProjectName", ctx, filter.JobName, filter.ProjectName).Return(models.JobSpec{}, nil)
 
 			actualJobSpecs, actualError := service.GetByFilter(ctx, filter)
 
@@ -814,7 +814,7 @@ func TestService(t *testing.T) {
 				NamespaceName: "namespace_test",
 			}
 
-			jobSpecRepository.On("GetAllByProjectNameAndNamespaceName", ctx, filter.ProjectName, filter.NamespaceName, filter.IncludeDeleted).Return([]models.JobSpec{{}}, nil)
+			jobSpecRepository.On("GetAllByProjectNameAndNamespaceName", ctx, filter.ProjectName, filter.NamespaceName).Return([]models.JobSpec{{}}, nil)
 
 			actualJobSpecs, actualError := service.GetByFilter(ctx, filter)
 
@@ -832,7 +832,7 @@ func TestService(t *testing.T) {
 				NamespaceName: "namespace_test",
 			}
 
-			jobSpecRepository.On("GetAllByProjectNameAndNamespaceName", ctx, filter.ProjectName, filter.NamespaceName, filter.IncludeDeleted).Return(nil, store.ErrResourceNotFound)
+			jobSpecRepository.On("GetAllByProjectNameAndNamespaceName", ctx, filter.ProjectName, filter.NamespaceName).Return(nil, store.ErrResourceNotFound)
 
 			actualJobSpecs, actualError := service.GetByFilter(ctx, filter)
 
@@ -850,7 +850,7 @@ func TestService(t *testing.T) {
 				NamespaceName: "namespace_test",
 			}
 
-			jobSpecRepository.On("GetAllByProjectNameAndNamespaceName", ctx, filter.ProjectName, filter.NamespaceName, filter.IncludeDeleted).Return(nil, errors.New("internal error"))
+			jobSpecRepository.On("GetAllByProjectNameAndNamespaceName", ctx, filter.ProjectName, filter.NamespaceName).Return(nil, errors.New("internal error"))
 
 			actualJobSpecs, actualError := service.GetByFilter(ctx, filter)
 
@@ -997,7 +997,7 @@ func TestService(t *testing.T) {
 			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
 			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name, false).Return(jobSpecsBase, nil)
+			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name).Return(jobSpecsBase, nil)
 
 			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[0], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
 			jobSourceRepo.On("Save", ctx, projSpec.ID, jobID, resourceURNs).Return(nil)
@@ -1055,7 +1055,7 @@ func TestService(t *testing.T) {
 			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetAllByProjectNameAndNamespaceName", ctx, namespaceSpec.ProjectSpec.Name, namespaceSpec.Name, false).Return(jobSpecsBase, nil)
+			jobSpecRepository.On("GetAllByProjectNameAndNamespaceName", ctx, namespaceSpec.ProjectSpec.Name, namespaceSpec.Name).Return(jobSpecsBase, nil)
 
 			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[0], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
 			jobSourceRepo.On("Save", ctx, projSpec.ID, jobID, resourceURNs).Return(nil)
@@ -1117,7 +1117,7 @@ func TestService(t *testing.T) {
 			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
 			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetByNameAndProjectName", ctx, jobNames[0], projSpec.Name, false).Return(jobSpecsBase[0], nil)
+			jobSpecRepository.On("GetByNameAndProjectName", ctx, jobNames[0], projSpec.Name).Return(jobSpecsBase[0], nil)
 
 			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[0], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
 			jobSourceRepo.On("Save", ctx, projSpec.ID, jobID, resourceURNs).Return(nil)
@@ -1182,7 +1182,7 @@ func TestService(t *testing.T) {
 			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
 			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name, false).Return([]models.JobSpec{}, errors.New(errorMsg))
+			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name).Return([]models.JobSpec{}, errors.New(errorMsg))
 
 			service := job.NewService(nil, nil, dependencyResolver, nil, nil, namespaceService, projectService, deployManager, nil, jobSpecRepository, jobSourceRepo)
 
@@ -1251,7 +1251,7 @@ func TestService(t *testing.T) {
 			namespaceService.On("Get", ctx, projSpec.Name, namespaceSpec.Name).Return(namespaceSpec, nil)
 
 			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetAllByProjectNameAndNamespaceName", ctx, namespaceSpec.ProjectSpec.Name, namespaceSpec.Name, false).Return([]models.JobSpec{}, errors.New(errorMsg))
+			jobSpecRepository.On("GetAllByProjectNameAndNamespaceName", ctx, namespaceSpec.ProjectSpec.Name, namespaceSpec.Name).Return([]models.JobSpec{}, errors.New(errorMsg))
 
 			service := job.NewService(nil, nil, dependencyResolver, nil, nil, namespaceService, projectService, deployManager, nil, jobSpecRepository, jobSourceRepo)
 
@@ -1297,7 +1297,7 @@ func TestService(t *testing.T) {
 			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
 			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetByNameAndProjectName", ctx, jobSpecsBase[0].Name, projSpec.Name, false).Return(models.JobSpec{}, errors.New(errorMsg))
+			jobSpecRepository.On("GetByNameAndProjectName", ctx, jobSpecsBase[0].Name, projSpec.Name).Return(models.JobSpec{}, errors.New(errorMsg))
 
 			service := job.NewService(nil, nil, dependencyResolver, nil, nil, namespaceService, projectService, deployManager, nil, jobSpecRepository, jobSourceRepo)
 
@@ -1359,7 +1359,7 @@ func TestService(t *testing.T) {
 			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
 			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name, false).Return(jobSpecsBase, nil)
+			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name).Return(jobSpecsBase, nil)
 
 			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[0], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil).Once()
 			jobSourceRepo.On("Save", ctx, projSpec.ID, jobID, resourceURNs).Return(nil).Once()
@@ -1429,7 +1429,7 @@ func TestService(t *testing.T) {
 			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
 			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name, false).Return(jobSpecsBase, nil)
+			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name).Return(jobSpecsBase, nil)
 
 			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[0], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
 			jobSourceRepo.On("Save", ctx, projSpec.ID, jobID, resourceURNs).Return(nil)
@@ -1487,7 +1487,7 @@ func TestService(t *testing.T) {
 			projectService.On("Get", ctx, projSpec.Name).Return(projSpec, nil)
 
 			jobSpecRepository := mock.NewJobSpecRepository(t)
-			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name, false).Return(jobSpecsBase, nil)
+			jobSpecRepository.On("GetAllByProjectName", ctx, projSpec.Name).Return(jobSpecsBase, nil)
 
 			pluginService.On("GenerateDependencies", ctx, jobSpecsBase[0], namespaceSpec, false).Return(&models.GenerateDependenciesResponse{Dependencies: resourceURNs}, nil)
 			jobSourceRepo.On("Save", ctx, projSpec.ID, jobID, resourceURNs).Return(nil)
@@ -1592,7 +1592,7 @@ func TestService(t *testing.T) {
 
 		jobSpecRepository := mock.NewJobSpecRepository(t)
 		jobSpecRepository.On("Save", ctx, jobSpec).Return(nil)
-		jobSpecRepository.On("GetByNameAndProjectName", ctx, jobSpec.Name, jobSpec.GetProjectSpec().Name, false).Return(enrichedJobSpec, nil)
+		jobSpecRepository.On("GetByNameAndProjectName", ctx, jobSpec.Name, jobSpec.GetProjectSpec().Name).Return(enrichedJobSpec, nil)
 
 		deployManager := new(mock.DeployManager)
 		defer deployManager.AssertExpectations(t)
@@ -1648,7 +1648,7 @@ func TestService(t *testing.T) {
 			batchScheduler.On("VerifyJob", ctx, namespaceSpec, jobSpec).Return(nil)
 
 			jobSpecRepo := mock.NewJobSpecRepository(t)
-			jobSpecRepo.On("GetByResourceDestinationURN", ctx, destination.URN(), false).Return([]models.JobSpec{jobSpec}, nil)
+			jobSpecRepo.On("GetByResourceDestinationURN", ctx, destination.URN()).Return([]models.JobSpec{jobSpec}, nil)
 
 			svc := job.NewService(
 				batchScheduler,
