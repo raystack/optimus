@@ -418,3 +418,144 @@ func getValue[V int | string | bool | time.Duration](reference, other V) V {
 	}
 	return reference
 }
+
+func ToJobSpec(protoSpec *pb.JobSpecification) *JobSpec {
+	return &JobSpec{
+		Version:     int(protoSpec.Version),
+		Name:        protoSpec.Name,
+		Owner:       protoSpec.Owner,
+		Description: protoSpec.Description,
+		Schedule: JobSpecSchedule{
+			StartDate: protoSpec.StartDate,
+			EndDate:   protoSpec.EndDate,
+			Interval:  protoSpec.Interval,
+		},
+		Behavior: toJobSpecBehavior(protoSpec.Behavior, protoSpec.DependsOnPast, protoSpec.CatchUp),
+		Task: JobSpecTask{
+			Name:   protoSpec.TaskName,
+			Config: configProtoToMap(protoSpec.Config),
+			Window: JobSpecTaskWindow{
+				Size:       protoSpec.WindowSize,
+				Offset:     protoSpec.WindowOffset,
+				TruncateTo: protoSpec.WindowTruncateTo,
+			},
+		},
+		Asset:        protoSpec.Assets,
+		Labels:       protoSpec.Labels,
+		Hooks:        toJobSpecHooks(protoSpec.Hooks),
+		Dependencies: toJobSpecDependencies(protoSpec.Dependencies),
+		Metadata:     toJobSpecMetadata(protoSpec.Metadata),
+	}
+}
+
+func toJobSpecMetadata(protoMetadata *pb.JobMetadata) *JobSpecMetadata {
+	var metadataSpec *JobSpecMetadata
+	if protoMetadata != nil {
+		var metadataResourceSpec *JobSpecMetadataResource
+		if protoMetadata.Resource != nil {
+			var metadataResourceRequest *JobSpecMetadataResourceConfig
+			if protoMetadata.Resource.Request != nil {
+				metadataResourceRequest = &JobSpecMetadataResourceConfig{
+					Memory: protoMetadata.Resource.Request.Memory,
+					CPU:    protoMetadata.Resource.Request.Cpu,
+				}
+			}
+			var metadataResourceLimit *JobSpecMetadataResourceConfig
+			if protoMetadata.Resource.Limit != nil {
+				metadataResourceLimit = &JobSpecMetadataResourceConfig{
+					Memory: protoMetadata.Resource.Limit.Memory,
+					CPU:    protoMetadata.Resource.Limit.Cpu,
+				}
+			}
+			metadataResourceSpec = &JobSpecMetadataResource{
+				Request: metadataResourceRequest,
+				Limit:   metadataResourceLimit,
+			}
+		}
+
+		var metadataAirflowSpec *JobSpecMetadataAirflow
+		if protoMetadata.Airflow != nil {
+			metadataAirflowSpec = &JobSpecMetadataAirflow{
+				Pool:  protoMetadata.Airflow.Pool,
+				Queue: protoMetadata.Airflow.Queue,
+			}
+		}
+		metadataSpec = &JobSpecMetadata{
+			Resource: metadataResourceSpec,
+			Airflow:  metadataAirflowSpec,
+		}
+	}
+	return metadataSpec
+}
+
+func toJobSpecDependencies(protoDependencies []*pb.JobDependency) []JobSpecDependency {
+	var dependencySpecs []JobSpecDependency
+	for _, dependency := range protoDependencies {
+		var httpDependency *JobSpecDependencyHTTP
+		if dependency.HttpDependency != nil {
+			httpDependency = &JobSpecDependencyHTTP{
+				Name:          dependency.HttpDependency.Name,
+				RequestParams: dependency.HttpDependency.Params,
+				URL:           dependency.HttpDependency.Url,
+				Headers:       dependency.HttpDependency.Headers,
+			}
+		}
+		dependencySpec := JobSpecDependency{
+			JobName: dependency.Name,
+			Type:    dependency.Type,
+			HTTP:    httpDependency,
+		}
+		dependencySpecs = append(dependencySpecs, dependencySpec)
+	}
+	return dependencySpecs
+}
+
+func toJobSpecHooks(protoHooks []*pb.JobSpecHook) []JobSpecHook {
+	var hookSpecs []JobSpecHook
+	for _, protoHook := range protoHooks {
+		hookSpec := JobSpecHook{
+			Name:   protoHook.Name,
+			Config: configProtoToMap(protoHook.Config),
+		}
+		hookSpecs = append(hookSpecs, hookSpec)
+	}
+	return hookSpecs
+}
+
+func toJobSpecBehavior(protoBehavior *pb.JobSpecification_Behavior, dependsOnPast bool, catchUp bool) JobSpecBehavior {
+	var retry *JobSpecBehaviorRetry
+	var notifiers []JobSpecBehaviorNotifier
+	if protoBehavior != nil {
+		if protoBehavior.Retry != nil {
+			retry = &JobSpecBehaviorRetry{
+				Count:              int(protoBehavior.Retry.Count),
+				Delay:              protoBehavior.Retry.Delay.AsDuration(),
+				ExponentialBackoff: protoBehavior.Retry.ExponentialBackoff,
+			}
+		}
+		if protoBehavior.Notify != nil {
+			for _, protoNotifier := range protoBehavior.Notify {
+				notifier := JobSpecBehaviorNotifier{
+					On:       protoNotifier.On.String(),
+					Config:   protoNotifier.Config,
+					Channels: protoNotifier.Channels,
+				}
+				notifiers = append(notifiers, notifier)
+			}
+		}
+	}
+	return JobSpecBehavior{
+		DependsOnPast: dependsOnPast,
+		Catchup:       catchUp,
+		Retry:         retry,
+		Notify:        notifiers,
+	}
+}
+
+func configProtoToMap(configProtoItems []*pb.JobConfigItem) map[string]string {
+	configMap := map[string]string{}
+	for _, configProto := range configProtoItems {
+		configMap[configProto.GetName()] = configProto.GetValue()
+	}
+	return configMap
+}
