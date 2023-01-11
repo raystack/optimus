@@ -82,28 +82,6 @@ func TestFilter(t *testing.T) {
 		})
 	})
 
-	t.Run("GetBoolValue", func(t *testing.T) {
-		t.Run("return include deleted value", func(t *testing.T) {
-			f := filter.NewFilter(filter.WithBool(filter.IncludeDeleted, true))
-			actual := f.GetBoolValue(filter.IncludeDeleted)
-			assert.Equal(t, true, actual)
-		})
-		t.Run("return include deleted value as false if the filter does not exist", func(t *testing.T) {
-			f := filter.NewFilter(filter.WithString(filter.JobName, "sample"))
-			actual := f.GetBoolValue(filter.IncludeDeleted)
-			assert.Equal(t, false, actual)
-		})
-		t.Run("return include deleted value if multi operand exist including include deleted", func(t *testing.T) {
-			f := filter.NewFilter(
-				filter.WithString(filter.JobName, "job-a"),
-				filter.WithBool(filter.IncludeDeleted, true),
-				filter.WithString(filter.ResourceDestination, "resource-destination"),
-			)
-			actual := f.GetBoolValue(filter.IncludeDeleted)
-			assert.Equal(t, true, actual)
-		})
-	})
-
 	t.Run("Contains", func(t *testing.T) {
 		t.Run("return true if non-empty operand is setted", func(t *testing.T) {
 			f := filter.NewFilter(filter.WithString(filter.JobName, "job-a"))

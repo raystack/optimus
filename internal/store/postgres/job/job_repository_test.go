@@ -154,7 +154,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.NoError(t, err)
 			assert.EqualValues(t, jobs, addedJobs)
 
-			storedJobs, err := jobRepo.GetAllByProjectName(ctx, proj.Name(), false)
+			storedJobs, err := jobRepo.GetAllByProjectName(ctx, proj.Name())
 			assert.NoError(t, err)
 			assert.EqualValues(t, jobs, storedJobs)
 		})
@@ -818,12 +818,12 @@ func TestPostgresJobRepository(t *testing.T) {
 			_, err = jobRepo.Add(ctx, []*job.Job{jobA})
 			assert.NoError(t, err)
 
-			actual, err := jobRepo.GetByJobName(ctx, sampleTenant.ProjectName(), "sample-job-A", false)
+			actual, err := jobRepo.GetByJobName(ctx, sampleTenant.ProjectName(), "sample-job-A")
 			assert.NoError(t, err)
 			assert.NotNil(t, actual)
 			assert.Equal(t, jobA, actual)
 		})
-		t.Run("should not return job if it is soft deleted and includeDeleted is false", func(t *testing.T) {
+		t.Run("should not return job if it is soft deleted", func(t *testing.T) {
 			db := dbSetup()
 
 			jobSpecA, err := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
@@ -834,7 +834,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			_, err = jobRepo.Add(ctx, []*job.Job{jobA})
 			assert.NoError(t, err)
 
-			actual, err := jobRepo.GetByJobName(ctx, sampleTenant.ProjectName(), "sample-job-A", false)
+			actual, err := jobRepo.GetByJobName(ctx, sampleTenant.ProjectName(), "sample-job-A")
 			assert.NoError(t, err)
 			assert.NotNil(t, actual)
 			assert.Equal(t, jobA, actual)
@@ -842,33 +842,9 @@ func TestPostgresJobRepository(t *testing.T) {
 			err = jobRepo.Delete(ctx, sampleTenant.ProjectName(), jobSpecA.Name(), false)
 			assert.NoError(t, err)
 
-			actual, err = jobRepo.GetByJobName(ctx, sampleTenant.ProjectName(), "sample-job-A", false)
+			actual, err = jobRepo.GetByJobName(ctx, sampleTenant.ProjectName(), "sample-job-A")
 			assert.Error(t, err)
 			assert.Nil(t, actual)
-		})
-		t.Run("should also return soft deleted job if includeDeleted is true", func(t *testing.T) {
-			db := dbSetup()
-
-			jobSpecA, err := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
-			assert.NoError(t, err)
-			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
-
-			jobRepo := postgres.NewJobRepository(db)
-			_, err = jobRepo.Add(ctx, []*job.Job{jobA})
-			assert.NoError(t, err)
-
-			actual, err := jobRepo.GetByJobName(ctx, sampleTenant.ProjectName(), "sample-job-A", false)
-			assert.NoError(t, err)
-			assert.NotNil(t, actual)
-			assert.Equal(t, jobA, actual)
-
-			err = jobRepo.Delete(ctx, sampleTenant.ProjectName(), jobSpecA.Name(), false)
-			assert.NoError(t, err)
-
-			actual, err = jobRepo.GetByJobName(ctx, sampleTenant.ProjectName(), "sample-job-A", true)
-			assert.NoError(t, err)
-			assert.NotNil(t, actual)
-			assert.Equal(t, jobA, actual)
 		})
 	})
 
@@ -887,13 +863,13 @@ func TestPostgresJobRepository(t *testing.T) {
 			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB})
 			assert.NoError(t, err)
 
-			actual, err := jobRepo.GetAllByProjectName(ctx, sampleTenant.ProjectName(), false)
+			actual, err := jobRepo.GetAllByProjectName(ctx, sampleTenant.ProjectName())
 			assert.NoError(t, err)
 			assert.NotNil(t, actual)
 			assert.Len(t, actual, 2)
 			assert.Equal(t, []*job.Job{jobA, jobB}, actual)
 		})
-		t.Run("returns only active jobs excluding the soft deleted jobs if includeDeleted is false", func(t *testing.T) {
+		t.Run("returns only active jobs excluding the soft deleted jobs", func(t *testing.T) {
 			db := dbSetup()
 
 			jobSpecA, err := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
@@ -910,107 +886,9 @@ func TestPostgresJobRepository(t *testing.T) {
 			err = jobRepo.Delete(ctx, sampleTenant.ProjectName(), jobSpecB.Name(), false)
 			assert.NoError(t, err)
 
-			actual, err := jobRepo.GetAllByProjectName(ctx, sampleTenant.ProjectName(), false)
+			actual, err := jobRepo.GetAllByProjectName(ctx, sampleTenant.ProjectName())
 			assert.NoError(t, err)
 			assert.Equal(t, []*job.Job{jobA}, actual)
-		})
-		t.Run("returns also the soft deleted jobs if includeDeleted is true", func(t *testing.T) {
-			db := dbSetup()
-
-			jobSpecA, err := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
-			assert.NoError(t, err)
-			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
-			jobSpecB, err := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
-			assert.NoError(t, err)
-			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", []job.ResourceURN{"dev.resource.sample_c"})
-
-			jobRepo := postgres.NewJobRepository(db)
-			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB})
-			assert.NoError(t, err)
-
-			err = jobRepo.Delete(ctx, sampleTenant.ProjectName(), jobSpecB.Name(), false)
-			assert.NoError(t, err)
-
-			actual, err := jobRepo.GetAllByProjectName(ctx, sampleTenant.ProjectName(), true)
-			assert.NoError(t, err)
-			assert.Equal(t, []*job.Job{jobA, jobB}, actual)
-		})
-	})
-
-	t.Run("GetAllByTenant", func(t *testing.T) {
-		otherTenant, err := tenant.NewTenant(proj.Name().String(), otherNamespace.Name().String())
-		assert.NoError(t, err)
-
-		t.Run("returns no error when get all jobs success", func(t *testing.T) {
-			db := dbSetup()
-
-			jobSpecA, err := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
-			assert.NoError(t, err)
-			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
-			jobSpecB, err := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
-			assert.NoError(t, err)
-			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", []job.ResourceURN{"dev.resource.sample_c"})
-			jobSpecC, err := job.NewSpecBuilder(jobVersion, "sample-job-C", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
-			assert.NoError(t, err)
-			jobC := job.NewJob(otherTenant, jobSpecC, "dev.resource.sample_c", nil)
-
-			jobRepo := postgres.NewJobRepository(db)
-			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB, jobC})
-			assert.NoError(t, err)
-
-			actual, err := jobRepo.GetAllByTenant(ctx, sampleTenant, false)
-			assert.NoError(t, err)
-			assert.NotNil(t, actual)
-			assert.Len(t, actual, 2)
-			assert.Equal(t, []*job.Job{jobA, jobB}, actual)
-		})
-		t.Run("returns only active jobs excluding the soft deleted jobs if includeDeleted is false", func(t *testing.T) {
-			db := dbSetup()
-
-			jobSpecA, err := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
-			assert.NoError(t, err)
-			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
-			jobSpecB, err := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
-			assert.NoError(t, err)
-			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", []job.ResourceURN{"dev.resource.sample_c"})
-			jobSpecC, err := job.NewSpecBuilder(jobVersion, "sample-job-C", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
-			assert.NoError(t, err)
-			jobC := job.NewJob(otherTenant, jobSpecC, "dev.resource.sample_c", nil)
-
-			jobRepo := postgres.NewJobRepository(db)
-			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB, jobC})
-			assert.NoError(t, err)
-
-			err = jobRepo.Delete(ctx, sampleTenant.ProjectName(), jobSpecB.Name(), false)
-			assert.NoError(t, err)
-
-			actual, err := jobRepo.GetAllByTenant(ctx, sampleTenant, false)
-			assert.NoError(t, err)
-			assert.Equal(t, []*job.Job{jobA}, actual)
-		})
-		t.Run("returns also the soft deleted jobs if includeDeleted is true", func(t *testing.T) {
-			db := dbSetup()
-
-			jobSpecA, err := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
-			assert.NoError(t, err)
-			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
-			jobSpecB, err := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
-			assert.NoError(t, err)
-			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", []job.ResourceURN{"dev.resource.sample_c"})
-			jobSpecC, err := job.NewSpecBuilder(jobVersion, "sample-job-C", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
-			assert.NoError(t, err)
-			jobC := job.NewJob(otherTenant, jobSpecC, "dev.resource.sample_c", nil)
-
-			jobRepo := postgres.NewJobRepository(db)
-			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB, jobC})
-			assert.NoError(t, err)
-
-			err = jobRepo.Delete(ctx, sampleTenant.ProjectName(), jobSpecB.Name(), false)
-			assert.NoError(t, err)
-
-			actual, err := jobRepo.GetAllByTenant(ctx, sampleTenant, true)
-			assert.NoError(t, err)
-			assert.Equal(t, []*job.Job{jobA, jobB}, actual)
 		})
 	})
 
@@ -1029,13 +907,13 @@ func TestPostgresJobRepository(t *testing.T) {
 			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB})
 			assert.NoError(t, err)
 
-			actual, err := jobRepo.GetAllByResourceDestination(ctx, "dev.resource.sample_general", false)
+			actual, err := jobRepo.GetAllByResourceDestination(ctx, "dev.resource.sample_general")
 			assert.NoError(t, err)
 			assert.NotNil(t, actual)
 			assert.Len(t, actual, 2)
 			assert.Equal(t, []*job.Job{jobA, jobB}, actual)
 		})
-		t.Run("returns only active jobs excluding the soft deleted jobs if includeDeleted is false", func(t *testing.T) {
+		t.Run("returns only active jobs excluding the soft deleted jobs", func(t *testing.T) {
 			db := dbSetup()
 
 			jobSpecA, err := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
@@ -1052,31 +930,9 @@ func TestPostgresJobRepository(t *testing.T) {
 			err = jobRepo.Delete(ctx, sampleTenant.ProjectName(), jobSpecB.Name(), false)
 			assert.NoError(t, err)
 
-			actual, err := jobRepo.GetAllByResourceDestination(ctx, "dev.resource.sample_general", false)
+			actual, err := jobRepo.GetAllByResourceDestination(ctx, "dev.resource.sample_general")
 			assert.NoError(t, err)
 			assert.Equal(t, []*job.Job{jobA}, actual)
-		})
-
-		t.Run("returns all jobs including the soft deleted jobs if includeDeleted is true", func(t *testing.T) {
-			db := dbSetup()
-
-			jobSpecA, err := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
-			assert.NoError(t, err)
-			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_general", []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
-			jobSpecB, err := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
-			assert.NoError(t, err)
-			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_general", []job.ResourceURN{"dev.resource.sample_c"})
-
-			jobRepo := postgres.NewJobRepository(db)
-			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB})
-			assert.NoError(t, err)
-
-			err = jobRepo.Delete(ctx, sampleTenant.ProjectName(), jobSpecB.Name(), false)
-			assert.NoError(t, err)
-
-			actual, err := jobRepo.GetAllByResourceDestination(ctx, "dev.resource.sample_general", true)
-			assert.NoError(t, err)
-			assert.Equal(t, []*job.Job{jobA, jobB}, actual)
 		})
 	})
 

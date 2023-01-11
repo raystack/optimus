@@ -469,13 +469,13 @@ type JobRepository struct {
 	mock.Mock
 }
 
-// GetAllByResourceDestination provides a mock function with given fields: ctx, resourceDestination, includeDeleted
-func (_m *JobRepository) GetAllByResourceDestination(ctx context.Context, resourceDestination job.ResourceURN, includeDeleted bool) ([]*job.Job, error) {
-	ret := _m.Called(ctx, resourceDestination, includeDeleted)
+// GetAllByResourceDestination provides a mock function with given fields: ctx, resourceDestination
+func (_m *JobRepository) GetAllByResourceDestination(ctx context.Context, resourceDestination job.ResourceURN) ([]*job.Job, error) {
+	ret := _m.Called(ctx, resourceDestination)
 
 	var r0 []*job.Job
-	if rf, ok := ret.Get(0).(func(context.Context, job.ResourceURN, bool) []*job.Job); ok {
-		r0 = rf(ctx, resourceDestination, includeDeleted)
+	if rf, ok := ret.Get(0).(func(context.Context, job.ResourceURN) []*job.Job); ok {
+		r0 = rf(ctx, resourceDestination)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*job.Job)
@@ -483,8 +483,8 @@ func (_m *JobRepository) GetAllByResourceDestination(ctx context.Context, resour
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, job.ResourceURN, bool) error); ok {
-		r1 = rf(ctx, resourceDestination, includeDeleted)
+	if rf, ok := ret.Get(1).(func(context.Context, job.ResourceURN) error); ok {
+		r1 = rf(ctx, resourceDestination)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -492,13 +492,13 @@ func (_m *JobRepository) GetAllByResourceDestination(ctx context.Context, resour
 	return r0, r1
 }
 
-// GetByJobName provides a mock function with given fields: ctx, projectName, jobName, includeDeleted
-func (_m *JobRepository) GetByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, includeDeleted bool) (*job.Job, error) {
-	ret := _m.Called(ctx, projectName, jobName, includeDeleted)
+// GetByJobName provides a mock function with given fields: ctx, projectName, jobName
+func (_m *JobRepository) GetByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) (*job.Job, error) {
+	ret := _m.Called(ctx, projectName, jobName)
 
 	var r0 *job.Job
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, job.Name, bool) *job.Job); ok {
-		r0 = rf(ctx, projectName, jobName, includeDeleted)
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, job.Name) *job.Job); ok {
+		r0 = rf(ctx, projectName, jobName)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*job.Job)
@@ -506,8 +506,8 @@ func (_m *JobRepository) GetByJobName(ctx context.Context, projectName tenant.Pr
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, job.Name, bool) error); ok {
-		r1 = rf(ctx, projectName, jobName, includeDeleted)
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, job.Name) error); ok {
+		r1 = rf(ctx, projectName, jobName)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -515,7 +515,7 @@ func (_m *JobRepository) GetByJobName(ctx context.Context, projectName tenant.Pr
 	return r0, r1
 }
 
-// ResolveUpstreams provides a mock function with given fields: ctx, projectName, jobNames
+// GetJobNameWithInternalUpstreams provides a mock function with given fields: ctx, projectName, jobNames
 func (_m *JobRepository) ResolveUpstreams(ctx context.Context, projectName tenant.ProjectName, jobNames []job.Name) (map[job.Name][]*job.Upstream, error) {
 	ret := _m.Called(ctx, projectName, jobNames)
 
