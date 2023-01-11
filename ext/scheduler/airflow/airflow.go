@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/kushsharma/parallel"
+	"github.com/odpf/salt/log"
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 
@@ -69,6 +70,7 @@ type ProjectGetter interface {
 }
 
 type Scheduler struct {
+	l         log.Logger
 	bucketFac BucketFactory
 	client    Client
 	compiler  DagCompiler
@@ -89,6 +91,7 @@ func (s *Scheduler) DeployJobs(ctx context.Context, tenant tenant.Tenant, jobs [
 
 	err = bucket.WriteAll(spanCtx, filepath.Join(jobsDir, baseLibFileName), SharedLib, nil)
 	if err != nil {
+		s.l.Error("failed to upload __lib.py file")
 		return errors.AddErrContext(err, EntityAirflow, "error in writing __lib.py file")
 	}
 	multiError := errors.NewMultiError("ErrorsInDeployJobs")
@@ -96,7 +99,7 @@ func (s *Scheduler) DeployJobs(ctx context.Context, tenant tenant.Tenant, jobs [
 	for _, job := range jobs {
 		runner.Add(func(currentJob *scheduler.JobWithDetails) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				return s.compileAndUpload(ctx, currentJob, bucket), nil
+				return nil, s.compileAndUpload(ctx, currentJob, bucket)
 			}
 		}(job))
 	}
@@ -188,15 +191,18 @@ func deleteDirectoryIfEmpty(ctx context.Context, nsDirectoryIdentifier string, b
 	return nil
 }
 
-func (s *Scheduler) compileAndUpload(ctx context.Context, job *scheduler.JobWithDetails, bucket Bucket) interface{} {
-	compiledJob, err := s.compiler.Compile(job)
-	if err != nil {
-		return errors.AddErrContext(err, EntityAirflow, "error for job: "+job.Name.String())
-	}
+func (s *Scheduler) compileAndUpload(ctx context.Context, job *scheduler.JobWithDetails, bucket Bucket) error {
 	namespaceName := job.Job.Tenant.NamespaceName().String()
 	blobKey := pathFromJobName(jobsDir, namespaceName, job.Name.String(), jobsExtension)
+
+	compiledJob, err := s.compiler.Compile(job)
+	if err != nil {
+		s.l.Error(fmt.Sprintf("failed compilation %s:%s, err:%s", namespaceName, blobKey, err.Error()))
+		return errors.AddErrContext(err, EntityAirflow, "job:"+job.Name.String())
+	}
 	if err := bucket.WriteAll(ctx, blobKey, compiledJob, nil); err != nil {
-		return errors.AddErrContext(err, EntityAirflow, "error for job: "+job.Name.String())
+		s.l.Error(fmt.Sprintf("failed to upload %s:%s, err:%s", namespaceName, blobKey, err.Error()))
+		return errors.AddErrContext(err, EntityAirflow, "job: "+job.Name.String())
 	}
 	return nil
 }
@@ -296,8 +302,9 @@ func (s *Scheduler) getSchedulerAuth(ctx context.Context, tnnt tenant.Tenant) (S
 	}, nil
 }
 
-func NewScheduler(bucketFac BucketFactory, client Client, compiler DagCompiler, projectGetter ProjectGetter, secretGetter SecretGetter) *Scheduler {
+func NewScheduler(l log.Logger, bucketFac BucketFactory, client Client, compiler DagCompiler, projectGetter ProjectGetter, secretGetter SecretGetter) *Scheduler {
 	return &Scheduler{
+		l:             l,
 		bucketFac:     bucketFac,
 		compiler:      compiler,
 		client:        client,

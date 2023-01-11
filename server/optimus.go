@@ -280,7 +280,7 @@ func (s *OptimusServer) setupHandlers() error {
 	assetCompiler := schedulerService.NewJobAssetsCompiler(newEngine, s.pluginRepo)
 	jobInputCompiler := schedulerService.NewJobInputCompiler(tenantService, newEngine, assetCompiler)
 	notificationService := schedulerService.NewNotifyService(s.logger, jobProviderRepo, tenantService, notifierChanels)
-	newScheduler, err := NewScheduler(s.conf, s.pluginRepo, tProjectService, tSecretService)
+	newScheduler, err := NewScheduler(s.logger, s.conf, s.pluginRepo, tProjectService, tSecretService)
 	if err != nil {
 		return err
 	}
