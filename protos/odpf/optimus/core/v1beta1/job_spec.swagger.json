@@ -63,12 +63,6 @@
             "in": "query",
             "required": false,
             "type": "string"
-          },
-          {
-            "name": "includeDeleted",
-            "in": "query",
-            "required": false,
-            "type": "boolean"
           }
         ],
         "tags": [
