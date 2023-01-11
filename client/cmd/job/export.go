@@ -71,20 +71,22 @@ func (e *exportCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	if e.configFilePath == "" {
 		return nil
 	}
-
 	cfg, err := config.LoadClientConfig(e.configFilePath)
 	if err != nil {
 		e.logger.Warn("error is encountered when reading config file: %s", err)
 	} else {
 		e.host = cfg.Host
 	}
-
-	readWriter, err := specio.NewJobSpecReadWriter(afero.NewOsFs())
-	e.writer = readWriter
 	return err
 }
 
 func (e *exportCommand) RunE(_ *cobra.Command, _ []string) error {
+	readWriter, err := specio.NewJobSpecReadWriter(afero.NewOsFs())
+	if err != nil {
+		e.logger.Error(err.Error())
+	}
+	e.writer = readWriter
+
 	if err := e.validate(); err != nil {
 		return err
 	}
@@ -103,6 +105,7 @@ func (e *exportCommand) RunE(_ *cobra.Command, _ []string) error {
 	if !success {
 		return errors.New("encountered one or more errors during download jobs")
 	}
+	e.logger.Info("Jobs are successfully exported")
 	return nil
 }
 
@@ -174,7 +177,6 @@ func (e *exportCommand) writeJobs(projectName, namespaceName string, jobs []*mod
 	var errMsgs []string
 	for _, spec := range jobs {
 		dirPath := path.Join(e.outputDirPath, projectName, namespaceName, "jobs", spec.Name)
-		e.logger.Info("exporting to: " + dirPath)
 		if err := e.writer.Write(dirPath, spec); err != nil {
 			errMsgs = append(errMsgs, err.Error())
 		}
