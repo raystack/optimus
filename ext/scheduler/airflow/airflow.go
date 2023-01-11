@@ -98,15 +98,13 @@ func (s *Scheduler) DeployJobs(ctx context.Context, tenant tenant.Tenant, jobs [
 	for _, job := range jobs {
 		runner.Add(func(currentJob *scheduler.JobWithDetails) func() (interface{}, error) {
 			return func() (interface{}, error) {
-				return s.compileAndUpload(ctx, currentJob, bucket), nil
+				return nil, s.compileAndUpload(ctx, currentJob, bucket)
 			}
 		}(job))
 	}
 
 	for _, result := range runner.Run() {
-		if err, ok := result.Val.(error); ok {
-			multiError.Append(err)
-		}
+		multiError.Append(result.Err)
 	}
 	return errors.MultiToError(multiError)
 }
@@ -192,7 +190,7 @@ func deleteDirectoryIfEmpty(ctx context.Context, nsDirectoryIdentifier string, b
 	return nil
 }
 
-func (s *Scheduler) compileAndUpload(ctx context.Context, job *scheduler.JobWithDetails, bucket Bucket) interface{} {
+func (s *Scheduler) compileAndUpload(ctx context.Context, job *scheduler.JobWithDetails, bucket Bucket) error {
 	compiledJob, err := s.compiler.Compile(job)
 	if err != nil {
 		return errors.AddErrContext(err, EntityAirflow, "error for job: "+job.Name.String())
