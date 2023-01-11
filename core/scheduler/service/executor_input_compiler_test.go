@@ -496,7 +496,7 @@ func TestExecutorCompiler(t *testing.T) {
 
 			assert.NotNil(t, err)
 			assert.Nil(t, inputExecutorResp)
-			assert.EqualError(t, err, "not found for entity jobRun: hook not found in job predator")
+			assert.ErrorContains(t, err, "hook:predator")
 		})
 	})
 }

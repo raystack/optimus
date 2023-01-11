@@ -62,7 +62,7 @@ func TestJob(t *testing.T) {
 			hook, err := job.GetHook("someHook13")
 
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "not found for entity jobRun: hook not found in job someHook13")
+			assert.ErrorContains(t, err, "hook:someHook13")
 			assert.Nil(t, hook)
 		})
 	})

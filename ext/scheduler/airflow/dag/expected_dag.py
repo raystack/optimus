@@ -151,6 +151,7 @@ init_container_transporter = k8s.V1Container(
 )
 
 hook_transporter = SuperKubernetesPodOperator(
+    optimus_instancename="transporter",
     optimus_hostname="http://optimus.example.com",
     optimus_projectname="example-proj",
     optimus_namespacename="billing",
@@ -188,6 +189,7 @@ init_container_predator = k8s.V1Container(
 )
 
 hook_predator = SuperKubernetesPodOperator(
+    optimus_instancename="predator",
     optimus_hostname="http://optimus.example.com",
     optimus_projectname="example-proj",
     optimus_namespacename="billing",
@@ -225,6 +227,7 @@ init_container_failureHook = k8s.V1Container(
 )
 
 hook_failureHook = SuperKubernetesPodOperator(
+    optimus_instancename="failureHook",
     optimus_hostname="http://optimus.example.com",
     optimus_projectname="example-proj",
     optimus_namespacename="billing",

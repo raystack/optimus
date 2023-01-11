@@ -188,6 +188,7 @@ init_container_{{$hookName}} = k8s.V1Container(
 )
 
 hook_{{$hookName}} = SuperKubernetesPodOperator(
+    optimus_instancename="{{$hookName}}",
     optimus_hostname="{{$.Hostname}}",
     optimus_projectname="{{$.Tenant.ProjectName.String}}",
     optimus_namespacename="{{$.Tenant.NamespaceName.String}}",
