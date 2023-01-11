@@ -54,7 +54,7 @@ func (j *Job) GetHook(hookName string) (*Hook, error) {
 			return hook, nil
 		}
 	}
-	return nil, errors.NotFound(EntityJobRun, "hook not found in job "+hookName)
+	return nil, errors.NotFound(EntityJobRun, "hook:"+hookName)
 }
 
 type Task struct {
