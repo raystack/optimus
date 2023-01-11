@@ -65,11 +65,18 @@ func NewExportCommand() *cobra.Command {
 }
 
 func (e *exportCommand) PreRunE(_ *cobra.Command, _ []string) error {
+	readWriter, err := specio.NewJobSpecReadWriter(afero.NewOsFs())
+	if err != nil {
+		e.logger.Error(err.Error())
+	}
+	e.writer = readWriter
+
 	if e.host != "" {
 		return nil
 	}
-	if e.configFilePath == "" {
-		return nil
+
+	if e.configFilePath != "" {
+		e.logger.Info("Loading client config from %s", e.configFilePath)
 	}
 	cfg, err := config.LoadClientConfig(e.configFilePath)
 	if err != nil {
@@ -81,35 +88,36 @@ func (e *exportCommand) PreRunE(_ *cobra.Command, _ []string) error {
 }
 
 func (e *exportCommand) RunE(_ *cobra.Command, _ []string) error {
-	readWriter, err := specio.NewJobSpecReadWriter(afero.NewOsFs())
-	if err != nil {
-		e.logger.Error(err.Error())
-	}
-	e.writer = readWriter
-
+	e.logger.Info("Validating input")
 	if err := e.validate(); err != nil {
 		return err
 	}
 
 	var success bool
 	if e.projectName != "" && e.namespaceName != "" && e.jobName != "" {
+		e.logger.Info("Downloading job [%s] from project [%s] namespace [%s]", e.jobName, e.projectName, e.namespaceName)
 		success = e.downloadSpecificJob(e.projectName, e.namespaceName, e.jobName)
 	} else if e.projectName != "" && e.namespaceName != "" {
+		e.logger.Info("Downloading all jobs within project [%s] namespace [%s]", e.projectName, e.namespaceName)
 		success = e.downloadByProjectNameAndNamespaceName(e.projectName, e.namespaceName)
 	} else if e.projectName != "" {
+		e.logger.Info("Downloading all jobs within project [%s]", e.projectName)
 		success = e.downloadByProjectName(e.projectName)
 	} else {
+		e.logger.Info("Downloading all jobs")
 		success = e.downloadAll()
 	}
 
 	if !success {
+		e.logger.Error("Download process failed")
 		return errors.New("encountered one or more errors during download jobs")
 	}
-	e.logger.Info("Jobs are successfully exported")
+	e.logger.Info("Download process success")
 	return nil
 }
 
 func (e *exportCommand) downloadAll() bool {
+	e.logger.Info("Fetching all project names")
 	projectNames, err := e.fetchProjectNames()
 	if err != nil {
 		e.logger.Error("error is encountered when fetching project names: %s", err)
@@ -130,6 +138,7 @@ func (e *exportCommand) downloadAll() bool {
 }
 
 func (e *exportCommand) downloadByProjectName(projectName string) bool {
+	e.logger.Info("Fetching all jobs for project [%s]", projectName)
 	namespaceJobs, err := e.fetchNamespaceJobsByProjectName(projectName)
 	if err != nil {
 		e.logger.Error("error is encountered when fetching job specs for project [%s]: %s", projectName, err)
@@ -146,6 +155,7 @@ func (e *exportCommand) downloadByProjectName(projectName string) bool {
 }
 
 func (e *exportCommand) downloadByProjectNameAndNamespaceName(projectName, namespaceName string) bool {
+	e.logger.Info("Fetching all jobs for project [%s] namespace [%s]", projectName, namespaceName)
 	jobs, err := e.fetchJobsByProjectAndNamespaceName(projectName, namespaceName)
 	if err != nil {
 		e.logger.Error("error is encountered when fetching job specs for project [%s]: %s", projectName, err)
@@ -160,6 +170,7 @@ func (e *exportCommand) downloadByProjectNameAndNamespaceName(projectName, names
 }
 
 func (e *exportCommand) downloadSpecificJob(projectName, namespaceName, jobName string) bool {
+	e.logger.Info("Fetching job [%s] from project [%s] namespace [%s]", jobName, projectName, namespaceName)
 	job, err := e.fetchSpecificJob(projectName, namespaceName, jobName)
 	if err != nil {
 		e.logger.Error("error is encountered when fetching job specs for project [%s]: %s", projectName, err)
@@ -174,9 +185,13 @@ func (e *exportCommand) downloadSpecificJob(projectName, namespaceName, jobName 
 }
 
 func (e *exportCommand) writeJobs(projectName, namespaceName string, jobs []*model.JobSpec) error {
+	e.logger.Info("Writing jobs for project [%s] namespace [%s]", projectName, namespaceName)
+
 	var errMsgs []string
 	for _, spec := range jobs {
 		dirPath := path.Join(e.outputDirPath, projectName, namespaceName, "jobs", spec.Name)
+
+		e.logger.Info("Writing job to [%s]", dirPath)
 		if err := e.writer.Write(dirPath, spec); err != nil {
 			errMsgs = append(errMsgs, err.Error())
 		}
