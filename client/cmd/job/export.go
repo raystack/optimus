@@ -7,12 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/afero"
-
-	"github.com/odpf/optimus/client/local"
-	"github.com/odpf/optimus/client/local/model"
-	"github.com/odpf/optimus/client/local/specio"
-
 	"github.com/odpf/salt/log"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
