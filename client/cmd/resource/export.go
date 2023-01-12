@@ -164,6 +164,10 @@ func (e *exportCommand) downloadByProjectNameAndNamespaceName(projectName, names
 		e.logger.Error("error is encountered when fetching resource for project [%s] namespace [%s]: %s", projectName, namespaceName, err)
 		return false
 	}
+	if len(resources) == 0 {
+		e.logger.Warn("No resources found for project [%s] namespace [%s]", projectName, namespaceName)
+		return true
+	}
 	if err := e.writeResources(projectName, namespaceName, resources); err != nil {
 		e.logger.Error(err.Error())
 		return false
@@ -186,7 +190,7 @@ func (e *exportCommand) downloadSpecificResource(projectName, namespaceName, res
 }
 
 func (e *exportCommand) writeResources(projectName, namespaceName string, resources []*model.ResourceSpec) error {
-	e.logger.Info("Writing resources for project [%s] namespace [%s]", projectName, namespaceName)
+	e.logger.Info("Writing %d resources for project [%s] namespace [%s]", len(resources), projectName, namespaceName)
 
 	var errMsgs []string
 	for _, res := range resources {

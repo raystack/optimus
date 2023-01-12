@@ -145,13 +145,18 @@ func (e *exportCommand) downloadByProjectName(projectName string) bool {
 		return false
 	}
 
+	success := true
 	for namespaceName, jobSpecs := range namespaceJobs {
+		if len(jobSpecs) == 0 {
+			e.logger.Warn("No jobs found for project [%s] namespace [%s]", projectName, namespaceName)
+			continue
+		}
 		if err := e.writeJobs(projectName, namespaceName, jobSpecs); err != nil {
 			e.logger.Error(err.Error())
-			return false
+			success = false
 		}
 	}
-	return true
+	return success
 }
 
 func (e *exportCommand) downloadByProjectNameAndNamespaceName(projectName, namespaceName string) bool {
@@ -161,7 +166,10 @@ func (e *exportCommand) downloadByProjectNameAndNamespaceName(projectName, names
 		e.logger.Error("error is encountered when fetching job specs for project [%s]: %s", projectName, err)
 		return false
 	}
-
+	if len(jobs) == 0 {
+		e.logger.Warn("No jobs found for project [%s] namespace [%s]", projectName, namespaceName)
+		return true
+	}
 	if err := e.writeJobs(projectName, namespaceName, jobs); err != nil {
 		e.logger.Error(err.Error())
 		return false
@@ -185,7 +193,7 @@ func (e *exportCommand) downloadSpecificJob(projectName, namespaceName, jobName 
 }
 
 func (e *exportCommand) writeJobs(projectName, namespaceName string, jobs []*model.JobSpec) error {
-	e.logger.Info("Writing jobs for project [%s] namespace [%s]", projectName, namespaceName)
+	e.logger.Info("Writing %d jobs for project [%s] namespace [%s]", len(jobs), projectName, namespaceName)
 
 	var errMsgs []string
 	for _, spec := range jobs {
