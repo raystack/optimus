@@ -63,6 +63,12 @@ func (et ExternalTableHandle) Update(ctx context.Context, res *resource.Resource
 		return errors.AddErrContext(err, EntityExternalTable, "failed to get metadata to update for "+res.FullName())
 	}
 
+
+	meta.ExternalDataConfig, err = bqExternalDataConfigTo(externalTable.Source)
+	if err != nil {
+		return err
+	}
+
 	_, err = et.bqExternalTable.Update(ctx, meta, "")
 	if err != nil {
 		var metaErr *googleapi.Error
