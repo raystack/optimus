@@ -359,9 +359,15 @@ func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSp
 	}
 
 	// check cyclic deps for every job
+	isAlreadyCyclic := map[string]bool{}
 	for _, jobEntity := range jobsWithUnresolvedUpstreams {
-		if err = j.validateCyclic(jobEntity.Job().Spec().Name(), jobMap, destinationToJobsMap); err != nil {
-			me.Append(err)
+		if jobNamesWithCyclic, err := j.validateCyclic(jobEntity.Job().Spec().Name(), jobMap, destinationToJobsMap); err != nil {
+			if _, ok := isAlreadyCyclic[jobEntity.Job().Spec().Name().String()]; !ok {
+				me.Append(err)
+			}
+			for _, jobName := range jobNamesWithCyclic {
+				isAlreadyCyclic[jobName] = true
+			}
 		}
 	}
 
@@ -549,7 +555,7 @@ func (j JobService) generateJob(ctx context.Context, tenantWithDetails *tenant.W
 	return job.NewJob(tenantWithDetails.ToTenant(), spec, destination, sources), nil
 }
 
-func (j JobService) validateCyclic(rootName job.Name, jobMap map[job.Name]*job.WithUpstream, destinationToJobMap map[job.ResourceURN][]*job.WithUpstream) error {
+func (j JobService) validateCyclic(rootName job.Name, jobMap map[job.Name]*job.WithUpstream, destinationToJobMap map[job.ResourceURN][]*job.WithUpstream) ([]string, error) {
 	dagTree := j.buildDAGTree(rootName, jobMap, destinationToJobMap)
 	return dagTree.ValidateCyclic()
 }

@@ -1932,7 +1932,7 @@ func TestJobService(t *testing.T) {
 			jobService := service.NewJobService(repo, pluginService, upstreamResolver, tenantDetailsGetter, log)
 			err := jobService.Validate(ctx, sampleTenant, specs, logWriter)
 			assert.Error(t, err)
-			assert.EqualError(t, err, "a cycle dependency encountered in the tree:")
+			assert.ErrorContains(t, err, "a cycle dependency encountered in the tree:")
 		})
 
 		t.Run("returns error when there's a cyclic on the incoming job request", func(t *testing.T) {
@@ -2005,7 +2005,7 @@ func TestJobService(t *testing.T) {
 			jobService := service.NewJobService(repo, pluginService, upstreamResolver, tenantDetailsGetter, log)
 			err := jobService.Validate(ctx, sampleTenant, specs, logWriter)
 			assert.Error(t, err)
-			assert.EqualError(t, err, "a cycle dependency encountered in the tree:")
+			assert.ErrorContains(t, err, "a cycle dependency encountered in the tree:")
 		})
 
 		t.Run("returns no error when success", func(t *testing.T) {
