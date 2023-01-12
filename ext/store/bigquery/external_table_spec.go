@@ -34,8 +34,7 @@ func (e *ExternalTable) Validate() error {
 	if e.Source == nil {
 		return errors.InvalidArgument(EntityExternalTable, "empty external table source for "+e.FullName())
 	}
-	err := e.Source.Validate()
-	if err != nil {
+	if err := e.Source.Validate(); err != nil {
 		return errors.AddErrContext(err, EntityExternalTable, "error in source for "+e.FullName())
 	}
 	return nil
