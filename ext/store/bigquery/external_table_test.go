@@ -65,7 +65,13 @@ func TestExternalTableHandle(t *testing.T) {
 
 			etHandle := bigquery.NewExternalTableHandle(et)
 
-			spec := map[string]any{"description": "test create"}
+			spec := map[string]any{
+				"description": "test create",
+				"source": map[string]any{
+					"type": "google_sheets",
+					"uris": []string{"https://docs.google.com/sheet"},
+				},
+			}
 			res, err := resource.NewResource("proj.dataset.extTable1", bigquery.KindExternalTable, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
@@ -105,7 +111,13 @@ func TestExternalTableHandle(t *testing.T) {
 
 			etHandle := bigquery.NewExternalTableHandle(et)
 
-			spec := map[string]any{"description": "test create"}
+			spec := map[string]any{
+				"description": "test create",
+				"source": map[string]any{
+					"type": "google_sheets",
+					"uris": []string{"https://docs.google.com/sheet"},
+				},
+			}
 			res, err := resource.NewResource("proj.dataset.extTable1", bigquery.KindExternalTable, bqStore, tnnt, &metadata, spec)
 			assert.Nil(t, err)
 
