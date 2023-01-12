@@ -31,13 +31,13 @@ func (et ExternalTableHandle) Create(ctx context.Context, res *resource.Resource
 		return errors.AddErrContext(err, EntityExternalTable, "failed to get metadata to create for "+res.FullName())
 	}
 
-	meta.Schema = toBQSchema(externalTable.Schema)
+	if len(externalTable.Schema) > 0 {
+		meta.Schema = toBQSchema(externalTable.Schema)
+	}
 
-	if externalTable.Source != nil {
-		meta.ExternalDataConfig, err = bqExternalDataConfigTo(externalTable.Source)
-		if err != nil {
-			return err
-		}
+	meta.ExternalDataConfig, err = bqExternalDataConfigTo(externalTable.Source, externalTable.Schema)
+	if err != nil {
+		return err
 	}
 
 	err = et.bqExternalTable.Create(ctx, meta)
@@ -63,6 +63,15 @@ func (et ExternalTableHandle) Update(ctx context.Context, res *resource.Resource
 		return errors.AddErrContext(err, EntityExternalTable, "failed to get metadata to update for "+res.FullName())
 	}
 
+	if len(externalTable.Schema) > 0 {
+		meta.Schema = toBQSchema(externalTable.Schema)
+	}
+
+	meta.ExternalDataConfig, err = bqExternalDataConfigTo(externalTable.Source, externalTable.Schema)
+	if err != nil {
+		return err
+	}
+
 	_, err = et.bqExternalTable.Update(ctx, meta, "")
 	if err != nil {
 		var metaErr *googleapi.Error
@@ -85,7 +94,7 @@ func NewExternalTableHandle(bq BqTable) *ExternalTableHandle {
 	return &ExternalTableHandle{bqExternalTable: bq}
 }
 
-func bqExternalDataConfigTo(es *ExternalSource) (*bigquery.ExternalDataConfig, error) {
+func bqExternalDataConfigTo(es *ExternalSource, schema Schema) (*bigquery.ExternalDataConfig, error) {
 	var option bigquery.ExternalDataConfigOptions
 	var sourceType bigquery.DataFormat
 	switch bigquery.DataFormat(strings.ToUpper(es.SourceType)) {
@@ -101,6 +110,11 @@ func bqExternalDataConfigTo(es *ExternalSource) (*bigquery.ExternalDataConfig, e
 		SourceURIs:   es.SourceURIs,
 		Options:      option,
 	}
+
+	if len(schema) == 0 {
+		externalConfig.AutoDetect = true
+	}
+
 	return externalConfig, nil
 }
 

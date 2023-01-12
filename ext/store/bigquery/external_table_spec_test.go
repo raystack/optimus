@@ -10,16 +10,6 @@ import (
 
 func TestRelationalExternalTable(t *testing.T) {
 	t.Run("when invalid", func(t *testing.T) {
-		t.Run("fails validation when schema is empty", func(t *testing.T) {
-			et := bigquery.ExternalTable{
-				Name:        "t-optimus.playground.test-sheet",
-				Description: "",
-				Schema:      nil,
-			}
-			err := et.Validate()
-			assert.NotNil(t, err)
-			assert.ErrorContains(t, err, "invalid schema for t-optimus.playground.test-sheet")
-		})
 		t.Run("fails validation when schema is invalid", func(t *testing.T) {
 			et := bigquery.ExternalTable{
 				Name:        "t-optimus.playground.test-sheet",
@@ -44,6 +34,21 @@ func TestRelationalExternalTable(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.ErrorContains(t, err, "error in source for t-optimus.playground.test-sheet")
 		})
+	})
+	t.Run("passes validations for with empty schema", func(t *testing.T) {
+		et := bigquery.ExternalTable{
+			Name:        "t-optimus.playground.test-sheet",
+			Description: "",
+			Source: &bigquery.ExternalSource{
+				SourceType: "GOOGLE_SHEETS",
+				SourceURIs: []string{"https://google.com/sheets"},
+				Config:     nil,
+			},
+		}
+		err := et.Validate()
+		assert.Nil(t, err)
+
+		assert.Equal(t, "t-optimus.playground.test-sheet", et.FullName())
 	})
 	t.Run("passes validations for valid configuration", func(t *testing.T) {
 		et := bigquery.ExternalTable{

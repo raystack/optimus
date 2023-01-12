@@ -24,17 +24,17 @@ func (e *ExternalTable) FullName() string {
 }
 
 func (e *ExternalTable) Validate() error {
-	if len(e.Schema) == 0 {
-		return errors.InvalidArgument(EntityExternalTable, "invalid schema for "+e.FullName())
+	if len(e.Schema) > 0 {
+		err := e.Schema.Validate()
+		if err != nil {
+			return errors.AddErrContext(err, EntityExternalTable, "error in schema for "+e.FullName())
+		}
 	}
 
-	err := e.Schema.Validate()
-	if err != nil {
-		return errors.AddErrContext(err, EntityExternalTable, "error in schema for "+e.FullName())
+	if e.Source == nil {
+		return errors.InvalidArgument(EntityExternalTable, "empty external table source for "+e.FullName())
 	}
-
-	err = e.Source.Validate()
-	if err != nil {
+	if err := e.Source.Validate(); err != nil {
 		return errors.AddErrContext(err, EntityExternalTable, "error in source for "+e.FullName())
 	}
 	return nil
