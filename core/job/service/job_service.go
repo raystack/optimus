@@ -74,7 +74,8 @@ type JobRepository interface {
 }
 
 type UpstreamResolver interface {
-	GetUnresolved(jobs []*job.Job) (jobWithUpstreams []*job.WithUpstream, err error)
+	GetUnresolved(jobs []*job.Job) (jobsWithUpstreams []*job.WithUpstream, err error)
+	BulkResolveInternal(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) (jobWithUpstreams []*job.WithUpstream, err error)
 	BulkResolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job, logWriter writer.LogWriter) (jobWithUpstreams []*job.WithUpstream, err error)
 	Resolve(ctx context.Context, subjectJob *job.Job, logWriter writer.LogWriter) ([]*job.Upstream, error)
 }
@@ -320,7 +321,7 @@ func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSp
 	jobs, err := j.generateJobs(ctx, tenantWithDetails, jobSpecs, logWriter)
 	me.Append(err)
 
-	jobsWithUpstreams, err := j.upstreamResolver.GetUnresolved(jobs)
+	jobsWithUnresolvedUpstreams, err := j.upstreamResolver.GetUnresolved(jobs)
 	me.Append(err)
 
 	if len(me.Errors) > 0 {
@@ -335,14 +336,14 @@ func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSp
 	if err != nil {
 		return err
 	}
-	jobsInProjectWithUpstreams, err := j.upstreamResolver.GetUnresolved(jobsInProject)
+	jobsInProjectWithUpstreams, err := j.upstreamResolver.BulkResolveInternal(ctx, jobTenant.ProjectName(), jobsInProject)
 	if err != nil {
 		return err
 	}
 
 	jobMap := make(map[job.Name]*job.WithUpstream)
 	destinationToJobsMap := make(map[job.ResourceURN][]*job.WithUpstream)
-	for _, jobEntity := range append(jobsWithUpstreams, jobsInProjectWithUpstreams...) {
+	for _, jobEntity := range append(jobsWithUnresolvedUpstreams, jobsInProjectWithUpstreams...) {
 		jobSpecName := jobEntity.Job().Spec().Name()
 		jobDestination := jobEntity.Job().Destination()
 
@@ -358,8 +359,8 @@ func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSp
 	}
 
 	// check cyclic deps for every job
-	for _, jobEntity := range jobs {
-		if err = j.validateCyclic(jobEntity.Spec().Name(), jobMap, destinationToJobsMap); err != nil {
+	for _, jobEntity := range jobsWithUnresolvedUpstreams {
+		if err = j.validateCyclic(jobEntity.Job().Spec().Name(), jobMap, destinationToJobsMap); err != nil {
 			me.Append(err)
 		}
 	}
@@ -549,19 +550,12 @@ func (j JobService) generateJob(ctx context.Context, tenantWithDetails *tenant.W
 }
 
 func (j JobService) validateCyclic(rootName job.Name, jobMap map[job.Name]*job.WithUpstream, destinationToJobMap map[job.ResourceURN][]*job.WithUpstream) error {
-	dagTree, err := j.buildDAGTree(rootName, jobMap, destinationToJobMap)
-	if err != nil {
-		return err
-	}
-
+	dagTree := j.buildDAGTree(rootName, jobMap, destinationToJobMap)
 	return dagTree.ValidateCyclic()
 }
 
-func (JobService) buildDAGTree(rootName job.Name, jobMap map[job.Name]*job.WithUpstream, destinationToJobMap map[job.ResourceURN][]*job.WithUpstream) (*tree.MultiRootTree, error) {
-	rootJob, ok := jobMap[rootName]
-	if !ok {
-		return nil, fmt.Errorf("couldn't find any job with name %s", rootName)
-	}
+func (JobService) buildDAGTree(rootName job.Name, jobMap map[job.Name]*job.WithUpstream, destinationToJobMap map[job.ResourceURN][]*job.WithUpstream) *tree.MultiRootTree {
+	rootJob, _ := jobMap[rootName]
 
 	dagTree := tree.NewMultiRootTree()
 	dagTree.AddNode(tree.NewTreeNode(rootJob))
@@ -588,7 +582,7 @@ func (JobService) buildDAGTree(rootName job.Name, jobMap map[job.Name]*job.WithU
 		}
 	}
 
-	return dagTree, nil
+	return dagTree
 }
 
 // sources: https://github.com/odpf/optimus/blob/a6dafbc1fbeb8e1f1eb8d4a6e9582ada4a7f639e/job/replay.go#L101

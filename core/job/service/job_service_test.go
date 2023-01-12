@@ -1804,13 +1804,16 @@ func TestJobService(t *testing.T) {
 			assert.Error(t, err)
 			assert.Equal(t, "get tenant details fail", err.Error())
 		})
-		t.Run("returns error when generate jobs failed", func(t *testing.T) {
+		t.Run("returns error when generate jobs and get unresolved failed", func(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			tenantDetailsGetter.On("GetDetails", ctx, mock.Anything).Return(detailedTenant, nil)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
@@ -1819,13 +1822,14 @@ func TestJobService(t *testing.T) {
 			specs := []*job.Spec{specA}
 
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(job.ResourceURN(""), errors.New("some error on generate destination"))
-			jobService := service.NewJobService(nil, pluginService, nil, tenantDetailsGetter, log)
+			upstreamResolver.On("GetUnresolved", mock.Anything).Return([]*job.WithUpstream{}, errors.New("some error on get unresolved"))
+			jobService := service.NewJobService(nil, pluginService, upstreamResolver, tenantDetailsGetter, log)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
 			err := jobService.Validate(ctx, sampleTenant, specs, logWriter)
 			assert.Error(t, err)
-			assert.Equal(t, "validate specs errors:\n internal error for entity job: unable to add job-A: some error on generate destination", err.Error())
+			assert.Equal(t, "validate specs errors:\n internal error for entity job: unable to add job-A: some error on generate destination:\n some error on get unresolved", err.Error())
 		})
 		t.Run("returns error when get all by project name failed", func(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
@@ -1834,6 +1838,9 @@ func TestJobService(t *testing.T) {
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
@@ -1845,49 +1852,26 @@ func TestJobService(t *testing.T) {
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			specs := []*job.Spec{specA}
 
+			jobsWithUpstreams := []*job.WithUpstream{
+				job.NewWithUpstream(
+					job.NewJob(sampleTenant, specA, job.ResourceURN("example_destination"), []job.ResourceURN{"example_upstream", "another_upstream"}),
+					[]*job.Upstream{
+						job.NewUpstreamUnresolvedInferred(job.ResourceURN("example_upstream")),
+						job.NewUpstreamUnresolvedStatic("another_upstream", sampleTenant.ProjectName()),
+					},
+				),
+			}
+
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(job.ResourceURN("example_destination"), nil)
-			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return([]job.ResourceURN{"example_upstream"}, nil)
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return([]job.ResourceURN{"example_upstream", "another_upstream"}, nil)
+			upstreamResolver.On("GetUnresolved", mock.Anything).Return(jobsWithUpstreams, nil)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
-			jobService := service.NewJobService(repo, pluginService, nil, tenantDetailsGetter, log)
+			jobService := service.NewJobService(repo, pluginService, upstreamResolver, tenantDetailsGetter, log)
 			err := jobService.Validate(ctx, sampleTenant, specs, logWriter)
 			assert.Error(t, err)
 			assert.Equal(t, "error on get all by project name", err.Error())
-		})
-		t.Run("returns error when fail build cyclic multi tree", func(t *testing.T) {
-			tenantDetailsGetter := new(TenantDetailsGetter)
-			tenantDetailsGetter.On("GetDetails", ctx, mock.Anything).Return(detailedTenant, nil)
-			defer tenantDetailsGetter.AssertExpectations(t)
-
-			pluginService := new(PluginService)
-			defer pluginService.AssertExpectations(t)
-
-			repo := new(JobRepository)
-			defer repo.AssertExpectations(t)
-
-			logWriter := new(mockWriter)
-			defer logWriter.AssertExpectations(t)
-
-			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
-			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
-			specC, _ := job.NewSpecBuilder(jobVersion, "job-C", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
-			specs := []*job.Spec{specA, specB, specC}
-
-			repo.On("GetAllByProjectName", ctx, sampleTenant.ProjectName()).Return([]*job.Job{}, nil)
-
-			pluginService.On("GenerateDestination", ctx, detailedTenant, jobTask).Return(job.ResourceURN("example_destination"), nil)
-			pluginService.On("GenerateUpstreams", ctx, detailedTenant, mock.Anything, true).Return([]job.ResourceURN{"example_upstream"}, nil)
-
-			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
-
-			jobService := service.NewJobService(repo, pluginService, nil, tenantDetailsGetter, log)
-			err := jobService.Validate(ctx, sampleTenant, specs, logWriter)
-			assert.Error(t, err)
-			assert.ErrorContains(t, err, "validate specs errors")
-			assert.ErrorContains(t, err, "couldn't find any job with name job-A")
-			assert.ErrorContains(t, err, "couldn't find any job with name job-B")
-			assert.ErrorContains(t, err, "couldn't find any job with name job-C")
 		})
 		t.Run("returns error when there's a cyclic", func(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
@@ -1896,6 +1880,9 @@ func TestJobService(t *testing.T) {
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
 
 			repo := new(JobRepository)
 			defer repo.AssertExpectations(t)
@@ -1911,25 +1898,53 @@ func TestJobService(t *testing.T) {
 			jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-C"})
 			jobB := job.NewJob(sampleTenant, specB, "table-B", []job.ResourceURN{"table-A"})
 			jobC := job.NewJob(sampleTenant, specC, "table-C", []job.ResourceURN{"table-B"})
+
+			jobsWithUpstreams := []*job.WithUpstream{
+				job.NewWithUpstream(
+					jobA,
+					[]*job.Upstream{
+						job.NewUpstreamUnresolvedInferred(job.ResourceURN("table-C")),
+					},
+				),
+				job.NewWithUpstream(
+					jobB,
+					[]*job.Upstream{
+						job.NewUpstreamUnresolvedInferred(job.ResourceURN("table-A")),
+					},
+				),
+				job.NewWithUpstream(
+					jobC,
+					[]*job.Upstream{
+						job.NewUpstreamUnresolvedInferred(job.ResourceURN("table-B")),
+					},
+				),
+			}
+
 			repo.On("GetAllByProjectName", ctx, sampleTenant.ProjectName()).Return([]*job.Job{jobA, jobB, jobC}, nil)
+			upstreamResolver.On("GetUnresolved", mock.Anything).Return(jobsWithUpstreams, nil)
+			upstreamResolver.On("BulkResolveInternal", ctx, sampleTenant.ProjectName(), mock.Anything).Return(jobsWithUpstreams, nil)
 
 			pluginService.On("GenerateDestination", ctx, detailedTenant, jobTask).Return(job.ResourceURN("example_destination"), nil)
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, mock.Anything, true).Return([]job.ResourceURN{"example_upstream"}, nil)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
-			jobService := service.NewJobService(repo, pluginService, nil, tenantDetailsGetter, log)
+			jobService := service.NewJobService(repo, pluginService, upstreamResolver, tenantDetailsGetter, log)
 			err := jobService.Validate(ctx, sampleTenant, specs, logWriter)
 			assert.Error(t, err)
-			assert.ErrorContains(t, err, "a cycle dependency encountered in the tree:")
+			assert.EqualError(t, err, "a cycle dependency encountered in the tree:")
 		})
-		t.Run("returns no error when success", func(t *testing.T) {
+
+		t.Run("returns error when there's a cyclic on the incoming job request", func(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			tenantDetailsGetter.On("GetDetails", ctx, mock.Anything).Return(detailedTenant, nil)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
 
 			repo := new(JobRepository)
 			defer repo.AssertExpectations(t)
@@ -1942,17 +1957,124 @@ func TestJobService(t *testing.T) {
 			specC, _ := job.NewSpecBuilder(jobVersion, "job-C", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			specs := []*job.Spec{specA, specB, specC}
 
-			jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{})
+			jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-Z"})
 			jobB := job.NewJob(sampleTenant, specB, "table-B", []job.ResourceURN{"table-A"})
 			jobC := job.NewJob(sampleTenant, specC, "table-C", []job.ResourceURN{"table-B"})
+
+			jobsWithUpstreams := []*job.WithUpstream{
+				job.NewWithUpstream(
+					jobB,
+					[]*job.Upstream{
+						job.NewUpstreamUnresolvedInferred(job.ResourceURN("table-A")),
+					},
+				),
+				job.NewWithUpstream(
+					jobC,
+					[]*job.Upstream{
+						job.NewUpstreamUnresolvedInferred(job.ResourceURN("table-B")),
+					},
+				),
+			}
+			jobsWithUpstreamsIncoming := append(jobsWithUpstreams,
+				job.NewWithUpstream(
+					jobA,
+					[]*job.Upstream{
+						job.NewUpstreamUnresolvedInferred(job.ResourceURN("table-Z")),
+						job.NewUpstreamUnresolvedInferred(job.ResourceURN("table-C")), // incoming request has cyclic deps
+					},
+				),
+			)
+			jobsWithUpstreamsExisting := append(jobsWithUpstreams,
+				job.NewWithUpstream(
+					jobA,
+					[]*job.Upstream{
+						job.NewUpstreamUnresolvedInferred(job.ResourceURN("table-Z")),
+					},
+				),
+			)
+
 			repo.On("GetAllByProjectName", ctx, sampleTenant.ProjectName()).Return([]*job.Job{jobA, jobB, jobC}, nil)
+			upstreamResolver.On("GetUnresolved", mock.Anything).Return(jobsWithUpstreamsIncoming, nil)
+			upstreamResolver.On("BulkResolveInternal", ctx, sampleTenant.ProjectName(), mock.Anything).Return(jobsWithUpstreamsExisting, nil)
 
 			pluginService.On("GenerateDestination", ctx, detailedTenant, jobTask).Return(job.ResourceURN("example_destination"), nil)
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, mock.Anything, true).Return([]job.ResourceURN{"example_upstream"}, nil)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
-			jobService := service.NewJobService(repo, pluginService, nil, tenantDetailsGetter, log)
+			jobService := service.NewJobService(repo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			err := jobService.Validate(ctx, sampleTenant, specs, logWriter)
+			assert.Error(t, err)
+			assert.EqualError(t, err, "a cycle dependency encountered in the tree:")
+		})
+
+		t.Run("returns no error when success", func(t *testing.T) {
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			tenantDetailsGetter.On("GetDetails", ctx, mock.Anything).Return(detailedTenant, nil)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			repo := new(JobRepository)
+			defer repo.AssertExpectations(t)
+
+			logWriter := new(mockWriter)
+			defer logWriter.AssertExpectations(t)
+
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			specC, _ := job.NewSpecBuilder(jobVersion, "job-C", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			specs := []*job.Spec{specA, specB, specC}
+
+			jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-C"})
+			jobB := job.NewJob(sampleTenant, specB, "table-B", []job.ResourceURN{"table-A"})
+			jobC := job.NewJob(sampleTenant, specC, "table-C", []job.ResourceURN{"table-B"})
+
+			jobsWithUpstreams := []*job.WithUpstream{
+				job.NewWithUpstream(
+					jobB,
+					[]*job.Upstream{
+						job.NewUpstreamUnresolvedInferred(job.ResourceURN("table-A")),
+					},
+				),
+				job.NewWithUpstream(
+					jobC,
+					[]*job.Upstream{
+						job.NewUpstreamUnresolvedInferred(job.ResourceURN("table-B")),
+					},
+				),
+			}
+			jobsWithUpstreamsIncoming := append(jobsWithUpstreams,
+				job.NewWithUpstream(
+					jobA,
+					[]*job.Upstream{
+						job.NewUpstreamUnresolvedInferred(job.ResourceURN("table-Z")), // incoming request has no cyclic deps
+					},
+				),
+			)
+			jobsWithUpstreamsExisting := append(jobsWithUpstreams,
+				job.NewWithUpstream(
+					jobA,
+					[]*job.Upstream{
+						job.NewUpstreamUnresolvedInferred(job.ResourceURN("table-C")),
+					},
+				),
+			)
+
+			repo.On("GetAllByProjectName", ctx, sampleTenant.ProjectName()).Return([]*job.Job{jobA, jobB, jobC}, nil)
+			upstreamResolver.On("GetUnresolved", mock.Anything).Return(jobsWithUpstreamsIncoming, nil)
+			upstreamResolver.On("BulkResolveInternal", ctx, sampleTenant.ProjectName(), mock.Anything).Return(jobsWithUpstreamsExisting, nil)
+
+			pluginService.On("GenerateDestination", ctx, detailedTenant, jobTask).Return(job.ResourceURN("example_destination"), nil)
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, mock.Anything, true).Return([]job.ResourceURN{"example_upstream"}, nil)
+
+			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+
+			jobService := service.NewJobService(repo, pluginService, upstreamResolver, tenantDetailsGetter, log)
 			err := jobService.Validate(ctx, sampleTenant, specs, logWriter)
 			assert.NoError(t, err)
 		})
@@ -2668,6 +2790,29 @@ func (_m *UpstreamResolver) GetUnresolved(jobs []*job.Job) ([]*job.WithUpstream,
 	var r1 error
 	if rf, ok := ret.Get(1).(func([]*job.Job) error); ok {
 		r1 = rf(jobs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// BulkResolveInternal provides a mock function with given fields: ctx, projectName, jobs
+func (_m *UpstreamResolver) BulkResolveInternal(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) ([]*job.WithUpstream, error) {
+	ret := _m.Called(ctx, projectName, jobs)
+
+	var r0 []*job.WithUpstream
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, []*job.Job) []*job.WithUpstream); ok {
+		r0 = rf(ctx, projectName, jobs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*job.WithUpstream)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, []*job.Job) error); ok {
+		r1 = rf(ctx, projectName, jobs)
 	} else {
 		r1 = ret.Error(1)
 	}

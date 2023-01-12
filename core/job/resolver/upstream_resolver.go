@@ -43,7 +43,7 @@ type JobRepository interface {
 }
 
 func (u UpstreamResolver) GetUnresolved(jobs []*job.Job) ([]*job.WithUpstream, error) {
-	me := errors.NewMultiError("get unresolved upstream errors")
+	me := errors.NewMultiError("get unresolved upstreams errors")
 
 	var jobsWithUnresolvedUpstream []*job.WithUpstream
 	for _, subjectJob := range jobs {
@@ -55,8 +55,8 @@ func (u UpstreamResolver) GetUnresolved(jobs []*job.Job) ([]*job.WithUpstream, e
 	return jobsWithUnresolvedUpstream, errors.MultiToError(me)
 }
 
-func (u UpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job, logWriter writer.LogWriter) ([]*job.WithUpstream, error) {
-	me := errors.NewMultiError("bulk resolve jobs errors")
+func (u UpstreamResolver) BulkResolveInternal(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) ([]*job.WithUpstream, error) {
+	me := errors.NewMultiError("bulk resolve internal errors")
 
 	jobsWithUnresolvedUpstream, err := u.GetUnresolved(jobs)
 	if err != nil {
@@ -65,10 +65,22 @@ func (u UpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.Pr
 
 	jobsWithResolvedInternalUpstreams, err := u.internalUpstreamResolver.BulkResolve(ctx, projectName, jobsWithUnresolvedUpstream)
 	if err != nil {
+		return nil, err
+	}
+
+	return jobsWithResolvedInternalUpstreams, errors.MultiToError(me)
+}
+
+func (u UpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job, logWriter writer.LogWriter) ([]*job.WithUpstream, error) {
+	me := errors.NewMultiError("bulk resolve jobs errors")
+
+	jobsWithResolvedInternalUpstreams, err := u.BulkResolveInternal(ctx, projectName, jobs)
+	if err != nil && errors.IsErrorType(err, errors.ErrInternalError) {
 		errorMsg := fmt.Sprintf("unable to resolve upstream: %s", err.Error())
 		logWriter.Write(writer.LogLevelError, errorMsg)
 		return nil, errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg)
 	}
+	me.Append(err)
 
 	jobsWithResolvedExternalUpstreams, err := u.externalUpstreamResolver.BulkResolve(ctx, jobsWithResolvedInternalUpstreams, logWriter)
 	me.Append(err)
