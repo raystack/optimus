@@ -494,7 +494,7 @@ func TestResourceService(t *testing.T) {
 			assert.ErrorContains(t, actualError, "error validating")
 		})
 
-		t.Run("returns error cannot get resource urn", func(t *testing.T) {
+		t.Run("skips resource when cannot get resource urn", func(t *testing.T) {
 			incoming, err := resource.NewResource("project.dataset", "dataset", resource.Bigquery, tnnt, meta, spec)
 			assert.NoError(t, err)
 
@@ -502,11 +502,14 @@ func TestResourceService(t *testing.T) {
 			mgr.On("Validate", incoming).Return(nil)
 			mgr.On("GetURN", incoming).Return("", errors.New("urn error"))
 
-			rscService := service.NewResourceService(logger, nil, mgr, nil)
+			repo := newResourceRepository(t)
+			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{}, nil)
+
+			rscService := service.NewResourceService(logger, repo, mgr, nil)
 
 			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, []*resource.Resource{incoming})
-			assert.Error(t, actualError)
-			assert.ErrorContains(t, actualError, "urn error")
+			assert.NoError(t, actualError)
+			assert.Equal(t, "unknown", incoming.Status().String())
 		})
 
 		t.Run("returns error if cannot update resource urn", func(t *testing.T) {
@@ -520,11 +523,14 @@ func TestResourceService(t *testing.T) {
 			mgr.On("Validate", incoming).Return(nil)
 			mgr.On("GetURN", incoming).Return(urn, nil)
 
-			rscService := service.NewResourceService(logger, nil, mgr, nil)
+			repo := newResourceRepository(t)
+			repo.On("ReadAll", ctx, tnnt, resource.Bigquery).Return([]*resource.Resource{}, nil)
+
+			rscService := service.NewResourceService(logger, repo, mgr, nil)
 
 			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, []*resource.Resource{incoming})
-			assert.Error(t, actualError)
-			assert.ErrorContains(t, actualError, "urn already present")
+			assert.NoError(t, actualError)
+			assert.Equal(t, "unknown", incoming.Status().String())
 		})
 
 		t.Run("returns error if error is encountered when reading from repo", func(t *testing.T) {
