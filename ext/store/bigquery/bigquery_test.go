@@ -595,7 +595,7 @@ func TestBigqueryStore(t *testing.T) {
 				bqStore := bigquery.NewBigqueryDataStore(nil, nil)
 				err = bqStore.Validate(res)
 				assert.NotNil(t, err)
-				assert.ErrorContains(t, err, "invalid schema for project.set.external_name1")
+				assert.ErrorContains(t, err, "empty external table source for project.set.external_name1")
 			})
 		})
 		t.Run("for table", func(t *testing.T) {
