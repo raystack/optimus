@@ -157,18 +157,18 @@ func (rs ResourceService) Deploy(ctx context.Context, tnnt tenant.Tenant, store 
 			r.MarkValidationFailure()
 			continue
 		}
-		r.MarkValidationSuccess()
 
 		urn, err := rs.mgr.GetURN(r)
 		if err != nil {
 			rs.logger.Error("error getting resource urn [%s]: %s", r.FullName(), err)
-			return err
+			continue
 		}
 		err = r.UpdateURN(urn)
 		if err != nil {
 			rs.logger.Error("error updating urn of resource [%s]: %s", r.FullName(), err)
-			return err
+			continue
 		}
+		r.MarkValidationSuccess()
 	}
 
 	toUpdateOnStore, err := rs.getResourcesToBatchUpdate(ctx, tnnt, store, resources)
