@@ -45,6 +45,7 @@ func (e *extUpstreamResolver) Resolve(ctx context.Context, jobWithUpstream *job.
 	me := errors.NewMultiError(fmt.Sprintf("[%s] external upstream resolution errors for job %s", jobWithUpstream.Job().Tenant().NamespaceName().String(), jobWithUpstream.Name().String()))
 	mergedUpstreams := jobWithUpstream.GetResolvedUpstreams()
 	unresolvedUpstreams := jobWithUpstream.GetUnresolvedUpstreams()
+	resolvedExternally := false
 	for _, unresolvedUpstream := range unresolvedUpstreams {
 		externalUpstream, err := e.fetchOptimusUpstreams(ctx, unresolvedUpstream)
 		if err != nil || len(externalUpstream) == 0 {
@@ -53,10 +54,12 @@ func (e *extUpstreamResolver) Resolve(ctx context.Context, jobWithUpstream *job.
 			continue
 		}
 		mergedUpstreams = append(mergedUpstreams, externalUpstream...)
+		resolvedExternally = true
 	}
 	if len(me.Errors) > 0 {
 		lw.Write(writer.LogLevelError, errors.MultiToError(me).Error())
-	} else {
+	}
+	if resolvedExternally {
 		lw.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] resolved job %s upstream from external", jobWithUpstream.Job().Tenant().NamespaceName().String(), jobWithUpstream.Name().String()))
 	}
 	return job.NewWithUpstream(jobWithUpstream.Job(), mergedUpstreams), errors.MultiToError(me)
