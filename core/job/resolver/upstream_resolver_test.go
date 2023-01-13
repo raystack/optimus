@@ -313,7 +313,7 @@ func TestUpstreamResolver(t *testing.T) {
 
 			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver, internalUpstreamResolver)
 			result, err := upstreamResolver.Resolve(ctx, jobA, logWriter)
-			assert.ErrorContains(t, err, "name is empty")
+			assert.ErrorContains(t, err, "failed to get static upstreams to resolve")
 			assert.EqualValues(t, expectedUpstream, result)
 		})
 		t.Run("should not break process but still return error if failed to resolve some static upstream internally", func(t *testing.T) {
