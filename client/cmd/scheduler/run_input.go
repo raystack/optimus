@@ -56,7 +56,7 @@ func NewJobRunInputCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "run-input",
 		Short:   "Fetch jobRunInput assets for a scheduled execution",
-		Example: "optimus job run-input <job_name> --output-dir </tmp> --scheduled-at <2021-01-14T02:00:00+00:00> --type <task|hook> --name <bq2bq> --project \"project-id\" --namespace \"namespace\" ",
+		Example: "optimus scheduler run-input <job_name> --output-dir </tmp> --scheduled-at <2021-01-14T02:00:00+00:00> --type <task|hook> --name <bq2bq> --project \"project-id\" --namespace \"namespace\" ",
 		Args:    cobra.MinimumNArgs(1),
 		Annotations: map[string]string{
 			"group:core": "true",

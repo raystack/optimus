@@ -41,13 +41,13 @@ func (e *Engine) Compile(templateMap map[string]string, context map[string]any) 
 	for name, content := range templateMap {
 		tmpl, err := e.baseTemplate.New(name).Parse(content)
 		if err != nil {
-			return nil, errors.InvalidArgument(EntityCompiler, "unable to parse content for "+name)
+			return nil, errors.AddErrContext(err, EntityCompiler, "unable to parse content for "+name)
 		}
 
 		var buf bytes.Buffer
 		err = tmpl.Execute(&buf, context)
 		if err != nil {
-			return nil, errors.InvalidArgument(EntityCompiler, "unable to render content for "+name)
+			return nil, errors.AddErrContext(err, EntityCompiler, "unable to render content for "+name)
 		}
 		rendered[name] = strings.TrimSpace(buf.String())
 	}
