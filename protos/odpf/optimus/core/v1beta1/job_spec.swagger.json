@@ -88,6 +88,166 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "job.version",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "job.name",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "job.owner",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "job.startDate",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "job.endDate",
+            "description": "optional",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "job.interval",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "job.dependsOnPast",
+            "description": "should only execute today if yesterday was completed with success?",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "job.catchUp",
+            "description": "should backfill till today?",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "job.taskName",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "job.windowSize",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "job.windowOffset",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "job.windowTruncateTo",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "job.description",
+            "description": "optional",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "job.behavior.retry.count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "job.behavior.retry.delay",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "job.behavior.retry.exponentialBackoff",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "job.metadata.resource.request.cpu",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "job.metadata.resource.request.memory",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "job.metadata.resource.limit.cpu",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "job.metadata.resource.limit.memory",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "job.metadata.airflow.pool",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "job.metadata.airflow.queue",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "job.destination",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "job.sources",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "namespaceName",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -705,24 +865,23 @@
           "type": "string"
         },
         "type": {
-          "type": "string"
+          "type": "string",
+          "title": "intra/inter/extra"
         },
         "httpDependency": {
-          "$ref": "#/definitions/v1beta1HttpDependency"
+          "$ref": "#/definitions/v1beta1HttpDependency",
+          "title": "http sensor dependency"
         }
       }
     },
     "protobufAny": {
       "type": "object",
       "properties": {
-        "typeUrl": {
+        "@type": {
           "type": "string"
-        },
-        "value": {
-          "type": "string",
-          "format": "byte"
         }
-      }
+      },
+      "additionalProperties": {}
     },
     "rpcStatus": {
       "type": "object",
@@ -1068,16 +1227,19 @@
           "type": "string"
         },
         "endDate": {
-          "type": "string"
+          "type": "string",
+          "title": "optional"
         },
         "interval": {
           "type": "string"
         },
         "dependsOnPast": {
-          "type": "boolean"
+          "type": "boolean",
+          "title": "should only execute today if yesterday was completed with success?"
         },
         "catchUp": {
-          "type": "boolean"
+          "type": "boolean",
+          "title": "should backfill till today?"
         },
         "taskName": {
           "type": "string"
@@ -1101,7 +1263,8 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/corev1beta1JobDependency"
-          }
+          },
+          "title": "static dependencies"
         },
         "assets": {
           "type": "object",
@@ -1113,10 +1276,12 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1beta1JobSpecHook"
-          }
+          },
+          "title": "optional"
         },
         "description": {
-          "type": "string"
+          "type": "string",
+          "title": "optional"
         },
         "labels": {
           "type": "object",
