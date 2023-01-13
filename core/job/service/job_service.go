@@ -74,8 +74,6 @@ type JobRepository interface {
 }
 
 type UpstreamResolver interface {
-	GetUnresolved(jobs []*job.Job) (jobsWithUpstreams []*job.WithUpstream, err error)
-	BulkResolveInternal(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) (jobWithUpstreams []*job.WithUpstream, err error)
 	BulkResolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job, logWriter writer.LogWriter) (jobWithUpstreams []*job.WithUpstream, err error)
 	Resolve(ctx context.Context, subjectJob *job.Job, logWriter writer.LogWriter) ([]*job.Upstream, error)
 }
@@ -321,7 +319,7 @@ func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSp
 	jobs, err := j.generateJobs(ctx, tenantWithDetails, jobSpecs, logWriter)
 	me.Append(err)
 
-	jobsWithUnresolvedUpstreams, err := j.upstreamResolver.GetUnresolved(jobs)
+	jobsWithUnresolvedUpstreams, err := job.Jobs(jobs).GetJobsWithUnresolvedUpstreams()
 	me.Append(err)
 
 	if len(me.Errors) > 0 {
@@ -336,7 +334,7 @@ func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSp
 	if err != nil {
 		return err
 	}
-	jobsInProjectWithUpstreams, err := j.upstreamResolver.BulkResolveInternal(ctx, jobTenant.ProjectName(), jobsInProject)
+	jobsInProjectWithUpstreams, err := job.Jobs(jobsInProject).GetJobsWithUnresolvedUpstreams()
 	if err != nil {
 		return err
 	}
