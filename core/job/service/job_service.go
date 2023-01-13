@@ -563,7 +563,7 @@ func (j JobService) validateCyclic(rootName job.Name, jobMap map[job.Name]*job.W
 }
 
 func (JobService) buildDAGTree(rootName job.Name, jobMap map[job.Name]*job.WithUpstream, identifierToJobMap map[string][]*job.WithUpstream) *tree.MultiRootTree {
-	rootJob, _ := jobMap[rootName]
+	rootJob := jobMap[rootName]
 
 	dagTree := tree.NewMultiRootTree()
 	dagTree.AddNode(tree.NewTreeNode(rootJob))

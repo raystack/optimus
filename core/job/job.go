@@ -45,7 +45,8 @@ func (j Job) FullName() string {
 func (j Job) GetJobWithUnresolvedUpstream() (*WithUpstream, error) {
 	unresolvedStaticUpstreams, err := j.getStaticUpstreamsToResolve()
 	unresolvedInferredUpstreams := j.getInferredUpstreamsToResolve()
-	allUpstreams := append(unresolvedStaticUpstreams, unresolvedInferredUpstreams...)
+	allUpstreams := unresolvedStaticUpstreams
+	allUpstreams = append(allUpstreams, unresolvedInferredUpstreams...)
 
 	return NewWithUpstream(&j, allUpstreams), err
 }
