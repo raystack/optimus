@@ -427,7 +427,7 @@ func (j JobService) bulkDelete(ctx context.Context, jobTenant tenant.Tenant, toD
 		if len(downstreamList) > 0 {
 			downstreamFullNames := job.DownstreamList(downstreamList).GetDownstreamFullNames()
 			errorMsg := fmt.Sprintf("deleting job %s failed. job is being used by %s", spec.Name().String(), downstreamFullNames.String())
-			logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] %s", jobTenant.NamespaceName().String(), spec.Name().String()))
+			logWriter.Write(writer.LogLevelError, fmt.Sprintf("[%s] %s", jobTenant.NamespaceName().String(), errorMsg))
 			me.Append(errors.NewError(errors.ErrFailedPrecond, job.EntityJob, errorMsg))
 			continue
 		}

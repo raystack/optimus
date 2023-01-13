@@ -324,7 +324,7 @@ func (JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstr
 		if storeUpstream.UpstreamProjectName.Valid && storeUpstream.UpstreamNamespaceName.Valid {
 			upstreamTenant, err = tenant.NewTenant(storeUpstream.UpstreamProjectName.String, storeUpstream.UpstreamNamespaceName.String)
 			if err != nil {
-				me.Append(err)
+				me.Append(errors.Wrap(job.EntityJob, fmt.Sprintf("failed to get tenant for upstream %s of job %s", storeUpstream.UpstreamJobName.String, storeUpstream.JobName), err))
 				continue
 			}
 		}
@@ -333,7 +333,7 @@ func (JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstr
 		if storeUpstream.UpstreamTaskName.Valid {
 			taskName, err = job.TaskNameFrom(storeUpstream.UpstreamTaskName.String)
 			if err != nil {
-				me.Append(err)
+				me.Append(errors.Wrap(job.EntityJob, fmt.Sprintf("failed to get task for upstream %s of job %s", storeUpstream.UpstreamJobName.String, storeUpstream.JobName), err))
 				continue
 			}
 		}

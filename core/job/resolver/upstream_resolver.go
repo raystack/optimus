@@ -48,7 +48,11 @@ func (u UpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.Pr
 	var jobsWithUnresolvedUpstream []*job.WithUpstream
 	for _, subjectJob := range jobs {
 		jobWithUnresolvedUpstream, err := u.getJobWithUnresolvedUpstream(subjectJob)
-		me.Append(err)
+		if err != nil {
+			errorMsg := fmt.Sprintf("[%s] %s", subjectJob.Tenant().NamespaceName().String(), err.Error())
+			logWriter.Write(writer.LogLevelError, errorMsg)
+			me.Append(err)
+		}
 		jobsWithUnresolvedUpstream = append(jobsWithUnresolvedUpstream, jobWithUnresolvedUpstream)
 	}
 
@@ -56,7 +60,8 @@ func (u UpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.Pr
 	if err != nil {
 		errorMsg := fmt.Sprintf("unable to resolve upstream: %s", err.Error())
 		logWriter.Write(writer.LogLevelError, errorMsg)
-		return nil, errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg)
+		me.Append(errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg))
+		return nil, errors.MultiToError(me)
 	}
 
 	jobsWithResolvedExternalUpstreams, err := u.externalUpstreamResolver.BulkResolve(ctx, jobsWithResolvedInternalUpstreams, logWriter)
@@ -84,6 +89,9 @@ func (u UpstreamResolver) Resolve(ctx context.Context, subjectJob *job.Job, logW
 
 func (u UpstreamResolver) getJobWithUnresolvedUpstream(subjectJob *job.Job) (*job.WithUpstream, error) {
 	unresolvedStaticUpstreams, err := u.getStaticUpstreamsToResolve(subjectJob.StaticUpstreamNames(), subjectJob.ProjectName())
+	if err != nil {
+		err = errors.InvalidArgument(job.EntityJob, fmt.Sprintf("failed to get static upstreams to resolve for job %s", subjectJob.GetName()))
+	}
 
 	unresolvedInferredUpstreams := u.getInferredUpstreamsToResolve(subjectJob.Sources())
 
