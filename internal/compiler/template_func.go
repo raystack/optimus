@@ -1,8 +1,6 @@
 package compiler
 
 import (
-	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 	"text/template"
@@ -88,60 +86,10 @@ func unixEpoch(date time.Time) string {
 	return strconv.FormatInt(date.Unix(), 10) //nolint
 }
 
-func list(v ...interface{}) []interface{} {
+func list(v ...string) []string {
 	return v
 }
 
-func join(sep string, v interface{}) string {
-	return strings.Join(strslice(v), sep)
-}
-
-func strval(v interface{}) string {
-	switch v := v.(type) {
-	case string:
-		return v
-	case []byte:
-		return string(v)
-	case error:
-		return v.Error()
-	case fmt.Stringer:
-		return v.String()
-	default:
-		return fmt.Sprintf("%v", v)
-	}
-}
-
-func strslice(v interface{}) []string {
-	switch v := v.(type) {
-	case []string:
-		return v
-	case []interface{}:
-		b := make([]string, 0, len(v))
-		for _, s := range v {
-			if s != nil {
-				b = append(b, strval(s))
-			}
-		}
-		return b
-	default:
-		val := reflect.ValueOf(v)
-		switch val.Kind() {
-		case reflect.Array, reflect.Slice:
-			l := val.Len()
-			b := make([]string, 0, l)
-			for i := 0; i < l; i++ {
-				value := val.Index(i).Interface()
-				if value != nil {
-					b = append(b, strval(value))
-				}
-			}
-			return b
-		default:
-			if v == nil {
-				return []string{}
-			}
-
-			return []string{strval(v)}
-		}
-	}
+func join(sep string, v []string) string {
+	return strings.Join(v, sep)
 }
