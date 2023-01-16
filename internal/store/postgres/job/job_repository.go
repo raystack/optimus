@@ -359,7 +359,7 @@ func (JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstr
 	if err := me.ToErr(); err != nil {
 		return nil, err
 	}
-	return job.Upstreams(upstreams).Deduplicate(), nil
+	return upstreams, nil
 }
 
 func (j JobRepository) GetByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) (*job.Job, error) {

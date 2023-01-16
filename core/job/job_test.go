@@ -162,6 +162,22 @@ func TestEntityJob(t *testing.T) {
 
 			assert.EqualValues(t, expectedMap, resultMap)
 		})
+		t.Run("should return a map with static upstream being prioritized when duplication is found", func(t *testing.T) {
+			upstreamResolved1 := job.NewUpstreamResolved("job-a", "host-sample", "project.dataset.sample-a", sampleTenant, job.UpstreamTypeStatic, "", false)
+			upstreamResolved2 := job.NewUpstreamResolved("job-a", "host-sample", "project.dataset.sample-a", sampleTenant, job.UpstreamTypeInferred, "", false)
+			upstreamResolved3 := job.NewUpstreamResolved("job-b", "host-sample", "project.dataset.sample-b", sampleTenant, job.UpstreamTypeInferred, "", false)
+			upstreamResolved4 := job.NewUpstreamResolved("job-b", "host-sample", "project.dataset.sample-b", sampleTenant, job.UpstreamTypeStatic, "", false)
+
+			expectedMap := map[string]*job.Upstream{
+				"test-proj/job-a": upstreamResolved1,
+				"test-proj/job-b": upstreamResolved4,
+			}
+
+			upstreams := job.Upstreams([]*job.Upstream{upstreamResolved1, upstreamResolved2, upstreamResolved3, upstreamResolved4})
+			resultMap := upstreams.ToFullNameAndUpstreamMap()
+
+			assert.EqualValues(t, expectedMap, resultMap)
+		})
 	})
 
 	t.Run("ToResourceDestinationAndUpstreamMap", func(t *testing.T) {
@@ -192,6 +208,22 @@ func TestEntityJob(t *testing.T) {
 
 			assert.EqualValues(t, expectedMap, resultMap)
 		})
+		t.Run("should return a map with static upstream being prioritized when duplication is found", func(t *testing.T) {
+			upstreamResolved1 := job.NewUpstreamResolved("job-a", "host-sample", "project.dataset.sample-a", sampleTenant, job.UpstreamTypeStatic, "", false)
+			upstreamResolved2 := job.NewUpstreamResolved("job-a", "host-sample", "project.dataset.sample-a", sampleTenant, job.UpstreamTypeInferred, "", false)
+			upstreamResolved3 := job.NewUpstreamResolved("job-b", "host-sample", "project.dataset.sample-b", sampleTenant, job.UpstreamTypeInferred, "", false)
+			upstreamResolved4 := job.NewUpstreamResolved("job-b", "host-sample", "project.dataset.sample-b", sampleTenant, job.UpstreamTypeStatic, "", false)
+
+			expectedMap := map[string]*job.Upstream{
+				"project.dataset.sample-a": upstreamResolved1,
+				"project.dataset.sample-b": upstreamResolved4,
+			}
+
+			upstreams := job.Upstreams([]*job.Upstream{upstreamResolved1, upstreamResolved2, upstreamResolved3, upstreamResolved4})
+			resultMap := upstreams.ToResourceDestinationAndUpstreamMap()
+
+			assert.EqualValues(t, expectedMap, resultMap)
+		})
 	})
 
 	t.Run("Deduplicate", func(t *testing.T) {
@@ -199,16 +231,20 @@ func TestEntityJob(t *testing.T) {
 			upstreamResolved1Inferred := job.NewUpstreamResolved("job-a", "host-sample", "project.dataset.sample-a", sampleTenant, job.UpstreamTypeInferred, "", false)
 			upstreamResolved1Static := job.NewUpstreamResolved("job-a", "host-sample", "project.dataset.sample-a", sampleTenant, job.UpstreamTypeStatic, "", false)
 			upstreamResolved2 := job.NewUpstreamResolved("job-b", "host-sample", "project.dataset.sample-b", sampleTenant, job.UpstreamTypeInferred, "", false)
+			upstreamUnresolved1 := job.NewUpstreamUnresolvedStatic("job-c", sampleTenant.ProjectName())
+			upstreamUnresolved2 := job.NewUpstreamUnresolvedInferred("project.dataset.sample-d")
 
-			expectedMap := []*job.Upstream{
+			expected := []*job.Upstream{
 				upstreamResolved1Static,
 				upstreamResolved2,
+				upstreamUnresolved1,
+				upstreamUnresolved2,
 			}
 
-			upstreams := job.Upstreams([]*job.Upstream{upstreamResolved1Inferred, upstreamResolved1Static, upstreamResolved2})
-			resultMap := upstreams.Deduplicate()
+			upstreams := job.Upstreams([]*job.Upstream{upstreamResolved1Inferred, upstreamResolved1Static, upstreamResolved2, upstreamUnresolved1, upstreamUnresolved2})
+			result := upstreams.Deduplicate()
 
-			assert.EqualValues(t, expectedMap, resultMap)
+			assert.ElementsMatch(t, expected, result)
 		})
 	})
 

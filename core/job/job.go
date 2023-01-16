@@ -295,6 +295,12 @@ func (u Upstreams) ToFullNameAndUpstreamMap() map[string]*Upstream {
 	fullNameUpstreamMap := make(map[string]*Upstream)
 	for _, upstream := range u {
 		fullName := upstream.ProjectName().String() + "/" + upstream.name.String()
+		// keep static upstreams in the map if exists
+		if upstreamInMap, ok := fullNameUpstreamMap[fullName]; ok {
+			if upstreamInMap._type == UpstreamTypeStatic {
+				continue
+			}
+		}
 		fullNameUpstreamMap[fullName] = upstream
 	}
 	return fullNameUpstreamMap
@@ -306,16 +312,30 @@ func (u Upstreams) ToResourceDestinationAndUpstreamMap() map[string]*Upstream {
 		if upstream.resource == "" {
 			continue
 		}
+		// keep static upstreams in the map if exists
+		if upstreamInMap, ok := resourceDestinationUpstreamMap[upstream.resource.String()]; ok {
+			if upstreamInMap._type == UpstreamTypeStatic {
+				continue
+			}
+		}
 		resourceDestinationUpstreamMap[upstream.resource.String()] = upstream
 	}
 	return resourceDestinationUpstreamMap
 }
 
 func (u Upstreams) Deduplicate() []*Upstream {
+	var upstreamsResult []*Upstream
 	distinctUpstreamsMap := make(map[string]*Upstream)
+
 	for _, upstream := range u {
+		// add unresolved upstreams straight to the result list
+		if upstream.state == UpstreamStateUnresolved {
+			upstreamsResult = append(upstreamsResult, upstream)
+			continue
+		}
+
+		// keep static upstreams in the map if exists
 		if upstreamInMap, ok := distinctUpstreamsMap[upstream.FullName()]; ok {
-			// prioritize static upstreams
 			if upstreamInMap._type == UpstreamTypeStatic {
 				continue
 			}
@@ -323,12 +343,11 @@ func (u Upstreams) Deduplicate() []*Upstream {
 		distinctUpstreamsMap[upstream.FullName()] = upstream
 	}
 
-	var distinctUpstreams []*Upstream
 	for _, upstream := range distinctUpstreamsMap {
-		distinctUpstreams = append(distinctUpstreams, upstream)
+		upstreamsResult = append(upstreamsResult, upstream)
 	}
 
-	return distinctUpstreams
+	return upstreamsResult
 }
 
 type FullName string

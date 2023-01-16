@@ -608,38 +608,6 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.NoError(t, err)
 			assert.EqualValues(t, expectedUpstreams, upstreams[jobSpecA.Name()])
 		})
-		t.Run("returns job with static upstream if found duplicated upstream from static and inferred", func(t *testing.T) {
-			db := dbSetup()
-
-			tenantDetails, err := tenant.NewTenantDetails(proj, namespace)
-			assert.NoError(t, err)
-
-			upstreamName := job.SpecUpstreamNameFrom("test-proj/sample-job-B")
-			jobAUpstream, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{upstreamName}).Build()
-			jobSpecA, _ := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).
-				WithDescription(jobDescription).
-				WithSpecUpstream(jobAUpstream).
-				Build()
-			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"dev.resource.sample_b"})
-
-			jobSpecB, err := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
-			assert.NoError(t, err)
-			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", nil)
-
-			jobRepo := postgres.NewJobRepository(db)
-			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB})
-			assert.NoError(t, err)
-
-			upstreamB := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), tenantDetails.ToTenant(), "static", taskName, false)
-
-			expectedUpstreams := []*job.Upstream{
-				upstreamB,
-			}
-
-			upstreams, err := jobRepo.ResolveUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
-			assert.NoError(t, err)
-			assert.EqualValues(t, expectedUpstreams, upstreams[jobSpecA.Name()])
-		})
 	})
 
 	t.Run("ReplaceUpstreams", func(t *testing.T) {
