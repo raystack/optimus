@@ -357,4 +357,29 @@ func TestEntityJob(t *testing.T) {
 			assert.Len(t, jobWithUpstreams.Upstreams(), 2)
 		})
 	})
+
+	t.Run("GetJobsWithUnresolvedUpstreams", func(t *testing.T) {
+		t.Run("should return with error when individual get job with upstream has error", func(t *testing.T) {
+			jobTaskPython := job.NewTaskBuilder(job.TaskName("python"), jobTaskConfig).Build()
+			upstreamsSpecA, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"/job-C"}).Build()
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskPython).WithSpecUpstream(upstreamsSpecA).Build()
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
+			jobs := job.Jobs([]*job.Job{jobA, jobB})
+
+			jobsWithUpstreams, err := jobs.GetJobsWithUnresolvedUpstreams()
+			assert.Error(t, err)
+			assert.Len(t, jobsWithUpstreams, 2)
+		})
+		t.Run("should get unresolved upstreams", func(t *testing.T) {
+			jobTaskPython := job.NewTaskBuilder(job.TaskName("python"), jobTaskConfig).Build()
+			upstreamsSpecA, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"test-proj/job-C"}).Build()
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskPython).WithSpecUpstream(upstreamsSpecA).Build()
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
+			jobs := job.Jobs([]*job.Job{jobA, jobB})
+
+			jobsWithUpstreams, err := jobs.GetJobsWithUnresolvedUpstreams()
+			assert.NoError(t, err)
+			assert.Len(t, jobsWithUpstreams, 2)
+		})
+	})
 }
