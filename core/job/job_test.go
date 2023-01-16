@@ -194,6 +194,24 @@ func TestEntityJob(t *testing.T) {
 		})
 	})
 
+	t.Run("Deduplicate", func(t *testing.T) {
+		t.Run("should return upstreams with static being prioritized if duplication is found", func(t *testing.T) {
+			upstreamResolved1Inferred := job.NewUpstreamResolved("job-a", "host-sample", "project.dataset.sample-a", sampleTenant, job.UpstreamTypeInferred, "", false)
+			upstreamResolved1Static := job.NewUpstreamResolved("job-a", "host-sample", "project.dataset.sample-a", sampleTenant, job.UpstreamTypeStatic, "", false)
+			upstreamResolved2 := job.NewUpstreamResolved("job-b", "host-sample", "project.dataset.sample-b", sampleTenant, job.UpstreamTypeInferred, "", false)
+
+			expectedMap := []*job.Upstream{
+				upstreamResolved1Static,
+				upstreamResolved2,
+			}
+
+			upstreams := job.Upstreams([]*job.Upstream{upstreamResolved1Inferred, upstreamResolved1Static, upstreamResolved2})
+			resultMap := upstreams.Deduplicate()
+
+			assert.EqualValues(t, expectedMap, resultMap)
+		})
+	})
+
 	t.Run("FullNameFrom", func(t *testing.T) {
 		t.Run("should return the job full name given project and job name", func(t *testing.T) {
 			fullName := job.FullNameFrom(project.Name(), specA.Name())
