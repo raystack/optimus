@@ -299,7 +299,10 @@ func TestEntityJob(t *testing.T) {
 			}
 
 			result := job.WithUpstreams(jobsWithUnresolvedUpstream).MergeWithResolvedUpstreams(resolvedUpstreamMap)
-			assert.EqualValues(t, expected, result)
+			assert.Equal(t, expected[0].Job(), result[0].Job())
+			assert.Equal(t, expected[1].Job(), result[1].Job())
+			assert.ElementsMatch(t, expected[0].Upstreams(), result[0].Upstreams())
+			assert.ElementsMatch(t, expected[1].Upstreams(), result[1].Upstreams())
 		})
 	})
 

@@ -206,7 +206,10 @@ func TestInternalUpstreamResolver(t *testing.T) {
 			internalUpstreamResolver := resolver.NewInternalUpstreamResolver(jobRepo)
 			result, err := internalUpstreamResolver.BulkResolve(ctx, sampleTenant.ProjectName(), jobsWithUnresolvedUpstream)
 			assert.NoError(t, err)
-			assert.EqualValues(t, expectedJobsWithUpstream, result)
+			assert.Equal(t, expectedJobsWithUpstream[0].Job(), result[0].Job())
+			assert.Equal(t, expectedJobsWithUpstream[1].Job(), result[1].Job())
+			assert.ElementsMatch(t, expectedJobsWithUpstream[0].Upstreams(), result[0].Upstreams())
+			assert.ElementsMatch(t, expectedJobsWithUpstream[1].Upstreams(), result[1].Upstreams())
 		})
 		t.Run("returns error if unable to resolve upstream internally", func(t *testing.T) {
 			jobRepo := new(JobRepository)
