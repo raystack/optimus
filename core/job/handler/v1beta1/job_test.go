@@ -1124,7 +1124,7 @@ func TestNewJobHandler(t *testing.T) {
 
 			request := pb.GetJobSpecificationsRequest{}
 
-			jobService.On("GetByFilter", ctx, mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("error encountered"))
+			jobService.On("GetByFilter", ctx, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("error encountered"))
 			jobHandler := v1beta1.NewJobHandler(jobService, log)
 			resp, err := jobHandler.GetJobSpecifications(ctx, &request)
 			assert.Error(t, err)
@@ -1142,7 +1142,7 @@ func TestNewJobHandler(t *testing.T) {
 			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", sampleOwner, jobSchedule, jobWindow, jobTask).Build()
 			jobB := job.NewJob(sampleTenant, specB, "table-B", []job.ResourceURN{"table-C"})
 
-			jobService.On("GetByFilter", ctx, mock.Anything, mock.Anything, mock.Anything).Return([]*job.Job{jobA, jobB}, nil)
+			jobService.On("GetByFilter", ctx, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]*job.Job{jobA, jobB}, nil)
 			jobHandler := v1beta1.NewJobHandler(jobService, log)
 			resp, err := jobHandler.GetJobSpecifications(ctx, &request)
 			assert.NoError(t, err)

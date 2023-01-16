@@ -1688,6 +1688,40 @@ func TestJobService(t *testing.T) {
 				assert.Len(t, actual, 1)
 			})
 		})
+		t.Run("filter by project name and namespace name", func(t *testing.T) {
+			t.Run("return error when repo error", func(t *testing.T) {
+				jobRepo := new(JobRepository)
+				defer jobRepo.AssertExpectations(t)
+
+				jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(nil, errors.New("error encountered"))
+
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				actual, err := jobService.GetByFilter(ctx,
+					filter.WithString(filter.ProjectName, sampleTenant.ProjectName().String()),
+					filter.WithString(filter.NamespaceName, sampleTenant.NamespaceName().String()),
+				)
+				assert.Error(t, err, "error encountered")
+				assert.Nil(t, actual)
+			})
+			t.Run("return success", func(t *testing.T) {
+				jobRepo := new(JobRepository)
+				defer jobRepo.AssertExpectations(t)
+
+				specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+				jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-B"})
+				jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return([]*job.Job{jobA}, nil)
+
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				actual, err := jobService.GetByFilter(ctx,
+					filter.WithString(filter.ProjectName, sampleTenant.ProjectName().String()),
+					filter.WithString(filter.NamespaceName, sampleTenant.NamespaceName().String()),
+				)
+				assert.NoError(t, err)
+				assert.NotNil(t, actual)
+				assert.NotEmpty(t, actual)
+				assert.Len(t, actual, 1)
+			})
+		})
 		t.Run("filter by project name", func(t *testing.T) {
 			t.Run("return error when repo error", func(t *testing.T) {
 				jobRepo := new(JobRepository)
