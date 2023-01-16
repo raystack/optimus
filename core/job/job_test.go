@@ -273,27 +273,29 @@ func TestEntityJob(t *testing.T) {
 			})
 		})
 		t.Run("MergeWithResolvedUpstreams", func(t *testing.T) {
-			upstreamCUnresolved := job.NewUpstreamUnresolvedStatic("job-C", project.Name())
-			upstreamDUnresolved := job.NewUpstreamUnresolvedInferred("project.dataset.sample-d")
+			upstreamCUnresolved := job.NewUpstreamUnresolvedInferred("project.dataset.sample-c")
+			upstreamDUnresolvedInferred := job.NewUpstreamUnresolvedInferred("project.dataset.sample-d")
+			upstreamDUnresolvedStatic := job.NewUpstreamUnresolvedStatic("job-D", project.Name())
 			upstreamEUnresolved := job.NewUpstreamUnresolvedStatic("job-E", project.Name())
 			upstreamFUnresolved := job.NewUpstreamUnresolvedInferred("project.dataset.sample-f")
 
-			upstreamCResolved := job.NewUpstreamResolved("job-C", "host-sample", "project.dataset.sample-c", sampleTenant, job.UpstreamTypeStatic, "bq2bq", false)
-			upstreamDResolved := job.NewUpstreamResolved("job-D", "host-sample", "project.dataset.sample-d", sampleTenant, job.UpstreamTypeInferred, "bq2bq", false)
+			upstreamCResolved := job.NewUpstreamResolved("job-C", "host-sample", "project.dataset.sample-c", sampleTenant, job.UpstreamTypeInferred, "bq2bq", false)
+			upstreamDResolvedStatic := job.NewUpstreamResolved("job-D", "host-sample", "project.dataset.sample-d", sampleTenant, job.UpstreamTypeStatic, "bq2bq", false)
+			upstreamDResolvedInferred := job.NewUpstreamResolved("job-D", "host-sample", "project.dataset.sample-d", sampleTenant, job.UpstreamTypeInferred, "bq2bq", false)
 
 			resolvedUpstreamMap := map[job.Name][]*job.Upstream{
-				"job-A": {upstreamCResolved, upstreamDResolved},
-				"job-B": {upstreamDResolved},
+				"job-A": {upstreamCResolved, upstreamDResolvedInferred},
+				"job-B": {upstreamDResolvedStatic},
 			}
 
 			expected := []*job.WithUpstream{
-				job.NewWithUpstream(jobA, []*job.Upstream{upstreamCResolved, upstreamDResolved, upstreamEUnresolved}),
-				job.NewWithUpstream(jobB, []*job.Upstream{upstreamDResolved, upstreamEUnresolved, upstreamFUnresolved}),
+				job.NewWithUpstream(jobA, []*job.Upstream{upstreamCResolved, upstreamDResolvedInferred, upstreamEUnresolved}),
+				job.NewWithUpstream(jobB, []*job.Upstream{upstreamDResolvedStatic, upstreamEUnresolved, upstreamFUnresolved}),
 			}
 
 			jobsWithUnresolvedUpstream := []*job.WithUpstream{
-				job.NewWithUpstream(jobA, []*job.Upstream{upstreamCUnresolved, upstreamDUnresolved, upstreamEUnresolved}),
-				job.NewWithUpstream(jobB, []*job.Upstream{upstreamDUnresolved, upstreamEUnresolved, upstreamFUnresolved}),
+				job.NewWithUpstream(jobA, []*job.Upstream{upstreamCUnresolved, upstreamDUnresolvedInferred, upstreamEUnresolved}),
+				job.NewWithUpstream(jobB, []*job.Upstream{upstreamDUnresolvedStatic, upstreamDUnresolvedInferred, upstreamEUnresolved, upstreamFUnresolved}),
 			}
 
 			result := job.WithUpstreams(jobsWithUnresolvedUpstream).MergeWithResolvedUpstreams(resolvedUpstreamMap)

@@ -164,10 +164,10 @@ func (w WithUpstreams) GetSubjectJobNames() []Name {
 	return names
 }
 
-func (w WithUpstreams) MergeWithResolvedUpstreams(resolvedUpstreamMap map[Name][]*Upstream) []*WithUpstream {
+func (w WithUpstreams) MergeWithResolvedUpstreams(resolvedUpstreamsBySubjectJobMap map[Name][]*Upstream) []*WithUpstream {
 	var jobsWithMergedUpstream []*WithUpstream
 	for _, jobWithUnresolvedUpstream := range w {
-		resolvedUpstreams := resolvedUpstreamMap[jobWithUnresolvedUpstream.Name()]
+		resolvedUpstreams := resolvedUpstreamsBySubjectJobMap[jobWithUnresolvedUpstream.Name()]
 		resolvedUpstreamMapByFullName := Upstreams(resolvedUpstreams).ToFullNameAndUpstreamMap()
 		resolvedUpstreamMapByDestination := Upstreams(resolvedUpstreams).ToResourceDestinationAndUpstreamMap()
 
@@ -183,7 +183,8 @@ func (w WithUpstreams) MergeWithResolvedUpstreams(resolvedUpstreamMap map[Name][
 			}
 			mergedUpstream = append(mergedUpstream, unresolvedUpstream)
 		}
-		jobsWithMergedUpstream = append(jobsWithMergedUpstream, NewWithUpstream(jobWithUnresolvedUpstream.Job(), mergedUpstream))
+		distinctMergedUpstream := Upstreams(mergedUpstream).Deduplicate()
+		jobsWithMergedUpstream = append(jobsWithMergedUpstream, NewWithUpstream(jobWithUnresolvedUpstream.Job(), distinctMergedUpstream))
 	}
 	return jobsWithMergedUpstream
 }
@@ -308,6 +309,26 @@ func (u Upstreams) ToResourceDestinationAndUpstreamMap() map[string]*Upstream {
 		resourceDestinationUpstreamMap[upstream.resource.String()] = upstream
 	}
 	return resourceDestinationUpstreamMap
+}
+
+func (u Upstreams) Deduplicate() []*Upstream {
+	distinctUpstreamsMap := make(map[string]*Upstream)
+	for _, upstream := range u {
+		if upstreamInMap, ok := distinctUpstreamsMap[upstream.FullName()]; ok {
+			// prioritize static upstreams
+			if upstreamInMap._type == UpstreamTypeStatic {
+				continue
+			}
+		}
+		distinctUpstreamsMap[upstream.FullName()] = upstream
+	}
+
+	var distinctUpstreams []*Upstream
+	for _, upstream := range distinctUpstreamsMap {
+		distinctUpstreams = append(distinctUpstreams, upstream)
+	}
+
+	return distinctUpstreams
 }
 
 type FullName string
