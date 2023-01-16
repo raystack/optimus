@@ -363,7 +363,7 @@ func TestJobRunHandler(t *testing.T) {
 				NamespaceName: &namespaceName,
 			}
 			jobRunService := new(mockJobRunService)
-			jobRunService.On("UploadToScheduler", ctx, tenant.ProjectName(projectName), namespaceName).
+			jobRunService.On("UploadToScheduler", ctx, tenant.ProjectName(projectName)).
 				Return(fmt.Errorf("some error"))
 			defer jobRunService.AssertExpectations(t)
 			jobRunHandler := v1beta1.NewJobRunHandler(logger, jobRunService, nil)
@@ -380,8 +380,7 @@ func TestJobRunHandler(t *testing.T) {
 				NamespaceName: &namespaceName,
 			}
 			jobRunService := new(mockJobRunService)
-			jobRunService.On("UploadToScheduler", ctx, tenant.ProjectName(projectName), namespaceName).
-				Return(nil)
+			jobRunService.On("UploadToScheduler", ctx, tenant.ProjectName(projectName)).Return(nil)
 			defer jobRunService.AssertExpectations(t)
 			jobRunHandler := v1beta1.NewJobRunHandler(logger, jobRunService, nil)
 
@@ -590,8 +589,8 @@ func (m *mockJobRunService) UpdateJobState(ctx context.Context, event scheduler.
 	return args.Error(0)
 }
 
-func (m *mockJobRunService) UploadToScheduler(ctx context.Context, projectName tenant.ProjectName, namespaceName string) error {
-	args := m.Called(ctx, projectName, namespaceName)
+func (m *mockJobRunService) UploadToScheduler(ctx context.Context, projectName tenant.ProjectName) error {
+	args := m.Called(ctx, projectName)
 	return args.Error(0)
 }
 

@@ -56,7 +56,7 @@ func TestDeploymentService(t *testing.T) {
 			runService := service.NewJobRunService(nil,
 				jobRepo, nil, nil, nil, nil, nil)
 
-			err := runService.UploadToScheduler(ctx, proj1Name, namespace1Name.String())
+			err := runService.UploadToScheduler(ctx, proj1Name)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "errorInUploadToScheduler:\n GetAll error")
 		})
@@ -72,7 +72,7 @@ func TestDeploymentService(t *testing.T) {
 			runService := service.NewJobRunService(nil,
 				jobRepo, nil, nil, nil, priorityResolver, nil)
 
-			err := runService.UploadToScheduler(ctx, proj1Name, namespace1Name.String())
+			err := runService.UploadToScheduler(ctx, proj1Name)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "errorInUploadToScheduler:\n priority resolution error")
 		})
@@ -93,7 +93,7 @@ func TestDeploymentService(t *testing.T) {
 			runService := service.NewJobRunService(logger, jobRepo, nil, nil,
 				mScheduler, priorityResolver, nil)
 
-			err := runService.UploadToScheduler(ctx, proj1Name, namespace1Name.String())
+			err := runService.UploadToScheduler(ctx, proj1Name)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "errorInUploadToScheduler:\n DeployJobs tnnt1 error")
 		})
@@ -121,7 +121,7 @@ func TestDeploymentService(t *testing.T) {
 			runService := service.NewJobRunService(logger, jobRepo, nil, nil,
 				mScheduler, priorityResolver, nil)
 
-			err := runService.UploadToScheduler(ctx, proj1Name, namespace1Name.String())
+			err := runService.UploadToScheduler(ctx, proj1Name)
 			assert.Nil(t, err)
 		})
 		t.Run("should deploy Jobs Per Namespace and cleanPerNamespace, appropriately", func(t *testing.T) {
@@ -146,7 +146,7 @@ func TestDeploymentService(t *testing.T) {
 			runService := service.NewJobRunService(logger, jobRepo, nil, nil,
 				mScheduler, priorityResolver, nil)
 
-			err := runService.UploadToScheduler(ctx, proj1Name, namespace1Name.String())
+			err := runService.UploadToScheduler(ctx, proj1Name)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "errorInUploadToScheduler:\n listJobs error")
 		})

@@ -96,8 +96,8 @@ func PrepareHooksForJob(job *scheduler.Job, pluginRepo PluginRepo) (Hooks, error
 
 		for _, before := range info.DependsOn {
 			_, err = job.GetHook(before)
-			if err != nil { // If we do not have a hook for before, raise error
-				return Hooks{}, err
+			if err != nil {
+				continue
 			}
 			hooks.Dependencies[before] = h.Name
 		}
