@@ -61,7 +61,33 @@ func TestInternalUpstreamResolver(t *testing.T) {
 			internalUpstreamResolver := resolver.NewInternalUpstreamResolver(jobRepo)
 			result, err := internalUpstreamResolver.Resolve(ctx, jobWithUnresolvedUpstream)
 			assert.NoError(t, err)
-			assert.EqualValues(t, expectedJobWithUpstream.Upstreams(), result.Upstreams())
+			assert.Equal(t, expectedJobWithUpstream.Job(), result.Job())
+			assert.ElementsMatch(t, expectedJobWithUpstream.Upstreams(), result.Upstreams())
+		})
+		t.Run("resolves inferred and static upstream internally and prioritize static upstream when duplication found", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			logWriter := new(mockWriter)
+			defer logWriter.AssertExpectations(t)
+
+			specD, _ := job.NewSpecBuilder(jobVersion, "job-D", "sample-owner", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
+			jobDDestination := job.ResourceURN("resource-D")
+			jobDSources := []job.ResourceURN{"resource-C"}
+			jobD := job.NewJob(sampleTenant, specD, jobDDestination, jobDSources)
+
+			unresolvedUpstreamCInferred := job.NewUpstreamUnresolvedInferred("resource-C")
+			unresolvedUpstreamCStatic := job.NewUpstreamUnresolvedStatic("job-C", sampleTenant.ProjectName())
+			internalUpstreamCStatic := job.NewUpstreamResolved("job-C", "", "resource-C", sampleTenant, "static", taskName, false)
+
+			jobRepo.On("GetAllByResourceDestination", ctx, jobDSources[0]).Return([]*job.Job{jobC}, nil)
+			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specC.Name()).Return(jobC, nil)
+
+			jobWithUnresolvedUpstream := job.NewWithUpstream(jobD, []*job.Upstream{unresolvedUpstreamCInferred, unresolvedUpstreamCStatic})
+			expectedJobWithUpstream := job.NewWithUpstream(jobD, []*job.Upstream{internalUpstreamCStatic})
+
+			internalUpstreamResolver := resolver.NewInternalUpstreamResolver(jobRepo)
+			result, err := internalUpstreamResolver.Resolve(ctx, jobWithUnresolvedUpstream)
+			assert.NoError(t, err)
+			assert.EqualValues(t, expectedJobWithUpstream, result)
 		})
 		t.Run("resolves inferred upstream internally", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -80,7 +106,7 @@ func TestInternalUpstreamResolver(t *testing.T) {
 			internalUpstreamResolver := resolver.NewInternalUpstreamResolver(jobRepo)
 			result, err := internalUpstreamResolver.Resolve(ctx, jobWithUnresolvedUpstream)
 			assert.NoError(t, err)
-			assert.EqualValues(t, expectedJobWithUpstream.Upstreams(), result.Upstreams())
+			assert.ElementsMatch(t, expectedJobWithUpstream.Upstreams(), result.Upstreams())
 		})
 		t.Run("resolves static upstream internally", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -99,7 +125,7 @@ func TestInternalUpstreamResolver(t *testing.T) {
 			internalUpstreamResolver := resolver.NewInternalUpstreamResolver(jobRepo)
 			result, err := internalUpstreamResolver.Resolve(ctx, jobWithUnresolvedUpstream)
 			assert.NoError(t, err)
-			assert.EqualValues(t, expectedJobWithUpstream.Upstreams(), result.Upstreams())
+			assert.ElementsMatch(t, expectedJobWithUpstream.Upstreams(), result.Upstreams())
 		})
 		t.Run("should not stop the process but keep appending error when unable to resolve inferred upstream", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -119,7 +145,7 @@ func TestInternalUpstreamResolver(t *testing.T) {
 			internalUpstreamResolver := resolver.NewInternalUpstreamResolver(jobRepo)
 			result, err := internalUpstreamResolver.Resolve(ctx, jobWithUnresolvedUpstream)
 			assert.ErrorContains(t, err, "internal error")
-			assert.EqualValues(t, expectedJobWithUpstream.Upstreams(), result.Upstreams())
+			assert.ElementsMatch(t, expectedJobWithUpstream.Upstreams(), result.Upstreams())
 		})
 		t.Run("should not stop the process but keep appending error when unable to resolve static upstream", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -144,7 +170,7 @@ func TestInternalUpstreamResolver(t *testing.T) {
 			internalUpstreamResolver := resolver.NewInternalUpstreamResolver(jobRepo)
 			result, err := internalUpstreamResolver.Resolve(ctx, jobWithUnresolvedUpstream)
 			assert.ErrorContains(t, err, "not found")
-			assert.EqualValues(t, expectedJobWithUpstream.Upstreams(), result.Upstreams())
+			assert.ElementsMatch(t, expectedJobWithUpstream.Upstreams(), result.Upstreams())
 		})
 		t.Run("should not stop the process but keep appending error when static upstream name is invalid", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -171,7 +197,7 @@ func TestInternalUpstreamResolver(t *testing.T) {
 			internalUpstreamResolver := resolver.NewInternalUpstreamResolver(jobRepo)
 			result, err := internalUpstreamResolver.Resolve(ctx, jobWithUnresolvedUpstream)
 			assert.ErrorContains(t, err, "name is empty")
-			assert.EqualValues(t, expectedJobWithUpstream.Upstreams(), result.Upstreams())
+			assert.ElementsMatch(t, expectedJobWithUpstream.Upstreams(), result.Upstreams())
 		})
 	})
 	t.Run("BulkResolve", func(t *testing.T) {
