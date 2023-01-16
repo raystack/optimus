@@ -804,6 +804,60 @@ func TestService(t *testing.T) {
 			assert.NoError(t, actualError)
 		})
 
+		t.Run("should return spec and nil if both project name and namespace name are set, and job is found", func(t *testing.T) {
+			jobSpecRepository := mock.NewJobSpecRepository(t)
+			service := job.NewService(nil, nil, nil, nil, nil, nil, nil, nil, nil, jobSpecRepository, nil)
+
+			ctx := context.Background()
+			filter := models.JobSpecFilter{
+				ProjectName:   "project_test",
+				NamespaceName: "namespace_test",
+			}
+
+			jobSpecRepository.On("GetAllByProjectNameAndNamespaceName", ctx, filter.ProjectName, filter.NamespaceName).Return([]models.JobSpec{{}}, nil)
+
+			actualJobSpecs, actualError := service.GetByFilter(ctx, filter)
+
+			assert.NotEmpty(t, actualJobSpecs)
+			assert.NoError(t, actualError)
+		})
+
+		t.Run("should return empty and nil if both project name and namespace name are set, but jobs are not found", func(t *testing.T) {
+			jobSpecRepository := mock.NewJobSpecRepository(t)
+			service := job.NewService(nil, nil, nil, nil, nil, nil, nil, nil, nil, jobSpecRepository, nil)
+
+			ctx := context.Background()
+			filter := models.JobSpecFilter{
+				ProjectName:   "project_test",
+				NamespaceName: "namespace_test",
+			}
+
+			jobSpecRepository.On("GetAllByProjectNameAndNamespaceName", ctx, filter.ProjectName, filter.NamespaceName).Return(nil, store.ErrResourceNotFound)
+
+			actualJobSpecs, actualError := service.GetByFilter(ctx, filter)
+
+			assert.Empty(t, actualJobSpecs)
+			assert.NoError(t, actualError)
+		})
+
+		t.Run("should return nil and error if both project name and namespace name are set, and encountered error when fetching jobs from repository", func(t *testing.T) {
+			jobSpecRepository := mock.NewJobSpecRepository(t)
+			service := job.NewService(nil, nil, nil, nil, nil, nil, nil, nil, nil, jobSpecRepository, nil)
+
+			ctx := context.Background()
+			filter := models.JobSpecFilter{
+				ProjectName:   "project_test",
+				NamespaceName: "namespace_test",
+			}
+
+			jobSpecRepository.On("GetAllByProjectNameAndNamespaceName", ctx, filter.ProjectName, filter.NamespaceName).Return(nil, errors.New("internal error"))
+
+			actualJobSpecs, actualError := service.GetByFilter(ctx, filter)
+
+			assert.Nil(t, actualJobSpecs)
+			assert.ErrorContains(t, actualError, "internal error")
+		})
+
 		t.Run("should return nil and error if the filters are not set", func(t *testing.T) {
 			service := job.NewService(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 

@@ -227,10 +227,7 @@ func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter
 		}
 		return jobSpecs, nil
 	}
-	if filter.ProjectName != "" {
-		if filter.JobName == "" {
-			return srv.jobSpecRepository.GetAllByProjectName(ctx, filter.ProjectName)
-		}
+	if filter.JobName != "" && filter.ProjectName != "" {
 		jobSpec, err := srv.jobSpecRepository.GetByNameAndProjectName(ctx, filter.JobName, filter.ProjectName)
 		if err != nil {
 			if errors.Is(err, store.ErrResourceNotFound) {
@@ -239,6 +236,19 @@ func (srv *Service) GetByFilter(ctx context.Context, filter models.JobSpecFilter
 			return nil, err
 		}
 		return []models.JobSpec{jobSpec}, nil
+	}
+	if filter.NamespaceName != "" && filter.ProjectName != "" {
+		jobSpecs, err := srv.jobSpecRepository.GetAllByProjectNameAndNamespaceName(ctx, filter.ProjectName, filter.NamespaceName)
+		if err != nil {
+			if errors.Is(err, store.ErrResourceNotFound) {
+				return []models.JobSpec{}, nil
+			}
+			return nil, err
+		}
+		return jobSpecs, nil
+	}
+	if filter.ProjectName != "" {
+		return srv.jobSpecRepository.GetAllByProjectName(ctx, filter.ProjectName)
 	}
 	return nil, fmt.Errorf("filters not specified")
 }

@@ -82,6 +82,55 @@ func (s *JobSpecTestSuite) TestMergeFrom() {
 	})
 }
 
+func (s *JobSpecTestSuite) TestToJobSpec() {
+	s.Run("should return job spec with behavior.retry nil and behavior.notify nil when behavior proto is nil", func() {
+		jobProto := s.getCompleteJobSpecProto()
+		jobProto.Behavior = nil
+
+		expectedJobSpec := s.getCompleteJobSpec()
+		expectedJobSpec.Behavior.Retry = nil
+		expectedJobSpec.Behavior.Notify = nil
+
+		actualJobSpec := model.ToJobSpec(jobProto)
+
+		s.Assert().EqualValues(&expectedJobSpec, actualJobSpec)
+	})
+
+	s.Run("should return job spec with metadata nil when job proto metadata is nil", func() {
+		jobProto := s.getCompleteJobSpecProto()
+		jobProto.Metadata = nil
+
+		expectedJobSpec := s.getCompleteJobSpec()
+		expectedJobSpec.Metadata = nil
+
+		actualJobSpec := model.ToJobSpec(jobProto)
+
+		s.Assert().EqualValues(&expectedJobSpec, actualJobSpec)
+	})
+
+	s.Run("should return job spec with metadata resource config nil when metadata.resource config proto is nil", func() {
+		jobProto := s.getCompleteJobSpecProto()
+		jobProto.Metadata.Resource.Request = nil
+
+		expectedJobSpec := s.getCompleteJobSpec()
+		expectedJobSpec.Metadata.Resource.Request = nil
+
+		actualJobSpec := model.ToJobSpec(jobProto)
+
+		s.Assert().EqualValues(&expectedJobSpec, actualJobSpec)
+	})
+
+	s.Run("should return complete job spec when job spec proto is complete", func() {
+		jobProto := s.getCompleteJobSpecProto()
+
+		expectedJobSpec := s.getCompleteJobSpec()
+
+		actualJobSpec := model.ToJobSpec(jobProto)
+
+		s.Assert().EqualValues(&expectedJobSpec, actualJobSpec)
+	})
+}
+
 func (*JobSpecTestSuite) getCompleteJobSpec() model.JobSpec {
 	return model.JobSpec{
 		Version:     1,
