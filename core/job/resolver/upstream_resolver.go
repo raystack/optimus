@@ -47,6 +47,8 @@ func (u UpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.Pr
 
 	jobsWithUnresolvedUpstream, err := job.Jobs(jobs).GetJobsWithUnresolvedUpstreams()
 	if err != nil {
+		errorMsg := fmt.Sprintf("[%s] %s", jobs[0].Tenant().NamespaceName().String(), err.Error())
+		logWriter.Write(writer.LogLevelError, errorMsg)
 		me.Append(err)
 	}
 
@@ -54,9 +56,9 @@ func (u UpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.Pr
 	if err != nil {
 		errorMsg := fmt.Sprintf("unable to resolve upstream: %s", err.Error())
 		logWriter.Write(writer.LogLevelError, errorMsg)
-		return nil, errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg)
+		me.Append(errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg))
+		return nil, errors.MultiToError(me)
 	}
-	me.Append(err)
 
 	jobsWithResolvedExternalUpstreams, err := u.externalUpstreamResolver.BulkResolve(ctx, jobsWithResolvedInternalUpstreams, logWriter)
 	me.Append(err)

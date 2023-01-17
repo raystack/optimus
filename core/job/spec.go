@@ -470,7 +470,7 @@ type Hook struct {
 
 func NewHook(name string, config Config) (*Hook, error) {
 	if name == "" {
-		return nil, errors.InvalidArgument(EntityJob, "name is empty")
+		return nil, errors.InvalidArgument(EntityJob, "hook name is empty")
 	}
 	return &Hook{name: name, config: config}, nil
 }

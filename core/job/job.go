@@ -1,6 +1,7 @@
 package job
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/odpf/optimus/core/tenant"
@@ -44,6 +45,9 @@ func (j Job) FullName() string {
 
 func (j Job) GetJobWithUnresolvedUpstream() (*WithUpstream, error) {
 	unresolvedStaticUpstreams, err := j.getStaticUpstreamsToResolve()
+	if err != nil {
+		err = errors.InvalidArgument(EntityJob, fmt.Sprintf("failed to get static upstreams to resolve for job %s", j.GetName()))
+	}
 	unresolvedInferredUpstreams := j.getInferredUpstreamsToResolve()
 	allUpstreams := unresolvedStaticUpstreams
 	allUpstreams = append(allUpstreams, unresolvedInferredUpstreams...)
@@ -225,10 +229,10 @@ func (w WithUpstreams) GetSubjectJobNames() []Name {
 	return names
 }
 
-func (w WithUpstreams) MergeWithResolvedUpstreams(resolvedUpstreamMap map[Name][]*Upstream) []*WithUpstream {
+func (w WithUpstreams) MergeWithResolvedUpstreams(resolvedUpstreamsBySubjectJobMap map[Name][]*Upstream) []*WithUpstream {
 	var jobsWithMergedUpstream []*WithUpstream
 	for _, jobWithUnresolvedUpstream := range w {
-		resolvedUpstreams := resolvedUpstreamMap[jobWithUnresolvedUpstream.Name()]
+		resolvedUpstreams := resolvedUpstreamsBySubjectJobMap[jobWithUnresolvedUpstream.Name()]
 		resolvedUpstreamMapByFullName := Upstreams(resolvedUpstreams).ToFullNameAndUpstreamMap()
 		resolvedUpstreamMapByDestination := Upstreams(resolvedUpstreams).ToResourceDestinationAndUpstreamMap()
 
@@ -244,7 +248,8 @@ func (w WithUpstreams) MergeWithResolvedUpstreams(resolvedUpstreamMap map[Name][
 			}
 			mergedUpstream = append(mergedUpstream, unresolvedUpstream)
 		}
-		jobsWithMergedUpstream = append(jobsWithMergedUpstream, NewWithUpstream(jobWithUnresolvedUpstream.Job(), mergedUpstream))
+		distinctMergedUpstream := Upstreams(mergedUpstream).Deduplicate()
+		jobsWithMergedUpstream = append(jobsWithMergedUpstream, NewWithUpstream(jobWithUnresolvedUpstream.Job(), distinctMergedUpstream))
 	}
 	return jobsWithMergedUpstream
 }
@@ -369,6 +374,44 @@ func (u Upstreams) ToResourceDestinationAndUpstreamMap() map[string]*Upstream {
 		resourceDestinationUpstreamMap[upstream.resource.String()] = upstream
 	}
 	return resourceDestinationUpstreamMap
+}
+
+func (u Upstreams) Deduplicate() []*Upstream {
+	resolvedUpstreamMap := make(map[string]*Upstream)
+	unresolvedStaticUpstreamMap := make(map[string]*Upstream)
+	unresolvedInferredUpstreamMap := make(map[string]*Upstream)
+
+	for _, upstream := range u {
+		if upstream.state == UpstreamStateUnresolved && upstream._type == UpstreamTypeStatic {
+			unresolvedStaticUpstreamMap[upstream.FullName()] = upstream
+			continue
+		}
+
+		if upstream.state == UpstreamStateUnresolved && upstream._type == UpstreamTypeInferred {
+			unresolvedInferredUpstreamMap[upstream.resource.String()] = upstream
+			continue
+		}
+
+		if upstreamInMap, ok := resolvedUpstreamMap[upstream.FullName()]; ok {
+			// keep static upstreams in the map if exists
+			if upstreamInMap._type == UpstreamTypeStatic {
+				continue
+			}
+		}
+		resolvedUpstreamMap[upstream.FullName()] = upstream
+	}
+
+	return mapsToUpstreams(resolvedUpstreamMap, unresolvedInferredUpstreamMap, unresolvedStaticUpstreamMap)
+}
+
+func mapsToUpstreams(upstreamsMaps ...map[string]*Upstream) []*Upstream {
+	var result []*Upstream
+	for _, upstreamsMap := range upstreamsMaps {
+		for _, upstream := range upstreamsMap {
+			result = append(result, upstream)
+		}
+	}
+	return result
 }
 
 type FullName string
