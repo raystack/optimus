@@ -9,10 +9,12 @@ const (
 	bitOnResourceDestination uint64 = 1 << 2
 	bitOnNamespaceNames      uint64 = 1 << 3
 	bitOnJobNames            uint64 = 1 << 4
+	bitOnNamespaceName       uint64 = 1 << 5
 )
 
 const (
 	ProjectName         = Operand(bitOnProjectName)
+	NamespaceName       = Operand(bitOnNamespaceName)
 	NamespaceNames      = Operand(bitOnNamespaceNames)
 	JobName             = Operand(bitOnJobName)
 	JobNames            = Operand(bitOnJobNames)

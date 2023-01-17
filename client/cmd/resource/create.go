@@ -16,11 +16,10 @@ import (
 )
 
 type createCommand struct {
-	logger       log.Logger
-	clientConfig *config.ClientConfig
+	logger         log.Logger
+	configFilePath string
 
 	namespaceSurvey *survey.NamespaceSurvey
-	configFilePath  string
 }
 
 // NewCreateCommand initializes resource create command
@@ -36,23 +35,19 @@ func NewCreateCommand() *cobra.Command {
 		Short:   "Create a new resource",
 		Example: "optimus resource create",
 		RunE:    create.RunE,
-		PreRunE: create.PreRunE,
 	}
 	cmd.Flags().StringVarP(&create.configFilePath, "config", "c", create.configFilePath, "File path for client configuration")
+	cmd.MarkFlagRequired("config")
 	return cmd
 }
 
-func (c *createCommand) PreRunE(_ *cobra.Command, _ []string) error {
-	var err error
-	c.clientConfig, err = config.LoadClientConfig(c.configFilePath)
+func (c createCommand) RunE(_ *cobra.Command, _ []string) error {
+	cfg, err := config.LoadClientConfig(c.configFilePath)
 	if err != nil {
 		return err
 	}
-	return nil
-}
 
-func (c createCommand) RunE(_ *cobra.Command, _ []string) error {
-	selectedNamespace, err := c.namespaceSurvey.AskToSelectNamespace(c.clientConfig)
+	selectedNamespace, err := c.namespaceSurvey.AskToSelectNamespace(cfg)
 	if err != nil {
 		return err
 	}
