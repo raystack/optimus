@@ -2780,52 +2780,6 @@ type UpstreamResolver struct {
 	mock.Mock
 }
 
-// GetUnresolved provides a mock function with given fields: jobs
-func (_m *UpstreamResolver) GetUnresolved(jobs []*job.Job) ([]*job.WithUpstream, error) {
-	ret := _m.Called(jobs)
-
-	var r0 []*job.WithUpstream
-	if rf, ok := ret.Get(0).(func([]*job.Job) []*job.WithUpstream); ok {
-		r0 = rf(jobs)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*job.WithUpstream)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func([]*job.Job) error); ok {
-		r1 = rf(jobs)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// BulkResolveInternal provides a mock function with given fields: ctx, projectName, jobs
-func (_m *UpstreamResolver) BulkResolveInternal(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job) ([]*job.WithUpstream, error) {
-	ret := _m.Called(ctx, projectName, jobs)
-
-	var r0 []*job.WithUpstream
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, []*job.Job) []*job.WithUpstream); ok {
-		r0 = rf(ctx, projectName, jobs)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*job.WithUpstream)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, []*job.Job) error); ok {
-		r1 = rf(ctx, projectName, jobs)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // BulkResolve provides a mock function with given fields: ctx, projectName, jobs, logWriter
 func (_m *UpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job, logWriter writer.LogWriter) ([]*job.WithUpstream, error) {
 	ret := _m.Called(ctx, projectName, jobs, logWriter)

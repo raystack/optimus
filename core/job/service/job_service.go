@@ -330,11 +330,7 @@ func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSp
 	// assumption, all job specs from input are also the job within same project
 
 	// populate all jobs in project
-	jobsInProject, err := j.GetByFilter(ctx, filter.WithString(filter.ProjectName, jobTenant.ProjectName().String()))
-	if err != nil {
-		return err
-	}
-	jobsInProjectWithUpstreams, err := job.Jobs(jobsInProject).GetJobsWithUnresolvedUpstreams()
+	jobsInProjectWithUpstreams, err := j.getJobsInProjectWithUpstreams(ctx, jobTenant.ProjectName())
 	if err != nil {
 		return err
 	}
@@ -555,6 +551,15 @@ func (j JobService) generateJob(ctx context.Context, tenantWithDetails *tenant.W
 	}
 
 	return job.NewJob(tenantWithDetails.ToTenant(), spec, destination, sources), nil
+}
+
+func (j JobService) getJobsInProjectWithUpstreams(ctx context.Context, projectName tenant.ProjectName) ([]*job.WithUpstream, error) {
+	jobsInProject, err := j.GetByFilter(ctx, filter.WithString(filter.ProjectName, projectName.String()))
+	if err != nil {
+		return nil, err
+	}
+
+	return job.Jobs(jobsInProject).GetJobsWithUnresolvedUpstreams()
 }
 
 func (j JobService) validateCyclic(rootName job.Name, jobMap map[job.Name]*job.WithUpstream, identifierToJobMap map[string][]*job.WithUpstream) ([]string, error) {
