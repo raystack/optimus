@@ -194,6 +194,78 @@ func TestEntityJob(t *testing.T) {
 		})
 	})
 
+	t.Run("Deduplicate", func(t *testing.T) {
+		t.Run("should return upstreams with static being prioritized if duplication is found", func(t *testing.T) {
+			upstreamResolved1Inferred := job.NewUpstreamResolved("job-a", "host-sample", "project.dataset.sample-a", sampleTenant, job.UpstreamTypeInferred, "", false)
+			upstreamResolved1Static := job.NewUpstreamResolved("job-a", "host-sample", "project.dataset.sample-a", sampleTenant, job.UpstreamTypeStatic, "", false)
+			upstreamResolved2 := job.NewUpstreamResolved("job-b", "host-sample", "project.dataset.sample-b", sampleTenant, job.UpstreamTypeInferred, "", false)
+			upstreamUnresolved1 := job.NewUpstreamUnresolvedStatic("job-c", sampleTenant.ProjectName())
+			upstreamUnresolved2 := job.NewUpstreamUnresolvedInferred("project.dataset.sample-d")
+			upstreamUnresolved3 := job.NewUpstreamUnresolvedStatic("job-c", sampleTenant.ProjectName())
+			upstreamUnresolved4 := job.NewUpstreamUnresolvedInferred("project.dataset.sample-d")
+
+			expected := []*job.Upstream{
+				upstreamResolved1Static,
+				upstreamResolved2,
+				upstreamUnresolved1,
+				upstreamUnresolved2,
+			}
+
+			upstreams := job.Upstreams([]*job.Upstream{
+				upstreamResolved1Inferred,
+				upstreamResolved1Static,
+				upstreamResolved2,
+				upstreamUnresolved1,
+				upstreamUnresolved2,
+				upstreamUnresolved3,
+				upstreamUnresolved4,
+			})
+			result := upstreams.Deduplicate()
+
+			assert.ElementsMatch(t, expected, result)
+		})
+		t.Run("should successfully return distinct upstreams when only resolved upstream is present", func(t *testing.T) {
+			upstreamResolved1Inferred := job.NewUpstreamResolved("job-a", "host-sample", "project.dataset.sample-a", sampleTenant, job.UpstreamTypeInferred, "", false)
+			upstreamResolved1Static := job.NewUpstreamResolved("job-a", "host-sample", "project.dataset.sample-a", sampleTenant, job.UpstreamTypeStatic, "", false)
+			upstreamResolved2 := job.NewUpstreamResolved("job-b", "host-sample", "project.dataset.sample-b", sampleTenant, job.UpstreamTypeInferred, "", false)
+
+			expected := []*job.Upstream{
+				upstreamResolved1Static,
+				upstreamResolved2,
+			}
+
+			upstreams := job.Upstreams([]*job.Upstream{
+				upstreamResolved1Inferred,
+				upstreamResolved1Static,
+				upstreamResolved2,
+			})
+			result := upstreams.Deduplicate()
+
+			assert.ElementsMatch(t, expected, result)
+		})
+		t.Run("should successfully return distinct upstreams when only unresolved upstream is present", func(t *testing.T) {
+			upstreamUnresolved1 := job.NewUpstreamUnresolvedStatic("job-c", sampleTenant.ProjectName())
+			upstreamUnresolved2 := job.NewUpstreamUnresolvedInferred("project.dataset.sample-d")
+			upstreamUnresolved3 := job.NewUpstreamUnresolvedStatic("job-c", sampleTenant.ProjectName())
+			upstreamUnresolved4 := job.NewUpstreamUnresolvedInferred("project.dataset.sample-d")
+
+			expected := []*job.Upstream{
+				upstreamUnresolved1,
+				upstreamUnresolved2,
+			}
+
+			upstreams := job.Upstreams([]*job.Upstream{
+				upstreamUnresolved1,
+				upstreamUnresolved2,
+				upstreamUnresolved3,
+				upstreamUnresolved4,
+			})
+			result := upstreams.Deduplicate()
+
+			assert.ElementsMatch(t, expected, result)
+		})
+	})
+
 	t.Run("FullNameFrom", func(t *testing.T) {
 		t.Run("should return the job full name given project and job name", func(t *testing.T) {
 			fullName := job.FullNameFrom(project.Name(), specA.Name())
@@ -273,31 +345,36 @@ func TestEntityJob(t *testing.T) {
 			})
 		})
 		t.Run("MergeWithResolvedUpstreams", func(t *testing.T) {
-			upstreamCUnresolved := job.NewUpstreamUnresolvedStatic("job-C", project.Name())
-			upstreamDUnresolved := job.NewUpstreamUnresolvedInferred("project.dataset.sample-d")
+			upstreamCUnresolved := job.NewUpstreamUnresolvedInferred("project.dataset.sample-c")
+			upstreamDUnresolvedInferred := job.NewUpstreamUnresolvedInferred("project.dataset.sample-d")
+			upstreamDUnresolvedStatic := job.NewUpstreamUnresolvedStatic("job-D", project.Name())
 			upstreamEUnresolved := job.NewUpstreamUnresolvedStatic("job-E", project.Name())
 			upstreamFUnresolved := job.NewUpstreamUnresolvedInferred("project.dataset.sample-f")
 
-			upstreamCResolved := job.NewUpstreamResolved("job-C", "host-sample", "project.dataset.sample-c", sampleTenant, job.UpstreamTypeStatic, "bq2bq", false)
-			upstreamDResolved := job.NewUpstreamResolved("job-D", "host-sample", "project.dataset.sample-d", sampleTenant, job.UpstreamTypeInferred, "bq2bq", false)
+			upstreamCResolved := job.NewUpstreamResolved("job-C", "host-sample", "project.dataset.sample-c", sampleTenant, job.UpstreamTypeInferred, "bq2bq", false)
+			upstreamDResolvedStatic := job.NewUpstreamResolved("job-D", "host-sample", "project.dataset.sample-d", sampleTenant, job.UpstreamTypeStatic, "bq2bq", false)
+			upstreamDResolvedInferred := job.NewUpstreamResolved("job-D", "host-sample", "project.dataset.sample-d", sampleTenant, job.UpstreamTypeInferred, "bq2bq", false)
 
 			resolvedUpstreamMap := map[job.Name][]*job.Upstream{
-				"job-A": {upstreamCResolved, upstreamDResolved},
-				"job-B": {upstreamDResolved},
+				"job-A": {upstreamCResolved, upstreamDResolvedInferred},
+				"job-B": {upstreamDResolvedStatic},
 			}
 
 			expected := []*job.WithUpstream{
-				job.NewWithUpstream(jobA, []*job.Upstream{upstreamCResolved, upstreamDResolved, upstreamEUnresolved}),
-				job.NewWithUpstream(jobB, []*job.Upstream{upstreamDResolved, upstreamEUnresolved, upstreamFUnresolved}),
+				job.NewWithUpstream(jobA, []*job.Upstream{upstreamCResolved, upstreamDResolvedInferred, upstreamEUnresolved}),
+				job.NewWithUpstream(jobB, []*job.Upstream{upstreamDResolvedStatic, upstreamEUnresolved, upstreamFUnresolved}),
 			}
 
 			jobsWithUnresolvedUpstream := []*job.WithUpstream{
-				job.NewWithUpstream(jobA, []*job.Upstream{upstreamCUnresolved, upstreamDUnresolved, upstreamEUnresolved}),
-				job.NewWithUpstream(jobB, []*job.Upstream{upstreamDUnresolved, upstreamEUnresolved, upstreamFUnresolved}),
+				job.NewWithUpstream(jobA, []*job.Upstream{upstreamCUnresolved, upstreamDUnresolvedInferred, upstreamEUnresolved}),
+				job.NewWithUpstream(jobB, []*job.Upstream{upstreamDUnresolvedStatic, upstreamDUnresolvedInferred, upstreamEUnresolved, upstreamFUnresolved}),
 			}
 
 			result := job.WithUpstreams(jobsWithUnresolvedUpstream).MergeWithResolvedUpstreams(resolvedUpstreamMap)
-			assert.EqualValues(t, expected, result)
+			assert.Equal(t, expected[0].Job(), result[0].Job())
+			assert.Equal(t, expected[1].Job(), result[1].Job())
+			assert.ElementsMatch(t, expected[0].Upstreams(), result[0].Upstreams())
+			assert.ElementsMatch(t, expected[1].Upstreams(), result[1].Upstreams())
 		})
 	})
 
@@ -322,6 +399,64 @@ func TestEntityJob(t *testing.T) {
 
 			result := job.DownstreamList(downstreamList).GetDownstreamFullNames()
 			assert.EqualValues(t, expectedFullNames, result)
+		})
+	})
+
+	t.Run("GetJobWithUnresolvedUpstream", func(t *testing.T) {
+		t.Run("should contains error when get static upstream failed because of job name empty", func(t *testing.T) {
+			jobTaskPython := job.NewTaskBuilder(job.TaskName("python"), jobTaskConfig).Build()
+			upstreamsSpecA, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"test-proj/"}).Build()
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskPython).WithSpecUpstream(upstreamsSpecA).Build()
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
+
+			jobWithUpstream, err := jobA.GetJobWithUnresolvedUpstream()
+			assert.ErrorContains(t, err, "invalid argument for entity job: failed to get static upstreams to resolve")
+			assert.Len(t, jobWithUpstream.Upstreams(), 1)
+		})
+		t.Run("should contains error when get static upstream failed because of project name empty", func(t *testing.T) {
+			jobTaskPython := job.NewTaskBuilder(job.TaskName("python"), jobTaskConfig).Build()
+			upstreamsSpecA, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"/job-C"}).Build()
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskPython).WithSpecUpstream(upstreamsSpecA).Build()
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
+
+			jobWithUpstream, err := jobA.GetJobWithUnresolvedUpstream()
+			assert.ErrorContains(t, err, "invalid argument for entity job: failed to get static upstreams to resolve")
+			assert.Len(t, jobWithUpstream.Upstreams(), 1)
+		})
+		t.Run("should get unresolved upstream", func(t *testing.T) {
+			jobTaskPython := job.NewTaskBuilder(job.TaskName("python"), jobTaskConfig).Build()
+			upstreamsSpecA, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"test-proj/job-C"}).Build()
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskPython).WithSpecUpstream(upstreamsSpecA).Build()
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
+
+			jobWithUpstreams, err := jobA.GetJobWithUnresolvedUpstream()
+			assert.NoError(t, err)
+			assert.Len(t, jobWithUpstreams.Upstreams(), 2)
+		})
+	})
+
+	t.Run("GetJobsWithUnresolvedUpstreams", func(t *testing.T) {
+		t.Run("should return with error when individual get job with upstream has error", func(t *testing.T) {
+			jobTaskPython := job.NewTaskBuilder(job.TaskName("python"), jobTaskConfig).Build()
+			upstreamsSpecA, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"/job-C"}).Build()
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskPython).WithSpecUpstream(upstreamsSpecA).Build()
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
+			jobs := job.Jobs([]*job.Job{jobA, jobB})
+
+			jobsWithUpstreams, err := jobs.GetJobsWithUnresolvedUpstreams()
+			assert.Error(t, err)
+			assert.Len(t, jobsWithUpstreams, 2)
+		})
+		t.Run("should get unresolved upstreams", func(t *testing.T) {
+			jobTaskPython := job.NewTaskBuilder(job.TaskName("python"), jobTaskConfig).Build()
+			upstreamsSpecA, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"test-proj/job-C"}).Build()
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskPython).WithSpecUpstream(upstreamsSpecA).Build()
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
+			jobs := job.Jobs([]*job.Job{jobA, jobB})
+
+			jobsWithUpstreams, err := jobs.GetJobsWithUnresolvedUpstreams()
+			assert.NoError(t, err)
+			assert.Len(t, jobsWithUpstreams, 2)
 		})
 	})
 }
