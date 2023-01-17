@@ -327,7 +327,7 @@ func TestMultiRootDAGTree(t *testing.T) {
 		dagTree.AddNode(node2)
 		dagTree.AddNode(node3)
 
-		err := dagTree.ValidateCyclic()
+		_, err := dagTree.ValidateCyclic()
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), tree.ErrCyclicDependencyEncountered.Error())
 	})
@@ -387,7 +387,7 @@ func TestMultiRootDAGTree(t *testing.T) {
 		dagTree.AddNode(node1211)
 		dagTree.AddNode(node1212)
 
-		err := dagTree.ValidateCyclic()
+		_, err := dagTree.ValidateCyclic()
 		assert.Nil(t, err)
 
 		depsMap := map[*tree.TreeNode]int{
@@ -412,7 +412,7 @@ func TestMultiRootDAGTree(t *testing.T) {
 		dagTree.AddNode(node2)
 		dagTree.MarkRoot(node2)
 
-		err := dagTree.ValidateCyclic()
+		_, err := dagTree.ValidateCyclic()
 		assert.Nil(t, err)
 	})
 
@@ -423,7 +423,7 @@ func TestMultiRootDAGTree(t *testing.T) {
 		dagTree := tree.NewMultiRootTree()
 		dagTree.AddNode(node2)
 
-		err := dagTree.ValidateCyclic()
+		_, err := dagTree.ValidateCyclic()
 		assert.Nil(t, err)
 	})
 
@@ -456,7 +456,7 @@ func TestMultiRootDAGTree(t *testing.T) {
 		dagTree.AddNode(node31)
 		dagTree.AddNode(node41)
 
-		err := dagTree.ValidateCyclic()
+		_, err := dagTree.ValidateCyclic()
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), tree.ErrCyclicDependencyEncountered.Error())
 	})
