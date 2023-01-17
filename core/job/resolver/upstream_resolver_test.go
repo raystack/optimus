@@ -254,8 +254,8 @@ func TestUpstreamResolver(t *testing.T) {
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
 
 			unresolvedUpstreams := []*job.Upstream{
-				job.NewUpstreamUnresolvedInferred("resource-B"),
 				job.NewUpstreamUnresolvedStatic("job-C", project.Name()),
+				job.NewUpstreamUnresolvedInferred("resource-B"),
 				job.NewUpstreamUnresolvedInferred("resource-D"),
 			}
 
@@ -263,11 +263,11 @@ func TestUpstreamResolver(t *testing.T) {
 			internalUpstreamC := job.NewUpstreamResolved("job-C", "", "resource-C", sampleTenant, "static", taskName, false)
 			externalUpstreamD := job.NewUpstreamResolved("job-D", "external-host", "resource-D", externalTenant, "inferred", taskName, true)
 
-			jobWithInternalUpstream := job.NewWithUpstream(jobA, []*job.Upstream{internalUpstreamB, internalUpstreamC, unresolvedUpstreams[2]})
-			jobWithUnresolvedUpstream := job.NewWithUpstream(jobA, []*job.Upstream{unresolvedUpstreams[0], unresolvedUpstreams[2], unresolvedUpstreams[1]})
+			jobWithInternalUpstream := job.NewWithUpstream(jobA, []*job.Upstream{internalUpstreamC, internalUpstreamB, unresolvedUpstreams[2]})
+			jobWithUnresolvedUpstream := job.NewWithUpstream(jobA, unresolvedUpstreams)
 			internalUpstreamResolver.On("Resolve", ctx, jobWithUnresolvedUpstream).Return(jobWithInternalUpstream, nil)
 
-			jobWithExternalUpstream := job.NewWithUpstream(jobA, []*job.Upstream{internalUpstreamB, internalUpstreamC, externalUpstreamD})
+			jobWithExternalUpstream := job.NewWithUpstream(jobA, []*job.Upstream{internalUpstreamC, internalUpstreamB, externalUpstreamD})
 			externalUpstreamResolver.On("Resolve", ctx, jobWithInternalUpstream, logWriter).Return(jobWithExternalUpstream, nil)
 
 			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver, internalUpstreamResolver)
@@ -336,23 +336,23 @@ func TestUpstreamResolver(t *testing.T) {
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
 
 			unresolvedUpstreams := []*job.Upstream{
-				job.NewUpstreamUnresolvedInferred("resource-B"),
 				job.NewUpstreamUnresolvedStatic("job-C", project.Name()),
+				job.NewUpstreamUnresolvedInferred("resource-B"),
 				job.NewUpstreamUnresolvedInferred("resource-D"),
 			}
 
 			internalUpstreamC := job.NewUpstreamResolved("job-C", "", "resource-C", sampleTenant, "static", taskName, false)
 			externalUpstreamD := job.NewUpstreamResolved("job-D", "external-host", "resource-D", externalTenant, "inferred", taskName, true)
 
-			jobWithUnresolvedUpstream := job.NewWithUpstream(jobA, []*job.Upstream{unresolvedUpstreams[0], unresolvedUpstreams[2], unresolvedUpstreams[1]})
-			jobWithInternalUpstream := job.NewWithUpstream(jobA, []*job.Upstream{unresolvedUpstreams[0], internalUpstreamC, unresolvedUpstreams[2]})
+			jobWithUnresolvedUpstream := job.NewWithUpstream(jobA, unresolvedUpstreams)
+			jobWithInternalUpstream := job.NewWithUpstream(jobA, unresolvedUpstreams)
 			errorMsg := "resolve upstream failed partially"
 			internalUpstreamResolver.On("Resolve", ctx, jobWithUnresolvedUpstream).Return(jobWithInternalUpstream, errors.New(errorMsg))
 
-			jobWithExternalUpstream := job.NewWithUpstream(jobA, []*job.Upstream{unresolvedUpstreams[0], internalUpstreamC, externalUpstreamD})
+			jobWithExternalUpstream := job.NewWithUpstream(jobA, []*job.Upstream{internalUpstreamC, unresolvedUpstreams[1], externalUpstreamD})
 			externalUpstreamResolver.On("Resolve", ctx, jobWithInternalUpstream, logWriter).Return(jobWithExternalUpstream, nil)
 
-			expectedUpstream := []*job.Upstream{unresolvedUpstreams[0], internalUpstreamC, externalUpstreamD}
+			expectedUpstream := []*job.Upstream{internalUpstreamC, unresolvedUpstreams[1], externalUpstreamD}
 
 			upstreamResolver := resolver.NewUpstreamResolver(jobRepo, externalUpstreamResolver, internalUpstreamResolver)
 			result, err := upstreamResolver.Resolve(ctx, jobA, logWriter)

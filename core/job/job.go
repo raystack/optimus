@@ -34,12 +34,56 @@ func (j Job) Spec() *Spec {
 	return j.spec
 }
 
-func (j Job) GetName() string { // to support multiroot DataTree
+func (j Job) GetName() string {
 	return j.spec.name.String()
 }
 
 func (j Job) FullName() string {
 	return j.ProjectName().String() + "/" + j.spec.name.String()
+}
+
+func (j Job) GetJobWithUnresolvedUpstream() (*WithUpstream, error) {
+	unresolvedStaticUpstreams, err := j.getStaticUpstreamsToResolve()
+	unresolvedInferredUpstreams := j.getInferredUpstreamsToResolve()
+	allUpstreams := unresolvedStaticUpstreams
+	allUpstreams = append(allUpstreams, unresolvedInferredUpstreams...)
+
+	return NewWithUpstream(&j, allUpstreams), err
+}
+
+func (j Job) getInferredUpstreamsToResolve() []*Upstream {
+	var unresolvedInferredUpstreams []*Upstream
+	for _, source := range j.sources {
+		unresolvedInferredUpstreams = append(unresolvedInferredUpstreams, NewUpstreamUnresolvedInferred(source))
+	}
+	return unresolvedInferredUpstreams
+}
+
+func (j Job) getStaticUpstreamsToResolve() ([]*Upstream, error) {
+	var unresolvedStaticUpstreams []*Upstream
+	me := errors.NewMultiError("get static upstream to resolve errors")
+
+	for _, upstreamName := range j.StaticUpstreamNames() {
+		jobUpstreamName, err := upstreamName.GetJobName()
+		if err != nil {
+			me.Append(err)
+			continue
+		}
+
+		var projectUpstreamName tenant.ProjectName
+		if upstreamName.IsWithProjectName() {
+			projectUpstreamName, err = upstreamName.GetProjectName()
+			if err != nil {
+				me.Append(err)
+				continue
+			}
+		} else {
+			projectUpstreamName = j.ProjectName()
+		}
+
+		unresolvedStaticUpstreams = append(unresolvedStaticUpstreams, NewUpstreamUnresolvedStatic(jobUpstreamName, projectUpstreamName))
+	}
+	return unresolvedStaticUpstreams, errors.MultiToError(me)
 }
 
 type ResourceURN string
@@ -113,6 +157,19 @@ func (j Jobs) GetSpecs() []*Spec {
 	return specs
 }
 
+func (j Jobs) GetJobsWithUnresolvedUpstreams() ([]*WithUpstream, error) {
+	me := errors.NewMultiError("get unresolved upstreams errors")
+
+	var jobsWithUnresolvedUpstream []*WithUpstream
+	for _, subjectJob := range j {
+		jobWithUnresolvedUpstream, err := subjectJob.GetJobWithUnresolvedUpstream()
+		me.Append(err)
+		jobsWithUnresolvedUpstream = append(jobsWithUnresolvedUpstream, jobWithUnresolvedUpstream)
+	}
+
+	return jobsWithUnresolvedUpstream, errors.MultiToError(me)
+}
+
 type WithUpstream struct {
 	job       *Job
 	upstreams []*Upstream
@@ -120,6 +177,10 @@ type WithUpstream struct {
 
 func NewWithUpstream(job *Job, upstreams []*Upstream) *WithUpstream {
 	return &WithUpstream{job: job, upstreams: upstreams}
+}
+
+func (w WithUpstream) GetName() string { // to support multiroot DataTree
+	return w.job.spec.name.String()
 }
 
 func (w WithUpstream) Job() *Job {

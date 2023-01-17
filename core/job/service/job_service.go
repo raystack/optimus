@@ -319,6 +319,9 @@ func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSp
 	jobs, err := j.generateJobs(ctx, tenantWithDetails, jobSpecs, logWriter)
 	me.Append(err)
 
+	jobsWithUnresolvedUpstreams, err := job.Jobs(jobs).GetJobsWithUnresolvedUpstreams()
+	me.Append(err)
+
 	if len(me.Errors) > 0 {
 		return errors.MultiToError(me)
 	}
@@ -327,24 +330,42 @@ func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSp
 	// assumption, all job specs from input are also the job within same project
 
 	// populate all jobs in project
-	jobsInProject, err := j.GetByFilter(ctx, filter.WithString(filter.ProjectName, jobTenant.ProjectName().String()))
+	jobsInProjectWithUpstreams, err := j.getJobsInProjectWithUpstreams(ctx, jobTenant.ProjectName())
 	if err != nil {
 		return err
 	}
-	jobMap := make(map[job.Name]*job.Job)
-	destinationToJobsMap := make(map[job.ResourceURN][]*job.Job)
-	for _, jobEntity := range jobsInProject {
-		jobMap[jobEntity.Spec().Name()] = jobEntity
-		if _, ok := destinationToJobsMap[jobEntity.Destination()]; !ok {
-			destinationToJobsMap[jobEntity.Destination()] = []*job.Job{}
+
+	jobMap := make(map[job.Name]*job.WithUpstream)
+	identifierToJobsMap := make(map[string][]*job.WithUpstream)
+	for _, jobEntity := range append(jobsWithUnresolvedUpstreams, jobsInProjectWithUpstreams...) {
+		jobSpecName := jobEntity.Job().Spec().Name()
+		if _, ok := jobMap[jobSpecName]; ok {
+			continue
 		}
-		destinationToJobsMap[jobEntity.Destination()] = append(destinationToJobsMap[jobEntity.Destination()], jobEntity)
+		jobMap[jobSpecName] = jobEntity
+
+		jobIdentifiers := []string{jobEntity.Job().FullName()}
+		if jobDestination := jobEntity.Job().Destination().String(); jobDestination != "" {
+			jobIdentifiers = append(jobIdentifiers, jobDestination)
+		}
+		for _, jobIdentifier := range jobIdentifiers {
+			if _, ok := identifierToJobsMap[jobIdentifier]; !ok {
+				identifierToJobsMap[jobIdentifier] = []*job.WithUpstream{}
+			}
+			identifierToJobsMap[jobIdentifier] = append(identifierToJobsMap[jobIdentifier], jobEntity)
+		}
 	}
 
 	// check cyclic deps for every job
-	for _, jobEntity := range jobs {
-		if err = j.validateCyclic(jobEntity.Spec().Name(), jobMap, destinationToJobsMap); err != nil {
-			me.Append(err)
+	isAlreadyCyclic := map[string]bool{}
+	for _, jobEntity := range jobsWithUnresolvedUpstreams {
+		if jobNamesWithCyclic, err := j.validateCyclic(jobEntity.Job().Spec().Name(), jobMap, identifierToJobsMap); err != nil {
+			if _, ok := isAlreadyCyclic[jobEntity.Job().Spec().Name().String()]; !ok {
+				me.Append(err)
+			}
+			for _, jobName := range jobNamesWithCyclic {
+				isAlreadyCyclic[jobName] = true
+			}
 		}
 	}
 
@@ -532,34 +553,40 @@ func (j JobService) generateJob(ctx context.Context, tenantWithDetails *tenant.W
 	return job.NewJob(tenantWithDetails.ToTenant(), spec, destination, sources), nil
 }
 
-func (j JobService) validateCyclic(rootName job.Name, jobMap map[job.Name]*job.Job, destinationToJobMap map[job.ResourceURN][]*job.Job) error {
-	dagTree, err := j.buildDAGTree(rootName, jobMap, destinationToJobMap)
+func (j JobService) getJobsInProjectWithUpstreams(ctx context.Context, projectName tenant.ProjectName) ([]*job.WithUpstream, error) {
+	jobsInProject, err := j.GetByFilter(ctx, filter.WithString(filter.ProjectName, projectName.String()))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	return job.Jobs(jobsInProject).GetJobsWithUnresolvedUpstreams()
+}
+
+func (j JobService) validateCyclic(rootName job.Name, jobMap map[job.Name]*job.WithUpstream, identifierToJobMap map[string][]*job.WithUpstream) ([]string, error) {
+	dagTree := j.buildDAGTree(rootName, jobMap, identifierToJobMap)
 	return dagTree.ValidateCyclic()
 }
 
-func (JobService) buildDAGTree(rootName job.Name, jobMap map[job.Name]*job.Job, destinationToJobMap map[job.ResourceURN][]*job.Job) (*tree.MultiRootTree, error) {
-	rootJob, ok := jobMap[rootName]
-	if !ok {
-		return nil, fmt.Errorf("couldn't find any job with name %s", rootName)
-	}
+func (JobService) buildDAGTree(rootName job.Name, jobMap map[job.Name]*job.WithUpstream, identifierToJobMap map[string][]*job.WithUpstream) *tree.MultiRootTree {
+	rootJob := jobMap[rootName]
 
 	dagTree := tree.NewMultiRootTree()
 	dagTree.AddNode(tree.NewTreeNode(rootJob))
 
 	for _, childJob := range jobMap {
 		childNode := findOrCreateDAGNode(dagTree, childJob)
-		for _, source := range childJob.Sources() {
-			if _, ok := destinationToJobMap[source]; !ok {
-				// source maybe from external optimus or outside project,
-				// as of now, we're not providing the capability to build tree from external optimus or outside project. skip
-				continue
+		for _, upstream := range childJob.Upstreams() {
+			identifier := upstream.Resource().String()
+			if _, ok := identifierToJobMap[identifier]; !ok {
+				identifier = upstream.FullName()
+				if _, ok := identifierToJobMap[identifier]; !ok {
+					// resource maybe from external optimus or outside project,
+					// as of now, we're not providing the capability to build tree from external optimus or outside project. skip
+					continue
+				}
 			}
 
-			parents := destinationToJobMap[source]
+			parents := identifierToJobMap[identifier]
 			for _, parentJob := range parents {
 				parentNode := findOrCreateDAGNode(dagTree, parentJob)
 				parentNode.AddDependent(childNode)
@@ -567,12 +594,12 @@ func (JobService) buildDAGTree(rootName job.Name, jobMap map[job.Name]*job.Job, 
 			}
 		}
 
-		if len(childJob.Sources()) == 0 {
+		if len(childJob.Upstreams()) == 0 {
 			dagTree.MarkRoot(childNode)
 		}
 	}
 
-	return dagTree, nil
+	return dagTree
 }
 
 // sources: https://github.com/odpf/optimus/blob/a6dafbc1fbeb8e1f1eb8d4a6e9582ada4a7f639e/job/replay.go#L101

@@ -60,7 +60,7 @@ func (t *MultiRootTree) getSortedNodeNames() []string {
 }
 
 // ValidateCyclic - detects if there are any cycles in the tree
-func (t *MultiRootTree) ValidateCyclic() error {
+func (t *MultiRootTree) ValidateCyclic() ([]string, error) {
 	// runs a DFS on a given tree using visitor pattern
 	var checkCyclic func(*TreeNode, map[string]bool, map[string]bool, *[]string) error
 	checkCyclic = func(node *TreeNode, visitedNodeNames, visitedPaths map[string]bool, orderedVisitedPaths *[]string) error {
@@ -106,12 +106,12 @@ func (t *MultiRootTree) ValidateCyclic() error {
 			visitedPaths := map[string]bool{}
 			orderedVisitedPaths := []string{}
 			if err := checkCyclic(node, visitedNodeNames, visitedPaths, &orderedVisitedPaths); err != nil {
-				return err
+				return orderedVisitedPaths, err
 			}
 		}
 	}
 
-	return nil
+	return []string{}, nil
 }
 
 func prettifyPaths(paths []string) string {
