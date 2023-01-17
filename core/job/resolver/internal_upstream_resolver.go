@@ -31,8 +31,9 @@ func (i internalUpstreamResolver) Resolve(ctx context.Context, jobWithUnresolved
 	}
 
 	internalUpstream := mergeUpstreams(internalUpstreamInferred, internalUpstreamStatic)
-	fullNameUpstreamMap := job.Upstreams(internalUpstream).ToFullNameAndUpstreamMap()
-	resourceDestinationUpstreamMap := job.Upstreams(internalUpstream).ToResourceDestinationAndUpstreamMap()
+	distinctInternalUpstream := job.Upstreams(internalUpstream).Deduplicate()
+	fullNameUpstreamMap := job.Upstreams(distinctInternalUpstream).ToFullNameAndUpstreamMap()
+	resourceDestinationUpstreamMap := job.Upstreams(distinctInternalUpstream).ToResourceDestinationAndUpstreamMap()
 
 	var upstreamResults []*job.Upstream
 	for _, unresolvedUpstream := range jobWithUnresolvedUpstream.Upstreams() {

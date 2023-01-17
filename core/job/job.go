@@ -295,12 +295,6 @@ func (u Upstreams) ToFullNameAndUpstreamMap() map[string]*Upstream {
 	fullNameUpstreamMap := make(map[string]*Upstream)
 	for _, upstream := range u {
 		fullName := upstream.ProjectName().String() + "/" + upstream.name.String()
-		// keep static upstreams in the map if exists
-		if upstreamInMap, ok := fullNameUpstreamMap[fullName]; ok {
-			if upstreamInMap._type == UpstreamTypeStatic {
-				continue
-			}
-		}
 		fullNameUpstreamMap[fullName] = upstream
 	}
 	return fullNameUpstreamMap
@@ -312,42 +306,47 @@ func (u Upstreams) ToResourceDestinationAndUpstreamMap() map[string]*Upstream {
 		if upstream.resource == "" {
 			continue
 		}
-		// keep static upstreams in the map if exists
-		if upstreamInMap, ok := resourceDestinationUpstreamMap[upstream.resource.String()]; ok {
-			if upstreamInMap._type == UpstreamTypeStatic {
-				continue
-			}
-		}
 		resourceDestinationUpstreamMap[upstream.resource.String()] = upstream
 	}
 	return resourceDestinationUpstreamMap
 }
 
 func (u Upstreams) Deduplicate() []*Upstream {
-	var upstreamsResult []*Upstream
-	distinctUpstreamsMap := make(map[string]*Upstream)
+	resolvedUpstreamMap := make(map[string]*Upstream)
+	unresolvedStaticUpstreamMap := make(map[string]*Upstream)
+	unresolvedInferredUpstreamMap := make(map[string]*Upstream)
 
 	for _, upstream := range u {
-		// add unresolved upstreams straight to the result list
-		if upstream.state == UpstreamStateUnresolved {
-			upstreamsResult = append(upstreamsResult, upstream)
+		if upstream.state == UpstreamStateUnresolved && upstream._type == UpstreamTypeStatic {
+			unresolvedStaticUpstreamMap[upstream.FullName()] = upstream
 			continue
 		}
 
-		// keep static upstreams in the map if exists
-		if upstreamInMap, ok := distinctUpstreamsMap[upstream.FullName()]; ok {
+		if upstream.state == UpstreamStateUnresolved && upstream._type == UpstreamTypeInferred {
+			unresolvedInferredUpstreamMap[upstream.resource.String()] = upstream
+			continue
+		}
+
+		if upstreamInMap, ok := resolvedUpstreamMap[upstream.FullName()]; ok {
+			// keep static upstreams in the map if exists
 			if upstreamInMap._type == UpstreamTypeStatic {
 				continue
 			}
 		}
-		distinctUpstreamsMap[upstream.FullName()] = upstream
+		resolvedUpstreamMap[upstream.FullName()] = upstream
 	}
 
-	for _, upstream := range distinctUpstreamsMap {
-		upstreamsResult = append(upstreamsResult, upstream)
-	}
+	return mapsToUpstreams(resolvedUpstreamMap, unresolvedInferredUpstreamMap, unresolvedStaticUpstreamMap)
+}
 
-	return upstreamsResult
+func mapsToUpstreams(upstreamsMaps ...map[string]*Upstream) []*Upstream {
+	var result []*Upstream
+	for _, upstreamsMap := range upstreamsMaps {
+		for _, upstream := range upstreamsMap {
+			result = append(result, upstream)
+		}
+	}
+	return result
 }
 
 type FullName string
