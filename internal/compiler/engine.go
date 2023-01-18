@@ -26,9 +26,7 @@ type Engine struct {
 func NewEngine() *Engine {
 	baseTemplate := template.
 		New("optimus_template_engine").
-		Funcs(map[string]any{
-			"Date": dateFn,
-		})
+		Funcs(OptimusFuncMap())
 
 	return &Engine{
 		baseTemplate: baseTemplate,
@@ -64,12 +62,4 @@ func (e *Engine) CompileString(input string, context map[string]any) (string, er
 		return "", errors.InvalidArgument(EntityCompiler, "unable to render string "+input)
 	}
 	return strings.TrimSpace(buf.String()), nil
-}
-
-func dateFn(timeStr string) (string, error) {
-	t, err := time.Parse(ISOTimeFormat, timeStr)
-	if err != nil {
-		return "", err
-	}
-	return t.Format(ISODateFormat), nil
 }
