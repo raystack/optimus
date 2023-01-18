@@ -63,6 +63,14 @@ func TestEngine(t *testing.T) {
 					"event_timestamp > {{ .DSTART | Date }} AND event_timestamp <= {{ Date .DEND }}",
 					"event_timestamp > 2021-02-10 AND event_timestamp <= 2021-02-11",
 				},
+				{
+					`{{ .DSTART | Date | toDate "2006-01-02" | date "Jan 2, 2006" }}`,
+					"Feb 10, 2021",
+				},
+				{
+					`{{ .DSTART | Date | toDate "2006-01-02" | date_modify "-24h" | date "2006-01-02" }}`,
+					"2021-02-09",
+				},
 			}
 
 			for _, testCase := range testCases {
