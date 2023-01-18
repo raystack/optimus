@@ -508,7 +508,8 @@ func TestResourceService(t *testing.T) {
 			rscService := service.NewResourceService(logger, repo, mgr, nil)
 
 			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, []*resource.Resource{incoming})
-			assert.NoError(t, actualError)
+			assert.Error(t, actualError)
+			assert.ErrorContains(t, actualError, "urn error")
 			assert.Equal(t, "unknown", incoming.Status().String())
 		})
 
@@ -529,7 +530,8 @@ func TestResourceService(t *testing.T) {
 			rscService := service.NewResourceService(logger, repo, mgr, nil)
 
 			actualError := rscService.Deploy(ctx, tnnt, resource.Bigquery, []*resource.Resource{incoming})
-			assert.NoError(t, actualError)
+			assert.Error(t, actualError)
+			assert.ErrorContains(t, actualError, "urn already present for")
 			assert.Equal(t, "unknown", incoming.Status().String())
 		})
 
