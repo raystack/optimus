@@ -203,10 +203,14 @@ func (s *OptimusServer) setupHTTPProxy() error {
 
 func (s *OptimusServer) startListening() {
 	// run our server in a goroutine so that it doesn't block to wait for termination requests
+	// We first match a request first for grpc
+	grpcLn := s.mux.MatchWithWriters(
+		cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
+	// if it does not match grpc, we send the request to http
+	httpL := s.mux.Match(cmux.Any())
+
 	go func() {
 		// Start listening on grpc server
-		grpcLn := s.mux.MatchWithWriters(
-			cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
 		if err := s.grpcServer.Serve(grpcLn); err != nil {
 			s.logger.Info("shutting down grpc server")
 		}
@@ -214,7 +218,6 @@ func (s *OptimusServer) startListening() {
 
 	go func() {
 		// Start listening on http server
-		httpL := s.mux.Match(cmux.HTTP1Fast())
 		err := s.httpServer.Serve(httpL)
 		if err != nil {
 			s.logger.Info("Shutting http proxy")
