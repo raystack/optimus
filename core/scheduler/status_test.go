@@ -22,7 +22,7 @@ func TestStatus(t *testing.T) {
 
 		expectedJobRunStatus, err = scheduler.JobRunStatusFrom(currentTime, "unregisteredState")
 		assert.NotNil(t, err)
-		assert.EqualError(t, err, "invalid argument for entity jobRun: invalid state for job run unregisteredState")
+		assert.EqualError(t, err, "invalid argument for entity jobRun: invalid state for run unregisteredState")
 		assert.Equal(t, scheduler.JobRunStatus{}, expectedJobRunStatus)
 	})
 	t.Run("ExecutionStart", func(t *testing.T) {
@@ -106,7 +106,7 @@ func TestStatus(t *testing.T) {
 
 		respState, err := scheduler.StateFromString("unregisteredState")
 		assert.NotNil(t, err)
-		assert.EqualError(t, err, "invalid argument for entity jobRun: invalid state for job run unregisteredState")
+		assert.EqualError(t, err, "invalid argument for entity jobRun: invalid state for run unregisteredState")
 		assert.Equal(t, scheduler.State(""), respState)
 	})
 }

@@ -1,0 +1,1 @@
+update job_run set status = 'running' where status = 'STARTED';

@@ -16,7 +16,6 @@ func NewSchedulerCommand() *cobra.Command {
 
 	cmd.AddCommand(
 		UploadCommand(),
-		NewJobRunInputCommand(),
 	)
 	return cmd
 }

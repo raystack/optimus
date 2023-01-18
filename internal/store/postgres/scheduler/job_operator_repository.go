@@ -60,7 +60,7 @@ func operatorTypeToTableName(operatorType scheduler.OperatorType) (string, error
 func (o operatorRun) toOperatorRun() (*scheduler.OperatorRun, error) {
 	status, err := scheduler.StateFromString(o.Status)
 	if err != nil {
-		return nil, errors.NewError(scheduler.EntityJobRun, "invalid job run state in database", err.Error())
+		return nil, errors.NewError(scheduler.EntityJobRun, "invalid operator run state in database", err.Error())
 	}
 	return &scheduler.OperatorRun{
 		ID:           o.ID,

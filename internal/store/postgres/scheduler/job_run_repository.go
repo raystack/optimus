@@ -49,7 +49,7 @@ func (j jobRun) toJobRun() (*scheduler.JobRun, error) {
 	}
 	state, err := scheduler.StateFromString(j.Status)
 	if err != nil {
-		return nil, err
+		return nil, errors.AddErrContext(err, scheduler.EntityJobRun, "invalid job run state in database")
 	}
 	return &scheduler.JobRun{
 		ID:        j.ID,
