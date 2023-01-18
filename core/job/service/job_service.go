@@ -357,15 +357,10 @@ func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSp
 	}
 
 	// check cyclic deps for every job
-	isAlreadyCyclic := map[string]bool{}
 	for _, jobEntity := range jobsWithUnresolvedUpstreams {
-		if jobNamesWithCyclic, err := j.validateCyclic(jobEntity.Job().Spec().Name(), jobMap, identifierToJobsMap); err != nil {
-			if _, ok := isAlreadyCyclic[jobEntity.Job().Spec().Name().String()]; !ok {
-				me.Append(err)
-			}
-			for _, jobName := range jobNamesWithCyclic {
-				isAlreadyCyclic[jobName] = true
-			}
+		if _, err := j.validateCyclic(jobEntity.Job().Spec().Name(), jobMap, identifierToJobsMap); err != nil {
+			me.Append(err)
+			break
 		}
 	}
 
