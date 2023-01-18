@@ -130,7 +130,7 @@ func (a *PriorityResolver) buildMultiRootDependencyTree(jobsWithDetails []*sched
 		}
 	}
 
-	if err := multiRootTree.ValidateCyclic(); err != nil {
+	if _, err := multiRootTree.ValidateCyclic(); err != nil {
 		return nil, err
 	}
 	return multiRootTree, nil

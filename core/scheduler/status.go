@@ -40,7 +40,7 @@ func StateFromString(state string) (State, error) {
 	case string(StateFailed):
 		return StateFailed, nil
 	default:
-		return "", errors.InvalidArgument(EntityJobRun, "invalid state for job run "+state)
+		return "", errors.InvalidArgument(EntityJobRun, "invalid state for run "+state)
 	}
 }
 

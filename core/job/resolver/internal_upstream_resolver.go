@@ -31,8 +31,9 @@ func (i internalUpstreamResolver) Resolve(ctx context.Context, jobWithUnresolved
 	}
 
 	internalUpstream := mergeUpstreams(internalUpstreamInferred, internalUpstreamStatic)
-	fullNameUpstreamMap := job.Upstreams(internalUpstream).ToFullNameAndUpstreamMap()
-	resourceDestinationUpstreamMap := job.Upstreams(internalUpstream).ToResourceDestinationAndUpstreamMap()
+	distinctInternalUpstream := job.Upstreams(internalUpstream).Deduplicate()
+	fullNameUpstreamMap := job.Upstreams(distinctInternalUpstream).ToFullNameAndUpstreamMap()
+	resourceDestinationUpstreamMap := job.Upstreams(distinctInternalUpstream).ToResourceDestinationAndUpstreamMap()
 
 	var upstreamResults []*job.Upstream
 	for _, unresolvedUpstream := range jobWithUnresolvedUpstream.Upstreams() {
@@ -47,7 +48,8 @@ func (i internalUpstreamResolver) Resolve(ctx context.Context, jobWithUnresolved
 		upstreamResults = append(upstreamResults, unresolvedUpstream)
 	}
 
-	return job.NewWithUpstream(jobWithUnresolvedUpstream.Job(), upstreamResults), errors.MultiToError(me)
+	distinctUpstreams := job.Upstreams(upstreamResults).Deduplicate()
+	return job.NewWithUpstream(jobWithUnresolvedUpstream.Job(), distinctUpstreams), errors.MultiToError(me)
 }
 
 func (i internalUpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.ProjectName, jobsWithUnresolvedUpstream []*job.WithUpstream) ([]*job.WithUpstream, error) {

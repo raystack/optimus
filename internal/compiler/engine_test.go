@@ -91,7 +91,7 @@ func TestEngine(t *testing.T) {
 			_, err := comp.Compile(map[string]string{"query": input}, context)
 
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity compiler: unable to parse content for query")
+			assert.EqualError(t, err, "internal error for entity compiler: unable to parse content for query")
 		})
 		t.Run("returns error when rendering fails", func(t *testing.T) {
 			input := `event_timestamp > "{{.DSTART | Date }}"`
@@ -103,7 +103,7 @@ func TestEngine(t *testing.T) {
 			_, err := comp.Compile(map[string]string{"query": input}, context)
 
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity compiler: unable to render content for query")
+			assert.EqualError(t, err, "internal error for entity compiler: unable to render content for query")
 		})
 		t.Run("returns rendered string with values of macros for template map", func(t *testing.T) {
 			testCases := []struct {

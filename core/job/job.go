@@ -1,6 +1,7 @@
 package job
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/odpf/optimus/core/tenant"
@@ -34,12 +35,59 @@ func (j Job) Spec() *Spec {
 	return j.spec
 }
 
-func (j Job) GetName() string { // to support multiroot DataTree
+func (j Job) GetName() string {
 	return j.spec.name.String()
 }
 
 func (j Job) FullName() string {
 	return j.ProjectName().String() + "/" + j.spec.name.String()
+}
+
+func (j Job) GetJobWithUnresolvedUpstream() (*WithUpstream, error) {
+	unresolvedStaticUpstreams, err := j.getStaticUpstreamsToResolve()
+	if err != nil {
+		err = errors.InvalidArgument(EntityJob, fmt.Sprintf("failed to get static upstreams to resolve for job %s", j.GetName()))
+	}
+	unresolvedInferredUpstreams := j.getInferredUpstreamsToResolve()
+	allUpstreams := unresolvedStaticUpstreams
+	allUpstreams = append(allUpstreams, unresolvedInferredUpstreams...)
+
+	return NewWithUpstream(&j, allUpstreams), err
+}
+
+func (j Job) getInferredUpstreamsToResolve() []*Upstream {
+	var unresolvedInferredUpstreams []*Upstream
+	for _, source := range j.sources {
+		unresolvedInferredUpstreams = append(unresolvedInferredUpstreams, NewUpstreamUnresolvedInferred(source))
+	}
+	return unresolvedInferredUpstreams
+}
+
+func (j Job) getStaticUpstreamsToResolve() ([]*Upstream, error) {
+	var unresolvedStaticUpstreams []*Upstream
+	me := errors.NewMultiError("get static upstream to resolve errors")
+
+	for _, upstreamName := range j.StaticUpstreamNames() {
+		jobUpstreamName, err := upstreamName.GetJobName()
+		if err != nil {
+			me.Append(err)
+			continue
+		}
+
+		var projectUpstreamName tenant.ProjectName
+		if upstreamName.IsWithProjectName() {
+			projectUpstreamName, err = upstreamName.GetProjectName()
+			if err != nil {
+				me.Append(err)
+				continue
+			}
+		} else {
+			projectUpstreamName = j.ProjectName()
+		}
+
+		unresolvedStaticUpstreams = append(unresolvedStaticUpstreams, NewUpstreamUnresolvedStatic(jobUpstreamName, projectUpstreamName))
+	}
+	return unresolvedStaticUpstreams, errors.MultiToError(me)
 }
 
 type ResourceURN string
@@ -113,6 +161,19 @@ func (j Jobs) GetSpecs() []*Spec {
 	return specs
 }
 
+func (j Jobs) GetJobsWithUnresolvedUpstreams() ([]*WithUpstream, error) {
+	me := errors.NewMultiError("get unresolved upstreams errors")
+
+	var jobsWithUnresolvedUpstream []*WithUpstream
+	for _, subjectJob := range j {
+		jobWithUnresolvedUpstream, err := subjectJob.GetJobWithUnresolvedUpstream()
+		me.Append(err)
+		jobsWithUnresolvedUpstream = append(jobsWithUnresolvedUpstream, jobWithUnresolvedUpstream)
+	}
+
+	return jobsWithUnresolvedUpstream, errors.MultiToError(me)
+}
+
 type WithUpstream struct {
 	job       *Job
 	upstreams []*Upstream
@@ -120,6 +181,10 @@ type WithUpstream struct {
 
 func NewWithUpstream(job *Job, upstreams []*Upstream) *WithUpstream {
 	return &WithUpstream{job: job, upstreams: upstreams}
+}
+
+func (w WithUpstream) GetName() string { // to support multiroot DataTree
+	return w.job.spec.name.String()
 }
 
 func (w WithUpstream) Job() *Job {
@@ -164,10 +229,10 @@ func (w WithUpstreams) GetSubjectJobNames() []Name {
 	return names
 }
 
-func (w WithUpstreams) MergeWithResolvedUpstreams(resolvedUpstreamMap map[Name][]*Upstream) []*WithUpstream {
+func (w WithUpstreams) MergeWithResolvedUpstreams(resolvedUpstreamsBySubjectJobMap map[Name][]*Upstream) []*WithUpstream {
 	var jobsWithMergedUpstream []*WithUpstream
 	for _, jobWithUnresolvedUpstream := range w {
-		resolvedUpstreams := resolvedUpstreamMap[jobWithUnresolvedUpstream.Name()]
+		resolvedUpstreams := resolvedUpstreamsBySubjectJobMap[jobWithUnresolvedUpstream.Name()]
 		resolvedUpstreamMapByFullName := Upstreams(resolvedUpstreams).ToFullNameAndUpstreamMap()
 		resolvedUpstreamMapByDestination := Upstreams(resolvedUpstreams).ToResourceDestinationAndUpstreamMap()
 
@@ -183,7 +248,8 @@ func (w WithUpstreams) MergeWithResolvedUpstreams(resolvedUpstreamMap map[Name][
 			}
 			mergedUpstream = append(mergedUpstream, unresolvedUpstream)
 		}
-		jobsWithMergedUpstream = append(jobsWithMergedUpstream, NewWithUpstream(jobWithUnresolvedUpstream.Job(), mergedUpstream))
+		distinctMergedUpstream := Upstreams(mergedUpstream).Deduplicate()
+		jobsWithMergedUpstream = append(jobsWithMergedUpstream, NewWithUpstream(jobWithUnresolvedUpstream.Job(), distinctMergedUpstream))
 	}
 	return jobsWithMergedUpstream
 }
@@ -308,6 +374,44 @@ func (u Upstreams) ToResourceDestinationAndUpstreamMap() map[string]*Upstream {
 		resourceDestinationUpstreamMap[upstream.resource.String()] = upstream
 	}
 	return resourceDestinationUpstreamMap
+}
+
+func (u Upstreams) Deduplicate() []*Upstream {
+	resolvedUpstreamMap := make(map[string]*Upstream)
+	unresolvedStaticUpstreamMap := make(map[string]*Upstream)
+	unresolvedInferredUpstreamMap := make(map[string]*Upstream)
+
+	for _, upstream := range u {
+		if upstream.state == UpstreamStateUnresolved && upstream._type == UpstreamTypeStatic {
+			unresolvedStaticUpstreamMap[upstream.FullName()] = upstream
+			continue
+		}
+
+		if upstream.state == UpstreamStateUnresolved && upstream._type == UpstreamTypeInferred {
+			unresolvedInferredUpstreamMap[upstream.resource.String()] = upstream
+			continue
+		}
+
+		if upstreamInMap, ok := resolvedUpstreamMap[upstream.FullName()]; ok {
+			// keep static upstreams in the map if exists
+			if upstreamInMap._type == UpstreamTypeStatic {
+				continue
+			}
+		}
+		resolvedUpstreamMap[upstream.FullName()] = upstream
+	}
+
+	return mapsToUpstreams(resolvedUpstreamMap, unresolvedInferredUpstreamMap, unresolvedStaticUpstreamMap)
+}
+
+func mapsToUpstreams(upstreamsMaps ...map[string]*Upstream) []*Upstream {
+	var result []*Upstream
+	for _, upstreamsMap := range upstreamsMaps {
+		for _, upstream := range upstreamsMap {
+			result = append(result, upstream)
+		}
+	}
+	return result
 }
 
 type FullName string
