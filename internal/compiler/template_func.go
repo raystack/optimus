@@ -13,11 +13,11 @@ func OptimusFuncMap() template.FuncMap {
 		"replace":     Replace,
 		"trunc":       Trunc,
 		"date":        date,
-		"date_modify": dateModify,
+		"date_modify": DateModify,
 		"toDate":      toDate,
-		"unixEpoch":   unixEpoch,
-		"list":        list,
-		"join":        join,
+		"unixEpoch":   UnixEpoch,
+		"list":        List,
+		"join":        Join,
 	}
 }
 
@@ -41,6 +41,7 @@ func Trunc(c int, s string) string {
 }
 
 func date(fmt string, date interface{}) string {
+	// Cannot have a reliable test, depends on local machine time
 	return dateInZone(fmt, date, "Local")
 }
 
@@ -69,7 +70,7 @@ func dateInZone(fmt string, date interface{}, zone string) string {
 	return t.In(loc).Format(fmt)
 }
 
-func dateModify(fmt string, date time.Time) time.Time {
+func DateModify(fmt string, date time.Time) time.Time {
 	d, err := time.ParseDuration(fmt)
 	if err != nil {
 		return date
@@ -78,18 +79,19 @@ func dateModify(fmt string, date time.Time) time.Time {
 }
 
 func toDate(fmt, str string) time.Time {
+	// Cannot have a reliable test, depends on local machine time
 	t, _ := time.ParseInLocation(fmt, str, time.Local)
 	return t
 }
 
-func unixEpoch(date time.Time) string {
+func UnixEpoch(date time.Time) string {
 	return strconv.FormatInt(date.Unix(), 10) //nolint
 }
 
-func list(v ...string) []string {
+func List(v ...string) []string {
 	return v
 }
 
-func join(sep string, v []string) string {
+func Join(sep string, v []string) string {
 	return strings.Join(v, sep)
 }
