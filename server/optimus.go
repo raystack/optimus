@@ -69,7 +69,7 @@ type OptimusServer struct {
 }
 
 func New(conf config.ServerConfig) (*OptimusServer, error) {
-	addr := fmt.Sprintf("localhost:%d", conf.Serve.Port)
+	addr := fmt.Sprintf(":%d", conf.Serve.Port)
 	server := &OptimusServer{
 		conf:       conf,
 		serverAddr: addr,
