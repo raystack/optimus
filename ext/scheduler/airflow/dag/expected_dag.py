@@ -213,6 +213,44 @@ hook_predator = SuperKubernetesPodOperator(
     volumes=[volume],
     init_containers=[init_container_predator],
 )
+init_container_generic = k8s.V1Container(
+    name="init-container",
+    image=INIT_CONTAINER_IMAGE,
+    image_pull_policy=IMAGE_PULL_POLICY,
+    env=init_env_vars + [
+        k8s.V1EnvVar(name="INSTANCE_TYPE", value='hook'),
+        k8s.V1EnvVar(name="INSTANCE_NAME", value='generic'),
+    ],
+    security_context=k8s.V1PodSecurityContext(run_as_user=0),
+    volume_mounts=asset_volume_mounts,
+    command=["/bin/sh", INIT_CONTAINER_ENTRYPOINT],
+)
+
+hook_generic = SuperKubernetesPodOperator(
+    optimus_instancename="generic",
+    optimus_hostname="http://optimus.example.com",
+    optimus_projectname="example-proj",
+    optimus_namespacename="billing",
+    optimus_jobname="infra.billing.weekly-status-reports",
+    optimus_jobtype="hook",
+    image_pull_policy=IMAGE_PULL_POLICY,
+    namespace=conf.get('kubernetes', 'namespace', fallback="default"),
+    image="hello-world:latest",
+    cmds=[],
+    name="hook_generic",
+    task_id="hook_generic",
+    get_logs=True,
+    dag=dag,
+    in_cluster=True,
+    is_delete_operator_pod=True,
+    do_xcom_push=False,
+    env_vars=executor_env_vars,
+    resources=resources,
+    reattach_on_restart=True,
+    volume_mounts=asset_volume_mounts,
+    volumes=[volume],
+    init_containers=[init_container_generic],
+)
 init_container_failureHook = k8s.V1Container(
     name="init-container",
     image=INIT_CONTAINER_IMAGE,
@@ -311,7 +349,7 @@ wait_foo__dash__external__dash__optimus__dash__dep__dash__job >> transformation_
 # setup hook dependencies
 hook_transporter >> transformation_bq__dash__bq
 
-transformation_bq__dash__bq >> [hook_predator,] >> [hook_failureHook,]
+transformation_bq__dash__bq >> [hook_predator,hook_generic,] >> [hook_failureHook,]
 
 # set inter-dependencies between hooks and hooks
 hook_predator >> hook_transporter

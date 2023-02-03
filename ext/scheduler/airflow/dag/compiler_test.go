@@ -12,6 +12,7 @@ import (
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/ext/scheduler/airflow/dag"
 	"github.com/odpf/optimus/internal/models"
+	"github.com/odpf/optimus/plugin/yaml"
 	"github.com/odpf/optimus/sdk/plugin"
 	"github.com/odpf/optimus/sdk/plugin/mock"
 )
@@ -66,6 +67,7 @@ func setupJobDetails(tnnt tenant.Tenant) *scheduler.JobWithDetails {
 	hooks := []*scheduler.Hook{
 		{Name: "transporter"},
 		{Name: "predator"},
+		{Name: "generic", Config: map[string]string{"IMAGE": "hello-world:latest"}},
 		{Name: "failureHook"},
 	}
 
@@ -170,23 +172,31 @@ func setupPluginRepo() mockPluginRepo {
 		DependsOn: []string{"predator"},
 	}, nil)
 
-	predatorHook := "predator"
 	hookUnit2 := new(mock.YamlMod)
 	hookUnit2.On("PluginInfo").Return(&plugin.Info{
+		Name:     yaml.GenericPluginName,
+		HookType: plugin.HookTypePost,
+		Image:    "<user defined>",
+	}, nil)
+
+	predatorHook := "predator"
+	hookUnit3 := new(mock.YamlMod)
+	hookUnit3.On("PluginInfo").Return(&plugin.Info{
 		Name:     predatorHook,
 		HookType: plugin.HookTypePost,
 		Image:    "example.io/namespace/predator-image:latest",
 	}, nil)
 
-	hookUnit3 := new(mock.YamlMod)
-	hookUnit3.On("PluginInfo").Return(&plugin.Info{
+	hookUnit4 := new(mock.YamlMod)
+	hookUnit4.On("PluginInfo").Return(&plugin.Info{
 		Name:     "failureHook",
 		HookType: plugin.HookTypeFail,
 		Image:    "example.io/namespace/failure-hook-image:latest",
 	}, nil)
 
 	repo := mockPluginRepo{plugins: []*plugin.Plugin{
-		{YamlMod: execUnit}, {YamlMod: hookUnit}, {YamlMod: hookUnit2}, {YamlMod: hookUnit3},
+		{YamlMod: execUnit}, {YamlMod: hookUnit}, {YamlMod: hookUnit2},
+		{YamlMod: hookUnit3}, {YamlMod: hookUnit4},
 	}}
 	return repo
 }
