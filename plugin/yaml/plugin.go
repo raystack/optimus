@@ -123,5 +123,10 @@ func Init(pluginsRepo *models.PluginRepository, discoveredYamlPlugins []string, 
 		pluginLogger.Debug("plugin ready: ", pluginInfo.Name)
 	}
 
+	// Generic plugin, only server side
+	if err := pluginsRepo.AddYaml(GenericPlugin()); err != nil {
+		return err
+	}
+
 	return nil
 }

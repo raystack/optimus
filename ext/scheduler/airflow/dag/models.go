@@ -6,11 +6,14 @@ import (
 	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/plugin/yaml"
 	"github.com/odpf/optimus/sdk/plugin"
 )
 
 const (
 	EntitySchedulerAirflow = "schedulerAirflow"
+
+	ImageConfig = "IMAGE"
 )
 
 type TemplateContext struct {
@@ -43,9 +46,14 @@ func PrepareTask(job *scheduler.Job, pluginRepo PluginRepo) (Task, error) {
 
 	info := plugin.Info()
 
+	image, err := getImage(job.Task.Name, info, job.Task.Config)
+	if err != nil {
+		return Task{}, err
+	}
+
 	return Task{
 		Name:  info.Name,
-		Image: info.Image,
+		Image: image,
 	}, nil
 }
 
@@ -80,9 +88,15 @@ func PrepareHooksForJob(job *scheduler.Job, pluginRepo PluginRepo) (Hooks, error
 		}
 
 		info := hook.Info()
+
+		image, err := getImage(h.Name, info, h.Config)
+		if err != nil {
+			return Hooks{}, err
+		}
+
 		hk := Hook{
 			Name:  h.Name,
-			Image: info.Image,
+			Image: image,
 		}
 		switch info.HookType {
 		case plugin.HookTypePre:
@@ -104,6 +118,17 @@ func PrepareHooksForJob(job *scheduler.Job, pluginRepo PluginRepo) (Hooks, error
 	}
 
 	return hooks, nil
+}
+
+func getImage(jobName string, info *plugin.Info, config map[string]string) (string, error) {
+	if info.Name == yaml.GenericPluginName {
+		image, ok := config[ImageConfig]
+		if !ok {
+			return "", errors.InvalidArgument(EntitySchedulerAirflow, "image for generic plugin not found for "+jobName)
+		}
+		return image, nil
+	}
+	return info.Image, nil
 }
 
 type RuntimeConfig struct {
