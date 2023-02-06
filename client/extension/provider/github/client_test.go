@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/odpf/optimus/client/extension/provider/github"
@@ -126,7 +125,7 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 		testReleasePath := "/gojek/optimus-extension-valor"
 		message := "invalid-content"
 
-		router := mux.NewRouter()
+		router := http.NewServeMux()
 		server := httptest.NewServer(router)
 		defer server.Close()
 
@@ -148,7 +147,7 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 		testReleasePath := "/gojek/optimus-extension-valor"
 		release := &github.Release{}
 
-		router := mux.NewRouter()
+		router := http.NewServeMux()
 		server := httptest.NewServer(router)
 		defer server.Close()
 
@@ -178,7 +177,7 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 			},
 		}
 
-		router := mux.NewRouter()
+		router := http.NewServeMux()
 		server := httptest.NewServer(router)
 		defer server.Close()
 
@@ -208,7 +207,7 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 			},
 		}
 
-		router := mux.NewRouter()
+		router := http.NewServeMux()
 		server := httptest.NewServer(router)
 		defer server.Close()
 
@@ -246,7 +245,7 @@ func (c *ClientTestSuite) TestDownloadAsset() {
 		}
 		assetPayload := "valid random payload"
 
-		router := mux.NewRouter()
+		router := http.NewServeMux()
 		server := httptest.NewServer(router)
 		defer server.Close()
 

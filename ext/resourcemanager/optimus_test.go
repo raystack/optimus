@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
@@ -65,7 +64,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 	})
 
 	o.Run("should return nil and error if http response is not ok", func() {
-		router := mux.NewRouter()
+		router := http.NewServeMux()
 		server := httptest.NewServer(router)
 		defer server.Close()
 
@@ -94,7 +93,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 	})
 
 	o.Run("should return nil and error if cannot decode response into proper response type", func() {
-		router := mux.NewRouter()
+		router := http.NewServeMux()
 		server := httptest.NewServer(router)
 		defer server.Close()
 
@@ -126,7 +125,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 	})
 
 	o.Run("should return job specifications with job name filter and nil if no error is encountered", func() {
-		router := mux.NewRouter()
+		router := http.NewServeMux()
 		server := httptest.NewServer(router)
 		defer server.Close()
 
@@ -185,7 +184,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 	})
 
 	o.Run("should return job specifications with job name filter and nil if no error is encountered", func() {
-		router := mux.NewRouter()
+		router := http.NewServeMux()
 		server := httptest.NewServer(router)
 		defer server.Close()
 
@@ -245,7 +244,7 @@ func (o *OptimusResourceManager) TestGetJobSpecifications() {
 	})
 
 	o.Run("should return job specifications with hook and nil if no error is encountered", func() {
-		router := mux.NewRouter()
+		router := http.NewServeMux()
 		server := httptest.NewServer(router)
 		defer server.Close()
 
