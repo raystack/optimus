@@ -1,9 +1,5 @@
 package config
 
-import (
-	"time"
-)
-
 type ServerConfig struct {
 	Version          Version           `mapstructure:"version"`
 	Log              LogConfig         `mapstructure:"log"`
@@ -20,20 +16,6 @@ type Serve struct {
 	IngressHost string   `mapstructure:"ingress_host"`           // service ingress host for jobs to communicate back to optimus
 	AppKey      string   `mapstructure:"app_key"`                // random 32 character hash used for encrypting secrets
 	DB          DBConfig `mapstructure:"db"`
-	Replay      Replay   `mapstructure:"replay"`
-	Deployer    Deployer `mapstructure:"deployer"`
-}
-
-type Replay struct {
-	NumWorkers    int           `mapstructure:"num_workers" default:"1"`
-	WorkerTimeout time.Duration `mapstructure:"worker_timeout" default:"120s"`
-	RunTimeout    time.Duration `mapstructure:"run_timeout"`
-}
-
-type Deployer struct {
-	NumWorkers    int           `mapstructure:"num_workers" default:"1"`
-	WorkerTimeout time.Duration `mapstructure:"worker_timeout" default:"300m"`
-	QueueCapacity int           `mapstructure:"queue_capacity" default:"10"`
 }
 
 type DBConfig struct {

@@ -44,9 +44,6 @@ func checkRequiredConfigs(conf config.Serve) error {
 	if conf.IngressHost == "" {
 		return fmt.Errorf("serve.ingress_host: %w", errRequiredMissing)
 	}
-	if conf.Replay.NumWorkers < 1 {
-		return fmt.Errorf("%s should be greater than 0", config.KeyServeReplayNumWorkers)
-	}
 	if conf.DB.DSN == "" {
 		return fmt.Errorf("serve.db.dsn: %w", errRequiredMissing)
 	}
