@@ -13,7 +13,6 @@ import (
 	"github.com/odpf/optimus/client/cmd/playground"
 	"github.com/odpf/optimus/client/cmd/plugin"
 	"github.com/odpf/optimus/client/cmd/project"
-	"github.com/odpf/optimus/client/cmd/replay"
 	"github.com/odpf/optimus/client/cmd/resource"
 	"github.com/odpf/optimus/client/cmd/scheduler"
 	"github.com/odpf/optimus/client/cmd/secret"
@@ -40,7 +39,6 @@ func New() *cli.Command {
 				$ optimus job create
 				$ optimus backup create
 				$ optimus backup list
-				$ optimus replay create
 			`),
 		Annotations: map[string]string{
 			"group:core": "true",
@@ -63,7 +61,6 @@ func New() *cli.Command {
 		job.NewJobCommand(),
 		namespace.NewNamespaceCommand(),
 		project.NewProjectCommand(),
-		replay.NewReplayCommand(),
 		resource.NewResourceCommand(),
 		secret.NewSecretCommand(),
 		version.NewVersionCommand(),

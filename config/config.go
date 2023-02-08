@@ -5,10 +5,6 @@ import (
 	"strconv"
 )
 
-const (
-	KeyServeReplayNumWorkers = "serve.replay_num_workers"
-)
-
 type Optimus struct {
 	// configuration version
 	Version int `mapstructure:"version"`

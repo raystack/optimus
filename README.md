@@ -40,23 +40,25 @@ Usage:
 
 Available Commands:
   backup      Backup a resource and its downstream
-  completion  generate the autocompletion script for the specified shell
-  config      Manage optimus configuration required to deploy specifications
-  deploy      Deploy current optimus project to server
+  completion  Generate the autocompletion script for the specified shell
   extension   Operate with extension
   help        Help about any command
+  init        Interactively initialize Optimus client config
   job         Interact with schedulable Job
-  replay      Re-running jobs in order to update data for older dates/partitions
+  migration   Command to do migration activity
+  namespace   Commands that will let the user to operate on namespace
+  playground  Play around with some Optimus features
+  plugin      Manage plugins
+  project     Commands that will let the user to operate on project
   resource    Interact with data resource
+  secret      Manage secrets to be used in jobs
+  scheduler   Scheduled/run job related functions
   serve       Starts optimus service
   version     Print the client version information
 
 Flags:
   -h, --help       help for optimus
       --no-color   Disable colored output
-
-Additional help topics:
-  optimus validate check if specifications are valid for deployment
 
 Use "optimus [command] --help" for more information about a command.
 ```
