@@ -50,6 +50,9 @@ type Info struct {
 	// Image is the full path to docker container that will be scheduled for execution
 	Image string
 
+	// Entrypoint command which will be used to execute the plugin
+	Entrypoint string
+
 	// DependsOn returns list of hooks this should be executed after
 	DependsOn []string `yaml:",omitempty"`
 

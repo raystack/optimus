@@ -68,6 +68,8 @@ resources = k8s.V1ResourceRequirements(
 )
 
 JOB_DIR = "/data"
+PATH_ENV = JOB_DIR + "/in/.env"
+PATH_SECRET = JOB_DIR + "/in/.secret"
 IMAGE_PULL_POLICY = "IfNotPresent"
 INIT_CONTAINER_IMAGE = "odpf/optimus:dev"
 INIT_CONTAINER_ENTRYPOINT = "/opt/entrypoint_init_container.sh"
@@ -118,7 +120,8 @@ transformation_bq__dash__bq = SuperKubernetesPodOperator(
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="example.io/namespace/bq2bq-executor:latest",
-    cmds=[],
+    cmds=["/bin/sh"],
+    arguments=["-c", "set -o allexport; source " + PATH_ENV + "; set +o allexport; printenv; set -o allexport; source " + PATH_SECRET + "; set +o allexport; " + """python3 /opt/bumblebee/main.py """],
     name="bq-bq",
     task_id="bq-bq",
     get_logs=True,
@@ -160,7 +163,8 @@ hook_transporter = SuperKubernetesPodOperator(
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="example.io/namespace/transporter-executor:latest",
-    cmds=[],
+    cmds=["/bin/sh"],
+    arguments=["-c", "set -o allexport; source " + PATH_ENV + "; set +o allexport; printenv; set -o allexport; source " + PATH_SECRET + "; set +o allexport; " + """java -cp /opt/transporter/transporter.jar:/opt/transporter/jolokia-jvm-agent.jar -javaagent:jolokia-jvm-agent.jar=port=7777,host=0.0.0.0 com.gojek.transporter.Main """],
     name="hook_transporter",
     task_id="hook_transporter",
     get_logs=True,
@@ -198,7 +202,8 @@ hook_predator = SuperKubernetesPodOperator(
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="example.io/namespace/predator-image:latest",
-    cmds=[],
+    cmds=["/bin/sh"],
+    arguments=["-c", "set -o allexport; source " + PATH_ENV + "; set +o allexport; printenv; set -o allexport; source " + PATH_SECRET + "; set +o allexport; " + """predator ${SUB_COMMAND} -s ${PREDATOR_URL} -u "${BQ_PROJECT}.${BQ_DATASET}.${BQ_TABLE}" """],
     name="hook_predator",
     task_id="hook_predator",
     get_logs=True,
@@ -236,7 +241,8 @@ hook_failureHook = SuperKubernetesPodOperator(
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="example.io/namespace/failure-hook-image:latest",
-    cmds=[],
+    cmds=["/bin/sh"],
+    arguments=["-c", "set -o allexport; source " + PATH_ENV + "; set +o allexport; printenv; set -o allexport; source " + PATH_SECRET + "; set +o allexport; " + """sleep 5 """],
     name="hook_failureHook",
     task_id="hook_failureHook",
     get_logs=True,
