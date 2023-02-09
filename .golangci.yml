@@ -38,7 +38,6 @@ linters:
     - gomoddirectives
 
     # Following linters should be enabled after fixing the code
-    - testpackage
     - cyclop
     - ireturn
     - goerr113
@@ -155,5 +154,6 @@ issues:
         - gocritic
         - gomnd
         - unparam
+        - testpackage
 severity:
   default-severity: error

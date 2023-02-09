@@ -48,6 +48,14 @@ type Event struct {
 	meta       scheduler.Event
 }
 
+func NewEvent(routingKey string, owner string, meta scheduler.Event) Event {
+	return Event{
+		routingKey: routingKey,
+		owner:      owner,
+		meta:       meta,
+	}
+}
+
 func (s *Notifier) Notify(_ context.Context, attr scheduler.NotifyAttrs) error { //nolint:unparam
 	s.queueNotification(attr.Secret, attr)
 	return nil

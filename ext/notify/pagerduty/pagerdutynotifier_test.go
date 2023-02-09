@@ -1,4 +1,4 @@
-package pagerduty
+package pagerduty_test
 
 import (
 	"context"
@@ -11,13 +11,14 @@ import (
 
 	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/ext/notify/pagerduty"
 )
 
 type PagerDutyServiceImplMock struct {
 	mock.Mock
 }
 
-func (s *PagerDutyServiceImplMock) SendAlert(ctx context.Context, evt Event) error {
+func (s *PagerDutyServiceImplMock) SendAlert(ctx context.Context, evt pagerduty.Event) error {
 	err := s.Called(ctx, evt).Error(0)
 	return err
 }
@@ -28,21 +29,18 @@ func TestPagerDuty(t *testing.T) {
 		var sendErrors []error
 		tnnt, _ := tenant.NewTenant("foo", "test")
 		pagerDutyServiceMock := new(PagerDutyServiceImplMock)
-		pagerDutyServiceMock.On("SendAlert", ctx,
-			Event{
-				routingKey: "test-token",
-				owner:      "",
-				meta: scheduler.Event{
-					JobName: "foo-job-spec",
-					Tenant:  tnnt,
-					Type:    scheduler.JobFailureEvent,
-					Values:  map[string]any(nil),
-				},
-			},
-		).Return(nil)
+		pgEvent := pagerduty.NewEvent("test-token", "",
+			scheduler.Event{
+				JobName: "foo-job-spec",
+				Tenant:  tnnt,
+				Type:    scheduler.JobFailureEvent,
+				Values:  map[string]any(nil),
+			})
+
+		pagerDutyServiceMock.On("SendAlert", ctx, pgEvent).Return(nil)
 		defer pagerDutyServiceMock.AssertExpectations(t)
 
-		client := NewNotifier(
+		client := pagerduty.NewNotifier(
 			ctx,
 			time.Millisecond*500,
 			func(err error) {
@@ -76,21 +74,18 @@ func TestPagerDuty(t *testing.T) {
 		tnnt, _ := tenant.NewTenant("foo", "test")
 		jobName := scheduler.JobName("foo-job-spec")
 		pagerDutyServiceMock := new(PagerDutyServiceImplMock)
-		pagerDutyServiceMock.On("SendAlert", ctx,
-			Event{
-				routingKey: "test-invalid-token",
-				owner:      "",
-				meta: scheduler.Event{
-					JobName: jobName,
-					Tenant:  tnnt,
-					Type:    scheduler.JobFailureEvent,
-					Values:  map[string]any(nil),
-				},
-			},
-		).Return(fmt.Errorf("invalid routing key test-invalid-token"))
+		pgEvent := pagerduty.NewEvent("test-invalid-token", "",
+			scheduler.Event{
+				JobName: jobName,
+				Tenant:  tnnt,
+				Type:    scheduler.JobFailureEvent,
+				Values:  map[string]any(nil),
+			})
+		pagerDutyServiceMock.On("SendAlert", ctx, pgEvent).
+			Return(fmt.Errorf("invalid routing key test-invalid-token"))
 		defer pagerDutyServiceMock.AssertExpectations(t)
 
-		client := NewNotifier(
+		client := pagerduty.NewNotifier(
 			ctx,
 			time.Millisecond*500,
 			func(err error) {
