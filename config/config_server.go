@@ -11,10 +11,9 @@ type ServerConfig struct {
 }
 
 type Serve struct {
-	Port        int      `mapstructure:"port" default:"9100"`    // port to listen on
-	Host        string   `mapstructure:"host" default:"0.0.0.0"` // the network interface to listen on
-	IngressHost string   `mapstructure:"ingress_host"`           // service ingress host for jobs to communicate back to optimus
-	AppKey      string   `mapstructure:"app_key"`                // random 32 character hash used for encrypting secrets
+	Port        int      `mapstructure:"port" default:"9100"` // port to listen on
+	IngressHost string   `mapstructure:"ingress_host"`        // service ingress host for jobs to communicate back to optimus
+	AppKey      string   `mapstructure:"app_key"`             // random 32 character hash used for encrypting secrets
 	DB          DBConfig `mapstructure:"db"`
 }
 
@@ -25,12 +24,7 @@ type DBConfig struct {
 }
 
 type SchedulerConfig struct {
-	Name       string `mapstructure:"name" default:"airflow"`
-	RaftAddr   string `mapstructure:"raft_addr"`
-	GossipAddr string `mapstructure:"gossip_addr"`
-	NodeID     string `mapstructure:"node_id"`
-	DataDir    string `mapstructure:"data_dir"`
-	Peers      string `mapstructure:"peers"`
+	Name string `mapstructure:"name" default:"airflow"`
 }
 
 type TelemetryConfig struct {
