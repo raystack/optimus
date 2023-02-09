@@ -326,20 +326,6 @@ func (t Task) Config() Config {
 	return t.config
 }
 
-// type TaskBuilder struct {
-//	task *Task
-//}
-//
-// func NewTaskBuilder(name TaskName, config Config) *TaskBuilder {
-//	return &TaskBuilder{
-//		task: &Task{name: name, config: config},
-//	}
-//}
-//
-//func (t *TaskBuilder) Build() Task {
-//	return *t.task
-//}
-
 type MetadataResourceConfig struct {
 	cpu    string
 	memory string
