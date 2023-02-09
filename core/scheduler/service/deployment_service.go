@@ -9,7 +9,7 @@ import (
 	"github.com/odpf/optimus/internal/errors"
 )
 
-func (s JobRunService) UploadToScheduler(ctx context.Context, projectName tenant.ProjectName) error {
+func (s *JobRunService) UploadToScheduler(ctx context.Context, projectName tenant.ProjectName) error {
 	multiError := errors.NewMultiError("errorInUploadToScheduler")
 	allJobsWithDetails, err := s.jobRepo.GetAll(ctx, projectName)
 	multiError.Append(err)
@@ -31,7 +31,7 @@ func (s JobRunService) UploadToScheduler(ctx context.Context, projectName tenant
 	return multiError.ToErr()
 }
 
-func (s JobRunService) deployJobsPerNamespace(ctx context.Context, t tenant.Tenant, jobs []*scheduler.JobWithDetails) error {
+func (s *JobRunService) deployJobsPerNamespace(ctx context.Context, t tenant.Tenant, jobs []*scheduler.JobWithDetails) error {
 	err := s.scheduler.DeployJobs(ctx, t, jobs)
 	if err != nil {
 		return err
@@ -39,7 +39,7 @@ func (s JobRunService) deployJobsPerNamespace(ctx context.Context, t tenant.Tena
 	return s.cleanPerNamespace(ctx, t, jobs)
 }
 
-func (s JobRunService) cleanPerNamespace(ctx context.Context, t tenant.Tenant, jobs []*scheduler.JobWithDetails) error {
+func (s *JobRunService) cleanPerNamespace(ctx context.Context, t tenant.Tenant, jobs []*scheduler.JobWithDetails) error {
 	// get all stored job names
 	schedulerJobNames, err := s.scheduler.ListJobs(ctx, t)
 	if err != nil {

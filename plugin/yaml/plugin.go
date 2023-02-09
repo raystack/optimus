@@ -46,7 +46,7 @@ func (p *PluginSpec) GetQuestions(context.Context, plugin.GetQuestionsRequest) (
 	}, nil
 }
 
-func (*PluginSpec) ValidateQuestion(_ context.Context, req plugin.ValidateQuestionRequest) (*plugin.ValidateQuestionResponse, error) {
+func (*PluginSpec) ValidateQuestion(_ context.Context, req plugin.ValidateQuestionRequest) (*plugin.ValidateQuestionResponse, error) { //nolint
 	question := req.Answer.Question
 	value := req.Answer.Value
 	if err := question.IsValid(value); err != nil {
@@ -64,7 +64,7 @@ func (p *PluginSpec) DefaultConfig(_ context.Context, req plugin.DefaultConfigRe
 	var conf []plugin.Config
 
 	// config from survey answers
-	for _, ans := range req.Answers {
+	for _, ans := range req.Answers { // nolint:gocritic
 		conf = append(conf, plugin.Config{
 			Name:  ans.Question.Name,
 			Value: ans.Value,

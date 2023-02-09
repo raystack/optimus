@@ -42,7 +42,7 @@ type jobRun struct {
 	UpdatedAt time.Time
 }
 
-func (j jobRun) toJobRun() (*scheduler.JobRun, error) {
+func (j *jobRun) toJobRun() (*scheduler.JobRun, error) {
 	t, err := tenant.NewTenant(j.ProjectName, j.NamespaceName)
 	if err != nil {
 		return nil, err

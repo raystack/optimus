@@ -45,10 +45,10 @@ type Notifier struct {
 type Event struct {
 	routingKey string
 	owner      string
-	meta       scheduler.Event
+	meta       *scheduler.Event
 }
 
-func NewEvent(routingKey, owner string, meta scheduler.Event) Event {
+func NewEvent(routingKey, owner string, meta *scheduler.Event) Event {
 	return Event{
 		routingKey: routingKey,
 		owner:      owner,

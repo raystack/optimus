@@ -34,7 +34,7 @@ func TestJobRunService(t *testing.T) {
 			runService := service.NewJobRunService(logger,
 				nil, nil, nil, nil, nil, nil)
 
-			event := scheduler.Event{
+			event := &scheduler.Event{
 				JobName: jobName,
 				Tenant:  tnnt,
 				Type:    "UnregisteredEventTYpe",
@@ -57,7 +57,7 @@ func TestJobRunService(t *testing.T) {
 				runService := service.NewJobRunService(logger,
 					jobRepo, jobRunRepository, nil, nil, nil, nil)
 
-				event := scheduler.Event{
+				event := &scheduler.Event{
 					JobName:        jobName,
 					Tenant:         tnnt,
 					Type:           scheduler.TaskStartEvent,
@@ -102,7 +102,7 @@ func TestJobRunService(t *testing.T) {
 				runService := service.NewJobRunService(logger,
 					jobRepo, jobRunRepository, nil, nil, nil, nil)
 
-				event := scheduler.Event{
+				event := &scheduler.Event{
 					JobName:        jobName,
 					Tenant:         tnnt,
 					Type:           scheduler.TaskStartEvent,
@@ -138,7 +138,7 @@ func TestJobRunService(t *testing.T) {
 				slaDefinitionInSec, err := JobWithDetails.SLADuration()
 				assert.Nil(t, err)
 
-				event := scheduler.Event{
+				event := &scheduler.Event{
 					JobName:        jobName,
 					Tenant:         tnnt,
 					Type:           scheduler.JobSuccessEvent,
@@ -185,7 +185,7 @@ func TestJobRunService(t *testing.T) {
 				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
 				eventTime := time.Unix(todayDate.Add(time.Hour).Unix(), 0)
 				endTime := eventTime
-				event := scheduler.Event{
+				event := &scheduler.Event{
 					JobName:        jobName,
 					Tenant:         tnnt,
 					Type:           scheduler.JobSuccessEvent,
@@ -243,7 +243,7 @@ func TestJobRunService(t *testing.T) {
 				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
 				eventTime := time.Unix(todayDate.Add(time.Hour).Unix(), 0)
 				endTime := eventTime
-				event := scheduler.Event{
+				event := &scheduler.Event{
 					JobName:        jobName,
 					Tenant:         tnnt,
 					Type:           scheduler.JobFailureEvent,
@@ -322,7 +322,7 @@ func TestJobRunService(t *testing.T) {
 			t.Run("should return error on TaskStartEvent if GetJobDetails fails", func(t *testing.T) {
 				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
 				eventTime := time.Unix(todayDate.Add(time.Hour).Unix(), 0)
-				event := scheduler.Event{
+				event := &scheduler.Event{
 					JobName:        jobName,
 					Tenant:         tnnt,
 					Type:           scheduler.TaskStartEvent,
@@ -345,7 +345,7 @@ func TestJobRunService(t *testing.T) {
 			t.Run("should return error on SensorStartEvent if GetJobDetails fails", func(t *testing.T) {
 				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
 				eventTime := time.Unix(todayDate.Add(time.Hour).Unix(), 0)
-				event := scheduler.Event{
+				event := &scheduler.Event{
 					JobName:        jobName,
 					Tenant:         tnnt,
 					Type:           scheduler.SensorStartEvent,
@@ -368,7 +368,7 @@ func TestJobRunService(t *testing.T) {
 			t.Run("should return error on HookStartEvent if GetJobDetails fails", func(t *testing.T) {
 				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
 				eventTime := time.Unix(todayDate.Add(time.Hour).Unix(), 0)
-				event := scheduler.Event{
+				event := &scheduler.Event{
 					JobName:        jobName,
 					Tenant:         tnnt,
 					Type:           scheduler.HookStartEvent,
@@ -391,7 +391,7 @@ func TestJobRunService(t *testing.T) {
 			t.Run("on TaskStartEvent", func(t *testing.T) {
 				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
 				eventTime := time.Unix(todayDate.Add(time.Hour).Unix(), 0)
-				event := scheduler.Event{
+				event := &scheduler.Event{
 					JobName:        jobName,
 					Tenant:         tnnt,
 					Type:           scheduler.TaskStartEvent,
@@ -430,7 +430,7 @@ func TestJobRunService(t *testing.T) {
 			t.Run("on TaskSuccessEvent should create task_run row", func(t *testing.T) {
 				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
 				eventTime := time.Unix(todayDate.Add(time.Hour).Unix(), 0)
-				event := scheduler.Event{
+				event := &scheduler.Event{
 					JobName:        jobName,
 					Tenant:         tnnt,
 					Type:           scheduler.TaskSuccessEvent,
@@ -501,7 +501,7 @@ func TestJobRunService(t *testing.T) {
 			t.Run("on SensorSuccessEvent should fail when unable to get job run due to errors other than not found error ", func(t *testing.T) {
 				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
 				eventTime := time.Unix(todayDate.Add(time.Hour).Unix(), 0)
-				event := scheduler.Event{
+				event := &scheduler.Event{
 					JobName:        jobName,
 					Tenant:         tnnt,
 					Type:           scheduler.SensorSuccessEvent,
@@ -527,7 +527,7 @@ func TestJobRunService(t *testing.T) {
 			t.Run("on HookSuccessEvent should fail when unable to get operator run due to errors other than not found error ", func(t *testing.T) {
 				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
 				eventTime := time.Unix(todayDate.Add(time.Hour).Unix(), 0)
-				event := scheduler.Event{
+				event := &scheduler.Event{
 					JobName:        jobName,
 					Tenant:         tnnt,
 					Type:           scheduler.HookSuccessEvent,

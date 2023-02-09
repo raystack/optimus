@@ -43,7 +43,7 @@ type NotifyService struct {
 	l              log.Logger
 }
 
-func (n NotifyService) Push(ctx context.Context, event scheduler.Event) error {
+func (n *NotifyService) Push(ctx context.Context, event *scheduler.Event) error {
 	jobDetails, err := n.jobRepo.GetJobDetails(ctx, event.Tenant.ProjectName(), event.JobName)
 	if err != nil {
 		return err
@@ -79,12 +79,13 @@ func (n NotifyService) Push(ctx context.Context, event scheduler.Event) error {
 				}
 
 				if notifyChannel, ok := n.notifyChannels[scheme]; ok {
-					if currErr := notifyChannel.Notify(ctx, scheduler.NotifyAttrs{
-						Owner:    jobDetails.JobMetadata.Owner,
-						JobEvent: event,
-						Secret:   secret,
-						Route:    route,
-					}); currErr != nil {
+					if currErr := notifyChannel.Notify(ctx,
+						scheduler.NotifyAttrs{
+							Owner:    jobDetails.JobMetadata.Owner,
+							JobEvent: event,
+							Secret:   secret,
+							Route:    route,
+						}); currErr != nil {
 						n.l.Error("Error: No notification event for job ", "current error", currErr)
 						multierror.Append(fmt.Errorf("notifyChannel.Notify: %s: %w", channel, currErr))
 					}

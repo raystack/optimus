@@ -136,7 +136,7 @@ linters-settings:
       - diagnostic
 #      - style
 #      - opinionated
-#      - performance
+      - performance
   unparam:
     # Inspect exported functions.
     # XXX: if you enable this setting, unparam will report a lot of false-positives in text editors:

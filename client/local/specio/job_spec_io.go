@@ -131,7 +131,7 @@ func (jobSpecReadWriter) mergeJobSpecWithParents(spec *model.JobSpec, specDirPat
 		rootToNearSpecPaths := splitDirPaths[:pathNearSpecIdx]
 		parentDirPath := filepath.Join(rootToNearSpecPaths...)
 		if parentJobSpec, ok := jobSpecParentsMappedByDirPath[parentDirPath]; ok {
-			spec.MergeFrom(*parentJobSpec)
+			spec.MergeFrom(parentJobSpec)
 		}
 	}
 }

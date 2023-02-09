@@ -99,7 +99,7 @@ type JobSpecMetadataAirflow struct {
 	Queue string `yaml:"queue" json:"queue"`
 }
 
-func (j JobSpec) ToProto() *pb.JobSpecification {
+func (j *JobSpec) ToProto() *pb.JobSpecification {
 	return &pb.JobSpecification{
 		Version:          int32(j.Version),
 		Name:             j.Name,
@@ -124,7 +124,7 @@ func (j JobSpec) ToProto() *pb.JobSpecification {
 	}
 }
 
-func (j JobSpec) getProtoJobMetadata() *pb.JobMetadata {
+func (j *JobSpec) getProtoJobMetadata() *pb.JobMetadata {
 	if j.Metadata == nil {
 		return nil
 	}
@@ -149,7 +149,7 @@ func (j JobSpec) getProtoJobMetadata() *pb.JobMetadata {
 	}
 }
 
-func (JobSpec) getProtoJobSpecMetadataResourceConfig(jobSpecMetadataResourceConfig *JobSpecMetadataResourceConfig) *pb.JobSpecMetadataResourceConfig {
+func (*JobSpec) getProtoJobSpecMetadataResourceConfig(jobSpecMetadataResourceConfig *JobSpecMetadataResourceConfig) *pb.JobSpecMetadataResourceConfig {
 	if jobSpecMetadataResourceConfig == nil {
 		return nil
 	}
@@ -159,7 +159,7 @@ func (JobSpec) getProtoJobSpecMetadataResourceConfig(jobSpecMetadataResourceConf
 	}
 }
 
-func (j JobSpec) getProtoJobSpecBehavior() *pb.JobSpecification_Behavior {
+func (j *JobSpec) getProtoJobSpecBehavior() *pb.JobSpecification_Behavior {
 	if j.Behavior.Retry == nil && len(j.Behavior.Notify) == 0 {
 		return nil
 	}
@@ -191,7 +191,7 @@ func (j JobSpec) getProtoJobSpecBehavior() *pb.JobSpecification_Behavior {
 	}
 }
 
-func (j JobSpec) getProtoJobSpecHooks() []*pb.JobSpecHook {
+func (j *JobSpec) getProtoJobSpecHooks() []*pb.JobSpecHook {
 	protoJobSpecHooks := make([]*pb.JobSpecHook, len(j.Hooks))
 	for i, hook := range j.Hooks {
 		var protoJobConfigItems []*pb.JobConfigItem
@@ -209,7 +209,7 @@ func (j JobSpec) getProtoJobSpecHooks() []*pb.JobSpecHook {
 	return protoJobSpecHooks
 }
 
-func (j JobSpec) getProtoJobDependencies() []*pb.JobDependency {
+func (j *JobSpec) getProtoJobDependencies() []*pb.JobDependency {
 	protoJobDependencies := make([]*pb.JobDependency, len(j.Dependencies))
 	for i, dependency := range j.Dependencies {
 		jobSpecDependencyProto := pb.JobDependency{
@@ -229,7 +229,7 @@ func (j JobSpec) getProtoJobDependencies() []*pb.JobDependency {
 	return protoJobDependencies
 }
 
-func (j JobSpec) getProtoJobConfigItems() []*pb.JobConfigItem {
+func (j *JobSpec) getProtoJobConfigItems() []*pb.JobConfigItem {
 	var protoJobConfigItems []*pb.JobConfigItem
 	for name, value := range j.Task.Config {
 		protoJobConfigItems = append(protoJobConfigItems, &pb.JobConfigItem{
@@ -241,7 +241,7 @@ func (j JobSpec) getProtoJobConfigItems() []*pb.JobConfigItem {
 }
 
 // TODO: there are some refactors required, however it will be addressed once we relook at the job spec inheritance
-func (j *JobSpec) MergeFrom(anotherJobSpec JobSpec) {
+func (j *JobSpec) MergeFrom(anotherJobSpec *JobSpec) {
 	j.Version = getValue(j.Version, anotherJobSpec.Version)
 	j.Description = getValue(j.Description, anotherJobSpec.Description)
 	j.Owner = getValue(j.Owner, anotherJobSpec.Owner)

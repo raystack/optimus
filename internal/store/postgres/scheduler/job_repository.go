@@ -259,7 +259,7 @@ func (j *JobRepository) GetJobDetails(ctx context.Context, projectName tenant.Pr
 	return spec.toJobWithDetails()
 }
 
-func groupUpstreamsByJobName(jobUpstreams []JobUpstreams) (map[string][]*scheduler.JobUpstream, error) {
+func groupUpstreamsByJobName(jobUpstreams []*JobUpstreams) (map[string][]*scheduler.JobUpstream, error) {
 	multiError := errors.NewMultiError("errorsInGroupUpstreamsByJobName")
 	jobUpstreamGroup := map[string][]*scheduler.JobUpstream{}
 
@@ -289,7 +289,7 @@ func (j *JobRepository) getJobsUpstreams(ctx context.Context, projectName tenant
 	}
 	defer rows.Close()
 
-	var upstreams []JobUpstreams
+	var upstreams []*JobUpstreams
 	for rows.Next() {
 		var jwu JobUpstreams
 		err := rows.Scan(&jwu.JobName, &jwu.ProjectName, &jwu.UpstreamJobName, &jwu.UpstreamProjectName, &jwu.UpstreamHost,
@@ -301,7 +301,7 @@ func (j *JobRepository) getJobsUpstreams(ctx context.Context, projectName tenant
 
 			return nil, errors.Wrap(scheduler.EntityJobRun, "error in reading row for resource", err)
 		}
-		upstreams = append(upstreams, jwu)
+		upstreams = append(upstreams, &jwu)
 	}
 
 	return groupUpstreamsByJobName(upstreams)

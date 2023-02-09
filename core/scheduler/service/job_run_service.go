@@ -59,7 +59,7 @@ type JobRunService struct {
 	compiler         JobInputCompiler
 }
 
-func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName, config scheduler.RunConfig) (*scheduler.ExecutorInput, error) {
+func (s *JobRunService) JobRunInput(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName, config scheduler.RunConfig) (*scheduler.ExecutorInput, error) {
 	job, err := s.jobRepo.GetJob(ctx, projectName, jobName)
 	if err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func (s JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proje
 	return s.compiler.Compile(ctx, job, config, executedAt)
 }
 
-func (s JobRunService) GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName, criteria *scheduler.JobRunsCriteria) ([]*scheduler.JobRunStatus, error) {
+func (s *JobRunService) GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName, criteria *scheduler.JobRunsCriteria) ([]*scheduler.JobRunStatus, error) {
 	jobWithDetails, err := s.jobRepo.GetJobDetails(ctx, projectName, jobName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get job details from DB for jobName: %s, project:%s,  error:%w ", jobName, projectName, err)
@@ -100,7 +100,7 @@ func (s JobRunService) GetJobRuns(ctx context.Context, projectName tenant.Projec
 		return s.scheduler.GetJobRuns(ctx, jobWithDetails.Job.Tenant, criteria, jobCron)
 	}
 	// validate job query
-	err = validateJobQuery(criteria, *jobWithDetails)
+	err = validateJobQuery(criteria, jobWithDetails)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func createFilterSet(filter []string) map[string]struct{} {
 	return m
 }
 
-func validateJobQuery(jobQuery *scheduler.JobRunsCriteria, jobWithDetails scheduler.JobWithDetails) error {
+func validateJobQuery(jobQuery *scheduler.JobRunsCriteria, jobWithDetails *scheduler.JobWithDetails) error {
 	jobStartDate := jobWithDetails.Schedule.StartDate
 	if jobStartDate.IsZero() {
 		return fmt.Errorf("job schedule startDate not found in job fetched from DB")
@@ -193,7 +193,7 @@ func validateJobQuery(jobQuery *scheduler.JobRunsCriteria, jobWithDetails schedu
 	return nil
 }
 
-func (s JobRunService) registerNewJobRun(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) error {
+func (s *JobRunService) registerNewJobRun(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) error {
 	job, err := s.jobRepo.GetJobDetails(ctx, tenant.ProjectName(), jobName)
 	if err != nil {
 		return err
@@ -205,7 +205,7 @@ func (s JobRunService) registerNewJobRun(ctx context.Context, tenant tenant.Tena
 	return s.repo.Create(ctx, tenant, jobName, scheduledAt, slaDefinitionInSec)
 }
 
-func (s JobRunService) getJobRunByScheduledAt(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) (*scheduler.JobRun, error) {
+func (s *JobRunService) getJobRunByScheduledAt(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) (*scheduler.JobRun, error) {
 	var jobRun *scheduler.JobRun
 	jobRun, err := s.repo.GetByScheduledAt(ctx, tenant, jobName, scheduledAt)
 	if err != nil {
@@ -224,7 +224,7 @@ func (s JobRunService) getJobRunByScheduledAt(ctx context.Context, tenant tenant
 	return jobRun, nil
 }
 
-func (s JobRunService) updateJobRun(ctx context.Context, event scheduler.Event) error {
+func (s *JobRunService) updateJobRun(ctx context.Context, event *scheduler.Event) error {
 	var jobRun *scheduler.JobRun
 	jobRun, err := s.getJobRunByScheduledAt(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
 	if err != nil {
@@ -233,14 +233,14 @@ func (s JobRunService) updateJobRun(ctx context.Context, event scheduler.Event) 
 	return s.repo.Update(ctx, jobRun.ID, event.EventTime, event.Status)
 }
 
-func (s JobRunService) updateJobRunSLA(ctx context.Context, event scheduler.Event) error {
+func (s *JobRunService) updateJobRunSLA(ctx context.Context, event *scheduler.Event) error {
 	if len(event.SLAObjectList) > 0 {
 		return s.repo.UpdateSLA(ctx, event.SLAObjectList)
 	}
 	return nil
 }
 
-func (s JobRunService) createOperatorRun(ctx context.Context, event scheduler.Event, operatorType scheduler.OperatorType) error {
+func (s *JobRunService) createOperatorRun(ctx context.Context, event *scheduler.Event, operatorType scheduler.OperatorType) error {
 	jobRun, err := s.getJobRunByScheduledAt(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
 	if err != nil {
 		return err
@@ -248,7 +248,7 @@ func (s JobRunService) createOperatorRun(ctx context.Context, event scheduler.Ev
 	return s.operatorRunRepo.CreateOperatorRun(ctx, event.OperatorName, operatorType, jobRun.ID, event.EventTime)
 }
 
-func (s JobRunService) getOperatorRun(ctx context.Context, event scheduler.Event, operatorType scheduler.OperatorType, jobRunID uuid.UUID) (*scheduler.OperatorRun, error) {
+func (s *JobRunService) getOperatorRun(ctx context.Context, event *scheduler.Event, operatorType scheduler.OperatorType, jobRunID uuid.UUID) (*scheduler.OperatorRun, error) {
 	var operatorRun *scheduler.OperatorRun
 	operatorRun, err := s.operatorRunRepo.GetOperatorRun(ctx, event.OperatorName, operatorType, jobRunID)
 	if err != nil {
@@ -267,7 +267,7 @@ func (s JobRunService) getOperatorRun(ctx context.Context, event scheduler.Event
 	return operatorRun, nil
 }
 
-func (s JobRunService) updateOperatorRun(ctx context.Context, event scheduler.Event, operatorType scheduler.OperatorType) error {
+func (s *JobRunService) updateOperatorRun(ctx context.Context, event *scheduler.Event, operatorType scheduler.OperatorType) error {
 	jobRun, err := s.getJobRunByScheduledAt(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
 	if err != nil {
 		return err
@@ -279,7 +279,7 @@ func (s JobRunService) updateOperatorRun(ctx context.Context, event scheduler.Ev
 	return s.operatorRunRepo.UpdateOperatorRun(ctx, operatorType, operatorRun.ID, event.EventTime, event.Status)
 }
 
-func (s JobRunService) logEvent(event scheduler.Event) {
+func (s *JobRunService) logEvent(event *scheduler.Event) {
 	if event.Type.IsOfType(scheduler.EventCategorySLAMiss) {
 		s.l.Debug(fmt.Sprintf("received event: %v, jobName: %v , slaPayload: %#v",
 			event.Type, event.JobName, event.SLAObjectList))
@@ -289,7 +289,7 @@ func (s JobRunService) logEvent(event scheduler.Event) {
 	}
 }
 
-func (s JobRunService) UpdateJobState(ctx context.Context, event scheduler.Event) error {
+func (s *JobRunService) UpdateJobState(ctx context.Context, event *scheduler.Event) error {
 	s.logEvent(event)
 
 	switch event.Type {

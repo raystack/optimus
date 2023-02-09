@@ -29,55 +29,55 @@ type Spec struct {
 	upstreamSpec *UpstreamSpec
 }
 
-func (s Spec) Version() int {
+func (s *Spec) Version() int {
 	return s.version
 }
 
-func (s Spec) Name() Name {
+func (s *Spec) Name() Name {
 	return s.name
 }
 
-func (s Spec) Owner() string {
+func (s *Spec) Owner() string {
 	return s.owner
 }
 
-func (s Spec) Schedule() *Schedule {
+func (s *Spec) Schedule() *Schedule {
 	return s.schedule
 }
 
-func (s Spec) Window() models.Window {
+func (s *Spec) Window() models.Window {
 	return s.window
 }
 
-func (s Spec) Task() Task {
+func (s *Spec) Task() Task {
 	return s.task
 }
 
-func (s Spec) Description() string {
+func (s *Spec) Description() string {
 	return s.description
 }
 
-func (s Spec) Labels() map[string]string {
+func (s *Spec) Labels() map[string]string {
 	return s.labels
 }
 
-func (s Spec) Hooks() []*Hook {
+func (s *Spec) Hooks() []*Hook {
 	return s.hooks
 }
 
-func (s Spec) AlertSpecs() []*AlertSpec {
+func (s *Spec) AlertSpecs() []*AlertSpec {
 	return s.alertSpecs
 }
 
-func (s Spec) UpstreamSpec() *UpstreamSpec {
+func (s *Spec) UpstreamSpec() *UpstreamSpec {
 	return s.upstreamSpec
 }
 
-func (s Spec) Asset() Asset {
+func (s *Spec) Asset() Asset {
 	return s.asset
 }
 
-func (s Spec) Metadata() *Metadata {
+func (s *Spec) Metadata() *Metadata {
 	return s.metadata
 }
 

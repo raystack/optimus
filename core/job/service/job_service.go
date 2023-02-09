@@ -78,7 +78,7 @@ type UpstreamResolver interface {
 	Resolve(ctx context.Context, subjectJob *job.Job, logWriter writer.LogWriter) ([]*job.Upstream, error)
 }
 
-func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) error {
+func (j *JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) error {
 	logWriter := writer.NewLogWriter(j.logger)
 	me := errors.NewMultiError("add specs errors")
 
@@ -102,7 +102,7 @@ func (j JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*j
 	return errors.MultiToError(me)
 }
 
-func (j JobService) Update(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) error {
+func (j *JobService) Update(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) error {
 	logWriter := writer.NewLogWriter(j.logger)
 	me := errors.NewMultiError("update specs errors")
 
@@ -126,7 +126,7 @@ func (j JobService) Update(ctx context.Context, jobTenant tenant.Tenant, specs [
 	return errors.MultiToError(me)
 }
 
-func (j JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag, forceFlag bool) (affectedDownstream []job.FullName, err error) {
+func (j *JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag, forceFlag bool) (affectedDownstream []job.FullName, err error) {
 	downstreamList, err := j.repo.GetDownstreamByJobName(ctx, jobTenant.ProjectName(), jobName)
 	if err != nil {
 		return nil, err
@@ -142,7 +142,7 @@ func (j JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName
 	return downstreamFullNames, j.repo.Delete(ctx, jobTenant.ProjectName(), jobName, cleanFlag)
 }
 
-func (j JobService) Get(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name) (*job.Job, error) {
+func (j *JobService) Get(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name) (*job.Job, error) {
 	jobs, err := j.GetByFilter(ctx,
 		filter.WithString(filter.ProjectName, jobTenant.ProjectName().String()),
 		filter.WithString(filter.JobName, jobName.String()),
@@ -156,11 +156,11 @@ func (j JobService) Get(ctx context.Context, jobTenant tenant.Tenant, jobName jo
 	return jobs[0], nil
 }
 
-func (j JobService) GetTaskInfo(ctx context.Context, task job.Task) (*plugin.Info, error) {
+func (j *JobService) GetTaskInfo(ctx context.Context, task job.Task) (*plugin.Info, error) {
 	return j.pluginService.Info(ctx, task.Name())
 }
 
-func (j JobService) GetByFilter(ctx context.Context, filters ...filter.FilterOpt) ([]*job.Job, error) {
+func (j *JobService) GetByFilter(ctx context.Context, filters ...filter.FilterOpt) ([]*job.Job, error) {
 	f := filter.NewFilter(filters...)
 
 	// when resource destination exist, filter by destination
@@ -241,7 +241,7 @@ func (j JobService) GetByFilter(ctx context.Context, filters ...filter.FilterOpt
 	return nil, fmt.Errorf("no filter matched")
 }
 
-func (j JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec, jobNamesWithValidationError []job.Name, logWriter writer.LogWriter) error {
+func (j *JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec, jobNamesWithValidationError []job.Name, logWriter writer.LogWriter) error {
 	me := errors.NewMultiError("replace all specs errors")
 
 	toAdd, toUpdate, toDelete, err := j.differentiateSpecs(ctx, jobTenant, specs, jobNamesWithValidationError)
@@ -269,7 +269,7 @@ func (j JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, spe
 	return errors.MultiToError(me)
 }
 
-func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, namespaceNames, jobNames []string, logWriter writer.LogWriter) (err error) {
+func (j *JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, namespaceNames, jobNames []string, logWriter writer.LogWriter) (err error) {
 	projectFilter := filter.WithString(filter.ProjectName, projectName.String())
 	namespacesFilter := filter.WithStringArray(filter.NamespaceNames, namespaceNames)
 	jobNamesFilter := filter.WithStringArray(filter.JobNames, jobNames)
@@ -310,7 +310,7 @@ func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName,
 	return errors.MultiToError(me)
 }
 
-func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, logWriter writer.LogWriter) error {
+func (j *JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, logWriter writer.LogWriter) error {
 	me := errors.NewMultiError("validate specs errors")
 
 	tenantWithDetails, err := j.tenantDetailsGetter.GetDetails(ctx, jobTenant)
@@ -373,7 +373,7 @@ func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSp
 	return nil
 }
 
-func (j JobService) resolveAndSaveUpstreams(ctx context.Context, jobTenant tenant.Tenant, logWriter writer.LogWriter, jobsToResolve ...[]*job.Job) error {
+func (j *JobService) resolveAndSaveUpstreams(ctx context.Context, jobTenant tenant.Tenant, logWriter writer.LogWriter, jobsToResolve ...[]*job.Job) error {
 	var allJobsToResolve []*job.Job
 	for _, group := range jobsToResolve {
 		allJobsToResolve = append(allJobsToResolve, group...)
@@ -395,7 +395,7 @@ func (j JobService) resolveAndSaveUpstreams(ctx context.Context, jobTenant tenan
 	return errors.MultiToError(me)
 }
 
-func (j JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.WithDetails, specsToAdd []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {
+func (j *JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.WithDetails, specsToAdd []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {
 	j.logger.Debug("adding %d jobs to project [%s] namespace [%s]", len(specsToAdd), tenantWithDetails.Project().Name(), tenantWithDetails.Namespace().Name())
 	me := errors.NewMultiError("bulk add specs errors")
 
@@ -420,7 +420,7 @@ func (j JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.WithD
 	return addedJobs, errors.MultiToError(me)
 }
 
-func (j JobService) bulkUpdate(ctx context.Context, tenantWithDetails *tenant.WithDetails, specsToUpdate []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {
+func (j *JobService) bulkUpdate(ctx context.Context, tenantWithDetails *tenant.WithDetails, specsToUpdate []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {
 	j.logger.Debug("updating %d jobs of project [%s] namespace [%s]", len(specsToUpdate), tenantWithDetails.Project().Name(), tenantWithDetails.Namespace().Name())
 	me := errors.NewMultiError("bulk update specs errors")
 
@@ -444,7 +444,7 @@ func (j JobService) bulkUpdate(ctx context.Context, tenantWithDetails *tenant.Wi
 	return updatedJobs, errors.MultiToError(me)
 }
 
-func (j JobService) bulkDelete(ctx context.Context, jobTenant tenant.Tenant, toDelete []*job.Spec, logWriter writer.LogWriter) error {
+func (j *JobService) bulkDelete(ctx context.Context, jobTenant tenant.Tenant, toDelete []*job.Spec, logWriter writer.LogWriter) error {
 	j.logger.Debug("deleting %d jobs of project [%s] namespace [%s]", len(toDelete), jobTenant.ProjectName(), jobTenant.NamespaceName())
 	me := errors.NewMultiError("bulk delete specs errors")
 	deletedJob := 0
@@ -480,7 +480,7 @@ func (j JobService) bulkDelete(ctx context.Context, jobTenant tenant.Tenant, toD
 	return errors.MultiToError(me)
 }
 
-func (j JobService) differentiateSpecs(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec, jobNamesWithValidationError []job.Name) (added, modified, deleted []*job.Spec, err error) {
+func (j *JobService) differentiateSpecs(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec, jobNamesWithValidationError []job.Name) (added, modified, deleted []*job.Spec, err error) {
 	me := errors.NewMultiError("differentiate specs errors")
 
 	existingJobs, err := j.repo.GetAllByTenant(ctx, jobTenant)
@@ -510,7 +510,7 @@ func (j JobService) differentiateSpecs(ctx context.Context, jobTenant tenant.Ten
 	return addedSpecs, modifiedSpecs, deletedSpecs, errors.MultiToError(me)
 }
 
-func (j JobService) generateJobs(ctx context.Context, tenantWithDetails *tenant.WithDetails, specs []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {
+func (j *JobService) generateJobs(ctx context.Context, tenantWithDetails *tenant.WithDetails, specs []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {
 	me := errors.NewMultiError("bulk generate jobs errors")
 
 	runner := parallel.NewRunner(parallel.WithTicket(ConcurrentTicketPerSec), parallel.WithLimit(ConcurrentLimit))
@@ -540,7 +540,7 @@ func (j JobService) generateJobs(ctx context.Context, tenantWithDetails *tenant.
 	return generatedJobs, errors.MultiToError(me)
 }
 
-func (j JobService) generateJob(ctx context.Context, tenantWithDetails *tenant.WithDetails, spec *job.Spec) (*job.Job, error) {
+func (j *JobService) generateJob(ctx context.Context, tenantWithDetails *tenant.WithDetails, spec *job.Spec) (*job.Job, error) {
 	destination, err := j.pluginService.GenerateDestination(ctx, tenantWithDetails, spec.Task())
 	if err != nil && !errors.Is(err, ErrUpstreamModNotFound) {
 		errorMsg := fmt.Sprintf("unable to add %s: %s", spec.Name().String(), err.Error())
@@ -556,7 +556,7 @@ func (j JobService) generateJob(ctx context.Context, tenantWithDetails *tenant.W
 	return job.NewJob(tenantWithDetails.ToTenant(), spec, destination, sources), nil
 }
 
-func (j JobService) getJobsInProjectWithUpstreams(ctx context.Context, projectName tenant.ProjectName) ([]*job.WithUpstream, error) {
+func (j *JobService) getJobsInProjectWithUpstreams(ctx context.Context, projectName tenant.ProjectName) ([]*job.WithUpstream, error) {
 	jobsInProject, err := j.GetByFilter(ctx, filter.WithString(filter.ProjectName, projectName.String()))
 	if err != nil {
 		return nil, err
@@ -565,12 +565,12 @@ func (j JobService) getJobsInProjectWithUpstreams(ctx context.Context, projectNa
 	return job.Jobs(jobsInProject).GetJobsWithUnresolvedUpstreams()
 }
 
-func (j JobService) validateCyclic(rootName job.Name, jobMap map[job.Name]*job.WithUpstream, identifierToJobMap map[string][]*job.WithUpstream) ([]string, error) {
+func (j *JobService) validateCyclic(rootName job.Name, jobMap map[job.Name]*job.WithUpstream, identifierToJobMap map[string][]*job.WithUpstream) ([]string, error) {
 	dagTree := j.buildDAGTree(rootName, jobMap, identifierToJobMap)
 	return dagTree.ValidateCyclic()
 }
 
-func (JobService) buildDAGTree(rootName job.Name, jobMap map[job.Name]*job.WithUpstream, identifierToJobMap map[string][]*job.WithUpstream) *tree.MultiRootTree {
+func (*JobService) buildDAGTree(rootName job.Name, jobMap map[job.Name]*job.WithUpstream, identifierToJobMap map[string][]*job.WithUpstream) *tree.MultiRootTree {
 	rootJob := jobMap[rootName]
 
 	dagTree := tree.NewMultiRootTree()
@@ -615,7 +615,7 @@ func findOrCreateDAGNode(dagTree *tree.MultiRootTree, dag tree.TreeData) *tree.T
 	return node
 }
 
-func (j JobService) GetJobBasicInfo(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, spec *job.Spec) (*job.Job, writer.BufferedLogger) {
+func (j *JobService) GetJobBasicInfo(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, spec *job.Spec) (*job.Job, writer.BufferedLogger) {
 	var subjectJob *job.Job
 	var logger writer.BufferedLogger
 	var err error
@@ -654,7 +654,7 @@ func (j JobService) GetJobBasicInfo(ctx context.Context, jobTenant tenant.Tenant
 	return subjectJob, logger
 }
 
-func (j JobService) getJobNamesWithSameDestination(ctx context.Context, subjectJob *job.Job) (string, error) {
+func (j *JobService) getJobNamesWithSameDestination(ctx context.Context, subjectJob *job.Job) (string, error) {
 	sameDestinationJobs, err := j.repo.GetAllByResourceDestination(ctx, subjectJob.Destination())
 	if err != nil {
 		return "", err
@@ -669,7 +669,7 @@ func (j JobService) getJobNamesWithSameDestination(ctx context.Context, subjectJ
 	return strings.Join(jobNames, ", "), nil
 }
 
-func (j JobService) GetUpstreamsToInspect(ctx context.Context, subjectJob *job.Job, localJob bool) ([]*job.Upstream, error) {
+func (j *JobService) GetUpstreamsToInspect(ctx context.Context, subjectJob *job.Job, localJob bool) ([]*job.Upstream, error) {
 	logWriter := writer.NewLogWriter(j.logger)
 	if localJob {
 		return j.upstreamResolver.Resolve(ctx, subjectJob, logWriter)
@@ -677,7 +677,7 @@ func (j JobService) GetUpstreamsToInspect(ctx context.Context, subjectJob *job.J
 	return j.repo.GetUpstreams(ctx, subjectJob.ProjectName(), subjectJob.Spec().Name())
 }
 
-func (j JobService) GetDownstream(ctx context.Context, subjectJob *job.Job, localJob bool) ([]*job.Downstream, error) {
+func (j *JobService) GetDownstream(ctx context.Context, subjectJob *job.Job, localJob bool) ([]*job.Downstream, error) {
 	if localJob {
 		return j.repo.GetDownstreamByDestination(ctx, subjectJob.ProjectName(), subjectJob.Destination())
 	}

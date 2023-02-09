@@ -98,7 +98,7 @@ func (o *OptimusResourceManager) constructGetJobSpecificationsRequest(ctx contex
 	return request, nil
 }
 
-func (o *OptimusResourceManager) toOptimusDependencies(responses []jobSpecificationResponse, unresolvedDependency *job.Upstream) ([]*job.Upstream, error) {
+func (o *OptimusResourceManager) toOptimusDependencies(responses []*jobSpecificationResponse, unresolvedDependency *job.Upstream) ([]*job.Upstream, error) {
 	output := make([]*job.Upstream, len(responses))
 	for i, r := range responses {
 		dependency, err := o.toOptimusDependency(r, unresolvedDependency)
@@ -110,7 +110,7 @@ func (o *OptimusResourceManager) toOptimusDependencies(responses []jobSpecificat
 	return output, nil
 }
 
-func (o *OptimusResourceManager) toOptimusDependency(response jobSpecificationResponse, unresolvedDependency *job.Upstream) (*job.Upstream, error) {
+func (o *OptimusResourceManager) toOptimusDependency(response *jobSpecificationResponse, unresolvedDependency *job.Upstream) (*job.Upstream, error) {
 	jobTenant, err := tenant.NewTenant(response.ProjectName, response.NamespaceName)
 	if err != nil {
 		return nil, err

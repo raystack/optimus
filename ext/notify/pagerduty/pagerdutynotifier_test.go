@@ -30,7 +30,7 @@ func TestPagerDuty(t *testing.T) {
 		tnnt, _ := tenant.NewTenant("foo", "test")
 		pagerDutyServiceMock := new(PagerDutyServiceImplMock)
 		pgEvent := pagerduty.NewEvent("test-token", "",
-			scheduler.Event{
+			&scheduler.Event{
 				JobName: "foo-job-spec",
 				Tenant:  tnnt,
 				Type:    scheduler.JobFailureEvent,
@@ -52,7 +52,7 @@ func TestPagerDuty(t *testing.T) {
 
 		err := client.Notify(context.Background(), scheduler.NotifyAttrs{
 			Owner: "",
-			JobEvent: scheduler.Event{
+			JobEvent: &scheduler.Event{
 				JobName: "foo-job-spec",
 				Tenant:  tnnt,
 				Type:    scheduler.JobFailureEvent,
@@ -75,7 +75,7 @@ func TestPagerDuty(t *testing.T) {
 		jobName := scheduler.JobName("foo-job-spec")
 		pagerDutyServiceMock := new(PagerDutyServiceImplMock)
 		pgEvent := pagerduty.NewEvent("test-invalid-token", "",
-			scheduler.Event{
+			&scheduler.Event{
 				JobName: jobName,
 				Tenant:  tnnt,
 				Type:    scheduler.JobFailureEvent,
@@ -97,7 +97,7 @@ func TestPagerDuty(t *testing.T) {
 
 		client.Notify(context.Background(), scheduler.NotifyAttrs{
 			Owner: "",
-			JobEvent: scheduler.Event{
+			JobEvent: &scheduler.Event{
 				JobName: jobName,
 				Tenant:  tnnt,
 				Type:    scheduler.JobFailureEvent,

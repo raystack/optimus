@@ -584,7 +584,7 @@ func (m *mockJobRunService) JobRunInput(ctx context.Context, projectName tenant.
 	return args.Get(0).(*scheduler.ExecutorInput), args.Error(1)
 }
 
-func (m *mockJobRunService) UpdateJobState(ctx context.Context, event scheduler.Event) error {
+func (m *mockJobRunService) UpdateJobState(ctx context.Context, event *scheduler.Event) error {
 	args := m.Called(ctx, event)
 	return args.Error(0)
 }
@@ -606,7 +606,7 @@ type mockNotifier struct {
 	mock.Mock
 }
 
-func (m *mockNotifier) Push(ctx context.Context, event scheduler.Event) error {
+func (m *mockNotifier) Push(ctx context.Context, event *scheduler.Event) error {
 	args := m.Called(ctx, event)
 	return args.Error(0)
 }

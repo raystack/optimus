@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/odpf/optimus/core/scheduler"
-	resolver "github.com/odpf/optimus/core/scheduler/resolver"
+	"github.com/odpf/optimus/core/scheduler/resolver"
 	"github.com/odpf/optimus/internal/lib/tree"
 )
 
@@ -220,9 +220,9 @@ func TestPriorityWeightResolver(t *testing.T) {
 
 func TestDAGNode(t *testing.T) {
 	t.Run("TreeNode should handle all TreeNode operations", func(t *testing.T) {
-		dagSpec := scheduler.JobWithDetails{Name: "testdag"}
-		dagSpec2 := scheduler.JobWithDetails{Name: "testdag"}
-		dagSpec3 := scheduler.JobWithDetails{Name: "testdag"}
+		dagSpec := &scheduler.JobWithDetails{Name: "testdag"}
+		dagSpec2 := &scheduler.JobWithDetails{Name: "testdag"}
+		dagSpec3 := &scheduler.JobWithDetails{Name: "testdag"}
 
 		node := tree.NewTreeNode(dagSpec)
 		node2 := tree.NewTreeNode(dagSpec2)
@@ -245,9 +245,9 @@ func TestDAGNode(t *testing.T) {
 
 func TestMultiRootDAGTree(t *testing.T) {
 	t.Run("should handle all NewMultiRootTree operations", func(t *testing.T) {
-		dagSpec1 := scheduler.JobWithDetails{Name: "testdag1"}
-		dagSpec2 := scheduler.JobWithDetails{Name: "testdag2"}
-		dagSpec3 := scheduler.JobWithDetails{Name: "testdag3"}
+		dagSpec1 := &scheduler.JobWithDetails{Name: "testdag1"}
+		dagSpec2 := &scheduler.JobWithDetails{Name: "testdag2"}
+		dagSpec3 := &scheduler.JobWithDetails{Name: "testdag3"}
 
 		node1 := tree.NewTreeNode(dagSpec1)
 		node2 := tree.NewTreeNode(dagSpec2)
@@ -309,9 +309,9 @@ func TestMultiRootDAGTree(t *testing.T) {
 	})
 
 	t.Run("should detect any cycle in the tree", func(t *testing.T) {
-		dagSpec1 := scheduler.JobWithDetails{Name: "testdag1"}
-		dagSpec2 := scheduler.JobWithDetails{Name: "testdag2"}
-		dagSpec3 := scheduler.JobWithDetails{Name: "testdag3"}
+		dagSpec1 := &scheduler.JobWithDetails{Name: "testdag1"}
+		dagSpec2 := &scheduler.JobWithDetails{Name: "testdag2"}
+		dagSpec3 := &scheduler.JobWithDetails{Name: "testdag3"}
 
 		node1 := tree.NewTreeNode(dagSpec1)
 		node2 := tree.NewTreeNode(dagSpec2)
@@ -333,17 +333,17 @@ func TestMultiRootDAGTree(t *testing.T) {
 	})
 
 	t.Run("should create tree with multi level dependencies", func(t *testing.T) {
-		d1 := scheduler.JobWithDetails{Name: "d1"}
-		d11 := scheduler.JobWithDetails{Name: "d11"}
-		d12 := scheduler.JobWithDetails{Name: "d12"}
+		d1 := &scheduler.JobWithDetails{Name: "d1"}
+		d11 := &scheduler.JobWithDetails{Name: "d11"}
+		d12 := &scheduler.JobWithDetails{Name: "d12"}
 
-		d111 := scheduler.JobWithDetails{Name: "d111"}
-		d112 := scheduler.JobWithDetails{Name: "d112"}
-		d121 := scheduler.JobWithDetails{Name: "d121"}
-		d122 := scheduler.JobWithDetails{Name: "d122"}
+		d111 := &scheduler.JobWithDetails{Name: "d111"}
+		d112 := &scheduler.JobWithDetails{Name: "d112"}
+		d121 := &scheduler.JobWithDetails{Name: "d121"}
+		d122 := &scheduler.JobWithDetails{Name: "d122"}
 
-		d1211 := scheduler.JobWithDetails{Name: "d1211"}
-		d1212 := scheduler.JobWithDetails{Name: "d1212"}
+		d1211 := &scheduler.JobWithDetails{Name: "d1211"}
+		d1212 := &scheduler.JobWithDetails{Name: "d1212"}
 
 		dagTree := tree.NewMultiRootTree()
 
@@ -405,7 +405,7 @@ func TestMultiRootDAGTree(t *testing.T) {
 	})
 
 	t.Run("should not have cycles if only one node with no dependency is in the tree", func(t *testing.T) {
-		dagSpec2 := scheduler.JobWithDetails{Name: "testdag2"}
+		dagSpec2 := &scheduler.JobWithDetails{Name: "testdag2"}
 		node2 := tree.NewTreeNode(dagSpec2)
 
 		dagTree := tree.NewMultiRootTree()
@@ -417,7 +417,7 @@ func TestMultiRootDAGTree(t *testing.T) {
 	})
 
 	t.Run("should not have cycles in a tree with no root", func(t *testing.T) {
-		dagSpec2 := scheduler.JobWithDetails{Name: "testdag2"}
+		dagSpec2 := &scheduler.JobWithDetails{Name: "testdag2"}
 		node2 := tree.NewTreeNode(dagSpec2)
 
 		dagTree := tree.NewMultiRootTree()
@@ -428,16 +428,16 @@ func TestMultiRootDAGTree(t *testing.T) {
 	})
 
 	t.Run("should detect any cycle in the tree with multiple sub trees", func(t *testing.T) {
-		node1 := tree.NewTreeNode(scheduler.JobWithDetails{Name: "testdag1"})
-		node2 := tree.NewTreeNode(scheduler.JobWithDetails{Name: "testdag2"})
-		node3 := tree.NewTreeNode(scheduler.JobWithDetails{Name: "testdag3"})
+		node1 := tree.NewTreeNode(&scheduler.JobWithDetails{Name: "testdag1"})
+		node2 := tree.NewTreeNode(&scheduler.JobWithDetails{Name: "testdag2"})
+		node3 := tree.NewTreeNode(&scheduler.JobWithDetails{Name: "testdag3"})
 		node1.AddDependent(node2)
 		node2.AddDependent(node3)
 
-		node11 := tree.NewTreeNode(scheduler.JobWithDetails{Name: "testdag11"})
-		node21 := tree.NewTreeNode(scheduler.JobWithDetails{Name: "testdag21"})
-		node31 := tree.NewTreeNode(scheduler.JobWithDetails{Name: "testdag31"})
-		node41 := tree.NewTreeNode(scheduler.JobWithDetails{Name: "testdag41"})
+		node11 := tree.NewTreeNode(&scheduler.JobWithDetails{Name: "testdag11"})
+		node21 := tree.NewTreeNode(&scheduler.JobWithDetails{Name: "testdag21"})
+		node31 := tree.NewTreeNode(&scheduler.JobWithDetails{Name: "testdag31"})
+		node41 := tree.NewTreeNode(&scheduler.JobWithDetails{Name: "testdag41"})
 		node11.AddDependent(node21)
 		node21.AddDependent(node31)
 		node31.AddDependent(node11) // causing cyclic dep

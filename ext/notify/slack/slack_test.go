@@ -91,7 +91,7 @@ func TestSlack(t *testing.T) {
 		defer client.Close()
 		err := client.Notify(context.Background(), scheduler.NotifyAttrs{
 			Owner: "",
-			JobEvent: scheduler.Event{
+			JobEvent: &scheduler.Event{
 				JobName: jobName,
 				Tenant:  tnnt,
 				Type:    scheduler.SLAMissEvent,
@@ -165,7 +165,7 @@ func TestSlack(t *testing.T) {
 
 		err := client.Notify(context.Background(), scheduler.NotifyAttrs{
 			Owner: "",
-			JobEvent: scheduler.Event{
+			JobEvent: &scheduler.Event{
 				JobName: jobName,
 				Tenant:  tnnt,
 				Type:    scheduler.JobFailureEvent,
@@ -217,7 +217,7 @@ func TestBuildMessages(t *testing.T) {
 				{
 					authToken: "xx",
 					owner:     "rr",
-					meta: scheduler.Event{
+					meta: &scheduler.Event{
 						JobName: jobName,
 						Tenant:  tnnt,
 						Type:    scheduler.SLAMissEvent,

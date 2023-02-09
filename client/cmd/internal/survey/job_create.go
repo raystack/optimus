@@ -238,8 +238,8 @@ func (j *JobCreateSurvey) askPluginQuestions(cliMod plugin.CommandLineMod, jobNa
 	}
 
 	answers := plugin.Answers{}
-	for _, question := range questionResponse.Questions {
-		subAnswers, err := j.jobSurvey.askCliModSurveyQuestion(ctx, cliMod, question)
+	for _, question := range questionResponse.Questions { //nolint: gocritic
+		subAnswers, err := j.jobSurvey.askCliModSurveyQuestion(ctx, cliMod, question) //nolint: gocritic
 		if err != nil {
 			return nil, err
 		}

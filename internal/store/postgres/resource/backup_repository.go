@@ -47,7 +47,7 @@ func NewBackup(b *resource.Backup) Backup {
 	}
 }
 
-func (b Backup) ToResourceBackup() (*resource.Backup, error) {
+func (b Backup) ToResourceBackup() (*resource.Backup, error) { //nolint: gocritic
 	s, err := resource.FromStringToStore(b.Store)
 	if err != nil {
 		return nil, err

@@ -83,7 +83,7 @@ type JobWithDetails struct {
 	Upstreams     Upstreams
 }
 
-func (j JobWithDetails) GetName() string {
+func (j *JobWithDetails) GetName() string {
 	return j.Name.String()
 }
 
@@ -96,7 +96,7 @@ func GroupJobsByTenant(j []*JobWithDetails) map[tenant.Tenant][]*JobWithDetails 
 	return jobsGroup
 }
 
-func (j JobWithDetails) SLADuration() (int64, error) {
+func (j *JobWithDetails) SLADuration() (int64, error) {
 	for _, notify := range j.Alerts {
 		if notify.On == EventCategorySLAMiss {
 			if _, ok := notify.Config["duration"]; !ok {

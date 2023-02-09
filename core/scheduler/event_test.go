@@ -65,7 +65,7 @@ func TestFromStringToEventType(t *testing.T) {
 
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity event: property 'scheduled_at' is not in appropriate format")
-			assert.Equal(t, eventObj, scheduler.Event{})
+			assert.Nil(t, eventObj)
 		})
 		t.Run("Should return error if scheduled_at is not provided in event payload", func(t *testing.T) {
 			eventValues := map[string]any{
@@ -83,7 +83,7 @@ func TestFromStringToEventType(t *testing.T) {
 
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity event: property 'scheduled_at'(string) is missing in event payload")
-			assert.Equal(t, eventObj, scheduler.Event{})
+			assert.Nil(t, eventObj)
 		})
 		t.Run("Should return error if task_id is not provided in event payload", func(t *testing.T) {
 			eventValues := map[string]any{
@@ -101,7 +101,7 @@ func TestFromStringToEventType(t *testing.T) {
 
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity event: property 'task_id'(string) is missing in event payload")
-			assert.Equal(t, eventObj, scheduler.Event{})
+			assert.Nil(t, eventObj)
 		})
 		t.Run("Should return error if event is notvalid number", func(t *testing.T) {
 			eventValues := map[string]any{
@@ -120,7 +120,7 @@ func TestFromStringToEventType(t *testing.T) {
 
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity event: property 'event_time'(number) is missing in event payload")
-			assert.Equal(t, eventObj, scheduler.Event{})
+			assert.Nil(t, eventObj)
 		})
 		t.Run("Should return error if event is unregistered type", func(t *testing.T) {
 			eventValues := map[string]any{
@@ -139,7 +139,7 @@ func TestFromStringToEventType(t *testing.T) {
 
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity event: unknown event task_retry_unregistered")
-			assert.Equal(t, eventObj, scheduler.Event{})
+			assert.Nil(t, eventObj)
 		})
 		t.Run("Should Successfully parse an event", func(t *testing.T) {
 			eventValues := map[string]any{
@@ -167,7 +167,7 @@ func TestFromStringToEventType(t *testing.T) {
 			output, err := scheduler.EventFrom(eventTypeName, eventValues, jobName, tnnt)
 			assert.Nil(t, err)
 			assert.Equal(t, outputObj.JobScheduledAt, output.JobScheduledAt)
-			assert.Equal(t, outputObj, output)
+			assert.Equal(t, &outputObj, output)
 		})
 	})
 	t.Run("IsOfType JobEventCategory", func(t *testing.T) {

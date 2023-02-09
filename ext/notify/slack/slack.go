@@ -55,10 +55,10 @@ type route struct {
 type event struct {
 	authToken string
 	owner     string
-	meta      scheduler.Event
+	meta      *scheduler.Event
 }
 
-func (s *Notifier) Notify(ctx context.Context, attr scheduler.NotifyAttrs) error {
+func (s *Notifier) Notify(ctx context.Context, attr scheduler.NotifyAttrs) error { //nolint: gocritic
 	client := api.New(attr.Secret, api.OptionAPIURL(s.slackURL))
 
 	var receiverIDs []string
@@ -78,9 +78,9 @@ func (s *Notifier) Notify(ctx context.Context, attr scheduler.NotifyAttrs) error
 				return fmt.Errorf("client.GetUserGroupsContext: %w", err)
 			}
 			var groupID string
-			for _, group := range groups {
-				if group.Handle == groupHandle {
-					groupID = group.ID
+			for i := range groups {
+				if groups[i].Handle == groupHandle {
+					groupID = groups[i].ID
 					break
 				}
 			}
@@ -107,7 +107,7 @@ func (s *Notifier) Notify(ctx context.Context, attr scheduler.NotifyAttrs) error
 	return nil
 }
 
-func (s *Notifier) queueNotification(receiverIDs []string, oauthSecret string, attr scheduler.NotifyAttrs) {
+func (s *Notifier) queueNotification(receiverIDs []string, oauthSecret string, attr scheduler.NotifyAttrs) { //nolint: gocritic
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, receiverID := range receiverIDs {
@@ -134,10 +134,11 @@ func buildMessageBlocks(events []event, workerErrChan chan error) []api.Block {
 	var blocks []api.Block
 
 	// core details related to event
-	for evtIdx, evt := range events {
+	for evtIdx, evt := range events { //nolint: gocritic
 		fieldSlice := make([]*api.TextBlockObject, 0)
-		fieldSlice = append(fieldSlice, api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Job:*\n%s", evt.meta.JobName), false, false))
-		fieldSlice = append(fieldSlice, api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Owner:*\n%s", evt.owner), false, false))
+		fieldSlice = append(fieldSlice,
+			api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Job:*\n%s", evt.meta.JobName), false, false),
+			api.NewTextBlockObject("mrkdwn", fmt.Sprintf("*Owner:*\n%s", evt.owner), false, false))
 
 		projectName := evt.meta.Tenant.ProjectName().String()
 		namespaceName := evt.meta.Tenant.NamespaceName().String()
@@ -239,15 +240,15 @@ func (s *Notifier) Worker(ctx context.Context) {
 				continue
 			}
 			var messageOptions []api.MsgOption
-			messageOptions = append(messageOptions, api.MsgOptionBlocks(buildMessageBlocks(events, s.workerErrChan)...))
-			messageOptions = append(messageOptions, api.MsgOptionAsUser(true))
+			messageOptions = append(messageOptions, api.MsgOptionBlocks(buildMessageBlocks(events, s.workerErrChan)...),
+				api.MsgOptionAsUser(true))
 
 			client := api.New(route.authToken, api.OptionAPIURL(s.slackURL))
 			if _, _, _, err := client.SendMessage(route.receiverID,
 				messageOptions...,
 			); err != nil {
 				cleanedEvents := []event{}
-				for _, ev := range events {
+				for _, ev := range events { //nolint: gocritic
 					ev.authToken = "*redacted*"
 					cleanedEvents = append(cleanedEvents, ev)
 				}
