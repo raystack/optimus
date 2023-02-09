@@ -50,7 +50,7 @@ func (*PluginSpec) ValidateQuestion(_ context.Context, req plugin.ValidateQuesti
 	question := req.Answer.Question
 	value := req.Answer.Value
 	if err := question.IsValid(value); err != nil {
-		return &plugin.ValidateQuestionResponse{
+		return &plugin.ValidateQuestionResponse{ //nolint: nilerr
 			Success: false,
 			Error:   err.Error(),
 		}, nil

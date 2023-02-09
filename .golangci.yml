@@ -30,9 +30,7 @@ linters:
     - nosnakecase
     - nonamedreturns
     - exhaustruct
-    - gosec
     - rowserrcheck
-    - sqlclosecheck
     - structcheck
     - wastedassign
     - gomoddirectives
@@ -41,7 +39,6 @@ linters:
     - cyclop
     - ireturn
     - goerr113
-    - nilerr
     - prealloc
     - nestif
     - lll
@@ -53,7 +50,6 @@ linters:
     - dupl
     - gofumpt
     - nolintlint
-    - contextcheck
     - musttag
     - interfacebloat
 linters-settings:
@@ -113,6 +109,9 @@ linters-settings:
       - 'survey.MinLength'
       - 'survey.MaxLength'
       - 'args.Error'
+  gosec:
+    excludes:
+      - G101
   gosimple:
     go: "1.19"
     checks:
@@ -149,6 +148,7 @@ issues:
     - path: _test\.go
       linters:
         - gocritic
+        - contextcheck
     - path: tests
       linters:
         - gocritic

@@ -127,7 +127,7 @@ func MetricsServer(addr string) *http.Server {
 	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
-	return &http.Server{
+	return &http.Server{ //nolint: gosec
 		Addr:    addr,
 		Handler: mux,
 	}
