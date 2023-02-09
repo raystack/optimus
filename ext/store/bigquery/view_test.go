@@ -39,7 +39,7 @@ func TestViewHandle(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.ErrorContains(t, err, "not able to decode spec for proj.dataset.view1")
 		})
-		t.Run("returns error when cannot cannot get matadata", func(t *testing.T) {
+		t.Run("returns error when cannot get metadata", func(t *testing.T) {
 			v := new(mockBigQueryTable)
 			vHandle := bigquery.NewViewHandle(v)
 

@@ -55,9 +55,11 @@ linters:
     - gofumpt
     - nolintlint
     - contextcheck
+    - musttag
+    - interfacebloat
 linters-settings:
   gofumpt:
-    lang-version: "1.17"
+    lang-version: "1.19"
     extra-rules: true
   revive:
     severity: error
@@ -113,12 +115,12 @@ linters-settings:
       - 'survey.MaxLength'
       - 'args.Error'
   gosimple:
-    go: "1.17"
+    go: "1.19"
     checks:
       - "all"
       - "-S1002"
   staticcheck:
-    go: "1.17"
+    go: "1.19"
     checks:
       - "all"
       - "-SA1019"

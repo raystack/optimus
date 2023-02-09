@@ -86,7 +86,7 @@ func (o *OptimusResourceManager) constructGetJobSpecificationsRequest(ctx contex
 	path := "/api/v1beta1/jobs"
 	url := o.config.Host + path + "?" + strings.Join(filters, "&")
 
-	request, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}

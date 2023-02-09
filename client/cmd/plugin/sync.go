@@ -73,7 +73,7 @@ func (s *syncCommand) downloadArchiveFromServer() error {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(context.Background(), "GET", downloadURL.String(), nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, downloadURL.String(), http.NoBody)
 	if err != nil {
 		return err
 	}
