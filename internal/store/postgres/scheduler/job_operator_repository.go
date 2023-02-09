@@ -91,6 +91,7 @@ func (o *OperatorRunRepository) GetOperatorRun(ctx context.Context, name string,
 	}
 	return opRun.toOperatorRun()
 }
+
 func (o *OperatorRunRepository) CreateOperatorRun(ctx context.Context, name string, operatorType scheduler.OperatorType, jobRunID uuid.UUID, startTime time.Time) error {
 	operatorTableName, err := operatorTypeToTableName(operatorType)
 	if err != nil {

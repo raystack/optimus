@@ -547,7 +547,6 @@ func FromRow(row pgx.Row) (*Spec, error) {
 		&js.Labels, &js.Schedule, &js.Alert, &js.StaticUpstreams, &js.HTTPUpstreams,
 		&js.TaskName, &js.TaskConfig, &js.WindowSpec, &js.Assets, &js.Hooks, &js.Metadata, &js.Destination, &js.Sources,
 		&js.ProjectName, &js.NamespaceName, &js.CreatedAt, &js.UpdatedAt, &js.DeletedAt)
-
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.NotFound(job.EntityJob, "job not found")

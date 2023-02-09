@@ -25,7 +25,7 @@ func getJobWithUpstream(name string, upstreams ...string) *scheduler.JobWithDeta
 }
 
 func TestPriorityWeightResolver(t *testing.T) {
-	//noDependency := job_run.Upstreams{}
+	// noDependency := job_run.Upstreams{}
 	ctx := context.Background()
 
 	t.Run("Resolve should assign correct weights to the DAGs with mentioned dependencies", func(t *testing.T) {

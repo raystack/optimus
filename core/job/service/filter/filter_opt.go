@@ -1,7 +1,9 @@
 package filter
 
-type FilterOpt func(*filter)
-type Operand uint64
+type (
+	FilterOpt func(*filter)
+	Operand   uint64
+)
 
 const (
 	bitOnProjectName         uint64 = 1 << 0

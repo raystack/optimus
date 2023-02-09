@@ -1830,7 +1830,7 @@ func (_m *JobService) Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*
 }
 
 // Delete provides a mock function with given fields: ctx, jobTenant, jobName, cleanFlag, forceFlag
-func (_m *JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) ([]job.FullName, error) {
+func (_m *JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag, forceFlag bool) ([]job.FullName, error) {
 	ret := _m.Called(ctx, jobTenant, jobName, cleanFlag, forceFlag)
 
 	var r0 []job.FullName
@@ -1998,7 +1998,7 @@ func (_m *JobService) GetUpstreamsToInspect(ctx context.Context, subjectJob *job
 }
 
 // Refresh provides a mock function with given fields: ctx, projectName, namespaceNames, jobNames, logWriter
-func (_m *JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, namespaceNames []string, jobNames []string, logWriter writer.LogWriter) error {
+func (_m *JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, namespaceNames, jobNames []string, logWriter writer.LogWriter) error {
 	ret := _m.Called(ctx, projectName, namespaceNames, jobNames, logWriter)
 
 	var r0 error

@@ -522,7 +522,7 @@ func toJobSpecHooks(protoHooks []*pb.JobSpecHook) []JobSpecHook {
 	return hookSpecs
 }
 
-func toJobSpecBehavior(protoBehavior *pb.JobSpecification_Behavior, dependsOnPast bool, catchUp bool) JobSpecBehavior {
+func toJobSpecBehavior(protoBehavior *pb.JobSpecification_Behavior, dependsOnPast, catchUp bool) JobSpecBehavior {
 	var retry *JobSpecBehaviorRetry
 	var notifiers []JobSpecBehaviorNotifier
 	if protoBehavior != nil {

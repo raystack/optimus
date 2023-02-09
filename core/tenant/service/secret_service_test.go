@@ -153,8 +153,10 @@ func TestSecretService(t *testing.T) {
 			assert.EqualError(t, err, "malformed ciphertext")
 		})
 		t.Run("returns the secret in plain text form", func(t *testing.T) {
-			encodedArr := []byte{63, 158, 156, 88, 23, 217, 166, 22, 135, 126, 204, 156, 107, 103, 217, 229, 58, 37,
-				182, 124, 36, 80, 59, 94, 141, 238, 154, 6, 197, 70, 227, 117, 185}
+			encodedArr := []byte{
+				63, 158, 156, 88, 23, 217, 166, 22, 135, 126, 204, 156, 107, 103, 217, 229, 58, 37,
+				182, 124, 36, 80, 59, 94, 141, 238, 154, 6, 197, 70, 227, 117, 185,
+			}
 			sec, err := tenant.NewSecret("name", string(encodedArr), projectName, nsName)
 			assert.Nil(t, err)
 
@@ -203,8 +205,10 @@ func TestSecretService(t *testing.T) {
 			assert.EqualError(t, err, "malformed ciphertext")
 		})
 		t.Run("returns the secret in plain text form", func(t *testing.T) {
-			encodedArr := []byte{63, 158, 156, 88, 23, 217, 166, 22, 135, 126, 204, 156, 107, 103, 217, 229, 58, 37,
-				182, 124, 36, 80, 59, 94, 141, 238, 154, 6, 197, 70, 227, 117, 185}
+			encodedArr := []byte{
+				63, 158, 156, 88, 23, 217, 166, 22, 135, 126, 204, 156, 107, 103, 217, 229, 58, 37,
+				182, 124, 36, 80, 59, 94, 141, 238, 154, 6, 197, 70, 227, 117, 185,
+			}
 			sec, _ := tenant.NewSecret("name", string(encodedArr), projectName, nsName)
 			secretRepo := new(secretRepo)
 			secretRepo.On("GetAll", ctx, projectName, nsName).Return([]*tenant.Secret{sec}, nil)

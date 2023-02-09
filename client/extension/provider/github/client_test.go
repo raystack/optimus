@@ -18,7 +18,7 @@ type ClientTestSuite struct {
 }
 
 func (c *ClientTestSuite) TestDownloadRelease() {
-	var ctx = context.Background()
+	ctx := context.Background()
 	client := &github.Client{}
 
 	c.Run("should return nil and error if asset api path is empty", func() {
@@ -109,7 +109,7 @@ func (c *ClientTestSuite) TestDownloadRelease() {
 }
 
 func (c *ClientTestSuite) TestDownloadAsset() {
-	var ctx = context.Background()
+	ctx := context.Background()
 	client := &github.Client{}
 
 	c.Run("should return nil and error if asset api path is empty", func() {

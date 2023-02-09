@@ -15,8 +15,7 @@ import (
 )
 
 // JobSurvey defines survey for job specification in general
-type JobSurvey struct {
-}
+type JobSurvey struct{}
 
 // NewJobSurvey initializes job survey
 func NewJobSurvey() *JobSurvey {

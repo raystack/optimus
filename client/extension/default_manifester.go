@@ -21,8 +21,7 @@ const manifestFileName = "manifest.yaml"
 // to its default value to avoid unexpected behaviour.
 var ManifesterFS = afero.NewOsFs()
 
-type defaultManifester struct {
-}
+type defaultManifester struct{}
 
 // NewDefaultManifester initializes default manifester
 func NewDefaultManifester() model.Manifester {
@@ -34,7 +33,7 @@ func (d *defaultManifester) Load(dirPath string) (*model.Manifest, error) {
 	manifestPath := path.Join(dirPath, manifestFileName)
 	manifest := &model.Manifest{}
 	if _, err := ManifesterFS.Stat(manifestPath); err == nil {
-		filePermission := 0644
+		filePermission := 0o644
 		f, err := ManifesterFS.OpenFile(manifestPath, os.O_RDONLY, fs.FileMode(filePermission))
 		if err != nil {
 			return nil, fmt.Errorf("error opening manifest file: %w", err)
@@ -73,12 +72,12 @@ func (*defaultManifester) Flush(manifest *model.Manifest, dirPath string) error 
 	if err != nil {
 		return fmt.Errorf("error marshalling manifest: %w", err)
 	}
-	directoryPermission := 0744
+	directoryPermission := 0o744
 	if err := ManifesterFS.MkdirAll(dirPath, fs.FileMode(directoryPermission)); err != nil {
 		return fmt.Errorf("error creating manifest dir: %w", err)
 	}
 	manifestPath := path.Join(dirPath, manifestFileName)
-	filePermission := 0644
+	filePermission := 0o644
 	f, err := ManifesterFS.OpenFile(manifestPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, fs.FileMode(filePermission))
 	if err != nil {
 		return fmt.Errorf("error opening manifest file: %w", err)

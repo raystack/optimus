@@ -77,7 +77,6 @@ func (j JobRepository) triggerInsert(ctx context.Context, jobEntity *job.Job) er
 		storageJob.TaskName, storageJob.TaskConfig, storageJob.WindowSpec, storageJob.Assets,
 		storageJob.Hooks, storageJob.Metadata, storageJob.Destination, storageJob.Sources,
 		storageJob.ProjectName, storageJob.NamespaceName)
-
 	if err != nil {
 		return errors.Wrap(job.EntityJob, "unable to save job spec", err)
 	}
@@ -151,7 +150,6 @@ WHERE
 		storageJob.WindowSpec, storageJob.Assets, storageJob.Hooks, storageJob.Metadata,
 		storageJob.Destination, storageJob.Sources,
 		storageJob.Name, storageJob.ProjectName)
-
 	if err != nil {
 		return errors.Wrap(job.EntityJob, "unable to update job spec", err)
 	}

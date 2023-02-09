@@ -235,7 +235,6 @@ WHERE project_name = $1 AND name = $2 AND namespace_name IS NULL`
 
 func (s SecretRepository) GetSecretsInfo(ctx context.Context, projName tenant.ProjectName) ([]*dto.SecretInfo, error) {
 	rows, err := s.db.Query(ctx, getAllSecretsInProject, projName)
-
 	if err != nil {
 		return nil, errors.Wrap(tenant.EntitySecret, "unable to get all secrets info", err)
 	}

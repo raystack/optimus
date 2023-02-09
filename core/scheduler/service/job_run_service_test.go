@@ -552,7 +552,7 @@ func TestJobRunService(t *testing.T) {
 
 				operatorRunRepository := new(mockOperatorRunRepository)
 				operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorHook, jobRun.ID).Return(nil, fmt.Errorf("error in getting operator run"))
-				//operatorRunRepository.On("UpdateOperatorRun", ctx, scheduler.OperatorSensor, operatorRun.ID, eventTime, "success").Return(nil)
+				// operatorRunRepository.On("UpdateOperatorRun", ctx, scheduler.OperatorSensor, operatorRun.ID, eventTime, "success").Return(nil)
 				defer operatorRunRepository.AssertExpectations(t)
 				runService := service.NewJobRunService(logger,
 					nil, jobRunRepo, operatorRunRepository, nil, nil, nil)
@@ -599,7 +599,6 @@ func TestJobRunService(t *testing.T) {
 			defer jobRepo.AssertExpectations(t)
 
 			jobRun := scheduler.JobRun{
-
 				JobName:   jobName,
 				Tenant:    tnnt,
 				StartTime: startTime,
@@ -1209,6 +1208,7 @@ func (m *mockJobRunRepository) Update(ctx context.Context, jobRunID uuid.UUID, e
 	args := m.Called(ctx, jobRunID, endTime, jobRunStatus)
 	return args.Error(0)
 }
+
 func (m *mockJobRunRepository) UpdateSLA(ctx context.Context, slaObjects []*scheduler.SLAObject) error {
 	args := m.Called(ctx, slaObjects)
 	return args.Error(0)

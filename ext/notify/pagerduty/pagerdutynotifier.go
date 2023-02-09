@@ -48,7 +48,7 @@ type Event struct {
 	meta       scheduler.Event
 }
 
-func NewEvent(routingKey string, owner string, meta scheduler.Event) Event {
+func NewEvent(routingKey, owner string, meta scheduler.Event) Event {
 	return Event{
 		routingKey: routingKey,
 		owner:      owner,

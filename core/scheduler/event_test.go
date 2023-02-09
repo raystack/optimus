@@ -154,14 +154,14 @@ func TestFromStringToEventType(t *testing.T) {
 			eventTypeName := "TYPE_TASK_RETRY"
 			assert.Nil(t, err)
 
-			var outputObj = scheduler.Event{
+			outputObj := scheduler.Event{
 				JobName:        jobName,
 				Tenant:         tnnt,
 				Type:           scheduler.TaskRetryEvent,
 				EventTime:      time.Date(2477, time.January, 14, 11, 53, 20, 0, time.UTC),
 				OperatorName:   "some_txbq",
 				Status:         scheduler.StateRunning,
-				JobScheduledAt: time.Date(2022, time.January, 2, 15, 04, 05, 0, time.UTC),
+				JobScheduledAt: time.Date(2022, time.January, 2, 15, 0o4, 0o5, 0, time.UTC),
 				Values:         eventValues,
 			}
 			output, err := scheduler.EventFrom(eventTypeName, eventValues, jobName, tnnt)

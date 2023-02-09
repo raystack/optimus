@@ -19,7 +19,7 @@ func TestPostgresJobRunRepository(t *testing.T) {
 	tnnt, _ := tenant.NewTenant("test-proj", "test-ns")
 	currentTime := time.Now().UTC()
 	scheduledAt := currentTime.Add(-time.Hour)
-	slaDefinitionInSec := int64(3600) //seconds
+	slaDefinitionInSec := int64(3600) // seconds
 
 	t.Run("Create", func(t *testing.T) {
 		t.Run("creates a job run", func(t *testing.T) {
@@ -79,11 +79,11 @@ func TestPostgresJobRunRepository(t *testing.T) {
 			jobRun, err := jobRunRepo.GetByScheduledAt(ctx, tnnt, jobAName, scheduledAt)
 			assert.Nil(t, err)
 
-			var slaObject = scheduler.SLAObject{
+			slaObject := scheduler.SLAObject{
 				JobName:        jobAName,
 				JobScheduledAt: scheduledAt,
 			}
-			var slaObjects = []*scheduler.SLAObject{&slaObject}
+			slaObjects := []*scheduler.SLAObject{&slaObject}
 
 			err = jobRunRepo.UpdateSLA(ctx, slaObjects)
 			assert.Nil(t, err)

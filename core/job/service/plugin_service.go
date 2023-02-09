@@ -90,7 +90,6 @@ func (p JobPluginService) GenerateDestination(ctx context.Context, tnnt *tenant.
 	destination, err := taskPlugin.DependencyMod.GenerateDestination(ctx, plugin.GenerateDestinationRequest{
 		Config: compiledConfig,
 	})
-
 	if err != nil {
 		return "", fmt.Errorf("failed to generate destination: %w", err)
 	}

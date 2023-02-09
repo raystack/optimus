@@ -126,7 +126,7 @@ func (j JobService) Update(ctx context.Context, jobTenant tenant.Tenant, specs [
 	return errors.MultiToError(me)
 }
 
-func (j JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag bool, forceFlag bool) (affectedDownstream []job.FullName, err error) {
+func (j JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag, forceFlag bool) (affectedDownstream []job.FullName, err error) {
 	downstreamList, err := j.repo.GetDownstreamByJobName(ctx, jobTenant.ProjectName(), jobName)
 	if err != nil {
 		return nil, err
@@ -269,7 +269,7 @@ func (j JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, spe
 	return errors.MultiToError(me)
 }
 
-func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, namespaceNames []string, jobNames []string, logWriter writer.LogWriter) (err error) {
+func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, namespaceNames, jobNames []string, logWriter writer.LogWriter) (err error) {
 	projectFilter := filter.WithString(filter.ProjectName, projectName.String())
 	namespacesFilter := filter.WithStringArray(filter.NamespaceNames, namespaceNames)
 	jobNamesFilter := filter.WithStringArray(filter.JobNames, jobNames)
@@ -480,7 +480,7 @@ func (j JobService) bulkDelete(ctx context.Context, jobTenant tenant.Tenant, toD
 	return errors.MultiToError(me)
 }
 
-func (j JobService) differentiateSpecs(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec, jobNamesWithValidationError []job.Name) (added []*job.Spec, modified []*job.Spec, deleted []*job.Spec, err error) {
+func (j JobService) differentiateSpecs(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec, jobNamesWithValidationError []job.Name) (added, modified, deleted []*job.Spec, err error) {
 	me := errors.NewMultiError("differentiate specs errors")
 
 	existingJobs, err := j.repo.GetAllByTenant(ctx, jobTenant)

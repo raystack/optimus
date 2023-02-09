@@ -138,6 +138,7 @@ func fromStorageWindow(raw []byte, jobVersion int) (models.Window, error) {
 		storageWindow.WindowSize,
 	)
 }
+
 func (j *Job) toJob() (*scheduler.Job, error) {
 	t, err := tenant.NewTenant(j.ProjectName, j.NamespaceName)
 	if err != nil {
@@ -229,7 +230,6 @@ func FromRow(row pgx.Row) (*Job, error) {
 		&js.Labels, &js.Schedule, &js.Alert, &js.StaticUpstreams, &js.HTTPUpstreams,
 		&js.TaskName, &js.TaskConfig, &js.WindowSpec, &js.Assets, &js.Hooks, &js.Metadata, &js.Destination, &js.Sources,
 		&js.ProjectName, &js.NamespaceName, &js.CreatedAt, &js.UpdatedAt)
-
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.NotFound(job.EntityJob, "job not found")

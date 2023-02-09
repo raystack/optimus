@@ -41,7 +41,7 @@ func (s *ScheduleSpec) Prev(currTime time.Time) time.Time {
 	return s.getPreviousSchedule(currTime, startTime)
 }
 
-func (s *ScheduleSpec) getPreviousSchedule(currTime time.Time, startTime time.Time) time.Time {
+func (s *ScheduleSpec) getPreviousSchedule(currTime, startTime time.Time) time.Time {
 	previousSchedule := startTime
 	for {
 		nextSchedule := s.Next(previousSchedule)

@@ -80,7 +80,6 @@ func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t tenant.Tenant
 	err := j.db.QueryRow(ctx, getJobRunByID, t.ProjectName(), t.NamespaceName(), jobName, scheduledAt).
 		Scan(&jr.ID, &jr.JobName, &jr.NamespaceName, &jr.ProjectName, &jr.ScheduledAt, &jr.StartTime, &jr.EndTime,
 			&jr.Status, &jr.SLADefinition, &jr.SLAAlert, &jr.CreatedAt)
-
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.NotFound(scheduler.EntityJobRun, "no record for job:"+jobName.String()+" scheduled at: "+scheduledAt.String())

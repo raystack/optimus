@@ -12,9 +12,11 @@ import (
 	"github.com/odpf/optimus/internal/utils"
 )
 
-type EventName string
-type JobEventType string
-type JobEventCategory string
+type (
+	EventName        string
+	JobEventType     string
+	JobEventCategory string
+)
 
 const (
 	EntityEvent = "event"

@@ -16,8 +16,7 @@ import (
 const provider = "github"
 
 // Client defines github client
-type Client struct {
-}
+type Client struct{}
 
 // DownloadRelease downloads a release based on the API path
 func (*Client) DownloadRelease(ctx context.Context, apiPath string) (*model.RepositoryRelease, error) {

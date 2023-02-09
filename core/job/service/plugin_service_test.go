@@ -290,7 +290,8 @@ func TestPluginService(t *testing.T) {
 
 			jobSource := job.ResourceURN("project.dataset.table_upstream")
 			depMod.On("GenerateDependencies", ctx, mock.Anything).Return(&plugin.GenerateDependenciesResponse{
-				Dependencies: []string{jobSource.String()}},
+				Dependencies: []string{jobSource.String()},
+			},
 				nil)
 
 			asset, err := job.AssetFrom(map[string]string{"sample-key": "sample-value"})
@@ -471,7 +472,7 @@ type SecretsGetter struct {
 }
 
 // Get provides a mock function with given fields: ctx, projName, namespaceName, name
-func (_m *SecretsGetter) Get(ctx context.Context, projName tenant.ProjectName, namespaceName string, name string) (*tenant.PlainTextSecret, error) {
+func (_m *SecretsGetter) Get(ctx context.Context, projName tenant.ProjectName, namespaceName, name string) (*tenant.PlainTextSecret, error) {
 	ret := _m.Called(ctx, projName, namespaceName, name)
 
 	var r0 *tenant.PlainTextSecret

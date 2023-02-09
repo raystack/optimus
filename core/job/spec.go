@@ -392,7 +392,7 @@ func (m MetadataResourceConfig) Memory() string {
 	return m.memory
 }
 
-func NewMetadataResourceConfig(cpu string, memory string) *MetadataResourceConfig {
+func NewMetadataResourceConfig(cpu, memory string) *MetadataResourceConfig {
 	return &MetadataResourceConfig{cpu: cpu, memory: memory}
 }
 
@@ -409,7 +409,7 @@ func (m MetadataResource) Limit() *MetadataResourceConfig {
 	return m.limit
 }
 
-func NewResourceMetadata(request *MetadataResourceConfig, limit *MetadataResourceConfig) *MetadataResource {
+func NewResourceMetadata(request, limit *MetadataResourceConfig) *MetadataResource {
 	return &MetadataResource{request: request, limit: limit}
 }
 
@@ -592,7 +592,7 @@ type SpecHTTPUpstreamBuilder struct {
 	upstream *SpecHTTPUpstream
 }
 
-func NewSpecHTTPUpstreamBuilder(name string, url string) *SpecHTTPUpstreamBuilder {
+func NewSpecHTTPUpstreamBuilder(name, url string) *SpecHTTPUpstreamBuilder {
 	return &SpecHTTPUpstreamBuilder{
 		upstream: &SpecHTTPUpstream{
 			name: name,

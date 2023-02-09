@@ -278,6 +278,7 @@ func (s JobRunService) updateOperatorRun(ctx context.Context, event scheduler.Ev
 	}
 	return s.operatorRunRepo.UpdateOperatorRun(ctx, operatorType, operatorRun.ID, event.EventTime, event.Status)
 }
+
 func (s JobRunService) logEvent(event scheduler.Event) {
 	if event.Type.IsOfType(scheduler.EventCategorySLAMiss) {
 		s.l.Debug(fmt.Sprintf("received event: %v, jobName: %v , slaPayload: %#v",
@@ -314,7 +315,8 @@ func (s JobRunService) UpdateJobState(ctx context.Context, event scheduler.Event
 }
 
 func NewJobRunService(logger log.Logger, jobRepo JobRepository, jobRunRepo JobRunRepository,
-	operatorRunRepo OperatorRunRepository, scheduler Scheduler, resolver PriorityResolver, compiler JobInputCompiler) *JobRunService {
+	operatorRunRepo OperatorRunRepository, scheduler Scheduler, resolver PriorityResolver, compiler JobInputCompiler,
+) *JobRunService {
 	return &JobRunService{
 		l:                logger,
 		repo:             jobRunRepo,

@@ -149,7 +149,8 @@ func (u *uploadAllCommand) sendNamespaceResourceRequest(stream pb.ResourceServic
 }
 
 func (u *uploadAllCommand) getResourceDeploymentRequest(namespaceName, storeName string,
-	repoFS afero.Fs) (*pb.DeployResourceSpecificationRequest, error) {
+	repoFS afero.Fs,
+) (*pb.DeployResourceSpecificationRequest, error) {
 	resourceSpecReadWriter, err := specio.NewResourceSpecReadWriter(repoFS)
 	if err != nil {
 		return nil, err

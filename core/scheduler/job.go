@@ -10,8 +10,10 @@ import (
 	"github.com/odpf/optimus/internal/models"
 )
 
-type JobName string
-type OperatorType string
+type (
+	JobName      string
+	OperatorType string
+)
 
 func (o OperatorType) String() string {
 	return string(o)
