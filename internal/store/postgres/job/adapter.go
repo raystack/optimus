@@ -350,7 +350,7 @@ func fromStorageSpec(jobSpec *Spec) (*job.Spec, error) {
 	if err != nil {
 		return nil, err
 	}
-	task := job.NewTaskBuilder(taskName, taskConfig).Build()
+	task := job.NewTask(taskName, taskConfig)
 
 	jobSpecBuilder := job.NewSpecBuilder(version, jobName, owner, schedule, window, task).WithDescription(jobSpec.Description)
 
@@ -528,9 +528,7 @@ func fromStorageAlerts(raw []byte) ([]*job.AlertSpec, error) {
 		if err != nil {
 			return nil, err
 		}
-		jobAlert, err := job.NewAlertBuilder(alert.On, alert.Channels).
-			WithConfig(config).
-			Build()
+		jobAlert, err := job.NewAlertSpec(alert.On, alert.Channels, config)
 		if err != nil {
 			return nil, err
 		}

@@ -39,7 +39,7 @@ func TestUpstreamResolver(t *testing.T) {
 	jobTaskConfig, err := job.ConfigFrom(map[string]string{"sample_task_key": "sample_value"})
 	assert.NoError(t, err)
 	taskName, _ := job.TaskNameFrom("sample-task")
-	jobTask := job.NewTaskBuilder(taskName, jobTaskConfig).Build()
+	jobTask := job.NewTask(taskName, jobTaskConfig)
 	sampleOwner := "sample-owner"
 
 	t.Run("BulkResolve", func(t *testing.T) {
