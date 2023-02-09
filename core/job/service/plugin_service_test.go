@@ -30,7 +30,14 @@ func TestPluginService(t *testing.T) {
 		map[string]string{
 			"bucket": "gs://ns_bucket",
 		})
-	tenantDetails, _ := tenant.NewTenantDetails(project, namespace)
+
+	secret1, err := tenant.NewPlainTextSecret("table_name", "secret_table")
+	assert.Nil(t, err)
+
+	secret2, err := tenant.NewPlainTextSecret("bucket", "gs://some_secret_bucket")
+	assert.Nil(t, err)
+
+	tenantDetails, _ := tenant.NewTenantDetails(project, namespace, tenant.PlainTextSecrets{secret1, secret2})
 	startDate, err := job.ScheduleDateFrom("2022-10-01")
 	assert.NoError(t, err)
 	jobSchedule, err := job.NewScheduleBuilder(startDate).Build()
@@ -51,7 +58,7 @@ func TestPluginService(t *testing.T) {
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(nil, errors.New("some error when fetch plugin"))
 			defer pluginRepo.AssertExpectations(t)
 
-			pluginService := service.NewJobPluginService(nil, pluginRepo, nil, nil)
+			pluginService := service.NewJobPluginService(pluginRepo, nil, nil)
 			result, err := pluginService.Info(ctx, jobTask.Name())
 			assert.Error(t, err)
 			assert.Nil(t, result)
@@ -70,7 +77,7 @@ func TestPluginService(t *testing.T) {
 			newPlugin := &plugin.Plugin{DependencyMod: depMod}
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(newPlugin, nil)
 
-			pluginService := service.NewJobPluginService(nil, pluginRepo, nil, nil)
+			pluginService := service.NewJobPluginService(pluginRepo, nil, nil)
 			result, err := pluginService.Info(ctx, jobTask.Name())
 			assert.Error(t, err)
 			assert.Nil(t, result)
@@ -96,7 +103,7 @@ func TestPluginService(t *testing.T) {
 			}, nil)
 			defer yamlMod.AssertExpectations(t)
 
-			pluginService := service.NewJobPluginService(nil, pluginRepo, nil, nil)
+			pluginService := service.NewJobPluginService(pluginRepo, nil, nil)
 			result, err := pluginService.Info(ctx, jobTask.Name())
 			assert.NoError(t, err)
 			assert.NotNil(t, result)
@@ -109,9 +116,6 @@ func TestPluginService(t *testing.T) {
 	t.Run("GenerateDestination", func(t *testing.T) {
 		t.Run("returns destination", func(t *testing.T) {
 			logger := log.NewLogrus()
-
-			secretsGetter := new(SecretsGetter)
-			defer secretsGetter.AssertExpectations(t)
 
 			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
@@ -128,14 +132,6 @@ func TestPluginService(t *testing.T) {
 			taskPlugin := &plugin.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(taskPlugin, nil)
 
-			secret1, err := tenant.NewPlainTextSecret("table_name", "secret_table")
-			assert.Nil(t, err)
-
-			secret2, err := tenant.NewPlainTextSecret("bucket", "gs://some_secret_bucket")
-			assert.Nil(t, err)
-
-			secretsGetter.On("GetAll", ctx, project.Name(), namespace.Name().String()).Return([]*tenant.PlainTextSecret{secret1, secret2}, nil)
-
 			destination := "project.dataset.table"
 			destinationURN := job.ResourceURN("bigquery://project.dataset.table")
 			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&plugin.GenerateDestinationResponse{
@@ -143,16 +139,13 @@ func TestPluginService(t *testing.T) {
 				Type:        "bigquery",
 			}, nil)
 
-			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
+			pluginService := service.NewJobPluginService(pluginRepo, engine, logger)
 			result, err := pluginService.GenerateDestination(ctx, tenantDetails, jobTask)
 			assert.Nil(t, err)
 			assert.Equal(t, destinationURN, result)
 		})
 		t.Run("returns error if unable to find the plugin", func(t *testing.T) {
 			logger := log.NewLogrus()
-
-			secretsGetter := new(SecretsGetter)
-			defer secretsGetter.AssertExpectations(t)
 
 			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
@@ -162,16 +155,13 @@ func TestPluginService(t *testing.T) {
 
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(nil, errors.New("not found"))
 
-			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
+			pluginService := service.NewJobPluginService(pluginRepo, engine, logger)
 			result, err := pluginService.GenerateDestination(ctx, tenantDetails, jobTask)
 			assert.ErrorContains(t, err, "not found")
 			assert.Equal(t, "", result.String())
 		})
 		t.Run("returns proper error if the upstream mod is not found", func(t *testing.T) {
 			logger := log.NewLogrus()
-
-			secretsGetter := new(SecretsGetter)
-			defer secretsGetter.AssertExpectations(t)
 
 			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
@@ -188,7 +178,7 @@ func TestPluginService(t *testing.T) {
 			pluginWithoutDependencyMod := &plugin.Plugin{YamlMod: yamlMod}
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(pluginWithoutDependencyMod, nil)
 
-			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
+			pluginService := service.NewJobPluginService(pluginRepo, engine, logger)
 			result, err := pluginService.GenerateDestination(ctx, tenantDetails, jobTask)
 			assert.ErrorIs(t, err, service.ErrUpstreamModNotFound)
 			assert.Equal(t, "", result.String())
@@ -196,9 +186,6 @@ func TestPluginService(t *testing.T) {
 		t.Run("returns error if generate destination failed", func(t *testing.T) {
 			logger := log.NewLogrus()
 
-			secretsGetter := new(SecretsGetter)
-			defer secretsGetter.AssertExpectations(t)
-
 			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
@@ -212,48 +199,12 @@ func TestPluginService(t *testing.T) {
 
 			taskPlugin := &plugin.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(taskPlugin, nil)
-
-			secret1, err := tenant.NewPlainTextSecret("table_name", "secret_table")
-			assert.Nil(t, err)
-
-			secret2, err := tenant.NewPlainTextSecret("bucket", "gs://some_secret_bucket")
-			assert.Nil(t, err)
-
-			secretsGetter.On("GetAll", ctx, project.Name(), namespace.Name().String()).Return([]*tenant.PlainTextSecret{secret1, secret2}, nil)
 
 			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&plugin.GenerateDestinationResponse{}, errors.New("generate destination error"))
 
-			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
+			pluginService := service.NewJobPluginService(pluginRepo, engine, logger)
 			result, err := pluginService.GenerateDestination(ctx, tenantDetails, jobTask)
 			assert.ErrorContains(t, err, "generate destination error")
-			assert.Equal(t, "", result.String())
-		})
-		t.Run("returns error if unable to get secrets", func(t *testing.T) {
-			logger := log.NewLogrus()
-
-			secretsGetter := new(SecretsGetter)
-			defer secretsGetter.AssertExpectations(t)
-
-			pluginRepo := new(mockPluginRepo)
-			defer pluginRepo.AssertExpectations(t)
-
-			engine := compiler.NewEngine()
-			defer pluginRepo.AssertExpectations(t)
-
-			depMod := new(mockOpt.DependencyResolverMod)
-			defer depMod.AssertExpectations(t)
-
-			yamlMod := new(mockOpt.YamlMod)
-			defer yamlMod.AssertExpectations(t)
-
-			taskPlugin := &plugin.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
-			pluginRepo.On("GetByName", jobTask.Name().String()).Return(taskPlugin, nil)
-
-			secretsGetter.On("GetAll", ctx, project.Name(), namespace.Name().String()).Return([]*tenant.PlainTextSecret{}, errors.New("getting secret error"))
-
-			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
-			result, err := pluginService.GenerateDestination(ctx, tenantDetails, jobTask)
-			assert.ErrorContains(t, err, "getting secret error")
 			assert.Equal(t, "", result.String())
 		})
 	})
@@ -262,9 +213,6 @@ func TestPluginService(t *testing.T) {
 		t.Run("returns upstreams", func(t *testing.T) {
 			logger := log.NewLogrus()
 
-			secretsGetter := new(SecretsGetter)
-			defer secretsGetter.AssertExpectations(t)
-
 			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
 
@@ -279,8 +227,6 @@ func TestPluginService(t *testing.T) {
 
 			taskPlugin := &plugin.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(taskPlugin, nil)
-
-			secretsGetter.On("GetAll", ctx, project.Name(), namespace.Name().String()).Return(nil, nil)
 
 			destination := "project.dataset.table"
 			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&plugin.GenerateDestinationResponse{
@@ -298,16 +244,13 @@ func TestPluginService(t *testing.T) {
 			specA, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithAsset(asset).Build()
 			assert.NoError(t, err)
 
-			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
+			pluginService := service.NewJobPluginService(pluginRepo, engine, logger)
 			result, err := pluginService.GenerateUpstreams(ctx, tenantDetails, specA, false)
 			assert.Nil(t, err)
 			assert.Equal(t, []job.ResourceURN{jobSource}, result)
 		})
 		t.Run("returns error if unable to find the plugin", func(t *testing.T) {
 			logger := log.NewLogrus()
-
-			secretsGetter := new(SecretsGetter)
-			defer secretsGetter.AssertExpectations(t)
 
 			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
@@ -320,16 +263,13 @@ func TestPluginService(t *testing.T) {
 			specA, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			assert.NoError(t, err)
 
-			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
+			pluginService := service.NewJobPluginService(pluginRepo, engine, logger)
 			result, err := pluginService.GenerateUpstreams(ctx, tenantDetails, specA, false)
 			assert.ErrorContains(t, err, "not found")
 			assert.Nil(t, result)
 		})
 		t.Run("returns proper error if the upstream mod is not found", func(t *testing.T) {
 			logger := log.NewLogrus()
-
-			secretsGetter := new(SecretsGetter)
-			defer secretsGetter.AssertExpectations(t)
 
 			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
@@ -349,53 +289,13 @@ func TestPluginService(t *testing.T) {
 			specA, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			assert.NoError(t, err)
 
-			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
+			pluginService := service.NewJobPluginService(pluginRepo, engine, logger)
 			result, err := pluginService.GenerateUpstreams(ctx, tenantDetails, specA, false)
 			assert.ErrorContains(t, err, "not found")
 			assert.Nil(t, result)
 		})
-		t.Run("returns error if unable to get secrets", func(t *testing.T) {
-			logger := log.NewLogrus()
-
-			secretsGetter := new(SecretsGetter)
-			defer secretsGetter.AssertExpectations(t)
-
-			pluginRepo := new(mockPluginRepo)
-			defer pluginRepo.AssertExpectations(t)
-
-			engine := compiler.NewEngine()
-			defer pluginRepo.AssertExpectations(t)
-
-			depMod := new(mockOpt.DependencyResolverMod)
-			defer depMod.AssertExpectations(t)
-
-			yamlMod := new(mockOpt.YamlMod)
-			defer yamlMod.AssertExpectations(t)
-
-			taskPlugin := &plugin.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
-			pluginRepo.On("GetByName", jobTask.Name().String()).Return(taskPlugin, nil)
-
-			destination := "project.dataset.table"
-			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&plugin.GenerateDestinationResponse{
-				Destination: destination,
-				Type:        "bigquery",
-			}, nil)
-
-			secretsGetter.On("GetAll", ctx, project.Name(), namespace.Name().String()).Return([]*tenant.PlainTextSecret{}, errors.New("getting secret error"))
-
-			specA, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
-			assert.NoError(t, err)
-
-			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
-			result, err := pluginService.GenerateUpstreams(ctx, tenantDetails, specA, false)
-			assert.ErrorContains(t, err, "getting secret error")
-			assert.Nil(t, result)
-		})
 		t.Run("returns error if unable to generate destination successfully", func(t *testing.T) {
 			logger := log.NewLogrus()
-
-			secretsGetter := new(SecretsGetter)
-			defer secretsGetter.AssertExpectations(t)
 
 			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
@@ -417,16 +317,13 @@ func TestPluginService(t *testing.T) {
 			specA, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			assert.NoError(t, err)
 
-			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
+			pluginService := service.NewJobPluginService(pluginRepo, engine, logger)
 			result, err := pluginService.GenerateUpstreams(ctx, tenantDetails, specA, false)
 			assert.ErrorContains(t, err, "generate destination error")
 			assert.Nil(t, result)
 		})
 		t.Run("returns error if unable to generate dependencies successfully", func(t *testing.T) {
 			logger := log.NewLogrus()
-
-			secretsGetter := new(SecretsGetter)
-			defer secretsGetter.AssertExpectations(t)
 
 			pluginRepo := new(mockPluginRepo)
 			defer pluginRepo.AssertExpectations(t)
@@ -443,8 +340,6 @@ func TestPluginService(t *testing.T) {
 			taskPlugin := &plugin.Plugin{DependencyMod: depMod, YamlMod: yamlMod}
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(taskPlugin, nil)
 
-			secretsGetter.On("GetAll", ctx, project.Name(), namespace.Name().String()).Return(nil, nil)
-
 			destination := "project.dataset.table"
 			depMod.On("GenerateDestination", ctx, mock.Anything).Return(&plugin.GenerateDestinationResponse{
 				Destination: destination,
@@ -457,63 +352,12 @@ func TestPluginService(t *testing.T) {
 			specA, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			assert.NoError(t, err)
 
-			pluginService := service.NewJobPluginService(secretsGetter, pluginRepo, engine, logger)
+			pluginService := service.NewJobPluginService(pluginRepo, engine, logger)
 			result, err := pluginService.GenerateUpstreams(ctx, tenantDetails, specA, false)
 			assert.ErrorContains(t, err, "generate dependencies error")
 			assert.Nil(t, result)
 		})
 	})
-}
-
-// SecretsGetter is an autogenerated mock type for the SecretsGetter type
-type SecretsGetter struct {
-	mock.Mock
-}
-
-// Get provides a mock function with given fields: ctx, projName, namespaceName, name
-func (_m *SecretsGetter) Get(ctx context.Context, projName tenant.ProjectName, namespaceName string, name string) (*tenant.PlainTextSecret, error) {
-	ret := _m.Called(ctx, projName, namespaceName, name)
-
-	var r0 *tenant.PlainTextSecret
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, string, string) *tenant.PlainTextSecret); ok {
-		r0 = rf(ctx, projName, namespaceName, name)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*tenant.PlainTextSecret)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, string, string) error); ok {
-		r1 = rf(ctx, projName, namespaceName, name)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetAll provides a mock function with given fields: ctx, projName, namespaceName
-func (_m *SecretsGetter) GetAll(ctx context.Context, projName tenant.ProjectName, namespaceName string) ([]*tenant.PlainTextSecret, error) {
-	ret := _m.Called(ctx, projName, namespaceName)
-
-	var r0 []*tenant.PlainTextSecret
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, string) []*tenant.PlainTextSecret); ok {
-		r0 = rf(ctx, projName, namespaceName)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*tenant.PlainTextSecret)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, string) error); ok {
-		r1 = rf(ctx, projName, namespaceName)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
 }
 
 type mockPluginRepo struct {

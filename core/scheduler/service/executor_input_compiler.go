@@ -61,11 +61,6 @@ func (i InputCompiler) Compile(ctx context.Context, job *scheduler.Job, config s
 		return nil, err
 	}
 
-	secrets, err := i.tenantService.GetSecrets(ctx, job.Tenant)
-	if err != nil {
-		return nil, err
-	}
-
 	systemDefinedVars, err := getSystemDefinedConfigs(job, config, executedAt)
 	if err != nil {
 		return nil, err
@@ -74,7 +69,7 @@ func (i InputCompiler) Compile(ctx context.Context, job *scheduler.Job, config s
 	// Prepare template context and compile task config
 	taskContext := compiler.PrepareContext(
 		compiler.From(tenantDetails.GetConfigs()).WithName(contextProject).WithKeyPrefix(projectConfigPrefix),
-		compiler.From(SecretsToMap(secrets)).WithName(contextSecret),
+		compiler.From(tenantDetails.SecretsMap()).WithName(contextSecret),
 		compiler.From(systemDefinedVars).WithName(contextSystemDefined).AddToContext(),
 	)
 
@@ -165,14 +160,6 @@ func splitConfigWithSecrets(conf map[string]string) (map[string]string, map[stri
 	}
 
 	return configs, configWithSecrets
-}
-
-func SecretsToMap(secrets []*tenant.PlainTextSecret) map[string]string {
-	mapping := make(map[string]string, len(secrets))
-	for _, s := range secrets {
-		mapping[s.Name().String()] = s.Value()
-	}
-	return mapping
 }
 
 func NewJobInputCompiler(tenantService TenantService, compiler TemplateCompiler, assetCompiler AssetCompiler) *InputCompiler {

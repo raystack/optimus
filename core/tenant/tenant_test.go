@@ -43,18 +43,18 @@ func TestAggregateRootTenant(t *testing.T) {
 		})
 
 		t.Run("return error when project not present", func(t *testing.T) {
-			_, err := tenant.NewTenantDetails(nil, nil)
+			_, err := tenant.NewTenantDetails(nil, nil, nil)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity tenant: project is nil")
 		})
 		t.Run("return error when namespace not present", func(t *testing.T) {
-			_, err := tenant.NewTenantDetails(project, nil)
+			_, err := tenant.NewTenantDetails(project, nil, nil)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity tenant: namespace is nil")
 		})
 		t.Run("when both project and namespace are present", func(t *testing.T) {
 			t.Run("return withDetails with project and namespace", func(t *testing.T) {
-				tnnt, err := tenant.NewTenantDetails(project, namespace)
+				tnnt, err := tenant.NewTenantDetails(project, namespace, nil)
 				assert.Nil(t, err)
 
 				p := tnnt.Project()
@@ -66,13 +66,13 @@ func TestAggregateRootTenant(t *testing.T) {
 				assert.Equal(t, "test-ns", ns.Name().String())
 			})
 			t.Run("returns merged config", func(t *testing.T) {
-				tnnt, err := tenant.NewTenantDetails(project, namespace)
+				tnnt, err := tenant.NewTenantDetails(project, namespace, nil)
 				assert.Nil(t, err)
 
 				assert.Equal(t, 4, len(tnnt.GetConfigs()))
 			})
 			t.Run("returns an error when key not present", func(t *testing.T) {
-				tnnt, err := tenant.NewTenantDetails(project, namespace)
+				tnnt, err := tenant.NewTenantDetails(project, namespace, nil)
 				assert.Nil(t, err)
 
 				_, err = tnnt.GetConfig("NON-EXISTENT")
@@ -80,7 +80,7 @@ func TestAggregateRootTenant(t *testing.T) {
 				assert.EqualError(t, err, "not found for entity tenant: config not present in tenant NON-EXISTENT")
 			})
 			t.Run("returns a config giving priority to namespace", func(t *testing.T) {
-				tnnt, err := tenant.NewTenantDetails(project, namespace)
+				tnnt, err := tenant.NewTenantDetails(project, namespace, nil)
 				assert.Nil(t, err)
 
 				val, err := tnnt.GetConfig("BUCKET")
@@ -88,7 +88,7 @@ func TestAggregateRootTenant(t *testing.T) {
 				assert.Equal(t, "gs://ns_folder", val)
 			})
 			t.Run("returns a config from project", func(t *testing.T) {
-				details, err := tenant.NewTenantDetails(project, namespace)
+				details, err := tenant.NewTenantDetails(project, namespace, nil)
 				assert.Nil(t, err)
 
 				val, err := details.GetConfig(tenant.ProjectStoragePathKey)
@@ -96,7 +96,7 @@ func TestAggregateRootTenant(t *testing.T) {
 				assert.Equal(t, "gs://location", val)
 			})
 			t.Run("returns tenant", func(t *testing.T) {
-				details, err := tenant.NewTenantDetails(project, namespace)
+				details, err := tenant.NewTenantDetails(project, namespace, nil)
 				assert.Nil(t, err)
 
 				tnnt := details.ToTenant()
@@ -104,6 +104,18 @@ func TestAggregateRootTenant(t *testing.T) {
 
 				ns := tnnt.NamespaceName()
 				assert.Equal(t, "test-ns", ns.String())
+			})
+			t.Run("returns secrets", func(t *testing.T) {
+				p1, _ := tenant.NewPlainTextSecret("key", "value")
+				p2, _ := tenant.NewPlainTextSecret("key2", "value2")
+				secrets := tenant.PlainTextSecrets{p1, p2}
+
+				details, err := tenant.NewTenantDetails(project, namespace, secrets)
+				assert.NoError(t, err)
+
+				secMap := details.SecretsMap()
+				assert.Len(t, secMap, 2)
+				assert.Equal(t, "value2", secMap[p2.Name().String()])
 			})
 		})
 	})
