@@ -74,7 +74,7 @@ linters-settings:
       - name: increment-decrement
       - name: indent-error-flow
 #      - name: flag-parameter
-#      - name: modifies-parameter
+      - name: modifies-parameter
 #      - name: modifies-value-receiver #perf issue
       - name: package-comments
       - name: range
@@ -82,8 +82,7 @@ linters-settings:
       - name: redefines-builtin-id
       - name: superfluous-else
 #      - name: time-naming #perf issue
-#      - name: unexported-naming
-#      - name: unexported-return
+      - name: unexported-naming
 #      - name: var-declaration #perf issue
       - name: var-naming
       - name: unused-receiver

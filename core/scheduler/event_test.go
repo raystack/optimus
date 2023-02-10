@@ -178,12 +178,12 @@ func TestFromStringToEventType(t *testing.T) {
 		for eventType, category := range positiveExpectationMap {
 			assert.True(t, eventType.IsOfType(category))
 		}
-		NegativeExpectationMap := map[scheduler.JobEventType]scheduler.JobEventCategory{
+		negativeExpectationMap := map[scheduler.JobEventType]scheduler.JobEventCategory{
 			scheduler.SLAMissEvent:       scheduler.EventCategoryJobFailure,
 			scheduler.SensorRetryEvent:   scheduler.EventCategoryJobFailure,
 			scheduler.SensorSuccessEvent: scheduler.EventCategorySLAMiss,
 		}
-		for eventType, category := range NegativeExpectationMap {
+		for eventType, category := range negativeExpectationMap {
 			assert.False(t, eventType.IsOfType(category))
 		}
 	})

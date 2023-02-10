@@ -71,7 +71,7 @@ func TestJobRunService(t *testing.T) {
 				assert.EqualError(t, err, "some error")
 			})
 			t.Run("should return error on TaskStartEvent if job.SLADuration fails while creating a new job run, due to wrong duration format", func(t *testing.T) {
-				JobWithDetails := scheduler.JobWithDetails{
+				jobWithDetails := scheduler.JobWithDetails{
 					Name: jobName,
 					Job: &scheduler.Job{
 						Name:   jobName,
@@ -92,7 +92,7 @@ func TestJobRunService(t *testing.T) {
 					},
 				}
 				jobRepo := new(JobRepository)
-				jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&JobWithDetails, nil)
+				jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&jobWithDetails, nil)
 				defer jobRepo.AssertExpectations(t)
 
 				jobRunRepository := new(mockJobRunRepository)
@@ -115,7 +115,7 @@ func TestJobRunService(t *testing.T) {
 				assert.EqualError(t, err, "failed to parse sla_miss duration wrong duration format: time: invalid duration \"wrong duration format\"")
 			})
 			t.Run("should create job_run row on JobSuccessEvent if job run row does not already exist", func(t *testing.T) {
-				JobWithDetails := scheduler.JobWithDetails{
+				jobWithDetails := scheduler.JobWithDetails{
 					Name: jobName,
 					Job: &scheduler.Job{
 						Name:   jobName,
@@ -135,7 +135,7 @@ func TestJobRunService(t *testing.T) {
 						},
 					},
 				}
-				slaDefinitionInSec, err := JobWithDetails.SLADuration()
+				slaDefinitionInSec, err := jobWithDetails.SLADuration()
 				assert.Nil(t, err)
 
 				event := &scheduler.Event{
@@ -152,7 +152,7 @@ func TestJobRunService(t *testing.T) {
 				}
 
 				jobRepo := new(JobRepository)
-				jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&JobWithDetails, nil)
+				jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&jobWithDetails, nil)
 				defer jobRepo.AssertExpectations(t)
 
 				jobRun := &scheduler.JobRun{
@@ -216,7 +216,7 @@ func TestJobRunService(t *testing.T) {
 				assert.Nil(t, err)
 			})
 			t.Run("should create and update job_run row on JobSuccessEvent, when job_run row does not exist already", func(t *testing.T) {
-				JobWithDetails := scheduler.JobWithDetails{
+				jobWithDetails := scheduler.JobWithDetails{
 					Name: jobName,
 					Job: &scheduler.Job{
 						Name:   jobName,
@@ -237,7 +237,7 @@ func TestJobRunService(t *testing.T) {
 					},
 				}
 				jobRepo := new(JobRepository)
-				jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&JobWithDetails, nil)
+				jobRepo.On("GetJobDetails", ctx, projName, jobName).Return(&jobWithDetails, nil)
 				defer jobRepo.AssertExpectations(t)
 
 				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
@@ -261,7 +261,7 @@ func TestJobRunService(t *testing.T) {
 					Tenant:    tnnt,
 					StartTime: time.Now(),
 				}
-				slaDefinitionInSec, _ := JobWithDetails.SLADuration()
+				slaDefinitionInSec, _ := jobWithDetails.SLADuration()
 
 				t.Run("scenario, return error when, GetByScheduledAt return errors other than not found", func(t *testing.T) {
 					jobRunRepo := new(mockJobRunRepository)
@@ -636,11 +636,11 @@ func TestJobRunService(t *testing.T) {
 			someScheduleTime := todayDate.Add(time.Hour * 24 * -1)
 			executedAt := todayDate.Add(time.Hour * 23 * -1)
 			startTime := executedAt
-			JobRunID := scheduler.JobRunID(uuid.New())
+			jobRunID := scheduler.JobRunID(uuid.New())
 			runConfig := scheduler.RunConfig{
 				Executor:    scheduler.Executor{},
 				ScheduledAt: someScheduleTime,
-				JobRunID:    JobRunID,
+				JobRunID:    jobRunID,
 			}
 
 			jobRepo := new(JobRepository)
@@ -654,7 +654,7 @@ func TestJobRunService(t *testing.T) {
 				StartTime: startTime,
 			}
 			jobRunRepo := new(mockJobRunRepository)
-			jobRunRepo.On("GetByID", ctx, JobRunID).
+			jobRunRepo.On("GetByID", ctx, jobRunID).
 				Return(&jobRun, nil)
 			defer jobRunRepo.AssertExpectations(t)
 
