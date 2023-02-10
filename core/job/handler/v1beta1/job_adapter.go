@@ -126,7 +126,7 @@ func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
 	if err != nil {
 		return nil, err
 	}
-	task := job.NewTaskBuilder(taskName, taskConfig).Build()
+	task := job.NewTask(taskName, taskConfig)
 
 	jobSpecBuilder := job.NewSpecBuilder(version, name, owner, schedule, window, task).WithDescription(js.Description)
 
@@ -258,7 +258,7 @@ func toAlerts(notifiers []*pb.JobSpecification_Behavior_Notifiers) ([]*job.Alert
 		if err != nil {
 			return nil, err
 		}
-		alertConfig, err := job.NewAlertBuilder(alertOn, notify.Channels).WithConfig(config).Build()
+		alertConfig, err := job.NewAlertSpec(alertOn, notify.Channels, config)
 		if err != nil {
 			return nil, err
 		}

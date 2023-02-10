@@ -50,7 +50,7 @@ func TestJobService(t *testing.T) {
 	jobTaskConfig, err := job.ConfigFrom(map[string]string{"sample_task_key": "sample_value"})
 	assert.NoError(t, err)
 	taskName, _ := job.TaskNameFrom("bq2bq")
-	jobTask := job.NewTaskBuilder(taskName, jobTaskConfig).Build()
+	jobTask := job.NewTask(taskName, jobTaskConfig)
 
 	log := log.NewNoop()
 
@@ -1919,9 +1919,9 @@ func TestJobService(t *testing.T) {
 			jobTaskConfigA, _ := job.ConfigFrom(map[string]string{"table": "table-A"})
 			jobTaskConfigB, _ := job.ConfigFrom(map[string]string{"table": "table-B"})
 			jobTaskConfigC, _ := job.ConfigFrom(map[string]string{"table": "table-C"})
-			jobTaskA := job.NewTaskBuilder(taskName, jobTaskConfigA).Build()
-			jobTaskB := job.NewTaskBuilder(taskName, jobTaskConfigB).Build()
-			jobTaskC := job.NewTaskBuilder(taskName, jobTaskConfigC).Build()
+			jobTaskA := job.NewTask(taskName, jobTaskConfigA)
+			jobTaskB := job.NewTask(taskName, jobTaskConfigB)
+			jobTaskC := job.NewTask(taskName, jobTaskConfigC)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskA).Build()
 			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTaskB).Build()
@@ -1968,9 +1968,9 @@ func TestJobService(t *testing.T) {
 			jobTaskConfigA, _ := job.ConfigFrom(map[string]string{"table": "table-A"})
 			jobTaskConfigB, _ := job.ConfigFrom(map[string]string{"table": "table-B"})
 			jobTaskConfigC, _ := job.ConfigFrom(map[string]string{"example": "value"})
-			jobTaskA := job.NewTaskBuilder(taskName, jobTaskConfigA).Build()
-			jobTaskB := job.NewTaskBuilder(taskName, jobTaskConfigB).Build()
-			jobTaskC := job.NewTaskBuilder(job.TaskName("python"), jobTaskConfigC).Build()
+			jobTaskA := job.NewTask(taskName, jobTaskConfigA)
+			jobTaskB := job.NewTask(taskName, jobTaskConfigB)
+			jobTaskC := job.NewTask("python", jobTaskConfigC)
 
 			upstreamsSpecA, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"test-proj/job-C"}).Build()
 			upstreamsSpecC, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"test-proj/job-B"}).Build()
@@ -2015,7 +2015,7 @@ func TestJobService(t *testing.T) {
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
-			jobTaskPython := job.NewTaskBuilder(job.TaskName("python"), jobTaskConfig).Build()
+			jobTaskPython := job.NewTask("python", jobTaskConfig)
 			upstreamsSpecA, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"test-proj/job-C"}).Build()
 			upstreamsSpecB, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"test-proj/job-A"}).Build()
 			upstreamsSpecC, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"test-proj/job-B"}).Build()
@@ -2056,9 +2056,9 @@ func TestJobService(t *testing.T) {
 			jobTaskConfigA, _ := job.ConfigFrom(map[string]string{"table": "table-A"})
 			jobTaskConfigB, _ := job.ConfigFrom(map[string]string{"table": "table-B"})
 			jobTaskConfigC, _ := job.ConfigFrom(map[string]string{"table": "table-C"})
-			jobTaskA := job.NewTaskBuilder(taskName, jobTaskConfigA).Build()
-			jobTaskB := job.NewTaskBuilder(taskName, jobTaskConfigB).Build()
-			jobTaskC := job.NewTaskBuilder(taskName, jobTaskConfigC).Build()
+			jobTaskA := job.NewTask(taskName, jobTaskConfigA)
+			jobTaskB := job.NewTask(taskName, jobTaskConfigB)
+			jobTaskC := job.NewTask(taskName, jobTaskConfigC)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskA).Build()
 			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTaskB).Build()

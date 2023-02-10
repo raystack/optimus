@@ -87,7 +87,7 @@ func TestPostgresJobRepository(t *testing.T) {
 	assert.NoError(t, err)
 	taskName, err := job.TaskNameFrom("bq2bq")
 	assert.NoError(t, err)
-	jobTask := job.NewTaskBuilder(taskName, jobTaskConfig).Build()
+	jobTask := job.NewTask(taskName, jobTaskConfig)
 
 	host := "sample-host"
 	upstreamType := job.UpstreamTypeInferred
@@ -106,7 +106,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			jobHooks := []*job.Hook{jobHook1}
 			jobAlertConfig, err := job.ConfigFrom(map[string]string{"sample_alert_key": "sample_value"})
 			assert.NoError(t, err)
-			alert, err := job.NewAlertBuilder("sla_miss", []string{"sample-channel"}).WithConfig(jobAlertConfig).Build()
+			alert, err := job.NewAlertSpec("sla_miss", []string{"sample-channel"}, jobAlertConfig)
 			assert.NoError(t, err)
 			jobAlerts := []*job.AlertSpec{alert}
 			upstreamName1 := job.SpecUpstreamNameFrom("job-upstream-1")
@@ -223,7 +223,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			jobHooks := []*job.Hook{jobHook1}
 			jobAlertConfig, err := job.ConfigFrom(map[string]string{"sample_alert_key": "sample_value"})
 			assert.NoError(t, err)
-			alert, err := job.NewAlertBuilder("sla_miss", []string{"sample-channel"}).WithConfig(jobAlertConfig).Build()
+			alert, err := job.NewAlertSpec("sla_miss", []string{"sample-channel"}, jobAlertConfig)
 			assert.NoError(t, err)
 			jobAlerts := []*job.AlertSpec{alert}
 			upstreamName1 := job.SpecUpstreamNameFrom("job-upstream-1")
@@ -291,7 +291,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			jobHooks := []*job.Hook{jobHook1}
 			jobAlertConfig, err := job.ConfigFrom(map[string]string{"sample_alert_key": "sample_value"})
 			assert.NoError(t, err)
-			alert, err := job.NewAlertBuilder("sla_miss", []string{"sample-channel"}).WithConfig(jobAlertConfig).Build()
+			alert, err := job.NewAlertSpec("sla_miss", []string{"sample-channel"}, jobAlertConfig)
 			assert.NoError(t, err)
 			jobAlerts := []*job.AlertSpec{alert}
 			upstreamName1 := job.SpecUpstreamNameFrom("job-upstream-1")

@@ -43,7 +43,7 @@ func TestPluginService(t *testing.T) {
 		"SECRET_TABLE_NAME": "{{.secret.table_name}}",
 	})
 	assert.NoError(t, err)
-	jobTask := job.NewTaskBuilder("bq2bq", jobTaskConfig).Build()
+	jobTask := job.NewTask("bq2bq", jobTaskConfig)
 
 	t.Run("Info", func(t *testing.T) {
 		t.Run("returns error when no plugin", func(t *testing.T) {

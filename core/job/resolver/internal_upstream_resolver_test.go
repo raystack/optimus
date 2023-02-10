@@ -23,7 +23,7 @@ func TestInternalUpstreamResolver(t *testing.T) {
 	jobWindow, _ := models.NewWindow(jobVersion, "d", "24h", "24h")
 	taskName, _ := job.TaskNameFrom("sample-task")
 	jobTaskConfig := map[string]string{"sample_task_key": "sample_value"}
-	jobTask := job.NewTaskBuilder(taskName, jobTaskConfig).Build()
+	jobTask := job.NewTask(taskName, jobTaskConfig)
 	upstreamSpec, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"job-C"}).Build()
 	specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 	jobADestination := job.ResourceURN("resource-A")
