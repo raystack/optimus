@@ -30,11 +30,6 @@ var (
 	ErrYamlModNotExist     = errors.New("yaml mod not found for plugin")
 )
 
-type SecretsGetter interface {
-	Get(ctx context.Context, projName tenant.ProjectName, namespaceName, name string) (*tenant.PlainTextSecret, error)
-	GetAll(ctx context.Context, projName tenant.ProjectName, namespaceName string) ([]*tenant.PlainTextSecret, error)
-}
-
 type PluginRepo interface {
 	GetByName(string) (*plugin.Plugin, error)
 }
@@ -45,8 +40,6 @@ type Engine interface {
 }
 
 type JobPluginService struct {
-	secretsGetter SecretsGetter
-
 	pluginRepo PluginRepo
 	engine     Engine
 
@@ -55,8 +48,8 @@ type JobPluginService struct {
 	logger log.Logger
 }
 
-func NewJobPluginService(secretsGetter SecretsGetter, pluginRepo PluginRepo, engine Engine, logger log.Logger) *JobPluginService {
-	return &JobPluginService{secretsGetter: secretsGetter, pluginRepo: pluginRepo, engine: engine, logger: logger, now: time.Now}
+func NewJobPluginService(pluginRepo PluginRepo, engine Engine, logger log.Logger) *JobPluginService {
+	return &JobPluginService{pluginRepo: pluginRepo, engine: engine, logger: logger, now: time.Now}
 }
 
 func (p JobPluginService) Info(_ context.Context, taskName job.TaskName) (*plugin.Info, error) {
@@ -82,10 +75,7 @@ func (p JobPluginService) GenerateDestination(ctx context.Context, tnnt *tenant.
 		return "", ErrUpstreamModNotFound
 	}
 
-	compiledConfig, err := p.compileConfig(ctx, task.Config().Map(), tnnt)
-	if err != nil {
-		return "", err
-	}
+	compiledConfig := p.compileConfig(task.Config().Map(), tnnt)
 
 	destination, err := taskPlugin.DependencyMod.GenerateDestination(ctx, plugin.GenerateDestinationRequest{
 		Config: compiledConfig,
@@ -113,10 +103,7 @@ func (p JobPluginService) GenerateUpstreams(ctx context.Context, jobTenant *tena
 		return nil, fmt.Errorf("asset compilation failure: %w", err)
 	}
 
-	compiledConfigs, err := p.compileConfig(ctx, spec.Task().Config(), jobTenant)
-	if err != nil {
-		return nil, err
-	}
+	compiledConfigs := p.compileConfig(spec.Task().Config(), jobTenant)
 
 	resp, err := taskPlugin.DependencyMod.GenerateDependencies(ctx, plugin.GenerateDependenciesRequest{
 		Config: compiledConfigs,
@@ -138,16 +125,10 @@ func (p JobPluginService) GenerateUpstreams(ctx context.Context, jobTenant *tena
 	return upstreamURNs, nil
 }
 
-func (p JobPluginService) compileConfig(ctx context.Context, configs job.Config, tnnt *tenant.WithDetails) (plugin.Configs, error) {
-	jobTenant := tnnt.ToTenant()
-	secrets, err := p.secretsGetter.GetAll(ctx, jobTenant.ProjectName(), jobTenant.NamespaceName().String())
-	if err != nil {
-		return nil, err
-	}
-
+func (p JobPluginService) compileConfig(configs job.Config, tnnt *tenant.WithDetails) plugin.Configs {
 	tmplCtx := compiler.PrepareContext(
 		compiler.From(tnnt.GetConfigs()).WithName("proj").WithKeyPrefix(projectConfigPrefix),
-		compiler.From(tenant.PlainTextSecrets(secrets).ToMap()).WithName("secret"),
+		compiler.From(tnnt.SecretsMap()).WithName("secret"),
 	)
 
 	var pluginConfigs plugin.Configs
@@ -155,13 +136,14 @@ func (p JobPluginService) compileConfig(ctx context.Context, configs job.Config,
 		compiledConf, err := p.engine.CompileString(val, tmplCtx)
 		if err != nil {
 			p.logger.Warn("error in template compilation: ", err.Error())
+			compiledConf = val
 		}
 		pluginConfigs = append(pluginConfigs, plugin.Config{
 			Name:  key,
 			Value: compiledConf,
 		})
 	}
-	return pluginConfigs, nil
+	return pluginConfigs
 }
 
 func (p JobPluginService) compileAsset(ctx context.Context, taskPlugin *plugin.Plugin, spec *job.Spec, scheduledAt time.Time) (map[string]string, error) {

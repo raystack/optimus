@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	refreshTimeout = time.Minute * 30
+	refreshTimeout = time.Minute * 60
 )
 
 type refreshCommand struct {

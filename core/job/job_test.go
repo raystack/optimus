@@ -27,7 +27,7 @@ func TestEntityJob(t *testing.T) {
 	jobSchedule, _ := job.NewScheduleBuilder(startDate).Build()
 	jobWindow, _ := models.NewWindow(jobVersion, "d", "24h", "24h")
 	jobTaskConfig, _ := job.ConfigFrom(map[string]string{"sample_task_key": "sample_value"})
-	jobTask := job.NewTaskBuilder("bq2bq", jobTaskConfig).Build()
+	jobTask := job.NewTask("bq2bq", jobTaskConfig)
 
 	specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 	jobADestination := job.ResourceURN("project.dataset.sample-a")
@@ -404,7 +404,7 @@ func TestEntityJob(t *testing.T) {
 
 	t.Run("GetJobWithUnresolvedUpstream", func(t *testing.T) {
 		t.Run("should contains error when get static upstream failed because of job name empty", func(t *testing.T) {
-			jobTaskPython := job.NewTaskBuilder(job.TaskName("python"), jobTaskConfig).Build()
+			jobTaskPython := job.NewTask("python", jobTaskConfig)
 			upstreamsSpecA, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"test-proj/"}).Build()
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskPython).WithSpecUpstream(upstreamsSpecA).Build()
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
@@ -414,7 +414,7 @@ func TestEntityJob(t *testing.T) {
 			assert.Len(t, jobWithUpstream.Upstreams(), 1)
 		})
 		t.Run("should contains error when get static upstream failed because of project name empty", func(t *testing.T) {
-			jobTaskPython := job.NewTaskBuilder(job.TaskName("python"), jobTaskConfig).Build()
+			jobTaskPython := job.NewTask("python", jobTaskConfig)
 			upstreamsSpecA, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"/job-C"}).Build()
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskPython).WithSpecUpstream(upstreamsSpecA).Build()
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
@@ -424,7 +424,7 @@ func TestEntityJob(t *testing.T) {
 			assert.Len(t, jobWithUpstream.Upstreams(), 1)
 		})
 		t.Run("should get unresolved upstream", func(t *testing.T) {
-			jobTaskPython := job.NewTaskBuilder(job.TaskName("python"), jobTaskConfig).Build()
+			jobTaskPython := job.NewTask("python", jobTaskConfig)
 			upstreamsSpecA, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"test-proj/job-C"}).Build()
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskPython).WithSpecUpstream(upstreamsSpecA).Build()
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
@@ -437,7 +437,7 @@ func TestEntityJob(t *testing.T) {
 
 	t.Run("GetJobsWithUnresolvedUpstreams", func(t *testing.T) {
 		t.Run("should return with error when individual get job with upstream has error", func(t *testing.T) {
-			jobTaskPython := job.NewTaskBuilder(job.TaskName("python"), jobTaskConfig).Build()
+			jobTaskPython := job.NewTask("python", jobTaskConfig)
 			upstreamsSpecA, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"/job-C"}).Build()
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskPython).WithSpecUpstream(upstreamsSpecA).Build()
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
@@ -448,7 +448,7 @@ func TestEntityJob(t *testing.T) {
 			assert.Len(t, jobsWithUpstreams, 2)
 		})
 		t.Run("should get unresolved upstreams", func(t *testing.T) {
-			jobTaskPython := job.NewTaskBuilder(job.TaskName("python"), jobTaskConfig).Build()
+			jobTaskPython := job.NewTask("python", jobTaskConfig)
 			upstreamsSpecA, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"test-proj/job-C"}).Build()
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskPython).WithSpecUpstream(upstreamsSpecA).Build()
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)

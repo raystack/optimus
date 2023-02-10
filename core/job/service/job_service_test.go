@@ -31,15 +31,20 @@ func TestJobService(t *testing.T) {
 		map[string]string{
 			"bucket": "gs://ns_bucket",
 		})
+	secret1, err := tenant.NewPlainTextSecret("table_name", "secret_table")
+	assert.Nil(t, err)
+
 	sampleTenant, _ := tenant.NewTenant(project.Name().String(), namespace.Name().String())
-	detailedTenant, _ := tenant.NewTenantDetails(project, namespace)
+	detailedTenant, _ := tenant.NewTenantDetails(project, namespace, []*tenant.PlainTextSecret{secret1})
 
 	otherNamespace, _ := tenant.NewNamespace("other-ns", project.Name(),
 		map[string]string{
 			"bucket": "gs://other_ns_bucket",
 		})
 	otherTenant, _ := tenant.NewTenant(project.Name().String(), otherNamespace.Name().String())
-	detailedOtherTenant, _ := tenant.NewTenantDetails(project, otherNamespace)
+	secret2, err := tenant.NewPlainTextSecret("bucket", "gs://some_secret_bucket")
+	assert.Nil(t, err)
+	detailedOtherTenant, _ := tenant.NewTenantDetails(project, otherNamespace, []*tenant.PlainTextSecret{secret2})
 
 	jobVersion := 1
 	startDate, err := job.ScheduleDateFrom("2022-10-01")
@@ -50,7 +55,7 @@ func TestJobService(t *testing.T) {
 	jobTaskConfig, err := job.ConfigFrom(map[string]string{"sample_task_key": "sample_value"})
 	assert.NoError(t, err)
 	taskName, _ := job.TaskNameFrom("bq2bq")
-	jobTask := job.NewTaskBuilder(taskName, jobTaskConfig).Build()
+	jobTask := job.NewTask(taskName, jobTaskConfig)
 
 	log := log.NewNoop()
 
@@ -1919,9 +1924,9 @@ func TestJobService(t *testing.T) {
 			jobTaskConfigA, _ := job.ConfigFrom(map[string]string{"table": "table-A"})
 			jobTaskConfigB, _ := job.ConfigFrom(map[string]string{"table": "table-B"})
 			jobTaskConfigC, _ := job.ConfigFrom(map[string]string{"table": "table-C"})
-			jobTaskA := job.NewTaskBuilder(taskName, jobTaskConfigA).Build()
-			jobTaskB := job.NewTaskBuilder(taskName, jobTaskConfigB).Build()
-			jobTaskC := job.NewTaskBuilder(taskName, jobTaskConfigC).Build()
+			jobTaskA := job.NewTask(taskName, jobTaskConfigA)
+			jobTaskB := job.NewTask(taskName, jobTaskConfigB)
+			jobTaskC := job.NewTask(taskName, jobTaskConfigC)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskA).Build()
 			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTaskB).Build()
@@ -1968,9 +1973,9 @@ func TestJobService(t *testing.T) {
 			jobTaskConfigA, _ := job.ConfigFrom(map[string]string{"table": "table-A"})
 			jobTaskConfigB, _ := job.ConfigFrom(map[string]string{"table": "table-B"})
 			jobTaskConfigC, _ := job.ConfigFrom(map[string]string{"example": "value"})
-			jobTaskA := job.NewTaskBuilder(taskName, jobTaskConfigA).Build()
-			jobTaskB := job.NewTaskBuilder(taskName, jobTaskConfigB).Build()
-			jobTaskC := job.NewTaskBuilder(job.TaskName("python"), jobTaskConfigC).Build()
+			jobTaskA := job.NewTask(taskName, jobTaskConfigA)
+			jobTaskB := job.NewTask(taskName, jobTaskConfigB)
+			jobTaskC := job.NewTask("python", jobTaskConfigC)
 
 			upstreamsSpecA, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"test-proj/job-C"}).Build()
 			upstreamsSpecC, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"test-proj/job-B"}).Build()
@@ -2015,7 +2020,7 @@ func TestJobService(t *testing.T) {
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
-			jobTaskPython := job.NewTaskBuilder(job.TaskName("python"), jobTaskConfig).Build()
+			jobTaskPython := job.NewTask("python", jobTaskConfig)
 			upstreamsSpecA, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"test-proj/job-C"}).Build()
 			upstreamsSpecB, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"test-proj/job-A"}).Build()
 			upstreamsSpecC, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"test-proj/job-B"}).Build()
@@ -2056,9 +2061,9 @@ func TestJobService(t *testing.T) {
 			jobTaskConfigA, _ := job.ConfigFrom(map[string]string{"table": "table-A"})
 			jobTaskConfigB, _ := job.ConfigFrom(map[string]string{"table": "table-B"})
 			jobTaskConfigC, _ := job.ConfigFrom(map[string]string{"table": "table-C"})
-			jobTaskA := job.NewTaskBuilder(taskName, jobTaskConfigA).Build()
-			jobTaskB := job.NewTaskBuilder(taskName, jobTaskConfigB).Build()
-			jobTaskC := job.NewTaskBuilder(taskName, jobTaskConfigC).Build()
+			jobTaskA := job.NewTask(taskName, jobTaskConfigA)
+			jobTaskB := job.NewTask(taskName, jobTaskConfigB)
+			jobTaskC := job.NewTask(taskName, jobTaskConfigC)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskA).Build()
 			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTaskB).Build()

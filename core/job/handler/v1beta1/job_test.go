@@ -45,7 +45,7 @@ func TestNewJobHandler(t *testing.T) {
 	assert.NoError(t, err)
 	jobConfig, err := job.ConfigFrom(map[string]string{"sample_key": "sample_value"})
 	assert.NoError(t, err)
-	jobTask := job.NewTaskBuilder("bq2bq", jobConfig).Build()
+	jobTask := job.NewTask("bq2bq", jobConfig)
 	jobBehavior := &pb.JobSpecification_Behavior{
 		Retry: &pb.JobSpecification_Behavior_Retry{ExponentialBackoff: false},
 		Notify: []*pb.JobSpecification_Behavior_Notifiers{

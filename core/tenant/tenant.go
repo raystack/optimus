@@ -42,11 +42,12 @@ func NewTenant(projectName, namespaceName string) (Tenant, error) {
 }
 
 type WithDetails struct {
-	project   Project
-	namespace Namespace
+	project    Project
+	namespace  Namespace
+	secretsMap map[string]string
 }
 
-func NewTenantDetails(proj *Project, namespace *Namespace) (*WithDetails, error) {
+func NewTenantDetails(proj *Project, namespace *Namespace, secrets PlainTextSecrets) (*WithDetails, error) {
 	if proj == nil {
 		return nil, errors.InvalidArgument(EntityTenant, "project is nil")
 	}
@@ -55,8 +56,9 @@ func NewTenantDetails(proj *Project, namespace *Namespace) (*WithDetails, error)
 	}
 
 	return &WithDetails{
-		project:   *proj,
-		namespace: *namespace,
+		project:    *proj,
+		namespace:  *namespace,
+		secretsMap: secrets.ToMap(),
 	}, nil
 }
 
@@ -93,4 +95,8 @@ func (w *WithDetails) Project() *Project {
 
 func (w *WithDetails) Namespace() *Namespace {
 	return &w.namespace
+}
+
+func (w *WithDetails) SecretsMap() map[string]string {
+	return w.secretsMap
 }

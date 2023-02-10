@@ -272,7 +272,7 @@ func (d *DummyJobBuilder) Build(tnnt tenant.Tenant) *job.Job {
 	if err != nil {
 		panic(err)
 	}
-	task := job.NewTaskBuilder(d.taskName, d.taskConfig).Build()
+	task := job.NewTask(d.taskName, d.taskConfig)
 
 	hook, err := job.NewHook(d.hookName, d.hookConfig)
 	if err != nil {
@@ -280,7 +280,7 @@ func (d *DummyJobBuilder) Build(tnnt tenant.Tenant) *job.Job {
 	}
 	hooks := []*job.Hook{hook}
 
-	alert, err := job.NewAlertBuilder(d.alertName, d.alertChannelNames).WithConfig(d.alertConfig).Build()
+	alert, err := job.NewAlertSpec(d.alertName, d.alertChannelNames, d.alertConfig)
 	if err != nil {
 		panic(err)
 	}

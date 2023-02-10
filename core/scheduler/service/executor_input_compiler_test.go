@@ -23,7 +23,12 @@ func TestExecutorCompiler(t *testing.T) {
 		"SCHEDULER_HOST": "localhost",
 	})
 	namespace, _ := tenant.NewNamespace("ns1", project.Name(), map[string]string{})
-	tenantDetails, _ := tenant.NewTenantDetails(project, namespace)
+
+	secret1, _ := tenant.NewPlainTextSecret("secretName", "secretValue")
+	secret2, _ := tenant.NewPlainTextSecret("secret2Name", "secret2Value")
+	secretsArray := []*tenant.PlainTextSecret{secret1, secret2}
+
+	tenantDetails, _ := tenant.NewTenantDetails(project, namespace, secretsArray)
 	tnnt, _ := tenant.NewTenant(project.Name().String(), namespace.Name().String())
 
 	currentTime := time.Now()
@@ -55,32 +60,6 @@ func TestExecutorCompiler(t *testing.T) {
 			assert.EqualError(t, err, "get details error")
 			assert.Nil(t, inputExecutor)
 		})
-		t.Run("should give error if tenant service GetSecrets fails", func(t *testing.T) {
-			job := scheduler.Job{
-				Name:   "job1",
-				Tenant: tnnt,
-			}
-			config := scheduler.RunConfig{
-				Executor: scheduler.Executor{
-					Name: "transformer",
-					Type: "bq2bq",
-				},
-				ScheduledAt: currentTime.Add(-time.Hour),
-				JobRunID:    scheduler.JobRunID{},
-			}
-
-			tenantService := new(mockTenantService)
-			tenantService.On("GetDetails", ctx, tnnt).Return(tenantDetails, nil)
-			tenantService.On("GetSecrets", ctx, tnnt).Return(nil, fmt.Errorf("get secrets error"))
-			defer tenantService.AssertExpectations(t)
-
-			inputCompiler := service.NewJobInputCompiler(tenantService, nil, nil)
-			inputExecutor, err := inputCompiler.Compile(ctx, &job, config, currentTime.Add(time.Hour))
-
-			assert.NotNil(t, err)
-			assert.EqualError(t, err, "get secrets error")
-			assert.Nil(t, inputExecutor)
-		})
 		t.Run("should give error if getSystemDefinedConfigs fails", func(t *testing.T) {
 			window1, _ := models.NewWindow(1, "d", "2", "2")
 			job := scheduler.Job{
@@ -99,7 +78,6 @@ func TestExecutorCompiler(t *testing.T) {
 
 			tenantService := new(mockTenantService)
 			tenantService.On("GetDetails", ctx, tnnt).Return(tenantDetails, nil)
-			tenantService.On("GetSecrets", ctx, tnnt).Return([]*tenant.PlainTextSecret{}, nil)
 			defer tenantService.AssertExpectations(t)
 
 			inputCompiler := service.NewJobInputCompiler(tenantService, nil, nil)
@@ -126,13 +104,8 @@ func TestExecutorCompiler(t *testing.T) {
 				JobRunID:    scheduler.JobRunID{},
 			}
 
-			secret1, _ := tenant.NewPlainTextSecret("secretName", "secretValue")
-			secret2, _ := tenant.NewPlainTextSecret("secret2Name", "secret2Value")
-			secretsArray := []*tenant.PlainTextSecret{secret1, secret2}
-
 			tenantService := new(mockTenantService)
 			tenantService.On("GetDetails", ctx, tnnt).Return(tenantDetails, nil)
-			tenantService.On("GetSecrets", ctx, tnnt).Return(secretsArray, nil)
 			defer tenantService.AssertExpectations(t)
 
 			startTime, _ := job.Window.GetStartTime(config.ScheduledAt)
@@ -183,13 +156,8 @@ func TestExecutorCompiler(t *testing.T) {
 				JobRunID:    scheduler.JobRunID{},
 			}
 
-			secret1, _ := tenant.NewPlainTextSecret("secretName", "secretValue")
-			secret2, _ := tenant.NewPlainTextSecret("secret2Name", "secret2Value")
-			secretsArray := []*tenant.PlainTextSecret{secret1, secret2}
-
 			tenantService := new(mockTenantService)
 			tenantService.On("GetDetails", ctx, tnnt).Return(tenantDetails, nil)
-			tenantService.On("GetSecrets", ctx, tnnt).Return(secretsArray, nil)
 			defer tenantService.AssertExpectations(t)
 
 			startTime, _ := job.Window.GetStartTime(config.ScheduledAt)
@@ -298,13 +266,8 @@ func TestExecutorCompiler(t *testing.T) {
 				JobRunID:    scheduler.JobRunID{},
 			}
 
-			secret1, _ := tenant.NewPlainTextSecret("secretName", "secretValue")
-			secret2, _ := tenant.NewPlainTextSecret("secret2Name", "secret2Value")
-			secretsArray := []*tenant.PlainTextSecret{secret1, secret2}
-
 			tenantService := new(mockTenantService)
 			tenantService.On("GetDetails", ctx, tnnt).Return(tenantDetails, nil)
-			tenantService.On("GetSecrets", ctx, tnnt).Return(secretsArray, nil)
 			defer tenantService.AssertExpectations(t)
 
 			startTime, _ := job.Window.GetStartTime(config.ScheduledAt)
@@ -387,13 +350,8 @@ func TestExecutorCompiler(t *testing.T) {
 				JobRunID:    scheduler.JobRunID{},
 			}
 
-			secret1, _ := tenant.NewPlainTextSecret("secretName", "secretValue")
-			secret2, _ := tenant.NewPlainTextSecret("secret2Name", "secret2Value")
-			secretsArray := []*tenant.PlainTextSecret{secret1, secret2}
-
 			tenantService := new(mockTenantService)
 			tenantService.On("GetDetails", ctx, tnnt).Return(tenantDetails, nil)
-			tenantService.On("GetSecrets", ctx, tnnt).Return(secretsArray, nil)
 			defer tenantService.AssertExpectations(t)
 
 			startTime, _ := job.Window.GetStartTime(config.ScheduledAt)
@@ -457,13 +415,8 @@ func TestExecutorCompiler(t *testing.T) {
 				JobRunID:    scheduler.JobRunID{},
 			}
 
-			secret1, _ := tenant.NewPlainTextSecret("secretName", "secretValue")
-			secret2, _ := tenant.NewPlainTextSecret("secret2Name", "secret2Value")
-			secretsArray := []*tenant.PlainTextSecret{secret1, secret2}
-
 			tenantService := new(mockTenantService)
 			tenantService.On("GetDetails", ctx, tnnt).Return(tenantDetails, nil)
-			tenantService.On("GetSecrets", ctx, tnnt).Return(secretsArray, nil)
 			defer tenantService.AssertExpectations(t)
 
 			startTime, _ := job.Window.GetStartTime(config.ScheduledAt)
