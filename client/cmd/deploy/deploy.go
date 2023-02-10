@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	deployTimeout = time.Minute * 30
+	deployTimeout = time.Minute * 60
 	pollInterval  = time.Second * 15
 )
 
