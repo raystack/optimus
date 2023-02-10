@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	replaceAllTimeout = time.Minute * 30
+	replaceAllTimeout = time.Minute * 60
 )
 
 type replaceAllCommand struct {
