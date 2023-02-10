@@ -31,15 +31,20 @@ func TestJobService(t *testing.T) {
 		map[string]string{
 			"bucket": "gs://ns_bucket",
 		})
+	secret1, err := tenant.NewPlainTextSecret("table_name", "secret_table")
+	assert.Nil(t, err)
+
 	sampleTenant, _ := tenant.NewTenant(project.Name().String(), namespace.Name().String())
-	detailedTenant, _ := tenant.NewTenantDetails(project, namespace)
+	detailedTenant, _ := tenant.NewTenantDetails(project, namespace, []*tenant.PlainTextSecret{secret1})
 
 	otherNamespace, _ := tenant.NewNamespace("other-ns", project.Name(),
 		map[string]string{
 			"bucket": "gs://other_ns_bucket",
 		})
 	otherTenant, _ := tenant.NewTenant(project.Name().String(), otherNamespace.Name().String())
-	detailedOtherTenant, _ := tenant.NewTenantDetails(project, otherNamespace)
+	secret2, err := tenant.NewPlainTextSecret("bucket", "gs://some_secret_bucket")
+	assert.Nil(t, err)
+	detailedOtherTenant, _ := tenant.NewTenantDetails(project, otherNamespace, []*tenant.PlainTextSecret{secret2})
 
 	jobVersion := 1
 	startDate, err := job.ScheduleDateFrom("2022-10-01")

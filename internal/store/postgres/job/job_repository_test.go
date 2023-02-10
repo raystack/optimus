@@ -471,7 +471,7 @@ func TestPostgresJobRepository(t *testing.T) {
 		t.Run("returns job with inferred upstreams", func(t *testing.T) {
 			db := dbSetup()
 
-			tenantDetails, err := tenant.NewTenantDetails(proj, namespace)
+			tnnt, err := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
 			assert.NoError(t, err)
 
 			jobSpecA, err := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
@@ -486,7 +486,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB})
 			assert.NoError(t, err)
 
-			expectedUpstream := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), tenantDetails.ToTenant(), "inferred", taskName, false)
+			expectedUpstream := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), tnnt, "inferred", taskName, false)
 
 			upstreams, err := jobRepo.ResolveUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
 			assert.NoError(t, err)
@@ -495,7 +495,7 @@ func TestPostgresJobRepository(t *testing.T) {
 		t.Run("returns job with static upstreams", func(t *testing.T) {
 			db := dbSetup()
 
-			tenantDetails, err := tenant.NewTenantDetails(proj, namespace)
+			tnnt, err := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
 			assert.NoError(t, err)
 
 			upstreamName := job.SpecUpstreamNameFrom("sample-job-B")
@@ -514,7 +514,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB})
 			assert.NoError(t, err)
 
-			expectedUpstream := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), tenantDetails.ToTenant(), "static", taskName, false)
+			expectedUpstream := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), tnnt, "static", taskName, false)
 
 			upstreams, err := jobRepo.ResolveUpstreams(ctx, proj.Name(), []job.Name{jobSpecA.Name()})
 			assert.NoError(t, err)
@@ -523,7 +523,7 @@ func TestPostgresJobRepository(t *testing.T) {
 		t.Run("returns job with static and inferred upstreams", func(t *testing.T) {
 			db := dbSetup()
 
-			tenantDetails, err := tenant.NewTenantDetails(proj, namespace)
+			tenantDetails, err := tenant.NewTenantDetails(proj, namespace, nil)
 			assert.NoError(t, err)
 
 			upstreamName := job.SpecUpstreamNameFrom("test-proj/sample-job-B")
@@ -611,7 +611,7 @@ func TestPostgresJobRepository(t *testing.T) {
 		t.Run("returns job with static upstream if found duplicated upstream from static and inferred", func(t *testing.T) {
 			db := dbSetup()
 
-			tenantDetails, err := tenant.NewTenantDetails(proj, namespace)
+			tnnt, err := tenant.NewTenant(proj.Name().String(), namespace.Name().String())
 			assert.NoError(t, err)
 
 			upstreamName := job.SpecUpstreamNameFrom("test-proj/sample-job-B")
@@ -630,7 +630,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB})
 			assert.NoError(t, err)
 
-			upstreamB := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), tenantDetails.ToTenant(), "static", taskName, false)
+			upstreamB := job.NewUpstreamResolved(jobSpecB.Name(), "", jobB.Destination(), tnnt, "static", taskName, false)
 
 			expectedUpstreams := []*job.Upstream{
 				upstreamB,

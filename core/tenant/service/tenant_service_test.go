@@ -57,7 +57,7 @@ func TestTenantService(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "unable to get ns")
 		})
-		t.Run("returns both project and namespace", func(t *testing.T) {
+		t.Run("returns error when unable to get secrets", func(t *testing.T) {
 			projGetter := new(projectGetter)
 			projGetter.On("Get", ctx, tnnt.ProjectName()).Return(proj, nil)
 			defer projGetter.AssertExpectations(t)
@@ -66,13 +66,41 @@ func TestTenantService(t *testing.T) {
 			nsGetter.On("Get", ctx, tnnt.ProjectName(), tnnt.NamespaceName()).Return(ns, nil)
 			defer nsGetter.AssertExpectations(t)
 
-			tenantService := service.NewTenantService(projGetter, nsGetter, nil)
+			secGetter := new(secretGetter)
+			secGetter.On("GetAll", ctx, tnnt.ProjectName(), tnnt.NamespaceName().String()).Return(nil, errors.New("unable to get secrets"))
+			defer secGetter.AssertExpectations(t)
+
+			tenantService := service.NewTenantService(projGetter, nsGetter, secGetter)
+
+			_, err := tenantService.GetDetails(ctx, tnnt)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "unable to get secrets")
+		})
+		t.Run("returns project, namespace and secrets", func(t *testing.T) {
+			projGetter := new(projectGetter)
+			projGetter.On("Get", ctx, tnnt.ProjectName()).Return(proj, nil)
+			defer projGetter.AssertExpectations(t)
+
+			nsGetter := new(namespaceGetter)
+			nsGetter.On("Get", ctx, tnnt.ProjectName(), tnnt.NamespaceName()).Return(ns, nil)
+			defer nsGetter.AssertExpectations(t)
+
+			pts, _ := tenant.NewPlainTextSecret("key1", "value1")
+			secGetter := new(secretGetter)
+			secGetter.On("GetAll", ctx, tnnt.ProjectName(), tnnt.NamespaceName().String()).
+				Return([]*tenant.PlainTextSecret{pts}, nil)
+			defer secGetter.AssertExpectations(t)
+
+			tenantService := service.NewTenantService(projGetter, nsGetter, secGetter)
 
 			d, err := tenantService.GetDetails(ctx, tnnt)
 			assert.Nil(t, err)
 			assert.Equal(t, proj.Name().String(), d.Project().Name().String())
 			receivedNS := d.Namespace()
 			assert.Equal(t, receivedNS.Name(), ns.Name())
+			sec := d.SecretsMap()
+			assert.Equal(t, 1, len(sec))
+			assert.Equal(t, "value1", sec[pts.Name().String()])
 		})
 	})
 	t.Run("GetProject", func(t *testing.T) {
