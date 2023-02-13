@@ -142,12 +142,6 @@ init_container = k8s.V1Container(
 
 {{ $transformationName := print "transformation_"  .Task.Name | DisplayName -}}
 {{$transformationName}} = SuperKubernetesPodOperator(
-    optimus_hostname="{{$.Hostname}}",
-    optimus_projectname="{{$.Tenant.ProjectName.String}}",
-    optimus_namespacename="{{$.Tenant.NamespaceName.String}}",
-    optimus_jobname="{{.JobDetails.Name}}",
-    optimus_jobtype="{{$.ExecutorTask}}",
-    optimus_instancename="{{.Task.Name}}",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image={{  .Task.Image | quote}},
@@ -191,12 +185,6 @@ init_container_{{$hookName}} = k8s.V1Container(
 )
 
 hook_{{$hookName}} = SuperKubernetesPodOperator(
-    optimus_instancename="{{$hookName}}",
-    optimus_hostname="{{$.Hostname}}",
-    optimus_projectname="{{$.Tenant.ProjectName.String}}",
-    optimus_namespacename="{{$.Tenant.NamespaceName.String}}",
-    optimus_jobname="{{$.JobDetails.Name}}",
-    optimus_jobtype="{{$.ExecutorHook}}",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="{{ $t.Image }}",
