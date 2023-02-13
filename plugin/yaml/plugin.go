@@ -31,6 +31,7 @@ func (p *PluginSpec) PluginInfo() *plugin.Info {
 		Name:          p.Name,
 		Description:   p.Description,
 		Image:         p.Image,
+		Entrypoint:    p.Entrypoint,
 		PluginType:    p.PluginType,
 		PluginMods:    []plugin.Mod{plugin.ModTypeCLI},
 		PluginVersion: p.PluginVersion,
