@@ -111,12 +111,6 @@ init_container = k8s.V1Container(
 )
 
 transformation_bq__dash__bq = SuperKubernetesPodOperator(
-    optimus_hostname="http://optimus.example.com",
-    optimus_projectname="example-proj",
-    optimus_namespacename="billing",
-    optimus_jobname="infra.billing.weekly-status-reports",
-    optimus_jobtype="task",
-    optimus_instancename="bq-bq",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="example.io/namespace/bq2bq-executor:latest",
@@ -154,12 +148,6 @@ init_container_transporter = k8s.V1Container(
 )
 
 hook_transporter = SuperKubernetesPodOperator(
-    optimus_instancename="transporter",
-    optimus_hostname="http://optimus.example.com",
-    optimus_projectname="example-proj",
-    optimus_namespacename="billing",
-    optimus_jobname="infra.billing.weekly-status-reports",
-    optimus_jobtype="hook",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="example.io/namespace/transporter-executor:latest",
@@ -193,12 +181,6 @@ init_container_predator = k8s.V1Container(
 )
 
 hook_predator = SuperKubernetesPodOperator(
-    optimus_instancename="predator",
-    optimus_hostname="http://optimus.example.com",
-    optimus_projectname="example-proj",
-    optimus_namespacename="billing",
-    optimus_jobname="infra.billing.weekly-status-reports",
-    optimus_jobtype="hook",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="example.io/namespace/predator-image:latest",
@@ -232,12 +214,6 @@ init_container_failureHook = k8s.V1Container(
 )
 
 hook_failureHook = SuperKubernetesPodOperator(
-    optimus_instancename="failureHook",
-    optimus_hostname="http://optimus.example.com",
-    optimus_projectname="example-proj",
-    optimus_namespacename="billing",
-    optimus_jobname="infra.billing.weekly-status-reports",
-    optimus_jobtype="hook",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="example.io/namespace/failure-hook-image:latest",
