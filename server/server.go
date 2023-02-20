@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -18,6 +19,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/health"
@@ -100,7 +103,7 @@ func setupGRPCServer(l log.Logger) (*grpc.Server, error) {
 	return grpcServer, nil
 }
 
-func prepareHTTPProxy(grpcAddr string) (*http.Server, func(), error) {
+func prepareHTTPProxy(grpcAddr string, grpcServer *grpc.Server) (*http.Server, func(), error) {
 	timeoutGrpcDialCtx, grpcDialCancel := context.WithTimeout(context.Background(), DialTimeout)
 	defer grpcDialCancel()
 
@@ -166,7 +169,7 @@ func prepareHTTPProxy(grpcAddr string) (*http.Server, func(), error) {
 
 	//nolint: gomnd
 	srv := &http.Server{
-		Handler:      baseMux,
+		Handler:      grpcHandlerFunc(grpcServer, baseMux),
 		Addr:         grpcAddr,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 60 * time.Second,
@@ -174,4 +177,21 @@ func prepareHTTPProxy(grpcAddr string) (*http.Server, func(), error) {
 	}
 
 	return srv, cleanup, nil
+}
+
+// grpcHandlerFunc routes http1 calls to baseMux and http2 with grpc header to grpcServer.
+// Using a single port for proxying both http1 & 2 protocols will degrade http performance
+// but for our use-case the convenience per performance tradeoff is better suited
+// if in the future, this does become a bottleneck(which I highly doubt), we can break the service
+// into two ports, default port for grpc and default+1 for grpc-gateway proxy.
+// We can also use something like a connection multiplexer
+// https://github.com/soheilhy/cmux to achieve the same.
+func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Handler {
+	return h2c.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
+			grpcServer.ServeHTTP(w, r)
+		} else {
+			otherHandler.ServeHTTP(w, r)
+		}
+	}), &http2.Server{})
 }
