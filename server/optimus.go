@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"os"
 
@@ -16,7 +15,6 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	slackapi "github.com/slack-go/slack"
-	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
 
 	"github.com/odpf/optimus/config"
@@ -60,7 +58,6 @@ type OptimusServer struct {
 	key    *[keyLength]byte
 
 	serverAddr string
-	mux        cmux.CMux
 	grpcServer *grpc.Server
 	httpServer *http.Server
 
@@ -85,7 +82,6 @@ func New(conf config.ServerConfig) (*OptimusServer, error) {
 		server.setupTelemetry,
 		server.setupAppKey,
 		server.setupDB,
-		server.setupMux,
 		server.setupGRPCServer,
 		server.setupHandlers,
 		server.setupMonitoring,
@@ -172,16 +168,6 @@ func (s *OptimusServer) setupDB() error {
 	return nil
 }
 
-func (s *OptimusServer) setupMux() error {
-	ln, err := net.Listen("tcp", s.serverAddr)
-	if err != nil {
-		return err
-	}
-
-	s.mux = cmux.New(ln)
-	return nil
-}
-
 func (s *OptimusServer) setupGRPCServer() error {
 	var err error
 	s.grpcServer, err = setupGRPCServer(s.logger)
@@ -195,7 +181,7 @@ func (s *OptimusServer) setupMonitoring() error {
 }
 
 func (s *OptimusServer) setupHTTPProxy() error {
-	srv, cleanup, err := prepareHTTPProxy(s.serverAddr)
+	srv, cleanup, err := prepareHTTPProxy(s.serverAddr, s.grpcServer)
 	s.httpServer = srv
 	s.cleanupFn = append(s.cleanupFn, cleanup)
 	return err
@@ -203,32 +189,12 @@ func (s *OptimusServer) setupHTTPProxy() error {
 
 func (s *OptimusServer) startListening() {
 	// run our server in a goroutine so that it doesn't block to wait for termination requests
-	// We first match a request first for grpc
-	grpcLn := s.mux.MatchWithWriters(
-		cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
-	// if it does not match grpc, we send the request to http
-	httpL := s.mux.Match(cmux.Any())
-
 	go func() {
-		// Start listening on grpc server
-		if err := s.grpcServer.Serve(grpcLn); err != nil {
-			s.logger.Info("shutting down grpc server")
-		}
-	}()
-
-	go func() {
-		// Start listening on http server
-		err := s.httpServer.Serve(httpL)
-		if err != nil {
-			s.logger.Info("Shutting http proxy")
-		}
-	}()
-
-	go func() {
-		// Start mux server
 		s.logger.Info("Listening at", "address", s.serverAddr)
-		if err := s.mux.Serve(); err != nil {
-			s.logger.Info("server error", "error", err)
+		if err := s.httpServer.ListenAndServe(); err != nil {
+			if err != http.ErrServerClosed {
+				s.logger.Fatal("server error", "error", err)
+			}
 		}
 	}()
 }
