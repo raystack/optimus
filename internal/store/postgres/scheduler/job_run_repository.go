@@ -57,7 +57,6 @@ func (j jobRun) toJobRun() (*scheduler.JobRun, error) {
 	var monitoring map[string]any
 	if j.Monitoring != nil {
 		if err := json.Unmarshal(j.Monitoring, &monitoring); err != nil {
-			fmt.Println(err)
 			return nil, errors.AddErrContext(err, scheduler.EntityJobRun, "invalid monitoring values in database")
 		}
 	}
@@ -119,6 +118,16 @@ func (j *JobRunRepository) UpdateSLA(ctx context.Context, slaObjects []*schedule
 	query := "update job_run set sla_alert = True, updated_at = NOW() where (job_name, scheduled_at) IN (" + jobIDListString + ")"
 	_, err := j.db.Exec(ctx, query)
 	return errors.WrapIfErr(scheduler.EntityJobRun, "unable to update SLA", err)
+}
+
+func (j *JobRunRepository) UpdateMonitoring(ctx context.Context, jobRunID uuid.UUID, monitoringValues map[string]any) error {
+	monitoringBytes, err := json.Marshal(monitoringValues)
+	if err != nil {
+		return errors.Wrap(scheduler.EntityJobRun, "error marshalling monitoring values", err)
+	}
+	query := `update job_run set monitoring = $1 where id = $2`
+	_, err = j.db.Exec(ctx, query, monitoringBytes, jobRunID)
+	return errors.WrapIfErr(scheduler.EntityJobRun, "cannot update monitoring", err)
 }
 
 func (j *JobRunRepository) Create(ctx context.Context, t tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error {
