@@ -22,10 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ReplayServiceClient interface {
-	ReplayDryRun(ctx context.Context, in *ReplayDryRunRequest, opts ...grpc.CallOption) (*ReplayDryRunResponse, error)
 	Replay(ctx context.Context, in *ReplayRequest, opts ...grpc.CallOption) (*ReplayResponse, error)
-	GetReplayStatus(ctx context.Context, in *GetReplayStatusRequest, opts ...grpc.CallOption) (*GetReplayStatusResponse, error)
-	ListReplays(ctx context.Context, in *ListReplaysRequest, opts ...grpc.CallOption) (*ListReplaysResponse, error)
 }
 
 type replayServiceClient struct {
@@ -34,15 +31,6 @@ type replayServiceClient struct {
 
 func NewReplayServiceClient(cc grpc.ClientConnInterface) ReplayServiceClient {
 	return &replayServiceClient{cc}
-}
-
-func (c *replayServiceClient) ReplayDryRun(ctx context.Context, in *ReplayDryRunRequest, opts ...grpc.CallOption) (*ReplayDryRunResponse, error) {
-	out := new(ReplayDryRunResponse)
-	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.ReplayService/ReplayDryRun", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *replayServiceClient) Replay(ctx context.Context, in *ReplayRequest, opts ...grpc.CallOption) (*ReplayResponse, error) {
@@ -54,32 +42,11 @@ func (c *replayServiceClient) Replay(ctx context.Context, in *ReplayRequest, opt
 	return out, nil
 }
 
-func (c *replayServiceClient) GetReplayStatus(ctx context.Context, in *GetReplayStatusRequest, opts ...grpc.CallOption) (*GetReplayStatusResponse, error) {
-	out := new(GetReplayStatusResponse)
-	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.ReplayService/GetReplayStatus", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *replayServiceClient) ListReplays(ctx context.Context, in *ListReplaysRequest, opts ...grpc.CallOption) (*ListReplaysResponse, error) {
-	out := new(ListReplaysResponse)
-	err := c.cc.Invoke(ctx, "/odpf.optimus.core.v1beta1.ReplayService/ListReplays", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // ReplayServiceServer is the server API for ReplayService service.
 // All implementations must embed UnimplementedReplayServiceServer
 // for forward compatibility
 type ReplayServiceServer interface {
-	ReplayDryRun(context.Context, *ReplayDryRunRequest) (*ReplayDryRunResponse, error)
 	Replay(context.Context, *ReplayRequest) (*ReplayResponse, error)
-	GetReplayStatus(context.Context, *GetReplayStatusRequest) (*GetReplayStatusResponse, error)
-	ListReplays(context.Context, *ListReplaysRequest) (*ListReplaysResponse, error)
 	mustEmbedUnimplementedReplayServiceServer()
 }
 
@@ -87,17 +54,8 @@ type ReplayServiceServer interface {
 type UnimplementedReplayServiceServer struct {
 }
 
-func (UnimplementedReplayServiceServer) ReplayDryRun(context.Context, *ReplayDryRunRequest) (*ReplayDryRunResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReplayDryRun not implemented")
-}
 func (UnimplementedReplayServiceServer) Replay(context.Context, *ReplayRequest) (*ReplayResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Replay not implemented")
-}
-func (UnimplementedReplayServiceServer) GetReplayStatus(context.Context, *GetReplayStatusRequest) (*GetReplayStatusResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetReplayStatus not implemented")
-}
-func (UnimplementedReplayServiceServer) ListReplays(context.Context, *ListReplaysRequest) (*ListReplaysResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListReplays not implemented")
 }
 func (UnimplementedReplayServiceServer) mustEmbedUnimplementedReplayServiceServer() {}
 
@@ -110,24 +68,6 @@ type UnsafeReplayServiceServer interface {
 
 func RegisterReplayServiceServer(s grpc.ServiceRegistrar, srv ReplayServiceServer) {
 	s.RegisterService(&ReplayService_ServiceDesc, srv)
-}
-
-func _ReplayService_ReplayDryRun_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReplayDryRunRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ReplayServiceServer).ReplayDryRun(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/odpf.optimus.core.v1beta1.ReplayService/ReplayDryRun",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ReplayServiceServer).ReplayDryRun(ctx, req.(*ReplayDryRunRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _ReplayService_Replay_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -148,42 +88,6 @@ func _ReplayService_Replay_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ReplayService_GetReplayStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetReplayStatusRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ReplayServiceServer).GetReplayStatus(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/odpf.optimus.core.v1beta1.ReplayService/GetReplayStatus",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ReplayServiceServer).GetReplayStatus(ctx, req.(*GetReplayStatusRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ReplayService_ListReplays_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListReplaysRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ReplayServiceServer).ListReplays(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/odpf.optimus.core.v1beta1.ReplayService/ListReplays",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ReplayServiceServer).ListReplays(ctx, req.(*ListReplaysRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // ReplayService_ServiceDesc is the grpc.ServiceDesc for ReplayService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -192,20 +96,8 @@ var ReplayService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*ReplayServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "ReplayDryRun",
-			Handler:    _ReplayService_ReplayDryRun_Handler,
-		},
-		{
 			MethodName: "Replay",
 			Handler:    _ReplayService_Replay_Handler,
-		},
-		{
-			MethodName: "GetReplayStatus",
-			Handler:    _ReplayService_GetReplayStatus_Handler,
-		},
-		{
-			MethodName: "ListReplays",
-			Handler:    _ReplayService_ListReplays_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
