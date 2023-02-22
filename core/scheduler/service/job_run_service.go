@@ -7,11 +7,31 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/odpf/salt/log"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/lib/cron"
+)
+
+type metricType string
+
+func (m metricType) String() string {
+	return string(m)
+}
+
+const (
+	scheduleDelay    metricType = "schedule_delay"
+	upstreamWaitTime metricType = "upstream_wait_time"
+	taskDuration     metricType = "task_duration"
+	hookDuration     metricType = "hook_duration"
+)
+
+var (
+	schedulerEventsMetricMap            = map[string]prometheus.Counter{}
+	schedulerOperatorDurationsMetricMap = map[string]prometheus.Counter{}
 )
 
 type JobRepository interface {
@@ -202,7 +222,23 @@ func (s JobRunService) registerNewJobRun(ctx context.Context, tenant tenant.Tena
 	if err != nil {
 		return err
 	}
-	return s.repo.Create(ctx, tenant, jobName, scheduledAt, slaDefinitionInSec)
+	err = s.repo.Create(ctx, tenant, jobName, scheduledAt, slaDefinitionInSec)
+	if err != nil {
+		return err
+	}
+	schedulerOperatorMetricKey := fmt.Sprintf("scheduler_operator_durations/%s/%s/%s", tenant.ProjectName().String(), tenant.NamespaceName().String(), scheduleDelay)
+	if _, ok := schedulerOperatorDurationsMetricMap[schedulerOperatorMetricKey]; !ok {
+		schedulerOperatorDurationsMetricMap[schedulerOperatorMetricKey] = promauto.NewCounter(prometheus.CounterOpts{
+			Name: "scheduler_operator_durations",
+			ConstLabels: map[string]string{
+				"project":   tenant.ProjectName().String(),
+				"namespace": tenant.NamespaceName().String(),
+				"type":      scheduleDelay.String(),
+			},
+		})
+	}
+	schedulerOperatorDurationsMetricMap[schedulerOperatorMetricKey].Add(float64(time.Now().Unix() - scheduledAt.Unix()))
+	return nil
 }
 
 func (s JobRunService) getJobRunByScheduledAt(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) (*scheduler.JobRun, error) {
@@ -276,9 +312,35 @@ func (s JobRunService) updateOperatorRun(ctx context.Context, event scheduler.Ev
 	if err != nil {
 		return err
 	}
-	return s.operatorRunRepo.UpdateOperatorRun(ctx, operatorType, operatorRun.ID, event.EventTime, event.Status)
+	err = s.operatorRunRepo.UpdateOperatorRun(ctx, operatorType, operatorRun.ID, event.EventTime, event.Status)
+	if err != nil {
+		return err
+
+	}
+	var metricLable metricType
+	switch operatorType {
+	case scheduler.OperatorTask:
+		metricLable = taskDuration
+	case scheduler.OperatorSensor:
+		metricLable = upstreamWaitTime
+	case scheduler.OperatorHook:
+		metricLable = hookDuration
+	}
+	schedulerOperatorMetricKey := fmt.Sprintf("scheduler_operator_durations/%s/%s/%s", event.Tenant.ProjectName().String(), event.Tenant.NamespaceName().String(), metricLable)
+	if _, ok := schedulerOperatorDurationsMetricMap[schedulerOperatorMetricKey]; !ok {
+		schedulerOperatorDurationsMetricMap[schedulerOperatorMetricKey] = promauto.NewCounter(prometheus.CounterOpts{
+			Name: "scheduler_operator_durations",
+			ConstLabels: map[string]string{
+				"project":   event.Tenant.ProjectName().String(),
+				"namespace": event.Tenant.NamespaceName().String(),
+				"type":      metricLable.String(),
+			},
+		})
+	}
+	schedulerOperatorDurationsMetricMap[schedulerOperatorMetricKey].Add(float64(event.EventTime.Unix() - operatorRun.StartTime.Unix()))
+	return nil
 }
-func (s JobRunService) logEvent(event scheduler.Event) {
+func (s JobRunService) trackEvent(event scheduler.Event) {
 	if event.Type.IsOfType(scheduler.EventCategorySLAMiss) {
 		s.l.Debug(fmt.Sprintf("received event: %v, jobName: %v , slaPayload: %#v",
 			event.Type, event.JobName, event.SLAObjectList))
@@ -286,10 +348,22 @@ func (s JobRunService) logEvent(event scheduler.Event) {
 		s.l.Debug(fmt.Sprintf("received event: %v, eventTime: %s, jobName: %v, Operator: %v, schedule: %s, status: %s",
 			event.Type, event.EventTime.Format("01/02/06 15:04:05 MST"), event.JobName, event.OperatorName, event.JobScheduledAt.Format("01/02/06 15:04:05 MST"), event.Status))
 	}
+	eventMetricKey := fmt.Sprintf("scheduler_events/%s/%s/%s", event.Tenant.ProjectName().String(), event.Tenant.NamespaceName().String(), event.Type.String())
+	if _, ok := schedulerEventsMetricMap[eventMetricKey]; !ok {
+		schedulerEventsMetricMap[eventMetricKey] = promauto.NewGauge(prometheus.GaugeOpts{
+			Name: "scheduler_events",
+			ConstLabels: map[string]string{
+				"project":   event.Tenant.ProjectName().String(),
+				"namespace": event.Tenant.NamespaceName().String(),
+				"type":      event.Type.String(),
+			},
+		})
+	}
+	schedulerEventsMetricMap[eventMetricKey].Inc()
 }
 
 func (s JobRunService) UpdateJobState(ctx context.Context, event scheduler.Event) error {
-	s.logEvent(event)
+	s.trackEvent(event)
 
 	switch event.Type {
 	case scheduler.SLAMissEvent:

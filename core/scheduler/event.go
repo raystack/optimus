@@ -116,6 +116,9 @@ func (incomingEvent JobEventType) IsOfType(category JobEventCategory) bool {
 	}
 	return false
 }
+func (event JobEventType) String() string {
+	return string(event)
+}
 
 func EventFrom(eventTypeName string, eventValues map[string]any, jobName JobName, tenent tenant.Tenant) (Event, error) {
 	eventType, err := FromStringToEventType(eventTypeName)

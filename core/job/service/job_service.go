@@ -8,6 +8,8 @@ import (
 
 	"github.com/kushsharma/parallel"
 	"github.com/odpf/salt/log"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/job/service/filter"
@@ -21,6 +23,10 @@ import (
 const (
 	ConcurrentTicketPerSec = 40
 	ConcurrentLimit        = 600
+)
+
+var (
+	jobReplaceAllUpdatedJobs = map[string]prometheus.Counter{}
 )
 
 type JobService struct {
@@ -500,6 +506,18 @@ func (j JobService) differentiateSpecs(ctx context.Context, jobTenant tenant.Ten
 			modifiedSpecs = append(modifiedSpecs, incomingSpec)
 		}
 	}
+	totalJobsModifiedMetricKey := fmt.Sprintf("total_jobs_modified/%s/%s", jobTenant.ProjectName().String(), jobTenant.NamespaceName().String())
+	if _, ok := jobReplaceAllUpdatedJobs[totalJobsModifiedMetricKey]; !ok {
+		jobReplaceAllUpdatedJobs[totalJobsModifiedMetricKey] = promauto.NewCounter(prometheus.CounterOpts{
+			Name: "total_jobs_modified",
+			Help: "total jobs modified through optimus",
+			ConstLabels: map[string]string{
+				"project":   jobTenant.ProjectName().String(),
+				"namespace": jobTenant.NamespaceName().String(),
+			},
+		})
+	}
+	jobReplaceAllUpdatedJobs[totalJobsModifiedMetricKey].Add(float64(len(modifiedSpecs)))
 
 	incomingSpecsMap := job.Specs(specs).ToNameAndSpecMap()
 	for existingJobName, existingJobSpec := range existingSpecsMap {
