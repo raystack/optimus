@@ -380,6 +380,10 @@ def job_success_event(context):
             "event_type": "TYPE_JOB_SUCCESS",
             "status": "success"
         }
+        result_for_monitoring = get_result_for_monitoring_from_xcom(context)
+        if result_for_monitoring is not None:
+            meta['monitoring'] = result_for_monitoring
+
         optimus_notify(context, meta)
     except Exception as e:
         print(e)
@@ -390,6 +394,10 @@ def job_failure_event(context):
             "event_type": "TYPE_FAILURE",
             "status": "failed"
         }
+        result_for_monitoring = get_result_for_monitoring_from_xcom(context)
+        if result_for_monitoring is not None:
+            meta['monitoring'] = result_for_monitoring
+
         optimus_notify(context, meta)
     except Exception as e:
         print(e)
@@ -498,8 +506,7 @@ def shouldSendSensorStartEvent(ctx):
     try:
         ti = ctx.get('task_instance')
         key = "sensorEvt/{}/{}/{}".format(ti.task_id , ctx.get('next_execution_date').strftime(TIMESTAMP_FORMAT) , ti.try_number)
-        
-        ti.xcom_pull(key=key)
+
         result = ti.xcom_pull(key=key)
         if not result:
             print("sending NEW sensor start event for attempt number ", ti.try_number)
@@ -510,6 +517,17 @@ def shouldSendSensorStartEvent(ctx):
     except Exception as e:
         print(e)
 
+def get_result_for_monitoring_from_xcom(ctx):
+    try:
+        ti = ctx.get('task_instance')
+        return_value = ti.xcom_pull(key='return_value')
+    except Exception as e:
+        print(f'error getting result for monitoring: {e}')
+
+    if type(return_value) is dict:
+        if 'monitoring' in return_value:
+            return return_value['monitoring']
+    return None
 
 def cleanup_xcom(ctx):
     try:
