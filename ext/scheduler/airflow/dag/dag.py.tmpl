@@ -98,11 +98,16 @@ resources = k8s.V1ResourceRequirements(
 {{- end }}
 
 JOB_DIR = "/data"
-PATH_ENV = JOB_DIR + "/in/.env"
-PATH_SECRET = JOB_DIR + "/in/.secret"
 IMAGE_PULL_POLICY = "IfNotPresent"
 INIT_CONTAINER_IMAGE = "odpf/optimus:{{.Version}}"
 INIT_CONTAINER_ENTRYPOINT = "/opt/entrypoint_init_container.sh"
+
+def get_entrypoint_cmd(plugin_entrypoint):
+    path_config = JOB_DIR + "/in/.env"
+    path_secret = JOB_DIR + "/in/.secret"
+    entrypoint = "set -o allexport; source {path_config}; set +o allexport; cat {path_config}; ".format(path_config=path_config)
+    entrypoint += "set -o allexport; source {path_secret}; set +o allexport; ".format(path_secret=path_secret)
+    return entrypoint + plugin_entrypoint
 
 volume = k8s.V1Volume(
     name='asset-volume',
@@ -146,7 +151,7 @@ init_container = k8s.V1Container(
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image={{  .Task.Image | quote}},
     cmds=["/bin/sh"],
-    arguments=["-c", "set -o allexport; source " + PATH_ENV + "; set +o allexport; printenv; set -o allexport; source " + PATH_SECRET + "; set +o allexport; " + """{{.Task.Entrypoint}} """],
+    arguments=["-c", get_entrypoint_cmd("""{{.Task.Entrypoint}} """)],
     name="{{  .Task.Name | replace "_" "-" }}",
     task_id={{ .Task.Name | quote}},
     get_logs=True,
@@ -189,7 +194,7 @@ hook_{{$hookName}} = SuperKubernetesPodOperator(
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="{{ $t.Image }}",
     cmds=["/bin/sh"],
-    arguments=["-c", "set -o allexport; source " + PATH_ENV + "; set +o allexport; printenv; set -o allexport; source " + PATH_SECRET + "; set +o allexport; " + """{{ $t.Entrypoint }} """],
+    arguments=["-c", get_entrypoint_cmd("""{{ $t.Entrypoint }} """)],
     name="hook_{{ $t.Name | replace "_" "-" }}",
     task_id="hook_{{ $t.Name }}",
     get_logs=True,

@@ -68,11 +68,16 @@ resources = k8s.V1ResourceRequirements(
 )
 
 JOB_DIR = "/data"
-PATH_ENV = JOB_DIR + "/in/.env"
-PATH_SECRET = JOB_DIR + "/in/.secret"
 IMAGE_PULL_POLICY = "IfNotPresent"
 INIT_CONTAINER_IMAGE = "odpf/optimus:dev"
 INIT_CONTAINER_ENTRYPOINT = "/opt/entrypoint_init_container.sh"
+
+def get_entrypoint_cmd(plugin_entrypoint):
+    path_config = JOB_DIR + "/in/.env"
+    path_secret = JOB_DIR + "/in/.secret"
+    entrypoint = "set -o allexport; source {path_config}; set +o allexport; cat {path_config}; ".format(path_config=path_config)
+    entrypoint += "set -o allexport; source {path_secret}; set +o allexport; ".format(path_secret=path_secret)
+    return entrypoint + plugin_entrypoint
 
 volume = k8s.V1Volume(
     name='asset-volume',
@@ -115,7 +120,7 @@ transformation_bq__dash__bq = SuperKubernetesPodOperator(
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="example.io/namespace/bq2bq-executor:latest",
     cmds=["/bin/sh"],
-    arguments=["-c", "set -o allexport; source " + PATH_ENV + "; set +o allexport; printenv; set -o allexport; source " + PATH_SECRET + "; set +o allexport; " + """python3 /opt/bumblebee/main.py """],
+    arguments=["-c", get_entrypoint_cmd("""python3 /opt/bumblebee/main.py """)],
     name="bq-bq",
     task_id="bq-bq",
     get_logs=True,
@@ -152,7 +157,7 @@ hook_transporter = SuperKubernetesPodOperator(
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="example.io/namespace/transporter-executor:latest",
     cmds=["/bin/sh"],
-    arguments=["-c", "set -o allexport; source " + PATH_ENV + "; set +o allexport; printenv; set -o allexport; source " + PATH_SECRET + "; set +o allexport; " + """java -cp /opt/transporter/transporter.jar:/opt/transporter/jolokia-jvm-agent.jar -javaagent:jolokia-jvm-agent.jar=port=7777,host=0.0.0.0 com.gojek.transporter.Main """],
+    arguments=["-c", get_entrypoint_cmd("""java -cp /opt/transporter/transporter.jar:/opt/transporter/jolokia-jvm-agent.jar -javaagent:jolokia-jvm-agent.jar=port=7777,host=0.0.0.0 com.gojek.transporter.Main """)],
     name="hook_transporter",
     task_id="hook_transporter",
     get_logs=True,
@@ -185,7 +190,7 @@ hook_predator = SuperKubernetesPodOperator(
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="example.io/namespace/predator-image:latest",
     cmds=["/bin/sh"],
-    arguments=["-c", "set -o allexport; source " + PATH_ENV + "; set +o allexport; printenv; set -o allexport; source " + PATH_SECRET + "; set +o allexport; " + """predator ${SUB_COMMAND} -s ${PREDATOR_URL} -u "${BQ_PROJECT}.${BQ_DATASET}.${BQ_TABLE}" """],
+    arguments=["-c", get_entrypoint_cmd("""predator ${SUB_COMMAND} -s ${PREDATOR_URL} -u "${BQ_PROJECT}.${BQ_DATASET}.${BQ_TABLE}" """)],
     name="hook_predator",
     task_id="hook_predator",
     get_logs=True,
@@ -218,7 +223,7 @@ hook_failureHook = SuperKubernetesPodOperator(
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="example.io/namespace/failure-hook-image:latest",
     cmds=["/bin/sh"],
-    arguments=["-c", "set -o allexport; source " + PATH_ENV + "; set +o allexport; printenv; set -o allexport; source " + PATH_SECRET + "; set +o allexport; " + """sleep 5 """],
+    arguments=["-c", get_entrypoint_cmd("""sleep 5 """)],
     name="hook_failureHook",
     task_id="hook_failureHook",
     get_logs=True,
