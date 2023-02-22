@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -16,7 +17,7 @@ import (
 
 const (
 	columnsToStore = `job_name, namespace_name, project_name, scheduled_at, start_time, end_time, status, sla_definition, sla_alert`
-	jobRunColumns  = `id, ` + columnsToStore
+	jobRunColumns  = `id, ` + columnsToStore + `, monitoring`
 )
 
 type JobRunRepository struct {
@@ -40,6 +41,8 @@ type jobRun struct {
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
+
+	Monitoring json.RawMessage
 }
 
 func (j jobRun) toJobRun() (*scheduler.JobRun, error) {
@@ -51,14 +54,21 @@ func (j jobRun) toJobRun() (*scheduler.JobRun, error) {
 	if err != nil {
 		return nil, errors.AddErrContext(err, scheduler.EntityJobRun, "invalid job run state in database")
 	}
+	var monitoring map[string]any
+	if j.Monitoring != nil {
+		if err := json.Unmarshal(j.Monitoring, &monitoring); err != nil {
+			return nil, errors.AddErrContext(err, scheduler.EntityJobRun, "invalid monitoring values in database")
+		}
+	}
 	return &scheduler.JobRun{
-		ID:        j.ID,
-		JobName:   scheduler.JobName(j.JobName),
-		Tenant:    t,
-		State:     state,
-		StartTime: j.StartTime,
-		SLAAlert:  j.SLAAlert,
-		EndTime:   j.EndTime,
+		ID:         j.ID,
+		JobName:    scheduler.JobName(j.JobName),
+		Tenant:     t,
+		State:      state,
+		StartTime:  j.StartTime,
+		SLAAlert:   j.SLAAlert,
+		EndTime:    j.EndTime,
+		Monitoring: monitoring,
 	}, nil
 }
 
@@ -67,7 +77,7 @@ func (j *JobRunRepository) GetByID(ctx context.Context, id scheduler.JobRunID) (
 	getJobRunByID := `SELECT ` + jobRunColumns + ` FROM job_run where id = $1`
 	err := j.db.QueryRow(ctx, getJobRunByID, id.UUID()).
 		Scan(&jr.ID, &jr.JobName, &jr.NamespaceName, &jr.ProjectName, &jr.ScheduledAt, &jr.StartTime, &jr.EndTime,
-			&jr.Status, &jr.SLADefinition, &jr.SLAAlert)
+			&jr.Status, &jr.SLADefinition, &jr.SLAAlert, &jr.Monitoring)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +89,7 @@ func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t tenant.Tenant
 	getJobRunByID := `SELECT ` + jobRunColumns + `, created_at FROM job_run j where project_name = $1 and namespace_name = $2 and job_name = $3 and scheduled_at = $4 order by created_at desc limit 1`
 	err := j.db.QueryRow(ctx, getJobRunByID, t.ProjectName(), t.NamespaceName(), jobName, scheduledAt).
 		Scan(&jr.ID, &jr.JobName, &jr.NamespaceName, &jr.ProjectName, &jr.ScheduledAt, &jr.StartTime, &jr.EndTime,
-			&jr.Status, &jr.SLADefinition, &jr.SLAAlert, &jr.CreatedAt)
+			&jr.Status, &jr.SLADefinition, &jr.SLAAlert, &jr.Monitoring, &jr.CreatedAt)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -108,6 +118,16 @@ func (j *JobRunRepository) UpdateSLA(ctx context.Context, slaObjects []*schedule
 	query := "update job_run set sla_alert = True, updated_at = NOW() where (job_name, scheduled_at) IN (" + jobIDListString + ")"
 	_, err := j.db.Exec(ctx, query)
 	return errors.WrapIfErr(scheduler.EntityJobRun, "unable to update SLA", err)
+}
+
+func (j *JobRunRepository) UpdateMonitoring(ctx context.Context, jobRunID uuid.UUID, monitoringValues map[string]any) error {
+	monitoringBytes, err := json.Marshal(monitoringValues)
+	if err != nil {
+		return errors.Wrap(scheduler.EntityJobRun, "error marshalling monitoring values", err)
+	}
+	query := `update job_run set monitoring = $1 where id = $2`
+	_, err = j.db.Exec(ctx, query, monitoringBytes, jobRunID)
+	return errors.WrapIfErr(scheduler.EntityJobRun, "cannot update monitoring", err)
 }
 
 func (j *JobRunRepository) Create(ctx context.Context, t tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error {
