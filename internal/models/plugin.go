@@ -118,6 +118,11 @@ func validateYamlPluginInfo(info *plugin.Info) error {
 		return errors.New("plugin version cannot be empty")
 	}
 
+	// entrypoint is a required field
+	if info.Entrypoint == "" {
+		return errors.New("entrypoint cannot be empty")
+	}
+
 	switch info.PluginType {
 	case plugin.TypeTask:
 	case plugin.TypeHook:
