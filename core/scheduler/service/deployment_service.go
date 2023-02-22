@@ -27,7 +27,7 @@ func setJobMetric(t tenant.Tenant, jobs []*scheduler.JobWithDetails) {
 	}
 	totalJobsMetricMap[totalJobsMetricKey].Set(float64(len(jobs)))
 
-	//this can be greatly simplified using a db query
+	// this can be greatly simplified using a db query
 	type counter struct {
 		Inferred int
 		Static   int

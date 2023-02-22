@@ -103,14 +103,14 @@ type Event struct {
 	SLAObjectList  []*SLAObject
 }
 
-func (incomingEvent JobEventType) IsOfType(category JobEventCategory) bool {
+func (event JobEventType) IsOfType(category JobEventCategory) bool {
 	switch category {
 	case EventCategoryJobFailure:
-		if incomingEvent == JobFailureEvent {
+		if event == JobFailureEvent {
 			return true
 		}
 	case EventCategorySLAMiss:
-		if incomingEvent == SLAMissEvent {
+		if event == SLAMissEvent {
 			return true
 		}
 	}

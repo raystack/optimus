@@ -328,7 +328,6 @@ func (s JobRunService) updateOperatorRun(ctx context.Context, event scheduler.Ev
 	err = s.operatorRunRepo.UpdateOperatorRun(ctx, operatorType, operatorRun.ID, event.EventTime, event.Status)
 	if err != nil {
 		return err
-
 	}
 	var metricLable metricType
 	switch operatorType {
