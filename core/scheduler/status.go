@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"sort"
 	"strings"
 	"time"
 
@@ -51,9 +52,11 @@ func (j State) String() string {
 type JobRunStatus struct {
 	ScheduledAt time.Time
 	State       State
+
+	LogicalTime time.Time
 }
 
-func JobRunStatusFrom(scheduledAt time.Time, state string) (JobRunStatus, error) {
+func JobRunStatusFrom(scheduledAt time.Time, state string, logicalTime time.Time) (JobRunStatus, error) {
 	runState, err := StateFromString(state)
 	if err != nil {
 		return JobRunStatus{}, err
@@ -62,7 +65,32 @@ func JobRunStatusFrom(scheduledAt time.Time, state string) (JobRunStatus, error)
 	return JobRunStatus{
 		ScheduledAt: scheduledAt,
 		State:       runState,
+		LogicalTime: logicalTime,
 	}, nil
+}
+
+func (j JobRunStatus) GetExecutionTime(jobCron *cron.ScheduleSpec) time.Time {
+	return jobCron.Prev(j.ScheduledAt)
+}
+
+type JobRunStatusList []*JobRunStatus
+
+func (j JobRunStatusList) GetSortedRunsByStates(states []State) []*JobRunStatus {
+	stateMap := make(map[State]bool, len(states))
+	for _, state := range states {
+		stateMap[state] = true
+	}
+
+	var result []*JobRunStatus
+	for _, run := range j {
+		if stateMap[run.State] {
+			result = append(result, run)
+		}
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ScheduledAt.Before(result[j].ScheduledAt)
+	})
+	return result
 }
 
 // JobRunsCriteria represents the filter condition to get run status from scheduler

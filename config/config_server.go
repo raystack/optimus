@@ -1,5 +1,7 @@
 package config
 
+import "time"
+
 type ServerConfig struct {
 	Version          Version           `mapstructure:"version"`
 	Log              LogConfig         `mapstructure:"log"`
@@ -8,6 +10,7 @@ type ServerConfig struct {
 	Telemetry        TelemetryConfig   `mapstructure:"telemetry"`
 	ResourceManagers []ResourceManager `mapstructure:"resource_managers"`
 	Plugin           PluginConfig      `mapstructure:"plugin"`
+	Replay           ReplayConfig      `mapstructure:"replay"`
 }
 
 type Serve struct {
@@ -52,4 +55,9 @@ type ResourceManagerConfigOptimus struct {
 
 type PluginConfig struct {
 	Artifacts []string `mapstructure:"artifacts"`
+}
+
+// TODO: add worker interval
+type ReplayConfig struct {
+	WorkerTimeout time.Duration `mapstructure:"worker_timeout" default:"120s"`
 }

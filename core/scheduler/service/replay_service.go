@@ -13,6 +13,8 @@ import (
 
 type ReplayRepository interface {
 	RegisterReplay(ctx context.Context, replay *scheduler.Replay) (uuid.UUID, error)
+	GetReplaysToExecute(context.Context) ([]*scheduler.StoredReplay, error)
+	UpdateReplay(ctx context.Context, replayID uuid.UUID, state scheduler.ReplayState, runs []*scheduler.JobRunStatus, message string) error
 }
 
 type ReplayValidator interface {
@@ -39,6 +41,7 @@ func (r ReplayService) CreateReplay(ctx context.Context, tenant tenant.Tenant, j
 		return uuid.Nil, err
 	}
 
+	// TODO: are we expecting users to fill start time & end time of execution/scheduled?
 	jobCron, err := cron.ParseCronSchedule(subjectJob.Schedule.Interval)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("unable to parse job cron interval: %w", err)

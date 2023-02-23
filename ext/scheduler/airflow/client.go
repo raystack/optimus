@@ -122,7 +122,7 @@ func getJobRuns(res DagRunListResponse, spec *cron.ScheduleSpec) ([]*scheduler.J
 	for _, dag := range res.DagRuns {
 		if !dag.ExternalTrigger { // only include scheduled runs
 			scheduledAt := spec.Next(dag.ExecutionDate)
-			jobRunStatus, _ := scheduler.JobRunStatusFrom(scheduledAt, dag.State)
+			jobRunStatus, _ := scheduler.JobRunStatusFrom(scheduledAt, dag.State, dag.ExecutionDate)
 			// use multi error to collect errors and proceed
 			jobRunList = append(jobRunList, &jobRunStatus)
 		}

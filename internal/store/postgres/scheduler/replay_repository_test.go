@@ -44,4 +44,8 @@ func TestPostgresSchedulerRepository(t *testing.T) {
 			assert.NotNil(t, replayID)
 		})
 	})
+
+	t.Run("GetReplaysToExecute", func(t *testing.T) {
+
+	})
 }

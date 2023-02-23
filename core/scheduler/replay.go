@@ -1,6 +1,8 @@
 package scheduler
 
 import (
+	"github.com/google/uuid"
+	"sort"
 	"strings"
 	"time"
 
@@ -11,9 +13,10 @@ import (
 const (
 	ReplayStateCreated ReplayState = "created"
 
-	ReplayStateInProgress ReplayState = "in progress"
-	ReplayStateInvalid    ReplayState = "invalid"
-	ReplayStateReplayed   ReplayState = "replayed"
+	ReplayStateInProgress      ReplayState = "in progress"
+	ReplayStateInvalid         ReplayState = "invalid"
+	ReplayStatePartialReplayed ReplayState = "partial replayed"
+	ReplayStateReplayed        ReplayState = "replayed"
 
 	ReplayStateSuccess ReplayState = "success"
 	ReplayStateFailed  ReplayState = "failed"
@@ -29,6 +32,8 @@ func ReplayStateFromString(state string) (ReplayState, error) {
 		return ReplayStateInProgress, nil
 	case string(ReplayStateInvalid):
 		return ReplayStateInvalid, nil
+	case string(ReplayStatePartialReplayed):
+		return ReplayStatePartialReplayed, nil
 	case string(ReplayStateReplayed):
 		return ReplayStateReplayed, nil
 	case string(ReplayStateSuccess):
@@ -57,6 +62,29 @@ type Replay struct {
 
 func NewReplay(jobName JobName, tenant tenant.Tenant, config *ReplayConfig, runs []*JobRunStatus, state ReplayState) *Replay {
 	return &Replay{JobName: jobName, Tenant: tenant, Config: config, Runs: runs, State: state}
+}
+
+func (r Replay) GetFirstExecutableRun() *JobRunStatus {
+	sort.Slice(r.Runs, func(i, j int) bool {
+		return r.Runs[i].ScheduledAt.Before(r.Runs[j].ScheduledAt)
+	})
+	return r.Runs[0]
+}
+
+func (r Replay) GetLastExecutableRun() *JobRunStatus {
+	sort.Slice(r.Runs, func(i, j int) bool {
+		return r.Runs[i].ScheduledAt.After(r.Runs[j].ScheduledAt)
+	})
+	return r.Runs[0]
+}
+
+type StoredReplay struct {
+	ID     uuid.UUID
+	Replay *Replay
+}
+
+func NewStoredReplay(ID uuid.UUID, replay *Replay) *StoredReplay {
+	return &StoredReplay{ID: ID, Replay: replay}
 }
 
 type ReplayConfig struct {
