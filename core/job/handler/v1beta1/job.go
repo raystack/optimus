@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/odpf/salt/log"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/odpf/optimus/core/job"
@@ -17,6 +20,21 @@ import (
 	"github.com/odpf/optimus/internal/writer"
 	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 	"github.com/odpf/optimus/sdk/plugin"
+)
+
+var (
+	jobReplaceAllDurationGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "jobs_replace_all_duration_in_seconds",
+		Help: "The duration of job replace all in seconds",
+	})
+	jobRefreshDurationGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "jobs_refresh_duration_in_seconds",
+		Help: "The duration of job refresh in seconds",
+	})
+	jobValidationDurationGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "jobs_validation_duration_in_seconds",
+		Help: "The duration of job validation in seconds",
+	})
 )
 
 type JobHandler struct {
@@ -271,6 +289,8 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 		}
 
 		responseWriter.Write(writer.LogLevelInfo, fmt.Sprintf("[%s] received %d job specs", request.GetNamespaceName(), len(request.GetJobs())))
+		jh.l.Info("replacing all job specifications for project [%s] namespace [%s]", request.GetProjectName(), request.GetNamespaceName())
+		startTime := time.Now()
 
 		jobTenant, err := tenant.NewTenant(request.ProjectName, request.NamespaceName)
 		if err != nil {
@@ -298,6 +318,10 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 			errNamespaces = append(errNamespaces, request.NamespaceName)
 			errMessages = append(errMessages, errMsg)
 		}
+
+		processDuration := time.Since(startTime)
+		jh.l.Info("finished replacing all job specifications for project [%s] namespace [%s], took %s", request.GetProjectName(), request.GetNamespaceName(), processDuration)
+		jobReplaceAllDurationGauge.Set(processDuration.Seconds())
 	}
 	if len(errNamespaces) > 0 {
 		errMessageSummary := strings.Join(errMessages, "\n")
@@ -310,6 +334,14 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 }
 
 func (jh *JobHandler) RefreshJobs(request *pb.RefreshJobsRequest, stream pb.JobSpecificationService_RefreshJobsServer) error {
+	jh.l.Info("refreshing jobs for project [%s]", request.GetProjectName())
+	startTime := time.Now()
+	defer func() {
+		processDuration := time.Since(startTime)
+		jobRefreshDurationGauge.Set(processDuration.Seconds())
+		jh.l.Info("finished refreshing jobs for project [%s], took %s", request.GetProjectName(), processDuration)
+	}()
+
 	responseWriter := writer.NewRefreshJobResponseWriter(stream)
 
 	projectName, err := tenant.ProjectNameFrom(request.ProjectName)
@@ -331,6 +363,9 @@ func (jh *JobHandler) RefreshJobs(request *pb.RefreshJobsRequest, stream pb.JobS
 }
 
 func (jh *JobHandler) CheckJobSpecifications(req *pb.CheckJobSpecificationsRequest, stream pb.JobSpecificationService_CheckJobSpecificationsServer) error {
+	jh.l.Info("validating jobs for project [%s] namespace [%s]", req.GetProjectName(), req.GetNamespaceName())
+	startTime := time.Now()
+
 	responseWriter := writer.NewCheckJobSpecificationResponseWriter(stream)
 	jobTenant, err := tenant.NewTenant(req.ProjectName, req.NamespaceName)
 	if err != nil {
@@ -348,6 +383,11 @@ func (jh *JobHandler) CheckJobSpecifications(req *pb.CheckJobSpecificationsReque
 	if err := jh.jobService.Validate(stream.Context(), jobTenant, jobSpecs, responseWriter); err != nil {
 		me.Append(err)
 	}
+
+	processDuration := time.Since(startTime)
+	jobValidationDurationGauge.Set(processDuration.Seconds())
+
+	jh.l.Info("finished validating jobs for project [%s] namespace [%s], took %s", req.GetProjectName(), req.GetNamespaceName(), processDuration)
 
 	return errors.MultiToError(me)
 }

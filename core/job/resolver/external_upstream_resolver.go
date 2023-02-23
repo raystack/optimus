@@ -66,6 +66,10 @@ func (e *extUpstreamResolver) Resolve(ctx context.Context, jobWithUpstream *job.
 }
 
 func (e *extUpstreamResolver) BulkResolve(ctx context.Context, jobsWithUpstream []*job.WithUpstream, lw writer.LogWriter) ([]*job.WithUpstream, error) {
+	if len(e.optimusResourceManagers) == 0 {
+		return jobsWithUpstream, nil
+	}
+
 	me := errors.NewMultiError("external upstream resolution errors")
 
 	var jobsWithAllUpstream []*job.WithUpstream

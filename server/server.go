@@ -23,6 +23,8 @@ import (
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
@@ -44,9 +46,6 @@ func checkRequiredConfigs(conf config.Serve) error {
 	errRequiredMissing := errors.New("required config missing")
 	if conf.IngressHost == "" {
 		return fmt.Errorf("serve.ingress_host: %w", errRequiredMissing)
-	}
-	if conf.Replay.NumWorkers < 1 {
-		return fmt.Errorf("%s should be greater than 0", config.KeyServeReplayNumWorkers)
 	}
 	if conf.DB.DSN == "" {
 		return fmt.Errorf("serve.db.dsn: %w", errRequiredMissing)
@@ -95,6 +94,11 @@ func setupGRPCServer(l log.Logger) (*grpc.Server, error) {
 		grpc.MaxSendMsgSize(GRPCMaxSendMsgSize),
 	}
 	grpcServer := grpc.NewServer(grpcOpts...)
+
+	hsrv := health.NewServer()
+	hsrv.SetServingStatus("Optimus", healthpb.HealthCheckResponse_SERVING)
+	healthpb.RegisterHealthServer(grpcServer, hsrv)
+
 	reflection.Register(grpcServer)
 	return grpcServer, nil
 }
@@ -168,8 +172,8 @@ func prepareHTTPProxy(grpcAddr string, grpcServer *grpc.Server) (*http.Server, f
 		Handler:      grpcHandlerFunc(grpcServer, baseMux),
 		Addr:         grpcAddr,
 		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 60 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		WriteTimeout: 30 * time.Minute, // FIXME: Creating issues for grpc connection
+		IdleTimeout:  5 * time.Minute,
 	}
 
 	return srv, cleanup, nil

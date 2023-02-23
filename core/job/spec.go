@@ -85,14 +85,7 @@ type SpecBuilder struct {
 	spec *Spec
 }
 
-func NewSpecBuilder(
-	version int,
-	name Name,
-	owner string,
-	schedule *Schedule,
-	window models.Window,
-	task Task,
-) *SpecBuilder {
+func NewSpecBuilder(version int, name Name, owner string, schedule *Schedule, window models.Window, task Task) *SpecBuilder {
 	return &SpecBuilder{
 		spec: &Spec{
 			version:  version,
@@ -116,59 +109,38 @@ func (s *SpecBuilder) Build() (*Spec, error) {
 }
 
 func (s *SpecBuilder) WithHooks(hooks []*Hook) *SpecBuilder {
-	spec := *s.spec
-	spec.hooks = hooks
-	return &SpecBuilder{
-		spec: &spec,
-	}
+	s.spec.hooks = hooks
+	return s
 }
 
 func (s *SpecBuilder) WithAlerts(alerts []*AlertSpec) *SpecBuilder {
-	spec := *s.spec
-	spec.alertSpecs = alerts
-	return &SpecBuilder{
-		spec: &spec,
-	}
+	s.spec.alertSpecs = alerts
+	return s
 }
 
 func (s *SpecBuilder) WithSpecUpstream(specUpstream *UpstreamSpec) *SpecBuilder {
-	spec := *s.spec
-	spec.upstreamSpec = specUpstream
-	return &SpecBuilder{
-		spec: &spec,
-	}
+	s.spec.upstreamSpec = specUpstream
+	return s
 }
 
 func (s *SpecBuilder) WithAsset(asset Asset) *SpecBuilder {
-	spec := *s.spec
-	spec.asset = asset
-	return &SpecBuilder{
-		spec: &spec,
-	}
+	s.spec.asset = asset
+	return s
 }
 
 func (s *SpecBuilder) WithMetadata(metadata *Metadata) *SpecBuilder {
-	spec := *s.spec
-	spec.metadata = metadata
-	return &SpecBuilder{
-		spec: &spec,
-	}
+	s.spec.metadata = metadata
+	return s
 }
 
 func (s *SpecBuilder) WithLabels(labels map[string]string) *SpecBuilder {
-	spec := *s.spec
-	spec.labels = labels
-	return &SpecBuilder{
-		spec: &spec,
-	}
+	s.spec.labels = labels
+	return s
 }
 
 func (s *SpecBuilder) WithDescription(description string) *SpecBuilder {
-	spec := *s.spec
-	spec.description = description
-	return &SpecBuilder{
-		spec: &spec,
-	}
+	s.spec.description = description
+	return s
 }
 
 type Specs []*Spec
@@ -279,51 +251,36 @@ func NewScheduleBuilder(startDate ScheduleDate) *ScheduleBuilder {
 	}
 }
 
-func (s ScheduleBuilder) Build() (*Schedule, error) {
+func (s *ScheduleBuilder) Build() (*Schedule, error) {
 	if s.schedule.startDate == "" {
 		return nil, errors.InvalidArgument(EntityJob, "start date is empty")
 	}
 	return s.schedule, nil
 }
 
-func (s ScheduleBuilder) WithInterval(interval string) *ScheduleBuilder {
-	schedule := *s.schedule
-	schedule.interval = interval
-	return &ScheduleBuilder{
-		schedule: &schedule,
-	}
+func (s *ScheduleBuilder) WithInterval(interval string) *ScheduleBuilder {
+	s.schedule.interval = interval
+	return s
 }
 
-func (s ScheduleBuilder) WithEndDate(endDate ScheduleDate) *ScheduleBuilder {
-	schedule := *s.schedule
-	schedule.endDate = endDate
-	return &ScheduleBuilder{
-		schedule: &schedule,
-	}
+func (s *ScheduleBuilder) WithEndDate(endDate ScheduleDate) *ScheduleBuilder {
+	s.schedule.endDate = endDate
+	return s
 }
 
-func (s ScheduleBuilder) WithDependsOnPast(dependsOnPast bool) *ScheduleBuilder {
-	schedule := *s.schedule
-	schedule.dependsOnPast = dependsOnPast
-	return &ScheduleBuilder{
-		schedule: &schedule,
-	}
+func (s *ScheduleBuilder) WithDependsOnPast(dependsOnPast bool) *ScheduleBuilder {
+	s.schedule.dependsOnPast = dependsOnPast
+	return s
 }
 
-func (s ScheduleBuilder) WithCatchUp(catchUp bool) *ScheduleBuilder {
-	schedule := *s.schedule
-	schedule.catchUp = catchUp
-	return &ScheduleBuilder{
-		schedule: &schedule,
-	}
+func (s *ScheduleBuilder) WithCatchUp(catchUp bool) *ScheduleBuilder {
+	s.schedule.catchUp = catchUp
+	return s
 }
 
-func (s ScheduleBuilder) WithRetry(retry *Retry) *ScheduleBuilder {
-	schedule := *s.schedule
-	schedule.retry = retry
-	return &ScheduleBuilder{
-		schedule: &schedule,
-	}
+func (s *ScheduleBuilder) WithRetry(retry *Retry) *ScheduleBuilder {
+	s.schedule.retry = retry
+	return s
 }
 
 type Config map[string]string
@@ -357,26 +314,16 @@ type Task struct {
 	config Config
 }
 
+func NewTask(name TaskName, config Config) Task {
+	return Task{name: name, config: config}
+}
+
 func (t Task) Name() TaskName {
 	return t.name
 }
 
 func (t Task) Config() Config {
 	return t.config
-}
-
-type TaskBuilder struct {
-	task Task
-}
-
-func NewTaskBuilder(name TaskName, config Config) *TaskBuilder {
-	return &TaskBuilder{
-		task: Task{name: name, config: config},
-	}
-}
-
-func (t TaskBuilder) Build() Task {
-	return t.task
 }
 
 type MetadataResourceConfig struct {
@@ -440,27 +387,21 @@ func NewMetadataBuilder() *MetadataBuilder {
 	}
 }
 
-func (m MetadataBuilder) Build() (*Metadata, error) {
+func (m *MetadataBuilder) Build() (*Metadata, error) {
 	if err := m.metadata.validate(); err != nil {
 		return nil, err
 	}
 	return m.metadata, nil
 }
 
-func (m MetadataBuilder) WithResource(resource *MetadataResource) *MetadataBuilder {
-	metadata := *m.metadata
-	metadata.resource = resource
-	return &MetadataBuilder{
-		metadata: &metadata,
-	}
+func (m *MetadataBuilder) WithResource(resource *MetadataResource) *MetadataBuilder {
+	m.metadata.resource = resource
+	return m
 }
 
-func (m MetadataBuilder) WithScheduler(scheduler map[string]string) *MetadataBuilder {
-	metadata := *m.metadata
-	metadata.scheduler = scheduler
-	return &MetadataBuilder{
-		metadata: &metadata,
-	}
+func (m *MetadataBuilder) WithScheduler(scheduler map[string]string) *MetadataBuilder {
+	m.metadata.scheduler = scheduler
+	return m
 }
 
 type Hook struct {
@@ -508,6 +449,17 @@ type AlertSpec struct {
 	config   Config
 }
 
+func NewAlertSpec(on string, channels []string, config Config) (*AlertSpec, error) {
+	if err := validateMap(config); err != nil {
+		return nil, err
+	}
+	return &AlertSpec{
+		on:       on,
+		channels: channels,
+		config:   config,
+	}, nil
+}
+
 func (a AlertSpec) On() string {
 	return a.on
 }
@@ -518,43 +470,6 @@ func (a AlertSpec) Channels() []string {
 
 func (a AlertSpec) Config() Config {
 	return a.config
-}
-
-func (a AlertSpec) validate() error {
-	if a.config != nil {
-		if err := validateMap(a.config); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-type AlertBuilder struct {
-	alert *AlertSpec
-}
-
-func NewAlertBuilder(on string, channels []string) *AlertBuilder {
-	return &AlertBuilder{
-		alert: &AlertSpec{
-			on:       on,
-			channels: channels,
-		},
-	}
-}
-
-func (a AlertBuilder) Build() (*AlertSpec, error) {
-	if err := a.alert.validate(); err != nil {
-		return nil, err
-	}
-	return a.alert, nil
-}
-
-func (a AlertBuilder) WithConfig(config Config) *AlertBuilder {
-	alert := *a.alert
-	alert.config = config
-	return &AlertBuilder{
-		alert: &alert,
-	}
 }
 
 // TODO: reconsider whether we still need it or not
@@ -601,27 +516,21 @@ func NewSpecHTTPUpstreamBuilder(name string, url string) *SpecHTTPUpstreamBuilde
 	}
 }
 
-func (s SpecHTTPUpstreamBuilder) Build() (*SpecHTTPUpstream, error) {
+func (s *SpecHTTPUpstreamBuilder) Build() (*SpecHTTPUpstream, error) {
 	if err := s.upstream.validate(); err != nil {
 		return nil, err
 	}
 	return s.upstream, nil
 }
 
-func (s SpecHTTPUpstreamBuilder) WithHeaders(headers map[string]string) *SpecHTTPUpstreamBuilder {
-	upstream := *s.upstream
-	upstream.headers = headers
-	return &SpecHTTPUpstreamBuilder{
-		upstream: &upstream,
-	}
+func (s *SpecHTTPUpstreamBuilder) WithHeaders(headers map[string]string) *SpecHTTPUpstreamBuilder {
+	s.upstream.headers = headers
+	return s
 }
 
-func (s SpecHTTPUpstreamBuilder) WithParams(params map[string]string) *SpecHTTPUpstreamBuilder {
-	upstream := *s.upstream
-	upstream.params = params
-	return &SpecHTTPUpstreamBuilder{
-		upstream: &upstream,
-	}
+func (s *SpecHTTPUpstreamBuilder) WithParams(params map[string]string) *SpecHTTPUpstreamBuilder {
+	s.upstream.params = params
+	return s
 }
 
 type SpecUpstreamName string
@@ -685,27 +594,21 @@ func NewSpecUpstreamBuilder() *SpecUpstreamBuilder {
 	}
 }
 
-func (s SpecUpstreamBuilder) Build() (*UpstreamSpec, error) {
+func (s *SpecUpstreamBuilder) Build() (*UpstreamSpec, error) {
 	if err := s.upstream.validate(); err != nil {
 		return nil, err
 	}
 	return s.upstream, nil
 }
 
-func (s SpecUpstreamBuilder) WithUpstreamNames(names []SpecUpstreamName) *SpecUpstreamBuilder {
-	upstream := *s.upstream
-	upstream.upstreamNames = names
-	return &SpecUpstreamBuilder{
-		upstream: &upstream,
-	}
+func (s *SpecUpstreamBuilder) WithUpstreamNames(names []SpecUpstreamName) *SpecUpstreamBuilder {
+	s.upstream.upstreamNames = names
+	return s
 }
 
-func (s SpecUpstreamBuilder) WithSpecHTTPUpstream(httpUpstreams []*SpecHTTPUpstream) *SpecUpstreamBuilder {
-	upstream := *s.upstream
-	upstream.httpUpstreams = httpUpstreams
-	return &SpecUpstreamBuilder{
-		upstream: &upstream,
-	}
+func (s *SpecUpstreamBuilder) WithSpecHTTPUpstream(httpUpstreams []*SpecHTTPUpstream) *SpecUpstreamBuilder {
+	s.upstream.httpUpstreams = httpUpstreams
+	return s
 }
 
 func NewLabels(labels map[string]string) (map[string]string, error) {

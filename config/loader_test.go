@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	saltConfig "github.com/odpf/salt/config"
 	"github.com/spf13/afero"
@@ -45,13 +44,6 @@ serve:
   host: localhost
   ingress_host: optimus.example.io:80
   app_key: Yjo4a0jn1NvYdq79SADC/KaVv9Wu0Ffc
-  replay:
-    num_workers: 1
-    worker_timeout: "100s"
-    run_timeout: "10s"
-  deployer:
-    num_workers: 1
-    worker_timeout: "100s"
   db:
     dsn: postgres://user:password@localhost:5432/database?sslmode=disable
     max_idle_connection: 5
@@ -263,12 +255,6 @@ func (s *ConfigTestSuite) initExpectedServerConfig() {
 	s.expectedServerConfig.Serve.Host = "localhost"
 	s.expectedServerConfig.Serve.IngressHost = "optimus.example.io:80"
 	s.expectedServerConfig.Serve.AppKey = "Yjo4a0jn1NvYdq79SADC/KaVv9Wu0Ffc"
-	s.expectedServerConfig.Serve.Replay.NumWorkers = 1
-	s.expectedServerConfig.Serve.Replay.WorkerTimeout = 100 * time.Second
-	s.expectedServerConfig.Serve.Replay.RunTimeout = 10 * time.Second
-	s.expectedServerConfig.Serve.Deployer.NumWorkers = 1
-	s.expectedServerConfig.Serve.Deployer.WorkerTimeout = 100 * time.Second
-	s.expectedServerConfig.Serve.Deployer.QueueCapacity = 10
 	s.expectedServerConfig.Serve.DB = config.DBConfig{}
 	s.expectedServerConfig.Serve.DB.DSN = "postgres://user:password@localhost:5432/database?sslmode=disable"
 	s.expectedServerConfig.Serve.DB.MinOpenConnection = 5
@@ -301,9 +287,6 @@ func (*ConfigTestSuite) initServerConfigEnv() {
 	os.Setenv("OPTIMUS_SERVE_HOST", "localhost")
 	os.Setenv("OPTIMUS_SERVE_INGRESS_HOST", "optimus.example.io:80")
 	os.Setenv("OPTIMUS_SERVE_APP_KEY", "Yjo4a0jn1NvYdq79SADC/KaVv9Wu0Ffc")
-	os.Setenv("OPTIMUS_SERVE_REPLAY_NUM_WORKERS", "1")
-	os.Setenv("OPTIMUS_SERVE_REPLAY_WORKER_TIMEOUT", "100s")
-	os.Setenv("OPTIMUS_SERVE_REPLAY_RUN_TIMEOUT", "10s")
 	os.Setenv("OPTIMUS_SERVE_DB_DSN", "postgres://user:password@localhost:5432/database?sslmode=disable")
 	os.Setenv("OPTIMUS_SERVE_DB_MAX_IDLE_CONNECTION", "5")
 	os.Setenv("OPTIMUS_SERVE_DB_MAX_OPEN_CONNECTION", "10")
@@ -324,9 +307,6 @@ func unsetServerConfigEnv() {
 	os.Unsetenv("OPTIMUS_SERVE_HOST")
 	os.Unsetenv("OPTIMUS_SERVE_INGRESS_HOST")
 	os.Unsetenv("OPTIMUS_SERVE_APP_KEY")
-	os.Unsetenv("OPTIMUS_SERVE_REPLAY_NUM_WORKERS")
-	os.Unsetenv("OPTIMUS_SERVE_REPLAY_WORKER_TIMEOUT")
-	os.Unsetenv("OPTIMUS_SERVE_REPLAY_RUN_TIMEOUT")
 	os.Unsetenv("OPTIMUS_SERVE_DB_DSN")
 	os.Unsetenv("OPTIMUS_SERVE_DB_MAX_IDLE_CONNECTION")
 	os.Unsetenv("OPTIMUS_SERVE_DB_MAX_OPEN_CONNECTION")

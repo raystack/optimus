@@ -91,7 +91,7 @@ func (r *Resource) UpdateURN(urn string) error {
 		return nil
 	}
 
-	return errors.InvalidArgument(EntityResource, "urn already present")
+	return errors.InvalidArgument(EntityResource, "urn already present for "+r.FullName())
 }
 
 func (r *Resource) Metadata() *Metadata {

@@ -66,7 +66,7 @@ type OptimusServer struct {
 }
 
 func New(conf config.ServerConfig) (*OptimusServer, error) {
-	addr := fmt.Sprintf("%s:%d", conf.Serve.Host, conf.Serve.Port)
+	addr := fmt.Sprintf(":%d", conf.Serve.Port)
 	server := &OptimusServer{
 		conf:       conf,
 		serverAddr: addr,
@@ -288,7 +288,7 @@ func (s *OptimusServer) setupHandlers() error {
 
 	// Job Bounded Context Setup
 	jJobRepo := jRepo.NewJobRepository(s.dbPool)
-	jPluginService := jService.NewJobPluginService(tSecretService, s.pluginRepo, newEngine, s.logger)
+	jPluginService := jService.NewJobPluginService(s.pluginRepo, newEngine, s.logger)
 	jExternalUpstreamResolver, _ := jResolver.NewExternalUpstreamResolver(s.conf.ResourceManagers)
 	jInternalUpstreamResolver := jResolver.NewInternalUpstreamResolver(jJobRepo)
 	jUpstreamResolver := jResolver.NewUpstreamResolver(jJobRepo, jExternalUpstreamResolver, jInternalUpstreamResolver)

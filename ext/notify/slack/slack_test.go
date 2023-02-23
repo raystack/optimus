@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/mux"
 	api "github.com/slack-go/slack"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -54,7 +53,7 @@ func TestSlack(t *testing.T) {
 	jobName := scheduler.JobName("foo-job-spec")
 	tnnt, _ := tenant.NewTenant(projectName, namespaceName)
 	t.Run("should send message to user using email address successfully", func(t *testing.T) {
-		muxRouter := mux.NewRouter()
+		muxRouter := http.NewServeMux()
 		server := httptest.NewServer(muxRouter)
 		muxRouter.HandleFunc("/users.lookupByEmail", func(rw http.ResponseWriter, r *http.Request) {
 			rw.Header().Set("Content-Type", "application/json")
@@ -107,7 +106,7 @@ func TestSlack(t *testing.T) {
 		assert.Nil(t, sendErrors)
 	})
 	t.Run("should send message to user groups successfully", func(t *testing.T) {
-		muxRouter := mux.NewRouter()
+		muxRouter := http.NewServeMux()
 		server := httptest.NewServer(muxRouter)
 		muxRouter.HandleFunc("/usergroups.list", func(rw http.ResponseWriter, r *http.Request) {
 			rw.Header().Set("Content-Type", "application/json")

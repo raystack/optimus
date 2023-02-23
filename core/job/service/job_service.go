@@ -263,7 +263,7 @@ func (j JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, spe
 	err = j.bulkDelete(ctx, jobTenant, toDelete, logWriter)
 	me.Append(err)
 
-	err = j.resolveAndSaveUpstreams(ctx, jobTenant.ProjectName(), logWriter, addedJobs, updatedJobs)
+	err = j.resolveAndSaveUpstreams(ctx, jobTenant, logWriter, addedJobs, updatedJobs)
 	me.Append(err)
 
 	return errors.MultiToError(me)
@@ -298,9 +298,11 @@ func (j JobService) Refresh(ctx context.Context, projectName tenant.ProjectName,
 		updatedJobs, err := j.bulkUpdate(ctx, tenantWithDetails, specs, logWriter)
 		me.Append(err)
 
+		j.logger.Debug("resolving upstreams for %d jobs of project [%s] namespace [%s]", len(updatedJobs), projectName, namespaceName)
 		jobsWithUpstreams, err := j.upstreamResolver.BulkResolve(ctx, projectName, updatedJobs, logWriter)
 		me.Append(err)
 
+		j.logger.Debug("replacing upstreams for %d jobs of project [%s] namespace [%s]", len(jobsWithUpstreams), projectName, namespaceName)
 		err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
 		me.Append(err)
 	}
@@ -371,7 +373,7 @@ func (j JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSp
 	return nil
 }
 
-func (j JobService) resolveAndSaveUpstreams(ctx context.Context, projectName tenant.ProjectName, logWriter writer.LogWriter, jobsToResolve ...[]*job.Job) error {
+func (j JobService) resolveAndSaveUpstreams(ctx context.Context, jobTenant tenant.Tenant, logWriter writer.LogWriter, jobsToResolve ...[]*job.Job) error {
 	var allJobsToResolve []*job.Job
 	for _, group := range jobsToResolve {
 		allJobsToResolve = append(allJobsToResolve, group...)
@@ -381,9 +383,12 @@ func (j JobService) resolveAndSaveUpstreams(ctx context.Context, projectName ten
 	}
 
 	me := errors.NewMultiError("resolve and save upstream errors")
-	jobsWithUpstreams, err := j.upstreamResolver.BulkResolve(ctx, projectName, allJobsToResolve, logWriter)
+
+	j.logger.Debug("resolving upstreams for %d jobs of project [%s] namespace [%s]", len(allJobsToResolve), jobTenant.ProjectName(), jobTenant.NamespaceName())
+	jobsWithUpstreams, err := j.upstreamResolver.BulkResolve(ctx, jobTenant.ProjectName(), allJobsToResolve, logWriter)
 	me.Append(err)
 
+	j.logger.Debug("replacing upstreams for %d jobs of project [%s] namespace [%s]", len(jobsWithUpstreams), jobTenant.ProjectName(), jobTenant.NamespaceName())
 	err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
 	me.Append(err)
 
@@ -391,6 +396,7 @@ func (j JobService) resolveAndSaveUpstreams(ctx context.Context, projectName ten
 }
 
 func (j JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.WithDetails, specsToAdd []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {
+	j.logger.Debug("adding %d jobs to project [%s] namespace [%s]", len(specsToAdd), tenantWithDetails.Project().Name(), tenantWithDetails.Namespace().Name())
 	me := errors.NewMultiError("bulk add specs errors")
 
 	jobsToAdd, err := j.generateJobs(ctx, tenantWithDetails, specsToAdd, logWriter)
@@ -415,6 +421,7 @@ func (j JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.WithD
 }
 
 func (j JobService) bulkUpdate(ctx context.Context, tenantWithDetails *tenant.WithDetails, specsToUpdate []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {
+	j.logger.Debug("updating %d jobs of project [%s] namespace [%s]", len(specsToUpdate), tenantWithDetails.Project().Name(), tenantWithDetails.Namespace().Name())
 	me := errors.NewMultiError("bulk update specs errors")
 
 	jobsToUpdate, err := j.generateJobs(ctx, tenantWithDetails, specsToUpdate, logWriter)
@@ -438,6 +445,7 @@ func (j JobService) bulkUpdate(ctx context.Context, tenantWithDetails *tenant.Wi
 }
 
 func (j JobService) bulkDelete(ctx context.Context, jobTenant tenant.Tenant, toDelete []*job.Spec, logWriter writer.LogWriter) error {
+	j.logger.Debug("deleting %d jobs of project [%s] namespace [%s]", len(toDelete), jobTenant.ProjectName(), jobTenant.NamespaceName())
 	me := errors.NewMultiError("bulk delete specs errors")
 	deletedJob := 0
 	for _, spec := range toDelete {

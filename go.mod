@@ -18,7 +18,6 @@ require (
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/golang-migrate/migrate/v4 v4.15.2
 	github.com/google/uuid v1.3.0
-	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.6.0
@@ -50,7 +49,7 @@ require (
 	go.opentelemetry.io/otel/exporters/jaeger v1.0.1
 	go.opentelemetry.io/otel/sdk v1.3.0
 	go.opentelemetry.io/otel/trace v1.7.0
-	go.uber.org/multierr v1.8.0
+	go.uber.org/automaxprocs v1.5.1
 	gocloud.dev v0.26.0
 	golang.org/x/net v0.0.0-20221014081412-f15817d10f9b
 	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783
@@ -147,6 +146,7 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/otel/metric v0.30.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
+	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/ratelimit v0.2.0 // indirect
 	go.uber.org/zap v1.21.0 // indirect
 	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90 // indirect

@@ -24,7 +24,7 @@ func TestEntitySpec(t *testing.T) {
 		Build()
 	jobWindow, _ := models.NewWindow(jobVersion, "d", "24h", "24h")
 	jobTaskConfig, _ := job.ConfigFrom(map[string]string{"sample_task_key": "sample_value"})
-	jobTask := job.NewTaskBuilder("bq2bq", jobTaskConfig).Build()
+	jobTask := job.NewTask("bq2bq", jobTaskConfig)
 	description := "sample description"
 	labels := map[string]string{"key": "value"}
 	hook, _ := job.NewHook("sample-hook", jobTaskConfig)
@@ -34,7 +34,7 @@ func TestEntitySpec(t *testing.T) {
 	httpUpstreamHeader := map[string]string{"header-key": "sample-header-val"}
 	httpUpstream, _ := job.NewSpecHTTPUpstreamBuilder("sample-name", "sample-url").WithParams(httpUpstreamConfig).WithHeaders(httpUpstreamHeader).Build()
 	specUpstream, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"job-d"}).WithSpecHTTPUpstream([]*job.SpecHTTPUpstream{httpUpstream}).Build()
-	alert, _ := job.NewAlertBuilder("sla_miss", []string{"sample-channel"}).WithConfig(jobAlertConfig).Build()
+	alert, _ := job.NewAlertSpec("sla_miss", []string{"sample-channel"}, jobAlertConfig)
 	assetMap := map[string]string{"key": "value"}
 	asset, _ := job.AssetFrom(assetMap)
 	resourceRequestConfig := job.NewMetadataResourceConfig("250m", "128Mi")

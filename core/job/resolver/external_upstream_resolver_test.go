@@ -29,12 +29,12 @@ func TestExternalUpstreamResolver(t *testing.T) {
 	jobWindow, _ := models.NewWindow(jobVersion, "d", "24h", "24h")
 	taskName, _ := job.TaskNameFrom("sample-task")
 	jobTaskConfig, _ := job.ConfigFrom(map[string]string{"sample_task_key": "sample_value"})
-	jobTask := job.NewTaskBuilder(taskName, jobTaskConfig).Build()
+	jobTask := job.NewTask(taskName, jobTaskConfig)
 	upstreamSpec, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"external-project/job-B"}).Build()
 	specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).WithSpecUpstream(upstreamSpec).Build()
 	jobA := job.NewJob(sampleTenant, specA, "", []job.ResourceURN{"resource-C"})
 
-	t.Run("Resolve", func(t *testing.T) {
+	t.Run("BulkResolve", func(t *testing.T) {
 		t.Run("resolves upstream externally", func(t *testing.T) {
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
@@ -95,6 +95,19 @@ func TestExternalUpstreamResolver(t *testing.T) {
 			result, err := extUpstreamResolver.BulkResolve(ctx, []*job.WithUpstream{jobWithUnresolvedUpstream}, logWriter)
 			assert.EqualValues(t, []*job.Upstream{unresolvedUpstreamB, unresolvedUpstreamC}, result[0].Upstreams())
 			assert.NotNil(t, err)
+		})
+		t.Run("skips resolves upstream externally if no external resource manager found", func(t *testing.T) {
+			logWriter := new(mockWriter)
+			defer logWriter.AssertExpectations(t)
+
+			unresolvedUpstreamB := job.NewUpstreamUnresolvedStatic("job-B", externalTenant.ProjectName())
+			unresolvedUpstreamC := job.NewUpstreamUnresolvedInferred("resource-C")
+			jobWithUnresolvedUpstream := job.NewWithUpstream(jobA, []*job.Upstream{unresolvedUpstreamB, unresolvedUpstreamC})
+
+			extUpstreamResolver := resolver.NewTestExternalUpstreamResolver(nil)
+			result, err := extUpstreamResolver.BulkResolve(ctx, []*job.WithUpstream{jobWithUnresolvedUpstream}, logWriter)
+			assert.Nil(t, err)
+			assert.EqualValues(t, jobWithUnresolvedUpstream, result[0])
 		})
 	})
 	t.Run("NewExternalUpstreamResolver", func(t *testing.T) {

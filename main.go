@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	_ "go.uber.org/automaxprocs"
+
 	clientCmd "github.com/odpf/optimus/client/cmd"
 	_ "github.com/odpf/optimus/client/extension/provider"
 	server "github.com/odpf/optimus/server/cmd"

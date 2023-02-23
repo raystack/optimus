@@ -27,7 +27,7 @@ type TenantService struct {
 }
 
 func (t TenantService) GetDetails(ctx context.Context, tnnt tenant.Tenant) (*tenant.WithDetails, error) {
-	if tnnt.ProjectName() == "" {
+	if tnnt.IsInvalid() {
 		return nil, errors.InvalidArgument(tenant.EntityTenant, "invalid tenant details provided")
 	}
 
@@ -41,7 +41,12 @@ func (t TenantService) GetDetails(ctx context.Context, tnnt tenant.Tenant) (*ten
 		return nil, err
 	}
 
-	return tenant.NewTenantDetails(proj, namespace)
+	secrets, err := t.secretsGetter.GetAll(ctx, tnnt.ProjectName(), tnnt.NamespaceName().String())
+	if err != nil {
+		return nil, err
+	}
+
+	return tenant.NewTenantDetails(proj, namespace, secrets)
 }
 
 func (t TenantService) GetProject(ctx context.Context, name tenant.ProjectName) (*tenant.Project, error) {

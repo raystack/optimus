@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	uploadAllTimeout = time.Minute * 30
+	uploadAllTimeout = time.Minute * 60
 )
 
 type uploadAllCommand struct {
