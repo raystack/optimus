@@ -18,7 +18,7 @@ import (
 
 const (
 	ISODateLayout         = "2006-01-02"
-	jobSpecDefaultVersion = 1
+	jobSpecDefaultVersion = 2
 )
 
 var (
