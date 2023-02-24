@@ -5,7 +5,7 @@ pluginmods:
   - cli
 pluginversion: ""
 image: ""
-secretpath: /tmp/auth.json
+entrypoint: "sleep 100"
 
 questions:
   - name: PROJECT
