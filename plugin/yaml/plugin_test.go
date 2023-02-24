@@ -16,6 +16,7 @@ import (
 type mockYamlMod struct {
 	Name          string
 	Image         string
+	Entrypoint    string
 	PluginVersion string
 	PluginType    string
 }
@@ -24,6 +25,7 @@ func (p *mockYamlMod) PluginInfo() *plugin.Info {
 	return &plugin.Info{
 		Name:          p.Name,
 		Image:         p.Image,
+		Entrypoint:    p.Entrypoint,
 		PluginVersion: p.PluginVersion,
 		PluginType:    plugin.Type(p.PluginType),
 	}
@@ -52,6 +54,7 @@ func TestYamlPlugin(t *testing.T) {
 		Name:          "bq2bqtest",
 		Description:   "Testing",
 		Image:         "docker.io/odpf/optimus-task-bq2bq-executor:latest",
+		Entrypoint:    "sleep 100",
 		PluginType:    "task",
 		PluginMods:    []plugin.Mod{"cli"},
 		PluginVersion: "latest",
@@ -170,6 +173,7 @@ func TestYamlPlugin(t *testing.T) {
 			err := repoWithBinayPlugin.AddYaml(&mockYamlMod{
 				Name:          testYamlPluginName,
 				Image:         "sdsd",
+				Entrypoint:    "sleep 100",
 				PluginVersion: "asdasd",
 				PluginType:    plugin.TypeTask.String(),
 			})
@@ -192,16 +196,28 @@ func TestYamlPlugin(t *testing.T) {
 			repoPlugins := repoWithBinayPlugin.GetAll()
 			assert.Len(t, repoPlugins, 1)
 		})
-		t.Run("should not load yaml plugin for invalid paths or yaml", func(t *testing.T) {
+		t.Run("should not load yaml plugin for invalid paths", func(t *testing.T) {
 			repo := models.NewPluginRepository()
-			invalidPluginPaths := []string{
-				"tests/notpresent.yaml",
-				"tests/sample_plugin_without_version.yaml",
-				"tests/sample_plugin_schema_invalid.yaml",
-			}
+			invalidPluginPaths := []string{"tests/notpresent.yaml"}
 			err := yaml.Init(repo, invalidPluginPaths, pluginLogger)
 			assert.Error(t, err)
 			assert.Empty(t, repo.GetAll())
+		})
+		t.Run("should not load yaml plugin for invalid yaml", func(t *testing.T) {
+			t.Run("version not present", func(t *testing.T) {
+				repo := models.NewPluginRepository()
+				invalidPluginPaths := []string{"tests/sample_plugin_without_version.yaml"}
+				err := yaml.Init(repo, invalidPluginPaths, pluginLogger)
+				assert.Error(t, err)
+				assert.Empty(t, repo.GetAll())
+			})
+			t.Run("schema invalid", func(t *testing.T) {
+				repo := models.NewPluginRepository()
+				invalidPluginPaths := []string{"tests/sample_plugin_schema_invalid.yaml"}
+				err := yaml.Init(repo, invalidPluginPaths, pluginLogger)
+				assert.Error(t, err)
+				assert.Empty(t, repo.GetAll())
+			})
 		})
 	})
 }
