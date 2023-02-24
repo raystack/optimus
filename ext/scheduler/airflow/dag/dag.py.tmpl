@@ -157,7 +157,7 @@ init_container = k8s.V1Container(
     depends_on_past={{ if .JobDetails.Schedule.DependsOnPast }}True{{- else -}}False{{- end -}},
     in_cluster=True,
     is_delete_operator_pod=True,
-    do_xcom_push=True,
+    do_xcom_push=False,
     env_vars=executor_env_vars,
     {{- if gt .SLAMissDuration 0 }}
     sla=timedelta(seconds={{ .SLAMissDuration }}),
@@ -204,7 +204,7 @@ hook_{{$hookName}} = SuperKubernetesPodOperator(
     dag=dag,
     in_cluster=True,
     is_delete_operator_pod=True,
-    do_xcom_push=True,
+    do_xcom_push=False,
     env_vars=executor_env_vars,
     {{- if $t.IsFailHook }}
     trigger_rule="one_failed",
