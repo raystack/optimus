@@ -3,16 +3,21 @@ package service
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/odpf/salt/log"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/lib/cron"
 )
+
+var counterMetrics = make(map[string]prometheus.Counter)
 
 type JobRepository interface {
 	GetJob(ctx context.Context, name tenant.ProjectName, jobName scheduler.JobName) (*scheduler.Job, error)
@@ -234,8 +239,36 @@ func (s JobRunService) updateJobRun(ctx context.Context, event scheduler.Event) 
 	if err := s.repo.Update(ctx, jobRun.ID, event.EventTime, event.Status); err != nil {
 		return err
 	}
+
 	monitoringValues := s.getMonitoringValues(event)
+	s.exposeNumericMonitoringMetrics(monitoringValues)
 	return s.repo.UpdateMonitoring(ctx, jobRun.ID, monitoringValues)
+}
+
+func (JobRunService) exposeNumericMonitoringMetrics(monitoringValues map[string]any) {
+	bitSize := 64
+	for key, value := range monitoringValues {
+		valueInFloat, err := strconv.ParseFloat(fmt.Sprintf("%v", value), bitSize)
+		if err != nil {
+			continue
+		}
+		if valueInFloat < 0 {
+			continue
+		}
+
+		metricKey := fmt.Sprintf("job_run_counter_%s", key)
+		if _, ok := counterMetrics[metricKey]; !ok {
+			counterMetrics[metricKey] = promauto.NewCounter(prometheus.CounterOpts{
+				Name: "job_run_counter",
+				Help: "It is a metric that shows the counter numbers related to job run",
+				ConstLabels: prometheus.Labels{
+					"name": key,
+				},
+			})
+		}
+		metric := counterMetrics[metricKey]
+		metric.Add(valueInFloat)
+	}
 }
 
 func (JobRunService) getMonitoringValues(event scheduler.Event) map[string]any {

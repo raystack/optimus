@@ -31,6 +31,8 @@ func TestJobRunService(t *testing.T) {
 	monitoring := map[string]any{
 		"slot_millis":           float64(5000),
 		"total_bytes_processed": float64(2500),
+		"job_duration_category": "long",
+		"job_duration_status":   -1,
 	}
 	t.Run("UpdateJobState", func(t *testing.T) {
 		tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
