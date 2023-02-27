@@ -698,14 +698,13 @@ func (j JobRepository) GetAllByTenant(ctx context.Context, jobTenant tenant.Tena
 	return jobs, errors.MultiToError(me)
 }
 
-func (j JobRepository) GetAllUpstreams(ctx context.Context, projectName tenant.ProjectName) ([]*job.Upstream, error) {
+func (j JobRepository) GetAllUpstreams(ctx context.Context) ([]*job.Upstream, error) {
 	query := `
 SELECT
 	job_name, project_name, upstream_job_name, upstream_resource_urn, upstream_project_name,
 	upstream_namespace_name, upstream_task_name, upstream_host, upstream_type, upstream_state, upstream_external
-FROM job_upstream
-WHERE project_name=$1`
-	rows, err := j.db.Query(ctx, query, projectName)
+FROM job_upstream`
+	rows, err := j.db.Query(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(job.EntityJob, "error while getting jobs with upstreams", err)
 	}

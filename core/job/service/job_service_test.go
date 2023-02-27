@@ -2648,13 +2648,13 @@ func (_m *JobRepository) ResolveUpstreams(_a0 context.Context, _a1 tenant.Projec
 	return r0, r1
 }
 
-// GetAllUpstreams provides a mock function with given fields: ctx, projectName
-func (_m *JobRepository) GetAllUpstreams(ctx context.Context, projectName tenant.ProjectName) ([]*job.Upstream, error) {
-	ret := _m.Called(ctx, projectName)
+// GetAllUpstreams provides a mock function with given fields: ctx
+func (_m *JobRepository) GetAllUpstreams(ctx context.Context) ([]*job.Upstream, error) {
+	ret := _m.Called(ctx)
 
 	var r0 []*job.Upstream
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName) []*job.Upstream); ok {
-		r0 = rf(ctx, projectName)
+	if rf, ok := ret.Get(0).(func(context.Context) []*job.Upstream); ok {
+		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*job.Upstream)
@@ -2662,8 +2662,8 @@ func (_m *JobRepository) GetAllUpstreams(ctx context.Context, projectName tenant
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName) error); ok {
-		r1 = rf(ctx, projectName)
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
 	} else {
 		r1 = ret.Error(1)
 	}
