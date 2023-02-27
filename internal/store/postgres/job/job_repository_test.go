@@ -968,6 +968,36 @@ func TestPostgresJobRepository(t *testing.T) {
 		})
 	})
 
+	t.Run("GetAllUpstreams", func(t *testing.T) {
+		t.Run("returns all upstreams given project name", func(t *testing.T) {
+			db := dbSetup()
+
+			jobSpecA, err := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_general", []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
+			jobAUpstreamResolved := job.NewUpstreamResolved("sample-job-B", "", "", sampleTenant, "inferred", taskName, false)
+			jobAUpstreamUnresolved := job.NewUpstreamUnresolvedInferred("dev.resource.sample_c")
+
+			jobSpecB, err := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+			assert.NoError(t, err)
+			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", nil)
+
+			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{jobAUpstreamResolved, jobAUpstreamUnresolved})
+
+			jobRepo := postgres.NewJobRepository(db)
+
+			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB})
+			assert.NoError(t, err)
+
+			err = jobRepo.ReplaceUpstreams(ctx, []*job.WithUpstream{jobAWithUpstream})
+			assert.NoError(t, err)
+
+			result, err := jobRepo.GetAllUpstreams(ctx, proj.Name())
+			assert.NoError(t, err)
+			assert.EqualValues(t, []*job.Upstream{jobAUpstreamResolved, jobAUpstreamUnresolved}, result)
+		})
+	})
+
 	t.Run("GetUpstreams", func(t *testing.T) {
 		t.Run("returns upstream given project and job name", func(t *testing.T) {
 			// TODO: test is failing for nullable fields in upstream
