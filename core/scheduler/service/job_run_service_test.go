@@ -27,6 +27,11 @@ func TestJobRunService(t *testing.T) {
 	scheduledAtString := "2022-01-02T15:04:05Z"
 	scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, scheduledAtString)
 	logger := log.NewNoop()
+
+	monitoring := map[string]any{
+		"slot_millis":           float64(5000),
+		"total_bytes_processed": float64(2500),
+	}
 	t.Run("UpdateJobState", func(t *testing.T) {
 		tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
 
@@ -147,7 +152,8 @@ func TestJobRunService(t *testing.T) {
 					OperatorName:   "some_dummy_name",
 					JobScheduledAt: scheduledAtTimeStamp,
 					Values: map[string]any{
-						"status": "success",
+						"status":     "success",
+						"monitoring": monitoring,
 					},
 				}
 
@@ -167,6 +173,7 @@ func TestJobRunService(t *testing.T) {
 				jobRunRepo.On("Create", ctx, tnnt, jobName, scheduledAtTimeStamp, slaDefinitionInSec).Return(nil)
 				jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(jobRun, nil).Once()
 				jobRunRepo.On("Update", ctx, jobRun.ID, event.EventTime, scheduler.StateSuccess).Return(nil)
+				jobRunRepo.On("UpdateMonitoring", ctx, jobRun.ID, monitoring).Return(nil)
 				defer jobRunRepo.AssertExpectations(t)
 
 				operatorRunRepo := new(mockOperatorRunRepository)
@@ -193,7 +200,8 @@ func TestJobRunService(t *testing.T) {
 					JobScheduledAt: scheduledAtTimeStamp,
 					EventTime:      eventTime,
 					Values: map[string]any{
-						"status": "success",
+						"status":     "success",
+						"monitoring": monitoring,
 					},
 				}
 
@@ -207,6 +215,7 @@ func TestJobRunService(t *testing.T) {
 				jobRunRepo := new(mockJobRunRepository)
 				jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(&jobRun, nil)
 				jobRunRepo.On("Update", ctx, jobRun.ID, endTime, scheduler.StateSuccess).Return(nil)
+				jobRunRepo.On("UpdateMonitoring", ctx, jobRun.ID, monitoring).Return(nil)
 				defer jobRunRepo.AssertExpectations(t)
 
 				runService := service.NewJobRunService(logger,
@@ -251,7 +260,8 @@ func TestJobRunService(t *testing.T) {
 					JobScheduledAt: scheduledAtTimeStamp,
 					EventTime:      eventTime,
 					Values: map[string]any{
-						"status": "success",
+						"status":     "success",
+						"monitoring": monitoring,
 					},
 				}
 
@@ -307,6 +317,7 @@ func TestJobRunService(t *testing.T) {
 					jobRunRepo.On("Create", ctx, tnnt, jobName, scheduledAtTimeStamp, slaDefinitionInSec).Return(nil).Once()
 					jobRunRepo.On("GetByScheduledAt", ctx, tnnt, jobName, scheduledAtTimeStamp).Return(&jobRun, nil).Once()
 					jobRunRepo.On("Update", ctx, jobRun.ID, endTime, scheduler.StateSuccess).Return(nil)
+					jobRunRepo.On("UpdateMonitoring", ctx, jobRun.ID, monitoring).Return(nil)
 					defer jobRunRepo.AssertExpectations(t)
 
 					runService := service.NewJobRunService(logger,
@@ -1211,6 +1222,11 @@ func (m *mockJobRunRepository) Update(ctx context.Context, jobRunID uuid.UUID, e
 
 func (m *mockJobRunRepository) UpdateSLA(ctx context.Context, slaObjects []*scheduler.SLAObject) error {
 	args := m.Called(ctx, slaObjects)
+	return args.Error(0)
+}
+
+func (m *mockJobRunRepository) UpdateMonitoring(ctx context.Context, jobRunID uuid.UUID, monitoring map[string]any) error {
+	args := m.Called(ctx, jobRunID, monitoring)
 	return args.Error(0)
 }
 

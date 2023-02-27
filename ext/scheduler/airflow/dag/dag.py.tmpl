@@ -102,6 +102,13 @@ IMAGE_PULL_POLICY = "IfNotPresent"
 INIT_CONTAINER_IMAGE = "odpf/optimus:{{.Version}}"
 INIT_CONTAINER_ENTRYPOINT = "/opt/entrypoint_init_container.sh"
 
+def get_entrypoint_cmd(plugin_entrypoint):
+    path_config = JOB_DIR + "/in/.env"
+    path_secret = JOB_DIR + "/in/.secret"
+    entrypoint = "set -o allexport; source {path_config}; set +o allexport; cat {path_config}; ".format(path_config=path_config)
+    entrypoint += "set -o allexport; source {path_secret}; set +o allexport; ".format(path_secret=path_secret)
+    return entrypoint + plugin_entrypoint
+
 volume = k8s.V1Volume(
     name='asset-volume',
     empty_dir=k8s.V1EmptyDirVolumeSource()
@@ -140,16 +147,11 @@ init_container = k8s.V1Container(
 
 {{ $transformationName := print "transformation_"  .Task.Name | DisplayName -}}
 {{$transformationName}} = SuperKubernetesPodOperator(
-    optimus_hostname="{{$.Hostname}}",
-    optimus_projectname="{{$.Tenant.ProjectName.String}}",
-    optimus_namespacename="{{$.Tenant.NamespaceName.String}}",
-    optimus_jobname="{{.JobDetails.Name}}",
-    optimus_jobtype="{{$.ExecutorTask}}",
-    optimus_instancename="{{.Task.Name}}",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image={{  .Task.Image | quote}},
-    cmds=[],
+    cmds=["/bin/sh"],
+    arguments=["-c", get_entrypoint_cmd("""{{.Task.Entrypoint}} """)],
     name="{{  .Task.Name | replace "_" "-" }}",
     task_id={{ .Task.Name | quote}},
     get_logs=True,
@@ -157,7 +159,7 @@ init_container = k8s.V1Container(
     depends_on_past={{ if .JobDetails.Schedule.DependsOnPast }}True{{- else -}}False{{- end -}},
     in_cluster=True,
     is_delete_operator_pod=True,
-    do_xcom_push=False,
+    do_xcom_push=True,
     env_vars=executor_env_vars,
     {{- if gt .SLAMissDuration 0 }}
     sla=timedelta(seconds={{ .SLAMissDuration }}),
@@ -188,23 +190,18 @@ init_container_{{$hookName}} = k8s.V1Container(
 )
 
 hook_{{$hookName}} = SuperKubernetesPodOperator(
-    optimus_instancename="{{$hookName}}",
-    optimus_hostname="{{$.Hostname}}",
-    optimus_projectname="{{$.Tenant.ProjectName.String}}",
-    optimus_namespacename="{{$.Tenant.NamespaceName.String}}",
-    optimus_jobname="{{$.JobDetails.Name}}",
-    optimus_jobtype="{{$.ExecutorHook}}",
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="{{ $t.Image }}",
-    cmds=[],
+    cmds=["/bin/sh"],
+    arguments=["-c", get_entrypoint_cmd("""{{ $t.Entrypoint }} """)],
     name="hook_{{ $t.Name | replace "_" "-" }}",
     task_id="hook_{{ $t.Name }}",
     get_logs=True,
     dag=dag,
     in_cluster=True,
     is_delete_operator_pod=True,
-    do_xcom_push=False,
+    do_xcom_push=True,
     env_vars=executor_env_vars,
     {{- if $t.IsFailHook }}
     trigger_rule="one_failed",

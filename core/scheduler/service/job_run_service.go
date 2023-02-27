@@ -26,6 +26,7 @@ type JobRunRepository interface {
 	Create(ctx context.Context, tenant tenant.Tenant, name scheduler.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error
 	Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, jobRunStatus scheduler.State) error
 	UpdateSLA(ctx context.Context, slaObjects []*scheduler.SLAObject) error
+	UpdateMonitoring(ctx context.Context, jobRunID uuid.UUID, monitoring map[string]any) error
 }
 
 type OperatorRunRepository interface {
@@ -230,7 +231,19 @@ func (s *JobRunService) updateJobRun(ctx context.Context, event *scheduler.Event
 	if err != nil {
 		return err
 	}
-	return s.repo.Update(ctx, jobRun.ID, event.EventTime, event.Status)
+	if err := s.repo.Update(ctx, jobRun.ID, event.EventTime, event.Status); err != nil {
+		return err
+	}
+	monitoringValues := s.getMonitoringValues(event)
+	return s.repo.UpdateMonitoring(ctx, jobRun.ID, monitoringValues)
+}
+
+func (*JobRunService) getMonitoringValues(event *scheduler.Event) map[string]any {
+	var output map[string]any
+	if value, ok := event.Values["monitoring"]; ok && value != nil {
+		output, _ = value.(map[string]any)
+	}
+	return output
 }
 
 func (s *JobRunService) updateJobRunSLA(ctx context.Context, event *scheduler.Event) error {

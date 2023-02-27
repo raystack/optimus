@@ -31,6 +31,7 @@ func (p *PluginSpec) PluginInfo() *plugin.Info {
 		Name:          p.Name,
 		Description:   p.Description,
 		Image:         p.Image,
+		Entrypoint:    p.Entrypoint,
 		PluginType:    p.PluginType,
 		PluginMods:    []plugin.Mod{plugin.ModTypeCLI},
 		PluginVersion: p.PluginVersion,
@@ -100,7 +101,7 @@ func NewPluginSpec(pluginPath string) (*PluginSpec, error) {
 		return nil, err
 	}
 	var plugin PluginSpec
-	if err := yaml.Unmarshal(pluginBytes, &plugin); err != nil { // TODO: check if strict marshal is required
+	if err := yaml.UnmarshalStrict(pluginBytes, &plugin); err != nil {
 		return &plugin, err
 	}
 	return &plugin, nil

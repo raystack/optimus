@@ -41,6 +41,8 @@ type JobRun struct {
 	StartTime time.Time
 	SLAAlert  bool
 	EndTime   time.Time
+
+	Monitoring map[string]any
 }
 
 type OperatorRun struct {

@@ -93,4 +93,27 @@ func TestPostgresJobRunRepository(t *testing.T) {
 			assert.True(t, jobRunByID.SLAAlert)
 		})
 	})
+	t.Run("UpdateMonitoring", func(t *testing.T) {
+		t.Run("updates job run monitoring", func(t *testing.T) {
+			db := dbSetup()
+			_ = addJobs(ctx, t, db)
+			jobRunRepo := postgres.NewJobRunRepository(db)
+			err := jobRunRepo.Create(ctx, tnnt, jobAName, scheduledAt, slaDefinitionInSec)
+			assert.NoError(t, err)
+			jobRun, err := jobRunRepo.GetByScheduledAt(ctx, tnnt, jobAName, scheduledAt)
+			assert.NoError(t, err)
+
+			monitoring := map[string]any{
+				"slot_millis":           float64(5000),
+				"total_bytes_processed": float64(2500),
+			}
+
+			err = jobRunRepo.UpdateMonitoring(ctx, jobRun.ID, monitoring)
+			assert.NoError(t, err)
+
+			jobRunByID, err := jobRunRepo.GetByID(ctx, scheduler.JobRunID(jobRun.ID))
+			assert.NoError(t, err)
+			assert.EqualValues(t, monitoring, jobRunByID.Monitoring)
+		})
+	})
 }

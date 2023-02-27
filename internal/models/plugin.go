@@ -70,7 +70,7 @@ func (s *PluginRepository) GetHooks() []*plugin.Plugin {
 
 func (s *PluginRepository) AddYaml(yamlMod plugin.YamlMod) error {
 	info := yamlMod.PluginInfo()
-	if err := validateYamlPluginInfo(info); err != nil {
+	if err := info.Validate(); err != nil {
 		return err
 	}
 
@@ -98,31 +98,6 @@ func (s *PluginRepository) AddBinary(drMod plugin.DependencyResolverMod) error {
 	}
 
 	s.data[name].DependencyMod = drMod
-	return nil
-}
-
-func validateYamlPluginInfo(info *plugin.Info) error {
-	if info.Name == "" {
-		return errors.New("plugin name cannot be empty")
-	}
-
-	// image is a required field
-	if info.Image == "" {
-		return errors.New("plugin image cannot be empty")
-	}
-
-	// version is a required field
-	if info.PluginVersion == "" {
-		return errors.New("plugin version cannot be empty")
-	}
-
-	switch info.PluginType {
-	case plugin.TypeTask:
-	case plugin.TypeHook:
-	default:
-		return ErrUnsupportedPlugin
-	}
-
 	return nil
 }
 
