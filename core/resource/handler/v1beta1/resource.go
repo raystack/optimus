@@ -26,7 +26,7 @@ var (
 	})
 	totalSuccessBatchUpdateGauge = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "resources_batch_update_success_total",
-		Help: "The total number of failure resources in batch update",
+		Help: "The total number of success resources in batch update",
 	})
 	totalFailureBatchUpdateGauge = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "resources_batch_update_failure_total",
