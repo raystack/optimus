@@ -121,6 +121,48 @@ func TestFromStringToEventType(t *testing.T) {
 			assert.EqualError(t, err, "invalid argument for entity event: property 'event_time'(number) is missing in event payload")
 			assert.Equal(t, eventObj, Event{})
 		})
+		t.Run("Should parse events of type slaMiss", func(t *testing.T) {
+			sla := []map[string]string{
+				{
+					"dag_id":       "sample_select",
+					"scheduled_at": "2006-01-02T15:04:05Z",
+				},
+				{
+					"dag_id":       "sample_select1",
+					"scheduled_at": "2006-01-02T15:04:05Z",
+				},
+			}
+			eventValues := map[string]any{
+				"event_time": "16000631600.0",
+				"slas":       sla,
+			}
+			jobName := JobName("")
+			tnnt, err := tenant.NewTenant("someProject", "someNamespace")
+			assert.Nil(t, err)
+
+			eventTypeName := "TYPE_SLA_MISS"
+			eventObj, err := EventFrom(eventTypeName, eventValues, jobName, tnnt)
+
+			assert.Nil(t, err)
+
+			scheduledAt, _ := time.Parse(ISODateFormat, "2006-01-02T15:04:05Z")
+
+			assert.Equal(t, eventObj, Event{
+				Tenant: tnnt,
+				Type:   SLAMissEvent,
+				Values: eventValues,
+				SLAObjectList: []*SLAObject{
+					{
+						JobName:        "sample_select",
+						JobScheduledAt: scheduledAt,
+					},
+					{
+						JobName:        "sample_select1",
+						JobScheduledAt: scheduledAt,
+					},
+				},
+			})
+		})
 		t.Run("Should return error if event is unregistered type", func(t *testing.T) {
 			eventValues := map[string]any{
 				"someKey":      "someValue",

@@ -49,33 +49,37 @@ func setJobMetric(t tenant.Tenant, jobs []*scheduler.JobWithDetails) {
 	}
 
 	for externalUpstream, counter := range externalUpstreamCountMap {
-		totalStaticExternalUpstreamMetricKey := fmt.Sprintf("total_external_upstream_references/%s/%s/%s/static", t.ProjectName().String(), t.NamespaceName().String(), externalUpstream)
-		if _, ok := totalExternalUpstreamMetricMap[totalStaticExternalUpstreamMetricKey]; !ok {
-			totalExternalUpstreamMetricMap[totalStaticExternalUpstreamMetricKey] = promauto.NewGauge(prometheus.GaugeOpts{
-				Name: "total_external_upstream_references",
-				ConstLabels: map[string]string{
-					"project":   t.ProjectName().String(),
-					"namespace": t.NamespaceName().String(),
-					"host":      externalUpstream,
-					"type":      scheduler.UpstreamTypeStatic,
-				},
-			})
+		if counter.Static > 0 {
+			totalStaticExternalUpstreamMetricKey := fmt.Sprintf("total_external_upstream_references/%s/%s/%s/static", t.ProjectName().String(), t.NamespaceName().String(), externalUpstream)
+			if _, ok := totalExternalUpstreamMetricMap[totalStaticExternalUpstreamMetricKey]; !ok {
+				totalExternalUpstreamMetricMap[totalStaticExternalUpstreamMetricKey] = promauto.NewGauge(prometheus.GaugeOpts{
+					Name: "total_external_upstream_references",
+					ConstLabels: map[string]string{
+						"project":   t.ProjectName().String(),
+						"namespace": t.NamespaceName().String(),
+						"host":      externalUpstream,
+						"type":      scheduler.UpstreamTypeStatic,
+					},
+				})
+			}
+			totalExternalUpstreamMetricMap[totalStaticExternalUpstreamMetricKey].Set(float64(counter.Static))
 		}
-		totalExternalUpstreamMetricMap[totalStaticExternalUpstreamMetricKey].Set(float64(counter.Static))
 
-		totalInferredExternalUpstreamMetricKey := fmt.Sprintf("total_external_upstream_references/%s/%s/%s/inferred", t.ProjectName().String(), t.NamespaceName().String(), externalUpstream)
-		if _, ok := totalExternalUpstreamMetricMap[totalInferredExternalUpstreamMetricKey]; !ok {
-			totalExternalUpstreamMetricMap[totalInferredExternalUpstreamMetricKey] = promauto.NewGauge(prometheus.GaugeOpts{
-				Name: "total_external_upstream_references",
-				ConstLabels: map[string]string{
-					"project":   t.ProjectName().String(),
-					"namespace": t.NamespaceName().String(),
-					"host":      externalUpstream,
-					"type":      scheduler.UpstreamTypeInferred,
-				},
-			})
+		if counter.Inferred > 0 {
+			totalInferredExternalUpstreamMetricKey := fmt.Sprintf("total_external_upstream_references/%s/%s/%s/inferred", t.ProjectName().String(), t.NamespaceName().String(), externalUpstream)
+			if _, ok := totalExternalUpstreamMetricMap[totalInferredExternalUpstreamMetricKey]; !ok {
+				totalExternalUpstreamMetricMap[totalInferredExternalUpstreamMetricKey] = promauto.NewGauge(prometheus.GaugeOpts{
+					Name: "total_external_upstream_references",
+					ConstLabels: map[string]string{
+						"project":   t.ProjectName().String(),
+						"namespace": t.NamespaceName().String(),
+						"host":      externalUpstream,
+						"type":      scheduler.UpstreamTypeInferred,
+					},
+				})
+			}
+			totalExternalUpstreamMetricMap[totalInferredExternalUpstreamMetricKey].Set(float64(counter.Inferred))
 		}
-		totalExternalUpstreamMetricMap[totalInferredExternalUpstreamMetricKey].Set(float64(counter.Inferred))
 	}
 }
 
