@@ -45,7 +45,7 @@ func TestNewResource(t *testing.T) {
 			spec := map[string]any{"a": "b"}
 			_, err := resource.NewResource("proj.set.res_name", "table", resource.Bigquery, tnnt, nil, spec)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource: invalid resource metadata")
+			assert.EqualError(t, err, "invalid argument for entity resource: empty resource metadata for proj.set.res_name")
 		})
 		t.Run("returns error when invalid resource metadata", func(t *testing.T) {
 			meta := resource.Metadata{
@@ -55,7 +55,7 @@ func TestNewResource(t *testing.T) {
 			_, err := resource.NewResource("proj.set.res_name", "table",
 				resource.Bigquery, tnnt, &meta, nil)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity resource: invalid resource spec "+
+			assert.EqualError(t, err, "invalid argument for entity resource: empty resource spec "+
 				"for proj.set.res_name")
 		})
 	})
