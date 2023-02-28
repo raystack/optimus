@@ -48,6 +48,10 @@ _pre: _context
 	
 apply: _pre apply.optimus apply.airflow
 
+apply.monitoring:
+	kubectl apply -f monitoring/grafana/deployment.yaml -n ${NAMESPACE}
+	kubectl apply -f monitoring/prometheus/prometheus-deployment.yaml -n ${NAMESPACE}
+
 # -----------------------------------
 delete.airflow: _context
 	helm uninstall airflow -n ${NAMESPACE} 
