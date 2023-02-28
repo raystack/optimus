@@ -4,28 +4,17 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-
 	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
-)
-
-var (
-	totalJobsMetricMap             = map[string]prometheus.Gauge{}
-	totalExternalUpstreamMetricMap = map[string]prometheus.Gauge{}
+	"github.com/odpf/optimus/internal/telemetry"
 )
 
 func setJobMetric(t tenant.Tenant, jobs []*scheduler.JobWithDetails) {
-	totalJobsMetricKey := fmt.Sprintf("total_number_of_job/%s/%s", t.ProjectName().String(), t.NamespaceName().String())
-	if _, ok := totalJobsMetricMap[totalJobsMetricKey]; !ok {
-		totalJobsMetricMap[totalJobsMetricKey] = promauto.NewGauge(prometheus.GaugeOpts{
-			Name:        "total_number_of_job",
-			ConstLabels: map[string]string{"project": t.ProjectName().String(), "namespace": t.NamespaceName().String()},
-		})
-	}
-	totalJobsMetricMap[totalJobsMetricKey].Set(float64(len(jobs)))
+	telemetry.NewGauge("total_number_of_job", map[string]string{
+		"project":   t.ProjectName().String(),
+		"namespace": t.NamespaceName().String(),
+	}).Set(float64(len(jobs)))
 
 	// this can be greatly simplified using a db query
 	type counter struct {
@@ -50,35 +39,21 @@ func setJobMetric(t tenant.Tenant, jobs []*scheduler.JobWithDetails) {
 
 	for externalUpstream, counter := range externalUpstreamCountMap {
 		if counter.Static > 0 {
-			totalStaticExternalUpstreamMetricKey := fmt.Sprintf("total_external_upstream_references/%s/%s/%s/static", t.ProjectName().String(), t.NamespaceName().String(), externalUpstream)
-			if _, ok := totalExternalUpstreamMetricMap[totalStaticExternalUpstreamMetricKey]; !ok {
-				totalExternalUpstreamMetricMap[totalStaticExternalUpstreamMetricKey] = promauto.NewGauge(prometheus.GaugeOpts{
-					Name: "total_external_upstream_references",
-					ConstLabels: map[string]string{
-						"project":   t.ProjectName().String(),
-						"namespace": t.NamespaceName().String(),
-						"host":      externalUpstream,
-						"type":      scheduler.UpstreamTypeStatic,
-					},
-				})
-			}
-			totalExternalUpstreamMetricMap[totalStaticExternalUpstreamMetricKey].Set(float64(counter.Static))
+			telemetry.NewGauge("total_external_upstream_references", map[string]string{
+				"project":   t.ProjectName().String(),
+				"namespace": t.NamespaceName().String(),
+				"host":      externalUpstream,
+				"type":      scheduler.UpstreamTypeStatic,
+			}).Set(float64(counter.Static))
 		}
 
 		if counter.Inferred > 0 {
-			totalInferredExternalUpstreamMetricKey := fmt.Sprintf("total_external_upstream_references/%s/%s/%s/inferred", t.ProjectName().String(), t.NamespaceName().String(), externalUpstream)
-			if _, ok := totalExternalUpstreamMetricMap[totalInferredExternalUpstreamMetricKey]; !ok {
-				totalExternalUpstreamMetricMap[totalInferredExternalUpstreamMetricKey] = promauto.NewGauge(prometheus.GaugeOpts{
-					Name: "total_external_upstream_references",
-					ConstLabels: map[string]string{
-						"project":   t.ProjectName().String(),
-						"namespace": t.NamespaceName().String(),
-						"host":      externalUpstream,
-						"type":      scheduler.UpstreamTypeInferred,
-					},
-				})
-			}
-			totalExternalUpstreamMetricMap[totalInferredExternalUpstreamMetricKey].Set(float64(counter.Inferred))
+			telemetry.NewGauge("total_external_upstream_references", map[string]string{
+				"project":   t.ProjectName().String(),
+				"namespace": t.NamespaceName().String(),
+				"host":      externalUpstream,
+				"type":      scheduler.UpstreamTypeInferred,
+			}).Set(float64(counter.Inferred))
 		}
 	}
 }
