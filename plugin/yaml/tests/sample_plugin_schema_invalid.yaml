@@ -5,7 +5,6 @@ pluginmods:
   - cli
 # pluginversion: ""
 # image: ""
-secretpath: /tmp/auth.json
 
 questions:
   - name: PROJECT

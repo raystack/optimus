@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"errors"
 	"strings"
 )
 
@@ -50,12 +51,45 @@ type Info struct {
 	// Image is the full path to docker container that will be scheduled for execution
 	Image string
 
+	// Entrypoint command which will be used to execute the plugin
+	Entrypoint string
+
 	// DependsOn returns list of hooks this should be executed after
 	DependsOn []string `yaml:",omitempty"`
 
 	// PluginType provides the place of execution, could be before the transformation
 	// after the transformation, etc
 	HookType HookType `yaml:",omitempty"`
+}
+
+func (info *Info) Validate() error {
+	if info.Name == "" {
+		return errors.New("plugin name cannot be empty")
+	}
+
+	// image is a required field
+	if info.Image == "" {
+		return errors.New("plugin image cannot be empty")
+	}
+
+	// version is a required field
+	if info.PluginVersion == "" {
+		return errors.New("plugin version cannot be empty")
+	}
+
+	// entrypoint is a required field
+	if info.Entrypoint == "" {
+		return errors.New("entrypoint cannot be empty")
+	}
+
+	switch info.PluginType {
+	case TypeTask:
+	case TypeHook:
+	default:
+		return errors.New("plugin type is not supported")
+	}
+
+	return nil
 }
 
 type YamlMod interface {

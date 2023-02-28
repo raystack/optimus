@@ -39,11 +39,12 @@ func (v *validateCommand) validateFile(pluginPath string) error {
 	if filepath.Ext(pluginPath) != ".yaml" {
 		return errors.New("expecting .yaml file at " + pluginPath)
 	}
-	_, err := yaml.NewPluginSpec(pluginPath)
+	pluginSpec, err := yaml.NewPluginSpec(pluginPath)
 	if err != nil {
 		return err
 	}
-	return nil
+
+	return pluginSpec.Info.Validate()
 }
 
 func (v *validateCommand) validateDir(pluginPath string) error {
