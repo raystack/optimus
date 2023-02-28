@@ -969,7 +969,7 @@ func TestPostgresJobRepository(t *testing.T) {
 	})
 
 	t.Run("GetAllUpstreams", func(t *testing.T) {
-		t.Run("returns all upstreams", func(t *testing.T) {
+		t.Run("returns all upstreams given project name", func(t *testing.T) {
 			db := dbSetup()
 
 			jobSpecA, err := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
@@ -992,7 +992,7 @@ func TestPostgresJobRepository(t *testing.T) {
 			err = jobRepo.ReplaceUpstreams(ctx, []*job.WithUpstream{jobAWithUpstream})
 			assert.NoError(t, err)
 
-			result, err := jobRepo.GetAllUpstreams(ctx)
+			result, err := jobRepo.GetAllUpstreams(ctx, proj.Name())
 			assert.NoError(t, err)
 			assert.EqualValues(t, []*job.Upstream{jobAUpstreamResolved, jobAUpstreamUnresolved}, result)
 		})
