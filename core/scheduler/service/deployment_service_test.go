@@ -23,6 +23,26 @@ func TestDeploymentService(t *testing.T) {
 	tnnt1, _ := tenant.NewTenant(proj1Name.String(), namespace1Name.String())
 	tnnt2, _ := tenant.NewTenant(proj1Name.String(), namespace2Name.String())
 
+	jobUpstreamStatic := scheduler.JobUpstream{
+		JobName:        "job3",
+		Host:           "some-host",
+		TaskName:       "bq2bq",
+		DestinationURN: "bigquery://some-resource",
+		Tenant:         tenant.Tenant{},
+		Type:           scheduler.UpstreamTypeStatic,
+		External:       true,
+		State:          "resolved",
+	}
+	jobUpstreamInferred := scheduler.JobUpstream{
+		JobName:        "job3",
+		Host:           "some-host",
+		TaskName:       "bq2bq",
+		DestinationURN: "bigquery://some-resource",
+		Tenant:         tenant.Tenant{},
+		Type:           scheduler.UpstreamTypeInferred,
+		External:       true,
+		State:          "resolved",
+	}
 	jobsWithDetails := []*scheduler.JobWithDetails{
 		{
 			Name: "job1",
@@ -43,6 +63,9 @@ func TestDeploymentService(t *testing.T) {
 			Job: &scheduler.Job{
 				Name:   "job3",
 				Tenant: tnnt1,
+			},
+			Upstreams: scheduler.Upstreams{
+				UpstreamJobs: []*scheduler.JobUpstream{&jobUpstreamStatic, &jobUpstreamInferred},
 			},
 		},
 	}
