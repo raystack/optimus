@@ -222,7 +222,7 @@ func (s JobRunService) registerNewJobRun(ctx context.Context, tenant tenant.Tena
 		return err
 	}
 
-	telemetry.NewCounter("scheduler_operator_durations", map[string]string{
+	telemetry.NewCounter("scheduler_operator_durations_seconds", map[string]string{
 		"project":   tenant.ProjectName().String(),
 		"namespace": tenant.NamespaceName().String(),
 		"type":      scheduleDelay.String(),
@@ -326,7 +326,7 @@ func (s JobRunService) updateOperatorRun(ctx context.Context, event scheduler.Ev
 	case scheduler.OperatorHook:
 		metricLabel = hookDuration
 	}
-	telemetry.NewCounter("scheduler_operator_durations", map[string]string{
+	telemetry.NewCounter("scheduler_operator_durations_seconds", map[string]string{
 		"project":   event.Tenant.ProjectName().String(),
 		"namespace": event.Tenant.NamespaceName().String(),
 		"type":      metricLabel.String(),
