@@ -23,11 +23,15 @@ type ReplayWorker struct {
 	replayRepo ReplayRepository
 	scheduler  ReplayScheduler
 
-	jobRunService JobRunService
+	jobRunService JobReplayRunService
 }
 
-func NewReplayWorker(l log.Logger, replayRepo ReplayRepository, scheduler ReplayScheduler) *ReplayWorker {
-	return &ReplayWorker{l: l, replayRepo: replayRepo, scheduler: scheduler}
+func NewReplayWorker(l log.Logger, replayRepo ReplayRepository, scheduler ReplayScheduler, jobRunService JobReplayRunService) *ReplayWorker {
+	return &ReplayWorker{l: l, replayRepo: replayRepo, scheduler: scheduler, jobRunService: jobRunService}
+}
+
+type JobReplayRunService interface {
+	GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName, criteria *scheduler.JobRunsCriteria) ([]*scheduler.JobRunStatus, error)
 }
 
 func (w ReplayWorker) Process(ctx context.Context, replays []*scheduler.StoredReplay) {
