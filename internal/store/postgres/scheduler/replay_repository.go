@@ -18,9 +18,9 @@ const (
 	replayColumnsToStore = `job_name, namespace_name, project_name, start_time, end_time, description, parallel, status, message`
 	replayColumns        = `id, ` + replayColumnsToStore
 
-	replayRunColumns       = `replay_id, scheduled_at, logical_time, status`
+	replayRunColumns       = `replay_id, scheduled_at, status`
 	replayRunDetailColumns = `id as replay_id, job_name, namespace_name, project_name, start_time, end_time, description, 
-parallel, r.status as replay_status, r.message as replay_message, scheduled_at, logical_time, run.status as run_status, r.created_at as replay_created_at`
+parallel, r.status as replay_status, r.message as replay_message, scheduled_at, run.status as run_status, r.created_at as replay_created_at`
 )
 
 type ReplayRepository struct {
@@ -83,7 +83,6 @@ func (r replayRun) toReplay() (*scheduler.Replay, error) {
 	jobRun := &scheduler.JobRunStatus{
 		ScheduledAt: r.ScheduledTime,
 		State:       runState,
-		LogicalTime: r.LogicalTime,
 	}
 	replayStatus, err := scheduler.ReplayStateFromString(r.ReplayStatus)
 	if err != nil {
@@ -142,7 +141,6 @@ func (r ReplayRepository) GetReplaysToExecute(ctx context.Context) ([]*scheduler
 			jobRun := &scheduler.JobRunStatus{
 				ScheduledAt: run.ScheduledTime,
 				State:       runState,
-				LogicalTime: run.LogicalTime,
 			}
 			storedReplay.Replay.Runs = append(storedReplay.Replay.Runs, jobRun)
 			continue
@@ -216,9 +214,9 @@ func (r ReplayRepository) getExecutableReplays(ctx context.Context) ([]replayRun
 }
 
 func (ReplayRepository) insertReplayRuns(ctx context.Context, tx pgx.Tx, replayID uuid.UUID, runs []*scheduler.JobRunStatus) error {
-	insertReplayRun := `INSERT INTO replay_run (` + replayRunColumns + `, created_at, updated_at) values ($1, $2, $3, $4, NOW(), NOW())`
+	insertReplayRun := `INSERT INTO replay_run (` + replayRunColumns + `, created_at, updated_at) values ($1, $2, $3, NOW(), NOW())`
 	for _, run := range runs {
-		_, err := tx.Exec(ctx, insertReplayRun, replayID, run.ScheduledAt, run.LogicalTime, run.State)
+		_, err := tx.Exec(ctx, insertReplayRun, replayID, run.ScheduledAt, run.State)
 		if err != nil {
 			return errors.Wrap(scheduler.EntityJobRun, "unable to store replay", err)
 		}

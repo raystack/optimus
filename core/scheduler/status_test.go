@@ -13,16 +13,14 @@ import (
 func TestStatus(t *testing.T) {
 	t.Run("JobRunStatusFrom", func(t *testing.T) {
 		currentTime := time.Now()
-		logicalTime := currentTime.Add(24 * time.Hour)
-		expectedJobRunStatus, err := scheduler.JobRunStatusFrom(currentTime, "pending", logicalTime)
+		expectedJobRunStatus, err := scheduler.JobRunStatusFrom(currentTime, "pending")
 		assert.Nil(t, err)
 		assert.Equal(t, scheduler.JobRunStatus{
 			ScheduledAt: currentTime,
 			State:       scheduler.StatePending,
-			LogicalTime: logicalTime,
 		}, expectedJobRunStatus)
 
-		expectedJobRunStatus, err = scheduler.JobRunStatusFrom(currentTime, "unregisteredState", logicalTime)
+		expectedJobRunStatus, err = scheduler.JobRunStatusFrom(currentTime, "unregisteredState")
 		assert.NotNil(t, err)
 		assert.EqualError(t, err, "invalid argument for entity jobRun: invalid state for run unregisteredState")
 		assert.Equal(t, scheduler.JobRunStatus{}, expectedJobRunStatus)

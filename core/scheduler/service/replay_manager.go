@@ -42,9 +42,10 @@ func (m ReplayManager) StartReplayLoop() {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
 	defer cancelCtx()
 
-	// Cancel timed out replay with status [created, in progress, replayed]
+	// Cancel timed out replay with status [created, partial replayed, replayed]
 
 	// Fetch created, in progress, and replayed requests
+	// TODO: fetch only 1, to distribute the requests to all pods
 	replaysToExecute, err := m.replayRepository.GetReplaysToExecute(ctx)
 	if err != nil {
 		m.l.Error("unable to get replay requests to execute")

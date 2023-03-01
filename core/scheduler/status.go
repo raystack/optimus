@@ -52,11 +52,9 @@ func (j State) String() string {
 type JobRunStatus struct {
 	ScheduledAt time.Time
 	State       State
-
-	LogicalTime time.Time
 }
 
-func JobRunStatusFrom(scheduledAt time.Time, state string, logicalTime time.Time) (JobRunStatus, error) {
+func JobRunStatusFrom(scheduledAt time.Time, state string) (JobRunStatus, error) {
 	runState, err := StateFromString(state)
 	if err != nil {
 		return JobRunStatus{}, err
@@ -65,11 +63,10 @@ func JobRunStatusFrom(scheduledAt time.Time, state string, logicalTime time.Time
 	return JobRunStatus{
 		ScheduledAt: scheduledAt,
 		State:       runState,
-		LogicalTime: logicalTime,
 	}, nil
 }
 
-func (j JobRunStatus) GetExecutionTime(jobCron *cron.ScheduleSpec) time.Time {
+func (j JobRunStatus) GetLogicalTime(jobCron *cron.ScheduleSpec) time.Time {
 	return jobCron.Prev(j.ScheduledAt)
 }
 
