@@ -1162,6 +1162,7 @@ func mockGetJobRuns(afterDays int, date time.Time, interval string, status sched
 		expRuns = append(expRuns, &scheduler.JobRunStatus{
 			State:       status,
 			ScheduledAt: nextStart,
+			LogicalTime: schSpec.Prev(nextStart),
 		})
 		nextStart = schSpec.Next(nextStart)
 	}

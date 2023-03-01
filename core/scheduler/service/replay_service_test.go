@@ -57,9 +57,11 @@ func TestReplayService(t *testing.T) {
 			scheduledTime1Str := "2023-01-03T12:00:00Z"
 			scheduledTime1, _ := time.Parse(scheduler.ISODateFormat, scheduledTime1Str)
 			scheduledTime2 := scheduledTime1.Add(24 * time.Hour)
+			logicalTime1 := scheduledTime1.Add(-24 * time.Hour)
+			logicalTime2 := scheduledTime2.Add(-24 * time.Hour)
 			replayRuns := []*scheduler.JobRunStatus{
-				{ScheduledAt: scheduledTime1, State: scheduler.StatePending},
-				{ScheduledAt: scheduledTime2, State: scheduler.StatePending},
+				{ScheduledAt: scheduledTime1, State: scheduler.StatePending, LogicalTime: logicalTime1},
+				{ScheduledAt: scheduledTime2, State: scheduler.StatePending, LogicalTime: logicalTime2},
 			}
 			replayReq := scheduler.NewReplay(jobName, tnnt, replayConfig, replayRuns, scheduler.ReplayStateCreated)
 
@@ -123,9 +125,11 @@ func TestReplayService(t *testing.T) {
 			scheduledTime1Str := "2023-01-03T12:00:00Z"
 			scheduledTime1, _ := time.Parse(scheduler.ISODateFormat, scheduledTime1Str)
 			scheduledTime2 := scheduledTime1.Add(24 * time.Hour)
+			logicalTime1 := scheduledTime1.Add(-24 * time.Hour)
+			logicalTime2 := scheduledTime2.Add(-24 * time.Hour)
 			replayRuns := []*scheduler.JobRunStatus{
-				{ScheduledAt: scheduledTime1, State: scheduler.StatePending},
-				{ScheduledAt: scheduledTime2, State: scheduler.StatePending},
+				{ScheduledAt: scheduledTime1, State: scheduler.StatePending, LogicalTime: logicalTime1},
+				{ScheduledAt: scheduledTime2, State: scheduler.StatePending, LogicalTime: logicalTime2},
 			}
 			replayReq := scheduler.NewReplay(jobName, tnnt, replayConfig, replayRuns, scheduler.ReplayStateCreated)
 
