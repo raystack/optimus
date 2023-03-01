@@ -37,6 +37,11 @@ func (m Mod) String() string {
 	return string(m)
 }
 
+type Entrypoint struct {
+	Cmds []string
+	Args []string
+}
+
 type Info struct {
 	// Name should as simple as possible with no special characters
 	// should start with a character, better if all lowercase
@@ -52,7 +57,7 @@ type Info struct {
 	Image string
 
 	// Entrypoint command which will be used to execute the plugin
-	Entrypoint string
+	Entrypoint Entrypoint
 
 	// DependsOn returns list of hooks this should be executed after
 	DependsOn []string `yaml:",omitempty"`
@@ -78,8 +83,8 @@ func (info *Info) Validate() error {
 	}
 
 	// entrypoint is a required field
-	if info.Entrypoint == "" {
-		return errors.New("entrypoint cannot be empty")
+	if len(info.Entrypoint.Args) == 0 {
+		return errors.New("entrypoint args cannot be empty")
 	}
 
 	switch info.PluginType {

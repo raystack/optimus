@@ -157,36 +157,48 @@ func (m mockPluginRepo) GetByName(name string) (*plugin.Plugin, error) {
 func setupPluginRepo() mockPluginRepo {
 	execUnit := new(mock.YamlMod)
 	execUnit.On("PluginInfo").Return(&plugin.Info{
-		Name:       "bq-bq",
-		Image:      "example.io/namespace/bq2bq-executor:latest",
-		Entrypoint: "python3 /opt/bumblebee/main.py",
+		Name:  "bq-bq",
+		Image: "example.io/namespace/bq2bq-executor:latest",
+		Entrypoint: plugin.Entrypoint{
+			Cmds: []string{"/bin/bash", "-c"},
+			Args: []string{"python3 /opt/bumblebee/main.py"},
+		},
 	}, nil)
 
 	transporterHook := "transporter"
 	hookUnit := new(mock.YamlMod)
 	hookUnit.On("PluginInfo").Return(&plugin.Info{
-		Name:       transporterHook,
-		HookType:   plugin.HookTypePre,
-		Image:      "example.io/namespace/transporter-executor:latest",
-		Entrypoint: "java -cp /opt/transporter/transporter.jar:/opt/transporter/jolokia-jvm-agent.jar -javaagent:jolokia-jvm-agent.jar=port=7777,host=0.0.0.0 com.gojek.transporter.Main",
-		DependsOn:  []string{"predator"},
+		Name:     transporterHook,
+		HookType: plugin.HookTypePre,
+		Image:    "example.io/namespace/transporter-executor:latest",
+		Entrypoint: plugin.Entrypoint{
+			Cmds: []string{"/bin/sh", "-c"},
+			Args: []string{"java -cp /opt/transporter/transporter.jar:/opt/transporter/jolokia-jvm-agent.jar -javaagent:jolokia-jvm-agent.jar=port=7777,host=0.0.0.0 com.gojek.transporter.Main"},
+		},
+		DependsOn: []string{"predator"},
 	}, nil)
 
 	predatorHook := "predator"
 	hookUnit2 := new(mock.YamlMod)
 	hookUnit2.On("PluginInfo").Return(&plugin.Info{
-		Name:       predatorHook,
-		HookType:   plugin.HookTypePost,
-		Image:      "example.io/namespace/predator-image:latest",
-		Entrypoint: "predator ${SUB_COMMAND} -s ${PREDATOR_URL} -u \"${BQ_PROJECT}.${BQ_DATASET}.${BQ_TABLE}\"",
+		Name:     predatorHook,
+		HookType: plugin.HookTypePost,
+		Image:    "example.io/namespace/predator-image:latest",
+		Entrypoint: plugin.Entrypoint{
+			Cmds: []string{"/bin/sh", "-c"},
+			Args: []string{"predator ${SUB_COMMAND} -s ${PREDATOR_URL} -u \"${BQ_PROJECT}.${BQ_DATASET}.${BQ_TABLE}\""},
+		},
 	}, nil)
 
 	hookUnit3 := new(mock.YamlMod)
 	hookUnit3.On("PluginInfo").Return(&plugin.Info{
-		Name:       "failureHook",
-		HookType:   plugin.HookTypeFail,
-		Image:      "example.io/namespace/failure-hook-image:latest",
-		Entrypoint: "sleep 5",
+		Name:     "failureHook",
+		HookType: plugin.HookTypeFail,
+		Image:    "example.io/namespace/failure-hook-image:latest",
+		Entrypoint: plugin.Entrypoint{
+			Cmds: []string{"/bin/sh", "-c"},
+			Args: []string{"sleep 5"},
+		},
 	}, nil)
 
 	repo := mockPluginRepo{plugins: []*plugin.Plugin{

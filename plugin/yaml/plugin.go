@@ -104,6 +104,10 @@ func NewPluginSpec(pluginPath string) (*PluginSpec, error) {
 	if err := yaml.UnmarshalStrict(pluginBytes, &plugin); err != nil {
 		return &plugin, err
 	}
+	// default values
+	if len(plugin.Info.Entrypoint.Cmds) == 0 {
+		plugin.Info.Entrypoint.Cmds = []string{"/bin/sh", "-c"}
+	}
 	return &plugin, nil
 }
 

@@ -16,7 +16,7 @@ import (
 type mockYamlMod struct {
 	Name          string
 	Image         string
-	Entrypoint    string
+	Entrypoint    plugin.Entrypoint
 	PluginVersion string
 	PluginType    string
 }
@@ -51,10 +51,13 @@ func TestYamlPlugin(t *testing.T) {
 	testYamlPluginPath := "tests/sample_plugin.yaml" // success
 	testYamlPluginName := "bq2bqtest"
 	expectedInfo := &plugin.Info{
-		Name:          "bq2bqtest",
-		Description:   "Testing",
-		Image:         "docker.io/odpf/optimus-task-bq2bq-executor:latest",
-		Entrypoint:    "sleep 100",
+		Name:        "bq2bqtest",
+		Description: "Testing",
+		Image:       "docker.io/odpf/optimus-task-bq2bq-executor:latest",
+		Entrypoint: plugin.Entrypoint{
+			Cmds: []string{"/bin/bash", "-c"},
+			Args: []string{"sleep 100"},
+		},
 		PluginType:    "task",
 		PluginMods:    []plugin.Mod{"cli"},
 		PluginVersion: "latest",
@@ -168,12 +171,20 @@ func TestYamlPlugin(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotEmpty(t, repo.GetAll())
 		})
+		t.Run("should use default when entrypoint cmds is empty", func(t *testing.T) {
+			pluginSpec, err := yaml.NewPluginSpec("tests/sample_plugin_without_cmds.yaml")
+			assert.NoError(t, err)
+			assert.NotEmpty(t, pluginSpec)
+			assert.Equal(t, []string{"/bin/sh", "-c"}, pluginSpec.Entrypoint.Cmds)
+		})
 		t.Run("should returns error when load yaml when same name exists", func(t *testing.T) {
 			repoWithBinayPlugin := models.NewPluginRepository()
 			err := repoWithBinayPlugin.AddYaml(&mockYamlMod{
-				Name:          testYamlPluginName,
-				Image:         "sdsd",
-				Entrypoint:    "sleep 100",
+				Name:  testYamlPluginName,
+				Image: "sdsd",
+				Entrypoint: plugin.Entrypoint{
+					Args: []string{"sleep 100"},
+				},
 				PluginVersion: "asdasd",
 				PluginType:    plugin.TypeTask.String(),
 			})

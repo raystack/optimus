@@ -5,7 +5,9 @@ pluginmods:
   - cli
 pluginversion: ""
 image: ""
-entrypoint: "sleep 100"
+entrypoint:
+  cmds: ["/bin/bash", "-c"]
+  args: ["sleep 100;"]
 
 questions:
   - name: PROJECT

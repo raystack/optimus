@@ -150,8 +150,12 @@ init_container = k8s.V1Container(
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image={{  .Task.Image | quote}},
-    cmds=["/bin/sh"],
-    arguments=["-c", get_entrypoint_cmd("""{{.Task.Entrypoint}} """)],
+    cmds=[
+        {{- range $_, $value := .Task.Entrypoint.Cmds}}
+        "{{ $value }}",
+        {{- end}}
+    ],
+    arguments=[get_entrypoint_cmd("""{{join " " .Task.Entrypoint.Args}} """)],
     name="{{  .Task.Name | replace "_" "-" }}",
     task_id={{ .Task.Name | quote}},
     get_logs=True,
@@ -193,8 +197,12 @@ hook_{{$hookName}} = SuperKubernetesPodOperator(
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="{{ $t.Image }}",
-    cmds=["/bin/sh"],
-    arguments=["-c", get_entrypoint_cmd("""{{ $t.Entrypoint }} """)],
+    cmds=[
+        {{- range $_, $value := $t.Entrypoint.Cmds}}
+        "{{ $value }}",
+        {{- end}}
+    ],
+    arguments=[get_entrypoint_cmd("""{{join " " $t.Entrypoint.Args}} """)],
     name="hook_{{ $t.Name | replace "_" "-" }}",
     task_id="hook_{{ $t.Name }}",
     get_logs=True,
