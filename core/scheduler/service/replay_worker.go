@@ -2,12 +2,14 @@ package service
 
 import (
 	"fmt"
+	"time"
+
+	"github.com/odpf/salt/log"
+	"golang.org/x/net/context"
+
 	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/lib/cron"
-	"github.com/odpf/salt/log"
-	"golang.org/x/net/context"
-	"time"
 )
 
 type ReplayScheduler interface {
@@ -158,10 +160,7 @@ func (w ReplayWorker) fetchRuns(ctx context.Context, replayReq *scheduler.Stored
 	return w.jobRunService.GetJobRuns(ctx, replayReq.Replay.Tenant.ProjectName(), replayReq.Replay.JobName, jobRunCriteria)
 }
 
-func (w ReplayWorker) isOnGoingRunsExist(jobRuns []*scheduler.JobRunStatus) bool {
+func (ReplayWorker) isOnGoingRunsExist(jobRuns []*scheduler.JobRunStatus) bool {
 	inProgressRuns := scheduler.JobRunStatusList(jobRuns).GetSortedRunsByStates([]scheduler.State{scheduler.StateRunning, scheduler.StateQueued})
-	if len(inProgressRuns) > 0 {
-		return true
-	}
-	return false
+	return len(inProgressRuns) > 0
 }

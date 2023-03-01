@@ -1,11 +1,12 @@
 package service
 
 import (
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/salt/log"
 	"github.com/robfig/cron/v3"
 	"golang.org/x/net/context"
+
+	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/core/scheduler"
 )
 
 const (

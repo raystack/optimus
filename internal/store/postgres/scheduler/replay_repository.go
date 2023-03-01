@@ -1,8 +1,6 @@
 package scheduler
 
 import (
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/tenant"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,7 +8,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/net/context"
 
+	"github.com/odpf/optimus/core/job"
 	"github.com/odpf/optimus/core/scheduler"
+	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 )
 
@@ -166,7 +166,7 @@ func (r ReplayRepository) GetReplaysToExecute(ctx context.Context) ([]*scheduler
 	return storedReplays, nil
 }
 
-func (r ReplayRepository) UpdateReplay(ctx context.Context, replayID uuid.UUID, state scheduler.ReplayState, runs []*scheduler.JobRunStatus, message string) error {
+func (ReplayRepository) UpdateReplay(_ context.Context, _ uuid.UUID, _ scheduler.ReplayState, _ []*scheduler.JobRunStatus, _ string) error {
 	panic("unimplemented")
 }
 

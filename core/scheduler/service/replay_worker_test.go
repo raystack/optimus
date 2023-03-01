@@ -2,17 +2,17 @@ package service_test
 
 import (
 	"context"
-	"github.com/google/uuid"
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/lib/cron"
-	"github.com/stretchr/testify/mock"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/odpf/salt/log"
+	"github.com/stretchr/testify/mock"
 
+	"github.com/odpf/optimus/core/scheduler"
 	"github.com/odpf/optimus/core/scheduler/service"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/lib/cron"
 )
 
 func TestReplayWorker(t *testing.T) {

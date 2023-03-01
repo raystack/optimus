@@ -1,10 +1,11 @@
 package scheduler
 
 import (
-	"github.com/google/uuid"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
@@ -83,8 +84,8 @@ type StoredReplay struct {
 	Replay *Replay
 }
 
-func NewStoredReplay(ID uuid.UUID, replay *Replay) *StoredReplay {
-	return &StoredReplay{ID: ID, Replay: replay}
+func NewStoredReplay(id uuid.UUID, replay *Replay) *StoredReplay {
+	return &StoredReplay{ID: id, Replay: replay}
 }
 
 type ReplayConfig struct {
