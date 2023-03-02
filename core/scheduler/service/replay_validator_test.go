@@ -34,6 +34,7 @@ func TestReplayValidator(t *testing.T) {
 	scheduledTime1, _ := time.Parse(scheduler.ISODateFormat, scheduledTimeStr1)
 	replayStatusToValidate := []scheduler.ReplayState{scheduler.ReplayStateCreated, scheduler.ReplayStateInProgress,
 		scheduler.ReplayStatePartialReplayed, scheduler.ReplayStateReplayed}
+	replayReq := scheduler.NewReplayRequest(jobName, tnnt, replayConfig, scheduler.ReplayStateCreated)
 
 	t.Run("Validate", func(t *testing.T) {
 		t.Run("should return nil if no conflict replay or conflict run found", func(t *testing.T) {
@@ -60,7 +61,7 @@ func TestReplayValidator(t *testing.T) {
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(currentRuns, nil)
 
 			validator := service.NewValidator(replayRepository, sch)
-			err := validator.Validate(ctx, tnnt, jobName, replayConfig, jobCron)
+			err := validator.Validate(ctx, replayReq, jobCron)
 			assert.NoError(t, err)
 		})
 		t.Run("should return error if conflict replay found", func(t *testing.T) {
@@ -79,7 +80,7 @@ func TestReplayValidator(t *testing.T) {
 			replayRepository.On("GetReplayByStatus", ctx, replayStatusToValidate).Return(onGoingReplay, nil)
 
 			validator := service.NewValidator(replayRepository, sch)
-			err := validator.Validate(ctx, tnnt, jobName, replayConfig, jobCron)
+			err := validator.Validate(ctx, replayReq, jobCron)
 			assert.ErrorContains(t, err, "conflicted replay")
 		})
 		t.Run("should return error if conflict run found", func(t *testing.T) {
@@ -106,7 +107,7 @@ func TestReplayValidator(t *testing.T) {
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(currentRuns, nil)
 
 			validator := service.NewValidator(replayRepository, sch)
-			err := validator.Validate(ctx, tnnt, jobName, replayConfig, jobCron)
+			err := validator.Validate(ctx, replayReq, jobCron)
 			assert.ErrorContains(t, err, "conflicted job run found")
 		})
 	})

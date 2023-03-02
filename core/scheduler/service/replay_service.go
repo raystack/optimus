@@ -20,7 +20,7 @@ type ReplayRepository interface {
 }
 
 type ReplayValidator interface {
-	Validate(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, config *scheduler.ReplayConfig, jobCron *cron.ScheduleSpec) error
+	Validate(ctx context.Context, replayRequest *scheduler.ReplayRequest, jobCron *cron.ScheduleSpec) error
 }
 
 type ReplayService struct {
@@ -41,13 +41,13 @@ func (r ReplayService) CreateReplay(ctx context.Context, tenant tenant.Tenant, j
 		return uuid.Nil, fmt.Errorf("unable to parse job cron interval: %w", err)
 	}
 
-	if err := r.validator.Validate(ctx, tenant, jobName, config, jobCron); err != nil {
+	replayReq := scheduler.NewReplayRequest(jobName, tenant, config, scheduler.ReplayStateCreated)
+	if err := r.validator.Validate(ctx, replayReq, jobCron); err != nil {
 		return uuid.Nil, err
 	}
 
-	replay := scheduler.NewReplayRequest(jobName, tenant, config, scheduler.ReplayStateCreated)
 	runs := getExpectedRuns(jobCron, config.StartTime, config.EndTime)
-	return r.replayRepo.RegisterReplay(ctx, replay, runs)
+	return r.replayRepo.RegisterReplay(ctx, replayReq, runs)
 }
 
 func NewReplayService(replayRepo ReplayRepository, jobRepo JobRepository, validator ReplayValidator) *ReplayService {

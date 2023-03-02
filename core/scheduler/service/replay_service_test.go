@@ -67,7 +67,7 @@ func TestReplayService(t *testing.T) {
 			replayReq := scheduler.NewReplayRequest(jobName, tnnt, replayConfig, scheduler.ReplayStateCreated)
 
 			jobRepository.On("GetJobDetails", ctx, projName, jobName).Return(jobWithDetails, nil)
-			replayValidator.On("Validate", ctx, tnnt, jobName, replayConfig, jobCron).Return(nil)
+			replayValidator.On("Validate", ctx, replayReq, jobCron).Return(nil)
 			replayRepository.On("RegisterReplay", ctx, replayReq, replayRuns).Return(replayID, nil)
 
 			replayService := service.NewReplayService(replayRepository, jobRepository, replayValidator)
@@ -86,8 +86,10 @@ func TestReplayService(t *testing.T) {
 			replayValidator := new(ReplayValidator)
 			defer replayValidator.AssertExpectations(t)
 
+			replayReq := scheduler.NewReplayRequest(jobName, tnnt, replayConfig, scheduler.ReplayStateCreated)
+
 			jobRepository.On("GetJobDetails", ctx, projName, jobName).Return(jobWithDetails, nil)
-			replayValidator.On("Validate", ctx, tnnt, jobName, replayConfig, jobCron).Return(errors.New("not passed validation"))
+			replayValidator.On("Validate", ctx, replayReq, jobCron).Return(errors.New("not passed validation"))
 
 			replayService := service.NewReplayService(replayRepository, jobRepository, replayValidator)
 			result, err := replayService.CreateReplay(ctx, tnnt, jobName, replayConfig)
@@ -190,13 +192,12 @@ type ReplayValidator struct {
 	mock.Mock
 }
 
-// Validate provides a mock function with given fields: ctx, _a1, jobName, config, jobCron
-func (_m *ReplayValidator) Validate(ctx context.Context, _a1 tenant.Tenant, jobName scheduler.JobName, config *scheduler.ReplayConfig, jobCron *cron.ScheduleSpec) error {
-	ret := _m.Called(ctx, _a1, jobName, config, jobCron)
-
+// Validate provides a mock function with given fields: ctx, replayRequest, jobCron
+func (_m *ReplayValidator) Validate(ctx context.Context, replayRequest *scheduler.ReplayRequest, jobCron *cron.ScheduleSpec) error {
+	ret := _m.Called(ctx, replayRequest, jobCron)
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, scheduler.JobName, *scheduler.ReplayConfig, *cron.ScheduleSpec) error); ok {
-		r0 = rf(ctx, _a1, jobName, config, jobCron)
+	if rf, ok := ret.Get(0).(func(context.Context, *scheduler.ReplayRequest, *cron.ScheduleSpec) error); ok {
+		r0 = rf(ctx, replayRequest, jobCron)
 	} else {
 		r0 = ret.Error(0)
 	}

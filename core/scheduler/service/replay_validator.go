@@ -4,7 +4,6 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/lib/cron"
 )
@@ -23,40 +22,40 @@ func NewValidator(replayRepository ReplayRepository, scheduler ReplayScheduler) 
 	return &Validator{replayRepository: replayRepository, scheduler: scheduler}
 }
 
-func (v Validator) Validate(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, config *scheduler.ReplayConfig, jobCron *cron.ScheduleSpec) error {
-	if err := v.validateConflictedReplay(ctx, tenant, jobName, config); err != nil {
+func (v Validator) Validate(ctx context.Context, replayRequest *scheduler.ReplayRequest, jobCron *cron.ScheduleSpec) error {
+	if err := v.validateConflictedReplay(ctx, replayRequest); err != nil {
 		return err
 	}
 
-	return v.validateConflictedRun(ctx, tenant, jobName, config, jobCron)
+	return v.validateConflictedRun(ctx, replayRequest, jobCron)
 }
 
-func (v Validator) validateConflictedReplay(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, config *scheduler.ReplayConfig) error {
+func (v Validator) validateConflictedReplay(ctx context.Context, replayRequest *scheduler.ReplayRequest) error {
 	onGoingReplays, err := v.replayRepository.GetReplayByStatus(ctx, replayStatusToValidate)
 	if err != nil {
 		return err
 	}
 	for _, onGoingReplay := range onGoingReplays {
-		if onGoingReplay.Replay.Tenant != tenant || onGoingReplay.Replay.JobName != jobName {
+		if onGoingReplay.Replay.Tenant != replayRequest.Tenant || onGoingReplay.Replay.JobName != replayRequest.JobName {
 			continue
 		}
 
 		// Check any intersection of date range
-		if (onGoingReplay.Replay.Config.StartTime.Equal(config.EndTime) || onGoingReplay.Replay.Config.StartTime.Before(config.EndTime)) &&
-			(onGoingReplay.Replay.Config.EndTime.Equal(config.StartTime) || onGoingReplay.Replay.Config.EndTime.After(config.StartTime)) {
+		if (onGoingReplay.Replay.Config.StartTime.Equal(replayRequest.Config.EndTime) || onGoingReplay.Replay.Config.StartTime.Before(replayRequest.Config.EndTime)) &&
+			(onGoingReplay.Replay.Config.EndTime.Equal(replayRequest.Config.StartTime) || onGoingReplay.Replay.Config.EndTime.After(replayRequest.Config.StartTime)) {
 			return errors.NewError(errors.ErrFailedPrecond, scheduler.EntityJobRun, "conflicted replay found")
 		}
 	}
 	return nil
 }
 
-func (v Validator) validateConflictedRun(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, config *scheduler.ReplayConfig, jobCron *cron.ScheduleSpec) error {
+func (v Validator) validateConflictedRun(ctx context.Context, replayRequest *scheduler.ReplayRequest, jobCron *cron.ScheduleSpec) error {
 	jobRunCriteria := &scheduler.JobRunsCriteria{
-		Name:      jobName.String(),
-		StartDate: config.StartTime,
-		EndDate:   config.EndTime,
+		Name:      replayRequest.JobName.String(),
+		StartDate: replayRequest.Config.StartTime,
+		EndDate:   replayRequest.Config.EndTime,
 	}
-	runs, err := v.scheduler.GetJobRuns(ctx, tenant, jobRunCriteria, jobCron)
+	runs, err := v.scheduler.GetJobRuns(ctx, replayRequest.Tenant, jobRunCriteria, jobCron)
 	if err != nil {
 		return err
 	}
