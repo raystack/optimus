@@ -214,6 +214,10 @@ func (s JobRunService) registerNewJobRun(ctx context.Context, tenant tenant.Tena
 	if err != nil {
 		return err
 	}
+	telemetry.NewGauge("total_jobs_running", map[string]string{
+		"project":   tenant.ProjectName().String(),
+		"namespace": tenant.NamespaceName().String(),
+	}).Inc()
 	err = s.repo.Create(ctx, tenant, jobName, scheduledAt, slaDefinitionInSec)
 	if err != nil {
 		return err
@@ -234,10 +238,6 @@ func (s JobRunService) getJobRunByScheduledAt(ctx context.Context, tenant tenant
 		if !errors.IsErrorType(err, errors.ErrNotFound) {
 			return nil, err
 		}
-		telemetry.NewGauge("total_jobs_running", map[string]string{
-			"project":   tenant.ProjectName().String(),
-			"namespace": tenant.NamespaceName().String(),
-		}).Inc()
 		err = s.registerNewJobRun(ctx, tenant, jobName, scheduledAt)
 		if err != nil {
 			return nil, err
@@ -258,6 +258,9 @@ func (s JobRunService) updateJobRun(ctx context.Context, event scheduler.Event) 
 	}
 	for _, state := range scheduler.TaskEndStates {
 		if event.Status == state {
+			// this can go negative, because it is possible that when we deploy certain job have already started,
+			// and the very first events we get are that of task end states, to handle this, we should treat the lowest
+			// value as the base value.
 			telemetry.NewGauge("total_jobs_running", map[string]string{
 				"project":   event.Tenant.ProjectName().String(),
 				"namespace": event.Tenant.NamespaceName().String(),
