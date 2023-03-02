@@ -102,9 +102,9 @@ func (r ReplayRepository) RegisterReplay(ctx context.Context, replay *scheduler.
 	}
 	defer func() {
 		if err != nil {
-			tx.Rollback(context.TODO())
+			tx.Rollback(ctx)
 		} else {
-			tx.Commit(context.TODO())
+			tx.Commit(ctx)
 		}
 	}()
 
@@ -164,8 +164,29 @@ func (r ReplayRepository) GetReplaysToExecute(ctx context.Context) ([]*scheduler
 	return storedReplays, nil
 }
 
-func (ReplayRepository) UpdateReplay(_ context.Context, _ uuid.UUID, _ scheduler.ReplayState, _ []*scheduler.JobRunStatus, _ string) error {
-	panic("unimplemented")
+func (r ReplayRepository) UpdateReplay(ctx context.Context, id uuid.UUID, replayStatus scheduler.ReplayState, runs []*scheduler.JobRunStatus, message string) error {
+	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback(ctx)
+		} else {
+			tx.Commit(ctx)
+		}
+	}()
+
+	updateReplay := `UPDATE replay_request SET status = $1, message = $2, updated_at = NOW() WHERE id = $3`
+	if _, err := tx.Exec(ctx, updateReplay, replayStatus, message, id); err != nil {
+		return errors.Wrap(scheduler.EntityJobRun, "unable to update replay", err)
+	}
+
+	deleteRuns := `DELETE FROM replay_run WHERE replay_id = $1`
+	if _, err := tx.Exec(ctx, deleteRuns, id); err != nil {
+		return errors.Wrap(scheduler.EntityJobRun, "unable to delete runs of replay", err)
+	}
+	return r.insertReplayRuns(ctx, tx, id, runs)
 }
 
 func (ReplayRepository) insertReplay(ctx context.Context, tx pgx.Tx, replay *scheduler.Replay) error {
