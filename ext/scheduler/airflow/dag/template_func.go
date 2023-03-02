@@ -10,7 +10,6 @@ func OptimusFuncMap() template.FuncMap {
 		"replace":     Replace,
 		"quote":       Quote,
 		"trunc":       Trunc,
-		"join":        Join,
 		"ReplaceDash": ReplaceDash,
 		"DisplayName": DisplayName,
 	}
@@ -37,8 +36,4 @@ func Trunc(c int, s string) string {
 		return s[:c]
 	}
 	return s
-}
-
-func Join(sep string, v []string) string {
-	return strings.Join(v, sep)
 }

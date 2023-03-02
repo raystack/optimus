@@ -40,11 +40,4 @@ func TestTemplateFuncMap(t *testing.T) {
 		displayName := dag.DisplayName(str)
 		assert.Equal(t, "bq2bq__dash__transform__dot__bigquery", displayName)
 	})
-
-	t.Run("Join", func(t *testing.T) {
-		strs := []string{"python", "/opt/example/task.py"}
-
-		joinedStr := dag.Join(" ", strs)
-		assert.Equal(t, "python /opt/example/task.py", joinedStr)
-	})
 }
