@@ -37,11 +37,6 @@ type JobReplayRunService interface {
 }
 
 func (w ReplayWorker) Process(ctx context.Context, replayReq *scheduler.StoredReplay) {
-	if err := w.replayRepo.UpdateReplay(ctx, replayReq.ID, scheduler.ReplayStateInProgress, replayReq.Replay.Runs, ""); err != nil {
-		w.l.Error("unable to update replay state", "replay_id", replayReq.ID)
-		return
-	}
-
 	jobCron, err := w.getJobCron(ctx, replayReq)
 	if err != nil {
 		w.l.Error(fmt.Sprintf("unable to get cron value for job %s: %s", replayReq.Replay.JobName, err.Error()), "replay_id", replayReq.ID)

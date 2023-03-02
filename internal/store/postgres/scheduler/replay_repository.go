@@ -125,11 +125,30 @@ func (r ReplayRepository) RegisterReplay(ctx context.Context, replay *scheduler.
 }
 
 func (r ReplayRepository) GetReplayToExecute(ctx context.Context) (*scheduler.StoredReplay, error) {
-	replayRuns, err := r.getExecutableReplayRuns(ctx)
+	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if err != nil {
+			tx.Rollback(ctx)
+		} else {
+			tx.Commit(ctx)
+		}
+	}()
 
+	replayRuns, err := r.getExecutableReplayRuns(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	storedReplay, err := toStoredReplay(replayRuns)
+	if err != nil {
+		return nil, err
+	}
+	return storedReplay, r.updateReplayRequest(ctx, tx, storedReplay.ID, scheduler.ReplayStateInProgress, "")
+}
+
+func toStoredReplay(replayRuns []replayRun) (*scheduler.StoredReplay, error) {
 	var storedReplay *scheduler.StoredReplay
 	for _, run := range replayRuns {
 		if storedReplay != nil {
@@ -171,9 +190,8 @@ func (r ReplayRepository) UpdateReplay(ctx context.Context, id uuid.UUID, replay
 		}
 	}()
 
-	updateReplay := `UPDATE replay_request SET status = $1, message = $2, updated_at = NOW() WHERE id = $3`
-	if _, err := tx.Exec(ctx, updateReplay, replayStatus, message, id); err != nil {
-		return errors.Wrap(scheduler.EntityJobRun, "unable to update replay", err)
+	if err := r.updateReplayRequest(ctx, tx, id, replayStatus, message); err != nil {
+		return err
 	}
 
 	deleteRuns := `DELETE FROM replay_run WHERE replay_id = $1`
@@ -181,6 +199,14 @@ func (r ReplayRepository) UpdateReplay(ctx context.Context, id uuid.UUID, replay
 		return errors.Wrap(scheduler.EntityJobRun, "unable to delete runs of replay", err)
 	}
 	return r.insertReplayRuns(ctx, tx, id, runs)
+}
+
+func (ReplayRepository) updateReplayRequest(ctx context.Context, tx pgx.Tx, id uuid.UUID, replayStatus scheduler.ReplayState, message string) error {
+	updateReplay := `UPDATE replay_request SET status = $1, message = $2, updated_at = NOW() WHERE id = $3`
+	if _, err := tx.Exec(ctx, updateReplay, replayStatus, message, id); err != nil {
+		return errors.Wrap(scheduler.EntityJobRun, "unable to update replay", err)
+	}
+	return nil
 }
 
 func (ReplayRepository) insertReplay(ctx context.Context, tx pgx.Tx, replay *scheduler.Replay) error {
@@ -204,11 +230,16 @@ func (ReplayRepository) getReplay(ctx context.Context, tx pgx.Tx, replay *schedu
 	return rr, nil
 }
 
-func (r ReplayRepository) getExecutableReplayRuns(ctx context.Context) ([]replayRun, error) {
-	getReplayRequest := `SELECT ` + replayRunDetailColumns + ` FROM replay_run AS run join replay_request AS r ON (replay_id = r.id) 
-WHERE r.status IN ('created', 'partial replayed', 'replayed')`
+func (ReplayRepository) getExecutableReplayRuns(ctx context.Context, tx pgx.Tx) ([]replayRun, error) {
+	getReplayRequest := `
+		WITH request AS (
+			SELECT ` + replayColumns + `, created_at FROM replay_request WHERE status IN ('created', 'partial replayed', 'replayed') 
+			ORDER BY updated_at DESC LIMIT 1
+		)
+		SELECT ` + replayRunDetailColumns + ` FROM replay_run AS run
+		JOIN request AS r ON (replay_id = r.id)`
 
-	rows, err := r.db.Query(ctx, getReplayRequest)
+	rows, err := tx.Query(ctx, getReplayRequest)
 	if err != nil {
 		return nil, errors.Wrap(job.EntityJob, "unable to get the stored replay", err)
 	}

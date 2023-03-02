@@ -87,7 +87,6 @@ func TestReplayWorker(t *testing.T) {
 			}
 
 			jobRepository.On("GetJobDetails", ctx, projName, jobAName).Return(jobAWithDetails, nil)
-			replayRepository.On("UpdateReplay", ctx, replayReq.ID, scheduler.ReplayStateInProgress, replayReq.Replay.Runs, "").Return(nil)
 			sch.On("Clear", ctx, tnnt, jobAName, scheduledTime1.Add(-24*time.Hour)).Return(nil)
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(updatedRuns, nil)
 			replayRepository.On("UpdateReplay", ctx, replayReq.ID, scheduler.ReplayStateReplayed, updatedRuns, "").Return(nil)
@@ -136,7 +135,6 @@ func TestReplayWorker(t *testing.T) {
 			}
 
 			jobRepository.On("GetJobDetails", ctx, projName, jobAName).Return(jobAWithDetails, nil)
-			replayRepository.On("UpdateReplay", ctx, replayReq.ID, scheduler.ReplayStateInProgress, replayReq.Replay.Runs, "").Return(nil)
 			sch.On("Clear", ctx, tnnt, jobAName, scheduledTime1.Add(-24*time.Hour)).Return(nil)
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(updatedRuns, nil)
 			replayRepository.On("UpdateReplay", ctx, replayReq.ID, scheduler.ReplayStatePartialReplayed, updatedRuns, "").Return(nil)
@@ -185,7 +183,6 @@ func TestReplayWorker(t *testing.T) {
 			}
 
 			jobRepository.On("GetJobDetails", ctx, projName, jobAName).Return(jobAWithDetails, nil)
-			replayRepository.On("UpdateReplay", ctx, replayReq.ID, scheduler.ReplayStateInProgress, replayReq.Replay.Runs, "").Return(nil)
 			sch.On("ClearBatch", ctx, tnnt, jobAName, executionTime1, executionTime2).Return(nil)
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(updatedRuns, nil)
 			replayRepository.On("UpdateReplay", ctx, replayReq.ID, scheduler.ReplayStateReplayed, updatedRuns, "").Return(nil)
@@ -245,7 +242,6 @@ func TestReplayWorker(t *testing.T) {
 			}
 
 			jobRepository.On("GetJobDetails", ctx, projName, jobAName).Return(jobAWithDetails, nil)
-			replayRepository.On("UpdateReplay", ctx, replayReq.ID, scheduler.ReplayStateInProgress, replayReq.Replay.Runs, "").Return(nil).Once()
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(updatedRuns1, nil).Once()
 			sch.On("Clear", ctx, tnnt, jobAName, scheduledTime2.Add(-24*time.Hour)).Return(nil)
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(updatedRuns2, nil).Once()
@@ -296,7 +292,6 @@ func TestReplayWorker(t *testing.T) {
 			}
 
 			jobRepository.On("GetJobDetails", ctx, projName, jobAName).Return(jobAWithDetails, nil)
-			replayRepository.On("UpdateReplay", ctx, replayReq.ID, scheduler.ReplayStateInProgress, replayReq.Replay.Runs, "").Return(nil)
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(updatedRuns, nil)
 			replayRepository.On("UpdateReplay", ctx, replayReq.ID, scheduler.ReplayStateSuccess, updatedRuns, "").Return(nil)
 
