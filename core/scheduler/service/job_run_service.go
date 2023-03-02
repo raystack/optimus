@@ -336,6 +336,9 @@ func (s JobRunService) updateOperatorRun(ctx context.Context, event scheduler.Ev
 	if operatorType == scheduler.OperatorTask {
 		for _, state := range scheduler.TaskEndStates {
 			if event.Status == state {
+				// this can go negative, because it is possible that when we deploy certain job have already started,
+				// and the very first events we get are that of task end states, to handle this, we should treat the lowest
+				// value as the base value.
 				telemetry.NewGauge("count_running_tasks", map[string]string{
 					"project":   event.Tenant.ProjectName().String(),
 					"namespace": event.Tenant.NamespaceName().String(),
