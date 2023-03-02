@@ -49,8 +49,10 @@ func TestPlugins(t *testing.T) {
 						Name:          "",
 						Image:         "odpf.io/example",
 						PluginVersion: "0.2",
-						Entrypoint:    "sleep 10",
-						PluginType:    plugin.TypeTask,
+						Entrypoint: plugin.Entrypoint{
+							Script: "sleep 10",
+						},
+						PluginType: plugin.TypeTask,
 					},
 				},
 				{
@@ -60,8 +62,10 @@ func TestPlugins(t *testing.T) {
 						Name:          "example",
 						Image:         "",
 						PluginVersion: "0.2",
-						Entrypoint:    "sleep 10",
-						PluginType:    plugin.TypeTask,
+						Entrypoint: plugin.Entrypoint{
+							Script: "sleep 10",
+						},
+						PluginType: plugin.TypeTask,
 					},
 				},
 				{
@@ -71,18 +75,20 @@ func TestPlugins(t *testing.T) {
 						Name:          "example",
 						Image:         "odpf.io/example",
 						PluginVersion: "",
-						Entrypoint:    "sleep 10",
-						PluginType:    plugin.TypeTask,
+						Entrypoint: plugin.Entrypoint{
+							Script: "sleep 10",
+						},
+						PluginType: plugin.TypeTask,
 					},
 				},
 				{
 					name: "when entrypoint is empty",
-					err:  errors.New("entrypoint cannot be empty"),
+					err:  errors.New("entrypoint args cannot be empty"),
 					info: plugin.Info{
 						Name:          "example",
 						Image:         "odpf.io/example",
 						PluginVersion: "0.2",
-						Entrypoint:    "",
+						Entrypoint:    plugin.Entrypoint{},
 						PluginType:    plugin.TypeTask,
 					},
 				},
@@ -93,8 +99,10 @@ func TestPlugins(t *testing.T) {
 						Name:          "example",
 						Image:         "odpf.io/example",
 						PluginVersion: "0.2",
-						Entrypoint:    "sleep 10",
-						PluginType:    "",
+						Entrypoint: plugin.Entrypoint{
+							Script: "sleep 10",
+						},
+						PluginType: "",
 					},
 				},
 				{
@@ -104,8 +112,10 @@ func TestPlugins(t *testing.T) {
 						Name:          "example",
 						Image:         "odpf.io/example",
 						PluginVersion: "0.2",
-						Entrypoint:    "sleep 10",
-						PluginType:    plugin.TypeTask,
+						Entrypoint: plugin.Entrypoint{
+							Script: "sleep 10",
+						},
+						PluginType: plugin.TypeTask,
 					},
 				},
 			}
