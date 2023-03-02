@@ -21,6 +21,8 @@ const (
 	StateFailed  State = "failed"
 )
 
+var TaskEndStates = []State{StateSuccess, StateFailed, StateRetry}
+
 type State string
 
 func StateFromString(state string) (State, error) {
