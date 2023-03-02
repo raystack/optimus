@@ -6,7 +6,11 @@ pluginmods:
   - dependencyresolver
 pluginversion: latest
 image: docker.io/odpf/optimus-task-bq2bq-executor:latest
-entrypoint: "sleep 100"
+entrypoint:
+  shell: "/bin/bash"
+  script: |-
+    sleep 100
+    sleep 150
 
 questions:
   - name: PROJECT
