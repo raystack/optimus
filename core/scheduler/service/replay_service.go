@@ -16,7 +16,7 @@ type ReplayRepository interface {
 	UpdateReplay(ctx context.Context, replayID uuid.UUID, state scheduler.ReplayState, runs []*scheduler.JobRunStatus, message string) error
 
 	GetReplayToExecute(context.Context) (*scheduler.Replay, error)
-	GetReplayByStatus(ctx context.Context, statusList []scheduler.ReplayState) ([]*scheduler.Replay, error)
+	GetReplayRequestByStatus(ctx context.Context, statusList []scheduler.ReplayState) ([]*scheduler.ReplayRequest, error)
 }
 
 type ReplayValidator interface {

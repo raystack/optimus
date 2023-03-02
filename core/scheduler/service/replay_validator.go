@@ -31,18 +31,18 @@ func (v Validator) Validate(ctx context.Context, replayRequest *scheduler.Replay
 }
 
 func (v Validator) validateConflictedReplay(ctx context.Context, replayRequest *scheduler.ReplayRequest) error {
-	onGoingReplays, err := v.replayRepository.GetReplayByStatus(ctx, replayStatusToValidate)
+	onGoingReplays, err := v.replayRepository.GetReplayRequestByStatus(ctx, replayStatusToValidate)
 	if err != nil {
 		return err
 	}
 	for _, onGoingReplay := range onGoingReplays {
-		if onGoingReplay.Replay.Tenant != replayRequest.Tenant || onGoingReplay.Replay.JobName != replayRequest.JobName {
+		if onGoingReplay.Tenant != replayRequest.Tenant || onGoingReplay.JobName != replayRequest.JobName {
 			continue
 		}
 
 		// Check any intersection of date range
-		if (onGoingReplay.Replay.Config.StartTime.Equal(replayRequest.Config.EndTime) || onGoingReplay.Replay.Config.StartTime.Before(replayRequest.Config.EndTime)) &&
-			(onGoingReplay.Replay.Config.EndTime.Equal(replayRequest.Config.StartTime) || onGoingReplay.Replay.Config.EndTime.After(replayRequest.Config.StartTime)) {
+		if (onGoingReplay.Config.StartTime.Equal(replayRequest.Config.EndTime) || onGoingReplay.Config.StartTime.Before(replayRequest.Config.EndTime)) &&
+			(onGoingReplay.Config.EndTime.Equal(replayRequest.Config.StartTime) || onGoingReplay.Config.EndTime.After(replayRequest.Config.StartTime)) {
 			return errors.NewError(errors.ErrFailedPrecond, scheduler.EntityJobRun, "conflicted replay found")
 		}
 	}

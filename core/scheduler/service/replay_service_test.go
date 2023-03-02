@@ -105,15 +105,15 @@ type ReplayRepository struct {
 }
 
 // GetReplayByStatus provides a mock function with given fields: ctx, statusList
-func (_m *ReplayRepository) GetReplayByStatus(ctx context.Context, statusList []scheduler.ReplayState) ([]*scheduler.Replay, error) {
+func (_m *ReplayRepository) GetReplayRequestByStatus(ctx context.Context, statusList []scheduler.ReplayState) ([]*scheduler.ReplayRequest, error) {
 	ret := _m.Called(ctx, statusList)
 
-	var r0 []*scheduler.Replay
-	if rf, ok := ret.Get(0).(func(context.Context, []scheduler.ReplayState) []*scheduler.Replay); ok {
+	var r0 []*scheduler.ReplayRequest
+	if rf, ok := ret.Get(0).(func(context.Context, []scheduler.ReplayState) []*scheduler.ReplayRequest); ok {
 		r0 = rf(ctx, statusList)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*scheduler.Replay)
+			r0 = ret.Get(0).([]*scheduler.ReplayRequest)
 		}
 	}
 

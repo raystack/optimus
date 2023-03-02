@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -46,6 +47,23 @@ type replayRequest struct {
 	UpdatedAt time.Time
 }
 
+func (r replayRequest) toSchedulerReplayRequest() (*scheduler.ReplayRequest, error) {
+	tnnt, err := tenant.NewTenant(r.ProjectName, r.NamespaceName)
+	if err != nil {
+		return nil, err
+	}
+	conf := scheduler.NewReplayConfig(r.StartTime, r.EndTime, r.Parallel, r.Description)
+	replayStatus, err := scheduler.ReplayStateFromString(r.Status)
+	if err != nil {
+		return nil, err
+	}
+	jobName, err := scheduler.JobNameFrom(r.JobName)
+	if err != nil {
+		return nil, err
+	}
+	return scheduler.NewReplayRequest(jobName, tnnt, conf, replayStatus), nil
+}
+
 type replayRun struct {
 	ID uuid.UUID
 
@@ -68,7 +86,7 @@ type replayRun struct {
 	UpdatedAt time.Time
 }
 
-func (r replayRun) toReplay() (*scheduler.ReplayRequest, error) {
+func (r replayRun) toReplayRequest() (*scheduler.ReplayRequest, error) {
 	tnnt, err := tenant.NewTenant(r.ProjectName, r.NamespaceName)
 	if err != nil {
 		return nil, err
@@ -113,7 +131,7 @@ func (r ReplayRepository) RegisterReplay(ctx context.Context, replay *scheduler.
 		return uuid.Nil, err
 	}
 
-	storedReplay, err := r.getReplay(ctx, tx, replay)
+	storedReplay, err := r.getReplayRequest(ctx, tx, replay)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -143,18 +161,41 @@ func (r ReplayRepository) GetReplayToExecute(ctx context.Context) (*scheduler.Re
 	if err != nil {
 		return nil, err
 	}
-	storedReplay, err := toStoredReplay(replayRuns)
+	storedReplay, err := toReplay(replayRuns)
 	if err != nil {
 		return nil, err
 	}
 	return storedReplay, r.updateReplayRequest(ctx, tx, storedReplay.ID, scheduler.ReplayStateInProgress, "")
 }
 
-func (ReplayRepository) GetReplayByStatus(context.Context, []scheduler.ReplayState) ([]*scheduler.Replay, error) {
-	return nil, nil
+func (r ReplayRepository) GetReplayRequestByStatus(ctx context.Context, statusList []scheduler.ReplayState) ([]*scheduler.ReplayRequest, error) {
+	getReplayRequest := `SELECT ` + replayColumns + ` FROM replay_request WHERE status IN ($1)`
+	rows, err := r.db.Query(ctx, getReplayRequest)
+	if err != nil {
+		return nil, errors.Wrap(job.EntityJob, "unable to get replay list", err)
+	}
+	defer rows.Close()
+
+	var replayReqs []*scheduler.ReplayRequest
+	for rows.Next() {
+		var rr replayRequest
+		if err := rows.Scan(&rr.ID, &rr.JobName, &rr.NamespaceName, &rr.ProjectName, &rr.StartTime, &rr.EndTime, &rr.Description, &rr.Parallel,
+			&rr.Status, &rr.Message); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, errors.NotFound(job.EntityJob, fmt.Sprintf("no replay found for status %s", statusList))
+			}
+			return nil, errors.Wrap(scheduler.EntityJobRun, "unable to get the stored replay", err)
+		}
+		schedulerReplayReq, err := rr.toSchedulerReplayRequest()
+		if err != nil {
+			return nil, err
+		}
+		replayReqs = append(replayReqs, schedulerReplayReq)
+	}
+	return replayReqs, nil
 }
 
-func toStoredReplay(replayRuns []replayRun) (*scheduler.Replay, error) {
+func toReplay(replayRuns []replayRun) (*scheduler.Replay, error) {
 	var storedReplay *scheduler.Replay
 	for _, run := range replayRuns {
 		if storedReplay != nil {
@@ -170,7 +211,7 @@ func toStoredReplay(replayRuns []replayRun) (*scheduler.Replay, error) {
 			continue
 		}
 
-		replay, err := run.toReplay()
+		replay, err := run.toReplayRequest()
 		if err != nil {
 			return nil, err
 		}
@@ -231,7 +272,7 @@ func (ReplayRepository) insertReplay(ctx context.Context, tx pgx.Tx, replay *sch
 	return nil
 }
 
-func (ReplayRepository) getReplay(ctx context.Context, tx pgx.Tx, replay *scheduler.ReplayRequest) (replayRequest, error) {
+func (ReplayRepository) getReplayRequest(ctx context.Context, tx pgx.Tx, replay *scheduler.ReplayRequest) (replayRequest, error) {
 	var rr replayRequest
 	getReplayRequest := `SELECT ` + replayColumns + ` FROM replay_request where project_name = $1 and job_name = $2 and start_time = $3 and end_time = $4 order by created_at desc limit 1`
 	if err := tx.QueryRow(ctx, getReplayRequest, replay.Tenant.ProjectName(), replay.JobName.String(), replay.Config.StartTime, replay.Config.EndTime).

@@ -45,10 +45,8 @@ func TestReplayValidator(t *testing.T) {
 			defer sch.AssertExpectations(t)
 
 			onGoingReplayConfig := scheduler.NewReplayConfig(time.Now(), time.Now(), parallel, description)
-			onGoingReplay := []*scheduler.Replay{
-				{
-					Replay: scheduler.NewReplayRequest(jobName, tnnt, onGoingReplayConfig, scheduler.ReplayStateCreated),
-				},
+			onGoingReplay := []*scheduler.ReplayRequest{
+				scheduler.NewReplayRequest(jobName, tnnt, onGoingReplayConfig, scheduler.ReplayStateCreated),
 			}
 			currentRuns := []*scheduler.JobRunStatus{
 				{
@@ -57,7 +55,7 @@ func TestReplayValidator(t *testing.T) {
 				},
 			}
 
-			replayRepository.On("GetReplayByStatus", ctx, replayStatusToValidate).Return(onGoingReplay, nil)
+			replayRepository.On("GetReplayRequestByStatus", ctx, replayStatusToValidate).Return(onGoingReplay, nil)
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(currentRuns, nil)
 
 			validator := service.NewValidator(replayRepository, sch)
@@ -71,13 +69,11 @@ func TestReplayValidator(t *testing.T) {
 			sch := new(mockReplayScheduler)
 			defer sch.AssertExpectations(t)
 
-			onGoingReplay := []*scheduler.Replay{
-				{
-					Replay: scheduler.NewReplayRequest(jobName, tnnt, replayConfig, scheduler.ReplayStateInProgress),
-				},
+			onGoingReplay := []*scheduler.ReplayRequest{
+				scheduler.NewReplayRequest(jobName, tnnt, replayConfig, scheduler.ReplayStateInProgress),
 			}
 
-			replayRepository.On("GetReplayByStatus", ctx, replayStatusToValidate).Return(onGoingReplay, nil)
+			replayRepository.On("GetReplayRequestByStatus", ctx, replayStatusToValidate).Return(onGoingReplay, nil)
 
 			validator := service.NewValidator(replayRepository, sch)
 			err := validator.Validate(ctx, replayReq, jobCron)
@@ -91,10 +87,8 @@ func TestReplayValidator(t *testing.T) {
 			defer sch.AssertExpectations(t)
 
 			onGoingReplayConfig := scheduler.NewReplayConfig(time.Now(), time.Now(), parallel, description)
-			onGoingReplay := []*scheduler.Replay{
-				{
-					Replay: scheduler.NewReplayRequest(jobName, tnnt, onGoingReplayConfig, scheduler.ReplayStateCreated),
-				},
+			onGoingReplay := []*scheduler.ReplayRequest{
+				scheduler.NewReplayRequest(jobName, tnnt, onGoingReplayConfig, scheduler.ReplayStateCreated),
 			}
 			currentRuns := []*scheduler.JobRunStatus{
 				{
@@ -103,7 +97,7 @@ func TestReplayValidator(t *testing.T) {
 				},
 			}
 
-			replayRepository.On("GetReplayByStatus", ctx, replayStatusToValidate).Return(onGoingReplay, nil)
+			replayRepository.On("GetReplayRequestByStatus", ctx, replayStatusToValidate).Return(onGoingReplay, nil)
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(currentRuns, nil)
 
 			validator := service.NewValidator(replayRepository, sch)
