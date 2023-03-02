@@ -50,19 +50,23 @@ func (j ReplayState) String() string {
 	return string(j)
 }
 
-type Replay struct {
+type ReplayRequest struct {
 	JobName JobName
 	Tenant  tenant.Tenant
 	Config  *ReplayConfig
-
-	Runs []*JobRunStatus // TODO: JobRunStatus does not have `message/log`
 
 	State   ReplayState
 	Message string
 }
 
-func NewReplay(jobName JobName, tenant tenant.Tenant, config *ReplayConfig, runs []*JobRunStatus, state ReplayState) *Replay {
-	return &Replay{JobName: jobName, Tenant: tenant, Config: config, Runs: runs, State: state}
+func NewReplayRequest(jobName JobName, tenant tenant.Tenant, config *ReplayConfig, state ReplayState) *ReplayRequest {
+	return &ReplayRequest{JobName: jobName, Tenant: tenant, Config: config, State: state}
+}
+
+type Replay struct {
+	ID     uuid.UUID
+	Replay *ReplayRequest
+	Runs   []*JobRunStatus // TODO: JobRunStatus does not have `message/log`
 }
 
 func (r Replay) GetFirstExecutableRun() *JobRunStatus {
@@ -79,13 +83,8 @@ func (r Replay) GetLastExecutableRun() *JobRunStatus {
 	return r.Runs[0]
 }
 
-type StoredReplay struct {
-	ID     uuid.UUID
-	Replay *Replay
-}
-
-func NewStoredReplay(id uuid.UUID, replay *Replay) *StoredReplay {
-	return &StoredReplay{ID: id, Replay: replay}
+func NewStoredReplay(id uuid.UUID, replay *ReplayRequest) *Replay {
+	return &Replay{ID: id, Replay: replay}
 }
 
 type ReplayConfig struct {

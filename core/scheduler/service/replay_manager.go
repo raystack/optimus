@@ -25,7 +25,7 @@ type ReplayManager struct {
 }
 
 type Worker interface {
-	Process(context.Context, *scheduler.StoredReplay)
+	Process(context.Context, *scheduler.Replay)
 }
 
 func (m ReplayManager) Initialize() {

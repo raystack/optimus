@@ -12,11 +12,11 @@ import (
 )
 
 type ReplayRepository interface {
-	RegisterReplay(ctx context.Context, replay *scheduler.Replay) (uuid.UUID, error)
+	RegisterReplay(ctx context.Context, replay *scheduler.ReplayRequest, runs []*scheduler.JobRunStatus) (uuid.UUID, error)
 	UpdateReplay(ctx context.Context, replayID uuid.UUID, state scheduler.ReplayState, runs []*scheduler.JobRunStatus, message string) error
 
-	GetReplayToExecute(context.Context) (*scheduler.StoredReplay, error)
-	GetReplayByStatus(ctx context.Context, statusList []scheduler.ReplayState) ([]*scheduler.StoredReplay, error)
+	GetReplayToExecute(context.Context) (*scheduler.Replay, error)
+	GetReplayByStatus(ctx context.Context, statusList []scheduler.ReplayState) ([]*scheduler.Replay, error)
 }
 
 type ReplayValidator interface {
@@ -45,11 +45,9 @@ func (r ReplayService) CreateReplay(ctx context.Context, tenant tenant.Tenant, j
 		return uuid.Nil, err
 	}
 
+	replay := scheduler.NewReplayRequest(jobName, tenant, config, scheduler.ReplayStateCreated)
 	runs := getExpectedRuns(jobCron, config.StartTime, config.EndTime)
-
-	replay := scheduler.NewReplay(jobName, tenant, config, runs, scheduler.ReplayStateCreated)
-
-	return r.replayRepo.RegisterReplay(ctx, replay)
+	return r.replayRepo.RegisterReplay(ctx, replay, runs)
 }
 
 func NewReplayService(replayRepo ReplayRepository, jobRepo JobRepository, validator ReplayValidator) *ReplayService {

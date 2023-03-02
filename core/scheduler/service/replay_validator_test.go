@@ -44,9 +44,9 @@ func TestReplayValidator(t *testing.T) {
 			defer sch.AssertExpectations(t)
 
 			onGoingReplayConfig := scheduler.NewReplayConfig(time.Now(), time.Now(), parallel, description)
-			onGoingReplay := []*scheduler.StoredReplay{
+			onGoingReplay := []*scheduler.Replay{
 				{
-					Replay: scheduler.NewReplay(jobName, tnnt, onGoingReplayConfig, nil, scheduler.ReplayStateCreated),
+					Replay: scheduler.NewReplayRequest(jobName, tnnt, onGoingReplayConfig, scheduler.ReplayStateCreated),
 				},
 			}
 			currentRuns := []*scheduler.JobRunStatus{
@@ -70,9 +70,9 @@ func TestReplayValidator(t *testing.T) {
 			sch := new(mockReplayScheduler)
 			defer sch.AssertExpectations(t)
 
-			onGoingReplay := []*scheduler.StoredReplay{
+			onGoingReplay := []*scheduler.Replay{
 				{
-					Replay: scheduler.NewReplay(jobName, tnnt, replayConfig, nil, scheduler.ReplayStateInProgress),
+					Replay: scheduler.NewReplayRequest(jobName, tnnt, replayConfig, scheduler.ReplayStateInProgress),
 				},
 			}
 
@@ -90,9 +90,9 @@ func TestReplayValidator(t *testing.T) {
 			defer sch.AssertExpectations(t)
 
 			onGoingReplayConfig := scheduler.NewReplayConfig(time.Now(), time.Now(), parallel, description)
-			onGoingReplay := []*scheduler.StoredReplay{
+			onGoingReplay := []*scheduler.Replay{
 				{
-					Replay: scheduler.NewReplay(jobName, tnnt, onGoingReplayConfig, nil, scheduler.ReplayStateCreated),
+					Replay: scheduler.NewReplayRequest(jobName, tnnt, onGoingReplayConfig, scheduler.ReplayStateCreated),
 				},
 			}
 			currentRuns := []*scheduler.JobRunStatus{

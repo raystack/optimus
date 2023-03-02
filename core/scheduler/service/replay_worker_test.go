@@ -64,19 +64,19 @@ func TestReplayWorker(t *testing.T) {
 			jobRepository := new(JobRepository)
 			defer jobRepository.AssertExpectations(t)
 
-			replayReq := &scheduler.StoredReplay{
+			replayReq := &scheduler.Replay{
 				ID: uuid.New(),
-				Replay: &scheduler.Replay{
+				Replay: &scheduler.ReplayRequest{
 					JobName: jobAName,
 					Tenant:  tnnt,
 					Config:  scheduler.NewReplayConfig(startTime, endTime, false, replayDescription),
-					Runs: []*scheduler.JobRunStatus{
-						{
-							ScheduledAt: scheduledTime1,
-							State:       scheduler.StatePending,
-						},
+					State:   scheduler.ReplayStateCreated,
+				},
+				Runs: []*scheduler.JobRunStatus{
+					{
+						ScheduledAt: scheduledTime1,
+						State:       scheduler.StatePending,
 					},
-					State: scheduler.ReplayStateCreated,
 				},
 			}
 			updatedRuns := []*scheduler.JobRunStatus{
@@ -104,23 +104,23 @@ func TestReplayWorker(t *testing.T) {
 			jobRepository := new(JobRepository)
 			defer jobRepository.AssertExpectations(t)
 
-			replayReq := &scheduler.StoredReplay{
+			replayReq := &scheduler.Replay{
 				ID: uuid.New(),
-				Replay: &scheduler.Replay{
+				Replay: &scheduler.ReplayRequest{
 					JobName: jobAName,
 					Tenant:  tnnt,
 					Config:  scheduler.NewReplayConfig(startTime, endTime, false, replayDescription),
-					Runs: []*scheduler.JobRunStatus{
-						{
-							ScheduledAt: scheduledTime1,
-							State:       scheduler.StatePending,
-						},
-						{
-							ScheduledAt: scheduledTime2,
-							State:       scheduler.StatePending,
-						},
+					State:   scheduler.ReplayStateCreated,
+				},
+				Runs: []*scheduler.JobRunStatus{
+					{
+						ScheduledAt: scheduledTime1,
+						State:       scheduler.StatePending,
 					},
-					State: scheduler.ReplayStateCreated,
+					{
+						ScheduledAt: scheduledTime2,
+						State:       scheduler.StatePending,
+					},
 				},
 			}
 			updatedRuns := []*scheduler.JobRunStatus{
@@ -152,23 +152,23 @@ func TestReplayWorker(t *testing.T) {
 			jobRepository := new(JobRepository)
 			defer jobRepository.AssertExpectations(t)
 
-			replayReq := &scheduler.StoredReplay{
+			replayReq := &scheduler.Replay{
 				ID: uuid.New(),
-				Replay: &scheduler.Replay{
+				Replay: &scheduler.ReplayRequest{
 					JobName: jobAName,
 					Tenant:  tnnt,
 					Config:  scheduler.NewReplayConfig(startTime, endTime, true, replayDescription),
-					Runs: []*scheduler.JobRunStatus{
-						{
-							ScheduledAt: scheduledTime1,
-							State:       scheduler.StatePending,
-						},
-						{
-							ScheduledAt: scheduledTime2,
-							State:       scheduler.StatePending,
-						},
+					State:   scheduler.ReplayStateCreated,
+				},
+				Runs: []*scheduler.JobRunStatus{
+					{
+						ScheduledAt: scheduledTime1,
+						State:       scheduler.StatePending,
 					},
-					State: scheduler.ReplayStateCreated,
+					{
+						ScheduledAt: scheduledTime2,
+						State:       scheduler.StatePending,
+					},
 				},
 			}
 			updatedRuns := []*scheduler.JobRunStatus{
@@ -201,23 +201,23 @@ func TestReplayWorker(t *testing.T) {
 			jobRepository := new(JobRepository)
 			defer jobRepository.AssertExpectations(t)
 
-			replayReq := &scheduler.StoredReplay{
+			replayReq := &scheduler.Replay{
 				ID: uuid.New(),
-				Replay: &scheduler.Replay{
+				Replay: &scheduler.ReplayRequest{
 					JobName: jobAName,
 					Tenant:  tnnt,
 					Config:  scheduler.NewReplayConfig(startTime, endTime, true, replayDescription),
-					Runs: []*scheduler.JobRunStatus{
-						{
-							ScheduledAt: scheduledTime1,
-							State:       scheduler.StateQueued,
-						},
-						{
-							ScheduledAt: scheduledTime2,
-							State:       scheduler.StatePending,
-						},
+					State:   scheduler.ReplayStatePartialReplayed,
+				},
+				Runs: []*scheduler.JobRunStatus{
+					{
+						ScheduledAt: scheduledTime1,
+						State:       scheduler.StateQueued,
 					},
-					State: scheduler.ReplayStatePartialReplayed,
+					{
+						ScheduledAt: scheduledTime2,
+						State:       scheduler.StatePending,
+					},
 				},
 			}
 			updatedRuns1 := []*scheduler.JobRunStatus{
@@ -261,23 +261,23 @@ func TestReplayWorker(t *testing.T) {
 			jobRepository := new(JobRepository)
 			defer jobRepository.AssertExpectations(t)
 
-			replayReq := &scheduler.StoredReplay{
+			replayReq := &scheduler.Replay{
 				ID: uuid.New(),
-				Replay: &scheduler.Replay{
+				Replay: &scheduler.ReplayRequest{
 					JobName: jobAName,
 					Tenant:  tnnt,
 					Config:  scheduler.NewReplayConfig(startTime, endTime, true, replayDescription),
-					Runs: []*scheduler.JobRunStatus{
-						{
-							ScheduledAt: scheduledTime1,
-							State:       scheduler.StateSuccess,
-						},
-						{
-							ScheduledAt: scheduledTime2,
-							State:       scheduler.StateQueued,
-						},
+					State:   scheduler.ReplayStateReplayed,
+				},
+				Runs: []*scheduler.JobRunStatus{
+					{
+						ScheduledAt: scheduledTime1,
+						State:       scheduler.StateSuccess,
 					},
-					State: scheduler.ReplayStateReplayed,
+					{
+						ScheduledAt: scheduledTime2,
+						State:       scheduler.StateQueued,
+					},
 				},
 			}
 			updatedRuns := []*scheduler.JobRunStatus{

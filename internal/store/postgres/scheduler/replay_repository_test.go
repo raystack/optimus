@@ -48,9 +48,9 @@ func TestPostgresSchedulerRepository(t *testing.T) {
 			replayRepo := postgres.NewReplayRepository(db)
 
 			replayConfig := scheduler.NewReplayConfig(startTime, endTime, true, description)
-			replayReq := scheduler.NewReplay(jobAName, tnnt, replayConfig, jobRunsAllPending, scheduler.ReplayStateCreated)
+			replayReq := scheduler.NewReplayRequest(jobAName, tnnt, replayConfig, scheduler.ReplayStateCreated)
 
-			replayID, err := replayRepo.RegisterReplay(ctx, replayReq)
+			replayID, err := replayRepo.RegisterReplay(ctx, replayReq, jobRunsAllPending)
 			assert.Nil(t, err)
 			assert.NotNil(t, replayID)
 		})
@@ -62,9 +62,9 @@ func TestPostgresSchedulerRepository(t *testing.T) {
 			replayRepo := postgres.NewReplayRepository(db)
 
 			replayConfig := scheduler.NewReplayConfig(startTime, endTime, true, description)
-			replayReq := scheduler.NewReplay(jobAName, tnnt, replayConfig, jobRunsAllPending, scheduler.ReplayStateCreated)
+			replayReq := scheduler.NewReplayRequest(jobAName, tnnt, replayConfig, scheduler.ReplayStateCreated)
 
-			replayID, err := replayRepo.RegisterReplay(ctx, replayReq)
+			replayID, err := replayRepo.RegisterReplay(ctx, replayReq, jobRunsAllPending)
 			assert.Nil(t, err)
 			assert.NotNil(t, replayID)
 
@@ -79,14 +79,14 @@ func TestPostgresSchedulerRepository(t *testing.T) {
 			replayRepo := postgres.NewReplayRepository(db)
 
 			replayConfig := scheduler.NewReplayConfig(startTime, endTime, true, description)
-			replayReq1 := scheduler.NewReplay(jobAName, tnnt, replayConfig, jobRunsAllPending, scheduler.ReplayStateSuccess)
-			replayReq2 := scheduler.NewReplay(jobBName, tnnt, replayConfig, jobRunsAllPending, scheduler.ReplayStateCreated)
+			replayReq1 := scheduler.NewReplayRequest(jobAName, tnnt, replayConfig, scheduler.ReplayStateSuccess)
+			replayReq2 := scheduler.NewReplayRequest(jobBName, tnnt, replayConfig, scheduler.ReplayStateCreated)
 
-			replayID1, err := replayRepo.RegisterReplay(ctx, replayReq1)
+			replayID1, err := replayRepo.RegisterReplay(ctx, replayReq1, jobRunsAllPending)
 			assert.Nil(t, err)
 			assert.NotNil(t, replayID1)
 
-			replayID2, err := replayRepo.RegisterReplay(ctx, replayReq2)
+			replayID2, err := replayRepo.RegisterReplay(ctx, replayReq2, jobRunsAllPending)
 			assert.Nil(t, err)
 			assert.NotNil(t, replayID2)
 

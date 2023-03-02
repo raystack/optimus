@@ -12,8 +12,6 @@ import (
 var (
 	replayStatusToValidate = []scheduler.ReplayState{scheduler.ReplayStateCreated, scheduler.ReplayStateInProgress,
 		scheduler.ReplayStatePartialReplayed, scheduler.ReplayStateReplayed}
-	// ErrConflictedJobRun = errors.New("conflicted job run found")
-	//ErrConflictedReplay = errors.New("conflicted replay found")
 )
 
 type Validator struct {

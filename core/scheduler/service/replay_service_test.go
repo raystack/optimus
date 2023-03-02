@@ -64,11 +64,11 @@ func TestReplayService(t *testing.T) {
 				{ScheduledAt: scheduledTime1, State: scheduler.StatePending},
 				{ScheduledAt: scheduledTime2, State: scheduler.StatePending},
 			}
-			replayReq := scheduler.NewReplay(jobName, tnnt, replayConfig, replayRuns, scheduler.ReplayStateCreated)
+			replayReq := scheduler.NewReplayRequest(jobName, tnnt, replayConfig, scheduler.ReplayStateCreated)
 
 			jobRepository.On("GetJobDetails", ctx, projName, jobName).Return(jobWithDetails, nil)
 			replayValidator.On("Validate", ctx, tnnt, jobName, replayConfig, jobCron).Return(nil)
-			replayRepository.On("RegisterReplay", ctx, replayReq).Return(replayID, nil)
+			replayRepository.On("RegisterReplay", ctx, replayReq, replayRuns).Return(replayID, nil)
 
 			replayService := service.NewReplayService(replayRepository, jobRepository, replayValidator)
 			result, err := replayService.CreateReplay(ctx, tnnt, jobName, replayConfig)
@@ -103,15 +103,15 @@ type ReplayRepository struct {
 }
 
 // GetReplayByStatus provides a mock function with given fields: ctx, statusList
-func (_m *ReplayRepository) GetReplayByStatus(ctx context.Context, statusList []scheduler.ReplayState) ([]*scheduler.StoredReplay, error) {
+func (_m *ReplayRepository) GetReplayByStatus(ctx context.Context, statusList []scheduler.ReplayState) ([]*scheduler.Replay, error) {
 	ret := _m.Called(ctx, statusList)
 
-	var r0 []*scheduler.StoredReplay
-	if rf, ok := ret.Get(0).(func(context.Context, []scheduler.ReplayState) []*scheduler.StoredReplay); ok {
+	var r0 []*scheduler.Replay
+	if rf, ok := ret.Get(0).(func(context.Context, []scheduler.ReplayState) []*scheduler.Replay); ok {
 		r0 = rf(ctx, statusList)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*scheduler.StoredReplay)
+			r0 = ret.Get(0).([]*scheduler.Replay)
 		}
 	}
 
@@ -126,15 +126,15 @@ func (_m *ReplayRepository) GetReplayByStatus(ctx context.Context, statusList []
 }
 
 // GetReplayToExecute provides a mock function with given fields: _a0
-func (_m *ReplayRepository) GetReplayToExecute(_a0 context.Context) (*scheduler.StoredReplay, error) {
+func (_m *ReplayRepository) GetReplayToExecute(_a0 context.Context) (*scheduler.Replay, error) {
 	ret := _m.Called(_a0)
 
-	var r0 *scheduler.StoredReplay
-	if rf, ok := ret.Get(0).(func(context.Context) *scheduler.StoredReplay); ok {
+	var r0 *scheduler.Replay
+	if rf, ok := ret.Get(0).(func(context.Context) *scheduler.Replay); ok {
 		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*scheduler.StoredReplay)
+			r0 = ret.Get(0).(*scheduler.Replay)
 		}
 	}
 
@@ -148,13 +148,13 @@ func (_m *ReplayRepository) GetReplayToExecute(_a0 context.Context) (*scheduler.
 	return r0, r1
 }
 
-// RegisterReplay provides a mock function with given fields: ctx, replay
-func (_m *ReplayRepository) RegisterReplay(ctx context.Context, replay *scheduler.Replay) (uuid.UUID, error) {
-	ret := _m.Called(ctx, replay)
+// RegisterReplay provides a mock function with given fields: ctx, replay, runs
+func (_m *ReplayRepository) RegisterReplay(ctx context.Context, replay *scheduler.ReplayRequest, runs []*scheduler.JobRunStatus) (uuid.UUID, error) {
+	ret := _m.Called(ctx, replay, runs)
 
 	var r0 uuid.UUID
-	if rf, ok := ret.Get(0).(func(context.Context, *scheduler.Replay) uuid.UUID); ok {
-		r0 = rf(ctx, replay)
+	if rf, ok := ret.Get(0).(func(context.Context, *scheduler.ReplayRequest, []*scheduler.JobRunStatus) uuid.UUID); ok {
+		r0 = rf(ctx, replay, runs)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(uuid.UUID)
@@ -162,8 +162,8 @@ func (_m *ReplayRepository) RegisterReplay(ctx context.Context, replay *schedule
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *scheduler.Replay) error); ok {
-		r1 = rf(ctx, replay)
+	if rf, ok := ret.Get(1).(func(context.Context, *scheduler.ReplayRequest, []*scheduler.JobRunStatus) error); ok {
+		r1 = rf(ctx, replay, runs)
 	} else {
 		r1 = ret.Error(1)
 	}
