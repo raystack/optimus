@@ -25,7 +25,7 @@ type ReplayManager struct {
 }
 
 type Worker interface {
-	Process(context.Context, []*scheduler.StoredReplay)
+	Process(context.Context, *scheduler.StoredReplay)
 }
 
 func (m ReplayManager) Initialize() {
@@ -44,13 +44,12 @@ func (m ReplayManager) StartReplayLoop() {
 
 	// Cancel timed out replay with status [created, partial replayed, replayed]
 
-	// Fetch created, in progress, and replayed requests
-	// TODO: fetch only 1, to distribute the requests to all pods
-	replaysToExecute, err := m.replayRepository.GetReplaysToExecute(ctx)
+	// Fetch created, in progress, and replayed request
+	replayToExecute, err := m.replayRepository.GetReplayToExecute(ctx)
 	if err != nil {
 		m.l.Error("unable to get replay requests to execute")
 		return
 	}
 
-	go m.replayWorker.Process(ctx, replaysToExecute)
+	go m.replayWorker.Process(ctx, replayToExecute)
 }

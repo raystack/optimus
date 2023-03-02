@@ -146,16 +146,16 @@ type ReplayRepository struct {
 	mock.Mock
 }
 
-// GetReplaysToExecute provides a mock function with given fields: _a0
-func (_m *ReplayRepository) GetReplaysToExecute(_a0 context.Context) ([]*scheduler.StoredReplay, error) {
+// GetReplayToExecute provides a mock function with given fields: _a0
+func (_m *ReplayRepository) GetReplayToExecute(_a0 context.Context) (*scheduler.StoredReplay, error) {
 	ret := _m.Called(_a0)
 
-	var r0 []*scheduler.StoredReplay
-	if rf, ok := ret.Get(0).(func(context.Context) []*scheduler.StoredReplay); ok {
+	var r0 *scheduler.StoredReplay
+	if rf, ok := ret.Get(0).(func(context.Context) *scheduler.StoredReplay); ok {
 		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*scheduler.StoredReplay)
+			r0 = ret.Get(0).(*scheduler.StoredReplay)
 		}
 	}
 

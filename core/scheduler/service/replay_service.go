@@ -13,7 +13,7 @@ import (
 
 type ReplayRepository interface {
 	RegisterReplay(ctx context.Context, replay *scheduler.Replay) (uuid.UUID, error)
-	GetReplaysToExecute(context.Context) ([]*scheduler.StoredReplay, error)
+	GetReplayToExecute(context.Context) (*scheduler.StoredReplay, error)
 	UpdateReplay(ctx context.Context, replayID uuid.UUID, state scheduler.ReplayState, runs []*scheduler.JobRunStatus, message string) error
 }
 

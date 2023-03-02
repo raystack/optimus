@@ -36,32 +36,30 @@ type JobReplayRunService interface {
 	GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName, criteria *scheduler.JobRunsCriteria) ([]*scheduler.JobRunStatus, error)
 }
 
-func (w ReplayWorker) Process(ctx context.Context, replays []*scheduler.StoredReplay) {
-	for _, replayReq := range replays {
-		if err := w.replayRepo.UpdateReplay(ctx, replayReq.ID, scheduler.ReplayStateInProgress, replayReq.Replay.Runs, ""); err != nil {
+func (w ReplayWorker) Process(ctx context.Context, replayReq *scheduler.StoredReplay) {
+	if err := w.replayRepo.UpdateReplay(ctx, replayReq.ID, scheduler.ReplayStateInProgress, replayReq.Replay.Runs, ""); err != nil {
+		w.l.Error("unable to update replay state", "replay_id", replayReq.ID)
+		return
+	}
+
+	jobCron, err := w.getJobCron(ctx, replayReq)
+	if err != nil {
+		w.l.Error(fmt.Sprintf("unable to get cron value for job %s: %s", replayReq.Replay.JobName, err.Error()), "replay_id", replayReq.ID)
+	}
+
+	switch replayReq.Replay.State {
+	case scheduler.ReplayStateCreated:
+		err = w.processNewReplayRequest(ctx, replayReq, jobCron)
+	case scheduler.ReplayStatePartialReplayed:
+		err = w.processPartialReplayedRequest(ctx, replayReq, jobCron)
+	case scheduler.ReplayStateReplayed:
+		err = w.processReplayedRequest(ctx, replayReq, jobCron)
+	}
+
+	if err != nil {
+		if err := w.replayRepo.UpdateReplay(ctx, replayReq.ID, scheduler.ReplayStateFailed, replayReq.Replay.Runs, err.Error()); err != nil {
 			w.l.Error("unable to update replay state", "replay_id", replayReq.ID)
 			return
-		}
-
-		jobCron, err := w.getJobCron(ctx, replayReq)
-		if err != nil {
-			w.l.Error(fmt.Sprintf("unable to get cron value for job %s: %s", replayReq.Replay.JobName, err.Error()), "replay_id", replayReq.ID)
-		}
-
-		switch replayReq.Replay.State {
-		case scheduler.ReplayStateCreated:
-			err = w.processNewReplayRequest(ctx, replayReq, jobCron)
-		case scheduler.ReplayStatePartialReplayed:
-			err = w.processPartialReplayedRequest(ctx, replayReq, jobCron)
-		case scheduler.ReplayStateReplayed:
-			err = w.processReplayedRequest(ctx, replayReq, jobCron)
-		}
-
-		if err != nil {
-			if err := w.replayRepo.UpdateReplay(ctx, replayReq.ID, scheduler.ReplayStateFailed, replayReq.Replay.Runs, err.Error()); err != nil {
-				w.l.Error("unable to update replay state", "replay_id", replayReq.ID)
-				return
-			}
 		}
 	}
 }
