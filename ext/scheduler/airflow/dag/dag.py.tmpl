@@ -102,12 +102,12 @@ IMAGE_PULL_POLICY = "IfNotPresent"
 INIT_CONTAINER_IMAGE = "odpf/optimus:{{.Version}}"
 INIT_CONTAINER_ENTRYPOINT = "/opt/entrypoint_init_container.sh"
 
-def get_entrypoint_cmd(plugin_entrypoint):
+def get_entrypoint_cmd(plugin_entrypoint_script):
     path_config = JOB_DIR + "/in/.env"
     path_secret = JOB_DIR + "/in/.secret"
     entrypoint = "set -o allexport; source {path_config}; set +o allexport; cat {path_config}; ".format(path_config=path_config)
     entrypoint += "set -o allexport; source {path_secret}; set +o allexport; ".format(path_secret=path_secret)
-    return entrypoint + plugin_entrypoint
+    return entrypoint + plugin_entrypoint_script
 
 volume = k8s.V1Volume(
     name='asset-volume',
@@ -150,12 +150,8 @@ init_container = k8s.V1Container(
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image={{  .Task.Image | quote}},
-    cmds=[
-        {{- range $_, $value := .Task.Entrypoint.Cmds}}
-        "{{ $value }}",
-        {{- end}}
-    ],
-    arguments=[get_entrypoint_cmd("""{{join " " .Task.Entrypoint.Args}} """)],
+    cmds=["{{.Task.Entrypoint.Shell}}", "-c"],
+    arguments=[get_entrypoint_cmd("""{{.Task.Entrypoint.Script}} """)],
     name="{{  .Task.Name | replace "_" "-" }}",
     task_id={{ .Task.Name | quote}},
     get_logs=True,
@@ -197,12 +193,8 @@ hook_{{$hookName}} = SuperKubernetesPodOperator(
     image_pull_policy=IMAGE_PULL_POLICY,
     namespace=conf.get('kubernetes', 'namespace', fallback="default"),
     image="{{ $t.Image }}",
-    cmds=[
-        {{- range $_, $value := $t.Entrypoint.Cmds}}
-        "{{ $value }}",
-        {{- end}}
-    ],
-    arguments=[get_entrypoint_cmd("""{{join " " $t.Entrypoint.Args}} """)],
+    cmds=["{{$t.Entrypoint.Shell}}", "-c"],
+    arguments=[get_entrypoint_cmd("""{{$t.Entrypoint.Script}} """)],
     name="hook_{{ $t.Name | replace "_" "-" }}",
     task_id="hook_{{ $t.Name }}",
     get_logs=True,

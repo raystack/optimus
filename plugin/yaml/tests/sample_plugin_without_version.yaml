@@ -6,8 +6,8 @@ pluginmods:
 pluginversion: ""
 image: ""
 entrypoint:
-  cmds: ["/bin/bash", "-c"]
-  args: ["sleep 100;"]
+  shell: "/bin/bash"
+  script: "sleep 100"
 
 questions:
   - name: PROJECT

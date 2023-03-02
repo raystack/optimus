@@ -50,7 +50,7 @@ func TestPlugins(t *testing.T) {
 						Image:         "odpf.io/example",
 						PluginVersion: "0.2",
 						Entrypoint: plugin.Entrypoint{
-							Args: []string{"sleep 10"},
+							Script: "sleep 10",
 						},
 						PluginType: plugin.TypeTask,
 					},
@@ -63,7 +63,7 @@ func TestPlugins(t *testing.T) {
 						Image:         "",
 						PluginVersion: "0.2",
 						Entrypoint: plugin.Entrypoint{
-							Args: []string{"sleep 10"},
+							Script: "sleep 10",
 						},
 						PluginType: plugin.TypeTask,
 					},
@@ -76,7 +76,7 @@ func TestPlugins(t *testing.T) {
 						Image:         "odpf.io/example",
 						PluginVersion: "",
 						Entrypoint: plugin.Entrypoint{
-							Args: []string{"sleep 10"},
+							Script: "sleep 10",
 						},
 						PluginType: plugin.TypeTask,
 					},
@@ -100,7 +100,7 @@ func TestPlugins(t *testing.T) {
 						Image:         "odpf.io/example",
 						PluginVersion: "0.2",
 						Entrypoint: plugin.Entrypoint{
-							Args: []string{"sleep 10"},
+							Script: "sleep 10",
 						},
 						PluginType: "",
 					},
@@ -113,7 +113,7 @@ func TestPlugins(t *testing.T) {
 						Image:         "odpf.io/example",
 						PluginVersion: "0.2",
 						Entrypoint: plugin.Entrypoint{
-							Args: []string{"sleep 10"},
+							Script: "sleep 10",
 						},
 						PluginType: plugin.TypeTask,
 					},

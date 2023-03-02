@@ -55,8 +55,8 @@ func TestYamlPlugin(t *testing.T) {
 		Description: "Testing",
 		Image:       "docker.io/odpf/optimus-task-bq2bq-executor:latest",
 		Entrypoint: plugin.Entrypoint{
-			Cmds: []string{"/bin/bash", "-c"},
-			Args: []string{"sleep 100"},
+			Shell:  "/bin/bash",
+			Script: "sleep 100; sleep 150",
 		},
 		PluginType:    "task",
 		PluginMods:    []plugin.Mod{"cli"},
@@ -172,10 +172,10 @@ func TestYamlPlugin(t *testing.T) {
 			assert.NotEmpty(t, repo.GetAll())
 		})
 		t.Run("should use default when entrypoint cmds is empty", func(t *testing.T) {
-			pluginSpec, err := yaml.NewPluginSpec("tests/sample_plugin_without_cmds.yaml")
+			pluginSpec, err := yaml.NewPluginSpec("tests/sample_plugin_without_shell.yaml")
 			assert.NoError(t, err)
 			assert.NotEmpty(t, pluginSpec)
-			assert.Equal(t, []string{"/bin/sh", "-c"}, pluginSpec.Entrypoint.Cmds)
+			assert.Equal(t, "/bin/sh", pluginSpec.Entrypoint.Shell)
 		})
 		t.Run("should returns error when load yaml when same name exists", func(t *testing.T) {
 			repoWithBinayPlugin := models.NewPluginRepository()
@@ -183,7 +183,7 @@ func TestYamlPlugin(t *testing.T) {
 				Name:  testYamlPluginName,
 				Image: "sdsd",
 				Entrypoint: plugin.Entrypoint{
-					Args: []string{"sleep 100"},
+					Script: "sleep 100",
 				},
 				PluginVersion: "asdasd",
 				PluginType:    plugin.TypeTask.String(),

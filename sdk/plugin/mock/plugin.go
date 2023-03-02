@@ -35,7 +35,7 @@ func (p *MockYamlMod) PluginInfo() *plugin.Info {
 		HookType:      "",
 		Image:         "gcr.io/bq-plugin:dev",
 		Entrypoint: plugin.Entrypoint{
-			Args: []string{"sleep 60"},
+			Script: "sleep 60",
 		},
 		PluginMods: []plugin.Mod{plugin.ModTypeCLI},
 	}

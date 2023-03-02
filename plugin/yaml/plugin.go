@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/afero"
@@ -105,9 +106,13 @@ func NewPluginSpec(pluginPath string) (*PluginSpec, error) {
 		return &plugin, err
 	}
 	// default values
-	if len(plugin.Info.Entrypoint.Cmds) == 0 {
-		plugin.Info.Entrypoint.Cmds = []string{"/bin/sh", "-c"}
+	if plugin.Info.Entrypoint.Shell == "" {
+		plugin.Info.Entrypoint.Shell = "/bin/sh"
 	}
+
+	// standardize script value
+	script := plugin.Info.Entrypoint.Script
+	plugin.Info.Entrypoint.Script = strings.ReplaceAll(script, "\n", "; ")
 	return &plugin, nil
 }
 

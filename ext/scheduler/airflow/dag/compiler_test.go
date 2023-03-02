@@ -160,8 +160,8 @@ func setupPluginRepo() mockPluginRepo {
 		Name:  "bq-bq",
 		Image: "example.io/namespace/bq2bq-executor:latest",
 		Entrypoint: plugin.Entrypoint{
-			Cmds: []string{"/bin/bash", "-c"},
-			Args: []string{"python3 /opt/bumblebee/main.py"},
+			Shell:  "/bin/bash",
+			Script: "python3 /opt/bumblebee/main.py",
 		},
 	}, nil)
 
@@ -172,8 +172,8 @@ func setupPluginRepo() mockPluginRepo {
 		HookType: plugin.HookTypePre,
 		Image:    "example.io/namespace/transporter-executor:latest",
 		Entrypoint: plugin.Entrypoint{
-			Cmds: []string{"/bin/sh", "-c"},
-			Args: []string{"java -cp /opt/transporter/transporter.jar:/opt/transporter/jolokia-jvm-agent.jar -javaagent:jolokia-jvm-agent.jar=port=7777,host=0.0.0.0 com.gojek.transporter.Main"},
+			Shell:  "/bin/sh",
+			Script: "java -cp /opt/transporter/transporter.jar:/opt/transporter/jolokia-jvm-agent.jar -javaagent:jolokia-jvm-agent.jar=port=7777,host=0.0.0.0 com.gojek.transporter.Main",
 		},
 		DependsOn: []string{"predator"},
 	}, nil)
@@ -185,8 +185,8 @@ func setupPluginRepo() mockPluginRepo {
 		HookType: plugin.HookTypePost,
 		Image:    "example.io/namespace/predator-image:latest",
 		Entrypoint: plugin.Entrypoint{
-			Cmds: []string{"/bin/sh", "-c"},
-			Args: []string{"predator ${SUB_COMMAND} -s ${PREDATOR_URL} -u \"${BQ_PROJECT}.${BQ_DATASET}.${BQ_TABLE}\""},
+			Shell:  "/bin/sh",
+			Script: "predator ${SUB_COMMAND} -s ${PREDATOR_URL} -u \"${BQ_PROJECT}.${BQ_DATASET}.${BQ_TABLE}\"",
 		},
 	}, nil)
 
@@ -196,8 +196,8 @@ func setupPluginRepo() mockPluginRepo {
 		HookType: plugin.HookTypeFail,
 		Image:    "example.io/namespace/failure-hook-image:latest",
 		Entrypoint: plugin.Entrypoint{
-			Cmds: []string{"/bin/sh", "-c"},
-			Args: []string{"sleep 5"},
+			Shell:  "/bin/sh",
+			Script: "sleep 5",
 		},
 	}, nil)
 

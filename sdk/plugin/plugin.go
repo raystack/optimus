@@ -38,8 +38,8 @@ func (m Mod) String() string {
 }
 
 type Entrypoint struct {
-	Cmds []string
-	Args []string
+	Shell  string
+	Script string
 }
 
 type Info struct {
@@ -83,8 +83,8 @@ func (info *Info) Validate() error {
 	}
 
 	// entrypoint is a required field
-	if len(info.Entrypoint.Args) == 0 {
-		return errors.New("entrypoint args cannot be empty")
+	if info.Entrypoint.Script == "" {
+		return errors.New("entrypoint script cannot be empty")
 	}
 
 	switch info.PluginType {
