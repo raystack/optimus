@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/sdk/plugin"
-	"github.com/odpf/optimus/sdk/plugin/mock"
+	"github.com/goto/optimus/sdk/plugin"
+	"github.com/goto/optimus/sdk/plugin/mock"
 )
 
 func TestPlugins(t *testing.T) {
@@ -47,7 +47,7 @@ func TestPlugins(t *testing.T) {
 					err:  errors.New("plugin name cannot be empty"),
 					info: plugin.Info{
 						Name:          "",
-						Image:         "odpf.io/example",
+						Image:         "goto.io/example",
 						PluginVersion: "0.2",
 						Entrypoint: plugin.Entrypoint{
 							Script: "sleep 10",
@@ -73,7 +73,7 @@ func TestPlugins(t *testing.T) {
 					err:  errors.New("plugin version cannot be empty"),
 					info: plugin.Info{
 						Name:          "example",
-						Image:         "odpf.io/example",
+						Image:         "goto.io/example",
 						PluginVersion: "",
 						Entrypoint: plugin.Entrypoint{
 							Script: "sleep 10",
@@ -86,7 +86,7 @@ func TestPlugins(t *testing.T) {
 					err:  errors.New("entrypoint args cannot be empty"),
 					info: plugin.Info{
 						Name:          "example",
-						Image:         "odpf.io/example",
+						Image:         "goto.io/example",
 						PluginVersion: "0.2",
 						Entrypoint:    plugin.Entrypoint{},
 						PluginType:    plugin.TypeTask,
@@ -97,7 +97,7 @@ func TestPlugins(t *testing.T) {
 					err:  errors.New("plugin type is not supported"),
 					info: plugin.Info{
 						Name:          "example",
-						Image:         "odpf.io/example",
+						Image:         "goto.io/example",
 						PluginVersion: "0.2",
 						Entrypoint: plugin.Entrypoint{
 							Script: "sleep 10",
@@ -110,7 +110,7 @@ func TestPlugins(t *testing.T) {
 					err:  nil,
 					info: plugin.Info{
 						Name:          "example",
-						Image:         "odpf.io/example",
+						Image:         "goto.io/example",
 						PluginVersion: "0.2",
 						Entrypoint: plugin.Entrypoint{
 							Script: "sleep 10",

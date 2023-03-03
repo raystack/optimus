@@ -8,7 +8,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/extension/model"
+	"github.com/goto/optimus/client/extension/model"
 )
 
 type describeCommand struct {

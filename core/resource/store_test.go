@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/resource"
+	"github.com/goto/optimus/core/resource"
 )
 
 func TestDataStore(t *testing.T) {

@@ -1,6 +1,6 @@
 package notify
 
 import (
-	_ "github.com/odpf/optimus/ext/notify/pagerduty"
-	_ "github.com/odpf/optimus/ext/notify/slack"
+	_ "github.com/goto/optimus/ext/notify/pagerduty"
+	_ "github.com/goto/optimus/ext/notify/slack"
 )

@@ -5,10 +5,10 @@ import (
 	_ "embed"
 	"text/template"
 
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/sdk/plugin"
+	"github.com/goto/optimus/config"
+	"github.com/goto/optimus/core/scheduler"
+	"github.com/goto/optimus/internal/errors"
+	"github.com/goto/optimus/sdk/plugin"
 )
 
 //go:embed dag.py.tmpl

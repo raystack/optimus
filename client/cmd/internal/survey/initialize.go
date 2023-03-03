@@ -7,8 +7,8 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/odpf/salt/log"
 
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/internal/utils"
+	"github.com/goto/optimus/config"
+	"github.com/goto/optimus/internal/utils"
 )
 
 // InititalizeSurvey defines surveys related to init client config

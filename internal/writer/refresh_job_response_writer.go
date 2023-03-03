@@ -1,7 +1,7 @@
 package writer
 
 import (
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
 )
 
 type RefreshJobResponseWriter interface {

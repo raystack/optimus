@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/resolver"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/models"
+	"github.com/goto/optimus/core/job"
+	"github.com/goto/optimus/core/job/resolver"
+	"github.com/goto/optimus/core/tenant"
+	"github.com/goto/optimus/internal/models"
 )
 
 func TestInternalUpstreamResolver(t *testing.T) {

@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/odpf/optimus/client/local/model"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/goto/optimus/client/local/model"
+	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
 )
 
 type ResourceSpecTestSuite struct {

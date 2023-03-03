@@ -1,8 +1,8 @@
-module github.com/odpf/optimus
+module github.com/goto/optimus
 
 go 1.19
 
-replace github.com/odpf/optimus/sdk => ./sdk
+replace github.com/goto/optimus/sdk => ./sdk
 
 require (
 	cloud.google.com/go/bigquery v1.44.0
@@ -30,7 +30,7 @@ require (
 	github.com/lib/pq v1.10.4
 	github.com/mattn/go-isatty v0.0.16
 	github.com/mitchellh/mapstructure v1.4.3
-	github.com/odpf/optimus/sdk v0.0.0-20230104081553-fa05355b2dda
+	github.com/goto/optimus/sdk v0.0.0-20230104081553-fa05355b2dda
 	github.com/odpf/salt v0.0.0-20220614042821-c5613a78b4d6
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/prometheus/client_golang v1.11.0

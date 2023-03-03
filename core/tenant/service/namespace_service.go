@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"github.com/odpf/optimus/core/tenant"
+	"github.com/goto/optimus/core/tenant"
 )
 
 type NamespaceRepository interface {

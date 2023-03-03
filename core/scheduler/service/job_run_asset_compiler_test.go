@@ -9,12 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/scheduler/service"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/models"
-	"github.com/odpf/optimus/sdk/plugin"
-	smock "github.com/odpf/optimus/sdk/plugin/mock"
+	"github.com/goto/optimus/core/scheduler"
+	"github.com/goto/optimus/core/scheduler/service"
+	"github.com/goto/optimus/core/tenant"
+	"github.com/goto/optimus/internal/models"
+	"github.com/goto/optimus/sdk/plugin"
+	smock "github.com/goto/optimus/sdk/plugin/mock"
 )
 
 func TestJobAssetsCompiler(t *testing.T) {

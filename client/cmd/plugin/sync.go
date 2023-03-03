@@ -12,9 +12,9 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/plugin"
+	"github.com/goto/optimus/client/cmd/internal/logger"
+	"github.com/goto/optimus/config"
+	"github.com/goto/optimus/plugin"
 )
 
 type syncCommand struct {

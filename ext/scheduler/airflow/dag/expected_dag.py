@@ -69,7 +69,7 @@ resources = k8s.V1ResourceRequirements(
 
 JOB_DIR = "/data"
 IMAGE_PULL_POLICY = "IfNotPresent"
-INIT_CONTAINER_IMAGE = "odpf/optimus:dev"
+INIT_CONTAINER_IMAGE = "goto/optimus:dev"
 INIT_CONTAINER_ENTRYPOINT = "/opt/entrypoint_init_container.sh"
 
 def get_entrypoint_cmd(plugin_entrypoint_script):

@@ -6,7 +6,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/odpf/salt/log"
 
-	"github.com/odpf/optimus/config"
+	"github.com/goto/optimus/config"
 )
 
 // NamespaceSurvey defines surveys related to namespace

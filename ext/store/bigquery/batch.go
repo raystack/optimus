@@ -5,9 +5,9 @@ import (
 
 	"github.com/kushsharma/parallel"
 
-	"github.com/odpf/optimus/core/resource"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/goto/optimus/core/resource"
+	"github.com/goto/optimus/core/tenant"
+	"github.com/goto/optimus/internal/errors"
 )
 
 type Batch struct {

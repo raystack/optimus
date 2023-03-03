@@ -3,7 +3,7 @@ package compiler
 import (
 	"fmt"
 
-	"github.com/odpf/optimus/internal/utils"
+	"github.com/goto/optimus/internal/utils"
 )
 
 type ContextOpts struct {

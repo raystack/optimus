@@ -13,14 +13,14 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/handler/v1beta1"
-	"github.com/odpf/optimus/core/job/service/filter"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/models"
-	"github.com/odpf/optimus/internal/writer"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/sdk/plugin"
+	"github.com/goto/optimus/core/job"
+	"github.com/goto/optimus/core/job/handler/v1beta1"
+	"github.com/goto/optimus/core/job/service/filter"
+	"github.com/goto/optimus/core/tenant"
+	"github.com/goto/optimus/internal/models"
+	"github.com/goto/optimus/internal/writer"
+	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
+	"github.com/goto/optimus/sdk/plugin"
 )
 
 func TestNewJobHandler(t *testing.T) {
@@ -1797,7 +1797,7 @@ func TestNewJobHandler(t *testing.T) {
 			taskInfo := &plugin.Info{
 				Name:        "bq2bq",
 				Description: "task info desc",
-				Image:       "odpf/bq2bq:latest",
+				Image:       "goto/bq2bq:latest",
 			}
 			jobService.On("Get", ctx, sampleTenant, jobA.Spec().Name()).Return(jobA, nil)
 			jobService.On("GetTaskInfo", ctx, jobA.Spec().Task()).Return(taskInfo, nil)

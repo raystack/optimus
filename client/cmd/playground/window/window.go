@@ -5,7 +5,7 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/internal/logger"
+	"github.com/goto/optimus/client/cmd/internal/logger"
 )
 
 type command struct {

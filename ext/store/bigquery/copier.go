@@ -5,7 +5,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/goto/optimus/internal/errors"
 )
 
 type BQCopier interface {

@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/yaml.v3"
 
-	"github.com/odpf/optimus/client/extension"
-	"github.com/odpf/optimus/client/extension/model"
+	"github.com/goto/optimus/client/extension"
+	"github.com/goto/optimus/client/extension/model"
 )
 
 const (

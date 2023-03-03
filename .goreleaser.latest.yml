@@ -10,7 +10,7 @@ builds:
     flags:
       - -a
     ldflags:
-      - -s -w -X github.com/odpf/optimus/config.BuildVersion=latest -X github.com/odpf/optimus/config.BuildCommit={{.FullCommit}} -X github.com/odpf/optimus/config.BuildDate={{.Date}}
+      - -s -w -X github.com/goto/optimus/config.BuildVersion=latest -X github.com/goto/optimus/config.BuildCommit={{.FullCommit}} -X github.com/goto/optimus/config.BuildDate={{.Date}}
     goos:
       - linux
       - darwin
@@ -53,7 +53,7 @@ dockers:
       - optimus
     dockerfile: Dockerfile
     image_templates:
-      - 'docker.io/odpf/{{.ProjectName}}:latest'
-      - 'docker.io/odpf/{{.ProjectName}}:latest-amd64'
+      - 'docker.io/gotocompany/{{.ProjectName}}:latest'
+      - 'docker.io/gotocompany/{{.ProjectName}}:latest-amd64'
     extra_files:
       - entrypoint_init_container.sh

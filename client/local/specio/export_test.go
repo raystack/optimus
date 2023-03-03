@@ -3,8 +3,8 @@ package specio
 import (
 	"github.com/spf13/afero"
 
-	"github.com/odpf/optimus/client/local"
-	"github.com/odpf/optimus/client/local/model"
+	"github.com/goto/optimus/client/local"
+	"github.com/goto/optimus/client/local/model"
 )
 
 func NewTestJobSpecReadWriter(specFS afero.Fs) local.SpecReadWriter[*model.JobSpec] {

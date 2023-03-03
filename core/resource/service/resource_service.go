@@ -6,9 +6,9 @@ import (
 
 	"github.com/odpf/salt/log"
 
-	"github.com/odpf/optimus/core/resource"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/goto/optimus/core/resource"
+	"github.com/goto/optimus/core/tenant"
+	"github.com/goto/optimus/internal/errors"
 )
 
 type ResourceRepository interface {

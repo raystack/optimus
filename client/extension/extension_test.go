@@ -6,8 +6,8 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/client/extension"
-	"github.com/odpf/optimus/client/extension/model"
+	"github.com/goto/optimus/client/extension"
+	"github.com/goto/optimus/client/extension/model"
 )
 
 func TestClean(t *testing.T) {

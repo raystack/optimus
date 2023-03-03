@@ -10,7 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	"github.com/odpf/optimus/core/scheduler"
+	"github.com/goto/optimus/core/scheduler"
 )
 
 const (

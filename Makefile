@@ -1,11 +1,11 @@
 .ONESHELL:
 .DELETE_ON_ERROR:
 MAKEFLAGS += --no-builtin-rules
-NAME = "github.com/odpf/optimus"
+NAME = "github.com/goto/optimus"
 LAST_COMMIT := $(shell git rev-parse --short HEAD)
 LAST_TAG := "$(shell git rev-list --tags --max-count=1)"
 OPMS_VERSION := "$(shell git describe --tags ${LAST_TAG})-next"
-PROTON_COMMIT := "fae8287656b163ae07a7f03edd3ea3f5df499dcb"
+PROTON_COMMIT := "15415f3058d10606fc04c78811b960895cebd3b2"
 
 
 .PHONY: build test test-ci generate-proto unit-test-ci integration-test vet coverage clean install lint
@@ -30,9 +30,9 @@ scheduler-resource-test:
 	cd ./ext/scheduler/airflow2/tests && pip3 install -r requirements.txt && python3 -m unittest discover .
 
 generate-proto: ## regenerate protos
-	@echo " > generating protobuf from odpf/proton"
+	@echo " > generating protobuf from goto/proton"
 	@echo " > [info] make sure correct version of dependencies are installed using 'make install'"
-	@buf generate https://github.com/odpf/proton/archive/${PROTON_COMMIT}.zip#strip_components=1 --template buf.gen.yaml --path odpf/optimus
+	@buf generate /Users/sravankorumilli/Downloads/proton-15415f3058d10606fc04c78811b960895cebd3b2.zip#strip_components=1 --template buf.gen.yaml --path gotocompany/optimus
 	@echo " > protobuf compilation finished"
 
 unit-test-ci:
@@ -52,9 +52,6 @@ bench:
 
 coverage: ## print code coverage
 	go test -race -coverprofile coverage.txt -covermode=atomic ./... -tags=unit_test && go tool cover -html=coverage.txt
-
-clean:
-	rm -rf ./optimus ./dist ./api/proto/* ./api/third_party/odpf/*
 
 lint:
 	golangci-lint run --fix

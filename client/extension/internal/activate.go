@@ -3,7 +3,7 @@ package internal
 import (
 	"fmt"
 
-	"github.com/odpf/optimus/client/extension/model"
+	"github.com/goto/optimus/client/extension/model"
 )
 
 // ActivateManager is an extension manater to manage tag activation process

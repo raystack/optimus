@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/internal/lib/tree"
+	"github.com/goto/optimus/internal/lib/tree"
 )
 
 type testNode struct {

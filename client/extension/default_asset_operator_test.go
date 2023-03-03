@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/odpf/optimus/client/extension"
+	"github.com/goto/optimus/client/extension"
 )
 
 type DefaultAssetOperatorTestSuite struct {

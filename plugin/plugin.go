@@ -9,11 +9,11 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 
-	"github.com/odpf/optimus/internal/models"
-	"github.com/odpf/optimus/plugin/binary"
-	"github.com/odpf/optimus/plugin/v1beta1/dependencyresolver"
-	"github.com/odpf/optimus/plugin/yaml"
-	"github.com/odpf/optimus/sdk/plugin"
+	"github.com/goto/optimus/internal/models"
+	"github.com/goto/optimus/plugin/binary"
+	"github.com/goto/optimus/plugin/v1beta1/dependencyresolver"
+	"github.com/goto/optimus/plugin/yaml"
+	"github.com/goto/optimus/sdk/plugin"
 )
 
 func Initialize(pluginLogger hclog.Logger, arg ...string) (*models.PluginRepository, error) {

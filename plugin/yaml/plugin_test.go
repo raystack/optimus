@@ -8,9 +8,9 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/internal/models"
-	"github.com/odpf/optimus/plugin/yaml"
-	"github.com/odpf/optimus/sdk/plugin"
+	"github.com/goto/optimus/internal/models"
+	"github.com/goto/optimus/plugin/yaml"
+	"github.com/goto/optimus/sdk/plugin"
 )
 
 type mockYamlMod struct {
@@ -53,7 +53,7 @@ func TestYamlPlugin(t *testing.T) {
 	expectedInfo := &plugin.Info{
 		Name:        "bq2bqtest",
 		Description: "Testing",
-		Image:       "docker.io/odpf/optimus-task-bq2bq-executor:latest",
+		Image:       "docker.io/goto/optimus-task-bq2bq-executor:latest",
 		Entrypoint: plugin.Entrypoint{
 			Shell:  "/bin/bash",
 			Script: "sleep 100; sleep 150",

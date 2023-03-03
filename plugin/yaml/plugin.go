@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/afero"
 	"gopkg.in/yaml.v2"
 
-	"github.com/odpf/optimus/internal/models"
-	"github.com/odpf/optimus/sdk/plugin"
+	"github.com/goto/optimus/internal/models"
+	"github.com/goto/optimus/sdk/plugin"
 )
 
 const (

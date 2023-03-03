@@ -1,8 +1,8 @@
 package dependencyresolver
 
 import (
-	pb "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
-	"github.com/odpf/optimus/sdk/plugin"
+	pb "github.com/goto/optimus/protos/gotocompany/optimus/plugins/v1beta1"
+	"github.com/goto/optimus/sdk/plugin"
 )
 
 func adaptConfigsToProto(c plugin.Configs) *pb.Configs {

@@ -12,12 +12,12 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/internal"
-	"github.com/odpf/optimus/client/cmd/internal/connectivity"
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/client/cmd/internal/progressbar"
-	"github.com/odpf/optimus/config"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/goto/optimus/client/cmd/internal"
+	"github.com/goto/optimus/client/cmd/internal/connectivity"
+	"github.com/goto/optimus/client/cmd/internal/logger"
+	"github.com/goto/optimus/client/cmd/internal/progressbar"
+	"github.com/goto/optimus/config"
+	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
 )
 
 type statusCommand struct {

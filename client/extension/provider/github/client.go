@@ -9,8 +9,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/odpf/optimus/client/extension/factory"
-	"github.com/odpf/optimus/client/extension/model"
+	"github.com/goto/optimus/client/extension/factory"
+	"github.com/goto/optimus/client/extension/model"
 )
 
 const provider = "github"

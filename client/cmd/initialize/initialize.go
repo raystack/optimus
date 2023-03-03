@@ -10,10 +10,10 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/client/cmd/internal/survey"
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/internal/utils"
+	"github.com/goto/optimus/client/cmd/internal/logger"
+	"github.com/goto/optimus/client/cmd/internal/survey"
+	"github.com/goto/optimus/config"
+	"github.com/goto/optimus/internal/utils"
 )
 
 type initializeCommand struct {

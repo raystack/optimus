@@ -9,10 +9,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
-	postgres "github.com/odpf/optimus/internal/store/postgres/scheduler"
+	"github.com/goto/optimus/core/scheduler"
+	"github.com/goto/optimus/core/tenant"
+	"github.com/goto/optimus/internal/errors"
+	postgres "github.com/goto/optimus/internal/store/postgres/scheduler"
 )
 
 func TestPostgresJobOperatorRepository(t *testing.T) {

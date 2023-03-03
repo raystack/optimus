@@ -9,9 +9,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/lib/pq"
 
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/models"
+	"github.com/goto/optimus/core/job"
+	"github.com/goto/optimus/internal/errors"
+	"github.com/goto/optimus/internal/models"
 )
 
 const jobDatetimeLayout = "2006-01-02"

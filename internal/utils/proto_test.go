@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/internal/utils"
+	"github.com/goto/optimus/internal/utils"
 )
 
 func TestProtoHelper(t *testing.T) {

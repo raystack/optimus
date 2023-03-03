@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/core/tenant/service"
+	"github.com/goto/optimus/core/tenant"
+	"github.com/goto/optimus/core/tenant/service"
 )
 
 func TestNamespaceService(t *testing.T) {

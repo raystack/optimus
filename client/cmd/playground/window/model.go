@@ -13,7 +13,7 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
 
-	"github.com/odpf/optimus/internal/models"
+	"github.com/goto/optimus/internal/models"
 )
 
 type model struct {
@@ -92,7 +92,7 @@ func (m *model) View() string {
 	s.WriteString(m.generateWindowResultView())
 	s.WriteString("\n")
 	s.WriteString("DOCUMENTATION:\n")
-	s.WriteString("- https://odpf.github.io/optimus/docs/concepts/intervals-and-windows")
+	s.WriteString("- https://goto.github.io/optimus/docs/concepts/intervals-and-windows")
 	return s.String()
 }
 

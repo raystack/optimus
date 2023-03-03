@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/odpf/optimus/internal/utils"
+	"github.com/goto/optimus/internal/utils"
 )
 
 func TestMapHelper(t *testing.T) {

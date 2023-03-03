@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/api/googleapi"
 
-	"github.com/odpf/optimus/core/resource"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/ext/store/bigquery"
+	"github.com/goto/optimus/core/resource"
+	"github.com/goto/optimus/core/tenant"
+	"github.com/goto/optimus/ext/store/bigquery"
 )
 
 func TestTableHandle(t *testing.T) {

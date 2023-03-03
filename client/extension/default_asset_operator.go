@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/afero"
 
-	"github.com/odpf/optimus/client/extension/model"
+	"github.com/goto/optimus/client/extension/model"
 )
 
 // AssetOperatorFS is file system that will be used by operator.

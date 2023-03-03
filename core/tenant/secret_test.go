@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/tenant"
+	"github.com/goto/optimus/core/tenant"
 )
 
 func TestEntitySecret(t *testing.T) {

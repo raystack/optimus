@@ -1,7 +1,7 @@
 package tenant
 
 import (
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/goto/optimus/internal/errors"
 )
 
 const EntityNamespace = "namespace"

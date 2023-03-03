@@ -9,14 +9,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/service"
-	"github.com/odpf/optimus/core/job/service/filter"
-	"github.com/odpf/optimus/core/tenant"
-	optErrors "github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/models"
-	"github.com/odpf/optimus/internal/writer"
-	"github.com/odpf/optimus/sdk/plugin"
+	"github.com/goto/optimus/core/job"
+	"github.com/goto/optimus/core/job/service"
+	"github.com/goto/optimus/core/job/service/filter"
+	"github.com/goto/optimus/core/tenant"
+	optErrors "github.com/goto/optimus/internal/errors"
+	"github.com/goto/optimus/internal/models"
+	"github.com/goto/optimus/internal/writer"
+	"github.com/goto/optimus/sdk/plugin"
 )
 
 func TestJobService(t *testing.T) {
@@ -1786,7 +1786,7 @@ func TestJobService(t *testing.T) {
 			pluginInfoResp := &plugin.Info{
 				Name:        "bq2bq",
 				Description: "plugin desc",
-				Image:       "odpf/bq2bq:latest",
+				Image:       "goto/bq2bq:latest",
 			}
 			pluginService.On("Info", ctx, jobTask.Name()).Return(pluginInfoResp, nil)
 

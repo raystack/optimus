@@ -9,9 +9,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/resource"
-	"github.com/odpf/optimus/core/tenant"
-	postgres "github.com/odpf/optimus/internal/store/postgres/resource"
+	"github.com/goto/optimus/core/resource"
+	"github.com/goto/optimus/core/tenant"
+	postgres "github.com/goto/optimus/internal/store/postgres/resource"
 )
 
 func TestPostgresBackupRepository(t *testing.T) {

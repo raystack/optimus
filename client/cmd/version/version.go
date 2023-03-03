@@ -8,13 +8,13 @@ import (
 	"github.com/odpf/salt/version"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/internal"
-	"github.com/odpf/optimus/client/cmd/internal/connectivity"
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/client/cmd/internal/progressbar"
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/internal/models"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/goto/optimus/client/cmd/internal"
+	"github.com/goto/optimus/client/cmd/internal/connectivity"
+	"github.com/goto/optimus/client/cmd/internal/logger"
+	"github.com/goto/optimus/client/cmd/internal/progressbar"
+	"github.com/goto/optimus/config"
+	"github.com/goto/optimus/internal/models"
+	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
 )
 
 const versionTimeout = time.Second * 2
@@ -92,7 +92,7 @@ func (v *versionCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 
 	// Print version update if new version is exist
-	githubRepo := "odpf/optimus"
+	githubRepo := "goto/optimus"
 	if updateNotice := version.UpdateNotice(config.BuildVersion, githubRepo); updateNotice != "" {
 		v.logger.Info(updateNotice)
 	}

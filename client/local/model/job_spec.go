@@ -5,8 +5,8 @@ import (
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	"github.com/odpf/optimus/internal/utils"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/goto/optimus/internal/utils"
+	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
 )
 
 type JobSpec struct {

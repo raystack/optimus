@@ -8,10 +8,10 @@ import (
 	tMock "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/odpf/optimus/client/extension"
-	"github.com/odpf/optimus/client/extension/factory"
-	"github.com/odpf/optimus/client/extension/mock"
-	"github.com/odpf/optimus/client/extension/model"
+	"github.com/goto/optimus/client/extension"
+	"github.com/goto/optimus/client/extension/factory"
+	"github.com/goto/optimus/client/extension/mock"
+	"github.com/goto/optimus/client/extension/model"
 )
 
 type ManagerTestSuite struct {

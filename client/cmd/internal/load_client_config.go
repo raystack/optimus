@@ -5,7 +5,7 @@ import (
 
 	saltConfig "github.com/odpf/salt/config"
 
-	"github.com/odpf/optimus/config"
+	"github.com/goto/optimus/config"
 )
 
 // TODO: need to do refactor for proper file naming

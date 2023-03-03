@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	tree2 "github.com/odpf/optimus/internal/lib/tree"
+	tree2 "github.com/goto/optimus/internal/lib/tree"
 )
 
 func TestMultiRootDagTree(t *testing.T) {

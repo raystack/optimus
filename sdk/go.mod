@@ -1,4 +1,4 @@
-module github.com/odpf/optimus/sdk
+module github.com/goto/optimus/sdk
 
 go 1.18
 

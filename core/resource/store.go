@@ -1,6 +1,6 @@
 package resource
 
-import "github.com/odpf/optimus/internal/errors"
+import "github.com/goto/optimus/internal/errors"
 
 const (
 	Bigquery Store = "bigquery"

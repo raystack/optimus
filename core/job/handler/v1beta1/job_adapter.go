@@ -5,11 +5,11 @@ import (
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/models"
-	"github.com/odpf/optimus/internal/utils"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/goto/optimus/core/job"
+	"github.com/goto/optimus/internal/errors"
+	"github.com/goto/optimus/internal/models"
+	"github.com/goto/optimus/internal/utils"
+	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
 )
 
 func toJobProto(jobEntity *job.Job) *pb.JobSpecification {

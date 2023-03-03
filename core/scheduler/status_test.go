@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/internal/lib/cron"
+	"github.com/goto/optimus/core/scheduler"
+	"github.com/goto/optimus/internal/lib/cron"
 )
 
 func TestStatus(t *testing.T) {

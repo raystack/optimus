@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/telemetry"
+	"github.com/goto/optimus/core/scheduler"
+	"github.com/goto/optimus/core/tenant"
+	"github.com/goto/optimus/internal/errors"
+	"github.com/goto/optimus/internal/telemetry"
 )
 
 func setJobMetric(t tenant.Tenant, jobs []*scheduler.JobWithDetails) {

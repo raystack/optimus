@@ -12,12 +12,12 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/odpf/optimus/client/cmd/internal"
-	"github.com/odpf/optimus/client/cmd/internal/connectivity"
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/internal/utils"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/goto/optimus/client/cmd/internal"
+	"github.com/goto/optimus/client/cmd/internal/connectivity"
+	"github.com/goto/optimus/client/cmd/internal/logger"
+	"github.com/goto/optimus/config"
+	"github.com/goto/optimus/internal/utils"
+	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
 )
 
 const (

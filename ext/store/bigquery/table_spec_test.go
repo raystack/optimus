@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/ext/store/bigquery"
+	"github.com/goto/optimus/ext/store/bigquery"
 )
 
 func TestRelationalTable(t *testing.T) {

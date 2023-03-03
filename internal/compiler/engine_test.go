@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/internal/compiler"
+	"github.com/goto/optimus/internal/compiler"
 )
 
 func TestEngine(t *testing.T) {

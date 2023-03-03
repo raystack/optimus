@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/core/resource"
-	"github.com/odpf/optimus/core/resource/handler/v1beta1"
-	"github.com/odpf/optimus/core/tenant"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/goto/optimus/core/resource"
+	"github.com/goto/optimus/core/resource/handler/v1beta1"
+	"github.com/goto/optimus/core/tenant"
+	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
 )
 
 func TestBackupHandler(t *testing.T) {

@@ -3,7 +3,7 @@ package bigquery
 import (
 	"strings"
 
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/goto/optimus/internal/errors"
 )
 
 const (

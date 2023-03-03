@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/goto/optimus/internal/errors"
 )
 
 func TestMultiError(t *testing.T) {

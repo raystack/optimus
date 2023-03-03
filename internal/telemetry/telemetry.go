@@ -19,7 +19,7 @@ import (
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 
-	"github.com/odpf/optimus/config"
+	"github.com/goto/optimus/config"
 )
 
 const MetricWaitInterval = time.Second * 2

@@ -15,8 +15,8 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/internal/lib/cron"
+	"github.com/goto/optimus/core/scheduler"
+	"github.com/goto/optimus/internal/lib/cron"
 )
 
 const (

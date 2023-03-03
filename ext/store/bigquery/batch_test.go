@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/core/resource"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/ext/store/bigquery"
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/goto/optimus/core/resource"
+	"github.com/goto/optimus/core/tenant"
+	"github.com/goto/optimus/ext/store/bigquery"
+	"github.com/goto/optimus/internal/errors"
 )
 
 func TestBatches(t *testing.T) {

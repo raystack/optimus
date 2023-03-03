@@ -1,9 +1,9 @@
 package setup
 
 import (
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/models"
+	"github.com/goto/optimus/core/job"
+	"github.com/goto/optimus/core/tenant"
+	"github.com/goto/optimus/internal/models"
 )
 
 type DummyJobBuilder struct {

@@ -9,10 +9,10 @@ import (
 	tMock "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/odpf/optimus/client/extension/factory"
-	"github.com/odpf/optimus/client/extension/internal"
-	"github.com/odpf/optimus/client/extension/mock"
-	"github.com/odpf/optimus/client/extension/model"
+	"github.com/goto/optimus/client/extension/factory"
+	"github.com/goto/optimus/client/extension/internal"
+	"github.com/goto/optimus/client/extension/mock"
+	"github.com/goto/optimus/client/extension/model"
 )
 
 type InstallManagerTestSuite struct {
@@ -186,7 +186,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		provider := "testing"
 		metadata := &model.Metadata{
 			ProviderName: provider,
-			OwnerName:    "odpf",
+			OwnerName:    "goto",
 			ProjectName:  "optimus-extension-valor",
 		}
 		factory.ParseRegistry = []model.Parser{
@@ -208,7 +208,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		manifest := &model.Manifest{
 			RepositoryOwners: []*model.RepositoryOwner{
 				{
-					Name:     "odpf",
+					Name:     "goto",
 					Provider: provider,
 					Projects: []*model.RepositoryProject{
 						{
@@ -266,7 +266,7 @@ func (i *InstallManagerTestSuite) TestInstall() {
 		manifest := &model.Manifest{
 			RepositoryOwners: []*model.RepositoryOwner{
 				{
-					Name:     "odpf",
+					Name:     "goto",
 					Provider: provider,
 					Projects: []*model.RepositoryProject{
 						{

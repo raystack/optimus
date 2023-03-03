@@ -1,7 +1,7 @@
 package tree
 
 import (
-	"github.com/odpf/optimus/internal/lib/set"
+	"github.com/goto/optimus/internal/lib/set"
 )
 
 type TreeData interface {

@@ -3,7 +3,7 @@ package playground
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/playground/window"
+	"github.com/goto/optimus/client/cmd/playground/window"
 )
 
 // NewPlaygroundCommand initializes command for playground

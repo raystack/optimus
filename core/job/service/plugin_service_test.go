@@ -9,13 +9,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/service"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/compiler"
-	"github.com/odpf/optimus/internal/models"
-	"github.com/odpf/optimus/sdk/plugin"
-	mockOpt "github.com/odpf/optimus/sdk/plugin/mock"
+	"github.com/goto/optimus/core/job"
+	"github.com/goto/optimus/core/job/service"
+	"github.com/goto/optimus/core/tenant"
+	"github.com/goto/optimus/internal/compiler"
+	"github.com/goto/optimus/internal/models"
+	"github.com/goto/optimus/sdk/plugin"
+	mockOpt "github.com/goto/optimus/sdk/plugin/mock"
 )
 
 func TestPluginService(t *testing.T) {

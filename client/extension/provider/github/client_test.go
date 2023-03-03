@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/odpf/optimus/client/extension/provider/github"
+	"github.com/goto/optimus/client/extension/provider/github"
 )
 
 type ClientTestSuite struct {

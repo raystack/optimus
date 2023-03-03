@@ -4,8 +4,8 @@ import (
 	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/internal/survey"
-	"github.com/odpf/optimus/client/extension"
+	"github.com/goto/optimus/client/cmd/internal/survey"
+	"github.com/goto/optimus/client/extension"
 )
 
 type cleanCommand struct {

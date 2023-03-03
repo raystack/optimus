@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/goto/optimus/core/tenant"
+	"github.com/goto/optimus/internal/errors"
 )
 
 const (

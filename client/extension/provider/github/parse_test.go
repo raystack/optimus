@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/client/extension/model"
-	"github.com/odpf/optimus/client/extension/provider/github"
+	"github.com/goto/optimus/client/extension/model"
+	"github.com/goto/optimus/client/extension/provider/github"
 )
 
 func TestParse(t *testing.T) {

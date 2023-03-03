@@ -5,9 +5,9 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/odpf/optimus/client/extension/factory"
-	"github.com/odpf/optimus/client/extension/mock"
-	"github.com/odpf/optimus/client/extension/model"
+	"github.com/goto/optimus/client/extension/factory"
+	"github.com/goto/optimus/client/extension/mock"
+	"github.com/goto/optimus/client/extension/model"
 )
 
 type ClientFactoryTestSuite struct {

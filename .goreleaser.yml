@@ -10,7 +10,7 @@ builds:
     flags:
       - -a
     ldflags:
-      - -s -w -X github.com/odpf/optimus/config.BuildVersion={{ .Version }} -X github.com/odpf/optimus/config.BuildCommit={{.FullCommit}} -X github.com/odpf/optimus/config.BuildDate={{.Date}}
+      - -s -w -X github.com/goto/optimus/config.BuildVersion={{ .Version }} -X github.com/goto/optimus/config.BuildCommit={{.FullCommit}} -X github.com/goto/optimus/config.BuildDate={{.Date}}
     goos:
       - linux
       - darwin
@@ -52,18 +52,18 @@ dockers:
       - optimus
     dockerfile: Dockerfile
     image_templates:
-      - 'docker.io/odpf/{{.ProjectName}}:{{ .Version }}'
-      - 'docker.io/odpf/{{.ProjectName}}:{{ .Version }}-amd64'
+      - 'docker.io/gotocompany/{{.ProjectName}}:{{ .Version }}'
+      - 'docker.io/gotocompany/{{.ProjectName}}:{{ .Version }}-amd64'
     extra_files:
       - entrypoint_init_container.sh
 brews:
   - name: optimus
     tap:
-      owner: odpf
+      owner: goto
       name: homebrew-tap
     license: "Apache 2.0"
     description: "Optimus helps your organization to build & manage data pipelines with ease."
-    homepage: https://odpf.github.io/optimus
+    homepage: https://goto.github.io/optimus
     folder: Formula
     skip_upload: auto
     dependencies:

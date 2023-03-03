@@ -9,12 +9,12 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/internal"
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/client/cmd/internal/survey"
-	"github.com/odpf/optimus/client/local/specio"
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/internal/models"
+	"github.com/goto/optimus/client/cmd/internal"
+	"github.com/goto/optimus/client/cmd/internal/logger"
+	"github.com/goto/optimus/client/cmd/internal/survey"
+	"github.com/goto/optimus/client/local/specio"
+	"github.com/goto/optimus/config"
+	"github.com/goto/optimus/internal/models"
 )
 
 type createCommand struct {

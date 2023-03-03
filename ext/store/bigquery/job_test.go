@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/ext/store/bigquery"
+	"github.com/goto/optimus/ext/store/bigquery"
 )
 
 func TestJob(t *testing.T) {

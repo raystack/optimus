@@ -5,7 +5,7 @@ pluginmods:
   - cli
   - dependencyresolver
 pluginversion: latest
-image: docker.io/odpf/optimus-task-bq2bq-executor:latest
+image: docker.io/goto/optimus-task-bq2bq-executor:latest
 entrypoint:
   shell: "/bin/bash"
   script: |-

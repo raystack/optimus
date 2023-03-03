@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/odpf/optimus/client/extension/model"
+	"github.com/goto/optimus/client/extension/model"
 )
 
 const apiPrefix = "https://api.github.com/repos"
