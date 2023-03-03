@@ -51,16 +51,24 @@ func (j ReplayState) String() string {
 }
 
 type ReplayRequest struct {
+	ID uuid.UUID
+
 	JobName JobName
 	Tenant  tenant.Tenant
 	Config  *ReplayConfig
 
 	State   ReplayState
 	Message string
+
+	CreatedAt time.Time
 }
 
 func NewReplayRequest(jobName JobName, tenant tenant.Tenant, config *ReplayConfig, state ReplayState) *ReplayRequest {
 	return &ReplayRequest{JobName: jobName, Tenant: tenant, Config: config, State: state}
+}
+
+func NewReplayRequestWithMetadata(id uuid.UUID, jobName JobName, tenant tenant.Tenant, config *ReplayConfig, state ReplayState, createdAt time.Time) *ReplayRequest {
+	return &ReplayRequest{ID: id, JobName: jobName, Tenant: tenant, Config: config, State: state, CreatedAt: createdAt}
 }
 
 type Replay struct {

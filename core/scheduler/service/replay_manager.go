@@ -1,6 +1,9 @@
 package service
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/odpf/salt/log"
 	"github.com/robfig/cron/v3"
 	"golang.org/x/net/context"
@@ -20,6 +23,7 @@ type ReplayManager struct {
 	replayWorker     Worker
 
 	schedule *cron.Cron
+	Now      func() time.Time
 
 	config config.ReplayConfig
 }
@@ -42,7 +46,8 @@ func (m ReplayManager) StartReplayLoop() {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
 	defer cancelCtx()
 
-	// Cancel timed out replay with status [created, partial replayed, replayed]
+	// Cancel timed out replay with status [created, in progress, partial replayed, replayed]
+	m.checkTimedOutReplay(ctx)
 
 	// Fetch created, in progress, and replayed request
 	replayToExecute, err := m.replayRepository.GetReplayToExecute(ctx)
@@ -52,4 +57,24 @@ func (m ReplayManager) StartReplayLoop() {
 	}
 
 	go m.replayWorker.Process(ctx, replayToExecute)
+}
+
+func (m ReplayManager) checkTimedOutReplay(ctx context.Context) {
+	onGoingReplays, err := m.replayRepository.GetReplayRequestsByStatus(ctx, []scheduler.ReplayState{scheduler.ReplayStateCreated,
+		scheduler.ReplayStateInProgress, scheduler.ReplayStatePartialReplayed, scheduler.ReplayStateReplayed})
+	if err != nil {
+		m.l.Error("unable to get on going replay")
+	}
+
+	for _, replay := range onGoingReplays {
+		runningTime := m.Now().Sub(replay.CreatedAt)
+		if runningTime < m.config.ReplayTimeout {
+			continue
+		}
+		message := fmt.Sprintf("replay is timing out. %s", replay.Message)
+		if err := m.replayRepository.UpdateReplayStatus(ctx, replay.ID, scheduler.ReplayStateFailed, message); err != nil {
+			m.l.Error("unable to mark replay %s as failed due to time out", replay.ID)
+		}
+		m.l.Info("replay %s is timing out. marked as failed.", replay.ID)
+	}
 }

@@ -55,7 +55,7 @@ func TestReplayValidator(t *testing.T) {
 				},
 			}
 
-			replayRepository.On("GetReplayRequestByStatus", ctx, replayStatusToValidate).Return(onGoingReplay, nil)
+			replayRepository.On("GetReplayRequestsByStatus", ctx, replayStatusToValidate).Return(onGoingReplay, nil)
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(currentRuns, nil)
 
 			validator := service.NewValidator(replayRepository, sch)
@@ -73,7 +73,7 @@ func TestReplayValidator(t *testing.T) {
 				scheduler.NewReplayRequest(jobName, tnnt, replayConfig, scheduler.ReplayStateInProgress),
 			}
 
-			replayRepository.On("GetReplayRequestByStatus", ctx, replayStatusToValidate).Return(onGoingReplay, nil)
+			replayRepository.On("GetReplayRequestsByStatus", ctx, replayStatusToValidate).Return(onGoingReplay, nil)
 
 			validator := service.NewValidator(replayRepository, sch)
 			err := validator.Validate(ctx, replayReq, jobCron)
@@ -97,7 +97,7 @@ func TestReplayValidator(t *testing.T) {
 				},
 			}
 
-			replayRepository.On("GetReplayRequestByStatus", ctx, replayStatusToValidate).Return(onGoingReplay, nil)
+			replayRepository.On("GetReplayRequestsByStatus", ctx, replayStatusToValidate).Return(onGoingReplay, nil)
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(currentRuns, nil)
 
 			validator := service.NewValidator(replayRepository, sch)

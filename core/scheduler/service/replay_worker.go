@@ -52,7 +52,7 @@ func (w ReplayWorker) Process(ctx context.Context, replayReq *scheduler.Replay) 
 	}
 
 	if err != nil {
-		if err := w.replayRepo.UpdateReplay(ctx, replayReq.ID, scheduler.ReplayStateFailed, replayReq.Runs, err.Error()); err != nil {
+		if err := w.replayRepo.UpdateReplayStatus(ctx, replayReq.ID, scheduler.ReplayStateFailed, err.Error()); err != nil {
 			w.l.Error("unable to update replay state", "replay_id", replayReq.ID)
 			return
 		}

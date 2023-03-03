@@ -31,7 +31,7 @@ func (v Validator) Validate(ctx context.Context, replayRequest *scheduler.Replay
 }
 
 func (v Validator) validateConflictedReplay(ctx context.Context, replayRequest *scheduler.ReplayRequest) error {
-	onGoingReplays, err := v.replayRepository.GetReplayRequestByStatus(ctx, replayStatusToValidate)
+	onGoingReplays, err := v.replayRepository.GetReplayRequestsByStatus(ctx, replayStatusToValidate)
 	if err != nil {
 		return err
 	}

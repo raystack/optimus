@@ -104,8 +104,8 @@ type ReplayRepository struct {
 	mock.Mock
 }
 
-// GetReplayByStatus provides a mock function with given fields: ctx, statusList
-func (_m *ReplayRepository) GetReplayRequestByStatus(ctx context.Context, statusList []scheduler.ReplayState) ([]*scheduler.ReplayRequest, error) {
+// GetReplayRequestsByStatus provides a mock function with given fields: ctx, statusList
+func (_m *ReplayRepository) GetReplayRequestsByStatus(ctx context.Context, statusList []scheduler.ReplayState) ([]*scheduler.ReplayRequest, error) {
 	ret := _m.Called(ctx, statusList)
 
 	var r0 []*scheduler.ReplayRequest
@@ -180,6 +180,20 @@ func (_m *ReplayRepository) UpdateReplay(ctx context.Context, replayID uuid.UUID
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, scheduler.ReplayState, []*scheduler.JobRunStatus, string) error); ok {
 		r0 = rf(ctx, replayID, state, runs, message)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UpdateReplayStatus provides a mock function with given fields: ctx, replayID, state, message
+func (_m *ReplayRepository) UpdateReplayStatus(ctx context.Context, replayID uuid.UUID, state scheduler.ReplayState, message string) error {
+	ret := _m.Called(ctx, replayID, state, message)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, scheduler.ReplayState, string) error); ok {
+		r0 = rf(ctx, replayID, state, message)
 	} else {
 		r0 = ret.Error(0)
 	}
