@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/odpf/salt/log"
+	"github.com/goto/salt/log"
 
 	"github.com/goto/optimus/config"
 )

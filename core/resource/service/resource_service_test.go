@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/odpf/salt/log"
+	"github.com/goto/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 

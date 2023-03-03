@@ -10,7 +10,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/odpf/salt/log"
+	"github.com/goto/salt/log"
 	"github.com/olekukonko/tablewriter"
 
 	"github.com/goto/optimus/internal/models"

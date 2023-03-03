@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/odpf/salt/log"
+	"github.com/goto/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 

@@ -1,7 +1,7 @@
 package writer
 
 import (
-	"github.com/odpf/salt/log"
+	"github.com/goto/salt/log"
 
 	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
 )

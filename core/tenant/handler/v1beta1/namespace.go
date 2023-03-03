@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/odpf/salt/log"
+	"github.com/goto/salt/log"
 
 	"github.com/goto/optimus/core/tenant"
 	"github.com/goto/optimus/internal/errors"

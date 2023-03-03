@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/odpf/salt/log"
+	"github.com/goto/salt/log"
 
 	"github.com/goto/optimus/config"
 	"github.com/goto/optimus/ext/scheduler/airflow"

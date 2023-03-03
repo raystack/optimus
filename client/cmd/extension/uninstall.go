@@ -1,7 +1,7 @@
 package extension
 
 import (
-	"github.com/odpf/salt/log"
+	"github.com/goto/salt/log"
 	"github.com/spf13/cobra"
 
 	"github.com/goto/optimus/client/cmd/internal/survey"

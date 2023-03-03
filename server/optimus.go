@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	hPlugin "github.com/hashicorp/go-plugin"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/odpf/salt/log"
+	"github.com/goto/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	slackapi "github.com/slack-go/slack"
 	"google.golang.org/grpc"

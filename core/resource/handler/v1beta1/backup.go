@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/odpf/salt/log"
+	"github.com/goto/salt/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/goto/optimus/core/resource"

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/odpf/salt/log"
+	"github.com/goto/salt/log"
 	"golang.org/x/net/context"
 
 	"github.com/goto/optimus/core/job"

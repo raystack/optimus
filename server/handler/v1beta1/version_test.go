@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/odpf/salt/log"
+	"github.com/goto/salt/log"
 	"github.com/stretchr/testify/assert"
 
 	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"

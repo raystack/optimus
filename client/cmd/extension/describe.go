@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/odpf/salt/log"
+	"github.com/goto/salt/log"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 

@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/MakeNowJust/heredoc"
-	"github.com/odpf/salt/cmdx"
+	"github.com/goto/salt/cmdx"
 	cli "github.com/spf13/cobra"
 
 	"github.com/goto/optimus/client/cmd/backup"

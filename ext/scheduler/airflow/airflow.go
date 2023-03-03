@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/kushsharma/parallel"
-	"github.com/odpf/salt/log"
+	"github.com/goto/salt/log"
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 

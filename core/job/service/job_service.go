@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/kushsharma/parallel"
-	"github.com/odpf/salt/log"
+	"github.com/goto/salt/log"
 
 	"github.com/goto/optimus/core/job"
 	"github.com/goto/optimus/core/job/service/filter"

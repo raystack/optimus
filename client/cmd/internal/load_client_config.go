@@ -3,7 +3,7 @@ package internal
 import (
 	"errors"
 
-	saltConfig "github.com/odpf/salt/config"
+	saltConfig "github.com/goto/salt/config"
 
 	"github.com/goto/optimus/config"
 )
