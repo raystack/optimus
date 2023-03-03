@@ -29,7 +29,7 @@ type ReplayManager struct {
 }
 
 type Worker interface {
-	Process(context.Context, *scheduler.Replay)
+	Process(context.Context, *scheduler.ReplayWithRun)
 }
 
 func (m ReplayManager) Initialize() {

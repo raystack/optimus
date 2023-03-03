@@ -45,7 +45,7 @@ func TestReplayValidator(t *testing.T) {
 			defer sch.AssertExpectations(t)
 
 			onGoingReplayConfig := scheduler.NewReplayConfig(time.Now(), time.Now(), parallel, description)
-			onGoingReplay := []*scheduler.ReplayRequest{
+			onGoingReplay := []*scheduler.Replay{
 				scheduler.NewReplayRequest(jobName, tnnt, onGoingReplayConfig, scheduler.ReplayStateCreated),
 			}
 			currentRuns := []*scheduler.JobRunStatus{
@@ -69,7 +69,7 @@ func TestReplayValidator(t *testing.T) {
 			sch := new(mockReplayScheduler)
 			defer sch.AssertExpectations(t)
 
-			onGoingReplay := []*scheduler.ReplayRequest{
+			onGoingReplay := []*scheduler.Replay{
 				scheduler.NewReplayRequest(jobName, tnnt, replayConfig, scheduler.ReplayStateInProgress),
 			}
 
@@ -87,7 +87,7 @@ func TestReplayValidator(t *testing.T) {
 			defer sch.AssertExpectations(t)
 
 			onGoingReplayConfig := scheduler.NewReplayConfig(time.Now(), time.Now(), parallel, description)
-			onGoingReplay := []*scheduler.ReplayRequest{
+			onGoingReplay := []*scheduler.Replay{
 				scheduler.NewReplayRequest(jobName, tnnt, onGoingReplayConfig, scheduler.ReplayStateCreated),
 			}
 			currentRuns := []*scheduler.JobRunStatus{

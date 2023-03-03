@@ -22,7 +22,7 @@ func NewValidator(replayRepository ReplayRepository, scheduler ReplayScheduler) 
 	return &Validator{replayRepository: replayRepository, scheduler: scheduler}
 }
 
-func (v Validator) Validate(ctx context.Context, replayRequest *scheduler.ReplayRequest, jobCron *cron.ScheduleSpec) error {
+func (v Validator) Validate(ctx context.Context, replayRequest *scheduler.Replay, jobCron *cron.ScheduleSpec) error {
 	if err := v.validateConflictedReplay(ctx, replayRequest); err != nil {
 		return err
 	}
@@ -30,7 +30,7 @@ func (v Validator) Validate(ctx context.Context, replayRequest *scheduler.Replay
 	return v.validateConflictedRun(ctx, replayRequest, jobCron)
 }
 
-func (v Validator) validateConflictedReplay(ctx context.Context, replayRequest *scheduler.ReplayRequest) error {
+func (v Validator) validateConflictedReplay(ctx context.Context, replayRequest *scheduler.Replay) error {
 	onGoingReplays, err := v.replayRepository.GetReplayRequestsByStatus(ctx, replayStatusToValidate)
 	if err != nil {
 		return err
@@ -49,7 +49,7 @@ func (v Validator) validateConflictedReplay(ctx context.Context, replayRequest *
 	return nil
 }
 
-func (v Validator) validateConflictedRun(ctx context.Context, replayRequest *scheduler.ReplayRequest, jobCron *cron.ScheduleSpec) error {
+func (v Validator) validateConflictedRun(ctx context.Context, replayRequest *scheduler.Replay, jobCron *cron.ScheduleSpec) error {
 	jobRunCriteria := &scheduler.JobRunsCriteria{
 		Name:      replayRequest.JobName.String(),
 		StartDate: replayRequest.Config.StartTime,

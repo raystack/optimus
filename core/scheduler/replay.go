@@ -50,7 +50,7 @@ func (j ReplayState) String() string {
 	return string(j)
 }
 
-type ReplayRequest struct {
+type Replay struct {
 	ID uuid.UUID
 
 	JobName JobName
@@ -63,36 +63,31 @@ type ReplayRequest struct {
 	CreatedAt time.Time
 }
 
-func NewReplayRequest(jobName JobName, tenant tenant.Tenant, config *ReplayConfig, state ReplayState) *ReplayRequest {
-	return &ReplayRequest{JobName: jobName, Tenant: tenant, Config: config, State: state}
+func NewReplayRequest(jobName JobName, tenant tenant.Tenant, config *ReplayConfig, state ReplayState) *Replay {
+	return &Replay{JobName: jobName, Tenant: tenant, Config: config, State: state}
 }
 
-func NewReplayRequestWithMetadata(id uuid.UUID, jobName JobName, tenant tenant.Tenant, config *ReplayConfig, state ReplayState, createdAt time.Time) *ReplayRequest {
-	return &ReplayRequest{ID: id, JobName: jobName, Tenant: tenant, Config: config, State: state, CreatedAt: createdAt}
+func NewReplay(id uuid.UUID, jobName JobName, tenant tenant.Tenant, config *ReplayConfig, state ReplayState, createdAt time.Time) *Replay {
+	return &Replay{ID: id, JobName: jobName, Tenant: tenant, Config: config, State: state, CreatedAt: createdAt}
 }
 
-type Replay struct {
-	ID     uuid.UUID
-	Replay *ReplayRequest
+type ReplayWithRun struct {
+	Replay *Replay
 	Runs   []*JobRunStatus // TODO: JobRunStatus does not have `message/log`
 }
 
-func (r Replay) GetFirstExecutableRun() *JobRunStatus {
+func (r ReplayWithRun) GetFirstExecutableRun() *JobRunStatus {
 	sort.Slice(r.Runs, func(i, j int) bool {
 		return r.Runs[i].ScheduledAt.Before(r.Runs[j].ScheduledAt)
 	})
 	return r.Runs[0]
 }
 
-func (r Replay) GetLastExecutableRun() *JobRunStatus {
+func (r ReplayWithRun) GetLastExecutableRun() *JobRunStatus {
 	sort.Slice(r.Runs, func(i, j int) bool {
 		return r.Runs[i].ScheduledAt.After(r.Runs[j].ScheduledAt)
 	})
 	return r.Runs[0]
-}
-
-func NewStoredReplay(id uuid.UUID, replay *ReplayRequest) *Replay {
-	return &Replay{ID: id, Replay: replay}
 }
 
 type ReplayConfig struct {

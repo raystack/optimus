@@ -64,9 +64,9 @@ func TestReplayWorker(t *testing.T) {
 			jobRepository := new(JobRepository)
 			defer jobRepository.AssertExpectations(t)
 
-			replayReq := &scheduler.Replay{
-				ID: uuid.New(),
-				Replay: &scheduler.ReplayRequest{
+			replayReq := &scheduler.ReplayWithRun{
+				Replay: &scheduler.Replay{
+					ID:      uuid.New(),
 					JobName: jobAName,
 					Tenant:  tnnt,
 					Config:  scheduler.NewReplayConfig(startTime, endTime, false, replayDescription),
@@ -89,7 +89,7 @@ func TestReplayWorker(t *testing.T) {
 			jobRepository.On("GetJobDetails", ctx, projName, jobAName).Return(jobAWithDetails, nil)
 			sch.On("Clear", ctx, tnnt, jobAName, scheduledTime1.Add(-24*time.Hour)).Return(nil)
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(updatedRuns, nil)
-			replayRepository.On("UpdateReplay", ctx, replayReq.ID, scheduler.ReplayStateReplayed, updatedRuns, "").Return(nil)
+			replayRepository.On("UpdateReplay", ctx, replayReq.Replay.ID, scheduler.ReplayStateReplayed, updatedRuns, "").Return(nil)
 
 			replayWorker := service.NewReplayWorker(logger, replayRepository, sch, jobRepository)
 			replayWorker.Process(ctx, replayReq)
@@ -104,9 +104,9 @@ func TestReplayWorker(t *testing.T) {
 			jobRepository := new(JobRepository)
 			defer jobRepository.AssertExpectations(t)
 
-			replayReq := &scheduler.Replay{
-				ID: uuid.New(),
-				Replay: &scheduler.ReplayRequest{
+			replayReq := &scheduler.ReplayWithRun{
+				Replay: &scheduler.Replay{
+					ID:      uuid.New(),
 					JobName: jobAName,
 					Tenant:  tnnt,
 					Config:  scheduler.NewReplayConfig(startTime, endTime, false, replayDescription),
@@ -137,7 +137,7 @@ func TestReplayWorker(t *testing.T) {
 			jobRepository.On("GetJobDetails", ctx, projName, jobAName).Return(jobAWithDetails, nil)
 			sch.On("Clear", ctx, tnnt, jobAName, scheduledTime1.Add(-24*time.Hour)).Return(nil)
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(updatedRuns, nil)
-			replayRepository.On("UpdateReplay", ctx, replayReq.ID, scheduler.ReplayStatePartialReplayed, updatedRuns, "").Return(nil)
+			replayRepository.On("UpdateReplay", ctx, replayReq.Replay.ID, scheduler.ReplayStatePartialReplayed, updatedRuns, "").Return(nil)
 
 			replayWorker := service.NewReplayWorker(logger, replayRepository, sch, jobRepository)
 			replayWorker.Process(ctx, replayReq)
@@ -152,9 +152,9 @@ func TestReplayWorker(t *testing.T) {
 			jobRepository := new(JobRepository)
 			defer jobRepository.AssertExpectations(t)
 
-			replayReq := &scheduler.Replay{
-				ID: uuid.New(),
-				Replay: &scheduler.ReplayRequest{
+			replayReq := &scheduler.ReplayWithRun{
+				Replay: &scheduler.Replay{
+					ID:      uuid.New(),
 					JobName: jobAName,
 					Tenant:  tnnt,
 					Config:  scheduler.NewReplayConfig(startTime, endTime, true, replayDescription),
@@ -185,7 +185,7 @@ func TestReplayWorker(t *testing.T) {
 			jobRepository.On("GetJobDetails", ctx, projName, jobAName).Return(jobAWithDetails, nil)
 			sch.On("ClearBatch", ctx, tnnt, jobAName, executionTime1, executionTime2).Return(nil)
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(updatedRuns, nil)
-			replayRepository.On("UpdateReplay", ctx, replayReq.ID, scheduler.ReplayStateReplayed, updatedRuns, "").Return(nil)
+			replayRepository.On("UpdateReplay", ctx, replayReq.Replay.ID, scheduler.ReplayStateReplayed, updatedRuns, "").Return(nil)
 
 			replayWorker := service.NewReplayWorker(logger, replayRepository, sch, jobRepository)
 			replayWorker.Process(ctx, replayReq)
@@ -201,9 +201,9 @@ func TestReplayWorker(t *testing.T) {
 			jobRepository := new(JobRepository)
 			defer jobRepository.AssertExpectations(t)
 
-			replayReq := &scheduler.Replay{
-				ID: uuid.New(),
-				Replay: &scheduler.ReplayRequest{
+			replayReq := &scheduler.ReplayWithRun{
+				Replay: &scheduler.Replay{
+					ID:      uuid.New(),
 					JobName: jobAName,
 					Tenant:  tnnt,
 					Config:  scheduler.NewReplayConfig(startTime, endTime, true, replayDescription),
@@ -245,7 +245,7 @@ func TestReplayWorker(t *testing.T) {
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(updatedRuns1, nil).Once()
 			sch.On("Clear", ctx, tnnt, jobAName, scheduledTime2.Add(-24*time.Hour)).Return(nil)
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(updatedRuns2, nil).Once()
-			replayRepository.On("UpdateReplay", ctx, replayReq.ID, scheduler.ReplayStateReplayed, updatedRuns2, "").Return(nil).Once()
+			replayRepository.On("UpdateReplay", ctx, replayReq.Replay.ID, scheduler.ReplayStateReplayed, updatedRuns2, "").Return(nil).Once()
 
 			replayWorker := service.NewReplayWorker(logger, replayRepository, sch, jobRepository)
 			replayWorker.Process(ctx, replayReq)
@@ -261,9 +261,9 @@ func TestReplayWorker(t *testing.T) {
 			jobRepository := new(JobRepository)
 			defer jobRepository.AssertExpectations(t)
 
-			replayReq := &scheduler.Replay{
-				ID: uuid.New(),
-				Replay: &scheduler.ReplayRequest{
+			replayReq := &scheduler.ReplayWithRun{
+				Replay: &scheduler.Replay{
+					ID:      uuid.New(),
 					JobName: jobAName,
 					Tenant:  tnnt,
 					Config:  scheduler.NewReplayConfig(startTime, endTime, true, replayDescription),
@@ -293,7 +293,7 @@ func TestReplayWorker(t *testing.T) {
 
 			jobRepository.On("GetJobDetails", ctx, projName, jobAName).Return(jobAWithDetails, nil)
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(updatedRuns, nil)
-			replayRepository.On("UpdateReplay", ctx, replayReq.ID, scheduler.ReplayStateSuccess, updatedRuns, "").Return(nil)
+			replayRepository.On("UpdateReplay", ctx, replayReq.Replay.ID, scheduler.ReplayStateSuccess, updatedRuns, "").Return(nil)
 
 			replayWorker := service.NewReplayWorker(logger, replayRepository, sch, jobRepository)
 			replayWorker.Process(ctx, replayReq)

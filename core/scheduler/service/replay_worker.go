@@ -36,10 +36,10 @@ type JobReplayRunService interface {
 	GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName, criteria *scheduler.JobRunsCriteria) ([]*scheduler.JobRunStatus, error)
 }
 
-func (w ReplayWorker) Process(ctx context.Context, replayReq *scheduler.Replay) {
+func (w ReplayWorker) Process(ctx context.Context, replayReq *scheduler.ReplayWithRun) {
 	jobCron, err := w.getJobCron(ctx, replayReq)
 	if err != nil {
-		w.l.Error(fmt.Sprintf("unable to get cron value for job %s: %s", replayReq.Replay.JobName, err.Error()), "replay_id", replayReq.ID)
+		w.l.Error(fmt.Sprintf("unable to get cron value for job %s: %s", replayReq.Replay.JobName, err.Error()), "replay_id", replayReq.Replay.ID)
 	}
 
 	switch replayReq.Replay.State {
@@ -52,26 +52,26 @@ func (w ReplayWorker) Process(ctx context.Context, replayReq *scheduler.Replay) 
 	}
 
 	if err != nil {
-		if err := w.replayRepo.UpdateReplayStatus(ctx, replayReq.ID, scheduler.ReplayStateFailed, err.Error()); err != nil {
-			w.l.Error("unable to update replay state", "replay_id", replayReq.ID)
+		if err := w.replayRepo.UpdateReplayStatus(ctx, replayReq.Replay.ID, scheduler.ReplayStateFailed, err.Error()); err != nil {
+			w.l.Error("unable to update replay state", "replay_id", replayReq.Replay.ID)
 			return
 		}
 	}
 }
 
-func (w ReplayWorker) processNewReplayRequest(ctx context.Context, replayReq *scheduler.Replay, jobCron *cron.ScheduleSpec) error {
+func (w ReplayWorker) processNewReplayRequest(ctx context.Context, replayReq *scheduler.ReplayWithRun, jobCron *cron.ScheduleSpec) error {
 	state := scheduler.ReplayStateReplayed
 	if replayReq.Replay.Config.Parallel {
 		startLogicalTime := replayReq.GetFirstExecutableRun().GetLogicalTime(jobCron)
 		endLogicalTime := replayReq.GetLastExecutableRun().GetLogicalTime(jobCron)
 		if err := w.scheduler.ClearBatch(ctx, replayReq.Replay.Tenant, replayReq.Replay.JobName, startLogicalTime, endLogicalTime); err != nil {
-			w.l.Error("unable to clear job run for replay", "replay_id", replayReq.ID)
+			w.l.Error("unable to clear job run for replay", "replay_id", replayReq.Replay.ID)
 			return err
 		}
 	} else {
 		logicalTimeToClear := replayReq.GetFirstExecutableRun().GetLogicalTime(jobCron)
 		if err := w.scheduler.Clear(ctx, replayReq.Replay.Tenant, replayReq.Replay.JobName, logicalTimeToClear); err != nil {
-			w.l.Error("unable to clear job run for replay", "replay_id", replayReq.ID)
+			w.l.Error("unable to clear job run for replay", "replay_id", replayReq.Replay.ID)
 			return err
 		}
 		if len(replayReq.Runs) > 1 {
@@ -81,21 +81,21 @@ func (w ReplayWorker) processNewReplayRequest(ctx context.Context, replayReq *sc
 
 	jobRuns, err := w.fetchRuns(ctx, replayReq, jobCron)
 	if err != nil {
-		w.l.Error(fmt.Sprintf("unable to get runs: %s", err.Error()), "replay_id", replayReq.ID)
+		w.l.Error(fmt.Sprintf("unable to get runs: %s", err.Error()), "replay_id", replayReq.Replay.ID)
 		return err
 	}
 
-	if err := w.replayRepo.UpdateReplay(ctx, replayReq.ID, state, jobRuns, ""); err != nil {
-		w.l.Error("unable to update replay state", "replay_id", replayReq.ID)
+	if err := w.replayRepo.UpdateReplay(ctx, replayReq.Replay.ID, state, jobRuns, ""); err != nil {
+		w.l.Error("unable to update replay state", "replay_id", replayReq.Replay.ID)
 		return err
 	}
 	return nil
 }
 
-func (w ReplayWorker) processPartialReplayedRequest(ctx context.Context, replayReq *scheduler.Replay, jobCron *cron.ScheduleSpec) error {
+func (w ReplayWorker) processPartialReplayedRequest(ctx context.Context, replayReq *scheduler.ReplayWithRun, jobCron *cron.ScheduleSpec) error {
 	jobRuns, err := w.fetchRuns(ctx, replayReq, jobCron)
 	if err != nil {
-		w.l.Error(fmt.Sprintf("unable to get runs: %s", err.Error()), "replay_id", replayReq.ID)
+		w.l.Error(fmt.Sprintf("unable to get runs: %s", err.Error()), "replay_id", replayReq.Replay.ID)
 		return err
 	}
 
@@ -103,12 +103,12 @@ func (w ReplayWorker) processPartialReplayedRequest(ctx context.Context, replayR
 	if !w.isOnGoingRunsExist(jobRuns) && len(executableRuns) > 0 {
 		logicalTimeToClear := executableRuns[0].GetLogicalTime(jobCron)
 		if err := w.scheduler.Clear(ctx, replayReq.Replay.Tenant, replayReq.Replay.JobName, logicalTimeToClear); err != nil {
-			w.l.Error("unable to clear job run for replay", "replay_id", replayReq.ID)
+			w.l.Error("unable to clear job run for replay", "replay_id", replayReq.Replay.ID)
 			return err
 		}
 		jobRuns, err = w.fetchRuns(ctx, replayReq, jobCron)
 		if err != nil {
-			w.l.Error(fmt.Sprintf("unable to get runs: %s", err.Error()), "replay_id", replayReq.ID)
+			w.l.Error(fmt.Sprintf("unable to get runs: %s", err.Error()), "replay_id", replayReq.Replay.ID)
 			return err
 		}
 	}
@@ -118,17 +118,17 @@ func (w ReplayWorker) processPartialReplayedRequest(ctx context.Context, replayR
 		replayState = scheduler.ReplayStateReplayed
 	}
 
-	if err := w.replayRepo.UpdateReplay(ctx, replayReq.ID, replayState, jobRuns, ""); err != nil {
-		w.l.Error("unable to update replay state", "replay_id", replayReq.ID)
+	if err := w.replayRepo.UpdateReplay(ctx, replayReq.Replay.ID, replayState, jobRuns, ""); err != nil {
+		w.l.Error("unable to update replay state", "replay_id", replayReq.Replay.ID)
 		return err
 	}
 	return nil
 }
 
-func (w ReplayWorker) processReplayedRequest(ctx context.Context, replayReq *scheduler.Replay, jobCron *cron.ScheduleSpec) error {
+func (w ReplayWorker) processReplayedRequest(ctx context.Context, replayReq *scheduler.ReplayWithRun, jobCron *cron.ScheduleSpec) error {
 	runs, err := w.fetchRuns(ctx, replayReq, jobCron)
 	if err != nil {
-		w.l.Error(fmt.Sprintf("unable to get runs: %s", err.Error()), "replay_id", replayReq.ID)
+		w.l.Error(fmt.Sprintf("unable to get runs: %s", err.Error()), "replay_id", replayReq.Replay.ID)
 		return err
 	}
 
@@ -141,14 +141,14 @@ func (w ReplayWorker) processReplayedRequest(ctx context.Context, replayReq *sch
 		state = scheduler.ReplayStateFailed
 	}
 
-	if err := w.replayRepo.UpdateReplay(ctx, replayReq.ID, state, runs, ""); err != nil {
-		w.l.Error("unable to update replay state", "replay_id", replayReq.ID)
+	if err := w.replayRepo.UpdateReplay(ctx, replayReq.Replay.ID, state, runs, ""); err != nil {
+		w.l.Error("unable to update replay state", "replay_id", replayReq.Replay.ID)
 		return err
 	}
 	return nil
 }
 
-func (w ReplayWorker) getJobCron(ctx context.Context, replayReq *scheduler.Replay) (*cron.ScheduleSpec, error) {
+func (w ReplayWorker) getJobCron(ctx context.Context, replayReq *scheduler.ReplayWithRun) (*cron.ScheduleSpec, error) {
 	jobWithDetails, err := w.jobRepo.GetJobDetails(ctx, replayReq.Replay.Tenant.ProjectName(), replayReq.Replay.JobName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get job details from DB for jobName: %s, project: %s, error: %w ",
@@ -165,7 +165,7 @@ func (w ReplayWorker) getJobCron(ctx context.Context, replayReq *scheduler.Repla
 	return jobCron, nil
 }
 
-func (w ReplayWorker) fetchRuns(ctx context.Context, replayReq *scheduler.Replay, jobCron *cron.ScheduleSpec) ([]*scheduler.JobRunStatus, error) {
+func (w ReplayWorker) fetchRuns(ctx context.Context, replayReq *scheduler.ReplayWithRun, jobCron *cron.ScheduleSpec) ([]*scheduler.JobRunStatus, error) {
 	jobRunCriteria := &scheduler.JobRunsCriteria{
 		Name:      replayReq.Replay.JobName.String(),
 		StartDate: replayReq.Replay.Config.StartTime,
