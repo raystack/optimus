@@ -32,7 +32,7 @@ jobs:
         with:
           distribution: goreleaser
           version: v1.8.3
-          args: -f .goreleaser.latest.yml --rm-dist --skip-validate
+          args: -f .goreleaser.latest.yml --rm-dist --skip-validate --snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GO_RELEASER_TOKEN }}
 
