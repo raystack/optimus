@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/kushsharma/parallel"
 	"github.com/goto/salt/log"
+	"github.com/kushsharma/parallel"
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 

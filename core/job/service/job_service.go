@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/kushsharma/parallel"
 	"github.com/goto/salt/log"
+	"github.com/kushsharma/parallel"
 
 	"github.com/goto/optimus/core/job"
 	"github.com/goto/optimus/core/job/service/filter"
