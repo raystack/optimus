@@ -115,7 +115,7 @@ func TestResourceManager(t *testing.T) {
 			manager.RegisterDatastore(store, storeService)
 
 			err = manager.CreateResource(ctx, createRequest)
-			assert.Error(t, err)
+			assert.NoError(t, err)
 		})
 		t.Run("creates the resource on the datastore", func(t *testing.T) {
 			spec := map[string]any{"description": "test spec"}
