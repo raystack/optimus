@@ -169,8 +169,8 @@ func (r ReplayRepository) GetReplayToExecute(ctx context.Context) (*scheduler.Re
 }
 
 func (r ReplayRepository) GetReplayRequestByStatus(ctx context.Context, statusList []scheduler.ReplayState) ([]*scheduler.ReplayRequest, error) {
-	getReplayRequest := `SELECT ` + replayColumns + ` FROM replay_request WHERE status IN ($1)`
-	rows, err := r.db.Query(ctx, getReplayRequest)
+	getReplayRequest := `SELECT ` + replayColumns + ` FROM replay_request WHERE status = ANY($1)`
+	rows, err := r.db.Query(ctx, getReplayRequest, statusList)
 	if err != nil {
 		return nil, errors.Wrap(job.EntityJob, "unable to get replay list", err)
 	}

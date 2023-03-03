@@ -95,4 +95,32 @@ func TestPostgresSchedulerRepository(t *testing.T) {
 			assert.Equal(t, jobBName, replayToExecute.Replay.JobName.String())
 		})
 	})
+
+	t.Run("GetReplayRequestByStatus", func(t *testing.T) {
+		t.Run("return replay requests given list of status", func(t *testing.T) {
+			db := dbSetup()
+			replayRepo := postgres.NewReplayRepository(db)
+
+			replayConfig := scheduler.NewReplayConfig(startTime, endTime, true, description)
+			replayReq1 := scheduler.NewReplayRequest(jobAName, tnnt, replayConfig, scheduler.ReplayStateInProgress)
+			replayReq2 := scheduler.NewReplayRequest(jobBName, tnnt, replayConfig, scheduler.ReplayStateCreated)
+			replayReq3 := scheduler.NewReplayRequest("sample-job-C", tnnt, replayConfig, scheduler.ReplayStateFailed)
+
+			replayID1, err := replayRepo.RegisterReplay(ctx, replayReq1, jobRunsAllPending)
+			assert.Nil(t, err)
+			assert.NotNil(t, replayID1)
+
+			replayID2, err := replayRepo.RegisterReplay(ctx, replayReq2, jobRunsAllPending)
+			assert.Nil(t, err)
+			assert.NotNil(t, replayID2)
+
+			replayID3, err := replayRepo.RegisterReplay(ctx, replayReq3, jobRunsAllPending)
+			assert.Nil(t, err)
+			assert.NotNil(t, replayID3)
+
+			replayReqs, err := replayRepo.GetReplayRequestByStatus(ctx, []scheduler.ReplayState{scheduler.ReplayStateCreated, scheduler.ReplayStateInProgress})
+			assert.Nil(t, err)
+			assert.EqualValues(t, []string{jobAName, jobBName}, []string{replayReqs[0].JobName.String(), replayReqs[1].JobName.String()})
+		})
+	})
 }
