@@ -92,7 +92,7 @@ func TestPostgresSchedulerRepository(t *testing.T) {
 
 			replayToExecute, err := replayRepo.GetReplayToExecute(ctx)
 			assert.Nil(t, err)
-			assert.Equal(t, jobBName, replayToExecute.Replay.JobName.String())
+			assert.Equal(t, jobBName, replayToExecute.Replay.JobName().String())
 		})
 	})
 
@@ -120,7 +120,7 @@ func TestPostgresSchedulerRepository(t *testing.T) {
 
 			replayReqs, err := replayRepo.GetReplayRequestsByStatus(ctx, []scheduler.ReplayState{scheduler.ReplayStateCreated, scheduler.ReplayStateInProgress})
 			assert.Nil(t, err)
-			assert.EqualValues(t, []string{jobAName, jobBName}, []string{replayReqs[0].JobName.String(), replayReqs[1].JobName.String()})
+			assert.EqualValues(t, []string{jobAName, jobBName}, []string{replayReqs[0].JobName().String(), replayReqs[1].JobName().String()})
 		})
 	})
 }

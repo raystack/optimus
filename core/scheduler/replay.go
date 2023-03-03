@@ -51,24 +51,52 @@ func (j ReplayState) String() string {
 }
 
 type Replay struct {
-	ID uuid.UUID
+	id uuid.UUID
 
-	JobName JobName
-	Tenant  tenant.Tenant
-	Config  *ReplayConfig
+	jobName JobName
+	tenant  tenant.Tenant
+	config  *ReplayConfig
 
-	State   ReplayState
-	Message string
+	state   ReplayState
+	message string
 
-	CreatedAt time.Time
+	createdAt time.Time
+}
+
+func (r Replay) ID() uuid.UUID {
+	return r.id
+}
+
+func (r Replay) JobName() JobName {
+	return r.jobName
+}
+
+func (r Replay) Tenant() tenant.Tenant {
+	return r.tenant
+}
+
+func (r Replay) Config() *ReplayConfig {
+	return r.config
+}
+
+func (r Replay) State() ReplayState {
+	return r.state
+}
+
+func (r Replay) Message() string {
+	return r.message
+}
+
+func (r Replay) CreatedAt() time.Time {
+	return r.createdAt
 }
 
 func NewReplayRequest(jobName JobName, tenant tenant.Tenant, config *ReplayConfig, state ReplayState) *Replay {
-	return &Replay{JobName: jobName, Tenant: tenant, Config: config, State: state}
+	return &Replay{jobName: jobName, tenant: tenant, config: config, state: state}
 }
 
 func NewReplay(id uuid.UUID, jobName JobName, tenant tenant.Tenant, config *ReplayConfig, state ReplayState, createdAt time.Time) *Replay {
-	return &Replay{ID: id, JobName: jobName, Tenant: tenant, Config: config, State: state, CreatedAt: createdAt}
+	return &Replay{id: id, jobName: jobName, tenant: tenant, config: config, state: state, createdAt: createdAt}
 }
 
 type ReplayWithRun struct {

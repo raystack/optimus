@@ -67,14 +67,14 @@ func (m ReplayManager) checkTimedOutReplay(ctx context.Context) {
 	}
 
 	for _, replay := range onGoingReplays {
-		runningTime := m.Now().Sub(replay.CreatedAt)
+		runningTime := m.Now().Sub(replay.CreatedAt())
 		if runningTime < m.config.ReplayTimeout {
 			continue
 		}
-		message := fmt.Sprintf("replay is timing out. %s", replay.Message)
-		if err := m.replayRepository.UpdateReplayStatus(ctx, replay.ID, scheduler.ReplayStateFailed, message); err != nil {
-			m.l.Error("unable to mark replay %s as failed due to time out", replay.ID)
+		message := fmt.Sprintf("replay is timing out. %s", replay.Message())
+		if err := m.replayRepository.UpdateReplayStatus(ctx, replay.ID(), scheduler.ReplayStateFailed, message); err != nil {
+			m.l.Error("unable to mark replay %s as failed due to time out", replay.ID())
 		}
-		m.l.Info("replay %s is timing out. marked as failed.", replay.ID)
+		m.l.Info("replay %s is timing out. marked as failed.", replay.ID())
 	}
 }

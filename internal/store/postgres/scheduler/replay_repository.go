@@ -168,7 +168,7 @@ func (r ReplayRepository) GetReplayToExecute(ctx context.Context) (*scheduler.Re
 		return nil, err
 	}
 
-	if _, err := tx.Exec(ctx, updateReplayRequest, scheduler.ReplayStateInProgress, "", storedReplay.Replay.ID); err != nil {
+	if _, err := tx.Exec(ctx, updateReplayRequest, scheduler.ReplayStateInProgress, "", storedReplay.Replay.ID()); err != nil {
 		return nil, errors.Wrap(scheduler.EntityJobRun, "unable to update replay", err)
 	}
 	return storedReplay, nil
@@ -276,8 +276,8 @@ func (r ReplayRepository) updateReplayRuns(ctx context.Context, id uuid.UUID, ru
 
 func (ReplayRepository) insertReplay(ctx context.Context, tx pgx.Tx, replay *scheduler.Replay) error {
 	insertReplay := `INSERT INTO replay_request (` + replayColumnsToStore + `, created_at, updated_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())`
-	_, err := tx.Exec(ctx, insertReplay, replay.JobName.String(), replay.Tenant.NamespaceName(), replay.Tenant.ProjectName(),
-		replay.Config.StartTime, replay.Config.EndTime, replay.Config.Description, replay.Config.Parallel, replay.State, replay.Message)
+	_, err := tx.Exec(ctx, insertReplay, replay.JobName().String(), replay.Tenant().NamespaceName(), replay.Tenant().ProjectName(),
+		replay.Config().StartTime, replay.Config().EndTime, replay.Config().Description, replay.Config().Parallel, replay.State(), replay.Message())
 	if err != nil {
 		return errors.Wrap(scheduler.EntityJobRun, "unable to store replay", err)
 	}
@@ -287,7 +287,7 @@ func (ReplayRepository) insertReplay(ctx context.Context, tx pgx.Tx, replay *sch
 func (ReplayRepository) getReplayRequest(ctx context.Context, tx pgx.Tx, replay *scheduler.Replay) (replayRequest, error) {
 	var rr replayRequest
 	getReplayRequest := `SELECT ` + replayColumns + ` FROM replay_request where project_name = $1 and job_name = $2 and start_time = $3 and end_time = $4 order by created_at desc limit 1`
-	if err := tx.QueryRow(ctx, getReplayRequest, replay.Tenant.ProjectName(), replay.JobName.String(), replay.Config.StartTime, replay.Config.EndTime).
+	if err := tx.QueryRow(ctx, getReplayRequest, replay.Tenant().ProjectName(), replay.JobName().String(), replay.Config().StartTime, replay.Config().EndTime).
 		Scan(&rr.ID, &rr.JobName, &rr.NamespaceName, &rr.ProjectName, &rr.StartTime, &rr.EndTime, &rr.Description, &rr.Parallel,
 			&rr.Status, &rr.Message); err != nil {
 		return rr, errors.Wrap(scheduler.EntityJobRun, "unable to get the stored replay", err)
