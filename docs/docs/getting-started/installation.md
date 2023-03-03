@@ -1,6 +1,6 @@
 # Installation
 
-Installing Optimus on any system is straight forward. We provide pre-built [binaries](https://github.com/odpf/optimus/releases),
+Installing Optimus on any system is straight forward. We provide pre-built [binaries](https://github.com/goto/optimus/releases),
 Docker Images and support package managers.
 
 ## MacOS
@@ -8,7 +8,7 @@ Docker Images and support package managers.
 You can install Optimus using homebrew on macOS:
 
 ```shell
-brew install odpf/tap/optimus
+brew install goto/tap/optimus
 optimus version
 ```
 
@@ -39,7 +39,7 @@ Optimus requires the following dependencies:
 Run the following commands to compile `optimus` from source
 
 ```shell
-git clone git@github.com:odpf/optimus.git
+git clone git@github.com:goto/optimus.git
 cd optimus
 make build
 ```

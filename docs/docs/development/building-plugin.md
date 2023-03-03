@@ -40,7 +40,7 @@ Before getting into the difference between two plugins ,we need to get familiar 
 * Server Side Usecases :
   * CompileAssets & DependencyResolver
   * Theses are currently supported server side behaviour that is delegated to plugins implementations.
-  * Refer - [transformers](https://github.com/odpf/transformers/blob/main/task/bq2bq/main.go#L274) 
+  * Refer - [transformers](https://github.com/goto/transformers/blob/main/task/bq2bq/main.go#L274) 
 
 ## Binary Implementation of Plugin
 
@@ -362,9 +362,9 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/odpf/optimus/internal/models"
-	"github.com/odpf/optimus/plugin"
-	"github.com/odpf/optimus/plugin/base"
+	"github.com/goto/optimus/internal/models"
+	"github.com/goto/optimus/plugin"
+	"github.com/goto/optimus/plugin/base"
 )
 
 var (
@@ -401,11 +401,11 @@ A single binary can serve more than one kind of plugin, in this example stick wi
 
 #### Base Plugin
 
-Base plugin interface needs to be [implemented](https://github.com/odpf/proton/blob/54e0bec2df4235cabea4ac2127534a468584e932/odpf/optimus/plugins/base.proto) by every plugin. It is responsible for providing plugin metadata to Optimus core.
+Base plugin interface needs to be [implemented](https://github.com/goto/proton/blob/54e0bec2df4235cabea4ac2127534a468584e932/goto/optimus/plugins/base.proto) by every plugin. It is responsible for providing plugin metadata to Optimus core.
 
 ```protobuf
 syntax = "proto3";
-package odpf.optimus.plugins;
+package goto.optimus.plugins;
 
 // Base must be implemented by all plugins
 service Base {
@@ -468,14 +468,14 @@ If your plugin simply wants to register itself as task or hook for execution and
 
 Plugin can have none or many plugins mods being implemented at the same time. At the moment there are 2 mods available for usage
 
-1. [CLIMod](https://github.com/odpf/proton/blob/54e0bec2df4235cabea4ac2127534a468584e932/odpf/optimus/plugins/cli.proto): It provides plugin to interact with Optimus cli. Plugin can provide default configs, ask questions from users to create job specification, override default asset macro compilation behaviour, etc.
-2. [DependencyResolverMod](https://github.com/odpf/proton/blob/54e0bec2df4235cabea4ac2127534a468584e932/odpf/optimus/plugins/dependency_resolver.proto): It provides plugin to implement automatic dependency resolution using assets/configs.
+1. [CLIMod](https://github.com/goto/proton/blob/54e0bec2df4235cabea4ac2127534a468584e932/goto/optimus/plugins/cli.proto): It provides plugin to interact with Optimus cli. Plugin can provide default configs, ask questions from users to create job specification, override default asset macro compilation behaviour, etc.
+2. [DependencyResolverMod](https://github.com/goto/proton/blob/54e0bec2df4235cabea4ac2127534a468584e932/goto/optimus/plugins/dependency_resolver.proto): It provides plugin to implement automatic dependency resolution using assets/configs.
 
 In this example we will use the CLIMod.
 
-To start serving GRPC, either we write our own implementation for serialising/deserialising Go structs to protobufs or reuse the one already provided by [core](https://github.com/odpf/optimus/blob/eaa50bb37d7e738d9b8a94332312f34b04a7e16b/plugin/task/server.go). Optimus GRPC server accepts an interface which we will implement next on Neo struct. Custom protobuf adapter can also be written using the [provided](https://github.com/odpf/proton/blob/54e0bec2df4235cabea4ac2127534a468584e932/odpf/optimus/plugins/base.proto) protobuf stored in odpf [repository](https://github.com/odpf/proton).
+To start serving GRPC, either we write our own implementation for serialising/deserialising Go structs to protobufs or reuse the one already provided by [core](https://github.com/goto/optimus/blob/eaa50bb37d7e738d9b8a94332312f34b04a7e16b/plugin/task/server.go). Optimus GRPC server accepts an interface which we will implement next on Neo struct. Custom protobuf adapter can also be written using the [provided](https://github.com/goto/proton/blob/54e0bec2df4235cabea4ac2127534a468584e932/goto/optimus/plugins/base.proto) protobuf stored in goto [repository](https://github.com/goto/proton).
 
-Add the following code in the existing `main.go` as an implementation to [BasePlugin](https://github.com/odpf/proton/blob/54e0bec2df4235cabea4ac2127534a468584e932/odpf/optimus/plugins/base.proto)
+Add the following code in the existing `main.go` as an implementation to [BasePlugin](https://github.com/goto/proton/blob/54e0bec2df4235cabea4ac2127534a468584e932/goto/optimus/plugins/base.proto)
 
 ```go
 type Neo struct{}
@@ -496,7 +496,7 @@ func (n *Neo) PluginInfo() (*models.PluginInfoResponse, error) {
 }
 ```
 
-You might have noticed we have specified at line number 9 that we are supporting `models.ModTypeCLI`. This will let Optimus know what all this plugin is capable of. Let's implement the [CLIMod](https://github.com/odpf/proton/blob/54e0bec2df4235cabea4ac2127534a468584e932/odpf/optimus/plugins/cli.proto) now.
+You might have noticed we have specified at line number 9 that we are supporting `models.ModTypeCLI`. This will let Optimus know what all this plugin is capable of. Let's implement the [CLIMod](https://github.com/goto/proton/blob/54e0bec2df4235cabea4ac2127534a468584e932/goto/optimus/plugins/cli.proto) now.
 
 
 ```go
@@ -806,7 +806,7 @@ Optimus calls these task configuration and asset inputs for each scheduled execu
 
 ##### REST API
 
-This is probably the easiest way using [REST API](https://github.com/odpf/optimus/blob/0ab5a4d44a7b2b85e9a160aef3648d8ba798536a/third_party/OpenAPI/odpf/optimus/runtime_service.swagger.json#L187) provided by optimus server. Each container when boots up has few pre-defined environment variables injected by optimus, few of them are:
+This is probably the easiest way using [REST API](https://github.com/goto/optimus/blob/0ab5a4d44a7b2b85e9a160aef3648d8ba798536a/third_party/OpenAPI/goto/optimus/runtime_service.swagger.json#L187) provided by optimus server. Each container when boots up has few pre-defined environment variables injected by optimus, few of them are:
 
 - JOB_NAME
 - OPTIMUS_HOSTNAME
@@ -820,7 +820,7 @@ These variables might be needed to make the call and in response, container shou
 
 ##### GRPC call
 
-Plugin can choose to make a GRPC call using `RegisterInstance` [function](https://github.com/odpf/proton/blob/main/odpf/optimus/runtime_service.proto#L124) and should get the context back in return.
+Plugin can choose to make a GRPC call using `RegisterInstance` [function](https://github.com/goto/proton/blob/main/goto/optimus/runtime_service.proto#L124) and should get the context back in return.
 
 ##### Optimus cli
 
@@ -895,7 +895,7 @@ dockers:
     extra_files:
     - task/neo/example.entrypoint.sh
     build_flag_templates:
-    - "--build-arg=OPTIMUS_RELEASE_URL=https://github.com/odpf/optimus/releases/download/v0.0.1-rc.2/optimus_0.0.1-rc.2_linux_x86_64.tar.gz"
+    - "--build-arg=OPTIMUS_RELEASE_URL=https://github.com/goto/optimus/releases/download/v0.0.1-rc.2/optimus_0.0.1-rc.2_linux_x86_64.tar.gz"
 ```
 
 Keep in mind, the plugin binary now needs to point to this `optimus-task-neo` docker image and not the base one. An example of this approach can be checked in the provided [repository](https://github.com/kushsharma/optimus-plugins).

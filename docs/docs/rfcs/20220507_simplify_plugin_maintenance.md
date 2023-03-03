@@ -88,7 +88,7 @@ plugin:
     # local filesystem for dev
     - ../transformers/dist/bq2bq_darwin_arm64/optimus-bq2bq_darwin_arm64
     # any http uri
-    - https://github.com/odpf/optimus/releases/download/v0.2.5/optimus_0.2.5_linux_arm64.tar.gz
+    - https://github.com/goto/optimus/releases/download/v0.2.5/optimus_0.2.5_linux_arm64.tar.gz
       
  ```
 #### B) Yaml Plugin Interface: (for client side simplification)
@@ -116,7 +116,7 @@ pluginmods:
   - dependencyresolver
 pluginversion: 0.1.0-SNAPSHOT-27cb56f
 apiversion: []
-image: docker.io/odpf/optimus-task-bq2bq-executor:0.1.0-SNAPSHOT-27cb56f
+image: docker.io/goto/optimus-task-bq2bq-executor:0.1.0-SNAPSHOT-27cb56f
 secretpath: /tmp/auth.json
 dependson: []
 hooktype: ""

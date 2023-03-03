@@ -105,8 +105,8 @@ EXAMPLES
 
 LEARN MORE
   Use 'optimus <command> <subcommand> --help' for more information about a command.
-  Read the manual at https://odpf.github.io/optimus/
+  Read the manual at https://goto.github.io/optimus/
 
 FEEDBACK
-  Open an issue here https://github.com/odpf/optimus/issues
+  Open an issue here https://github.com/goto/optimus/issues
  ```

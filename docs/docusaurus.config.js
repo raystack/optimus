@@ -5,13 +5,13 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 module.exports = {
   title: 'Optimus',
   tagline: 'Performant data workflow orchestrator',
-  url: 'https://odpf.github.io',
+  url: 'https://goto.github.io',
   baseUrl: '/optimus/',
   onBrokenLinks: 'throw',
   // trailingSlash: true,
   onBrokenMarkdownLinks: 'warn',
   favicon: 'img/favicon.ico',
-  organizationName: 'odpf',
+  organizationName: 'goto',
   projectName: 'optimus',
 
   themeConfig: {
@@ -41,7 +41,7 @@ module.exports = {
           className: 'header-slack-link',
         },
         {
-          href: 'https://github.com/odpf/optimus',
+          href: 'https://github.com/goto/optimus',
           className: 'navbar-item-github',
           position: 'right',
         },
@@ -53,10 +53,10 @@ module.exports = {
         {
           title: 'Products',
           items: [
-            { label: 'Meteor', href: 'https://github.com/odpf/meteor' },
-            { label: 'Firehose', href: 'https://github.com/odpf/firehose' },
-            { label: 'Raccoon', href: 'https://github.com/odpf/raccoon' },
-            { label: 'Dagger', href: 'https://odpf.github.io/dagger/' },
+            { label: 'Meteor', href: 'https://github.com/goto/meteor' },
+            { label: 'Firehose', href: 'https://github.com/goto/firehose' },
+            { label: 'Raccoon', href: 'https://github.com/goto/raccoon' },
+            { label: 'Dagger', href: 'https://goto.github.io/dagger/' },
           ],
         },
         {
@@ -71,11 +71,11 @@ module.exports = {
           title: 'Community',
           items: [
             { label: 'Slack', href: 'https://bit.ly/2RzPbtn' },
-            { label: 'GitHub', href: 'https://github.com/odpf/optimus' }
+            { label: 'GitHub', href: 'https://github.com/goto/optimus' }
           ],
         },
       ],
-      copyright: `Copyright © 2020-${new Date().getFullYear()} ODPF`,
+      copyright: `Copyright © 2020-${new Date().getFullYear()} goto`,
     },
     prism: {
       theme: lightCodeTheme,
@@ -86,7 +86,7 @@ module.exports = {
     },
     announcementBar: {
       id: 'star-repo',
-      content: '⭐️ If you like Optimus, give it a star on <a target="_blank" rel="noopener noreferrer" href="https://github.com/odpf/optimus">GitHub</a>! ⭐',
+      content: '⭐️ If you like Optimus, give it a star on <a target="_blank" rel="noopener noreferrer" href="https://github.com/goto/optimus">GitHub</a>! ⭐',
       backgroundColor: '#222',
       textColor: '#eee',
       isCloseable: true,
@@ -101,12 +101,12 @@ module.exports = {
           showLastUpdateAuthor: true,
           showLastUpdateTime: true,
           sidebarPath: require.resolve('./sidebars.js'),
-          editUrl: 'https://github.com/odpf/optimus/edit/master/docs/',
+          editUrl: 'https://github.com/goto/optimus/edit/master/docs/',
         },
         blog: {
           showReadingTime: true,
           editUrl:
-            'https://github.com/odpf/optimus/edit/master/docs/blog/',
+            'https://github.com/goto/optimus/edit/master/docs/blog/',
         },
         theme: {
           customCss: [
