@@ -1,0 +1,2 @@
+ALTER TABLE job_run
+    ADD COLUMN IF NOT EXISTS monitoring JSONB;

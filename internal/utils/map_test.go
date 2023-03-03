@@ -2,6 +2,7 @@ package utils_test
 
 import (
 	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -64,6 +65,15 @@ func TestMapHelper(t *testing.T) {
 			merged := utils.MergeMaps(mp1, mp2)
 			assert.NotNil(t, merged)
 			assert.Equal(t, "4", merged["Key"])
+		})
+	})
+	t.Run("MapToList", func(t *testing.T) {
+		t.Run("returns the values in map", func(t *testing.T) {
+			mapping := map[string]string{"a": "b", "c": "d", "e": "f"}
+			list := utils.MapToList(mapping)
+			assert.Len(t, list, 3)
+			sort.Strings(list)
+			assert.Equal(t, []string{"b", "d", "f"}, list)
 		})
 	})
 	t.Run("AppendToMap", func(t *testing.T) {

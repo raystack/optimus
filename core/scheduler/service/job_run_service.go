@@ -12,6 +12,17 @@ import (
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/lib/cron"
+	"github.com/odpf/optimus/internal/telemetry"
+)
+
+type metricType string
+
+func (m metricType) String() string {
+	return string(m)
+}
+
+const (
+	scheduleDelay metricType = "schedule_delay"
 )
 
 type JobRepository interface {
@@ -26,6 +37,7 @@ type JobRunRepository interface {
 	Create(ctx context.Context, tenant tenant.Tenant, name scheduler.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error
 	Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, jobRunStatus scheduler.State) error
 	UpdateSLA(ctx context.Context, slaObjects []*scheduler.SLAObject) error
+	UpdateMonitoring(ctx context.Context, jobRunID uuid.UUID, monitoring map[string]any) error
 }
 
 type OperatorRunRepository interface {
@@ -202,7 +214,21 @@ func (s JobRunService) registerNewJobRun(ctx context.Context, tenant tenant.Tena
 	if err != nil {
 		return err
 	}
-	return s.repo.Create(ctx, tenant, jobName, scheduledAt, slaDefinitionInSec)
+	telemetry.NewGauge("total_jobs_running", map[string]string{
+		"project":   tenant.ProjectName().String(),
+		"namespace": tenant.NamespaceName().String(),
+	}).Inc()
+	err = s.repo.Create(ctx, tenant, jobName, scheduledAt, slaDefinitionInSec)
+	if err != nil {
+		return err
+	}
+
+	telemetry.NewCounter("scheduler_operator_durations_seconds", map[string]string{
+		"project":   tenant.ProjectName().String(),
+		"namespace": tenant.NamespaceName().String(),
+		"type":      scheduleDelay.String(),
+	}).Add(float64(time.Now().Unix() - scheduledAt.Unix()))
+	return nil
 }
 
 func (s JobRunService) getJobRunByScheduledAt(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) (*scheduler.JobRun, error) {
@@ -230,7 +256,31 @@ func (s JobRunService) updateJobRun(ctx context.Context, event scheduler.Event) 
 	if err != nil {
 		return err
 	}
-	return s.repo.Update(ctx, jobRun.ID, event.EventTime, event.Status)
+	for _, state := range scheduler.TaskEndStates {
+		if event.Status == state {
+			// this can go negative, because it is possible that when we deploy certain job have already started,
+			// and the very first events we get are that of task end states, to handle this, we should treat the lowest
+			// value as the base value.
+			telemetry.NewGauge("total_jobs_running", map[string]string{
+				"project":   event.Tenant.ProjectName().String(),
+				"namespace": event.Tenant.NamespaceName().String(),
+			}).Dec()
+			break
+		}
+	}
+	if err := s.repo.Update(ctx, jobRun.ID, event.EventTime, event.Status); err != nil {
+		return err
+	}
+	monitoringValues := s.getMonitoringValues(event)
+	return s.repo.UpdateMonitoring(ctx, jobRun.ID, monitoringValues)
+}
+
+func (JobRunService) getMonitoringValues(event scheduler.Event) map[string]any {
+	var output map[string]any
+	if value, ok := event.Values["monitoring"]; ok && value != nil {
+		output, _ = value.(map[string]any)
+	}
+	return output
 }
 
 func (s JobRunService) updateJobRunSLA(ctx context.Context, event scheduler.Event) error {
@@ -244,6 +294,13 @@ func (s JobRunService) createOperatorRun(ctx context.Context, event scheduler.Ev
 	jobRun, err := s.getJobRunByScheduledAt(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
 	if err != nil {
 		return err
+	}
+	if operatorType == scheduler.OperatorTask {
+		telemetry.NewGauge("count_running_tasks", map[string]string{
+			"project":   event.Tenant.ProjectName().String(),
+			"namespace": event.Tenant.NamespaceName().String(),
+			"type":      event.OperatorName,
+		}).Inc()
 	}
 	return s.operatorRunRepo.CreateOperatorRun(ctx, event.OperatorName, operatorType, jobRun.ID, event.EventTime)
 }
@@ -276,9 +333,33 @@ func (s JobRunService) updateOperatorRun(ctx context.Context, event scheduler.Ev
 	if err != nil {
 		return err
 	}
-	return s.operatorRunRepo.UpdateOperatorRun(ctx, operatorType, operatorRun.ID, event.EventTime, event.Status)
+	if operatorType == scheduler.OperatorTask {
+		for _, state := range scheduler.TaskEndStates {
+			if event.Status == state {
+				// this can go negative, because it is possible that when we deploy certain job have already started,
+				// and the very first events we get are that of task end states, to handle this, we should treat the lowest
+				// value as the base value.
+				telemetry.NewGauge("count_running_tasks", map[string]string{
+					"project":   event.Tenant.ProjectName().String(),
+					"namespace": event.Tenant.NamespaceName().String(),
+					"type":      event.OperatorName,
+				}).Dec()
+				break
+			}
+		}
+	}
+	err = s.operatorRunRepo.UpdateOperatorRun(ctx, operatorType, operatorRun.ID, event.EventTime, event.Status)
+	if err != nil {
+		return err
+	}
+	telemetry.NewCounter("scheduler_operator_durations_seconds", map[string]string{
+		"project":   event.Tenant.ProjectName().String(),
+		"namespace": event.Tenant.NamespaceName().String(),
+		"type":      operatorType.String(),
+	}).Add(float64(event.EventTime.Unix() - operatorRun.StartTime.Unix()))
+	return nil
 }
-func (s JobRunService) logEvent(event scheduler.Event) {
+func (s JobRunService) trackEvent(event scheduler.Event) {
 	if event.Type.IsOfType(scheduler.EventCategorySLAMiss) {
 		s.l.Debug(fmt.Sprintf("received event: %v, jobName: %v , slaPayload: %#v",
 			event.Type, event.JobName, event.SLAObjectList))
@@ -286,10 +367,15 @@ func (s JobRunService) logEvent(event scheduler.Event) {
 		s.l.Debug(fmt.Sprintf("received event: %v, eventTime: %s, jobName: %v, Operator: %v, schedule: %s, status: %s",
 			event.Type, event.EventTime.Format("01/02/06 15:04:05 MST"), event.JobName, event.OperatorName, event.JobScheduledAt.Format("01/02/06 15:04:05 MST"), event.Status))
 	}
+	telemetry.NewGauge("scheduler_events", map[string]string{
+		"project":   event.Tenant.ProjectName().String(),
+		"namespace": event.Tenant.NamespaceName().String(),
+		"type":      event.Type.String(),
+	}).Inc()
 }
 
 func (s JobRunService) UpdateJobState(ctx context.Context, event scheduler.Event) error {
-	s.logEvent(event)
+	s.trackEvent(event)
 
 	switch event.Type {
 	case scheduler.SLAMissEvent:

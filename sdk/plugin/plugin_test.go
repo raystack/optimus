@@ -1,6 +1,7 @@
 package plugin_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -31,6 +32,102 @@ func TestPlugins(t *testing.T) {
 
 			yamlPlugin := mock.NewMockYamlPlugin("abcd", plugin.TypeTask.String())
 			assert.Equal(t, "abcd", yamlPlugin.Info().Name)
+		})
+	})
+
+	t.Run("Info", func(t *testing.T) {
+		t.Run("Validate", func(t *testing.T) {
+			testCases := []struct {
+				name string
+				err  error
+				info plugin.Info
+			}{
+				{
+					name: "when name is empty",
+					err:  errors.New("plugin name cannot be empty"),
+					info: plugin.Info{
+						Name:          "",
+						Image:         "odpf.io/example",
+						PluginVersion: "0.2",
+						Entrypoint: plugin.Entrypoint{
+							Script: "sleep 10",
+						},
+						PluginType: plugin.TypeTask,
+					},
+				},
+				{
+					name: "when image is empty",
+					err:  errors.New("plugin image cannot be empty"),
+					info: plugin.Info{
+						Name:          "example",
+						Image:         "",
+						PluginVersion: "0.2",
+						Entrypoint: plugin.Entrypoint{
+							Script: "sleep 10",
+						},
+						PluginType: plugin.TypeTask,
+					},
+				},
+				{
+					name: "when plugin version is empty",
+					err:  errors.New("plugin version cannot be empty"),
+					info: plugin.Info{
+						Name:          "example",
+						Image:         "odpf.io/example",
+						PluginVersion: "",
+						Entrypoint: plugin.Entrypoint{
+							Script: "sleep 10",
+						},
+						PluginType: plugin.TypeTask,
+					},
+				},
+				{
+					name: "when entrypoint is empty",
+					err:  errors.New("entrypoint args cannot be empty"),
+					info: plugin.Info{
+						Name:          "example",
+						Image:         "odpf.io/example",
+						PluginVersion: "0.2",
+						Entrypoint:    plugin.Entrypoint{},
+						PluginType:    plugin.TypeTask,
+					},
+				},
+				{
+					name: "when plugin type is not supported",
+					err:  errors.New("plugin type is not supported"),
+					info: plugin.Info{
+						Name:          "example",
+						Image:         "odpf.io/example",
+						PluginVersion: "0.2",
+						Entrypoint: plugin.Entrypoint{
+							Script: "sleep 10",
+						},
+						PluginType: "",
+					},
+				},
+				{
+					name: "when valid",
+					err:  nil,
+					info: plugin.Info{
+						Name:          "example",
+						Image:         "odpf.io/example",
+						PluginVersion: "0.2",
+						Entrypoint: plugin.Entrypoint{
+							Script: "sleep 10",
+						},
+						PluginType: plugin.TypeTask,
+					},
+				},
+			}
+
+			for _, tc := range testCases {
+				tc := tc
+				t.Run(tc.name, func(t *testing.T) {
+					t.Parallel()
+					err := tc.info.Validate()
+					assert.Equal(t, tc.err, err)
+				})
+			}
 		})
 	})
 

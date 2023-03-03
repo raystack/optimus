@@ -23,6 +23,9 @@ const (
 	OperatorTask   OperatorType = "task"
 	OperatorSensor OperatorType = "sensor"
 	OperatorHook   OperatorType = "hook"
+
+	UpstreamTypeStatic   = "static"
+	UpstreamTypeInferred = "inferred"
 )
 
 func JobNameFrom(name string) (JobName, error) {

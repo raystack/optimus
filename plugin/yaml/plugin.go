@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/afero"
@@ -31,6 +32,7 @@ func (p *PluginSpec) PluginInfo() *plugin.Info {
 		Name:          p.Name,
 		Description:   p.Description,
 		Image:         p.Image,
+		Entrypoint:    p.Entrypoint,
 		PluginType:    p.PluginType,
 		PluginMods:    []plugin.Mod{plugin.ModTypeCLI},
 		PluginVersion: p.PluginVersion,
@@ -100,9 +102,17 @@ func NewPluginSpec(pluginPath string) (*PluginSpec, error) {
 		return nil, err
 	}
 	var plugin PluginSpec
-	if err := yaml.Unmarshal(pluginBytes, &plugin); err != nil { // TODO: check if strict marshal is required
+	if err := yaml.UnmarshalStrict(pluginBytes, &plugin); err != nil {
 		return &plugin, err
 	}
+	// default values
+	if plugin.Info.Entrypoint.Shell == "" {
+		plugin.Info.Entrypoint.Shell = "/bin/sh"
+	}
+
+	// standardize script value
+	script := plugin.Info.Entrypoint.Script
+	plugin.Info.Entrypoint.Script = strings.ReplaceAll(script, "\n", "; ")
 	return &plugin, nil
 }
 

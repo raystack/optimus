@@ -52,15 +52,7 @@ def lookup_non_standard_cron_expression(expr: str) -> str:
 
 
 class SuperKubernetesPodOperator(KubernetesPodOperator):
-    def __init__(self,
-                 optimus_hostname,
-                 optimus_projectname,
-                 optimus_namespacename,
-                 optimus_jobname,
-                 optimus_jobtype,
-                 optimus_instancename,
-                 *args,
-                 **kwargs):
+    def __init__(self, *args, **kwargs):
         super(SuperKubernetesPodOperator, self).__init__(*args, **kwargs)
         self.do_xcom_push = kwargs.get('do_xcom_push')
         self.namespace = kwargs.get('namespace')
@@ -69,32 +61,13 @@ class SuperKubernetesPodOperator(KubernetesPodOperator):
         self.reattach_on_restart = kwargs.get('reattach_on_restart')
         self.config_file = kwargs.get('config_file')
 
-        # used to fetch job env from optimus for adding to k8s pod
-        self.optimus_hostname = optimus_hostname
-        self.optimus_namespacename = optimus_namespacename
-        self.optimus_jobname = optimus_jobname
-        self.optimus_instancename = optimus_instancename
-        self.optimus_projectname = optimus_projectname
-        self.optimus_jobtype = optimus_jobtype
-        self._optimus_client = OptimusAPIClient(optimus_hostname)
-
     def render_init_containers(self, context):
         for ic in self.init_containers:
             env = getattr(ic, 'env')
             if env:
                 self.render_template(env, context)
 
-    def fetch_env_from_optimus(self, context):
-        scheduled_at = context["next_execution_date"].strftime(TIMESTAMP_FORMAT)
-        job_meta = self._optimus_client.get_job_run_input(scheduled_at, self.optimus_projectname, self.optimus_jobname, self.optimus_jobtype, self.optimus_instancename)
-        return [
-                   k8s.V1EnvVar(name=key, value=val) for key, val in job_meta["envs"].items()
-               ] + [
-                   k8s.V1EnvVar(name=key, value=val) for key, val in job_meta["secrets"].items()
-               ]
-
     def execute(self, context):
-        self.env_vars += self.fetch_env_from_optimus(context)
         self.render_init_containers(context)
         # call KubernetesPodOperator to handle the pod
         return super().execute(context)
@@ -380,6 +353,10 @@ def job_success_event(context):
             "event_type": "TYPE_JOB_SUCCESS",
             "status": "success"
         }
+        result_for_monitoring = get_result_for_monitoring_from_xcom(context)
+        if result_for_monitoring is not None:
+            meta['monitoring'] = result_for_monitoring
+
         optimus_notify(context, meta)
     except Exception as e:
         print(e)
@@ -390,6 +367,10 @@ def job_failure_event(context):
             "event_type": "TYPE_FAILURE",
             "status": "failed"
         }
+        result_for_monitoring = get_result_for_monitoring_from_xcom(context)
+        if result_for_monitoring is not None:
+            meta['monitoring'] = result_for_monitoring
+
         optimus_notify(context, meta)
     except Exception as e:
         print(e)
@@ -498,8 +479,7 @@ def shouldSendSensorStartEvent(ctx):
     try:
         ti = ctx.get('task_instance')
         key = "sensorEvt/{}/{}/{}".format(ti.task_id , ctx.get('next_execution_date').strftime(TIMESTAMP_FORMAT) , ti.try_number)
-        
-        ti.xcom_pull(key=key)
+
         result = ti.xcom_pull(key=key)
         if not result:
             print("sending NEW sensor start event for attempt number ", ti.try_number)
@@ -510,6 +490,17 @@ def shouldSendSensorStartEvent(ctx):
     except Exception as e:
         print(e)
 
+def get_result_for_monitoring_from_xcom(ctx):
+    try:
+        ti = ctx.get('task_instance')
+        return_value = ti.xcom_pull(key='return_value')
+    except Exception as e:
+        print(f'error getting result for monitoring: {e}')
+
+    if type(return_value) is dict:
+        if 'monitoring' in return_value:
+            return return_value['monitoring']
+    return None
 
 def cleanup_xcom(ctx):
     try:

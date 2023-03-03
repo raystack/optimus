@@ -159,14 +159,22 @@ func setupPluginRepo() mockPluginRepo {
 	execUnit.On("PluginInfo").Return(&plugin.Info{
 		Name:  "bq-bq",
 		Image: "example.io/namespace/bq2bq-executor:latest",
+		Entrypoint: plugin.Entrypoint{
+			Shell:  "/bin/bash",
+			Script: "python3 /opt/bumblebee/main.py",
+		},
 	}, nil)
 
 	transporterHook := "transporter"
 	hookUnit := new(mock.YamlMod)
 	hookUnit.On("PluginInfo").Return(&plugin.Info{
-		Name:      transporterHook,
-		HookType:  plugin.HookTypePre,
-		Image:     "example.io/namespace/transporter-executor:latest",
+		Name:     transporterHook,
+		HookType: plugin.HookTypePre,
+		Image:    "example.io/namespace/transporter-executor:latest",
+		Entrypoint: plugin.Entrypoint{
+			Shell:  "/bin/sh",
+			Script: "java -cp /opt/transporter/transporter.jar:/opt/transporter/jolokia-jvm-agent.jar -javaagent:jolokia-jvm-agent.jar=port=7777,host=0.0.0.0 com.gojek.transporter.Main",
+		},
 		DependsOn: []string{"predator"},
 	}, nil)
 
@@ -176,6 +184,10 @@ func setupPluginRepo() mockPluginRepo {
 		Name:     predatorHook,
 		HookType: plugin.HookTypePost,
 		Image:    "example.io/namespace/predator-image:latest",
+		Entrypoint: plugin.Entrypoint{
+			Shell:  "/bin/sh",
+			Script: "predator ${SUB_COMMAND} -s ${PREDATOR_URL} -u \"${BQ_PROJECT}.${BQ_DATASET}.${BQ_TABLE}\"",
+		},
 	}, nil)
 
 	hookUnit3 := new(mock.YamlMod)
@@ -183,6 +195,10 @@ func setupPluginRepo() mockPluginRepo {
 		Name:     "failureHook",
 		HookType: plugin.HookTypeFail,
 		Image:    "example.io/namespace/failure-hook-image:latest",
+		Entrypoint: plugin.Entrypoint{
+			Shell:  "/bin/sh",
+			Script: "sleep 5",
+		},
 	}, nil)
 
 	repo := mockPluginRepo{plugins: []*plugin.Plugin{

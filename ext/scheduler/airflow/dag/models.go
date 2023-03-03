@@ -31,8 +31,9 @@ type TemplateContext struct {
 }
 
 type Task struct {
-	Name  string
-	Image string
+	Name       string
+	Image      string
+	Entrypoint plugin.Entrypoint
 }
 
 func PrepareTask(job *scheduler.Job, pluginRepo PluginRepo) (Task, error) {
@@ -44,14 +45,16 @@ func PrepareTask(job *scheduler.Job, pluginRepo PluginRepo) (Task, error) {
 	info := plugin.Info()
 
 	return Task{
-		Name:  info.Name,
-		Image: info.Image,
+		Name:       info.Name,
+		Image:      info.Image,
+		Entrypoint: info.Entrypoint,
 	}, nil
 }
 
 type Hook struct {
 	Name       string
 	Image      string
+	Entrypoint plugin.Entrypoint
 	IsFailHook bool
 }
 
@@ -81,8 +84,9 @@ func PrepareHooksForJob(job *scheduler.Job, pluginRepo PluginRepo) (Hooks, error
 
 		info := hook.Info()
 		hk := Hook{
-			Name:  h.Name,
-			Image: info.Image,
+			Name:       h.Name,
+			Image:      info.Image,
+			Entrypoint: info.Entrypoint,
 		}
 		switch info.HookType {
 		case plugin.HookTypePre:

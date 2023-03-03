@@ -14,6 +14,7 @@ import (
 	"github.com/odpf/optimus/core/tenant"
 	"github.com/odpf/optimus/internal/errors"
 	"github.com/odpf/optimus/internal/lib/tree"
+	"github.com/odpf/optimus/internal/telemetry"
 	"github.com/odpf/optimus/internal/writer"
 	"github.com/odpf/optimus/sdk/plugin"
 )
@@ -500,6 +501,10 @@ func (j JobService) differentiateSpecs(ctx context.Context, jobTenant tenant.Ten
 			modifiedSpecs = append(modifiedSpecs, incomingSpec)
 		}
 	}
+	telemetry.NewCounter("total_jobs_modified", map[string]string{
+		"project":   jobTenant.ProjectName().String(),
+		"namespace": jobTenant.NamespaceName().String(),
+	}).Add(float64(len(modifiedSpecs)))
 
 	incomingSpecsMap := job.Specs(specs).ToNameAndSpecMap()
 	for existingJobName, existingJobSpec := range existingSpecsMap {
