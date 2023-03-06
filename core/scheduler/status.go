@@ -20,6 +20,8 @@ const (
 
 	StateSuccess State = "success"
 	StateFailed  State = "failed"
+
+	StateReplayed State = "replayed"
 )
 
 var TaskEndStates = []State{StateSuccess, StateFailed, StateRetry}
@@ -42,6 +44,8 @@ func StateFromString(state string) (State, error) {
 		return StateSuccess, nil
 	case string(StateFailed):
 		return StateFailed, nil
+	case string(StateReplayed):
+		return StateReplayed, nil
 	default:
 		return "", errors.InvalidArgument(EntityJobRun, "invalid state for run "+state)
 	}
@@ -90,6 +94,28 @@ func (j JobRunStatusList) GetSortedRunsByStates(states []State) []*JobRunStatus 
 		return result[i].ScheduledAt.Before(result[j].ScheduledAt)
 	})
 	return result
+}
+
+func (j JobRunStatusList) MergeWithUpdatedRuns(updatedRunMap map[time.Time]State) []*JobRunStatus {
+	var updatedRuns []*JobRunStatus
+	for _, run := range j {
+		if updatedStatus, ok := updatedRunMap[run.ScheduledAt.UTC()]; ok {
+			updatedRun := run
+			updatedRun.State = updatedStatus
+			updatedRuns = append(updatedRuns, updatedRun)
+			continue
+		}
+		updatedRuns = append(updatedRuns, run)
+	}
+	return updatedRuns
+}
+
+func (j JobRunStatusList) ToRunStatusMap() map[time.Time]State {
+	runStatusMap := make(map[time.Time]State, len(j))
+	for _, run := range j {
+		runStatusMap[run.ScheduledAt.UTC()] = run.State
+	}
+	return runStatusMap
 }
 
 // JobRunsCriteria represents the filter condition to get run status from scheduler

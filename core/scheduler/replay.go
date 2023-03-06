@@ -126,5 +126,5 @@ type ReplayConfig struct {
 }
 
 func NewReplayConfig(startTime time.Time, endTime time.Time, parallel bool, description string) *ReplayConfig {
-	return &ReplayConfig{StartTime: startTime, EndTime: endTime, Parallel: parallel, Description: description}
+	return &ReplayConfig{StartTime: startTime.UTC(), EndTime: endTime.UTC(), Parallel: parallel, Description: description}
 }
