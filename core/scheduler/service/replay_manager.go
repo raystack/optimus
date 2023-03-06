@@ -10,10 +10,11 @@ import (
 
 	"github.com/odpf/optimus/config"
 	"github.com/odpf/optimus/core/scheduler"
+	"github.com/odpf/optimus/internal/errors"
 )
 
 const (
-	syncInterval = "@every 5m"
+	syncInterval = "@every 1m"
 )
 
 type ReplayManager struct {
@@ -28,8 +29,21 @@ type ReplayManager struct {
 	config config.ReplayConfig
 }
 
+func NewReplayManager(l log.Logger, replayRepository ReplayRepository, replayWorker Worker, now func() time.Time, config config.ReplayConfig) *ReplayManager {
+	return &ReplayManager{
+		l:                l,
+		replayRepository: replayRepository,
+		replayWorker:     replayWorker,
+		Now:              now,
+		config:           config,
+		schedule: cron.New(cron.WithChain(
+			cron.SkipIfStillRunning(cron.DefaultLogger),
+		)),
+	}
+}
+
 type Worker interface {
-	Process(context.Context, *scheduler.ReplayWithRun)
+	Process(*scheduler.ReplayWithRun)
 }
 
 func (m ReplayManager) Initialize() {
@@ -43,7 +57,7 @@ func (m ReplayManager) Initialize() {
 }
 
 func (m ReplayManager) StartReplayLoop() {
-	ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.WorkerTimeout)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.LoopTimeout)
 	defer cancelCtx()
 
 	// Cancel timed out replay with status [created, in progress, partial replayed, replayed]
@@ -52,11 +66,14 @@ func (m ReplayManager) StartReplayLoop() {
 	// Fetch created, in progress, and replayed request
 	replayToExecute, err := m.replayRepository.GetReplayToExecute(ctx)
 	if err != nil {
-		m.l.Error("unable to get replay requests to execute")
+		if errors.IsErrorType(err, errors.ErrNotFound) {
+			m.l.Debug("no replay request found to execute")
+		} else {
+			m.l.Error("unable to get replay requests to execute: %w", err)
+		}
 		return
 	}
-
-	go m.replayWorker.Process(ctx, replayToExecute)
+	go m.replayWorker.Process(replayToExecute)
 }
 
 func (m ReplayManager) checkTimedOutReplay(ctx context.Context) {

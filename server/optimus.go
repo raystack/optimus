@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/hashicorp/go-hclog"
@@ -286,6 +287,14 @@ func (s *OptimusServer) setupHandlers() error {
 	}
 	newJobRunService := schedulerService.NewJobRunService(s.logger, jobProviderRepo, jobRunRepo, operatorRunRepository, newScheduler, newPriorityResolver, jobInputCompiler)
 
+	replayRepository := schedulerRepo.NewReplayRepository(s.dbPool)
+	replayWorker := schedulerService.NewReplayWorker(s.logger, replayRepository, newScheduler, jobProviderRepo, s.conf.Replay)
+	replayManager := schedulerService.NewReplayManager(s.logger, replayRepository, replayWorker, func() time.Time {
+		return time.Now().UTC()
+	}, s.conf.Replay)
+	replayValidator := schedulerService.NewValidator(replayRepository, newScheduler)
+	replayService := schedulerService.NewReplayService(replayRepository, jobProviderRepo, replayValidator)
+
 	// Job Bounded Context Setup
 	jJobRepo := jRepo.NewJobRepository(s.dbPool)
 	jPluginService := jService.NewJobPluginService(s.pluginRepo, newEngine, s.logger)
@@ -312,6 +321,9 @@ func (s *OptimusServer) setupHandlers() error {
 
 	// Core Job Handler
 	pb.RegisterJobSpecificationServiceServer(s.grpcServer, jHandler.NewJobHandler(jJobService, s.logger))
+
+	pb.RegisterReplayServiceServer(s.grpcServer, schedulerHandler.NewReplayHandler(s.logger, replayService))
+	replayManager.Initialize()
 
 	s.cleanupFn = append(s.cleanupFn, func() {
 		err = notificationService.Close()
