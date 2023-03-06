@@ -280,8 +280,9 @@ func (s *ConfigTestSuite) initExpectedServerConfig() {
 	}
 	s.expectedServerConfig.Plugin = config.PluginConfig{}
 
-	s.expectedServerConfig.Replay.WorkerTimeout = time.Second * 120
+	s.expectedServerConfig.Replay.WorkerTimeout = time.Minute * 10
 	s.expectedServerConfig.Replay.ReplayTimeout = time.Hour * 3
+	s.expectedServerConfig.Replay.LoopTimeout = time.Minute * 5
 }
 
 func (*ConfigTestSuite) initServerConfigEnv() {

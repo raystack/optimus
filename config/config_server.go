@@ -59,6 +59,7 @@ type PluginConfig struct {
 
 // TODO: add worker interval
 type ReplayConfig struct {
-	WorkerTimeout time.Duration `mapstructure:"worker_timeout" default:"120s"`
+	WorkerTimeout time.Duration `mapstructure:"worker_timeout" default:"10m"`
 	ReplayTimeout time.Duration `mapstructure:"replay_timeout" default:"3h"`
+	LoopTimeout   time.Duration `mapstructure:"replay_timeout" default:"5m"`
 }
