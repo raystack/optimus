@@ -34,12 +34,12 @@ type ReplayService struct {
 func (r ReplayService) CreateReplay(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, config *scheduler.ReplayConfig) (replayID uuid.UUID, err error) {
 	subjectJob, err := r.jobRepo.GetJobDetails(ctx, tenant.ProjectName(), jobName)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("unable to get job details from DB for jobName: %s, project:%s,  error:%w ", jobName, tenant.ProjectName().String(), err)
 	}
 
 	jobCron, err := cron.ParseCronSchedule(subjectJob.Schedule.Interval)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("unable to parse job cron interval: %w", err)
+		return uuid.Nil, fmt.Errorf("unable to parse job cron interval for job %s: %w", jobName, err)
 	}
 
 	replayReq := scheduler.NewReplayRequest(jobName, tenant, config, scheduler.ReplayStateCreated)
