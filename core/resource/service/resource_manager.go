@@ -48,8 +48,8 @@ func (m *ResourceMgr) CreateResource(ctx context.Context, res *resource.Resource
 			me.Append(res.MarkExistInStore())
 		} else {
 			me.Append(res.MarkFailure())
+			me.Append(err)
 		}
-		me.Append(err)
 	} else {
 		me.Append(res.MarkSuccess())
 	}
