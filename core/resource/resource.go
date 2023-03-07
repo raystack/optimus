@@ -55,11 +55,11 @@ func NewResource(fullName, kind string, store Store, tnnt tenant.Tenant, meta *M
 	}
 
 	if len(spec) == 0 {
-		return nil, errors.InvalidArgument(EntityResource, "invalid resource spec for "+fullName)
+		return nil, errors.InvalidArgument(EntityResource, "empty resource spec for "+fullName)
 	}
 
 	if meta == nil {
-		return nil, errors.InvalidArgument(EntityResource, "invalid resource metadata")
+		return nil, errors.InvalidArgument(EntityResource, "empty resource metadata for "+fullName)
 	}
 
 	return &Resource{

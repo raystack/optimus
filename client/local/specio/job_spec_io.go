@@ -148,6 +148,7 @@ func (j jobSpecReadWriter) readJobSpecParentsMappedByDirPath(rootDirPath string)
 		if err != nil {
 			return nil, fmt.Errorf("error reading spec under [%s]: %w", filePath, err)
 		}
+		spec.Path = dirPath
 		parentsMappedByDirPath[dirPath] = spec
 	}
 	return parentsMappedByDirPath, nil
@@ -164,6 +165,7 @@ func (j jobSpecReadWriter) readJobSpec(dirPath string) (*model.JobSpec, error) {
 		return nil, fmt.Errorf("error reading asset under [%s]: %w", dirPath, err)
 	}
 	jobSpec.Asset = assetsMappedByFileName
+	jobSpec.Path = dirPath
 	return jobSpec, nil
 }
 

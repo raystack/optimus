@@ -86,6 +86,10 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("returns error log when conversion fails", func(t *testing.T) {
 			service := new(resourceService)
+			service.On("Deploy", ctx, mock.Anything, resource.Bigquery, mock.Anything).
+				Return(nil)
+			defer service.AssertExpectations(t)
+
 			handler := v1beta1.NewResourceHandler(logger, service)
 
 			res1 := pb.ResourceSpecification{
@@ -112,6 +116,7 @@ func TestResourceHandler(t *testing.T) {
 			stream.On("Recv").Return(req, nil).Once()
 			stream.On("Recv").Return(nil, io.EOF).Once()
 			stream.On("Send", argMatcher).Return(nil).Once()
+			stream.On("Send", mock.Anything).Return(nil)
 
 			err := handler.DeployResourceSpecification(stream)
 			assert.NotNil(t, err)

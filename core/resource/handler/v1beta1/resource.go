@@ -94,7 +94,6 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 		}
 		if len(resourceSpecs) != len(request.GetResources()) {
 			errNamespaces = append(errNamespaces, request.GetNamespaceName())
-			continue
 		}
 
 		err = rh.service.Deploy(stream.Context(), tnnt, store, resourceSpecs)

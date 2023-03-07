@@ -33,7 +33,7 @@ type TemplateContext struct {
 type Task struct {
 	Name       string
 	Image      string
-	Entrypoint string
+	Entrypoint plugin.Entrypoint
 }
 
 func PrepareTask(job *scheduler.Job, pluginRepo PluginRepo) (Task, error) {
@@ -54,7 +54,7 @@ func PrepareTask(job *scheduler.Job, pluginRepo PluginRepo) (Task, error) {
 type Hook struct {
 	Name       string
 	Image      string
-	Entrypoint string
+	Entrypoint plugin.Entrypoint
 	IsFailHook bool
 }
 
