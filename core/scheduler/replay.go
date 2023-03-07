@@ -122,9 +122,10 @@ type ReplayConfig struct {
 	StartTime   time.Time
 	EndTime     time.Time
 	Parallel    bool
+	JobConfig   map[string]string
 	Description string
 }
 
-func NewReplayConfig(startTime, endTime time.Time, parallel bool, description string) *ReplayConfig {
-	return &ReplayConfig{StartTime: startTime.UTC(), EndTime: endTime.UTC(), Parallel: parallel, Description: description}
+func NewReplayConfig(startTime, endTime time.Time, parallel bool, jobConfig map[string]string, description string) *ReplayConfig {
+	return &ReplayConfig{StartTime: startTime.UTC(), EndTime: endTime.UTC(), Parallel: parallel, JobConfig: jobConfig, Description: description}
 }

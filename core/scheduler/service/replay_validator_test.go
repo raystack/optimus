@@ -23,7 +23,8 @@ func TestReplayValidator(t *testing.T) {
 	endTime := startTime.Add(48 * time.Hour)
 	parallel := true
 	description := "sample backfill"
-	replayConfig := scheduler.NewReplayConfig(startTime, endTime, parallel, description)
+	replayJobConfig := map[string]string{"EXECUTION_PROJECT": "example_project"}
+	replayConfig := scheduler.NewReplayConfig(startTime, endTime, parallel, replayJobConfig, description)
 	runsCriteriaJobA := &scheduler.JobRunsCriteria{
 		Name:      jobName.String(),
 		StartDate: startTime,
@@ -47,7 +48,7 @@ func TestReplayValidator(t *testing.T) {
 			sch := new(mockReplayScheduler)
 			defer sch.AssertExpectations(t)
 
-			onGoingReplayConfig := scheduler.NewReplayConfig(time.Now(), time.Now(), parallel, description)
+			onGoingReplayConfig := scheduler.NewReplayConfig(time.Now(), time.Now(), parallel, replayJobConfig, description)
 			onGoingReplay := []*scheduler.Replay{
 				scheduler.NewReplayRequest(jobName, tnnt, onGoingReplayConfig, scheduler.ReplayStateCreated),
 				scheduler.NewReplayRequest("other-job", tnnt, onGoingReplayConfig, scheduler.ReplayStateCreated),
@@ -90,7 +91,7 @@ func TestReplayValidator(t *testing.T) {
 			sch := new(mockReplayScheduler)
 			defer sch.AssertExpectations(t)
 
-			onGoingReplayConfig := scheduler.NewReplayConfig(time.Now(), time.Now(), parallel, description)
+			onGoingReplayConfig := scheduler.NewReplayConfig(time.Now(), time.Now(), parallel, replayJobConfig, description)
 			onGoingReplay := []*scheduler.Replay{
 				scheduler.NewReplayRequest(jobName, tnnt, onGoingReplayConfig, scheduler.ReplayStateCreated),
 			}

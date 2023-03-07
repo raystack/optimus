@@ -15,12 +15,12 @@ import (
 )
 
 const (
-	replayColumnsToStore = `job_name, namespace_name, project_name, start_time, end_time, description, parallel, status, message`
+	replayColumnsToStore = `job_name, namespace_name, project_name, start_time, end_time, description, parallel, job_config, status, message`
 	replayColumns        = `id, ` + replayColumnsToStore + `, created_at`
 
 	replayRunColumns       = `replay_id, scheduled_at, status`
 	replayRunDetailColumns = `id as replay_id, job_name, namespace_name, project_name, start_time, end_time, description, 
-parallel, r.status as replay_status, r.message as replay_message, scheduled_at, run.status as run_status, r.created_at as replay_created_at`
+parallel, job_config, r.status as replay_status, r.message as replay_message, scheduled_at, run.status as run_status, r.created_at as replay_created_at`
 
 	updateReplayRequest = `UPDATE replay_request SET status = $1, message = $2, updated_at = NOW() WHERE id = $3`
 )
@@ -40,6 +40,7 @@ type replayRequest struct {
 	EndTime     time.Time
 	Description string
 	Parallel    bool
+	JobConfig   map[string]string
 
 	Status  string
 	Message string
@@ -53,7 +54,7 @@ func (r *replayRequest) toSchedulerReplayRequest() (*scheduler.Replay, error) {
 	if err != nil {
 		return nil, err
 	}
-	conf := scheduler.NewReplayConfig(r.StartTime, r.EndTime, r.Parallel, r.Description)
+	conf := scheduler.NewReplayConfig(r.StartTime, r.EndTime, r.Parallel, r.JobConfig, r.Description)
 	replayStatus, err := scheduler.ReplayStateFromString(r.Status)
 	if err != nil {
 		return nil, err
@@ -76,6 +77,7 @@ type replayRun struct {
 	EndTime     time.Time
 	Description string
 	Parallel    bool
+	JobConfig   map[string]string
 
 	ReplayStatus string
 	Message      string
@@ -92,7 +94,7 @@ func (r *replayRun) toReplayRequest() (*scheduler.Replay, error) {
 	if err != nil {
 		return nil, err
 	}
-	conf := scheduler.NewReplayConfig(r.StartTime, r.EndTime, r.Parallel, r.Description)
+	conf := scheduler.NewReplayConfig(r.StartTime, r.EndTime, r.Parallel, r.JobConfig, r.Description)
 	replayStatus, err := scheduler.ReplayStateFromString(r.ReplayStatus)
 	if err != nil {
 		return nil, err
@@ -276,9 +278,9 @@ func (r ReplayRepository) updateReplayRuns(ctx context.Context, id uuid.UUID, ru
 }
 
 func (ReplayRepository) insertReplay(ctx context.Context, tx pgx.Tx, replay *scheduler.Replay) error {
-	insertReplay := `INSERT INTO replay_request (` + replayColumnsToStore + `, created_at, updated_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())`
+	insertReplay := `INSERT INTO replay_request (` + replayColumnsToStore + `, created_at, updated_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())`
 	_, err := tx.Exec(ctx, insertReplay, replay.JobName().String(), replay.Tenant().NamespaceName(), replay.Tenant().ProjectName(),
-		replay.Config().StartTime, replay.Config().EndTime, replay.Config().Description, replay.Config().Parallel, replay.State(), replay.Message())
+		replay.Config().StartTime, replay.Config().EndTime, replay.Config().Description, replay.Config().Parallel, replay.Config().JobConfig, replay.State(), replay.Message())
 	if err != nil {
 		return errors.Wrap(scheduler.EntityJobRun, "unable to store replay", err)
 	}
@@ -289,7 +291,7 @@ func (ReplayRepository) getReplayRequest(ctx context.Context, tx pgx.Tx, replay 
 	var rr replayRequest
 	getReplayRequest := `SELECT ` + replayColumns + ` FROM replay_request where project_name = $1 and job_name = $2 and start_time = $3 and end_time = $4 order by created_at desc limit 1`
 	if err := tx.QueryRow(ctx, getReplayRequest, replay.Tenant().ProjectName(), replay.JobName().String(), replay.Config().StartTime, replay.Config().EndTime).
-		Scan(&rr.ID, &rr.JobName, &rr.NamespaceName, &rr.ProjectName, &rr.StartTime, &rr.EndTime, &rr.Description, &rr.Parallel,
+		Scan(&rr.ID, &rr.JobName, &rr.NamespaceName, &rr.ProjectName, &rr.StartTime, &rr.EndTime, &rr.Description, &rr.Parallel, &rr.JobConfig,
 			&rr.Status, &rr.Message, &rr.CreatedAt); err != nil {
 		return rr, errors.Wrap(scheduler.EntityJobRun, "unable to get the stored replay", err)
 	}
@@ -315,7 +317,7 @@ func (ReplayRepository) getExecutableReplayRuns(ctx context.Context, tx pgx.Tx) 
 	for rows.Next() {
 		var run replayRun
 		if err := rows.Scan(&run.ID, &run.JobName, &run.NamespaceName, &run.ProjectName, &run.StartTime, &run.EndTime,
-			&run.Description, &run.Parallel, &run.ReplayStatus, &run.Message, &run.ScheduledTime, &run.RunStatus, &run.CreatedAt); err != nil {
+			&run.Description, &run.Parallel, &run.JobConfig, &run.ReplayStatus, &run.Message, &run.ScheduledTime, &run.RunStatus, &run.CreatedAt); err != nil {
 			return runs, errors.Wrap(scheduler.EntityJobRun, "unable to get the stored replay", err)
 		}
 		runs = append(runs, &run)

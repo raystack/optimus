@@ -27,7 +27,8 @@ func TestReplayService(t *testing.T) {
 	tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
 	parallel := true
 	description := "sample backfill"
-	replayConfig := scheduler.NewReplayConfig(startTime, endTime, parallel, description)
+	replayJobConfig := map[string]string{"EXECUTION_PROJECT": "example_project"}
+	replayConfig := scheduler.NewReplayConfig(startTime, endTime, parallel, replayJobConfig, description)
 	replayID := uuid.New()
 	job := scheduler.Job{
 		Name:   jobName,
