@@ -1,8 +1,6 @@
 package job
 
 import (
-	"path/filepath"
-
 	"github.com/odpf/salt/log"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -86,8 +84,7 @@ func (a *addHookCommand) RunE(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	jobSpecDirPath := filepath.Join(namespace.Job.Path, selectedJobName)
-	if err := jobSpecReadWriter.Write(jobSpecDirPath, newJobSpec); err != nil {
+	if err := jobSpecReadWriter.Write(jobSpec.Path, newJobSpec); err != nil {
 		return err
 	}
 	a.logger.Info("Hook successfully added to %s", selectedJobName)

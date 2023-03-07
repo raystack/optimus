@@ -22,6 +22,7 @@ type JobSpec struct {
 	Hooks        []JobSpecHook       `yaml:"hooks"`
 	Dependencies []JobSpecDependency `yaml:"dependencies"`
 	Metadata     *JobSpecMetadata    `yaml:"metadata,omitempty"`
+	Path         string              `yaml:"-"`
 }
 
 type JobSpecSchedule struct {
