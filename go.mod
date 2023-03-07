@@ -1,6 +1,6 @@
 module github.com/odpf/optimus
 
-go 1.18
+go 1.19
 
 replace github.com/odpf/optimus/sdk => ./sdk
 
