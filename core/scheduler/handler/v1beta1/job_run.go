@@ -15,13 +15,13 @@ import (
 
 type JobRunService interface {
 	JobRunInput(context.Context, tenant.ProjectName, scheduler.JobName, scheduler.RunConfig) (*scheduler.ExecutorInput, error)
-	UpdateJobState(context.Context, scheduler.Event) error
+	UpdateJobState(context.Context, *scheduler.Event) error
 	GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName, criteria *scheduler.JobRunsCriteria) ([]*scheduler.JobRunStatus, error)
 	UploadToScheduler(ctx context.Context, projectName tenant.ProjectName) error
 }
 
 type Notifier interface {
-	Push(ctx context.Context, event scheduler.Event) error
+	Push(ctx context.Context, event *scheduler.Event) error
 }
 
 type JobRunHandler struct {
@@ -150,11 +150,7 @@ func (h JobRunHandler) RegisterJobEvent(ctx context.Context, req *pb.RegisterJob
 		return nil, errors.GRPCErr(err, "unable to get job name"+req.GetJobName())
 	}
 
-	event, err := scheduler.EventFrom(
-		req.GetEvent().Type.String(),
-		req.GetEvent().Value.AsMap(),
-		jobName, tnnt,
-	)
+	event, err := scheduler.EventFrom(req.GetEvent().Type.String(), req.GetEvent().Value.AsMap(), jobName, tnnt)
 	if err != nil {
 		return nil, errors.GRPCErr(err, "unable to parse event")
 	}

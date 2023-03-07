@@ -17,14 +17,14 @@ func TestVersionHandler(t *testing.T) {
 
 	t.Run("Version", func(t *testing.T) {
 		t.Run("returns the version of server", func(t *testing.T) {
-			Version := "1.0.1"
+			version := "1.0.1"
 
-			versionHandler := v1.NewVersionHandler(logger, Version)
-			versionRequest := pb.VersionRequest{Client: Version}
+			versionHandler := v1.NewVersionHandler(logger, version)
+			versionRequest := pb.VersionRequest{Client: version}
 
 			resp, err := versionHandler.Version(ctx, &versionRequest)
 			assert.NoError(t, err)
-			assert.Equal(t, Version, resp.Server)
+			assert.Equal(t, version, resp.Server)
 		})
 	})
 }

@@ -74,15 +74,15 @@ func (ac ClientAirflow) Invoke(ctx context.Context, r airflowRequest, auth Sched
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(auth.token))))
 
-	HTTPResp, respErr := ac.client.Do(request)
+	httpResp, respErr := ac.client.Do(request)
 	if respErr != nil {
 		return resp, fmt.Errorf("failed to call airflow %s due to %w", r.URL, respErr)
 	}
-	if HTTPResp.StatusCode != http.StatusOK {
-		HTTPResp.Body.Close()
-		return resp, fmt.Errorf("status code received %d on calling %s", HTTPResp.StatusCode, r.URL)
+	if httpResp.StatusCode != http.StatusOK {
+		httpResp.Body.Close()
+		return resp, fmt.Errorf("status code received %d on calling %s", httpResp.StatusCode, r.URL)
 	}
-	return parseResponse(HTTPResp)
+	return parseResponse(httpResp)
 }
 
 func parseResponse(resp *http.Response) ([]byte, error) {

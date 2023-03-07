@@ -57,7 +57,7 @@ func NewSecret(secret *tenant.Secret) Secret {
 	}
 }
 
-func (s Secret) ToTenantSecret() (*tenant.Secret, error) {
+func (s *Secret) ToTenantSecret() (*tenant.Secret, error) {
 	// decode base64
 	encrypted, err := base64.StdEncoding.DecodeString(s.Value)
 	if err != nil {
@@ -77,7 +77,7 @@ func (s Secret) ToTenantSecret() (*tenant.Secret, error) {
 	return tenant.NewSecret(s.Name, string(encrypted), projName, nsName)
 }
 
-func (s Secret) ToSecretInfo() (*dto.SecretInfo, error) {
+func (s *Secret) ToSecretInfo() (*dto.SecretInfo, error) {
 	encrypted, err := base64.StdEncoding.DecodeString(s.Value)
 	if err != nil {
 		return nil, err
@@ -235,7 +235,6 @@ WHERE project_name = $1 AND name = $2 AND namespace_name IS NULL`
 
 func (s SecretRepository) GetSecretsInfo(ctx context.Context, projName tenant.ProjectName) ([]*dto.SecretInfo, error) {
 	rows, err := s.db.Query(ctx, getAllSecretsInProject, projName)
-
 	if err != nil {
 		return nil, errors.Wrap(tenant.EntitySecret, "unable to get all secrets info", err)
 	}

@@ -86,7 +86,7 @@ func (m *GRPCClient) GenerateDependencies(ctx context.Context, request plugin.Ge
 	}, nil
 }
 
-func (m *GRPCClient) CompileAssets(ctx context.Context, request plugin.CompileAssetsRequest) (*plugin.CompileAssetsResponse, error) {
+func (m *GRPCClient) CompileAssets(ctx context.Context, request plugin.CompileAssetsRequest) (*plugin.CompileAssetsResponse, error) { //nolint: gocritic
 	_, span := tracer.Start(ctx, "CompileAssets")
 	defer span.End()
 

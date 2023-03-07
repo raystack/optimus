@@ -1,7 +1,7 @@
 package resourcemanager
 
 type getJobSpecificationsResponse struct {
-	JobSpecificationResponses []jobSpecificationResponse `json:"jobSpecificationResponses"`
+	JobSpecificationResponses []*jobSpecificationResponse `json:"jobSpecificationResponses"`
 }
 
 type jobSpecificationResponse struct {

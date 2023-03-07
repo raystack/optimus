@@ -43,7 +43,7 @@ type Field struct {
 	Schema Schema `mapstructure:"schema,omitempty"`
 }
 
-func (f Field) Validate() error {
+func (f Field) Validate() error { // nolint:gocritic
 	if strings.TrimSpace(f.Name) == "" {
 		return errors.InvalidArgument(EntityResourceSchema, "field name is empty")
 	}

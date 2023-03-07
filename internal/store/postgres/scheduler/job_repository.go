@@ -138,6 +138,7 @@ func fromStorageWindow(raw []byte, jobVersion int) (models.Window, error) {
 		storageWindow.WindowSize,
 	)
 }
+
 func (j *Job) toJob() (*scheduler.Job, error) {
 	t, err := tenant.NewTenant(j.ProjectName, j.NamespaceName)
 	if err != nil {
@@ -229,7 +230,6 @@ func FromRow(row pgx.Row) (*Job, error) {
 		&js.Labels, &js.Schedule, &js.Alert, &js.StaticUpstreams, &js.HTTPUpstreams,
 		&js.TaskName, &js.TaskConfig, &js.WindowSpec, &js.Assets, &js.Hooks, &js.Metadata, &js.Destination, &js.Sources,
 		&js.ProjectName, &js.NamespaceName, &js.CreatedAt, &js.UpdatedAt)
-
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.NotFound(job.EntityJob, "job not found")
@@ -259,7 +259,7 @@ func (j *JobRepository) GetJobDetails(ctx context.Context, projectName tenant.Pr
 	return spec.toJobWithDetails()
 }
 
-func groupUpstreamsByJobName(jobUpstreams []JobUpstreams) (map[string][]*scheduler.JobUpstream, error) {
+func groupUpstreamsByJobName(jobUpstreams []*JobUpstreams) (map[string][]*scheduler.JobUpstream, error) {
 	multiError := errors.NewMultiError("errorsInGroupUpstreamsByJobName")
 	jobUpstreamGroup := map[string][]*scheduler.JobUpstream{}
 
@@ -289,7 +289,7 @@ func (j *JobRepository) getJobsUpstreams(ctx context.Context, projectName tenant
 	}
 	defer rows.Close()
 
-	var upstreams []JobUpstreams
+	var upstreams []*JobUpstreams
 	for rows.Next() {
 		var jwu JobUpstreams
 		err := rows.Scan(&jwu.JobName, &jwu.ProjectName, &jwu.UpstreamJobName, &jwu.UpstreamProjectName, &jwu.UpstreamHost,
@@ -301,7 +301,7 @@ func (j *JobRepository) getJobsUpstreams(ctx context.Context, projectName tenant
 
 			return nil, errors.Wrap(scheduler.EntityJobRun, "error in reading row for resource", err)
 		}
-		upstreams = append(upstreams, jwu)
+		upstreams = append(upstreams, &jwu)
 	}
 
 	return groupUpstreamsByJobName(upstreams)

@@ -56,7 +56,7 @@ func (d *DefaultAssetOperatorTestSuite) TestInstall() {
 
 		actualInstallErr := assetOperator.Install(asset, tagName)
 
-		actualFile, actualOpenErr := extension.AssetOperatorFS.OpenFile(filePath, os.O_RDONLY, 0755)
+		actualFile, actualOpenErr := extension.AssetOperatorFS.OpenFile(filePath, os.O_RDONLY, 0o755)
 		actualContent, actualReadErr := io.ReadAll(actualFile)
 
 		d.NoError(actualInstallErr)
@@ -73,7 +73,7 @@ func (d *DefaultAssetOperatorTestSuite) TestUninstall() {
 
 	localDirPath := "./extension"
 	d.Run("should delete directory if no file names specified and return nil", func() {
-		if err := extension.AssetOperatorFS.MkdirAll(localDirPath, 0744); err != nil {
+		if err := extension.AssetOperatorFS.MkdirAll(localDirPath, 0o744); err != nil {
 			panic(err)
 		}
 		assetOperator := extension.NewDefaultAssetOperator(nil, nil, nil)
@@ -87,14 +87,14 @@ func (d *DefaultAssetOperatorTestSuite) TestUninstall() {
 	})
 
 	d.Run("should delete files only if specified and return nil", func() {
-		if err := extension.AssetOperatorFS.MkdirAll(localDirPath, 0744); err != nil {
+		if err := extension.AssetOperatorFS.MkdirAll(localDirPath, 0o744); err != nil {
 			panic(err)
 		}
 		message := "lorem ipsum"
 		asset := []byte(message)
 		fileName := "asset"
 		filePath := path.Join(localDirPath, fileName)
-		file, err := extension.AssetOperatorFS.OpenFile(filePath, os.O_CREATE, 0755)
+		file, err := extension.AssetOperatorFS.OpenFile(filePath, os.O_CREATE, 0o755)
 		if err != nil {
 			panic(err)
 		}

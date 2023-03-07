@@ -37,7 +37,7 @@ func (*DomainError) Is(tgt error) bool {
 	return ok
 }
 
-func AddErrContext(err error, entity string, msg string) *DomainError {
+func AddErrContext(err error, entity, msg string) *DomainError {
 	errType := ErrInternalError
 	var de *DomainError
 	if errors.As(err, &de) {
@@ -62,7 +62,7 @@ func IsErrorType(err error, errType ErrorType) bool {
 	return false
 }
 
-func NewError(errType ErrorType, entity string, msg string) *DomainError {
+func NewError(errType ErrorType, entity, msg string) *DomainError {
 	return &DomainError{
 		Entity:     entity,
 		ErrorType:  errType,
@@ -71,7 +71,7 @@ func NewError(errType ErrorType, entity string, msg string) *DomainError {
 	}
 }
 
-func InternalError(entity string, msg string, err error) *DomainError {
+func InternalError(entity, msg string, err error) *DomainError {
 	return &DomainError{
 		Entity:     entity,
 		ErrorType:  ErrInternalError,
@@ -80,7 +80,7 @@ func InternalError(entity string, msg string, err error) *DomainError {
 	}
 }
 
-func InvalidStateTransition(entity string, msg string) *DomainError {
+func InvalidStateTransition(entity, msg string) *DomainError {
 	return &DomainError{
 		ErrorType:  ErrInvalidState,
 		Entity:     entity,
@@ -89,7 +89,7 @@ func InvalidStateTransition(entity string, msg string) *DomainError {
 	}
 }
 
-func InvalidArgument(entity string, msg string) *DomainError {
+func InvalidArgument(entity, msg string) *DomainError {
 	return &DomainError{
 		ErrorType:  ErrInvalidArgument,
 		Entity:     entity,
@@ -98,7 +98,7 @@ func InvalidArgument(entity string, msg string) *DomainError {
 	}
 }
 
-func AlreadyExists(entity string, msg string) *DomainError {
+func AlreadyExists(entity, msg string) *DomainError {
 	return &DomainError{
 		ErrorType:  ErrAlreadyExists,
 		Entity:     entity,
@@ -107,7 +107,7 @@ func AlreadyExists(entity string, msg string) *DomainError {
 	}
 }
 
-func NotFound(entity string, msg string) *DomainError {
+func NotFound(entity, msg string) *DomainError {
 	return &DomainError{
 		ErrorType:  ErrNotFound,
 		Entity:     entity,

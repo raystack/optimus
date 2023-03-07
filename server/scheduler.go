@@ -9,7 +9,9 @@ import (
 	"github.com/odpf/optimus/ext/scheduler/airflow/dag"
 )
 
-func NewScheduler(l log.Logger, conf config.ServerConfig, pluginRepo dag.PluginRepo, projecGetter airflow.ProjectGetter, secretGetter airflow.SecretGetter) (*airflow.Scheduler, error) {
+func NewScheduler(l log.Logger, conf *config.ServerConfig, pluginRepo dag.PluginRepo, projecGetter airflow.ProjectGetter,
+	secretGetter airflow.SecretGetter,
+) (*airflow.Scheduler, error) {
 	bucketFactory := bucket.NewFactory(projecGetter, secretGetter)
 
 	dagCompiler, err := dag.NewDagCompiler(conf.Serve.IngressHost, pluginRepo)

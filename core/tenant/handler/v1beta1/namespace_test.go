@@ -35,7 +35,8 @@ func TestNamespaceHandler(t *testing.T) {
 				Namespace: &pb.NamespaceSpecification{
 					Name:   "NS",
 					Config: map[string]string{"BUCKET": "gs://some_folder"},
-				}}
+				},
+			}
 
 			_, err := handler.RegisterProjectNamespace(ctx, &registerReq)
 			assert.NotNil(t, err)
@@ -51,7 +52,8 @@ func TestNamespaceHandler(t *testing.T) {
 				Namespace: &pb.NamespaceSpecification{
 					Name:   "",
 					Config: map[string]string{"BUCKET": "gs://some_folder"},
-				}}
+				},
+			}
 
 			_, err := handler.RegisterProjectNamespace(ctx, &registerReq)
 			assert.NotNil(t, err)
@@ -70,7 +72,8 @@ func TestNamespaceHandler(t *testing.T) {
 				Namespace: &pb.NamespaceSpecification{
 					Name:   "ns",
 					Config: map[string]string{"BUCKET": "gs://some_folder"},
-				}}
+				},
+			}
 
 			_, err := handler.RegisterProjectNamespace(ctx, &registerReq)
 			assert.NotNil(t, err)
@@ -89,7 +92,8 @@ func TestNamespaceHandler(t *testing.T) {
 				Namespace: &pb.NamespaceSpecification{
 					Name:   "ns",
 					Config: map[string]string{"BUCKET": "gs://some_folder"},
-				}}
+				},
+			}
 
 			_, err := handler.RegisterProjectNamespace(ctx, &registerReq)
 			assert.Nil(t, err)

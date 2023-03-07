@@ -24,7 +24,7 @@ func (t Tenant) IsInvalid() bool {
 	return t.projName.String() == ""
 }
 
-func NewTenant(projectName string, namespaceName string) (Tenant, error) {
+func NewTenant(projectName, namespaceName string) (Tenant, error) {
 	projName, err := ProjectNameFrom(projectName)
 	if err != nil {
 		return Tenant{}, err

@@ -87,7 +87,7 @@ func NewBackup(store Store, t tenant.Tenant, resNames []string, desc string, cre
 	}, nil
 }
 
-func (b *Backup) GetConfigOrDefaultFor(key string, fallback string) string {
+func (b *Backup) GetConfigOrDefaultFor(key, fallback string) string {
 	value, ok := b.config[key]
 	if ok {
 		return value

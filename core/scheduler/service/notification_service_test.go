@@ -35,7 +35,7 @@ func TestNotificationService(t *testing.T) {
 
 			notifyService := service.NewNotifyService(nil, jobRepo, nil, nil)
 
-			event := scheduler.Event{
+			event := &scheduler.Event{
 				JobName: jobName,
 				Tenant:  tnnt,
 				Type:    scheduler.TaskStartEvent,
@@ -69,7 +69,7 @@ func TestNotificationService(t *testing.T) {
 					Interval:  "0 12 * * *",
 				},
 			}
-			event := scheduler.Event{
+			event := &scheduler.Event{
 				JobName: jobName,
 				Tenant:  tnnt,
 				Type:    scheduler.SLAMissEvent,
@@ -131,7 +131,7 @@ func TestNotificationService(t *testing.T) {
 					Interval:  "0 12 * * *",
 				},
 			}
-			event := scheduler.Event{
+			event := &scheduler.Event{
 				JobName: jobName,
 				Tenant:  tnnt,
 				Type:    scheduler.JobFailureEvent,
@@ -193,7 +193,7 @@ func TestNotificationService(t *testing.T) {
 					Interval:  "0 12 * * *",
 				},
 			}
-			event := scheduler.Event{
+			event := &scheduler.Event{
 				JobName: jobName,
 				Tenant:  tnnt,
 				Type:    scheduler.JobFailureEvent,
@@ -245,6 +245,7 @@ func (m *mockNotificationChanel) Notify(ctx context.Context, attr scheduler.Noti
 	args := m.Called(ctx, attr)
 	return args.Error(0)
 }
+
 func (m *mockNotificationChanel) Close() error {
 	args := m.Called()
 	return args.Error(0)

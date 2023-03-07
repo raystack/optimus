@@ -76,11 +76,11 @@ type JobRunsCriteria struct {
 	OnlyLastRun bool
 }
 
-func (c JobRunsCriteria) ExecutionStart(cron *cron.ScheduleSpec) time.Time {
+func (c *JobRunsCriteria) ExecutionStart(cron *cron.ScheduleSpec) time.Time {
 	return cron.Prev(c.StartDate)
 }
 
-func (c JobRunsCriteria) ExecutionEndDate(jobCron *cron.ScheduleSpec) time.Time {
+func (c *JobRunsCriteria) ExecutionEndDate(jobCron *cron.ScheduleSpec) time.Time {
 	scheduleEndTime := c.EndDate
 
 	// when the current time matches one of the schedule times execution time means previous schedule.

@@ -42,7 +42,6 @@ func discoverPathsUsingSelector(specFS afero.Fs, rootSpecDir string, selectPath 
 		}
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}

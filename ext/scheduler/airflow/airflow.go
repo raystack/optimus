@@ -213,12 +213,14 @@ func pathFromJobName(prefix, namespace, jobName, suffix string) string {
 	}
 	return fmt.Sprintf("%s%s", path.Join(prefix, namespace, jobName), suffix)
 }
+
 func pathForJobDirectory(prefix, namespace string) string {
 	if len(prefix) > 0 && prefix[0] == '/' {
 		prefix = prefix[1:]
 	}
 	return path.Join(prefix, namespace)
 }
+
 func jobNameFromPath(filePath, suffix string) string {
 	jobFileName := path.Base(filePath)
 	return strings.TrimSuffix(jobFileName, suffix)

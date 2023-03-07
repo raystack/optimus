@@ -15,9 +15,7 @@ import (
 	"github.com/odpf/optimus/ext/store/bigquery"
 )
 
-var (
-	emptyUpdateOptions []bq.TableUpdateOption
-)
+var emptyUpdateOptions []bq.TableUpdateOption
 
 func TestExternalTableHandle(t *testing.T) {
 	ctx := context.Background()

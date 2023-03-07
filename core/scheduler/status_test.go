@@ -78,7 +78,8 @@ func TestStatus(t *testing.T) {
 			"running":  scheduler.StateRunning,
 			"queued":   scheduler.StateQueued,
 			"success":  scheduler.StateSuccess,
-			"failed":   scheduler.StateFailed}
+			"failed":   scheduler.StateFailed,
+		}
 		for expectedString, input := range expectationsMap {
 			assert.Equal(t, expectedString, input.String())
 		}

@@ -51,7 +51,7 @@ const keyLength = 32
 type setupFn func() error
 
 type OptimusServer struct {
-	conf   config.ServerConfig
+	conf   *config.ServerConfig
 	logger log.Logger
 
 	dbPool *pgxpool.Pool
@@ -65,7 +65,7 @@ type OptimusServer struct {
 	cleanupFn  []func()
 }
 
-func New(conf config.ServerConfig) (*OptimusServer, error) {
+func New(conf *config.ServerConfig) (*OptimusServer, error) {
 	addr := fmt.Sprintf(":%d", conf.Serve.Port)
 	server := &OptimusServer{
 		conf:       conf,
