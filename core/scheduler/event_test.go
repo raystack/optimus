@@ -137,22 +137,22 @@ func TestFromStringToEventType(t *testing.T) {
 				"event_time": "16000631600.0",
 				"slas":       sla,
 			}
-			jobName := JobName("")
+			jobName := scheduler.JobName("")
 			tnnt, err := tenant.NewTenant("someProject", "someNamespace")
 			assert.Nil(t, err)
 
 			eventTypeName := "TYPE_SLA_MISS"
-			eventObj, err := EventFrom(eventTypeName, eventValues, jobName, tnnt)
+			eventObj, err := scheduler.EventFrom(eventTypeName, eventValues, jobName, tnnt)
 
 			assert.Nil(t, err)
 
-			scheduledAt, _ := time.Parse(ISODateFormat, "2006-01-02T15:04:05Z")
+			scheduledAt, _ := time.Parse(scheduler.ISODateFormat, "2006-01-02T15:04:05Z")
 
-			assert.Equal(t, eventObj, Event{
+			assert.Equal(t, eventObj, &scheduler.Event{
 				Tenant: tnnt,
-				Type:   SLAMissEvent,
+				Type:   scheduler.SLAMissEvent,
 				Values: eventValues,
-				SLAObjectList: []*SLAObject{
+				SLAObjectList: []*scheduler.SLAObject{
 					{
 						JobName:        "sample_select",
 						JobScheduledAt: scheduledAt,

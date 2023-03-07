@@ -118,6 +118,7 @@ func (event JobEventType) IsOfType(category JobEventCategory) bool {
 	}
 	return false
 }
+
 func (event JobEventType) String() string {
 	return string(event)
 }
