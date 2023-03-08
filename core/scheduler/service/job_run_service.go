@@ -40,6 +40,10 @@ type JobRunRepository interface {
 	UpdateMonitoring(ctx context.Context, jobRunID uuid.UUID, monitoring map[string]any) error
 }
 
+type JobReplayRepository interface {
+	GetReplayTaskConfigByScheduledAt(scheduledAt time.Time) (map[string]string, error)
+}
+
 type OperatorRunRepository interface {
 	GetOperatorRun(ctx context.Context, operatorName string, operator scheduler.OperatorType, jobRunID uuid.UUID) (*scheduler.OperatorRun, error)
 	CreateOperatorRun(ctx context.Context, operatorName string, operator scheduler.OperatorType, jobRunID uuid.UUID, startTime time.Time) error
@@ -64,6 +68,7 @@ type Scheduler interface {
 type JobRunService struct {
 	l                log.Logger
 	repo             JobRunRepository
+	replayRepo       JobReplayRepository
 	operatorRunRepo  OperatorRunRepository
 	scheduler        Scheduler
 	jobRepo          JobRepository
@@ -90,6 +95,15 @@ func (s *JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proj
 	} else {
 		executedAt = jobRun.StartTime
 	}
+	// Additional task config from existing replay
+	replayJobConfig, err := s.replayRepo.GetReplayTaskConfigByScheduledAt(config.ScheduledAt)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range replayJobConfig {
+		job.Task.Config[k] = v
+	}
+
 	return s.compiler.Compile(ctx, job, config, executedAt)
 }
 
@@ -400,7 +414,7 @@ func (s *JobRunService) UpdateJobState(ctx context.Context, event *scheduler.Eve
 	}
 }
 
-func NewJobRunService(logger log.Logger, jobRepo JobRepository, jobRunRepo JobRunRepository,
+func NewJobRunService(logger log.Logger, jobRepo JobRepository, jobRunRepo JobRunRepository, replayRepo JobReplayRepository,
 	operatorRunRepo OperatorRunRepository, scheduler Scheduler, resolver PriorityResolver, compiler JobInputCompiler,
 ) *JobRunService {
 	return &JobRunService{
@@ -408,6 +422,7 @@ func NewJobRunService(logger log.Logger, jobRepo JobRepository, jobRunRepo JobRu
 		repo:             jobRunRepo,
 		operatorRunRepo:  operatorRunRepo,
 		scheduler:        scheduler,
+		replayRepo:       replayRepo,
 		jobRepo:          jobRepo,
 		priorityResolver: resolver,
 		compiler:         compiler,

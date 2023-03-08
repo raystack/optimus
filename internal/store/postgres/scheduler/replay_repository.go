@@ -250,6 +250,11 @@ func (r ReplayRepository) UpdateReplay(ctx context.Context, id uuid.UUID, replay
 	return r.updateReplayRuns(ctx, id, runs)
 }
 
+func (r ReplayRepository) GetReplayTaskConfigByScheduledAt(scheduledAt time.Time) (map[string]string, error) {
+	// TODO: implementation to get replay config within scheduled at
+	return nil, nil
+}
+
 func (r ReplayRepository) updateReplayRequest(ctx context.Context, id uuid.UUID, replayStatus scheduler.ReplayState, message string) error {
 	if _, err := r.db.Exec(ctx, updateReplayRequest, replayStatus, message, id); err != nil {
 		return errors.Wrap(scheduler.EntityJobRun, "unable to update replay", err)
