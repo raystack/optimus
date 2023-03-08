@@ -191,7 +191,7 @@ func (r ReplayRepository) GetReplayRequestsByStatus(ctx context.Context, statusL
 	var replayReqs []*scheduler.Replay
 	for rows.Next() {
 		var rr replayRequest
-		if err := rows.Scan(&rr.ID, &rr.JobName, &rr.NamespaceName, &rr.ProjectName, &rr.StartTime, &rr.EndTime, &rr.Description, &rr.Parallel,
+		if err := rows.Scan(&rr.ID, &rr.JobName, &rr.NamespaceName, &rr.ProjectName, &rr.StartTime, &rr.EndTime, &rr.Description, &rr.Parallel, &rr.JobConfig,
 			&rr.Status, &rr.Message, &rr.CreatedAt); err != nil {
 			return nil, errors.Wrap(scheduler.EntityJobRun, "unable to get the stored replay", err)
 		}
@@ -250,9 +250,28 @@ func (r ReplayRepository) UpdateReplay(ctx context.Context, id uuid.UUID, replay
 	return r.updateReplayRuns(ctx, id, runs)
 }
 
-func (r ReplayRepository) GetReplayTaskConfigByScheduledAt(scheduledAt time.Time) (map[string]string, error) {
-	// TODO: implementation to get replay config within scheduled at
-	return nil, nil
+func (r ReplayRepository) GetReplayTaskConfigByScheduledAt(ctx context.Context, scheduledAt time.Time) (map[string]string, error) {
+	getReplayRequest := `SELECT job_config FROM replay_request WHERE start_time<=$1 AND $1<=end_time ORDER BY created_at ASC`
+	rows, err := r.db.Query(ctx, getReplayRequest, scheduledAt)
+	if err != nil {
+		return nil, errors.Wrap(job.EntityJob, "unable to get replay job configs", err)
+	}
+	defer rows.Close()
+
+	configs := map[string]string{}
+	for rows.Next() {
+		var rr replayRequest
+		if err := rows.Scan(&rr.JobConfig); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, errors.NotFound(job.EntityJob, fmt.Sprintf("no replay found for scheduledAt %s", scheduledAt.String()))
+			}
+			return nil, errors.Wrap(scheduler.EntityJobRun, "unable to get the stored replay job cnfig", err)
+		}
+		for k, v := range rr.JobConfig {
+			configs[k] = v
+		}
+	}
+	return configs, nil
 }
 
 func (r ReplayRepository) updateReplayRequest(ctx context.Context, id uuid.UUID, replayStatus scheduler.ReplayState, message string) error {
