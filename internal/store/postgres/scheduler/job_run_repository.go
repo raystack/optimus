@@ -86,7 +86,7 @@ func (j *JobRunRepository) GetByID(ctx context.Context, id scheduler.JobRunID) (
 
 func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) (*scheduler.JobRun, error) {
 	var jr jobRun
-	getJobRunByID := `SELECT ` + jobRunColumns + `, created_at FROM job_run j where project_name = $1 and namespace_name = $2 and job_name = $3 and scheduled_at = $4 order by created_at desc limit 1`
+	getJobRunByID := `SELECT ` + jobRunColumns + `, created_at FROM job_run j where project_name = $1 and namespace_name = $2 and job_name = $3 and scheduled_at = $4`
 	err := j.db.QueryRow(ctx, getJobRunByID, t.ProjectName(), t.NamespaceName(), jobName, scheduledAt).
 		Scan(&jr.ID, &jr.JobName, &jr.NamespaceName, &jr.ProjectName, &jr.ScheduledAt, &jr.StartTime, &jr.EndTime,
 			&jr.Status, &jr.SLADefinition, &jr.SLAAlert, &jr.Monitoring, &jr.CreatedAt)

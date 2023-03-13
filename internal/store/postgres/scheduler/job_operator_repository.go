@@ -19,7 +19,7 @@ const (
 	hookRunTableName   = "hook_run"
 
 	jobOperatorColumnsToStore = `name, job_run_id, status, start_time, end_time`
-	jobOperatorColumns        = `id, ` + jobOperatorColumnsToStore
+	jobOperatorColumns        = `id, ` + jobOperatorColumnsToStore + `, created_at`
 )
 
 type OperatorRunRepository struct {
@@ -74,22 +74,38 @@ func (o operatorRun) toOperatorRun() (*scheduler.OperatorRun, error) {
 }
 
 func (o *OperatorRunRepository) GetOperatorRun(ctx context.Context, name string, operatorType scheduler.OperatorType, jobRunID uuid.UUID) (*scheduler.OperatorRun, error) {
-	var opRun operatorRun
 	operatorTableName, err := operatorTypeToTableName(operatorType)
 	if err != nil {
 		return nil, err
 	}
-	getJobRunByID := "SELECT " + jobOperatorColumns + " FROM " + operatorTableName + " j where job_run_id = $1 and name = $2 order by created_at desc limit 1"
-	err = o.db.QueryRow(ctx, getJobRunByID, jobRunID, name).
-		Scan(&opRun.ID, &opRun.Name, &opRun.JobRunID, &opRun.Status, &opRun.StartTime, &opRun.EndTime)
-
+	getJobRunByID := "SELECT " + jobOperatorColumns + " FROM " + operatorTableName + " j where job_run_id = $1 and name = $2"
+	rows, err := o.db.Query(ctx, getJobRunByID, jobRunID, name)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.NotFound(scheduler.EntityJobRun, "no record for "+operatorType.String()+"/"+name+" for job_run ID: "+jobRunID.String())
 		}
 		return nil, errors.Wrap(scheduler.EntityJobRun, "error while getting operator run", err)
 	}
-	return opRun.toOperatorRun()
+	defer rows.Close()
+
+	var latestOpRun *operatorRun
+	maxCreatedAt := time.Time{}
+	for rows.Next() {
+		var opRun operatorRun
+		createdAt := time.Time{}
+		err := rows.Scan(&opRun.ID, &opRun.Name, &opRun.JobRunID, &opRun.Status, &opRun.StartTime, &opRun.EndTime, &createdAt)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, errors.NotFound(scheduler.EntityJobRun, "operator run not found")
+			}
+			return nil, errors.Wrap(scheduler.EntityJobRun, "error in reading row for resource", err)
+		}
+		if createdAt.Unix() > maxCreatedAt.Unix() {
+			latestOpRun = &opRun
+		}
+	}
+
+	return latestOpRun.toOperatorRun()
 }
 func (o *OperatorRunRepository) CreateOperatorRun(ctx context.Context, name string, operatorType scheduler.OperatorType, jobRunID uuid.UUID, startTime time.Time) error {
 	operatorTableName, err := operatorTypeToTableName(operatorType)
