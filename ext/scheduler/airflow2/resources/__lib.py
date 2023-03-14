@@ -477,6 +477,7 @@ def optimus_notify(context, event_meta):
 
 ## utils
 def should_relay_airflow_callbacks(context):
+    return False
     if context.get('task_instance').task_id in [JOB_START_EVENT_NAME, JOB_END_EVENT_NAME]:
         return False
     else:
