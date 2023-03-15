@@ -19,7 +19,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.15.2
 	github.com/google/uuid v1.3.0
 	github.com/goto/optimus/sdk v0.0.0-20230313071811-2d68a9c815bf
-	github.com/goto/salt v0.2.5-0.20230226051903-dd2ebc264bd5
+	github.com/goto/salt v0.3.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.3
