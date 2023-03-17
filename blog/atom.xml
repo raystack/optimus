@@ -9,13 +9,16 @@
     <icon>https://odpf.github.io/optimus/img/favicon.ico</icon>
     <entry>
         <title type="html"><![CDATA[Introducing Optimus]]></title>
-        <id>introducing-optimus</id>
+        <id>https://odpf.github.io/optimus/blog/introducing-optimus</id>
         <link href="https://odpf.github.io/optimus/blog/introducing-optimus"/>
         <updated>2021-10-02T00:00:00.000Z</updated>
         <summary type="html"><![CDATA[We are live!]]></summary>
+        <content type="html"><![CDATA[<p>We are live!</p>]]></content>
         <author>
             <name>Ravi Suhag</name>
             <uri>https://github.com/ravisuhag</uri>
         </author>
+        <category label="odpf" term="odpf"/>
+        <category label="optimus" term="optimus"/>
     </entry>
 </feed>

@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkoptimus=self.webpackChunkoptimus||[]).push([[8480],{5222:s=>{s.exports=JSON.parse('{"label":"optimus","permalink":"/optimus/blog/tags/optimus","allTagsPath":"/optimus/blog/tags","count":1}')}}]);
