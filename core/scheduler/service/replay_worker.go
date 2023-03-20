@@ -101,6 +101,7 @@ func (w ReplayWorker) processNewReplayRequestParallel(ctx context.Context, repla
 		updatedReplayMap[run.ScheduledAt] = scheduler.StateReplayed
 	}
 
+	// TODO: merge might not be needed in parallel scenario
 	updatedRuns := scheduler.JobRunStatusList(replayReq.Runs).MergeWithUpdatedRuns(updatedReplayMap)
 	return updatedRuns, nil
 }
@@ -120,6 +121,11 @@ func (w ReplayWorker) processNewReplayRequestSequential(ctx context.Context, rep
 	return updatedRuns, nil
 }
 
+/*
+- 1: running
+- 2: pending
+*/
+
 func (w ReplayWorker) processPartialReplayedRequest(ctx context.Context, replayReq *scheduler.ReplayWithRun, jobCron *cron.ScheduleSpec) error {
 	incomingRuns, err := w.fetchRuns(ctx, replayReq, jobCron)
 	if err != nil {
@@ -131,6 +137,7 @@ func (w ReplayWorker) processPartialReplayedRequest(ctx context.Context, replayR
 	updatedRuns := scheduler.JobRunStatusList(replayReq.Runs).MergeWithUpdatedRuns(updatedReplayMap)
 
 	replayedRuns := scheduler.JobRunStatusList(updatedRuns).GetSortedRunsByStates([]scheduler.State{scheduler.StateReplayed})
+	// TODO: rename to toBeReplayedRuns
 	executableRuns := scheduler.JobRunStatusList(updatedRuns).GetSortedRunsByStates([]scheduler.State{scheduler.StatePending})
 
 	replayState := scheduler.ReplayStatePartialReplayed
