@@ -36,7 +36,7 @@ default_args = {
         "optimus_hostname": "http://airflow.example.io"
     },
     "owner": "mee@mee",
-    "depends_on_past": False,
+    "depends_on_past": True,
     "retries": 4,
     "retry_delay": timedelta(seconds=DAG_RETRY_DELAY),
     "retry_exponential_backoff": True,
