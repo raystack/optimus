@@ -47,7 +47,7 @@ func setupJobDetails(tnnt tenant.Tenant) *scheduler.JobWithDetails {
 		StartDate:     time.Date(2022, 11, 10, 5, 2, 0, 0, time.UTC),
 		EndDate:       &end,
 		Interval:      "0 2 * * 0",
-		DependsOnPast: false,
+		DependsOnPast: true,
 		CatchUp:       true,
 	}
 
