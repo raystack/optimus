@@ -37,7 +37,7 @@ default_args = {
     "queue": "{{ .RuntimeConfig.Airflow.Queue }}",
     {{- end }}
     "owner": {{.JobDetails.JobMetadata.Owner | quote}},
-    "depends_on_past": False,
+    "depends_on_past": {{ if .JobDetails.Schedule.DependsOnPast }}True{{- else -}}False{{- end -}},
     "retries": {{ if gt .JobDetails.Retry.Count 0 -}} {{.JobDetails.Retry.Count}} {{- else -}} DAG_RETRIES {{- end}},
     "retry_delay": {{ if gt .JobDetails.Retry.Delay 0 -}} timedelta(seconds={{.JobDetails.Retry.Delay}}) {{- else -}} timedelta(seconds=DAG_RETRY_DELAY) {{- end}},
     "retry_exponential_backoff": {{if .JobDetails.Retry.ExponentialBackoff -}}True{{- else -}}False{{- end -}},
