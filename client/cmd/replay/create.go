@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	replayTimeout = time.Minute * 60
+	replayTimeout = time.Minute * 1
 	ISOTimeLayout = time.RFC3339
 )
 
