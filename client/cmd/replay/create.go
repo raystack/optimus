@@ -26,7 +26,8 @@ type createCommand struct {
 	logger         log.Logger
 	configFilePath string
 
-	parallel bool
+	parallel    bool
+	description string
 
 	projectName   string
 	namespaceName string
@@ -67,7 +68,8 @@ func (r *createCommand) injectFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&r.configFilePath, "config", "c", config.EmptyPath, "File path for client configuration")
 	cmd.Flags().StringVarP(&r.namespaceName, "namespace-name", "n", "", "Name of the optimus namespace")
 
-	cmd.Flags().BoolVarP(&r.parallel, "parallel", "", false, "backfill job runs in parallel")
+	cmd.Flags().BoolVarP(&r.parallel, "parallel", "", false, "Backfill job runs in parallel")
+	cmd.Flags().StringVarP(&r.description, "description", "d", "", "Description of why backfill is needed")
 
 	// Mandatory flags if config is not set
 	cmd.Flags().StringVarP(&r.projectName, "project-name", "p", "", "Name of the optimus project")
@@ -134,7 +136,7 @@ func (r *createCommand) createReplayRequest(jobName, startTimeStr, endTimeStr st
 		StartTime:     startTime,
 		EndTime:       endTime,
 		Parallel:      r.parallel,
-		Description:   "",
+		Description:   r.description,
 	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
