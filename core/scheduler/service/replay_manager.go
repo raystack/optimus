@@ -57,8 +57,7 @@ func (m ReplayManager) Initialize() {
 }
 
 func (m ReplayManager) StartReplayLoop() {
-	ctx, cancelCtx := context.WithTimeout(context.Background(), m.config.LoopTimeout)
-	defer cancelCtx()
+	ctx := context.Background()
 
 	// Cancel timed out replay with status [created, in progress, partial replayed, replayed]
 	m.checkTimedOutReplay(ctx)

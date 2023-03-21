@@ -40,8 +40,7 @@ type JobReplayRunService interface {
 }
 
 func (w ReplayWorker) Process(replayReq *scheduler.ReplayWithRun) {
-	ctx, cancelCtx := context.WithTimeout(context.Background(), w.config.WorkerTimeout)
-	defer cancelCtx()
+	ctx := context.Background()
 
 	w.l.Debug("processing replay request %s with status %s", replayReq.Replay.ID().String(), replayReq.Replay.State().String())
 	jobCron, err := w.getJobCron(ctx, replayReq)
@@ -120,11 +119,6 @@ func (w ReplayWorker) processNewReplayRequestSequential(ctx context.Context, rep
 	updatedRuns := scheduler.JobRunStatusList(replayReq.Runs).MergeWithUpdatedRuns(updatedReplayMap)
 	return updatedRuns, nil
 }
-
-/*
-- 1: running
-- 2: pending
-*/
 
 func (w ReplayWorker) processPartialReplayedRequest(ctx context.Context, replayReq *scheduler.ReplayWithRun, jobCron *cron.ScheduleSpec) error {
 	incomingRuns, err := w.fetchRuns(ctx, replayReq, jobCron)
