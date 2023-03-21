@@ -95,13 +95,11 @@ func (w ReplayWorker) processNewReplayRequestParallel(ctx context.Context, repla
 	}
 
 	w.l.Info("cleared [%s] runs for replay [%s]", replayReq.Replay.JobName().String(), replayReq.Replay.ID().String())
-	updatedReplayMap := make(map[time.Time]scheduler.State)
-	for _, run := range replayReq.Runs {
-		updatedReplayMap[run.ScheduledAt] = scheduler.StateReplayed
-	}
 
-	// TODO: merge might not be needed in parallel scenario
-	updatedRuns := scheduler.JobRunStatusList(replayReq.Runs).MergeWithUpdatedRuns(updatedReplayMap)
+	var updatedRuns []*scheduler.JobRunStatus
+	for _, run := range replayReq.Runs {
+		updatedRuns = append(updatedRuns, &scheduler.JobRunStatus{ScheduledAt: run.ScheduledAt, State: scheduler.StateReplayed})
+	}
 	return updatedRuns, nil
 }
 
@@ -131,19 +129,18 @@ func (w ReplayWorker) processPartialReplayedRequest(ctx context.Context, replayR
 	updatedRuns := scheduler.JobRunStatusList(replayReq.Runs).MergeWithUpdatedRuns(updatedReplayMap)
 
 	replayedRuns := scheduler.JobRunStatusList(updatedRuns).GetSortedRunsByStates([]scheduler.State{scheduler.StateReplayed})
-	// TODO: rename to toBeReplayedRuns
-	executableRuns := scheduler.JobRunStatusList(updatedRuns).GetSortedRunsByStates([]scheduler.State{scheduler.StatePending})
+	toBeReplayedRuns := scheduler.JobRunStatusList(updatedRuns).GetSortedRunsByStates([]scheduler.State{scheduler.StatePending})
 
 	replayState := scheduler.ReplayStatePartialReplayed
-	if len(replayedRuns) == 0 && len(executableRuns) > 0 {
-		logicalTimeToClear := executableRuns[0].GetLogicalTime(jobCron)
+	if len(replayedRuns) == 0 && len(toBeReplayedRuns) > 0 {
+		logicalTimeToClear := toBeReplayedRuns[0].GetLogicalTime(jobCron)
 		if err := w.scheduler.Clear(ctx, replayReq.Replay.Tenant(), replayReq.Replay.JobName(), logicalTimeToClear); err != nil {
 			w.l.Error("unable to clear job run for replay", "replay_id", replayReq.Replay.ID())
 			return err
 		}
-		w.l.Info("cleared [%s] [%s] run for replay %s", replayReq.Replay.JobName().String(), executableRuns[0].ScheduledAt, replayReq.Replay.ID().String())
+		w.l.Info("cleared [%s] [%s] run for replay %s", replayReq.Replay.JobName().String(), toBeReplayedRuns[0].ScheduledAt, replayReq.Replay.ID().String())
 
-		updatedReplayMap[executableRuns[0].ScheduledAt] = scheduler.StateReplayed
+		updatedReplayMap[toBeReplayedRuns[0].ScheduledAt] = scheduler.StateReplayed
 		updatedRuns = scheduler.JobRunStatusList(incomingRuns).MergeWithUpdatedRuns(updatedReplayMap)
 	}
 
