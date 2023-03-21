@@ -39,7 +39,7 @@ func (r ReplayService) CreateReplay(ctx context.Context, tenant tenant.Tenant, j
 
 	jobCron, err := cron.ParseCronSchedule(subjectJob.Schedule.Interval)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("unable to parse job cron interval for job %s: %w", jobName, err)
+		return uuid.Nil, fmt.Errorf("encountered unexpected error when parsing job cron interval for job %s: %w", jobName, err)
 	}
 
 	replayReq := scheduler.NewReplayRequest(jobName, tenant, config, scheduler.ReplayStateCreated)
