@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/odpf/salt/log"
@@ -87,10 +86,10 @@ func (m ReplayManager) checkTimedOutReplay(ctx context.Context) {
 		if runningTime < m.config.ReplayTimeout {
 			continue
 		}
-		message := fmt.Sprintf("replay is timing out. %s", replay.Message())
+		message := "replay timed out"
 		if err := m.replayRepository.UpdateReplayStatus(ctx, replay.ID(), scheduler.ReplayStateFailed, message); err != nil {
 			m.l.Error("unable to mark replay %s as failed due to time out", replay.ID())
 		}
-		m.l.Info("replay %s is timing out. marked as failed.", replay.ID())
+		m.l.Info("replay %s timed out. marked as failed.", replay.ID())
 	}
 }

@@ -94,7 +94,7 @@ func (w ReplayWorker) processNewReplayRequestParallel(ctx context.Context, repla
 		return nil, err
 	}
 
-	w.l.Debug("cleared [%s] runs for replay [%s]", replayReq.Replay.JobName().String(), replayReq.Replay.ID().String())
+	w.l.Info("cleared [%s] runs for replay [%s]", replayReq.Replay.JobName().String(), replayReq.Replay.ID().String())
 	updatedReplayMap := make(map[time.Time]scheduler.State)
 	for _, run := range replayReq.Runs {
 		updatedReplayMap[run.ScheduledAt] = scheduler.StateReplayed
@@ -112,7 +112,7 @@ func (w ReplayWorker) processNewReplayRequestSequential(ctx context.Context, rep
 		return nil, err
 	}
 
-	w.l.Debug("cleared [%s] [%s] run for replay %s", replayReq.Replay.JobName().String(), runToClear.ScheduledAt, replayReq.Replay.ID().String())
+	w.l.Info("cleared [%s] [%s] run for replay %s", replayReq.Replay.JobName().String(), runToClear.ScheduledAt, replayReq.Replay.ID().String())
 	updatedReplayMap := map[time.Time]scheduler.State{
 		runToClear.ScheduledAt: scheduler.StateReplayed,
 	}
@@ -141,7 +141,7 @@ func (w ReplayWorker) processPartialReplayedRequest(ctx context.Context, replayR
 			w.l.Error("unable to clear job run for replay", "replay_id", replayReq.Replay.ID())
 			return err
 		}
-		w.l.Debug("cleared [%s] [%s] run for replay %s", replayReq.Replay.JobName().String(), executableRuns[0].ScheduledAt, replayReq.Replay.ID().String())
+		w.l.Info("cleared [%s] [%s] run for replay %s", replayReq.Replay.JobName().String(), executableRuns[0].ScheduledAt, replayReq.Replay.ID().String())
 
 		updatedReplayMap[executableRuns[0].ScheduledAt] = scheduler.StateReplayed
 		updatedRuns = scheduler.JobRunStatusList(incomingRuns).MergeWithUpdatedRuns(updatedReplayMap)
@@ -171,15 +171,15 @@ func (w ReplayWorker) processReplayedRequest(ctx context.Context, replayReq *sch
 	inProgressRuns := scheduler.JobRunStatusList(updatedRuns).GetSortedRunsByStates([]scheduler.State{scheduler.StateReplayed})
 	failedRuns := scheduler.JobRunStatusList(updatedRuns).GetSortedRunsByStates([]scheduler.State{scheduler.StateFailed})
 
+	var message string
 	state := scheduler.ReplayStateReplayed
-	message := replayReq.Replay.Message()
 	if len(inProgressRuns) == 0 && len(failedRuns) == 0 {
 		state = scheduler.ReplayStateSuccess
-		w.l.Debug("marking replay %s as success", replayReq.Replay.ID().String())
+		w.l.Info("marking replay %s as success", replayReq.Replay.ID().String())
 	} else if len(inProgressRuns) == 0 && len(failedRuns) > 0 {
 		state = scheduler.ReplayStateFailed
-		message = fmt.Sprintf("found %d failed runs. %s", len(failedRuns), message)
-		w.l.Debug("marking replay %s as failed", replayReq.Replay.ID().String())
+		message = fmt.Sprintf("found %d failed runs.", len(failedRuns))
+		w.l.Info("marking replay %s as failed", replayReq.Replay.ID().String())
 	}
 
 	if err := w.replayRepo.UpdateReplay(ctx, replayReq.Replay.ID(), state, updatedRuns, message); err != nil {
