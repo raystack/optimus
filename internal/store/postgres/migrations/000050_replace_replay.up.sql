@@ -25,5 +25,3 @@ CREATE TABLE IF NOT EXISTS replay_request (
 
 CREATE INDEX IF NOT EXISTS replay_request_project_name_idx on replay_request(project_name);
 CREATE INDEX IF NOT EXISTS replay_request_job_name_idx on replay_request(job_name);
-CREATE INDEX IF NOT EXISTS replay_request_start_time_idx on replay_request(start_time);
-CREATE INDEX IF NOT EXISTS replay_request_end_time_idx on replay_request(end_time);
