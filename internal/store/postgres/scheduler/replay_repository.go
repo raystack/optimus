@@ -172,6 +172,7 @@ func (r ReplayRepository) GetReplayToExecute(ctx context.Context) (*scheduler.Re
 		return nil, err
 	}
 
+	// TODO: Avoid having In Progress, but instead use row lock (for update)
 	if _, err := tx.Exec(ctx, updateReplayRequest, scheduler.ReplayStateInProgress, "", storedReplay.Replay.ID()); err != nil {
 		return nil, errors.Wrap(scheduler.EntityJobRun, "unable to update replay", err)
 	}

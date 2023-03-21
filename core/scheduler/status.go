@@ -21,6 +21,7 @@ const (
 	StateSuccess State = "success"
 	StateFailed  State = "failed"
 
+	// StateReplayed is a replay-specific state to identify a run has been replayed but not yet finished
 	StateReplayed State = "replayed"
 )
 
