@@ -65,6 +65,7 @@ publish_job_start_event = PythonOperator(
         task_id = JOB_START_EVENT_NAME,
         python_callable = log_job_start,
         provide_context=True,
+        depends_on_past=False,
         dag=dag
     )
 
@@ -73,6 +74,7 @@ publish_job_end_event = PythonOperator(
         python_callable = log_job_end,
         provide_context=True,
         trigger_rule= 'all_success',
+        depends_on_past=False,
         dag=dag
     )
 
@@ -174,6 +176,7 @@ hook_transporter = SuperKubernetesPodOperator(
     get_logs=True,
     dag=dag,
     in_cluster=True,
+    depends_on_past=False,
     is_delete_operator_pod=True,
     do_xcom_push=False,
     env_vars=executor_env_vars,
@@ -211,6 +214,7 @@ hook_predator = SuperKubernetesPodOperator(
     get_logs=True,
     dag=dag,
     in_cluster=True,
+    depends_on_past=False,
     is_delete_operator_pod=True,
     do_xcom_push=False,
     env_vars=executor_env_vars,
@@ -248,6 +252,7 @@ hook_hook__dash__for__dash__fail = SuperKubernetesPodOperator(
     get_logs=True,
     dag=dag,
     in_cluster=True,
+    depends_on_past=False,
     is_delete_operator_pod=True,
     do_xcom_push=False,
     env_vars=executor_env_vars,
@@ -273,6 +278,7 @@ wait_foo__dash__intra__dash__dep__dash__job = SuperExternalTaskSensor(
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     task_id="wait_foo-intra-dep-job-bq",
+    depends_on_past=False,
     dag=dag
 )
 wait_foo__dash__inter__dash__dep__dash__job = SuperExternalTaskSensor(
@@ -286,6 +292,7 @@ wait_foo__dash__inter__dash__dep__dash__job = SuperExternalTaskSensor(
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     task_id="wait_foo-inter-dep-job-bq",
+    depends_on_past=False,
     dag=dag
 )
 
@@ -299,6 +306,7 @@ wait_external__dash__optimus__dash__foo__dash__external__dash__optimus__dash__pr
     window_version=int("1"),
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
+    depends_on_past=False,
     task_id="wait_foo-external-optimus-dep-job-bq",
     dag=dag
 )
