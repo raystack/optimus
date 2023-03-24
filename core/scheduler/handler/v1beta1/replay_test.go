@@ -25,8 +25,8 @@ func TestReplayHandler(t *testing.T) {
 	namespaceName := "a-namespace"
 	jobTenant, _ := tenant.NewTenant(projectName, namespaceName)
 	jobName, _ := scheduler.JobNameFrom("a-job-name")
-	startTime := timestamppb.New(time.Date(2023, 01, 01, 13, 0, 0, 0, time.UTC))
-	endTime := timestamppb.New(time.Date(2023, 01, 02, 13, 0, 0, 0, time.UTC))
+	startTime := timestamppb.New(time.Date(2023, 0o1, 0o1, 13, 0, 0, 0, time.UTC))
+	endTime := timestamppb.New(time.Date(2023, 0o1, 0o2, 13, 0, 0, 0, time.UTC))
 	description := "sample backfill"
 	replayID := uuid.New()
 
@@ -132,7 +132,7 @@ func TestReplayHandler(t *testing.T) {
 				JobName:       jobName.String(),
 				NamespaceName: namespaceName,
 				StartTime:     startTime,
-				EndTime:       timestamppb.New(time.Date(-1, 13, 02, 13, 0, 0, 0, time.UTC)),
+				EndTime:       timestamppb.New(time.Date(-1, 13, 0o2, 13, 0, 0, 0, time.UTC)),
 				Parallel:      false,
 				Description:   description,
 			}

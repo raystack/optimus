@@ -63,31 +63,31 @@ type Replay struct {
 	createdAt time.Time
 }
 
-func (r Replay) ID() uuid.UUID {
+func (r *Replay) ID() uuid.UUID {
 	return r.id
 }
 
-func (r Replay) JobName() JobName {
+func (r *Replay) JobName() JobName {
 	return r.jobName
 }
 
-func (r Replay) Tenant() tenant.Tenant {
+func (r *Replay) Tenant() tenant.Tenant {
 	return r.tenant
 }
 
-func (r Replay) Config() *ReplayConfig {
+func (r *Replay) Config() *ReplayConfig {
 	return r.config
 }
 
-func (r Replay) State() ReplayState {
+func (r *Replay) State() ReplayState {
 	return r.state
 }
 
-func (r Replay) Message() string {
+func (r *Replay) Message() string {
 	return r.message
 }
 
-func (r Replay) CreatedAt() time.Time {
+func (r *Replay) CreatedAt() time.Time {
 	return r.createdAt
 }
 
@@ -104,14 +104,14 @@ type ReplayWithRun struct {
 	Runs   []*JobRunStatus // TODO: JobRunStatus does not have `message/log`
 }
 
-func (r ReplayWithRun) GetFirstExecutableRun() *JobRunStatus {
+func (r *ReplayWithRun) GetFirstExecutableRun() *JobRunStatus {
 	sort.Slice(r.Runs, func(i, j int) bool {
 		return r.Runs[i].ScheduledAt.Before(r.Runs[j].ScheduledAt)
 	})
 	return r.Runs[0]
 }
 
-func (r ReplayWithRun) GetLastExecutableRun() *JobRunStatus {
+func (r *ReplayWithRun) GetLastExecutableRun() *JobRunStatus {
 	sort.Slice(r.Runs, func(i, j int) bool {
 		return r.Runs[i].ScheduledAt.After(r.Runs[j].ScheduledAt)
 	})
@@ -125,6 +125,6 @@ type ReplayConfig struct {
 	Description string
 }
 
-func NewReplayConfig(startTime time.Time, endTime time.Time, parallel bool, description string) *ReplayConfig {
+func NewReplayConfig(startTime, endTime time.Time, parallel bool, description string) *ReplayConfig {
 	return &ReplayConfig{StartTime: startTime.UTC(), EndTime: endTime.UTC(), Parallel: parallel, Description: description}
 }

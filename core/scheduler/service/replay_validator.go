@@ -8,10 +8,10 @@ import (
 	"github.com/odpf/optimus/internal/lib/cron"
 )
 
-var (
-	replayStatusToValidate = []scheduler.ReplayState{scheduler.ReplayStateCreated, scheduler.ReplayStateInProgress,
-		scheduler.ReplayStatePartialReplayed, scheduler.ReplayStateReplayed}
-)
+var replayStatusToValidate = []scheduler.ReplayState{
+	scheduler.ReplayStateCreated, scheduler.ReplayStateInProgress,
+	scheduler.ReplayStatePartialReplayed, scheduler.ReplayStateReplayed,
+}
 
 type Validator struct {
 	replayRepository ReplayRepository

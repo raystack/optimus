@@ -32,8 +32,10 @@ func TestReplayValidator(t *testing.T) {
 	jobCron, _ := cron.ParseCronSchedule(jobCronStr)
 	scheduledTimeStr1 := "2023-01-02T12:00:00Z"
 	scheduledTime1, _ := time.Parse(scheduler.ISODateFormat, scheduledTimeStr1)
-	replayStatusToValidate := []scheduler.ReplayState{scheduler.ReplayStateCreated, scheduler.ReplayStateInProgress,
-		scheduler.ReplayStatePartialReplayed, scheduler.ReplayStateReplayed}
+	replayStatusToValidate := []scheduler.ReplayState{
+		scheduler.ReplayStateCreated, scheduler.ReplayStateInProgress,
+		scheduler.ReplayStatePartialReplayed, scheduler.ReplayStateReplayed,
+	}
 	replayReq := scheduler.NewReplayRequest(jobName, tnnt, replayConfig, scheduler.ReplayStateCreated)
 
 	t.Run("Validate", func(t *testing.T) {

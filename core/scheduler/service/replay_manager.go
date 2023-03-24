@@ -75,8 +75,10 @@ func (m ReplayManager) StartReplayLoop() {
 }
 
 func (m ReplayManager) checkTimedOutReplay(ctx context.Context) {
-	onGoingReplays, err := m.replayRepository.GetReplayRequestsByStatus(ctx, []scheduler.ReplayState{scheduler.ReplayStateCreated,
-		scheduler.ReplayStateInProgress, scheduler.ReplayStatePartialReplayed, scheduler.ReplayStateReplayed})
+	onGoingReplays, err := m.replayRepository.GetReplayRequestsByStatus(ctx, []scheduler.ReplayState{
+		scheduler.ReplayStateCreated,
+		scheduler.ReplayStateInProgress, scheduler.ReplayStatePartialReplayed, scheduler.ReplayStateReplayed,
+	})
 	if err != nil {
 		m.l.Error("unable to get on going replay")
 	}

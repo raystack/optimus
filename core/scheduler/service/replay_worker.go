@@ -186,7 +186,7 @@ func (w ReplayWorker) processReplayedRequest(ctx context.Context, replayReq *sch
 	return nil
 }
 
-func identifyUpdatedRunStatus(existingJobRuns []*scheduler.JobRunStatus, incomingJobRuns []*scheduler.JobRunStatus) map[time.Time]scheduler.State {
+func identifyUpdatedRunStatus(existingJobRuns, incomingJobRuns []*scheduler.JobRunStatus) map[time.Time]scheduler.State {
 	incomingRunStatusMap := scheduler.JobRunStatusList(incomingJobRuns).ToRunStatusMap()
 
 	updatedReplayMap := make(map[time.Time]scheduler.State)

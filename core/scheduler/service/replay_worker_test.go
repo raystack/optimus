@@ -280,7 +280,7 @@ func (_m *mockReplayScheduler) Clear(ctx context.Context, t tenant.Tenant, jobNa
 }
 
 // ClearBatch provides a mock function with given fields: ctx, t, jobName, startTime, endTime
-func (_m *mockReplayScheduler) ClearBatch(ctx context.Context, t tenant.Tenant, jobName scheduler.JobName, startTime time.Time, endTime time.Time) error {
+func (_m *mockReplayScheduler) ClearBatch(ctx context.Context, t tenant.Tenant, jobName scheduler.JobName, startTime, endTime time.Time) error {
 	ret := _m.Called(ctx, t, jobName, startTime, endTime)
 
 	var r0 error

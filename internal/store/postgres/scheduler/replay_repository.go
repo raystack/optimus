@@ -49,7 +49,7 @@ type replayRequest struct {
 	UpdatedAt time.Time
 }
 
-func (r replayRequest) toSchedulerReplayRequest() (*scheduler.Replay, error) {
+func (r *replayRequest) toSchedulerReplayRequest() (*scheduler.Replay, error) {
 	tnnt, err := tenant.NewTenant(r.ProjectName, r.NamespaceName)
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ type replayRun struct {
 	UpdatedAt time.Time
 }
 
-func (r replayRun) toReplayRequest() (*scheduler.Replay, error) {
+func (r *replayRun) toReplayRequest() (*scheduler.Replay, error) {
 	tnnt, err := tenant.NewTenant(r.ProjectName, r.NamespaceName)
 	if err != nil {
 		return nil, err
@@ -105,7 +105,7 @@ func (r replayRun) toReplayRequest() (*scheduler.Replay, error) {
 	return scheduler.NewReplay(r.ID, jobName, tnnt, conf, replayStatus, r.CreatedAt), nil
 }
 
-func (r replayRun) toJobRunStatus() (*scheduler.JobRunStatus, error) {
+func (r *replayRun) toJobRunStatus() (*scheduler.JobRunStatus, error) {
 	runState, err := scheduler.StateFromString(r.RunStatus)
 	if err != nil {
 		return nil, err
@@ -206,7 +206,7 @@ func (r ReplayRepository) GetReplayRequestsByStatus(ctx context.Context, statusL
 	return replayReqs, nil
 }
 
-func toReplay(replayRuns []replayRun) (*scheduler.ReplayWithRun, error) {
+func toReplay(replayRuns []*replayRun) (*scheduler.ReplayWithRun, error) {
 	var storedReplay *scheduler.ReplayWithRun
 	for _, run := range replayRuns {
 		if storedReplay != nil {
@@ -300,7 +300,7 @@ func (ReplayRepository) getReplayRequest(ctx context.Context, tx pgx.Tx, replay 
 	return rr, nil
 }
 
-func (ReplayRepository) getExecutableReplayRuns(ctx context.Context, tx pgx.Tx) ([]replayRun, error) {
+func (ReplayRepository) getExecutableReplayRuns(ctx context.Context, tx pgx.Tx) ([]*replayRun, error) {
 	getReplayRequest := `
 		WITH request AS (
 			SELECT ` + replayColumns + ` FROM replay_request WHERE status IN ('created', 'partial replayed', 'replayed') 
@@ -315,14 +315,14 @@ func (ReplayRepository) getExecutableReplayRuns(ctx context.Context, tx pgx.Tx) 
 	}
 	defer rows.Close()
 
-	var runs []replayRun
+	var runs []*replayRun
 	for rows.Next() {
 		var run replayRun
 		if err := rows.Scan(&run.ID, &run.JobName, &run.NamespaceName, &run.ProjectName, &run.StartTime, &run.EndTime,
 			&run.Description, &run.Parallel, &run.ReplayStatus, &run.Message, &run.ScheduledTime, &run.RunStatus, &run.CreatedAt); err != nil {
 			return runs, errors.Wrap(scheduler.EntityJobRun, "unable to get the stored replay", err)
 		}
-		runs = append(runs, run)
+		runs = append(runs, &run)
 	}
 	return runs, nil
 }
