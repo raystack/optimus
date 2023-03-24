@@ -50,8 +50,7 @@ func discoverPluginsGivenFilePattern(pluginLogger hclog.Logger, prefix, suffix s
 	var discoveredPlugins, dirs []string
 
 	if p, err := os.Getwd(); err == nil {
-		dirs = append(dirs, path.Join(p, PluginsDir))
-		dirs = append(dirs, p)
+		dirs = append(dirs, path.Join(p, PluginsDir), p)
 	} else {
 		pluginLogger.Debug(fmt.Sprintf("Error discovering working dir: %s", err))
 	}

@@ -30,19 +30,15 @@ linters:
     - nosnakecase
     - nonamedreturns
     - exhaustruct
-    - gosec
     - rowserrcheck
-    - sqlclosecheck
     - structcheck
     - wastedassign
     - gomoddirectives
 
     # Following linters should be enabled after fixing the code
-    - testpackage
     - cyclop
     - ireturn
     - goerr113
-    - nilerr
     - prealloc
     - nestif
     - lll
@@ -52,12 +48,12 @@ linters:
     - funlen
     - gocyclo
     - dupl
-    - gofumpt
     - nolintlint
-    - contextcheck
+    - musttag
+    - interfacebloat
 linters-settings:
   gofumpt:
-    lang-version: "1.17"
+    lang-version: "1.19"
     extra-rules: true
   revive:
     severity: error
@@ -78,7 +74,7 @@ linters-settings:
       - name: increment-decrement
       - name: indent-error-flow
 #      - name: flag-parameter
-#      - name: modifies-parameter
+      - name: modifies-parameter
 #      - name: modifies-value-receiver #perf issue
       - name: package-comments
       - name: range
@@ -86,8 +82,7 @@ linters-settings:
       - name: redefines-builtin-id
       - name: superfluous-else
 #      - name: time-naming #perf issue
-#      - name: unexported-naming
-#      - name: unexported-return
+      - name: unexported-naming
 #      - name: var-declaration #perf issue
       - name: var-naming
       - name: unused-receiver
@@ -112,13 +107,16 @@ linters-settings:
       - 'survey.MinLength'
       - 'survey.MaxLength'
       - 'args.Error'
+  gosec:
+    excludes:
+      - G101
   gosimple:
-    go: "1.17"
+    go: "1.19"
     checks:
       - "all"
       - "-S1002"
   staticcheck:
-    go: "1.17"
+    go: "1.19"
     checks:
       - "all"
       - "-SA1019"
@@ -137,7 +135,7 @@ linters-settings:
       - diagnostic
 #      - style
 #      - opinionated
-#      - performance
+      - performance
   unparam:
     # Inspect exported functions.
     # XXX: if you enable this setting, unparam will report a lot of false-positives in text editors:
@@ -148,10 +146,12 @@ issues:
     - path: _test\.go
       linters:
         - gocritic
+        - contextcheck
     - path: tests
       linters:
         - gocritic
         - gomnd
         - unparam
+        - testpackage
 severity:
   default-severity: error

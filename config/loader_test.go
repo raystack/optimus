@@ -253,7 +253,6 @@ func (s *ConfigTestSuite) initExpectedServerConfig() {
 
 	s.expectedServerConfig.Serve = config.Serve{}
 	s.expectedServerConfig.Serve.Port = 9100
-	s.expectedServerConfig.Serve.Host = "localhost"
 	s.expectedServerConfig.Serve.IngressHost = "optimus.example.io:80"
 	s.expectedServerConfig.Serve.AppKey = "Yjo4a0jn1NvYdq79SADC/KaVv9Wu0Ffc"
 	s.expectedServerConfig.Serve.DB = config.DBConfig{}

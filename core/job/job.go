@@ -27,23 +27,23 @@ type Job struct {
 	sources     []ResourceURN
 }
 
-func (j Job) Tenant() tenant.Tenant {
+func (j *Job) Tenant() tenant.Tenant {
 	return j.tenant
 }
 
-func (j Job) Spec() *Spec {
+func (j *Job) Spec() *Spec {
 	return j.spec
 }
 
-func (j Job) GetName() string {
+func (j *Job) GetName() string {
 	return j.spec.name.String()
 }
 
-func (j Job) FullName() string {
+func (j *Job) FullName() string {
 	return j.ProjectName().String() + "/" + j.spec.name.String()
 }
 
-func (j Job) GetJobWithUnresolvedUpstream() (*WithUpstream, error) {
+func (j *Job) GetJobWithUnresolvedUpstream() (*WithUpstream, error) {
 	unresolvedStaticUpstreams, err := j.getStaticUpstreamsToResolve()
 	if err != nil {
 		err = errors.InvalidArgument(EntityJob, fmt.Sprintf("failed to get static upstreams to resolve for job %s", j.GetName()))
@@ -52,10 +52,10 @@ func (j Job) GetJobWithUnresolvedUpstream() (*WithUpstream, error) {
 	allUpstreams := unresolvedStaticUpstreams
 	allUpstreams = append(allUpstreams, unresolvedInferredUpstreams...)
 
-	return NewWithUpstream(&j, allUpstreams), err
+	return NewWithUpstream(j, allUpstreams), err
 }
 
-func (j Job) getInferredUpstreamsToResolve() []*Upstream {
+func (j *Job) getInferredUpstreamsToResolve() []*Upstream {
 	var unresolvedInferredUpstreams []*Upstream
 	for _, source := range j.sources {
 		unresolvedInferredUpstreams = append(unresolvedInferredUpstreams, NewUpstreamUnresolvedInferred(source))
@@ -63,7 +63,7 @@ func (j Job) getInferredUpstreamsToResolve() []*Upstream {
 	return unresolvedInferredUpstreams
 }
 
-func (j Job) getStaticUpstreamsToResolve() ([]*Upstream, error) {
+func (j *Job) getStaticUpstreamsToResolve() ([]*Upstream, error) {
 	var unresolvedStaticUpstreams []*Upstream
 	me := errors.NewMultiError("get static upstream to resolve errors")
 
@@ -96,22 +96,22 @@ func (n ResourceURN) String() string {
 	return string(n)
 }
 
-func (j Job) Destination() ResourceURN {
+func (j *Job) Destination() ResourceURN {
 	return j.destination
 }
 
-func (j Job) Sources() []ResourceURN {
+func (j *Job) Sources() []ResourceURN {
 	return j.sources
 }
 
-func (j Job) StaticUpstreamNames() []SpecUpstreamName {
+func (j *Job) StaticUpstreamNames() []SpecUpstreamName {
 	if j.spec.upstreamSpec == nil {
 		return nil
 	}
 	return j.spec.upstreamSpec.UpstreamNames()
 }
 
-func (j Job) ProjectName() tenant.ProjectName {
+func (j *Job) ProjectName() tenant.ProjectName {
 	return j.Tenant().ProjectName()
 }
 
@@ -291,43 +291,43 @@ func NewUpstreamUnresolvedStatic(name Name, projectName tenant.ProjectName) *Ups
 	return &Upstream{name: name, projectName: projectName, _type: UpstreamTypeStatic, state: UpstreamStateUnresolved}
 }
 
-func (u Upstream) Name() Name {
+func (u *Upstream) Name() Name {
 	return u.name
 }
 
-func (u Upstream) Host() string {
+func (u *Upstream) Host() string {
 	return u.host
 }
 
-func (u Upstream) Resource() ResourceURN {
+func (u *Upstream) Resource() ResourceURN {
 	return u.resource
 }
 
-func (u Upstream) Type() UpstreamType {
+func (u *Upstream) Type() UpstreamType {
 	return u._type
 }
 
-func (u Upstream) State() UpstreamState {
+func (u *Upstream) State() UpstreamState {
 	return u.state
 }
 
-func (u Upstream) ProjectName() tenant.ProjectName {
+func (u *Upstream) ProjectName() tenant.ProjectName {
 	return u.projectName
 }
 
-func (u Upstream) NamespaceName() tenant.NamespaceName {
+func (u *Upstream) NamespaceName() tenant.NamespaceName {
 	return u.namespaceName
 }
 
-func (u Upstream) External() bool {
+func (u *Upstream) External() bool {
 	return u.external
 }
 
-func (u Upstream) TaskName() TaskName {
+func (u *Upstream) TaskName() TaskName {
 	return u.taskName
 }
 
-func (u Upstream) FullName() string {
+func (u *Upstream) FullName() string {
 	return u.projectName.String() + "/" + u.name.String()
 }
 

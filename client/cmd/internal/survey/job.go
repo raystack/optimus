@@ -15,8 +15,7 @@ import (
 )
 
 // JobSurvey defines survey for job specification in general
-type JobSurvey struct {
-}
+type JobSurvey struct{}
 
 // NewJobSurvey initializes job survey
 func NewJobSurvey() *JobSurvey {
@@ -43,7 +42,7 @@ func (*JobSurvey) AskToSelectJobName(jobSpecReader local.SpecReader[*model.JobSp
 	return selectedJobName, nil
 }
 
-func (j *JobSurvey) askCliModSurveyQuestion(ctx context.Context, cliMod plugin.CommandLineMod, question plugin.Question) (plugin.Answers, error) {
+func (j *JobSurvey) askCliModSurveyQuestion(ctx context.Context, cliMod plugin.CommandLineMod, question plugin.Question) (plugin.Answers, error) { //nolint: gocritic
 	surveyPrompt := j.getSurveyPromptFromPluginQuestion(question)
 
 	var responseStr string
@@ -65,7 +64,7 @@ func (j *JobSurvey) askCliModSurveyQuestion(ctx context.Context, cliMod plugin.C
 	// check if sub questions are attached on this question
 	for _, subQues := range question.SubQuestions {
 		if responseStr == subQues.IfValue {
-			for _, subQuestion := range subQues.Questions {
+			for _, subQuestion := range subQues.Questions { //nolint: gocritic
 				subQuestionAnswers, err := j.askCliModSurveyQuestion(ctx, cliMod, subQuestion)
 				if err != nil {
 					return nil, err
@@ -78,7 +77,7 @@ func (j *JobSurvey) askCliModSurveyQuestion(ctx context.Context, cliMod plugin.C
 	return answers, nil
 }
 
-func (*JobSurvey) getSurveyPromptFromPluginQuestion(question plugin.Question) survey.Prompt {
+func (*JobSurvey) getSurveyPromptFromPluginQuestion(question plugin.Question) survey.Prompt { //nolint: gocritic
 	var surveyPrompt survey.Prompt
 	if len(question.Multiselect) > 0 {
 		sel := &survey.Select{
@@ -103,13 +102,13 @@ func (*JobSurvey) getSurveyPromptFromPluginQuestion(question plugin.Question) su
 	return surveyPrompt
 }
 
-func (j *JobSurvey) getValidatePluginQuestion(ctx context.Context, cliMod plugin.CommandLineMod, question plugin.Question) survey.Validator {
+func (j *JobSurvey) getValidatePluginQuestion(ctx context.Context, cliMod plugin.CommandLineMod, question plugin.Question) survey.Validator { //nolint: gocritic
 	return func(val interface{}) error {
 		str, err := j.convertUserInputPluginToString(val)
 		if err != nil {
 			return err
 		}
-		resp, err := cliMod.ValidateQuestion(ctx, plugin.ValidateQuestionRequest{
+		resp, err := cliMod.ValidateQuestion(ctx, plugin.ValidateQuestionRequest{ //nolint: gocritic
 			Answer: plugin.Answer{
 				Question: question,
 				Value:    str,

@@ -42,7 +42,6 @@ func (r Repository) Update(ctx context.Context, resourceModel *resource.Resource
                 WHERE full_name=$6 AND store=$7 AND project_name = $8 And namespace_name = $9`
 	tag, err := r.db.Exec(ctx, updateResource, res.Kind, res.Status, res.URN,
 		res.Metadata, res.Spec, res.FullName, res.Store, res.ProjectName, res.NamespaceName)
-
 	if err != nil {
 		return errors.Wrap(resource.EntityResource, "error updating resource to database", err)
 	}
@@ -60,7 +59,6 @@ func (r Repository) ReadByFullName(ctx context.Context, tnnt tenant.Tenant, stor
 	err := r.db.QueryRow(ctx, getResource, fullName, store, tnnt.ProjectName(), tnnt.NamespaceName()).
 		Scan(&res.ID, &res.FullName, &res.Kind, &res.Store, &res.Status, &res.URN,
 			&res.ProjectName, &res.NamespaceName, &res.Metadata, &res.Spec, &res.CreatedAt, &res.UpdatedAt)
-
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.NotFound(resource.EntityResource, "no resource found for "+res.FullName)

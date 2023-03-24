@@ -102,7 +102,7 @@ func (d *DefaultManifesterTestSuite) TestFlush() {
 
 		actualErr := manifester.Flush(manifest, dirPath)
 		filepath := path.Join(dirPath, "manifest.yaml")
-		file, openErr := extension.ManifesterFS.OpenFile(filepath, os.O_RDONLY, 0644)
+		file, openErr := extension.ManifesterFS.OpenFile(filepath, os.O_RDONLY, 0o644)
 		if openErr != nil {
 			panic(openErr)
 		}
@@ -117,11 +117,11 @@ func (d *DefaultManifesterTestSuite) TestFlush() {
 }
 
 func (*DefaultManifesterTestSuite) writeFile(dirPath, fileName, content string) {
-	if err := extension.ManifesterFS.MkdirAll(dirPath, 0744); err != nil {
+	if err := extension.ManifesterFS.MkdirAll(dirPath, 0o744); err != nil {
 		panic(err)
 	}
 	filePath := path.Join(dirPath, fileName)
-	file, err := extension.ManifesterFS.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	file, err := extension.ManifesterFS.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
 		panic(err)
 	}

@@ -47,7 +47,7 @@ func NewBackup(b *resource.Backup) Backup {
 	}
 }
 
-func (b Backup) ToResourceBackup() (*resource.Backup, error) {
+func (b Backup) ToResourceBackup() (*resource.Backup, error) { //nolint: gocritic
 	s, err := resource.FromStringToStore(b.Store)
 	if err != nil {
 		return nil, err
@@ -80,7 +80,6 @@ func (repo BackupRepository) Create(ctx context.Context, resourceBackup *resourc
 	insertBackup := `INSERT INTO backup (` + backupToStoreColumns + `) VALUES ($1, $2, $3, $4, $5, $6, $7, now()) returning id`
 	err := repo.db.QueryRow(ctx, insertBackup, backup.Store, backup.ProjectName, backup.NamespaceName,
 		backup.Description, backup.ResourceNames, backup.Config, backup.CreatedAt).Scan(&backup.ID)
-
 	if err != nil {
 		return errors.Wrap(resource.EntityBackup, "unable to save backup in db", err)
 	}
@@ -94,7 +93,6 @@ func (repo BackupRepository) GetByID(ctx context.Context, id resource.BackupID) 
 	err := repo.db.QueryRow(ctx, getByID, id.String()).
 		Scan(&b.ID, &b.Store, &b.ProjectName, &b.NamespaceName,
 			&b.Description, &b.ResourceNames, &b.Config, &b.CreatedAt, &b.UpdatedAt)
-
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.NotFound(resource.EntityBackup, "record not found for id "+id.String())

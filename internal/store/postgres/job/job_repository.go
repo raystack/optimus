@@ -77,7 +77,6 @@ func (j JobRepository) triggerInsert(ctx context.Context, jobEntity *job.Job) er
 		storageJob.TaskName, storageJob.TaskConfig, storageJob.WindowSpec, storageJob.Assets,
 		storageJob.Hooks, storageJob.Metadata, storageJob.Destination, storageJob.Sources,
 		storageJob.ProjectName, storageJob.NamespaceName)
-
 	if err != nil {
 		return errors.Wrap(job.EntityJob, "unable to save job spec", err)
 	}
@@ -151,7 +150,6 @@ WHERE
 		storageJob.WindowSpec, storageJob.Assets, storageJob.Hooks, storageJob.Metadata,
 		storageJob.Destination, storageJob.Sources,
 		storageJob.Name, storageJob.ProjectName)
-
 	if err != nil {
 		return errors.Wrap(job.EntityJob, "unable to update job spec", err)
 	}
@@ -235,7 +233,7 @@ WHERE j.deleted_at IS NULL;`
 	}
 	defer rows.Close()
 
-	var storeJobsWithUpstreams []JobWithUpstream
+	var storeJobsWithUpstreams []*JobWithUpstream
 	for rows.Next() {
 		var jwu JobWithUpstream
 		err := rows.Scan(&jwu.JobName, &jwu.ProjectName, &jwu.UpstreamJobName, &jwu.UpstreamProjectName,
@@ -247,13 +245,13 @@ WHERE j.deleted_at IS NULL;`
 
 			return nil, errors.Wrap(resource.EntityResource, "error in reading row for resource", err)
 		}
-		storeJobsWithUpstreams = append(storeJobsWithUpstreams, jwu)
+		storeJobsWithUpstreams = append(storeJobsWithUpstreams, &jwu)
 	}
 
 	return j.toJobNameWithUpstreams(storeJobsWithUpstreams)
 }
 
-func (j JobRepository) toJobNameWithUpstreams(storeJobsWithUpstreams []JobWithUpstream) (map[job.Name][]*job.Upstream, error) {
+func (j JobRepository) toJobNameWithUpstreams(storeJobsWithUpstreams []*JobWithUpstream) (map[job.Name][]*job.Upstream, error) {
 	me := errors.NewMultiError("to job name with upstreams errors")
 	upstreamsPerJobName := groupUpstreamsPerJobFullName(storeJobsWithUpstreams)
 
@@ -281,15 +279,15 @@ func (j JobRepository) toJobNameWithUpstreams(storeJobsWithUpstreams []JobWithUp
 	return jobNameWithUpstreams, nil
 }
 
-func groupUpstreamsPerJobFullName(upstreams []JobWithUpstream) map[string][]JobWithUpstream {
-	upstreamsMap := make(map[string][]JobWithUpstream)
+func groupUpstreamsPerJobFullName(upstreams []*JobWithUpstream) map[string][]*JobWithUpstream {
+	upstreamsMap := make(map[string][]*JobWithUpstream)
 	for _, upstream := range upstreams {
 		upstreamsMap[upstream.getJobFullName()] = append(upstreamsMap[upstream.getJobFullName()], upstream)
 	}
 	return upstreamsMap
 }
 
-func (JobRepository) toUpstreams(storeUpstreams []JobWithUpstream) ([]*job.Upstream, error) {
+func (JobRepository) toUpstreams(storeUpstreams []*JobWithUpstream) ([]*job.Upstream, error) {
 	me := errors.NewMultiError("to upstreams errors")
 
 	var upstreams []*job.Upstream
@@ -474,7 +472,7 @@ type JobWithUpstream struct {
 	UpstreamExternal      sql.NullBool   `json:"upstream_external"`
 }
 
-func (j JobWithUpstream) getJobFullName() string {
+func (j *JobWithUpstream) getJobFullName() string {
 	return j.ProjectName + "/" + j.JobName
 }
 
@@ -712,13 +710,13 @@ WHERE project_name=$1 AND job_name=$2;`
 	}
 	defer rows.Close()
 
-	var storeJobsWithUpstreams []JobWithUpstream
+	var storeJobsWithUpstreams []*JobWithUpstream
 	for rows.Next() {
 		upstream, err := UpstreamFromRow(rows)
 		if err != nil {
 			return nil, err
 		}
-		storeJobsWithUpstreams = append(storeJobsWithUpstreams, *upstream)
+		storeJobsWithUpstreams = append(storeJobsWithUpstreams, upstream)
 	}
 
 	return j.toUpstreams(storeJobsWithUpstreams)

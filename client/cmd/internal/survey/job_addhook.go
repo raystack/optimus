@@ -122,7 +122,7 @@ func (j *JobAddHookSurvey) askHookQuestions(ctx context.Context, cliMod plugin.C
 	}
 
 	answers := plugin.Answers{}
-	for _, question := range questionResponse.Questions {
+	for _, question := range questionResponse.Questions { //nolint: gocritic
 		responseAnswer, err := j.jobSurvey.askCliModSurveyQuestion(ctx, cliMod, question)
 		if err != nil {
 			return nil, err

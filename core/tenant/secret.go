@@ -28,7 +28,7 @@ type PlainTextSecret struct {
 	value string
 }
 
-func NewPlainTextSecret(name string, value string) (*PlainTextSecret, error) {
+func NewPlainTextSecret(name, value string) (*PlainTextSecret, error) {
 	secretName, err := SecretNameFrom(name)
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func (s *Secret) NamespaceName() string {
 	return s.namespaceName
 }
 
-func NewSecret(name string, encodedValue string, projName ProjectName, nsName string) (*Secret, error) {
+func NewSecret(name, encodedValue string, projName ProjectName, nsName string) (*Secret, error) {
 	secretName, err := SecretNameFrom(name)
 	if err != nil {
 		return nil, err

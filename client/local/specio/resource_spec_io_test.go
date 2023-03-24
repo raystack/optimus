@@ -219,7 +219,6 @@ func (r *ResourceSpecReadWriterTestSuite) TestReadByName() {
 			Spec: map[string]interface{}{
 				"schema": []interface{}{
 					map[string]interface{}{
-
 						"name": "id",
 						"type": "string",
 						"mode": "nullable",
@@ -283,7 +282,6 @@ func (r *ResourceSpecReadWriterTestSuite) TestWrite() {
 			Spec: map[string]interface{}{
 				"schema": []map[string]interface{}{
 					{
-
 						"name": "id",
 						"type": "string",
 						"mode": "nullable",

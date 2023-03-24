@@ -22,7 +22,7 @@ func TestPostgresJobOperatorRepository(t *testing.T) {
 	scheduledAt := currentTime.Add(-time.Hour)
 	operatorStartTime := currentTime
 	operatorEndTime := currentTime.Add(time.Hour)
-	slaDefinitionInSec := int64(3600) //seconds
+	slaDefinitionInSec := int64(3600) // seconds
 
 	t.Run("CreateOperatorRun", func(t *testing.T) {
 		t.Run("creates a operator run", func(t *testing.T) {

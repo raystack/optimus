@@ -76,7 +76,7 @@ func (s *JobSpecTestSuite) TestMergeFrom() {
 		jobSpec1.Behavior.Notify = nil
 		jobSpec2 := s.getCompleteJobSpec()
 
-		jobSpec1.MergeFrom(jobSpec2)
+		jobSpec1.MergeFrom(&jobSpec2)
 
 		s.Assert().EqualValues(jobSpec2, jobSpec1)
 	})

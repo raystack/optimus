@@ -150,8 +150,8 @@ func (b *Batch) DatasetOrDefault() (*resource.Resource, error) {
 	return resToCreate, nil
 }
 
-func BatchesFrom(resources []*resource.Resource, provider ClientProvider) (map[string]Batch, error) {
-	var mapping = make(map[string]Batch)
+func BatchesFrom(resources []*resource.Resource, provider ClientProvider) (map[string]*Batch, error) {
+	mapping := make(map[string]*Batch)
 
 	me := errors.NewMultiError("error while creating batches")
 	for _, res := range resources {
@@ -163,7 +163,7 @@ func BatchesFrom(resources []*resource.Resource, provider ClientProvider) (map[s
 
 		batch, ok := mapping[dataset.FullName()]
 		if !ok {
-			batch = Batch{
+			batch = &Batch{
 				Dataset:  dataset,
 				provider: provider,
 			}

@@ -28,7 +28,7 @@ type defaultAssetOperator struct {
 }
 
 // NewDefaultAssetOperator initializes default asset operator
-func NewDefaultAssetOperator(stdin io.Reader, stdout io.Writer, stderr io.Writer) model.AssetOperator {
+func NewDefaultAssetOperator(stdin io.Reader, stdout, stderr io.Writer) model.AssetOperator {
 	return &defaultAssetOperator{
 		stdin:  stdin,
 		stdout: stdout,
@@ -45,12 +45,12 @@ func (d *defaultAssetOperator) Install(asset []byte, tagName string) error {
 	if asset == nil {
 		return model.ErrNilAsset
 	}
-	directoryPermission := 0744
+	directoryPermission := 0o744
 	if err := AssetOperatorFS.MkdirAll(d.localDirPath, fs.FileMode(directoryPermission)); err != nil {
 		return fmt.Errorf("error making directory: %w", err)
 	}
 	filePath := path.Join(d.localDirPath, tagName)
-	filePermission := 0755
+	filePermission := 0o755
 	f, err := AssetOperatorFS.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, fs.FileMode(filePermission))
 	if err != nil {
 		return fmt.Errorf("error opening file: %w", err)

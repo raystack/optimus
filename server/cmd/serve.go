@@ -49,7 +49,7 @@ func (s *serveCommand) RunE(_ *cobra.Command, _ []string) error {
 		}
 	}
 
-	optimusServer, err := server.New(*conf)
+	optimusServer, err := server.New(conf)
 	defer optimusServer.Shutdown()
 	if err != nil {
 		return fmt.Errorf("unable to create server: %w", err)

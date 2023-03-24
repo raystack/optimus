@@ -12,9 +12,11 @@ import (
 	"github.com/odpf/optimus/internal/utils"
 )
 
-type EventName string
-type JobEventType string
-type JobEventCategory string
+type (
+	EventName        string
+	JobEventType     string
+	JobEventCategory string
+)
 
 const (
 	EntityEvent = "event"
@@ -116,14 +118,15 @@ func (event JobEventType) IsOfType(category JobEventCategory) bool {
 	}
 	return false
 }
+
 func (event JobEventType) String() string {
 	return string(event)
 }
 
-func EventFrom(eventTypeName string, eventValues map[string]any, jobName JobName, tenent tenant.Tenant) (Event, error) {
+func EventFrom(eventTypeName string, eventValues map[string]any, jobName JobName, tenent tenant.Tenant) (*Event, error) {
 	eventType, err := FromStringToEventType(eventTypeName)
 	if err != nil {
-		return Event{}, err
+		return nil, err
 	}
 	eventObj := Event{
 		JobName: jobName,
@@ -142,17 +145,17 @@ func EventFrom(eventTypeName string, eventValues map[string]any, jobName JobName
 		var slaInputPayload slaInput
 		err = mapstructure.Decode(eventValues, &slaInputPayload)
 		if err != nil {
-			return Event{}, errors.InvalidArgument(EntityEvent, "bad sla payload")
+			return nil, errors.InvalidArgument(EntityEvent, "bad sla payload")
 		}
 		var slaObjectList []*SLAObject
 		for _, slaObject := range slaInputPayload.Slas {
 			schedulerJobName, err := JobNameFrom(slaObject.DagID)
 			if err != nil {
-				return Event{}, errors.InvalidArgument(EntityEvent, "empty job name")
+				return nil, errors.InvalidArgument(EntityEvent, "empty job name")
 			}
 			scheduledAt, err := time.Parse(ISODateFormat, slaObject.ScheduledAt)
 			if err != nil {
-				return Event{}, errors.InvalidArgument(EntityEvent, "property 'scheduled_at' in slas list is not in appropriate format")
+				return nil, errors.InvalidArgument(EntityEvent, "property 'scheduled_at' in slas list is not in appropriate format")
 			}
 			slaObjectList = append(slaObjectList, &SLAObject{
 				JobName:        schedulerJobName,
@@ -160,38 +163,38 @@ func EventFrom(eventTypeName string, eventValues map[string]any, jobName JobName
 			})
 		}
 		if len(slaObjectList) == 0 {
-			return Event{}, errors.InvalidArgument(EntityEvent, "could not parse sla list or received an empty sla list nothing to process")
+			return nil, errors.InvalidArgument(EntityEvent, "could not parse sla list or received an empty sla list nothing to process")
 		}
 		eventObj.SLAObjectList = slaObjectList
 	} else {
 		statusString := utils.ConfigAs[string](eventValues, "status")
 		status, err := StateFromString(statusString)
 		if err != nil {
-			return Event{}, err
+			return nil, err
 		}
 		eventObj.Status = status
 
 		eventTimeFloat := utils.ConfigAs[float64](eventValues, "event_time")
 		if eventTimeFloat == float64(0) {
-			return Event{}, errors.InvalidArgument(EntityEvent, "property 'event_time'(number) is missing in event payload")
+			return nil, errors.InvalidArgument(EntityEvent, "property 'event_time'(number) is missing in event payload")
 		}
 		eventObj.EventTime = time.Unix(int64(eventTimeFloat), 0).UTC()
 
 		operatorName := utils.ConfigAs[string](eventValues, "task_id")
 		if operatorName == "" {
-			return Event{}, errors.InvalidArgument(EntityEvent, "property 'task_id'(string) is missing in event payload")
+			return nil, errors.InvalidArgument(EntityEvent, "property 'task_id'(string) is missing in event payload")
 		}
 		eventObj.OperatorName = operatorName
 
 		scheduledAtString := utils.ConfigAs[string](eventValues, "scheduled_at")
 		if scheduledAtString == "" {
-			return Event{}, errors.InvalidArgument(EntityEvent, "property 'scheduled_at'(string) is missing in event payload")
+			return nil, errors.InvalidArgument(EntityEvent, "property 'scheduled_at'(string) is missing in event payload")
 		}
 		scheduledAtTimeStamp, err := time.Parse(ISODateFormat, scheduledAtString)
 		if err != nil {
-			return Event{}, errors.InvalidArgument(EntityEvent, "property 'scheduled_at' is not in appropriate format")
+			return nil, errors.InvalidArgument(EntityEvent, "property 'scheduled_at' is not in appropriate format")
 		}
 		eventObj.JobScheduledAt = scheduledAtTimeStamp
 	}
-	return eventObj, nil
+	return &eventObj, nil
 }

@@ -65,7 +65,7 @@ type Hooks struct {
 	Dependencies map[string]string
 }
 
-func (h Hooks) List() []Hook {
+func (h Hooks) List() []Hook { //nolint: gocritic
 	list := h.Pre
 	list = append(list, h.Post...)
 	list = append(list, h.Fail...)

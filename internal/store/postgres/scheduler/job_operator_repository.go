@@ -57,7 +57,7 @@ func operatorTypeToTableName(operatorType scheduler.OperatorType) (string, error
 	}
 }
 
-func (o operatorRun) toOperatorRun() (*scheduler.OperatorRun, error) {
+func (o *operatorRun) toOperatorRun() (*scheduler.OperatorRun, error) {
 	status, err := scheduler.StateFromString(o.Status)
 	if err != nil {
 		return nil, errors.NewError(scheduler.EntityJobRun, "invalid operator run state in database", err.Error())
@@ -91,6 +91,7 @@ func (o *OperatorRunRepository) GetOperatorRun(ctx context.Context, name string,
 	}
 	return opRun.toOperatorRun()
 }
+
 func (o *OperatorRunRepository) CreateOperatorRun(ctx context.Context, name string, operatorType scheduler.OperatorType, jobRunID uuid.UUID, startTime time.Time) error {
 	operatorTableName, err := operatorTypeToTableName(operatorType)
 	if err != nil {

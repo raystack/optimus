@@ -25,7 +25,8 @@ type NamespaceHandler struct {
 }
 
 func (nh *NamespaceHandler) RegisterProjectNamespace(ctx context.Context, req *pb.RegisterProjectNamespaceRequest) (
-	*pb.RegisterProjectNamespaceResponse, error) {
+	*pb.RegisterProjectNamespaceResponse, error,
+) {
 	projName, err := tenant.ProjectNameFrom(req.GetProjectName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "error in register namespace "+req.GetNamespace().Name)
@@ -45,7 +46,8 @@ func (nh *NamespaceHandler) RegisterProjectNamespace(ctx context.Context, req *p
 }
 
 func (nh *NamespaceHandler) ListProjectNamespaces(ctx context.Context, req *pb.ListProjectNamespacesRequest) (
-	*pb.ListProjectNamespacesResponse, error) {
+	*pb.ListProjectNamespacesResponse, error,
+) {
 	projName, err := tenant.ProjectNameFrom(req.GetProjectName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "error in list namespaces")
@@ -67,7 +69,8 @@ func (nh *NamespaceHandler) ListProjectNamespaces(ctx context.Context, req *pb.L
 }
 
 func (nh *NamespaceHandler) GetNamespace(ctx context.Context, request *pb.GetNamespaceRequest) (
-	*pb.GetNamespaceResponse, error) {
+	*pb.GetNamespaceResponse, error,
+) {
 	projName, err := tenant.ProjectNameFrom(request.GetProjectName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "error in get namespace "+request.NamespaceName)

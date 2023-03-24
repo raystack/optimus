@@ -57,7 +57,7 @@ type OperatorRun struct {
 
 type NotifyAttrs struct {
 	Owner    string
-	JobEvent Event
+	JobEvent *Event
 	Route    string
 	Secret   string
 }

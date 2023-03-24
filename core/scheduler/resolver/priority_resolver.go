@@ -22,10 +22,8 @@ const (
 	PriorityWeightGap = 10
 )
 
-var (
-	// ErrPriorityNotFound is thrown when priority of a given spec is not found
-	ErrPriorityNotFound = errors.New("priority weight not found")
-)
+// ErrPriorityNotFound is thrown when priority of a given spec is not found
+var ErrPriorityNotFound = errors.New("priority weight not found")
 
 // PriorityResolver runs a breadth first traversal on DAG/Job dependencies trees
 // and returns highest weight for the DAG that do not have any dependencies, dynamically.

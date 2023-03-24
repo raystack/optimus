@@ -52,7 +52,7 @@ type Dataset struct {
 	DatasetName string
 }
 
-func DataSetFrom(project string, datasetName string) (Dataset, error) {
+func DataSetFrom(project, datasetName string) (Dataset, error) {
 	if project == "" {
 		return Dataset{}, errors.InvalidArgument(EntityDataset, "bigquery project name is empty")
 	}

@@ -39,7 +39,7 @@ func TestTableHandle(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.ErrorContains(t, err, "not able to decode spec for proj.dataset.table1")
 		})
-		t.Run("returns error when cannot cannot get metadata", func(t *testing.T) {
+		t.Run("returns error when cannot get metadata", func(t *testing.T) {
 			table := new(mockBigQueryTable)
 			tHandle := bigquery.NewTableHandle(table)
 

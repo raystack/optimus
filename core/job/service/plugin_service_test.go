@@ -236,7 +236,8 @@ func TestPluginService(t *testing.T) {
 
 			jobSource := job.ResourceURN("project.dataset.table_upstream")
 			depMod.On("GenerateDependencies", ctx, mock.Anything).Return(&plugin.GenerateDependenciesResponse{
-				Dependencies: []string{jobSource.String()}},
+				Dependencies: []string{jobSource.String()},
+			},
 				nil)
 
 			asset, err := job.AssetFrom(map[string]string{"sample-key": "sample-value"})

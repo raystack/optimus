@@ -15,7 +15,8 @@ func TestRelationalExternalTable(t *testing.T) {
 				Name:        "t-optimus.playground.test-sheet",
 				Description: "",
 				Schema: bigquery.Schema{{
-					Name: "", Type: "table", Mode: "nullable"}},
+					Name: "", Type: "table", Mode: "nullable",
+				}},
 			}
 			err := et.Validate()
 			assert.NotNil(t, err)

@@ -16,15 +16,14 @@ import (
 const provider = "github"
 
 // Client defines github client
-type Client struct {
-}
+type Client struct{}
 
 // DownloadRelease downloads a release based on the API path
 func (*Client) DownloadRelease(ctx context.Context, apiPath string) (*model.RepositoryRelease, error) {
 	if apiPath == "" {
 		return nil, model.ErrEmptyAPIPath
 	}
-	request, err := http.NewRequestWithContext(ctx, "GET", apiPath, http.NoBody)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, apiPath, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
@@ -69,7 +68,7 @@ func (c *Client) DownloadAsset(ctx context.Context, apiPath string) ([]byte, err
 }
 
 func (*Client) downloadAsset(ctx context.Context, url string) ([]byte, error) {
-	request, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}

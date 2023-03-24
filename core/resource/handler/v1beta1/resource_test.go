@@ -777,15 +777,19 @@ func (r *resourceStreamMock) Recv() (*pb.DeployResourceSpecificationRequest, err
 func (*resourceStreamMock) SetHeader(metadata.MD) error {
 	panic("not supported")
 }
+
 func (*resourceStreamMock) SendHeader(metadata.MD) error {
 	panic("not supported")
 }
+
 func (*resourceStreamMock) SetTrailer(metadata.MD) {
 	panic("not supported")
 }
+
 func (*resourceStreamMock) SendMsg(interface{}) error {
 	panic("not supported")
 }
+
 func (*resourceStreamMock) RecvMsg(interface{}) error {
 	panic("not supported")
 }

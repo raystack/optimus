@@ -370,7 +370,7 @@ hooks: []`
 	return specFS
 }
 
-func (*JobSpecReadWriterTestSuite) writeTo(fs afero.Fs, filePath string, content string) error {
+func (*JobSpecReadWriterTestSuite) writeTo(fs afero.Fs, filePath, content string) error {
 	f, err := fs.Create(filePath)
 	if err != nil {
 		return err

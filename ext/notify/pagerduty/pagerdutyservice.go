@@ -11,8 +11,7 @@ type PagerDutyService interface {
 	SendAlert(context.Context, Event) error
 }
 
-type PagerDutyServiceImpl struct {
-}
+type PagerDutyServiceImpl struct{}
 
 type customDetails struct {
 	Owner     string `json:"owner"`

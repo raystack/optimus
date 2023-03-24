@@ -49,7 +49,14 @@ func Init(pluginsRepo *models.PluginRepository, discoveredBinaryPlugins []string
 		if err != nil {
 			return fmt.Errorf("rpcClient.Dispense(): %s: %w", pluginPath, err)
 		}
-		drClient = rawMod.(oplugin.DependencyResolverMod)
+
+		var ok bool
+		drClient, ok = rawMod.(oplugin.DependencyResolverMod)
+		if !ok {
+			pluginLogger.Error(fmt.Sprintf("plugin mod for %s is not of required type: %T", pluginPath, rawMod))
+			continue
+		}
+
 		pluginLogger.Debug(fmt.Sprintf("%s mod found for: %s", oplugin.ModTypeDependencyResolver, pluginPath))
 
 		pluginName, err := drClient.GetName(context.Background())

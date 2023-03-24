@@ -20,9 +20,7 @@ const (
 	EmptyPath             = ""
 )
 
-var (
-	FS = afero.NewReadOnlyFs(afero.NewOsFs())
-)
+var FS = afero.NewReadOnlyFs(afero.NewOsFs())
 
 // LoadClientConfig load the project specific config from these locations:
 // 1. filepath. ./optimus <client_command> -c "path/to/config/optimus.yaml"

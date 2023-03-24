@@ -20,7 +20,7 @@ func TestValidator(t *testing.T) {
 					IsValid:  false,
 				},
 				{
-					TestData: "bar bar",
+					TestData: "bar baz",
 					IsValid:  false,
 				},
 				{
@@ -124,7 +124,7 @@ func TestValidator(t *testing.T) {
 					IsValid:  false,
 				},
 				{
-					TestData: "bar bar",
+					TestData: "bar baz",
 					IsValid:  false,
 				},
 				{

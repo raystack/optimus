@@ -48,7 +48,7 @@ type Resource struct {
 	status Status
 }
 
-func NewResource(fullName string, kind string, store Store, tnnt tenant.Tenant, meta *Metadata, spec map[string]any) (*Resource, error) {
+func NewResource(fullName, kind string, store Store, tnnt tenant.Tenant, meta *Metadata, spec map[string]any) (*Resource, error) {
 	name, err := NameFrom(fullName)
 	if err != nil {
 		return nil, err
