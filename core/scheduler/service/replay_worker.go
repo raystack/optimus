@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"time"
 
 	"github.com/odpf/salt/log"
@@ -46,6 +47,8 @@ func (w ReplayWorker) Process(replayReq *scheduler.ReplayWithRun) {
 	jobCron, err := w.getJobCron(ctx, replayReq)
 	if err != nil {
 		w.l.Error(fmt.Sprintf("unable to get cron value for job %s: %s", replayReq.Replay.JobName(), err.Error()), "replay_id", replayReq.Replay.ID())
+		w.updateReplayAsFailed(ctx, replayReq.Replay.ID(), err.Error())
+		return
 	}
 
 	switch replayReq.Replay.State() {
@@ -58,10 +61,7 @@ func (w ReplayWorker) Process(replayReq *scheduler.ReplayWithRun) {
 	}
 
 	if err != nil {
-		if err := w.replayRepo.UpdateReplayStatus(ctx, replayReq.Replay.ID(), scheduler.ReplayStateFailed, err.Error()); err != nil {
-			w.l.Error("unable to update replay state to failed", "replay_id", replayReq.Replay.ID())
-			return
-		}
+		w.updateReplayAsFailed(ctx, replayReq.Replay.ID(), err.Error())
 	}
 }
 
@@ -225,4 +225,10 @@ func (w ReplayWorker) fetchRuns(ctx context.Context, replayReq *scheduler.Replay
 		EndDate:   replayReq.Replay.Config().EndTime,
 	}
 	return w.scheduler.GetJobRuns(ctx, replayReq.Replay.Tenant(), jobRunCriteria, jobCron)
+}
+
+func (w ReplayWorker) updateReplayAsFailed(ctx context.Context, replayID uuid.UUID, message string) {
+	if err := w.replayRepo.UpdateReplayStatus(ctx, replayID, scheduler.ReplayStateFailed, message); err != nil {
+		w.l.Error("unable to update replay state to failed", "replay_id", replayID)
+	}
 }
