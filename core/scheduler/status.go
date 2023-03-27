@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"sort"
 	"strings"
 	"time"
 
@@ -19,6 +20,9 @@ const (
 
 	StateSuccess State = "success"
 	StateFailed  State = "failed"
+
+	// StateReplayed is a replay-specific state to identify a run has been replayed but not yet finished
+	StateReplayed State = "replayed"
 )
 
 var TaskEndStates = []State{StateSuccess, StateFailed, StateRetry}
@@ -41,6 +45,8 @@ func StateFromString(state string) (State, error) {
 		return StateSuccess, nil
 	case string(StateFailed):
 		return StateFailed, nil
+	case string(StateReplayed):
+		return StateReplayed, nil
 	default:
 		return "", errors.InvalidArgument(EntityJobRun, "invalid state for run "+state)
 	}
@@ -65,6 +71,52 @@ func JobRunStatusFrom(scheduledAt time.Time, state string) (JobRunStatus, error)
 		ScheduledAt: scheduledAt,
 		State:       runState,
 	}, nil
+}
+
+func (j JobRunStatus) GetLogicalTime(jobCron *cron.ScheduleSpec) time.Time {
+	return jobCron.Prev(j.ScheduledAt)
+}
+
+type JobRunStatusList []*JobRunStatus
+
+func (j JobRunStatusList) GetSortedRunsByStates(states []State) []*JobRunStatus {
+	stateMap := make(map[State]bool, len(states))
+	for _, state := range states {
+		stateMap[state] = true
+	}
+
+	var result []*JobRunStatus
+	for _, run := range j {
+		if stateMap[run.State] {
+			result = append(result, run)
+		}
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ScheduledAt.Before(result[j].ScheduledAt)
+	})
+	return result
+}
+
+func (j JobRunStatusList) MergeWithUpdatedRuns(updatedRunMap map[time.Time]State) []*JobRunStatus {
+	var updatedRuns []*JobRunStatus
+	for _, run := range j {
+		if updatedStatus, ok := updatedRunMap[run.ScheduledAt.UTC()]; ok {
+			updatedRun := run
+			updatedRun.State = updatedStatus
+			updatedRuns = append(updatedRuns, updatedRun)
+			continue
+		}
+		updatedRuns = append(updatedRuns, run)
+	}
+	return updatedRuns
+}
+
+func (j JobRunStatusList) ToRunStatusMap() map[time.Time]State {
+	runStatusMap := make(map[time.Time]State, len(j))
+	for _, run := range j {
+		runStatusMap[run.ScheduledAt.UTC()] = run.State
+	}
+	return runStatusMap
 }
 
 // JobRunsCriteria represents the filter condition to get run status from scheduler

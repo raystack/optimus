@@ -240,7 +240,7 @@ func (jh *JobHandler) ListJobSpecification(ctx context.Context, req *pb.ListJobS
 
 func (*JobHandler) GetWindow(_ context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
 	// TODO: the default version to be deprecated & made mandatory in future releases
-	version := 1
+	version := 2
 	if err := req.GetScheduledAt().CheckValid(); err != nil {
 		return nil, fmt.Errorf("%w: failed to parse schedule time %s", err, req.GetScheduledAt())
 	}

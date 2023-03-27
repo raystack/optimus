@@ -22,34 +22,6 @@
   ],
   "paths": {
     "/v1beta1/project/{projectName}/replay": {
-      "get": {
-        "operationId": "ReplayService_ListReplays",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1beta1ListReplaysResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "ReplayService"
-        ]
-      },
       "post": {
         "operationId": "ReplayService_Replay",
         "responses": {
@@ -86,125 +58,25 @@
                 "namespaceName": {
                   "type": "string"
                 },
-                "startDate": {
-                  "type": "string"
+                "startTime": {
+                  "type": "string",
+                  "format": "date-time"
                 },
-                "endDate": {
-                  "type": "string"
+                "endTime": {
+                  "type": "string",
+                  "format": "date-time"
                 },
-                "force": {
+                "parallel": {
                   "type": "boolean"
                 },
-                "allowedDownstreamNamespaces": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "represents which downstream to be replayed.\npossible values are the namespace names, *, or empty.\n'*' means all namespaces are allowed, empty list means all downstream will be ignored."
+                "description": {
+                  "type": "string"
+                },
+                "jobConfig": {
+                  "type": "string"
                 }
               }
             }
-          }
-        ],
-        "tags": [
-          "ReplayService"
-        ]
-      }
-    },
-    "/v1beta1/project/{projectName}/replay/dryrun": {
-      "post": {
-        "operationId": "ReplayService_ReplayDryRun",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1beta1ReplayDryRunResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "jobName": {
-                  "type": "string"
-                },
-                "namespaceName": {
-                  "type": "string"
-                },
-                "startDate": {
-                  "type": "string"
-                },
-                "endDate": {
-                  "type": "string"
-                },
-                "allowedDownstreamNamespaces": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "represents which downstream to be replayed.\npossible values are the namespace names, *, or empty.\n'*' means all namespaces are allowed, empty list means all downstream will be ignored."
-                }
-              }
-            }
-          }
-        ],
-        "tags": [
-          "ReplayService"
-        ]
-      }
-    },
-    "/v1beta1/project/{projectName}/replay/{id}": {
-      "get": {
-        "operationId": "ReplayService_GetReplayStatus",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1beta1GetReplayStatusResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "projectName",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "jobName",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -244,146 +116,10 @@
         }
       }
     },
-    "v1beta1GetReplayStatusResponse": {
-      "type": "object",
-      "properties": {
-        "state": {
-          "type": "string"
-        },
-        "response": {
-          "$ref": "#/definitions/v1beta1ReplayStatusTreeNode"
-        }
-      }
-    },
-    "v1beta1ListReplaysResponse": {
-      "type": "object",
-      "properties": {
-        "replayList": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1ReplaySpec"
-          }
-        }
-      }
-    },
-    "v1beta1ReplayDryRunResponse": {
-      "type": "object",
-      "properties": {
-        "success": {
-          "type": "boolean"
-        },
-        "response": {
-          "$ref": "#/definitions/v1beta1ReplayExecutionTreeNode"
-        },
-        "executionTree": {
-          "$ref": "#/definitions/v1beta1ReplayExecutionTreeNode"
-        },
-        "ignoredJobs": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "v1beta1ReplayExecutionTreeNode": {
-      "type": "object",
-      "properties": {
-        "jobName": {
-          "type": "string"
-        },
-        "dependents": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1ReplayExecutionTreeNode"
-          }
-        },
-        "runs": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      }
-    },
     "v1beta1ReplayResponse": {
       "type": "object",
       "properties": {
         "id": {
-          "type": "string"
-        },
-        "ignoredJobs": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "v1beta1ReplaySpec": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "jobName": {
-          "type": "string"
-        },
-        "startDate": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "endDate": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "state": {
-          "type": "string"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "config": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "v1beta1ReplayStatusRun": {
-      "type": "object",
-      "properties": {
-        "run": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "state": {
-          "type": "string"
-        }
-      }
-    },
-    "v1beta1ReplayStatusTreeNode": {
-      "type": "object",
-      "properties": {
-        "jobName": {
-          "type": "string"
-        },
-        "dependents": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1ReplayStatusTreeNode"
-          }
-        },
-        "runs": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1ReplayStatusRun"
-          }
-        },
-        "state": {
           "type": "string"
         }
       }
