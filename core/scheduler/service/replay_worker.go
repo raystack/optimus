@@ -2,9 +2,9 @@ package service
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/odpf/salt/log"
 	"golang.org/x/net/context"
 
