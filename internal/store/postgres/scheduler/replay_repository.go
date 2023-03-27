@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -192,9 +191,6 @@ func (r ReplayRepository) GetReplayRequestsByStatus(ctx context.Context, statusL
 		var rr replayRequest
 		if err := rows.Scan(&rr.ID, &rr.JobName, &rr.NamespaceName, &rr.ProjectName, &rr.StartTime, &rr.EndTime, &rr.Description, &rr.Parallel,
 			&rr.Status, &rr.Message, &rr.CreatedAt); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, errors.NotFound(job.EntityJob, fmt.Sprintf("no replay found for status %s", statusList))
-			}
 			return nil, errors.Wrap(scheduler.EntityJobRun, "unable to get the stored replay", err)
 		}
 		schedulerReplayReq, err := rr.toSchedulerReplayRequest()
