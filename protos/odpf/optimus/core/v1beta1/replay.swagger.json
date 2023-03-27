@@ -71,6 +71,9 @@
                 },
                 "description": {
                   "type": "string"
+                },
+                "jobConfig": {
+                  "type": "string"
                 }
               }
             }

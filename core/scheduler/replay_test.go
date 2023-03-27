@@ -21,7 +21,8 @@ func TestReplay(t *testing.T) {
 	startTime, _ := time.Parse(scheduler.ISODateFormat, startTimeStr)
 	endTime := startTime.Add(48 * time.Hour)
 	replayDescription := "sample backfill"
-	replayConfig := scheduler.NewReplayConfig(startTime, endTime, false, replayDescription)
+	replayJobConfig := map[string]string{"EXECUTION_PROJECT": "example_project"}
+	replayConfig := scheduler.NewReplayConfig(startTime, endTime, false, replayJobConfig, replayDescription)
 	scheduledTimeStr1 := "2023-01-02T12:00:00Z"
 	scheduledTime1, _ := time.Parse(scheduler.ISODateFormat, scheduledTimeStr1)
 	scheduledTime2 := scheduledTime1.Add(24 * time.Hour)

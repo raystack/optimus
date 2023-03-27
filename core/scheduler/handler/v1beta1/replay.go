@@ -1,6 +1,9 @@
 package v1beta1
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/google/uuid"
 	"github.com/odpf/salt/log"
 	"golang.org/x/net/context"
@@ -43,13 +46,33 @@ func (h ReplayHandler) Replay(ctx context.Context, req *pb.ReplayRequest) (*pb.R
 		}
 	}
 
-	replayConfig := scheduler.NewReplayConfig(req.GetStartTime().AsTime(), req.GetEndTime().AsTime(), req.Parallel, req.Description)
+	jobConfig, err := parseJobConfig(req.JobConfig)
+	if err != nil {
+		return nil, errors.GRPCErr(err, "unable to parse replay job config for "+req.JobName)
+	}
+
+	replayConfig := scheduler.NewReplayConfig(req.GetStartTime().AsTime(), req.GetEndTime().AsTime(), req.Parallel, jobConfig, req.Description)
 	replayID, err := h.service.CreateReplay(ctx, replayTenant, jobName, replayConfig)
 	if err != nil {
 		return nil, errors.GRPCErr(err, "unable to start replay for "+req.GetJobName())
 	}
 
 	return &pb.ReplayResponse{Id: replayID.String()}, nil
+}
+
+func parseJobConfig(jobConfig string) (map[string]string, error) {
+	configs := map[string]string{}
+	for _, config := range strings.Split(jobConfig, ",") {
+		keyValue := strings.Split(config, "=")
+		valueLen := 2
+		if len(keyValue) != valueLen {
+			return nil, fmt.Errorf("error on job config value, %s", config)
+		}
+		key := strings.TrimSpace(strings.ToUpper(keyValue[0]))
+		value := keyValue[1]
+		configs[key] = value
+	}
+	return configs, nil
 }
 
 func NewReplayHandler(l log.Logger, service ReplayService) *ReplayHandler {

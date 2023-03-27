@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS replay_request (
     start_time  TIMESTAMP WITH TIME ZONE NOT NULL,
     end_time    TIMESTAMP WITH TIME ZONE,
 
---     job_config JSONB NOT NULL,
+    job_config JSONB NOT NULL,
 
     status  VARCHAR(30) NOT NULL,
     message TEXT,

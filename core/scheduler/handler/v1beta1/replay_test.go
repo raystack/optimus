@@ -27,6 +27,8 @@ func TestReplayHandler(t *testing.T) {
 	jobName, _ := scheduler.JobNameFrom("a-job-name")
 	startTime := timestamppb.New(time.Date(2023, 0o1, 0o1, 13, 0, 0, 0, time.UTC))
 	endTime := timestamppb.New(time.Date(2023, 0o1, 0o2, 13, 0, 0, 0, time.UTC))
+	jobConfigStr := "EXECUTION_PROJECT=example_project,ANOTHER_CONFIG=example_value"
+	jobConfig := map[string]string{"EXECUTION_PROJECT": "example_project", "ANOTHER_CONFIG": "example_value"}
 	description := "sample backfill"
 	replayID := uuid.New()
 
@@ -42,9 +44,10 @@ func TestReplayHandler(t *testing.T) {
 				StartTime:     startTime,
 				EndTime:       endTime,
 				Parallel:      false,
+				JobConfig:     jobConfigStr,
 				Description:   description,
 			}
-			replayConfig := scheduler.NewReplayConfig(req.StartTime.AsTime(), req.EndTime.AsTime(), false, description)
+			replayConfig := scheduler.NewReplayConfig(req.StartTime.AsTime(), req.EndTime.AsTime(), false, jobConfig, description)
 
 			service.On("CreateReplay", ctx, jobTenant, jobName, replayConfig).Return(replayID, nil)
 
@@ -62,6 +65,7 @@ func TestReplayHandler(t *testing.T) {
 				StartTime:     startTime,
 				EndTime:       endTime,
 				Parallel:      false,
+				JobConfig:     jobConfigStr,
 				Description:   description,
 			}
 
@@ -79,6 +83,7 @@ func TestReplayHandler(t *testing.T) {
 				StartTime:     startTime,
 				EndTime:       endTime,
 				Parallel:      false,
+				JobConfig:     jobConfigStr,
 				Description:   description,
 			}
 
@@ -96,6 +101,7 @@ func TestReplayHandler(t *testing.T) {
 				NamespaceName: namespaceName,
 				EndTime:       endTime,
 				Parallel:      false,
+				JobConfig:     jobConfigStr,
 				Description:   description,
 			}
 
@@ -113,9 +119,10 @@ func TestReplayHandler(t *testing.T) {
 				NamespaceName: namespaceName,
 				StartTime:     startTime,
 				Parallel:      false,
+				JobConfig:     jobConfigStr,
 				Description:   description,
 			}
-			replayConfig := scheduler.NewReplayConfig(req.StartTime.AsTime(), req.EndTime.AsTime(), false, description)
+			replayConfig := scheduler.NewReplayConfig(req.StartTime.AsTime(), req.EndTime.AsTime(), false, jobConfig, description)
 
 			service.On("CreateReplay", ctx, jobTenant, jobName, replayConfig).Return(replayID, nil)
 
@@ -134,9 +141,10 @@ func TestReplayHandler(t *testing.T) {
 				StartTime:     startTime,
 				EndTime:       timestamppb.New(time.Date(-1, 13, 0o2, 13, 0, 0, 0, time.UTC)),
 				Parallel:      false,
+				JobConfig:     jobConfigStr,
 				Description:   description,
 			}
-			replayConfig := scheduler.NewReplayConfig(req.StartTime.AsTime(), req.EndTime.AsTime(), false, description)
+			replayConfig := scheduler.NewReplayConfig(req.StartTime.AsTime(), req.EndTime.AsTime(), false, jobConfig, description)
 
 			service.On("CreateReplay", ctx, jobTenant, jobName, replayConfig).Return(replayID, nil)
 
@@ -155,9 +163,10 @@ func TestReplayHandler(t *testing.T) {
 				StartTime:     startTime,
 				EndTime:       endTime,
 				Parallel:      false,
+				JobConfig:     jobConfigStr,
 				Description:   description,
 			}
-			replayConfig := scheduler.NewReplayConfig(req.StartTime.AsTime(), req.EndTime.AsTime(), false, description)
+			replayConfig := scheduler.NewReplayConfig(req.StartTime.AsTime(), req.EndTime.AsTime(), false, jobConfig, description)
 
 			service.On("CreateReplay", ctx, jobTenant, jobName, replayConfig).Return(uuid.Nil, errors.New("internal error"))
 
