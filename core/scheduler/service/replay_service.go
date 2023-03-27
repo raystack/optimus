@@ -6,9 +6,9 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/net/context"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/lib/cron"
+	"github.com/goto/optimus/core/scheduler"
+	"github.com/goto/optimus/core/tenant"
+	"github.com/goto/optimus/internal/lib/cron"
 )
 
 type ReplayRepository interface {

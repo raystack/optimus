@@ -5,13 +5,13 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/odpf/salt/log"
+	"github.com/goto/salt/log"
 	"golang.org/x/net/context"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/goto/optimus/core/scheduler"
+	"github.com/goto/optimus/core/tenant"
+	"github.com/goto/optimus/internal/errors"
+	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
 )
 
 type ReplayService interface {
