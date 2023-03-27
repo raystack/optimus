@@ -64,7 +64,8 @@ func parseJobConfig(jobConfig string) (map[string]string, error) {
 	configs := map[string]string{}
 	for _, config := range strings.Split(jobConfig, ",") {
 		keyValue := strings.Split(config, "=")
-		if len(keyValue) != 2 {
+		valueLen := 2
+		if len(keyValue) != valueLen {
 			return nil, fmt.Errorf("error on job config value, %s", config)
 		}
 		key := strings.TrimSpace(strings.ToUpper(keyValue[0]))
