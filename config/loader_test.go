@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	saltConfig "github.com/goto/salt/config"
 	"github.com/spf13/afero"
@@ -277,6 +278,8 @@ func (s *ConfigTestSuite) initExpectedServerConfig() {
 		},
 	}
 	s.expectedServerConfig.Plugin = config.PluginConfig{}
+
+	s.expectedServerConfig.Replay.ReplayTimeout = time.Hour * 3
 }
 
 func (*ConfigTestSuite) initServerConfigEnv() {

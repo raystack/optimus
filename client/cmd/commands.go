@@ -66,6 +66,7 @@ func New() *cli.Command {
 		version.NewVersionCommand(),
 		playground.NewPlaygroundCommand(),
 		scheduler.NewSchedulerCommand(),
+		replay.NewReplayCommand(),
 
 		// Will decide later, to add it server side or not
 		plugin.NewPluginCommand(),
