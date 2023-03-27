@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -49,6 +50,7 @@ func TestReplayValidator(t *testing.T) {
 			onGoingReplayConfig := scheduler.NewReplayConfig(time.Now(), time.Now(), parallel, description)
 			onGoingReplay := []*scheduler.Replay{
 				scheduler.NewReplayRequest(jobName, tnnt, onGoingReplayConfig, scheduler.ReplayStateCreated),
+				scheduler.NewReplayRequest("other-job", tnnt, onGoingReplayConfig, scheduler.ReplayStateCreated),
 			}
 			currentRuns := []*scheduler.JobRunStatus{
 				{
@@ -105,6 +107,41 @@ func TestReplayValidator(t *testing.T) {
 			validator := service.NewValidator(replayRepository, sch)
 			err := validator.Validate(ctx, replayReq, jobCron)
 			assert.ErrorContains(t, err, "conflicted job run found")
+		})
+		t.Run("should return error if unable to GetReplayRequestsByStatus", func(t *testing.T) {
+			replayRepository := new(ReplayRepository)
+			defer replayRepository.AssertExpectations(t)
+
+			sch := new(mockReplayScheduler)
+			defer sch.AssertExpectations(t)
+
+			internalErr := errors.New("internal error")
+			replayRepository.On("GetReplayRequestsByStatus", ctx, replayStatusToValidate).Return(nil, internalErr)
+
+			validator := service.NewValidator(replayRepository, sch)
+			err := validator.Validate(ctx, replayReq, jobCron)
+			assert.ErrorIs(t, err, internalErr)
+		})
+		t.Run("should return error if unable to get job runs", func(t *testing.T) {
+			replayRepository := new(ReplayRepository)
+			defer replayRepository.AssertExpectations(t)
+
+			sch := new(mockReplayScheduler)
+			defer sch.AssertExpectations(t)
+
+			onGoingReplayConfig := scheduler.NewReplayConfig(time.Now(), time.Now(), parallel, description)
+			onGoingReplay := []*scheduler.Replay{
+				scheduler.NewReplayRequest(jobName, tnnt, onGoingReplayConfig, scheduler.ReplayStateCreated),
+			}
+
+			replayRepository.On("GetReplayRequestsByStatus", ctx, replayStatusToValidate).Return(onGoingReplay, nil)
+
+			internalErr := errors.New("internal error")
+			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(nil, internalErr)
+
+			validator := service.NewValidator(replayRepository, sch)
+			err := validator.Validate(ctx, replayReq, jobCron)
+			assert.ErrorIs(t, err, internalErr)
 		})
 	})
 }

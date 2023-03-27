@@ -96,6 +96,25 @@ func TestReplayService(t *testing.T) {
 			assert.ErrorContains(t, err, "not passed validation")
 			assert.Equal(t, uuid.Nil, result)
 		})
+
+		t.Run("should return error if unable to get job details", func(t *testing.T) {
+			replayRepository := new(ReplayRepository)
+			defer replayRepository.AssertExpectations(t)
+
+			jobRepository := new(JobRepository)
+			defer jobRepository.AssertExpectations(t)
+
+			replayValidator := new(ReplayValidator)
+			defer replayValidator.AssertExpectations(t)
+
+			internalErr := errors.New("internal error")
+			jobRepository.On("GetJobDetails", ctx, projName, jobName).Return(nil, internalErr)
+
+			replayService := service.NewReplayService(replayRepository, jobRepository, replayValidator)
+			result, err := replayService.CreateReplay(ctx, tnnt, jobName, replayConfig)
+			assert.ErrorIs(t, err, internalErr)
+			assert.Equal(t, uuid.Nil, result)
+		})
 	})
 }
 

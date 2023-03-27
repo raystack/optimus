@@ -74,7 +74,7 @@ func TestPostgresSchedulerRepository(t *testing.T) {
 	})
 
 	t.Run("GetReplayToExecute", func(t *testing.T) {
-		t.Run("get executable replay", func(t *testing.T) {
+		t.Run("return executable replay", func(t *testing.T) {
 			db := dbSetup()
 			replayRepo := postgres.NewReplayRepository(db)
 
@@ -93,6 +93,21 @@ func TestPostgresSchedulerRepository(t *testing.T) {
 			replayToExecute, err := replayRepo.GetReplayToExecute(ctx)
 			assert.Nil(t, err)
 			assert.Equal(t, jobBName, replayToExecute.Replay.JobName().String())
+		})
+		t.Run("return error not found if no executable replay found", func(t *testing.T) {
+			db := dbSetup()
+			replayRepo := postgres.NewReplayRepository(db)
+
+			replayConfig := scheduler.NewReplayConfig(startTime, endTime, true, description)
+			replayReq1 := scheduler.NewReplayRequest(jobAName, tnnt, replayConfig, scheduler.ReplayStateSuccess)
+
+			replayID1, err := replayRepo.RegisterReplay(ctx, replayReq1, jobRunsAllPending)
+			assert.Nil(t, err)
+			assert.NotNil(t, replayID1)
+
+			replayToExecute, err := replayRepo.GetReplayToExecute(ctx)
+			assert.ErrorContains(t, err, "no executable replay request found")
+			assert.Nil(t, replayToExecute)
 		})
 	})
 
