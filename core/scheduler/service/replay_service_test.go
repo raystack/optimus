@@ -221,25 +221,25 @@ func (_m *ReplayRepository) UpdateReplayStatus(ctx context.Context, replayID uui
 	return r0
 }
 
-// GetReplayTaskConfigByScheduledAt provides a mock function with given fields: ctx, scheduledAt
-func (_m *ReplayRepository) GetReplayTaskConfigByScheduledAt(ctx context.Context, scheduledAt time.Time) (map[string]string, error) {
-	ret := _m.Called(ctx, scheduledAt)
+// GetReplayTaskConfigByScheduledAt provides a mock function with given fields: ctx, jobTenant, jobName, scheduledAt
+func (_m *ReplayRepository) GetReplayTaskConfigByScheduledAt(ctx context.Context, jobTenant tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) (map[string]string, error) {
+	ret := _m.Called(ctx, jobTenant, jobName, scheduledAt)
 
 	var r0 map[string]string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, time.Time) (map[string]string, error)); ok {
-		return rf(ctx, scheduledAt)
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, scheduler.JobName, time.Time) (map[string]string, error)); ok {
+		return rf(ctx, jobTenant, jobName, scheduledAt)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, time.Time) map[string]string); ok {
-		r0 = rf(ctx, scheduledAt)
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, scheduler.JobName, time.Time) map[string]string); ok {
+		r0 = rf(ctx, jobTenant, jobName, scheduledAt)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(map[string]string)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, time.Time) error); ok {
-		r1 = rf(ctx, scheduledAt)
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.Tenant, scheduler.JobName, time.Time) error); ok {
+		r1 = rf(ctx, jobTenant, jobName, scheduledAt)
 	} else {
 		r1 = ret.Error(1)
 	}
