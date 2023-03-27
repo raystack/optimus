@@ -46,9 +46,12 @@ func (h ReplayHandler) Replay(ctx context.Context, req *pb.ReplayRequest) (*pb.R
 		}
 	}
 
-	jobConfig, err := parseJobConfig(req.JobConfig)
-	if err != nil {
-		return nil, errors.GRPCErr(err, "unable to parse replay job config for "+req.JobName)
+	jobConfig := make(map[string]string)
+	if req.JobConfig != "" {
+		jobConfig, err = parseJobConfig(req.JobConfig)
+		if err != nil {
+			return nil, errors.GRPCErr(err, "unable to parse replay job config for "+req.JobName)
+		}
 	}
 
 	replayConfig := scheduler.NewReplayConfig(req.GetStartTime().AsTime(), req.GetEndTime().AsTime(), req.Parallel, jobConfig, req.Description)

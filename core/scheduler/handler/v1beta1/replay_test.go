@@ -55,6 +55,27 @@ func TestReplayHandler(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, replayID.String(), result.Id)
 		})
+		t.Run("returns replay ID when able to create replay successfully without overriding job config", func(t *testing.T) {
+			service := new(mockReplayService)
+			replayHandler := v1beta1.NewReplayHandler(logger, service)
+
+			req := &pb.ReplayRequest{
+				ProjectName:   projectName,
+				JobName:       jobName.String(),
+				NamespaceName: namespaceName,
+				StartTime:     startTime,
+				EndTime:       endTime,
+				Parallel:      false,
+				Description:   description,
+			}
+			replayConfig := scheduler.NewReplayConfig(req.StartTime.AsTime(), req.EndTime.AsTime(), false, map[string]string{}, description)
+
+			service.On("CreateReplay", ctx, jobTenant, jobName, replayConfig).Return(replayID, nil)
+
+			result, err := replayHandler.Replay(ctx, req)
+			assert.NoError(t, err)
+			assert.Equal(t, replayID.String(), result.Id)
+		})
 		t.Run("returns error when unable to create tenant", func(t *testing.T) {
 			service := new(mockReplayService)
 			replayHandler := v1beta1.NewReplayHandler(logger, service)
