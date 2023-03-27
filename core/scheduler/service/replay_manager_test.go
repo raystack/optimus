@@ -30,7 +30,7 @@ func TestReplayManager(t *testing.T) {
 	replayStartTime, _ := time.Parse(scheduler.ISODateFormat, replayStartTimeStr)
 	replayEndTime := replayStartTime.Add(24 * time.Hour)
 	replayDescription := "for backfill"
-	replayReqConf := scheduler.NewReplayConfig(replayStartTime, replayEndTime, false, replayDescription)
+	replayReqConf := scheduler.NewReplayConfig(replayStartTime, replayEndTime, false, map[string]string{}, replayDescription)
 	projName := tenant.ProjectName("proj")
 	namespaceName := tenant.ProjectName("ns1")
 	tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())

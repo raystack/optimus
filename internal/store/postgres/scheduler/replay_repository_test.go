@@ -99,7 +99,7 @@ func TestPostgresSchedulerRepository(t *testing.T) {
 			db := dbSetup()
 			replayRepo := postgres.NewReplayRepository(db)
 
-			replayConfig := scheduler.NewReplayConfig(startTime, endTime, true, description)
+			replayConfig := scheduler.NewReplayConfig(startTime, endTime, true, map[string]string{}, description)
 			replayReq1 := scheduler.NewReplayRequest(jobAName, tnnt, replayConfig, scheduler.ReplayStateSuccess)
 
 			replayID1, err := replayRepo.RegisterReplay(ctx, replayReq1, jobRunsAllPending)

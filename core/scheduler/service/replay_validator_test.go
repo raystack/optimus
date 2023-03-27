@@ -130,7 +130,7 @@ func TestReplayValidator(t *testing.T) {
 			sch := new(mockReplayScheduler)
 			defer sch.AssertExpectations(t)
 
-			onGoingReplayConfig := scheduler.NewReplayConfig(time.Now(), time.Now(), parallel, description)
+			onGoingReplayConfig := scheduler.NewReplayConfig(time.Now(), time.Now(), parallel, map[string]string{}, description)
 			onGoingReplay := []*scheduler.Replay{
 				scheduler.NewReplayRequest(jobName, tnnt, onGoingReplayConfig, scheduler.ReplayStateCreated),
 			}
