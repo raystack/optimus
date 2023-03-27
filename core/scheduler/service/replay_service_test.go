@@ -221,8 +221,8 @@ func (_m *ReplayRepository) UpdateReplayStatus(ctx context.Context, replayID uui
 	return r0
 }
 
-// GetReplayTaskConfigByScheduledAt provides a mock function with given fields: ctx, jobTenant, jobName, scheduledAt
-func (_m *ReplayRepository) GetReplayTaskConfigByScheduledAt(ctx context.Context, jobTenant tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) (map[string]string, error) {
+// GetReplayJobConfig provides a mock function with given fields: ctx, jobTenant, jobName, scheduledAt
+func (_m *ReplayRepository) GetReplayJobConfig(ctx context.Context, jobTenant tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) (map[string]string, error) {
 	ret := _m.Called(ctx, jobTenant, jobName, scheduledAt)
 
 	var r0 map[string]string

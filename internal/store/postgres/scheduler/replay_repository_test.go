@@ -140,7 +140,7 @@ func TestPostgresSchedulerRepository(t *testing.T) {
 		})
 	})
 
-	t.Run("GetReplayTaskConfigByScheduledAt", func(t *testing.T) {
+	t.Run("GetReplayJobConfig", func(t *testing.T) {
 		t.Run("return replay task config when scheduledAt is provided", func(t *testing.T) {
 			db := dbSetup()
 			replayRepo := postgres.NewReplayRepository(db)
@@ -157,7 +157,7 @@ func TestPostgresSchedulerRepository(t *testing.T) {
 			_, err = replayRepo.RegisterReplay(ctx, replayReq, jobRunsAllPending)
 			assert.Nil(t, err)
 
-			actualReplayJobConfig, err := replayRepo.GetReplayTaskConfigByScheduledAt(ctx, tnnt, jobBName, scheduledAt)
+			actualReplayJobConfig, err := replayRepo.GetReplayJobConfig(ctx, tnnt, jobBName, scheduledAt)
 			assert.Nil(t, err)
 			assert.Equal(t, replayJobConfig, actualReplayJobConfig)
 		})
@@ -173,7 +173,7 @@ func TestPostgresSchedulerRepository(t *testing.T) {
 			_, err := replayRepo.RegisterReplay(ctx, replayReq, jobRunsAllPending)
 			assert.Nil(t, err)
 
-			actualReplayJobConfig, err := replayRepo.GetReplayTaskConfigByScheduledAt(ctx, tnnt, jobBName, scheduledAt)
+			actualReplayJobConfig, err := replayRepo.GetReplayJobConfig(ctx, tnnt, jobBName, scheduledAt)
 			assert.Nil(t, err)
 			assert.Equal(t, map[string]string{}, actualReplayJobConfig)
 		})

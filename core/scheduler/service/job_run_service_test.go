@@ -631,7 +631,7 @@ func TestJobRunService(t *testing.T) {
 			jobToCompile.Task.Config["EXECUTION_PROJECT"] = "example"
 
 			jobReplayRepo := new(ReplayRepository)
-			jobReplayRepo.On("GetReplayTaskConfigByScheduledAt", ctx, tnnt, jobName, someScheduleTime).Return(map[string]string{"EXECUTION_PROJECT": "example"}, nil)
+			jobReplayRepo.On("GetReplayJobConfig", ctx, tnnt, jobName, someScheduleTime).Return(map[string]string{"EXECUTION_PROJECT": "example"}, nil)
 			defer jobReplayRepo.AssertExpectations(t)
 
 			jobInputCompiler := new(mockJobInputCompiler)
@@ -691,7 +691,7 @@ func TestJobRunService(t *testing.T) {
 			jobToCompile.Task.Config["EXECUTION_PROJECT"] = "example"
 
 			jobReplayRepo := new(ReplayRepository)
-			jobReplayRepo.On("GetReplayTaskConfigByScheduledAt", ctx, tnnt, jobName, someScheduleTime).Return(map[string]string{"EXECUTION_PROJECT": "example"}, nil)
+			jobReplayRepo.On("GetReplayJobConfig", ctx, tnnt, jobName, someScheduleTime).Return(map[string]string{"EXECUTION_PROJECT": "example"}, nil)
 			defer jobReplayRepo.AssertExpectations(t)
 
 			jobInputCompiler := new(mockJobInputCompiler)
@@ -744,7 +744,7 @@ func TestJobRunService(t *testing.T) {
 			jobToCompile.Task.Config["EXECUTION_PROJECT"] = "example"
 
 			jobReplayRepo := new(ReplayRepository)
-			jobReplayRepo.On("GetReplayTaskConfigByScheduledAt", ctx, tnnt, jobName, someScheduleTime).Return(map[string]string{"EXECUTION_PROJECT": "example"}, nil)
+			jobReplayRepo.On("GetReplayJobConfig", ctx, tnnt, jobName, someScheduleTime).Return(map[string]string{"EXECUTION_PROJECT": "example"}, nil)
 			defer jobReplayRepo.AssertExpectations(t)
 
 			jobInputCompiler := new(mockJobInputCompiler)
@@ -796,7 +796,7 @@ func TestJobRunService(t *testing.T) {
 			jobToCompile.Task.Config["EXECUTION_PROJECT"] = "example"
 
 			jobReplayRepo := new(ReplayRepository)
-			jobReplayRepo.On("GetReplayTaskConfigByScheduledAt", ctx, tnnt, jobName, someScheduleTime).Return(map[string]string{"EXECUTION_PROJECT": "example"}, nil)
+			jobReplayRepo.On("GetReplayJobConfig", ctx, tnnt, jobName, someScheduleTime).Return(map[string]string{"EXECUTION_PROJECT": "example"}, nil)
 			defer jobReplayRepo.AssertExpectations(t)
 
 			jobInputCompiler := new(mockJobInputCompiler)

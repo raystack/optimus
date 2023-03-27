@@ -41,7 +41,7 @@ type JobRunRepository interface {
 }
 
 type JobReplayRepository interface {
-	GetReplayTaskConfigByScheduledAt(ctx context.Context, jobTenant tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) (map[string]string, error)
+	GetReplayJobConfig(ctx context.Context, jobTenant tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) (map[string]string, error)
 }
 
 type OperatorRunRepository interface {
@@ -96,7 +96,7 @@ func (s *JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proj
 		executedAt = jobRun.StartTime
 	}
 	// Additional task config from existing replay
-	replayJobConfig, err := s.replayRepo.GetReplayTaskConfigByScheduledAt(ctx, job.Tenant, job.Name, config.ScheduledAt)
+	replayJobConfig, err := s.replayRepo.GetReplayJobConfig(ctx, job.Tenant, job.Name, config.ScheduledAt)
 	if err != nil {
 		return nil, err
 	}

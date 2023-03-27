@@ -250,7 +250,7 @@ func (r ReplayRepository) UpdateReplay(ctx context.Context, id uuid.UUID, replay
 	return r.updateReplayRuns(ctx, id, runs)
 }
 
-func (r ReplayRepository) GetReplayTaskConfigByScheduledAt(ctx context.Context, jobTenant tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) (map[string]string, error) {
+func (r ReplayRepository) GetReplayJobConfig(ctx context.Context, jobTenant tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) (map[string]string, error) {
 	getReplayRequest := `SELECT job_config FROM replay_request WHERE start_time<=$1 AND $1<=end_time ORDER BY created_at ASC`
 	rows, err := r.db.Query(ctx, getReplayRequest, scheduledAt)
 	if err != nil {
