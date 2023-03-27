@@ -98,6 +98,8 @@ func TestStatus(t *testing.T) {
 			"SUCCESS":  scheduler.StateSuccess,
 			"failed":   scheduler.StateFailed,
 			"FAILED":   scheduler.StateFailed,
+			"replayed": scheduler.StateReplayed,
+			"REPLAYED": scheduler.StateReplayed,
 		}
 		for input, expectedState := range expectationsMap {
 			respState, err := scheduler.StateFromString(input)
@@ -109,5 +111,120 @@ func TestStatus(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.EqualError(t, err, "invalid argument for entity jobRun: invalid state for run unregisteredState")
 		assert.Equal(t, scheduler.State(""), respState)
+	})
+	t.Run("GetLogicalTime", func(t *testing.T) {
+		time1 := time.Date(2023, 0o1, 1, 0, 0, 0, 0, time.UTC)
+		time2 := time.Date(2023, 0o1, 2, 0, 0, 0, 0, time.UTC)
+		schedule, err := cron.ParseCronSchedule("@midnight")
+		assert.Nil(t, err)
+
+		jobRunStatus, err := scheduler.JobRunStatusFrom(time2, "running")
+		assert.Nil(t, err)
+
+		logicalTime := jobRunStatus.GetLogicalTime(schedule)
+		assert.Equal(t, time1, logicalTime)
+	})
+	t.Run("GetSortedRunsByStates", func(t *testing.T) {
+		time1 := time.Date(2023, 0o1, 1, 0, 0, 0, 0, time.UTC)
+		time2 := time.Date(2023, 0o1, 2, 0, 0, 0, 0, time.UTC)
+		time3 := time.Date(2023, 0o1, 3, 0, 0, 0, 0, time.UTC)
+
+		jobRunStatusList := scheduler.JobRunStatusList([]*scheduler.JobRunStatus{
+			{
+				ScheduledAt: time3,
+				State:       scheduler.StateRunning,
+			},
+			{
+				ScheduledAt: time1,
+				State:       scheduler.StatePending,
+			},
+			{
+				ScheduledAt: time2,
+				State:       scheduler.StateRunning,
+			},
+		})
+		expectedRuns := []*scheduler.JobRunStatus{
+			{
+				ScheduledAt: time2,
+				State:       scheduler.StateRunning,
+			},
+			{
+				ScheduledAt: time3,
+				State:       scheduler.StateRunning,
+			},
+		}
+
+		runs := jobRunStatusList.GetSortedRunsByStates([]scheduler.State{scheduler.StateRunning})
+		assert.Equal(t, expectedRuns, runs)
+	})
+	t.Run("MergeWithUpdatedRuns", func(t *testing.T) {
+		time1 := time.Date(2023, 0o1, 1, 0, 0, 0, 0, time.UTC)
+		time2 := time.Date(2023, 0o1, 2, 0, 0, 0, 0, time.UTC)
+		time3 := time.Date(2023, 0o1, 3, 0, 0, 0, 0, time.UTC)
+
+		jobRunStatusList := scheduler.JobRunStatusList([]*scheduler.JobRunStatus{
+			{
+				ScheduledAt: time1,
+				State:       scheduler.StatePending,
+			},
+			{
+				ScheduledAt: time2,
+				State:       scheduler.StateRunning,
+			},
+			{
+				ScheduledAt: time3,
+				State:       scheduler.StateRunning,
+			},
+		})
+		updatedRuns := map[time.Time]scheduler.State{
+			time1: scheduler.StateSuccess,
+			time2: scheduler.StateSuccess,
+		}
+		expectedRuns := []*scheduler.JobRunStatus{
+			{
+				ScheduledAt: time1,
+				State:       scheduler.StateSuccess,
+			},
+			{
+				ScheduledAt: time2,
+				State:       scheduler.StateSuccess,
+			},
+			{
+				ScheduledAt: time3,
+				State:       scheduler.StateRunning,
+			},
+		}
+
+		mergedRuns := jobRunStatusList.MergeWithUpdatedRuns(updatedRuns)
+
+		assert.Equal(t, expectedRuns, mergedRuns)
+	})
+	t.Run("ToRunStatusMap", func(t *testing.T) {
+		time1 := time.Date(2023, 0o1, 1, 0, 0, 0, 0, time.UTC)
+		time2 := time.Date(2023, 0o1, 2, 0, 0, 0, 0, time.UTC)
+		time3 := time.Date(2023, 0o1, 3, 0, 0, 0, 0, time.UTC)
+
+		jobRunStatusList := scheduler.JobRunStatusList([]*scheduler.JobRunStatus{
+			{
+				ScheduledAt: time1,
+				State:       scheduler.StatePending,
+			},
+			{
+				ScheduledAt: time2,
+				State:       scheduler.StateRunning,
+			},
+			{
+				ScheduledAt: time3,
+				State:       scheduler.StateRunning,
+			},
+		})
+		expectedMap := map[time.Time]scheduler.State{
+			time1: scheduler.StatePending,
+			time2: scheduler.StateRunning,
+			time3: scheduler.StateRunning,
+		}
+
+		runStatusMap := jobRunStatusList.ToRunStatusMap()
+		assert.EqualValues(t, expectedMap, runStatusMap)
 	})
 }
