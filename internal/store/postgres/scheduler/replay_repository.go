@@ -252,8 +252,8 @@ func (r ReplayRepository) UpdateReplay(ctx context.Context, id uuid.UUID, replay
 }
 
 func (r ReplayRepository) GetReplayJobConfig(ctx context.Context, jobTenant tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) (map[string]string, error) {
-	getReplayRequest := `SELECT job_config FROM replay_request WHERE start_time<=$1 AND $1<=end_time ORDER BY created_at ASC`
-	rows, err := r.db.Query(ctx, getReplayRequest, scheduledAt)
+	getReplayRequest := `SELECT job_config FROM replay_request WHERE job_name=$1 AND namespace_name=$2 AND project_name=$3 AND start_time<=$4 AND $4<=end_time ORDER BY created_at ASC`
+	rows, err := r.db.Query(ctx, getReplayRequest, jobName, jobTenant.NamespaceName(), jobTenant.ProjectName(), scheduledAt)
 	if err != nil {
 		return nil, errors.Wrap(job.EntityJob, "unable to get replay job configs", err)
 	}
