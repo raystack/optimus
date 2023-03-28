@@ -77,7 +77,7 @@ func TestDeploymentService(t *testing.T) {
 			defer jobRepo.AssertExpectations(t)
 
 			runService := service.NewJobRunService(nil,
-				jobRepo, nil, nil, nil, nil, nil)
+				jobRepo, nil, nil, nil, nil, nil, nil)
 
 			err := runService.UploadToScheduler(ctx, proj1Name)
 			assert.NotNil(t, err)
@@ -93,7 +93,7 @@ func TestDeploymentService(t *testing.T) {
 			defer priorityResolver.AssertExpectations(t)
 
 			runService := service.NewJobRunService(nil,
-				jobRepo, nil, nil, nil, priorityResolver, nil)
+				jobRepo, nil, nil, nil, nil, priorityResolver, nil)
 
 			err := runService.UploadToScheduler(ctx, proj1Name)
 			assert.NotNil(t, err)
@@ -113,7 +113,7 @@ func TestDeploymentService(t *testing.T) {
 				Return(fmt.Errorf("DeployJobs tnnt1 error"))
 			defer mScheduler.AssertExpectations(t)
 
-			runService := service.NewJobRunService(logger, jobRepo, nil, nil,
+			runService := service.NewJobRunService(logger, jobRepo, nil, nil, nil,
 				mScheduler, priorityResolver, nil)
 
 			err := runService.UploadToScheduler(ctx, proj1Name)
@@ -141,7 +141,7 @@ func TestDeploymentService(t *testing.T) {
 			mScheduler.On("DeleteJobs", ctx, tnnt2, []string{"job4-to-delete"}).Return(nil)
 			defer mScheduler.AssertExpectations(t)
 
-			runService := service.NewJobRunService(logger, jobRepo, nil, nil,
+			runService := service.NewJobRunService(logger, jobRepo, nil, nil, nil,
 				mScheduler, priorityResolver, nil)
 
 			err := runService.UploadToScheduler(ctx, proj1Name)
@@ -166,7 +166,7 @@ func TestDeploymentService(t *testing.T) {
 			mScheduler.On("DeleteJobs", ctx, tnnt2, []string{"job4-to-delete"}).Return(nil)
 			defer mScheduler.AssertExpectations(t)
 
-			runService := service.NewJobRunService(logger, jobRepo, nil, nil,
+			runService := service.NewJobRunService(logger, jobRepo, nil, nil, nil,
 				mScheduler, priorityResolver, nil)
 
 			err := runService.UploadToScheduler(ctx, proj1Name)

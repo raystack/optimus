@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/goto/salt/log"
 	"github.com/kushsharma/parallel"
@@ -29,6 +30,7 @@ const (
 	EntityAirflow = "Airflow"
 
 	dagStatusBatchURL = "api/v1/dags/~/dagRuns/list"
+	dagRunClearURL    = "api/v1/dags/%s/clearTaskInstances"
 	airflowDateFormat = "2006-01-02T15:04:05+00:00"
 
 	schedulerHostKey = "SCHEDULER_HOST"
@@ -302,6 +304,34 @@ func (s *Scheduler) getSchedulerAuth(ctx context.Context, tnnt tenant.Tenant) (S
 		host:  schdHost,
 		token: auth.Value(),
 	}, nil
+}
+
+func (s *Scheduler) Clear(ctx context.Context, t tenant.Tenant, jobName scheduler.JobName, executionTime time.Time) error {
+	return s.ClearBatch(ctx, t, jobName, executionTime, executionTime)
+}
+
+func (s *Scheduler) ClearBatch(ctx context.Context, tnnt tenant.Tenant, jobName scheduler.JobName, startExecutionTime, endExecutionTime time.Time) error {
+	spanCtx, span := startChildSpan(ctx, "Clear")
+	defer span.End()
+
+	data := []byte(fmt.Sprintf(`{"start_date": %q, "end_date": %q, "dry_run": false, "reset_dag_runs": true, "only_failed": false}`,
+		startExecutionTime.UTC().Format(airflowDateFormat),
+		endExecutionTime.UTC().Format(airflowDateFormat)))
+	req := airflowRequest{
+		URL:    dagRunClearURL,
+		method: http.MethodPost,
+		param:  jobName.String(),
+		body:   data,
+	}
+	schdAuth, err := s.getSchedulerAuth(ctx, tnnt)
+	if err != nil {
+		return err
+	}
+	_, err = s.client.Invoke(spanCtx, req, schdAuth)
+	if err != nil {
+		return fmt.Errorf("failure reason for clearing airflow dag runs: %w", err)
+	}
+	return nil
 }
 
 func NewScheduler(l log.Logger, bucketFac BucketFactory, client Client, compiler DagCompiler, projectGetter ProjectGetter, secretGetter SecretGetter) *Scheduler {
