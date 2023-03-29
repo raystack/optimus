@@ -110,6 +110,9 @@ func findOrCreateDAGNode(dagTree *tree.MultiRootTree, dagSpec models.JobSpec) *t
 func populateDownstreamRuns(parentNode *tree.TreeNode) (*tree.TreeNode, error) {
 	for idx, childNode := range parentNode.Dependents {
 		childDag := childNode.Data.(models.JobSpec)
+		if childDag.Schedule.Interval == "" {
+			continue
+		}
 		taskSchedule, err := cron.ParseCronSchedule(childDag.Schedule.Interval)
 		if err != nil {
 			return nil, err
