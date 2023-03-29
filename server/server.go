@@ -169,8 +169,8 @@ func prepareHTTPProxy(grpcAddr string, grpcServer *grpc.Server) (*http.Server, f
 		Handler:      grpcHandlerFunc(grpcServer, baseMux),
 		Addr:         grpcAddr,
 		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 60 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		WriteTimeout: 30 * time.Minute,
+		IdleTimeout:  5 * time.Minute,
 	}
 
 	return srv, cleanup, nil
