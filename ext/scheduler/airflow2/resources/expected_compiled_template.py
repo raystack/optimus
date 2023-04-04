@@ -13,14 +13,10 @@ from kubernetes.client import models as k8s
 from __lib import optimus_sla_miss_notify, SuperKubernetesPodOperator, \
     SuperExternalTaskSensor, ExternalHttpSensor
 
-from __lib import JOB_START_EVENT_NAME, \
-    JOB_END_EVENT_NAME, \
-    log_start_event, \
-    log_success_event, \
+from __lib import log_success_event, \
     log_retry_event, \
     log_failure_event, \
-    EVENT_NAMES, \
-    log_job_end, log_job_start
+    EVENT_NAMES
 
 SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS = int(Variable.get("sensor_poke_interval_in_secs", default_var=15 * 60))
 SENSOR_DEFAULT_TIMEOUT_IN_SECS = int(Variable.get("sensor_timeout_in_secs", default_var=15 * 60 * 60))
@@ -60,23 +56,6 @@ dag = DAG(
             "optimus",
            ]
 )
-
-publish_job_start_event = PythonOperator(
-        task_id = JOB_START_EVENT_NAME,
-        python_callable = log_job_start,
-        provide_context=True,
-        depends_on_past=False,
-        dag=dag
-    )
-
-publish_job_end_event = PythonOperator(
-        task_id = JOB_END_EVENT_NAME,
-        python_callable = log_job_end,
-        provide_context=True,
-        trigger_rule= 'all_success',
-        depends_on_past=False,
-        dag=dag
-    )
 
 
 JOB_DIR = "/data"
@@ -315,22 +294,22 @@ wait_external__dash__optimus__dash__foo__dash__external__dash__optimus__dash__pr
 ####################################
 
 # upstream sensors -> base transformation task
-publish_job_start_event >> wait_foo__dash__intra__dash__dep__dash__job >> transformation_bq
-publish_job_start_event >> wait_foo__dash__inter__dash__dep__dash__job >> transformation_bq
+wait_foo__dash__intra__dash__dep__dash__job >> transformation_bq
+wait_foo__dash__inter__dash__dep__dash__job >> transformation_bq
 
-publish_job_start_event >> wait_external__dash__optimus__dash__foo__dash__external__dash__optimus__dash__project__dash__foo__dash__external__dash__optimus__dash__dep__dash__job >> transformation_bq
+wait_external__dash__optimus__dash__foo__dash__external__dash__optimus__dash__project__dash__foo__dash__external__dash__optimus__dash__dep__dash__job >> transformation_bq
 
 # post completion hook
-transformation_bq >> publish_job_end_event
+transformation_bq
 
 # set inter-dependencies between task and hooks
-publish_job_start_event >> hook_transporter >> transformation_bq
-transformation_bq >> hook_predator >> publish_job_end_event
-transformation_bq >> hook_hook__dash__for__dash__fail >> publish_job_end_event
+hook_transporter >> transformation_bq
+transformation_bq >> hook_predator
+transformation_bq >> hook_hook__dash__for__dash__fail
 
 # set inter-dependencies between hooks and hooks
-hook_transporter >> hook_predator >> publish_job_end_event
+hook_transporter >> hook_predator
 
 # arrange failure hook after post hooks
 
-hook_predator >> [ hook_hook__dash__for__dash__fail,] >> publish_job_end_event
+hook_predator >> [ hook_hook__dash__for__dash__fail,]
