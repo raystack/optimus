@@ -186,7 +186,7 @@ func TestResourceHandler(t *testing.T) {
 			}
 
 			argMatcher := mock.MatchedBy(func(req *pb.DeployResourceSpecificationResponse) bool {
-				return req.LogStatus.Message == "resources with namespace [ns] are deployed successfully"
+				return req.LogStatus.Message == "1 resources with namespace [ns] are deployed successfully"
 			})
 			stream := new(resourceStreamMock)
 			stream.On("Context").Return(ctx)

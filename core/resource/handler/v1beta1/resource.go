@@ -120,7 +120,7 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 			continue
 		}
 
-		successMsg := fmt.Sprintf("resources with namespace [%s] are deployed successfully", request.GetNamespaceName())
+		successMsg := fmt.Sprintf("%d resources with namespace [%s] are deployed successfully", len(resourceSpecs), request.GetNamespaceName())
 		responseWriter.Write(writer.LogLevelInfo, successMsg)
 
 		totalSuccessBatchUpdateGauge.Set(float64(len(successResources)))
