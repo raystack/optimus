@@ -15,6 +15,7 @@ import (
 
 	"github.com/goto/optimus/client/cmd/internal/connectivity"
 	"github.com/goto/optimus/client/cmd/internal/logger"
+	"github.com/goto/optimus/client/local/model"
 	"github.com/goto/optimus/client/local/specio"
 	"github.com/goto/optimus/config"
 	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
@@ -31,6 +32,8 @@ type uploadAllCommand struct {
 	selectedNamespaceNames []string
 	verbose                bool
 	configFilePath         string
+
+	batchSize int
 }
 
 // NewUploadAllCommand initializes command for uploading all resources
@@ -43,7 +46,7 @@ func NewUploadAllCommand() *cobra.Command {
 		Use:     "upload-all",
 		Short:   "Upload all current optimus resources to server",
 		Long:    heredoc.Doc(`Apply local changes to destination server which includes creating/updating resources`),
-		Example: "optimus resource upload-all [--verbose]",
+		Example: "optimus resource upload-all [--verbose | -b 1000]",
 		Annotations: map[string]string{
 			"group:core": "true",
 		},
@@ -53,6 +56,7 @@ func NewUploadAllCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&uploadAll.configFilePath, "config", "c", uploadAll.configFilePath, "File path for client configuration")
 	cmd.Flags().StringSliceVarP(&uploadAll.selectedNamespaceNames, "namespace-names", "N", nil, "Selected namespaces of optimus project")
 	cmd.Flags().BoolVarP(&uploadAll.verbose, "verbose", "v", false, "Print details related to upload-all stages")
+	cmd.Flags().IntVarP(&uploadAll.batchSize, "batch-size", "b", 0, "Number of resources to upload in a batch")
 	return cmd
 }
 
@@ -135,34 +139,58 @@ func (u *uploadAllCommand) sendNamespaceResourceRequest(stream pb.ResourceServic
 	datastoreSpecFs := CreateDataStoreSpecFs(namespace)
 	for storeName, repoFS := range datastoreSpecFs {
 		u.logger.Info("> Deploying %s resources for namespace [%s]", storeName, namespace.Name)
-		request, err := u.getResourceDeploymentRequest(namespace.Name, storeName, repoFS)
+
+		resources, err := readResourceSpecs(repoFS)
 		if err != nil {
 			return fmt.Errorf("error getting resource specs for namespace [%s]: %w", namespace.Name, err)
 		}
 
-		if err = stream.Send(request); err != nil {
-			return fmt.Errorf("resource upload for namespace [%s] failed: %w", namespace.Name, err)
+		resLength := len(resources)
+		size := resLength
+		if u.batchSize > 0 {
+			size = u.batchSize
 		}
-		progressFn(len(request.GetResources()))
+
+		var errorReturned bool
+		for i := 0; i < resLength; i += size {
+			endIndex := i + size
+			if resLength < endIndex {
+				endIndex = resLength
+			}
+
+			request, err := u.getResourceDeploymentRequest(namespace.Name, storeName, resources[i:endIndex])
+			if err != nil {
+				u.logger.Error("Unable to get resource request, err: %s", err)
+				continue
+			}
+
+			if err = stream.Send(request); err != nil {
+				errorReturned = true
+				u.logger.Error("Error: %s", err)
+			}
+			progressFn(len(request.GetResources()))
+		}
+		if errorReturned {
+			return fmt.Errorf("resource upload for namespace [%s] failed", namespace.Name)
+		}
 	}
 	return nil
 }
 
-func (u *uploadAllCommand) getResourceDeploymentRequest(namespaceName, storeName string,
-	repoFS afero.Fs,
-) (*pb.DeployResourceSpecificationRequest, error) {
+func readResourceSpecs(repoFS afero.Fs) ([]*model.ResourceSpec, error) {
 	resourceSpecReadWriter, err := specio.NewResourceSpecReadWriter(repoFS)
 	if err != nil {
 		return nil, err
 	}
 
-	resourceSpecs, err := resourceSpecReadWriter.ReadAll(".")
-	if err != nil {
-		return nil, err
-	}
+	return resourceSpecReadWriter.ReadAll(".")
+}
 
-	resourceSpecsProto := make([]*pb.ResourceSpecification, len(resourceSpecs))
-	for i, resourceSpec := range resourceSpecs {
+func (u *uploadAllCommand) getResourceDeploymentRequest(namespaceName, storeName string,
+	resources []*model.ResourceSpec,
+) (*pb.DeployResourceSpecificationRequest, error) {
+	resourceSpecsProto := make([]*pb.ResourceSpecification, len(resources))
+	for i, resourceSpec := range resources {
 		resourceSpecProto, err := resourceSpec.ToProto()
 		if err != nil {
 			return nil, err
