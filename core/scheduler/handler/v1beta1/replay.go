@@ -18,6 +18,7 @@ import (
 type ReplayService interface {
 	CreateReplay(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, config *scheduler.ReplayConfig) (replayID uuid.UUID, err error)
 	GetReplayList(ctx context.Context, projectName tenant.ProjectName) (replays []*scheduler.Replay, err error)
+	GetReplayByID(ctx context.Context, replayID uuid.UUID) (replay *scheduler.ReplayWithRun, err error)
 }
 
 type ReplayHandler struct {
@@ -84,16 +85,46 @@ func (h ReplayHandler) ListReplay(ctx context.Context, req *pb.ListReplayRequest
 	return &pb.ListReplayResponse{Replays: replayProtos}, nil
 }
 
+func (h ReplayHandler) GetReplay(ctx context.Context, req *pb.GetReplayRequest) (*pb.GetReplayResponse, error) {
+	id, err := uuid.Parse(req.GetReplayId())
+	if err != nil {
+		return nil, errors.GRPCErr(err, "unable to get replay for replayID "+req.GetReplayId())
+	}
+
+	replay, err := h.service.GetReplayByID(ctx, id)
+	if err != nil {
+		if errors.IsErrorType(err, errors.ErrNotFound) {
+			return &pb.GetReplayResponse{}, nil
+		}
+		return nil, errors.GRPCErr(err, "unable to get replay for replayID "+req.GetReplayId())
+	}
+
+	runs := make([]*pb.ReplayRun, len(replay.Runs))
+	for i, run := range replay.Runs {
+		runs[i] = &pb.ReplayRun{
+			ScheduledAt: timestamppb.New(run.ScheduledAt),
+			Status:      run.State.String(),
+		}
+	}
+
+	replayProto := replayToProto(replay.Replay)
+	replayProto.ReplayRuns = runs
+
+	return replayProto, nil
+}
+
 func replayToProto(replay *scheduler.Replay) *pb.GetReplayResponse {
 	return &pb.GetReplayResponse{
 		Id:      replay.ID().String(),
 		JobName: replay.JobName().String(),
+		Status:  replay.State().String(),
 		ReplayConfig: &pb.ReplayConfig{
 			StartTime:   timestamppb.New(replay.Config().StartTime),
 			EndTime:     timestamppb.New(replay.Config().EndTime),
+			Parallel:    replay.Config().Parallel,
+			JobConfig:   replay.Config().JobConfig,
 			Description: replay.Config().Description,
 		},
-		Status: replay.State().String(),
 	}
 }
 

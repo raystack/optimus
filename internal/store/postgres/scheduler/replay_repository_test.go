@@ -7,10 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/goto/optimus/core/scheduler"
 	"github.com/goto/optimus/core/tenant"
+	"github.com/goto/optimus/internal/errors"
 	postgres "github.com/goto/optimus/internal/store/postgres/scheduler"
 )
 
@@ -217,6 +219,53 @@ func TestPostgresSchedulerRepository(t *testing.T) {
 			actualReplayJobConfig, err := replayRepo.GetReplayJobConfig(ctx, tnnt, jobBName, scheduledAt)
 			assert.Nil(t, err)
 			assert.Equal(t, map[string]string{}, actualReplayJobConfig)
+		})
+	})
+
+	t.Run("GetReplayByID", func(t *testing.T) {
+		t.Run("return no replay with runs if not exist", func(t *testing.T) {
+			db := dbSetup()
+			replayRepo := postgres.NewReplayRepository(db)
+
+			replayID := uuid.New()
+			replayWithRuns, err := replayRepo.GetReplayByID(ctx, replayID)
+			assert.NotNil(t, err)
+			assert.True(t, errors.IsErrorType(err, errors.ErrNotFound))
+			assert.Empty(t, replayWithRuns)
+		})
+
+		t.Run("return replay with no runs if runs is empty", func(t *testing.T) {
+			db := dbSetup()
+			replayRepo := postgres.NewReplayRepository(db)
+			startTime, _ := time.Parse(scheduler.ISODateFormat, "2022-01-01T15:04:05Z")
+			endTime, _ := time.Parse(scheduler.ISODateFormat, "2022-01-03T15:04:05Z")
+
+			replayConfig := scheduler.NewReplayConfig(startTime, endTime, true, map[string]string{}, description)
+			replayReq := scheduler.NewReplayRequest(jobBName, tnnt, replayConfig, scheduler.ReplayStateCreated)
+			replayID, err := replayRepo.RegisterReplay(ctx, replayReq, []*scheduler.JobRunStatus{})
+			assert.Nil(t, err)
+
+			replayWithRuns, err := replayRepo.GetReplayByID(ctx, replayID)
+			assert.Nil(t, err)
+			assert.NotEmpty(t, replayWithRuns)
+			assert.Empty(t, replayWithRuns.Runs)
+		})
+		t.Run("return replay with runs given replay ID", func(t *testing.T) {
+			db := dbSetup()
+			replayRepo := postgres.NewReplayRepository(db)
+			startTime, _ := time.Parse(scheduler.ISODateFormat, "2022-01-01T15:04:05Z")
+			endTime, _ := time.Parse(scheduler.ISODateFormat, "2022-01-03T15:04:05Z")
+
+			replayConfig := scheduler.NewReplayConfig(startTime, endTime, true, map[string]string{}, description)
+			replayReq := scheduler.NewReplayRequest(jobBName, tnnt, replayConfig, scheduler.ReplayStateCreated)
+			replayID, err := replayRepo.RegisterReplay(ctx, replayReq, jobRunsAllPending)
+			assert.Nil(t, err)
+
+			replayWithRuns, err := replayRepo.GetReplayByID(ctx, replayID)
+			assert.Nil(t, err)
+			assert.NotEmpty(t, replayWithRuns)
+			assert.NotEmpty(t, replayWithRuns.Runs)
+			assert.Len(t, replayWithRuns.Runs, len(jobRunsAllPending))
 		})
 	})
 }

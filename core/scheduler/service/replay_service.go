@@ -23,6 +23,7 @@ type ReplayRepository interface {
 	GetReplayToExecute(context.Context) (*scheduler.ReplayWithRun, error)
 	GetReplayRequestsByStatus(ctx context.Context, statusList []scheduler.ReplayState) ([]*scheduler.Replay, error)
 	GetReplaysByProject(ctx context.Context, projectName tenant.ProjectName, dayLimits int) ([]*scheduler.Replay, error)
+	GetReplayByID(ctx context.Context, replayID uuid.UUID) (*scheduler.ReplayWithRun, error)
 }
 
 type ReplayValidator interface {
@@ -58,6 +59,10 @@ func (r ReplayService) CreateReplay(ctx context.Context, tenant tenant.Tenant, j
 
 func (r ReplayService) GetReplayList(ctx context.Context, projectName tenant.ProjectName) (replays []*scheduler.Replay, err error) {
 	return r.replayRepo.GetReplaysByProject(ctx, projectName, getReplaysDayLimit)
+}
+
+func (r ReplayService) GetReplayByID(ctx context.Context, replayID uuid.UUID) (*scheduler.ReplayWithRun, error) {
+	return r.replayRepo.GetReplayByID(ctx, replayID)
 }
 
 func NewReplayService(replayRepo ReplayRepository, jobRepo JobRepository, validator ReplayValidator) *ReplayService {
