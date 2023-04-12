@@ -22,6 +22,34 @@
   ],
   "paths": {
     "/v1beta1/project/{projectName}/replay": {
+      "get": {
+        "operationId": "ReplayService_ListReplay",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1ListReplayResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ReplayService"
+        ]
+      },
       "post": {
         "operationId": "ReplayService_Replay",
         "responses": {
@@ -83,6 +111,42 @@
           "ReplayService"
         ]
       }
+    },
+    "/v1beta1/project/{projectName}/replay/{replayId}": {
+      "get": {
+        "operationId": "ReplayService_GetReplay",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1GetReplayResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "replayId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ReplayService"
+        ]
+      }
     }
   },
   "definitions": {
@@ -116,10 +180,81 @@
         }
       }
     },
+    "v1beta1GetReplayResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "jobName": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "replayConfig": {
+          "$ref": "#/definitions/v1beta1ReplayConfig"
+        },
+        "replayRuns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1ReplayRun"
+          }
+        }
+      }
+    },
+    "v1beta1ListReplayResponse": {
+      "type": "object",
+      "properties": {
+        "replays": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1GetReplayResponse"
+          }
+        }
+      }
+    },
+    "v1beta1ReplayConfig": {
+      "type": "object",
+      "properties": {
+        "startTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "parallel": {
+          "type": "boolean"
+        },
+        "jobConfig": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
     "v1beta1ReplayResponse": {
       "type": "object",
       "properties": {
         "id": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1ReplayRun": {
+      "type": "object",
+      "properties": {
+        "scheduledAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
           "type": "string"
         }
       }

@@ -205,6 +205,30 @@ func (r ReplayRepository) GetReplayRequestsByStatus(ctx context.Context, statusL
 	return replayReqs, nil
 }
 
+func (r ReplayRepository) GetReplaysByProject(ctx context.Context, projectName tenant.ProjectName, dayLimits int) ([]*scheduler.Replay, error) {
+	getReplayRequest := `SELECT ` + replayColumns + ` FROM replay_request WHERE project_name=$1 LIMIT $2`
+	rows, err := r.db.Query(ctx, getReplayRequest, projectName, dayLimits)
+	if err != nil {
+		return nil, errors.Wrap(job.EntityJob, "unable to get replay list", err)
+	}
+	defer rows.Close()
+
+	var replayReqs []*scheduler.Replay
+	for rows.Next() {
+		var rr replayRequest
+		if err := rows.Scan(&rr.ID, &rr.JobName, &rr.NamespaceName, &rr.ProjectName, &rr.StartTime, &rr.EndTime, &rr.Description, &rr.Parallel, &rr.JobConfig,
+			&rr.Status, &rr.Message, &rr.CreatedAt); err != nil {
+			return nil, errors.Wrap(scheduler.EntityJobRun, "unable to get the stored replay", err)
+		}
+		schedulerReplayReq, err := rr.toSchedulerReplayRequest()
+		if err != nil {
+			return nil, err
+		}
+		replayReqs = append(replayReqs, schedulerReplayReq)
+	}
+	return replayReqs, nil
+}
+
 func toReplay(replayRuns []*replayRun) (*scheduler.ReplayWithRun, error) {
 	var storedReplay *scheduler.ReplayWithRun
 	for _, run := range replayRuns {

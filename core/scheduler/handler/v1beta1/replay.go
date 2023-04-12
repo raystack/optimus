@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/goto/salt/log"
 	"golang.org/x/net/context"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/goto/optimus/core/scheduler"
 	"github.com/goto/optimus/core/tenant"
@@ -16,6 +17,7 @@ import (
 
 type ReplayService interface {
 	CreateReplay(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, config *scheduler.ReplayConfig) (replayID uuid.UUID, err error)
+	GetReplayList(ctx context.Context, projectName tenant.ProjectName) (replays []*scheduler.Replay, err error)
 }
 
 type ReplayHandler struct {
@@ -61,6 +63,38 @@ func (h ReplayHandler) Replay(ctx context.Context, req *pb.ReplayRequest) (*pb.R
 	}
 
 	return &pb.ReplayResponse{Id: replayID.String()}, nil
+}
+
+func (h ReplayHandler) ListReplay(ctx context.Context, req *pb.ListReplayRequest) (*pb.ListReplayResponse, error) {
+	projectName, err := tenant.ProjectNameFrom(req.GetProjectName())
+	if err != nil {
+		return nil, errors.GRPCErr(err, "unable to get replay list for "+req.GetProjectName())
+	}
+
+	replays, err := h.service.GetReplayList(ctx, projectName)
+	if err != nil {
+		return nil, errors.GRPCErr(err, "unable to get replay list for "+req.GetProjectName())
+	}
+
+	replayProtos := make([]*pb.GetReplayResponse, len(replays))
+	for i, replay := range replays {
+		replayProtos[i] = replayToProto(replay)
+	}
+
+	return &pb.ListReplayResponse{Replays: replayProtos}, nil
+}
+
+func replayToProto(replay *scheduler.Replay) *pb.GetReplayResponse {
+	return &pb.GetReplayResponse{
+		Id:      replay.ID().String(),
+		JobName: replay.JobName().String(),
+		ReplayConfig: &pb.ReplayConfig{
+			StartTime:   timestamppb.New(replay.Config().StartTime),
+			EndTime:     timestamppb.New(replay.Config().EndTime),
+			Description: replay.Config().Description,
+		},
+		Status: replay.State().String(),
+	}
 }
 
 func parseJobConfig(jobConfig string) (map[string]string, error) {
