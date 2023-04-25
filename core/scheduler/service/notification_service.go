@@ -59,7 +59,7 @@ func (n *NotifyService) Push(ctx context.Context, event *scheduler.Event) error 
 				scheme := chanParts[0]
 				route := chanParts[1]
 
-				n.l.Debug("notification event for job", "job spec name", event.JobName, "event", fmt.Sprintf("%v", event))
+				n.l.Debug(fmt.Sprintf("notification event for job: %s , event: %+v", event.JobName, event))
 				if plainTextSecretsList == nil {
 					plainTextSecretsList, err = n.tenantService.GetSecrets(ctx, event.Tenant)
 					if err != nil {
