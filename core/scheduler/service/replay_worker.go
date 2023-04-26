@@ -141,7 +141,7 @@ func (w ReplayWorker) processPartialReplayedRequest(ctx context.Context, replayR
 		w.l.Info("cleared [%s] [%s] run for replay %s", replayReq.Replay.JobName().String(), toBeReplayedRuns[0].ScheduledAt, replayReq.Replay.ID().String())
 
 		updatedReplayMap[toBeReplayedRuns[0].ScheduledAt] = scheduler.StateReplayed
-		updatedRuns = scheduler.JobRunStatusList(incomingRuns).MergeWithUpdatedRuns(updatedReplayMap)
+		updatedRuns = scheduler.JobRunStatusList(updatedRuns).MergeWithUpdatedRuns(updatedReplayMap)
 	}
 
 	pendingRuns := scheduler.JobRunStatusList(updatedRuns).GetSortedRunsByStates([]scheduler.State{scheduler.StatePending})
@@ -164,7 +164,7 @@ func (w ReplayWorker) processReplayedRequest(ctx context.Context, replayReq *sch
 	}
 
 	updatedReplayMap := identifyUpdatedRunStatus(replayReq.Runs, incomingRuns)
-	updatedRuns := scheduler.JobRunStatusList(incomingRuns).MergeWithUpdatedRuns(updatedReplayMap)
+	updatedRuns := scheduler.JobRunStatusList(replayReq.Runs).MergeWithUpdatedRuns(updatedReplayMap)
 	inProgressRuns := scheduler.JobRunStatusList(updatedRuns).GetSortedRunsByStates([]scheduler.State{scheduler.StateReplayed})
 	failedRuns := scheduler.JobRunStatusList(updatedRuns).GetSortedRunsByStates([]scheduler.State{scheduler.StateFailed})
 

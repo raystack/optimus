@@ -43,6 +43,10 @@ func (r ReplayService) CreateReplay(ctx context.Context, tenant tenant.Tenant, j
 		return uuid.Nil, fmt.Errorf("unable to get job details from DB for jobName: %s, project:%s,  error:%w ", jobName, tenant.ProjectName().String(), err)
 	}
 
+	if subjectJob.Job.Tenant.NamespaceName() != tenant.NamespaceName() {
+		return uuid.Nil, fmt.Errorf("job %s does not exist in %s namespace", jobName, tenant.NamespaceName().String())
+	}
+
 	jobCron, err := cron.ParseCronSchedule(subjectJob.Schedule.Interval)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("encountered unexpected error when parsing job cron interval for job %s: %w", jobName, err)

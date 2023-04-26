@@ -117,6 +117,26 @@ func TestReplayService(t *testing.T) {
 			assert.ErrorIs(t, err, internalErr)
 			assert.Equal(t, uuid.Nil, result)
 		})
+
+		t.Run("should return error if namespace name is not match", func(t *testing.T) {
+			replayRepository := new(ReplayRepository)
+			defer replayRepository.AssertExpectations(t)
+
+			jobRepository := new(JobRepository)
+			defer jobRepository.AssertExpectations(t)
+
+			replayValidator := new(ReplayValidator)
+			defer replayValidator.AssertExpectations(t)
+
+			invalidTenant, _ := tenant.NewTenant(projName.String(), "invalid-namespace")
+
+			jobRepository.On("GetJobDetails", ctx, projName, jobName).Return(jobWithDetails, nil)
+
+			replayService := service.NewReplayService(replayRepository, jobRepository, replayValidator)
+			result, err := replayService.CreateReplay(ctx, invalidTenant, jobName, replayConfig)
+			assert.ErrorContains(t, err, "job sample_select does not exist in invalid-namespace namespace")
+			assert.Equal(t, uuid.Nil, result)
+		})
 	})
 	t.Run("GetReplayList", func(t *testing.T) {
 		t.Run("should return replay list with no error", func(t *testing.T) {
