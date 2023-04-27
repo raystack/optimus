@@ -39,8 +39,8 @@ const (
 	jobsDir         = "dags"
 	jobsExtension   = ".py"
 
-	concurrentTicketPerSec = 40
-	concurrentLimit        = 600
+	concurrentTicketPerSec = 50
+	concurrentLimit        = 100
 )
 
 type Bucket interface {
