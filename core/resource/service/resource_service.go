@@ -6,6 +6,8 @@ import (
 
 	"github.com/goto/salt/log"
 
+	"github.com/goto/optimus/core/event"
+	"github.com/goto/optimus/core/event/moderator"
 	"github.com/goto/optimus/core/resource"
 	"github.com/goto/optimus/core/tenant"
 	"github.com/goto/optimus/internal/errors"
@@ -30,24 +32,30 @@ type TenantDetailsGetter interface {
 	GetDetails(ctx context.Context, tnnt tenant.Tenant) (*tenant.WithDetails, error)
 }
 
+type EventHandler interface {
+	HandleEvent(moderator.Event)
+}
+
 type ResourceService struct {
 	repo              ResourceRepository
 	mgr               ResourceManager
 	tnntDetailsGetter TenantDetailsGetter
 
-	logger log.Logger
+	logger       log.Logger
+	eventHandler EventHandler
 }
 
-func NewResourceService(logger log.Logger, repo ResourceRepository, mgr ResourceManager, tnntDetailsGetter TenantDetailsGetter) *ResourceService {
+func NewResourceService(logger log.Logger, repo ResourceRepository, mgr ResourceManager, tnntDetailsGetter TenantDetailsGetter, eventHandler EventHandler) *ResourceService {
 	return &ResourceService{
 		repo:              repo,
 		mgr:               mgr,
 		tnntDetailsGetter: tnntDetailsGetter,
 		logger:            logger,
+		eventHandler:      eventHandler,
 	}
 }
 
-func (rs ResourceService) Create(ctx context.Context, incoming *resource.Resource) error {
+func (rs ResourceService) Create(ctx context.Context, incoming *resource.Resource) error { // nolint:gocritic
 	if err := rs.mgr.Validate(incoming); err != nil {
 		rs.logger.Error("error validating resource [%s]: %s", incoming.FullName(), err)
 		return err
@@ -93,10 +101,16 @@ func (rs ResourceService) Create(ctx context.Context, incoming *resource.Resourc
 			return err
 		}
 	}
-	return rs.mgr.CreateResource(ctx, incoming)
+
+	if err := rs.mgr.CreateResource(ctx, incoming); err != nil {
+		return err
+	}
+
+	rs.raiseCreateEvent(incoming)
+	return nil
 }
 
-func (rs ResourceService) Update(ctx context.Context, incoming *resource.Resource) error {
+func (rs ResourceService) Update(ctx context.Context, incoming *resource.Resource) error { // nolint:gocritic
 	if err := rs.mgr.Validate(incoming); err != nil {
 		rs.logger.Error("error validating resource [%s]: %s", incoming.FullName(), err)
 		return err
@@ -131,10 +145,14 @@ func (rs ResourceService) Update(ctx context.Context, incoming *resource.Resourc
 		return err
 	}
 
-	return rs.mgr.UpdateResource(ctx, incoming)
+	if err := rs.mgr.UpdateResource(ctx, incoming); err != nil {
+		return err
+	}
+	rs.raiseUpdateEvent(incoming)
+	return nil
 }
 
-func (rs ResourceService) Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceFullName string) (*resource.Resource, error) {
+func (rs ResourceService) Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceFullName string) (*resource.Resource, error) { // nolint:gocritic
 	if resourceFullName == "" {
 		rs.logger.Error("resource full name is empty")
 		return nil, errors.InvalidArgument(resource.EntityResource, "empty resource full name")
@@ -142,11 +160,11 @@ func (rs ResourceService) Get(ctx context.Context, tnnt tenant.Tenant, store res
 	return rs.repo.ReadByFullName(ctx, tnnt, store, resourceFullName)
 }
 
-func (rs ResourceService) GetAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error) {
+func (rs ResourceService) GetAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error) { // nolint:gocritic
 	return rs.repo.ReadAll(ctx, tnnt, store)
 }
 
-func (rs ResourceService) Deploy(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
+func (rs ResourceService) Deploy(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error { // nolint:gocritic
 	multiError := errors.NewMultiError("error batch updating resources")
 	for _, r := range resources {
 		if err := rs.mgr.Validate(r); err != nil {
@@ -181,11 +199,30 @@ func (rs ResourceService) Deploy(ctx context.Context, tnnt tenant.Tenant, store 
 		return errors.MultiToError(multiError)
 	}
 
+	var toCreate []*resource.Resource
+	var toUpdate []*resource.Resource
+	for _, r := range toUpdateOnStore {
+		if r.Status() == resource.StatusToCreate {
+			toCreate = append(toCreate, r)
+		} else if r.Status() == resource.StatusToUpdate {
+			toUpdate = append(toUpdate, r)
+		}
+	}
+
 	multiError.Append(rs.mgr.BatchUpdate(ctx, store, toUpdateOnStore))
+
+	for _, r := range toCreate {
+		rs.raiseCreateEvent(r)
+	}
+
+	for _, r := range toUpdate {
+		rs.raiseUpdateEvent(r)
+	}
+
 	return errors.MultiToError(multiError)
 }
 
-func (rs ResourceService) getResourcesToBatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, incomings []*resource.Resource) ([]*resource.Resource, error) {
+func (rs ResourceService) getResourcesToBatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, incomings []*resource.Resource) ([]*resource.Resource, error) { // nolint:gocritic
 	existingResources, readErr := rs.repo.ReadAll(ctx, tnnt, store)
 	if readErr != nil {
 		rs.logger.Error("error reading all existing resources: %s", readErr)
@@ -232,6 +269,32 @@ func (rs ResourceService) getResourcesToBatchUpdate(ctx context.Context, tnnt te
 		me.Append(err)
 	}
 	return toUpdateOnStore, errors.MultiToError(me)
+}
+
+func (rs ResourceService) raiseCreateEvent(res *resource.Resource) { // nolint:gocritic
+	if res.Status() != resource.StatusSuccess {
+		return
+	}
+
+	ev, err := event.NewResourceCreatedEvent(res)
+	if err != nil {
+		rs.logger.Error("error creating event for resource create: %s", err)
+		return
+	}
+	rs.eventHandler.HandleEvent(ev)
+}
+
+func (rs ResourceService) raiseUpdateEvent(res *resource.Resource) { // nolint:gocritic
+	if res.Status() != resource.StatusSuccess {
+		return
+	}
+
+	ev, err := event.NewResourceUpdatedEvent(res)
+	if err != nil {
+		rs.logger.Error("error creating event for resource update: %s", err)
+		return
+	}
+	rs.eventHandler.HandleEvent(ev)
 }
 
 func createFullNameToResourceMap(resources []*resource.Resource) map[string]*resource.Resource {

@@ -11,6 +11,7 @@ type ServerConfig struct {
 	ResourceManagers []ResourceManager `mapstructure:"resource_managers"`
 	Plugin           PluginConfig      `mapstructure:"plugin"`
 	Replay           ReplayConfig      `mapstructure:"replay"`
+	Publisher        *Publisher        `mapstructure:"publisher"`
 }
 
 type Serve struct {
@@ -54,4 +55,16 @@ type PluginConfig struct {
 // TODO: add worker interval
 type ReplayConfig struct {
 	ReplayTimeout time.Duration `mapstructure:"replay_timeout" default:"3h"`
+}
+
+type Publisher struct {
+	Type   string      `mapstructure:"type" default:"kafka"`
+	Buffer int         `mapstructure:"buffer"`
+	Config interface{} `mapstructure:"config"`
+}
+
+type PublisherKafkaConfig struct {
+	Topic               string   `mapstructure:"topic"`
+	BatchIntervalSecond int      `mapstructure:"batch_interval_second"`
+	BrokerURLs          []string `mapstructure:"broker_urls"`
 }

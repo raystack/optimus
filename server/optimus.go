@@ -14,11 +14,13 @@ import (
 	"github.com/hashicorp/go-hclog"
 	hPlugin "github.com/hashicorp/go-plugin"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mitchellh/mapstructure"
 	"github.com/prometheus/client_golang/prometheus"
 	slackapi "github.com/slack-go/slack"
 	"google.golang.org/grpc"
 
 	"github.com/goto/optimus/config"
+	"github.com/goto/optimus/core/event/moderator"
 	jHandler "github.com/goto/optimus/core/job/handler/v1beta1"
 	jResolver "github.com/goto/optimus/core/job/resolver"
 	jService "github.com/goto/optimus/core/job/service"
@@ -33,6 +35,7 @@ import (
 	"github.com/goto/optimus/ext/notify/pagerduty"
 	"github.com/goto/optimus/ext/notify/slack"
 	bqStore "github.com/goto/optimus/ext/store/bigquery"
+	"github.com/goto/optimus/ext/transport/kafka"
 	"github.com/goto/optimus/internal/compiler"
 	"github.com/goto/optimus/internal/errors"
 	"github.com/goto/optimus/internal/models"
@@ -64,6 +67,8 @@ type OptimusServer struct {
 
 	pluginRepo *models.PluginRepository
 	cleanupFn  []func()
+
+	publisherHandler *moderator.EventHandler
 }
 
 func New(conf *config.ServerConfig) (*OptimusServer, error) {
@@ -79,6 +84,7 @@ func New(conf *config.ServerConfig) (*OptimusServer, error) {
 	}
 
 	setupFns := []setupFn{
+		server.setupPublisher,
 		server.setupPlugins,
 		server.setupTelemetry,
 		server.setupAppKey,
@@ -99,6 +105,45 @@ func New(conf *config.ServerConfig) (*OptimusServer, error) {
 	server.startListening()
 
 	return server, nil
+}
+
+func (s *OptimusServer) setupPublisher() error {
+	if s.conf.Publisher == nil {
+		s.publisherHandler = moderator.NewEventHandler(nil, s.logger)
+		return nil
+	}
+
+	ch := make(chan []byte, s.conf.Publisher.Buffer)
+
+	var worker *moderator.Worker
+
+	switch s.conf.Publisher.Type {
+	case "kafka":
+		var kafkaConfig config.PublisherKafkaConfig
+		if err := mapstructure.Decode(s.conf.Publisher.Config, &kafkaConfig); err != nil {
+			return err
+		}
+
+		writer := kafka.NewWriter(kafkaConfig.BrokerURLs, kafkaConfig.Topic, s.logger)
+		interval := time.Second * time.Duration(kafkaConfig.BatchIntervalSecond)
+		worker = moderator.NewWorker(ch, writer, interval, s.logger)
+	default:
+		return fmt.Errorf("publisher with type [%s] is not recognized", s.conf.Publisher.Type)
+	}
+
+	ctx, cancel := context.WithCancel(context.TODO())
+	go worker.Run(ctx)
+
+	s.cleanupFn = append(s.cleanupFn, func() {
+		cancel()
+
+		if err := worker.Close(); err != nil {
+			s.logger.Error("error closing publishing worker: %v", err)
+		}
+	})
+
+	s.publisherHandler = moderator.NewEventHandler(ch, s.logger)
+	return nil
 }
 
 func (s *OptimusServer) setupPlugins() error {
@@ -242,7 +287,7 @@ func (s *OptimusServer) setupHandlers() error {
 	resourceRepository := resource.NewRepository(s.dbPool)
 	backupRepository := resource.NewBackupRepository(s.dbPool)
 	resourceManager := rService.NewResourceManager(resourceRepository, s.logger)
-	resourceService := rService.NewResourceService(s.logger, resourceRepository, resourceManager, tenantService)
+	resourceService := rService.NewResourceService(s.logger, resourceRepository, resourceManager, tenantService, s.publisherHandler)
 	backupService := rService.NewBackupService(backupRepository, resourceRepository, resourceManager)
 
 	// Register datastore
