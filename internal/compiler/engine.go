@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"text/template"
 	"time"
@@ -39,13 +40,15 @@ func (e *Engine) Compile(templateMap map[string]string, context map[string]any) 
 	for name, content := range templateMap {
 		tmpl, err := e.baseTemplate.New(name).Parse(content)
 		if err != nil {
-			return nil, errors.AddErrContext(err, EntityCompiler, "unable to parse content for "+name)
+			msg := fmt.Sprintf("unable to parse content for %s: %s", name, err.Error())
+			return nil, errors.InvalidArgument(EntityCompiler, msg)
 		}
 
 		var buf bytes.Buffer
 		err = tmpl.Execute(&buf, context)
 		if err != nil {
-			return nil, errors.AddErrContext(err, EntityCompiler, "unable to render content for "+name)
+			msg := fmt.Sprintf("unable to render content for %s: %s", name, err.Error())
+			return nil, errors.InvalidArgument(EntityCompiler, msg)
 		}
 		rendered[name] = strings.TrimSpace(buf.String())
 	}
