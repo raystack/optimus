@@ -194,7 +194,7 @@ func (jh *JobHandler) GetJobSpecification(ctx context.Context, req *pb.GetJobSpe
 
 	// TODO: return 404 if job is not found
 	return &pb.GetJobSpecificationResponse{
-		Spec: toJobProto(jobSpec),
+		Spec: ToJobProto(jobSpec),
 	}, nil
 }
 
@@ -211,7 +211,7 @@ func (jh *JobHandler) GetJobSpecifications(ctx context.Context, req *pb.GetJobSp
 		jobSpecResponseProtos = append(jobSpecResponseProtos, &pb.JobSpecificationResponse{
 			ProjectName:   jobSpec.Tenant().ProjectName().String(),
 			NamespaceName: jobSpec.Tenant().NamespaceName().String(),
-			Job:           toJobProto(jobSpec),
+			Job:           ToJobProto(jobSpec),
 		})
 	}
 
@@ -229,7 +229,7 @@ func (jh *JobHandler) ListJobSpecification(ctx context.Context, req *pb.ListJobS
 
 	jobSpecificationProtos := make([]*pb.JobSpecification, len(jobSpecs))
 	for i, jobSpec := range jobSpecs {
-		jobSpecificationProtos[i] = toJobProto(jobSpec)
+		jobSpecificationProtos[i] = ToJobProto(jobSpec)
 	}
 
 	// TODO: make a stream response

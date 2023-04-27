@@ -12,7 +12,7 @@ import (
 	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
 )
 
-func toJobProto(jobEntity *job.Job) *pb.JobSpecification {
+func ToJobProto(jobEntity *job.Job) *pb.JobSpecification {
 	return &pb.JobSpecification{
 		Version:          int32(jobEntity.Spec().Version()),
 		Name:             jobEntity.Spec().Name().String(),
@@ -413,7 +413,7 @@ func toBasicInfoSectionProto(jobDetail *job.Job, logMessages []*pb.Log) *pb.JobI
 	return &pb.JobInspectResponse_BasicInfoSection{
 		Destination: jobDetail.Destination().String(),
 		Source:      sources,
-		Job:         toJobProto(jobDetail),
+		Job:         ToJobProto(jobDetail),
 		Notice:      logMessages,
 	}
 }
