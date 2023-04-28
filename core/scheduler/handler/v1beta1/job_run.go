@@ -126,15 +126,17 @@ func buildCriteriaForJobRun(req *pb.JobRunRequest) (*scheduler.JobRunsCriteria, 
 	}, nil
 }
 
-func (h JobRunHandler) UploadToScheduler(ctx context.Context, req *pb.UploadToSchedulerRequest) (*pb.UploadToSchedulerResponse, error) {
+func (h JobRunHandler) UploadToScheduler(_ context.Context, req *pb.UploadToSchedulerRequest) (*pb.UploadToSchedulerResponse, error) {
 	projectName, err := tenant.ProjectNameFrom(req.GetProjectName())
 	if err != nil {
 		return nil, errors.GRPCErr(err, "unable to get projectName")
 	}
-	err = h.service.UploadToScheduler(ctx, projectName)
-	if err != nil {
-		return nil, errors.GRPCErr(err, "\nuploaded to scheduler with error")
-	}
+	go func() {
+		err = h.service.UploadToScheduler(context.Background(), projectName)
+		if err != nil {
+			h.l.Error("Finished upload to scheduler with error: %s", err)
+		}
+	}()
 	return &pb.UploadToSchedulerResponse{}, nil
 }
 

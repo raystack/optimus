@@ -356,24 +356,7 @@ func TestJobRunHandler(t *testing.T) {
 			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity project: project name is empty: unable to get projectName")
 			assert.Nil(t, resp)
 		})
-		t.Run("should fail deployment if UploadToScheduler service fails", func(t *testing.T) {
-			namespaceName := "namespace-name"
-			req := &pb.UploadToSchedulerRequest{
-				ProjectName:   projectName,
-				NamespaceName: &namespaceName,
-			}
-			jobRunService := new(mockJobRunService)
-			jobRunService.On("UploadToScheduler", ctx, tenant.ProjectName(projectName)).
-				Return(fmt.Errorf("some error"))
-			defer jobRunService.AssertExpectations(t)
-			jobRunHandler := v1beta1.NewJobRunHandler(logger, jobRunService, nil)
-
-			resp, err := jobRunHandler.UploadToScheduler(ctx, req)
-			assert.NotNil(t, err)
-			assert.EqualError(t, err, "rpc error: code = Internal desc = some error: \nuploaded to scheduler with error")
-			assert.Nil(t, resp)
-		})
-		t.Run("should return success if deployment succeeds", func(t *testing.T) {
+		t.Run("should return after triggering deploy to scheduler", func(t *testing.T) {
 			namespaceName := "namespace-name"
 			req := &pb.UploadToSchedulerRequest{
 				ProjectName:   projectName,
@@ -381,7 +364,6 @@ func TestJobRunHandler(t *testing.T) {
 			}
 			jobRunService := new(mockJobRunService)
 			jobRunService.On("UploadToScheduler", ctx, tenant.ProjectName(projectName)).Return(nil)
-			defer jobRunService.AssertExpectations(t)
 			jobRunHandler := v1beta1.NewJobRunHandler(logger, jobRunService, nil)
 
 			_, err := jobRunHandler.UploadToScheduler(ctx, req)

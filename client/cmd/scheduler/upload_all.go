@@ -58,13 +58,13 @@ func (u *uploadCommand) PreRunE(_ *cobra.Command, _ []string) error {
 
 func (u *uploadCommand) RunE(_ *cobra.Command, _ []string) error {
 	u.logger.Info("Uploading jobs for project " + u.clientConfig.Project.Name)
-	u.logger.Info("please wait...")
 
 	_, err := u.sendUploadAllRequest(u.clientConfig.Project.Name)
-	u.logger.Info("Finished uploading to scheduler")
 	if err != nil {
-		u.logger.Error("With %v", err.Error())
+		u.logger.Error("Error: %v", err.Error())
+		return err
 	}
+	u.logger.Info("Triggered upload to scheduler, changes will be reflected in scheduler after a few minutes")
 	return nil
 }
 

@@ -45,7 +45,6 @@ const (
 
 type Bucket interface {
 	WriteAll(ctx context.Context, key string, p []byte, opts *blob.WriterOptions) error
-	// ReadAll(ctx context.Context, key string) ([]byte, error)
 	List(opts *blob.ListOptions) *blob.ListIterator
 	Delete(ctx context.Context, key string) error
 	Close() error
@@ -177,7 +176,7 @@ func (s *Scheduler) DeleteJobs(ctx context.Context, t tenant.Tenant, jobNames []
 // deleteDirectoryIfEmpty remove jobs Folder if it exists
 func deleteDirectoryIfEmpty(ctx context.Context, nsDirectoryIdentifier string, bucket Bucket) error {
 	spanCtx, span := startChildSpan(ctx, "deleteDirectoryIfEmpty")
-	span.End()
+	defer span.End()
 
 	jobsDir := pathForJobDirectory(jobsDir, nsDirectoryIdentifier)
 
