@@ -37,21 +37,19 @@ type EventHandler interface {
 }
 
 type ResourceService struct {
-	repo              ResourceRepository
-	mgr               ResourceManager
-	tnntDetailsGetter TenantDetailsGetter
+	repo ResourceRepository
+	mgr  ResourceManager
 
 	logger       log.Logger
 	eventHandler EventHandler
 }
 
-func NewResourceService(logger log.Logger, repo ResourceRepository, mgr ResourceManager, tnntDetailsGetter TenantDetailsGetter, eventHandler EventHandler) *ResourceService {
+func NewResourceService(logger log.Logger, repo ResourceRepository, mgr ResourceManager, eventHandler EventHandler) *ResourceService {
 	return &ResourceService{
-		repo:              repo,
-		mgr:               mgr,
-		tnntDetailsGetter: tnntDetailsGetter,
-		logger:            logger,
-		eventHandler:      eventHandler,
+		repo:         repo,
+		mgr:          mgr,
+		logger:       logger,
+		eventHandler: eventHandler,
 	}
 }
 
@@ -77,11 +75,6 @@ func (rs ResourceService) Create(ctx context.Context, incoming *resource.Resourc
 			rs.logger.Error("error getting resource [%s]: %s", incoming.FullName(), err)
 			return err
 		}
-
-		if _, err := rs.tnntDetailsGetter.GetDetails(ctx, incoming.Tenant()); err != nil {
-			rs.logger.Error("error getting tenant for resource [%s] details: %s", incoming.FullName(), err)
-			return err
-		}
 		incoming.MarkToCreate()
 
 		if err := rs.repo.Create(ctx, incoming); err != nil {
@@ -89,6 +82,9 @@ func (rs ResourceService) Create(ctx context.Context, incoming *resource.Resourc
 			return err
 		}
 	} else {
+		if existing.Status() == resource.StatusSuccess || existing.Status() == resource.StatusExistInStore {
+			return nil // Note: return in case resource already exists
+		}
 		if !resource.StatusForToCreate(existing.Status()) {
 			msg := fmt.Sprintf("cannot create resource [%s] since it already exists with status [%s]", incoming.FullName(), existing.Status())
 			rs.logger.Error(msg)
