@@ -163,6 +163,7 @@ hook_transporter = SuperKubernetesPodOperator(
     get_logs=True,
     dag=dag,
     in_cluster=True,
+    depends_on_past=False,
     is_delete_operator_pod=True,
     do_xcom_push=False,
     env_vars=executor_env_vars,
@@ -196,6 +197,7 @@ hook_predator = SuperKubernetesPodOperator(
     get_logs=True,
     dag=dag,
     in_cluster=True,
+    depends_on_past=False,
     is_delete_operator_pod=True,
     do_xcom_push=False,
     env_vars=executor_env_vars,
@@ -229,6 +231,7 @@ hook_failureHook = SuperKubernetesPodOperator(
     get_logs=True,
     dag=dag,
     in_cluster=True,
+    depends_on_past=False,
     is_delete_operator_pod=True,
     do_xcom_push=False,
     env_vars=executor_env_vars,
@@ -254,6 +257,7 @@ wait_foo__dash__intra__dash__dep__dash__job = SuperExternalTaskSensor(
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     task_id="wait_foo-intra-dep-job-bq",
+    depends_on_past=False,
     dag=dag
 )
 
@@ -268,6 +272,7 @@ wait_foo__dash__inter__dash__dep__dash__job = SuperExternalTaskSensor(
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     task_id="wait_foo-inter-dep-job-bq-bq",
+    depends_on_past=False,
     dag=dag
 )
 
@@ -282,6 +287,7 @@ wait_foo__dash__external__dash__optimus__dash__dep__dash__job = SuperExternalTas
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     task_id="wait_foo-external-optimus-dep-job-bq-bq",
+    depends_on_past=False,
     dag=dag
 )
 # arrange inter task dependencies

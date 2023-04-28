@@ -200,6 +200,7 @@ hook_{{$hookName}} = SuperKubernetesPodOperator(
     get_logs=True,
     dag=dag,
     in_cluster=True,
+    depends_on_past=False,
     is_delete_operator_pod=True,
     do_xcom_push=False,
     env_vars=executor_env_vars,
@@ -233,6 +234,7 @@ wait_{{ $dependencyName }} = SuperExternalTaskSensor(
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     task_id="wait_{{$upstream.JobName | trunc 200}}-{{$upstream.TaskName}}",
+    depends_on_past=False,
     dag=dag
 )
 {{ end}}
@@ -248,6 +250,7 @@ wait_{{$httpUpstream.Name}} = ExternalHttpSensor(
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     task_id='wait_{{$httpUpstream.Name | trunc 200}}',
+    depends_on_past=False,
     dag=dag
 )
 {{- end -}}
