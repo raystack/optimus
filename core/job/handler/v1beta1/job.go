@@ -58,9 +58,9 @@ type JobService interface {
 	Get(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name) (jobSpec *job.Job, err error)
 	GetTaskInfo(ctx context.Context, task job.Task) (*plugin.Info, error)
 	GetByFilter(ctx context.Context, filters ...filter.FilterOpt) (jobSpecs []*job.Job, err error)
-	ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, jobNamesWithValidationError []job.Name, logWriter writer.LogWriter) error
+	ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, jobNamesWithInvalidSpec []job.Name, logWriter writer.LogWriter) error
 	Refresh(ctx context.Context, projectName tenant.ProjectName, namespaceNames, jobNames []string, logWriter writer.LogWriter) error
-	Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, logWriter writer.LogWriter) error
+	Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, jobNamesWithInvalidSpec []job.Name, logWriter writer.LogWriter) error
 
 	GetJobBasicInfo(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, spec *job.Spec) (*job.Job, writer.BufferedLogger)
 	GetUpstreamsToInspect(ctx context.Context, subjectJob *job.Job, localJob bool) ([]*job.Upstream, error)
@@ -302,7 +302,7 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 			continue
 		}
 
-		jobSpecs, jobNamesWithValidationErrors, err := fromJobProtos(request.Jobs)
+		jobSpecs, jobNamesWithInvalidSpec, err := fromJobProtos(request.Jobs)
 		if err != nil {
 			errMsg := fmt.Sprintf("[%s] failed to adapt job specifications: %s", request.GetNamespaceName(), err.Error())
 			jh.l.Error(errMsg)
@@ -311,7 +311,7 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 			errMessages = append(errMessages, errMsg)
 		}
 
-		if err := jh.jobService.ReplaceAll(stream.Context(), jobTenant, jobSpecs, jobNamesWithValidationErrors, responseWriter); err != nil {
+		if err := jh.jobService.ReplaceAll(stream.Context(), jobTenant, jobSpecs, jobNamesWithInvalidSpec, responseWriter); err != nil {
 			errMsg := fmt.Sprintf("[%s] replace all job specifications failure: %s", request.NamespaceName, err.Error())
 			jh.l.Error(errMsg)
 			responseWriter.Write(writer.LogLevelError, errMsg)
@@ -373,14 +373,14 @@ func (jh *JobHandler) CheckJobSpecifications(req *pb.CheckJobSpecificationsReque
 	}
 
 	me := errors.NewMultiError("check / validate job spec errors")
-	jobSpecs, _, err := fromJobProtos(req.Jobs)
+	jobSpecs, jobNamesWithInvalidSpec, err := fromJobProtos(req.Jobs)
 	if err != nil {
 		errorMsg := fmt.Sprintf("failure when adapting job specifications: %s", err.Error())
 		jh.l.Error(errorMsg)
 		me.Append(err)
 	}
 
-	if err := jh.jobService.Validate(stream.Context(), jobTenant, jobSpecs, responseWriter); err != nil {
+	if err := jh.jobService.Validate(stream.Context(), jobTenant, jobSpecs, jobNamesWithInvalidSpec, responseWriter); err != nil {
 		me.Append(err)
 	}
 

@@ -757,7 +757,7 @@ func TestNewJobHandler(t *testing.T) {
 		})
 	})
 	t.Run("ReplaceAllJobSpecifications", func(t *testing.T) {
-		var jobNamesWithValidationError []job.Name
+		var jobNamesWithInvalidSpec []job.Name
 		t.Run("replaces all job specifications of a tenant", func(t *testing.T) {
 			jobService := new(JobService)
 
@@ -800,7 +800,7 @@ func TestNewJobHandler(t *testing.T) {
 			stream.On("Recv").Return(request, nil).Once()
 			stream.On("Recv").Return(nil, io.EOF).Once()
 
-			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesWithValidationError, mock.Anything).Return(nil)
+			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesWithInvalidSpec, mock.Anything).Return(nil)
 
 			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Twice()
 
@@ -845,8 +845,8 @@ func TestNewJobHandler(t *testing.T) {
 			stream.On("Recv").Return(request2, nil).Once()
 			stream.On("Recv").Return(nil, io.EOF).Once()
 
-			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesWithValidationError, mock.Anything).Return(nil)
-			jobService.On("ReplaceAll", ctx, otherTenant, mock.Anything, jobNamesWithValidationError, mock.Anything).Return(nil)
+			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesWithInvalidSpec, mock.Anything).Return(nil)
+			jobService.On("ReplaceAll", ctx, otherTenant, mock.Anything, jobNamesWithInvalidSpec, mock.Anything).Return(nil)
 
 			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Twice()
 
@@ -939,7 +939,7 @@ func TestNewJobHandler(t *testing.T) {
 			stream.On("Recv").Return(request2, nil).Once()
 			stream.On("Recv").Return(nil, io.EOF).Once()
 
-			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesWithValidationError, mock.Anything).Return(nil)
+			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesWithInvalidSpec, mock.Anything).Return(nil)
 
 			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Times(4)
 
@@ -988,7 +988,7 @@ func TestNewJobHandler(t *testing.T) {
 			stream.On("Recv").Return(request, nil).Once()
 			stream.On("Recv").Return(nil, io.EOF).Once()
 
-			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesWithValidationError, mock.Anything).Return(errors.New("internal error"))
+			jobService.On("ReplaceAll", ctx, sampleTenant, mock.Anything, jobNamesWithInvalidSpec, mock.Anything).Return(errors.New("internal error"))
 
 			stream.On("Send", mock.AnythingOfType("*optimus.ReplaceAllJobSpecificationsResponse")).Return(nil).Times(3)
 
@@ -2011,13 +2011,13 @@ func (_m *JobService) Refresh(ctx context.Context, projectName tenant.ProjectNam
 	return r0
 }
 
-// ReplaceAll provides a mock function with given fields: ctx, jobTenant, jobs, jobNamesWithValidationError, logWriter
-func (_m *JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, jobNamesWithValidationError []job.Name, logWriter writer.LogWriter) error {
-	ret := _m.Called(ctx, jobTenant, jobs, jobNamesWithValidationError, logWriter)
+// ReplaceAll provides a mock function with given fields: ctx, jobTenant, jobs, jobNamesWithInvalidSpec, logWriter
+func (_m *JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, jobNamesWithInvalidSpec []job.Name, logWriter writer.LogWriter) error {
+	ret := _m.Called(ctx, jobTenant, jobs, jobNamesWithInvalidSpec, logWriter)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []*job.Spec, []job.Name, writer.LogWriter) error); ok {
-		r0 = rf(ctx, jobTenant, jobs, jobNamesWithValidationError, logWriter)
+		r0 = rf(ctx, jobTenant, jobs, jobNamesWithInvalidSpec, logWriter)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -2040,12 +2040,12 @@ func (_m *JobService) Update(ctx context.Context, jobTenant tenant.Tenant, jobs 
 }
 
 // Validate provides a mock function with given fields: ctx, jobTenant, jobSpecs, logWriter
-func (_m *JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, logWriter writer.LogWriter) error {
+func (_m *JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, jobNamesWithInvalidSpec []job.Name, logWriter writer.LogWriter) error {
 	ret := _m.Called(ctx, jobTenant, jobSpecs, logWriter)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []*job.Spec, writer.LogWriter) error); ok {
-		r0 = rf(ctx, jobTenant, jobSpecs, logWriter)
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []*job.Spec, []job.Name, writer.LogWriter) error); ok {
+		r0 = rf(ctx, jobTenant, jobSpecs, jobNamesWithInvalidSpec, logWriter)
 	} else {
 		r0 = ret.Error(0)
 	}
