@@ -40,7 +40,7 @@ func (j JobRepository) Add(ctx context.Context, jobs []*job.Job) ([]*job.Job, er
 		}
 		storedJobs = append(storedJobs, jobEntity)
 	}
-	return storedJobs, errors.MultiToError(me)
+	return storedJobs, me.ToErr()
 }
 
 func (j JobRepository) insertJobSpec(ctx context.Context, jobEntity *job.Job) error {
@@ -101,7 +101,7 @@ func (j JobRepository) Update(ctx context.Context, jobs []*job.Job) ([]*job.Job,
 		}
 		storedJobs = append(storedJobs, jobEntity)
 	}
-	return storedJobs, errors.MultiToError(me)
+	return storedJobs, me.ToErr()
 }
 
 func (j JobRepository) preCheckUpdate(ctx context.Context, jobEntity *job.Job) error {
@@ -273,7 +273,7 @@ func (j JobRepository) toJobNameWithUpstreams(storeJobsWithUpstreams []*JobWithU
 		jobNameWithUpstreams[name] = upstreams
 	}
 
-	if err := errors.MultiToError(me); err != nil {
+	if err := me.ToErr(); err != nil {
 		return nil, err
 	}
 	return jobNameWithUpstreams, nil
@@ -693,7 +693,7 @@ func (j JobRepository) GetAllByTenant(ctx context.Context, jobTenant tenant.Tena
 		jobs = append(jobs, jobSpec)
 	}
 
-	return jobs, errors.MultiToError(me)
+	return jobs, me.ToErr()
 }
 
 func (j JobRepository) GetUpstreams(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*job.Upstream, error) {
@@ -810,5 +810,5 @@ func fromStoreDownstream(storeDownstreamList []Downstream) ([]*job.Downstream, e
 		}
 		downstreamList = append(downstreamList, job.NewDownstream(downstreamJobName, downstreamProjectName, downstreamNamespaceName, downstreamTaskName))
 	}
-	return downstreamList, errors.MultiToError(me)
+	return downstreamList, me.ToErr()
 }

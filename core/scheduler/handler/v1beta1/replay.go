@@ -1,7 +1,6 @@
 package v1beta1
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -88,6 +87,7 @@ func (h ReplayHandler) ListReplay(ctx context.Context, req *pb.ListReplayRequest
 func (h ReplayHandler) GetReplay(ctx context.Context, req *pb.GetReplayRequest) (*pb.GetReplayResponse, error) {
 	id, err := uuid.Parse(req.GetReplayId())
 	if err != nil {
+		err = errors.InvalidArgument(scheduler.EntityReplay, err.Error())
 		return nil, errors.GRPCErr(err, "unable to get replay for replayID "+req.GetReplayId())
 	}
 
@@ -134,7 +134,7 @@ func parseJobConfig(jobConfig string) (map[string]string, error) {
 		keyValue := strings.Split(config, "=")
 		valueLen := 2
 		if len(keyValue) != valueLen {
-			return nil, fmt.Errorf("error on job config value, %s", config)
+			return nil, errors.InvalidArgument(scheduler.EntityReplay, "error on job config value, "+config)
 		}
 		key := strings.TrimSpace(strings.ToUpper(keyValue[0]))
 		value := keyValue[1]

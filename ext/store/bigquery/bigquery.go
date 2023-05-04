@@ -180,7 +180,7 @@ func (s Store) BatchUpdate(ctx context.Context, resources []*resource.Resource) 
 		me.Append(state.Err)
 	}
 
-	return errors.MultiToError(me)
+	return me.ToErr()
 }
 
 func (Store) Validate(r *resource.Resource) error {

@@ -183,5 +183,5 @@ func BatchesFrom(resources []*resource.Resource, provider ClientProvider) (map[s
 
 		mapping[dataset.FullName()] = batch
 	}
-	return mapping, errors.MultiToError(me)
+	return mapping, me.ToErr()
 }

@@ -97,17 +97,17 @@ func (n *NotifyService) Push(ctx context.Context, event *scheduler.Event) error 
 	} else if event.Type.IsOfType(scheduler.EventCategorySLAMiss) {
 		jobSLAMissCounter.Inc()
 	}
-	return errors.MultiToError(multierror)
+	return multierror.ToErr()
 }
 
 func (n *NotifyService) Close() error {
-	multierror := errors.NewMultiError("ErrorsInNotifyClose")
+	me := errors.NewMultiError("ErrorsInNotifyClose")
 	for _, notify := range n.notifyChannels {
 		if cerr := notify.Close(); cerr != nil {
-			multierror.Append(cerr)
+			me.Append(cerr)
 		}
 	}
-	return errors.MultiToError(multierror)
+	return me.ToErr()
 }
 
 func NewNotifyService(l log.Logger, jobRepo JobRepository, tenantService TenantService, notifyChan map[string]Notifier) *NotifyService {

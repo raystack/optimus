@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/goto/optimus/core/scheduler"
+	"github.com/goto/optimus/internal/errors"
 	"github.com/goto/optimus/internal/lib/cron"
 )
 
@@ -90,7 +90,7 @@ func parseResponse(resp *http.Response) ([]byte, error) {
 	body, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		return body, fmt.Errorf("failed to read airflow response: %w", err)
+		return body, errors.Wrap(EntityAirflow, "failed to read airflow response", err)
 	}
 	return body, nil
 }
@@ -117,7 +117,7 @@ func buildEndPoint(host, reqURL, pathParam string) string {
 func getJobRuns(res DagRunListResponse, spec *cron.ScheduleSpec) ([]*scheduler.JobRunStatus, error) {
 	var jobRunList []*scheduler.JobRunStatus
 	if res.TotalEntries > pageLimit {
-		return jobRunList, errors.New("total number of entries exceed page limit")
+		return jobRunList, errors.InternalError(EntityAirflow, "total number of entries exceed page limit", nil)
 	}
 	for _, dag := range res.DagRuns {
 		if !dag.ExternalTrigger { // only include scheduled runs

@@ -500,7 +500,7 @@ func (s SpecHTTPUpstream) validate() error {
 	me := errors.NewMultiError("errors on spec http upstream")
 	me.Append(validateMap(s.headers))
 	me.Append(validateMap(s.params))
-	return errors.MultiToError(me)
+	return me.ToErr()
 }
 
 type SpecHTTPUpstreamBuilder struct {
@@ -581,7 +581,7 @@ func (s UpstreamSpec) validate() error {
 	for _, u := range s.httpUpstreams {
 		me.Append(u.validate())
 	}
-	return errors.MultiToError(me)
+	return me.ToErr()
 }
 
 type SpecUpstreamBuilder struct {

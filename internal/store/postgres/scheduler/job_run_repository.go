@@ -79,7 +79,10 @@ func (j *JobRunRepository) GetByID(ctx context.Context, id scheduler.JobRunID) (
 		Scan(&jr.ID, &jr.JobName, &jr.NamespaceName, &jr.ProjectName, &jr.ScheduledAt, &jr.StartTime, &jr.EndTime,
 			&jr.Status, &jr.SLADefinition, &jr.SLAAlert, &jr.Monitoring)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.NotFound(scheduler.EntityJobRun, "no record for job run id "+id.UUID().String())
+		}
+		return nil, errors.Wrap(scheduler.EntityJobRun, "error while getting job run", err)
 	}
 	return jr.toJobRun()
 }

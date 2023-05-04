@@ -23,7 +23,6 @@ const (
 )
 
 type OperatorRunRepository struct {
-	// TODO: Add test
 	db *pgxpool.Pool
 }
 

@@ -3,6 +3,7 @@ package dag
 import (
 	"bytes"
 	_ "embed"
+	"fmt"
 	"text/template"
 
 	"github.com/goto/optimus/config"
@@ -62,7 +63,8 @@ func (c *Compiler) Compile(jobDetails *scheduler.JobWithDetails) ([]byte, error)
 
 	var buf bytes.Buffer
 	if err = c.template.Execute(&buf, templateContext); err != nil {
-		return nil, errors.InternalError(EntitySchedulerAirflow, "unable to compile template for job "+jobDetails.Name.String(), err)
+		msg := fmt.Sprintf("unable to compile template for job %s, %s", jobDetails.Name.String(), err.Error())
+		return nil, errors.InvalidArgument(EntitySchedulerAirflow, msg)
 	}
 
 	return buf.Bytes(), nil

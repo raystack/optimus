@@ -57,7 +57,7 @@ func fromJobProtos(protoJobSpecs []*pb.JobSpecification) ([]*job.Spec, []job.Nam
 		}
 		jobSpecs = append(jobSpecs, jobSpec)
 	}
-	return jobSpecs, jobNameWithValidationErrors, errors.MultiToError(me)
+	return jobSpecs, jobNameWithValidationErrors, me.ToErr()
 }
 
 func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {

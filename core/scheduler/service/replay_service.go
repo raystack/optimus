@@ -8,6 +8,7 @@ import (
 
 	"github.com/goto/optimus/core/scheduler"
 	"github.com/goto/optimus/core/tenant"
+	"github.com/goto/optimus/internal/errors"
 	"github.com/goto/optimus/internal/lib/cron"
 )
 
@@ -40,16 +41,17 @@ type ReplayService struct {
 func (r ReplayService) CreateReplay(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, config *scheduler.ReplayConfig) (replayID uuid.UUID, err error) {
 	subjectJob, err := r.jobRepo.GetJobDetails(ctx, tenant.ProjectName(), jobName)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("unable to get job details from DB for jobName: %s, project:%s,  error:%w ", jobName, tenant.ProjectName().String(), err)
+		return uuid.Nil, errors.AddErrContext(err, scheduler.EntityReplay,
+			fmt.Sprintf("unable to get job details for jobName: %s, project:%s", jobName, tenant.ProjectName().String()))
 	}
 
 	if subjectJob.Job.Tenant.NamespaceName() != tenant.NamespaceName() {
-		return uuid.Nil, fmt.Errorf("job %s does not exist in %s namespace", jobName, tenant.NamespaceName().String())
+		return uuid.Nil, errors.InvalidArgument(scheduler.EntityReplay, fmt.Sprintf("job %s does not exist in %s namespace", jobName, tenant.NamespaceName().String()))
 	}
 
 	jobCron, err := cron.ParseCronSchedule(subjectJob.Schedule.Interval)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("encountered unexpected error when parsing job cron interval for job %s: %w", jobName, err)
+		return uuid.Nil, errors.InternalError(scheduler.EntityReplay, "invalid cron interval for "+jobName.String(), err)
 	}
 
 	replayReq := scheduler.NewReplayRequest(jobName, tenant, config, scheduler.ReplayStateCreated)

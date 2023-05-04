@@ -14,13 +14,13 @@ func TestMultiError(t *testing.T) {
 			me := errors.NewMultiError("multi")
 			me.Append(nil)
 
-			assert.Nil(t, errors.MultiToError(me))
+			assert.Nil(t, me.ToErr())
 		})
 		t.Run("adds other type of error", func(t *testing.T) {
 			me := errors.NewMultiError("multi")
 			me.Append(errors.NotFound("dummy", "not found"))
 
-			assert.NotNil(t, errors.MultiToError(me))
+			assert.NotNil(t, me.ToErr())
 			assert.EqualError(t, me, "multi:\n not found for entity dummy: not found")
 		})
 		t.Run("adds errors in multi error to list", func(t *testing.T) {
@@ -30,7 +30,7 @@ func TestMultiError(t *testing.T) {
 			me := errors.NewMultiError("top level error")
 			me.Append(me1)
 
-			assert.NotNil(t, errors.MultiToError(me))
+			assert.NotNil(t, me.ToErr())
 			assert.EqualError(t, me, "top level error:\n not found for entity dummy: not found")
 		})
 	})

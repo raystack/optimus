@@ -11,6 +11,7 @@ import (
 	"github.com/goto/optimus/config"
 	"github.com/goto/optimus/core/scheduler"
 	"github.com/goto/optimus/core/tenant"
+	"github.com/goto/optimus/internal/errors"
 	"github.com/goto/optimus/internal/lib/cron"
 )
 
@@ -204,16 +205,16 @@ func identifyUpdatedRunStatus(existingJobRuns, incomingJobRuns []*scheduler.JobR
 func (w ReplayWorker) getJobCron(ctx context.Context, replayReq *scheduler.ReplayWithRun) (*cron.ScheduleSpec, error) {
 	jobWithDetails, err := w.jobRepo.GetJobDetails(ctx, replayReq.Replay.Tenant().ProjectName(), replayReq.Replay.JobName())
 	if err != nil || jobWithDetails == nil {
-		return nil, fmt.Errorf("unable to get job details from DB for jobName: %s, project: %s, error: %w ",
-			replayReq.Replay.JobName(), replayReq.Replay.Tenant().ProjectName(), err)
+		return nil, errors.AddErrContext(err, scheduler.EntityReplay,
+			fmt.Sprintf("unable to get job details for jobName: %s, project: %s", replayReq.Replay.JobName(), replayReq.Replay.Tenant().ProjectName()))
 	}
 	interval := jobWithDetails.Schedule.Interval
 	if interval == "" {
-		return nil, fmt.Errorf("job schedule interval not found")
+		return nil, errors.InvalidArgument(scheduler.EntityReplay, "job schedule interval is empty")
 	}
 	jobCron, err := cron.ParseCronSchedule(interval)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse job cron interval %w", err)
+		return nil, errors.InternalError(scheduler.EntityReplay, "unable to parse job cron interval", err)
 	}
 	return jobCron, nil
 }

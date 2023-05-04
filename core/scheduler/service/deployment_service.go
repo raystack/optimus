@@ -59,26 +59,26 @@ func setJobMetric(t tenant.Tenant, jobs []*scheduler.JobWithDetails) {
 }
 
 func (s *JobRunService) UploadToScheduler(ctx context.Context, projectName tenant.ProjectName) error {
-	multiError := errors.NewMultiError("errorInUploadToScheduler")
+	me := errors.NewMultiError("errorInUploadToScheduler")
 	allJobsWithDetails, err := s.jobRepo.GetAll(ctx, projectName)
-	multiError.Append(err)
+	me.Append(err)
 	if allJobsWithDetails == nil {
-		return errors.MultiToError(multiError)
+		return me.ToErr()
 	}
 	err = s.priorityResolver.Resolve(ctx, allJobsWithDetails)
 	if err != nil {
-		multiError.Append(err)
-		return errors.MultiToError(multiError)
+		me.Append(err)
+		return me.ToErr()
 	}
 	jobGroupByTenant := scheduler.GroupJobsByTenant(allJobsWithDetails)
 	for t, jobs := range jobGroupByTenant {
 		if err = s.deployJobsPerNamespace(ctx, t, jobs); err == nil {
 			s.l.Debug(fmt.Sprintf("[success] namespace: %s, project: %s, deployed", t.NamespaceName().String(), t.ProjectName().String()))
 		}
-		multiError.Append(err)
+		me.Append(err)
 		setJobMetric(t, jobs)
 	}
-	return multiError.ToErr()
+	return me.ToErr()
 }
 
 func (s *JobRunService) deployJobsPerNamespace(ctx context.Context, t tenant.Tenant, jobs []*scheduler.JobWithDetails) error {

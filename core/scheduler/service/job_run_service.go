@@ -110,39 +110,35 @@ func (s *JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proj
 func (s *JobRunService) GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName, criteria *scheduler.JobRunsCriteria) ([]*scheduler.JobRunStatus, error) {
 	jobWithDetails, err := s.jobRepo.GetJobDetails(ctx, projectName, jobName)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get job details from DB for jobName: %s, project:%s,  error:%w ", jobName, projectName, err)
+		msg := fmt.Sprintf("unable to get job details for jobName: %s, project:%s", jobName, projectName)
+		return nil, errors.AddErrContext(err, scheduler.EntityJobRun, msg)
 	}
 	interval := jobWithDetails.Schedule.Interval
 	if interval == "" {
-		return nil, fmt.Errorf("job schedule interval not found")
+		return nil, errors.InvalidArgument(scheduler.EntityJobRun, "cannot get job runs, job interval is empty")
 	}
-	// jobCron
 	jobCron, err := cron.ParseCronSchedule(interval)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse job cron interval %w", err)
+		msg := fmt.Sprintf("unable to parse job cron interval: %s", err)
+		return nil, errors.InternalError(scheduler.EntityJobRun, msg, nil)
 	}
 
 	if criteria.OnlyLastRun {
 		return s.scheduler.GetJobRuns(ctx, jobWithDetails.Job.Tenant, criteria, jobCron)
 	}
-	// validate job query
 	err = validateJobQuery(criteria, jobWithDetails)
 	if err != nil {
 		return nil, err
 	}
-	// get expected runs StartDate and EndDate inclusive
 	expectedRuns := getExpectedRuns(jobCron, criteria.StartDate, criteria.EndDate)
 
-	// call to airflow for get runs
 	actualRuns, err := s.scheduler.GetJobRuns(ctx, jobWithDetails.Job.Tenant, criteria, jobCron)
 	if err != nil {
 		s.l.Error(fmt.Sprintf("unable to get job runs from airflow err: %v", err.Error()))
 		actualRuns = []*scheduler.JobRunStatus{}
 	}
-	// mergeRuns
 	totalRuns := mergeRuns(expectedRuns, actualRuns)
 
-	// filterRuns
 	result := filterRuns(totalRuns, createFilterSet(criteria.Filter))
 
 	return result, nil
@@ -164,16 +160,16 @@ func getExpectedRuns(spec *cron.ScheduleSpec, startTime, endTime time.Time) []*s
 }
 
 func mergeRuns(expected, actual []*scheduler.JobRunStatus) []*scheduler.JobRunStatus {
-	var mergeRuns []*scheduler.JobRunStatus
+	var merged []*scheduler.JobRunStatus
 	m := actualRunMap(actual)
 	for _, exp := range expected {
 		if act, ok := m[exp.ScheduledAt.UTC().String()]; ok {
-			mergeRuns = append(mergeRuns, &act)
+			merged = append(merged, &act)
 		} else {
-			mergeRuns = append(mergeRuns, exp)
+			merged = append(merged, exp)
 		}
 	}
-	return mergeRuns
+	return merged
 }
 
 func actualRunMap(runs []*scheduler.JobRunStatus) map[string]scheduler.JobRunStatus {
@@ -208,13 +204,10 @@ func createFilterSet(filter []string) map[string]struct{} {
 func validateJobQuery(jobQuery *scheduler.JobRunsCriteria, jobWithDetails *scheduler.JobWithDetails) error {
 	jobStartDate := jobWithDetails.Schedule.StartDate
 	if jobStartDate.IsZero() {
-		return fmt.Errorf("job schedule startDate not found in job fetched from DB")
+		return errors.InternalError(scheduler.EntityJobRun, "job schedule startDate not found in job", nil)
 	}
-	givenStartDate := jobQuery.StartDate
-	givenEndDate := jobQuery.EndDate
-
-	if givenStartDate.Before(jobStartDate) || givenEndDate.Before(jobStartDate) {
-		return fmt.Errorf("invalid date range")
+	if jobQuery.StartDate.Before(jobStartDate) || jobQuery.EndDate.Before(jobStartDate) {
+		return errors.InvalidArgument(scheduler.EntityJobRun, "invalid date range, interval contains dates before job start")
 	}
 	return nil
 }

@@ -192,7 +192,7 @@ func (rs ResourceService) Deploy(ctx context.Context, tnnt tenant.Tenant, store 
 
 	if len(toUpdateOnStore) == 0 {
 		rs.logger.Warn("no resources to be batch updated")
-		return errors.MultiToError(multiError)
+		return multiError.ToErr()
 	}
 
 	var toCreate []*resource.Resource
@@ -215,7 +215,7 @@ func (rs ResourceService) Deploy(ctx context.Context, tnnt tenant.Tenant, store 
 		rs.raiseUpdateEvent(r)
 	}
 
-	return errors.MultiToError(multiError)
+	return multiError.ToErr()
 }
 
 func (rs ResourceService) getResourcesToBatchUpdate(ctx context.Context, tnnt tenant.Tenant, store resource.Store, incomings []*resource.Resource) ([]*resource.Resource, error) { // nolint:gocritic
@@ -264,7 +264,7 @@ func (rs ResourceService) getResourcesToBatchUpdate(ctx context.Context, tnnt te
 		}
 		me.Append(err)
 	}
-	return toUpdateOnStore, errors.MultiToError(me)
+	return toUpdateOnStore, me.ToErr()
 }
 
 func (rs ResourceService) raiseCreateEvent(res *resource.Resource) { // nolint:gocritic

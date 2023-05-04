@@ -21,6 +21,8 @@ const (
 
 	ReplayStateSuccess ReplayState = "success"
 	ReplayStateFailed  ReplayState = "failed"
+
+	EntityReplay = "replay"
 )
 
 type ReplayState string

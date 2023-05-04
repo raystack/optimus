@@ -344,7 +344,7 @@ func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectNa
 		jobsMap[jobName].Upstreams.UpstreamJobs = upstreamList
 	}
 
-	return utils.MapToList[*scheduler.JobWithDetails](jobsMap), errors.MultiToError(multiError)
+	return utils.MapToList[*scheduler.JobWithDetails](jobsMap), multiError.ToErr()
 }
 
 func NewJobProviderRepository(pool *pgxpool.Pool) *JobRepository {

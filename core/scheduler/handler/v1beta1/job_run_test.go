@@ -504,7 +504,7 @@ func TestJobRunHandler(t *testing.T) {
 
 			resp, err := jobRunHandler.RegisterJobEvent(ctx, req)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "errors in RegisterJobEvent:\n internal error for entity jobRun: scheduler could not update job run state, err:some error")
+			assert.ErrorContains(t, err, "scheduler could not update job run state")
 			assert.Equal(t, &pb.RegisterJobEventResponse{}, resp)
 		})
 		t.Run("should return error if notify Push fails", func(t *testing.T) {

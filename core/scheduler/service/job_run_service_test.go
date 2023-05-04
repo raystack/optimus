@@ -840,8 +840,8 @@ func TestJobRunService(t *testing.T) {
 			runService := service.NewJobRunService(logger,
 				jobRepo, nil, nil, nil, nil, nil, nil)
 			returnedRuns, err := runService.GetJobRuns(ctx, projName, jobName, criteria)
-			assert.NotNil(t, err)
-			assert.EqualError(t, err, "unable to get job details from DB for jobName: sample_select, project:proj,  error:some error in get job details ")
+			assert.Error(t, err)
+			assert.ErrorContains(t, err, "unable to get job details for jobName: sample_select, project:proj")
 			assert.Nil(t, returnedRuns)
 		})
 		t.Run("should not able to get job runs when scheduler returns empty response", func(t *testing.T) {
@@ -879,7 +879,7 @@ func TestJobRunService(t *testing.T) {
 				jobRepo, nil, nil, nil, sch, nil, nil)
 			returnedRuns, err := runService.GetJobRuns(ctx, projName, jobName, criteria)
 			assert.Nil(t, err)
-			assert.Nil(t, nil, returnedRuns)
+			assert.Nil(t, returnedRuns)
 		})
 		t.Run("should able to get job runs when scheduler returns valid response", func(t *testing.T) {
 			tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
@@ -1050,9 +1050,9 @@ func TestJobRunService(t *testing.T) {
 
 			runService := service.NewJobRunService(logger, jobRepo, nil, nil, nil, nil, nil, nil)
 			returnedRuns, err := runService.GetJobRuns(ctx, projName, jobName, jobQuery)
-			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid date range")
-			assert.Nil(t, nil, returnedRuns)
+			assert.Error(t, err)
+			assert.ErrorContains(t, err, "invalid date range, interval contains dates before job start")
+			assert.Nil(t, returnedRuns)
 		})
 		t.Run("should not able to get job runs when invalid cron interval present at DB", func(t *testing.T) {
 			tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
@@ -1085,9 +1085,9 @@ func TestJobRunService(t *testing.T) {
 
 			runService := service.NewJobRunService(logger, jobRepo, nil, nil, nil, nil, nil, nil)
 			returnedRuns, err := runService.GetJobRuns(ctx, projName, jobName, jobQuery)
-			assert.NotNil(t, err)
-			assert.EqualError(t, err, "unable to parse job cron interval expected exactly 5 fields, found 2: [invalid interval]")
-			assert.Nil(t, nil, returnedRuns)
+			assert.Error(t, err)
+			assert.ErrorContains(t, err, "unable to parse job cron interval: expected exactly 5 fields, found 2: [invalid interval]")
+			assert.Nil(t, returnedRuns)
 		})
 		t.Run("should not able to get job runs when no cron interval present at DB", func(t *testing.T) {
 			tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
@@ -1119,9 +1119,9 @@ func TestJobRunService(t *testing.T) {
 
 			runService := service.NewJobRunService(logger, jobRepo, nil, nil, nil, nil, nil, nil)
 			returnedRuns, err := runService.GetJobRuns(ctx, projName, jobName, jobQuery)
-			assert.NotNil(t, err)
-			assert.EqualError(t, err, "job schedule interval not found")
-			assert.Nil(t, nil, returnedRuns)
+			assert.Error(t, err)
+			assert.ErrorContains(t, err, "cannot get job runs, job interval is empty")
+			assert.Nil(t, returnedRuns)
 		})
 		t.Run("should not able to get job runs when no start date present at DB", func(t *testing.T) {
 			tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())
@@ -1151,9 +1151,9 @@ func TestJobRunService(t *testing.T) {
 			defer jobRepo.AssertExpectations(t)
 			runService := service.NewJobRunService(logger, jobRepo, nil, nil, nil, nil, nil, nil)
 			returnedRuns, err := runService.GetJobRuns(ctx, projName, jobName, jobQuery)
-			assert.NotNil(t, err)
-			assert.EqualError(t, err, "job schedule startDate not found in job fetched from DB")
-			assert.Nil(t, nil, returnedRuns)
+			assert.Error(t, err)
+			assert.ErrorContains(t, err, "job schedule startDate not found in job")
+			assert.Nil(t, returnedRuns)
 		})
 		t.Run("should able to get job runs when only last run is required", func(t *testing.T) {
 			tnnt, _ := tenant.NewTenant(projName.String(), namespaceName.String())

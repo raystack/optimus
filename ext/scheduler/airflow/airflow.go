@@ -108,7 +108,7 @@ func (s *Scheduler) DeployJobs(ctx context.Context, tenant tenant.Tenant, jobs [
 	for _, result := range runner.Run() {
 		multiError.Append(result.Err)
 	}
-	return errors.MultiToError(multiError)
+	return multiError.ToErr()
 }
 
 // TODO list jobs should not refer from the scheduler, rather should list from db and it has nothing to do with scheduler.
@@ -150,27 +150,27 @@ func (s *Scheduler) DeleteJobs(ctx context.Context, t tenant.Tenant, jobNames []
 	if err != nil {
 		return err
 	}
-	multiError := errors.NewMultiError("ErrorsInDeleteJobs")
+	me := errors.NewMultiError("ErrorsInDeleteJobs")
 	for _, jobName := range jobNames {
 		if strings.TrimSpace(jobName) == "" {
-			multiError.Append(errors.InvalidArgument(EntityAirflow, "job name cannot be an empty string"))
+			me.Append(errors.InvalidArgument(EntityAirflow, "job name cannot be an empty string"))
 			continue
 		}
 		blobKey := pathFromJobName(jobsDir, t.NamespaceName().String(), jobName, jobsExtension)
 		if err := bucket.Delete(spanCtx, blobKey); err != nil {
 			// ignore missing files
 			if gcerrors.Code(err) != gcerrors.NotFound {
-				multiError.Append(err)
+				me.Append(err)
 			}
 		}
 	}
 	err = deleteDirectoryIfEmpty(ctx, t.NamespaceName().String(), bucket)
 	if err != nil {
 		if gcerrors.Code(err) != gcerrors.NotFound {
-			multiError.Append(err)
+			me.Append(err)
 		}
 	}
-	return errors.MultiToError(multiError)
+	return me.ToErr()
 }
 
 // deleteDirectoryIfEmpty remove jobs Folder if it exists
@@ -234,7 +234,7 @@ func (s *Scheduler) GetJobRuns(ctx context.Context, tnnt tenant.Tenant, jobQuery
 	dagRunRequest := getDagRunRequest(jobQuery, jobCron)
 	reqBody, err := json.Marshal(dagRunRequest)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(EntityAirflow, "unable to marshal dag run request", err)
 	}
 
 	req := airflowRequest{
@@ -250,12 +250,12 @@ func (s *Scheduler) GetJobRuns(ctx context.Context, tnnt tenant.Tenant, jobQuery
 
 	resp, err := s.client.Invoke(spanCtx, req, schdAuth)
 	if err != nil {
-		return nil, fmt.Errorf("failure reason for fetching airflow dag runs: %w", err)
+		return nil, errors.Wrap(EntityAirflow, "failure while fetching airflow dag runs", err)
 	}
 
 	var dagRunList DagRunListResponse
 	if err := json.Unmarshal(resp, &dagRunList); err != nil {
-		return nil, fmt.Errorf("json error on parsing airflow dag runs: %s: %w", string(resp), err)
+		return nil, errors.Wrap(EntityAirflow, fmt.Sprintf("json error on parsing airflow dag runs: %s", string(resp)), err)
 	}
 
 	return getJobRuns(dagRunList, jobCron)
@@ -328,7 +328,7 @@ func (s *Scheduler) ClearBatch(ctx context.Context, tnnt tenant.Tenant, jobName 
 	}
 	_, err = s.client.Invoke(spanCtx, req, schdAuth)
 	if err != nil {
-		return fmt.Errorf("failure reason for clearing airflow dag runs: %w", err)
+		return errors.Wrap(EntityAirflow, "failure while clearing airflow dag runs", err)
 	}
 	return nil
 }

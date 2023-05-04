@@ -112,7 +112,7 @@ func (j *JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*
 		j.raiseCreateEvent(job)
 	}
 
-	return errors.MultiToError(me)
+	return me.ToErr()
 }
 
 func (j *JobService) Update(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) error {
@@ -140,7 +140,7 @@ func (j *JobService) Update(ctx context.Context, jobTenant tenant.Tenant, specs 
 		j.raiseUpdateEvent(job)
 	}
 
-	return errors.MultiToError(me)
+	return me.ToErr()
 }
 
 func (j *JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag, forceFlag bool) (affectedDownstream []job.FullName, err error) {
@@ -211,7 +211,7 @@ func (j *JobService) GetByFilter(ctx context.Context, filters ...filter.FilterOp
 			}
 			jobs = append(jobs, fetchedJob)
 		}
-		return jobs, errors.MultiToError(me)
+		return jobs, me.ToErr()
 	}
 
 	// when project name and job name exist, filter by project name and job name
@@ -277,7 +277,7 @@ func (j *JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, sp
 	tenantWithDetails, err := j.tenantDetailsGetter.GetDetails(ctx, jobTenant)
 	if err != nil {
 		me.Append(err)
-		return errors.MultiToError(me)
+		return me.ToErr()
 	}
 
 	addedJobs, err := j.bulkAdd(ctx, tenantWithDetails, toAdd, logWriter)
@@ -292,7 +292,7 @@ func (j *JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, sp
 	err = j.resolveAndSaveUpstreams(ctx, jobTenant, logWriter, addedJobs, updatedJobs)
 	me.Append(err)
 
-	return errors.MultiToError(me)
+	return me.ToErr()
 }
 
 func (j *JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, namespaceNames, jobNames []string, logWriter writer.LogWriter) (err error) {
@@ -333,7 +333,7 @@ func (j *JobService) Refresh(ctx context.Context, projectName tenant.ProjectName
 		me.Append(err)
 	}
 
-	return errors.MultiToError(me)
+	return me.ToErr()
 }
 
 func (j *JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, jobNamesWithInvalidSpec []job.Name, logWriter writer.LogWriter) error {
@@ -358,7 +358,7 @@ func (j *JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobS
 	me.Append(err)
 
 	if len(me.Errors) > 0 {
-		return errors.MultiToError(me)
+		return me.ToErr()
 	}
 
 	// NOTE: only check cyclic deps across internal upstreams (sources), need further discussion to check cyclic deps for external upstream
@@ -462,7 +462,7 @@ func (j *JobService) resolveAndSaveUpstreams(ctx context.Context, jobTenant tena
 	err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
 	me.Append(err)
 
-	return errors.MultiToError(me)
+	return me.ToErr()
 }
 
 func (j *JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.WithDetails, specsToAdd []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {
@@ -473,7 +473,7 @@ func (j *JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.With
 	me.Append(err)
 
 	if len(jobsToAdd) == 0 {
-		return nil, errors.MultiToError(me)
+		return nil, me.ToErr()
 	}
 
 	// TODO: consider do add inside parallel
@@ -490,7 +490,7 @@ func (j *JobService) bulkAdd(ctx context.Context, tenantWithDetails *tenant.With
 		}
 	}
 
-	return addedJobs, errors.MultiToError(me)
+	return addedJobs, me.ToErr()
 }
 
 func (j *JobService) bulkUpdate(ctx context.Context, tenantWithDetails *tenant.WithDetails, specsToUpdate []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {
@@ -501,7 +501,7 @@ func (j *JobService) bulkUpdate(ctx context.Context, tenantWithDetails *tenant.W
 	me.Append(err)
 
 	if len(jobsToUpdate) == 0 {
-		return nil, errors.MultiToError(me)
+		return nil, me.ToErr()
 	}
 
 	updatedJobs, err := j.repo.Update(ctx, jobsToUpdate)
@@ -517,7 +517,7 @@ func (j *JobService) bulkUpdate(ctx context.Context, tenantWithDetails *tenant.W
 		}
 	}
 
-	return updatedJobs, errors.MultiToError(me)
+	return updatedJobs, me.ToErr()
 }
 
 func (j *JobService) bulkDelete(ctx context.Context, jobTenant tenant.Tenant, toDelete []*job.Spec, logWriter writer.LogWriter) error {
@@ -554,10 +554,10 @@ func (j *JobService) bulkDelete(ctx context.Context, jobTenant tenant.Tenant, to
 	if deletedJob > 0 {
 		logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] successfully deleted %d jobs", jobTenant.NamespaceName().String(), deletedJob))
 	}
-	return errors.MultiToError(me)
+	return me.ToErr()
 }
 
-func (JobService) differentiateSpecs(existingJobs []*job.Job, jobTenant tenant.Tenant, specs []*job.Spec, jobNamesWithInvalidSpec []job.Name) (added, modified, deleted, unmodified []*job.Spec, err error) {
+func (*JobService) differentiateSpecs(existingJobs []*job.Job, jobTenant tenant.Tenant, specs []*job.Spec, jobNamesWithInvalidSpec []job.Name) (added, modified, deleted, unmodified []*job.Spec, err error) {
 	me := errors.NewMultiError("differentiate specs errors")
 
 	var addedSpecs, modifiedSpecs, unmodifiedSpecs, deletedSpecs []*job.Spec
@@ -587,7 +587,7 @@ func (JobService) differentiateSpecs(existingJobs []*job.Job, jobTenant tenant.T
 			deletedSpecs = append(deletedSpecs, existingJobSpec)
 		}
 	}
-	return addedSpecs, modifiedSpecs, deletedSpecs, unmodifiedSpecs, errors.MultiToError(me)
+	return addedSpecs, modifiedSpecs, deletedSpecs, unmodifiedSpecs, me.ToErr()
 }
 
 func (j *JobService) generateJobs(ctx context.Context, tenantWithDetails *tenant.WithDetails, specs []*job.Spec, logWriter writer.LogWriter) ([]*job.Job, error) {
@@ -617,7 +617,7 @@ func (j *JobService) generateJobs(ctx context.Context, tenantWithDetails *tenant
 			generatedJobs = append(generatedJobs, specVal)
 		}
 	}
-	return generatedJobs, errors.MultiToError(me)
+	return generatedJobs, me.ToErr()
 }
 
 func (j *JobService) generateJob(ctx context.Context, tenantWithDetails *tenant.WithDetails, spec *job.Spec) (*job.Job, error) {

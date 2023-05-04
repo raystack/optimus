@@ -144,5 +144,5 @@ func (r Repository) UpdateStatus(ctx context.Context, resources ...*resource.Res
 		}
 	}
 
-	return errors.MultiToError(multiErr)
+	return multiErr.ToErr()
 }

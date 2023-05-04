@@ -84,7 +84,7 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 
 	if len(jobSpecs) == 0 {
 		me.Append(errors.NewError(errors.ErrFailedPrecond, job.EntityJob, "no jobs to be processed"))
-		return nil, errors.MultiToError(me)
+		return nil, me.ToErr()
 	}
 
 	if err = jh.jobService.Add(ctx, jobTenant, jobSpecs); err != nil {
@@ -94,7 +94,7 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 
 	var responseLog string
 	if len(me.Errors) > 0 {
-		responseLog = fmt.Sprintf("adding jobs finished with error: %s", errors.MultiToError(me))
+		responseLog = fmt.Sprintf("adding jobs finished with error: %s", me.ToErr())
 	} else {
 		responseLog = "jobs are successfully created"
 	}
@@ -155,7 +155,7 @@ func (jh *JobHandler) UpdateJobSpecifications(ctx context.Context, jobSpecReques
 
 	if len(jobSpecs) == 0 {
 		me.Append(errors.NewError(errors.ErrFailedPrecond, job.EntityJob, "no jobs to be processed"))
-		return nil, errors.MultiToError(me)
+		return nil, me.ToErr()
 	}
 
 	if err = jh.jobService.Update(ctx, jobTenant, jobSpecs); err != nil {
@@ -165,7 +165,7 @@ func (jh *JobHandler) UpdateJobSpecifications(ctx context.Context, jobSpecReques
 
 	var responseLog string
 	if len(me.Errors) > 0 {
-		responseLog = fmt.Sprintf("update jobs finished with error: %s", errors.MultiToError(me))
+		responseLog = fmt.Sprintf("update jobs finished with error: %s", me.ToErr())
 	} else {
 		responseLog = "jobs are successfully updated"
 	}
@@ -389,7 +389,7 @@ func (jh *JobHandler) CheckJobSpecifications(req *pb.CheckJobSpecificationsReque
 
 	jh.l.Info("finished validating jobs for project [%s] namespace [%s], took %s", req.GetProjectName(), req.GetNamespaceName(), processDuration)
 
-	return errors.MultiToError(me)
+	return me.ToErr()
 }
 
 func (jh *JobHandler) GetJobTask(ctx context.Context, req *pb.GetJobTaskRequest) (*pb.GetJobTaskResponse, error) {

@@ -87,7 +87,7 @@ func (j *Job) getStaticUpstreamsToResolve() ([]*Upstream, error) {
 
 		unresolvedStaticUpstreams = append(unresolvedStaticUpstreams, NewUpstreamUnresolvedStatic(jobUpstreamName, projectUpstreamName))
 	}
-	return unresolvedStaticUpstreams, errors.MultiToError(me)
+	return unresolvedStaticUpstreams, me.ToErr()
 }
 
 type ResourceURN string
@@ -171,7 +171,7 @@ func (j Jobs) GetJobsWithUnresolvedUpstreams() ([]*WithUpstream, error) {
 		jobsWithUnresolvedUpstream = append(jobsWithUnresolvedUpstream, jobWithUnresolvedUpstream)
 	}
 
-	return jobsWithUnresolvedUpstream, errors.MultiToError(me)
+	return jobsWithUnresolvedUpstream, me.ToErr()
 }
 
 type WithUpstream struct {

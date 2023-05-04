@@ -11,6 +11,7 @@ import (
 	"github.com/goto/optimus/core/scheduler"
 	"github.com/goto/optimus/core/tenant"
 	"github.com/goto/optimus/ext/scheduler/airflow/dag"
+	"github.com/goto/optimus/internal/errors"
 	"github.com/goto/optimus/internal/models"
 	"github.com/goto/optimus/sdk/plugin"
 	"github.com/goto/optimus/sdk/plugin/mock"
@@ -23,15 +24,52 @@ func TestDagCompiler(t *testing.T) {
 	t.Run("Compile", func(t *testing.T) {
 		repo := setupPluginRepo()
 		tnnt, err := tenant.NewTenant("example-proj", "billing")
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 
-		t.Run("should compile basic template without any error", func(t *testing.T) {
+		t.Run("returns error when cannot find task", func(t *testing.T) {
+			emptyRepo := mockPluginRepo{plugins: []*plugin.Plugin{}}
+			com, err := dag.NewDagCompiler("http://optimus.example.com", emptyRepo)
+			assert.NoError(t, err)
+
+			job := setupJobDetails(tnnt)
+			_, err = com.Compile(job)
+			assert.True(t, errors.IsErrorType(err, errors.ErrNotFound))
+			assert.ErrorContains(t, err, "plugin not found for bq-bq")
+		})
+		t.Run("returns error when cannot find hook", func(t *testing.T) {
 			com, err := dag.NewDagCompiler("http://optimus.example.com", repo)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
+
+			job := setupJobDetails(tnnt)
+			job.Job.Hooks = append(job.Job.Hooks, &scheduler.Hook{Name: "invalid"})
+			_, err = com.Compile(job)
+			assert.True(t, errors.IsErrorType(err, errors.ErrNotFound))
+			assert.ErrorContains(t, err, "hook not found for name invalid")
+		})
+
+		t.Run("returns error when sla duration is invalid", func(t *testing.T) {
+			com, err := dag.NewDagCompiler("http://optimus.example.com", repo)
+			assert.NoError(t, err)
+
+			job := setupJobDetails(tnnt)
+			job.Alerts = append(job.Alerts, scheduler.Alert{
+				On: scheduler.EventCategorySLAMiss,
+			},
+				scheduler.Alert{
+					On:     scheduler.EventCategorySLAMiss,
+					Config: map[string]string{"duration": "2"},
+				})
+			_, err = com.Compile(job)
+			assert.ErrorContains(t, err, "failed to parse sla_miss duration 2")
+		})
+
+		t.Run("compiles basic template without any error", func(t *testing.T) {
+			com, err := dag.NewDagCompiler("http://optimus.example.com", repo)
+			assert.NoError(t, err)
 
 			job := setupJobDetails(tnnt)
 			compiledDag, err := com.Compile(job)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.Equal(t, string(compiledTemplate), string(compiledDag))
 		})
 	})

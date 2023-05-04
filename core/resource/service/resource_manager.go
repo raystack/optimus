@@ -55,7 +55,7 @@ func (m *ResourceMgr) CreateResource(ctx context.Context, res *resource.Resource
 	}
 
 	me.Append(m.repo.UpdateStatus(ctx, res))
-	return errors.MultiToError(me)
+	return me.ToErr()
 }
 
 func (m *ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource) error {
@@ -77,7 +77,7 @@ func (m *ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource
 	}
 
 	me.Append(m.repo.UpdateStatus(ctx, res))
-	return errors.MultiToError(me)
+	return me.ToErr()
 }
 
 func (m *ResourceMgr) Validate(res *resource.Resource) error {
@@ -111,11 +111,11 @@ func (m *ResourceMgr) BatchUpdate(ctx context.Context, store resource.Store, res
 		return errors.InvalidArgument(resource.EntityResource, "data store service not found for "+store.String())
 	}
 
-	err := errors.NewMultiError("error in batch update")
-	err.Append(datastore.BatchUpdate(ctx, resources))
-	err.Append(m.repo.UpdateStatus(ctx, resources...))
+	me := errors.NewMultiError("error in batch update")
+	me.Append(datastore.BatchUpdate(ctx, resources))
+	me.Append(m.repo.UpdateStatus(ctx, resources...))
 
-	return errors.MultiToError(err)
+	return me.ToErr()
 }
 
 func (m *ResourceMgr) Backup(ctx context.Context, details *resource.Backup, resources []*resource.Resource) (*resource.BackupResult, error) {
