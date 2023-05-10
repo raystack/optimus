@@ -135,6 +135,24 @@ func TestEntitySpec(t *testing.T) {
 
 			assert.EqualValues(t, expectedMap, resultMap)
 		})
+		t.Run("ToFullNameAndSpecMap should return map with fullname key and spec value", func(t *testing.T) {
+			projectName := tenant.ProjectName("sample-project")
+			specA, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+
+			specB, err := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+
+			expectedMap := map[job.FullName]*job.Spec{
+				"sample-project/job-A": specA,
+				"sample-project/job-B": specB,
+			}
+
+			specs := job.Specs([]*job.Spec{specA, specB})
+			resultMap := specs.ToFullNameAndSpecMap(projectName)
+
+			assert.EqualValues(t, expectedMap, resultMap)
+		})
 	})
 
 	t.Run("SpecUpstreamName", func(t *testing.T) {

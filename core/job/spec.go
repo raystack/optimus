@@ -153,6 +153,15 @@ func (s Specs) ToNameAndSpecMap() map[Name]*Spec {
 	return nameAndSpecMap
 }
 
+func (s Specs) ToFullNameAndSpecMap(projectName tenant.ProjectName) map[FullName]*Spec {
+	fullnameAndSpecMap := make(map[FullName]*Spec, len(s))
+	for _, spec := range s {
+		fullName := FullNameFrom(projectName, spec.Name())
+		fullnameAndSpecMap[fullName] = spec
+	}
+	return fullnameAndSpecMap
+}
+
 type Name string
 
 func NameFrom(name string) (Name, error) {
