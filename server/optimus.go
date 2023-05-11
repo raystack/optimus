@@ -68,7 +68,7 @@ type OptimusServer struct {
 	pluginRepo *models.PluginRepository
 	cleanupFn  []func()
 
-	publisherHandler *moderator.EventHandler
+	eventHandler moderator.Handler
 }
 
 func New(conf *config.ServerConfig) (*OptimusServer, error) {
@@ -109,7 +109,7 @@ func New(conf *config.ServerConfig) (*OptimusServer, error) {
 
 func (s *OptimusServer) setupPublisher() error {
 	if s.conf.Publisher == nil {
-		s.publisherHandler = moderator.NewEventHandler(nil, s.logger)
+		s.eventHandler = moderator.NoOpHandler{}
 		return nil
 	}
 
@@ -131,7 +131,7 @@ func (s *OptimusServer) setupPublisher() error {
 		return fmt.Errorf("publisher with type [%s] is not recognized", s.conf.Publisher.Type)
 	}
 
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
 	go worker.Run(ctx)
 
 	s.cleanupFn = append(s.cleanupFn, func() {
@@ -142,7 +142,7 @@ func (s *OptimusServer) setupPublisher() error {
 		}
 	})
 
-	s.publisherHandler = moderator.NewEventHandler(ch, s.logger)
+	s.eventHandler = moderator.NewEventHandler(ch, s.logger)
 	return nil
 }
 
@@ -287,7 +287,7 @@ func (s *OptimusServer) setupHandlers() error {
 	resourceRepository := resource.NewRepository(s.dbPool)
 	backupRepository := resource.NewBackupRepository(s.dbPool)
 	resourceManager := rService.NewResourceManager(resourceRepository, s.logger)
-	resourceService := rService.NewResourceService(s.logger, resourceRepository, resourceManager, s.publisherHandler)
+	resourceService := rService.NewResourceService(s.logger, resourceRepository, resourceManager, s.eventHandler)
 	backupService := rService.NewBackupService(backupRepository, resourceRepository, resourceManager)
 
 	// Register datastore
@@ -347,7 +347,7 @@ func (s *OptimusServer) setupHandlers() error {
 	jExternalUpstreamResolver, _ := jResolver.NewExternalUpstreamResolver(s.conf.ResourceManagers)
 	jInternalUpstreamResolver := jResolver.NewInternalUpstreamResolver(jJobRepo)
 	jUpstreamResolver := jResolver.NewUpstreamResolver(jJobRepo, jExternalUpstreamResolver, jInternalUpstreamResolver)
-	jJobService := jService.NewJobService(jJobRepo, jPluginService, jUpstreamResolver, tenantService, s.publisherHandler, s.logger)
+	jJobService := jService.NewJobService(jJobRepo, jPluginService, jUpstreamResolver, tenantService, s.eventHandler, s.logger)
 
 	// Tenant Handlers
 	pb.RegisterSecretServiceServer(s.grpcServer, tHandler.NewSecretsHandler(s.logger, tSecretService))
