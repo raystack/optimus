@@ -28,7 +28,7 @@ func NewJobCreatedEvent(job *job.Job) (*JobCreated, error) {
 }
 
 func (j *JobCreated) Bytes() ([]byte, error) {
-	return jobEventToBytes(j.Event, j.Job, pbInt.OptimusChangeEvent_JOB_CREATE)
+	return jobEventToBytes(j.Event, j.Job, pbInt.OptimusChangeEvent_EVENT_TYPE_JOB_CREATE)
 }
 
 type JobUpdated struct {
@@ -49,7 +49,7 @@ func NewJobUpdateEvent(job *job.Job) (*JobUpdated, error) {
 }
 
 func (j *JobUpdated) Bytes() ([]byte, error) {
-	return jobEventToBytes(j.Event, j.Job, pbInt.OptimusChangeEvent_JOB_UPDATE)
+	return jobEventToBytes(j.Event, j.Job, pbInt.OptimusChangeEvent_EVENT_TYPE_JOB_UPDATE)
 }
 
 type JobDeleted struct {
@@ -78,7 +78,7 @@ func (j *JobDeleted) Bytes() ([]byte, error) {
 		OccurredAt:    occurredAt,
 		ProjectName:   j.JobTenant.ProjectName().String(),
 		NamespaceName: j.JobTenant.NamespaceName().String(),
-		EventType:     pbInt.OptimusChangeEvent_JOB_DELETE,
+		EventType:     pbInt.OptimusChangeEvent_EVENT_TYPE_JOB_DELETE,
 		Payload: &pbInt.OptimusChangeEvent_JobChange{
 			JobChange: &pbInt.JobChangePayload{
 				JobName: j.JobName.String(),

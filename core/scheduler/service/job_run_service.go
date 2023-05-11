@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/goto/salt/log"
 
+	"github.com/goto/optimus/core/event"
+	"github.com/goto/optimus/core/event/moderator"
 	"github.com/goto/optimus/core/scheduler"
 	"github.com/goto/optimus/core/tenant"
 	"github.com/goto/optimus/internal/errors"
@@ -36,6 +38,7 @@ type JobRunRepository interface {
 	GetByScheduledAt(ctx context.Context, tenant tenant.Tenant, name scheduler.JobName, scheduledAt time.Time) (*scheduler.JobRun, error)
 	Create(ctx context.Context, tenant tenant.Tenant, name scheduler.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error
 	Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, jobRunStatus scheduler.State) error
+	UpdateState(ctx context.Context, jobRunID uuid.UUID, jobRunStatus scheduler.State) error
 	UpdateSLA(ctx context.Context, slaObjects []*scheduler.SLAObject) error
 	UpdateMonitoring(ctx context.Context, jobRunID uuid.UUID, monitoring map[string]any) error
 }
@@ -65,11 +68,16 @@ type Scheduler interface {
 	DeleteJobs(ctx context.Context, t tenant.Tenant, jobsToDelete []string) error
 }
 
+type EventHandler interface {
+	HandleEvent(moderator.Event)
+}
+
 type JobRunService struct {
 	l                log.Logger
 	repo             JobRunRepository
 	replayRepo       JobReplayRepository
 	operatorRunRepo  OperatorRunRepository
+	eventHandler     EventHandler
 	scheduler        Scheduler
 	jobRepo          JobRepository
 	priorityResolver PriorityResolver
@@ -278,6 +286,8 @@ func (s *JobRunService) updateJobRun(ctx context.Context, event *scheduler.Event
 	if err := s.repo.Update(ctx, jobRun.ID, event.EventTime, event.Status); err != nil {
 		return err
 	}
+	jobRun.State = event.Status
+	s.raiseJobRunStateChangeEvent(jobRun)
 	monitoringValues := s.getMonitoringValues(event)
 	return s.repo.UpdateMonitoring(ctx, jobRun.ID, monitoringValues)
 }
@@ -297,6 +307,39 @@ func (s *JobRunService) updateJobRunSLA(ctx context.Context, event *scheduler.Ev
 	return nil
 }
 
+func operatorStartToJobState(operatorType scheduler.OperatorType) (scheduler.State, error) {
+	switch operatorType {
+	case scheduler.OperatorTask:
+		return scheduler.StateInProgress, nil
+	case scheduler.OperatorSensor:
+		return scheduler.StateWaitUpstream, nil
+	case scheduler.OperatorHook:
+		return scheduler.StateInProgress, nil
+	default:
+		return "", errors.InvalidArgument(scheduler.EntityJobRun, "Invalid operator type")
+	}
+}
+
+func (s *JobRunService) raiseJobRunStateChangeEvent(jobRun *scheduler.JobRun) {
+	var schedulerEvent moderator.Event
+	var err error
+	switch jobRun.State {
+	case scheduler.StateWaitUpstream:
+		schedulerEvent, err = event.NewJobRunWaitUpstreamEvent(jobRun)
+	case scheduler.StateInProgress:
+		schedulerEvent, err = event.NewJobRunInProgressEvent(jobRun)
+	case scheduler.StateSuccess:
+		schedulerEvent, err = event.NewJobRunSuccessEvent(jobRun)
+	case scheduler.StateFailed:
+		schedulerEvent, err = event.NewJobRunFailedEvent(jobRun)
+	}
+	if err != nil {
+		s.l.Error("error creating event for job run state change : %s", err)
+		return
+	}
+	s.eventHandler.HandleEvent(schedulerEvent)
+}
+
 func (s *JobRunService) createOperatorRun(ctx context.Context, event *scheduler.Event, operatorType scheduler.OperatorType) error {
 	jobRun, err := s.getJobRunByScheduledAt(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
 	if err != nil {
@@ -309,6 +352,18 @@ func (s *JobRunService) createOperatorRun(ctx context.Context, event *scheduler.
 			"type":      event.OperatorName,
 		}).Inc()
 	}
+	jobState, err := operatorStartToJobState(operatorType)
+	if err != nil {
+		return err
+	}
+	if jobRun.State != jobState {
+		err := s.repo.UpdateState(ctx, jobRun.ID, jobState)
+		if err != nil {
+			return err
+		}
+		s.raiseJobRunStateChangeEvent(jobRun)
+	}
+
 	return s.operatorRunRepo.CreateOperatorRun(ctx, event.OperatorName, operatorType, jobRun.ID, event.EventTime)
 }
 
@@ -408,13 +463,14 @@ func (s *JobRunService) UpdateJobState(ctx context.Context, event *scheduler.Eve
 }
 
 func NewJobRunService(logger log.Logger, jobRepo JobRepository, jobRunRepo JobRunRepository, replayRepo JobReplayRepository,
-	operatorRunRepo OperatorRunRepository, scheduler Scheduler, resolver PriorityResolver, compiler JobInputCompiler,
+	operatorRunRepo OperatorRunRepository, scheduler Scheduler, resolver PriorityResolver, compiler JobInputCompiler, eventHandler EventHandler,
 ) *JobRunService {
 	return &JobRunService{
 		l:                logger,
 		repo:             jobRunRepo,
 		operatorRunRepo:  operatorRunRepo,
 		scheduler:        scheduler,
+		eventHandler:     eventHandler,
 		replayRepo:       replayRepo,
 		jobRepo:          jobRepo,
 		priorityResolver: resolver,

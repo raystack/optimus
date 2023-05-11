@@ -61,14 +61,15 @@ func (j *jobRun) toJobRun() (*scheduler.JobRun, error) {
 		}
 	}
 	return &scheduler.JobRun{
-		ID:         j.ID,
-		JobName:    scheduler.JobName(j.JobName),
-		Tenant:     t,
-		State:      state,
-		StartTime:  j.StartTime,
-		SLAAlert:   j.SLAAlert,
-		EndTime:    j.EndTime,
-		Monitoring: monitoring,
+		ID:          j.ID,
+		JobName:     scheduler.JobName(j.JobName),
+		Tenant:      t,
+		State:       state,
+		ScheduledAt: j.ScheduledAt,
+		StartTime:   j.StartTime,
+		SLAAlert:    j.SLAAlert,
+		EndTime:     j.EndTime,
+		Monitoring:  monitoring,
 	}, nil
 }
 
@@ -100,6 +101,12 @@ func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t tenant.Tenant
 		return nil, errors.Wrap(scheduler.EntityJobRun, "error while getting run", err)
 	}
 	return jr.toJobRun()
+}
+
+func (j *JobRunRepository) UpdateState(ctx context.Context, jobRunID uuid.UUID, status scheduler.State) error {
+	updateJobRun := "update job_run set status = $1, updated_at = NOW() where id = $3"
+	_, err := j.db.Exec(ctx, updateJobRun, status, jobRunID)
+	return errors.WrapIfErr(scheduler.EntityJobRun, "unable to update job run", err)
 }
 
 func (j *JobRunRepository) Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, status scheduler.State) error {

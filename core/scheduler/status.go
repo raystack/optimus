@@ -21,6 +21,9 @@ const (
 	StateSuccess State = "success"
 	StateFailed  State = "failed"
 
+	StateWaitUpstream State = "wait_upstream"
+	StateInProgress   State = "in_progress"
+
 	// StateReplayed is a replay-specific state to identify a run has been replayed but not yet finished
 	StateReplayed State = "replayed"
 )
@@ -47,6 +50,10 @@ func StateFromString(state string) (State, error) {
 		return StateFailed, nil
 	case string(StateReplayed):
 		return StateReplayed, nil
+	case string(StateWaitUpstream):
+		return StateWaitUpstream, nil
+	case string(StateInProgress):
+		return StateInProgress, nil
 	default:
 		return "", errors.InvalidArgument(EntityJobRun, "invalid state for run "+state)
 	}

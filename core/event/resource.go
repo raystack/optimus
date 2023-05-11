@@ -29,7 +29,7 @@ func NewResourceCreatedEvent(rsc *resource.Resource) (*ResourceCreated, error) {
 }
 
 func (r ResourceCreated) Bytes() ([]byte, error) {
-	return resourceEventToBytes(r.Event, r.Resource, pbInt.OptimusChangeEvent_RESOURCE_CREATE)
+	return resourceEventToBytes(r.Event, r.Resource, pbInt.OptimusChangeEvent_EVENT_TYPE_RESOURCE_CREATE)
 }
 
 type ResourceUpdated struct {
@@ -50,7 +50,7 @@ func NewResourceUpdatedEvent(rsc *resource.Resource) (*ResourceUpdated, error) {
 }
 
 func (r ResourceUpdated) Bytes() ([]byte, error) {
-	return resourceEventToBytes(r.Event, r.Resource, pbInt.OptimusChangeEvent_RESOURCE_UPDATE)
+	return resourceEventToBytes(r.Event, r.Resource, pbInt.OptimusChangeEvent_EVENT_TYPE_RESOURCE_UPDATE)
 }
 
 func resourceEventToBytes(event Event, rsc *resource.Resource, eventType pbInt.OptimusChangeEvent_EventType) ([]byte, error) {
