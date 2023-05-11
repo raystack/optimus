@@ -2,11 +2,16 @@ package kafka
 
 import (
 	"context"
+	"time"
 
 	"github.com/goto/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/segmentio/kafka-go"
+)
+
+const (
+	writeTimeout = time.Second * 3
 )
 
 var kafkaQueueCounter = promauto.NewCounter(prometheus.CounterOpts{
@@ -25,6 +30,8 @@ func NewWriter(kafkaBrokerUrls []string, topic string, logger log.Logger) *Write
 		AllowAutoTopicCreation: true,
 		Balancer:               &kafka.LeastBytes{},
 		RequiredAcks:           kafka.RequireOne,
+		MaxAttempts:            1,
+		WriteTimeout:           writeTimeout,
 		Logger:                 kafka.LoggerFunc(logger.Info),
 		ErrorLogger:            kafka.LoggerFunc(logger.Error),
 	}
