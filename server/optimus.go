@@ -339,7 +339,7 @@ func (s *OptimusServer) setupHandlers() error {
 	replayValidator := schedulerService.NewValidator(replayRepository, newScheduler)
 	replayService := schedulerService.NewReplayService(replayRepository, jobProviderRepo, replayValidator)
 
-	newJobRunService := schedulerService.NewJobRunService(s.logger, jobProviderRepo, jobRunRepo, replayRepository, operatorRunRepository, newScheduler, newPriorityResolver, jobInputCompiler, s.publisherHandler)
+	newJobRunService := schedulerService.NewJobRunService(s.logger, jobProviderRepo, jobRunRepo, replayRepository, operatorRunRepository, newScheduler, newPriorityResolver, jobInputCompiler, s.eventHandler)
 
 	// Job Bounded Context Setup
 	jJobRepo := jRepo.NewJobRepository(s.dbPool)

@@ -104,7 +104,7 @@ func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t tenant.Tenant
 }
 
 func (j *JobRunRepository) UpdateState(ctx context.Context, jobRunID uuid.UUID, status scheduler.State) error {
-	updateJobRun := "update job_run set status = $1, updated_at = NOW() where id = $3"
+	updateJobRun := "update job_run set status = $1, updated_at = NOW() where id = $2"
 	_, err := j.db.Exec(ctx, updateJobRun, status, jobRunID)
 	return errors.WrapIfErr(scheduler.EntityJobRun, "unable to update job run", err)
 }
