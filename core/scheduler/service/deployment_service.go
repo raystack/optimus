@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"go.opentelemetry.io/otel"
+
 	"github.com/goto/optimus/core/scheduler"
 	"github.com/goto/optimus/core/tenant"
 	"github.com/goto/optimus/internal/errors"
@@ -59,23 +61,33 @@ func setJobMetric(t tenant.Tenant, jobs []*scheduler.JobWithDetails) {
 }
 
 func (s *JobRunService) UploadToScheduler(ctx context.Context, projectName tenant.ProjectName) error {
+	spanCtx, span := otel.Tracer("optimus").Start(ctx, "UploadToScheduler")
+	defer span.End()
+
 	me := errors.NewMultiError("errorInUploadToScheduler")
-	allJobsWithDetails, err := s.jobRepo.GetAll(ctx, projectName)
+	allJobsWithDetails, err := s.jobRepo.GetAll(spanCtx, projectName)
 	me.Append(err)
 	if allJobsWithDetails == nil {
 		return me.ToErr()
 	}
-	err = s.priorityResolver.Resolve(ctx, allJobsWithDetails)
+	span.AddEvent("got all the jobs to upload")
+
+	err = s.priorityResolver.Resolve(spanCtx, allJobsWithDetails)
 	if err != nil {
 		me.Append(err)
 		return me.ToErr()
 	}
+	span.AddEvent("done with priority resolution")
+
 	jobGroupByTenant := scheduler.GroupJobsByTenant(allJobsWithDetails)
 	for t, jobs := range jobGroupByTenant {
-		if err = s.deployJobsPerNamespace(ctx, t, jobs); err == nil {
+		span.AddEvent("uploading job specs")
+		if err = s.deployJobsPerNamespace(spanCtx, t, jobs); err == nil {
 			s.l.Debug(fmt.Sprintf("[success] namespace: %s, project: %s, deployed", t.NamespaceName().String(), t.ProjectName().String()))
 		}
 		me.Append(err)
+
+		span.AddEvent("uploading job metrics")
 		setJobMetric(t, jobs)
 	}
 	return me.ToErr()
