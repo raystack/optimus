@@ -322,7 +322,7 @@ func (s *OptimusServer) setupHandlers() error {
 
 	newEngine := compiler.NewEngine()
 
-	newPriorityResolver := schedulerResolver.NewPriorityResolver()
+	newPriorityResolver := schedulerResolver.NewSimpleResolver()
 	assetCompiler := schedulerService.NewJobAssetsCompiler(newEngine, s.pluginRepo)
 	jobInputCompiler := schedulerService.NewJobInputCompiler(tenantService, newEngine, assetCompiler)
 	notificationService := schedulerService.NewNotifyService(s.logger, jobProviderRepo, tenantService, notifierChanels)
