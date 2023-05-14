@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/goto/optimus/core/resource"
+	"github.com/odpf/optimus/core/resource"
 )
 
 func TestStatus(t *testing.T) {

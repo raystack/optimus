@@ -5,9 +5,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/goto/optimus/internal/models"
-	"github.com/goto/optimus/sdk/plugin"
-	mockPlugin "github.com/goto/optimus/sdk/plugin/mock"
+	"github.com/odpf/optimus/internal/models"
+	"github.com/odpf/optimus/sdk/plugin"
+	mockPlugin "github.com/odpf/optimus/sdk/plugin/mock"
 )
 
 func TestPluginModels(t *testing.T) {

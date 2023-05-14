@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/goto/optimus/internal/utils"
+	"github.com/odpf/optimus/internal/utils"
 )
 
 func TestIsPathOccupied(t *testing.T) {

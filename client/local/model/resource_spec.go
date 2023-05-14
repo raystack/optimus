@@ -5,7 +5,7 @@ import (
 
 	"google.golang.org/protobuf/types/known/structpb"
 
-	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
 type ResourceSpec struct {

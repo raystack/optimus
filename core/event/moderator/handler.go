@@ -1,7 +1,7 @@
 package moderator
 
 import (
-	"github.com/goto/salt/log"
+	"github.com/opdf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )

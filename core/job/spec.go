@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/goto/optimus/core/tenant"
-	"github.com/goto/optimus/internal/errors"
-	"github.com/goto/optimus/internal/models"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/models"
 )
 
 const DateLayout = "2006-01-02"

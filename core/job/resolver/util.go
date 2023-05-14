@@ -1,6 +1,6 @@
 package resolver
 
-import "github.com/goto/optimus/core/job"
+import "github.com/odpf/optimus/core/job"
 
 func mergeUpstreams(upstreamGroups ...[]*job.Upstream) []*job.Upstream {
 	var allUpstreams []*job.Upstream

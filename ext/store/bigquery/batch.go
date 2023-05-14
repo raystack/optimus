@@ -5,9 +5,9 @@ import (
 
 	"github.com/kushsharma/parallel"
 
-	"github.com/goto/optimus/core/resource"
-	"github.com/goto/optimus/core/tenant"
-	"github.com/goto/optimus/internal/errors"
+	"github.com/odpf/optimus/core/resource"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
 )
 
 type Batch struct {
@@ -183,5 +183,5 @@ func BatchesFrom(resources []*resource.Resource, provider ClientProvider) (map[s
 
 		mapping[dataset.FullName()] = batch
 	}
-	return mapping, me.ToErr()
+	return mapping, errors.MultiToError(me)
 }

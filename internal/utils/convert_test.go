@@ -6,7 +6,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/goto/optimus/internal/utils"
+	"github.com/odpf/optimus/internal/utils"
 )
 
 func TestConvert(t *testing.T) {

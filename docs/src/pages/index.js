@@ -20,7 +20,7 @@ const Hero = () => {
           </div>
           <div className={clsx('col col--1')}></div>
           <div className={clsx('col col--6')}>
-            <div className="text--right"><img src={useBaseUrl('img/banner-0.6.png')} /></div>
+            <div className="text--right"><img src={useBaseUrl('img/banner.svg')} /></div>
           </div>
         </div>
       </div>

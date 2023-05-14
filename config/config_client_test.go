@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/goto/optimus/config"
+	"github.com/odpf/optimus/config"
 )
 
 type ClientConfigTestSuite struct {

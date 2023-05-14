@@ -10,13 +10,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 
-	serviceJob "github.com/goto/optimus/core/job"
-	serviceScheduler "github.com/goto/optimus/core/scheduler"
-	serviceTenant "github.com/goto/optimus/core/tenant"
-	repoJob "github.com/goto/optimus/internal/store/postgres/job"
-	repoScheduler "github.com/goto/optimus/internal/store/postgres/scheduler"
-	repoTenant "github.com/goto/optimus/internal/store/postgres/tenant"
-	"github.com/goto/optimus/tests/setup"
+	serviceJob "github.com/odpf/optimus/core/job"
+	serviceScheduler "github.com/odpf/optimus/core/scheduler"
+	serviceTenant "github.com/odpf/optimus/core/tenant"
+	repoJob "github.com/odpf/optimus/internal/store/postgres/job"
+	repoScheduler "github.com/odpf/optimus/internal/store/postgres/scheduler"
+	repoTenant "github.com/odpf/optimus/internal/store/postgres/tenant"
+	"github.com/odpf/optimus/tests/setup"
 )
 
 func BenchmarkJobRepository(b *testing.B) {

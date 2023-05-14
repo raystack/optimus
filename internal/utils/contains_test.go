@@ -3,7 +3,7 @@ package utils_test
 import (
 	"testing"
 
-	"github.com/goto/optimus/internal/utils"
+	"github.com/odpf/optimus/internal/utils"
 )
 
 func TestContainsString(t *testing.T) {

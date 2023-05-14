@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/segmentio/kafka-go"

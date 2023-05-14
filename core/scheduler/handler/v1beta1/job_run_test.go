@@ -6,16 +6,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/goto/optimus/core/scheduler"
-	"github.com/goto/optimus/core/scheduler/handler/v1beta1"
-	"github.com/goto/optimus/core/tenant"
-	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
+	"github.com/odpf/optimus/core/scheduler"
+	"github.com/odpf/optimus/core/scheduler/handler/v1beta1"
+	"github.com/odpf/optimus/core/tenant"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
 const (

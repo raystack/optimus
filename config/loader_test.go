@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	saltConfig "github.com/goto/salt/config"
+	saltConfig "github.com/odpf/salt/config"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/goto/optimus/config"
+	"github.com/odpf/optimus/config"
 )
 
 const clientConfig = `

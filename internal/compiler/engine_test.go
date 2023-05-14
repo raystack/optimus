@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/goto/optimus/internal/compiler"
+	"github.com/odpf/optimus/internal/compiler"
 )
 
 func TestEngine(t *testing.T) {
@@ -99,8 +99,7 @@ func TestEngine(t *testing.T) {
 			_, err := comp.Compile(map[string]string{"query": input}, context)
 
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity compiler: unable to parse content for query:"+
-				" template: query:1: bad character U+0022 '\"'")
+			assert.EqualError(t, err, "internal error for entity compiler: unable to parse content for query")
 		})
 		t.Run("returns error when rendering fails", func(t *testing.T) {
 			input := `event_timestamp > "{{.DSTART | Date }}"`
@@ -112,9 +111,7 @@ func TestEngine(t *testing.T) {
 			_, err := comp.Compile(map[string]string{"query": input}, context)
 
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "invalid argument for entity compiler: unable to render content for query:"+
-				" template: query:1:31: executing \"query\" at <Date>: error calling Date: parsing time \"\" as "+
-				"\"2006-01-02T15:04:05Z07:00\": cannot parse \"\" as \"2006\"")
+			assert.EqualError(t, err, "internal error for entity compiler: unable to render content for query")
 		})
 		t.Run("returns rendered string with values of macros for template map", func(t *testing.T) {
 			testCases := []struct {

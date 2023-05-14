@@ -10,7 +10,7 @@ builds:
     flags:
       - -a
     ldflags:
-      - -s -w -X github.com/goto/optimus/config.BuildVersion={{ .Version }} -X github.com/goto/optimus/config.BuildCommit={{.FullCommit}} -X github.com/goto/optimus/config.BuildDate={{.Date}}
+      - -s -w -X github.com/odpf/optimus/config.BuildVersion={{ .Version }} -X github.com/odpf/optimus/config.BuildCommit={{.FullCommit}} -X github.com/odpf/optimus/config.BuildDate={{.Date}}
     goos:
       - linux
       - darwin

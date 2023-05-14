@@ -1,11 +1,11 @@
 package extension
 
 import (
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/goto/optimus/client/cmd/internal/survey"
-	"github.com/goto/optimus/client/extension"
+	"github.com/odpf/optimus/client/cmd/internal/survey"
+	"github.com/odpf/optimus/client/extension"
 )
 
 type cleanCommand struct {

@@ -6,8 +6,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/goto/optimus/core/scheduler"
-	"github.com/goto/optimus/core/tenant"
+	"github.com/odpf/optimus/core/scheduler"
+	"github.com/odpf/optimus/core/tenant"
 )
 
 func TestJob(t *testing.T) {

@@ -3,8 +3,8 @@ package extension
 import (
 	"context"
 
-	"github.com/goto/optimus/client/extension/internal"
-	"github.com/goto/optimus/client/extension/model"
+	"github.com/odpf/optimus/client/extension/internal"
+	"github.com/odpf/optimus/client/extension/model"
 )
 
 // Manager defines the extension management

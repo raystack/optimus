@@ -9,11 +9,11 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 
-	"github.com/goto/optimus/client/local"
-	"github.com/goto/optimus/client/local/model"
-	"github.com/goto/optimus/internal/models"
-	"github.com/goto/optimus/internal/utils"
-	"github.com/goto/optimus/sdk/plugin"
+	"github.com/odpf/optimus/client/local"
+	"github.com/odpf/optimus/client/local/model"
+	"github.com/odpf/optimus/internal/models"
+	"github.com/odpf/optimus/internal/utils"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 const (

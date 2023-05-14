@@ -10,9 +10,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 
-	serviceTenant "github.com/goto/optimus/core/tenant"
-	repoTenant "github.com/goto/optimus/internal/store/postgres/tenant"
-	"github.com/goto/optimus/tests/setup"
+	serviceTenant "github.com/odpf/optimus/core/tenant"
+	repoTenant "github.com/odpf/optimus/internal/store/postgres/tenant"
+	"github.com/odpf/optimus/tests/setup"
 )
 
 func BenchmarkProjectRepository(b *testing.B) {

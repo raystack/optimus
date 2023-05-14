@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/goto/optimus/config"
+	"github.com/odpf/optimus/config"
 )
 
 // Open will connect to the DB with custom configuration

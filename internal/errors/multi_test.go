@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/goto/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/errors"
 )
 
 func TestMultiError(t *testing.T) {
@@ -14,13 +14,13 @@ func TestMultiError(t *testing.T) {
 			me := errors.NewMultiError("multi")
 			me.Append(nil)
 
-			assert.Nil(t, me.ToErr())
+			assert.Nil(t, errors.MultiToError(me))
 		})
 		t.Run("adds other type of error", func(t *testing.T) {
 			me := errors.NewMultiError("multi")
 			me.Append(errors.NotFound("dummy", "not found"))
 
-			assert.NotNil(t, me.ToErr())
+			assert.NotNil(t, errors.MultiToError(me))
 			assert.EqualError(t, me, "multi:\n not found for entity dummy: not found")
 		})
 		t.Run("adds errors in multi error to list", func(t *testing.T) {
@@ -30,7 +30,7 @@ func TestMultiError(t *testing.T) {
 			me := errors.NewMultiError("top level error")
 			me.Append(me1)
 
-			assert.NotNil(t, me.ToErr())
+			assert.NotNil(t, errors.MultiToError(me))
 			assert.EqualError(t, me, "top level error:\n not found for entity dummy: not found")
 		})
 	})

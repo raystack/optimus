@@ -6,9 +6,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/goto/optimus/core/resource"
-	"github.com/goto/optimus/core/tenant"
-	"github.com/goto/optimus/internal/errors"
+	"github.com/odpf/optimus/core/resource"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
 )
 
 type Resource struct {

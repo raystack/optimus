@@ -2,10 +2,10 @@ package window
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/goto/optimus/client/cmd/internal/logger"
+	"github.com/odpf/optimus/client/cmd/internal/logger"
 )
 
 type command struct {

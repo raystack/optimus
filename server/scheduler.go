@@ -1,12 +1,12 @@
 package server
 
 import (
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 
-	"github.com/goto/optimus/config"
-	"github.com/goto/optimus/ext/scheduler/airflow"
-	"github.com/goto/optimus/ext/scheduler/airflow/bucket"
-	"github.com/goto/optimus/ext/scheduler/airflow/dag"
+	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/ext/scheduler/airflow"
+	"github.com/odpf/optimus/ext/scheduler/airflow/bucket"
+	"github.com/odpf/optimus/ext/scheduler/airflow/dag"
 )
 
 func NewScheduler(l log.Logger, conf *config.ServerConfig, pluginRepo dag.PluginRepo, projecGetter airflow.ProjectGetter,

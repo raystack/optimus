@@ -10,11 +10,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 
-	serviceResource "github.com/goto/optimus/core/resource"
-	serviceTenant "github.com/goto/optimus/core/tenant"
-	repoResource "github.com/goto/optimus/internal/store/postgres/resource"
-	repoTenant "github.com/goto/optimus/internal/store/postgres/tenant"
-	"github.com/goto/optimus/tests/setup"
+	serviceResource "github.com/odpf/optimus/core/resource"
+	serviceTenant "github.com/odpf/optimus/core/tenant"
+	repoResource "github.com/odpf/optimus/internal/store/postgres/resource"
+	repoTenant "github.com/odpf/optimus/internal/store/postgres/tenant"
+	"github.com/odpf/optimus/tests/setup"
 )
 
 func BenchmarkBackupRepository(b *testing.B) {

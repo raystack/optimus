@@ -7,9 +7,9 @@ import (
 
 	"github.com/spf13/afero"
 
-	"github.com/goto/optimus/client/local"
-	"github.com/goto/optimus/client/local/internal"
-	"github.com/goto/optimus/client/local/model"
+	"github.com/odpf/optimus/client/local"
+	"github.com/odpf/optimus/client/local/internal"
+	"github.com/odpf/optimus/client/local/model"
 )
 
 type resourceSpecReadWriter struct {

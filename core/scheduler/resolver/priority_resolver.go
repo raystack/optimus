@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/goto/optimus/core/scheduler"
-	"github.com/goto/optimus/internal/lib/tree"
+	"github.com/odpf/optimus/core/scheduler"
+	"github.com/odpf/optimus/internal/lib/tree"
 )
 
 const (

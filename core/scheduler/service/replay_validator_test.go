@@ -8,10 +8,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/goto/optimus/core/scheduler"
-	"github.com/goto/optimus/core/scheduler/service"
-	"github.com/goto/optimus/core/tenant"
-	"github.com/goto/optimus/internal/lib/cron"
+	"github.com/odpf/optimus/core/scheduler"
+	"github.com/odpf/optimus/core/scheduler/service"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/lib/cron"
 )
 
 func TestReplayValidator(t *testing.T) {

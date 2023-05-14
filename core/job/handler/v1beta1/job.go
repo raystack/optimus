@@ -7,19 +7,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/goto/optimus/core/job"
-	"github.com/goto/optimus/core/job/service/filter"
-	"github.com/goto/optimus/core/tenant"
-	"github.com/goto/optimus/internal/errors"
-	"github.com/goto/optimus/internal/models"
-	"github.com/goto/optimus/internal/writer"
-	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
-	"github.com/goto/optimus/sdk/plugin"
+	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/job/service/filter"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/models"
+	"github.com/odpf/optimus/internal/writer"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 var (

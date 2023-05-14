@@ -5,7 +5,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 )
 
 type defaultLogger struct {

@@ -1,34 +1,74 @@
 # Architecture
 
-![Architecture Diagram](/img/docs/OptimusArchitecture.png "OptimusArchitecture")
+Basic building blocks of Optimus are
 
-## CLI
+- Optimus CLI
+- Optimus Service
+- Optimus Database
+- Optimus Plugins
+- Scheduler
+- Optimus Extension
 
-Optimus provides a command line interface to interact with the main optimus service and basic scaffolding job 
-specifications. It can be used to:
-- Start optimus server
-- Create resource specifications for datastores
-- Generate jobs & hooks based on user inputs
+### Overview
+
+![Architecture Diagram](/img/docs/OptimusArchitecture_dark_07June2021.png "OptimusArchitecture")
+
+### Optimus CLI
+
+`optimus` is a command line tool used to interact with the main optimus service and basic scaffolding job
+specifications. It can be used to
+
+- Generate jobs based on user inputs
+- Add hooks to existing jobs
 - Dump a compiled specification for the consumption of a scheduler
-- Validate and inspect job specifications
-- Deployment of specifications to Optimus Service
+- Deployment of specifications to `Optimus Service`
+- Create resource specifications for datastores
+- Start optimus server
 
-## Server
+Optimus also has an admin flag that can be turned on using `OPTIMUS_ADMIN_ENABLED=1` env flag.
+This hides few commands which are used internally during the lifecycle of tasks/hooks
+execution.
 
-Optimus Server handles all the client requests from direct end users or from airflow over http & grpc. The functionality 
-of the server can be extended with the support of various plugins to various data sources & sinks. Everything around 
-job/resource management is handled by the server except scheduling of jobs.
+### Optimus Service
 
-## Database
-Optimus supports postgres as  the main storage backend. It is the source of truth for all user specifications, 
-configurations, secrets, assets. It is the place where all the precomputed relations between jobs are stored.
+Optimus cli can start a service that controls and orchestrates all that Optimus has to
+offer. Optimus cli uses GRPC to communicate with the optimus service for almost all the
+operations that takes `host` as the flag. Service also exposes few REST endpoints
+that can be used with simple curl request for registering a new project or checking
+the status of a job, etc.
 
-## Plugins
-Currently, Optimus doesn’t hold any logic and is not responsible for handling any specific transformations. This 
-capability is extended through plugins and users can customize based on their needs on what plugins to use. Plugins can 
-be defined through a yaml specification. At the time of execution whatever the image that is configured in the plugin 
-image will be executed.
+As soon as jobs are ready in a repository, a deployment request is sent to the service
+with all the specs(normally in yaml) which are parsed and stored in the database.
+Once these specs are stored, each of them are compiled to generate a scheduler parsable
+job format which will be eventually consumed by a supported scheduler to execute the
+job. These compiled specifications are uploaded to an **object store** which gets synced
+to the scheduler.
 
-## Scheduler (Airflow)
-Scheduler is responsible for scheduling all the user defined jobs. Currently, optimus supports only Airflow as 
-the scheduler, support for more schedulers can be added.
+### Optimus Database
+
+Specifications once requested for deployment needs to be stored somewhere as a source
+of truth. Optimus uses postgres as a storage engine to store raw specifications, job
+assets, run details, project configurations, etc.
+
+### Optimus Plugins
+
+Optimus itself doesn't govern how a job is supposed to execute the transformation. It
+only provides the building blocks which needs to be implemented by a task. A plugin is
+divided in two parts, an adapter and a docker image. Docker image contains the actual
+transformation logic that needs to be executed in the task and adapter helps optimus
+to understand what all this task can do and help in doing it.
+
+### Scheduler
+
+Job adapters consumes job specifications which eventually needs to be scheduled and
+executed via a execution engine. This execution engine is termed here as Scheduler.
+Optimus by default recommends using `Airflow` but is extensible enough to support any
+other scheduler that satisfies some basic requirements, one of the most important
+of all is, scheduler should be able to execute a Docker container.
+
+### Optimus Extension
+
+Optimus extension is a feature in Optimus where the user could extend the
+functionality of Optimus itself using third-party or arbitrary
+implementation. Currently, extension is designed only for when the
+user running it as CLI.

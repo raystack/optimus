@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/goto/optimus/internal/compiler"
+	"github.com/odpf/optimus/internal/compiler"
 )
 
 func TestTemplateFunctions(t *testing.T) {

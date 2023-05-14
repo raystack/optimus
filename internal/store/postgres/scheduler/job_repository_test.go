@@ -9,15 +9,15 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/goto/optimus/core/job"
-	"github.com/goto/optimus/core/scheduler"
-	"github.com/goto/optimus/core/tenant"
-	"github.com/goto/optimus/internal/errors"
-	"github.com/goto/optimus/internal/models"
-	jobRepo "github.com/goto/optimus/internal/store/postgres/job"
-	postgres "github.com/goto/optimus/internal/store/postgres/scheduler"
-	tenantPostgres "github.com/goto/optimus/internal/store/postgres/tenant"
-	"github.com/goto/optimus/tests/setup"
+	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/scheduler"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/models"
+	jobRepo "github.com/odpf/optimus/internal/store/postgres/job"
+	postgres "github.com/odpf/optimus/internal/store/postgres/scheduler"
+	tenantPostgres "github.com/odpf/optimus/internal/store/postgres/tenant"
+	"github.com/odpf/optimus/tests/setup"
 )
 
 const (

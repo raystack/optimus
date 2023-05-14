@@ -1,12 +1,12 @@
 package plugin
 
 import (
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/goto/optimus/client/cmd/internal/logger"
-	"github.com/goto/optimus/config"
-	"github.com/goto/optimus/plugin"
+	"github.com/odpf/optimus/client/cmd/internal/logger"
+	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/plugin"
 )
 
 type installCommand struct {

@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 
-	"github.com/goto/optimus/core/tenant"
-	"github.com/goto/optimus/internal/errors"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
 )
 
 type ProjectGetter interface {

@@ -3,7 +3,7 @@ package internal
 import (
 	"fmt"
 
-	"github.com/goto/optimus/client/extension/model"
+	"github.com/odpf/optimus/client/extension/model"
 )
 
 type runResource struct {

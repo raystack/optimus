@@ -5,7 +5,7 @@ authors:
   name: Ravi Suhag
   title: Maintainer
   url: https://github.com/ravisuhag
-tags: [goto, optimus]
+tags: [odpf, optimus]
 ---
 
 We are live!

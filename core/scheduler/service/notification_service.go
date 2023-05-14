@@ -6,13 +6,13 @@ import (
 	"io"
 	"strings"
 
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	"github.com/goto/optimus/core/scheduler"
-	"github.com/goto/optimus/core/tenant"
-	"github.com/goto/optimus/internal/errors"
+	"github.com/odpf/optimus/core/scheduler"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
 )
 
 var (

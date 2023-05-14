@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
 
-	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
-	v1 "github.com/goto/optimus/server/handler/v1beta1"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	v1 "github.com/odpf/optimus/server/handler/v1beta1"
 )
 
 func TestVersionHandler(t *testing.T) {

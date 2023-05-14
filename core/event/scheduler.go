@@ -4,8 +4,8 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/goto/optimus/core/scheduler"
-	pbInt "github.com/goto/optimus/protos/gotocompany/optimus/integration/v1beta1"
+	"github.com/odpf/optimus/core/scheduler"
+	pbInt "github.com/odpf/optimus/protos/odpf/optimus/integration/v1beta1"
 )
 
 type JobRunWaitUpstream struct {

@@ -12,15 +12,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/goto/salt/log"
 	"github.com/kushsharma/parallel"
+	"github.com/odpf/salt/log"
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 
-	"github.com/goto/optimus/core/scheduler"
-	"github.com/goto/optimus/core/tenant"
-	"github.com/goto/optimus/internal/errors"
-	"github.com/goto/optimus/internal/lib/cron"
+	"github.com/odpf/optimus/core/scheduler"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/lib/cron"
 )
 
 //go:embed __lib.py
@@ -45,6 +45,7 @@ const (
 
 type Bucket interface {
 	WriteAll(ctx context.Context, key string, p []byte, opts *blob.WriterOptions) error
+	// ReadAll(ctx context.Context, key string) ([]byte, error)
 	List(opts *blob.ListOptions) *blob.ListIterator
 	Delete(ctx context.Context, key string) error
 	Close() error

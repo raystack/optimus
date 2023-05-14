@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/goto/optimus/core/scheduler"
-	"github.com/goto/optimus/sdk/plugin"
+	"github.com/odpf/optimus/core/scheduler"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 const (

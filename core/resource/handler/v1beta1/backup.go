@@ -4,13 +4,13 @@ import (
 	"context"
 	"time"
 
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/goto/optimus/core/resource"
-	"github.com/goto/optimus/core/tenant"
-	"github.com/goto/optimus/internal/errors"
-	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
+	"github.com/odpf/optimus/core/resource"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
 type BackupService interface {

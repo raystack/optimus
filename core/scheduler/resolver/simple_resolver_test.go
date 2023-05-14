@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/goto/optimus/core/scheduler"
-	"github.com/goto/optimus/core/scheduler/resolver"
-	"github.com/goto/optimus/core/tenant"
+	"github.com/odpf/optimus/core/scheduler"
+	"github.com/odpf/optimus/core/scheduler/resolver"
+	"github.com/odpf/optimus/core/tenant"
 )
 
 func TestSimpleResolver(t *testing.T) {

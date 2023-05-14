@@ -9,9 +9,9 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/goto/optimus/core/resource"
-	"github.com/goto/optimus/core/tenant"
-	"github.com/goto/optimus/internal/errors"
+	"github.com/odpf/optimus/core/resource"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
 )
 
 const (
@@ -180,7 +180,7 @@ func (s Store) BatchUpdate(ctx context.Context, resources []*resource.Resource) 
 		me.Append(state.Err)
 	}
 
-	return me.ToErr()
+	return errors.MultiToError(me)
 }
 
 func (Store) Validate(r *resource.Resource) error {

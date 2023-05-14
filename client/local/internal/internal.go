@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/afero"
 	"gopkg.in/yaml.v3"
 
-	"github.com/goto/optimus/client/local"
+	"github.com/odpf/optimus/client/local"
 )
 
 func DiscoverSpecDirPaths(specFS afero.Fs, rootSpecDir, referenceFileName string) ([]string, error) {

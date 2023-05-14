@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/goto/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/errors"
 )
 
 func TestErrors(t *testing.T) {

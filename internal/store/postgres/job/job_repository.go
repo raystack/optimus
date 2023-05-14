@@ -9,10 +9,10 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/goto/optimus/core/job"
-	"github.com/goto/optimus/core/resource"
-	"github.com/goto/optimus/core/tenant"
-	"github.com/goto/optimus/internal/errors"
+	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/resource"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
 )
 
 const (
@@ -40,7 +40,7 @@ func (j JobRepository) Add(ctx context.Context, jobs []*job.Job) ([]*job.Job, er
 		}
 		storedJobs = append(storedJobs, jobEntity)
 	}
-	return storedJobs, me.ToErr()
+	return storedJobs, errors.MultiToError(me)
 }
 
 func (j JobRepository) insertJobSpec(ctx context.Context, jobEntity *job.Job) error {
@@ -101,7 +101,7 @@ func (j JobRepository) Update(ctx context.Context, jobs []*job.Job) ([]*job.Job,
 		}
 		storedJobs = append(storedJobs, jobEntity)
 	}
-	return storedJobs, me.ToErr()
+	return storedJobs, errors.MultiToError(me)
 }
 
 func (j JobRepository) preCheckUpdate(ctx context.Context, jobEntity *job.Job) error {
@@ -273,7 +273,7 @@ func (j JobRepository) toJobNameWithUpstreams(storeJobsWithUpstreams []*JobWithU
 		jobNameWithUpstreams[name] = upstreams
 	}
 
-	if err := me.ToErr(); err != nil {
+	if err := errors.MultiToError(me); err != nil {
 		return nil, err
 	}
 	return jobNameWithUpstreams, nil
@@ -693,7 +693,7 @@ func (j JobRepository) GetAllByTenant(ctx context.Context, jobTenant tenant.Tena
 		jobs = append(jobs, jobSpec)
 	}
 
-	return jobs, me.ToErr()
+	return jobs, errors.MultiToError(me)
 }
 
 func (j JobRepository) GetUpstreams(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*job.Upstream, error) {
@@ -810,5 +810,5 @@ func fromStoreDownstream(storeDownstreamList []Downstream) ([]*job.Downstream, e
 		}
 		downstreamList = append(downstreamList, job.NewDownstream(downstreamJobName, downstreamProjectName, downstreamNamespaceName, downstreamTaskName))
 	}
-	return downstreamList, me.ToErr()
+	return downstreamList, errors.MultiToError(me)
 }

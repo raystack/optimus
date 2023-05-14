@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 )
 
 type Writer interface {

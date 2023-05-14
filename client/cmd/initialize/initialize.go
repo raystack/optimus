@@ -6,14 +6,14 @@ import (
 	"os"
 	"path"
 
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
-	"github.com/goto/optimus/client/cmd/internal/logger"
-	"github.com/goto/optimus/client/cmd/internal/survey"
-	"github.com/goto/optimus/config"
-	"github.com/goto/optimus/internal/utils"
+	"github.com/odpf/optimus/client/cmd/internal/logger"
+	"github.com/odpf/optimus/client/cmd/internal/survey"
+	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/internal/utils"
 )
 
 type initializeCommand struct {

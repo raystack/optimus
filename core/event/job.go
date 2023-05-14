@@ -4,10 +4,10 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/goto/optimus/core/job"
-	"github.com/goto/optimus/core/job/handler/v1beta1"
-	"github.com/goto/optimus/core/tenant"
-	pbInt "github.com/goto/optimus/protos/gotocompany/optimus/integration/v1beta1"
+	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/job/handler/v1beta1"
+	"github.com/odpf/optimus/core/tenant"
+	pbInt "github.com/odpf/optimus/protos/odpf/optimus/integration/v1beta1"
 )
 
 type JobCreated struct {

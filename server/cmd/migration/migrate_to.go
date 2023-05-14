@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/goto/optimus/config"
-	"github.com/goto/optimus/internal/store/postgres"
+	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/internal/store/postgres"
 )
 
 type migrateTo struct {

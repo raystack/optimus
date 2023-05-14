@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/goto/optimus/sdk/plugin"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 type MockPluginBQ struct{}

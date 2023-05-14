@@ -9,9 +9,9 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 
-	"github.com/goto/optimus/internal/models"
-	"github.com/goto/optimus/plugin/v1beta1/dependencyresolver"
-	oplugin "github.com/goto/optimus/sdk/plugin"
+	"github.com/odpf/optimus/internal/models"
+	"github.com/odpf/optimus/plugin/v1beta1/dependencyresolver"
+	oplugin "github.com/odpf/optimus/sdk/plugin"
 )
 
 var (

@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 
-	"github.com/goto/optimus/core/event"
-	"github.com/goto/optimus/core/event/moderator"
-	"github.com/goto/optimus/core/resource"
-	"github.com/goto/optimus/core/tenant"
-	"github.com/goto/optimus/internal/errors"
+	"github.com/odpf/optimus/core/event"
+	"github.com/odpf/optimus/core/event/moderator"
+	"github.com/odpf/optimus/core/resource"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
 )
 
 type ResourceRepository interface {

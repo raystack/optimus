@@ -9,12 +9,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/goto/optimus/core/job"
-	"github.com/goto/optimus/core/tenant"
-	"github.com/goto/optimus/internal/models"
-	postgres "github.com/goto/optimus/internal/store/postgres/job"
-	tenantPostgres "github.com/goto/optimus/internal/store/postgres/tenant"
-	"github.com/goto/optimus/tests/setup"
+	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/models"
+	postgres "github.com/odpf/optimus/internal/store/postgres/job"
+	tenantPostgres "github.com/odpf/optimus/internal/store/postgres/tenant"
+	"github.com/odpf/optimus/tests/setup"
 )
 
 func TestPostgresJobRepository(t *testing.T) {

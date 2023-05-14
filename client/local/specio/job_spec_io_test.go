@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/goto/optimus/client/local/model"
-	"github.com/goto/optimus/client/local/specio"
+	"github.com/odpf/optimus/client/local/model"
+	"github.com/odpf/optimus/client/local/specio"
 )
 
 type JobSpecReadWriterTestSuite struct {

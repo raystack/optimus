@@ -5,10 +5,10 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/goto/optimus/core/resource"
-	"github.com/goto/optimus/internal/errors"
-	pbCore "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
-	pbInt "github.com/goto/optimus/protos/gotocompany/optimus/integration/v1beta1"
+	"github.com/odpf/optimus/core/resource"
+	"github.com/odpf/optimus/internal/errors"
+	pbCore "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	pbInt "github.com/odpf/optimus/protos/odpf/optimus/integration/v1beta1"
 )
 
 type ResourceCreated struct {

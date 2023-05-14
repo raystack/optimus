@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/goto/optimus/core/tenant"
-	"github.com/goto/optimus/core/tenant/dto"
-	"github.com/goto/optimus/core/tenant/handler/v1beta1"
-	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/core/tenant/dto"
+	"github.com/odpf/optimus/core/tenant/handler/v1beta1"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
 func TestNewSecretsHandler(t *testing.T) {

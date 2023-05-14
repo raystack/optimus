@@ -3,10 +3,10 @@ package dag
 import (
 	"time"
 
-	"github.com/goto/optimus/core/scheduler"
-	"github.com/goto/optimus/core/tenant"
-	"github.com/goto/optimus/internal/errors"
-	"github.com/goto/optimus/sdk/plugin"
+	"github.com/odpf/optimus/core/scheduler"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 const (

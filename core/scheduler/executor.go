@@ -4,8 +4,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/goto/optimus/internal/errors"
-	"github.com/goto/optimus/internal/utils"
+	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/utils"
 )
 
 const (

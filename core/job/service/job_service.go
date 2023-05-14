@@ -6,19 +6,19 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/goto/salt/log"
 	"github.com/kushsharma/parallel"
+	"github.com/odpf/salt/log"
 
-	"github.com/goto/optimus/core/event"
-	"github.com/goto/optimus/core/event/moderator"
-	"github.com/goto/optimus/core/job"
-	"github.com/goto/optimus/core/job/service/filter"
-	"github.com/goto/optimus/core/tenant"
-	"github.com/goto/optimus/internal/errors"
-	"github.com/goto/optimus/internal/lib/tree"
-	"github.com/goto/optimus/internal/telemetry"
-	"github.com/goto/optimus/internal/writer"
-	"github.com/goto/optimus/sdk/plugin"
+	"github.com/odpf/optimus/core/event"
+	"github.com/odpf/optimus/core/event/moderator"
+	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/job/service/filter"
+	"github.com/odpf/optimus/core/tenant"
+	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/lib/tree"
+	"github.com/odpf/optimus/internal/telemetry"
+	"github.com/odpf/optimus/internal/writer"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 const (
@@ -739,7 +739,7 @@ func (*JobService) buildDAGTree(rootName job.Name, jobMap map[job.Name]*job.With
 	return dagTree
 }
 
-// sources: https://github.com/goto/optimus/blob/a6dafbc1fbeb8e1f1eb8d4a6e9582ada4a7f639e/job/replay.go#L101
+// sources: https://github.com/odpf/optimus/blob/a6dafbc1fbeb8e1f1eb8d4a6e9582ada4a7f639e/job/replay.go#L101
 func findOrCreateDAGNode(dagTree *tree.MultiRootTree, dag tree.TreeData) *tree.TreeNode {
 	node, ok := dagTree.GetNodeByName(dag.GetName())
 	if !ok {

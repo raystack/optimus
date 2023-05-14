@@ -12,8 +12,8 @@ import (
 	getter "github.com/hashicorp/go-getter"
 	"github.com/hashicorp/go-hclog"
 
-	"github.com/goto/optimus/config"
-	"github.com/goto/optimus/plugin/yaml"
+	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/plugin/yaml"
 )
 
 var (

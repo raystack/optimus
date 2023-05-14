@@ -7,17 +7,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
-	"github.com/goto/optimus/client/cmd/internal/connectivity"
-	"github.com/goto/optimus/client/cmd/internal/logger"
-	"github.com/goto/optimus/client/local"
-	"github.com/goto/optimus/client/local/model"
-	"github.com/goto/optimus/client/local/specio"
-	"github.com/goto/optimus/config"
-	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
+	"github.com/odpf/optimus/client/cmd/internal/connectivity"
+	"github.com/odpf/optimus/client/cmd/internal/logger"
+	"github.com/odpf/optimus/client/local"
+	"github.com/odpf/optimus/client/local/model"
+	"github.com/odpf/optimus/client/local/specio"
+	"github.com/odpf/optimus/config"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
 )
 
 const (

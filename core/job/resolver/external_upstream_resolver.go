@@ -6,11 +6,11 @@ import (
 
 	"github.com/kushsharma/parallel"
 
-	"github.com/goto/optimus/config"
-	"github.com/goto/optimus/core/job"
-	"github.com/goto/optimus/ext/resourcemanager"
-	"github.com/goto/optimus/internal/errors"
-	"github.com/goto/optimus/internal/writer"
+	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/ext/resourcemanager"
+	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/writer"
 )
 
 type extUpstreamResolver struct {

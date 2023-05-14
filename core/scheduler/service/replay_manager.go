@@ -3,13 +3,13 @@ package service
 import (
 	"time"
 
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 	"github.com/robfig/cron/v3"
 	"golang.org/x/net/context"
 
-	"github.com/goto/optimus/config"
-	"github.com/goto/optimus/core/scheduler"
-	"github.com/goto/optimus/internal/errors"
+	"github.com/odpf/optimus/config"
+	"github.com/odpf/optimus/core/scheduler"
+	"github.com/odpf/optimus/internal/errors"
 )
 
 const (

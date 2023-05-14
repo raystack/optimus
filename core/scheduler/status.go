@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/goto/optimus/internal/errors"
-	"github.com/goto/optimus/internal/lib/cron"
+	"github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/lib/cron"
 )
 
 const (

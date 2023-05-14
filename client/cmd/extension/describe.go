@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 
-	"github.com/goto/optimus/client/extension/model"
+	"github.com/odpf/optimus/client/extension/model"
 )
 
 type describeCommand struct {

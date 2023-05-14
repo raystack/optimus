@@ -8,8 +8,8 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 
-	pbp "github.com/goto/optimus/protos/gotocompany/optimus/plugins/v1beta1"
-	oplugin "github.com/goto/optimus/sdk/plugin"
+	pbp "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
+	oplugin "github.com/odpf/optimus/sdk/plugin"
 )
 
 var _ plugin.GRPCPlugin = &Connector{}

@@ -5,19 +5,19 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/goto/optimus/core/event/moderator"
-	"github.com/goto/optimus/core/job"
-	"github.com/goto/optimus/core/job/service"
-	"github.com/goto/optimus/core/job/service/filter"
-	"github.com/goto/optimus/core/tenant"
-	optErrors "github.com/goto/optimus/internal/errors"
-	"github.com/goto/optimus/internal/models"
-	"github.com/goto/optimus/internal/writer"
-	"github.com/goto/optimus/sdk/plugin"
+	"github.com/odpf/optimus/core/event/moderator"
+	"github.com/odpf/optimus/core/job"
+	"github.com/odpf/optimus/core/job/service"
+	"github.com/odpf/optimus/core/job/service/filter"
+	"github.com/odpf/optimus/core/tenant"
+	optErrors "github.com/odpf/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/models"
+	"github.com/odpf/optimus/internal/writer"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 func TestJobService(t *testing.T) {

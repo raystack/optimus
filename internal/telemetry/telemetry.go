@@ -7,7 +7,7 @@ import (
 	"net/http/pprof"
 	"time"
 
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -19,7 +19,7 @@ import (
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 
-	"github.com/goto/optimus/config"
+	"github.com/odpf/optimus/config"
 )
 
 const MetricWaitInterval = time.Second * 2

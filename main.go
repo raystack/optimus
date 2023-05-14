@@ -9,10 +9,10 @@ import (
 
 	_ "go.uber.org/automaxprocs"
 
-	clientCmd "github.com/goto/optimus/client/cmd"
-	_ "github.com/goto/optimus/client/extension/provider"
-	server "github.com/goto/optimus/server/cmd"
-	"github.com/goto/optimus/server/cmd/migration"
+	clientCmd "github.com/odpf/optimus/client/cmd"
+	_ "github.com/odpf/optimus/client/extension/provider"
+	server "github.com/odpf/optimus/server/cmd"
+	"github.com/odpf/optimus/server/cmd/migration"
 )
 
 var errRequestFail = errors.New("🔥 unable to complete request successfully")

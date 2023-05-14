@@ -3,7 +3,7 @@ package resource
 import (
 	"fmt"
 
-	"github.com/goto/optimus/internal/errors"
+	"github.com/odpf/optimus/internal/errors"
 )
 
 func (r *Resource) MarkValidationSuccess() error {

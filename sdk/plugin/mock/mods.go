@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
-	"github.com/goto/optimus/sdk/plugin"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 type YamlMod struct {

@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/goto/optimus/core/scheduler"
-	"github.com/goto/optimus/core/scheduler/service"
-	"github.com/goto/optimus/core/tenant"
+	"github.com/odpf/optimus/core/scheduler"
+	"github.com/odpf/optimus/core/scheduler/service"
+	"github.com/odpf/optimus/core/tenant"
 )
 
 func TestNotificationService(t *testing.T) {

@@ -25,7 +25,7 @@ export default function Home() {
                   <div>
                     The Optimus team has an open source slack workspace to discuss development and support.
                     Most of the Optimus discussions happen in #optimus channel.
-                    <br /><a href="https://goto-community.slack.com/"> Join us on Slack </a>
+                    <br /><a href="https://odpf-community.slack.com/"> Join us on Slack </a>
                   </div>)
               },
               {
@@ -33,7 +33,7 @@ export default function Home() {
                 content: (
                   <div>
                     Have a general issue or bug that you've found? We'd love to hear about it in our GitHub issues. This can be feature requests too!
-                    <br /> <a target="_blank" href="https://github.com/goto/optimus/issues"> Go to issues </a>
+                    <br /> <a target="_blank" href="https://github.com/odpf/optimus/issues"> Go to issues </a>
 
                   </div>)
               },
@@ -42,7 +42,7 @@ export default function Home() {
                 content: (
                   <div>
                     For help and questions about best practices, join our GitHub discussions. Browse and ask questions.
-                    <br /><a target="_blank" href="https://github.com/goto/optimus/discussions"> Go to discussions </a>
+                    <br /><a target="_blank" href="https://github.com/odpf/optimus/discussions"> Go to discussions </a>
 
                   </div>)
               }

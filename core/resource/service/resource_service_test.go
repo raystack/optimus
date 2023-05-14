@@ -5,15 +5,15 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/goto/optimus/core/event/moderator"
-	"github.com/goto/optimus/core/resource"
-	"github.com/goto/optimus/core/resource/service"
-	"github.com/goto/optimus/core/tenant"
-	oErrors "github.com/goto/optimus/internal/errors"
+	"github.com/odpf/optimus/core/event/moderator"
+	"github.com/odpf/optimus/core/resource"
+	"github.com/odpf/optimus/core/resource/service"
+	"github.com/odpf/optimus/core/tenant"
+	oErrors "github.com/odpf/optimus/internal/errors"
 )
 
 func TestResourceService(t *testing.T) {

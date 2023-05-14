@@ -1,0 +1,378 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "odpf/optimus/core/v1beta1/resource.proto",
+    "version": "0.1"
+  },
+  "tags": [
+    {
+      "name": "ResourceService"
+    }
+  ],
+  "host": "127.0.0.1:9100",
+  "basePath": "/api",
+  "schemes": [
+    "http"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1beta1/project/{projectName}/namespace/{namespaceName}/datastore/{datastoreName}/resource": {
+      "get": {
+        "summary": "ListResourceSpecification lists all resource specifications of a datastore in project",
+        "operationId": "ResourceService_ListResourceSpecification",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1ListResourceSpecificationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "datastoreName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ResourceService"
+        ]
+      },
+      "post": {
+        "summary": "Database CRUD\nCreateResource registers a new resource of a namespace which belongs to a project",
+        "operationId": "ResourceService_CreateResource",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1CreateResourceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "datastoreName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "resource": {
+                  "$ref": "#/definitions/v1beta1ResourceSpecification"
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "ResourceService"
+        ]
+      },
+      "put": {
+        "summary": "UpdateResource updates a resource specification of a datastore in project",
+        "operationId": "ResourceService_UpdateResource",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1UpdateResourceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "datastoreName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "resource": {
+                  "$ref": "#/definitions/v1beta1ResourceSpecification"
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "ResourceService"
+        ]
+      }
+    },
+    "/v1beta1/project/{projectName}/namespace/{namespaceName}/datastore/{datastoreName}/resource/{resourceName}": {
+      "get": {
+        "summary": "ReadResource reads a provided resource spec of a namespace",
+        "operationId": "ResourceService_ReadResource",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1ReadResourceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "datastoreName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "resourceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ResourceService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "typeUrl": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "protobufNullValue": {
+      "type": "string",
+      "enum": [
+        "NULL_VALUE"
+      ],
+      "default": "NULL_VALUE",
+      "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\n The JSON representation for `NullValue` is JSON `null`.\n\n - NULL_VALUE: Null value."
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1beta1CreateResourceResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1DeployResourceSpecificationResponse": {
+      "type": "object",
+      "properties": {
+        "logStatus": {
+          "$ref": "#/definitions/v1beta1Log"
+        }
+      }
+    },
+    "v1beta1Level": {
+      "type": "string",
+      "enum": [
+        "LEVEL_UNSPECIFIED",
+        "LEVEL_TRACE",
+        "LEVEL_DEBUG",
+        "LEVEL_INFO",
+        "LEVEL_WARNING",
+        "LEVEL_ERROR",
+        "LEVEL_FATAL"
+      ],
+      "default": "LEVEL_UNSPECIFIED"
+    },
+    "v1beta1ListResourceSpecificationResponse": {
+      "type": "object",
+      "properties": {
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1ResourceSpecification"
+          }
+        }
+      }
+    },
+    "v1beta1Log": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "$ref": "#/definitions/v1beta1Level"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1ReadResourceResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "resource": {
+          "$ref": "#/definitions/v1beta1ResourceSpecification"
+        }
+      }
+    },
+    "v1beta1ResourceSpecification": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "spec": {
+          "type": "object"
+        },
+        "assets": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "title": "ResourceSpecification are datastore specification representation of a resource"
+    },
+    "v1beta1UpdateResourceResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "externalDocs": {
+    "description": "Optimus Resource Management Service"
+  }
+}

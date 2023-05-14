@@ -3,10 +3,10 @@ package extension
 import (
 	"errors"
 
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/goto/optimus/client/extension/model"
+	"github.com/odpf/optimus/client/extension/model"
 )
 
 type activateCommand struct {

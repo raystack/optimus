@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/fatih/color"
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 )
 
 type defaultLogger struct {

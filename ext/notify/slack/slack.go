@@ -12,7 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	api "github.com/slack-go/slack"
 
-	"github.com/goto/optimus/core/scheduler"
+	"github.com/odpf/optimus/core/scheduler"
 )
 
 const (

@@ -3,8 +3,8 @@ package resolver
 import (
 	"context"
 
-	"github.com/goto/optimus/core/scheduler"
-	"github.com/goto/optimus/core/tenant"
+	"github.com/odpf/optimus/core/scheduler"
+	"github.com/odpf/optimus/core/tenant"
 )
 
 type SimpleResolver struct{}

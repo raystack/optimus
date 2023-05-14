@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/goto/salt/log"
+	"github.com/odpf/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/goto/optimus/core/event/moderator"
+	"github.com/odpf/optimus/core/event/moderator"
 )
 
 func TestHandleEvent(t *testing.T) {

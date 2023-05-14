@@ -121,12 +121,12 @@ linters-settings:
       - "all"
       - "-SA1019"
   goimports:
-    local-prefixes: github.com/goto/optimus
+    local-prefixes: github.com/opdf/optimus
   gci:
     sections:
       - standard # Captures all standard packages if they do not match another section.
       - default # Contains all imports that could not be matched to another section type.
-      - prefix(github.com/goto/optimus) # Groups all imports with the specified Prefix.
+      - prefix(github.com/odpf/optimus) # Groups all imports with the specified Prefix.
   gocritic:
     disabled-checks:
       - ifElseChain

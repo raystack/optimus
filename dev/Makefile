@@ -1,6 +1,6 @@
 EXPECTED_CONTEXT=colima
 NAMESPACE=optimus-dev
-OPTIMUS_goto_CHART=goto/optimus
+OPTIMUS_ODPF_CHART=odpf/optimus
 OPTIMUS_PLUGINS_PATH=/tmp/colima/plugins
 
 DAGS_PATH?=/tmp/colima/dags
@@ -21,9 +21,9 @@ apply.airflow: _context
 apply.optimus: _context
 	mkdir -p ${DAGS_PATH}
 	mkdir -p ${OPTIMUS_PLUGINS_PATH}
-	helm repo add goto https://goto.github.io/charts/
+	helm repo add odpf https://odpf.github.io/charts/
 	$(eval OPTIMUS_PLUGIN_ARTIFACTS = $(shell ./get_artifacts.sh ${SETUP_FILE_PATH}))
-	helm upgrade --install optimus-dev ${OPTIMUS_goto_CHART} \
+	helm upgrade --install optimus-dev ${OPTIMUS_ODPF_CHART} \
 	-n ${NAMESPACE} \
 	--set volumes[0].hostPath.path=$(abspath ${DAGS_PATH}) \
 	--set volumes[1].hostPath.path=$(abspath ${OPTIMUS_PLUGINS_PATH}) \

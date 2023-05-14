@@ -12,10 +12,10 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/goto/optimus/internal/utils"
-	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
-	pbp "github.com/goto/optimus/protos/gotocompany/optimus/plugins/v1beta1"
-	"github.com/goto/optimus/sdk/plugin"
+	"github.com/odpf/optimus/internal/utils"
+	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	pbp "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
+	"github.com/odpf/optimus/sdk/plugin"
 )
 
 const (

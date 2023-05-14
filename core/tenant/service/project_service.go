@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"github.com/goto/optimus/core/tenant"
+	"github.com/odpf/optimus/core/tenant"
 )
 
 type ProjectService struct {
