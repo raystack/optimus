@@ -136,6 +136,20 @@ func TestJob(t *testing.T) {
 		labels := jobWithDetails.GetLabelsAsString()
 		assert.Equal(t, labels, "label1=someVale")
 	})
+	t.Run("GetUniqueLabelValues", func(t *testing.T) {
+		jobWithDetails := scheduler.JobWithDetails{
+			Name: "jobName",
+			JobMetadata: &scheduler.JobMetadata{
+				Labels: map[string]string{
+					"label1": "someVale",
+					"label2": "someVale",
+					"label3": "another",
+				},
+			},
+		}
+		labels := jobWithDetails.GetUniqueLabelValues()
+		assert.Equal(t, labels, []string{"someVale", "another"})
+	})
 	t.Run("GroupJobsByTenant", func(t *testing.T) {
 		t1, _ := tenant.NewTenant("proj", "ns1")
 		t2, _ := tenant.NewTenant("proj", "ns1")

@@ -63,7 +63,7 @@ dag = DAG(
     catchup={{ if .JobDetails.Schedule.CatchUp -}}True{{- else -}}False{{- end }},
     dagrun_timeout=timedelta(seconds=DAGRUN_TIMEOUT_IN_SECS),
     tags=[
-        {{- range $key, $value := $.JobDetails.JobMetadata.Labels}}
+        {{- range $i, $value := $.JobDetails.GetUniqueLabelValues}}
         "{{ $value }}",
         {{- end}}
     ],

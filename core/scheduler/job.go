@@ -139,6 +139,18 @@ func (j *JobWithDetails) GetLabelsAsString() string {
 	return strings.TrimRight(labels, ",")
 }
 
+func (j *JobWithDetails) GetUniqueLabelValues() []string {
+	labelValues := []string{}
+	m := map[string]bool{}
+	for _, v := range j.JobMetadata.Labels {
+		if _, ok := m[v]; !ok {
+			labelValues = append(labelValues, v)
+		}
+		m[v] = true
+	}
+	return labelValues
+}
+
 type Retry struct {
 	ExponentialBackoff bool
 	Count              int
