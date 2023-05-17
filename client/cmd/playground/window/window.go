@@ -27,6 +27,6 @@ func (j *command) RunE(_ *cobra.Command, _ []string) error {
 	j.log.Info("Hi, this is an interactive CLI to play around with window configuration.")
 	j.log.Info("Navigate around the available configurations input with arrow keys.")
 	j.log.Info("If you want to quit, just press 'q' or 'ctr+c' key.\n")
-	p := tea.NewProgram(newModel(j.log))
+	p := tea.NewProgram(newModel())
 	return p.Start()
 }
