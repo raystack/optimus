@@ -27,7 +27,7 @@ func TestSimpleResolver(t *testing.T) {
 		s1 := resolver.SimpleResolver{}
 		err := s1.Resolve(ctx, []*scheduler.JobWithDetails{j1})
 		assert.NoError(t, err)
-		assert.Equal(t, resolver.MaxPriorityWeight, j1.Priority)
+		assert.Equal(t, 10000, j1.Priority)
 	})
 	t.Run("returns max priority for upstream not in same tenant", func(t *testing.T) {
 		tnnt2, _ := tenant.NewTenant("proj2", "namespace2")
@@ -47,7 +47,7 @@ func TestSimpleResolver(t *testing.T) {
 		s1 := resolver.SimpleResolver{}
 		err := s1.Resolve(ctx, []*scheduler.JobWithDetails{j1})
 		assert.NoError(t, err)
-		assert.Equal(t, resolver.MaxPriorityWeight, j1.Priority)
+		assert.Equal(t, 10000, j1.Priority)
 	})
 	t.Run("returns priority for leaf based on upstream", func(t *testing.T) {
 		upstream1 := &scheduler.JobUpstream{

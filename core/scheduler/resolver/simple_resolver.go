@@ -7,6 +7,15 @@ import (
 	"github.com/goto/optimus/core/tenant"
 )
 
+const (
+	// maxPriorityWeight - is the maximus weight a DAG will be given.
+	maxPriorityWeight = 10000
+
+	// priorityWeightGap - while giving weights to the DAG, what's the GAP
+	// do we want to consider. PriorityWeightGap = 1 means, weights will be 1, 2, 3 etc.
+	priorityWeightGap = 10
+)
+
 type SimpleResolver struct{}
 
 func NewSimpleResolver() *SimpleResolver {
@@ -15,7 +24,7 @@ func NewSimpleResolver() *SimpleResolver {
 
 func (SimpleResolver) Resolve(_ context.Context, details []*scheduler.JobWithDetails) error { // nolint:unparam
 	for _, job := range details {
-		priority := MaxPriorityWeight - numberOfUpstreams(job.Upstreams, job.Job.Tenant)*PriorityWeightGap
+		priority := maxPriorityWeight - numberOfUpstreams(job.Upstreams, job.Job.Tenant)*priorityWeightGap
 		job.Priority = priority
 	}
 	return nil
