@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -172,6 +173,149 @@ func TestDeploymentService(t *testing.T) {
 			err := runService.UploadToScheduler(ctx, proj1Name)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "errorInUploadToScheduler:\n listJobs error")
+		})
+	})
+
+	t.Run("UploadJobs", func(t *testing.T) {
+		t.Run("should return error if unable to get jobs", func(t *testing.T) {
+			jobNamesToUpload := []string{"job1", "job3"}
+			var jobNamesToDelete []string
+
+			jobRepo := new(JobRepository)
+			jobRepo.On("GetJobs", mock.Anything, proj1Name, jobNamesToUpload).Return(nil, errors.New("internal error"))
+			defer jobRepo.AssertExpectations(t)
+
+			priorityResolver := new(mockPriorityResolver)
+			defer priorityResolver.AssertExpectations(t)
+
+			mScheduler := new(mockScheduler)
+			defer mScheduler.AssertExpectations(t)
+
+			runService := service.NewJobRunService(logger, jobRepo, nil, nil, nil,
+				mScheduler, priorityResolver, nil, nil)
+
+			err := runService.UploadJobs(ctx, tnnt1, jobNamesToUpload, jobNamesToDelete)
+			assert.Error(t, err)
+		})
+		t.Run("should return error if unable to resolve priority", func(t *testing.T) {
+			jobNamesToUpload := []string{"job1", "job3"}
+			var jobNamesToDelete []string
+			jobsToUpload := []*scheduler.JobWithDetails{jobsWithDetails[0], jobsWithDetails[2]}
+
+			jobRepo := new(JobRepository)
+			jobRepo.On("GetJobs", mock.Anything, proj1Name, jobNamesToUpload).Return(jobsToUpload, nil)
+			defer jobRepo.AssertExpectations(t)
+
+			priorityResolver := new(mockPriorityResolver)
+			priorityResolver.On("Resolve", mock.Anything, jobsToUpload).Return(errors.New("internal error"))
+			defer priorityResolver.AssertExpectations(t)
+
+			mScheduler := new(mockScheduler)
+			defer mScheduler.AssertExpectations(t)
+
+			runService := service.NewJobRunService(logger, jobRepo, nil, nil, nil,
+				mScheduler, priorityResolver, nil, nil)
+
+			err := runService.UploadJobs(ctx, tnnt1, jobNamesToUpload, jobNamesToDelete)
+			assert.Error(t, err)
+		})
+		t.Run("should return error if unable to deploy jobs", func(t *testing.T) {
+			jobNamesToUpload := []string{"job1", "job3"}
+			var jobNamesToDelete []string
+			jobsToUpload := []*scheduler.JobWithDetails{jobsWithDetails[0], jobsWithDetails[2]}
+
+			jobRepo := new(JobRepository)
+			jobRepo.On("GetJobs", mock.Anything, proj1Name, jobNamesToUpload).Return(jobsToUpload, nil)
+			defer jobRepo.AssertExpectations(t)
+
+			priorityResolver := new(mockPriorityResolver)
+			priorityResolver.On("Resolve", mock.Anything, jobsToUpload).Return(nil)
+			defer priorityResolver.AssertExpectations(t)
+
+			mScheduler := new(mockScheduler)
+			mScheduler.On("DeployJobs", mock.Anything, tnnt1, jobsToUpload).Return(errors.New("internal error"))
+			defer mScheduler.AssertExpectations(t)
+
+			runService := service.NewJobRunService(logger, jobRepo, nil, nil, nil,
+				mScheduler, priorityResolver, nil, nil)
+
+			err := runService.UploadJobs(ctx, tnnt1, jobNamesToUpload, jobNamesToDelete)
+			assert.Error(t, err)
+		})
+		t.Run("should return error if unable to delete jobs from scheduler", func(t *testing.T) {
+			var jobNamesToUpload []string
+			jobNamesToDelete := []string{"job2"}
+
+			mScheduler := new(mockScheduler)
+			mScheduler.On("DeleteJobs", mock.Anything, tnnt1, jobNamesToDelete).Return(errors.New("internal error"))
+			defer mScheduler.AssertExpectations(t)
+
+			runService := service.NewJobRunService(logger, nil, nil, nil, nil,
+				mScheduler, nil, nil, nil)
+
+			err := runService.UploadJobs(ctx, tnnt1, jobNamesToUpload, jobNamesToDelete)
+			assert.Error(t, err)
+		})
+		t.Run("should upload and delete requested jobs, appropriately", func(t *testing.T) {
+			jobNamesToUpload := []string{"job1", "job3"}
+			jobNamesToDelete := []string{"job2"}
+			jobsToUpload := []*scheduler.JobWithDetails{jobsWithDetails[0], jobsWithDetails[2]}
+
+			jobRepo := new(JobRepository)
+			jobRepo.On("GetJobs", mock.Anything, proj1Name, jobNamesToUpload).Return(jobsToUpload, nil)
+			defer jobRepo.AssertExpectations(t)
+
+			priorityResolver := new(mockPriorityResolver)
+			priorityResolver.On("Resolve", mock.Anything, jobsToUpload).Return(nil)
+			defer priorityResolver.AssertExpectations(t)
+
+			mScheduler := new(mockScheduler)
+			mScheduler.On("DeployJobs", mock.Anything, tnnt1, jobsToUpload).Return(nil)
+			mScheduler.On("DeleteJobs", mock.Anything, tnnt1, jobNamesToDelete).Return(nil)
+			defer mScheduler.AssertExpectations(t)
+
+			runService := service.NewJobRunService(logger, jobRepo, nil, nil, nil,
+				mScheduler, priorityResolver, nil, nil)
+
+			err := runService.UploadJobs(ctx, tnnt1, jobNamesToUpload, jobNamesToDelete)
+			assert.Nil(t, err)
+		})
+		t.Run("should upload requested jobs, appropriately", func(t *testing.T) {
+			jobNamesToUpload := []string{"job1", "job3"}
+			var jobNamesToDelete []string
+			jobsToUpload := []*scheduler.JobWithDetails{jobsWithDetails[0], jobsWithDetails[2]}
+
+			jobRepo := new(JobRepository)
+			jobRepo.On("GetJobs", mock.Anything, proj1Name, jobNamesToUpload).Return(jobsToUpload, nil)
+			defer jobRepo.AssertExpectations(t)
+
+			priorityResolver := new(mockPriorityResolver)
+			priorityResolver.On("Resolve", mock.Anything, jobsToUpload).Return(nil)
+			defer priorityResolver.AssertExpectations(t)
+
+			mScheduler := new(mockScheduler)
+			mScheduler.On("DeployJobs", mock.Anything, tnnt1, jobsToUpload).Return(nil)
+			defer mScheduler.AssertExpectations(t)
+
+			runService := service.NewJobRunService(logger, jobRepo, nil, nil, nil,
+				mScheduler, priorityResolver, nil, nil)
+
+			err := runService.UploadJobs(ctx, tnnt1, jobNamesToUpload, jobNamesToDelete)
+			assert.Nil(t, err)
+		})
+		t.Run("should delete requested jobs, appropriately", func(t *testing.T) {
+			var jobNamesToUpload []string
+			jobNamesToDelete := []string{"job2"}
+
+			mScheduler := new(mockScheduler)
+			mScheduler.On("DeleteJobs", mock.Anything, tnnt1, jobNamesToDelete).Return(nil)
+			defer mScheduler.AssertExpectations(t)
+
+			runService := service.NewJobRunService(logger, nil, nil, nil, nil,
+				mScheduler, nil, nil, nil)
+
+			err := runService.UploadJobs(ctx, tnnt1, jobNamesToUpload, jobNamesToDelete)
+			assert.Nil(t, err)
 		})
 	})
 }

@@ -108,6 +108,38 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.Nil(t, jobObject)
 		})
 	})
+	t.Run("GetJobs", func(t *testing.T) {
+		t.Run("returns multiple job", func(t *testing.T) {
+			db := dbSetup()
+			jobs := addJobs(ctx, t, db)
+			jobProviderRepo := postgres.NewJobProviderRepository(db)
+
+			jobObjects, err := jobProviderRepo.GetJobs(ctx, tnnt.ProjectName(), []string{jobAName, jobBName})
+			assert.Nil(t, err)
+			assert.Equal(t, 2, len(jobObjects))
+			for _, jobObject := range jobObjects {
+				compareEqualJobWithDetails(jobs[jobObject.Name.String()], jobObject)
+			}
+		})
+		t.Run("returns not found error when jobs are not found", func(t *testing.T) {
+			db := dbSetup()
+			jobProviderRepo := postgres.NewJobProviderRepository(db)
+			jobObject, err := jobProviderRepo.GetJobs(ctx, tnnt.ProjectName(), []string{"some-other-job"})
+			assert.ErrorContains(t, err, "unable to find job")
+			assert.Nil(t, jobObject)
+		})
+		t.Run("returns the found job when some other job is not found", func(t *testing.T) {
+			db := dbSetup()
+			jobs := addJobs(ctx, t, db)
+			jobProviderRepo := postgres.NewJobProviderRepository(db)
+			jobObjects, err := jobProviderRepo.GetJobs(ctx, tnnt.ProjectName(), []string{jobAName, "some-other-job"})
+			assert.ErrorContains(t, err, "unable to find job")
+			assert.Equal(t, 1, len(jobObjects))
+			for _, jobObject := range jobObjects {
+				compareEqualJobWithDetails(jobs[jobObject.Name.String()], jobObject)
+			}
+		})
+	})
 }
 
 func dbSetup() *pgxpool.Pool {

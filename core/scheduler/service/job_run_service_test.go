@@ -1349,6 +1349,14 @@ func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectNa
 	return args.Get(0).([]*scheduler.JobWithDetails), args.Error(1)
 }
 
+func (j *JobRepository) GetJobs(ctx context.Context, projectName tenant.ProjectName, jobs []string) ([]*scheduler.JobWithDetails, error) {
+	args := j.Called(ctx, projectName, jobs)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*scheduler.JobWithDetails), args.Error(1)
+}
+
 type mockScheduler struct {
 	mock.Mock
 }

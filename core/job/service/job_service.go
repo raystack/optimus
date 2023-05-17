@@ -35,17 +35,23 @@ type JobService struct {
 
 	tenantDetailsGetter TenantDetailsGetter
 
+	jobDeploymentService JobDeploymentService
+
 	logger log.Logger
 }
 
-func NewJobService(repo JobRepository, pluginService PluginService, upstreamResolver UpstreamResolver, tenantDetailsGetter TenantDetailsGetter, eventHandler EventHandler, logger log.Logger) *JobService {
+func NewJobService(repo JobRepository, pluginService PluginService, upstreamResolver UpstreamResolver,
+	tenantDetailsGetter TenantDetailsGetter, eventHandler EventHandler, logger log.Logger,
+	jobDeploymentService JobDeploymentService,
+) *JobService {
 	return &JobService{
-		repo:                repo,
-		pluginService:       pluginService,
-		upstreamResolver:    upstreamResolver,
-		eventHandler:        eventHandler,
-		tenantDetailsGetter: tenantDetailsGetter,
-		logger:              logger,
+		repo:                 repo,
+		pluginService:        pluginService,
+		upstreamResolver:     upstreamResolver,
+		eventHandler:         eventHandler,
+		tenantDetailsGetter:  tenantDetailsGetter,
+		logger:               logger,
+		jobDeploymentService: jobDeploymentService,
 	}
 }
 
@@ -57,6 +63,10 @@ type PluginService interface {
 
 type TenantDetailsGetter interface {
 	GetDetails(ctx context.Context, jobTenant tenant.Tenant) (*tenant.WithDetails, error)
+}
+
+type JobDeploymentService interface {
+	UploadJobs(ctx context.Context, jobTenant tenant.Tenant, toUpdate, toDelete []string) error
 }
 
 type JobRepository interface {
@@ -108,6 +118,9 @@ func (j *JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*
 	err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
 	me.Append(err)
 
+	err = j.uploadJobs(ctx, jobTenant, addedJobs, nil, nil)
+	me.Append(err)
+
 	for _, job := range addedJobs {
 		j.raiseCreateEvent(job)
 	}
@@ -136,6 +149,9 @@ func (j *JobService) Update(ctx context.Context, jobTenant tenant.Tenant, specs 
 	err = j.repo.ReplaceUpstreams(ctx, jobsWithUpstreams)
 	me.Append(err)
 
+	err = j.uploadJobs(ctx, jobTenant, nil, updatedJobs, nil)
+	me.Append(err)
+
 	for _, job := range updatedJobs {
 		j.raiseUpdateEvent(job)
 	}
@@ -157,6 +173,10 @@ func (j *JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobNam
 	}
 
 	if err := j.repo.Delete(ctx, jobTenant.ProjectName(), jobName, cleanFlag); err != nil {
+		return downstreamFullNames, err
+	}
+
+	if err := j.uploadJobs(ctx, jobTenant, nil, nil, []job.Name{jobName}); err != nil {
 		return downstreamFullNames, err
 	}
 
@@ -286,13 +306,33 @@ func (j *JobService) ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, sp
 	updatedJobs, err := j.bulkUpdate(ctx, tenantWithDetails, toUpdate, logWriter)
 	me.Append(err)
 
-	err = j.bulkDelete(ctx, jobTenant, toDelete, logWriter)
+	deletedJobNames, err := j.bulkDelete(ctx, jobTenant, toDelete, logWriter)
 	me.Append(err)
 
 	err = j.resolveAndSaveUpstreams(ctx, jobTenant, logWriter, addedJobs, updatedJobs)
 	me.Append(err)
 
+	err = j.uploadJobs(ctx, jobTenant, addedJobs, updatedJobs, deletedJobNames)
+	me.Append(err)
+
 	return me.ToErr()
+}
+
+func (j *JobService) uploadJobs(ctx context.Context, jobTenant tenant.Tenant, addedJobs, updatedJobs []*job.Job, deletedJobNames []job.Name) error {
+	if len(addedJobs) == 0 && len(updatedJobs) == 0 && len(deletedJobNames) == 0 {
+		return nil
+	}
+
+	var jobNamesToUpload, jobNamesToRemove []string
+	for _, addedJob := range append(addedJobs, updatedJobs...) {
+		jobNamesToUpload = append(jobNamesToUpload, addedJob.GetName())
+	}
+
+	for _, deletedJobName := range deletedJobNames {
+		jobNamesToRemove = append(jobNamesToRemove, deletedJobName.String())
+	}
+
+	return j.jobDeploymentService.UploadJobs(ctx, jobTenant, jobNamesToUpload, jobNamesToRemove)
 }
 
 func (j *JobService) Refresh(ctx context.Context, projectName tenant.ProjectName, namespaceNames, jobNames []string, logWriter writer.LogWriter) (err error) {
@@ -561,10 +601,10 @@ func (j *JobService) bulkUpdate(ctx context.Context, tenantWithDetails *tenant.W
 	return updatedJobs, me.ToErr()
 }
 
-func (j *JobService) bulkDelete(ctx context.Context, jobTenant tenant.Tenant, toDelete []*job.Spec, logWriter writer.LogWriter) error {
+func (j *JobService) bulkDelete(ctx context.Context, jobTenant tenant.Tenant, toDelete []*job.Spec, logWriter writer.LogWriter) ([]job.Name, error) {
 	j.logger.Debug("deleting %d jobs of project [%s] namespace [%s]", len(toDelete), jobTenant.ProjectName(), jobTenant.NamespaceName())
 	me := errors.NewMultiError("bulk delete specs errors")
-	deletedJob := 0
+	var deletedJobNames []job.Name
 	toDeleteMap := job.Specs(toDelete).ToFullNameAndSpecMap(jobTenant.ProjectName())
 
 	alreadyDeleted := map[job.FullName]bool{}
@@ -597,7 +637,7 @@ func (j *JobService) bulkDelete(ctx context.Context, jobTenant tenant.Tenant, to
 			} else {
 				alreadyDeleted[downstreams[i].FullName()] = true
 				j.raiseDeleteEvent(jobTenant, spec.Name())
-				deletedJob++
+				deletedJobNames = append(deletedJobNames, downstreams[i].Name())
 			}
 		}
 
@@ -610,14 +650,14 @@ func (j *JobService) bulkDelete(ctx context.Context, jobTenant tenant.Tenant, to
 		} else {
 			alreadyDeleted[fullName] = true
 			j.raiseDeleteEvent(jobTenant, spec.Name())
-			deletedJob++
+			deletedJobNames = append(deletedJobNames, spec.Name())
 		}
 	}
 
-	if deletedJob > 0 {
-		logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] successfully deleted %d jobs", jobTenant.NamespaceName().String(), deletedJob))
+	if len(deletedJobNames) > 0 {
+		logWriter.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] successfully deleted %d jobs", jobTenant.NamespaceName().String(), len(deletedJobNames)))
 	}
-	return me.ToErr()
+	return deletedJobNames, me.ToErr()
 }
 
 func (*JobService) differentiateSpecs(existingJobs []*job.Job, jobTenant tenant.Tenant, specs []*job.Spec, jobNamesWithInvalidSpec []job.Name) (added, modified, deleted, unmodified []*job.Spec, err error) {

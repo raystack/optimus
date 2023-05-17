@@ -120,3 +120,38 @@ func (s *JobRunService) cleanPerNamespace(ctx context.Context, t tenant.Tenant, 
 	}
 	return s.scheduler.DeleteJobs(ctx, t, jobsToDelete)
 }
+
+func (s *JobRunService) UploadJobs(ctx context.Context, tnnt tenant.Tenant, toUpdate, toDelete []string) (err error) {
+	me := errors.NewMultiError("errorInUploadJobs")
+
+	if len(toUpdate) > 0 {
+		if err = s.resolveAndDeployJobs(ctx, tnnt, toUpdate); err == nil {
+			s.l.Info(fmt.Sprintf("[success] namespace: %s, project: %s, deployed %d jobs", tnnt.NamespaceName().String(),
+				tnnt.ProjectName().String(), len(toUpdate)))
+		}
+		me.Append(err)
+	}
+
+	if len(toDelete) > 0 {
+		if err = s.scheduler.DeleteJobs(ctx, tnnt, toDelete); err == nil {
+			s.l.Info("deleted %s jobs on project: %s", len(toDelete), tnnt.ProjectName())
+		}
+		me.Append(err)
+	}
+
+	return me.ToErr()
+}
+
+func (s *JobRunService) resolveAndDeployJobs(ctx context.Context, tnnt tenant.Tenant, toUpdate []string) error {
+	allJobsWithDetails, err := s.jobRepo.GetJobs(ctx, tnnt.ProjectName(), toUpdate)
+	if err != nil || allJobsWithDetails == nil {
+		return err
+	}
+
+	s.l.Info("got jobs to upload to scheduler")
+	if err := s.priorityResolver.Resolve(ctx, allJobsWithDetails); err != nil {
+		return err
+	}
+
+	return s.scheduler.DeployJobs(ctx, tnnt, allJobsWithDetails)
+}
