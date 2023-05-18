@@ -18,10 +18,10 @@ module.exports = {
     colorMode: {
       defaultMode: 'light',
       respectPrefersColorScheme: true,
-      // switchConfig: {
-      //   darkIcon: '☾',
-      //   lightIcon: '☀️',
-      // },
+      switchConfig: {
+        darkIcon: '☾',
+        lightIcon: '☀️',
+      },
     },
     navbar: {
       title: 'Optimus',
@@ -81,6 +81,9 @@ module.exports = {
       theme: lightCodeTheme,
       darkTheme: darkCodeTheme,
     },
+    gtag: {
+      trackingID: 'G-RSCK0YREFM',
+    },
     announcementBar: {
       id: 'star-repo',
       content: '⭐️ If you like Optimus, give it a star on <a target="_blank" rel="noopener noreferrer" href="https://github.com/odpf/optimus">GitHub</a>! ⭐',
@@ -89,14 +92,11 @@ module.exports = {
       isCloseable: true,
     },
   },
+
   presets: [
     [
       '@docusaurus/preset-classic',
       {
-        gtag: {
-          trackingID: 'G-RSCK0YREFM',
-          anonymizeIP: true,
-        },
         docs: {
           showLastUpdateAuthor: true,
           showLastUpdateTime: true,

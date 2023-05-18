@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "odpf/optimus/cluster/v1beta1/command.proto",
+    "title": "odpf/optimus/integration/v1beta1/event.proto",
     "version": "version not set"
   },
   "consumes": [

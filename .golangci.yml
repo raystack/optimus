@@ -121,7 +121,7 @@ linters-settings:
       - "all"
       - "-SA1019"
   goimports:
-    local-prefixes: github.com/opdf/optimus
+    local-prefixes: github.com/odpf/optimus
   gci:
     sections:
       - standard # Captures all standard packages if they do not match another section.
