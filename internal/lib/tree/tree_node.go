@@ -1,9 +1,5 @@
 package tree
 
-import (
-	"github.com/goto/optimus/internal/lib/set"
-)
-
 type TreeData interface {
 	GetName() string
 }
@@ -12,7 +8,6 @@ type TreeData interface {
 type TreeNode struct {
 	Data       TreeData
 	Dependents []*TreeNode
-	Runs       set.Set
 }
 
 // GetAllNodes returns level order traversal of tree starting from current node
@@ -43,6 +38,5 @@ func NewTreeNode(data TreeData) *TreeNode {
 	return &TreeNode{
 		Data:       data,
 		Dependents: []*TreeNode{},
-		Runs:       set.NewTreeSetWithTimeComparator(),
 	}
 }
