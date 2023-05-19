@@ -148,7 +148,7 @@ func TestJob(t *testing.T) {
 			},
 		}
 		labels := jobWithDetails.GetUniqueLabelValues()
-		assert.Equal(t, labels, []string{"someVale", "another"})
+		assert.ElementsMatch(t, labels, []string{"someVale", "another"})
 	})
 	t.Run("GroupJobsByTenant", func(t *testing.T) {
 		t1, _ := tenant.NewTenant("proj", "ns1")
