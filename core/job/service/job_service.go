@@ -816,10 +816,6 @@ func (j *JobService) GetJobBasicInfo(ctx context.Context, jobTenant tenant.Tenan
 		logger.Write(writer.LogLevelInfo, "no job sources detected")
 	}
 
-	if subjectJob.Spec().Schedule().CatchUp() {
-		logger.Write(writer.LogLevelWarning, "catchup is enabled")
-	}
-
 	if dupDestJobNames, err := j.getJobNamesWithSameDestination(ctx, subjectJob); err != nil {
 		logger.Write(writer.LogLevelError, "could not perform duplicate job destination check, err: "+err.Error())
 	} else if dupDestJobNames != "" {

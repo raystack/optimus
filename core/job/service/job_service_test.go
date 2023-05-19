@@ -2881,7 +2881,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			specASchedule, err := job.NewScheduleBuilder(startDate).WithCatchUp(true).Build()
+			specASchedule, err := job.NewScheduleBuilder(startDate).Build()
 			assert.NoError(t, err)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", specASchedule, jobWindow, jobTask).Build()
@@ -2894,8 +2894,7 @@ func TestJobService(t *testing.T) {
 			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil)
 			result, logger := jobService.GetJobBasicInfo(ctx, sampleTenant, specA.Name(), nil)
 			assert.Contains(t, logger.Messages[0].Message, "no job sources detected")
-			assert.Contains(t, logger.Messages[1].Message, "catchup is enabled")
-			assert.Contains(t, logger.Messages[2].Message, "could not perform duplicate job destination check")
+			assert.Contains(t, logger.Messages[1].Message, "could not perform duplicate job destination check")
 			assert.Equal(t, jobA, result)
 		})
 		t.Run("should return error if unable to get existing job", func(t *testing.T) {

@@ -50,7 +50,7 @@ dag = DAG(
     dag_id="infra.billing.weekly-status-reports",
     default_args=default_args,
     schedule_interval="0 2 * * 0",
-    catchup=True,
+    catchup=False,
     dagrun_timeout=timedelta(seconds=DAGRUN_TIMEOUT_IN_SECS),
     tags=[
         "optimus",

@@ -21,7 +21,6 @@ func ToJobProto(jobEntity *job.Job) *pb.JobSpecification {
 		EndDate:          jobEntity.Spec().Schedule().EndDate().String(),
 		Interval:         jobEntity.Spec().Schedule().Interval(),
 		DependsOnPast:    jobEntity.Spec().Schedule().DependsOnPast(),
-		CatchUp:          jobEntity.Spec().Schedule().CatchUp(),
 		TaskName:         jobEntity.Spec().Task().Name().String(),
 		Config:           fromConfig(jobEntity.Spec().Task().Config()),
 		WindowSize:       jobEntity.Spec().Window().GetSize(),
@@ -76,7 +75,6 @@ func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
 	}
 
 	scheduleBuilder := job.NewScheduleBuilder(startDate).
-		WithCatchUp(js.CatchUp).
 		WithDependsOnPast(js.DependsOnPast).
 		WithInterval(js.Interval)
 

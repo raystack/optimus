@@ -60,7 +60,7 @@ dag = DAG(
     dag_id={{.JobDetails.Name.String | quote}},
     default_args=default_args,
     schedule_interval={{ if eq .JobDetails.Schedule.Interval "" }}None{{- else -}} {{ .JobDetails.Schedule.Interval | quote}}{{end}},
-    catchup={{ if .JobDetails.Schedule.CatchUp -}}True{{- else -}}False{{- end }},
+    catchup=False,
     dagrun_timeout=timedelta(seconds=DAGRUN_TIMEOUT_IN_SECS),
     tags=[
         {{- range $i, $value := $.JobDetails.GetUniqueLabelValues}}

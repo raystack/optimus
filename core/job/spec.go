@@ -219,7 +219,6 @@ type Schedule struct {
 	endDate       ScheduleDate
 	interval      string
 	dependsOnPast bool
-	catchUp       bool
 	retry         *Retry
 }
 
@@ -237,10 +236,6 @@ func (s Schedule) Interval() string {
 
 func (s Schedule) DependsOnPast() bool {
 	return s.dependsOnPast
-}
-
-func (s Schedule) CatchUp() bool {
-	return s.catchUp
 }
 
 func (s Schedule) Retry() *Retry {
@@ -279,11 +274,6 @@ func (s *ScheduleBuilder) WithEndDate(endDate ScheduleDate) *ScheduleBuilder {
 
 func (s *ScheduleBuilder) WithDependsOnPast(dependsOnPast bool) *ScheduleBuilder {
 	s.schedule.dependsOnPast = dependsOnPast
-	return s
-}
-
-func (s *ScheduleBuilder) WithCatchUp(catchUp bool) *ScheduleBuilder {
-	s.schedule.catchUp = catchUp
 	return s
 }
 
