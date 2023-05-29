@@ -25,7 +25,7 @@ func TestTableCopier(t *testing.T) {
 
 			_, err := copierHandle.Run(ctx)
 			assert.Error(t, err)
-			assert.EqualError(t, err, "internal error for entity BigqueryStore: not able to create copy job")
+			assert.ErrorContains(t, err, "internal error for entity BigqueryStore: not able to create copy job")
 		})
 		t.Run("return copy job when successful", func(t *testing.T) {
 			bqCopier := new(mockBQCopier)

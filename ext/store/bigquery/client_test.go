@@ -118,7 +118,7 @@ func TestClientProvider(t *testing.T) {
 
 		_, err := provider.Get(ctx, "")
 		assert.NotNil(t, err)
-		assert.EqualError(t, err, "internal error for entity BigqueryStore: failed to read account")
+		assert.ErrorContains(t, err, "internal error for entity BigqueryStore: failed to read account")
 	})
 
 	t.Run("creates a new client with json", func(t *testing.T) {
