@@ -104,6 +104,14 @@ func (j JobRunStatusList) GetSortedRunsByStates(states []State) []*JobRunStatus 
 	return result
 }
 
+func (j JobRunStatusList) GetSortedRunsByScheduledAt() []*JobRunStatus {
+	result := []*JobRunStatus(j)
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ScheduledAt.Before(result[j].ScheduledAt)
+	})
+	return result
+}
+
 func (j JobRunStatusList) MergeWithUpdatedRuns(updatedRunMap map[time.Time]State) []*JobRunStatus {
 	var updatedRuns []*JobRunStatus
 	for _, run := range j {

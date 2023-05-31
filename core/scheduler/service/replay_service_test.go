@@ -166,7 +166,6 @@ func TestReplayService(t *testing.T) {
 			assert.Nil(t, result)
 		})
 	})
-
 	t.Run("GetReplayByID", func(t *testing.T) {
 		t.Run("returns empty if replay is not found", func(t *testing.T) {
 			replayRepository := new(ReplayRepository)

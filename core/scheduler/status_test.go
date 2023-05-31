@@ -157,6 +157,43 @@ func TestStatus(t *testing.T) {
 		runs := jobRunStatusList.GetSortedRunsByStates([]scheduler.State{scheduler.StateRunning})
 		assert.Equal(t, expectedRuns, runs)
 	})
+	t.Run("GetSortedRunsByScheduledAt", func(t *testing.T) {
+		time1 := time.Date(2023, 0o1, 1, 0, 0, 0, 0, time.UTC)
+		time2 := time.Date(2023, 0o1, 2, 0, 0, 0, 0, time.UTC)
+		time3 := time.Date(2023, 0o1, 3, 0, 0, 0, 0, time.UTC)
+
+		jobRunStatusList := scheduler.JobRunStatusList([]*scheduler.JobRunStatus{
+			{
+				ScheduledAt: time3,
+				State:       scheduler.StateRunning,
+			},
+			{
+				ScheduledAt: time1,
+				State:       scheduler.StatePending,
+			},
+			{
+				ScheduledAt: time2,
+				State:       scheduler.StateRunning,
+			},
+		})
+		expectedRuns := []*scheduler.JobRunStatus{
+			{
+				ScheduledAt: time1,
+				State:       scheduler.StatePending,
+			},
+			{
+				ScheduledAt: time2,
+				State:       scheduler.StateRunning,
+			},
+			{
+				ScheduledAt: time3,
+				State:       scheduler.StateRunning,
+			},
+		}
+
+		runs := jobRunStatusList.GetSortedRunsByScheduledAt()
+		assert.Equal(t, expectedRuns, runs)
+	})
 	t.Run("MergeWithUpdatedRuns", func(t *testing.T) {
 		time1 := time.Date(2023, 0o1, 1, 0, 0, 0, 0, time.UTC)
 		time2 := time.Date(2023, 0o1, 2, 0, 0, 0, 0, time.UTC)

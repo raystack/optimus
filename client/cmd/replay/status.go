@@ -120,6 +120,7 @@ func stringifyReplayStatus(resp *pb.GetReplayResponse) string {
 
 	if len(resp.ReplayConfig.GetJobConfig()) > 0 {
 		stringifyReplayConfig(buff, resp.ReplayConfig.GetJobConfig())
+		buff.WriteString("\n")
 	}
 
 	if len(resp.GetReplayRuns()) > 0 {

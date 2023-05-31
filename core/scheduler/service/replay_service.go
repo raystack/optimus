@@ -68,7 +68,12 @@ func (r ReplayService) GetReplayList(ctx context.Context, projectName tenant.Pro
 }
 
 func (r ReplayService) GetReplayByID(ctx context.Context, replayID uuid.UUID) (*scheduler.ReplayWithRun, error) {
-	return r.replayRepo.GetReplayByID(ctx, replayID)
+	replayWithRun, err := r.replayRepo.GetReplayByID(ctx, replayID)
+	if err != nil {
+		return nil, err
+	}
+	replayWithRun.Runs = scheduler.JobRunStatusList(replayWithRun.Runs).GetSortedRunsByScheduledAt()
+	return replayWithRun, nil
 }
 
 func NewReplayService(replayRepo ReplayRepository, jobRepo JobRepository, validator ReplayValidator) *ReplayService {
