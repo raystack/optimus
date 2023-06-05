@@ -31,6 +31,7 @@ const (
 
 	dagStatusBatchURL = "api/v1/dags/~/dagRuns/list"
 	dagRunClearURL    = "api/v1/dags/%s/clearTaskInstances"
+	dagRunCreateURL   = "api/v1/dags/%s/dagRuns"
 	airflowDateFormat = "2006-01-02T15:04:05+00:00"
 
 	schedulerHostKey = "SCHEDULER_HOST"
@@ -329,6 +330,31 @@ func (s *Scheduler) ClearBatch(ctx context.Context, tnnt tenant.Tenant, jobName 
 	_, err = s.client.Invoke(spanCtx, req, schdAuth)
 	if err != nil {
 		return errors.Wrap(EntityAirflow, "failure while clearing airflow dag runs", err)
+	}
+	return nil
+}
+
+func (s *Scheduler) CreateRun(ctx context.Context, tnnt tenant.Tenant, jobName scheduler.JobName, executionTime time.Time, dagRunIDPrefix string) error {
+	spanCtx, span := startChildSpan(ctx, "CreateRun")
+	defer span.End()
+
+	data := []byte(fmt.Sprintf(`{"dag_run_id": %q, "execution_date": %q}`,
+		fmt.Sprintf("%s__%s", dagRunIDPrefix, executionTime.UTC().Format(airflowDateFormat)),
+		executionTime.UTC().Format(airflowDateFormat)),
+	)
+	req := airflowRequest{
+		URL:    dagRunCreateURL,
+		method: http.MethodPost,
+		param:  jobName.String(),
+		body:   data,
+	}
+	schdAuth, err := s.getSchedulerAuth(ctx, tnnt)
+	if err != nil {
+		return err
+	}
+	_, err = s.client.Invoke(spanCtx, req, schdAuth)
+	if err != nil {
+		return errors.Wrap(EntityAirflow, "failure while creating airflow dag run", err)
 	}
 	return nil
 }

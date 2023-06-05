@@ -26,6 +26,8 @@ func TestReplay(t *testing.T) {
 	scheduledTimeStr1 := "2023-01-02T12:00:00Z"
 	scheduledTime1, _ := time.Parse(scheduler.ISODateFormat, scheduledTimeStr1)
 	scheduledTime2 := scheduledTime1.Add(24 * time.Hour)
+	scheduledTime3 := scheduledTime1.Add(2 * 24 * time.Hour)
+	scheduledTime4 := scheduledTime1.Add(3 * 24 * time.Hour)
 
 	t.Run("NewReplay", func(t *testing.T) {
 		createdTime := time.Now()
@@ -54,11 +56,19 @@ func TestReplay(t *testing.T) {
 	t.Run("ReplayWithRun", func(t *testing.T) {
 		firstRun := &scheduler.JobRunStatus{
 			ScheduledAt: scheduledTime1,
-			State:       scheduler.StatePending,
+			State:       scheduler.StateInProgress,
 		}
 		secondRun := &scheduler.JobRunStatus{
 			ScheduledAt: scheduledTime2,
 			State:       scheduler.StatePending,
+		}
+		thirdRun := &scheduler.JobRunStatus{
+			ScheduledAt: scheduledTime3,
+			State:       scheduler.StatePending,
+		}
+		fourthRun := &scheduler.JobRunStatus{
+			ScheduledAt: scheduledTime4,
+			State:       scheduler.StateReplayed,
 		}
 
 		t.Run("GetFirstExecutableRun", func(t *testing.T) {
@@ -68,10 +78,12 @@ func TestReplay(t *testing.T) {
 				Runs: []*scheduler.JobRunStatus{
 					firstRun,
 					secondRun,
+					thirdRun,
+					fourthRun,
 				},
 			}
 			firstExecutableRun := replayWithRun.GetFirstExecutableRun()
-			assert.Equal(t, firstRun, firstExecutableRun)
+			assert.Equal(t, firstExecutableRun, secondRun)
 		})
 		t.Run("GetLastExecutableRun", func(t *testing.T) {
 			replay := scheduler.NewReplay(replayID, jobNameA, tnnt, replayConfig, scheduler.ReplayStateCreated, time.Now())
@@ -80,10 +92,12 @@ func TestReplay(t *testing.T) {
 				Runs: []*scheduler.JobRunStatus{
 					firstRun,
 					secondRun,
+					thirdRun,
+					fourthRun,
 				},
 			}
 			lastExecutableRun := replayWithRun.GetLastExecutableRun()
-			assert.Equal(t, secondRun, lastExecutableRun)
+			assert.Equal(t, lastExecutableRun, thirdRun)
 		})
 	})
 

@@ -41,12 +41,15 @@ func TestReplayValidator(t *testing.T) {
 	replayReq := scheduler.NewReplayRequest(jobName, tnnt, replayConfig, scheduler.ReplayStateCreated)
 
 	t.Run("Validate", func(t *testing.T) {
-		t.Run("should return nil if no conflict replay or conflict run found", func(t *testing.T) {
+		t.Run("should return nil if validation valid", func(t *testing.T) {
 			replayRepository := new(ReplayRepository)
 			defer replayRepository.AssertExpectations(t)
 
 			sch := new(mockReplayScheduler)
 			defer sch.AssertExpectations(t)
+
+			jobRepository := new(JobRepository)
+			defer jobRepository.AssertExpectations(t)
 
 			onGoingReplayConfig := scheduler.NewReplayConfig(time.Now(), time.Now(), parallel, replayJobConfig, description)
 			onGoingReplay := []*scheduler.Replay{
@@ -60,12 +63,61 @@ func TestReplayValidator(t *testing.T) {
 				},
 			}
 
+			jobRepository.On("GetJobDetails", ctx, replayReq.Tenant().ProjectName(), replayReq.JobName()).Return(&scheduler.JobWithDetails{
+				Schedule: &scheduler.Schedule{
+					StartDate: startTime,
+					EndDate:   &endTime,
+				},
+			}, nil)
 			replayRepository.On("GetReplayRequestsByStatus", ctx, replayStatusToValidate).Return(onGoingReplay, nil)
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(currentRuns, nil)
 
-			validator := service.NewValidator(replayRepository, sch)
+			validator := service.NewValidator(replayRepository, sch, jobRepository)
 			err := validator.Validate(ctx, replayReq, jobCron)
 			assert.NoError(t, err)
+		})
+		t.Run("should return error if start date of replay is before the start date of the job", func(t *testing.T) {
+			replayRepository := new(ReplayRepository)
+			defer replayRepository.AssertExpectations(t)
+
+			sch := new(mockReplayScheduler)
+			defer sch.AssertExpectations(t)
+
+			jobRepository := new(JobRepository)
+			defer jobRepository.AssertExpectations(t)
+
+			jobRepository.On("GetJobDetails", ctx, replayReq.Tenant().ProjectName(), replayReq.JobName()).Return(&scheduler.JobWithDetails{
+				Schedule: &scheduler.Schedule{
+					StartDate: startTime.Add(1 * time.Second), // start date 1 second ahead of replay
+					EndDate:   &endTime,
+				},
+			}, nil)
+
+			validator := service.NewValidator(replayRepository, sch, jobRepository)
+			err := validator.Validate(ctx, replayReq, jobCron)
+			assert.ErrorContains(t, err, "replay start date")
+		})
+		t.Run("should return error if end date of replay is on the future", func(t *testing.T) {
+			replayRepository := new(ReplayRepository)
+			defer replayRepository.AssertExpectations(t)
+
+			sch := new(mockReplayScheduler)
+			defer sch.AssertExpectations(t)
+
+			jobRepository := new(JobRepository)
+			defer jobRepository.AssertExpectations(t)
+
+			schEndTime := endTime.Add(-1 * time.Second)
+			jobRepository.On("GetJobDetails", ctx, replayReq.Tenant().ProjectName(), replayReq.JobName()).Return(&scheduler.JobWithDetails{
+				Schedule: &scheduler.Schedule{
+					StartDate: startTime,
+					EndDate:   &schEndTime, // end date 1 second prior of replay
+				},
+			}, nil)
+
+			validator := service.NewValidator(replayRepository, sch, jobRepository)
+			err := validator.Validate(ctx, replayReq, jobCron)
+			assert.ErrorContains(t, err, "replay end date")
 		})
 		t.Run("should return error if conflict replay found", func(t *testing.T) {
 			replayRepository := new(ReplayRepository)
@@ -74,13 +126,23 @@ func TestReplayValidator(t *testing.T) {
 			sch := new(mockReplayScheduler)
 			defer sch.AssertExpectations(t)
 
+			jobRepository := new(JobRepository)
+			defer jobRepository.AssertExpectations(t)
+
 			onGoingReplay := []*scheduler.Replay{
 				scheduler.NewReplayRequest(jobName, tnnt, replayConfig, scheduler.ReplayStateInProgress),
 			}
 
+			jobRepository.On("GetJobDetails", ctx, replayReq.Tenant().ProjectName(), replayReq.JobName()).Return(&scheduler.JobWithDetails{
+				Schedule: &scheduler.Schedule{
+					StartDate: startTime,
+					EndDate:   &endTime,
+				},
+			}, nil)
+
 			replayRepository.On("GetReplayRequestsByStatus", ctx, replayStatusToValidate).Return(onGoingReplay, nil)
 
-			validator := service.NewValidator(replayRepository, sch)
+			validator := service.NewValidator(replayRepository, sch, jobRepository)
 			err := validator.Validate(ctx, replayReq, jobCron)
 			assert.ErrorContains(t, err, "conflicted replay")
 		})
@@ -90,6 +152,9 @@ func TestReplayValidator(t *testing.T) {
 
 			sch := new(mockReplayScheduler)
 			defer sch.AssertExpectations(t)
+
+			jobRepository := new(JobRepository)
+			defer jobRepository.AssertExpectations(t)
 
 			onGoingReplayConfig := scheduler.NewReplayConfig(time.Now(), time.Now(), parallel, replayJobConfig, description)
 			onGoingReplay := []*scheduler.Replay{
@@ -102,10 +167,16 @@ func TestReplayValidator(t *testing.T) {
 				},
 			}
 
+			jobRepository.On("GetJobDetails", ctx, replayReq.Tenant().ProjectName(), replayReq.JobName()).Return(&scheduler.JobWithDetails{
+				Schedule: &scheduler.Schedule{
+					StartDate: startTime,
+					EndDate:   &endTime,
+				},
+			}, nil)
 			replayRepository.On("GetReplayRequestsByStatus", ctx, replayStatusToValidate).Return(onGoingReplay, nil)
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(currentRuns, nil)
 
-			validator := service.NewValidator(replayRepository, sch)
+			validator := service.NewValidator(replayRepository, sch, jobRepository)
 			err := validator.Validate(ctx, replayReq, jobCron)
 			assert.ErrorContains(t, err, "conflicted job run found")
 		})
@@ -116,10 +187,19 @@ func TestReplayValidator(t *testing.T) {
 			sch := new(mockReplayScheduler)
 			defer sch.AssertExpectations(t)
 
+			jobRepository := new(JobRepository)
+			defer jobRepository.AssertExpectations(t)
+
 			internalErr := errors.New("internal error")
+			jobRepository.On("GetJobDetails", ctx, replayReq.Tenant().ProjectName(), replayReq.JobName()).Return(&scheduler.JobWithDetails{
+				Schedule: &scheduler.Schedule{
+					StartDate: startTime,
+					EndDate:   &endTime,
+				},
+			}, nil)
 			replayRepository.On("GetReplayRequestsByStatus", ctx, replayStatusToValidate).Return(nil, internalErr)
 
-			validator := service.NewValidator(replayRepository, sch)
+			validator := service.NewValidator(replayRepository, sch, jobRepository)
 			err := validator.Validate(ctx, replayReq, jobCron)
 			assert.ErrorIs(t, err, internalErr)
 		})
@@ -130,6 +210,9 @@ func TestReplayValidator(t *testing.T) {
 			sch := new(mockReplayScheduler)
 			defer sch.AssertExpectations(t)
 
+			jobRepository := new(JobRepository)
+			defer jobRepository.AssertExpectations(t)
+
 			onGoingReplayConfig := scheduler.NewReplayConfig(time.Now(), time.Now(), parallel, map[string]string{}, description)
 			onGoingReplay := []*scheduler.Replay{
 				scheduler.NewReplayRequest(jobName, tnnt, onGoingReplayConfig, scheduler.ReplayStateCreated),
@@ -138,9 +221,15 @@ func TestReplayValidator(t *testing.T) {
 			replayRepository.On("GetReplayRequestsByStatus", ctx, replayStatusToValidate).Return(onGoingReplay, nil)
 
 			internalErr := errors.New("internal error")
+			jobRepository.On("GetJobDetails", ctx, replayReq.Tenant().ProjectName(), replayReq.JobName()).Return(&scheduler.JobWithDetails{
+				Schedule: &scheduler.Schedule{
+					StartDate: startTime,
+					EndDate:   &endTime,
+				},
+			}, nil)
 			sch.On("GetJobRuns", ctx, tnnt, runsCriteriaJobA, jobCron).Return(nil, internalErr)
 
-			validator := service.NewValidator(replayRepository, sch)
+			validator := service.NewValidator(replayRepository, sch, jobRepository)
 			err := validator.Validate(ctx, replayReq, jobCron)
 			assert.ErrorIs(t, err, internalErr)
 		})

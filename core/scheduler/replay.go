@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"sort"
 	"strings"
 	"time"
 
@@ -107,17 +106,19 @@ type ReplayWithRun struct {
 }
 
 func (r *ReplayWithRun) GetFirstExecutableRun() *JobRunStatus {
-	sort.Slice(r.Runs, func(i, j int) bool {
-		return r.Runs[i].ScheduledAt.Before(r.Runs[j].ScheduledAt)
-	})
-	return r.Runs[0]
+	runs := JobRunStatusList(r.Runs).GetSortedRunsByStates([]State{StatePending})
+	if len(runs) > 0 {
+		return runs[0]
+	}
+	return nil
 }
 
 func (r *ReplayWithRun) GetLastExecutableRun() *JobRunStatus {
-	sort.Slice(r.Runs, func(i, j int) bool {
-		return r.Runs[i].ScheduledAt.After(r.Runs[j].ScheduledAt)
-	})
-	return r.Runs[0]
+	runs := JobRunStatusList(r.Runs).GetSortedRunsByStates([]State{StatePending})
+	if len(runs) > 0 {
+		return runs[len(runs)-1]
+	}
+	return nil
 }
 
 type ReplayConfig struct {
