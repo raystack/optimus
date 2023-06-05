@@ -477,10 +477,10 @@ func (j *JobWithUpstream) getJobFullName() string {
 }
 
 func (j JobRepository) ReplaceUpstreams(ctx context.Context, jobsWithUpstreams []*job.WithUpstream) error {
-	var storageJobUpstreams []*JobWithUpstream
+	var jobUpstreams []*JobWithUpstream
 	for _, jobWithUpstreams := range jobsWithUpstreams {
-		upstream := toJobUpstream(jobWithUpstreams)
-		storageJobUpstreams = append(storageJobUpstreams, upstream...)
+		singleJobUpstreams := toJobUpstream(jobWithUpstreams)
+		jobUpstreams = append(jobUpstreams, singleJobUpstreams...)
 	}
 
 	tx, err := j.db.Begin(ctx)
@@ -489,15 +489,15 @@ func (j JobRepository) ReplaceUpstreams(ctx context.Context, jobsWithUpstreams [
 	}
 
 	var jobFullName []string
-	for _, upstream := range storageJobUpstreams {
-		jobFullName = append(jobFullName, upstream.getJobFullName())
+	for _, jobWithUpstream := range jobsWithUpstreams {
+		jobFullName = append(jobFullName, jobWithUpstream.Job().FullName())
 	}
 
-	if err = j.deleteUpstreams(ctx, tx, jobFullName); err != nil {
+	if err = j.deleteUpstreamsByJobNames(ctx, tx, jobFullName); err != nil {
 		tx.Rollback(ctx)
 		return err
 	}
-	if err = j.insertUpstreams(ctx, tx, storageJobUpstreams); err != nil {
+	if err = j.insertUpstreams(ctx, tx, jobUpstreams); err != nil {
 		tx.Rollback(ctx)
 		return err
 	}
@@ -568,7 +568,7 @@ VALUES (
 	return nil
 }
 
-func (JobRepository) deleteUpstreams(ctx context.Context, tx pgx.Tx, jobUpstreams []string) error {
+func (JobRepository) deleteUpstreamsByJobNames(ctx context.Context, tx pgx.Tx, jobUpstreams []string) error {
 	deleteForProjectScope := `DELETE
 FROM job_upstream
 WHERE project_name || '/' || job_name = any ($1);`
