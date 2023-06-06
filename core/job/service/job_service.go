@@ -428,10 +428,6 @@ func (j *JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobS
 	err = j.validateDeleteJobs(ctx, jobTenant, toDelete, logWriter)
 	me.Append(err)
 
-	if len(me.Errors) > 0 {
-		return me.ToErr()
-	}
-
 	// NOTE: only check cyclic deps across internal upstreams (sources), need further discussion to check cyclic deps for external upstream
 	// assumption, all job specs from input are also the job within same project
 	jobsToValidateMap := getAllJobsToValidateMap(incomingJobs, existingJobs, unmodifiedSpecs)
@@ -444,11 +440,7 @@ func (j *JobService) Validate(ctx context.Context, jobTenant tenant.Tenant, jobS
 		}
 	}
 
-	if len(me.Errors) > 0 {
-		return me
-	}
-
-	return nil
+	return me.ToErr()
 }
 
 func (j *JobService) validateDeleteJobs(ctx context.Context, jobTenant tenant.Tenant, toDelete []*job.Spec, logWriter writer.LogWriter) error {
