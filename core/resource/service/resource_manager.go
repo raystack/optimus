@@ -121,6 +121,7 @@ func (m *ResourceMgr) BatchUpdate(ctx context.Context, store resource.Store, res
 func (m *ResourceMgr) Backup(ctx context.Context, details *resource.Backup, resources []*resource.Resource) (*resource.BackupResult, error) {
 	datastore, ok := m.datastoreMap[details.Store()]
 	if !ok {
+		m.logger.Error("datastore [%s] is not found", details.Store())
 		return nil, errors.InvalidArgument(resource.EntityResource, "data store service not found for "+details.Store().String())
 	}
 

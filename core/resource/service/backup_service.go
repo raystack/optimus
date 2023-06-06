@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"strings"
 	"time"
+
+	"github.com/goto/salt/log"
 
 	"github.com/goto/optimus/core/resource"
 	"github.com/goto/optimus/core/tenant"
@@ -31,23 +34,28 @@ type BackupService struct {
 
 	resources     ResourceProvider
 	backupManager BackupManager
+
+	logger log.Logger
 }
 
 func (s BackupService) Create(ctx context.Context, backup *resource.Backup) (*resource.BackupResult, error) {
 	resources, err := s.resources.GetResources(ctx, backup.Tenant(), backup.Store(), backup.ResourceNames())
 	if err != nil {
+		s.logger.Error("error getting resources [%s] from db: %s", strings.Join(backup.ResourceNames(), ", "), err)
 		return nil, err
 	}
 	ignored := findMissingResources(backup.ResourceNames(), resources)
 
 	backupInfo, err := s.backupManager.Backup(ctx, backup, resources)
 	if err != nil {
+		s.logger.Error("error backup up through manager: %s", err)
 		return nil, err
 	}
 
 	backupInfo.IgnoredResources = append(backupInfo.IgnoredResources, ignored...)
 	err = s.repo.Create(ctx, backup)
 	if err != nil {
+		s.logger.Error("error creating backup record to db: %s", err)
 		return backupInfo, err
 	}
 
@@ -57,6 +65,7 @@ func (s BackupService) Create(ctx context.Context, backup *resource.Backup) (*re
 
 func (s BackupService) Get(ctx context.Context, backupID resource.BackupID) (*resource.Backup, error) {
 	if backupID.IsInvalid() {
+		s.logger.Error("backup id [%s] is invalid", backupID.String())
 		return nil, errors.InvalidArgument("backup", "the backup id is not valid")
 	}
 	return s.repo.GetByID(ctx, backupID)
@@ -65,6 +74,7 @@ func (s BackupService) Get(ctx context.Context, backupID resource.BackupID) (*re
 func (s BackupService) List(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Backup, error) {
 	backups, err := s.repo.GetAll(ctx, tnnt, store)
 	if err != nil {
+		s.logger.Error("error getting all backups from db: %s", err)
 		return nil, err
 	}
 
@@ -101,10 +111,11 @@ func findMissingResources(names []string, resources []*resource.Resource) []reso
 	return ignored
 }
 
-func NewBackupService(repo BackupRepository, resources ResourceProvider, manager BackupManager) *BackupService {
+func NewBackupService(repo BackupRepository, resources ResourceProvider, manager BackupManager, logger log.Logger) *BackupService {
 	return &BackupService{
 		repo:          repo,
 		resources:     resources,
 		backupManager: manager,
+		logger:        logger,
 	}
 }

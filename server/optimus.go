@@ -280,15 +280,15 @@ func (s *OptimusServer) setupHandlers() error {
 
 	tProjectService := tService.NewProjectService(tProjectRepo)
 	tNamespaceService := tService.NewNamespaceService(tNamespaceRepo)
-	tSecretService := tService.NewSecretService(s.key, tSecretRepo)
-	tenantService := tService.NewTenantService(tProjectService, tNamespaceService, tSecretService)
+	tSecretService := tService.NewSecretService(s.key, tSecretRepo, s.logger)
+	tenantService := tService.NewTenantService(tProjectService, tNamespaceService, tSecretService, s.logger)
 
 	// Resource Bounded Context
 	resourceRepository := resource.NewRepository(s.dbPool)
 	backupRepository := resource.NewBackupRepository(s.dbPool)
 	resourceManager := rService.NewResourceManager(resourceRepository, s.logger)
 	resourceService := rService.NewResourceService(s.logger, resourceRepository, resourceManager, s.eventHandler)
-	backupService := rService.NewBackupService(backupRepository, resourceRepository, resourceManager)
+	backupService := rService.NewBackupService(backupRepository, resourceRepository, resourceManager, s.logger)
 
 	// Register datastore
 	bqClientProvider := bqStore.NewClientProvider()
@@ -323,8 +323,8 @@ func (s *OptimusServer) setupHandlers() error {
 	newEngine := compiler.NewEngine()
 
 	newPriorityResolver := schedulerResolver.NewSimpleResolver()
-	assetCompiler := schedulerService.NewJobAssetsCompiler(newEngine, s.pluginRepo)
-	jobInputCompiler := schedulerService.NewJobInputCompiler(tenantService, newEngine, assetCompiler)
+	assetCompiler := schedulerService.NewJobAssetsCompiler(newEngine, s.pluginRepo, s.logger)
+	jobInputCompiler := schedulerService.NewJobInputCompiler(tenantService, newEngine, assetCompiler, s.logger)
 	notificationService := schedulerService.NewNotifyService(s.logger, jobProviderRepo, tenantService, notifierChanels)
 	newScheduler, err := NewScheduler(s.logger, s.conf, s.pluginRepo, tProjectService, tSecretService)
 	if err != nil {
@@ -336,8 +336,9 @@ func (s *OptimusServer) setupHandlers() error {
 	replayManager := schedulerService.NewReplayManager(s.logger, replayRepository, replayWorker, func() time.Time {
 		return time.Now().UTC()
 	}, s.conf.Replay)
+
 	replayValidator := schedulerService.NewValidator(replayRepository, newScheduler, jobProviderRepo)
-	replayService := schedulerService.NewReplayService(replayRepository, jobProviderRepo, replayValidator)
+	replayService := schedulerService.NewReplayService(replayRepository, jobProviderRepo, replayValidator, s.logger)
 
 	newJobRunService := schedulerService.NewJobRunService(s.logger, jobProviderRepo, jobRunRepo, replayRepository, operatorRunRepository, newScheduler, newPriorityResolver, jobInputCompiler, s.eventHandler)
 

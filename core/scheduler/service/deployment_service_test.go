@@ -77,7 +77,7 @@ func TestDeploymentService(t *testing.T) {
 			jobRepo.On("GetAll", mock.Anything, proj1Name).Return(nil, fmt.Errorf("GetAll error"))
 			defer jobRepo.AssertExpectations(t)
 
-			runService := service.NewJobRunService(nil,
+			runService := service.NewJobRunService(logger,
 				jobRepo, nil, nil, nil, nil, nil, nil, nil)
 
 			err := runService.UploadToScheduler(ctx, proj1Name)
@@ -93,7 +93,7 @@ func TestDeploymentService(t *testing.T) {
 			priorityResolver.On("Resolve", mock.Anything, jobsWithDetails).Return(fmt.Errorf("priority resolution error"))
 			defer priorityResolver.AssertExpectations(t)
 
-			runService := service.NewJobRunService(nil,
+			runService := service.NewJobRunService(logger,
 				jobRepo, nil, nil, nil, nil, priorityResolver, nil, nil)
 
 			err := runService.UploadToScheduler(ctx, proj1Name)

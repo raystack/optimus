@@ -699,7 +699,7 @@ func TestNewJobHandler(t *testing.T) {
 			req := &pb.GetWindowRequest{
 				ScheduledAt: nil,
 			}
-			jobHandler := v1beta1.NewJobHandler(nil, nil)
+			jobHandler := v1beta1.NewJobHandler(nil, log)
 
 			resp, err := jobHandler.GetWindow(ctx, req)
 			assert.Error(t, err)
@@ -710,7 +710,7 @@ func TestNewJobHandler(t *testing.T) {
 				Version:     3,
 				ScheduledAt: timestamppb.New(time.Date(2022, 11, 18, 13, 0, 0, 0, time.UTC)),
 			}
-			jobHandler := v1beta1.NewJobHandler(nil, nil)
+			jobHandler := v1beta1.NewJobHandler(nil, log)
 
 			resp, err := jobHandler.GetWindow(ctx, req)
 			assert.Error(t, err)
@@ -722,7 +722,7 @@ func TestNewJobHandler(t *testing.T) {
 				ScheduledAt: timestamppb.New(time.Date(2022, 11, 18, 13, 0, 0, 0, time.UTC)),
 				Size:        "1",
 			}
-			jobHandler := v1beta1.NewJobHandler(nil, nil)
+			jobHandler := v1beta1.NewJobHandler(nil, log)
 
 			resp, err := jobHandler.GetWindow(ctx, req)
 			assert.Error(t, err)
@@ -736,7 +736,7 @@ func TestNewJobHandler(t *testing.T) {
 				Offset:      "0",
 				TruncateTo:  "d",
 			}
-			jobHandler := v1beta1.NewJobHandler(nil, nil)
+			jobHandler := v1beta1.NewJobHandler(nil, log)
 
 			resp, err := jobHandler.GetWindow(ctx, req)
 			assert.NoError(t, err)
@@ -749,7 +749,7 @@ func TestNewJobHandler(t *testing.T) {
 				Offset:      "0",
 				TruncateTo:  "d",
 			}
-			jobHandler := v1beta1.NewJobHandler(nil, nil)
+			jobHandler := v1beta1.NewJobHandler(nil, log)
 
 			resp, err := jobHandler.GetWindow(ctx, req)
 			assert.NoError(t, err)
@@ -1685,7 +1685,7 @@ func TestNewJobHandler(t *testing.T) {
 				},
 			}
 
-			handler := v1beta1.NewJobHandler(jobService, nil)
+			handler := v1beta1.NewJobHandler(jobService, log)
 			result, err := handler.JobInspect(ctx, req)
 			assert.NoError(t, err)
 			assert.Equal(t, resp, result)
@@ -1721,7 +1721,7 @@ func TestNewJobHandler(t *testing.T) {
 
 			req := &pb.GetJobTaskRequest{}
 
-			handler := v1beta1.NewJobHandler(jobService, nil)
+			handler := v1beta1.NewJobHandler(jobService, log)
 			resp, err := handler.GetJobTask(ctx, req)
 			assert.Error(t, err)
 			assert.Nil(t, resp)
@@ -1736,7 +1736,7 @@ func TestNewJobHandler(t *testing.T) {
 				NamespaceName: sampleTenant.NamespaceName().String(),
 			}
 
-			handler := v1beta1.NewJobHandler(jobService, nil)
+			handler := v1beta1.NewJobHandler(jobService, log)
 			resp, err := handler.GetJobTask(ctx, req)
 			assert.Error(t, err)
 			assert.Nil(t, resp)
@@ -1753,7 +1753,7 @@ func TestNewJobHandler(t *testing.T) {
 			}
 
 			jobService.On("Get", ctx, sampleTenant, job.Name("job-A")).Return(nil, errors.New("error encountered"))
-			handler := v1beta1.NewJobHandler(jobService, nil)
+			handler := v1beta1.NewJobHandler(jobService, log)
 			resp, err := handler.GetJobTask(ctx, req)
 			assert.Error(t, err)
 			assert.Nil(t, resp)
@@ -1773,7 +1773,7 @@ func TestNewJobHandler(t *testing.T) {
 
 			jobService.On("Get", ctx, sampleTenant, jobA.Spec().Name()).Return(jobA, nil)
 			jobService.On("GetTaskInfo", ctx, jobA.Spec().Task()).Return(nil, errors.New("error encountered"))
-			handler := v1beta1.NewJobHandler(jobService, nil)
+			handler := v1beta1.NewJobHandler(jobService, log)
 			resp, err := handler.GetJobTask(ctx, req)
 			assert.Error(t, err)
 			assert.Nil(t, resp)
@@ -1798,7 +1798,7 @@ func TestNewJobHandler(t *testing.T) {
 			}
 			jobService.On("Get", ctx, sampleTenant, jobA.Spec().Name()).Return(jobA, nil)
 			jobService.On("GetTaskInfo", ctx, jobA.Spec().Task()).Return(taskInfo, nil)
-			handler := v1beta1.NewJobHandler(jobService, nil)
+			handler := v1beta1.NewJobHandler(jobService, log)
 			resp, err := handler.GetJobTask(ctx, req)
 			assert.NoError(t, err)
 			assert.NotNil(t, resp)

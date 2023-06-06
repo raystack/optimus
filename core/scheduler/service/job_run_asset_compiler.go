@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/goto/salt/log"
+
 	"github.com/goto/optimus/core/scheduler"
 	"github.com/goto/optimus/sdk/plugin"
 )
@@ -24,27 +26,33 @@ type PluginRepo interface {
 type JobRunAssetsCompiler struct {
 	compiler   FilesCompiler
 	pluginRepo PluginRepo
+
+	logger log.Logger
 }
 
-func NewJobAssetsCompiler(engine FilesCompiler, pluginRepo PluginRepo) *JobRunAssetsCompiler {
+func NewJobAssetsCompiler(engine FilesCompiler, pluginRepo PluginRepo, logger log.Logger) *JobRunAssetsCompiler {
 	return &JobRunAssetsCompiler{
 		compiler:   engine,
 		pluginRepo: pluginRepo,
+		logger:     logger,
 	}
 }
 
 func (c *JobRunAssetsCompiler) CompileJobRunAssets(ctx context.Context, job *scheduler.Job, systemEnvVars map[string]string, scheduledAt time.Time, contextForTask map[string]interface{}) (map[string]string, error) {
 	taskPlugin, err := c.pluginRepo.GetByName(job.Task.Name)
 	if err != nil {
+		c.logger.Error("error getting plugin [%s]: %s", job.Task.Name, err)
 		return nil, err
 	}
 
 	startTime, err := job.Window.GetStartTime(scheduledAt)
 	if err != nil {
+		c.logger.Error("error getting window start time: %s", err)
 		return nil, fmt.Errorf("error getting start time: %w", err)
 	}
 	endTime, err := job.Window.GetEndTime(scheduledAt)
 	if err != nil {
+		c.logger.Error("error getting window end time: %s", err)
 		return nil, fmt.Errorf("error getting end time: %w", err)
 	}
 
@@ -60,6 +68,7 @@ func (c *JobRunAssetsCompiler) CompileJobRunAssets(ctx context.Context, job *sch
 			InstanceData: toJobRunSpecData(systemEnvVars),
 		})
 		if err != nil {
+			c.logger.Error("error compiling assets through plugin dependency mod: %s", err)
 			return nil, err
 		}
 		inputFiles = compiledAssetResponse.Assets.ToMap()
@@ -67,6 +76,7 @@ func (c *JobRunAssetsCompiler) CompileJobRunAssets(ctx context.Context, job *sch
 
 	fileMap, err := c.compiler.Compile(inputFiles, contextForTask)
 	if err != nil {
+		c.logger.Error("error compiling assets: %s", err)
 		return nil, err
 	}
 	return fileMap, nil

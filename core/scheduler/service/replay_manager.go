@@ -49,7 +49,7 @@ func (m ReplayManager) Initialize() {
 	if m.schedule != nil {
 		_, err := m.schedule.AddFunc(syncInterval, m.StartReplayLoop)
 		if err != nil {
-			m.l.Error("Failed to sync replay", "error", err)
+			m.l.Error("Failed to add function to cron schedule: %s", err)
 		}
 		m.schedule.Start()
 	}
@@ -80,7 +80,7 @@ func (m ReplayManager) checkTimedOutReplay(ctx context.Context) {
 		scheduler.ReplayStateInProgress, scheduler.ReplayStatePartialReplayed, scheduler.ReplayStateReplayed,
 	})
 	if err != nil {
-		m.l.Error("unable to get on going replay")
+		m.l.Error("error getting ongoing replay: %s", err)
 	}
 
 	for _, replay := range onGoingReplays {
@@ -90,8 +90,7 @@ func (m ReplayManager) checkTimedOutReplay(ctx context.Context) {
 		}
 		message := "replay timed out"
 		if err := m.replayRepository.UpdateReplayStatus(ctx, replay.ID(), scheduler.ReplayStateFailed, message); err != nil {
-			m.l.Error("unable to mark replay %s as failed due to time out", replay.ID())
+			m.l.Error("unable to mark replay [%s] as failed due to time out", replay.ID())
 		}
-		m.l.Info("replay %s timed out. marked as failed.", replay.ID())
 	}
 }

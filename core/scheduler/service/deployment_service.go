@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	"go.opentelemetry.io/otel"
 
@@ -74,6 +73,7 @@ func (s *JobRunService) UploadToScheduler(ctx context.Context, projectName tenan
 
 	err = s.priorityResolver.Resolve(spanCtx, allJobsWithDetails)
 	if err != nil {
+		s.l.Error("error resolving priority: %s", err)
 		me.Append(err)
 		return me.ToErr()
 	}
@@ -83,7 +83,7 @@ func (s *JobRunService) UploadToScheduler(ctx context.Context, projectName tenan
 	for t, jobs := range jobGroupByTenant {
 		span.AddEvent("uploading job specs")
 		if err = s.deployJobsPerNamespace(spanCtx, t, jobs); err == nil {
-			s.l.Debug(fmt.Sprintf("[success] namespace: %s, project: %s, deployed", t.NamespaceName().String(), t.ProjectName().String()))
+			s.l.Info("[success] namespace: %s, project: %s, deployed", t.NamespaceName().String(), t.ProjectName().String())
 		}
 		me.Append(err)
 
@@ -96,6 +96,7 @@ func (s *JobRunService) UploadToScheduler(ctx context.Context, projectName tenan
 func (s *JobRunService) deployJobsPerNamespace(ctx context.Context, t tenant.Tenant, jobs []*scheduler.JobWithDetails) error {
 	err := s.scheduler.DeployJobs(ctx, t, jobs)
 	if err != nil {
+		s.l.Error("error deploying jobs under project [%s] namespace [%s]: %s", t.ProjectName().String(), t.NamespaceName().String(), err)
 		return err
 	}
 	return s.cleanPerNamespace(ctx, t, jobs)
@@ -105,6 +106,7 @@ func (s *JobRunService) cleanPerNamespace(ctx context.Context, t tenant.Tenant, 
 	// get all stored job names
 	schedulerJobNames, err := s.scheduler.ListJobs(ctx, t)
 	if err != nil {
+		s.l.Error("error listing jobs under project [%s] namespace [%s]: %s", t.ProjectName().String(), t.NamespaceName().String(), err)
 		return err
 	}
 	jobNamesMap := make(map[string]struct{})
@@ -126,8 +128,8 @@ func (s *JobRunService) UploadJobs(ctx context.Context, tnnt tenant.Tenant, toUp
 
 	if len(toUpdate) > 0 {
 		if err = s.resolveAndDeployJobs(ctx, tnnt, toUpdate); err == nil {
-			s.l.Info(fmt.Sprintf("[success] namespace: %s, project: %s, deployed %d jobs", tnnt.NamespaceName().String(),
-				tnnt.ProjectName().String(), len(toUpdate)))
+			s.l.Info("[success] namespace: %s, project: %s, deployed %d jobs", tnnt.NamespaceName().String(),
+				tnnt.ProjectName().String(), len(toUpdate))
 		}
 		me.Append(err)
 	}
@@ -148,8 +150,8 @@ func (s *JobRunService) resolveAndDeployJobs(ctx context.Context, tnnt tenant.Te
 		return err
 	}
 
-	s.l.Info("got jobs to upload to scheduler")
 	if err := s.priorityResolver.Resolve(ctx, allJobsWithDetails); err != nil {
+		s.l.Error("error priority resolving jobs: %s", err)
 		return err
 	}
 

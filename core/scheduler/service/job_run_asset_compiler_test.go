@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/goto/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -54,6 +55,8 @@ func TestJobAssetsCompiler(t *testing.T) {
 		"JOB_DESTINATION": job.Destination,
 	}
 
+	logger := log.NewLogrus()
+
 	t.Run("CompileJobRunAssets", func(t *testing.T) {
 		t.Run("should error if plugin repo get plugin by name fails", func(t *testing.T) {
 			pluginRepo := new(mockPluginRepo)
@@ -62,7 +65,7 @@ func TestJobAssetsCompiler(t *testing.T) {
 
 			contextForTask := map[string]any{}
 
-			jobRunAssetsCompiler := service.NewJobAssetsCompiler(nil, pluginRepo)
+			jobRunAssetsCompiler := service.NewJobAssetsCompiler(nil, pluginRepo, logger)
 			assets, err := jobRunAssetsCompiler.CompileJobRunAssets(ctx, job, systemEnvVars, scheduleTime, contextForTask)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "error in getting plugin by name")
@@ -90,7 +93,7 @@ func TestJobAssetsCompiler(t *testing.T) {
 				},
 			}
 
-			jobRunAssetsCompiler := service.NewJobAssetsCompiler(nil, pluginRepo)
+			jobRunAssetsCompiler := service.NewJobAssetsCompiler(nil, pluginRepo, logger)
 
 			contextForTask := map[string]any{}
 			assets, err := jobRunAssetsCompiler.CompileJobRunAssets(ctx, job1, systemEnvVars, scheduleTime, contextForTask)
@@ -111,7 +114,7 @@ func TestJobAssetsCompiler(t *testing.T) {
 				YamlMod:       yamlMod,
 			}, nil)
 			defer pluginRepo.AssertExpectations(t)
-			jobRunAssetsCompiler := service.NewJobAssetsCompiler(nil, pluginRepo)
+			jobRunAssetsCompiler := service.NewJobAssetsCompiler(nil, pluginRepo, logger)
 
 			contextForTask := map[string]any{}
 			assets, err := jobRunAssetsCompiler.CompileJobRunAssets(ctx, job, systemEnvVars, scheduleTime, contextForTask)
@@ -150,7 +153,7 @@ func TestJobAssetsCompiler(t *testing.T) {
 					Return(nil, fmt.Errorf("error in compiling"))
 				defer filesCompiler.AssertExpectations(t)
 
-				jobRunAssetsCompiler := service.NewJobAssetsCompiler(filesCompiler, pluginRepo)
+				jobRunAssetsCompiler := service.NewJobAssetsCompiler(filesCompiler, pluginRepo, logger)
 				assets, err := jobRunAssetsCompiler.CompileJobRunAssets(ctx, job, systemEnvVars, scheduleTime, contextForTask)
 
 				assert.NotNil(t, err)
@@ -167,7 +170,7 @@ func TestJobAssetsCompiler(t *testing.T) {
 					Return(expectedFileMap, nil)
 				defer filesCompiler.AssertExpectations(t)
 
-				jobRunAssetsCompiler := service.NewJobAssetsCompiler(filesCompiler, pluginRepo)
+				jobRunAssetsCompiler := service.NewJobAssetsCompiler(filesCompiler, pluginRepo, logger)
 				assets, err := jobRunAssetsCompiler.CompileJobRunAssets(ctx, job, systemEnvVars, scheduleTime, contextForTask)
 
 				assert.Nil(t, err)

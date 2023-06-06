@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/goto/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -48,6 +49,8 @@ func TestReplayService(t *testing.T) {
 	jobCronStr := "0 12 * * *"
 	jobCron, _ := cron.ParseCronSchedule(jobCronStr)
 
+	logger := log.NewLogrus()
+
 	t.Run("CreateReplay", func(t *testing.T) {
 		t.Run("should return replay ID if replay created successfully", func(t *testing.T) {
 			replayRepository := new(ReplayRepository)
@@ -72,7 +75,7 @@ func TestReplayService(t *testing.T) {
 			replayValidator.On("Validate", ctx, replayReq, jobCron).Return(nil)
 			replayRepository.On("RegisterReplay", ctx, replayReq, replayRuns).Return(replayID, nil)
 
-			replayService := service.NewReplayService(replayRepository, jobRepository, replayValidator)
+			replayService := service.NewReplayService(replayRepository, jobRepository, replayValidator, logger)
 			result, err := replayService.CreateReplay(ctx, tnnt, jobName, replayConfig)
 			assert.NoError(t, err)
 			assert.Equal(t, replayID, result)
@@ -93,7 +96,7 @@ func TestReplayService(t *testing.T) {
 			jobRepository.On("GetJobDetails", ctx, projName, jobName).Return(jobWithDetails, nil)
 			replayValidator.On("Validate", ctx, replayReq, jobCron).Return(errors.New("not passed validation"))
 
-			replayService := service.NewReplayService(replayRepository, jobRepository, replayValidator)
+			replayService := service.NewReplayService(replayRepository, jobRepository, replayValidator, logger)
 			result, err := replayService.CreateReplay(ctx, tnnt, jobName, replayConfig)
 			assert.ErrorContains(t, err, "not passed validation")
 			assert.Equal(t, uuid.Nil, result)
@@ -112,7 +115,7 @@ func TestReplayService(t *testing.T) {
 			internalErr := errors.New("internal error")
 			jobRepository.On("GetJobDetails", ctx, projName, jobName).Return(nil, internalErr)
 
-			replayService := service.NewReplayService(replayRepository, jobRepository, replayValidator)
+			replayService := service.NewReplayService(replayRepository, jobRepository, replayValidator, logger)
 			result, err := replayService.CreateReplay(ctx, tnnt, jobName, replayConfig)
 			assert.ErrorIs(t, err, internalErr)
 			assert.Equal(t, uuid.Nil, result)
@@ -132,7 +135,7 @@ func TestReplayService(t *testing.T) {
 
 			jobRepository.On("GetJobDetails", ctx, projName, jobName).Return(jobWithDetails, nil)
 
-			replayService := service.NewReplayService(replayRepository, jobRepository, replayValidator)
+			replayService := service.NewReplayService(replayRepository, jobRepository, replayValidator, logger)
 			result, err := replayService.CreateReplay(ctx, invalidTenant, jobName, replayConfig)
 			assert.ErrorContains(t, err, "job sample_select does not exist in invalid-namespace namespace")
 			assert.Equal(t, uuid.Nil, result)
@@ -149,7 +152,7 @@ func TestReplayService(t *testing.T) {
 			replayRepository.On("GetReplaysByProject", ctx, mock.Anything, mock.Anything).Return(replays, nil)
 			defer replayRepository.AssertExpectations(t)
 
-			replayService := service.NewReplayService(replayRepository, nil, nil)
+			replayService := service.NewReplayService(replayRepository, nil, nil, logger)
 			result, err := replayService.GetReplayList(ctx, tnnt.ProjectName())
 			assert.NoError(t, err)
 			assert.Len(t, result, 3)
@@ -160,7 +163,7 @@ func TestReplayService(t *testing.T) {
 			replayRepository.On("GetReplaysByProject", ctx, mock.Anything, mock.Anything).Return(nil, errors.New("some error"))
 			defer replayRepository.AssertExpectations(t)
 
-			replayService := service.NewReplayService(replayRepository, nil, nil)
+			replayService := service.NewReplayService(replayRepository, nil, nil, logger)
 			result, err := replayService.GetReplayList(ctx, tnnt.ProjectName())
 			assert.Error(t, err)
 			assert.Nil(t, result)
@@ -174,7 +177,7 @@ func TestReplayService(t *testing.T) {
 			replayID := uuid.New()
 			replayRepository.On("GetReplayByID", ctx, replayID).Return(nil, errs.NotFound("entity", "not found"))
 
-			replayService := service.NewReplayService(replayRepository, nil, nil)
+			replayService := service.NewReplayService(replayRepository, nil, nil, logger)
 			result, err := replayService.GetReplayByID(ctx, replayID)
 			assert.True(t, errs.IsErrorType(err, errs.ErrNotFound))
 			assert.Empty(t, result)
@@ -186,7 +189,7 @@ func TestReplayService(t *testing.T) {
 			replayID := uuid.New()
 			replayRepository.On("GetReplayByID", ctx, replayID).Return(nil, errors.New("internal error"))
 
-			replayService := service.NewReplayService(replayRepository, nil, nil)
+			replayService := service.NewReplayService(replayRepository, nil, nil, logger)
 			result, err := replayService.GetReplayByID(ctx, replayID)
 			assert.Error(t, err)
 			assert.Nil(t, result)
@@ -207,7 +210,7 @@ func TestReplayService(t *testing.T) {
 				},
 			}, nil)
 
-			replayService := service.NewReplayService(replayRepository, nil, nil)
+			replayService := service.NewReplayService(replayRepository, nil, nil, logger)
 			result, err := replayService.GetReplayByID(ctx, replayID)
 			assert.NoError(t, err)
 			assert.NotNil(t, result)

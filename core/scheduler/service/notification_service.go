@@ -46,6 +46,7 @@ type NotifyService struct {
 func (n *NotifyService) Push(ctx context.Context, event *scheduler.Event) error {
 	jobDetails, err := n.jobRepo.GetJobDetails(ctx, event.Tenant.ProjectName(), event.JobName)
 	if err != nil {
+		n.l.Error("error getting detail for job [%s]: %s", event.JobName, err)
 		return err
 	}
 	notificationConfig := jobDetails.Alerts
@@ -59,10 +60,12 @@ func (n *NotifyService) Push(ctx context.Context, event *scheduler.Event) error 
 				scheme := chanParts[0]
 				route := chanParts[1]
 
-				n.l.Debug(fmt.Sprintf("notification event for job: %s , event: %+v", event.JobName, event))
+				n.l.Debug("notification event for job: %s , event: %+v", event.JobName, event)
 				if plainTextSecretsList == nil {
 					plainTextSecretsList, err = n.tenantService.GetSecrets(ctx, event.Tenant)
 					if err != nil {
+						n.l.Error("error getting secrets for project [%s] namespace [%s]: %s",
+							event.Tenant.ProjectName().String(), event.Tenant.NamespaceName().String(), err)
 						multierror.Append(err)
 						continue
 					}
@@ -85,7 +88,7 @@ func (n *NotifyService) Push(ctx context.Context, event *scheduler.Event) error 
 							Secret:   secret,
 							Route:    route,
 						}); currErr != nil {
-						n.l.Error("Error: No notification event for job ", "current error", currErr)
+						n.l.Error("Error: No notification event for job current error: %s", currErr)
 						multierror.Append(fmt.Errorf("notifyChannel.Notify: %s: %w", channel, currErr))
 					}
 				}
@@ -104,6 +107,7 @@ func (n *NotifyService) Close() error {
 	me := errors.NewMultiError("ErrorsInNotifyClose")
 	for _, notify := range n.notifyChannels {
 		if cerr := notify.Close(); cerr != nil {
+			n.l.Error("error closing notificication channel: %s", cerr)
 			me.Append(cerr)
 		}
 	}

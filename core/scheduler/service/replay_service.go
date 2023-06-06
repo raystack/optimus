@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/goto/salt/log"
 	"golang.org/x/net/context"
 
 	"github.com/goto/optimus/core/scheduler"
@@ -36,26 +37,32 @@ type ReplayService struct {
 	jobRepo    JobRepository
 
 	validator ReplayValidator
+
+	logger log.Logger
 }
 
 func (r ReplayService) CreateReplay(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, config *scheduler.ReplayConfig) (replayID uuid.UUID, err error) {
 	subjectJob, err := r.jobRepo.GetJobDetails(ctx, tenant.ProjectName(), jobName)
 	if err != nil {
+		r.logger.Error("error getting job details of [%s]: %s", jobName.String(), err)
 		return uuid.Nil, errors.AddErrContext(err, scheduler.EntityReplay,
 			fmt.Sprintf("unable to get job details for jobName: %s, project:%s", jobName, tenant.ProjectName().String()))
 	}
 
 	if subjectJob.Job.Tenant.NamespaceName() != tenant.NamespaceName() {
+		r.logger.Error("job [%s] resides in namespace [%s], expecting it under [%s]", jobName, subjectJob.Job.Tenant.NamespaceName(), tenant.NamespaceName())
 		return uuid.Nil, errors.InvalidArgument(scheduler.EntityReplay, fmt.Sprintf("job %s does not exist in %s namespace", jobName, tenant.NamespaceName().String()))
 	}
 
 	jobCron, err := cron.ParseCronSchedule(subjectJob.Schedule.Interval)
 	if err != nil {
+		r.logger.Error("error parsing cron schedule for interval [%s]: %s", subjectJob.Schedule.Interval, err)
 		return uuid.Nil, errors.InternalError(scheduler.EntityReplay, "invalid cron interval for "+jobName.String(), err)
 	}
 
 	replayReq := scheduler.NewReplayRequest(jobName, tenant, config, scheduler.ReplayStateCreated)
 	if err := r.validator.Validate(ctx, replayReq, jobCron); err != nil {
+		r.logger.Error("error validating replay request: %s", err)
 		return uuid.Nil, err
 	}
 
@@ -76,6 +83,6 @@ func (r ReplayService) GetReplayByID(ctx context.Context, replayID uuid.UUID) (*
 	return replayWithRun, nil
 }
 
-func NewReplayService(replayRepo ReplayRepository, jobRepo JobRepository, validator ReplayValidator) *ReplayService {
-	return &ReplayService{replayRepo: replayRepo, jobRepo: jobRepo, validator: validator}
+func NewReplayService(replayRepo ReplayRepository, jobRepo JobRepository, validator ReplayValidator, logger log.Logger) *ReplayService {
+	return &ReplayService{replayRepo: replayRepo, jobRepo: jobRepo, validator: validator, logger: logger}
 }

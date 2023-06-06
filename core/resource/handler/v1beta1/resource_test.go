@@ -31,6 +31,7 @@ func TestResourceHandler(t *testing.T) {
 			stream := new(resourceStreamMock)
 			stream.On("Context").Return(ctx)
 			stream.On("Recv").Return(nil, errors.New("req timeout")).Once()
+			stream.On("Send", mock.Anything).Return(nil)
 
 			err := handler.DeployResourceSpecification(stream)
 			assert.NotNil(t, err)
@@ -48,7 +49,7 @@ func TestResourceHandler(t *testing.T) {
 			}
 
 			argMatcher := mock.MatchedBy(func(req *pb.DeployResourceSpecificationResponse) bool {
-				return req.LogStatus.Message == "invalid deploy request for ns: invalid argument for entity project: project name is empty"
+				return req.LogStatus.Message == "invalid tenant information request project [] namespace [ns]: invalid argument for entity project: project name is empty"
 			})
 			stream := new(resourceStreamMock)
 			stream.On("Context").Return(ctx)
@@ -72,7 +73,7 @@ func TestResourceHandler(t *testing.T) {
 			}
 
 			argMatcher := mock.MatchedBy(func(req *pb.DeployResourceSpecificationResponse) bool {
-				return req.LogStatus.Message == "invalid store name for unknown: invalid argument for entity resource: unknown store unknown"
+				return req.LogStatus.Message == "invalid store name [unknown]: invalid argument for entity resource: unknown store unknown"
 			})
 			stream := new(resourceStreamMock)
 			stream.On("Context").Return(ctx)
@@ -186,7 +187,7 @@ func TestResourceHandler(t *testing.T) {
 			}
 
 			argMatcher := mock.MatchedBy(func(req *pb.DeployResourceSpecificationResponse) bool {
-				return req.LogStatus.Message == "1 resources with namespace [ns] are deployed successfully"
+				return req.LogStatus.Message == "[1] resources with namespace [ns] are deployed successfully"
 			})
 			stream := new(resourceStreamMock)
 			stream.On("Context").Return(ctx)

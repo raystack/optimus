@@ -34,9 +34,11 @@ type TenantService interface {
 func (ph *ProjectHandler) RegisterProject(ctx context.Context, req *pb.RegisterProjectRequest) (*pb.RegisterProjectResponse, error) {
 	project, err := fromProjectProto(req.GetProject())
 	if err != nil {
+		ph.l.Error("error adapting project: %s", err)
 		return nil, errors.GRPCErr(err, fmt.Sprintf("not able to register project %s", req.GetProject().Name))
 	}
 	if err := ph.projectService.Save(ctx, project); err != nil {
+		ph.l.Error("error saving project: %s", err)
 		return nil, errors.GRPCErr(err, fmt.Sprintf("not able to register project %s", req.GetProject().Name))
 	}
 
@@ -47,6 +49,7 @@ func (ph *ProjectHandler) RegisterProject(ctx context.Context, req *pb.RegisterP
 func (ph *ProjectHandler) ListProjects(ctx context.Context, _ *pb.ListProjectsRequest) (*pb.ListProjectsResponse, error) {
 	projects, err := ph.projectService.GetAll(ctx)
 	if err != nil {
+		ph.l.Error("error getting all projects: %s", err)
 		return nil, errors.GRPCErr(err, "failed to retrieve saved projects")
 	}
 
@@ -63,10 +66,12 @@ func (ph *ProjectHandler) ListProjects(ctx context.Context, _ *pb.ListProjectsRe
 func (ph *ProjectHandler) GetProject(ctx context.Context, req *pb.GetProjectRequest) (*pb.GetProjectResponse, error) {
 	projName, err := tenant.ProjectNameFrom(req.GetProjectName())
 	if err != nil {
+		ph.l.Error("error adapting project name [%s]: %s", req.GetProjectName(), err)
 		return nil, errors.GRPCErr(err, fmt.Sprintf("failed to retrieve project [%s]", req.GetProjectName()))
 	}
 	project, err := ph.projectService.Get(ctx, projName)
 	if err != nil {
+		ph.l.Error("error getting project [%s]: %s", projName, err)
 		return nil, errors.GRPCErr(err, fmt.Sprintf("failed to retrieve project [%s]", req.GetProjectName()))
 	}
 	return &pb.GetProjectResponse{

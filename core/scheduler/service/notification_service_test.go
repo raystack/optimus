@@ -33,7 +33,7 @@ func TestNotificationService(t *testing.T) {
 			jobRepo.On("GetJobDetails", ctx, project.Name(), jobName).Return(nil, fmt.Errorf("some error"))
 			defer jobRepo.AssertExpectations(t)
 
-			notifyService := service.NewNotifyService(nil, jobRepo, nil, nil)
+			notifyService := service.NewNotifyService(logger, jobRepo, nil, nil)
 
 			event := &scheduler.Event{
 				JobName: jobName,

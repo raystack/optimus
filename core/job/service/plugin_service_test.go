@@ -52,13 +52,15 @@ func TestPluginService(t *testing.T) {
 	assert.NoError(t, err)
 	jobTask := job.NewTask("bq2bq", jobTaskConfig)
 
+	logger := log.NewLogrus()
+
 	t.Run("Info", func(t *testing.T) {
 		t.Run("returns error when no plugin", func(t *testing.T) {
 			pluginRepo := new(mockPluginRepo)
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(nil, errors.New("some error when fetch plugin"))
 			defer pluginRepo.AssertExpectations(t)
 
-			pluginService := service.NewJobPluginService(pluginRepo, nil, nil)
+			pluginService := service.NewJobPluginService(pluginRepo, nil, logger)
 			result, err := pluginService.Info(ctx, jobTask.Name())
 			assert.Error(t, err)
 			assert.Nil(t, result)
@@ -77,7 +79,7 @@ func TestPluginService(t *testing.T) {
 			newPlugin := &plugin.Plugin{DependencyMod: depMod}
 			pluginRepo.On("GetByName", jobTask.Name().String()).Return(newPlugin, nil)
 
-			pluginService := service.NewJobPluginService(pluginRepo, nil, nil)
+			pluginService := service.NewJobPluginService(pluginRepo, nil, logger)
 			result, err := pluginService.Info(ctx, jobTask.Name())
 			assert.Error(t, err)
 			assert.Nil(t, result)
@@ -103,7 +105,7 @@ func TestPluginService(t *testing.T) {
 			}, nil)
 			defer yamlMod.AssertExpectations(t)
 
-			pluginService := service.NewJobPluginService(pluginRepo, nil, nil)
+			pluginService := service.NewJobPluginService(pluginRepo, nil, logger)
 			result, err := pluginService.Info(ctx, jobTask.Name())
 			assert.NoError(t, err)
 			assert.NotNil(t, result)

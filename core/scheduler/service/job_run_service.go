@@ -88,25 +88,31 @@ type JobRunService struct {
 func (s *JobRunService) JobRunInput(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName, config scheduler.RunConfig) (*scheduler.ExecutorInput, error) {
 	job, err := s.jobRepo.GetJob(ctx, projectName, jobName)
 	if err != nil {
+		s.l.Error("error getting job [%s]: %s", jobName, err)
 		return nil, err
 	}
 	// TODO: Use scheduled_at instead of executed_at for computations, for deterministic calculations
 	// Todo: later, always return scheduleTime, for scheduleTimes greater than a given date
 	var jobRun *scheduler.JobRun
 	if config.JobRunID.IsEmpty() {
+		s.l.Warn("getting job run by scheduled at")
 		jobRun, err = s.repo.GetByScheduledAt(ctx, job.Tenant, jobName, config.ScheduledAt)
 	} else {
+		s.l.Warn("getting job run by id")
 		jobRun, err = s.repo.GetByID(ctx, config.JobRunID)
 	}
+
 	var executedAt time.Time
 	if err != nil { // Fallback for executed_at to scheduled_at
 		executedAt = config.ScheduledAt
+		s.l.Warn("suppressed error is encountered when getting job run: %s", err)
 	} else {
 		executedAt = jobRun.StartTime
 	}
 	// Additional task config from existing replay
 	replayJobConfig, err := s.replayRepo.GetReplayJobConfig(ctx, job.Tenant, job.Name, config.ScheduledAt)
 	if err != nil {
+		s.l.Error("error getting replay job config from db: %s", err)
 		return nil, err
 	}
 	for k, v := range replayJobConfig {
@@ -120,30 +126,35 @@ func (s *JobRunService) GetJobRuns(ctx context.Context, projectName tenant.Proje
 	jobWithDetails, err := s.jobRepo.GetJobDetails(ctx, projectName, jobName)
 	if err != nil {
 		msg := fmt.Sprintf("unable to get job details for jobName: %s, project:%s", jobName, projectName)
+		s.l.Error(msg)
 		return nil, errors.AddErrContext(err, scheduler.EntityJobRun, msg)
 	}
 	interval := jobWithDetails.Schedule.Interval
 	if interval == "" {
+		s.l.Error("job schedule interval is empty")
 		return nil, errors.InvalidArgument(scheduler.EntityJobRun, "cannot get job runs, job interval is empty")
 	}
 	jobCron, err := cron.ParseCronSchedule(interval)
 	if err != nil {
 		msg := fmt.Sprintf("unable to parse job cron interval: %s", err)
+		s.l.Error(msg)
 		return nil, errors.InternalError(scheduler.EntityJobRun, msg, nil)
 	}
 
 	if criteria.OnlyLastRun {
+		s.l.Warn("getting last run only")
 		return s.scheduler.GetJobRuns(ctx, jobWithDetails.Job.Tenant, criteria, jobCron)
 	}
 	err = validateJobQuery(criteria, jobWithDetails)
 	if err != nil {
+		s.l.Error("invalid job query: %s", err)
 		return nil, err
 	}
 	expectedRuns := getExpectedRuns(jobCron, criteria.StartDate, criteria.EndDate)
 
 	actualRuns, err := s.scheduler.GetJobRuns(ctx, jobWithDetails.Job.Tenant, criteria, jobCron)
 	if err != nil {
-		s.l.Error(fmt.Sprintf("unable to get job runs from airflow err: %v", err.Error()))
+		s.l.Error("unable to get job runs from airflow err: %s", err)
 		actualRuns = []*scheduler.JobRunStatus{}
 	}
 	totalRuns := mergeRuns(expectedRuns, actualRuns)
@@ -224,10 +235,12 @@ func validateJobQuery(jobQuery *scheduler.JobRunsCriteria, jobWithDetails *sched
 func (s *JobRunService) registerNewJobRun(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) error {
 	job, err := s.jobRepo.GetJobDetails(ctx, tenant.ProjectName(), jobName)
 	if err != nil {
+		s.l.Error("error getting job details for job [%s]: %s", jobName, err)
 		return err
 	}
 	slaDefinitionInSec, err := job.SLADuration()
 	if err != nil {
+		s.l.Error("error getting sla duration: %s", err)
 		return err
 	}
 	telemetry.NewGauge("total_jobs_running", map[string]string{
@@ -236,6 +249,7 @@ func (s *JobRunService) registerNewJobRun(ctx context.Context, tenant tenant.Ten
 	}).Inc()
 	err = s.repo.Create(ctx, tenant, jobName, scheduledAt, slaDefinitionInSec)
 	if err != nil {
+		s.l.Error("error creating job run: %s", err)
 		return err
 	}
 
@@ -252,14 +266,18 @@ func (s *JobRunService) getJobRunByScheduledAt(ctx context.Context, tenant tenan
 	jobRun, err := s.repo.GetByScheduledAt(ctx, tenant, jobName, scheduledAt)
 	if err != nil {
 		if !errors.IsErrorType(err, errors.ErrNotFound) {
+			s.l.Error("error getting job run by scheduled at: %s", err)
 			return nil, err
 		}
+		// TODO: consider moving below call outside as the caller is a 'getter'
 		err = s.registerNewJobRun(ctx, tenant, jobName, scheduledAt)
 		if err != nil {
+			s.l.Error("error registering new job run: %s", err)
 			return nil, err
 		}
 		jobRun, err = s.repo.GetByScheduledAt(ctx, tenant, jobName, scheduledAt)
 		if err != nil {
+			s.l.Error("error getting the registered job run: %s", err)
 			return nil, err
 		}
 	}
@@ -270,6 +288,7 @@ func (s *JobRunService) updateJobRun(ctx context.Context, event *scheduler.Event
 	var jobRun *scheduler.JobRun
 	jobRun, err := s.getJobRunByScheduledAt(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
 	if err != nil {
+		s.l.Error("error getting job run by schedule time [%s]: %s", event.JobScheduledAt, err)
 		return err
 	}
 	for _, state := range scheduler.TaskEndStates {
@@ -285,6 +304,7 @@ func (s *JobRunService) updateJobRun(ctx context.Context, event *scheduler.Event
 		}
 	}
 	if err := s.repo.Update(ctx, jobRun.ID, event.EventTime, event.Status); err != nil {
+		s.l.Error("error updating job run with id [%s]: %s", jobRun.ID, err)
 		return err
 	}
 	jobRun.State = event.Status
@@ -344,6 +364,7 @@ func (s *JobRunService) raiseJobRunStateChangeEvent(jobRun *scheduler.JobRun) {
 func (s *JobRunService) createOperatorRun(ctx context.Context, event *scheduler.Event, operatorType scheduler.OperatorType) error {
 	jobRun, err := s.getJobRunByScheduledAt(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
 	if err != nil {
+		s.l.Error("error getting job run by scheduled time [%s]: %s", event.JobScheduledAt, err)
 		return err
 	}
 	if operatorType == scheduler.OperatorTask {
@@ -355,11 +376,13 @@ func (s *JobRunService) createOperatorRun(ctx context.Context, event *scheduler.
 	}
 	jobState, err := operatorStartToJobState(operatorType)
 	if err != nil {
+		s.l.Error("error converting operator to job state: %s", err)
 		return err
 	}
 	if jobRun.State != jobState {
 		err := s.repo.UpdateState(ctx, jobRun.ID, jobState)
 		if err != nil {
+			s.l.Error("error updating state for job run id [%d] to [%s]: %s", jobRun.ID, jobState, err)
 			return err
 		}
 		s.raiseJobRunStateChangeEvent(jobRun)
@@ -373,14 +396,20 @@ func (s *JobRunService) getOperatorRun(ctx context.Context, event *scheduler.Eve
 	operatorRun, err := s.operatorRunRepo.GetOperatorRun(ctx, event.OperatorName, operatorType, jobRunID)
 	if err != nil {
 		if !errors.IsErrorType(err, errors.ErrNotFound) {
+			s.l.Error("error getting operator for job run [%s]: %s", jobRunID, err)
 			return nil, err
 		}
+		s.l.Warn("operator is not found, creating it")
+
+		// TODO: consider moving below call outside as the caller is a 'getter'
 		err = s.createOperatorRun(ctx, event, operatorType)
 		if err != nil {
+			s.l.Error("error creating operator run: %s", err)
 			return nil, err
 		}
 		operatorRun, err = s.operatorRunRepo.GetOperatorRun(ctx, event.OperatorName, operatorType, jobRunID)
 		if err != nil {
+			s.l.Error("error getting the registered operator run: %s", err)
 			return nil, err
 		}
 	}
@@ -390,10 +419,12 @@ func (s *JobRunService) getOperatorRun(ctx context.Context, event *scheduler.Eve
 func (s *JobRunService) updateOperatorRun(ctx context.Context, event *scheduler.Event, operatorType scheduler.OperatorType) error {
 	jobRun, err := s.getJobRunByScheduledAt(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
 	if err != nil {
+		s.l.Error("error getting job run by scheduled time [%s]: %s", event.JobScheduledAt, err)
 		return err
 	}
 	operatorRun, err := s.getOperatorRun(ctx, event, operatorType, jobRun.ID)
 	if err != nil {
+		s.l.Error("error getting operator for job run id [%s]: %s", jobRun.ID, err)
 		return err
 	}
 	if operatorType == scheduler.OperatorTask {
@@ -413,6 +444,7 @@ func (s *JobRunService) updateOperatorRun(ctx context.Context, event *scheduler.
 	}
 	err = s.operatorRunRepo.UpdateOperatorRun(ctx, operatorType, operatorRun.ID, event.EventTime, event.Status)
 	if err != nil {
+		s.l.Error("error updating operator run id [%s]: %s", operatorRun.ID, err)
 		return err
 	}
 	telemetry.NewCounter("scheduler_operator_durations_seconds", map[string]string{
