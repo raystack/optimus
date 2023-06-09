@@ -140,7 +140,7 @@ func (j *JobRunRepository) UpdateMonitoring(ctx context.Context, jobRunID uuid.U
 }
 
 func (j *JobRunRepository) Create(ctx context.Context, t tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error {
-	insertJobRun := `INSERT INTO job_run (` + columnsToStore + `, created_at, updated_at) values ($1, $2, $3, $4, NOW(), TIMESTAMP '3000-01-01 00:00:00', $5, $6, FALSE, NOW(), NOW())`
+	insertJobRun := `INSERT INTO job_run (` + columnsToStore + `, created_at, updated_at) values ($1, $2, $3, $4, NOW(), TIMESTAMP '3000-01-01 00:00:00', $5, $6, FALSE, NOW(), NOW()) ON CONFLICT DO NOTHING`
 	_, err := j.db.Exec(ctx, insertJobRun, jobName, t.NamespaceName(), t.ProjectName(), scheduledAt, scheduler.StateRunning, slaDefinitionInSec)
 	return errors.WrapIfErr(scheduler.EntityJobRun, "unable to create job run", err)
 }

@@ -1,0 +1,1 @@
+ALTER TABLE JOB_RUN DROP CONSTRAINT pk_constraint_job_name_scheduled_at;
