@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,6 +26,8 @@ func (m metricType) String() string {
 
 const (
 	scheduleDelay metricType = "schedule_delay"
+
+	metricJobRunEvents = "job_run_events"
 )
 
 type JobRepository interface {
@@ -322,6 +325,12 @@ func (*JobRunService) getMonitoringValues(event *scheduler.Event) map[string]any
 }
 
 func (s *JobRunService) updateJobRunSLA(ctx context.Context, event *scheduler.Event) error {
+	telemetry.NewCounter(metricJobRunEvents, map[string]string{
+		"project":   event.Tenant.ProjectName().String(),
+		"namespace": event.Tenant.NamespaceName().String(),
+		"name":      event.JobName.String(),
+		"status":    scheduler.SLAMissEvent.String(),
+	}).Inc()
 	if len(event.SLAObjectList) > 0 {
 		return s.repo.UpdateSLA(ctx, event.SLAObjectList)
 	}
@@ -359,6 +368,12 @@ func (s *JobRunService) raiseJobRunStateChangeEvent(jobRun *scheduler.JobRun) {
 		return
 	}
 	s.eventHandler.HandleEvent(schedulerEvent)
+	telemetry.NewCounter(metricJobRunEvents, map[string]string{
+		"project":   jobRun.Tenant.ProjectName().String(),
+		"namespace": jobRun.Tenant.NamespaceName().String(),
+		"name":      jobRun.JobName.String(),
+		"status":    jobRun.State.String(),
+	}).Inc()
 }
 
 func (s *JobRunService) createOperatorRun(ctx context.Context, event *scheduler.Event, operatorType scheduler.OperatorType) error {
@@ -463,11 +478,31 @@ func (s *JobRunService) trackEvent(event *scheduler.Event) {
 		s.l.Debug(fmt.Sprintf("received event: %v, eventTime: %s, jobName: %v, Operator: %v, schedule: %s, status: %s",
 			event.Type, event.EventTime.Format("01/02/06 15:04:05 MST"), event.JobName, event.OperatorName, event.JobScheduledAt.Format("01/02/06 15:04:05 MST"), event.Status))
 	}
-	telemetry.NewGauge("scheduler_events", map[string]string{
-		"project":   event.Tenant.ProjectName().String(),
-		"namespace": event.Tenant.NamespaceName().String(),
-		"type":      event.Type.String(),
-	}).Inc()
+
+	if event.Type == scheduler.SensorStartEvent || event.Type == scheduler.SensorRetryEvent || event.Type == scheduler.SensorSuccessEvent || event.Type == scheduler.SensorFailEvent {
+		eventType := strings.TrimPrefix(event.Type.String(), fmt.Sprintf("%s_", scheduler.OperatorSensor))
+		telemetry.NewCounter("sensor_run_events", map[string]string{
+			"project":    event.Tenant.ProjectName().String(),
+			"namespace":  event.Tenant.NamespaceName().String(),
+			"event_type": eventType,
+		}).Inc()
+	} else if event.Type == scheduler.TaskStartEvent || event.Type == scheduler.TaskRetryEvent || event.Type == scheduler.TaskSuccessEvent || event.Type == scheduler.TaskFailEvent {
+		eventType := strings.TrimPrefix(event.Type.String(), fmt.Sprintf("%s_", scheduler.OperatorTask))
+		telemetry.NewCounter("task_run_events", map[string]string{
+			"project":    event.Tenant.ProjectName().String(),
+			"namespace":  event.Tenant.NamespaceName().String(),
+			"event_type": eventType,
+			"operator":   event.OperatorName,
+		}).Inc()
+	} else if event.Type == scheduler.HookStartEvent || event.Type == scheduler.HookRetryEvent || event.Type == scheduler.HookSuccessEvent || event.Type == scheduler.HookFailEvent {
+		eventType := strings.TrimPrefix(event.Type.String(), fmt.Sprintf("%s_", scheduler.OperatorHook))
+		telemetry.NewCounter("hook_run_events", map[string]string{
+			"project":    event.Tenant.ProjectName().String(),
+			"namespace":  event.Tenant.NamespaceName().String(),
+			"event_type": eventType,
+			"operator":   event.OperatorName,
+		}).Inc()
+	}
 }
 
 func (s *JobRunService) UpdateJobState(ctx context.Context, event *scheduler.Event) error {

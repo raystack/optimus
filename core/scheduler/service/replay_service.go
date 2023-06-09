@@ -11,10 +11,13 @@ import (
 	"github.com/goto/optimus/core/tenant"
 	"github.com/goto/optimus/internal/errors"
 	"github.com/goto/optimus/internal/lib/cron"
+	"github.com/goto/optimus/internal/telemetry"
 )
 
 const (
 	getReplaysDayLimit = 30 // TODO: make it configurable via cli
+
+	metricJobReplay = "job_replay"
 )
 
 type ReplayRepository interface {
@@ -67,7 +70,18 @@ func (r ReplayService) CreateReplay(ctx context.Context, tenant tenant.Tenant, j
 	}
 
 	runs := getExpectedRuns(jobCron, config.StartTime, config.EndTime)
-	return r.replayRepo.RegisterReplay(ctx, replayReq, runs)
+	replayID, err = r.replayRepo.RegisterReplay(ctx, replayReq, runs)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	telemetry.NewCounter(metricJobReplay, map[string]string{
+		"project":   tenant.ProjectName().String(),
+		"namespace": tenant.NamespaceName().String(),
+		"job":       jobName.String(),
+		"status":    replayReq.State().String(),
+	}).Inc()
+	return replayID, nil
 }
 
 func (r ReplayService) GetReplayList(ctx context.Context, projectName tenant.ProjectName) (replays []*scheduler.Replay, err error) {

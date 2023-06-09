@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/goto/salt/log"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/goto/optimus/core/job"
@@ -17,24 +15,16 @@ import (
 	"github.com/goto/optimus/core/tenant"
 	"github.com/goto/optimus/internal/errors"
 	"github.com/goto/optimus/internal/models"
+	"github.com/goto/optimus/internal/telemetry"
 	"github.com/goto/optimus/internal/writer"
 	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
 	"github.com/goto/optimus/sdk/plugin"
 )
 
-var (
-	jobReplaceAllDurationGauge = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "jobs_replace_all_duration_in_seconds",
-		Help: "The duration of job replace all in seconds",
-	})
-	jobRefreshDurationGauge = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "jobs_refresh_duration_in_seconds",
-		Help: "The duration of job refresh in seconds",
-	})
-	jobValidationDurationGauge = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "jobs_validation_duration_in_seconds",
-		Help: "The duration of job validation in seconds",
-	})
+const (
+	metricReplaceAllDuration = "jobs_replace_all_duration_in_seconds"
+	metricRefreshDuration    = "jobs_refresh_duration_in_seconds"
+	metricValidationDuration = "jobs_validation_duration_in_seconds"
 )
 
 type JobHandler struct {
@@ -76,12 +66,13 @@ func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *
 
 	me := errors.NewMultiError("add specs errors")
 
-	jobSpecs, _, err := fromJobProtos(jobSpecRequest.Specs)
+	jobSpecs, invalidSpecs, err := fromJobProtos(jobSpecRequest.Specs)
 	if err != nil {
 		errorMsg := fmt.Sprintf("failure when adapting job specifications: %s", err.Error())
 		jh.l.Error(errorMsg)
 		me.Append(err)
 	}
+	raiseJobEventMetric(jobTenant, job.MetricJobEventStateValidationFailed, len(invalidSpecs))
 
 	if len(jobSpecs) == 0 {
 		jh.l.Error("no jobs to be processed")
@@ -149,12 +140,13 @@ func (jh *JobHandler) UpdateJobSpecifications(ctx context.Context, jobSpecReques
 	}
 
 	me := errors.NewMultiError("update specs errors")
-	jobSpecs, _, err := fromJobProtos(jobSpecRequest.Specs)
+	jobSpecs, invalidSpecs, err := fromJobProtos(jobSpecRequest.Specs)
 	if err != nil {
 		errorMsg := fmt.Sprintf("failure when adapting job specifications: %s", err.Error())
 		jh.l.Error(errorMsg)
 		me.Append(err)
 	}
+	raiseJobEventMetric(jobTenant, job.MetricJobEventStateValidationFailed, len(invalidSpecs))
 
 	if len(jobSpecs) == 0 {
 		me.Append(errors.NewError(errors.ErrFailedPrecond, job.EntityJob, "no jobs to be processed"))
@@ -332,7 +324,10 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 
 		processDuration := time.Since(startTime)
 		jh.l.Debug("finished replacing all job specifications for project [%s] namespace [%s], took %s", request.GetProjectName(), request.GetNamespaceName(), processDuration)
-		jobReplaceAllDurationGauge.Set(processDuration.Seconds())
+		telemetry.NewGauge(metricReplaceAllDuration, map[string]string{
+			"project":   jobTenant.ProjectName().String(),
+			"namespace": jobTenant.NamespaceName().String(),
+		}).Add(processDuration.Seconds())
 	}
 	if len(errNamespaces) > 0 {
 		errMessageSummary := strings.Join(errMessages, "\n")
@@ -348,7 +343,9 @@ func (jh *JobHandler) RefreshJobs(request *pb.RefreshJobsRequest, stream pb.JobS
 	startTime := time.Now()
 	defer func() {
 		processDuration := time.Since(startTime)
-		jobRefreshDurationGauge.Set(processDuration.Seconds())
+		telemetry.NewGauge(metricRefreshDuration, map[string]string{
+			"project": request.ProjectName,
+		}).Add(processDuration.Seconds())
 		jh.l.Debug("finished refreshing jobs for project [%s], took %s", request.GetProjectName(), processDuration)
 	}()
 
@@ -396,7 +393,10 @@ func (jh *JobHandler) CheckJobSpecifications(req *pb.CheckJobSpecificationsReque
 	}
 
 	processDuration := time.Since(startTime)
-	jobValidationDurationGauge.Set(processDuration.Seconds())
+	telemetry.NewGauge(metricValidationDuration, map[string]string{
+		"project":   jobTenant.ProjectName().String(),
+		"namespace": jobTenant.NamespaceName().String(),
+	}).Add(processDuration.Seconds())
 
 	return me.ToErr()
 }
@@ -509,4 +509,12 @@ func (jh *JobHandler) JobInspect(ctx context.Context, req *pb.JobInspectRequest)
 			Notice:         downstreamLogs.Messages,
 		},
 	}, nil
+}
+
+func raiseJobEventMetric(jobTenant tenant.Tenant, state string, metricValue int) {
+	telemetry.NewCounter(job.MetricJobEvent, map[string]string{
+		"project":   jobTenant.ProjectName().String(),
+		"namespace": jobTenant.NamespaceName().String(),
+		"status":    state,
+	}).Add(float64(metricValue))
 }

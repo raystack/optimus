@@ -16,6 +16,14 @@ const (
 
 	UpstreamStateResolved   UpstreamState = "resolved"
 	UpstreamStateUnresolved UpstreamState = "unresolved"
+
+	MetricJobEvent                      = "job_events"
+	MetricJobEventStateAdded            = "added"
+	MetricJobEventStateUpdated          = "updated"
+	MetricJobEventStateDeleted          = "deleted"
+	MetricJobEventStateUpsertFailed     = "upsert_failed"
+	MetricJobEventStateDeleteFailed     = "delete_failed"
+	MetricJobEventStateValidationFailed = "validation_failed"
 )
 
 type Job struct {

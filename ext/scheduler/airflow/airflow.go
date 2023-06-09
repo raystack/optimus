@@ -21,6 +21,7 @@ import (
 	"github.com/goto/optimus/core/tenant"
 	"github.com/goto/optimus/internal/errors"
 	"github.com/goto/optimus/internal/lib/cron"
+	"github.com/goto/optimus/internal/telemetry"
 )
 
 //go:embed __lib.py
@@ -42,6 +43,11 @@ const (
 
 	concurrentTicketPerSec = 50
 	concurrentLimit        = 100
+
+	metricJobUpload       = "job_upload"
+	metricJobRemoval      = "job_removal"
+	metricJobStateSuccess = "success"
+	metricJobStateFailed  = "failed"
 )
 
 type Bucket interface {
@@ -106,9 +112,19 @@ func (s *Scheduler) DeployJobs(ctx context.Context, tenant tenant.Tenant, jobs [
 		}(job))
 	}
 
+	countDeploySucceed := 0
+	countDeployFailed := 0
 	for _, result := range runner.Run() {
-		multiError.Append(result.Err)
+		if result.Err != nil {
+			countDeployFailed++
+			multiError.Append(result.Err)
+			continue
+		}
+		countDeploySucceed++
 	}
+	raiseSchedulerMetric(tenant, metricJobUpload, metricJobStateSuccess, countDeploySucceed)
+	raiseSchedulerMetric(tenant, metricJobUpload, metricJobStateFailed, countDeployFailed)
+
 	return multiError.ToErr()
 }
 
@@ -152,6 +168,8 @@ func (s *Scheduler) DeleteJobs(ctx context.Context, t tenant.Tenant, jobNames []
 		return err
 	}
 	me := errors.NewMultiError("ErrorsInDeleteJobs")
+	countDeleteJobsSucceed := 0
+	countDeleteJobsFailed := 0
 	for _, jobName := range jobNames {
 		if strings.TrimSpace(jobName) == "" {
 			me.Append(errors.InvalidArgument(EntityAirflow, "job name cannot be an empty string"))
@@ -161,10 +179,16 @@ func (s *Scheduler) DeleteJobs(ctx context.Context, t tenant.Tenant, jobNames []
 		if err := bucket.Delete(spanCtx, blobKey); err != nil {
 			// ignore missing files
 			if gcerrors.Code(err) != gcerrors.NotFound {
+				countDeleteJobsFailed++
 				me.Append(err)
 			}
+			continue
 		}
+		countDeleteJobsSucceed++
 	}
+	raiseSchedulerMetric(t, metricJobRemoval, metricJobStateSuccess, countDeleteJobsSucceed)
+	raiseSchedulerMetric(t, metricJobRemoval, metricJobStateFailed, countDeleteJobsFailed)
+
 	err = deleteDirectoryIfEmpty(ctx, t.NamespaceName().String(), bucket)
 	if err != nil {
 		if gcerrors.Code(err) != gcerrors.NotFound {
@@ -368,4 +392,12 @@ func NewScheduler(l log.Logger, bucketFac BucketFactory, client Client, compiler
 		projectGetter: projectGetter,
 		secretGetter:  secretGetter,
 	}
+}
+
+func raiseSchedulerMetric(jobTenant tenant.Tenant, metricName, status string, metricValue int) {
+	telemetry.NewCounter(metricName, map[string]string{
+		"project":   jobTenant.ProjectName().String(),
+		"namespace": jobTenant.NamespaceName().String(),
+		"status":    status,
+	}).Add(float64(metricValue))
 }
