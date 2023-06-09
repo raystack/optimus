@@ -147,7 +147,7 @@ func TestExternalTableHandle(t *testing.T) {
 					"uris": []string{"https://docs.google.com/sheet"},
 					"config": map[string]any{
 						"range":             "kyc",
-						"skip_leading_rows": 2,
+						"skip_leading_rows": float64(2),
 					},
 				},
 			}

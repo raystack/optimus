@@ -14,6 +14,9 @@ import (
 
 const (
 	expirationTimeKey = "expiration_time"
+
+	skipLeadingRowsKey = "skip_leading_rows"
+	rangeKey           = "range"
 )
 
 type ExternalTableHandle struct {
@@ -120,18 +123,14 @@ func bqExternalDataConfigTo(es *ExternalSource, schema Schema) (*bigquery.Extern
 
 func bqGoogleSheetsOptionsTo(m map[string]any) *bigquery.GoogleSheetsOptions {
 	var skipLeadingRows int64
-	var sheetRange string
 
-	if val, ok := m["skip_leading_rows"]; ok {
-		if rows, ok := val.(int); ok {
-			skipLeadingRows = int64(rows)
-		}
+	// grpc structpb.Struct cast numbers to float64
+	rows := ConfigAs[float64](m, skipLeadingRowsKey)
+	if rows > 0 {
+		skipLeadingRows = int64(rows)
 	}
-	if val, ok := m["range"]; ok {
-		if ran, ok := val.(string); ok {
-			sheetRange = ran
-		}
-	}
+
+	sheetRange := ConfigAs[string](m, rangeKey)
 	return &bigquery.GoogleSheetsOptions{
 		SkipLeadingRows: skipLeadingRows,
 		Range:           sheetRange,
