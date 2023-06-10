@@ -34,6 +34,8 @@ type ResourceServiceClient interface {
 	ReadResource(ctx context.Context, in *ReadResourceRequest, opts ...grpc.CallOption) (*ReadResourceResponse, error)
 	// UpdateResource updates a resource specification of a datastore in project
 	UpdateResource(ctx context.Context, in *UpdateResourceRequest, opts ...grpc.CallOption) (*UpdateResourceResponse, error)
+	// ChangeJobNamespace move a job spec from one namespace to another
+	ChangeResourceNamespace(ctx context.Context, in *ChangeResourceNamespaceRequest, opts ...grpc.CallOption) (*ChangeResourceNamespaceResponse, error)
 }
 
 type resourceServiceClient struct {
@@ -111,6 +113,15 @@ func (c *resourceServiceClient) UpdateResource(ctx context.Context, in *UpdateRe
 	return out, nil
 }
 
+func (c *resourceServiceClient) ChangeResourceNamespace(ctx context.Context, in *ChangeResourceNamespaceRequest, opts ...grpc.CallOption) (*ChangeResourceNamespaceResponse, error) {
+	out := new(ChangeResourceNamespaceResponse)
+	err := c.cc.Invoke(ctx, "/gotocompany.optimus.core.v1beta1.ResourceService/ChangeResourceNamespace", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ResourceServiceServer is the server API for ResourceService service.
 // All implementations must embed UnimplementedResourceServiceServer
 // for forward compatibility
@@ -127,6 +138,8 @@ type ResourceServiceServer interface {
 	ReadResource(context.Context, *ReadResourceRequest) (*ReadResourceResponse, error)
 	// UpdateResource updates a resource specification of a datastore in project
 	UpdateResource(context.Context, *UpdateResourceRequest) (*UpdateResourceResponse, error)
+	// ChangeJobNamespace move a job spec from one namespace to another
+	ChangeResourceNamespace(context.Context, *ChangeResourceNamespaceRequest) (*ChangeResourceNamespaceResponse, error)
 	mustEmbedUnimplementedResourceServiceServer()
 }
 
@@ -148,6 +161,9 @@ func (UnimplementedResourceServiceServer) ReadResource(context.Context, *ReadRes
 }
 func (UnimplementedResourceServiceServer) UpdateResource(context.Context, *UpdateResourceRequest) (*UpdateResourceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateResource not implemented")
+}
+func (UnimplementedResourceServiceServer) ChangeResourceNamespace(context.Context, *ChangeResourceNamespaceRequest) (*ChangeResourceNamespaceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ChangeResourceNamespace not implemented")
 }
 func (UnimplementedResourceServiceServer) mustEmbedUnimplementedResourceServiceServer() {}
 
@@ -260,6 +276,24 @@ func _ResourceService_UpdateResource_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResourceService_ChangeResourceNamespace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChangeResourceNamespaceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceServiceServer).ChangeResourceNamespace(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/gotocompany.optimus.core.v1beta1.ResourceService/ChangeResourceNamespace",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceServiceServer).ChangeResourceNamespace(ctx, req.(*ChangeResourceNamespaceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ResourceService_ServiceDesc is the grpc.ServiceDesc for ResourceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -282,6 +316,10 @@ var ResourceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateResource",
 			Handler:    _ResourceService_UpdateResource_Handler,
+		},
+		{
+			MethodName: "ChangeResourceNamespace",
+			Handler:    _ResourceService_ChangeResourceNamespace_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

@@ -70,6 +70,56 @@
         ]
       }
     },
+    "/v1beta1/project/{projectName}/change-job-namespace": {
+      "post": {
+        "summary": "ChangeJobNamespace move a job spec from one namespace to another",
+        "operationId": "JobSpecificationService_ChangeJobNamespace",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1ChangeJobNamespaceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "namespaceName": {
+                  "type": "string"
+                },
+                "jobName": {
+                  "type": "string"
+                },
+                "newNamespaceName": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "JobSpecificationService"
+        ]
+      }
+    },
     "/v1beta1/project/{projectName}/job/check": {
       "post": {
         "summary": "CheckJobSpecification checks if a job specification is valid",
@@ -755,6 +805,9 @@
           "type": "string"
         }
       }
+    },
+    "v1beta1ChangeJobNamespaceResponse": {
+      "type": "object"
     },
     "v1beta1CheckJobSpecificationResponse": {
       "type": "object",

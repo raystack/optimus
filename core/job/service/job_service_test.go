@@ -838,6 +838,88 @@ func TestJobService(t *testing.T) {
 			assert.ErrorContains(t, err, errorMsg)
 		})
 	})
+
+	t.Run("ChangeNamespace", func(t *testing.T) {
+		newNamespaceName := "newNamespace"
+		newTenant, _ := tenant.NewTenant(project.Name().String(), newNamespaceName)
+		specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+		jobA := job.NewJob(newTenant, specA, "table-A", []job.ResourceURN{"table-B"})
+		t.Run("should fail if error in repo", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			jobRepo.On("ChangeJobNamespace", ctx, specA.Name(), sampleTenant, newTenant).Return(errors.New("error in transaction"))
+			defer jobRepo.AssertExpectations(t)
+
+			jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil)
+			err := jobService.ChangeNamespace(ctx, sampleTenant, newTenant, specA.Name())
+			assert.ErrorContains(t, err, "error in transaction")
+		})
+
+		t.Run("should fail if error getting newly created job", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			jobRepo.On("ChangeJobNamespace", ctx, specA.Name(), sampleTenant, newTenant).Return(nil)
+			jobRepo.On("GetByJobName", ctx, project.Name(), specA.Name()).Return(nil, errors.New("error in fetching job from DB"))
+			defer jobRepo.AssertExpectations(t)
+
+			jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil)
+			err := jobService.ChangeNamespace(ctx, sampleTenant, newTenant, specA.Name())
+			assert.ErrorContains(t, err, "error in fetching job from DB")
+		})
+
+		t.Run("should fail if error in upload job", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			jobRepo.On("ChangeJobNamespace", ctx, specA.Name(), sampleTenant, newTenant).Return(nil)
+			jobRepo.On("GetByJobName", ctx, project.Name(), specA.Name()).Return(jobA, nil)
+			defer jobRepo.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			jobModified := []string{specA.Name().String()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, emptyJobNames, jobModified).Return(errors.New("error in upload jobs"))
+			defer jobDeploymentService.AssertExpectations(t)
+
+			jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, jobDeploymentService)
+			err := jobService.ChangeNamespace(ctx, sampleTenant, newTenant, specA.Name())
+			assert.ErrorContains(t, err, "error in upload jobs")
+		})
+
+		t.Run("should fail if error in upload new job", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			jobRepo.On("ChangeJobNamespace", ctx, specA.Name(), sampleTenant, newTenant).Return(nil)
+			jobRepo.On("GetByJobName", ctx, project.Name(), specA.Name()).Return(jobA, nil)
+			defer jobRepo.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			jobModified := []string{specA.Name().String()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, emptyJobNames, jobModified).Return(nil)
+			jobDeploymentService.On("UploadJobs", ctx, newTenant, jobModified, emptyJobNames).Return(errors.New("error in upload new job"))
+			defer jobDeploymentService.AssertExpectations(t)
+
+			jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, jobDeploymentService)
+			err := jobService.ChangeNamespace(ctx, sampleTenant, newTenant, specA.Name())
+			assert.ErrorContains(t, err, "error in upload new job")
+		})
+
+		t.Run("successfully", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			jobRepo.On("ChangeJobNamespace", ctx, specA.Name(), sampleTenant, newTenant).Return(nil)
+			jobRepo.On("GetByJobName", ctx, project.Name(), specA.Name()).Return(jobA, nil)
+			defer jobRepo.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			jobModified := []string{specA.Name().String()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, emptyJobNames, jobModified).Return(nil)
+			jobDeploymentService.On("UploadJobs", ctx, newTenant, jobModified, emptyJobNames).Return(nil)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
+			defer eventHandler.AssertExpectations(t)
+
+			jobService := service.NewJobService(jobRepo, nil, nil, nil, eventHandler, nil, jobDeploymentService)
+			err := jobService.ChangeNamespace(ctx, sampleTenant, newTenant, specA.Name())
+			assert.NoError(t, err)
+		})
+	})
+
 	t.Run("Delete", func(t *testing.T) {
 		t.Run("deletes job without downstream", func(t *testing.T) {
 			jobRepo := new(JobRepository)
@@ -863,6 +945,7 @@ func TestJobService(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Empty(t, affectedDownstream)
 		})
+
 		t.Run("deletes job with downstream if it is a force delete", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
@@ -3096,6 +3179,12 @@ func (_m *JobRepository) Delete(ctx context.Context, projectName tenant.ProjectN
 	}
 
 	return r0
+}
+
+// ChangeJobNamespace provides a mock function with given fields: ctx, jobName, jobTenant, jobNewTenant
+func (_m *JobRepository) ChangeJobNamespace(ctx context.Context, jobName job.Name, jobTenant, jobNewTenant tenant.Tenant) error {
+	ret := _m.Called(ctx, jobName, jobTenant, jobNewTenant)
+	return ret.Error(0)
 }
 
 // GetAllByProjectName provides a mock function with given fields: ctx, projectName

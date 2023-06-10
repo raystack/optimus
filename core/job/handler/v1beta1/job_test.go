@@ -603,6 +603,90 @@ func TestNewJobHandler(t *testing.T) {
 			assert.Contains(t, resp.Log, "error")
 		})
 	})
+	t.Run("ChangeJobNamespace", func(t *testing.T) {
+		newNamespaceName := "newNamespace"
+
+		t.Run("fail if invalid params", func(t *testing.T) {
+			t.Run("invalid source namespace", func(t *testing.T) {
+				jobService := new(JobService)
+				defer jobService.AssertExpectations(t)
+				jobAName, _ := job.NameFrom("job-A")
+				request := &pb.ChangeJobNamespaceRequest{
+					ProjectName:      project.Name().String(),
+					NamespaceName:    "",
+					JobName:          jobAName.String(),
+					NewNamespaceName: newNamespaceName,
+				}
+				jobHandler := v1beta1.NewJobHandler(jobService, log)
+				_, err := jobHandler.ChangeJobNamespace(ctx, request)
+				assert.ErrorContains(t, err, "failed to adapt source tenant when changing job namespace")
+			})
+			t.Run("invalid new namespace", func(t *testing.T) {
+				jobService := new(JobService)
+				defer jobService.AssertExpectations(t)
+
+				jobAName, _ := job.NameFrom("job-A")
+				request := &pb.ChangeJobNamespaceRequest{
+					ProjectName:      project.Name().String(),
+					NamespaceName:    namespace.Name().String(),
+					JobName:          jobAName.String(),
+					NewNamespaceName: "",
+				}
+				jobHandler := v1beta1.NewJobHandler(jobService, log)
+				_, err := jobHandler.ChangeJobNamespace(ctx, request)
+				assert.ErrorContains(t, err, "failed to adapt new tenant when changing job namespace")
+			})
+			t.Run("invalid job name", func(t *testing.T) {
+				jobService := new(JobService)
+				defer jobService.AssertExpectations(t)
+
+				request := &pb.ChangeJobNamespaceRequest{
+					ProjectName:      project.Name().String(),
+					NamespaceName:    namespace.Name().String(),
+					JobName:          "",
+					NewNamespaceName: newNamespaceName,
+				}
+				jobHandler := v1beta1.NewJobHandler(jobService, log)
+				_, err := jobHandler.ChangeJobNamespace(ctx, request)
+				assert.ErrorContains(t, err, "failed to adapt job name when changing job specification")
+			})
+		})
+
+		t.Run("Change job namespace successfully", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobAName, _ := job.NameFrom("job-A")
+			request := &pb.ChangeJobNamespaceRequest{
+				ProjectName:      project.Name().String(),
+				NamespaceName:    namespace.Name().String(),
+				JobName:          jobAName.String(),
+				NewNamespaceName: newNamespaceName,
+			}
+			newTenant, _ := tenant.NewTenant(project.Name().String(), newNamespaceName)
+			jobService.On("ChangeNamespace", ctx, sampleTenant, newTenant, jobAName).Return(nil)
+
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
+			_, err := jobHandler.ChangeJobNamespace(ctx, request)
+			assert.NoError(t, err)
+		})
+		t.Run("fail to Change job namespace", func(t *testing.T) {
+			jobService := new(JobService)
+
+			jobAName, _ := job.NameFrom("job-A")
+			request := &pb.ChangeJobNamespaceRequest{
+				ProjectName:      project.Name().String(),
+				NamespaceName:    namespace.Name().String(),
+				JobName:          jobAName.String(),
+				NewNamespaceName: newNamespaceName,
+			}
+			newTenant, _ := tenant.NewTenant(project.Name().String(), newNamespaceName)
+			jobService.On("ChangeNamespace", ctx, sampleTenant, newTenant, jobAName).Return(errors.New("error in changing namespace"))
+
+			jobHandler := v1beta1.NewJobHandler(jobService, log)
+			_, err := jobHandler.ChangeJobNamespace(ctx, request)
+			assert.ErrorContains(t, err, "error in changing namespace: failed to change job namespace")
+		})
+	})
 	t.Run("DeleteJobSpecification", func(t *testing.T) {
 		t.Run("deletes job successfully", func(t *testing.T) {
 			jobService := new(JobService)
@@ -1847,6 +1931,12 @@ func (_m *JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobNa
 	}
 
 	return r0, r1
+}
+
+// ChangeNamespace provides a mock function with given fields: ctx, jobName, jobTenant, jobNewTenant
+func (_m *JobService) ChangeNamespace(ctx context.Context, jobTenant, jobNewTenant tenant.Tenant, jobName job.Name) error {
+	ret := _m.Called(ctx, jobTenant, jobNewTenant, jobName)
+	return ret.Error(0)
 }
 
 // Get provides a mock function with given fields: ctx, jobTenant, jobName

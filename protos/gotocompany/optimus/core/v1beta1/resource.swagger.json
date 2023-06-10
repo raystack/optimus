@@ -21,6 +21,59 @@
     "application/json"
   ],
   "paths": {
+    "/v1beta1/project/{projectName}/change-resource-namespace": {
+      "post": {
+        "summary": "ChangeJobNamespace move a job spec from one namespace to another",
+        "operationId": "ResourceService_ChangeResourceNamespace",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1ChangeResourceNamespaceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "namespaceName": {
+                  "type": "string"
+                },
+                "datastoreName": {
+                  "type": "string"
+                },
+                "resourceName": {
+                  "type": "string"
+                },
+                "newNamespaceName": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "ResourceService"
+        ]
+      }
+    },
     "/v1beta1/project/{projectName}/namespace/{namespaceName}/datastore/{datastoreName}/resource": {
       "get": {
         "summary": "ListResourceSpecification lists all resource specifications of a datastore in project",
@@ -260,6 +313,9 @@
           }
         }
       }
+    },
+    "v1beta1ChangeResourceNamespaceResponse": {
+      "type": "object"
     },
     "v1beta1CreateResourceResponse": {
       "type": "object",

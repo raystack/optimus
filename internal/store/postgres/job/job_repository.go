@@ -104,6 +104,84 @@ func (j JobRepository) Update(ctx context.Context, jobs []*job.Job) ([]*job.Job,
 	return storedJobs, me.ToErr()
 }
 
+func (j JobRepository) ChangeJobNamespace(ctx context.Context, jobName job.Name, tenant, newTenant tenant.Tenant) error {
+	tx, err := j.db.Begin(ctx)
+	if err != nil {
+		return errors.InternalError(job.EntityJob, "unable to begin transaction", err)
+	}
+
+	if err = changeJobNamespace(ctx, tx, jobName, tenant, newTenant); err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+	if err = changeJobUpstreamNamespace(ctx, tx, jobName, tenant, newTenant); err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+	if err = changeJobRunNamespace(ctx, tx, jobName, tenant, newTenant); err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+	tx.Commit(ctx)
+	return nil
+}
+
+func changeJobNamespace(ctx context.Context, tx pgx.Tx, jobName job.Name, tenant, newTenant tenant.Tenant) error {
+	changeJobNamespaceQuery := `
+UPDATE job SET
+	namespace_name = $1,
+	updated_at = NOW(), deleted_at = null
+WHERE
+	name = $2 AND
+	project_name = $3 AND
+	namespace_name = $4
+;`
+	tag, err := tx.Exec(ctx, changeJobNamespaceQuery, newTenant.NamespaceName(), jobName,
+		tenant.ProjectName(), tenant.NamespaceName())
+	if err != nil {
+		return errors.Wrap(job.EntityJob, err.Error(), err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return errors.NotFound(job.EntityJob, "job not found with the given namespace: "+tenant.NamespaceName().String())
+	}
+	return nil
+}
+
+func changeJobUpstreamNamespace(ctx context.Context, tx pgx.Tx, jobName job.Name, tenant, newTenant tenant.Tenant) error {
+	changeJobUpstreamsQuery := `
+UPDATE job_upstream SET
+	upstream_namespace_name = $1
+WHERE
+	upstream_job_name = $2 AND
+	upstream_project_name = $3 AND
+	upstream_namespace_name = $4
+;`
+	_, err := tx.Exec(ctx, changeJobUpstreamsQuery, newTenant.NamespaceName(), jobName,
+		tenant.ProjectName(), tenant.NamespaceName())
+	if err != nil {
+		return errors.Wrap(job.EntityJob, err.Error(), err)
+	}
+	return nil
+}
+
+func changeJobRunNamespace(ctx context.Context, tx pgx.Tx, jobName job.Name, tenant, newTenant tenant.Tenant) error {
+	changeJobRunNamespaceQuery := `
+UPDATE job_run SET
+	namespace_name = $1
+WHERE
+	job_name = $2 AND
+	project_name = $3 AND
+	namespace_name = $4
+;`
+	_, err := tx.Exec(ctx, changeJobRunNamespaceQuery, newTenant.NamespaceName(), jobName,
+		tenant.ProjectName(), tenant.NamespaceName())
+	if err != nil {
+		return errors.Wrap(job.EntityJob, err.Error(), err)
+	}
+	return nil
+}
+
 func (j JobRepository) preCheckUpdate(ctx context.Context, jobEntity *job.Job) error {
 	existingJob, err := j.get(ctx, jobEntity.ProjectName(), jobEntity.Spec().Name(), false)
 	if err != nil && errors.IsErrorType(err, errors.ErrNotFound) {

@@ -44,6 +44,7 @@ func NewJobHandler(jobService JobService, logger log.Logger) *JobHandler {
 type JobService interface {
 	Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error
 	Update(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error
+	ChangeNamespace(ctx context.Context, jobSourceTenant, jobNewTenant tenant.Tenant, jobName job.Name) error
 	Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag, forceFlag bool) (affectedDownstream []job.FullName, err error)
 	Get(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name) (jobSpec *job.Job, err error)
 	GetTaskInfo(ctx context.Context, task job.Task) (*plugin.Info, error)
@@ -129,6 +130,37 @@ func (jh *JobHandler) DeleteJobSpecification(ctx context.Context, deleteRequest 
 		Success: true,
 		Message: msg,
 	}, nil
+}
+
+func (jh *JobHandler) ChangeJobNamespace(ctx context.Context, changeRequest *pb.ChangeJobNamespaceRequest) (*pb.ChangeJobNamespaceResponse, error) {
+	jobSourceTenant, err := tenant.NewTenant(changeRequest.ProjectName, changeRequest.NamespaceName)
+	if err != nil {
+		errorMsg := "failed to adapt source tenant when changing job namespace"
+		jh.l.Error(fmt.Sprintf("%s: %s", errorMsg, err.Error()))
+		return nil, errors.GRPCErr(err, errorMsg)
+	}
+	jobNewTenant, err := tenant.NewTenant(changeRequest.ProjectName, changeRequest.NewNamespaceName)
+	if err != nil {
+		errorMsg := "failed to adapt new tenant when changing job namespace"
+		jh.l.Error(fmt.Sprintf("%s: %s", errorMsg, err.Error()))
+		return nil, errors.GRPCErr(err, errorMsg)
+	}
+
+	jobName, err := job.NameFrom(changeRequest.JobName)
+	if err != nil {
+		errorMsg := "failed to adapt job name when changing job specification"
+		jh.l.Error(fmt.Sprintf("%s: %s", errorMsg, err.Error()))
+		return nil, errors.GRPCErr(err, errorMsg)
+	}
+
+	err = jh.jobService.ChangeNamespace(ctx, jobSourceTenant, jobNewTenant, jobName)
+	if err != nil {
+		errorMsg := "failed to change job namespace"
+		jh.l.Error(fmt.Sprintf("%s: %s", errorMsg, err.Error()))
+		return nil, errors.GRPCErr(err, errorMsg)
+	}
+
+	return &pb.ChangeJobNamespaceResponse{}, nil
 }
 
 func (jh *JobHandler) UpdateJobSpecifications(ctx context.Context, jobSpecRequest *pb.UpdateJobSpecificationsRequest) (*pb.UpdateJobSpecificationsResponse, error) {

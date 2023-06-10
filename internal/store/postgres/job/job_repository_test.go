@@ -753,6 +753,49 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.Nil(t, jobUpstreamRepo.ReplaceUpstreams(ctx, []*job.WithUpstream{jobWithUpstream}))
 		})
 	})
+	t.Run("ChangeJobNamespace", func(t *testing.T) {
+		newTenant, _ := tenant.NewTenant(otherNamespace.ProjectName().String(), otherNamespace.Name().String())
+		jobSpecA, err := job.NewSpecBuilder(jobVersion, "sample-job-A", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+		assert.NoError(t, err)
+		jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"dev.resource.sample_c"})
+
+		jobSpecB, err := job.NewSpecBuilder(jobVersion, "sample-job-B", jobOwner, jobSchedule, jobWindow, jobTask).WithDescription(jobDescription).Build()
+		assert.NoError(t, err)
+		jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_b", []job.ResourceURN{"dev.resource.sample_a"})
+
+		t.Run("Change Job namespace successfully", func(t *testing.T) {
+			db := dbSetup()
+
+			jobRepo := postgres.NewJobRepository(db)
+			addedJob, err := jobRepo.Add(ctx, []*job.Job{jobA, jobB})
+			assert.NoError(t, err)
+			assert.NotNil(t, addedJob)
+
+			upstreamAInferred := job.NewUpstreamResolved("sample-job-A", "host-1", "dev.resource.sample_a", sampleTenant, "inferred", taskName, false)
+			jobBWithUpstream := job.NewWithUpstream(jobB, []*job.Upstream{upstreamAInferred})
+			err = jobRepo.ReplaceUpstreams(ctx, []*job.WithUpstream{jobBWithUpstream})
+			assert.NoError(t, err)
+
+			// update failure with proper log message shows job has been soft deleted
+			err = jobRepo.ChangeJobNamespace(ctx, jobSpecA.Name(), sampleTenant, newTenant)
+			assert.Nil(t, err)
+
+			jobA, err = jobRepo.GetByJobName(ctx, proj.Name(), jobSpecA.Name())
+			assert.Nil(t, err)
+			assert.Equal(t, jobA.Tenant().NamespaceName(), newTenant.NamespaceName())
+
+			jobBUpstreams, err := jobRepo.GetUpstreams(ctx, proj.Name(), jobSpecB.Name())
+			assert.Nil(t, err)
+			jobAIsUpstream := false
+			for _, upstream := range jobBUpstreams {
+				if upstream.Name() == jobSpecA.Name() {
+					jobAIsUpstream = true
+					assert.Equal(t, upstream.NamespaceName(), newTenant.NamespaceName())
+				}
+			}
+			assert.True(t, jobAIsUpstream)
+		})
+	})
 
 	t.Run("Delete", func(t *testing.T) {
 		t.Run("soft delete a job if not asked to do clean delete", func(t *testing.T) {

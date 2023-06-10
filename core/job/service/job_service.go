@@ -75,6 +75,8 @@ type JobRepository interface {
 	Update(context.Context, []*job.Job) (updatedJobs []*job.Job, err error)
 	Delete(ctx context.Context, projectName tenant.ProjectName, jobName job.Name, cleanHistory bool) error
 
+	ChangeJobNamespace(ctx context.Context, jobName job.Name, tenant, newTenant tenant.Tenant) error
+
 	GetByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) (*job.Job, error)
 	GetAllByResourceDestination(ctx context.Context, resourceDestination job.ResourceURN) ([]*job.Job, error)
 	GetAllByTenant(ctx context.Context, jobTenant tenant.Tenant) ([]*job.Job, error)
@@ -206,6 +208,34 @@ func (j *JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobNam
 	j.raiseDeleteEvent(jobTenant, jobName)
 
 	return downstreamFullNames, nil
+}
+
+func (j *JobService) ChangeNamespace(ctx context.Context, jobTenant, jobNewTenant tenant.Tenant, jobName job.Name) error {
+	err := j.repo.ChangeJobNamespace(ctx, jobName, jobTenant, jobNewTenant)
+	if err != nil {
+		errorsMsg := fmt.Sprintf("unable to successfully finish job namespace change transaction : %s", err.Error())
+		return errors.NewError(errors.ErrInternalError, job.EntityJob, errorsMsg)
+	}
+
+	newJobSpec, err := j.repo.GetByJobName(ctx, jobNewTenant.ProjectName(), jobName)
+	if err != nil {
+		errorsMsg := fmt.Sprintf(" unable fetch jobSpecs for newly modified job : %s, namespace: %s, err: %s", jobName, jobNewTenant.NamespaceName(), err.Error())
+		return errors.NewError(errors.ErrInternalError, job.EntityJob, errorsMsg)
+	}
+
+	err = j.uploadJobs(ctx, jobTenant, nil, nil, []job.Name{jobName})
+	if err != nil {
+		errorsMsg := fmt.Sprintf(" unable to remove old job : %s", err.Error())
+		return errors.NewError(errors.ErrInternalError, job.EntityJob, errorsMsg)
+	}
+
+	err = j.uploadJobs(ctx, jobNewTenant, []*job.Job{newJobSpec}, nil, nil)
+	if err != nil {
+		errorsMsg := fmt.Sprintf(" unable to create new job on scheduler : %s", err.Error())
+		return errors.NewError(errors.ErrInternalError, job.EntityJob, errorsMsg)
+	}
+	j.raiseUpdateEvent(newJobSpec)
+	return nil
 }
 
 func (j *JobService) Get(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name) (*job.Job, error) {

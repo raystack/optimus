@@ -42,6 +42,8 @@ type JobSpecificationServiceClient interface {
 	GetJobSpecifications(ctx context.Context, in *GetJobSpecificationsRequest, opts ...grpc.CallOption) (*GetJobSpecificationsResponse, error)
 	// DeleteJobSpecification deletes a job spec of a namespace
 	DeleteJobSpecification(ctx context.Context, in *DeleteJobSpecificationRequest, opts ...grpc.CallOption) (*DeleteJobSpecificationResponse, error)
+	// ChangeJobNamespace move a job spec from one namespace to another
+	ChangeJobNamespace(ctx context.Context, in *ChangeJobNamespaceRequest, opts ...grpc.CallOption) (*ChangeJobNamespaceResponse, error)
 	// ListJobSpecification returns list of jobs created in a project
 	ListJobSpecification(ctx context.Context, in *ListJobSpecificationRequest, opts ...grpc.CallOption) (*ListJobSpecificationResponse, error)
 	// CheckJobSpecification checks if a job specification is valid
@@ -159,6 +161,15 @@ func (c *jobSpecificationServiceClient) GetJobSpecifications(ctx context.Context
 func (c *jobSpecificationServiceClient) DeleteJobSpecification(ctx context.Context, in *DeleteJobSpecificationRequest, opts ...grpc.CallOption) (*DeleteJobSpecificationResponse, error) {
 	out := new(DeleteJobSpecificationResponse)
 	err := c.cc.Invoke(ctx, "/gotocompany.optimus.core.v1beta1.JobSpecificationService/DeleteJobSpecification", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *jobSpecificationServiceClient) ChangeJobNamespace(ctx context.Context, in *ChangeJobNamespaceRequest, opts ...grpc.CallOption) (*ChangeJobNamespaceResponse, error) {
+	out := new(ChangeJobNamespaceResponse)
+	err := c.cc.Invoke(ctx, "/gotocompany.optimus.core.v1beta1.JobSpecificationService/ChangeJobNamespace", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -329,6 +340,8 @@ type JobSpecificationServiceServer interface {
 	GetJobSpecifications(context.Context, *GetJobSpecificationsRequest) (*GetJobSpecificationsResponse, error)
 	// DeleteJobSpecification deletes a job spec of a namespace
 	DeleteJobSpecification(context.Context, *DeleteJobSpecificationRequest) (*DeleteJobSpecificationResponse, error)
+	// ChangeJobNamespace move a job spec from one namespace to another
+	ChangeJobNamespace(context.Context, *ChangeJobNamespaceRequest) (*ChangeJobNamespaceResponse, error)
 	// ListJobSpecification returns list of jobs created in a project
 	ListJobSpecification(context.Context, *ListJobSpecificationRequest) (*ListJobSpecificationResponse, error)
 	// CheckJobSpecification checks if a job specification is valid
@@ -378,6 +391,9 @@ func (UnimplementedJobSpecificationServiceServer) GetJobSpecifications(context.C
 }
 func (UnimplementedJobSpecificationServiceServer) DeleteJobSpecification(context.Context, *DeleteJobSpecificationRequest) (*DeleteJobSpecificationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteJobSpecification not implemented")
+}
+func (UnimplementedJobSpecificationServiceServer) ChangeJobNamespace(context.Context, *ChangeJobNamespaceRequest) (*ChangeJobNamespaceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ChangeJobNamespace not implemented")
 }
 func (UnimplementedJobSpecificationServiceServer) ListJobSpecification(context.Context, *ListJobSpecificationRequest) (*ListJobSpecificationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListJobSpecification not implemented")
@@ -565,6 +581,24 @@ func _JobSpecificationService_DeleteJobSpecification_Handler(srv interface{}, ct
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(JobSpecificationServiceServer).DeleteJobSpecification(ctx, req.(*DeleteJobSpecificationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _JobSpecificationService_ChangeJobNamespace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChangeJobNamespaceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(JobSpecificationServiceServer).ChangeJobNamespace(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/gotocompany.optimus.core.v1beta1.JobSpecificationService/ChangeJobNamespace",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(JobSpecificationServiceServer).ChangeJobNamespace(ctx, req.(*ChangeJobNamespaceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -761,6 +795,10 @@ var JobSpecificationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteJobSpecification",
 			Handler:    _JobSpecificationService_DeleteJobSpecification_Handler,
+		},
+		{
+			MethodName: "ChangeJobNamespace",
+			Handler:    _JobSpecificationService_ChangeJobNamespace_Handler,
 		},
 		{
 			MethodName: "ListJobSpecification",
