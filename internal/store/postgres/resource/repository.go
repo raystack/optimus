@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -52,6 +53,22 @@ func (r Repository) Update(ctx context.Context, resourceModel *resource.Resource
 	return nil
 }
 
+func (r Repository) ChangeNamespace(ctx context.Context, res *resource.Resource, newTenant tenant.Tenant) error {
+	updateResource := `UPDATE resource SET namespace_name=$1, updated_at=now()
+	WHERE full_name=$2 AND store=$3 AND project_name = $4 And namespace_name = $5`
+	tag, err := r.db.Exec(ctx, updateResource,
+		newTenant.NamespaceName(), res.FullName(), res.Store(),
+		res.Tenant().ProjectName(), res.Tenant().NamespaceName())
+	if err != nil {
+		return errors.Wrap(resource.EntityResource, "error changing tenant for resource:"+res.FullName(), err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return errors.NotFound(resource.EntityResource, "no resource to changing tenant for ")
+	}
+	return nil
+}
+
 func (r Repository) ReadByFullName(ctx context.Context, tnnt tenant.Tenant, store resource.Store, fullName string) (*resource.Resource, error) {
 	var res Resource
 	getResource := `SELECT ` + resourceColumns + ` FROM resource WHERE full_name = $1 AND store = $2 AND
@@ -61,10 +78,10 @@ func (r Repository) ReadByFullName(ctx context.Context, tnnt tenant.Tenant, stor
 			&res.ProjectName, &res.NamespaceName, &res.Metadata, &res.Spec, &res.CreatedAt, &res.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errors.NotFound(resource.EntityResource, "no resource found for "+res.FullName)
+			return nil, errors.NotFound(resource.EntityResource, fmt.Sprintf("no resource: '%s' found for project:%s, namespace:%s ", fullName, tnnt.ProjectName(), tnnt.NamespaceName()))
 		}
 
-		return nil, errors.Wrap(resource.EntityResource, "error reading the resource "+res.FullName, err)
+		return nil, errors.Wrap(resource.EntityResource, fmt.Sprintf("error reading resource: '%s' found for project:%s, namespace:%s ", fullName, tnnt.ProjectName(), tnnt.NamespaceName()), err)
 	}
 
 	return FromModelToResource(&res)

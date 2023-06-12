@@ -14,6 +14,7 @@ type ResourceSpec struct {
 	Type    string                 `yaml:"type"`
 	Labels  map[string]string      `yaml:"labels"`
 	Spec    map[string]interface{} `yaml:"spec"`
+	Path    string                 `yaml:"-"`
 }
 
 func (r ResourceSpec) ToProto() (*pb.ResourceSpecification, error) {

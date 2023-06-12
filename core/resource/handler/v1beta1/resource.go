@@ -29,6 +29,7 @@ const (
 type ResourceService interface {
 	Create(ctx context.Context, res *resource.Resource) error
 	Update(ctx context.Context, res *resource.Resource) error
+	ChangeNamespace(ctx context.Context, datastore resource.Store, resourceFullName string, oldTenant, newTenant tenant.Tenant) error
 	Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceName string) (*resource.Resource, error)
 	GetAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error)
 	Deploy(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error
@@ -263,6 +264,29 @@ func (rh ResourceHandler) UpdateResource(ctx context.Context, req *pb.UpdateReso
 
 	raiseResourceUpsertMetric(tnnt, metricResourceEventsStateSuccess, 1)
 	return &pb.UpdateResourceResponse{}, nil
+}
+
+func (rh ResourceHandler) ChangeResourceNamespace(ctx context.Context, req *pb.ChangeResourceNamespaceRequest) (*pb.ChangeResourceNamespaceResponse, error) {
+	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
+	if err != nil {
+		return nil, errors.GRPCErr(err, "failed to adapt to existing tenant details")
+	}
+
+	newTnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNewNamespaceName())
+	if err != nil {
+		return nil, errors.GRPCErr(err, "failed to adapt to new tenant")
+	}
+
+	store, err := resource.FromStringToStore(req.GetDatastoreName())
+	if err != nil {
+		return nil, errors.GRPCErr(err, "invalid Datastore Name")
+	}
+
+	err = rh.service.ChangeNamespace(ctx, store, req.GetResourceName(), tnnt, newTnnt)
+	if err != nil {
+		return nil, errors.GRPCErr(err, "failed to update resource "+req.GetResourceName())
+	}
+	return &pb.ChangeResourceNamespaceResponse{}, nil
 }
 
 func writeError(logWriter writer.LogWriter, err error) {

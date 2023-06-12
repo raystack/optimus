@@ -755,6 +755,10 @@ func (m *mockResourceRepository) Update(ctx context.Context, res *resource.Resou
 	return m.Called(ctx, res).Error(0)
 }
 
+func (m *mockResourceRepository) ChangeNamespace(ctx context.Context, res *resource.Resource, newTenant tenant.Tenant) error {
+	return m.Called(ctx, res, newTenant).Error(0)
+}
+
 type mockConstructorTestingTNewResourceRepository interface {
 	mock.TestingT
 	Cleanup(func())

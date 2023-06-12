@@ -94,6 +94,10 @@ func (r *Resource) UpdateURN(urn string) error {
 	return errors.InvalidArgument(EntityResource, "urn already present for "+r.FullName())
 }
 
+func (r *Resource) UpdateTenant(tnnt tenant.Tenant) {
+	r.tenant = tnnt
+}
+
 func (r *Resource) Metadata() *Metadata {
 	return r.metadata
 }

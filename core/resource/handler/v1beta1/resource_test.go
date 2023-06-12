@@ -752,6 +752,10 @@ func (r *resourceService) Deploy(ctx context.Context, tnnt tenant.Tenant, store 
 	return args.Error(0)
 }
 
+func (r *resourceService) ChangeNamespace(ctx context.Context, datastore resource.Store, resourceFullName string, oldTenant, newTenant tenant.Tenant) error {
+	return r.Called(ctx, datastore, resourceFullName, oldTenant, newTenant).Error(0)
+}
+
 type resourceStreamMock struct {
 	mock.Mock
 }

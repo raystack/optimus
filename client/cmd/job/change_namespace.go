@@ -36,8 +36,8 @@ type changeNamespaceCommand struct {
 	host             string
 }
 
-// NewChangeNemespaceCommand initializes job namespace change command
-func NewChangeNemespaceCommand() *cobra.Command {
+// NewChangeNamespaceCommand initializes job namespace change command
+func NewChangeNamespaceCommand() *cobra.Command {
 	l := logger.NewClientLogger()
 	changeNamespace := &changeNamespaceCommand{
 		logger: l,
@@ -113,56 +113,61 @@ func (c *changeNamespaceCommand) sendChangeNamespaceRequest(jobName string) erro
 func (c *changeNamespaceCommand) PostRunE(_ *cobra.Command, args []string) error {
 	c.logger.Info("\n[info] Moving job in filesystem")
 	jobName := args[0]
-	jobSpecReadWriter, err := specio.NewJobSpecReadWriter(afero.NewOsFs())
-	if err != nil {
-		return err
-	}
 
 	oldNamespaceConfig, err := c.getNamespaceConfig(c.oldNamespaceName)
 	if err != nil {
-		return errors.Wrap(tenant.EntityNamespace, "unregistered old namespace", err)
+		c.logger.Error(fmt.Sprintf("[error] old namespace unregistered in filesystem, err: %s", err.Error()))
+		return nil
+	}
+
+	jobSpecReadWriter, err := specio.NewJobSpecReadWriter(afero.NewOsFs())
+	if err != nil {
+		c.logger.Error(fmt.Sprintf("[error] could not instantiate Spec Readed, err: %s", err.Error()))
+		return nil
 	}
 
 	jobSpec, err := jobSpecReadWriter.ReadByName(oldNamespaceConfig.Job.Path, jobName)
 	if err != nil {
-		return errors.Wrap(tenant.EntityNamespace, "unable to find job in old namespace", err)
+		c.logger.Error(fmt.Sprintf("[error] unable to find job in old namespace directory, err: %s", err.Error()))
+		return nil
 	}
 
 	fs := afero.NewOsFs()
 	newNamespaceConfig, err := c.getNamespaceConfig(c.newNamespaceName)
 	if err != nil || newNamespaceConfig.Job.Path == "" {
 		c.logger.Warn("[warn] new namespace not recognised for jobs")
+		c.logger.Warn("[info] run `optimus job export` on the new namespace repo, to fetch the newly moved job.")
+
 		c.logger.Warn("[info] removing job from old namespace")
 		err = fs.RemoveAll(jobSpec.Path)
 		if err != nil {
-			c.logger.Warn("unable to remove job from old namespace")
-			return errors.NewError(errors.ErrInternalError, "change-namespace", "unable to remove job from old namespace")
+			c.logger.Error(fmt.Sprintf("[error] unable to remove job from old namespace , err: %s", err.Error()))
+			c.logger.Warn("[info] consider deleting source files manually if they exist")
+			return nil
 		}
-		c.logger.Warn("[info] removed job spec from current namespace directory")
-		c.logger.Warn("[info] run `optimus job export` on the new namespace repo, to fetch the newly moved job.")
-		c.logger.Info("[OK] Job moved successfully")
+		c.logger.Warn("[OK] removed job spec from current namespace directory")
 		return nil
 	}
 
-	var relativeJobPath string
-	splitComp := strings.Split(jobSpec.Path, oldNamespaceConfig.Job.Path)
-	if !(len(splitComp) > 1) {
-		return errors.NewError(errors.ErrInternalError, "change-namespace", "unable to parse job spec path")
-	}
-	relativeJobPath = splitComp[1]
+	newJobPath := strings.Replace(jobSpec.Path, oldNamespaceConfig.Job.Path, newNamespaceConfig.Job.Path, 1)
 
-	c.logger.Info(fmt.Sprintf("\t* Old Path : '%s' \n\t* New Path : '%s' \n", jobSpec.Path, newNamespaceConfig.Job.Path+relativeJobPath))
+	c.logger.Info(fmt.Sprintf("\t* Old Path : '%s' \n\t* New Path : '%s' \n", jobSpec.Path, newJobPath))
 
-	c.logger.Info(fmt.Sprintf("[info] creating job directry: %s", newNamespaceConfig.Job.Path+relativeJobPath))
+	c.logger.Info(fmt.Sprintf("[info] creating job directry: %s", newJobPath))
 
-	err = fs.MkdirAll(filepath.Dir(newNamespaceConfig.Job.Path+relativeJobPath), os.ModePerm)
+	err = fs.MkdirAll(filepath.Dir(newJobPath), os.ModePerm)
 	if err != nil {
-		return err
+		c.logger.Error(fmt.Sprintf("[error] unable to create path in the new namespace directory, err: %s", err.Error()))
+		c.logger.Warn("[warn] unable to move job from old namespace")
+		c.logger.Warn("[info] consider moving source files manually")
+		return nil
 	}
 
-	err = fs.Rename(jobSpec.Path, newNamespaceConfig.Job.Path+relativeJobPath)
+	err = fs.Rename(jobSpec.Path, newJobPath)
 	if err != nil {
-		return err
+		c.logger.Error(fmt.Sprintf("[warn] unable to move job from old namespace, err: %s", err.Error()))
+		c.logger.Warn("[info] consider moving source files manually")
+		return nil
 	}
 	c.logger.Info("[OK] Job moved successfully")
 	return nil

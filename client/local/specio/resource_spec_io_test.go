@@ -104,6 +104,7 @@ func (r *ResourceSpecReadWriterTestSuite) TestReadAll() {
 						},
 					},
 				},
+				Path: "namespace/resource/user",
 			},
 		}
 
@@ -230,6 +231,7 @@ func (r *ResourceSpecReadWriterTestSuite) TestReadByName() {
 					},
 				},
 			},
+			Path: "namespace/resource/user",
 		}
 
 		rootDirPath := "namespace"
@@ -293,6 +295,7 @@ func (r *ResourceSpecReadWriterTestSuite) TestWrite() {
 					},
 				},
 			},
+			Path: "",
 		}
 
 		actualError := specReadWriter.Write(dirPath, spec)

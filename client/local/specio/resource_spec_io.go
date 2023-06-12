@@ -44,6 +44,7 @@ func (r resourceSpecReadWriter) ReadAll(rootDirPath string) ([]*model.ResourceSp
 		if err != nil {
 			return nil, fmt.Errorf("error reading spec under [%s]: %w", filePath, err)
 		}
+		spec.Path = dirPath
 		specs[i] = spec
 	}
 	return specs, nil
