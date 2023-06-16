@@ -263,7 +263,6 @@ schedule:
   interval: 0 2 * * *
 behavior:
   depends_on_past: false
-  catch_up: false
 task:
   name: bq2bq
   config:

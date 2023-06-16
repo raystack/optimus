@@ -45,7 +45,6 @@ task:
     BQ_SERVICE_ACCOUNT: "{{.secret.BQ_SERVICE_ACCOUNT}}"
 behavior:
   depends_on_past: false
-  catch_up: true
   retry:
     count: 1
     delay: 5s
@@ -82,7 +81,6 @@ schedule:
   interval: 0 10 * * *
 behavior:
   depends_on_past: true
-  catch_up: true
   retry:
     count: 1
     delay: 5s

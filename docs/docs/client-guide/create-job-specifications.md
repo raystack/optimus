@@ -64,7 +64,6 @@ schedule:
   interval: 0 2 * * *
 behavior:
   depends_on_past: false
-  catch_up: false
 task:
   name: bq2bq
   config:
@@ -102,7 +101,6 @@ dependencies: []
 ### Behavior
 Behavior specification might consist:
 - depends_on_past: set to true to not allow the task to run, if the previous task run has not been succeeded yet
-- catch_up: if the start date is in the past and catch_up is set to false, then the scheduler will not schedule the job since the start date.
 - retry
   - count: represents how many times it will try to retrigger the job if the job failed to run 
   - delay
