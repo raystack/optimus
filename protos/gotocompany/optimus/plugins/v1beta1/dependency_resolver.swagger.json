@@ -39,17 +39,6 @@
         }
       }
     },
-    "ProjectSpecificationProjectSecret": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -140,7 +129,7 @@
         }
       }
     },
-    "v1beta1InstanceSpecData": {
+    "v1beta1InstanceData": {
       "type": "object",
       "properties": {
         "name": {
@@ -150,59 +139,15 @@
           "type": "string"
         },
         "type": {
-          "$ref": "#/definitions/v1beta1InstanceSpecDataType"
+          "type": "string"
         }
       }
-    },
-    "v1beta1InstanceSpecDataType": {
-      "type": "string",
-      "enum": [
-        "TYPE_UNSPECIFIED",
-        "TYPE_ENV",
-        "TYPE_FILE"
-      ],
-      "default": "TYPE_UNSPECIFIED",
-      "title": "type of data, could be an env var or file"
     },
     "v1beta1PluginOptions": {
       "type": "object",
       "properties": {
         "dryRun": {
           "type": "boolean"
-        }
-      }
-    },
-    "v1beta1ProjectSpecification": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "config": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "secrets": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/ProjectSpecificationProjectSecret"
-          }
-        }
-      }
-    },
-    "v1beta1TaskWindow": {
-      "type": "object",
-      "properties": {
-        "size": {
-          "type": "string"
-        },
-        "offset": {
-          "type": "string"
-        },
-        "truncateTo": {
-          "type": "string"
         }
       }
     }
