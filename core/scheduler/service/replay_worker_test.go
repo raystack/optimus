@@ -83,7 +83,7 @@ func TestReplayWorker(t *testing.T) {
 			updatedRuns := []*scheduler.JobRunStatus{
 				{
 					ScheduledAt: scheduledTime1,
-					State:       scheduler.StateReplayed,
+					State:       scheduler.StateInProgress,
 				},
 			}
 
@@ -121,7 +121,7 @@ func TestReplayWorker(t *testing.T) {
 			updatedRuns := []*scheduler.JobRunStatus{
 				{
 					ScheduledAt: scheduledTime1,
-					State:       scheduler.StateReplayed,
+					State:       scheduler.StateInProgress,
 				},
 				{
 					ScheduledAt: scheduledTime2,
@@ -195,7 +195,7 @@ func TestReplayWorker(t *testing.T) {
 			updatedRunsAfterRunCreate := []*scheduler.JobRunStatus{
 				{
 					ScheduledAt: scheduledTime1,
-					State:       scheduler.StateReplayed,
+					State:       scheduler.StateInProgress,
 				},
 				{
 					ScheduledAt: scheduledTime2,
@@ -205,11 +205,11 @@ func TestReplayWorker(t *testing.T) {
 			updatedRuns := []*scheduler.JobRunStatus{
 				{
 					ScheduledAt: scheduledTime1,
-					State:       scheduler.StateReplayed,
+					State:       scheduler.StateInProgress,
 				},
 				{
 					ScheduledAt: scheduledTime2,
-					State:       scheduler.StateReplayed,
+					State:       scheduler.StateInProgress,
 				},
 			}
 			existingRuns := []*scheduler.JobRunStatus{{
@@ -334,7 +334,7 @@ func TestReplayWorker(t *testing.T) {
 				Runs: []*scheduler.JobRunStatus{
 					{
 						ScheduledAt: scheduledTime1,
-						State:       scheduler.StateReplayed,
+						State:       scheduler.StateInProgress,
 					},
 					{
 						ScheduledAt: scheduledTime2,
@@ -367,7 +367,7 @@ func TestReplayWorker(t *testing.T) {
 				},
 				{
 					ScheduledAt: scheduledTime2,
-					State:       scheduler.StateReplayed,
+					State:       scheduler.StateInProgress,
 				},
 				{
 					ScheduledAt: scheduledTime3,
@@ -398,7 +398,7 @@ func TestReplayWorker(t *testing.T) {
 				Runs: []*scheduler.JobRunStatus{
 					{
 						ScheduledAt: scheduledTime1,
-						State:       scheduler.StateReplayed,
+						State:       scheduler.StateInProgress,
 					},
 					{
 						ScheduledAt: scheduledTime2,
@@ -431,7 +431,7 @@ func TestReplayWorker(t *testing.T) {
 				},
 				{
 					ScheduledAt: scheduledTime2,
-					State:       scheduler.StateReplayed,
+					State:       scheduler.StateInProgress,
 				},
 				{
 					ScheduledAt: scheduledTime3,
@@ -462,7 +462,7 @@ func TestReplayWorker(t *testing.T) {
 				Runs: []*scheduler.JobRunStatus{
 					{
 						ScheduledAt: scheduledTime1,
-						State:       scheduler.StateReplayed,
+						State:       scheduler.StateInProgress,
 					},
 					{
 						ScheduledAt: scheduledTime2,
@@ -497,7 +497,7 @@ func TestReplayWorker(t *testing.T) {
 				Runs: []*scheduler.JobRunStatus{
 					{
 						ScheduledAt: scheduledTime1,
-						State:       scheduler.StateReplayed,
+						State:       scheduler.StateInProgress,
 					},
 					{
 						ScheduledAt: scheduledTime2,
@@ -544,7 +544,7 @@ func TestReplayWorker(t *testing.T) {
 					},
 					{
 						ScheduledAt: scheduledTime2,
-						State:       scheduler.StateReplayed,
+						State:       scheduler.StateInProgress,
 					},
 				},
 			}
@@ -581,15 +581,15 @@ func TestReplayWorker(t *testing.T) {
 				Runs: []*scheduler.JobRunStatus{
 					{
 						ScheduledAt: scheduledTime1,
-						State:       scheduler.StateReplayed,
+						State:       scheduler.StateInProgress,
 					},
 					{
 						ScheduledAt: scheduledTime2,
-						State:       scheduler.StateReplayed,
+						State:       scheduler.StateInProgress,
 					},
 					{
 						ScheduledAt: scheduledTime3,
-						State:       scheduler.StateReplayed,
+						State:       scheduler.StateInProgress,
 					},
 				},
 			}
@@ -614,11 +614,11 @@ func TestReplayWorker(t *testing.T) {
 				},
 				{
 					ScheduledAt: scheduledTime2,
-					State:       scheduler.StateReplayed,
+					State:       scheduler.StateInProgress,
 				},
 				{
 					ScheduledAt: scheduledTime3,
-					State:       scheduler.StateReplayed,
+					State:       scheduler.StateInProgress,
 				},
 			}
 
@@ -648,7 +648,7 @@ func TestReplayWorker(t *testing.T) {
 					},
 					{
 						ScheduledAt: scheduledTime2,
-						State:       scheduler.StateReplayed,
+						State:       scheduler.StateInProgress,
 					},
 				},
 			}
@@ -679,7 +679,7 @@ func TestReplayWorker(t *testing.T) {
 					},
 					{
 						ScheduledAt: scheduledTime2,
-						State:       scheduler.StateReplayed,
+						State:       scheduler.StateInProgress,
 					},
 				},
 			}

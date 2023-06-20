@@ -16,6 +16,10 @@ import (
 	"github.com/goto/optimus/internal/telemetry"
 )
 
+const (
+	prefixReplayed = "replayed"
+)
+
 type ReplayScheduler interface {
 	Clear(ctx context.Context, t tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) error
 	ClearBatch(ctx context.Context, t tenant.Tenant, jobName scheduler.JobName, startTime, endTime time.Time) error
@@ -85,10 +89,10 @@ func (w ReplayWorker) createMissingRuns(ctx context.Context, replayReq *schedule
 	for _, run := range replayReq.Runs {
 		if _, ok := existedRunsMap[run.ScheduledAt]; !ok {
 			// create any missing runs
-			if err := w.scheduler.CreateRun(ctx, replayReq.Replay.Tenant(), replayReq.Replay.JobName(), run.ScheduledAt, scheduler.StateReplayed.String()); err != nil {
+			if err := w.scheduler.CreateRun(ctx, replayReq.Replay.Tenant(), replayReq.Replay.JobName(), run.ScheduledAt, prefixReplayed); err != nil {
 				return nil, err
 			}
-			run.State = scheduler.StateReplayed
+			run.State = scheduler.StateInProgress
 			createdRuns = append(createdRuns, run)
 		}
 	}
@@ -142,7 +146,7 @@ func (w ReplayWorker) processNewReplayRequestParallel(ctx context.Context, repla
 
 	var updatedRuns []*scheduler.JobRunStatus
 	for _, run := range replayReq.Runs {
-		updatedRuns = append(updatedRuns, &scheduler.JobRunStatus{ScheduledAt: run.ScheduledAt, State: scheduler.StateReplayed})
+		updatedRuns = append(updatedRuns, &scheduler.JobRunStatus{ScheduledAt: run.ScheduledAt, State: scheduler.StateInProgress})
 	}
 	return updatedRuns, nil
 }
@@ -159,7 +163,7 @@ func (w ReplayWorker) processNewReplayRequestSequential(ctx context.Context, rep
 
 	w.l.Info("cleared [%s] [%s] run for replay %s", replayReq.Replay.JobName().String(), runToClear.ScheduledAt, replayReq.Replay.ID().String())
 	updatedReplayMap := map[time.Time]scheduler.State{
-		runToClear.ScheduledAt: scheduler.StateReplayed,
+		runToClear.ScheduledAt: scheduler.StateInProgress,
 	}
 	updatedRuns := scheduler.JobRunStatusList(replayReq.Runs).MergeWithUpdatedRuns(updatedReplayMap)
 	return updatedRuns, nil
@@ -175,7 +179,7 @@ func (w ReplayWorker) processPartialReplayedRequest(ctx context.Context, replayR
 	updatedReplayMap := identifyUpdatedRunStatus(replayReq.Runs, incomingRuns)
 	updatedRuns := scheduler.JobRunStatusList(replayReq.Runs).MergeWithUpdatedRuns(updatedReplayMap)
 
-	replayedRuns := scheduler.JobRunStatusList(updatedRuns).GetSortedRunsByStates([]scheduler.State{scheduler.StateReplayed})
+	replayedRuns := scheduler.JobRunStatusList(updatedRuns).GetSortedRunsByStates([]scheduler.State{scheduler.StateInProgress})
 	toBeReplayedRuns := scheduler.JobRunStatusList(updatedRuns).GetSortedRunsByStates([]scheduler.State{scheduler.StatePending})
 
 	replayState := scheduler.ReplayStatePartialReplayed
@@ -187,7 +191,7 @@ func (w ReplayWorker) processPartialReplayedRequest(ctx context.Context, replayR
 		}
 		w.l.Info("cleared [%s] [%s] run for replay %s", replayReq.Replay.JobName().String(), toBeReplayedRuns[0].ScheduledAt, replayReq.Replay.ID().String())
 
-		updatedReplayMap[toBeReplayedRuns[0].ScheduledAt] = scheduler.StateReplayed
+		updatedReplayMap[toBeReplayedRuns[0].ScheduledAt] = scheduler.StateInProgress
 		updatedRuns = scheduler.JobRunStatusList(updatedRuns).MergeWithUpdatedRuns(updatedReplayMap)
 	}
 
@@ -213,7 +217,7 @@ func (w ReplayWorker) processReplayedRequest(ctx context.Context, replayReq *sch
 
 	updatedReplayMap := identifyUpdatedRunStatus(replayReq.Runs, incomingRuns)
 	updatedRuns := scheduler.JobRunStatusList(replayReq.Runs).MergeWithUpdatedRuns(updatedReplayMap)
-	inProgressRuns := scheduler.JobRunStatusList(updatedRuns).GetSortedRunsByStates([]scheduler.State{scheduler.StateReplayed})
+	inProgressRuns := scheduler.JobRunStatusList(updatedRuns).GetSortedRunsByStates([]scheduler.State{scheduler.StateInProgress})
 	failedRuns := scheduler.JobRunStatusList(updatedRuns).GetSortedRunsByStates([]scheduler.State{scheduler.StateFailed})
 
 	var message string
@@ -240,7 +244,7 @@ func identifyUpdatedRunStatus(existingJobRuns, incomingJobRuns []*scheduler.JobR
 
 	updatedReplayMap := make(map[time.Time]scheduler.State)
 	for _, run := range existingJobRuns {
-		if run.State != scheduler.StateReplayed {
+		if run.State != scheduler.StateInProgress {
 			continue
 		}
 		if incomingRunStatusMap[run.ScheduledAt.UTC()] == scheduler.StateSuccess || incomingRunStatusMap[run.ScheduledAt.UTC()] == scheduler.StateFailed {

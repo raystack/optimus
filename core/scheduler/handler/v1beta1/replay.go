@@ -128,7 +128,7 @@ func replayToProto(replay *scheduler.Replay) *pb.GetReplayResponse {
 	return &pb.GetReplayResponse{
 		Id:      replay.ID().String(),
 		JobName: replay.JobName().String(),
-		Status:  replay.State().String(),
+		Status:  replay.UserState().String(),
 		ReplayConfig: &pb.ReplayConfig{
 			StartTime:   timestamppb.New(replay.Config().StartTime),
 			EndTime:     timestamppb.New(replay.Config().EndTime),

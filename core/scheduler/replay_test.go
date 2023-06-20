@@ -68,7 +68,7 @@ func TestReplay(t *testing.T) {
 		}
 		fourthRun := &scheduler.JobRunStatus{
 			ScheduledAt: scheduledTime4,
-			State:       scheduler.StateReplayed,
+			State:       scheduler.StateInProgress,
 		}
 
 		t.Run("GetFirstExecutableRun", func(t *testing.T) {

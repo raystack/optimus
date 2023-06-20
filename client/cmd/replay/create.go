@@ -24,7 +24,10 @@ const (
 	pollIntervalInSecond = 30
 )
 
-var terminalStatuses = map[string]bool{"success": true, "failed": true, "invalid": true}
+var (
+	supportedISOTimeLayouts = [...]string{time.RFC3339, "2006-01-02"}
+	terminalStatuses        = map[string]bool{"success": true, "failed": true, "invalid": true}
+)
 
 type createCommand struct {
 	logger         log.Logger
@@ -49,8 +52,9 @@ func CreateCommand() *cobra.Command {
 		Use:   "create",
 		Short: "Run replay operation on a dag based on provided start and end time range",
 		Long: "This operation takes three arguments, first is DAG name[required]\nused in optimus specification, " +
-			"second is start time[required] of\nreplay, third is end time[optional] of replay. \nDate ranges are inclusive.",
-		Example: "optimus replay create <job_name> <2023-01-01T02:30:00Z00:00> [2023-01-02T02:30:00Z00:00]",
+			"second is start time[required] of\nreplay, third is end time[optional] of replay. \nDate ranges are inclusive. " +
+			"Supported date formats are RFC3339 and \nsimple date YYYY-MM-DD",
+		Example: "optimus replay create <job_name> <2023-01-01T02:30:00Z00:00> [2023-01-02T02:30:00Z00:00]\noptimus replay create <job_name> <2023-01-01> [2023-01-02]",
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("job name is required")
@@ -186,7 +190,14 @@ func (r *createCommand) createReplayRequest(jobName, startTimeStr, endTimeStr, j
 }
 
 func getTimeProto(timeStr string) (*timestamppb.Timestamp, error) {
-	parsedTime, err := time.Parse(ISOTimeLayout, timeStr)
+	var parsedTime time.Time
+	var err error
+	for _, ISOTimeLayout := range supportedISOTimeLayouts {
+		parsedTime, err = time.Parse(ISOTimeLayout, timeStr)
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
 		return nil, err
 	}

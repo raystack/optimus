@@ -86,20 +86,20 @@ func TestStatus(t *testing.T) {
 	})
 	t.Run("StateFromString", func(t *testing.T) {
 		expectationsMap := map[string]scheduler.State{
-			"pending":  scheduler.StatePending,
-			"PENDING":  scheduler.StatePending,
-			"accepted": scheduler.StateAccepted,
-			"ACCEPTED": scheduler.StateAccepted,
-			"running":  scheduler.StateRunning,
-			"RUNNING":  scheduler.StateRunning,
-			"queued":   scheduler.StateQueued,
-			"QUEUED":   scheduler.StateQueued,
-			"success":  scheduler.StateSuccess,
-			"SUCCESS":  scheduler.StateSuccess,
-			"failed":   scheduler.StateFailed,
-			"FAILED":   scheduler.StateFailed,
-			"replayed": scheduler.StateReplayed,
-			"REPLAYED": scheduler.StateReplayed,
+			"pending":     scheduler.StatePending,
+			"PENDING":     scheduler.StatePending,
+			"accepted":    scheduler.StateAccepted,
+			"ACCEPTED":    scheduler.StateAccepted,
+			"running":     scheduler.StateRunning,
+			"RUNNING":     scheduler.StateRunning,
+			"queued":      scheduler.StateQueued,
+			"QUEUED":      scheduler.StateQueued,
+			"success":     scheduler.StateSuccess,
+			"SUCCESS":     scheduler.StateSuccess,
+			"failed":      scheduler.StateFailed,
+			"FAILED":      scheduler.StateFailed,
+			"in_progress": scheduler.StateInProgress,
+			"IN_PROGRESS": scheduler.StateInProgress,
 		}
 		for input, expectedState := range expectationsMap {
 			respState, err := scheduler.StateFromString(input)

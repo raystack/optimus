@@ -11,20 +11,33 @@ import (
 )
 
 const (
+	// initial state
 	ReplayStateCreated ReplayState = "created"
 
+	// running state
 	ReplayStateInProgress      ReplayState = "in progress"
-	ReplayStateInvalid         ReplayState = "invalid"
 	ReplayStatePartialReplayed ReplayState = "partial replayed"
 	ReplayStateReplayed        ReplayState = "replayed"
 
+	// terminal state
+	ReplayStateInvalid ReplayState = "invalid"
 	ReplayStateSuccess ReplayState = "success"
 	ReplayStateFailed  ReplayState = "failed"
+
+	// state on presentation layer
+	ReplayUserStateCreated    ReplayUserState = "created"
+	ReplayUserStateInProgress ReplayUserState = "in progress"
+	ReplayUserStateInvalid    ReplayUserState = "invalid"
+	ReplayUserStateSuccess    ReplayUserState = "success"
+	ReplayUserStateFailed     ReplayUserState = "failed"
 
 	EntityReplay = "replay"
 )
 
-type ReplayState string
+type (
+	ReplayState     string // contract status for business layer
+	ReplayUserState string // contract status for presentation layer
+)
 
 func ReplayStateFromString(state string) (ReplayState, error) {
 	switch strings.ToLower(state) {
@@ -48,6 +61,10 @@ func ReplayStateFromString(state string) (ReplayState, error) {
 }
 
 func (j ReplayState) String() string {
+	return string(j)
+}
+
+func (j ReplayUserState) String() string {
 	return string(j)
 }
 
@@ -82,6 +99,23 @@ func (r *Replay) Config() *ReplayConfig {
 
 func (r *Replay) State() ReplayState {
 	return r.state
+}
+
+func (r *Replay) UserState() ReplayUserState {
+	switch r.state {
+	case ReplayStateCreated:
+		return ReplayUserStateCreated
+	case ReplayStateInProgress, ReplayStatePartialReplayed, ReplayStateReplayed:
+		return ReplayUserStateInProgress
+	case ReplayStateInvalid:
+		return ReplayUserStateInvalid
+	case ReplayStateSuccess:
+		return ReplayUserStateSuccess
+	case ReplayStateFailed:
+		return ReplayUserStateFailed
+	default:
+		return ""
+	}
 }
 
 func (r *Replay) Message() string {
