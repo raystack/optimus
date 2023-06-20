@@ -13,14 +13,18 @@ import (
 	"github.com/goto/optimus/client/cmd/internal"
 	"github.com/goto/optimus/client/cmd/internal/connectivity"
 	"github.com/goto/optimus/client/cmd/internal/logger"
+	"github.com/goto/optimus/client/cmd/internal/progressbar"
 	"github.com/goto/optimus/config"
 	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
 )
 
 const (
-	replayTimeout = time.Minute * 1
-	ISOTimeLayout = time.RFC3339
+	replayTimeout        = time.Minute * 1
+	ISOTimeLayout        = time.RFC3339
+	pollIntervalInSecond = 30
 )
+
+var terminalStatuses = map[string]bool{"success": true, "failed": true, "invalid": true}
 
 type createCommand struct {
 	logger         log.Logger
@@ -110,8 +114,39 @@ func (r *createCommand) RunE(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	r.logger.Info("Replay request created with id %s", replayID)
+	r.logger.Info("Replay request is accepted and it is in progress")
+	r.logger.Info("Either you could wait or you could close (ctrl+c) and check the status with `optimus replay status %s` command later", replayID)
+
+	return r.waitForReplayState(replayID)
+}
+
+func (r *createCommand) waitForReplayState(replayID string) error {
+	spinner := progressbar.NewProgressBarWithWriter(r.logger.Writer())
+	status := "in progress"
+	spinner.Start(fmt.Sprintf("%s...", status))
+	for {
+		resp, err := r.getReplay(replayID)
+		if err != nil {
+			return err
+		}
+		if status != resp.Status {
+			status = resp.Status
+			spinner.StartNewLine(fmt.Sprintf("%s...", status))
+		}
+		if _, ok := terminalStatuses[status]; ok {
+			spinner.StartNewLine("\n")
+			spinner.Stop()
+			r.logger.Info("\n" + stringifyReplayStatus(resp))
+			break
+		}
+		time.Sleep(time.Duration(pollIntervalInSecond) * time.Second)
+	}
+	spinner.Stop()
 	return nil
+}
+
+func (r *createCommand) getReplay(replayID string) (*pb.GetReplayResponse, error) {
+	return getReplay(r.host, replayID)
 }
 
 func (r *createCommand) createReplayRequest(jobName, startTimeStr, endTimeStr, jobConfig string) (string, error) {
