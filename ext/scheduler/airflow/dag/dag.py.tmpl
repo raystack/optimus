@@ -49,6 +49,9 @@ default_args = {
     "end_date": datetime.strptime({{ .JobDetails.Schedule.EndDate.Format "2006-01-02T15:04:05" | quote}}, "%Y-%m-%dT%H:%M:%S"),
     {{- end}}
     "weight_rule": WeightRule.ABSOLUTE,
+    {{- if gt .SLAMissDuration 0 }}
+    "sla": timedelta(seconds={{ .SLAMissDuration }}),
+    {{- end }}
     "on_execute_callback": operator_start_event,
     "on_success_callback": operator_success_event,
     "on_retry_callback"  : operator_retry_event,
@@ -163,9 +166,6 @@ init_container = k8s.V1Container(
     is_delete_operator_pod=True,
     do_xcom_push=False,
     env_vars=executor_env_vars,
-    {{- if gt .SLAMissDuration 0 }}
-    sla=timedelta(seconds={{ .SLAMissDuration }}),
-    {{- end }}
     {{- if .RuntimeConfig.Resource }}
     resources=resources,
     {{- end }}

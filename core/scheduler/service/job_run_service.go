@@ -436,11 +436,12 @@ func (s *JobRunService) updateOperatorRun(ctx context.Context, event *scheduler.
 
 func (s *JobRunService) trackEvent(event *scheduler.Event) {
 	if event.Type.IsOfType(scheduler.EventCategorySLAMiss) {
-		s.l.Debug(fmt.Sprintf("received event: %v, jobName: %v , slaPayload: %#v",
-			event.Type, event.JobName, event.SLAObjectList))
+		s.l.Info("received job sla_miss event, jobName: %v , slaPayload: %#v", event.JobName, event.SLAObjectList)
+	} else if event.Type.IsOfType(scheduler.EventCategoryJobFailure) {
+		s.l.Info("received job failure event, eventTime: %s, jobName: %v, schedule: %s", event.EventTime.Format("01/02/06 15:04:05 MST"), event.JobName, event.JobScheduledAt.Format("01/02/06 15:04:05 MST"))
 	} else {
-		s.l.Debug(fmt.Sprintf("received event: %v, eventTime: %s, jobName: %v, Operator: %v, schedule: %s, status: %s",
-			event.Type, event.EventTime.Format("01/02/06 15:04:05 MST"), event.JobName, event.OperatorName, event.JobScheduledAt.Format("01/02/06 15:04:05 MST"), event.Status))
+		s.l.Debug("received event: %v, eventTime: %s, jobName: %v, Operator: %v, schedule: %s, status: %s",
+			event.Type, event.EventTime.Format("01/02/06 15:04:05 MST"), event.JobName, event.OperatorName, event.JobScheduledAt.Format("01/02/06 15:04:05 MST"), event.Status)
 	}
 
 	if event.Type == scheduler.SensorStartEvent || event.Type == scheduler.SensorRetryEvent || event.Type == scheduler.SensorSuccessEvent || event.Type == scheduler.SensorFailEvent {
