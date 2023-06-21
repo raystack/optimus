@@ -235,7 +235,7 @@ wait_{{ $dependencyName }} = SuperExternalTaskSensor(
     window_version=int("{{ $baseWindow.GetVersion }}"),
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
-    task_id="wait_{{$upstream.JobName | trunc 200}}-{{$upstream.TaskName}}",
+    task_id="wait_{{$upstream.JobName}}-{{$upstream.TaskName}}",
     depends_on_past=False,
     dag=dag
 )
@@ -251,7 +251,7 @@ wait_{{$httpUpstream.Name}} = ExternalHttpSensor(
     request_params=request_params_dict_{{$httpUpstream.Name}},
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
-    task_id='wait_{{$httpUpstream.Name | trunc 200}}',
+    task_id='wait_{{$httpUpstream.Name}}',
     depends_on_past=False,
     dag=dag
 )

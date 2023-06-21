@@ -10,7 +10,10 @@ import (
 	"github.com/goto/optimus/internal/models"
 )
 
-const DateLayout = "2006-01-02"
+const (
+	DateLayout       = "2006-01-02"
+	maxJobNameLength = 125
+)
 
 type Spec struct {
 	version  int
@@ -162,11 +165,48 @@ func (s Specs) ToFullNameAndSpecMap(projectName tenant.ProjectName) map[FullName
 	return fullnameAndSpecMap
 }
 
+func (s Specs) Validate() error {
+	me := errors.NewMultiError("validate specs errors")
+	jobNameCount := s.getJobNameCount()
+	isJobNameVisited := map[Name]bool{}
+	for _, spec := range s {
+		if jobNameCount[spec.Name()] > 1 && !isJobNameVisited[spec.Name()] {
+			me.Append(fmt.Errorf("duplicate %s", spec.Name()))
+		}
+		isJobNameVisited[spec.Name()] = true
+	}
+
+	return me.ToErr()
+}
+
+func (s Specs) GetValid() []*Spec {
+	jobNameCount := s.getJobNameCount()
+	validSpecs := []*Spec{}
+	for _, spec := range s {
+		if jobNameCount[spec.Name()] == 1 {
+			validSpecs = append(validSpecs, spec)
+		}
+	}
+
+	return validSpecs
+}
+
+func (s Specs) getJobNameCount() map[Name]int {
+	jobNameCount := make(map[Name]int)
+	for _, spec := range s {
+		jobNameCount[spec.Name()]++
+	}
+	return jobNameCount
+}
+
 type Name string
 
 func NameFrom(name string) (Name, error) {
 	if name == "" {
 		return "", errors.InvalidArgument(EntityJob, "name is empty")
+	}
+	if len(name) > maxJobNameLength {
+		return "", errors.InvalidArgument(EntityJob, fmt.Sprintf("length of job name is %d, longer than the length allowed (%d)", len(name), maxJobNameLength))
 	}
 	return Name(name), nil
 }

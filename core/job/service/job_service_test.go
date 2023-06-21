@@ -2424,6 +2424,36 @@ func TestJobService(t *testing.T) {
 			assert.Error(t, err)
 			assert.Equal(t, "get tenant details fail", err.Error())
 		})
+		t.Run("returns error when validate duplicate jobs detected", func(t *testing.T) {
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			tenantDetailsGetter.On("GetDetails", ctx, mock.Anything).Return(detailedTenant, nil)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			logWriter := new(mockWriter)
+			defer logWriter.AssertExpectations(t)
+
+			specA1, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			specA2, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(nil, nil)
+
+			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil)
+
+			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+
+			err := jobService.Validate(ctx, sampleTenant, []*job.Spec{specA1, specA2}, jobNamesWithInvalidSpec, logWriter)
+			assert.Error(t, err)
+			assert.Equal(t, "validate specs errors:\n duplicate job-A", err.Error())
+		})
 		t.Run("returns error when generate jobs", func(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			tenantDetailsGetter.On("GetDetails", ctx, mock.Anything).Return(detailedTenant, nil)

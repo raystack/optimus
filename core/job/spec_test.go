@@ -151,6 +151,39 @@ func TestEntitySpec(t *testing.T) {
 
 			assert.EqualValues(t, expectedMap, resultMap)
 		})
+
+		t.Run("Validate should return error for duplicate jobs", func(t *testing.T) {
+			specA1, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+
+			specA2, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+
+			specB, err := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+
+			specs := job.Specs([]*job.Spec{specA1, specA2, specB})
+			err = specs.Validate()
+
+			assert.ErrorContains(t, err, "duplicate job-A")
+		})
+		t.Run("GetValid should return valid specs", func(t *testing.T) {
+			specA1, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+
+			specA2, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+
+			specB, err := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+
+			expectedValidSpecs := []*job.Spec{specB}
+
+			specs := job.Specs([]*job.Spec{specA1, specA2, specB})
+			actualValidSpecs := specs.GetValid()
+
+			assert.EqualValues(t, expectedValidSpecs, actualValidSpecs)
+		})
 	})
 
 	t.Run("SpecUpstreamName", func(t *testing.T) {
@@ -232,6 +265,11 @@ func TestEntitySpec(t *testing.T) {
 		t.Run("should return error if name is empty", func(t *testing.T) {
 			name, err := job.NameFrom("")
 			assert.ErrorContains(t, err, "name is empty")
+			assert.Empty(t, name)
+		})
+		t.Run("should return error if name length is more than maximum allowed", func(t *testing.T) {
+			name, err := job.NameFrom("QEQFbm'mWufBaUrkccHlFeEDXHaFBOYFRAYGmjwuuTvEhkMekpHVocCBfpX'XBghyFiTTqbYQAseWcfJJsUAdbHRWoWGODoINrglgDsxJjwrmoYRIrGxMAifCGJUqD")
+			assert.ErrorContains(t, err, "length of job name is 126, longer than the length allowed (125)")
 			assert.Empty(t, name)
 		})
 	})
