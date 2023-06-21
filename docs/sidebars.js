@@ -93,6 +93,7 @@ module.exports = {
       label: "Reference",
       items: [
           "reference/api",
+          "reference/metrics",
           "reference/faq",
       ],
     },

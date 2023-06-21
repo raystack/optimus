@@ -27,7 +27,7 @@ func (m metricType) String() string {
 const (
 	scheduleDelay metricType = "schedule_delay"
 
-	metricJobRunEvents = "job_run_events"
+	metricJobRunEvents = "jobrun_events_total"
 )
 
 type JobRepository interface {
@@ -246,21 +246,18 @@ func (s *JobRunService) registerNewJobRun(ctx context.Context, tenant tenant.Ten
 		s.l.Error("error getting sla duration: %s", err)
 		return err
 	}
-	telemetry.NewGauge("total_jobs_running", map[string]string{
-		"project":   tenant.ProjectName().String(),
-		"namespace": tenant.NamespaceName().String(),
-	}).Inc()
 	err = s.repo.Create(ctx, tenant, jobName, scheduledAt, slaDefinitionInSec)
 	if err != nil {
 		s.l.Error("error creating job run: %s", err)
 		return err
 	}
 
-	telemetry.NewCounter("scheduler_operator_durations_seconds", map[string]string{
+	telemetry.NewGauge("jobrun_durations_breakdown_seconds", map[string]string{
 		"project":   tenant.ProjectName().String(),
 		"namespace": tenant.NamespaceName().String(),
+		"job":       jobName.String(),
 		"type":      scheduleDelay.String(),
-	}).Add(float64(time.Now().Unix() - scheduledAt.Unix()))
+	}).Set(float64(time.Now().Unix() - scheduledAt.Unix()))
 	return nil
 }
 
@@ -293,18 +290,6 @@ func (s *JobRunService) updateJobRun(ctx context.Context, event *scheduler.Event
 	if err != nil {
 		s.l.Error("error getting job run by schedule time [%s]: %s", event.JobScheduledAt, err)
 		return err
-	}
-	for _, state := range scheduler.TaskEndStates {
-		if event.Status == state {
-			// this can go negative, because it is possible that when we deploy certain job have already started,
-			// and the very first events we get are that of task end states, to handle this, we should treat the lowest
-			// value as the base value.
-			telemetry.NewGauge("total_jobs_running", map[string]string{
-				"project":   event.Tenant.ProjectName().String(),
-				"namespace": event.Tenant.NamespaceName().String(),
-			}).Dec()
-			break
-		}
 	}
 	if err := s.repo.Update(ctx, jobRun.ID, event.EventTime, event.Status); err != nil {
 		s.l.Error("error updating job run with id [%s]: %s", jobRun.ID, err)
@@ -382,13 +367,6 @@ func (s *JobRunService) createOperatorRun(ctx context.Context, event *scheduler.
 		s.l.Error("error getting job run by scheduled time [%s]: %s", event.JobScheduledAt, err)
 		return err
 	}
-	if operatorType == scheduler.OperatorTask {
-		telemetry.NewGauge("count_running_tasks", map[string]string{
-			"project":   event.Tenant.ProjectName().String(),
-			"namespace": event.Tenant.NamespaceName().String(),
-			"type":      event.OperatorName,
-		}).Inc()
-	}
 	jobState, err := operatorStartToJobState(operatorType)
 	if err != nil {
 		s.l.Error("error converting operator to job state: %s", err)
@@ -442,31 +420,17 @@ func (s *JobRunService) updateOperatorRun(ctx context.Context, event *scheduler.
 		s.l.Error("error getting operator for job run id [%s]: %s", jobRun.ID, err)
 		return err
 	}
-	if operatorType == scheduler.OperatorTask {
-		for _, state := range scheduler.TaskEndStates {
-			if event.Status == state {
-				// this can go negative, because it is possible that when we deploy certain job have already started,
-				// and the very first events we get are that of task end states, to handle this, we should treat the lowest
-				// value as the base value.
-				telemetry.NewGauge("count_running_tasks", map[string]string{
-					"project":   event.Tenant.ProjectName().String(),
-					"namespace": event.Tenant.NamespaceName().String(),
-					"type":      event.OperatorName,
-				}).Dec()
-				break
-			}
-		}
-	}
 	err = s.operatorRunRepo.UpdateOperatorRun(ctx, operatorType, operatorRun.ID, event.EventTime, event.Status)
 	if err != nil {
 		s.l.Error("error updating operator run id [%s]: %s", operatorRun.ID, err)
 		return err
 	}
-	telemetry.NewCounter("scheduler_operator_durations_seconds", map[string]string{
+	telemetry.NewGauge("jobrun_durations_breakdown_seconds", map[string]string{
 		"project":   event.Tenant.ProjectName().String(),
 		"namespace": event.Tenant.NamespaceName().String(),
+		"job":       event.JobName.String(),
 		"type":      operatorType.String(),
-	}).Add(float64(event.EventTime.Unix() - operatorRun.StartTime.Unix()))
+	}).Set(float64(event.EventTime.Unix() - operatorRun.StartTime.Unix()))
 	return nil
 }
 
@@ -481,14 +445,14 @@ func (s *JobRunService) trackEvent(event *scheduler.Event) {
 
 	if event.Type == scheduler.SensorStartEvent || event.Type == scheduler.SensorRetryEvent || event.Type == scheduler.SensorSuccessEvent || event.Type == scheduler.SensorFailEvent {
 		eventType := strings.TrimPrefix(event.Type.String(), fmt.Sprintf("%s_", scheduler.OperatorSensor))
-		telemetry.NewCounter("sensor_run_events", map[string]string{
+		telemetry.NewCounter("jobrun_sensor_events_total", map[string]string{
 			"project":    event.Tenant.ProjectName().String(),
 			"namespace":  event.Tenant.NamespaceName().String(),
 			"event_type": eventType,
 		}).Inc()
 	} else if event.Type == scheduler.TaskStartEvent || event.Type == scheduler.TaskRetryEvent || event.Type == scheduler.TaskSuccessEvent || event.Type == scheduler.TaskFailEvent {
 		eventType := strings.TrimPrefix(event.Type.String(), fmt.Sprintf("%s_", scheduler.OperatorTask))
-		telemetry.NewCounter("task_run_events", map[string]string{
+		telemetry.NewCounter("jobrun_task_events_total", map[string]string{
 			"project":    event.Tenant.ProjectName().String(),
 			"namespace":  event.Tenant.NamespaceName().String(),
 			"event_type": eventType,
@@ -496,7 +460,7 @@ func (s *JobRunService) trackEvent(event *scheduler.Event) {
 		}).Inc()
 	} else if event.Type == scheduler.HookStartEvent || event.Type == scheduler.HookRetryEvent || event.Type == scheduler.HookSuccessEvent || event.Type == scheduler.HookFailEvent {
 		eventType := strings.TrimPrefix(event.Type.String(), fmt.Sprintf("%s_", scheduler.OperatorHook))
-		telemetry.NewCounter("hook_run_events", map[string]string{
+		telemetry.NewCounter("jobrun_hook_events_total", map[string]string{
 			"project":    event.Tenant.ProjectName().String(),
 			"namespace":  event.Tenant.NamespaceName().String(),
 			"event_type": eventType,

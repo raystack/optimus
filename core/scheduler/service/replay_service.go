@@ -17,7 +17,7 @@ import (
 const (
 	getReplaysDayLimit = 30 // TODO: make it configurable via cli
 
-	metricJobReplay = "job_replay"
+	metricJobReplay = "jobrun_replay_requests_total"
 )
 
 type ReplayRepository interface {

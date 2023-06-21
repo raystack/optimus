@@ -22,9 +22,9 @@ import (
 )
 
 const (
-	metricReplaceAllDuration = "jobs_replace_all_duration_in_seconds"
-	metricRefreshDuration    = "jobs_refresh_duration_in_seconds"
-	metricValidationDuration = "jobs_validation_duration_in_seconds"
+	metricReplaceAllDuration = "job_replace_all_duration_seconds"
+	metricRefreshDuration    = "job_refresh_duration_seconds"
+	metricValidationDuration = "job_validation_duration_seconds"
 )
 
 type JobHandler struct {
@@ -159,6 +159,12 @@ func (jh *JobHandler) ChangeJobNamespace(ctx context.Context, changeRequest *pb.
 		jh.l.Error(fmt.Sprintf("%s: %s", errorMsg, err.Error()))
 		return nil, errors.GRPCErr(err, errorMsg)
 	}
+
+	telemetry.NewCounter("job_namespace_migrations_total", map[string]string{
+		"project":               jobSourceTenant.ProjectName().String(),
+		"namespace_source":      jobSourceTenant.NamespaceName().String(),
+		"namespace_destination": jobNewTenant.NamespaceName().String(),
+	}).Inc()
 
 	return &pb.ChangeJobNamespaceResponse{}, nil
 }

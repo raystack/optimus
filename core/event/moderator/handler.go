@@ -7,7 +7,7 @@ import (
 )
 
 var eventQueueCounter = promauto.NewCounter(prometheus.CounterOpts{
-	Name: "publisher_events_created_counter",
+	Name: "publisher_events_created_total",
 	Help: "Events created and to be sent to writer",
 })
 

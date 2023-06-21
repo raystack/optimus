@@ -15,7 +15,7 @@ const (
 )
 
 var kafkaQueueCounter = promauto.NewCounter(prometheus.CounterOpts{
-	Name: "publisher_kafka_events_queued_counter",
+	Name: "publisher_kafka_events_queued_total",
 	Help: "Number of events queued to be published to kafka topic",
 })
 

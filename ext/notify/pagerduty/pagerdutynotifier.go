@@ -18,17 +18,18 @@ const (
 )
 
 var (
+	notifierType          = "pagerduty"
 	pagerdutyQueueCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "notify_pagerduty_queue",
-		Help: "Items queued in pagerduty notification channel",
+		Name:        scheduler.MetricNotificationQueue,
+		ConstLabels: map[string]string{"type": notifierType},
 	})
 	pagerdutyWorkerBatchCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "notify_pagerduty_worker_batch",
-		Help: "Worker execution count in pagerduty notification channel",
+		Name:        scheduler.MetricNotificationWorkerBatch,
+		ConstLabels: map[string]string{"type": notifierType},
 	})
 	pagerdutyWorkerSendErrCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "notify_pagerduty_worker_send_err",
-		Help: "Failure of messages in pagerduty notification channel worker",
+		Name:        scheduler.MetricNotificationWorkerSendErr,
+		ConstLabels: map[string]string{"type": notifierType},
 	})
 )
 

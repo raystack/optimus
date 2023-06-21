@@ -10,7 +10,18 @@ import (
 	"github.com/goto/optimus/core/tenant"
 	"github.com/goto/optimus/core/tenant/dto"
 	"github.com/goto/optimus/internal/errors"
+	"github.com/goto/optimus/internal/telemetry"
 	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
+)
+
+const (
+	metricSecretEvents               = "secret_events_total"
+	secretEventsStatusRegistered     = "registered"
+	secretEventsStatusUpdated        = "updated"
+	secretEventsStatusDeleted        = "deleted"
+	secretEventsStatusRegisterFailed = "register_failed"
+	secretEventsStatusUpdateFailed   = "update_failed"
+	secretEventsStatusDeleteFailed   = "delete_failed"
 )
 
 type SecretService interface {
@@ -35,18 +46,22 @@ func (sv *SecretHandler) RegisterSecret(ctx context.Context, req *pb.RegisterSec
 
 	base64Decoded, err := getDecodedSecret(req.GetValue())
 	if err != nil {
+		raiseSecretEventsMetric(projName.String(), req.NamespaceName, secretEventsStatusRegisterFailed)
 		return nil, errors.GRPCErr(err, "failed to register secret "+req.GetSecretName())
 	}
 
 	secret, err := tenant.NewPlainTextSecret(req.GetSecretName(), base64Decoded)
 	if err != nil {
+		raiseSecretEventsMetric(projName.String(), req.NamespaceName, secretEventsStatusRegisterFailed)
 		return nil, errors.GRPCErr(err, "failed to register secret "+req.GetSecretName())
 	}
 
 	if err = sv.secretService.Save(ctx, projName, req.GetNamespaceName(), secret); err != nil {
+		raiseSecretEventsMetric(projName.String(), req.NamespaceName, secretEventsStatusRegisterFailed)
 		return nil, errors.GRPCErr(err, "failed to register secret "+req.GetSecretName())
 	}
 
+	raiseSecretEventsMetric(projName.String(), req.NamespaceName, secretEventsStatusRegistered)
 	return &pb.RegisterSecretResponse{}, nil
 }
 
@@ -58,18 +73,22 @@ func (sv *SecretHandler) UpdateSecret(ctx context.Context, req *pb.UpdateSecretR
 
 	base64Decoded, err := getDecodedSecret(req.GetValue())
 	if err != nil {
+		raiseSecretEventsMetric(projName.String(), req.NamespaceName, secretEventsStatusUpdateFailed)
 		return nil, errors.GRPCErr(err, "failed to update secret "+req.GetSecretName())
 	}
 
 	secret, err := tenant.NewPlainTextSecret(req.GetSecretName(), base64Decoded)
 	if err != nil {
+		raiseSecretEventsMetric(projName.String(), req.NamespaceName, secretEventsStatusUpdateFailed)
 		return nil, errors.GRPCErr(err, "failed to update secret "+req.GetSecretName())
 	}
 
 	if err = sv.secretService.Update(ctx, projName, req.GetNamespaceName(), secret); err != nil {
+		raiseSecretEventsMetric(projName.String(), req.NamespaceName, secretEventsStatusUpdateFailed)
 		return nil, errors.GRPCErr(err, "failed to update secret "+req.GetSecretName())
 	}
 
+	raiseSecretEventsMetric(projName.String(), req.NamespaceName, secretEventsStatusUpdated)
 	return &pb.UpdateSecretResponse{}, nil
 }
 
@@ -110,9 +129,11 @@ func (sv *SecretHandler) DeleteSecret(ctx context.Context, req *pb.DeleteSecretR
 	}
 
 	if err = sv.secretService.Delete(ctx, projName, req.GetNamespaceName(), secretName); err != nil {
+		raiseSecretEventsMetric(projName.String(), req.NamespaceName, secretEventsStatusDeleteFailed)
 		return nil, errors.GRPCErr(err, "failed to delete secret "+secretName.String())
 	}
 
+	raiseSecretEventsMetric(projName.String(), req.NamespaceName, secretEventsStatusDeleted)
 	return &pb.DeleteSecretResponse{}, nil
 }
 
@@ -133,4 +154,12 @@ func NewSecretsHandler(l log.Logger, secretService SecretService) *SecretHandler
 		l:             l,
 		secretService: secretService,
 	}
+}
+
+func raiseSecretEventsMetric(projectName, namespaceName, state string) {
+	telemetry.NewCounter(metricSecretEvents, map[string]string{
+		"project":   projectName,
+		"namespace": namespaceName,
+		"status":    state,
+	}).Inc()
 }

@@ -44,8 +44,8 @@ const (
 	concurrentTicketPerSec = 50
 	concurrentLimit        = 100
 
-	metricJobUpload       = "job_upload"
-	metricJobRemoval      = "job_removal"
+	metricJobUpload       = "job_upload_total"
+	metricJobRemoval      = "job_removal_total"
 	metricJobStateSuccess = "success"
 	metricJobStateFailed  = "failed"
 )

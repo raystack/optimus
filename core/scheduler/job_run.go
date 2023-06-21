@@ -62,3 +62,9 @@ type NotifyAttrs struct {
 	Route    string
 	Secret   string
 }
+
+const (
+	MetricNotificationQueue         = "notification_queue_total"
+	MetricNotificationWorkerBatch   = "notification_worker_batch_total"
+	MetricNotificationWorkerSendErr = "notification_worker_send_err_total"
+)

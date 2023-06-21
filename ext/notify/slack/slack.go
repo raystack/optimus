@@ -21,17 +21,18 @@ const (
 )
 
 var (
+	notifierType      = "slack"
 	slackQueueCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "notify_slack_queue",
-		Help: "Items queued in slack notification channel",
+		Name:        scheduler.MetricNotificationQueue,
+		ConstLabels: map[string]string{"type": notifierType},
 	})
 	slackWorkerBatchCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "notify_slack_worker_batch",
-		Help: "Worker execution count in slack notification channel",
+		Name:        scheduler.MetricNotificationWorkerBatch,
+		ConstLabels: map[string]string{"type": notifierType},
 	})
 	slackWorkerSendErrCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "notify_slack_worker_send_err",
-		Help: "Failure of messages in slack notification channel worker",
+		Name:        scheduler.MetricNotificationWorkerSendErr,
+		ConstLabels: map[string]string{"type": notifierType},
 	})
 )
 

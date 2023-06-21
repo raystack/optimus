@@ -10,10 +10,17 @@ import (
 	"github.com/goto/optimus/core/resource"
 	"github.com/goto/optimus/core/tenant"
 	"github.com/goto/optimus/internal/errors"
+	"github.com/goto/optimus/internal/telemetry"
 )
 
-// recentBackupWindowMonths contains the window interval to consider for recent backups
-const recentBackupWindowMonths = -3
+const (
+	// recentBackupWindowMonths contains the window interval to consider for recent backups
+	recentBackupWindowMonths = -3
+
+	metricBackupRequest        = "resource_backup_requests_total"
+	backupRequestStatusSuccess = "success"
+	backupRequestStatusFailed  = "failed"
+)
 
 type BackupRepository interface {
 	GetByID(ctx context.Context, id resource.BackupID) (*resource.Backup, error)
@@ -58,6 +65,8 @@ func (s BackupService) Create(ctx context.Context, backup *resource.Backup) (*re
 		s.logger.Error("error creating backup record to db: %s", err)
 		return backupInfo, err
 	}
+
+	raiseBackupRequestMetrics(backup.Tenant(), backupInfo)
 
 	backupInfo.ID = backup.ID()
 	return backupInfo, nil
@@ -118,4 +127,22 @@ func NewBackupService(repo BackupRepository, resources ResourceProvider, manager
 		backupManager: manager,
 		logger:        logger,
 	}
+}
+
+func raiseBackupRequestMetrics(jobTenant tenant.Tenant, backupResult *resource.BackupResult) {
+	for _, ignoredResource := range backupResult.IgnoredResources {
+		raiseBackupRequestMetric(jobTenant, ignoredResource.Name, backupRequestStatusFailed)
+	}
+	for _, resourceName := range backupResult.ResourceNames {
+		raiseBackupRequestMetric(jobTenant, resourceName, backupRequestStatusSuccess)
+	}
+}
+
+func raiseBackupRequestMetric(jobTenant tenant.Tenant, resourceName, state string) {
+	telemetry.NewCounter(metricBackupRequest, map[string]string{
+		"project":   jobTenant.ProjectName().String(),
+		"namespace": jobTenant.NamespaceName().String(),
+		"resource":  resourceName,
+		"status":    state,
+	}).Inc()
 }
