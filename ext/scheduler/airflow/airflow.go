@@ -263,7 +263,7 @@ func (s *Scheduler) GetJobRuns(ctx context.Context, tnnt tenant.Tenant, jobQuery
 	}
 
 	req := airflowRequest{
-		URL:    dagStatusBatchURL,
+		path:   dagStatusBatchURL,
 		method: http.MethodPost,
 		body:   reqBody,
 	}
@@ -342,9 +342,8 @@ func (s *Scheduler) ClearBatch(ctx context.Context, tnnt tenant.Tenant, jobName 
 		startExecutionTime.UTC().Format(airflowDateFormat),
 		endExecutionTime.UTC().Format(airflowDateFormat)))
 	req := airflowRequest{
-		URL:    dagRunClearURL,
+		path:   fmt.Sprintf(dagRunClearURL, jobName.String()),
 		method: http.MethodPost,
-		param:  jobName.String(),
 		body:   data,
 	}
 	schdAuth, err := s.getSchedulerAuth(ctx, tnnt)
@@ -367,9 +366,8 @@ func (s *Scheduler) CreateRun(ctx context.Context, tnnt tenant.Tenant, jobName s
 		executionTime.UTC().Format(airflowDateFormat)),
 	)
 	req := airflowRequest{
-		URL:    dagRunCreateURL,
+		path:   fmt.Sprintf(dagRunCreateURL, jobName.String()),
 		method: http.MethodPost,
-		param:  jobName.String(),
 		body:   data,
 	}
 	schdAuth, err := s.getSchedulerAuth(ctx, tnnt)
