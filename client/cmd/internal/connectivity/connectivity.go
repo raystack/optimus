@@ -2,8 +2,11 @@ package connectivity
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
@@ -13,6 +16,8 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
@@ -70,7 +75,10 @@ func (c *Connectivity) Close() {
 }
 
 func createConnection(host string) (*grpc.ClientConn, error) {
-	opts := getDefaultDialOptions()
+	opts, err := getDefaultDialOptions()
+	if err != nil {
+		return nil, err
+	}
 
 	// pass rpc credentials
 	if token := os.Getenv("OPTIMUS_AUTH_BASIC_TOKEN"); token != "" {
@@ -93,14 +101,23 @@ func createConnection(host string) (*grpc.ClientConn, error) {
 	return conn, err
 }
 
-func getDefaultDialOptions() []grpc.DialOption {
+func getDefaultDialOptions() ([]grpc.DialOption, error) {
+	creds := insecure.NewCredentials()
+	if useInsecure := os.Getenv("OPTIMUS_INSECURE"); useInsecure == "" {
+		tlsCredentials, err := loadTLSCredentials()
+		if err != nil {
+			return nil, fmt.Errorf("cannot load TLS credentials: %w", err)
+		}
+		creds = tlsCredentials
+	}
+
 	retryOpts := []grpc_retry.CallOption{
 		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(backoffDuration)),
 		grpc_retry.WithMax(grpcMaxRetry),
 	}
 	var opts []grpc.DialOption
 	opts = append(opts,
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(creds),
 		grpc.WithBlock(),
 		grpc.WithDefaultCallOptions(
 			grpc.MaxCallSendMsgSize(grpcMaxClientSendSize),
@@ -116,5 +133,18 @@ func getDefaultDialOptions() []grpc.DialOption {
 			grpc_prometheus.StreamClientInterceptor,
 		)),
 	)
-	return opts
+	return opts, nil
+}
+
+func loadTLSCredentials() (credentials.TransportCredentials, error) {
+	certPool, err := x509.SystemCertPool()
+	if err != nil {
+		return nil, fmt.Errorf("unable to read system certs")
+	}
+
+	config := &tls.Config{
+		RootCAs:    certPool,
+		MinVersion: tls.VersionTLS12,
+	}
+	return credentials.NewTLS(config), nil
 }
