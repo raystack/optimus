@@ -3,7 +3,6 @@ package dependencyresolver
 import (
 	"context"
 
-	"github.com/goto/optimus/internal/utils"
 	pbp "github.com/goto/optimus/protos/gotocompany/optimus/plugins/v1beta1"
 	"github.com/goto/optimus/sdk/plugin"
 )
@@ -54,7 +53,7 @@ func (s *GRPCServer) CompileAssets(ctx context.Context, req *pbp.CompileAssetsRe
 		instanceData = append(instanceData, plugin.JobRunSpecData{
 			Name:  inst.Name,
 			Value: inst.Value,
-			Type:  utils.FromEnumProto(inst.Type.String(), "type"),
+			Type:  inst.Type,
 		})
 	}
 

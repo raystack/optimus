@@ -12,8 +12,6 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/goto/optimus/internal/utils"
-	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
 	pbp "github.com/goto/optimus/protos/gotocompany/optimus/plugins/v1beta1"
 	"github.com/goto/optimus/sdk/plugin"
 )
@@ -90,12 +88,12 @@ func (m *GRPCClient) CompileAssets(ctx context.Context, request plugin.CompileAs
 	_, span := tracer.Start(ctx, "CompileAssets")
 	defer span.End()
 
-	var instanceData []*pb.InstanceSpecData
+	var instanceData []*pbp.InstanceData
 	for _, inst := range request.InstanceData {
-		instanceData = append(instanceData, &pb.InstanceSpecData{
+		instanceData = append(instanceData, &pbp.InstanceData{
 			Name:  inst.Name,
 			Value: inst.Value,
-			Type:  pb.InstanceSpecData_Type(pb.InstanceSpecData_Type_value[utils.ToEnumProto(inst.Type, "type")]),
+			Type:  inst.Type,
 		})
 	}
 
