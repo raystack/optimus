@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
-	"github.com/goto/optimus/client/cmd/internal/connectivity"
+	"github.com/goto/optimus/client/cmd/internal/connection"
 	"github.com/goto/optimus/client/cmd/internal/logger"
 	"github.com/goto/optimus/client/cmd/internal/survey"
 	"github.com/goto/optimus/client/local/model"
@@ -27,7 +27,8 @@ const (
 )
 
 type inspectCommand struct {
-	logger log.Logger
+	logger     log.Logger
+	connection connection.Connection
 
 	configFilePath string
 
@@ -68,6 +69,8 @@ func (e *inspectCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	e.logger = logger.NewClientLogger()
 	e.jobSurvey = survey.NewJobSurvey()
 	e.namespaceSurvey = survey.NewNamespaceSurvey(e.logger)
+
+	e.connection = connection.New(e.logger, e.clientConfig)
 	return nil
 }
 
@@ -127,7 +130,7 @@ func (e *inspectCommand) loadConfig() error {
 }
 
 func (e *inspectCommand) inspectJobSpecification(jobSpec *model.JobSpec, serverFetch bool) error {
-	conn, err := connectivity.NewConnectivity(e.clientConfig.Host, inspectTimeout)
+	conn, err := e.connection.Create(e.clientConfig.Host)
 	if err != nil {
 		return err
 	}
@@ -147,8 +150,11 @@ func (e *inspectCommand) inspectJobSpecification(jobSpec *model.JobSpec, serverF
 		Spec:          adaptedSpec,
 		JobName:       jobName,
 	}
-	job := pb.NewJobSpecificationServiceClient(conn.GetConnection())
-	resp, err := job.JobInspect(conn.GetContext(), jobInspectRequest)
+	job := pb.NewJobSpecificationServiceClient(conn)
+
+	ctx, dialCancel := context.WithTimeout(context.Background(), inspectTimeout)
+	defer dialCancel()
+	resp, err := job.JobInspect(ctx, jobInspectRequest)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			e.logger.Error("Inspect process took too long, timing out")

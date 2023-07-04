@@ -2,6 +2,7 @@ package namespace
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"path"
 	"time"
@@ -11,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/goto/optimus/client/cmd/internal"
-	"github.com/goto/optimus/client/cmd/internal/connectivity"
+	"github.com/goto/optimus/client/cmd/internal/connection"
 	"github.com/goto/optimus/client/cmd/internal/logger"
 	"github.com/goto/optimus/config"
 	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
@@ -20,7 +21,9 @@ import (
 const listTimeout = time.Minute * 15
 
 type listCommand struct {
-	logger         log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	configFilePath string
 	clientConfig   *config.ClientConfig
 
@@ -79,6 +82,8 @@ func (l *listCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	if l.host == "" {
 		l.host = l.clientConfig.Host
 	}
+	l.connection = connection.New(l.logger, conf)
+
 	return nil
 }
 
@@ -98,8 +103,8 @@ func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func (*listCommand) listNamespacesFromServer(serverHost, projectName string) ([]*config.Namespace, error) {
-	conn, err := connectivity.NewConnectivity(serverHost, listTimeout)
+func (l *listCommand) listNamespacesFromServer(serverHost, projectName string) ([]*config.Namespace, error) {
+	conn, err := l.connection.Create(serverHost)
 	if err != nil {
 		return nil, err
 	}
@@ -108,8 +113,12 @@ func (*listCommand) listNamespacesFromServer(serverHost, projectName string) ([]
 	request := &pb.ListProjectNamespacesRequest{
 		ProjectName: projectName,
 	}
-	namespaceServiceClient := pb.NewNamespaceServiceClient(conn.GetConnection())
-	response, err := namespaceServiceClient.ListProjectNamespaces(conn.GetContext(), request)
+	namespaceServiceClient := pb.NewNamespaceServiceClient(conn)
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), listTimeout)
+	defer cancelFunc()
+
+	response, err := namespaceServiceClient.ListProjectNamespaces(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("unable to list namespace for project [%s]: %w", projectName, err)
 	}

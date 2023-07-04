@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/goto/optimus/client/cmd/internal"
-	"github.com/goto/optimus/client/cmd/internal/connectivity"
+	"github.com/goto/optimus/client/cmd/internal/connection"
 	"github.com/goto/optimus/client/cmd/internal/logger"
 	"github.com/goto/optimus/client/cmd/internal/progressbar"
 	"github.com/goto/optimus/client/cmd/internal/survey"
@@ -26,7 +26,9 @@ const (
 )
 
 type listCommand struct {
-	logger         log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	configFilePath string
 
 	namespaceSurvey *survey.NamespaceSurvey
@@ -93,6 +95,8 @@ func (l *listCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 		l.namespaceName = namespace.Name
 	}
 
+	l.connection = connection.New(l.logger, conf)
+
 	return nil
 }
 
@@ -103,7 +107,7 @@ func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 		NamespaceName: l.namespaceName,
 	}
 
-	conn, err := connectivity.NewConnectivity(l.host, backupTimeout)
+	conn, err := l.connection.Create(l.host)
 	if err != nil {
 		return err
 	}
@@ -111,8 +115,12 @@ func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 
 	spinner := progressbar.NewProgressBar()
 	spinner.Start("please wait...")
-	backup := pb.NewBackupServiceClient(conn.GetConnection())
-	listBackupsResponse, err := backup.ListBackups(conn.GetContext(), listBackupsRequest)
+	backup := pb.NewBackupServiceClient(conn)
+
+	ctx, dialCancel := context.WithTimeout(context.Background(), backupTimeout)
+	defer dialCancel()
+
+	listBackupsResponse, err := backup.ListBackups(ctx, listBackupsRequest)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {

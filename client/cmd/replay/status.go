@@ -2,6 +2,7 @@ package replay
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -11,14 +12,16 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/goto/optimus/client/cmd/internal"
-	"github.com/goto/optimus/client/cmd/internal/connectivity"
+	"github.com/goto/optimus/client/cmd/internal/connection"
 	"github.com/goto/optimus/client/cmd/internal/logger"
 	"github.com/goto/optimus/config"
 	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
 )
 
 type statusCommand struct {
-	logger         log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	configFilePath string
 
 	projectName string
@@ -76,6 +79,7 @@ func (r *statusCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	if r.host == "" {
 		r.host = conf.Host
 	}
+	r.connection = connection.New(r.logger, conf)
 	return nil
 }
 
@@ -92,11 +96,11 @@ func (r *statusCommand) RunE(_ *cobra.Command, args []string) error {
 }
 
 func (r *statusCommand) getReplay(replayID string) (*pb.GetReplayResponse, error) {
-	return getReplay(r.host, replayID)
+	return getReplay(r.host, replayID, r.connection)
 }
 
-func getReplay(host, replayID string) (*pb.GetReplayResponse, error) {
-	conn, err := connectivity.NewConnectivity(host, replayTimeout)
+func getReplay(host, replayID string, connection connection.Connection) (*pb.GetReplayResponse, error) {
+	conn, err := connection.Create(host)
 	if err != nil {
 		return nil, err
 	}
@@ -104,8 +108,12 @@ func getReplay(host, replayID string) (*pb.GetReplayResponse, error) {
 
 	req := &pb.GetReplayRequest{ReplayId: replayID}
 
-	replayService := pb.NewReplayServiceClient(conn.GetConnection())
-	return replayService.GetReplay(conn.GetContext(), req)
+	replayService := pb.NewReplayServiceClient(conn)
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), replayTimeout)
+	defer cancelFunc()
+
+	return replayService.GetReplay(ctx, req)
 }
 
 func stringifyReplayStatus(resp *pb.GetReplayResponse) string {

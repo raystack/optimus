@@ -12,8 +12,9 @@ import (
 	"github.com/goto/salt/log"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
 
-	"github.com/goto/optimus/client/cmd/internal/connectivity"
+	"github.com/goto/optimus/client/cmd/internal/connection"
 	"github.com/goto/optimus/client/cmd/internal/logger"
 	"github.com/goto/optimus/client/local/model"
 	"github.com/goto/optimus/client/local/specio"
@@ -26,7 +27,9 @@ const (
 )
 
 type uploadAllCommand struct {
-	logger       log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	clientConfig *config.ClientConfig
 
 	selectedNamespaceNames []string
@@ -66,6 +69,8 @@ func (u *uploadAllCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+
+	u.connection = connection.New(u.logger, u.clientConfig)
 	return nil
 }
 
@@ -84,13 +89,16 @@ func (u *uploadAllCommand) RunE(_ *cobra.Command, _ []string) error {
 }
 
 func (u *uploadAllCommand) uploadAll(selectedNamespaces []*config.Namespace) error {
-	conn, err := connectivity.NewConnectivity(u.clientConfig.Host, uploadAllTimeout)
+	conn, err := u.connection.Create(u.clientConfig.Host)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	if err := u.uploadAllResources(conn, selectedNamespaces); err != nil {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), uploadAllTimeout)
+	defer cancelFunc()
+
+	if err := u.uploadAllResources(ctx, conn, selectedNamespaces); err != nil {
 		return err
 	}
 	u.logger.Info("finished uploading resource specifications to server!\n")
@@ -98,7 +106,7 @@ func (u *uploadAllCommand) uploadAll(selectedNamespaces []*config.Namespace) err
 	return nil
 }
 
-func (u *uploadAllCommand) uploadAllResources(conn *connectivity.Connectivity, selectedNamespaces []*config.Namespace) error {
+func (u *uploadAllCommand) uploadAllResources(ctx context.Context, conn *grpc.ClientConn, selectedNamespaces []*config.Namespace) error {
 	var namespaceNames []string
 	for _, namespace := range selectedNamespaces {
 		namespaceNames = append(namespaceNames, namespace.Name)
@@ -106,7 +114,7 @@ func (u *uploadAllCommand) uploadAllResources(conn *connectivity.Connectivity, s
 
 	u.logger.Info("> Uploading all resources for namespaces [%s]", strings.Join(namespaceNames, ","))
 
-	stream, err := u.getResourceStreamClient(conn)
+	stream, err := u.getResourceStreamClient(ctx, conn)
 	if err != nil {
 		return err
 	}
@@ -206,10 +214,10 @@ func (u *uploadAllCommand) getResourceDeploymentRequest(namespaceName, storeName
 	}, nil
 }
 
-func (u *uploadAllCommand) getResourceStreamClient(conn *connectivity.Connectivity) (pb.ResourceService_DeployResourceSpecificationClient, error) {
-	client := pb.NewResourceServiceClient(conn.GetConnection())
+func (u *uploadAllCommand) getResourceStreamClient(ctx context.Context, conn *grpc.ClientConn) (pb.ResourceService_DeployResourceSpecificationClient, error) {
+	client := pb.NewResourceServiceClient(conn)
 	// TODO: create a new api for upload-all and remove deploy
-	stream, err := client.DeployResourceSpecification(conn.GetContext())
+	stream, err := client.DeployResourceSpecification(ctx)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			u.logger.Error("Deployment of resources took too long, timing out")

@@ -1,6 +1,7 @@
 package job
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/goto/optimus/client/cmd/internal"
-	"github.com/goto/optimus/client/cmd/internal/connectivity"
+	"github.com/goto/optimus/client/cmd/internal/connection"
 	"github.com/goto/optimus/client/cmd/internal/logger"
 	"github.com/goto/optimus/client/local/specio"
 	"github.com/goto/optimus/config"
@@ -26,7 +27,9 @@ const (
 )
 
 type changeNamespaceCommand struct {
-	logger         log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	configFilePath string
 	clientConfig   *config.ClientConfig
 
@@ -77,6 +80,8 @@ func (c *changeNamespaceCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	}
 
 	c.clientConfig = conf
+	c.connection = connection.New(c.logger, conf)
+
 	return err
 }
 
@@ -91,14 +96,14 @@ func (c *changeNamespaceCommand) RunE(_ *cobra.Command, args []string) error {
 }
 
 func (c *changeNamespaceCommand) sendChangeNamespaceRequest(jobName string) error {
-	conn, err := connectivity.NewConnectivity(c.host, changeNamespaceTimeout)
+	conn, err := c.connection.Create(c.host)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
 	// fetch Instance by calling the optimus API
-	jobRunServiceClient := pb.NewJobSpecificationServiceClient(conn.GetConnection())
+	jobRunServiceClient := pb.NewJobSpecificationServiceClient(conn)
 	request := &pb.ChangeJobNamespaceRequest{
 		ProjectName:      c.project,
 		NamespaceName:    c.oldNamespaceName,
@@ -106,7 +111,10 @@ func (c *changeNamespaceCommand) sendChangeNamespaceRequest(jobName string) erro
 		JobName:          jobName,
 	}
 
-	_, err = jobRunServiceClient.ChangeJobNamespace(conn.GetContext(), request)
+	ctx, dialCancel := context.WithTimeout(context.Background(), changeNamespaceTimeout)
+	defer dialCancel()
+
+	_, err = jobRunServiceClient.ChangeJobNamespace(ctx, request)
 	return err
 }
 

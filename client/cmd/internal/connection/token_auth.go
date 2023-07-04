@@ -1,4 +1,4 @@
-package connectivity
+package connection
 
 import (
 	"context"
@@ -16,19 +16,5 @@ func (a *bearerAuthentication) GetRequestMetadata(context.Context, ...string) (m
 }
 
 func (*bearerAuthentication) RequireTransportSecurity() bool {
-	return false
-}
-
-type basicAuthentication struct {
-	Token string
-}
-
-func (a *basicAuthentication) GetRequestMetadata(context.Context, ...string) (map[string]string, error) {
-	return map[string]string{
-		"Authorization": fmt.Sprintf("Basic %s", a.Token),
-	}, nil
-}
-
-func (*basicAuthentication) RequireTransportSecurity() bool {
 	return false
 }

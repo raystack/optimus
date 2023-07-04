@@ -1,16 +1,18 @@
 package project
 
 import (
+	"context"
 	"fmt"
 	"path"
 	"time"
 
 	"github.com/goto/salt/log"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/goto/optimus/client/cmd/internal/connectivity"
+	"github.com/goto/optimus/client/cmd/internal/connection"
 	"github.com/goto/optimus/client/cmd/internal/logger"
 	"github.com/goto/optimus/client/cmd/namespace"
 	"github.com/goto/optimus/config"
@@ -49,13 +51,21 @@ func (r *registerCommand) RunE(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+
+	conn := connection.New(r.logger, clientConfig)
+	c, err := conn.Create(clientConfig.Host)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+
 	r.logger.Info("Registering project [%s] to server [%s]", clientConfig.Project.Name, clientConfig.Host)
-	if err := RegisterProject(r.logger, clientConfig.Host, clientConfig.Project); err != nil {
+	if err := RegisterProject(r.logger, c, clientConfig.Project); err != nil {
 		return err
 	}
 	if r.withNamespaces {
 		r.logger.Info("Registering all namespaces from: %s", filePath)
-		if err := namespace.RegisterSelectedNamespaces(r.logger, clientConfig.Host, clientConfig.Project.Name, clientConfig.Namespaces...); err != nil {
+		if err := namespace.RegisterSelectedNamespaces(r.logger, c, clientConfig.Project.Name, clientConfig.Namespaces...); err != nil {
 			return err
 		}
 	}
@@ -63,22 +73,19 @@ func (r *registerCommand) RunE(_ *cobra.Command, _ []string) error {
 }
 
 // RegisterProject registers a project to the targeted server host
-func RegisterProject(logger log.Logger, serverHost string, project config.Project) error {
-	conn, err := connectivity.NewConnectivity(serverHost, registerTimeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	projectServiceClient := pb.NewProjectServiceClient(conn.GetConnection())
+func RegisterProject(logger log.Logger, conn *grpc.ClientConn, project config.Project) error {
+	projectServiceClient := pb.NewProjectServiceClient(conn)
 	projectSpec := &pb.ProjectSpecification{
 		Name:   project.Name,
 		Config: project.Config,
 	}
-	_, err = projectServiceClient.RegisterProject(conn.GetContext(), &pb.RegisterProjectRequest{
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), registerTimeout)
+	defer cancelFunc()
+
+	_, err := projectServiceClient.RegisterProject(ctx, &pb.RegisterProjectRequest{
 		Project: projectSpec,
 	})
-
 	if err != nil {
 		if status.Code(err) == codes.FailedPrecondition {
 			logger.Warn(fmt.Sprintf("Ignoring project config changes: %v", err))

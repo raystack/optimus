@@ -1,6 +1,7 @@
 package namespace
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"path"
@@ -8,10 +9,11 @@ import (
 
 	"github.com/goto/salt/log"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/goto/optimus/client/cmd/internal/connectivity"
+	"github.com/goto/optimus/client/cmd/internal/connection"
 	"github.com/goto/optimus/client/cmd/internal/logger"
 	"github.com/goto/optimus/config"
 	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
@@ -49,26 +51,34 @@ func (r *registerCommand) RunE(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+
+	conn := connection.New(r.logger, clientConfig)
+	c, err := conn.Create(clientConfig.Host)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+
 	if r.namespaceName != "" {
 		r.logger.Info("Registering namespace [%s] to [%s]", r.namespaceName, clientConfig.Host)
 		namespace, err := clientConfig.GetNamespaceByName(r.namespaceName)
 		if err != nil {
 			return err
 		}
-		return RegisterNamespace(r.logger, clientConfig.Host, clientConfig.Project.Name, namespace)
+		return RegisterNamespace(r.logger, c, clientConfig.Project.Name, namespace)
 	}
 	r.logger.Info("Registering all available namespaces from client config to [%s]", clientConfig.Host)
-	return RegisterSelectedNamespaces(r.logger, clientConfig.Host, clientConfig.Project.Name, clientConfig.Namespaces...)
+	return RegisterSelectedNamespaces(r.logger, c, clientConfig.Project.Name, clientConfig.Namespaces...)
 }
 
 // RegisterSelectedNamespaces registers all selected namespaces
-func RegisterSelectedNamespaces(l log.Logger, serverHost, projectName string, selectedNamespaces ...*config.Namespace) error {
+func RegisterSelectedNamespaces(l log.Logger, conn *grpc.ClientConn, projectName string, selectedNamespaces ...*config.Namespace) error {
 	ch := make(chan error, len(selectedNamespaces))
 	defer close(ch)
 
 	for _, namespace := range selectedNamespaces {
 		go func(namespace *config.Namespace) {
-			ch <- RegisterNamespace(l, serverHost, projectName, namespace)
+			ch <- RegisterNamespace(l, conn, projectName, namespace)
 		}(namespace)
 	}
 	var errMsg string
@@ -84,15 +94,13 @@ func RegisterSelectedNamespaces(l log.Logger, serverHost, projectName string, se
 }
 
 // RegisterNamespace registers one namespace to the targeted server
-func RegisterNamespace(l log.Logger, serverHost, projectName string, namespace *config.Namespace) error {
-	conn, err := connectivity.NewConnectivity(serverHost, registerTimeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+func RegisterNamespace(l log.Logger, conn *grpc.ClientConn, projectName string, namespace *config.Namespace) error {
+	namespaceServiceClient := pb.NewNamespaceServiceClient(conn)
 
-	namespaceServiceClient := pb.NewNamespaceServiceClient(conn.GetConnection())
-	_, err = namespaceServiceClient.RegisterProjectNamespace(conn.GetContext(), &pb.RegisterProjectNamespaceRequest{
+	ctx, cancelFunc := context.WithTimeout(context.Background(), registerTimeout)
+	defer cancelFunc()
+
+	_, err := namespaceServiceClient.RegisterProjectNamespace(ctx, &pb.RegisterProjectNamespaceRequest{
 		ProjectName: projectName,
 		Namespace: &pb.NamespaceSpecification{
 			Name:   namespace.Name,

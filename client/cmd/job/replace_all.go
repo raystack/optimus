@@ -12,8 +12,9 @@ import (
 	"github.com/goto/salt/log"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
 
-	"github.com/goto/optimus/client/cmd/internal/connectivity"
+	"github.com/goto/optimus/client/cmd/internal/connection"
 	"github.com/goto/optimus/client/cmd/internal/logger"
 	"github.com/goto/optimus/client/local/specio"
 	"github.com/goto/optimus/config"
@@ -26,7 +27,9 @@ const (
 )
 
 type replaceAllCommand struct {
-	logger       log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	clientConfig *config.ClientConfig
 
 	selectedNamespaceNames []string
@@ -64,6 +67,8 @@ func (r *replaceAllCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+
+	r.connection = connection.New(r.logger, r.clientConfig)
 	return nil
 }
 
@@ -82,7 +87,7 @@ func (r *replaceAllCommand) RunE(_ *cobra.Command, _ []string) error {
 }
 
 func (r *replaceAllCommand) replaceAll(selectedNamespaces []*config.Namespace) error {
-	conn, err := connectivity.NewConnectivity(r.clientConfig.Host, replaceAllTimeout)
+	conn, err := r.connection.Create(r.clientConfig.Host)
 	if err != nil {
 		return err
 	}
@@ -96,14 +101,17 @@ func (r *replaceAllCommand) replaceAll(selectedNamespaces []*config.Namespace) e
 	return nil
 }
 
-func (r *replaceAllCommand) replaceAllJobs(conn *connectivity.Connectivity, selectedNamespaces []*config.Namespace) error {
+func (r *replaceAllCommand) replaceAllJobs(conn *grpc.ClientConn, selectedNamespaces []*config.Namespace) error {
 	var namespaceNames []string
 	for _, namespace := range selectedNamespaces {
 		namespaceNames = append(namespaceNames, namespace.Name)
 	}
 	r.logger.Info("> Replacing all jobs for namespaces [%s]", strings.Join(namespaceNames, ","))
 
-	stream, err := r.getJobStreamClient(conn)
+	ctx, dialCancel := context.WithTimeout(context.Background(), replaceAllTimeout)
+	defer dialCancel()
+
+	stream, err := r.getJobStreamClient(ctx, conn)
 	if err != nil {
 		return err
 	}
@@ -171,11 +179,10 @@ func (*replaceAllCommand) getReplaceAllRequest(projectName string, namespace *co
 	}, nil
 }
 
-func (r *replaceAllCommand) getJobStreamClient(
-	conn *connectivity.Connectivity,
-) (pb.JobSpecificationService_ReplaceAllJobSpecificationsClient, error) {
-	client := pb.NewJobSpecificationServiceClient(conn.GetConnection())
-	stream, err := client.ReplaceAllJobSpecifications(conn.GetContext())
+func (r *replaceAllCommand) getJobStreamClient(ctx context.Context, conn *grpc.ClientConn) (pb.JobSpecificationService_ReplaceAllJobSpecificationsClient, error) {
+	client := pb.NewJobSpecificationServiceClient(conn)
+
+	stream, err := client.ReplaceAllJobSpecifications(ctx)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			r.logger.Error("Replace job specifications process took too long, timing out")

@@ -2,6 +2,7 @@ package replay
 
 import (
 	"bytes"
+	"context"
 	"time"
 
 	"github.com/goto/salt/log"
@@ -9,14 +10,16 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/goto/optimus/client/cmd/internal"
-	"github.com/goto/optimus/client/cmd/internal/connectivity"
+	"github.com/goto/optimus/client/cmd/internal/connection"
 	"github.com/goto/optimus/client/cmd/internal/logger"
 	"github.com/goto/optimus/config"
 	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
 )
 
 type listCommand struct {
-	logger         log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	configFilePath string
 
 	projectName string
@@ -64,6 +67,7 @@ func (l *listCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	if l.host == "" {
 		l.host = conf.Host
 	}
+	l.connection = connection.New(l.logger, conf)
 	return nil
 }
 
@@ -75,14 +79,18 @@ func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 }
 
 func (l *listCommand) listReplay(req *pb.ListReplayRequest) error {
-	conn, err := connectivity.NewConnectivity(l.host, replayTimeout)
+	conn, err := l.connection.Create(l.host)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	replayService := pb.NewReplayServiceClient(conn.GetConnection())
-	listReplayResp, err := replayService.ListReplay(conn.GetContext(), req)
+	replayService := pb.NewReplayServiceClient(conn)
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), replayTimeout)
+	defer cancelFunc()
+
+	listReplayResp, err := replayService.ListReplay(ctx, req)
 	if err != nil {
 		return err
 	}

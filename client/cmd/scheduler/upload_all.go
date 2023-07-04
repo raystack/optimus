@@ -1,13 +1,14 @@
 package scheduler
 
 import (
+	"context"
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/goto/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/goto/optimus/client/cmd/internal/connectivity"
+	"github.com/goto/optimus/client/cmd/internal/connection"
 	"github.com/goto/optimus/client/cmd/internal/logger"
 	"github.com/goto/optimus/config"
 	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
@@ -18,7 +19,9 @@ const (
 )
 
 type uploadCommand struct {
-	logger       log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	clientConfig *config.ClientConfig
 
 	configFilePath string
@@ -52,6 +55,7 @@ func (u *uploadCommand) PreRunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
+	u.connection = connection.New(u.logger, u.clientConfig)
 	u.logger.Info("initialization finished!\n")
 	return err
 }
@@ -69,7 +73,7 @@ func (u *uploadCommand) RunE(_ *cobra.Command, _ []string) error {
 }
 
 func (u *uploadCommand) sendUploadAllRequest(projectName string) (*pb.UploadToSchedulerResponse, error) {
-	conn, err := connectivity.NewConnectivity(u.clientConfig.Host, uploadTimeout)
+	conn, err := u.connection.Create(u.clientConfig.Host)
 	if err != nil {
 		return nil, err
 	}
@@ -78,6 +82,10 @@ func (u *uploadCommand) sendUploadAllRequest(projectName string) (*pb.UploadToSc
 	request := &pb.UploadToSchedulerRequest{
 		ProjectName: projectName,
 	}
-	jobRunServiceClient := pb.NewJobRunServiceClient(conn.GetConnection())
-	return jobRunServiceClient.UploadToScheduler(conn.GetContext(), request)
+	jobRunServiceClient := pb.NewJobRunServiceClient(conn)
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), uploadTimeout)
+	defer cancelFunc()
+
+	return jobRunServiceClient.UploadToScheduler(ctx, request)
 }

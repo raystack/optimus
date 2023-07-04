@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/goto/optimus/client/cmd/internal"
-	"github.com/goto/optimus/client/cmd/internal/connectivity"
+	"github.com/goto/optimus/client/cmd/internal/connection"
 	"github.com/goto/optimus/client/cmd/internal/logger"
 	"github.com/goto/optimus/client/local/specio"
 	"github.com/goto/optimus/config"
@@ -26,7 +27,9 @@ const (
 )
 
 type changeNamespaceCommand struct {
-	logger         log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	configFilePath string
 	clientConfig   *config.ClientConfig
 
@@ -78,6 +81,7 @@ func (c *changeNamespaceCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	}
 
 	c.clientConfig = conf
+	c.connection = connection.New(c.logger, c.clientConfig)
 	return err
 }
 
@@ -93,14 +97,14 @@ func (c *changeNamespaceCommand) RunE(_ *cobra.Command, args []string) error {
 }
 
 func (c *changeNamespaceCommand) sendChangeNamespaceRequest(resourceName string) error {
-	conn, err := connectivity.NewConnectivity(c.host, changeNamespaceTimeout)
+	conn, err := c.connection.Create(c.host)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
 	// fetch Instance by calling the optimus API
-	resourceRunServiceClient := pb.NewResourceServiceClient(conn.GetConnection())
+	resourceRunServiceClient := pb.NewResourceServiceClient(conn)
 	request := &pb.ChangeResourceNamespaceRequest{
 		ProjectName:      c.project,
 		NamespaceName:    c.oldNamespace,
@@ -109,7 +113,10 @@ func (c *changeNamespaceCommand) sendChangeNamespaceRequest(resourceName string)
 		NewNamespaceName: c.newNamespace,
 	}
 
-	_, err = resourceRunServiceClient.ChangeResourceNamespace(conn.GetContext(), request)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), changeNamespaceTimeout)
+	defer cancelFunc()
+
+	_, err = resourceRunServiceClient.ChangeResourceNamespace(ctx, request)
 	return err
 }
 

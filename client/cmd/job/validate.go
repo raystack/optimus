@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
-	"github.com/goto/optimus/client/cmd/internal/connectivity"
+	"github.com/goto/optimus/client/cmd/internal/connection"
 	"github.com/goto/optimus/client/cmd/internal/logger"
 	"github.com/goto/optimus/client/local/model"
 	"github.com/goto/optimus/client/local/specio"
@@ -22,7 +22,9 @@ import (
 const validateTimeout = time.Minute * 5
 
 type validateCommand struct {
-	logger         log.Logger
+	logger     log.Logger
+	connection *connection.Insecure
+
 	configFilePath string
 	clientConfig   *config.ClientConfig
 
@@ -59,6 +61,8 @@ func (v *validateCommand) PreRunE(_ *cobra.Command, _ []string) error { // Load 
 		return err
 	}
 	v.clientConfig = conf
+
+	v.connection = connection.NewInsecure(v.logger)
 	return nil
 }
 
@@ -88,7 +92,7 @@ func (v *validateCommand) RunE(_ *cobra.Command, _ []string) error {
 }
 
 func (v *validateCommand) validateJobSpecificationRequest(jobSpecs []*model.JobSpec) error {
-	conn, err := connectivity.NewConnectivity(v.clientConfig.Host, validateTimeout)
+	conn, err := v.connection.Create(v.clientConfig.Host)
 	if err != nil {
 		return err
 	}
@@ -104,8 +108,12 @@ func (v *validateCommand) validateJobSpecificationRequest(jobSpecs []*model.JobS
 		Jobs:          jobSpecsProto,
 		NamespaceName: v.namespaceName,
 	}
-	job := pb.NewJobSpecificationServiceClient(conn.GetConnection())
-	respStream, err := job.CheckJobSpecifications(conn.GetContext(), checkJobSpecRequest)
+	job := pb.NewJobSpecificationServiceClient(conn)
+
+	ctx, dialCancel := context.WithTimeout(context.Background(), validateTimeout)
+	defer dialCancel()
+
+	respStream, err := job.CheckJobSpecifications(ctx, checkJobSpecRequest)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			v.logger.Error("Validate process took too long, timing out")

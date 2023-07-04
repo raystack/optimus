@@ -1,6 +1,7 @@
 package job
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"path"
@@ -11,7 +12,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
-	"github.com/goto/optimus/client/cmd/internal/connectivity"
+	"github.com/goto/optimus/client/cmd/internal/connection"
 	"github.com/goto/optimus/client/cmd/internal/logger"
 	"github.com/goto/optimus/client/local"
 	"github.com/goto/optimus/client/local/model"
@@ -26,7 +27,9 @@ const (
 )
 
 type exportCommand struct {
-	logger log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	writer local.SpecWriter[*model.JobSpec]
 
 	configFilePath string
@@ -84,6 +87,8 @@ func (e *exportCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	} else {
 		e.host = cfg.Host
 	}
+	e.connection = connection.New(e.logger, cfg)
+
 	return err
 }
 
@@ -211,15 +216,18 @@ func (e *exportCommand) writeJobs(projectName, namespaceName string, jobs []*mod
 }
 
 func (e *exportCommand) fetchNamespaceJobsByProjectName(projectName string) (map[string][]*model.JobSpec, error) {
-	conn, err := connectivity.NewConnectivity(e.host, fetchJobTimeout)
+	conn, err := e.connection.Create(e.host)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
-	jobSpecificationServiceClient := pb.NewJobSpecificationServiceClient(conn.GetConnection())
+	jobSpecificationServiceClient := pb.NewJobSpecificationServiceClient(conn)
 
-	response, err := jobSpecificationServiceClient.GetJobSpecifications(conn.GetContext(), &pb.GetJobSpecificationsRequest{
+	ctx, cancelFunc := context.WithTimeout(context.Background(), fetchJobTimeout)
+	defer cancelFunc()
+
+	response, err := jobSpecificationServiceClient.GetJobSpecifications(ctx, &pb.GetJobSpecificationsRequest{
 		ProjectName: projectName,
 	})
 	if err != nil {
@@ -234,15 +242,18 @@ func (e *exportCommand) fetchNamespaceJobsByProjectName(projectName string) (map
 }
 
 func (e *exportCommand) fetchJobsByProjectAndNamespaceName(projectName, namespaceName string) ([]*model.JobSpec, error) {
-	conn, err := connectivity.NewConnectivity(e.host, fetchJobTimeout)
+	conn, err := e.connection.Create(e.host)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
-	jobSpecificationServiceClient := pb.NewJobSpecificationServiceClient(conn.GetConnection())
+	jobSpecificationServiceClient := pb.NewJobSpecificationServiceClient(conn)
 
-	response, err := jobSpecificationServiceClient.GetJobSpecifications(conn.GetContext(), &pb.GetJobSpecificationsRequest{
+	ctx, cancelFunc := context.WithTimeout(context.Background(), fetchJobTimeout)
+	defer cancelFunc()
+
+	response, err := jobSpecificationServiceClient.GetJobSpecifications(ctx, &pb.GetJobSpecificationsRequest{
 		ProjectName:   projectName,
 		NamespaceName: namespaceName,
 	})
@@ -258,15 +269,18 @@ func (e *exportCommand) fetchJobsByProjectAndNamespaceName(projectName, namespac
 }
 
 func (e *exportCommand) fetchSpecificJob(projectName, namespaceName, jobName string) (*model.JobSpec, error) {
-	conn, err := connectivity.NewConnectivity(e.host, fetchJobTimeout)
+	conn, err := e.connection.Create(e.host)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
-	jobSpecificationServiceClient := pb.NewJobSpecificationServiceClient(conn.GetConnection())
+	jobSpecificationServiceClient := pb.NewJobSpecificationServiceClient(conn)
 
-	response, err := jobSpecificationServiceClient.GetJobSpecifications(conn.GetContext(), &pb.GetJobSpecificationsRequest{
+	ctx, cancelFunc := context.WithTimeout(context.Background(), fetchJobTimeout)
+	defer cancelFunc()
+
+	response, err := jobSpecificationServiceClient.GetJobSpecifications(ctx, &pb.GetJobSpecificationsRequest{
 		ProjectName:   projectName,
 		NamespaceName: namespaceName,
 		JobName:       jobName,
@@ -282,15 +296,18 @@ func (e *exportCommand) fetchSpecificJob(projectName, namespaceName, jobName str
 }
 
 func (e *exportCommand) fetchProjectNames() ([]string, error) {
-	conn, err := connectivity.NewConnectivity(e.host, fetchTenantTimeout)
+	conn, err := e.connection.Create(e.host)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
-	projectServiceClient := pb.NewProjectServiceClient(conn.GetConnection())
+	projectServiceClient := pb.NewProjectServiceClient(conn)
 
-	response, err := projectServiceClient.ListProjects(conn.GetContext(), &pb.ListProjectsRequest{})
+	ctx, cancelFunc := context.WithTimeout(context.Background(), fetchTenantTimeout)
+	defer cancelFunc()
+
+	response, err := projectServiceClient.ListProjects(ctx, &pb.ListProjectsRequest{})
 	if err != nil {
 		return nil, err
 	}
