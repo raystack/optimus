@@ -725,6 +725,76 @@ func TestResourceService(t *testing.T) {
 			assert.NoError(t, actualError)
 		})
 	})
+
+	t.Run("SyncResource", func(t *testing.T) {
+		t.Run("returns error when get resources returns error", func(t *testing.T) {
+			fullName := "project.dataset"
+			repo := newResourceRepository(t)
+			repo.On("GetResources", ctx, tnnt, resource.Bigquery, []string{fullName}).Return(nil, errors.New("unknown error"))
+
+			mgr := newResourceManager(t)
+
+			rscService := service.NewResourceService(logger, repo, mgr, nil)
+
+			resp, actualError := rscService.SyncResources(ctx, tnnt, resource.Bigquery, []string{fullName})
+			assert.ErrorContains(t, actualError, "unknown error")
+			assert.Nil(t, resp)
+		})
+		t.Run("returns if no resources to sync", func(t *testing.T) {
+			fullName := "project.dataset"
+			repo := newResourceRepository(t)
+			repo.On("GetResources", ctx, tnnt, resource.Bigquery, []string{fullName}).Return([]*resource.Resource{}, nil)
+
+			mgr := newResourceManager(t)
+
+			rscService := service.NewResourceService(logger, repo, mgr, nil)
+
+			response, actualError := rscService.SyncResources(ctx, tnnt, resource.Bigquery, []string{fullName})
+			assert.Nil(t, actualError)
+			assert.Equal(t, fullName, response.IgnoredResources[0].Name)
+			assert.Equal(t, "no resource found in namespace", response.IgnoredResources[0].Reason)
+			assert.Equal(t, 0, len(response.ResourceNames))
+		})
+		t.Run("returns error while syncing resource", func(t *testing.T) {
+			fullName := "project.dataset"
+			incoming, err := resource.NewResource(fullName, "dataset", resource.Bigquery, tnnt, meta, spec)
+			assert.NoError(t, err)
+
+			repo := newResourceRepository(t)
+			repo.On("GetResources", ctx, tnnt, resource.Bigquery, []string{fullName}).
+				Return([]*resource.Resource{incoming}, nil)
+
+			mgr := newResourceManager(t)
+			mgr.On("SyncResource", ctx, incoming).Return(errors.New("unable to create"))
+
+			rscService := service.NewResourceService(logger, repo, mgr, nil)
+
+			response, actualError := rscService.SyncResources(ctx, tnnt, resource.Bigquery, []string{fullName})
+			assert.Nil(t, actualError)
+			assert.Equal(t, fullName, response.IgnoredResources[0].Name)
+			assert.Equal(t, "unable to create", response.IgnoredResources[0].Reason)
+			assert.Equal(t, 0, len(response.ResourceNames))
+		})
+		t.Run("syncs the resource successfully", func(t *testing.T) {
+			fullName := "project.dataset"
+			incoming, err := resource.NewResource(fullName, "dataset", resource.Bigquery, tnnt, meta, spec)
+			assert.NoError(t, err)
+
+			repo := newResourceRepository(t)
+			repo.On("GetResources", ctx, tnnt, resource.Bigquery, []string{fullName}).
+				Return([]*resource.Resource{incoming}, nil)
+
+			mgr := newResourceManager(t)
+			mgr.On("SyncResource", ctx, incoming).Return(nil)
+
+			rscService := service.NewResourceService(logger, repo, mgr, nil)
+
+			response, actualError := rscService.SyncResources(ctx, tnnt, resource.Bigquery, []string{fullName})
+			assert.Nil(t, actualError)
+			assert.Equal(t, fullName, response.ResourceNames[0])
+			assert.Equal(t, 0, len(response.IgnoredResources))
+		})
+	})
 }
 
 type mockResourceRepository struct {
@@ -757,6 +827,14 @@ func (m *mockResourceRepository) Update(ctx context.Context, res *resource.Resou
 
 func (m *mockResourceRepository) ChangeNamespace(ctx context.Context, res *resource.Resource, newTenant tenant.Tenant) error {
 	return m.Called(ctx, res, newTenant).Error(0)
+}
+
+func (m *mockResourceRepository) GetResources(ctx context.Context, tnnt tenant.Tenant, store resource.Store, names []string) ([]*resource.Resource, error) {
+	args := m.Called(ctx, tnnt, store, names)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*resource.Resource), args.Error(1)
 }
 
 type mockConstructorTestingTNewResourceRepository interface {
@@ -796,6 +874,10 @@ func (m *mockResourceManager) Validate(res *resource.Resource) error {
 func (m *mockResourceManager) GetURN(res *resource.Resource) (string, error) {
 	args := m.Called(res)
 	return args.Get(0).(string), args.Error(1)
+}
+
+func (m *mockResourceManager) SyncResource(ctx context.Context, res *resource.Resource) error {
+	return m.Called(ctx, res).Error(0)
 }
 
 type mockConstructorTestingTNewResourceManager interface {

@@ -713,6 +713,100 @@ func TestResourceHandler(t *testing.T) {
 			assert.Nil(t, err)
 		})
 	})
+	t.Run("ApplyResource", func(t *testing.T) {
+		t.Run("returns error when tenant is invalid", func(t *testing.T) {
+			service := new(resourceService)
+			handler := v1beta1.NewResourceHandler(logger, service)
+
+			req := &pb.ApplyResourcesRequest{
+				ProjectName:   "",
+				DatastoreName: "bigquery",
+				ResourceNames: nil,
+				NamespaceName: "",
+			}
+
+			_, err := handler.ApplyResources(ctx, req)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
+				"project: project name is empty: invalid tenant details")
+		})
+		t.Run("returns error when store is invalid", func(t *testing.T) {
+			service := new(resourceService)
+			handler := v1beta1.NewResourceHandler(logger, service)
+
+			req := &pb.ApplyResourcesRequest{
+				ProjectName:   "proj",
+				DatastoreName: "",
+				ResourceNames: nil,
+				NamespaceName: "ns",
+			}
+
+			_, err := handler.ApplyResources(ctx, req)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
+				"resource: unknown store : invalid datastore Name")
+		})
+		t.Run("returns error when resource names are empty", func(t *testing.T) {
+			service := new(resourceService)
+			handler := v1beta1.NewResourceHandler(logger, service)
+
+			req := &pb.ApplyResourcesRequest{
+				ProjectName:   "proj",
+				DatastoreName: "bigquery",
+				ResourceNames: nil,
+				NamespaceName: "ns",
+			}
+
+			_, err := handler.ApplyResources(ctx, req)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
+				"resource: empty resource names: unable to apply resources")
+		})
+		t.Run("returns error when service returns error", func(t *testing.T) {
+			names := []string{"project.dataset.test_table"}
+
+			service := new(resourceService)
+			service.On("SyncResources", ctx, tnnt, resource.Bigquery, names).Return(nil, errors.New("something went wrong"))
+			defer service.AssertExpectations(t)
+
+			handler := v1beta1.NewResourceHandler(logger, service)
+
+			req := &pb.ApplyResourcesRequest{
+				ProjectName:   "proj",
+				NamespaceName: "ns",
+				DatastoreName: "bigquery",
+				ResourceNames: names,
+			}
+
+			_, err := handler.ApplyResources(ctx, req)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = Internal desc = something went wrong: "+
+				"unable to sync to datastore")
+		})
+		t.Run("syncs the resources successfully", func(t *testing.T) {
+			names := []string{"project.dataset.test_table"}
+
+			service := new(resourceService)
+			service.On("SyncResources", ctx, tnnt, resource.Bigquery, names).Return(
+				&resource.SyncResponse{ResourceNames: names}, nil)
+			defer service.AssertExpectations(t)
+
+			handler := v1beta1.NewResourceHandler(logger, service)
+
+			req := &pb.ApplyResourcesRequest{
+				ProjectName:   "proj",
+				NamespaceName: "ns",
+				DatastoreName: "bigquery",
+				ResourceNames: names,
+			}
+
+			resp, err := handler.ApplyResources(ctx, req)
+			assert.Nil(t, err)
+
+			assert.Equal(t, "success", resp.Statuses[0].Status)
+			assert.Equal(t, names[0], resp.Statuses[0].ResourceName)
+		})
+	})
 }
 
 type resourceService struct {
@@ -754,6 +848,15 @@ func (r *resourceService) Deploy(ctx context.Context, tnnt tenant.Tenant, store 
 
 func (r *resourceService) ChangeNamespace(ctx context.Context, datastore resource.Store, resourceFullName string, oldTenant, newTenant tenant.Tenant) error {
 	return r.Called(ctx, datastore, resourceFullName, oldTenant, newTenant).Error(0)
+}
+
+func (r *resourceService) SyncResources(ctx context.Context, tnnt tenant.Tenant, store resource.Store, names []string) (*resource.SyncResponse, error) {
+	args := r.Called(ctx, tnnt, store, names)
+	var resources *resource.SyncResponse
+	if args.Get(0) != nil {
+		resources = args.Get(0).(*resource.SyncResponse)
+	}
+	return resources, args.Error(1)
 }
 
 type resourceStreamMock struct {

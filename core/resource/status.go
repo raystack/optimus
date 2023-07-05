@@ -60,3 +60,8 @@ func StatusForToUpdate(status Status) bool {
 func StatusIsSuccess(status Status) bool {
 	return status == StatusSuccess
 }
+
+type SyncResponse struct {
+	ResourceNames    []string
+	IgnoredResources []IgnoredResource
+}
