@@ -1125,4 +1125,75 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.EqualValues(t, expectedDownstream, result)
 		})
 	})
+
+	t.Run("GetDownstreamBySources", func(t *testing.T) {
+		t.Run("returns empty downstream if resource urns are empty", func(t *testing.T) {
+			db := dbSetup()
+			jobRepo := postgres.NewJobRepository(db)
+
+			var sources []job.ResourceURN
+
+			result, err := jobRepo.GetDownstreamBySources(ctx, sources)
+			assert.NoError(t, err)
+			assert.Empty(t, result)
+		})
+
+		t.Run("returns downstream given resource urns", func(t *testing.T) {
+			db := dbSetup()
+
+			jobAName, _ := job.NameFrom("sample-job-A")
+			jobSpecA, err := job.NewSpecBuilder(jobVersion, jobAName, jobOwner, jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+			jobA := job.NewJob(sampleTenant, jobSpecA, "dev.resource.sample_a", []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"})
+
+			jobBName, _ := job.NameFrom("sample-job-b")
+			jobSpecB, err := job.NewSpecBuilder(jobVersion, jobBName, jobOwner, jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+			jobB := job.NewJob(sampleTenant, jobSpecB, "dev.resource.sample_d", []job.ResourceURN{"dev.resource.sample_e"})
+
+			jobCName, _ := job.NameFrom("sample-job-c")
+			jobSpecC, err := job.NewSpecBuilder(jobVersion, jobCName, jobOwner, jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+			jobC := job.NewJob(sampleTenant, jobSpecC, "dev.resource.sample_f", nil)
+
+			jobRepo := postgres.NewJobRepository(db)
+			_, err = jobRepo.Add(ctx, []*job.Job{jobA, jobB, jobC})
+			assert.NoError(t, err)
+
+			jobAAsDownstream := job.NewDownstream(jobAName, sampleTenant.ProjectName(), sampleTenant.NamespaceName(), jobTask.Name())
+			jobBAsDownstream := job.NewDownstream(jobBName, sampleTenant.ProjectName(), sampleTenant.NamespaceName(), jobTask.Name())
+
+			testCases := []struct {
+				sources             []job.ResourceURN
+				expectedDownstreams []*job.Downstream
+			}{
+				{
+					sources:             []job.ResourceURN{"dev.resource.sample_b"},
+					expectedDownstreams: []*job.Downstream{jobAAsDownstream},
+				},
+				{
+					sources:             []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_e"},
+					expectedDownstreams: []*job.Downstream{jobAAsDownstream, jobBAsDownstream},
+				},
+				{
+					sources:             []job.ResourceURN{"dev.resource.sample_b", "dev.resource.sample_c"},
+					expectedDownstreams: []*job.Downstream{jobAAsDownstream},
+				},
+				{
+					sources:             []job.ResourceURN{"dev.resource.sample_e", "dev.resource.sample_f"},
+					expectedDownstreams: []*job.Downstream{jobBAsDownstream},
+				},
+				{
+					sources:             []job.ResourceURN{"dev.resource.sample_f", "dev.resource.sample_g"},
+					expectedDownstreams: nil,
+				},
+			}
+
+			for _, test := range testCases {
+				result, err := jobRepo.GetDownstreamBySources(ctx, test.sources)
+				assert.NoError(t, err)
+				assert.EqualValues(t, test.expectedDownstreams, result)
+			}
+		})
+	})
 }

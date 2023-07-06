@@ -25,11 +25,11 @@ const (
 
 type ResourceService interface {
 	Create(ctx context.Context, res *resource.Resource) error
-	Update(ctx context.Context, res *resource.Resource) error
+	Update(ctx context.Context, res *resource.Resource, logWriter writer.LogWriter) error
 	ChangeNamespace(ctx context.Context, datastore resource.Store, resourceFullName string, oldTenant, newTenant tenant.Tenant) error
 	Get(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resourceName string) (*resource.Resource, error)
 	GetAll(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Resource, error)
-	Deploy(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error
+	Deploy(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource, logWriter writer.LogWriter) error
 	SyncResources(ctx context.Context, tnnt tenant.Tenant, store resource.Store, names []string) (*resource.SyncResponse, error)
 }
 
@@ -90,7 +90,7 @@ func (rh ResourceHandler) DeployResourceSpecification(stream pb.ResourceService_
 			errNamespaces = append(errNamespaces, request.GetNamespaceName())
 		}
 
-		err = rh.service.Deploy(stream.Context(), tnnt, store, resourceSpecs)
+		err = rh.service.Deploy(stream.Context(), tnnt, store, resourceSpecs, responseWriter)
 		successResources := getResourcesByStatuses(resourceSpecs, resource.StatusSuccess)
 		skippedResources := getResourcesByStatuses(resourceSpecs, resource.StatusSkipped)
 		failureResources := getResourcesByStatuses(resourceSpecs, resource.StatusCreateFailure, resource.StatusUpdateFailure, resource.StatusValidationFailure)
@@ -253,7 +253,9 @@ func (rh ResourceHandler) UpdateResource(ctx context.Context, req *pb.UpdateReso
 		return nil, errors.GRPCErr(err, "failed to update resource")
 	}
 
-	err = rh.service.Update(ctx, res)
+	logWriter := writer.NewLogWriter(rh.l)
+
+	err = rh.service.Update(ctx, res, logWriter)
 	raiseResourceDatastoreEventMetric(tnnt, res.Store().String(), res.Kind(), res.Status().String())
 	if err != nil {
 		rh.l.Error("error updating resource [%s]: %s", res.FullName(), err)

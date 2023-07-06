@@ -283,18 +283,6 @@ func (s *OptimusServer) setupHandlers() error {
 	tSecretService := tService.NewSecretService(s.key, tSecretRepo, s.logger)
 	tenantService := tService.NewTenantService(tProjectService, tNamespaceService, tSecretService, s.logger)
 
-	// Resource Bounded Context
-	resourceRepository := resource.NewRepository(s.dbPool)
-	backupRepository := resource.NewBackupRepository(s.dbPool)
-	resourceManager := rService.NewResourceManager(resourceRepository, s.logger)
-	resourceService := rService.NewResourceService(s.logger, resourceRepository, resourceManager, s.eventHandler)
-	backupService := rService.NewBackupService(backupRepository, resourceRepository, resourceManager, s.logger)
-
-	// Register datastore
-	bqClientProvider := bqStore.NewClientProvider()
-	bigqueryStore := bqStore.NewBigqueryDataStore(tenantService, bqClientProvider)
-	resourceManager.RegisterDatastore(rModel.Bigquery, bigqueryStore)
-
 	// Scheduler bounded context
 	jobRunRepo := schedulerRepo.NewJobRunRepository(s.dbPool)
 	operatorRunRepository := schedulerRepo.NewOperatorRunRepository(s.dbPool)
@@ -348,7 +336,19 @@ func (s *OptimusServer) setupHandlers() error {
 	jExternalUpstreamResolver, _ := jResolver.NewExternalUpstreamResolver(s.conf.ResourceManagers)
 	jInternalUpstreamResolver := jResolver.NewInternalUpstreamResolver(jJobRepo)
 	jUpstreamResolver := jResolver.NewUpstreamResolver(jJobRepo, jExternalUpstreamResolver, jInternalUpstreamResolver)
-	jJobService := jService.NewJobService(jJobRepo, jPluginService, jUpstreamResolver, tenantService, s.eventHandler, s.logger, newJobRunService)
+	jJobService := jService.NewJobService(jJobRepo, jJobRepo, jJobRepo, jPluginService, jUpstreamResolver, tenantService, s.eventHandler, s.logger, newJobRunService)
+
+	// Resource Bounded Context
+	resourceRepository := resource.NewRepository(s.dbPool)
+	backupRepository := resource.NewBackupRepository(s.dbPool)
+	resourceManager := rService.NewResourceManager(resourceRepository, s.logger)
+	resourceService := rService.NewResourceService(s.logger, resourceRepository, jJobService, resourceManager, s.eventHandler)
+	backupService := rService.NewBackupService(backupRepository, resourceRepository, resourceManager, s.logger)
+
+	// Register datastore
+	bqClientProvider := bqStore.NewClientProvider()
+	bigqueryStore := bqStore.NewBigqueryDataStore(tenantService, bqClientProvider)
+	resourceManager.RegisterDatastore(rModel.Bigquery, bigqueryStore)
 
 	// Tenant Handlers
 	pb.RegisterSecretServiceServer(s.grpcServer, tHandler.NewSecretsHandler(s.logger, tSecretService))

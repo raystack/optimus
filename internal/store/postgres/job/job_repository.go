@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -889,4 +890,48 @@ func fromStoreDownstream(storeDownstreamList []Downstream) ([]*job.Downstream, e
 		downstreamList = append(downstreamList, job.NewDownstream(downstreamJobName, downstreamProjectName, downstreamNamespaceName, downstreamTaskName))
 	}
 	return downstreamList, me.ToErr()
+}
+
+func (j JobRepository) GetDownstreamBySources(ctx context.Context, sources []job.ResourceURN) ([]*job.Downstream, error) {
+	if len(sources) == 0 {
+		return nil, nil
+	}
+
+	var sourceWhereStatements []string
+	for _, r := range sources {
+		statement := "'" + r.String() + "' = any(sources)"
+		sourceWhereStatements = append(sourceWhereStatements, statement)
+	}
+	sourceStatement := "(" + strings.Join(sourceWhereStatements, " or \n") + ")"
+
+	queryBuilder := new(strings.Builder)
+	queryBuilder.WriteString(`
+SELECT
+	name as job_name, project_name, namespace_name, task_name
+FROM job
+WHERE
+deleted_at IS NULL and
+`)
+	queryBuilder.WriteString(sourceStatement)
+	queryBuilder.WriteString(";\n")
+
+	query := queryBuilder.String()
+
+	rows, err := j.db.Query(ctx, query)
+	if err != nil {
+		return nil, errors.Wrap(job.EntityJob, "error while getting job downstream", err)
+	}
+	defer rows.Close()
+
+	var storeDownstream []Downstream
+	for rows.Next() {
+		var downstream Downstream
+		err := rows.Scan(&downstream.JobName, &downstream.ProjectName, &downstream.NamespaceName, &downstream.TaskName)
+		if err != nil {
+			return nil, errors.Wrap(job.EntityJob, "error while getting downstream by destination", err)
+		}
+		storeDownstream = append(storeDownstream, downstream)
+	}
+
+	return fromStoreDownstream(storeDownstream)
 }

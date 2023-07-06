@@ -24,6 +24,8 @@ const (
 	MetricJobEventStateUpsertFailed     = "upsert_failed"
 	MetricJobEventStateDeleteFailed     = "delete_failed"
 	MetricJobEventStateValidationFailed = "validation_failed"
+
+	MetricJobRefreshResourceDownstream = "refresh_resource_downstream_total"
 )
 
 type Job struct {

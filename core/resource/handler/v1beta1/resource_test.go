@@ -15,6 +15,7 @@ import (
 	"github.com/goto/optimus/core/resource"
 	"github.com/goto/optimus/core/resource/handler/v1beta1"
 	"github.com/goto/optimus/core/tenant"
+	"github.com/goto/optimus/internal/writer"
 	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
 )
 
@@ -87,8 +88,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("returns error log when conversion fails", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("Deploy", ctx, mock.Anything, resource.Bigquery, mock.Anything).
-				Return(nil)
+			service.On("Deploy", ctx, mock.Anything, resource.Bigquery, mock.Anything, mock.Anything).Return(nil)
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -666,7 +666,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("Update", ctx, mock.Anything).Return(errors.New("validation failure"))
+			service.On("Update", ctx, mock.Anything, mock.Anything).Return(errors.New("validation failure"))
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -691,7 +691,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("updates the resource successfully", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("Update", ctx, mock.Anything).Return(nil)
+			service.On("Update", ctx, mock.Anything, mock.Anything).Return(nil)
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -818,8 +818,8 @@ func (r *resourceService) Create(ctx context.Context, res *resource.Resource) er
 	return args.Error(0)
 }
 
-func (r *resourceService) Update(ctx context.Context, res *resource.Resource) error {
-	args := r.Called(ctx, res)
+func (r *resourceService) Update(ctx context.Context, res *resource.Resource, logWriter writer.LogWriter) error {
+	args := r.Called(ctx, res, logWriter)
 	return args.Error(0)
 }
 
@@ -841,8 +841,8 @@ func (r *resourceService) GetAll(ctx context.Context, tnnt tenant.Tenant, store 
 	return resources, args.Error(1)
 }
 
-func (r *resourceService) Deploy(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
-	args := r.Called(ctx, tnnt, store, resources)
+func (r *resourceService) Deploy(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource, logWriter writer.LogWriter) error {
+	args := r.Called(ctx, tnnt, store, resources, logWriter)
 	return args.Error(0)
 }
 
