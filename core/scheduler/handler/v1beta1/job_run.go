@@ -2,7 +2,6 @@ package v1beta1
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/goto/salt/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -174,8 +173,7 @@ func (h JobRunHandler) RegisterJobEvent(ctx context.Context, req *pb.RegisterJob
 
 	err = h.service.UpdateJobState(ctx, event)
 	if err != nil {
-		jobEventByteString, _ := json.Marshal(req.GetEvent())
-		h.l.Error("scheduler could not update job run state, event Payload::"+string(jobEventByteString), err)
+		h.l.Error("error updating job run state for Job: %s, Project: %s, eventType: %s, schedule_at: %s, err: %s", jobName, tnnt.ProjectName(), event.Type, event.JobScheduledAt.String(), err.Error())
 		me.Append(errors.AddErrContext(err, scheduler.EntityJobRun, "scheduler could not update job run state"))
 	}
 
