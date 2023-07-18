@@ -34,6 +34,7 @@ type JobService struct {
 	pluginService    PluginService
 	upstreamResolver UpstreamResolver
 	eventHandler     EventHandler
+	scheduler        Scheduler
 
 	tenantDetailsGetter TenantDetailsGetter
 
@@ -46,7 +47,7 @@ func NewJobService(
 	jobRepo JobRepository, upstreamRepo UpstreamRepository, downstreamRepo DownstreamRepository,
 	pluginService PluginService, upstreamResolver UpstreamResolver,
 	tenantDetailsGetter TenantDetailsGetter, eventHandler EventHandler, logger log.Logger,
-	jobDeploymentService JobDeploymentService,
+	jobDeploymentService JobDeploymentService, scheduler Scheduler,
 ) *JobService {
 	return &JobService{
 		jobRepo:              jobRepo,
@@ -58,6 +59,7 @@ func NewJobService(
 		tenantDetailsGetter:  tenantDetailsGetter,
 		logger:               logger,
 		jobDeploymentService: jobDeploymentService,
+		scheduler:            scheduler,
 	}
 }
 
@@ -87,6 +89,7 @@ type JobRepository interface {
 	GetAllByResourceDestination(ctx context.Context, resourceDestination job.ResourceURN) ([]*job.Job, error)
 	GetAllByTenant(ctx context.Context, jobTenant tenant.Tenant) ([]*job.Job, error)
 	GetAllByProjectName(ctx context.Context, projectName tenant.ProjectName) ([]*job.Job, error)
+	UpdateState(ctx context.Context, jobTenant tenant.Tenant, jobNames []job.Name, jobState job.State, remark string) error
 }
 
 type UpstreamRepository interface {
@@ -108,6 +111,10 @@ type EventHandler interface {
 type UpstreamResolver interface {
 	BulkResolve(ctx context.Context, projectName tenant.ProjectName, jobs []*job.Job, logWriter writer.LogWriter) (jobWithUpstreams []*job.WithUpstream, err error)
 	Resolve(ctx context.Context, subjectJob *job.Job, logWriter writer.LogWriter) ([]*job.Upstream, error)
+}
+
+type Scheduler interface {
+	UpdateJobState(ctx context.Context, tnnt tenant.Tenant, jobName []job.Name, state string) error
 }
 
 func (j *JobService) Add(ctx context.Context, jobTenant tenant.Tenant, specs []*job.Spec) error {
@@ -184,6 +191,31 @@ func (j *JobService) Update(ctx context.Context, jobTenant tenant.Tenant, specs 
 	}
 
 	return me.ToErr()
+}
+
+func (j *JobService) UpdateState(ctx context.Context, jobTenant tenant.Tenant, jobNames []job.Name, jobState job.State, remark string) error {
+	err := j.scheduler.UpdateJobState(ctx, jobTenant, jobNames, jobState.String())
+	if err != nil {
+		return err
+	}
+
+	if err := j.jobRepo.UpdateState(ctx, jobTenant, jobNames, jobState, remark); err != nil {
+		return err
+	}
+
+	var metricName string
+	switch jobState {
+	case job.ENABLED:
+		metricName = job.MetricJobEventEnabled
+	case job.DISABLED:
+		metricName = job.MetricJobEventDisabled
+	}
+
+	raiseJobEventMetric(jobTenant, metricName, len(jobNames))
+	for _, jobName := range jobNames {
+		j.raiseStateChangeEvent(jobTenant, jobName, jobState)
+	}
+	return nil
 }
 
 func (j *JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag, forceFlag bool) (affectedDownstream []job.FullName, err error) {
@@ -1022,6 +1054,15 @@ func (j *JobService) raiseUpdateEvent(job *job.Job) {
 	jobEvent, err := event.NewJobUpdateEvent(job)
 	if err != nil {
 		j.logger.Error("error creating event for job update: %s", err)
+		return
+	}
+	j.eventHandler.HandleEvent(jobEvent)
+}
+
+func (j *JobService) raiseStateChangeEvent(tnnt tenant.Tenant, jobName job.Name, state job.State) {
+	jobEvent, err := event.NewJobStateChangeEvent(tnnt, jobName, state)
+	if err != nil {
+		j.logger.Error("error creating event for job state change: %s", err)
 		return
 	}
 	j.eventHandler.HandleEvent(jobEvent)

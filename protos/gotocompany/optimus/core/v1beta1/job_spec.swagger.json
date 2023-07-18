@@ -536,6 +536,118 @@
         ]
       }
     },
+    "/v1beta1/project/{projectName}/namespace/{namespaceName}/sync-job-state": {
+      "patch": {
+        "summary": "SyncJobsState enable / disable job on scheuler",
+        "operationId": "JobSpecificationService_SyncJobsState",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1SyncJobsStateResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "jobStates": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/SyncJobsStateRequestJobStatePair"
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "JobSpecificationService"
+        ]
+      }
+    },
+    "/v1beta1/project/{projectName}/namespace/{namespaceName}/update-job-state": {
+      "patch": {
+        "summary": "UpdateJobState enable / disable job on scheuler",
+        "operationId": "JobSpecificationService_UpdateJobsState",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1UpdateJobsStateResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "remark": {
+                  "type": "string"
+                },
+                "state": {
+                  "$ref": "#/definitions/v1beta1JobState"
+                },
+                "jobNames": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "JobSpecificationService"
+        ]
+      }
+    },
     "/v1beta1/window": {
       "get": {
         "summary": "GetWindow provides the start and end dates provided a scheduled date\nof the execution window",
@@ -737,6 +849,17 @@
         },
         "type": {
           "type": "string"
+        }
+      }
+    },
+    "SyncJobsStateRequestJobStatePair": {
+      "type": "object",
+      "properties": {
+        "jobName": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/definitions/v1beta1JobState"
         }
       }
     },
@@ -1214,6 +1337,15 @@
         }
       }
     },
+    "v1beta1JobState": {
+      "type": "string",
+      "enum": [
+        "JOB_STATE_UNSPECIFIED",
+        "JOB_STATE_ENABLED",
+        "JOB_STATE_DISABLED"
+      ],
+      "default": "JOB_STATE_UNSPECIFIED"
+    },
     "v1beta1JobTask": {
       "type": "object",
       "properties": {
@@ -1289,6 +1421,9 @@
         }
       }
     },
+    "v1beta1SyncJobsStateResponse": {
+      "type": "object"
+    },
     "v1beta1UpdateJobSpecificationsResponse": {
       "type": "object",
       "properties": {
@@ -1296,6 +1431,9 @@
           "type": "string"
         }
       }
+    },
+    "v1beta1UpdateJobsStateResponse": {
+      "type": "object"
     }
   },
   "externalDocs": {

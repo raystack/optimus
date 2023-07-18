@@ -7,6 +7,7 @@ import (
 	"github.com/goto/optimus/core/job"
 	"github.com/goto/optimus/core/job/handler/v1beta1"
 	"github.com/goto/optimus/core/tenant"
+	pbIntCore "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
 	pbInt "github.com/goto/optimus/protos/gotocompany/optimus/integration/v1beta1"
 )
 
@@ -82,6 +83,52 @@ func (j *JobDeleted) Bytes() ([]byte, error) {
 		Payload: &pbInt.OptimusChangeEvent_JobChange{
 			JobChange: &pbInt.JobChangePayload{
 				JobName: j.JobName.String(),
+			},
+		},
+	}
+	return proto.Marshal(optEvent)
+}
+
+type JobStateChange struct {
+	Event
+
+	JobName   job.Name
+	JobTenant tenant.Tenant
+	State     job.State
+}
+
+func NewJobStateChangeEvent(tnnt tenant.Tenant, jobName job.Name, state job.State) (*JobStateChange, error) {
+	baseEvent, err := NewBaseEvent()
+	if err != nil {
+		return nil, err
+	}
+	return &JobStateChange{
+		Event:     baseEvent,
+		JobName:   jobName,
+		JobTenant: tnnt,
+		State:     state,
+	}, nil
+}
+
+func (j *JobStateChange) Bytes() ([]byte, error) {
+	occurredAt := timestamppb.New(j.Event.OccurredAt)
+	var jobStateEnum pbIntCore.JobState
+	switch j.State {
+	case job.ENABLED:
+		jobStateEnum = pbIntCore.JobState_JOB_STATE_ENABLED
+	case job.DISABLED:
+		jobStateEnum = pbIntCore.JobState_JOB_STATE_DISABLED
+	}
+	optEvent := &pbInt.OptimusChangeEvent{
+		EventId:       j.Event.ID.String(),
+		OccurredAt:    occurredAt,
+		ProjectName:   j.JobTenant.ProjectName().String(),
+		NamespaceName: j.JobTenant.NamespaceName().String(),
+		EventType:     pbInt.OptimusChangeEvent_EVENT_TYPE_JOB_STATE_CHANGE,
+		Payload: &pbInt.OptimusChangeEvent_JobStateChange{
+			JobStateChange: &pbInt.JobStateChangePayload{
+				JobName: j.JobName.String(),
+				State:   jobStateEnum,
 			},
 		},
 	}

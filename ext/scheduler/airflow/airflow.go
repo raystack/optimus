@@ -17,6 +17,7 @@ import (
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 
+	"github.com/goto/optimus/core/job"
 	"github.com/goto/optimus/core/scheduler"
 	"github.com/goto/optimus/core/tenant"
 	"github.com/goto/optimus/internal/errors"
@@ -31,6 +32,7 @@ const (
 	EntityAirflow = "Airflow"
 
 	dagStatusBatchURL = "api/v1/dags/~/dagRuns/list"
+	dagURL            = "api/v1/dags/%s"
 	dagRunClearURL    = "api/v1/dags/%s/clearTaskInstances"
 	dagRunCreateURL   = "api/v1/dags/%s/dagRuns"
 	airflowDateFormat = "2006-01-02T15:04:05+00:00"
@@ -284,6 +286,47 @@ func (s *Scheduler) GetJobRuns(ctx context.Context, tnnt tenant.Tenant, jobQuery
 	}
 
 	return getJobRuns(dagRunList, jobCron)
+}
+
+// UpdateJobState set the state of jobs as enabled / disabled on scheduler
+func (s *Scheduler) UpdateJobState(ctx context.Context, tnnt tenant.Tenant, jobNames []job.Name, state string) error {
+	spanCtx, span := startChildSpan(ctx, "UpdateJobState")
+	defer span.End()
+
+	var data []byte
+	switch state {
+	case "enabled":
+		data = []byte(`{"is_paused": false}`)
+	case "disabled":
+		data = []byte(`{"is_paused": true}`)
+	}
+
+	schdAuth, err := s.getSchedulerAuth(ctx, tnnt)
+	if err != nil {
+		return err
+	}
+	ch := make(chan error, len(jobNames))
+	for _, jobName := range jobNames {
+		go func(jobName job.Name) {
+			req := airflowRequest{
+				path:   fmt.Sprintf(dagURL, jobName),
+				method: http.MethodPatch,
+				body:   data,
+			}
+			_, err := s.client.Invoke(spanCtx, req, schdAuth)
+			ch <- err
+		}(jobName)
+	}
+	me := errors.NewMultiError("update job state on scheduler")
+	for i := 0; i < len(jobNames); i++ {
+		me.Append(<-ch)
+	}
+
+	if len(me.Errors) > 0 {
+		return errors.Wrap(EntityAirflow, "failure while updating dag status", me.ToErr())
+	}
+
+	return nil
 }
 
 func getDagRunRequest(jobQuery *scheduler.JobRunsCriteria, jobCron *cron.ScheduleSpec) DagRunRequest {

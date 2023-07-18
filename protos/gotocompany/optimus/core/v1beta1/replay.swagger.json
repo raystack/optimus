@@ -112,6 +112,69 @@
         ]
       }
     },
+    "/v1beta1/project/{projectName}/replay-dry-run": {
+      "post": {
+        "operationId": "ReplayService_ReplayDryRun",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1ReplayDryRunResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "jobName": {
+                  "type": "string"
+                },
+                "namespaceName": {
+                  "type": "string"
+                },
+                "startTime": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "endTime": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "parallel": {
+                  "type": "boolean"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "jobConfig": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "ReplayService"
+        ]
+      }
+    },
     "/v1beta1/project/{projectName}/replay/{replayId}": {
       "get": {
         "operationId": "ReplayService_GetReplay",
@@ -236,6 +299,17 @@
         },
         "description": {
           "type": "string"
+        }
+      }
+    },
+    "v1beta1ReplayDryRunResponse": {
+      "type": "object",
+      "properties": {
+        "replayRuns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1ReplayRun"
+          }
         }
       }
     },

@@ -215,6 +215,31 @@ func (n Name) String() string {
 	return string(n)
 }
 
+type State string
+
+const (
+	ENABLED  State = "enabled"
+	DISABLED State = "disabled"
+)
+
+func StateFrom(name string) (State, error) {
+	if name == "" {
+		return "", errors.InvalidArgument(EntityJob, "state is empty")
+	}
+	switch name {
+	case "JOB_STATE_ENABLED":
+		return ENABLED, nil
+	case "JOB_STATE_DISABLED":
+		return DISABLED, nil
+	default:
+		return "", errors.InvalidArgument(EntityJob, "invalid state")
+	}
+}
+
+func (n State) String() string {
+	return string(n)
+}
+
 type ScheduleDate string
 
 func ScheduleDateFrom(date string) (ScheduleDate, error) {
