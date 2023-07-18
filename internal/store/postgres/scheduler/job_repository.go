@@ -138,6 +138,56 @@ func fromStorageWindow(raw []byte, jobVersion int) (models.Window, error) {
 	)
 }
 
+type Metadata struct {
+	Resource  *MetadataResource
+	Scheduler map[string]string
+}
+
+type MetadataResource struct {
+	Request *MetadataResourceConfig
+	Limit   *MetadataResourceConfig
+}
+
+type MetadataResourceConfig struct {
+	CPU    string
+	Memory string
+}
+
+func fromStorageMetadata(metadata json.RawMessage) (scheduler.RuntimeConfig, error) {
+	if metadata == nil {
+		return scheduler.RuntimeConfig{}, nil
+	}
+	var storeMetadata Metadata
+	if err := json.Unmarshal(metadata, &storeMetadata); err != nil {
+		return scheduler.RuntimeConfig{}, err
+	}
+	var runtimeConfig scheduler.RuntimeConfig
+	if storeMetadata.Resource != nil {
+		var resourceRequest *scheduler.ResourceConfig
+		if storeMetadata.Resource.Request != nil {
+			resourceRequest = &scheduler.ResourceConfig{
+				CPU:    storeMetadata.Resource.Request.CPU,
+				Memory: storeMetadata.Resource.Request.Memory,
+			}
+		}
+		var resourceLimit *scheduler.ResourceConfig
+		if storeMetadata.Resource.Limit != nil {
+			resourceLimit = &scheduler.ResourceConfig{
+				CPU:    storeMetadata.Resource.Limit.CPU,
+				Memory: storeMetadata.Resource.Limit.Memory,
+			}
+		}
+		runtimeConfig.Resource = &scheduler.Resource{
+			Request: resourceRequest,
+			Limit:   resourceLimit,
+		}
+	}
+	if storeMetadata.Scheduler != nil {
+		runtimeConfig.Scheduler = storeMetadata.Scheduler
+	}
+	return runtimeConfig, nil
+}
+
 func (j *Job) toJob() (*scheduler.Job, error) {
 	t, err := tenant.NewTenant(j.ProjectName, j.NamespaceName)
 	if err != nil {
@@ -183,6 +233,11 @@ func (j *Job) toJobWithDetails() (*scheduler.JobWithDetails, error) {
 		return nil, err
 	}
 
+	runtimeConfig, err := fromStorageMetadata(j.Metadata)
+	if err != nil {
+		return nil, err
+	}
+
 	schedulerJobWithDetails := &scheduler.JobWithDetails{
 		Name: job.Name,
 		Job:  job,
@@ -197,6 +252,7 @@ func (j *Job) toJobWithDetails() (*scheduler.JobWithDetails, error) {
 			StartDate:     storageSchedule.StartDate,
 			Interval:      storageSchedule.Interval,
 		},
+		RuntimeConfig: runtimeConfig,
 	}
 	if !(storageSchedule.EndDate == nil || storageSchedule.EndDate.IsZero()) {
 		schedulerJobWithDetails.Schedule.EndDate = storageSchedule.EndDate

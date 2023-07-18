@@ -3,10 +3,10 @@
 
 from datetime import datetime, timedelta
 
-# imoprt Dag level callbacks
+# import Dag level callbacks
 from __lib import job_success_event, job_failure_event
 
-# imoprt operator level callbacks
+# import operator level callbacks
 from __lib import operator_start_event, operator_success_event, operator_retry_event, operator_failure_event
 
 from __lib import optimus_sla_miss_notify, SuperKubernetesPodOperator, SuperExternalTaskSensor
@@ -23,6 +23,9 @@ DAG_RETRIES = int(Variable.get("dag_retries", default_var=3))
 DAG_RETRY_DELAY = int(Variable.get("dag_retry_delay_in_secs", default_var=5 * 60))
 DAGRUN_TIMEOUT_IN_SECS = int(Variable.get("dagrun_timeout_in_secs", default_var=3 * 24 * 60 * 60))
 STARTUP_TIMEOUT_IN_SECS = int(Variable.get("startup_timeout_in_secs", default_var=2 * 60))
+POOL_SENSOR = Variable.get("sensor_pool", default_var="default_pool")
+POOL_TASK = Variable.get("task_pool", default_var="default_pool")
+POOL_HOOK = Variable.get("hook_pool", default_var="default_pool")
 
 default_args = {
     "params": {
@@ -31,9 +34,6 @@ default_args = {
         "job_name": {{.JobDetails.Name.String | quote}},
         "optimus_hostname": {{.Hostname | quote}}
     },
-    {{- if ne .RuntimeConfig.Airflow.Pool "" }}
-    "pool": "{{ .RuntimeConfig.Airflow.Pool }}",
-    {{- end }}
     {{- if ne .RuntimeConfig.Airflow.Queue "" }}
     "queue": "{{ .RuntimeConfig.Airflow.Queue }}",
     {{- end }}
@@ -173,6 +173,7 @@ init_container = k8s.V1Container(
     volume_mounts=asset_volume_mounts,
     volumes=[volume],
     init_containers=[init_container],
+    pool={{ if eq .RuntimeConfig.Airflow.Pool "" }}POOL_TASK{{- else -}} {{ .RuntimeConfig.Airflow.Pool | quote}}{{end}}
 )
 
 # hooks loop start
@@ -216,6 +217,7 @@ hook_{{$hookName}} = SuperKubernetesPodOperator(
     volume_mounts=asset_volume_mounts,
     volumes=[volume],
     init_containers=[init_container_{{$hookName}}],
+    pool={{ if eq $.RuntimeConfig.Airflow.Pool "" }}POOL_HOOK{{- else -}} {{ $.RuntimeConfig.Airflow.Pool | quote}}{{end}}
 )
 {{- end }}
 # hooks loop ends
@@ -237,7 +239,8 @@ wait_{{ $dependencyName }} = SuperExternalTaskSensor(
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     task_id="wait_{{$upstream.JobName}}-{{$upstream.TaskName}}",
     depends_on_past=False,
-    dag=dag
+    dag=dag,
+    pool={{ if eq $.RuntimeConfig.Airflow.Pool "" }}POOL_SENSOR{{- else -}} {{ $.RuntimeConfig.Airflow.Pool | quote}}{{end}}
 )
 {{ end}}
 
@@ -253,7 +256,8 @@ wait_{{$httpUpstream.Name}} = ExternalHttpSensor(
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     task_id='wait_{{$httpUpstream.Name}}',
     depends_on_past=False,
-    dag=dag
+    dag=dag,
+    pool={{ if eq $.RuntimeConfig.Airflow.Pool "" }}POOL_SENSOR{{- else -}} {{ $.RuntimeConfig.Airflow.Pool | quote}}{{end}}
 )
 {{- end -}}
 

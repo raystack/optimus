@@ -131,7 +131,6 @@ func setupJobDetails(tnnt tenant.Tenant) *scheduler.JobWithDetails {
 				Memory: "2G",
 			},
 		},
-		Scheduler: map[string]string{"pool": "billing"},
 	}
 
 	tnnt1, _ := tenant.NewTenant("project", "namespace")
