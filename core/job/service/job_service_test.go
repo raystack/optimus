@@ -3812,6 +3812,12 @@ func (_m *JobRepository) UpdateState(ctx context.Context, jobTenant tenant.Tenan
 	return ret.Error(0)
 }
 
+// SyncState provides a mock function with given fields: ctx, jobTenant, disabledJobs, enabledJobs
+func (_m *JobRepository) SyncState(ctx context.Context, jobTenant tenant.Tenant, disabledJobNames, enabledJobNames []job.Name) error {
+	ret := _m.Called(ctx, jobTenant, disabledJobNames, enabledJobNames)
+	return ret.Error(0)
+}
+
 // GetAllByProjectName provides a mock function with given fields: ctx, projectName
 func (_m *JobRepository) GetAllByProjectName(ctx context.Context, projectName tenant.ProjectName) ([]*job.Job, error) {
 	ret := _m.Called(ctx, projectName)

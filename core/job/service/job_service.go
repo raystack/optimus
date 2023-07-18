@@ -89,6 +89,7 @@ type JobRepository interface {
 	GetAllByResourceDestination(ctx context.Context, resourceDestination job.ResourceURN) ([]*job.Job, error)
 	GetAllByTenant(ctx context.Context, jobTenant tenant.Tenant) ([]*job.Job, error)
 	GetAllByProjectName(ctx context.Context, projectName tenant.ProjectName) ([]*job.Job, error)
+	SyncState(ctx context.Context, jobTenant tenant.Tenant, disabledJobNames, enabledJobNames []job.Name) error
 	UpdateState(ctx context.Context, jobTenant tenant.Tenant, jobNames []job.Name, jobState job.State, remark string) error
 }
 
@@ -216,6 +217,10 @@ func (j *JobService) UpdateState(ctx context.Context, jobTenant tenant.Tenant, j
 		j.raiseStateChangeEvent(jobTenant, jobName, jobState)
 	}
 	return nil
+}
+
+func (j *JobService) SyncState(ctx context.Context, jobTenant tenant.Tenant, disabledJobNames, enabledJobNames []job.Name) error {
+	return j.jobRepo.SyncState(ctx, jobTenant, disabledJobNames, enabledJobNames)
 }
 
 func (j *JobService) Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag, forceFlag bool) (affectedDownstream []job.FullName, err error) {

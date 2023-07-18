@@ -107,9 +107,9 @@ func (j JobRepository) Update(ctx context.Context, jobs []*job.Job) ([]*job.Job,
 
 func (j JobRepository) UpdateState(ctx context.Context, jobTenant tenant.Tenant, jobNames []job.Name, jobState job.State, remark string) error {
 	updateJobStateQuery := `
-UPDATE job SET state = $1, remark = $2
-WHERE project_name = $4 AND namespace_name = $5 AND name = any ($3)
-;`
+UPDATE job SET state = $1, remark = $2, updated_at = NOW()
+WHERE project_name = $4 AND namespace_name = $5 AND name = any ($3);`
+
 	tag, err := j.db.Exec(ctx, updateJobStateQuery, jobState, remark, jobNames, jobTenant.ProjectName(), jobTenant.NamespaceName())
 	if err != nil {
 		return errors.Wrap(job.EntityJob, "error during job state update", err)
@@ -117,6 +117,31 @@ WHERE project_name = $4 AND namespace_name = $5 AND name = any ($3)
 	if tag.RowsAffected() != int64(len(jobNames)) {
 		return errors.NewError(errors.ErrNotFound, job.EntityJob, "failed to update state of all of the selected job in DB")
 	}
+	return nil
+}
+
+func (j JobRepository) SyncState(ctx context.Context, jobTenant tenant.Tenant, disabledJobNames, enabledJobNames []job.Name) error {
+	tx, err := j.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	updateJobStateQuery := `
+UPDATE job SET state = $1
+WHERE project_name = $2 AND namespace_name = $3 AND name = any ($4);`
+
+	_, err = tx.Exec(ctx, updateJobStateQuery, job.ENABLED, jobTenant.ProjectName(), jobTenant.NamespaceName(), enabledJobNames)
+	if err != nil {
+		tx.Rollback(ctx)
+		return errors.Wrap(job.EntityJob, "error during job state enable sync", err)
+	}
+
+	_, err = j.db.Exec(ctx, updateJobStateQuery, job.DISABLED, jobTenant.ProjectName(), jobTenant.NamespaceName(), disabledJobNames)
+	if err != nil {
+		tx.Rollback(ctx)
+		return errors.Wrap(job.EntityJob, "error during job state disable sync", err)
+	}
+
+	tx.Commit(ctx)
 	return nil
 }
 
