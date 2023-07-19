@@ -21,12 +21,12 @@ builds:
     env:
       - CGO_ENABLED=0
 archives:
-  - name_template: "{{ .ProjectName }}_latest_{{ .Os }}_{{ .Arch }}"
-    replacements:
-      darwin: macos
-      linux: linux
-      windows: windows
-      amd64: x86_64
+  - name_template: >-
+      {{ .ProjectName }}_latest_
+      {{- if eq .Os "darwin" }}macos
+      {{- else }}{{ .Os }}{{ end }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
     format_overrides:
       - goos: windows
         format: zip
