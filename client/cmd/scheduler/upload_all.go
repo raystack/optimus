@@ -1,16 +1,17 @@
 package scheduler
 
 import (
+	"context"
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/internal/connectivity"
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/config"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/client/cmd/internal/connection"
+	"github.com/raystack/optimus/client/cmd/internal/logger"
+	"github.com/raystack/optimus/config"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 const (
@@ -18,7 +19,9 @@ const (
 )
 
 type uploadCommand struct {
-	logger       log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	clientConfig *config.ClientConfig
 
 	configFilePath string
@@ -52,24 +55,25 @@ func (u *uploadCommand) PreRunE(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
+	u.connection = connection.New(u.logger, u.clientConfig)
 	u.logger.Info("initialization finished!\n")
 	return err
 }
 
 func (u *uploadCommand) RunE(_ *cobra.Command, _ []string) error {
 	u.logger.Info("Uploading jobs for project " + u.clientConfig.Project.Name)
-	u.logger.Info("please wait...")
 
 	_, err := u.sendUploadAllRequest(u.clientConfig.Project.Name)
-	u.logger.Info("Finished uploading to scheduler")
 	if err != nil {
-		u.logger.Error("With %v", err.Error())
+		u.logger.Error("Error: %v", err.Error())
+		return err
 	}
+	u.logger.Info("Triggered upload to scheduler, changes will be reflected in scheduler after a few minutes")
 	return nil
 }
 
 func (u *uploadCommand) sendUploadAllRequest(projectName string) (*pb.UploadToSchedulerResponse, error) {
-	conn, err := connectivity.NewConnectivity(u.clientConfig.Host, uploadTimeout)
+	conn, err := u.connection.Create(u.clientConfig.Host)
 	if err != nil {
 		return nil, err
 	}
@@ -78,6 +82,10 @@ func (u *uploadCommand) sendUploadAllRequest(projectName string) (*pb.UploadToSc
 	request := &pb.UploadToSchedulerRequest{
 		ProjectName: projectName,
 	}
-	jobRunServiceClient := pb.NewJobRunServiceClient(conn.GetConnection())
-	return jobRunServiceClient.UploadToScheduler(conn.GetContext(), request)
+	jobRunServiceClient := pb.NewJobRunServiceClient(conn)
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), uploadTimeout)
+	defer cancelFunc()
+
+	return jobRunServiceClient.UploadToScheduler(ctx, request)
 }

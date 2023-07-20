@@ -1,8 +1,8 @@
 package dag
 
 import (
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/tenant"
+	"github.com/raystack/optimus/core/scheduler"
+	"github.com/raystack/optimus/core/tenant"
 )
 
 type Upstreams struct {

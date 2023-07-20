@@ -5,10 +5,10 @@ import (
 	"path"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/internal/utils"
+	"github.com/raystack/optimus/config"
+	"github.com/raystack/optimus/internal/utils"
 )
 
 // InititalizeSurvey defines surveys related to init client config

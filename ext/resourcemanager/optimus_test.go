@@ -9,10 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/ext/resourcemanager"
+	"github.com/raystack/optimus/config"
+	"github.com/raystack/optimus/core/job"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/ext/resourcemanager"
 )
 
 type OptimusResourceManager struct {

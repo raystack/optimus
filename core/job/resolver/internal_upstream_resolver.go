@@ -5,9 +5,9 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/raystack/optimus/core/job"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/errors"
 )
 
 type internalUpstreamResolver struct {
@@ -49,7 +49,7 @@ func (i internalUpstreamResolver) Resolve(ctx context.Context, jobWithUnresolved
 	}
 
 	distinctUpstreams := job.Upstreams(upstreamResults).Deduplicate()
-	return job.NewWithUpstream(jobWithUnresolvedUpstream.Job(), distinctUpstreams), errors.MultiToError(me)
+	return job.NewWithUpstream(jobWithUnresolvedUpstream.Job(), distinctUpstreams), me.ToErr()
 }
 
 func (i internalUpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.ProjectName, jobsWithUnresolvedUpstream []*job.WithUpstream) ([]*job.WithUpstream, error) {
@@ -77,7 +77,7 @@ func (i internalUpstreamResolver) resolveInferredUpstream(ctx context.Context, s
 		upstream := job.NewUpstreamResolved(jobUpstreams[0].Spec().Name(), "", jobUpstreams[0].Destination(), jobUpstreams[0].Tenant(), job.UpstreamTypeInferred, jobUpstreams[0].Spec().Task().Name(), false)
 		internalUpstream = append(internalUpstream, upstream)
 	}
-	return internalUpstream, errors.MultiToError(me)
+	return internalUpstream, me.ToErr()
 }
 
 func (i internalUpstreamResolver) resolveStaticUpstream(ctx context.Context, projectName tenant.ProjectName, upstreamSpec *job.UpstreamSpec) ([]*job.Upstream, error) {
@@ -97,5 +97,5 @@ func (i internalUpstreamResolver) resolveStaticUpstream(ctx context.Context, pro
 		upstream := job.NewUpstreamResolved(upstreamJobName, "", jobUpstream.Destination(), jobUpstream.Tenant(), job.UpstreamTypeStatic, jobUpstream.Spec().Task().Name(), false)
 		internalUpstream = append(internalUpstream, upstream)
 	}
-	return internalUpstream, errors.MultiToError(me)
+	return internalUpstream, me.ToErr()
 }

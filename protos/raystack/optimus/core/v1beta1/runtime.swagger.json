@@ -1,0 +1,101 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "raystack/optimus/core/v1beta1/runtime.proto",
+    "version": "0.1"
+  },
+  "tags": [
+    {
+      "name": "RuntimeService"
+    }
+  ],
+  "host": "127.0.0.1:9100",
+  "basePath": "/api",
+  "schemes": ["http"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "paths": {
+    "/v1beta1/version": {
+      "post": {
+        "summary": "server ping with version",
+        "operationId": "RuntimeService_Version",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1VersionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1beta1VersionRequest"
+            }
+          }
+        ],
+        "tags": ["RuntimeService"]
+      }
+    }
+  },
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "typeUrl": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1beta1VersionRequest": {
+      "type": "object",
+      "properties": {
+        "client": {
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1VersionResponse": {
+      "type": "object",
+      "properties": {
+        "server": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "externalDocs": {
+    "description": "Optimus Runtime Service"
+  }
+}

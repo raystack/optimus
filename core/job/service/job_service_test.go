@@ -3,20 +3,22 @@ package service_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/service"
-	"github.com/odpf/optimus/core/job/service/filter"
-	"github.com/odpf/optimus/core/tenant"
-	optErrors "github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/models"
-	"github.com/odpf/optimus/internal/writer"
-	"github.com/odpf/optimus/sdk/plugin"
+	"github.com/raystack/optimus/core/event/moderator"
+	"github.com/raystack/optimus/core/job"
+	"github.com/raystack/optimus/core/job/service"
+	"github.com/raystack/optimus/core/job/service/filter"
+	"github.com/raystack/optimus/core/tenant"
+	optErrors "github.com/raystack/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/models"
+	"github.com/raystack/optimus/internal/writer"
+	"github.com/raystack/optimus/sdk/plugin"
 )
 
 func TestJobService(t *testing.T) {
@@ -59,12 +61,19 @@ func TestJobService(t *testing.T) {
 
 	log := log.NewNoop()
 
-	var jobNamesWithValidationError []job.Name
+	var jobNamesWithInvalidSpec []job.Name
+	var emptyJobNames []string
 
 	t.Run("Add", func(t *testing.T) {
 		t.Run("add jobs", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -74,6 +83,11 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			specs := []*job.Spec{specA}
@@ -94,15 +108,26 @@ func TestJobService(t *testing.T) {
 			jobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstream})
 			upstreamResolver.On("BulkResolve", ctx, project.Name(), jobs, mock.Anything).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobNamesToUpload := []string{jobA.GetName()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, emptyJobNames).Return(nil)
+
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
 			err := jobService.Add(ctx, sampleTenant, specs)
 			assert.NoError(t, err)
 		})
 		t.Run("return error if unable to get detailed tenant", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -118,13 +143,19 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(&tenant.WithDetails{}, errors.New("internal error"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 			err := jobService.Add(ctx, sampleTenant, specs)
 			assert.ErrorContains(t, err, "internal error")
 		})
 		t.Run("skip job that has issue when generating destination and return error", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -134,6 +165,11 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
@@ -161,15 +197,26 @@ func TestJobService(t *testing.T) {
 			jobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstream})
 			upstreamResolver.On("BulkResolve", ctx, project.Name(), jobs, mock.Anything).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobNamesToUpload := []string{jobA.GetName()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, emptyJobNames).Return(nil)
+
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
 			err := jobService.Add(ctx, sampleTenant, specs)
 			assert.ErrorContains(t, err, "generate upstream error")
 		})
 		t.Run("return error when all jobs failed to have destination and upstream generated", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -188,7 +235,7 @@ func TestJobService(t *testing.T) {
 
 			upstreamResolver.On("BulkResolve", ctx, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
@@ -199,13 +246,19 @@ func TestJobService(t *testing.T) {
 
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, mock.Anything, true).Return(nil, errors.New("generate upstream error"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 			err := jobService.Add(ctx, sampleTenant, specs)
 			assert.ErrorContains(t, err, "generate upstream error")
 		})
 		t.Run("should not skip nor return error if jobs does not have upstream mod and encounter issue on generate destination/upstream", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -215,6 +268,11 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			specs := []*job.Spec{specA}
@@ -232,15 +290,26 @@ func TestJobService(t *testing.T) {
 			jobWithUpstream := job.NewWithUpstream(jobA, nil)
 			upstreamResolver.On("BulkResolve", ctx, project.Name(), jobs, mock.Anything).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobNamesToUpload := []string{jobA.GetName()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, emptyJobNames).Return(nil)
+
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
 			err := jobService.Add(ctx, sampleTenant, specs)
 			assert.NoError(t, err)
 		})
 		t.Run("should skip and not return error if one of the job is failed to be inserted to db", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -250,6 +319,11 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
@@ -268,20 +342,31 @@ func TestJobService(t *testing.T) {
 
 			jobB := job.NewJob(sampleTenant, specB, "", nil)
 			savedJobs := []*job.Job{jobB}
-			jobRepo.On("Add", ctx, mock.Anything).Return(savedJobs, errors.New("unable to save job A"), nil)
+			jobRepo.On("Add", ctx, mock.Anything).Return(savedJobs, errors.New("unable to save job A"))
 
 			jobWithUpstreamB := job.NewWithUpstream(jobB, nil)
 			upstreamResolver.On("BulkResolve", ctx, project.Name(), savedJobs, mock.Anything).Return([]*job.WithUpstream{jobWithUpstreamB}, nil, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobNamesToUpload := []string{jobB.GetName()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, emptyJobNames).Return(nil)
+
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
 			err := jobService.Add(ctx, sampleTenant, specs)
 			assert.ErrorContains(t, err, "unable to save job A")
 		})
 		t.Run("return error when all jobs failed to be inserted to db", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -299,7 +384,7 @@ func TestJobService(t *testing.T) {
 
 			upstreamResolver.On("BulkResolve", ctx, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
 
 			resourceA := job.ResourceURN("resource-A")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
@@ -309,13 +394,19 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("Add", ctx, mock.Anything).Return([]*job.Job{}, errors.New("unable to save job A"), errors.New("all jobs failed"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 			err := jobService.Add(ctx, sampleTenant, specs)
 			assert.ErrorContains(t, err, "unable to save job A")
 		})
 		t.Run("should return error if failed to save upstream", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -325,6 +416,11 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			specs := []*job.Spec{specA}
@@ -345,17 +441,26 @@ func TestJobService(t *testing.T) {
 			jobWithUpstreamA := job.NewWithUpstream(jobA, nil)
 			upstreamResolver.On("BulkResolve", ctx, project.Name(), jobs, mock.Anything).Return([]*job.WithUpstream{jobWithUpstreamA}, nil, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(errors.New("internal error"))
+			upstreamRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(errors.New("internal error"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobNamesToUpload := []string{jobA.GetName()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, emptyJobNames).Return(nil)
+
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
 			err := jobService.Add(ctx, sampleTenant, specs)
 			assert.Error(t, err)
 		})
-	})
-	t.Run("Update", func(t *testing.T) {
-		t.Run("update jobs", func(t *testing.T) {
+		t.Run("return error if encounter issue when uploading jobs", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -365,6 +470,67 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
+
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			specs := []*job.Spec{specA}
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			jobADestination := job.ResourceURN("resource-A")
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil)
+
+			jobAUpstreamName := []job.ResourceURN{"job-B"}
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobAUpstreamName, nil)
+
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreamName)
+			jobs := []*job.Job{jobA}
+			jobRepo.On("Add", ctx, mock.Anything).Return(jobs, nil, nil)
+
+			upstream := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static", taskName, false)
+			jobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstream})
+			upstreamResolver.On("BulkResolve", ctx, project.Name(), jobs, mock.Anything).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
+
+			upstreamRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
+
+			errorMsg := "internal error"
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, mock.Anything, emptyJobNames).Return(errors.New(errorMsg))
+
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
+			err := jobService.Add(ctx, sampleTenant, specs)
+			assert.ErrorContains(t, err, errorMsg)
+		})
+	})
+	t.Run("Update", func(t *testing.T) {
+		t.Run("update jobs", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			specs := []*job.Spec{specA}
@@ -385,15 +551,26 @@ func TestJobService(t *testing.T) {
 			jobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstream})
 			upstreamResolver.On("BulkResolve", ctx, project.Name(), jobs, mock.Anything).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobNamesToUpload := []string{jobA.GetName()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, emptyJobNames).Return(nil)
+
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
 			err := jobService.Update(ctx, sampleTenant, specs)
 			assert.NoError(t, err)
 		})
 		t.Run("return error if unable to get detailed tenant", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -409,13 +586,19 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(&tenant.WithDetails{}, errors.New("internal error"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 			err := jobService.Update(ctx, sampleTenant, specs)
 			assert.ErrorContains(t, err, "internal error")
 		})
 		t.Run("skip job that has issue when generating destination and return error", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -425,6 +608,11 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
@@ -452,15 +640,26 @@ func TestJobService(t *testing.T) {
 			jobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstream})
 			upstreamResolver.On("BulkResolve", ctx, project.Name(), jobs, mock.Anything).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobNamesToUpload := []string{jobA.GetName()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, emptyJobNames).Return(nil)
+
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
 			err := jobService.Update(ctx, sampleTenant, specs)
 			assert.ErrorContains(t, err, "generate upstream error")
 		})
 		t.Run("return error when all jobs failed to have destination and upstream generated", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -479,7 +678,7 @@ func TestJobService(t *testing.T) {
 
 			upstreamResolver.On("BulkResolve", ctx, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
@@ -490,13 +689,19 @@ func TestJobService(t *testing.T) {
 
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, mock.Anything, true).Return(nil, errors.New("generate upstream error"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 			err := jobService.Update(ctx, sampleTenant, specs)
 			assert.ErrorContains(t, err, "generate upstream error")
 		})
 		t.Run("should not skip nor return error if jobs does not have upstream mod and encounter issue on generate destination/upstream", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -506,6 +711,11 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			specs := []*job.Spec{specA}
@@ -523,15 +733,26 @@ func TestJobService(t *testing.T) {
 			jobWithUpstream := job.NewWithUpstream(jobA, nil)
 			upstreamResolver.On("BulkResolve", ctx, project.Name(), jobs, mock.Anything).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobNamesToUpload := []string{jobA.GetName()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, emptyJobNames).Return(nil)
+
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
 			err := jobService.Update(ctx, sampleTenant, specs)
 			assert.NoError(t, err)
 		})
 		t.Run("should skip and not return error if one of the job is failed to be updated to db", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -541,6 +762,11 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
@@ -564,15 +790,26 @@ func TestJobService(t *testing.T) {
 			jobWithUpstreamB := job.NewWithUpstream(jobB, nil)
 			upstreamResolver.On("BulkResolve", ctx, project.Name(), savedJobs, mock.Anything).Return([]*job.WithUpstream{jobWithUpstreamB}, nil, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobNamesToUpload := []string{jobB.GetName()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, emptyJobNames).Return(nil)
+
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
 			err := jobService.Update(ctx, sampleTenant, specs)
 			assert.ErrorContains(t, err, "unable to save job A")
 		})
 		t.Run("return error when all jobs failed to be updated to db", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -590,7 +827,7 @@ func TestJobService(t *testing.T) {
 
 			upstreamResolver.On("BulkResolve", ctx, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(nil)
 
 			resourceA := job.ResourceURN("resource-A")
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(resourceA, nil).Once()
@@ -600,13 +837,19 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("Update", ctx, mock.Anything).Return([]*job.Job{}, errors.New("unable to update job A"), errors.New("all jobs failed"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 			err := jobService.Update(ctx, sampleTenant, specs)
 			assert.ErrorContains(t, err, "unable to update job A")
 		})
 		t.Run("should return error if failed to save upstream", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -616,6 +859,11 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			specs := []*job.Spec{specA}
@@ -635,31 +883,201 @@ func TestJobService(t *testing.T) {
 			jobWithUpstreamA := job.NewWithUpstream(jobA, nil)
 			upstreamResolver.On("BulkResolve", ctx, project.Name(), jobs, mock.Anything).Return([]*job.WithUpstream{jobWithUpstreamA}, nil, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(errors.New("internal error"))
+			upstreamRepo.On("ReplaceUpstreams", ctx, mock.Anything).Return(errors.New("internal error"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobNamesToUpload := []string{jobA.GetName()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, emptyJobNames).Return(nil)
+
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
 			err := jobService.Update(ctx, sampleTenant, specs)
 			assert.Error(t, err)
 		})
+		t.Run("return error if encounter issue when uploading jobs", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
+
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			specs := []*job.Spec{specA}
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			jobADestination := job.ResourceURN("resource-A")
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil)
+
+			jobAUpstreamName := []job.ResourceURN{"job-B"}
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobAUpstreamName, nil)
+
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreamName)
+			jobs := []*job.Job{jobA}
+			jobRepo.On("Update", ctx, mock.Anything).Return(jobs, nil, nil)
+
+			upstream := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static", taskName, false)
+			jobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstream})
+			upstreamResolver.On("BulkResolve", ctx, project.Name(), jobs, mock.Anything).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
+
+			upstreamRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
+
+			errorMsg := "internal error"
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, mock.Anything, emptyJobNames).Return(errors.New(errorMsg))
+
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
+			err := jobService.Update(ctx, sampleTenant, specs)
+			assert.ErrorContains(t, err, errorMsg)
+		})
 	})
+
+	t.Run("ChangeNamespace", func(t *testing.T) {
+		newNamespaceName := "newNamespace"
+		newTenant, _ := tenant.NewTenant(project.Name().String(), newNamespaceName)
+		specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+		jobA := job.NewJob(newTenant, specA, "table-A", []job.ResourceURN{"table-B"})
+		t.Run("should fail if error in repo", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			jobRepo.On("ChangeJobNamespace", ctx, specA.Name(), sampleTenant, newTenant).Return(errors.New("error in transaction"))
+			defer jobRepo.AssertExpectations(t)
+
+			jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+			err := jobService.ChangeNamespace(ctx, sampleTenant, newTenant, specA.Name())
+			assert.ErrorContains(t, err, "error in transaction")
+		})
+
+		t.Run("should fail if error getting newly created job", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			jobRepo.On("ChangeJobNamespace", ctx, specA.Name(), sampleTenant, newTenant).Return(nil)
+			jobRepo.On("GetByJobName", ctx, project.Name(), specA.Name()).Return(nil, errors.New("error in fetching job from DB"))
+			defer jobRepo.AssertExpectations(t)
+
+			jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+			err := jobService.ChangeNamespace(ctx, sampleTenant, newTenant, specA.Name())
+			assert.ErrorContains(t, err, "error in fetching job from DB")
+		})
+
+		t.Run("should fail if error in upload job", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			jobRepo.On("ChangeJobNamespace", ctx, specA.Name(), sampleTenant, newTenant).Return(nil)
+			jobRepo.On("GetByJobName", ctx, project.Name(), specA.Name()).Return(jobA, nil)
+			defer jobRepo.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			jobModified := []string{specA.Name().String()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, emptyJobNames, jobModified).Return(errors.New("error in upload jobs"))
+			defer jobDeploymentService.AssertExpectations(t)
+
+			jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, nil, jobDeploymentService, nil)
+			err := jobService.ChangeNamespace(ctx, sampleTenant, newTenant, specA.Name())
+			assert.ErrorContains(t, err, "error in upload jobs")
+		})
+
+		t.Run("should fail if error in upload new job", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			jobRepo.On("ChangeJobNamespace", ctx, specA.Name(), sampleTenant, newTenant).Return(nil)
+			jobRepo.On("GetByJobName", ctx, project.Name(), specA.Name()).Return(jobA, nil)
+			defer jobRepo.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			jobModified := []string{specA.Name().String()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, emptyJobNames, jobModified).Return(nil)
+			jobDeploymentService.On("UploadJobs", ctx, newTenant, jobModified, emptyJobNames).Return(errors.New("error in upload new job"))
+			defer jobDeploymentService.AssertExpectations(t)
+
+			jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, nil, jobDeploymentService, nil)
+
+			err := jobService.ChangeNamespace(ctx, sampleTenant, newTenant, specA.Name())
+			assert.ErrorContains(t, err, "error in upload new job")
+		})
+
+		t.Run("successfully", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			jobRepo.On("ChangeJobNamespace", ctx, specA.Name(), sampleTenant, newTenant).Return(nil)
+			jobRepo.On("GetByJobName", ctx, project.Name(), specA.Name()).Return(jobA, nil)
+			defer jobRepo.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			jobModified := []string{specA.Name().String()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, emptyJobNames, jobModified).Return(nil)
+			jobDeploymentService.On("UploadJobs", ctx, newTenant, jobModified, emptyJobNames).Return(nil)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
+			defer eventHandler.AssertExpectations(t)
+
+			jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, eventHandler, nil, jobDeploymentService, nil)
+			err := jobService.ChangeNamespace(ctx, sampleTenant, newTenant, specA.Name())
+			assert.NoError(t, err)
+		})
+	})
+
 	t.Run("Delete", func(t *testing.T) {
 		t.Run("deletes job without downstream", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
+
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 
-			jobRepo.On("GetDownstreamByJobName", ctx, project.Name(), specA.Name()).Return(nil, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specA.Name()).Return(nil, nil)
 			jobRepo.On("Delete", ctx, project.Name(), specA.Name(), false).Return(nil)
 
-			jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+			jobNamesToRemove := []string{specA.Name().String()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, emptyJobNames, jobNamesToRemove).Return(nil)
+
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, nil, nil, nil, eventHandler, log, jobDeploymentService, nil)
 			affectedDownstream, err := jobService.Delete(ctx, sampleTenant, specA.Name(), false, false)
 			assert.NoError(t, err)
 			assert.Empty(t, affectedDownstream)
 		})
+
 		t.Run("deletes job with downstream if it is a force delete", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 
@@ -669,10 +1087,15 @@ func TestJobService(t *testing.T) {
 				job.NewDownstream("job-C", project.Name(), namespace.Name(), taskName),
 			}
 
-			jobRepo.On("GetDownstreamByJobName", ctx, project.Name(), specA.Name()).Return(downstreamList, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specA.Name()).Return(downstreamList, nil)
 			jobRepo.On("Delete", ctx, project.Name(), specA.Name(), false).Return(nil)
 
-			jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+			jobNamesToRemove := []string{specA.Name().String()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, emptyJobNames, jobNamesToRemove).Return(nil)
+
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, nil, nil, nil, eventHandler, log, jobDeploymentService, nil)
+
 			affectedDownstream, err := jobService.Delete(ctx, sampleTenant, specA.Name(), false, true)
 			assert.NoError(t, err)
 			assert.EqualValues(t, downstreamFullNames, affectedDownstream)
@@ -681,15 +1104,21 @@ func TestJobService(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 
 			downstreamList := []*job.Downstream{
 				job.NewDownstream("job-B", project.Name(), namespace.Name(), taskName),
 				job.NewDownstream("job-C", project.Name(), namespace.Name(), taskName),
 			}
-			jobRepo.On("GetDownstreamByJobName", ctx, project.Name(), specA.Name()).Return(downstreamList, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specA.Name()).Return(downstreamList, nil)
 
-			jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, nil, nil, nil, nil, log, nil, nil)
 			affectedDownstream, err := jobService.Delete(ctx, sampleTenant, specA.Name(), false, false)
 			assert.Error(t, err)
 			assert.Empty(t, affectedDownstream)
@@ -698,11 +1127,18 @@ func TestJobService(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 
-			jobRepo.On("GetDownstreamByJobName", ctx, project.Name(), specA.Name()).Return(nil, errors.New("internal error"))
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specA.Name()).Return(nil, errors.New("internal error"))
 
-			jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, nil, nil, nil, nil, log, nil, nil)
+
 			affectedDownstream, err := jobService.Delete(ctx, sampleTenant, specA.Name(), false, false)
 			assert.Error(t, err)
 			assert.Empty(t, affectedDownstream)
@@ -711,14 +1147,48 @@ func TestJobService(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 
-			jobRepo.On("GetDownstreamByJobName", ctx, project.Name(), specA.Name()).Return(nil, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specA.Name()).Return(nil, nil)
 			jobRepo.On("Delete", ctx, project.Name(), specA.Name(), false).Return(errors.New("internal error"))
 
-			jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, nil, nil, nil, nil, log, nil, nil)
 			affectedDownstream, err := jobService.Delete(ctx, sampleTenant, specA.Name(), false, false)
 			assert.Error(t, err)
+			assert.Empty(t, affectedDownstream)
+		})
+		t.Run("return error if encounter issue when removing jobs from scheduler", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
+
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specA.Name()).Return(nil, nil)
+			jobRepo.On("Delete", ctx, project.Name(), specA.Name(), false).Return(nil)
+
+			errorMsg := "internal error"
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, emptyJobNames, mock.Anything).Return(errors.New(errorMsg))
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, nil, nil, nil, eventHandler, log, jobDeploymentService, nil)
+			affectedDownstream, err := jobService.Delete(ctx, sampleTenant, specA.Name(), false, false)
+			assert.ErrorContains(t, err, errorMsg)
 			assert.Empty(t, affectedDownstream)
 		})
 	})
@@ -726,6 +1196,12 @@ func TestJobService(t *testing.T) {
 		t.Run("adds new jobs that does not exist yet", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -738,6 +1214,11 @@ func TestJobService(t *testing.T) {
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
@@ -765,17 +1246,28 @@ func TestJobService(t *testing.T) {
 			jobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstream})
 			upstreamResolver.On("BulkResolve", ctx, project.Name(), []*job.Job{jobA}, mock.Anything).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
+			jobNamesToUpload := []string{jobA.GetName()}
+			var jobNamesToRemove []string
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, jobNamesToRemove).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithInvalidSpec, logWriter)
 			assert.NoError(t, err)
 		})
 		t.Run("updates modified existing jobs", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -788,6 +1280,11 @@ func TestJobService(t *testing.T) {
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
@@ -809,23 +1306,34 @@ func TestJobService(t *testing.T) {
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobAUpstreamName, nil)
 
 			jobRepo.On("Update", ctx, mock.Anything).Return([]*job.Job{jobA}, nil)
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
 
 			upstream := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static", taskName, false)
 
 			jobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstream})
 			upstreamResolver.On("BulkResolve", ctx, project.Name(), []*job.Job{jobA}, mock.Anything).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
+			jobNamesToUpload := []string{jobA.GetName()}
+			var jobNamesToRemove []string
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, jobNamesToRemove).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithInvalidSpec, logWriter)
 			assert.NoError(t, err)
 		})
 		t.Run("deletes the removed jobs", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -838,6 +1346,11 @@ func TestJobService(t *testing.T) {
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
@@ -853,18 +1366,29 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
 
-			jobRepo.On("GetDownstreamByJobName", ctx, project.Name(), specB.Name()).Return(nil, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specB.Name()).Return(nil, nil)
 			jobRepo.On("Delete", ctx, project.Name(), specB.Name(), false).Return(nil)
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
+			var jobNamesToUpload []string
+			jobNamesToRemove := []string{specB.Name().String()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, jobNamesToRemove).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithInvalidSpec, logWriter)
 			assert.NoError(t, err)
 		})
-		t.Run("adds, updates, and deletes jobs in a request", func(t *testing.T) {
+		t.Run("deletes the jobs which the downstreams are also be deleted", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -877,6 +1401,77 @@ func TestJobService(t *testing.T) {
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			specC, _ := job.NewSpecBuilder(jobVersion, "job-C", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			specD, _ := job.NewSpecBuilder(jobVersion, "job-D", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			jobA := job.NewJob(sampleTenant, specA, "", nil)
+			jobB := job.NewJob(sampleTenant, specB, "", nil)
+			jobC := job.NewJob(sampleTenant, specC, "", nil)
+			jobD := job.NewJob(sampleTenant, specD, "", nil)
+
+			incomingSpecs := []*job.Spec{}
+
+			existingSpecs := []*job.Job{jobA, jobB, jobC, jobD}
+
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
+
+			downstreamA := []*job.Downstream{
+				job.NewDownstream("job-B", project.Name(), namespace.Name(), taskName),
+				job.NewDownstream("job-D", project.Name(), namespace.Name(), taskName),
+			}
+			downstreamB := []*job.Downstream{
+				job.NewDownstream("job-C", project.Name(), namespace.Name(), taskName),
+			}
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specA.Name()).Return(downstreamA, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specB.Name()).Return(downstreamB, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specC.Name()).Return(nil, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specD.Name()).Return(nil, nil)
+			jobRepo.On("Delete", ctx, project.Name(), mock.Anything, false).Return(nil)
+			eventHandler.On("HandleEvent", mock.Anything).Times(4)
+
+			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, mock.Anything, mock.Anything).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithInvalidSpec, logWriter)
+			assert.NoError(t, err)
+		})
+		t.Run("adds, updates, and deletes jobs in a request", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			logWriter := new(mockWriter)
+			defer logWriter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
@@ -910,24 +1505,35 @@ func TestJobService(t *testing.T) {
 			jobB := job.NewJob(sampleTenant, specB, "", nil)
 			jobRepo.On("Update", ctx, mock.Anything).Return([]*job.Job{jobB}, nil)
 
-			jobRepo.On("GetDownstreamByJobName", ctx, project.Name(), existingSpecC.Name()).Return(nil, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), existingSpecC.Name()).Return(nil, nil)
 			jobRepo.On("Delete", ctx, project.Name(), existingSpecC.Name(), false).Return(nil)
 
 			upstream := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static", taskName, false)
 			jobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstream})
 			upstreamResolver.On("BulkResolve", ctx, project.Name(), []*job.Job{jobA, jobB}, mock.Anything).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+			eventHandler.On("HandleEvent", mock.Anything).Times(3)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
+			jobNamesToUpload := []string{jobA.GetName(), jobB.GetName()}
+			jobNamesToRemove := []string{existingJobC.GetName()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, jobNamesToRemove).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithInvalidSpec, logWriter)
 			assert.NoError(t, err)
 		})
 		t.Run("skips invalid job when classifying specs as added, modified, or deleted", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -940,6 +1546,11 @@ func TestJobService(t *testing.T) {
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
@@ -975,24 +1586,35 @@ func TestJobService(t *testing.T) {
 			jobB := job.NewJob(sampleTenant, specB, "", nil)
 			jobRepo.On("Update", ctx, mock.Anything).Return([]*job.Job{jobB}, nil)
 
-			jobRepo.On("GetDownstreamByJobName", ctx, project.Name(), existingSpecC.Name()).Return(nil, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), existingSpecC.Name()).Return(nil, nil)
 			jobRepo.On("Delete", ctx, project.Name(), existingSpecC.Name(), false).Return(nil)
 
 			upstream := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static", taskName, false)
 			jobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstream})
 			upstreamResolver.On("BulkResolve", ctx, project.Name(), []*job.Job{jobA, jobB}, mock.Anything).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+			eventHandler.On("HandleEvent", mock.Anything).Times(3)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobNamesToUpload := []string{jobA.GetName(), jobB.GetName()}
+			jobNamesToRemove := []string{existingJobC.GetName()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, jobNamesToRemove).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
 			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, []job.Name{"job-D"}, logWriter)
 			assert.NoError(t, err)
 		})
 		t.Run("skips adding new invalid jobs", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -1005,6 +1627,11 @@ func TestJobService(t *testing.T) {
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
@@ -1020,18 +1647,29 @@ func TestJobService(t *testing.T) {
 			var specADestination job.ResourceURN
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(specADestination, errors.New("internal error")).Once()
 
-			jobRepo.On("GetDownstreamByJobName", ctx, project.Name(), existingSpecC.Name()).Return(nil, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), existingSpecC.Name()).Return(nil, nil)
 			jobRepo.On("Delete", ctx, project.Name(), existingSpecC.Name(), false).Return(nil)
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
+			var jobNamesToUpload []string
+			jobNamesToRemove := []string{existingJobC.GetName()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, jobNamesToRemove).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithInvalidSpec, logWriter)
 			assert.ErrorContains(t, err, "internal error")
 		})
 		t.Run("skips invalid modified jobs", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -1044,6 +1682,11 @@ func TestJobService(t *testing.T) {
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
@@ -1062,18 +1705,29 @@ func TestJobService(t *testing.T) {
 			var jobBDestination job.ResourceURN
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return(jobBDestination, errors.New("internal error")).Once()
 
-			jobRepo.On("GetDownstreamByJobName", ctx, project.Name(), existingSpecC.Name()).Return(nil, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), existingSpecC.Name()).Return(nil, nil)
 			jobRepo.On("Delete", ctx, project.Name(), existingSpecC.Name(), false).Return(nil)
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
+			var jobNamesToUpload []string
+			jobNamesToRemove := []string{existingJobC.GetName()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, jobNamesToRemove).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithInvalidSpec, logWriter)
 			assert.ErrorContains(t, err, "internal error")
 		})
-		t.Run("skips to delete jobs with downstream", func(t *testing.T) {
+		t.Run("skips to delete jobs if the downstream is not deleted", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -1087,16 +1741,24 @@ func TestJobService(t *testing.T) {
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
+
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
-			incomingSpecs := []*job.Spec{specA}
+			specE, _ := job.NewSpecBuilder(jobVersion, "job-E", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			incomingSpecs := []*job.Spec{specA, specE}
 
 			existingSpecC, _ := job.NewSpecBuilder(jobVersion, "job-C", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			existingJobC := job.NewJob(sampleTenant, existingSpecC, "", nil)
 			existingSpecD, _ := job.NewSpecBuilder(jobVersion, "job-D", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			existingJobD := job.NewJob(sampleTenant, existingSpecD, "", nil)
-			existingSpecs := []*job.Job{existingJobC, existingJobD}
+			existingSpecE, _ := job.NewSpecBuilder(jobVersion, "job-E", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			existingJobE := job.NewJob(sampleTenant, existingSpecE, "", nil)
+			existingSpecs := []*job.Job{existingJobC, existingJobD, existingJobE}
 
 			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
 
@@ -1110,28 +1772,40 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("Add", ctx, mock.Anything).Return([]*job.Job{jobA}, nil)
 
 			downstreamList := []*job.Downstream{
-				job.NewDownstream("sample-job-E", project.Name(), namespace.Name(), taskName),
+				job.NewDownstream("job-E", project.Name(), namespace.Name(), taskName),
 			}
 
-			jobRepo.On("GetDownstreamByJobName", ctx, project.Name(), existingSpecC.Name()).Return(downstreamList, nil)
-			jobRepo.On("GetDownstreamByJobName", ctx, project.Name(), existingSpecD.Name()).Return(nil, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), existingSpecC.Name()).Return(downstreamList, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), existingSpecD.Name()).Return(nil, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), existingSpecE.Name()).Return(nil, nil)
 			jobRepo.On("Delete", ctx, project.Name(), existingSpecD.Name(), false).Return(nil)
 
 			upstream := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static", taskName, false)
 			jobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstream})
 			upstreamResolver.On("BulkResolve", ctx, project.Name(), []*job.Job{jobA}, mock.Anything).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+			eventHandler.On("HandleEvent", mock.Anything).Times(2)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
+			jobNamesToUpload := []string{jobA.GetName()}
+			jobNamesToRemove := []string{existingJobD.GetName()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, jobNamesToRemove).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithInvalidSpec, logWriter)
 			assert.ErrorContains(t, err, "job is being used by")
 		})
 		t.Run("should not break process if one of job failed to be added", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -1144,6 +1818,11 @@ func TestJobService(t *testing.T) {
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
@@ -1173,17 +1852,28 @@ func TestJobService(t *testing.T) {
 			jobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstream})
 			upstreamResolver.On("BulkResolve", ctx, project.Name(), []*job.Job{jobA}, mock.Anything).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
+			jobNamesToUpload := []string{jobA.GetName()}
+			var jobNamesToRemove []string
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, jobNamesToRemove).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithInvalidSpec, logWriter)
 			assert.ErrorContains(t, err, "internal error")
 		})
 		t.Run("should not break process if one of job failed to be updated", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -1196,6 +1886,9 @@ func TestJobService(t *testing.T) {
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
@@ -1218,15 +1911,20 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("Update", ctx, mock.Anything).Return([]*job.Job{}, errors.New("internal error"))
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
-
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, jobDeploymentService, nil)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithInvalidSpec, logWriter)
 			assert.ErrorContains(t, err, "internal error")
 		})
 		t.Run("should not break process if one of job failed to be deleted", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
 
@@ -1238,6 +1936,9 @@ func TestJobService(t *testing.T) {
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
@@ -1253,19 +1954,25 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
 
-			jobRepo.On("GetDownstreamByJobName", ctx, project.Name(), specB.Name()).Return(nil, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specB.Name()).Return(nil, nil)
 			jobRepo.On("Delete", ctx, project.Name(), specB.Name(), false).Return(errors.New("internal error"))
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil).Times(3)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, jobDeploymentService, nil)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithInvalidSpec, logWriter)
 			assert.ErrorContains(t, err, "internal error")
 		})
 		t.Run("should not delete job if unable to check downstream of the job", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
 
@@ -1277,6 +1984,9 @@ func TestJobService(t *testing.T) {
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
 
@@ -1292,17 +2002,23 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
 
-			jobRepo.On("GetDownstreamByJobName", ctx, project.Name(), specB.Name()).Return(nil, errors.New("internal error"))
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specB.Name()).Return(nil, errors.New("internal error"))
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil).Twice()
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, jobDeploymentService, nil)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithInvalidSpec, logWriter)
 			assert.ErrorContains(t, err, "internal error")
 		})
-		t.Run("returns error if unable to get tenant details", func(t *testing.T) {
+		t.Run("should not delete job if one of its downstream is unable to delete", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -1315,6 +2031,78 @@ func TestJobService(t *testing.T) {
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			specC, _ := job.NewSpecBuilder(jobVersion, "job-C", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			specD, _ := job.NewSpecBuilder(jobVersion, "job-D", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			jobA := job.NewJob(sampleTenant, specA, "", nil)
+			jobB := job.NewJob(sampleTenant, specB, "", nil)
+			jobC := job.NewJob(sampleTenant, specC, "", nil)
+			jobD := job.NewJob(sampleTenant, specD, "", nil)
+
+			incomingSpecs := []*job.Spec{}
+
+			existingSpecs := []*job.Job{jobA, jobB, jobC, jobD}
+
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(existingSpecs, nil)
+
+			downstreamA := []*job.Downstream{
+				job.NewDownstream("job-B", project.Name(), namespace.Name(), taskName),
+				job.NewDownstream("job-D", project.Name(), namespace.Name(), taskName),
+			}
+			downstreamB := []*job.Downstream{
+				job.NewDownstream("job-C", project.Name(), namespace.Name(), taskName),
+			}
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specA.Name()).Return(downstreamA, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specB.Name()).Return(downstreamB, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specC.Name()).Return(nil, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specD.Name()).Return(nil, nil)
+			jobRepo.On("Delete", ctx, project.Name(), specC.Name(), false).Return(errors.New("db error"))
+			jobRepo.On("Delete", ctx, project.Name(), specD.Name(), false).Return(nil)
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
+
+			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+
+			var jobNamesToUpload []string
+			jobNamesToRemove := []string{specD.Name().String()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, jobNamesToRemove).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithInvalidSpec, logWriter)
+			assert.Error(t, err)
+		})
+		t.Run("returns error if unable to get tenant details", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			logWriter := new(mockWriter)
+			defer logWriter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
@@ -1330,16 +2118,20 @@ func TestJobService(t *testing.T) {
 			errorMsg := "project/namespace error"
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(nil, errors.New(errorMsg))
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
-			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithValidationError, logWriter)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, jobDeploymentService, nil)
+
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithInvalidSpec, logWriter)
 			assert.ErrorContains(t, err, errorMsg)
 		})
-	})
-
-	t.Run("Refresh", func(t *testing.T) {
-		t.Run("resolves and saves upstream for all existing jobs in the given tenant", func(t *testing.T) {
+		t.Run("returns error if encounter error when uploading/removing jobs", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -1352,6 +2144,79 @@ func TestJobService(t *testing.T) {
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			jobADestination := job.ResourceURN("resource-A")
+			jobAUpstreamName := []job.ResourceURN{"job-B"}
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobAUpstreamName)
+
+			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			jobB := job.NewJob(sampleTenant, specB, "", nil)
+
+			incomingSpecs := []*job.Spec{specA, specB}
+
+			existingJobs := []*job.Job{jobB}
+
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(existingJobs, nil)
+
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobAUpstreamName, nil)
+
+			jobRepo.On("Add", ctx, mock.Anything).Return([]*job.Job{jobA}, nil)
+
+			upstream := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static", taskName, false)
+
+			jobWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstream})
+			upstreamResolver.On("BulkResolve", ctx, project.Name(), []*job.Job{jobA}, mock.Anything).Return([]*job.WithUpstream{jobWithUpstream}, nil, nil)
+
+			upstreamRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobWithUpstream}).Return(nil)
+
+			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
+
+			errorMsg := "internal error"
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, mock.Anything, mock.Anything).Return(errors.New(errorMsg))
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
+			err := jobService.ReplaceAll(ctx, sampleTenant, incomingSpecs, jobNamesWithInvalidSpec, logWriter)
+			assert.ErrorContains(t, err, errorMsg)
+		})
+	})
+
+	t.Run("Refresh", func(t *testing.T) {
+		t.Run("resolves and saves upstream for all existing jobs in the given tenant", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			logWriter := new(mockWriter)
+			defer logWriter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			jobADestination := job.ResourceURN("resource-A")
@@ -1381,17 +2246,28 @@ func TestJobService(t *testing.T) {
 			jobBWithUpstream := job.NewWithUpstream(jobB, []*job.Upstream{upstreamC})
 			upstreamResolver.On("BulkResolve", ctx, project.Name(), []*job.Job{jobA, jobB}, mock.Anything).Return([]*job.WithUpstream{jobAWithUpstream, jobBWithUpstream}, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobAWithUpstream, jobBWithUpstream}).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobAWithUpstream, jobBWithUpstream}).Return(nil)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil).Times(3)
+			eventHandler.On("HandleEvent", mock.Anything).Times(2)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			var jobNamesToRemove []string
+			jobNamesToUpload := []string{jobA.GetName(), jobB.GetName()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, jobNamesToRemove).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
 			err := jobService.Refresh(ctx, project.Name(), []string{namespace.Name().String()}, nil, logWriter)
 			assert.NoError(t, err)
 		})
 		t.Run("resolves and saves upstream for all existing jobs for multiple tenant", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -1404,6 +2280,11 @@ func TestJobService(t *testing.T) {
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			jobADestination := job.ResourceURN("resource-A")
@@ -1439,18 +2320,29 @@ func TestJobService(t *testing.T) {
 			upstreamResolver.On("BulkResolve", ctx, project.Name(), []*job.Job{jobA}, mock.Anything).Return([]*job.WithUpstream{jobAWithUpstream}, nil)
 			upstreamResolver.On("BulkResolve", ctx, project.Name(), []*job.Job{jobB}, mock.Anything).Return([]*job.WithUpstream{jobBWithUpstream}, nil)
 
-			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobAWithUpstream}).Return(nil)
-			jobRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobBWithUpstream}).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobAWithUpstream}).Return(nil)
+			upstreamRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobBWithUpstream}).Return(nil)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil).Times(4)
+			eventHandler.On("HandleEvent", mock.Anything).Times(2)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			var jobNamesToRemove []string
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, []string{jobA.GetName()}, jobNamesToRemove).Return(nil)
+			jobDeploymentService.On("UploadJobs", ctx, otherTenant, []string{jobB.GetName()}, jobNamesToRemove).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
 			err := jobService.Refresh(ctx, project.Name(), []string{namespace.Name().String(), otherNamespace.Name().String()}, nil, logWriter)
 			assert.NoError(t, err)
 		})
 		t.Run("returns error if unable to get existing jobs", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -1463,9 +2355,127 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(nil, errors.New("internal error"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 			err := jobService.Refresh(ctx, project.Name(), []string{namespace.Name().String()}, nil, nil)
 			assert.ErrorContains(t, err, "internal error")
+		})
+	})
+
+	t.Run("RefreshResourceDownstream", func(t *testing.T) {
+		t.Run("returns error if encountered error when identifying downstreams", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			logWriter := new(mockWriter)
+			defer logWriter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
+
+			resourceURNs := []job.ResourceURN{"project.dataset.table"}
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
+
+			downstreamRepo.On("GetDownstreamBySources", ctx, resourceURNs).Return(nil, errors.New("internal error"))
+
+			err := jobService.RefreshResourceDownstream(ctx, resourceURNs, logWriter)
+			assert.ErrorContains(t, err, "internal error")
+		})
+
+		t.Run("should refresh and return nil if no error is encountered when refreshing downstreams", func(t *testing.T) {
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			logWriter := new(mockWriter)
+			defer logWriter.AssertExpectations(t)
+
+			jobDeploymentService := new(JobDeploymentService)
+			defer jobDeploymentService.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
+
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			jobADestination := job.ResourceURN("resource-A")
+			jobAUpstreamName := job.ResourceURN("job-B")
+			jobA := job.NewJob(sampleTenant, specA, jobADestination, []job.ResourceURN{jobAUpstreamName})
+
+			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			jobBDestination := job.ResourceURN("resource-B")
+			jobBUpstreamName := job.ResourceURN("job-C")
+			jobB := job.NewJob(sampleTenant, specB, jobBDestination, []job.ResourceURN{jobBUpstreamName})
+
+			resourceURNs := []job.ResourceURN{jobAUpstreamName, jobBUpstreamName}
+
+			jobDownstreams := []*job.Downstream{
+				job.NewDownstream(jobA.Spec().Name(), sampleTenant.ProjectName(), sampleTenant.NamespaceName(), jobTask.Name()),
+				job.NewDownstream(jobB.Spec().Name(), sampleTenant.ProjectName(), sampleTenant.NamespaceName(), jobTask.Name()),
+			}
+
+			downstreamRepo.On("GetDownstreamBySources", ctx, resourceURNs).Return(jobDownstreams, nil)
+			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), jobA.Spec().Name()).Return(jobA, nil)
+			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), jobB.Spec().Name()).Return(jobB, nil)
+
+			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, nil)
+
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(jobADestination, nil).Once()
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return([]job.ResourceURN{jobAUpstreamName}, nil)
+
+			pluginService.On("GenerateDestination", ctx, detailedTenant, specB.Task()).Return(jobBDestination, nil).Once()
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specB, true).Return([]job.ResourceURN{jobBUpstreamName}, nil)
+
+			jobRepo.On("Update", ctx, mock.Anything).Return([]*job.Job{jobA, jobB}, nil)
+
+			upstreamB := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "static", taskName, false)
+			jobAWithUpstream := job.NewWithUpstream(jobA, []*job.Upstream{upstreamB})
+			upstreamC := job.NewUpstreamResolved("job-C", "", "resource-C", sampleTenant, "static", taskName, false)
+			jobBWithUpstream := job.NewWithUpstream(jobB, []*job.Upstream{upstreamC})
+			upstreamResolver.On("BulkResolve", ctx, project.Name(), []*job.Job{jobA, jobB}, mock.Anything).Return([]*job.WithUpstream{jobAWithUpstream, jobBWithUpstream}, nil)
+
+			upstreamRepo.On("ReplaceUpstreams", ctx, []*job.WithUpstream{jobAWithUpstream, jobBWithUpstream}).Return(nil)
+
+			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil).Times(3)
+			eventHandler.On("HandleEvent", mock.Anything).Times(2)
+
+			var jobNamesToRemove []string
+			jobNamesToUpload := []string{jobA.GetName(), jobB.GetName()}
+			jobDeploymentService.On("UploadJobs", ctx, sampleTenant, jobNamesToUpload, jobNamesToRemove).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, eventHandler, log, jobDeploymentService, nil)
+
+			err := jobService.RefreshResourceDownstream(ctx, resourceURNs, logWriter)
+			assert.NoError(t, err)
 		})
 	})
 
@@ -1474,10 +2484,17 @@ func TestJobService(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
 			jobName, _ := job.NameFrom("job-A")
 			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), jobName).Return(nil, errors.New("error when fetch job"))
 
-			jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, nil, nil, nil, nil, log, nil, nil)
+
 			actual, err := jobService.Get(ctx, sampleTenant, jobName)
 			assert.Error(t, err, "error when fetch job")
 			assert.Nil(t, actual)
@@ -1486,11 +2503,18 @@ func TestJobService(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-B"})
 			jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specA.Name()).Return(jobA, nil)
 
-			jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, nil, nil, nil, nil, log, nil, nil)
+
 			actual, err := jobService.Get(ctx, sampleTenant, specA.Name())
 			assert.NoError(t, err, "error when fetch job")
 			assert.NotNil(t, actual)
@@ -1506,7 +2530,7 @@ func TestJobService(t *testing.T) {
 
 				jobRepo.On("GetAllByResourceDestination", ctx, job.ResourceURN("example")).Return(nil, errors.New("error encountered"))
 
-				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, log, nil, nil)
 				actual, err := jobService.GetByFilter(ctx, filter.WithString(filter.ResourceDestination, "example"))
 				assert.Error(t, err, "error encountered")
 				assert.Nil(t, actual)
@@ -1519,7 +2543,7 @@ func TestJobService(t *testing.T) {
 				jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-B"})
 				jobRepo.On("GetAllByResourceDestination", ctx, job.ResourceURN("table-A")).Return([]*job.Job{jobA}, nil)
 
-				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, log, nil, nil)
 				actual, err := jobService.GetByFilter(ctx, filter.WithString(filter.ResourceDestination, "table-A"))
 				assert.NoError(t, err)
 				assert.NotNil(t, actual)
@@ -1535,7 +2559,7 @@ func TestJobService(t *testing.T) {
 				jobName, _ := job.NameFrom("job-A")
 				jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), jobName).Return(nil, errors.New("error encountered"))
 
-				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, log, nil, nil)
 				actual, err := jobService.GetByFilter(ctx,
 					filter.WithString(filter.ProjectName, sampleTenant.ProjectName().String()),
 					filter.WithStringArray(filter.JobNames, []string{jobName.String()}),
@@ -1553,7 +2577,7 @@ func TestJobService(t *testing.T) {
 				jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specA.Name()).Return(jobA, nil)
 				jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specB.Name()).Return(nil, errors.New("error encountered"))
 
-				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, log, nil, nil)
 				actual, err := jobService.GetByFilter(ctx,
 					filter.WithString(filter.ProjectName, sampleTenant.ProjectName().String()),
 					filter.WithStringArray(filter.JobNames, []string{specA.Name().String(), specB.Name().String()}),
@@ -1570,7 +2594,7 @@ func TestJobService(t *testing.T) {
 				specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 				jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specA.Name()).Return(nil, optErrors.NotFound(job.EntityJob, "job not found"))
 
-				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, log, nil, nil)
 				actual, err := jobService.GetByFilter(ctx,
 					filter.WithString(filter.ProjectName, sampleTenant.ProjectName().String()),
 					filter.WithStringArray(filter.JobNames, []string{specA.Name().String()}),
@@ -1586,7 +2610,7 @@ func TestJobService(t *testing.T) {
 				jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-B"})
 				jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specA.Name()).Return(jobA, nil)
 
-				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, log, nil, nil)
 				actual, err := jobService.GetByFilter(ctx,
 					filter.WithString(filter.ProjectName, sampleTenant.ProjectName().String()),
 					filter.WithStringArray(filter.JobNames, []string{specA.Name().String()}),
@@ -1605,7 +2629,7 @@ func TestJobService(t *testing.T) {
 				jobName, _ := job.NameFrom("job-A")
 				jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), jobName).Return(nil, errors.New("error encountered"))
 
-				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, log, nil, nil)
 				actual, err := jobService.GetByFilter(ctx,
 					filter.WithString(filter.ProjectName, sampleTenant.ProjectName().String()),
 					filter.WithString(filter.JobName, jobName.String()),
@@ -1620,7 +2644,7 @@ func TestJobService(t *testing.T) {
 				specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 				jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specA.Name()).Return(nil, optErrors.NotFound(job.EntityJob, "job not found"))
 
-				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, log, nil, nil)
 				actual, err := jobService.GetByFilter(ctx,
 					filter.WithString(filter.ProjectName, sampleTenant.ProjectName().String()),
 					filter.WithString(filter.JobName, specA.Name().String()),
@@ -1636,7 +2660,7 @@ func TestJobService(t *testing.T) {
 				jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-B"})
 				jobRepo.On("GetByJobName", ctx, sampleTenant.ProjectName(), specA.Name()).Return(jobA, nil)
 
-				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, log, nil, nil)
 				actual, err := jobService.GetByFilter(ctx,
 					filter.WithString(filter.ProjectName, sampleTenant.ProjectName().String()),
 					filter.WithString(filter.JobName, specA.Name().String()),
@@ -1654,7 +2678,7 @@ func TestJobService(t *testing.T) {
 
 				jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(nil, errors.New("error encountered"))
 
-				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, log, nil, nil)
 				actual, err := jobService.GetByFilter(ctx,
 					filter.WithString(filter.ProjectName, sampleTenant.ProjectName().String()),
 					filter.WithStringArray(filter.NamespaceNames, []string{sampleTenant.NamespaceName().String()}),
@@ -1666,7 +2690,7 @@ func TestJobService(t *testing.T) {
 				jobRepo := new(JobRepository)
 				defer jobRepo.AssertExpectations(t)
 
-				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, log, nil, nil)
 				actual, err := jobService.GetByFilter(ctx,
 					filter.WithString(filter.ProjectName, sampleTenant.ProjectName().String()),
 					filter.WithStringArray(filter.NamespaceNames, []string{""}),
@@ -1682,7 +2706,7 @@ func TestJobService(t *testing.T) {
 				jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-B"})
 				jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return([]*job.Job{jobA}, nil)
 
-				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, log, nil, nil)
 				actual, err := jobService.GetByFilter(ctx,
 					filter.WithString(filter.ProjectName, sampleTenant.ProjectName().String()),
 					filter.WithStringArray(filter.NamespaceNames, []string{sampleTenant.NamespaceName().String()}),
@@ -1700,7 +2724,7 @@ func TestJobService(t *testing.T) {
 
 				jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(nil, errors.New("error encountered"))
 
-				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, log, nil, nil)
 				actual, err := jobService.GetByFilter(ctx,
 					filter.WithString(filter.ProjectName, sampleTenant.ProjectName().String()),
 					filter.WithString(filter.NamespaceName, sampleTenant.NamespaceName().String()),
@@ -1716,7 +2740,7 @@ func TestJobService(t *testing.T) {
 				jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-B"})
 				jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return([]*job.Job{jobA}, nil)
 
-				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, log, nil, nil)
 				actual, err := jobService.GetByFilter(ctx,
 					filter.WithString(filter.ProjectName, sampleTenant.ProjectName().String()),
 					filter.WithString(filter.NamespaceName, sampleTenant.NamespaceName().String()),
@@ -1734,7 +2758,7 @@ func TestJobService(t *testing.T) {
 
 				jobRepo.On("GetAllByProjectName", ctx, sampleTenant.ProjectName()).Return(nil, errors.New("error encountered"))
 
-				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, log, nil, nil)
 				actual, err := jobService.GetByFilter(ctx,
 					filter.WithString(filter.ProjectName, sampleTenant.ProjectName().String()),
 				)
@@ -1749,7 +2773,7 @@ func TestJobService(t *testing.T) {
 				jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-B"})
 				jobRepo.On("GetAllByProjectName", ctx, sampleTenant.ProjectName()).Return([]*job.Job{jobA}, nil)
 
-				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil)
+				jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, log, nil, nil)
 				actual, err := jobService.GetByFilter(ctx,
 					filter.WithString(filter.ProjectName, sampleTenant.ProjectName().String()),
 				)
@@ -1760,7 +2784,7 @@ func TestJobService(t *testing.T) {
 			})
 		})
 		t.Run("return error when there's no filter", func(t *testing.T) {
-			jobService := service.NewJobService(nil, nil, nil, nil, nil)
+			jobService := service.NewJobService(nil, nil, nil, nil, nil, nil, nil, log, nil, nil)
 			actual, err := jobService.GetByFilter(ctx)
 			assert.Error(t, err, "no filter matched")
 			assert.Nil(t, actual)
@@ -1774,7 +2798,8 @@ func TestJobService(t *testing.T) {
 
 			pluginService.On("Info", ctx, jobTask.Name()).Return(nil, errors.New("error encountered"))
 
-			jobService := service.NewJobService(nil, pluginService, nil, nil, nil)
+			jobService := service.NewJobService(nil, nil, nil, pluginService, nil, nil, nil, nil, nil, nil)
+
 			actual, err := jobService.GetTaskInfo(ctx, jobTask)
 			assert.Error(t, err, "error encountered")
 			assert.Nil(t, actual)
@@ -1786,11 +2811,12 @@ func TestJobService(t *testing.T) {
 			pluginInfoResp := &plugin.Info{
 				Name:        "bq2bq",
 				Description: "plugin desc",
-				Image:       "odpf/bq2bq:latest",
+				Image:       "raystack/bq2bq:latest",
 			}
 			pluginService.On("Info", ctx, jobTask.Name()).Return(pluginInfoResp, nil)
 
-			jobService := service.NewJobService(nil, pluginService, nil, nil, nil)
+			jobService := service.NewJobService(nil, nil, nil, pluginService, nil, nil, nil, nil, nil, nil)
+
 			actual, err := jobService.GetTaskInfo(ctx, jobTask)
 			assert.NoError(t, err)
 			assert.NotNil(t, actual)
@@ -1804,10 +2830,46 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter.On("GetDetails", ctx, mock.Anything).Return(nil, errors.New("get tenant details fail"))
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			jobService := service.NewJobService(nil, nil, nil, tenantDetailsGetter, log)
-			err := jobService.Validate(ctx, sampleTenant, []*job.Spec{}, nil)
+			jobService := service.NewJobService(nil, nil, nil, nil, nil, tenantDetailsGetter, nil, log, nil, nil)
+			err := jobService.Validate(ctx, sampleTenant, []*job.Spec{}, jobNamesWithInvalidSpec, nil)
 			assert.Error(t, err)
 			assert.Equal(t, "get tenant details fail", err.Error())
+		})
+		t.Run("returns error when validate duplicate jobs detected", func(t *testing.T) {
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			tenantDetailsGetter.On("GetDetails", ctx, mock.Anything).Return(detailedTenant, nil)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
+			logWriter := new(mockWriter)
+			defer logWriter.AssertExpectations(t)
+
+			specA1, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			specA2, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(nil, nil)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
+
+			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+
+			err := jobService.Validate(ctx, sampleTenant, []*job.Spec{specA1, specA2}, jobNamesWithInvalidSpec, logWriter)
+			assert.Error(t, err)
+			assert.Equal(t, "validate specs errors:\n duplicate job-A", err.Error())
 		})
 		t.Run("returns error when generate jobs", func(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
@@ -1820,22 +2882,33 @@ func TestJobService(t *testing.T) {
 			upstreamResolver := new(UpstreamResolver)
 			defer upstreamResolver.AssertExpectations(t)
 
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
-			specs := []*job.Spec{specA}
+
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return(nil, nil)
 
 			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(job.ResourceURN(""), errors.New("some error on generate destination"))
-			jobService := service.NewJobService(nil, pluginService, upstreamResolver, tenantDetailsGetter, log)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
-			err := jobService.Validate(ctx, sampleTenant, specs, logWriter)
+			err := jobService.Validate(ctx, sampleTenant, []*job.Spec{specA}, jobNamesWithInvalidSpec, logWriter)
 			assert.Error(t, err)
 			assert.Equal(t, "validate specs errors:\n internal error for entity job: unable to add job-A: some error on generate destination", err.Error())
 		})
-		t.Run("returns error when get all by project name failed", func(t *testing.T) {
+		t.Run("returns error when a job fail a deletion check", func(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			tenantDetailsGetter.On("GetDetails", ctx, mock.Anything).Return(detailedTenant, nil)
 			defer tenantDetailsGetter.AssertExpectations(t)
@@ -1846,26 +2919,120 @@ func TestJobService(t *testing.T) {
 			upstreamResolver := new(UpstreamResolver)
 			defer upstreamResolver.AssertExpectations(t)
 
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
 
-			repo := new(JobRepository)
-			repo.On("GetAllByProjectName", ctx, sampleTenant.ProjectName()).Return(nil, errors.New("error on get all by project name"))
-			defer repo.AssertExpectations(t)
+			jobTaskConfigA, _ := job.ConfigFrom(map[string]string{"table": "table-A"})
+			jobTaskConfigB, _ := job.ConfigFrom(map[string]string{"table": "table-B"})
+			jobTaskConfigC, _ := job.ConfigFrom(map[string]string{"table": "table-C"})
+			jobTaskConfigD, _ := job.ConfigFrom(map[string]string{"table": "table-D"})
+			jobTaskA := job.NewTask(taskName, jobTaskConfigA)
+			jobTaskB := job.NewTask(taskName, jobTaskConfigB)
+			jobTaskC := job.NewTask(taskName, jobTaskConfigC)
+			jobTaskD := job.NewTask(taskName, jobTaskConfigD)
 
-			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
-			specs := []*job.Spec{specA}
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskA).Build()
+			specAUpdated, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner-updated", jobSchedule, jobWindow, jobTaskA).Build()
+			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTaskB).Build()
+			specC, _ := job.NewSpecBuilder(jobVersion, "job-C", "sample-owner", jobSchedule, jobWindow, jobTaskC).Build()
+			specD, _ := job.NewSpecBuilder(jobVersion, "job-D", "sample-owner", jobSchedule, jobWindow, jobTaskD).Build()
+			specs := []*job.Spec{specAUpdated, specB, specD}
 
-			pluginService.On("GenerateDestination", ctx, detailedTenant, specA.Task()).Return(job.ResourceURN("example_destination"), nil)
-			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return([]job.ResourceURN{"example_upstream", "another_upstream"}, nil)
+			jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-Z"})
+			jobB := job.NewJob(sampleTenant, specB, "table-B", []job.ResourceURN{"table-A", "table-D"})
+			jobC := job.NewJob(sampleTenant, specC, "table-C", []job.ResourceURN{"table-B"})
+			jobD := job.NewJob(sampleTenant, specD, "table-D", nil)
+
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return([]*job.Job{jobA, jobB, jobC, jobD}, nil)
+
+			pluginService.On("GenerateDestination", ctx, detailedTenant, jobTaskA).Return(job.ResourceURN("table-A"), nil)
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specAUpdated, true).Return([]job.ResourceURN{"table-Z"}, nil)
+
+			jobCDownstream := []*job.Downstream{
+				job.NewDownstream("job-B", project.Name(), namespace.Name(), taskName),
+			}
+			jobBDownstream := []*job.Downstream{
+				job.NewDownstream("job-D", project.Name(), namespace.Name(), taskName),
+			}
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specC.Name()).Return(jobCDownstream, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specB.Name()).Return(jobBDownstream, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specD.Name()).Return([]*job.Downstream{}, nil)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
-			jobService := service.NewJobService(repo, pluginService, upstreamResolver, tenantDetailsGetter, log)
-			err := jobService.Validate(ctx, sampleTenant, specs, logWriter)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
+			err := jobService.Validate(ctx, sampleTenant, specs, jobNamesWithInvalidSpec, logWriter)
 			assert.Error(t, err)
-			assert.Equal(t, "error on get all by project name", err.Error())
+			assert.ErrorContains(t, err, "deletion of job job-C will fail. job is being used by test-proj/job-B, test-proj/job-D")
 		})
+
+		t.Run("returns no error when delete the job and its downstreams", func(t *testing.T) {
+			tenantDetailsGetter := new(TenantDetailsGetter)
+			tenantDetailsGetter.On("GetDetails", ctx, mock.Anything).Return(detailedTenant, nil)
+			defer tenantDetailsGetter.AssertExpectations(t)
+
+			pluginService := new(PluginService)
+			defer pluginService.AssertExpectations(t)
+
+			upstreamResolver := new(UpstreamResolver)
+			defer upstreamResolver.AssertExpectations(t)
+
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
+			logWriter := new(mockWriter)
+			defer logWriter.AssertExpectations(t)
+
+			jobTaskConfigA, _ := job.ConfigFrom(map[string]string{"table": "table-A"})
+			jobTaskConfigB, _ := job.ConfigFrom(map[string]string{"table": "table-B"})
+			jobTaskConfigC, _ := job.ConfigFrom(map[string]string{"table": "table-C"})
+			jobTaskA := job.NewTask(taskName, jobTaskConfigA)
+			jobTaskB := job.NewTask(taskName, jobTaskConfigB)
+			jobTaskC := job.NewTask(taskName, jobTaskConfigC)
+
+			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskA).Build()
+			specAUpdated, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner-updated", jobSchedule, jobWindow, jobTaskA).Build()
+			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTaskB).Build()
+			specC, _ := job.NewSpecBuilder(jobVersion, "job-C", "sample-owner", jobSchedule, jobWindow, jobTaskC).Build()
+			specs := []*job.Spec{specAUpdated}
+
+			jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-Z"})
+			jobB := job.NewJob(sampleTenant, specB, "table-B", nil)
+			jobC := job.NewJob(sampleTenant, specC, "table-C", []job.ResourceURN{"table-B"})
+
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return([]*job.Job{jobA, jobB, jobC}, nil)
+
+			pluginService.On("GenerateDestination", ctx, detailedTenant, jobTaskA).Return(job.ResourceURN("table-A"), nil)
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specAUpdated, true).Return([]job.ResourceURN{"table-Z"}, nil)
+
+			jobCDownstream := []*job.Downstream{
+				job.NewDownstream("job-B", project.Name(), namespace.Name(), taskName),
+			}
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specC.Name()).Return(jobCDownstream, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specB.Name()).Return([]*job.Downstream{}, nil)
+
+			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
+
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
+			err := jobService.Validate(ctx, sampleTenant, specs, jobNamesWithInvalidSpec, logWriter)
+			assert.NoError(t, err)
+		})
+
 		t.Run("returns error when there's a cyclic", func(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			tenantDetailsGetter.On("GetDetails", ctx, mock.Anything).Return(detailedTenant, nil)
@@ -1877,8 +3044,14 @@ func TestJobService(t *testing.T) {
 			upstreamResolver := new(UpstreamResolver)
 			defer upstreamResolver.AssertExpectations(t)
 
-			repo := new(JobRepository)
-			defer repo.AssertExpectations(t)
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
@@ -1886,21 +3059,19 @@ func TestJobService(t *testing.T) {
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
 			specC, _ := job.NewSpecBuilder(jobVersion, "job-C", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
-			specs := []*job.Spec{specA}
 
-			jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-C"})
 			jobB := job.NewJob(sampleTenant, specB, "table-B", []job.ResourceURN{"table-A"})
 			jobC := job.NewJob(sampleTenant, specC, "table-C", []job.ResourceURN{"table-B"})
 
-			repo.On("GetAllByProjectName", ctx, sampleTenant.ProjectName()).Return([]*job.Job{jobA, jobB, jobC}, nil)
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return([]*job.Job{jobB, jobC}, nil)
 
 			pluginService.On("GenerateDestination", ctx, detailedTenant, jobTask).Return(job.ResourceURN("table-A"), nil)
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return([]job.ResourceURN{"table-C"}, nil)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
-			jobService := service.NewJobService(repo, pluginService, upstreamResolver, tenantDetailsGetter, log)
-			err := jobService.Validate(ctx, sampleTenant, specs, logWriter)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
+			err := jobService.Validate(ctx, sampleTenant, []*job.Spec{specA, specB, specC}, jobNamesWithInvalidSpec, logWriter)
 			assert.Error(t, err)
 			assert.ErrorContains(t, err, "a cycle dependency encountered in the tree:")
 		})
@@ -1915,8 +3086,14 @@ func TestJobService(t *testing.T) {
 			upstreamResolver := new(UpstreamResolver)
 			defer upstreamResolver.AssertExpectations(t)
 
-			repo := new(JobRepository)
-			defer repo.AssertExpectations(t)
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
@@ -1929,27 +3106,23 @@ func TestJobService(t *testing.T) {
 			jobTaskC := job.NewTask(taskName, jobTaskConfigC)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskA).Build()
+			specAUpdated, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner-updated", jobSchedule, jobWindow, jobTaskA).Build()
 			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTaskB).Build()
 			specC, _ := job.NewSpecBuilder(jobVersion, "job-C", "sample-owner", jobSchedule, jobWindow, jobTaskC).Build()
-			specs := []*job.Spec{specA, specB, specC}
 
 			jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-Z"})
 			jobB := job.NewJob(sampleTenant, specB, "table-B", []job.ResourceURN{"table-A"})
 			jobC := job.NewJob(sampleTenant, specC, "table-C", []job.ResourceURN{"table-B"})
 
-			repo.On("GetAllByProjectName", ctx, sampleTenant.ProjectName()).Return([]*job.Job{jobA, jobB, jobC}, nil)
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return([]*job.Job{jobA, jobB, jobC}, nil)
 
 			pluginService.On("GenerateDestination", ctx, detailedTenant, jobTaskA).Return(job.ResourceURN("table-A"), nil)
-			pluginService.On("GenerateDestination", ctx, detailedTenant, jobTaskB).Return(job.ResourceURN("table-B"), nil)
-			pluginService.On("GenerateDestination", ctx, detailedTenant, jobTaskC).Return(job.ResourceURN("table-C"), nil)
-			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return([]job.ResourceURN{"table-C", "table-Z"}, nil)
-			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specB, true).Return([]job.ResourceURN{"table-A"}, nil)
-			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specC, true).Return([]job.ResourceURN{"table-B"}, nil)
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specAUpdated, true).Return([]job.ResourceURN{"table-C", "table-Z"}, nil)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
-			jobService := service.NewJobService(repo, pluginService, upstreamResolver, tenantDetailsGetter, log)
-			err := jobService.Validate(ctx, sampleTenant, specs, logWriter)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
+			err := jobService.Validate(ctx, sampleTenant, []*job.Spec{specAUpdated, specB, specC}, jobNamesWithInvalidSpec, logWriter)
 			assert.Error(t, err)
 			assert.ErrorContains(t, err, "a cycle dependency encountered in the tree:")
 		})
@@ -1964,8 +3137,14 @@ func TestJobService(t *testing.T) {
 			upstreamResolver := new(UpstreamResolver)
 			defer upstreamResolver.AssertExpectations(t)
 
-			repo := new(JobRepository)
-			defer repo.AssertExpectations(t)
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
@@ -1980,26 +3159,27 @@ func TestJobService(t *testing.T) {
 			upstreamsSpecA, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"test-proj/job-C"}).Build()
 			upstreamsSpecC, _ := job.NewSpecUpstreamBuilder().WithUpstreamNames([]job.SpecUpstreamName{"test-proj/job-B"}).Build()
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskA).WithSpecUpstream(upstreamsSpecA).Build()
+			specAUpdated, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner-updated", jobSchedule, jobWindow, jobTaskA).WithSpecUpstream(upstreamsSpecA).Build()
 			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTaskB).Build()
+			specBUpdated, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner-updated", jobSchedule, jobWindow, jobTaskB).Build()
 			specC, _ := job.NewSpecBuilder(jobVersion, "job-C", "sample-owner", jobSchedule, jobWindow, jobTaskC).WithSpecUpstream(upstreamsSpecC).Build()
-			specs := []*job.Spec{specA, specB, specC}
 
 			jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-Z"})
 			jobB := job.NewJob(sampleTenant, specB, "table-B", []job.ResourceURN{"table-A"})
 
-			repo.On("GetAllByProjectName", ctx, sampleTenant.ProjectName()).Return([]*job.Job{jobA, jobB}, nil)
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return([]*job.Job{jobA, jobB}, nil)
 
 			pluginService.On("GenerateDestination", ctx, detailedTenant, jobTaskA).Return(job.ResourceURN("table-A"), nil)
 			pluginService.On("GenerateDestination", ctx, detailedTenant, jobTaskB).Return(job.ResourceURN("table-B"), nil)
 			pluginService.On("GenerateDestination", ctx, detailedTenant, jobTaskC).Return(job.ResourceURN(""), service.ErrUpstreamModNotFound)
-			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return([]job.ResourceURN{"table-Z"}, nil)
-			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specB, true).Return([]job.ResourceURN{"table-A"}, nil)
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specAUpdated, true).Return([]job.ResourceURN{"table-Z"}, nil)
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specBUpdated, true).Return([]job.ResourceURN{"table-A"}, nil)
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specC, true).Return(nil, service.ErrUpstreamModNotFound)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
-			jobService := service.NewJobService(repo, pluginService, upstreamResolver, tenantDetailsGetter, log)
-			err := jobService.Validate(ctx, sampleTenant, specs, logWriter)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
+			err := jobService.Validate(ctx, sampleTenant, []*job.Spec{specAUpdated, specBUpdated, specC}, jobNamesWithInvalidSpec, logWriter)
 			assert.Error(t, err)
 			assert.ErrorContains(t, err, "a cycle dependency encountered in the tree:")
 		})
@@ -2014,8 +3194,14 @@ func TestJobService(t *testing.T) {
 			upstreamResolver := new(UpstreamResolver)
 			defer upstreamResolver.AssertExpectations(t)
 
-			repo := new(JobRepository)
-			defer repo.AssertExpectations(t)
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
@@ -2029,15 +3215,15 @@ func TestJobService(t *testing.T) {
 			specC, _ := job.NewSpecBuilder(jobVersion, "job-C", "sample-owner", jobSchedule, jobWindow, jobTaskPython).WithSpecUpstream(upstreamsSpecC).Build()
 			specs := []*job.Spec{specA, specB, specC}
 
-			repo.On("GetAllByProjectName", ctx, sampleTenant.ProjectName()).Return([]*job.Job{}, nil)
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return([]*job.Job{}, nil)
 
 			pluginService.On("GenerateDestination", ctx, detailedTenant, mock.Anything).Return(job.ResourceURN(""), service.ErrUpstreamModNotFound)
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, mock.Anything, true).Return(nil, service.ErrUpstreamModNotFound)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
 
-			jobService := service.NewJobService(repo, pluginService, upstreamResolver, tenantDetailsGetter, log)
-			err := jobService.Validate(ctx, sampleTenant, specs, logWriter)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
+			err := jobService.Validate(ctx, sampleTenant, specs, jobNamesWithInvalidSpec, logWriter)
 			assert.Error(t, err)
 			assert.ErrorContains(t, err, "a cycle dependency encountered in the tree:")
 		})
@@ -2052,8 +3238,14 @@ func TestJobService(t *testing.T) {
 			upstreamResolver := new(UpstreamResolver)
 			defer upstreamResolver.AssertExpectations(t)
 
-			repo := new(JobRepository)
-			defer repo.AssertExpectations(t)
+			jobRepo := new(JobRepository)
+			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			logWriter := new(mockWriter)
 			defer logWriter.AssertExpectations(t)
@@ -2066,27 +3258,25 @@ func TestJobService(t *testing.T) {
 			jobTaskC := job.NewTask(taskName, jobTaskConfigC)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTaskA).Build()
+			specAUpdated, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner-updated", jobSchedule, jobWindow, jobTaskA).Build()
 			specB, _ := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTaskB).Build()
 			specC, _ := job.NewSpecBuilder(jobVersion, "job-C", "sample-owner", jobSchedule, jobWindow, jobTaskC).Build()
-			specs := []*job.Spec{specA, specB, specC}
+			specs := []*job.Spec{specAUpdated, specB}
 
 			jobA := job.NewJob(sampleTenant, specA, "table-A", []job.ResourceURN{"table-Z"})
 			jobB := job.NewJob(sampleTenant, specB, "table-B", []job.ResourceURN{"table-A"})
 			jobC := job.NewJob(sampleTenant, specC, "table-C", []job.ResourceURN{"table-B"})
 
-			repo.On("GetAllByProjectName", ctx, sampleTenant.ProjectName()).Return([]*job.Job{jobA, jobB, jobC}, nil)
+			jobRepo.On("GetAllByTenant", ctx, sampleTenant).Return([]*job.Job{jobA, jobB, jobC}, nil)
 
 			pluginService.On("GenerateDestination", ctx, detailedTenant, jobTaskA).Return(job.ResourceURN("table-A"), nil)
-			pluginService.On("GenerateDestination", ctx, detailedTenant, jobTaskB).Return(job.ResourceURN("table-B"), nil)
-			pluginService.On("GenerateDestination", ctx, detailedTenant, jobTaskC).Return(job.ResourceURN("table-C"), nil)
-			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return([]job.ResourceURN{"table-Z"}, nil)
-			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specB, true).Return([]job.ResourceURN{"table-A"}, nil)
-			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specC, true).Return([]job.ResourceURN{"table-B"}, nil)
+			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specAUpdated, true).Return([]job.ResourceURN{"table-Z"}, nil)
+
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specC.Name()).Return([]*job.Downstream{}, nil)
 
 			logWriter.On("Write", mock.Anything, mock.Anything).Return(nil)
-
-			jobService := service.NewJobService(repo, pluginService, upstreamResolver, tenantDetailsGetter, log)
-			err := jobService.Validate(ctx, sampleTenant, specs, logWriter)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
+			err := jobService.Validate(ctx, sampleTenant, specs, jobNamesWithInvalidSpec, logWriter)
 			assert.NoError(t, err)
 		})
 	})
@@ -2095,6 +3285,12 @@ func TestJobService(t *testing.T) {
 		t.Run("should return upstream for an existing job", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -2110,9 +3306,9 @@ func TestJobService(t *testing.T) {
 
 			upstreamB := job.NewUpstreamResolved("job-B", "", "resource-B", sampleTenant, "inferred", taskName, false)
 
-			jobRepo.On("GetUpstreams", ctx, project.Name(), jobA.Spec().Name()).Return([]*job.Upstream{upstreamB}, nil)
+			upstreamRepo.On("GetUpstreams", ctx, project.Name(), jobA.Spec().Name()).Return([]*job.Upstream{upstreamB}, nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 			result, err := jobService.GetUpstreamsToInspect(ctx, jobA, false)
 			assert.NoError(t, err)
 			assert.EqualValues(t, []*job.Upstream{upstreamB}, result)
@@ -2120,6 +3316,12 @@ func TestJobService(t *testing.T) {
 		t.Run("should return upstream for client's local job", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -2140,7 +3342,7 @@ func TestJobService(t *testing.T) {
 
 			upstreamResolver.On("Resolve", ctx, jobA, mock.Anything).Return([]*job.Upstream{upstreamB}, nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 			result, err := jobService.GetUpstreamsToInspect(ctx, jobA, true)
 			assert.NoError(t, err)
 			assert.EqualValues(t, []*job.Upstream{upstreamB}, result)
@@ -2151,6 +3353,12 @@ func TestJobService(t *testing.T) {
 		t.Run("should return job basic info and its logger for user given job spec", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -2175,7 +3383,7 @@ func TestJobService(t *testing.T) {
 
 			jobA := job.NewJob(sampleTenant, specA, jobADestination, jobASources)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 			result, logger := jobService.GetJobBasicInfo(ctx, sampleTenant, "", specA)
 			assert.Nil(t, logger.Messages)
 			assert.Equal(t, jobA, result)
@@ -2183,6 +3391,12 @@ func TestJobService(t *testing.T) {
 		t.Run("should return job basic info and its logger for existing job spec", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -2201,7 +3415,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("GetByJobName", ctx, project.Name(), specA.Name()).Return(jobA, nil)
 			jobRepo.On("GetAllByResourceDestination", ctx, jobADestination).Return([]*job.Job{}, nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 			result, logger := jobService.GetJobBasicInfo(ctx, sampleTenant, specA.Name(), nil)
 			assert.Nil(t, logger.Messages)
 			assert.Equal(t, jobA, result)
@@ -2209,6 +3423,12 @@ func TestJobService(t *testing.T) {
 		t.Run("should return error if unable to get tenant details", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -2223,7 +3443,7 @@ func TestJobService(t *testing.T) {
 
 			tenantDetailsGetter.On("GetDetails", ctx, sampleTenant).Return(detailedTenant, errors.New("sample error"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 			result, logger := jobService.GetJobBasicInfo(ctx, sampleTenant, "", specA)
 			assert.Contains(t, logger.Messages[0].Message, "sample error")
 			assert.Nil(t, result)
@@ -2231,6 +3451,12 @@ func TestJobService(t *testing.T) {
 		t.Run("should return error if unable to generate job based on spec", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -2251,7 +3477,7 @@ func TestJobService(t *testing.T) {
 			jobAUpstreamName := []job.ResourceURN{"job-B"}
 			pluginService.On("GenerateUpstreams", ctx, detailedTenant, specA, true).Return(jobAUpstreamName, errors.New("sample error"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 			result, logger := jobService.GetJobBasicInfo(ctx, sampleTenant, "", specA)
 			assert.Contains(t, logger.Messages[0].Message, "sample error")
 			assert.Nil(t, result)
@@ -2259,6 +3485,12 @@ func TestJobService(t *testing.T) {
 		t.Run("should return job information with warning and errors", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -2269,7 +3501,7 @@ func TestJobService(t *testing.T) {
 			tenantDetailsGetter := new(TenantDetailsGetter)
 			defer tenantDetailsGetter.AssertExpectations(t)
 
-			specASchedule, err := job.NewScheduleBuilder(startDate).WithCatchUp(true).Build()
+			specASchedule, err := job.NewScheduleBuilder(startDate).Build()
 			assert.NoError(t, err)
 
 			specA, _ := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", specASchedule, jobWindow, jobTask).Build()
@@ -2279,16 +3511,21 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("GetByJobName", ctx, project.Name(), specA.Name()).Return(jobA, nil)
 			jobRepo.On("GetAllByResourceDestination", ctx, jobADestination).Return([]*job.Job{}, errors.New("sample-error"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 			result, logger := jobService.GetJobBasicInfo(ctx, sampleTenant, specA.Name(), nil)
 			assert.Contains(t, logger.Messages[0].Message, "no job sources detected")
-			assert.Contains(t, logger.Messages[1].Message, "catchup is enabled")
-			assert.Contains(t, logger.Messages[2].Message, "could not perform duplicate job destination check")
+			assert.Contains(t, logger.Messages[1].Message, "could not perform duplicate job destination check")
 			assert.Equal(t, jobA, result)
 		})
 		t.Run("should return error if unable to get existing job", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -2303,7 +3540,7 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("GetByJobName", ctx, project.Name(), specA.Name()).Return(nil, errors.New("internal error"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 			result, logger := jobService.GetJobBasicInfo(ctx, sampleTenant, specA.Name(), nil)
 			assert.Contains(t, logger.Messages[0].Message, "internal error")
 			assert.Nil(t, result)
@@ -2311,6 +3548,12 @@ func TestJobService(t *testing.T) {
 		t.Run("should return error if requested job is not exist yet and spec is not provided", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -2325,7 +3568,7 @@ func TestJobService(t *testing.T) {
 
 			jobRepo.On("GetByJobName", ctx, project.Name(), specA.Name()).Return(nil, errors.New("job not found"))
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 			result, logger := jobService.GetJobBasicInfo(ctx, sampleTenant, specA.Name(), nil)
 			assert.Contains(t, logger.Messages[0].Message, "job not found")
 			assert.Nil(t, result)
@@ -2333,6 +3576,12 @@ func TestJobService(t *testing.T) {
 		t.Run("should write log if found existing job with same resource destination", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -2356,7 +3605,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("GetByJobName", ctx, project.Name(), specA.Name()).Return(jobA, nil)
 			jobRepo.On("GetAllByResourceDestination", ctx, jobADestination).Return([]*job.Job{jobB, jobA}, nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 			result, logger := jobService.GetJobBasicInfo(ctx, sampleTenant, specA.Name(), nil)
 			assert.Contains(t, logger.Messages[0].Message, "job already exists with same Destination")
 			assert.Equal(t, jobA, result)
@@ -2364,6 +3613,12 @@ func TestJobService(t *testing.T) {
 		t.Run("should not warn if the job with same resource destination is the same job as requested", func(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
+
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
 
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
@@ -2382,7 +3637,7 @@ func TestJobService(t *testing.T) {
 			jobRepo.On("GetByJobName", ctx, project.Name(), specA.Name()).Return(jobA, nil)
 			jobRepo.On("GetAllByResourceDestination", ctx, jobADestination).Return([]*job.Job{jobA}, nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 			result, logger := jobService.GetJobBasicInfo(ctx, sampleTenant, specA.Name(), nil)
 			assert.Nil(t, logger.Messages)
 			assert.Equal(t, jobA, result)
@@ -2394,6 +3649,12 @@ func TestJobService(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
 
@@ -2409,9 +3670,9 @@ func TestJobService(t *testing.T) {
 			jobADownstream := []*job.Downstream{
 				job.NewDownstream("job-B", project.Name(), namespace.Name(), taskName),
 			}
-			jobRepo.On("GetDownstreamByDestination", ctx, project.Name(), jobA.Destination()).Return(jobADownstream, nil)
+			downstreamRepo.On("GetDownstreamByDestination", ctx, project.Name(), jobA.Destination()).Return(jobADownstream, nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 			result, err := jobService.GetDownstream(ctx, jobA, true)
 			assert.NoError(t, err)
 			assert.Equal(t, jobADownstream, result)
@@ -2420,6 +3681,12 @@ func TestJobService(t *testing.T) {
 			jobRepo := new(JobRepository)
 			defer jobRepo.AssertExpectations(t)
 
+			upstreamRepo := new(UpstreamRepository)
+			defer upstreamRepo.AssertExpectations(t)
+
+			downstreamRepo := new(DownstreamRepository)
+			defer downstreamRepo.AssertExpectations(t)
+
 			pluginService := new(PluginService)
 			defer pluginService.AssertExpectations(t)
 
@@ -2435,12 +3702,58 @@ func TestJobService(t *testing.T) {
 			jobADownstream := []*job.Downstream{
 				job.NewDownstream("job-B", project.Name(), namespace.Name(), taskName),
 			}
-			jobRepo.On("GetDownstreamByJobName", ctx, project.Name(), specA.Name()).Return(jobADownstream, nil)
+			downstreamRepo.On("GetDownstreamByJobName", ctx, project.Name(), specA.Name()).Return(jobADownstream, nil)
 
-			jobService := service.NewJobService(jobRepo, pluginService, upstreamResolver, tenantDetailsGetter, log)
+			jobService := service.NewJobService(jobRepo, upstreamRepo, downstreamRepo, pluginService, upstreamResolver, tenantDetailsGetter, nil, log, nil, nil)
 			result, err := jobService.GetDownstream(ctx, jobA, false)
 			assert.NoError(t, err)
 			assert.Equal(t, jobADownstream, result)
+		})
+	})
+	t.Run("updateState", func(t *testing.T) {
+		jobName, _ := job.NameFrom("job-A")
+		jobsToUpdateState := []job.Name{jobName}
+		state := job.DISABLED
+		updateRemark := "job disable remark"
+		t.Run("should fail if scheduler state change request fails", func(t *testing.T) {
+			scheduler := new(mockScheduler)
+			scheduler.On("UpdateJobState", ctx, sampleTenant, jobsToUpdateState, state.String()).Return(fmt.Errorf("some error in update Job State"))
+			defer scheduler.AssertExpectations(t)
+
+			jobService := service.NewJobService(nil, nil, nil, nil, nil, nil, nil, nil, nil, scheduler)
+			err := jobService.UpdateState(ctx, sampleTenant, jobsToUpdateState, state, "job disable remark")
+			assert.ErrorContains(t, err, "some error in update Job State")
+		})
+
+		t.Run("should fail if update state in job table fails", func(t *testing.T) {
+			scheduler := new(mockScheduler)
+			scheduler.On("UpdateJobState", ctx, sampleTenant, jobsToUpdateState, state.String()).Return(nil)
+			defer scheduler.AssertExpectations(t)
+
+			jobRepo := new(JobRepository)
+			jobRepo.On("UpdateState", ctx, sampleTenant, jobsToUpdateState, state, updateRemark).Return(fmt.Errorf("some error in update Job State repo"))
+			defer jobRepo.AssertExpectations(t)
+
+			jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, nil, nil, nil, scheduler)
+			err := jobService.UpdateState(ctx, sampleTenant, jobsToUpdateState, state, updateRemark)
+			assert.ErrorContains(t, err, "some error in update Job State repo")
+		})
+
+		t.Run("should pass when no error in scheduler update and repo update", func(t *testing.T) {
+			scheduler := new(mockScheduler)
+			scheduler.On("UpdateJobState", ctx, sampleTenant, jobsToUpdateState, state.String()).Return(nil)
+			defer scheduler.AssertExpectations(t)
+
+			jobRepo := new(JobRepository)
+			jobRepo.On("UpdateState", ctx, sampleTenant, jobsToUpdateState, state, updateRemark).Return(nil)
+			defer jobRepo.AssertExpectations(t)
+
+			eventHandler := newEventHandler(t)
+			eventHandler.On("HandleEvent", mock.Anything).Times(1)
+
+			jobService := service.NewJobService(jobRepo, nil, nil, nil, nil, nil, eventHandler, nil, nil, scheduler)
+			err := jobService.UpdateState(ctx, sampleTenant, jobsToUpdateState, state, updateRemark)
+			assert.Nil(t, err)
 		})
 	})
 }
@@ -2485,6 +3798,24 @@ func (_m *JobRepository) Delete(ctx context.Context, projectName tenant.ProjectN
 	}
 
 	return r0
+}
+
+// ChangeJobNamespace provides a mock function with given fields: ctx, jobName, jobTenant, jobNewTenant
+func (_m *JobRepository) ChangeJobNamespace(ctx context.Context, jobName job.Name, jobTenant, jobNewTenant tenant.Tenant) error {
+	ret := _m.Called(ctx, jobName, jobTenant, jobNewTenant)
+	return ret.Error(0)
+}
+
+// UpdateState provides a mock function with given fields: ctx, jobName, jobTenant, jobNewTenant
+func (_m *JobRepository) UpdateState(ctx context.Context, jobTenant tenant.Tenant, jobNames []job.Name, jobState job.State, remark string) error {
+	ret := _m.Called(ctx, jobTenant, jobNames, jobState, remark)
+	return ret.Error(0)
+}
+
+// SyncState provides a mock function with given fields: ctx, jobTenant, disabledJobs, enabledJobs
+func (_m *JobRepository) SyncState(ctx context.Context, jobTenant tenant.Tenant, disabledJobNames, enabledJobNames []job.Name) error {
+	ret := _m.Called(ctx, jobTenant, disabledJobNames, enabledJobNames)
+	return ret.Error(0)
 }
 
 // GetAllByProjectName provides a mock function with given fields: ctx, projectName
@@ -2579,112 +3910,6 @@ func (_m *JobRepository) GetByJobName(ctx context.Context, projectName tenant.Pr
 	return r0, r1
 }
 
-// GetDownstreamByDestination provides a mock function with given fields: ctx, projectName, destination
-func (_m *JobRepository) GetDownstreamByDestination(ctx context.Context, projectName tenant.ProjectName, destination job.ResourceURN) ([]*job.Downstream, error) {
-	ret := _m.Called(ctx, projectName, destination)
-
-	var r0 []*job.Downstream
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, job.ResourceURN) []*job.Downstream); ok {
-		r0 = rf(ctx, projectName, destination)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*job.Downstream)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, job.ResourceURN) error); ok {
-		r1 = rf(ctx, projectName, destination)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetDownstreamByJobName provides a mock function with given fields: ctx, projectName, jobName
-func (_m *JobRepository) GetDownstreamByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*job.Downstream, error) {
-	ret := _m.Called(ctx, projectName, jobName)
-
-	var r0 []*job.Downstream
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, job.Name) []*job.Downstream); ok {
-		r0 = rf(ctx, projectName, jobName)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*job.Downstream)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, job.Name) error); ok {
-		r1 = rf(ctx, projectName, jobName)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetJobNameWithInternalUpstreams provides a mock function with given fields: _a0, _a1, _a2
-func (_m *JobRepository) ResolveUpstreams(_a0 context.Context, _a1 tenant.ProjectName, _a2 []job.Name) (map[job.Name][]*job.Upstream, error) {
-	ret := _m.Called(_a0, _a1, _a2)
-
-	var r0 map[job.Name][]*job.Upstream
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, []job.Name) map[job.Name][]*job.Upstream); ok {
-		r0 = rf(_a0, _a1, _a2)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[job.Name][]*job.Upstream)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, []job.Name) error); ok {
-		r1 = rf(_a0, _a1, _a2)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetUpstreams provides a mock function with given fields: ctx, projectName, jobName
-func (_m *JobRepository) GetUpstreams(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*job.Upstream, error) {
-	ret := _m.Called(ctx, projectName, jobName)
-
-	var r0 []*job.Upstream
-	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, job.Name) []*job.Upstream); ok {
-		r0 = rf(ctx, projectName, jobName)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*job.Upstream)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, job.Name) error); ok {
-		r1 = rf(ctx, projectName, jobName)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// ReplaceUpstreams provides a mock function with given fields: _a0, _a1
-func (_m *JobRepository) ReplaceUpstreams(_a0 context.Context, _a1 []*job.WithUpstream) error {
-	ret := _m.Called(_a0, _a1)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []*job.WithUpstream) error); ok {
-		r0 = rf(_a0, _a1)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // Update provides a mock function with given fields: _a0, _a1
 func (_m *JobRepository) Update(_a0 context.Context, _a1 []*job.Job) ([]*job.Job, error) {
 	ret := _m.Called(_a0, _a1)
@@ -2706,6 +3931,143 @@ func (_m *JobRepository) Update(_a0 context.Context, _a1 []*job.Job) ([]*job.Job
 	}
 
 	return r0, r1
+}
+
+type DownstreamRepository struct {
+	mock.Mock
+}
+
+// GetDownstreamByDestination provides a mock function with given fields: ctx, projectName, destination
+func (_d *DownstreamRepository) GetDownstreamByDestination(ctx context.Context, projectName tenant.ProjectName, destination job.ResourceURN) ([]*job.Downstream, error) {
+	ret := _d.Called(ctx, projectName, destination)
+
+	var r0 []*job.Downstream
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, job.ResourceURN) []*job.Downstream); ok {
+		r0 = rf(ctx, projectName, destination)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*job.Downstream)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, job.ResourceURN) error); ok {
+		r1 = rf(ctx, projectName, destination)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetDownstreamByJobName provides a mock function with given fields: ctx, projectName, jobName
+func (_d *DownstreamRepository) GetDownstreamByJobName(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*job.Downstream, error) {
+	ret := _d.Called(ctx, projectName, jobName)
+
+	var r0 []*job.Downstream
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, job.Name) []*job.Downstream); ok {
+		r0 = rf(ctx, projectName, jobName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*job.Downstream)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, job.Name) error); ok {
+		r1 = rf(ctx, projectName, jobName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetDownstreamBySources provides a mock function with given fields: ctx, sources
+func (_d *DownstreamRepository) GetDownstreamBySources(ctx context.Context, sources []job.ResourceURN) ([]*job.Downstream, error) {
+	ret := _d.Called(ctx, sources)
+
+	var r0 []*job.Downstream
+	if rf, ok := ret.Get(0).(func(context.Context, []job.ResourceURN) []*job.Downstream); ok {
+		r0 = rf(ctx, sources)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*job.Downstream)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, []job.ResourceURN) error); ok {
+		r1 = rf(ctx, sources)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+type UpstreamRepository struct {
+	mock.Mock
+}
+
+// GetJobNameWithInternalUpstreams provides a mock function with given fields: _a0, _a1, _a2
+func (_u *UpstreamRepository) ResolveUpstreams(_a0 context.Context, _a1 tenant.ProjectName, _a2 []job.Name) (map[job.Name][]*job.Upstream, error) {
+	ret := _u.Called(_a0, _a1, _a2)
+
+	var r0 map[job.Name][]*job.Upstream
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, []job.Name) map[job.Name][]*job.Upstream); ok {
+		r0 = rf(_a0, _a1, _a2)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[job.Name][]*job.Upstream)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, []job.Name) error); ok {
+		r1 = rf(_a0, _a1, _a2)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetUpstreams provides a mock function with given fields: ctx, projectName, jobName
+func (_u *UpstreamRepository) GetUpstreams(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*job.Upstream, error) {
+	ret := _u.Called(ctx, projectName, jobName)
+
+	var r0 []*job.Upstream
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.ProjectName, job.Name) []*job.Upstream); ok {
+		r0 = rf(ctx, projectName, jobName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*job.Upstream)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName, job.Name) error); ok {
+		r1 = rf(ctx, projectName, jobName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ReplaceUpstreams provides a mock function with given fields: _a0, _a1
+func (_u *UpstreamRepository) ReplaceUpstreams(_a0 context.Context, _a1 []*job.WithUpstream) error {
+	ret := _u.Called(_a0, _a1)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []*job.WithUpstream) error); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // PluginService is an autogenerated mock type for the PluginService type
@@ -2865,4 +4227,54 @@ type mockWriter struct {
 
 func (m *mockWriter) Write(level writer.LogLevel, s string) error {
 	return m.Called(level, s).Error(0)
+}
+
+type mockEventHandler struct {
+	mock.Mock
+}
+
+func (m *mockEventHandler) HandleEvent(e moderator.Event) {
+	m.Called(e)
+}
+
+type mockConstructorEventHandler interface {
+	mock.TestingT
+	Cleanup(func())
+}
+
+func newEventHandler(t mockConstructorEventHandler) *mockEventHandler {
+	mock := &mockEventHandler{}
+	mock.Mock.Test(t)
+
+	t.Cleanup(func() { mock.AssertExpectations(t) })
+
+	return mock
+}
+
+// JobDeploymentService is an autogenerated mock type for the JobDeploymentService type
+type JobDeploymentService struct {
+	mock.Mock
+}
+
+// UploadJobs provides a mock function with given fields: ctx, jobTenant, toUpdate, toDelete
+func (_m *JobDeploymentService) UploadJobs(ctx context.Context, jobTenant tenant.Tenant, toUpdate, toDelete []string) error {
+	ret := _m.Called(ctx, jobTenant, toUpdate, toDelete)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, []string, []string) error); ok {
+		r0 = rf(ctx, jobTenant, toUpdate, toDelete)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+type mockScheduler struct {
+	mock.Mock
+}
+
+func (ms *mockScheduler) UpdateJobState(ctx context.Context, tnnt tenant.Tenant, jobNames []job.Name, state string) error {
+	args := ms.Called(ctx, tnnt, jobNames, state)
+	return args.Error(0)
 }

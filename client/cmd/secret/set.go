@@ -5,22 +5,24 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/odpf/optimus/client/cmd/internal"
-	"github.com/odpf/optimus/client/cmd/internal/connectivity"
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/client/cmd/internal/progressbar"
-	"github.com/odpf/optimus/client/cmd/internal/survey"
-	"github.com/odpf/optimus/config"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/client/cmd/internal"
+	"github.com/raystack/optimus/client/cmd/internal/connection"
+	"github.com/raystack/optimus/client/cmd/internal/logger"
+	"github.com/raystack/optimus/client/cmd/internal/progressbar"
+	"github.com/raystack/optimus/client/cmd/internal/survey"
+	"github.com/raystack/optimus/config"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 type setCommand struct {
-	logger         log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	configFilePath string
 
 	survey *survey.SecretSetSurvey
@@ -92,6 +94,9 @@ func (s *setCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	if s.host == "" {
 		s.host = conf.Host
 	}
+
+	s.connection = connection.New(s.logger, conf)
+
 	return nil
 }
 
@@ -146,7 +151,7 @@ func (s *setCommand) RunE(_ *cobra.Command, args []string) error {
 }
 
 func (s *setCommand) registerSecret(req *pb.RegisterSecretRequest) error {
-	conn, err := connectivity.NewConnectivity(s.host, secretTimeout)
+	conn, err := s.connection.Create(s.host)
 	if err != nil {
 		return err
 	}
@@ -154,9 +159,12 @@ func (s *setCommand) registerSecret(req *pb.RegisterSecretRequest) error {
 
 	spinner := progressbar.NewProgressBar()
 	spinner.Start("please wait...")
-	secret := pb.NewSecretServiceClient(conn.GetConnection())
+	secret := pb.NewSecretServiceClient(conn)
 
-	_, err = secret.RegisterSecret(conn.GetContext(), req)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), secretTimeout)
+	defer cancelFunc()
+
+	_, err = secret.RegisterSecret(ctx, req)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -169,7 +177,7 @@ func (s *setCommand) registerSecret(req *pb.RegisterSecretRequest) error {
 }
 
 func (s *setCommand) updateSecret(req *pb.UpdateSecretRequest) error {
-	conn, err := connectivity.NewConnectivity(s.host, secretTimeout)
+	conn, err := s.connection.Create(s.host)
 	if err != nil {
 		return err
 	}
@@ -177,9 +185,12 @@ func (s *setCommand) updateSecret(req *pb.UpdateSecretRequest) error {
 
 	spinner := progressbar.NewProgressBar()
 	spinner.Start("please wait...")
-	secret := pb.NewSecretServiceClient(conn.GetConnection())
+	secret := pb.NewSecretServiceClient(conn)
 
-	_, err = secret.UpdateSecret(conn.GetContext(), req)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), secretTimeout)
+	defer cancelFunc()
+
+	_, err = secret.UpdateSecret(ctx, req)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {

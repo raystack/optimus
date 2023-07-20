@@ -13,12 +13,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lib/pq"
 
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/models"
-	"github.com/odpf/optimus/internal/utils"
+	"github.com/raystack/optimus/core/job"
+	"github.com/raystack/optimus/core/scheduler"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/models"
+	"github.com/raystack/optimus/internal/utils"
 )
 
 const (
@@ -37,14 +37,13 @@ type Schedule struct {
 	StartDate     time.Time
 	EndDate       *time.Time
 	Interval      string
-	DependsOnPast bool `json:"depends_on_past"`
-	CatchUp       bool `json:"catch_up"`
+	DependsOnPast bool
 	Retry         *Retry
 }
 type Retry struct {
 	Count              int   `json:"count"`
 	Delay              int32 `json:"delay"`
-	ExponentialBackoff bool  `json:"exponential_backoff"`
+	ExponentialBackoff bool
 }
 
 type JobUpstreams struct {
@@ -139,6 +138,56 @@ func fromStorageWindow(raw []byte, jobVersion int) (models.Window, error) {
 	)
 }
 
+type Metadata struct {
+	Resource  *MetadataResource
+	Scheduler map[string]string
+}
+
+type MetadataResource struct {
+	Request *MetadataResourceConfig
+	Limit   *MetadataResourceConfig
+}
+
+type MetadataResourceConfig struct {
+	CPU    string
+	Memory string
+}
+
+func fromStorageMetadata(metadata json.RawMessage) (scheduler.RuntimeConfig, error) {
+	if metadata == nil {
+		return scheduler.RuntimeConfig{}, nil
+	}
+	var storeMetadata Metadata
+	if err := json.Unmarshal(metadata, &storeMetadata); err != nil {
+		return scheduler.RuntimeConfig{}, err
+	}
+	var runtimeConfig scheduler.RuntimeConfig
+	if storeMetadata.Resource != nil {
+		var resourceRequest *scheduler.ResourceConfig
+		if storeMetadata.Resource.Request != nil {
+			resourceRequest = &scheduler.ResourceConfig{
+				CPU:    storeMetadata.Resource.Request.CPU,
+				Memory: storeMetadata.Resource.Request.Memory,
+			}
+		}
+		var resourceLimit *scheduler.ResourceConfig
+		if storeMetadata.Resource.Limit != nil {
+			resourceLimit = &scheduler.ResourceConfig{
+				CPU:    storeMetadata.Resource.Limit.CPU,
+				Memory: storeMetadata.Resource.Limit.Memory,
+			}
+		}
+		runtimeConfig.Resource = &scheduler.Resource{
+			Request: resourceRequest,
+			Limit:   resourceLimit,
+		}
+	}
+	if storeMetadata.Scheduler != nil {
+		runtimeConfig.Scheduler = storeMetadata.Scheduler
+	}
+	return runtimeConfig, nil
+}
+
 func (j *Job) toJob() (*scheduler.Job, error) {
 	t, err := tenant.NewTenant(j.ProjectName, j.NamespaceName)
 	if err != nil {
@@ -184,6 +233,11 @@ func (j *Job) toJobWithDetails() (*scheduler.JobWithDetails, error) {
 		return nil, err
 	}
 
+	runtimeConfig, err := fromStorageMetadata(j.Metadata)
+	if err != nil {
+		return nil, err
+	}
+
 	schedulerJobWithDetails := &scheduler.JobWithDetails{
 		Name: job.Name,
 		Job:  job,
@@ -195,10 +249,10 @@ func (j *Job) toJobWithDetails() (*scheduler.JobWithDetails, error) {
 		},
 		Schedule: &scheduler.Schedule{
 			DependsOnPast: storageSchedule.DependsOnPast,
-			CatchUp:       storageSchedule.CatchUp,
 			StartDate:     storageSchedule.StartDate,
 			Interval:      storageSchedule.Interval,
 		},
+		RuntimeConfig: runtimeConfig,
 	}
 	if !(storageSchedule.EndDate == nil || storageSchedule.EndDate.IsZero()) {
 		schedulerJobWithDetails.Schedule.EndDate = storageSchedule.EndDate
@@ -335,6 +389,48 @@ func (j *JobRepository) GetAll(ctx context.Context, projectName tenant.ProjectNa
 	}
 	if len(jobNameList) == 0 {
 		return nil, errors.NotFound(scheduler.EntityJobRun, "unable to find jobs in project:"+projectName.String())
+	}
+
+	jobUpstreamGroupedByName, err := j.getJobsUpstreams(ctx, projectName, jobNameList)
+	multiError.Append(err)
+
+	for jobName, upstreamList := range jobUpstreamGroupedByName {
+		jobsMap[jobName].Upstreams.UpstreamJobs = upstreamList
+	}
+
+	return utils.MapToList[*scheduler.JobWithDetails](jobsMap), multiError.ToErr()
+}
+
+func (j *JobRepository) GetJobs(ctx context.Context, projectName tenant.ProjectName, jobs []string) ([]*scheduler.JobWithDetails, error) {
+	getJobByNames := `SELECT ` + jobColumns + ` FROM job WHERE project_name = $1 AND name = any ($2) AND deleted_at IS NULL`
+	rows, err := j.db.Query(ctx, getJobByNames, projectName, jobs)
+	if err != nil {
+		return nil, errors.Wrap(job.EntityJob, "error while getting selected jobs", err)
+	}
+	defer rows.Close()
+
+	jobsMap := map[string]*scheduler.JobWithDetails{}
+	var jobNameList []string
+	multiError := errors.NewMultiError("errorInGetJobs")
+	for rows.Next() {
+		spec, err := FromRow(rows)
+		if err != nil {
+			multiError.Append(errors.Wrap(scheduler.EntityJobRun, "error parsing job:"+spec.Name, err))
+			continue
+		}
+
+		job, err := spec.toJobWithDetails()
+		if err != nil {
+			multiError.Append(errors.Wrap(scheduler.EntityJobRun, "error parsing job:"+spec.Name, err))
+			continue
+		}
+		jobNameList = append(jobNameList, job.GetName())
+		jobsMap[job.GetName()] = job
+	}
+	for _, jobName := range jobs {
+		if _, ok := jobsMap[jobName]; !ok {
+			multiError.Append(errors.NotFound(scheduler.EntityJobRun, "unable to find job "+jobName))
+		}
 	}
 
 	jobUpstreamGroupedByName, err := j.getJobsUpstreams(ctx, projectName, jobNameList)

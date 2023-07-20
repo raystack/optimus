@@ -9,10 +9,10 @@ import (
 	tMock "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/odpf/optimus/client/extension/factory"
-	"github.com/odpf/optimus/client/extension/internal"
-	"github.com/odpf/optimus/client/extension/mock"
-	"github.com/odpf/optimus/client/extension/model"
+	"github.com/raystack/optimus/client/extension/factory"
+	"github.com/raystack/optimus/client/extension/internal"
+	"github.com/raystack/optimus/client/extension/mock"
+	"github.com/raystack/optimus/client/extension/model"
 )
 
 type UpgradeManagerTestSuite struct {
@@ -230,7 +230,7 @@ func (u *UpgradeManagerTestSuite) TestUpgrade() {
 		}
 		release.Project = project3
 		owner1 := &model.RepositoryOwner{
-			Name:     "odpf",
+			Name:     "raystack",
 			Provider: provider,
 			Projects: []*model.RepositoryProject{project1},
 		}

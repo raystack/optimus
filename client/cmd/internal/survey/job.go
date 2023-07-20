@@ -9,9 +9,9 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 
-	"github.com/odpf/optimus/client/local"
-	"github.com/odpf/optimus/client/local/model"
-	"github.com/odpf/optimus/sdk/plugin"
+	"github.com/raystack/optimus/client/local"
+	"github.com/raystack/optimus/client/local/model"
+	"github.com/raystack/optimus/sdk/plugin"
 )
 
 // JobSurvey defines survey for job specification in general

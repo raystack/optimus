@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/plugin/yaml"
+	"github.com/raystack/optimus/client/cmd/internal/logger"
+	"github.com/raystack/optimus/plugin/yaml"
 )
 
 type validateCommand struct {

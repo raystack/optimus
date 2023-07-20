@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/afero"
 	"gopkg.in/yaml.v3"
 
-	"github.com/odpf/optimus/client/extension/model"
+	"github.com/raystack/optimus/client/extension/model"
 )
 
 const manifestFileName = "manifest.yaml"

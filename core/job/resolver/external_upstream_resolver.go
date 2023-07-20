@@ -6,11 +6,11 @@ import (
 
 	"github.com/kushsharma/parallel"
 
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/ext/resourcemanager"
-	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/writer"
+	"github.com/raystack/optimus/config"
+	"github.com/raystack/optimus/core/job"
+	"github.com/raystack/optimus/ext/resourcemanager"
+	"github.com/raystack/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/writer"
 )
 
 type extUpstreamResolver struct {
@@ -57,12 +57,12 @@ func (e *extUpstreamResolver) Resolve(ctx context.Context, jobWithUpstream *job.
 		resolvedExternally = true
 	}
 	if len(me.Errors) > 0 {
-		lw.Write(writer.LogLevelError, errors.MultiToError(me).Error())
+		lw.Write(writer.LogLevelError, me.ToErr().Error())
 	}
 	if resolvedExternally {
 		lw.Write(writer.LogLevelDebug, fmt.Sprintf("[%s] resolved job %s upstream from external", jobWithUpstream.Job().Tenant().NamespaceName().String(), jobWithUpstream.Name().String()))
 	}
-	return job.NewWithUpstream(jobWithUpstream.Job(), mergedUpstreams), errors.MultiToError(me)
+	return job.NewWithUpstream(jobWithUpstream.Job(), mergedUpstreams), me.ToErr()
 }
 
 func (e *extUpstreamResolver) BulkResolve(ctx context.Context, jobsWithUpstream []*job.WithUpstream, lw writer.LogWriter) ([]*job.WithUpstream, error) {
@@ -90,7 +90,7 @@ func (e *extUpstreamResolver) BulkResolve(ctx context.Context, jobsWithUpstream 
 		me.Append(result.Err)
 	}
 
-	return jobsWithAllUpstream, errors.MultiToError(me)
+	return jobsWithAllUpstream, me.ToErr()
 }
 
 func (e *extUpstreamResolver) fetchOptimusUpstreams(ctx context.Context, unresolvedUpstream *job.Upstream) ([]*job.Upstream, error) {
@@ -104,7 +104,7 @@ func (e *extUpstreamResolver) fetchOptimusUpstreams(ctx context.Context, unresol
 		}
 		upstreams = append(upstreams, deps...)
 	}
-	return upstreams, errors.MultiToError(me)
+	return upstreams, me.ToErr()
 }
 
 func NewTestExternalUpstreamResolver(

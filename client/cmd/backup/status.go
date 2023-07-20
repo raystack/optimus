@@ -8,20 +8,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
+	"github.com/raystack/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/internal"
-	"github.com/odpf/optimus/client/cmd/internal/connectivity"
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/client/cmd/internal/progressbar"
-	"github.com/odpf/optimus/config"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/client/cmd/internal"
+	"github.com/raystack/optimus/client/cmd/internal/connection"
+	"github.com/raystack/optimus/client/cmd/internal/logger"
+	"github.com/raystack/optimus/client/cmd/internal/progressbar"
+	"github.com/raystack/optimus/config"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 type statusCommand struct {
-	logger         log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	configFilePath string
 
 	projectName string
@@ -76,6 +78,8 @@ func (s *statusCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	if s.host == "" {
 		s.host = conf.Host
 	}
+
+	s.connection = connection.New(s.logger, conf)
 	return nil
 }
 
@@ -86,17 +90,21 @@ func (s *statusCommand) RunE(_ *cobra.Command, args []string) error {
 		Id:            args[0],
 	}
 
-	conn, err := connectivity.NewConnectivity(s.host, backupTimeout)
+	conn, err := s.connection.Create(s.host)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	backup := pb.NewBackupServiceClient(conn.GetConnection())
+	backup := pb.NewBackupServiceClient(conn)
 
 	spinner := progressbar.NewProgressBar()
 	spinner.Start("please wait...")
-	backupDetailResponse, err := backup.GetBackup(conn.GetContext(), getBackupRequest)
+
+	ctx, dialCancel := context.WithTimeout(context.Background(), backupTimeout)
+	defer dialCancel()
+
+	backupDetailResponse, err := backup.GetBackup(ctx, getBackupRequest)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {

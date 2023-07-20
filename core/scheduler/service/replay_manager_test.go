@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"golang.org/x/net/context"
 
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/scheduler/service"
-	"github.com/odpf/optimus/core/tenant"
+	"github.com/raystack/optimus/config"
+	"github.com/raystack/optimus/core/scheduler"
+	"github.com/raystack/optimus/core/scheduler/service"
+	"github.com/raystack/optimus/core/tenant"
 )
 
 func TestReplayManager(t *testing.T) {

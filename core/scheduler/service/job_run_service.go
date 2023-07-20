@@ -2,17 +2,21 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/lib/cron"
-	"github.com/odpf/optimus/internal/telemetry"
+	"github.com/raystack/optimus/core/event"
+	"github.com/raystack/optimus/core/event/moderator"
+	"github.com/raystack/optimus/core/scheduler"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/lib/cron"
+	"github.com/raystack/optimus/internal/telemetry"
 )
 
 type metricType string
@@ -23,12 +27,15 @@ func (m metricType) String() string {
 
 const (
 	scheduleDelay metricType = "schedule_delay"
+
+	metricJobRunEvents = "jobrun_events_total"
 )
 
 type JobRepository interface {
 	GetJob(ctx context.Context, name tenant.ProjectName, jobName scheduler.JobName) (*scheduler.Job, error)
 	GetJobDetails(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName) (*scheduler.JobWithDetails, error)
 	GetAll(ctx context.Context, projectName tenant.ProjectName) ([]*scheduler.JobWithDetails, error)
+	GetJobs(ctx context.Context, projectName tenant.ProjectName, jobs []string) ([]*scheduler.JobWithDetails, error)
 }
 
 type JobRunRepository interface {
@@ -36,6 +43,7 @@ type JobRunRepository interface {
 	GetByScheduledAt(ctx context.Context, tenant tenant.Tenant, name scheduler.JobName, scheduledAt time.Time) (*scheduler.JobRun, error)
 	Create(ctx context.Context, tenant tenant.Tenant, name scheduler.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error
 	Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, jobRunStatus scheduler.State) error
+	UpdateState(ctx context.Context, jobRunID uuid.UUID, jobRunStatus scheduler.State) error
 	UpdateSLA(ctx context.Context, slaObjects []*scheduler.SLAObject) error
 	UpdateMonitoring(ctx context.Context, jobRunID uuid.UUID, monitoring map[string]any) error
 }
@@ -65,11 +73,16 @@ type Scheduler interface {
 	DeleteJobs(ctx context.Context, t tenant.Tenant, jobsToDelete []string) error
 }
 
+type EventHandler interface {
+	HandleEvent(moderator.Event)
+}
+
 type JobRunService struct {
 	l                log.Logger
 	repo             JobRunRepository
 	replayRepo       JobReplayRepository
 	operatorRunRepo  OperatorRunRepository
+	eventHandler     EventHandler
 	scheduler        Scheduler
 	jobRepo          JobRepository
 	priorityResolver PriorityResolver
@@ -79,25 +92,31 @@ type JobRunService struct {
 func (s *JobRunService) JobRunInput(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName, config scheduler.RunConfig) (*scheduler.ExecutorInput, error) {
 	job, err := s.jobRepo.GetJob(ctx, projectName, jobName)
 	if err != nil {
+		s.l.Error("error getting job [%s]: %s", jobName, err)
 		return nil, err
 	}
 	// TODO: Use scheduled_at instead of executed_at for computations, for deterministic calculations
 	// Todo: later, always return scheduleTime, for scheduleTimes greater than a given date
 	var jobRun *scheduler.JobRun
 	if config.JobRunID.IsEmpty() {
+		s.l.Warn("getting job run by scheduled at")
 		jobRun, err = s.repo.GetByScheduledAt(ctx, job.Tenant, jobName, config.ScheduledAt)
 	} else {
+		s.l.Warn("getting job run by id")
 		jobRun, err = s.repo.GetByID(ctx, config.JobRunID)
 	}
+
 	var executedAt time.Time
 	if err != nil { // Fallback for executed_at to scheduled_at
 		executedAt = config.ScheduledAt
+		s.l.Warn("suppressed error is encountered when getting job run: %s", err)
 	} else {
 		executedAt = jobRun.StartTime
 	}
 	// Additional task config from existing replay
 	replayJobConfig, err := s.replayRepo.GetReplayJobConfig(ctx, job.Tenant, job.Name, config.ScheduledAt)
 	if err != nil {
+		s.l.Error("error getting replay job config from db: %s", err)
 		return nil, err
 	}
 	for k, v := range replayJobConfig {
@@ -110,39 +129,40 @@ func (s *JobRunService) JobRunInput(ctx context.Context, projectName tenant.Proj
 func (s *JobRunService) GetJobRuns(ctx context.Context, projectName tenant.ProjectName, jobName scheduler.JobName, criteria *scheduler.JobRunsCriteria) ([]*scheduler.JobRunStatus, error) {
 	jobWithDetails, err := s.jobRepo.GetJobDetails(ctx, projectName, jobName)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get job details from DB for jobName: %s, project:%s,  error:%w ", jobName, projectName, err)
+		msg := fmt.Sprintf("unable to get job details for jobName: %s, project:%s", jobName, projectName)
+		s.l.Error(msg)
+		return nil, errors.AddErrContext(err, scheduler.EntityJobRun, msg)
 	}
 	interval := jobWithDetails.Schedule.Interval
 	if interval == "" {
-		return nil, fmt.Errorf("job schedule interval not found")
+		s.l.Error("job schedule interval is empty")
+		return nil, errors.InvalidArgument(scheduler.EntityJobRun, "cannot get job runs, job interval is empty")
 	}
-	// jobCron
 	jobCron, err := cron.ParseCronSchedule(interval)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse job cron interval %w", err)
+		msg := fmt.Sprintf("unable to parse job cron interval: %s", err)
+		s.l.Error(msg)
+		return nil, errors.InternalError(scheduler.EntityJobRun, msg, nil)
 	}
 
 	if criteria.OnlyLastRun {
+		s.l.Warn("getting last run only")
 		return s.scheduler.GetJobRuns(ctx, jobWithDetails.Job.Tenant, criteria, jobCron)
 	}
-	// validate job query
 	err = validateJobQuery(criteria, jobWithDetails)
 	if err != nil {
+		s.l.Error("invalid job query: %s", err)
 		return nil, err
 	}
-	// get expected runs StartDate and EndDate inclusive
 	expectedRuns := getExpectedRuns(jobCron, criteria.StartDate, criteria.EndDate)
 
-	// call to airflow for get runs
 	actualRuns, err := s.scheduler.GetJobRuns(ctx, jobWithDetails.Job.Tenant, criteria, jobCron)
 	if err != nil {
-		s.l.Error(fmt.Sprintf("unable to get job runs from airflow err: %v", err.Error()))
+		s.l.Error("unable to get job runs from airflow err: %s", err)
 		actualRuns = []*scheduler.JobRunStatus{}
 	}
-	// mergeRuns
 	totalRuns := mergeRuns(expectedRuns, actualRuns)
 
-	// filterRuns
 	result := filterRuns(totalRuns, createFilterSet(criteria.Filter))
 
 	return result, nil
@@ -164,16 +184,16 @@ func getExpectedRuns(spec *cron.ScheduleSpec, startTime, endTime time.Time) []*s
 }
 
 func mergeRuns(expected, actual []*scheduler.JobRunStatus) []*scheduler.JobRunStatus {
-	var mergeRuns []*scheduler.JobRunStatus
+	var merged []*scheduler.JobRunStatus
 	m := actualRunMap(actual)
 	for _, exp := range expected {
 		if act, ok := m[exp.ScheduledAt.UTC().String()]; ok {
-			mergeRuns = append(mergeRuns, &act)
+			merged = append(merged, &act)
 		} else {
-			mergeRuns = append(mergeRuns, exp)
+			merged = append(merged, exp)
 		}
 	}
-	return mergeRuns
+	return merged
 }
 
 func actualRunMap(runs []*scheduler.JobRunStatus) map[string]scheduler.JobRunStatus {
@@ -208,13 +228,10 @@ func createFilterSet(filter []string) map[string]struct{} {
 func validateJobQuery(jobQuery *scheduler.JobRunsCriteria, jobWithDetails *scheduler.JobWithDetails) error {
 	jobStartDate := jobWithDetails.Schedule.StartDate
 	if jobStartDate.IsZero() {
-		return fmt.Errorf("job schedule startDate not found in job fetched from DB")
+		return errors.InternalError(scheduler.EntityJobRun, "job schedule startDate not found in job", nil)
 	}
-	givenStartDate := jobQuery.StartDate
-	givenEndDate := jobQuery.EndDate
-
-	if givenStartDate.Before(jobStartDate) || givenEndDate.Before(jobStartDate) {
-		return fmt.Errorf("invalid date range")
+	if jobQuery.StartDate.Before(jobStartDate) || jobQuery.EndDate.Before(jobStartDate) {
+		return errors.InvalidArgument(scheduler.EntityJobRun, "invalid date range, interval contains dates before job start")
 	}
 	return nil
 }
@@ -222,26 +239,26 @@ func validateJobQuery(jobQuery *scheduler.JobRunsCriteria, jobWithDetails *sched
 func (s *JobRunService) registerNewJobRun(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time) error {
 	job, err := s.jobRepo.GetJobDetails(ctx, tenant.ProjectName(), jobName)
 	if err != nil {
+		s.l.Error("error getting job details for job [%s]: %s", jobName, err)
 		return err
 	}
 	slaDefinitionInSec, err := job.SLADuration()
 	if err != nil {
+		s.l.Error("error getting sla duration: %s", err)
 		return err
 	}
-	telemetry.NewGauge("total_jobs_running", map[string]string{
-		"project":   tenant.ProjectName().String(),
-		"namespace": tenant.NamespaceName().String(),
-	}).Inc()
 	err = s.repo.Create(ctx, tenant, jobName, scheduledAt, slaDefinitionInSec)
 	if err != nil {
+		s.l.Error("error creating job run: %s", err)
 		return err
 	}
 
-	telemetry.NewCounter("scheduler_operator_durations_seconds", map[string]string{
+	telemetry.NewGauge("jobrun_durations_breakdown_seconds", map[string]string{
 		"project":   tenant.ProjectName().String(),
 		"namespace": tenant.NamespaceName().String(),
+		"job":       jobName.String(),
 		"type":      scheduleDelay.String(),
-	}).Add(float64(time.Now().Unix() - scheduledAt.Unix()))
+	}).Set(float64(time.Now().Unix() - scheduledAt.Unix()))
 	return nil
 }
 
@@ -250,14 +267,18 @@ func (s *JobRunService) getJobRunByScheduledAt(ctx context.Context, tenant tenan
 	jobRun, err := s.repo.GetByScheduledAt(ctx, tenant, jobName, scheduledAt)
 	if err != nil {
 		if !errors.IsErrorType(err, errors.ErrNotFound) {
+			s.l.Error("error getting job run by scheduled at: %s", err)
 			return nil, err
 		}
+		// TODO: consider moving below call outside as the caller is a 'getter'
 		err = s.registerNewJobRun(ctx, tenant, jobName, scheduledAt)
 		if err != nil {
+			s.l.Error("error registering new job run: %s", err)
 			return nil, err
 		}
 		jobRun, err = s.repo.GetByScheduledAt(ctx, tenant, jobName, scheduledAt)
 		if err != nil {
+			s.l.Error("error getting the registered job run: %s", err)
 			return nil, err
 		}
 	}
@@ -268,23 +289,15 @@ func (s *JobRunService) updateJobRun(ctx context.Context, event *scheduler.Event
 	var jobRun *scheduler.JobRun
 	jobRun, err := s.getJobRunByScheduledAt(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
 	if err != nil {
+		s.l.Error("error getting job run by schedule time [%s]: %s", event.JobScheduledAt, err)
 		return err
-	}
-	for _, state := range scheduler.TaskEndStates {
-		if event.Status == state {
-			// this can go negative, because it is possible that when we deploy certain job have already started,
-			// and the very first events we get are that of task end states, to handle this, we should treat the lowest
-			// value as the base value.
-			telemetry.NewGauge("total_jobs_running", map[string]string{
-				"project":   event.Tenant.ProjectName().String(),
-				"namespace": event.Tenant.NamespaceName().String(),
-			}).Dec()
-			break
-		}
 	}
 	if err := s.repo.Update(ctx, jobRun.ID, event.EventTime, event.Status); err != nil {
+		s.l.Error("error updating job run with id [%s]: %s", jobRun.ID, err)
 		return err
 	}
+	jobRun.State = event.Status
+	s.raiseJobRunStateChangeEvent(jobRun)
 	monitoringValues := s.getMonitoringValues(event)
 	return s.repo.UpdateMonitoring(ctx, jobRun.ID, monitoringValues)
 }
@@ -298,24 +311,77 @@ func (*JobRunService) getMonitoringValues(event *scheduler.Event) map[string]any
 }
 
 func (s *JobRunService) updateJobRunSLA(ctx context.Context, event *scheduler.Event) error {
+	telemetry.NewCounter(metricJobRunEvents, map[string]string{
+		"project":   event.Tenant.ProjectName().String(),
+		"namespace": event.Tenant.NamespaceName().String(),
+		"name":      event.JobName.String(),
+		"status":    scheduler.SLAMissEvent.String(),
+	}).Inc()
 	if len(event.SLAObjectList) > 0 {
 		return s.repo.UpdateSLA(ctx, event.SLAObjectList)
 	}
 	return nil
 }
 
+func operatorStartToJobState(operatorType scheduler.OperatorType) (scheduler.State, error) {
+	switch operatorType {
+	case scheduler.OperatorTask:
+		return scheduler.StateInProgress, nil
+	case scheduler.OperatorSensor:
+		return scheduler.StateWaitUpstream, nil
+	case scheduler.OperatorHook:
+		return scheduler.StateInProgress, nil
+	default:
+		return "", errors.InvalidArgument(scheduler.EntityJobRun, "Invalid operator type")
+	}
+}
+
+func (s *JobRunService) raiseJobRunStateChangeEvent(jobRun *scheduler.JobRun) {
+	var schedulerEvent moderator.Event
+	var err error
+	switch jobRun.State {
+	case scheduler.StateWaitUpstream:
+		schedulerEvent, err = event.NewJobRunWaitUpstreamEvent(jobRun)
+	case scheduler.StateInProgress:
+		schedulerEvent, err = event.NewJobRunInProgressEvent(jobRun)
+	case scheduler.StateSuccess:
+		schedulerEvent, err = event.NewJobRunSuccessEvent(jobRun)
+	case scheduler.StateFailed:
+		schedulerEvent, err = event.NewJobRunFailedEvent(jobRun)
+	}
+	if err != nil {
+		s.l.Error("error creating event for job run state change : %s", err)
+		return
+	}
+	s.eventHandler.HandleEvent(schedulerEvent)
+	telemetry.NewCounter(metricJobRunEvents, map[string]string{
+		"project":   jobRun.Tenant.ProjectName().String(),
+		"namespace": jobRun.Tenant.NamespaceName().String(),
+		"name":      jobRun.JobName.String(),
+		"status":    jobRun.State.String(),
+	}).Inc()
+}
+
 func (s *JobRunService) createOperatorRun(ctx context.Context, event *scheduler.Event, operatorType scheduler.OperatorType) error {
 	jobRun, err := s.getJobRunByScheduledAt(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
 	if err != nil {
+		s.l.Error("error getting job run by scheduled time [%s]: %s", event.JobScheduledAt, err)
 		return err
 	}
-	if operatorType == scheduler.OperatorTask {
-		telemetry.NewGauge("count_running_tasks", map[string]string{
-			"project":   event.Tenant.ProjectName().String(),
-			"namespace": event.Tenant.NamespaceName().String(),
-			"type":      event.OperatorName,
-		}).Inc()
+	jobState, err := operatorStartToJobState(operatorType)
+	if err != nil {
+		s.l.Error("error converting operator to job state: %s", err)
+		return err
 	}
+	if jobRun.State != jobState {
+		err := s.repo.UpdateState(ctx, jobRun.ID, jobState)
+		if err != nil {
+			s.l.Error("error updating state for job run id [%d] to [%s]: %s", jobRun.ID, jobState, err)
+			return err
+		}
+		s.raiseJobRunStateChangeEvent(jobRun)
+	}
+
 	return s.operatorRunRepo.CreateOperatorRun(ctx, event.OperatorName, operatorType, jobRun.ID, event.EventTime)
 }
 
@@ -324,14 +390,20 @@ func (s *JobRunService) getOperatorRun(ctx context.Context, event *scheduler.Eve
 	operatorRun, err := s.operatorRunRepo.GetOperatorRun(ctx, event.OperatorName, operatorType, jobRunID)
 	if err != nil {
 		if !errors.IsErrorType(err, errors.ErrNotFound) {
+			s.l.Error("error getting operator for job run [%s]: %s", jobRunID, err)
 			return nil, err
 		}
+		s.l.Warn("operator is not found, creating it")
+
+		// TODO: consider moving below call outside as the caller is a 'getter'
 		err = s.createOperatorRun(ctx, event, operatorType)
 		if err != nil {
+			s.l.Error("error creating operator run: %s", err)
 			return nil, err
 		}
 		operatorRun, err = s.operatorRunRepo.GetOperatorRun(ctx, event.OperatorName, operatorType, jobRunID)
 		if err != nil {
+			s.l.Error("error getting the registered operator run: %s", err)
 			return nil, err
 		}
 	}
@@ -341,52 +413,68 @@ func (s *JobRunService) getOperatorRun(ctx context.Context, event *scheduler.Eve
 func (s *JobRunService) updateOperatorRun(ctx context.Context, event *scheduler.Event, operatorType scheduler.OperatorType) error {
 	jobRun, err := s.getJobRunByScheduledAt(ctx, event.Tenant, event.JobName, event.JobScheduledAt)
 	if err != nil {
+		s.l.Error("error getting job run by scheduled time [%s]: %s", event.JobScheduledAt, err)
 		return err
 	}
 	operatorRun, err := s.getOperatorRun(ctx, event, operatorType, jobRun.ID)
 	if err != nil {
+		s.l.Error("error getting operator for job run id [%s]: %s", jobRun.ID, err)
 		return err
-	}
-	if operatorType == scheduler.OperatorTask {
-		for _, state := range scheduler.TaskEndStates {
-			if event.Status == state {
-				// this can go negative, because it is possible that when we deploy certain job have already started,
-				// and the very first events we get are that of task end states, to handle this, we should treat the lowest
-				// value as the base value.
-				telemetry.NewGauge("count_running_tasks", map[string]string{
-					"project":   event.Tenant.ProjectName().String(),
-					"namespace": event.Tenant.NamespaceName().String(),
-					"type":      event.OperatorName,
-				}).Dec()
-				break
-			}
-		}
 	}
 	err = s.operatorRunRepo.UpdateOperatorRun(ctx, operatorType, operatorRun.ID, event.EventTime, event.Status)
 	if err != nil {
+		s.l.Error("error updating operator run id [%s]: %s", operatorRun.ID, err)
 		return err
 	}
-	telemetry.NewCounter("scheduler_operator_durations_seconds", map[string]string{
+	telemetry.NewGauge("jobrun_durations_breakdown_seconds", map[string]string{
 		"project":   event.Tenant.ProjectName().String(),
 		"namespace": event.Tenant.NamespaceName().String(),
+		"job":       event.JobName.String(),
 		"type":      operatorType.String(),
-	}).Add(float64(event.EventTime.Unix() - operatorRun.StartTime.Unix()))
+	}).Set(float64(event.EventTime.Unix() - operatorRun.StartTime.Unix()))
 	return nil
 }
 
 func (s *JobRunService) trackEvent(event *scheduler.Event) {
 	if event.Type.IsOfType(scheduler.EventCategorySLAMiss) {
-		s.l.Debug(fmt.Sprintf("received event: %v, jobName: %v , slaPayload: %#v",
-			event.Type, event.JobName, event.SLAObjectList))
+		jsonSLAObjectList, err := json.Marshal(event.SLAObjectList)
+		if err != nil {
+			jsonSLAObjectList = []byte("unable to json Marshal SLAObjectList")
+		}
+		s.l.Info("received job sla_miss event, jobName: %v , slaPayload: %s", event.JobName, string(jsonSLAObjectList))
 	} else {
-		s.l.Debug(fmt.Sprintf("received event: %v, eventTime: %s, jobName: %v, Operator: %v, schedule: %s, status: %s",
-			event.Type, event.EventTime.Format("01/02/06 15:04:05 MST"), event.JobName, event.OperatorName, event.JobScheduledAt.Format("01/02/06 15:04:05 MST"), event.Status))
+		s.l.Info("received event: %v, eventTime: %s, jobName: %v, Operator: %v, schedule: %s, status: %s",
+			event.Type, event.EventTime.Format("01/02/06 15:04:05 MST"), event.JobName, event.OperatorName, event.JobScheduledAt.Format("01/02/06 15:04:05 MST"), event.Status)
 	}
-	telemetry.NewGauge("scheduler_events", map[string]string{
-		"project":   event.Tenant.ProjectName().String(),
-		"namespace": event.Tenant.NamespaceName().String(),
-		"type":      event.Type.String(),
-	}).Inc()
+
+	if event.Type == scheduler.SensorStartEvent || event.Type == scheduler.SensorRetryEvent || event.Type == scheduler.SensorSuccessEvent || event.Type == scheduler.SensorFailEvent {
+		eventType := strings.TrimPrefix(event.Type.String(), fmt.Sprintf("%s_", scheduler.OperatorSensor))
+		telemetry.NewCounter("jobrun_sensor_events_total", map[string]string{
+			"project":    event.Tenant.ProjectName().String(),
+			"namespace":  event.Tenant.NamespaceName().String(),
+			"event_type": eventType,
+		}).Inc()
+		return
+	}
+	if event.Type == scheduler.TaskStartEvent || event.Type == scheduler.TaskRetryEvent || event.Type == scheduler.TaskSuccessEvent || event.Type == scheduler.TaskFailEvent {
+		eventType := strings.TrimPrefix(event.Type.String(), fmt.Sprintf("%s_", scheduler.OperatorTask))
+		telemetry.NewCounter("jobrun_task_events_total", map[string]string{
+			"project":    event.Tenant.ProjectName().String(),
+			"namespace":  event.Tenant.NamespaceName().String(),
+			"event_type": eventType,
+			"operator":   event.OperatorName,
+		}).Inc()
+		return
+	}
+	if event.Type == scheduler.HookStartEvent || event.Type == scheduler.HookRetryEvent || event.Type == scheduler.HookSuccessEvent || event.Type == scheduler.HookFailEvent {
+		eventType := strings.TrimPrefix(event.Type.String(), fmt.Sprintf("%s_", scheduler.OperatorHook))
+		telemetry.NewCounter("jobrun_hook_events_total", map[string]string{
+			"project":    event.Tenant.ProjectName().String(),
+			"namespace":  event.Tenant.NamespaceName().String(),
+			"event_type": eventType,
+			"operator":   event.OperatorName,
+		}).Inc()
+	}
 }
 
 func (s *JobRunService) UpdateJobState(ctx context.Context, event *scheduler.Event) error {
@@ -415,13 +503,14 @@ func (s *JobRunService) UpdateJobState(ctx context.Context, event *scheduler.Eve
 }
 
 func NewJobRunService(logger log.Logger, jobRepo JobRepository, jobRunRepo JobRunRepository, replayRepo JobReplayRepository,
-	operatorRunRepo OperatorRunRepository, scheduler Scheduler, resolver PriorityResolver, compiler JobInputCompiler,
+	operatorRunRepo OperatorRunRepository, scheduler Scheduler, resolver PriorityResolver, compiler JobInputCompiler, eventHandler EventHandler,
 ) *JobRunService {
 	return &JobRunService{
 		l:                logger,
 		repo:             jobRunRepo,
 		operatorRunRepo:  operatorRunRepo,
 		scheduler:        scheduler,
+		eventHandler:     eventHandler,
 		replayRepo:       replayRepo,
 		jobRepo:          jobRepo,
 		priorityResolver: resolver,

@@ -7,8 +7,8 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 
-	"github.com/odpf/optimus/client/local"
-	"github.com/odpf/optimus/client/local/model"
+	"github.com/raystack/optimus/client/local"
+	"github.com/raystack/optimus/client/local/model"
 )
 
 // ResourceSpecCreateSurvey defines surveys for resource spec creation

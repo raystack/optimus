@@ -125,12 +125,12 @@ func As(err error, target any) bool {
 }
 
 func (e *DomainError) Error() string {
-	subError := ""
-	if errors.Is(e.WrappedErr, &DomainError{}) {
-		subError = ": " + e.WrappedErr.Error()
+	if e.WrappedErr != nil {
+		return fmt.Sprintf("%v for entity %v: %v: %s",
+			e.ErrorType.String(), e.Entity, e.Message, e.WrappedErr.Error())
 	}
-	return fmt.Sprintf("%v for entity %v: %v%s",
-		e.ErrorType.String(), e.Entity, e.Message, subError)
+	return fmt.Sprintf("%v for entity %v: %v",
+		e.ErrorType.String(), e.Entity, e.Message)
 }
 
 func (e *DomainError) Unwrap() error {

@@ -2,22 +2,22 @@ package cmd
 
 import (
 	"github.com/MakeNowJust/heredoc"
-	"github.com/odpf/salt/cmdx"
+	"github.com/raystack/salt/cmdx"
 	cli "github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/backup"
-	"github.com/odpf/optimus/client/cmd/extension"
-	"github.com/odpf/optimus/client/cmd/initialize"
-	"github.com/odpf/optimus/client/cmd/job"
-	"github.com/odpf/optimus/client/cmd/namespace"
-	"github.com/odpf/optimus/client/cmd/playground"
-	"github.com/odpf/optimus/client/cmd/plugin"
-	"github.com/odpf/optimus/client/cmd/project"
-	"github.com/odpf/optimus/client/cmd/replay"
-	"github.com/odpf/optimus/client/cmd/resource"
-	"github.com/odpf/optimus/client/cmd/scheduler"
-	"github.com/odpf/optimus/client/cmd/secret"
-	"github.com/odpf/optimus/client/cmd/version"
+	"github.com/raystack/optimus/client/cmd/backup"
+	"github.com/raystack/optimus/client/cmd/extension"
+	"github.com/raystack/optimus/client/cmd/initialize"
+	"github.com/raystack/optimus/client/cmd/job"
+	"github.com/raystack/optimus/client/cmd/namespace"
+	"github.com/raystack/optimus/client/cmd/playground"
+	"github.com/raystack/optimus/client/cmd/plugin"
+	"github.com/raystack/optimus/client/cmd/project"
+	"github.com/raystack/optimus/client/cmd/replay"
+	"github.com/raystack/optimus/client/cmd/resource"
+	"github.com/raystack/optimus/client/cmd/scheduler"
+	"github.com/raystack/optimus/client/cmd/secret"
+	"github.com/raystack/optimus/client/cmd/version"
 )
 
 // New constructs the 'root' command. It houses all other sub commands
@@ -45,10 +45,10 @@ func New() *cli.Command {
 			"group:core": "true",
 			"help:learn": heredoc.Doc(`
 				Use 'optimus <command> <subcommand> --help' for more information about a command.
-				Read the manual at https://odpf.github.io/optimus/
+				Read the manual at https://raystack.github.io/optimus/
 			`),
 			"help:feedback": heredoc.Doc(`
-				Open an issue here https://github.com/odpf/optimus/issues
+				Open an issue here https://github.com/raystack/optimus/issues
 			`),
 		},
 	}

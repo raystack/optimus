@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/writer"
+	"github.com/raystack/optimus/core/job"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/writer"
 )
 
 const (
-	ConcurrentTicketPerSec = 40
-	ConcurrentLimit        = 600
+	ConcurrentTicketPerSec = 50
+	ConcurrentLimit        = 100
 )
 
 type UpstreamResolver struct {
@@ -57,7 +57,7 @@ func (u UpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.Pr
 		errorMsg := fmt.Sprintf("unable to resolve upstream: %s", err.Error())
 		logWriter.Write(writer.LogLevelError, errorMsg)
 		me.Append(errors.NewError(errors.ErrInternalError, job.EntityJob, errorMsg))
-		return nil, errors.MultiToError(me)
+		return nil, me.ToErr()
 	}
 
 	jobsWithResolvedExternalUpstreams, err := u.externalUpstreamResolver.BulkResolve(ctx, jobsWithResolvedInternalUpstreams, logWriter)
@@ -65,7 +65,7 @@ func (u UpstreamResolver) BulkResolve(ctx context.Context, projectName tenant.Pr
 
 	me.Append(u.getUnresolvedUpstreamsErrors(jobsWithResolvedExternalUpstreams, logWriter))
 
-	return jobsWithResolvedExternalUpstreams, errors.MultiToError(me)
+	return jobsWithResolvedExternalUpstreams, me.ToErr()
 }
 
 func (u UpstreamResolver) Resolve(ctx context.Context, subjectJob *job.Job, logWriter writer.LogWriter) ([]*job.Upstream, error) {
@@ -80,7 +80,7 @@ func (u UpstreamResolver) Resolve(ctx context.Context, subjectJob *job.Job, logW
 	jobWithInternalExternalUpstream, err := u.externalUpstreamResolver.Resolve(ctx, jobWithInternalUpstream, logWriter)
 	me.Append(err)
 
-	return jobWithInternalExternalUpstream.Upstreams(), errors.MultiToError(me)
+	return jobWithInternalExternalUpstream.Upstreams(), me.ToErr()
 }
 
 func (UpstreamResolver) getUnresolvedUpstreamsErrors(jobsWithUpstreams []*job.WithUpstream, logWriter writer.LogWriter) error {
@@ -94,5 +94,5 @@ func (UpstreamResolver) getUnresolvedUpstreamsErrors(jobsWithUpstreams []*job.Wi
 			}
 		}
 	}
-	return errors.MultiToError(me)
+	return me.ToErr()
 }

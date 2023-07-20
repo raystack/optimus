@@ -5,14 +5,14 @@ import (
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/models"
-	"github.com/odpf/optimus/internal/utils"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/core/job"
+	"github.com/raystack/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/models"
+	"github.com/raystack/optimus/internal/utils"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
-func toJobProto(jobEntity *job.Job) *pb.JobSpecification {
+func ToJobProto(jobEntity *job.Job) *pb.JobSpecification {
 	return &pb.JobSpecification{
 		Version:          int32(jobEntity.Spec().Version()),
 		Name:             jobEntity.Spec().Name().String(),
@@ -21,7 +21,6 @@ func toJobProto(jobEntity *job.Job) *pb.JobSpecification {
 		EndDate:          jobEntity.Spec().Schedule().EndDate().String(),
 		Interval:         jobEntity.Spec().Schedule().Interval(),
 		DependsOnPast:    jobEntity.Spec().Schedule().DependsOnPast(),
-		CatchUp:          jobEntity.Spec().Schedule().CatchUp(),
 		TaskName:         jobEntity.Spec().Task().Name().String(),
 		Config:           fromConfig(jobEntity.Spec().Task().Config()),
 		WindowSize:       jobEntity.Spec().Window().GetSize(),
@@ -57,7 +56,7 @@ func fromJobProtos(protoJobSpecs []*pb.JobSpecification) ([]*job.Spec, []job.Nam
 		}
 		jobSpecs = append(jobSpecs, jobSpec)
 	}
-	return jobSpecs, jobNameWithValidationErrors, errors.MultiToError(me)
+	return jobSpecs, jobNameWithValidationErrors, me.ToErr()
 }
 
 func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
@@ -76,7 +75,6 @@ func fromJobProto(js *pb.JobSpecification) (*job.Spec, error) {
 	}
 
 	scheduleBuilder := job.NewScheduleBuilder(startDate).
-		WithCatchUp(js.CatchUp).
 		WithDependsOnPast(js.DependsOnPast).
 		WithInterval(js.Interval)
 
@@ -413,7 +411,7 @@ func toBasicInfoSectionProto(jobDetail *job.Job, logMessages []*pb.Log) *pb.JobI
 	return &pb.JobInspectResponse_BasicInfoSection{
 		Destination: jobDetail.Destination().String(),
 		Source:      sources,
-		Job:         toJobProto(jobDetail),
+		Job:         ToJobProto(jobDetail),
 		Notice:      logMessages,
 	}
 }

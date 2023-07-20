@@ -5,12 +5,13 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/raystack/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/core/tenant/dto"
-	"github.com/odpf/optimus/core/tenant/service"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/core/tenant/dto"
+	"github.com/raystack/optimus/core/tenant/service"
 )
 
 func TestSecretService(t *testing.T) {
@@ -21,11 +22,13 @@ func TestSecretService(t *testing.T) {
 	nsName := "test-namespace"
 	invalidSecret := tenant.Secret{}
 
+	logger := log.NewLogrus()
+
 	t.Run("Save", func(t *testing.T) {
 		t.Run("returns error when secret is not provided", func(t *testing.T) {
 			secretRepo := new(secretRepo)
 
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			err := secretService.Save(ctx, projectName, nsName, nil)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity secret: secret is not valid")
@@ -34,7 +37,7 @@ func TestSecretService(t *testing.T) {
 			secretRepo := new(secretRepo)
 
 			invalidSecret := tenant.PlainTextSecret{}
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			err := secretService.Save(ctx, projectName, nsName, &invalidSecret)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity secret: secret name is empty")
@@ -47,7 +50,7 @@ func TestSecretService(t *testing.T) {
 			sec, err := tenant.NewPlainTextSecret("name", "value")
 			assert.Nil(t, err)
 
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			err = secretService.Save(ctx, projectName, nsName, sec)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "error in save")
@@ -60,7 +63,7 @@ func TestSecretService(t *testing.T) {
 			sec, err := tenant.NewPlainTextSecret("name", "value")
 			assert.Nil(t, err)
 
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			err = secretService.Save(ctx, projectName, nsName, sec)
 			assert.Nil(t, err)
 		})
@@ -69,7 +72,7 @@ func TestSecretService(t *testing.T) {
 		t.Run("returns error when secret is not provided", func(t *testing.T) {
 			secretRepo := new(secretRepo)
 
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			err := secretService.Update(ctx, projectName, nsName, nil)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity secret: secret is not valid")
@@ -78,7 +81,7 @@ func TestSecretService(t *testing.T) {
 			secretRepo := new(secretRepo)
 			invalidSecret := tenant.PlainTextSecret{}
 
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			err := secretService.Update(ctx, projectName, nsName, &invalidSecret)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity secret: secret name is empty")
@@ -91,7 +94,7 @@ func TestSecretService(t *testing.T) {
 			sec, err := tenant.NewPlainTextSecret("name", "value")
 			assert.Nil(t, err)
 
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			err = secretService.Update(ctx, projectName, nsName, sec)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "error in update")
@@ -104,7 +107,7 @@ func TestSecretService(t *testing.T) {
 			sec, err := tenant.NewPlainTextSecret("name", "value")
 			assert.Nil(t, err)
 
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			err = secretService.Update(ctx, projectName, nsName, sec)
 			assert.Nil(t, err)
 		})
@@ -113,7 +116,7 @@ func TestSecretService(t *testing.T) {
 		t.Run("returns error when secret name is empty", func(t *testing.T) {
 			secretRepo := new(secretRepo)
 
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			_, err := secretService.Get(ctx, projectName, nsName, "")
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity secret: secret name is not valid")
@@ -121,7 +124,7 @@ func TestSecretService(t *testing.T) {
 		t.Run("returns error when project name is invalid", func(t *testing.T) {
 			secretRepo := new(secretRepo)
 
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			_, err := secretService.Get(ctx, "", nsName, "name")
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity secret: tenant is not valid")
@@ -134,7 +137,7 @@ func TestSecretService(t *testing.T) {
 			secretRepo.On("Get", ctx, projectName, nsName, sn).Return(nil, errors.New("error in get"))
 			defer secretRepo.AssertExpectations(t)
 
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			_, err = secretService.Get(ctx, projectName, nsName, "name")
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "error in get")
@@ -147,7 +150,7 @@ func TestSecretService(t *testing.T) {
 			secretRepo.On("Get", ctx, projectName, nsName, sn).Return(&invalidSecret, nil)
 			defer secretRepo.AssertExpectations(t)
 
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			_, err = secretService.Get(ctx, projectName, nsName, "name")
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "malformed ciphertext")
@@ -167,7 +170,7 @@ func TestSecretService(t *testing.T) {
 			secretRepo.On("Get", ctx, projectName, nsName, sn).Return(sec, nil)
 			defer secretRepo.AssertExpectations(t)
 
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			s, err := secretService.Get(ctx, projectName, nsName, "name")
 			assert.Nil(t, err)
 			assert.Equal(t, "name", s.Name().String())
@@ -178,7 +181,7 @@ func TestSecretService(t *testing.T) {
 		t.Run("returns error when project name is invalid", func(t *testing.T) {
 			secretRepo := new(secretRepo)
 
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			_, err := secretService.GetAll(ctx, "", "")
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity secret: project name is not valid")
@@ -188,7 +191,7 @@ func TestSecretService(t *testing.T) {
 			secretRepo.On("GetAll", ctx, projectName, nsName).Return(nil, errors.New("error in get all"))
 			defer secretRepo.AssertExpectations(t)
 
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			_, err := secretService.GetAll(ctx, projectName, nsName)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "error in get all")
@@ -199,7 +202,7 @@ func TestSecretService(t *testing.T) {
 				Return([]*tenant.Secret{&invalidSecret}, nil)
 			defer secretRepo.AssertExpectations(t)
 
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			_, err := secretService.GetAll(ctx, projectName, nsName)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "malformed ciphertext")
@@ -214,7 +217,7 @@ func TestSecretService(t *testing.T) {
 			secretRepo.On("GetAll", ctx, projectName, nsName).Return([]*tenant.Secret{sec}, nil)
 			defer secretRepo.AssertExpectations(t)
 
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			s, err := secretService.GetAll(ctx, projectName, nsName)
 			assert.Nil(t, err)
 			assert.Equal(t, "name", s[0].Name().String())
@@ -225,7 +228,7 @@ func TestSecretService(t *testing.T) {
 		t.Run("returns error when secret name is empty", func(t *testing.T) {
 			secretRepo := new(secretRepo)
 
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			err := secretService.Delete(ctx, projectName, nsName, "")
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity secret: secret name is not valid")
@@ -238,7 +241,7 @@ func TestSecretService(t *testing.T) {
 			secretRepo.On("Delete", ctx, projectName, nsName, sn).Return(errors.New("error in delete"))
 			defer secretRepo.AssertExpectations(t)
 
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			err = secretService.Delete(ctx, projectName, nsName, sn)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "error in delete")
@@ -251,7 +254,7 @@ func TestSecretService(t *testing.T) {
 			secretRepo.On("Delete", ctx, projectName, nsName, sn).Return(nil)
 			defer secretRepo.AssertExpectations(t)
 
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			err = secretService.Delete(ctx, projectName, nsName, "name")
 			assert.Nil(t, err)
 		})
@@ -267,7 +270,7 @@ func TestSecretService(t *testing.T) {
 			secretRepo.On("GetSecretsInfo", ctx, projectName).Return([]*dto.SecretInfo{&secretInfo}, nil)
 			defer secretRepo.AssertExpectations(t)
 
-			secretService := service.NewSecretService(key, secretRepo)
+			secretService := service.NewSecretService(key, secretRepo, logger)
 			info, err := secretService.GetSecretsInfo(ctx, projectName)
 			assert.Nil(t, err)
 			assert.Equal(t, 1, len(info))

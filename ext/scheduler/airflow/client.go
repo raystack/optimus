@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,20 +14,19 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/internal/lib/cron"
+	"github.com/raystack/optimus/core/scheduler"
+	"github.com/raystack/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/lib/cron"
 )
 
 const (
-	pageLimit    = 99999
-	dagStatusURL = "api/v1/dags/%s/dagRuns"
+	pageLimit = 99999
 )
 
 type airflowRequest struct {
-	URL    string
+	path   string
 	method string
 	body   []byte
-	param  string
 }
 
 type DagRunListResponse struct {
@@ -67,20 +65,21 @@ func NewAirflowClient() *ClientAirflow {
 func (ac ClientAirflow) Invoke(ctx context.Context, r airflowRequest, auth SchedulerAuth) ([]byte, error) {
 	var resp []byte
 
-	request, err := http.NewRequestWithContext(ctx, r.method, buildEndPoint(auth.host, r.URL, r.param), bytes.NewBuffer(r.body))
+	endpoint := buildEndPoint(auth.host, r.path)
+	request, err := http.NewRequestWithContext(ctx, r.method, endpoint, bytes.NewBuffer(r.body))
 	if err != nil {
-		return resp, fmt.Errorf("failed to build http request for %s due to %w", r.URL, err)
+		return resp, fmt.Errorf("failed to build http request for %s due to %w", endpoint, err)
 	}
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(auth.token))))
 
 	httpResp, respErr := ac.client.Do(request)
 	if respErr != nil {
-		return resp, fmt.Errorf("failed to call airflow %s due to %w", r.URL, respErr)
+		return resp, fmt.Errorf("failed to call airflow %s due to %w", endpoint, respErr)
 	}
 	if httpResp.StatusCode != http.StatusOK {
 		httpResp.Body.Close()
-		return resp, fmt.Errorf("status code received %d on calling %s", httpResp.StatusCode, r.URL)
+		return resp, fmt.Errorf("status code received %d on calling %s", httpResp.StatusCode, endpoint)
 	}
 	return parseResponse(httpResp)
 }
@@ -90,26 +89,17 @@ func parseResponse(resp *http.Response) ([]byte, error) {
 	body, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		return body, fmt.Errorf("failed to read airflow response: %w", err)
+		return body, errors.Wrap(EntityAirflow, "failed to read airflow response", err)
 	}
 	return body, nil
 }
 
-func buildEndPoint(host, reqURL, pathParam string) string {
+func buildEndPoint(host, path string) string {
 	host = strings.Trim(host, "/")
 	u := &url.URL{
 		Scheme: "http",
 		Host:   host,
-	}
-	if pathParam != "" {
-		u.Path = "/" + strings.ReplaceAll(reqURL, "%s", pathParam)
-	} else {
-		u.Path = "/" + reqURL
-	}
-	if reqURL == dagStatusURL {
-		params := url.Values{}
-		params.Add("limit", "99999")
-		u.RawQuery = params.Encode()
+		Path:   path,
 	}
 	return u.String()
 }
@@ -117,7 +107,7 @@ func buildEndPoint(host, reqURL, pathParam string) string {
 func getJobRuns(res DagRunListResponse, spec *cron.ScheduleSpec) ([]*scheduler.JobRunStatus, error) {
 	var jobRunList []*scheduler.JobRunStatus
 	if res.TotalEntries > pageLimit {
-		return jobRunList, errors.New("total number of entries exceed page limit")
+		return jobRunList, errors.InternalError(EntityAirflow, "total number of entries exceed page limit", nil)
 	}
 	for _, dag := range res.DagRuns {
 		if !dag.ExternalTrigger { // only include scheduled runs

@@ -7,9 +7,9 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/utils"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/utils"
 )
 
 type (

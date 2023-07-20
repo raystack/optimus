@@ -6,13 +6,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/raystack/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/core/resource"
-	"github.com/odpf/optimus/core/resource/service"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/raystack/optimus/core/resource"
+	"github.com/raystack/optimus/core/resource/service"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/errors"
 )
 
 func TestBackupService(t *testing.T) {
@@ -29,6 +30,8 @@ func TestBackupService(t *testing.T) {
 	validID := "dda7b864-4268-4107-a096-dcf5343a0959"
 	id, _ := uuid.Parse(validID)
 
+	logger := log.NewLogrus()
+
 	t.Run("Create", func(t *testing.T) {
 		t.Run("returns error when cannot get resources", func(t *testing.T) {
 			resourceProvider := new(mockResourceProvider)
@@ -36,7 +39,7 @@ func TestBackupService(t *testing.T) {
 				Return(nil, errors.InternalError("repo", "cannot get", nil))
 			defer resourceProvider.AssertExpectations(t)
 
-			backupService := service.NewBackupService(nil, resourceProvider, nil)
+			backupService := service.NewBackupService(nil, resourceProvider, nil, logger)
 			_, err := backupService.Create(ctx, backup)
 			assert.Error(t, err)
 			assert.EqualError(t, err, "internal error for entity repo: cannot get")
@@ -53,7 +56,7 @@ func TestBackupService(t *testing.T) {
 				Return(nil, errors.InternalError("bq", "something wrong", nil))
 			defer backupManager.AssertExpectations(t)
 
-			backupService := service.NewBackupService(nil, resourceProvider, backupManager)
+			backupService := service.NewBackupService(nil, resourceProvider, backupManager, logger)
 			_, err := backupService.Create(ctx, backup)
 			assert.Error(t, err)
 			assert.EqualError(t, err, "internal error for entity bq: something wrong")
@@ -74,7 +77,7 @@ func TestBackupService(t *testing.T) {
 			repo.On("Create", ctx, backup).Return(errors.InternalError("repo", "cannot save", nil))
 			defer repo.AssertExpectations(t)
 
-			backupService := service.NewBackupService(repo, resourceProvider, backupManager)
+			backupService := service.NewBackupService(repo, resourceProvider, backupManager, logger)
 			_, err := backupService.Create(ctx, backup)
 			assert.Error(t, err)
 			assert.EqualError(t, err, "internal error for entity repo: cannot save")
@@ -95,7 +98,7 @@ func TestBackupService(t *testing.T) {
 			repo.On("Create", ctx, backup).Return(nil)
 			defer repo.AssertExpectations(t)
 
-			backupService := service.NewBackupService(repo, resourceProvider, backupManager)
+			backupService := service.NewBackupService(repo, resourceProvider, backupManager, logger)
 			result, err := backupService.Create(ctx, backup)
 			assert.NoError(t, err)
 			assert.Equal(t, "p.d.t", result.ResourceNames[0])
@@ -119,7 +122,7 @@ func TestBackupService(t *testing.T) {
 			repo.On("Create", ctx, bk1).Return(nil)
 			defer repo.AssertExpectations(t)
 
-			backupService := service.NewBackupService(repo, resourceProvider, backupManager)
+			backupService := service.NewBackupService(repo, resourceProvider, backupManager, logger)
 			result, err := backupService.Create(ctx, bk1)
 			assert.NoError(t, err)
 			assert.Equal(t, "p.d.t", result.ResourceNames[0])
@@ -133,7 +136,7 @@ func TestBackupService(t *testing.T) {
 			id := uuid.Nil
 			backupID := resource.BackupID(id)
 
-			backupService := service.NewBackupService(nil, nil, nil)
+			backupService := service.NewBackupService(nil, nil, nil, logger)
 			_, err := backupService.Get(ctx, backupID)
 			assert.Error(t, err)
 			assert.EqualError(t, err, "invalid argument for entity backup: the backup id is not valid")
@@ -144,7 +147,7 @@ func TestBackupService(t *testing.T) {
 			repo.On("GetByID", ctx, backupID).Return(backup, nil)
 			defer repo.AssertExpectations(t)
 
-			backupService := service.NewBackupService(repo, nil, nil)
+			backupService := service.NewBackupService(repo, nil, nil, logger)
 			bkup, err := backupService.Get(ctx, backupID)
 			assert.NoError(t, err)
 			assert.Equal(t, "p.d.t", bkup.ResourceNames()[0])
@@ -156,7 +159,7 @@ func TestBackupService(t *testing.T) {
 			repo.On("GetAll", ctx, tnnt, store).Return(nil, errors.NotFound("backup", "error in list backups"))
 			defer repo.AssertExpectations(t)
 
-			backupService := service.NewBackupService(repo, nil, nil)
+			backupService := service.NewBackupService(repo, nil, nil, logger)
 			_, err := backupService.List(ctx, tnnt, store)
 			assert.Error(t, err)
 			assert.EqualError(t, err, "not found for entity backup: error in list backups")
@@ -175,7 +178,7 @@ func TestBackupService(t *testing.T) {
 			repo.On("GetAll", ctx, tnnt, store).Return([]*resource.Backup{bk1, bk2}, nil)
 			defer repo.AssertExpectations(t)
 
-			backupService := service.NewBackupService(repo, nil, nil)
+			backupService := service.NewBackupService(repo, nil, nil, logger)
 			lst, err := backupService.List(ctx, tnnt, store)
 			assert.NoError(t, err)
 

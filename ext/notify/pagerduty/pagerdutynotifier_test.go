@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/ext/notify/pagerduty"
+	"github.com/raystack/optimus/core/scheduler"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/ext/notify/pagerduty"
 )
 
 type PagerDutyServiceImplMock struct {

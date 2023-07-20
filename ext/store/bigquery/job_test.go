@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/ext/store/bigquery"
+	"github.com/raystack/optimus/ext/store/bigquery"
 )
 
 func TestJob(t *testing.T) {
@@ -24,7 +24,7 @@ func TestJob(t *testing.T) {
 
 			err := copyJob.Wait(ctx)
 			assert.Error(t, err)
-			assert.EqualError(t, err, "internal error for entity BigqueryStore: error while wait for bq job")
+			assert.ErrorContains(t, err, "internal error for entity BigqueryStore: error while wait for bq job")
 		})
 		t.Run("return no error when successful", func(t *testing.T) {
 			bqJob := new(mockBQJob)

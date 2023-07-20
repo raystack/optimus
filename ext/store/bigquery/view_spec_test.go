@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/ext/store/bigquery"
+	"github.com/raystack/optimus/ext/store/bigquery"
 )
 
 func TestRelationalView(t *testing.T) {

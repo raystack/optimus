@@ -1,6 +1,7 @@
 package progressbar
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -10,7 +11,7 @@ import (
 	"github.com/briandowns/spinner"
 	"github.com/schollz/progressbar/v3"
 
-	"github.com/odpf/optimus/internal/utils"
+	"github.com/raystack/optimus/internal/utils"
 )
 
 const (
@@ -65,6 +66,14 @@ func (p *ProgressBar) Start(label string) {
 	}
 	sp.Start()
 	p.spinner = sp
+}
+
+func (p *ProgressBar) StartNewLine(label string) {
+	p.spinner.FinalMSG = fmt.Sprintf("✓%s", p.spinner.Suffix)
+	p.Stop()
+	p.writer.Write([]byte("\n"))
+	p.spinner = nil
+	p.Start(label)
 }
 
 // StartProgress starts progress bar with count and label

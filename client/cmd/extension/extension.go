@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/client/extension"
-	"github.com/odpf/optimus/client/extension/model"
+	"github.com/raystack/optimus/client/cmd/internal/logger"
+	"github.com/raystack/optimus/client/extension"
+	"github.com/raystack/optimus/client/extension/model"
 )
 
 // UpdateWithExtension updates input command with the available extensions

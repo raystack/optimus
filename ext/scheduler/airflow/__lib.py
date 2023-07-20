@@ -8,10 +8,12 @@ import pendulum
 import requests
 from airflow.configuration import conf
 from airflow.hooks.base import BaseHook
-from airflow.models import (XCOM_RETURN_KEY, Variable, XCom)
+from airflow.models import (XCOM_RETURN_KEY, Variable, XCom, TaskReschedule )
 from airflow.providers.cncf.kubernetes.operators.kubernetes_pod import KubernetesPodOperator
 from airflow.providers.slack.operators.slack import SlackAPIPostOperator
 from airflow.sensors.base import BaseSensorOperator
+from airflow.utils.state import TaskInstanceState
+from airflow.exceptions import AirflowFailException
 from croniter import croniter
 from kubernetes.client import models as k8s
 
@@ -25,15 +27,6 @@ TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 TIMESTAMP_MS_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 SCHEDULER_ERR_MSG = "scheduler_error"
-
-JOB_START_EVENT_NAME = "job_start_event"
-JOB_END_EVENT_NAME = "job_end_event"
-
-EVENT_NAMES = {
-    "SENSOR_START_EVENT": "TYPE_SENSOR_START",
-    "TASK_START_EVENT": "TYPE_TASK_START"
-}
-
 
 def lookup_non_standard_cron_expression(expr: str) -> str:
     expr_mapping = {
@@ -263,7 +256,7 @@ class SuperExternalTaskSensor(BaseSensorOperator):
             self.log.info("job_run api response :: {}".format(api_response))
         except Exception as e:
             self.log.warning("error while fetching job runs :: {}".format(e))
-            return False
+            raise AirflowFailException(e)
         for job_run in api_response['jobRuns']:
             if job_run['state'] != 'success':
                 self.log.info("failed for run :: {}".format(job_run))
@@ -307,9 +300,19 @@ def optimus_notify(context, event_meta):
 
     if SCHEDULER_ERR_MSG in event_meta.keys():
         failure_message = failure_message + ", " + event_meta[SCHEDULER_ERR_MSG]
-    print("failures: {}".format(failure_message))
+    if len(failure_message)>0:
+        log.info(f'failures: {failure_message}')
     
     task_instance = context.get('task_instance')
+    
+    if event_meta["event_type"] == "TYPE_FAILURE" :
+        dag_run = context['dag_run']
+        tis = dag_run.get_task_instances()
+        for ti in tis:
+            if ti.state == TaskInstanceState.FAILED:
+                task_instance = ti
+                break
+
     message = {
         "log_url": task_instance.log_url,
         "task_id": task_instance.task_id,
@@ -329,7 +332,7 @@ def optimus_notify(context, event_meta):
     # post event
     log.info(event)
     resp = optimus_client.notify_event(params["project_name"], params["namespace"], params["job_name"], event)
-    print("posted event ", params, event, resp)
+    log.info(f'posted event {params}, {event}, {resp} ')
     return
 
 def get_run_type(context):
@@ -394,9 +397,6 @@ def operator_start_event(context):
 def operator_success_event(context):
     try:
         run_type = get_run_type(context)
-        if run_type == "SENSOR":
-            print("clearing sensor xcom")
-            cleanup_xcom(context)
         meta = {
             "event_type": "TYPE_{}_SUCCESS".format(run_type),
             "status": "success"
@@ -409,9 +409,6 @@ def operator_success_event(context):
 def operator_retry_event(context):
     try:
         run_type = get_run_type(context)
-        if run_type == "SENSOR":
-            print("clearing sensor xcom")
-            cleanup_xcom(context)
         meta = {
             "event_type": "TYPE_{}_RETRY".format(run_type),
             "status": "retried"
@@ -424,9 +421,6 @@ def operator_retry_event(context):
 def operator_failure_event(context):
     try:
         run_type = get_run_type(context)
-        if run_type == "SENSOR":
-            print("clearing sensor xcom")
-            cleanup_xcom(context)
         meta = {
             "event_type": "TYPE_{}_FAIL".format(run_type),
             "status": "failed"
@@ -453,7 +447,8 @@ def optimus_sla_miss_notify(dag, task_list, blocking_task_list, slas, blocking_t
             sla_list.append({
                 'task_id': sla.task_id,
                 'dag_id': sla.dag_id,
-                'scheduled_at': sla.execution_date.strftime(TIMESTAMP_FORMAT),
+                'scheduled_at' : dag.following_schedule(sla.execution_date).strftime(TIMESTAMP_FORMAT),
+                'airflow_execution_time': sla.execution_date.strftime(TIMESTAMP_FORMAT),
                 'timestamp': sla.timestamp.strftime(TIMESTAMP_FORMAT)
             })
 
@@ -470,23 +465,19 @@ def optimus_sla_miss_notify(dag, task_list, blocking_task_list, slas, blocking_t
         }
         # post event
         resp = optimus_client.notify_event(params["project_name"], params["namespace"], params["job_name"], event)
-        print("posted event ", params, event, resp)
+        log.info(f'posted event {params}, {event}, {resp}')
         return
     except Exception as e:
         print(e)
 
 def shouldSendSensorStartEvent(ctx):
     try:
-        ti = ctx.get('task_instance')
-        key = "sensorEvt/{}/{}/{}".format(ti.task_id , ctx.get('next_execution_date').strftime(TIMESTAMP_FORMAT) , ti.try_number)
-
-        result = ti.xcom_pull(key=key)
-        if not result:
-            print("sending NEW sensor start event for attempt number ", ti.try_number)
-            ti.xcom_push(key=key, value=True)
+        ti=ctx['ti']
+        task_reschedules = TaskReschedule.find_for_task_instance(ti)
+        if len(task_reschedules) == 0 :
+            log.info(f'sending NEW sensor start event for attempt number-> {ti.try_number}')
             return True
-        print("ignoring sending sensor start event as its already sent")
-        return False
+        log.info("ignoring sending sensor start event as its not first poke")
     except Exception as e:
         print(e)
 
@@ -495,22 +486,12 @@ def get_result_for_monitoring_from_xcom(ctx):
         ti = ctx.get('task_instance')
         return_value = ti.xcom_pull(key='return_value')
     except Exception as e:
-        print(f'error getting result for monitoring: {e}')
+        log.info(f'error getting result for monitoring: {e}')
 
     if type(return_value) is dict:
         if 'monitoring' in return_value:
             return return_value['monitoring']
     return None
-
-def cleanup_xcom(ctx):
-    try:
-        from airflow import settings
-        session = settings.Session()
-        ti = ctx.get('task_instance')
-        key = "sensorEvt/{}/{}/{}".format(ti.task_id , ctx.get('next_execution_date').strftime(TIMESTAMP_FORMAT) , ti.try_number)
-        session.query(XCom).filter(XCom.key == key).delete()
-    except Exception as e:
-        print(e)
 
 # everything below this is here for legacy reasons, should be cleaned up in future
 
@@ -554,7 +535,8 @@ def alert_failed_to_slack(context):
         if _xcom_value_has_error(xcom):
             failure_messages.append(xcom.value['error'])
     failure_message = ", ".join(failure_messages)
-    print("failures: {}".format(failure_message))
+    if failure_message != "":
+        log.info(f'failures: {failure_message}')
 
     message_body = "\n".join([
         "• *DAG*: {}".format(current_dag_id),

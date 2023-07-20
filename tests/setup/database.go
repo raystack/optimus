@@ -11,8 +11,8 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/internal/store/postgres"
+	"github.com/raystack/optimus/config"
+	"github.com/raystack/optimus/internal/store/postgres"
 )
 
 var (

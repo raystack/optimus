@@ -10,9 +10,9 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/tenant"
+	"github.com/raystack/optimus/config"
+	"github.com/raystack/optimus/core/job"
+	"github.com/raystack/optimus/core/tenant"
 )
 
 // ResourceManager is repository for external job spec

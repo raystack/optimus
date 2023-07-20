@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/models"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/models"
 )
 
 type (
@@ -125,7 +125,6 @@ type JobMetadata struct {
 
 type Schedule struct {
 	DependsOnPast bool
-	CatchUp       bool
 	StartDate     time.Time
 	EndDate       *time.Time
 	Interval      string
@@ -137,6 +136,18 @@ func (j *JobWithDetails) GetLabelsAsString() string {
 		labels += fmt.Sprintf("%s=%s,", strings.TrimSpace(k), strings.TrimSpace(v))
 	}
 	return strings.TrimRight(labels, ",")
+}
+
+func (j *JobWithDetails) GetUniqueLabelValues() []string {
+	labelValues := []string{}
+	m := map[string]bool{}
+	for _, v := range j.JobMetadata.Labels {
+		if _, ok := m[v]; !ok {
+			labelValues = append(labelValues, v)
+		}
+		m[v] = true
+	}
+	return labelValues
 }
 
 type Retry struct {

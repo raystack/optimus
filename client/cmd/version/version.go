@@ -1,26 +1,31 @@
 package version
 
 import (
+	"context"
 	"fmt"
 	"time"
 
-	"github.com/odpf/salt/log"
-	"github.com/odpf/salt/version"
+	"github.com/raystack/salt/log"
+	"github.com/raystack/salt/version"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
-	"github.com/odpf/optimus/client/cmd/internal"
-	"github.com/odpf/optimus/client/cmd/internal/connectivity"
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/client/cmd/internal/progressbar"
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/internal/models"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/client/cmd/internal"
+	"github.com/raystack/optimus/client/cmd/internal/connection"
+	"github.com/raystack/optimus/client/cmd/internal/logger"
+	"github.com/raystack/optimus/client/cmd/internal/progressbar"
+	"github.com/raystack/optimus/config"
+	"github.com/raystack/optimus/internal/models"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 const versionTimeout = time.Second * 2
 
 type versionCommand struct {
-	logger         log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	configFilePath string
 
 	isWithServer bool
@@ -71,6 +76,8 @@ func (v *versionCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 		} else if v.host == "" {
 			v.host = conf.Host
 		}
+
+		v.connection = connection.New(v.logger, conf)
 	}
 
 	var err error
@@ -92,7 +99,7 @@ func (v *versionCommand) RunE(_ *cobra.Command, _ []string) error {
 	}
 
 	// Print version update if new version is exist
-	githubRepo := "odpf/optimus"
+	githubRepo := "raystack/optimus"
 	if updateNotice := version.UpdateNotice(config.BuildVersion, githubRepo); updateNotice != "" {
 		v.logger.Info(updateNotice)
 	}
@@ -126,23 +133,29 @@ func (v *versionCommand) printAllPluginInfos() {
 }
 
 // getVersionRequest send a version request to service
-func (*versionCommand) getVersionRequest(clientVer, host string) (ver string, err error) {
-	conn, err := connectivity.NewConnectivity(host, versionTimeout)
+func (v *versionCommand) getVersionRequest(clientVer, host string) (ver string, err error) {
+	conn, err := v.connection.Create(host)
 	if err != nil {
 		return "", err
 	}
 	defer conn.Close()
 
-	runtime := pb.NewRuntimeServiceClient(conn.GetConnection())
+	runtime := pb.NewRuntimeServiceClient(conn)
 	spinner := progressbar.NewProgressBar()
 	spinner.Start("please wait...")
-	versionResponse, err := runtime.Version(conn.GetContext(), &pb.VersionRequest{
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), versionTimeout)
+	defer cancelFunc()
+
+	versionResponse, err := runtime.Version(ctx, &pb.VersionRequest{
 		Client: clientVer,
 	})
 	if err != nil {
+		if status.Code(err) == codes.Unauthenticated {
+			return "", fmt.Errorf("please check if client_id belongs to this application")
+		}
 		return "", fmt.Errorf("request failed for version: %w", err)
 	}
-	time.Sleep(versionTimeout)
 	spinner.Stop()
 	return versionResponse.Server, nil
 }

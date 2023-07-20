@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/scheduler/service"
-	"github.com/odpf/optimus/core/tenant"
+	"github.com/raystack/optimus/core/scheduler"
+	"github.com/raystack/optimus/core/scheduler/service"
+	"github.com/raystack/optimus/core/tenant"
 )
 
 func TestNotificationService(t *testing.T) {
@@ -33,7 +33,7 @@ func TestNotificationService(t *testing.T) {
 			jobRepo.On("GetJobDetails", ctx, project.Name(), jobName).Return(nil, fmt.Errorf("some error"))
 			defer jobRepo.AssertExpectations(t)
 
-			notifyService := service.NewNotifyService(nil, jobRepo, nil, nil)
+			notifyService := service.NewNotifyService(logger, jobRepo, nil, nil)
 
 			event := &scheduler.Event{
 				JobName: jobName,

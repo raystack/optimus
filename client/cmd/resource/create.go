@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/client/cmd/internal/survey"
-	"github.com/odpf/optimus/client/local/model"
-	"github.com/odpf/optimus/client/local/specio"
-	"github.com/odpf/optimus/config"
+	"github.com/raystack/optimus/client/cmd/internal/logger"
+	"github.com/raystack/optimus/client/cmd/internal/survey"
+	"github.com/raystack/optimus/client/local/model"
+	"github.com/raystack/optimus/client/local/specio"
+	"github.com/raystack/optimus/config"
 )
 
 type createCommand struct {

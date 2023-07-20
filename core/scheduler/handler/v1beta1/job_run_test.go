@@ -6,16 +6,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/scheduler/handler/v1beta1"
-	"github.com/odpf/optimus/core/tenant"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/core/scheduler"
+	"github.com/raystack/optimus/core/scheduler/handler/v1beta1"
+	"github.com/raystack/optimus/core/tenant"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 const (
@@ -356,24 +356,7 @@ func TestJobRunHandler(t *testing.T) {
 			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity project: project name is empty: unable to get projectName")
 			assert.Nil(t, resp)
 		})
-		t.Run("should fail deployment if UploadToScheduler service fails", func(t *testing.T) {
-			namespaceName := "namespace-name"
-			req := &pb.UploadToSchedulerRequest{
-				ProjectName:   projectName,
-				NamespaceName: &namespaceName,
-			}
-			jobRunService := new(mockJobRunService)
-			jobRunService.On("UploadToScheduler", ctx, tenant.ProjectName(projectName)).
-				Return(fmt.Errorf("some error"))
-			defer jobRunService.AssertExpectations(t)
-			jobRunHandler := v1beta1.NewJobRunHandler(logger, jobRunService, nil)
-
-			resp, err := jobRunHandler.UploadToScheduler(ctx, req)
-			assert.NotNil(t, err)
-			assert.EqualError(t, err, "rpc error: code = Internal desc = some error: \nuploaded to scheduler with error")
-			assert.Nil(t, resp)
-		})
-		t.Run("should return success if deployment succeeds", func(t *testing.T) {
+		t.Run("should return after triggering deploy to scheduler", func(t *testing.T) {
 			namespaceName := "namespace-name"
 			req := &pb.UploadToSchedulerRequest{
 				ProjectName:   projectName,
@@ -381,7 +364,6 @@ func TestJobRunHandler(t *testing.T) {
 			}
 			jobRunService := new(mockJobRunService)
 			jobRunService.On("UploadToScheduler", ctx, tenant.ProjectName(projectName)).Return(nil)
-			defer jobRunService.AssertExpectations(t)
 			jobRunHandler := v1beta1.NewJobRunHandler(logger, jobRunService, nil)
 
 			_, err := jobRunHandler.UploadToScheduler(ctx, req)
@@ -522,7 +504,7 @@ func TestJobRunHandler(t *testing.T) {
 
 			resp, err := jobRunHandler.RegisterJobEvent(ctx, req)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "errors in RegisterJobEvent:\n internal error for entity jobRun: scheduler could not update job run state, err:some error")
+			assert.ErrorContains(t, err, "scheduler could not update job run state")
 			assert.Equal(t, &pb.RegisterJobEventResponse{}, resp)
 		})
 		t.Run("should return error if notify Push fails", func(t *testing.T) {

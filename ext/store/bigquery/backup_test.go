@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/core/resource"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/ext/store/bigquery"
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/raystack/optimus/core/resource"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/ext/store/bigquery"
+	"github.com/raystack/optimus/internal/errors"
 )
 
 func TestBigqueryBackup(t *testing.T) {

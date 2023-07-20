@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/api/googleapi"
 
-	"github.com/odpf/optimus/core/resource"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/ext/store/bigquery"
+	"github.com/raystack/optimus/core/resource"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/ext/store/bigquery"
 )
 
 var emptyUpdateOptions []bq.TableUpdateOption
@@ -147,7 +147,7 @@ func TestExternalTableHandle(t *testing.T) {
 					"uris": []string{"https://docs.google.com/sheet"},
 					"config": map[string]any{
 						"range":             "kyc",
-						"skip_leading_rows": 2,
+						"skip_leading_rows": float64(2),
 					},
 				},
 			}

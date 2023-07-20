@@ -5,8 +5,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/errors"
 )
 
 type JobRunID uuid.UUID
@@ -35,12 +35,13 @@ func (i JobRunID) IsEmpty() bool {
 type JobRun struct {
 	ID uuid.UUID
 
-	JobName   JobName
-	Tenant    tenant.Tenant
-	State     State
-	StartTime time.Time
-	SLAAlert  bool
-	EndTime   time.Time
+	JobName     JobName
+	Tenant      tenant.Tenant
+	State       State
+	ScheduledAt time.Time
+	StartTime   time.Time
+	SLAAlert    bool
+	EndTime     time.Time
 
 	Monitoring map[string]any
 }
@@ -61,3 +62,9 @@ type NotifyAttrs struct {
 	Route    string
 	Secret   string
 }
+
+const (
+	MetricNotificationQueue         = "notification_queue_total"
+	MetricNotificationWorkerBatch   = "notification_worker_batch_total"
+	MetricNotificationWorkerSendErr = "notification_worker_send_err_total"
+)

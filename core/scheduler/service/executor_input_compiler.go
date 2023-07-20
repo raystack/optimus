@@ -5,10 +5,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/compiler"
-	"github.com/odpf/optimus/internal/utils"
+	"github.com/raystack/salt/log"
+
+	"github.com/raystack/optimus/core/scheduler"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/compiler"
+	"github.com/raystack/optimus/internal/utils"
 )
 
 const (
@@ -53,16 +55,20 @@ type InputCompiler struct {
 	tenantService TenantService
 	compiler      TemplateCompiler
 	assetCompiler AssetCompiler
+
+	logger log.Logger
 }
 
 func (i InputCompiler) Compile(ctx context.Context, job *scheduler.Job, config scheduler.RunConfig, executedAt time.Time) (*scheduler.ExecutorInput, error) {
 	tenantDetails, err := i.tenantService.GetDetails(ctx, job.Tenant)
 	if err != nil {
+		i.logger.Error("error getting tenant details: %s", err)
 		return nil, err
 	}
 
 	systemDefinedVars, err := getSystemDefinedConfigs(job, config, executedAt)
 	if err != nil {
+		i.logger.Error("error getting config for job [%s]: %s", job.Name.String(), err)
 		return nil, err
 	}
 
@@ -76,11 +82,13 @@ func (i InputCompiler) Compile(ctx context.Context, job *scheduler.Job, config s
 	// Compile asset files
 	fileMap, err := i.assetCompiler.CompileJobRunAssets(ctx, job, systemDefinedVars, config.ScheduledAt, taskContext)
 	if err != nil {
+		i.logger.Error("error compiling job run assets: %s", err)
 		return nil, err
 	}
 
 	confs, secretConfs, err := i.compileConfigs(job.Task.Config, taskContext)
 	if err != nil {
+		i.logger.Error("error compiling task config: %s", err)
 		return nil, err
 	}
 
@@ -101,11 +109,13 @@ func (i InputCompiler) Compile(ctx context.Context, job *scheduler.Job, config s
 
 	hook, err := job.GetHook(config.Executor.Name)
 	if err != nil {
+		i.logger.Error("error getting hook [%s]: %s", config.Executor.Name, err)
 		return nil, err
 	}
 
 	hookConfs, hookSecrets, err := i.compileConfigs(hook.Config, mergedContext)
 	if err != nil {
+		i.logger.Error("error compiling configs for hook [%s]: %s", hook.Name, err)
 		return nil, err
 	}
 
@@ -121,10 +131,12 @@ func (i InputCompiler) compileConfigs(configs map[string]string, templateCtx map
 
 	var err error
 	if conf, err = i.compiler.Compile(conf, templateCtx); err != nil {
+		i.logger.Error("error compiling template with config: %s", err)
 		return nil, nil, err
 	}
 
 	if secretsConfig, err = i.compiler.Compile(secretsConfig, templateCtx); err != nil {
+		i.logger.Error("error compiling template with secret: %s", err)
 		return nil, nil, err
 	}
 
@@ -162,10 +174,11 @@ func splitConfigWithSecrets(conf map[string]string) (map[string]string, map[stri
 	return configs, configWithSecrets
 }
 
-func NewJobInputCompiler(tenantService TenantService, compiler TemplateCompiler, assetCompiler AssetCompiler) *InputCompiler {
+func NewJobInputCompiler(tenantService TenantService, compiler TemplateCompiler, assetCompiler AssetCompiler, logger log.Logger) *InputCompiler {
 	return &InputCompiler{
 		tenantService: tenantService,
 		compiler:      compiler,
 		assetCompiler: assetCompiler,
+		logger:        logger,
 	}
 }

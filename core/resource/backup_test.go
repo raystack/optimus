@@ -7,8 +7,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/resource"
-	"github.com/odpf/optimus/core/tenant"
+	"github.com/raystack/optimus/core/resource"
+	"github.com/raystack/optimus/core/tenant"
 )
 
 func TestBackup(t *testing.T) {

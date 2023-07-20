@@ -1,11 +1,14 @@
 package service
 
 import (
+	"fmt"
+	"time"
+
 	"golang.org/x/net/context"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/lib/cron"
+	"github.com/raystack/optimus/core/scheduler"
+	"github.com/raystack/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/lib/cron"
 )
 
 var replayStatusToValidate = []scheduler.ReplayState{
@@ -16,18 +19,48 @@ var replayStatusToValidate = []scheduler.ReplayState{
 type Validator struct {
 	replayRepository ReplayRepository
 	scheduler        ReplayScheduler
+	jobRepo          JobRepository
 }
 
-func NewValidator(replayRepository ReplayRepository, scheduler ReplayScheduler) *Validator {
-	return &Validator{replayRepository: replayRepository, scheduler: scheduler}
+func NewValidator(replayRepository ReplayRepository, scheduler ReplayScheduler, jobRepo JobRepository) *Validator {
+	return &Validator{replayRepository: replayRepository, scheduler: scheduler, jobRepo: jobRepo}
 }
 
 func (v Validator) Validate(ctx context.Context, replayRequest *scheduler.Replay, jobCron *cron.ScheduleSpec) error {
+	if err := v.validateDateRange(ctx, replayRequest); err != nil {
+		return err
+	}
+
 	if err := v.validateConflictedReplay(ctx, replayRequest); err != nil {
 		return err
 	}
 
 	return v.validateConflictedRun(ctx, replayRequest, jobCron)
+}
+
+func (v Validator) validateDateRange(ctx context.Context, replayRequest *scheduler.Replay) error {
+	jobSpec, err := v.jobRepo.GetJobDetails(ctx, replayRequest.Tenant().ProjectName(), replayRequest.JobName())
+	if err != nil {
+		return err
+	}
+	replayStartDate := replayRequest.Config().StartTime.UTC()
+	replayEndDate := replayRequest.Config().EndTime.UTC()
+	jobStartDate := jobSpec.Schedule.StartDate.UTC()
+	jobEndDate := time.Now().UTC()
+	// time bound for end date
+	if jobSpec.Schedule.EndDate != nil && jobSpec.Schedule.EndDate.UTC().Before(jobEndDate) {
+		jobEndDate = jobSpec.Schedule.EndDate.UTC()
+	}
+
+	if replayStartDate.Before(jobStartDate) {
+		return errors.NewError(errors.ErrFailedPrecond, scheduler.EntityReplay, fmt.Sprintf("replay start date (%s) is not allowed to be set before job start date (%s)", replayStartDate.String(), jobStartDate.String()))
+	}
+
+	if replayEndDate.After(jobEndDate) {
+		return errors.NewError(errors.ErrFailedPrecond, scheduler.EntityReplay, fmt.Sprintf("replay end date (%s) is not allowed to be set after the date (%s)", replayEndDate.String(), jobEndDate.String()))
+	}
+
+	return nil
 }
 
 func (v Validator) validateConflictedReplay(ctx context.Context, replayRequest *scheduler.Replay) error {

@@ -1,24 +1,27 @@
 package project
 
 import (
+	"context"
 	"path"
 	"time"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
-	"github.com/odpf/optimus/client/cmd/internal"
-	"github.com/odpf/optimus/client/cmd/internal/connectivity"
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/config"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/client/cmd/internal"
+	"github.com/raystack/optimus/client/cmd/internal/connection"
+	"github.com/raystack/optimus/client/cmd/internal/logger"
+	"github.com/raystack/optimus/config"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 const describeTimeout = time.Minute * 15
 
 type describeCommand struct {
-	logger         log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	configFilePath string
 
 	dirPath     string
@@ -75,6 +78,8 @@ func (d *describeCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	if d.host == "" {
 		d.host = conf.Host
 	}
+	d.connection = connection.New(d.logger, conf)
+
 	return nil
 }
 
@@ -95,7 +100,7 @@ func (d *describeCommand) RunE(_ *cobra.Command, _ []string) error {
 
 func (d *describeCommand) getProject() (config.Project, error) {
 	var project config.Project
-	conn, err := connectivity.NewConnectivity(d.host, describeTimeout)
+	conn, err := d.connection.Create(d.host)
 	if err != nil {
 		return project, err
 	}
@@ -105,8 +110,12 @@ func (d *describeCommand) getProject() (config.Project, error) {
 		ProjectName: d.projectName,
 	}
 
-	projectServiceClient := pb.NewProjectServiceClient(conn.GetConnection())
-	response, err := projectServiceClient.GetProject(conn.GetContext(), request)
+	projectServiceClient := pb.NewProjectServiceClient(conn)
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), describeTimeout)
+	defer cancelFunc()
+
+	response, err := projectServiceClient.GetProject(ctx, request)
 	if err != nil {
 		return project, err
 	}

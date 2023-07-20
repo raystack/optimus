@@ -5,12 +5,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/models"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/models"
 )
 
-const DateLayout = "2006-01-02"
+const (
+	DateLayout       = "2006-01-02"
+	maxJobNameLength = 125
+)
 
 type Spec struct {
 	version  int
@@ -153,16 +156,87 @@ func (s Specs) ToNameAndSpecMap() map[Name]*Spec {
 	return nameAndSpecMap
 }
 
+func (s Specs) ToFullNameAndSpecMap(projectName tenant.ProjectName) map[FullName]*Spec {
+	fullnameAndSpecMap := make(map[FullName]*Spec, len(s))
+	for _, spec := range s {
+		fullName := FullNameFrom(projectName, spec.Name())
+		fullnameAndSpecMap[fullName] = spec
+	}
+	return fullnameAndSpecMap
+}
+
+func (s Specs) Validate() error {
+	me := errors.NewMultiError("validate specs errors")
+	jobNameCount := s.getJobNameCount()
+	isJobNameVisited := map[Name]bool{}
+	for _, spec := range s {
+		if jobNameCount[spec.Name()] > 1 && !isJobNameVisited[spec.Name()] {
+			me.Append(fmt.Errorf("duplicate %s", spec.Name()))
+		}
+		isJobNameVisited[spec.Name()] = true
+	}
+
+	return me.ToErr()
+}
+
+func (s Specs) GetValid() []*Spec {
+	jobNameCount := s.getJobNameCount()
+	validSpecs := []*Spec{}
+	for _, spec := range s {
+		if jobNameCount[spec.Name()] == 1 {
+			validSpecs = append(validSpecs, spec)
+		}
+	}
+
+	return validSpecs
+}
+
+func (s Specs) getJobNameCount() map[Name]int {
+	jobNameCount := make(map[Name]int)
+	for _, spec := range s {
+		jobNameCount[spec.Name()]++
+	}
+	return jobNameCount
+}
+
 type Name string
 
 func NameFrom(name string) (Name, error) {
 	if name == "" {
 		return "", errors.InvalidArgument(EntityJob, "name is empty")
 	}
+	if len(name) > maxJobNameLength {
+		return "", errors.InvalidArgument(EntityJob, fmt.Sprintf("length of job name is %d, longer than the length allowed (%d)", len(name), maxJobNameLength))
+	}
 	return Name(name), nil
 }
 
 func (n Name) String() string {
+	return string(n)
+}
+
+type State string
+
+const (
+	ENABLED  State = "enabled"
+	DISABLED State = "disabled"
+)
+
+func StateFrom(name string) (State, error) {
+	if name == "" {
+		return "", errors.InvalidArgument(EntityJob, "state is empty")
+	}
+	switch name {
+	case "JOB_STATE_ENABLED":
+		return ENABLED, nil
+	case "JOB_STATE_DISABLED":
+		return DISABLED, nil
+	default:
+		return "", errors.InvalidArgument(EntityJob, "invalid state")
+	}
+}
+
+func (n State) String() string {
 	return string(n)
 }
 
@@ -210,7 +284,6 @@ type Schedule struct {
 	endDate       ScheduleDate
 	interval      string
 	dependsOnPast bool
-	catchUp       bool
 	retry         *Retry
 }
 
@@ -228,10 +301,6 @@ func (s Schedule) Interval() string {
 
 func (s Schedule) DependsOnPast() bool {
 	return s.dependsOnPast
-}
-
-func (s Schedule) CatchUp() bool {
-	return s.catchUp
 }
 
 func (s Schedule) Retry() *Retry {
@@ -270,11 +339,6 @@ func (s *ScheduleBuilder) WithEndDate(endDate ScheduleDate) *ScheduleBuilder {
 
 func (s *ScheduleBuilder) WithDependsOnPast(dependsOnPast bool) *ScheduleBuilder {
 	s.schedule.dependsOnPast = dependsOnPast
-	return s
-}
-
-func (s *ScheduleBuilder) WithCatchUp(catchUp bool) *ScheduleBuilder {
-	s.schedule.catchUp = catchUp
 	return s
 }
 
@@ -500,7 +564,7 @@ func (s SpecHTTPUpstream) validate() error {
 	me := errors.NewMultiError("errors on spec http upstream")
 	me.Append(validateMap(s.headers))
 	me.Append(validateMap(s.params))
-	return errors.MultiToError(me)
+	return me.ToErr()
 }
 
 type SpecHTTPUpstreamBuilder struct {
@@ -581,7 +645,7 @@ func (s UpstreamSpec) validate() error {
 	for _, u := range s.httpUpstreams {
 		me.Append(u.validate())
 	}
-	return errors.MultiToError(me)
+	return me.ToErr()
 }
 
 type SpecUpstreamBuilder struct {

@@ -6,16 +6,17 @@ import (
 	"io"
 	"testing"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/odpf/optimus/core/resource"
-	"github.com/odpf/optimus/core/resource/handler/v1beta1"
-	"github.com/odpf/optimus/core/tenant"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/core/resource"
+	"github.com/raystack/optimus/core/resource/handler/v1beta1"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/writer"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 func TestResourceHandler(t *testing.T) {
@@ -31,6 +32,7 @@ func TestResourceHandler(t *testing.T) {
 			stream := new(resourceStreamMock)
 			stream.On("Context").Return(ctx)
 			stream.On("Recv").Return(nil, errors.New("req timeout")).Once()
+			stream.On("Send", mock.Anything).Return(nil)
 
 			err := handler.DeployResourceSpecification(stream)
 			assert.NotNil(t, err)
@@ -48,7 +50,7 @@ func TestResourceHandler(t *testing.T) {
 			}
 
 			argMatcher := mock.MatchedBy(func(req *pb.DeployResourceSpecificationResponse) bool {
-				return req.LogStatus.Message == "invalid deploy request for ns: invalid argument for entity project: project name is empty"
+				return req.LogStatus.Message == "invalid tenant information request project [] namespace [ns]: invalid argument for entity project: project name is empty"
 			})
 			stream := new(resourceStreamMock)
 			stream.On("Context").Return(ctx)
@@ -72,7 +74,7 @@ func TestResourceHandler(t *testing.T) {
 			}
 
 			argMatcher := mock.MatchedBy(func(req *pb.DeployResourceSpecificationResponse) bool {
-				return req.LogStatus.Message == "invalid store name for unknown: invalid argument for entity resource: unknown store unknown"
+				return req.LogStatus.Message == "invalid store name [unknown]: invalid argument for entity resource: unknown store unknown"
 			})
 			stream := new(resourceStreamMock)
 			stream.On("Context").Return(ctx)
@@ -86,8 +88,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("returns error log when conversion fails", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("Deploy", ctx, mock.Anything, resource.Bigquery, mock.Anything).
-				Return(nil)
+			service.On("Deploy", ctx, mock.Anything, resource.Bigquery, mock.Anything, mock.Anything).Return(nil)
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -186,7 +187,7 @@ func TestResourceHandler(t *testing.T) {
 			}
 
 			argMatcher := mock.MatchedBy(func(req *pb.DeployResourceSpecificationResponse) bool {
-				return req.LogStatus.Message == "resources with namespace [ns] are deployed successfully"
+				return req.LogStatus.Message == "[1] resources with namespace [ns] are deployed successfully"
 			})
 			stream := new(resourceStreamMock)
 			stream.On("Context").Return(ctx)
@@ -665,7 +666,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("returns error when service returns error", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("Update", ctx, mock.Anything).Return(errors.New("validation failure"))
+			service.On("Update", ctx, mock.Anything, mock.Anything).Return(errors.New("validation failure"))
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -690,7 +691,7 @@ func TestResourceHandler(t *testing.T) {
 		})
 		t.Run("updates the resource successfully", func(t *testing.T) {
 			service := new(resourceService)
-			service.On("Update", ctx, mock.Anything).Return(nil)
+			service.On("Update", ctx, mock.Anything, mock.Anything).Return(nil)
 			defer service.AssertExpectations(t)
 
 			handler := v1beta1.NewResourceHandler(logger, service)
@@ -712,6 +713,100 @@ func TestResourceHandler(t *testing.T) {
 			assert.Nil(t, err)
 		})
 	})
+	t.Run("ApplyResource", func(t *testing.T) {
+		t.Run("returns error when tenant is invalid", func(t *testing.T) {
+			service := new(resourceService)
+			handler := v1beta1.NewResourceHandler(logger, service)
+
+			req := &pb.ApplyResourcesRequest{
+				ProjectName:   "",
+				DatastoreName: "bigquery",
+				ResourceNames: nil,
+				NamespaceName: "",
+			}
+
+			_, err := handler.ApplyResources(ctx, req)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
+				"project: project name is empty: invalid tenant details")
+		})
+		t.Run("returns error when store is invalid", func(t *testing.T) {
+			service := new(resourceService)
+			handler := v1beta1.NewResourceHandler(logger, service)
+
+			req := &pb.ApplyResourcesRequest{
+				ProjectName:   "proj",
+				DatastoreName: "",
+				ResourceNames: nil,
+				NamespaceName: "ns",
+			}
+
+			_, err := handler.ApplyResources(ctx, req)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
+				"resource: unknown store : invalid datastore Name")
+		})
+		t.Run("returns error when resource names are empty", func(t *testing.T) {
+			service := new(resourceService)
+			handler := v1beta1.NewResourceHandler(logger, service)
+
+			req := &pb.ApplyResourcesRequest{
+				ProjectName:   "proj",
+				DatastoreName: "bigquery",
+				ResourceNames: nil,
+				NamespaceName: "ns",
+			}
+
+			_, err := handler.ApplyResources(ctx, req)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity "+
+				"resource: empty resource names: unable to apply resources")
+		})
+		t.Run("returns error when service returns error", func(t *testing.T) {
+			names := []string{"project.dataset.test_table"}
+
+			service := new(resourceService)
+			service.On("SyncResources", ctx, tnnt, resource.Bigquery, names).Return(nil, errors.New("something went wrong"))
+			defer service.AssertExpectations(t)
+
+			handler := v1beta1.NewResourceHandler(logger, service)
+
+			req := &pb.ApplyResourcesRequest{
+				ProjectName:   "proj",
+				NamespaceName: "ns",
+				DatastoreName: "bigquery",
+				ResourceNames: names,
+			}
+
+			_, err := handler.ApplyResources(ctx, req)
+			assert.NotNil(t, err)
+			assert.EqualError(t, err, "rpc error: code = Internal desc = something went wrong: "+
+				"unable to sync to datastore")
+		})
+		t.Run("syncs the resources successfully", func(t *testing.T) {
+			names := []string{"project.dataset.test_table"}
+
+			service := new(resourceService)
+			service.On("SyncResources", ctx, tnnt, resource.Bigquery, names).Return(
+				&resource.SyncResponse{ResourceNames: names}, nil)
+			defer service.AssertExpectations(t)
+
+			handler := v1beta1.NewResourceHandler(logger, service)
+
+			req := &pb.ApplyResourcesRequest{
+				ProjectName:   "proj",
+				NamespaceName: "ns",
+				DatastoreName: "bigquery",
+				ResourceNames: names,
+			}
+
+			resp, err := handler.ApplyResources(ctx, req)
+			assert.Nil(t, err)
+
+			assert.Equal(t, "success", resp.Statuses[0].Status)
+			assert.Equal(t, names[0], resp.Statuses[0].ResourceName)
+		})
+	})
 }
 
 type resourceService struct {
@@ -723,8 +818,8 @@ func (r *resourceService) Create(ctx context.Context, res *resource.Resource) er
 	return args.Error(0)
 }
 
-func (r *resourceService) Update(ctx context.Context, res *resource.Resource) error {
-	args := r.Called(ctx, res)
+func (r *resourceService) Update(ctx context.Context, res *resource.Resource, logWriter writer.LogWriter) error {
+	args := r.Called(ctx, res, logWriter)
 	return args.Error(0)
 }
 
@@ -746,9 +841,22 @@ func (r *resourceService) GetAll(ctx context.Context, tnnt tenant.Tenant, store 
 	return resources, args.Error(1)
 }
 
-func (r *resourceService) Deploy(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource) error {
-	args := r.Called(ctx, tnnt, store, resources)
+func (r *resourceService) Deploy(ctx context.Context, tnnt tenant.Tenant, store resource.Store, resources []*resource.Resource, logWriter writer.LogWriter) error {
+	args := r.Called(ctx, tnnt, store, resources, logWriter)
 	return args.Error(0)
+}
+
+func (r *resourceService) ChangeNamespace(ctx context.Context, datastore resource.Store, resourceFullName string, oldTenant, newTenant tenant.Tenant) error {
+	return r.Called(ctx, datastore, resourceFullName, oldTenant, newTenant).Error(0)
+}
+
+func (r *resourceService) SyncResources(ctx context.Context, tnnt tenant.Tenant, store resource.Store, names []string) (*resource.SyncResponse, error) {
+	args := r.Called(ctx, tnnt, store, names)
+	var resources *resource.SyncResponse
+	if args.Get(0) != nil {
+		resources = args.Get(0).(*resource.SyncResponse)
+	}
+	return resources, args.Error(1)
 }
 
 type resourceStreamMock struct {

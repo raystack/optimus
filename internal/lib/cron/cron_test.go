@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/internal/lib/cron"
+	"github.com/raystack/optimus/internal/lib/cron"
 )
 
 func TestScheduleSpec(t *testing.T) {

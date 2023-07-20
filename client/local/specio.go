@@ -1,6 +1,6 @@
 package local
 
-import "github.com/odpf/optimus/client/local/model"
+import "github.com/raystack/optimus/client/local/model"
 
 type ValidSpec interface {
 	*model.JobSpec | *model.ResourceSpec

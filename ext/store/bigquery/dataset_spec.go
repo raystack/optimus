@@ -6,8 +6,8 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/odpf/optimus/core/resource"
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/raystack/optimus/core/resource"
+	"github.com/raystack/optimus/internal/errors"
 )
 
 const (

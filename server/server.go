@@ -15,7 +15,7 @@ import (
 	grpctags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -28,9 +28,9 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/plugin"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/config"
+	"github.com/raystack/optimus/plugin"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 const (

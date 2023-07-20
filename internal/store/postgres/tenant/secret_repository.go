@@ -12,9 +12,9 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/core/tenant/dto"
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/core/tenant/dto"
+	"github.com/raystack/optimus/internal/errors"
 )
 
 type SecretRepository struct {

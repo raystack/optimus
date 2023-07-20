@@ -3,9 +3,8 @@ package dependencyresolver
 import (
 	"context"
 
-	"github.com/odpf/optimus/internal/utils"
-	pbp "github.com/odpf/optimus/protos/odpf/optimus/plugins/v1beta1"
-	"github.com/odpf/optimus/sdk/plugin"
+	pbp "github.com/raystack/optimus/protos/raystack/optimus/plugins/v1beta1"
+	"github.com/raystack/optimus/sdk/plugin"
 )
 
 // GRPCServer will be used by plugins this is working as proto adapter
@@ -54,7 +53,7 @@ func (s *GRPCServer) CompileAssets(ctx context.Context, req *pbp.CompileAssetsRe
 		instanceData = append(instanceData, plugin.JobRunSpecData{
 			Name:  inst.Name,
 			Value: inst.Value,
-			Type:  utils.FromEnumProto(inst.Type.String(), "type"),
+			Type:  inst.Type,
 		})
 	}
 

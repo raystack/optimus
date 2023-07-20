@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/spf13/cobra"
 )
 

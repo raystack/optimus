@@ -5,7 +5,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/errors"
 )
 
 type BQJob interface {

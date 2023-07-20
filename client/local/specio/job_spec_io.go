@@ -11,9 +11,9 @@ import (
 
 	"github.com/spf13/afero"
 
-	"github.com/odpf/optimus/client/local"
-	"github.com/odpf/optimus/client/local/internal"
-	"github.com/odpf/optimus/client/local/model"
+	"github.com/raystack/optimus/client/local"
+	"github.com/raystack/optimus/client/local/internal"
+	"github.com/raystack/optimus/client/local/model"
 )
 
 type jobSpecReadWriter struct {

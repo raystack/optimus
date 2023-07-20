@@ -13,14 +13,16 @@ import (
 	"time"
 
 	"github.com/kushsharma/parallel"
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/lib/cron"
+	"github.com/raystack/optimus/core/job"
+	"github.com/raystack/optimus/core/scheduler"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/lib/cron"
+	"github.com/raystack/optimus/internal/telemetry"
 )
 
 //go:embed __lib.py
@@ -30,7 +32,9 @@ const (
 	EntityAirflow = "Airflow"
 
 	dagStatusBatchURL = "api/v1/dags/~/dagRuns/list"
+	dagURL            = "api/v1/dags/%s"
 	dagRunClearURL    = "api/v1/dags/%s/clearTaskInstances"
+	dagRunCreateURL   = "api/v1/dags/%s/dagRuns"
 	airflowDateFormat = "2006-01-02T15:04:05+00:00"
 
 	schedulerHostKey = "SCHEDULER_HOST"
@@ -39,13 +43,17 @@ const (
 	jobsDir         = "dags"
 	jobsExtension   = ".py"
 
-	concurrentTicketPerSec = 40
-	concurrentLimit        = 600
+	concurrentTicketPerSec = 50
+	concurrentLimit        = 100
+
+	metricJobUpload       = "job_upload_total"
+	metricJobRemoval      = "job_removal_total"
+	metricJobStateSuccess = "success"
+	metricJobStateFailed  = "failed"
 )
 
 type Bucket interface {
 	WriteAll(ctx context.Context, key string, p []byte, opts *blob.WriterOptions) error
-	// ReadAll(ctx context.Context, key string) ([]byte, error)
 	List(opts *blob.ListOptions) *blob.ListIterator
 	Delete(ctx context.Context, key string) error
 	Close() error
@@ -106,10 +114,20 @@ func (s *Scheduler) DeployJobs(ctx context.Context, tenant tenant.Tenant, jobs [
 		}(job))
 	}
 
+	countDeploySucceed := 0
+	countDeployFailed := 0
 	for _, result := range runner.Run() {
-		multiError.Append(result.Err)
+		if result.Err != nil {
+			countDeployFailed++
+			multiError.Append(result.Err)
+			continue
+		}
+		countDeploySucceed++
 	}
-	return errors.MultiToError(multiError)
+	raiseSchedulerMetric(tenant, metricJobUpload, metricJobStateSuccess, countDeploySucceed)
+	raiseSchedulerMetric(tenant, metricJobUpload, metricJobStateFailed, countDeployFailed)
+
+	return multiError.ToErr()
 }
 
 // TODO list jobs should not refer from the scheduler, rather should list from db and it has nothing to do with scheduler.
@@ -151,33 +169,41 @@ func (s *Scheduler) DeleteJobs(ctx context.Context, t tenant.Tenant, jobNames []
 	if err != nil {
 		return err
 	}
-	multiError := errors.NewMultiError("ErrorsInDeleteJobs")
+	me := errors.NewMultiError("ErrorsInDeleteJobs")
+	countDeleteJobsSucceed := 0
+	countDeleteJobsFailed := 0
 	for _, jobName := range jobNames {
 		if strings.TrimSpace(jobName) == "" {
-			multiError.Append(errors.InvalidArgument(EntityAirflow, "job name cannot be an empty string"))
+			me.Append(errors.InvalidArgument(EntityAirflow, "job name cannot be an empty string"))
 			continue
 		}
 		blobKey := pathFromJobName(jobsDir, t.NamespaceName().String(), jobName, jobsExtension)
 		if err := bucket.Delete(spanCtx, blobKey); err != nil {
 			// ignore missing files
 			if gcerrors.Code(err) != gcerrors.NotFound {
-				multiError.Append(err)
+				countDeleteJobsFailed++
+				me.Append(err)
 			}
+			continue
 		}
+		countDeleteJobsSucceed++
 	}
+	raiseSchedulerMetric(t, metricJobRemoval, metricJobStateSuccess, countDeleteJobsSucceed)
+	raiseSchedulerMetric(t, metricJobRemoval, metricJobStateFailed, countDeleteJobsFailed)
+
 	err = deleteDirectoryIfEmpty(ctx, t.NamespaceName().String(), bucket)
 	if err != nil {
 		if gcerrors.Code(err) != gcerrors.NotFound {
-			multiError.Append(err)
+			me.Append(err)
 		}
 	}
-	return errors.MultiToError(multiError)
+	return me.ToErr()
 }
 
 // deleteDirectoryIfEmpty remove jobs Folder if it exists
 func deleteDirectoryIfEmpty(ctx context.Context, nsDirectoryIdentifier string, bucket Bucket) error {
 	spanCtx, span := startChildSpan(ctx, "deleteDirectoryIfEmpty")
-	span.End()
+	defer span.End()
 
 	jobsDir := pathForJobDirectory(jobsDir, nsDirectoryIdentifier)
 
@@ -235,11 +261,11 @@ func (s *Scheduler) GetJobRuns(ctx context.Context, tnnt tenant.Tenant, jobQuery
 	dagRunRequest := getDagRunRequest(jobQuery, jobCron)
 	reqBody, err := json.Marshal(dagRunRequest)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(EntityAirflow, "unable to marshal dag run request", err)
 	}
 
 	req := airflowRequest{
-		URL:    dagStatusBatchURL,
+		path:   dagStatusBatchURL,
 		method: http.MethodPost,
 		body:   reqBody,
 	}
@@ -251,15 +277,56 @@ func (s *Scheduler) GetJobRuns(ctx context.Context, tnnt tenant.Tenant, jobQuery
 
 	resp, err := s.client.Invoke(spanCtx, req, schdAuth)
 	if err != nil {
-		return nil, fmt.Errorf("failure reason for fetching airflow dag runs: %w", err)
+		return nil, errors.Wrap(EntityAirflow, "failure while fetching airflow dag runs", err)
 	}
 
 	var dagRunList DagRunListResponse
 	if err := json.Unmarshal(resp, &dagRunList); err != nil {
-		return nil, fmt.Errorf("json error on parsing airflow dag runs: %s: %w", string(resp), err)
+		return nil, errors.Wrap(EntityAirflow, fmt.Sprintf("json error on parsing airflow dag runs: %s", string(resp)), err)
 	}
 
 	return getJobRuns(dagRunList, jobCron)
+}
+
+// UpdateJobState set the state of jobs as enabled / disabled on scheduler
+func (s *Scheduler) UpdateJobState(ctx context.Context, tnnt tenant.Tenant, jobNames []job.Name, state string) error {
+	spanCtx, span := startChildSpan(ctx, "UpdateJobState")
+	defer span.End()
+
+	var data []byte
+	switch state {
+	case "enabled":
+		data = []byte(`{"is_paused": false}`)
+	case "disabled":
+		data = []byte(`{"is_paused": true}`)
+	}
+
+	schdAuth, err := s.getSchedulerAuth(ctx, tnnt)
+	if err != nil {
+		return err
+	}
+	ch := make(chan error, len(jobNames))
+	for _, jobName := range jobNames {
+		go func(jobName job.Name) {
+			req := airflowRequest{
+				path:   fmt.Sprintf(dagURL, jobName),
+				method: http.MethodPatch,
+				body:   data,
+			}
+			_, err := s.client.Invoke(spanCtx, req, schdAuth)
+			ch <- err
+		}(jobName)
+	}
+	me := errors.NewMultiError("update job state on scheduler")
+	for i := 0; i < len(jobNames); i++ {
+		me.Append(<-ch)
+	}
+
+	if len(me.Errors) > 0 {
+		return errors.Wrap(EntityAirflow, "failure while updating dag status", me.ToErr())
+	}
+
+	return nil
 }
 
 func getDagRunRequest(jobQuery *scheduler.JobRunsCriteria, jobCron *cron.ScheduleSpec) DagRunRequest {
@@ -318,9 +385,8 @@ func (s *Scheduler) ClearBatch(ctx context.Context, tnnt tenant.Tenant, jobName 
 		startExecutionTime.UTC().Format(airflowDateFormat),
 		endExecutionTime.UTC().Format(airflowDateFormat)))
 	req := airflowRequest{
-		URL:    dagRunClearURL,
+		path:   fmt.Sprintf(dagRunClearURL, jobName.String()),
 		method: http.MethodPost,
-		param:  jobName.String(),
 		body:   data,
 	}
 	schdAuth, err := s.getSchedulerAuth(ctx, tnnt)
@@ -329,7 +395,31 @@ func (s *Scheduler) ClearBatch(ctx context.Context, tnnt tenant.Tenant, jobName 
 	}
 	_, err = s.client.Invoke(spanCtx, req, schdAuth)
 	if err != nil {
-		return fmt.Errorf("failure reason for clearing airflow dag runs: %w", err)
+		return errors.Wrap(EntityAirflow, "failure while clearing airflow dag runs", err)
+	}
+	return nil
+}
+
+func (s *Scheduler) CreateRun(ctx context.Context, tnnt tenant.Tenant, jobName scheduler.JobName, executionTime time.Time, dagRunIDPrefix string) error {
+	spanCtx, span := startChildSpan(ctx, "CreateRun")
+	defer span.End()
+
+	data := []byte(fmt.Sprintf(`{"dag_run_id": %q, "execution_date": %q}`,
+		fmt.Sprintf("%s__%s", dagRunIDPrefix, executionTime.UTC().Format(airflowDateFormat)),
+		executionTime.UTC().Format(airflowDateFormat)),
+	)
+	req := airflowRequest{
+		path:   fmt.Sprintf(dagRunCreateURL, jobName.String()),
+		method: http.MethodPost,
+		body:   data,
+	}
+	schdAuth, err := s.getSchedulerAuth(ctx, tnnt)
+	if err != nil {
+		return err
+	}
+	_, err = s.client.Invoke(spanCtx, req, schdAuth)
+	if err != nil {
+		return errors.Wrap(EntityAirflow, "failure while creating airflow dag run", err)
 	}
 	return nil
 }
@@ -343,4 +433,12 @@ func NewScheduler(l log.Logger, bucketFac BucketFactory, client Client, compiler
 		projectGetter: projectGetter,
 		secretGetter:  secretGetter,
 	}
+}
+
+func raiseSchedulerMetric(jobTenant tenant.Tenant, metricName, status string, metricValue int) {
+	telemetry.NewCounter(metricName, map[string]string{
+		"project":   jobTenant.ProjectName().String(),
+		"namespace": jobTenant.NamespaceName().String(),
+		"status":    status,
+	}).Add(float64(metricValue))
 }

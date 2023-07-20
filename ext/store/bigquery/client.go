@@ -7,7 +7,7 @@ import (
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/errors"
 )
 
 type BqClientProvider struct{}

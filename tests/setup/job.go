@@ -1,9 +1,9 @@
 package setup
 
 import (
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/models"
+	"github.com/raystack/optimus/core/job"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/models"
 )
 
 type DummyJobBuilder struct {

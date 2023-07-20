@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/internal/store/postgres"
+	"github.com/raystack/optimus/config"
+	"github.com/raystack/optimus/internal/store/postgres"
 )
 
 type rollbackCommand struct {

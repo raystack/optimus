@@ -5,9 +5,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/models"
+	"github.com/raystack/optimus/core/job"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/models"
 )
 
 func TestEntityJob(t *testing.T) {

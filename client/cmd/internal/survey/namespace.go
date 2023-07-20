@@ -4,9 +4,9 @@ import (
 	"errors"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 
-	"github.com/odpf/optimus/config"
+	"github.com/raystack/optimus/config"
 )
 
 // NamespaceSurvey defines surveys related to namespace

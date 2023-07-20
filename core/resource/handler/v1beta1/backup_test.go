@@ -7,14 +7,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/core/resource"
-	"github.com/odpf/optimus/core/resource/handler/v1beta1"
-	"github.com/odpf/optimus/core/tenant"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/core/resource"
+	"github.com/raystack/optimus/core/resource/handler/v1beta1"
+	"github.com/raystack/optimus/core/tenant"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 func TestBackupHandler(t *testing.T) {

@@ -9,9 +9,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/tenant"
-	postgres "github.com/odpf/optimus/internal/store/postgres/tenant"
-	"github.com/odpf/optimus/tests/setup"
+	"github.com/raystack/optimus/core/tenant"
+	postgres "github.com/raystack/optimus/internal/store/postgres/tenant"
+	"github.com/raystack/optimus/tests/setup"
 )
 
 func TestPostgresSecretRepository(t *testing.T) {

@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	"github.com/odpf/optimus/client/local/model"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/client/local/model"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 type JobSpecTestSuite struct {
@@ -95,7 +95,6 @@ func (*JobSpecTestSuite) getCompleteJobSpec() model.JobSpec {
 		},
 		Behavior: model.JobSpecBehavior{
 			DependsOnPast: true,
-			Catchup:       true,
 			Retry: &model.JobSpecBehaviorRetry{
 				Count:              10,
 				Delay:              2 * time.Second,
@@ -185,7 +184,6 @@ func (*JobSpecTestSuite) getCompleteJobSpecProto() *pb.JobSpecification {
 		EndDate:       "01-01-2050",
 		Interval:      "12 10 * * *",
 		DependsOnPast: true,
-		CatchUp:       true,
 		Behavior: &pb.JobSpecification_Behavior{
 			Retry: &pb.JobSpecification_Behavior_Retry{
 				Count:              10,

@@ -7,14 +7,14 @@ import (
 	"io"
 	"time"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/internal"
-	"github.com/odpf/optimus/client/cmd/internal/connectivity"
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/config"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/client/cmd/internal"
+	"github.com/raystack/optimus/client/cmd/internal/connection"
+	"github.com/raystack/optimus/client/cmd/internal/logger"
+	"github.com/raystack/optimus/config"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 const (
@@ -23,6 +23,7 @@ const (
 
 type refreshCommand struct {
 	logger         log.Logger
+	connection     connection.Connection
 	configFilePath string
 
 	verbose                bool
@@ -83,6 +84,8 @@ func (r *refreshCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	if r.host == "" {
 		r.host = conf.Host
 	}
+
+	r.connection = connection.New(r.logger, conf)
 	return nil
 }
 
@@ -102,15 +105,17 @@ func (r *refreshCommand) RunE(_ *cobra.Command, _ []string) error {
 }
 
 func (r *refreshCommand) refreshJobSpecificationRequest() error {
-	conn, err := connectivity.NewConnectivity(r.host, refreshTimeout)
+	conn, err := r.connection.Create(r.host)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	jobSpecService := pb.NewJobSpecificationServiceClient(conn.GetConnection())
+	jobSpecService := pb.NewJobSpecificationServiceClient(conn)
 
-	respStream, err := jobSpecService.RefreshJobs(conn.GetContext(), &pb.RefreshJobsRequest{
+	ctx, dialCancel := context.WithTimeout(context.Background(), refreshTimeout)
+	defer dialCancel()
+	respStream, err := jobSpecService.RefreshJobs(ctx, &pb.RefreshJobsRequest{
 		ProjectName:    r.projectName,
 		NamespaceNames: r.selectedNamespaceNames,
 		JobNames:       r.selectedJobNames,
