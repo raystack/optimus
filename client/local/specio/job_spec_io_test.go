@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/odpf/optimus/client/local/model"
-	"github.com/odpf/optimus/client/local/specio"
+	"github.com/raystack/optimus/client/local/model"
+	"github.com/raystack/optimus/client/local/specio"
 )
 
 type JobSpecReadWriterTestSuite struct {
@@ -281,7 +281,6 @@ schedule:
   interval: ""
 behavior:
   depends_on_past: false
-  catch_up: false
 task:
   name: ""
   window:
@@ -308,7 +307,6 @@ schedule:
   interval: 0 22 * * * 
 behavior:
   depends_on_past: true
-  catch_up: false
   notify:
     - on: test
       channel:

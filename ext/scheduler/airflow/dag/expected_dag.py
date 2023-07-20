@@ -2,10 +2,10 @@
 
 from datetime import datetime, timedelta
 
-# imoprt Dag level callbacks
+# import Dag level callbacks
 from __lib import job_success_event, job_failure_event
 
-# imoprt operator level callbacks
+# import operator level callbacks
 from __lib import operator_start_event, operator_success_event, operator_retry_event, operator_failure_event
 
 from __lib import optimus_sla_miss_notify, SuperKubernetesPodOperator, SuperExternalTaskSensor
@@ -21,6 +21,10 @@ SENSOR_DEFAULT_TIMEOUT_IN_SECS = int(Variable.get("sensor_timeout_in_secs", defa
 DAG_RETRIES = int(Variable.get("dag_retries", default_var=3))
 DAG_RETRY_DELAY = int(Variable.get("dag_retry_delay_in_secs", default_var=5 * 60))
 DAGRUN_TIMEOUT_IN_SECS = int(Variable.get("dagrun_timeout_in_secs", default_var=3 * 24 * 60 * 60))
+STARTUP_TIMEOUT_IN_SECS = int(Variable.get("startup_timeout_in_secs", default_var=2 * 60))
+POOL_SENSOR = Variable.get("sensor_pool", default_var="default_pool")
+POOL_TASK = Variable.get("task_pool", default_var="default_pool")
+POOL_HOOK = Variable.get("hook_pool", default_var="default_pool")
 
 default_args = {
     "params": {
@@ -29,16 +33,17 @@ default_args = {
         "job_name": "infra.billing.weekly-status-reports",
         "optimus_hostname": "http://optimus.example.com"
     },
-    "pool": "billing",
     "owner": "infra-team@example.com",
-    "depends_on_past": False,
+    "depends_on_past": True,
     "retries": 2,
     "retry_delay": timedelta(seconds=100),
+    "startup_timeout_seconds": STARTUP_TIMEOUT_IN_SECS,
     "retry_exponential_backoff": True,
     "priority_weight": 2000,
     "start_date": datetime.strptime("2022-11-10T05:02:00", "%Y-%m-%dT%H:%M:%S"),
     "end_date": datetime.strptime("2022-11-10T10:02:00", "%Y-%m-%dT%H:%M:%S"),
     "weight_rule": WeightRule.ABSOLUTE,
+    "sla": timedelta(seconds=7200),
     "on_execute_callback": operator_start_event,
     "on_success_callback": operator_success_event,
     "on_retry_callback"  : operator_retry_event,
@@ -50,7 +55,7 @@ dag = DAG(
     dag_id="infra.billing.weekly-status-reports",
     default_args=default_args,
     schedule_interval="0 2 * * 0",
-    catchup=True,
+    catchup=False,
     dagrun_timeout=timedelta(seconds=DAGRUN_TIMEOUT_IN_SECS),
     tags=[
         "optimus",
@@ -69,7 +74,7 @@ resources = k8s.V1ResourceRequirements(
 
 JOB_DIR = "/data"
 IMAGE_PULL_POLICY = "IfNotPresent"
-INIT_CONTAINER_IMAGE = "odpf/optimus:dev"
+INIT_CONTAINER_IMAGE = "raystack/optimus:dev"
 INIT_CONTAINER_ENTRYPOINT = "/opt/entrypoint_init_container.sh"
 
 def get_entrypoint_cmd(plugin_entrypoint_script):
@@ -125,17 +130,17 @@ transformation_bq__dash__bq = SuperKubernetesPodOperator(
     task_id="bq-bq",
     get_logs=True,
     dag=dag,
-    depends_on_past=False,
+    depends_on_past=True,
     in_cluster=True,
     is_delete_operator_pod=True,
     do_xcom_push=False,
     env_vars=executor_env_vars,
-    sla=timedelta(seconds=7200),
     resources=resources,
     reattach_on_restart=True,
     volume_mounts=asset_volume_mounts,
     volumes=[volume],
     init_containers=[init_container],
+    pool=POOL_TASK
 )
 
 # hooks loop start
@@ -163,6 +168,7 @@ hook_transporter = SuperKubernetesPodOperator(
     get_logs=True,
     dag=dag,
     in_cluster=True,
+    depends_on_past=False,
     is_delete_operator_pod=True,
     do_xcom_push=False,
     env_vars=executor_env_vars,
@@ -171,6 +177,7 @@ hook_transporter = SuperKubernetesPodOperator(
     volume_mounts=asset_volume_mounts,
     volumes=[volume],
     init_containers=[init_container_transporter],
+    pool=POOL_HOOK
 )
 init_container_predator = k8s.V1Container(
     name="init-container",
@@ -196,6 +203,7 @@ hook_predator = SuperKubernetesPodOperator(
     get_logs=True,
     dag=dag,
     in_cluster=True,
+    depends_on_past=False,
     is_delete_operator_pod=True,
     do_xcom_push=False,
     env_vars=executor_env_vars,
@@ -204,6 +212,7 @@ hook_predator = SuperKubernetesPodOperator(
     volume_mounts=asset_volume_mounts,
     volumes=[volume],
     init_containers=[init_container_predator],
+    pool=POOL_HOOK
 )
 init_container_failureHook = k8s.V1Container(
     name="init-container",
@@ -229,6 +238,7 @@ hook_failureHook = SuperKubernetesPodOperator(
     get_logs=True,
     dag=dag,
     in_cluster=True,
+    depends_on_past=False,
     is_delete_operator_pod=True,
     do_xcom_push=False,
     env_vars=executor_env_vars,
@@ -238,6 +248,7 @@ hook_failureHook = SuperKubernetesPodOperator(
     volume_mounts=asset_volume_mounts,
     volumes=[volume],
     init_containers=[init_container_failureHook],
+    pool=POOL_HOOK
 )
 # hooks loop ends
 
@@ -254,7 +265,9 @@ wait_foo__dash__intra__dash__dep__dash__job = SuperExternalTaskSensor(
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     task_id="wait_foo-intra-dep-job-bq",
-    dag=dag
+    depends_on_past=False,
+    dag=dag,
+    pool=POOL_SENSOR
 )
 
 wait_foo__dash__inter__dash__dep__dash__job = SuperExternalTaskSensor(
@@ -268,7 +281,9 @@ wait_foo__dash__inter__dash__dep__dash__job = SuperExternalTaskSensor(
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     task_id="wait_foo-inter-dep-job-bq-bq",
-    dag=dag
+    depends_on_past=False,
+    dag=dag,
+    pool=POOL_SENSOR
 )
 
 wait_foo__dash__external__dash__optimus__dash__dep__dash__job = SuperExternalTaskSensor(
@@ -282,7 +297,9 @@ wait_foo__dash__external__dash__optimus__dash__dep__dash__job = SuperExternalTas
     poke_interval=SENSOR_DEFAULT_POKE_INTERVAL_IN_SECS,
     timeout=SENSOR_DEFAULT_TIMEOUT_IN_SECS,
     task_id="wait_foo-external-optimus-dep-job-bq-bq",
-    dag=dag
+    depends_on_past=False,
+    dag=dag,
+    pool=POOL_SENSOR
 )
 # arrange inter task dependencies
 ####################################

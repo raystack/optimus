@@ -1,8 +1,8 @@
 package tenant
 
 import (
-	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/utils"
+	"github.com/raystack/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/utils"
 )
 
 const (

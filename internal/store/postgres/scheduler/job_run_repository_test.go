@@ -9,9 +9,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/tenant"
-	postgres "github.com/odpf/optimus/internal/store/postgres/scheduler"
+	"github.com/raystack/optimus/core/scheduler"
+	"github.com/raystack/optimus/core/tenant"
+	postgres "github.com/raystack/optimus/internal/store/postgres/scheduler"
 )
 
 func TestPostgresJobRunRepository(t *testing.T) {

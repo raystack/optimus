@@ -8,12 +8,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/ext/scheduler/airflow/dag"
-	"github.com/odpf/optimus/internal/models"
-	"github.com/odpf/optimus/sdk/plugin"
-	"github.com/odpf/optimus/sdk/plugin/mock"
+	"github.com/raystack/optimus/core/scheduler"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/ext/scheduler/airflow/dag"
+	"github.com/raystack/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/models"
+	"github.com/raystack/optimus/sdk/plugin"
+	"github.com/raystack/optimus/sdk/plugin/mock"
 )
 
 //go:embed expected_dag.py
@@ -23,15 +24,52 @@ func TestDagCompiler(t *testing.T) {
 	t.Run("Compile", func(t *testing.T) {
 		repo := setupPluginRepo()
 		tnnt, err := tenant.NewTenant("example-proj", "billing")
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 
-		t.Run("should compile basic template without any error", func(t *testing.T) {
+		t.Run("returns error when cannot find task", func(t *testing.T) {
+			emptyRepo := mockPluginRepo{plugins: []*plugin.Plugin{}}
+			com, err := dag.NewDagCompiler("http://optimus.example.com", emptyRepo)
+			assert.NoError(t, err)
+
+			job := setupJobDetails(tnnt)
+			_, err = com.Compile(job)
+			assert.True(t, errors.IsErrorType(err, errors.ErrNotFound))
+			assert.ErrorContains(t, err, "plugin not found for bq-bq")
+		})
+		t.Run("returns error when cannot find hook", func(t *testing.T) {
 			com, err := dag.NewDagCompiler("http://optimus.example.com", repo)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
+
+			job := setupJobDetails(tnnt)
+			job.Job.Hooks = append(job.Job.Hooks, &scheduler.Hook{Name: "invalid"})
+			_, err = com.Compile(job)
+			assert.True(t, errors.IsErrorType(err, errors.ErrNotFound))
+			assert.ErrorContains(t, err, "hook not found for name invalid")
+		})
+
+		t.Run("returns error when sla duration is invalid", func(t *testing.T) {
+			com, err := dag.NewDagCompiler("http://optimus.example.com", repo)
+			assert.NoError(t, err)
+
+			job := setupJobDetails(tnnt)
+			job.Alerts = append(job.Alerts, scheduler.Alert{
+				On: scheduler.EventCategorySLAMiss,
+			},
+				scheduler.Alert{
+					On:     scheduler.EventCategorySLAMiss,
+					Config: map[string]string{"duration": "2"},
+				})
+			_, err = com.Compile(job)
+			assert.ErrorContains(t, err, "failed to parse sla_miss duration 2")
+		})
+
+		t.Run("compiles basic template without any error", func(t *testing.T) {
+			com, err := dag.NewDagCompiler("http://optimus.example.com", repo)
+			assert.NoError(t, err)
 
 			job := setupJobDetails(tnnt)
 			compiledDag, err := com.Compile(job)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.Equal(t, string(compiledTemplate), string(compiledDag))
 		})
 	})
@@ -47,8 +85,7 @@ func setupJobDetails(tnnt tenant.Tenant) *scheduler.JobWithDetails {
 		StartDate:     time.Date(2022, 11, 10, 5, 2, 0, 0, time.UTC),
 		EndDate:       &end,
 		Interval:      "0 2 * * 0",
-		DependsOnPast: false,
-		CatchUp:       true,
+		DependsOnPast: true,
 	}
 
 	retry := scheduler.Retry{
@@ -94,7 +131,6 @@ func setupJobDetails(tnnt tenant.Tenant) *scheduler.JobWithDetails {
 				Memory: "2G",
 			},
 		},
-		Scheduler: map[string]string{"pool": "billing"},
 	}
 
 	tnnt1, _ := tenant.NewTenant("project", "namespace")

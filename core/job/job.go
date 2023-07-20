@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/errors"
 )
 
 const (
@@ -16,6 +16,18 @@ const (
 
 	UpstreamStateResolved   UpstreamState = "resolved"
 	UpstreamStateUnresolved UpstreamState = "unresolved"
+
+	MetricJobEvent                      = "job_events_total"
+	MetricJobEventStateAdded            = "added"
+	MetricJobEventStateUpdated          = "updated"
+	MetricJobEventStateDeleted          = "deleted"
+	MetricJobEventStateUpsertFailed     = "upsert_failed"
+	MetricJobEventStateDeleteFailed     = "delete_failed"
+	MetricJobEventStateValidationFailed = "validation_failed"
+	MetricJobEventEnabled               = "enabled"
+	MetricJobEventDisabled              = "disabled"
+
+	MetricJobRefreshResourceDownstream = "refresh_resource_downstream_total"
 )
 
 type Job struct {
@@ -87,7 +99,7 @@ func (j *Job) getStaticUpstreamsToResolve() ([]*Upstream, error) {
 
 		unresolvedStaticUpstreams = append(unresolvedStaticUpstreams, NewUpstreamUnresolvedStatic(jobUpstreamName, projectUpstreamName))
 	}
-	return unresolvedStaticUpstreams, errors.MultiToError(me)
+	return unresolvedStaticUpstreams, me.ToErr()
 }
 
 type ResourceURN string
@@ -171,7 +183,7 @@ func (j Jobs) GetJobsWithUnresolvedUpstreams() ([]*WithUpstream, error) {
 		jobsWithUnresolvedUpstream = append(jobsWithUnresolvedUpstream, jobWithUnresolvedUpstream)
 	}
 
-	return jobsWithUnresolvedUpstream, errors.MultiToError(me)
+	return jobsWithUnresolvedUpstream, me.ToErr()
 }
 
 type WithUpstream struct {

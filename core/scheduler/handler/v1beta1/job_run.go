@@ -2,15 +2,14 @@ package v1beta1
 
 import (
 	"context"
-	"encoding/json"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/core/scheduler"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/errors"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 type JobRunService interface {
@@ -35,31 +34,37 @@ type JobRunHandler struct {
 func (h JobRunHandler) JobRunInput(ctx context.Context, req *pb.JobRunInputRequest) (*pb.JobRunInputResponse, error) {
 	projectName, err := tenant.ProjectNameFrom(req.GetProjectName())
 	if err != nil {
+		h.l.Error("error adapting project name [%s]: %s", req.GetProjectName(), err)
 		return nil, errors.GRPCErr(err, "unable to get job run input for "+req.GetJobName())
 	}
 
 	jobName, err := scheduler.JobNameFrom(req.GetJobName())
 	if err != nil {
+		h.l.Error("error adapting job name [%s]: %s", req.GetJobName(), err)
 		return nil, errors.GRPCErr(err, "unable to get job run input for "+req.GetJobName())
 	}
 
 	executor, err := scheduler.ExecutorFromEnum(req.InstanceName, req.InstanceType.String())
 	if err != nil {
+		h.l.Error("error adapting executor: %s", err)
 		return nil, errors.GRPCErr(err, "unable to get job run input for "+req.GetJobName())
 	}
 
 	err = req.ScheduledAt.CheckValid()
 	if err != nil {
+		h.l.Error("invalid scheduled at: %s", err)
 		return nil, errors.GRPCErr(errors.InvalidArgument(scheduler.EntityJobRun, "invalid scheduled_at"), "unable to get job run input for "+req.GetJobName())
 	}
 
 	runConfig, err := scheduler.RunConfigFrom(executor, req.ScheduledAt.AsTime(), req.JobrunId)
 	if err != nil {
+		h.l.Error("error adapting run config: %s", err)
 		return nil, errors.GRPCErr(err, "unable to get job run input for "+req.GetJobName())
 	}
 
 	input, err := h.service.JobRunInput(ctx, projectName, jobName, runConfig)
 	if err != nil {
+		h.l.Error("error getting job run input: %s", err)
 		return nil, errors.GRPCErr(err, "unable to get job run input for "+req.GetJobName())
 	}
 
@@ -75,22 +80,26 @@ func (h JobRunHandler) JobRunInput(ctx context.Context, req *pb.JobRunInputReque
 func (h JobRunHandler) JobRun(ctx context.Context, req *pb.JobRunRequest) (*pb.JobRunResponse, error) {
 	projectName, err := tenant.ProjectNameFrom(req.GetProjectName())
 	if err != nil {
+		h.l.Error("error adapting project name [%s]: %s", req.GetProjectName(), err)
 		return nil, errors.GRPCErr(err, "unable to get job run for "+req.GetJobName())
 	}
 
 	jobName, err := scheduler.JobNameFrom(req.GetJobName())
 	if err != nil {
+		h.l.Error("error adapting job name [%s]: %s", req.GetJobName(), err)
 		return nil, errors.GRPCErr(err, "unable to get job run for "+req.GetJobName())
 	}
 
 	criteria, err := buildCriteriaForJobRun(req)
 	if err != nil {
+		h.l.Error("error building job run criteria: %s", err)
 		return nil, errors.GRPCErr(err, "unable to get job run for "+req.GetJobName())
 	}
 
 	var jobRuns []*scheduler.JobRunStatus
 	jobRuns, err = h.service.GetJobRuns(ctx, projectName, jobName, criteria)
 	if err != nil {
+		h.l.Error("error getting job runs: %s", err)
 		return nil, errors.GRPCErr(err, "unable to get job run for "+req.GetJobName())
 	}
 
@@ -126,15 +135,18 @@ func buildCriteriaForJobRun(req *pb.JobRunRequest) (*scheduler.JobRunsCriteria, 
 	}, nil
 }
 
-func (h JobRunHandler) UploadToScheduler(ctx context.Context, req *pb.UploadToSchedulerRequest) (*pb.UploadToSchedulerResponse, error) {
+func (h JobRunHandler) UploadToScheduler(_ context.Context, req *pb.UploadToSchedulerRequest) (*pb.UploadToSchedulerResponse, error) {
 	projectName, err := tenant.ProjectNameFrom(req.GetProjectName())
 	if err != nil {
+		h.l.Error("error adapting project name [%s]: %s", req.GetProjectName(), err)
 		return nil, errors.GRPCErr(err, "unable to get projectName")
 	}
-	err = h.service.UploadToScheduler(ctx, projectName)
-	if err != nil {
-		return nil, errors.GRPCErr(err, "\nuploaded to scheduler with error")
-	}
+	go func() {
+		err = h.service.UploadToScheduler(context.Background(), projectName)
+		if err != nil {
+			h.l.Error("Finished upload to scheduler with error: %s", err)
+		}
+	}()
 	return &pb.UploadToSchedulerResponse{}, nil
 }
 
@@ -142,33 +154,33 @@ func (h JobRunHandler) UploadToScheduler(ctx context.Context, req *pb.UploadToSc
 func (h JobRunHandler) RegisterJobEvent(ctx context.Context, req *pb.RegisterJobEventRequest) (*pb.RegisterJobEventResponse, error) {
 	tnnt, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
+		h.l.Error("invalid tenant information request project [%s] namespace [%s]: %s", req.GetProjectName(), req.GetNamespaceName(), err)
 		return nil, errors.GRPCErr(err, "unable to get tenant")
 	}
 
 	jobName, err := scheduler.JobNameFrom(req.GetJobName())
 	if err != nil {
+		h.l.Error("error adapting job name [%s]: %s", jobName, err)
 		return nil, errors.GRPCErr(err, "unable to get job name"+req.GetJobName())
 	}
 
 	event, err := scheduler.EventFrom(req.GetEvent().Type.String(), req.GetEvent().Value.AsMap(), jobName, tnnt)
 	if err != nil {
+		h.l.Error("error adapting event: %s", err)
 		return nil, errors.GRPCErr(err, "unable to parse event")
 	}
-	multiError := errors.NewMultiError("errors in RegisterJobEvent")
+	me := errors.NewMultiError("errors in RegisterJobEvent")
 
 	err = h.service.UpdateJobState(ctx, event)
 	if err != nil {
-		jobEventByteString, _ := json.Marshal(req.GetEvent())
-		h.l.Error(errors.InternalError(scheduler.EntityJobRun, "scheduler could not update job run state, event Payload::"+string(jobEventByteString), err).Error())
-		multiError.Append(errors.InternalError(scheduler.EntityJobRun, "scheduler could not update job run state, err:"+err.Error(), err))
+		h.l.Error("error updating job run state for Job: %s, Project: %s, eventType: %s, schedule_at: %s, err: %s", jobName, tnnt.ProjectName(), event.Type, event.JobScheduledAt.String(), err.Error())
+		me.Append(errors.AddErrContext(err, scheduler.EntityJobRun, "scheduler could not update job run state"))
 	}
 
 	err = h.notifier.Push(ctx, event)
-	if err != nil {
-		multiError.Append(err)
-	}
+	me.Append(err)
 
-	return &pb.RegisterJobEventResponse{}, errors.MultiToError(multiError)
+	return &pb.RegisterJobEventResponse{}, me.ToErr()
 }
 
 func NewJobRunHandler(l log.Logger, service JobRunService, notifier Notifier) *JobRunHandler {

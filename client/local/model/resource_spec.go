@@ -5,7 +5,7 @@ import (
 
 	"google.golang.org/protobuf/types/known/structpb"
 
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 type ResourceSpec struct {
@@ -14,6 +14,7 @@ type ResourceSpec struct {
 	Type    string                 `yaml:"type"`
 	Labels  map[string]string      `yaml:"labels"`
 	Spec    map[string]interface{} `yaml:"spec"`
+	Path    string                 `yaml:"-"`
 }
 
 func (r ResourceSpec) ToProto() (*pb.ResourceSpecification, error) {

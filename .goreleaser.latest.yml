@@ -10,7 +10,7 @@ builds:
     flags:
       - -a
     ldflags:
-      - -s -w -X github.com/odpf/optimus/config.BuildVersion=latest -X github.com/odpf/optimus/config.BuildCommit={{.FullCommit}} -X github.com/odpf/optimus/config.BuildDate={{.Date}}
+      - -s -w -X github.com/raystack/optimus/config.BuildVersion=latest -X github.com/raystack/optimus/config.BuildCommit={{.FullCommit}} -X github.com/raystack/optimus/config.BuildDate={{.Date}}
     goos:
       - linux
       - darwin
@@ -21,12 +21,12 @@ builds:
     env:
       - CGO_ENABLED=0
 archives:
-  - name_template: "{{ .ProjectName }}_latest_{{ .Os }}_{{ .Arch }}"
-    replacements:
-      darwin: macos
-      linux: linux
-      windows: windows
-      amd64: x86_64
+  - name_template: >-
+      {{ .ProjectName }}_latest_
+      {{- if eq .Os "darwin" }}macos
+      {{- else }}{{ .Os }}{{ end }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
     format_overrides:
       - goos: windows
         format: zip
@@ -34,26 +34,25 @@ release:
   disable: true
   name_template: "{{.ProjectName}}-latest"
 checksum:
-  name_template: 'checksums.txt'
+  name_template: "checksums.txt"
 snapshot:
   name_template: "latest"
 changelog:
   sort: asc
   filters:
     exclude:
-      - '^docs'
-      - '^test'
-      - '^build'
-      - '^chore'
+      - "^docs"
+      - "^test"
+      - "^build"
+      - "^chore"
 dockers:
-  -
-    goos: linux
+  - goos: linux
     goarch: amd64
     ids:
       - optimus
     dockerfile: Dockerfile
     image_templates:
-      - 'docker.io/odpf/{{.ProjectName}}:latest'
-      - 'docker.io/odpf/{{.ProjectName}}:latest-amd64'
+      - "docker.io/raystack/{{.ProjectName}}:latest"
+      - "docker.io/raystack/{{.ProjectName}}:latest-amd64"
     extra_files:
       - entrypoint_init_container.sh

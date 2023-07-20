@@ -1,0 +1,372 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "raystack/optimus/core/v1beta1/job_run.proto",
+    "version": "0.1"
+  },
+  "tags": [
+    {
+      "name": "JobRunService"
+    }
+  ],
+  "host": "127.0.0.1:9100",
+  "basePath": "/api",
+  "schemes": ["http"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "paths": {
+    "/v1beta1/project/{projectName}/job/{jobName}/run": {
+      "get": {
+        "summary": "JobRun returns the current and past run status of jobs on a given range",
+        "operationId": "JobRunService_JobRun",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1JobRunResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": ["JobRunService"]
+      }
+    },
+    "/v1beta1/project/{projectName}/job/{jobName}/run_input": {
+      "post": {
+        "summary": "JobRunInput is used to fetch task/hook compiled configuration and assets.",
+        "operationId": "JobRunService_JobRunInput",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1JobRunInputResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "scheduledAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "instanceName": {
+                  "type": "string"
+                },
+                "instanceType": {
+                  "$ref": "#/definitions/v1beta1InstanceSpecType"
+                },
+                "jobrunId": {
+                  "type": "string",
+                  "title": "either set job_name if this is a scheduled execution\nor set jobrun_id if this is a manual triggered execution\nand not really registered as a valid job"
+                }
+              }
+            }
+          }
+        ],
+        "tags": ["JobRunService"]
+      }
+    },
+    "/v1beta1/project/{projectName}/namespace/{namespaceName}/job/{jobName}/event": {
+      "post": {
+        "summary": "RegisterJobEvent notifies optimus service about an event related to job",
+        "operationId": "JobRunService_RegisterJobEvent",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1RegisterJobEventResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "jobName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "event": {
+                  "$ref": "#/definitions/v1beta1JobEvent"
+                }
+              }
+            }
+          }
+        ],
+        "tags": ["JobRunService"]
+      }
+    },
+    "/v1beta1/project/{projectName}/upload": {
+      "put": {
+        "summary": "UploadToScheduler comiles jobSpec from database into DAGs and uploads the generated DAGs to scheduler",
+        "operationId": "JobRunService_UploadToScheduler",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1UploadToSchedulerResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "namespaceName": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "tags": ["JobRunService"]
+      }
+    }
+  },
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "typeUrl": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "protobufNullValue": {
+      "type": "string",
+      "enum": ["NULL_VALUE"],
+      "default": "NULL_VALUE",
+      "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\n The JSON representation for `NullValue` is JSON `null`.\n\n - NULL_VALUE: Null value."
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1beta1InstanceSpecType": {
+      "type": "string",
+      "enum": ["TYPE_UNSPECIFIED", "TYPE_TASK", "TYPE_HOOK"],
+      "default": "TYPE_UNSPECIFIED"
+    },
+    "v1beta1JobEvent": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/v1beta1JobEventType"
+        },
+        "value": {
+          "type": "object"
+        }
+      }
+    },
+    "v1beta1JobEventType": {
+      "type": "string",
+      "enum": [
+        "TYPE_UNSPECIFIED",
+        "TYPE_SLA_MISS",
+        "TYPE_JOB_SUCCESS",
+        "TYPE_FAILURE",
+        "TYPE_TASK_RETRY",
+        "TYPE_TASK_SUCCESS",
+        "TYPE_TASK_START",
+        "TYPE_TASK_FAIL",
+        "TYPE_SENSOR_RETRY",
+        "TYPE_SENSOR_SUCCESS",
+        "TYPE_SENSOR_START",
+        "TYPE_SENSOR_FAIL",
+        "TYPE_HOOK_START",
+        "TYPE_HOOK_RETRY",
+        "TYPE_HOOK_FAIL",
+        "TYPE_HOOK_SUCCESS"
+      ],
+      "default": "TYPE_UNSPECIFIED"
+    },
+    "v1beta1JobRun": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string"
+        },
+        "scheduledAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "v1beta1JobRunInputResponse": {
+      "type": "object",
+      "properties": {
+        "envs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "secrets": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1beta1JobRunResponse": {
+      "type": "object",
+      "properties": {
+        "jobRuns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1JobRun"
+          }
+        }
+      }
+    },
+    "v1beta1RegisterJobEventResponse": {
+      "type": "object"
+    },
+    "v1beta1UploadToSchedulerResponse": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "boolean"
+        },
+        "errorMessage": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "externalDocs": {
+    "description": "Optimus Job Run Service"
+  }
+}

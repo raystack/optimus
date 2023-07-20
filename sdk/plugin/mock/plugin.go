@@ -3,7 +3,7 @@ package mock
 import (
 	"context"
 
-	"github.com/odpf/optimus/sdk/plugin"
+	"github.com/raystack/optimus/sdk/plugin"
 )
 
 func NewMockBinaryPlugin(name, pluginType string) *plugin.Plugin {

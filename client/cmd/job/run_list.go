@@ -1,26 +1,28 @@
 package job
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/odpf/optimus/client/cmd/internal"
-	"github.com/odpf/optimus/client/cmd/internal/connectivity"
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/client/cmd/internal/progressbar"
-	"github.com/odpf/optimus/config"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/client/cmd/internal"
+	"github.com/raystack/optimus/client/cmd/internal/connection"
+	"github.com/raystack/optimus/client/cmd/internal/logger"
+	"github.com/raystack/optimus/client/cmd/internal/progressbar"
+	"github.com/raystack/optimus/config"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 const jobStatusTimeout = time.Second * 30
 
 type runListCommand struct {
 	logger         log.Logger
+	connection     *connection.Insecure
 	configFilePath string
 
 	startDate   string
@@ -97,7 +99,7 @@ func (r *runListCommand) RunE(_ *cobra.Command, args []string) error {
 }
 
 func (r *runListCommand) callJobRun(jobRunRequest *pb.JobRunRequest) error {
-	conn, err := connectivity.NewConnectivity(r.host, jobStatusTimeout)
+	conn, err := r.connection.Create(r.host)
 	if err != nil {
 		return err
 	}
@@ -105,8 +107,12 @@ func (r *runListCommand) callJobRun(jobRunRequest *pb.JobRunRequest) error {
 
 	spinner := progressbar.NewProgressBar()
 	spinner.Start("please wait...")
-	run := pb.NewJobRunServiceClient(conn.GetConnection())
-	jobRunResponse, err := run.JobRun(conn.GetContext(), jobRunRequest)
+	run := pb.NewJobRunServiceClient(conn)
+
+	ctx, dialCancel := context.WithTimeout(context.Background(), jobStatusTimeout)
+	defer dialCancel()
+
+	jobRunResponse, err := run.JobRun(ctx, jobRunRequest)
 	spinner.Stop()
 	if err != nil {
 		return fmt.Errorf("request failed for job %s: %w", jobRunRequest.JobName, err)

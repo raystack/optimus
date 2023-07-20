@@ -3,7 +3,7 @@ package factory
 import (
 	"fmt"
 
-	"github.com/odpf/optimus/client/extension/model"
+	"github.com/raystack/optimus/client/extension/model"
 )
 
 // ParseRegistry is the registry for all parsers defined by each provider

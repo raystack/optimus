@@ -11,6 +11,7 @@ type ClientConfig struct {
 	Host       string       `mapstructure:"host"` // optimus server host
 	Project    Project      `mapstructure:"project"`
 	Namespaces []*Namespace `mapstructure:"namespaces"`
+	Auth       Auth         `mapstructure:"auth"`
 
 	namespaceNameToNamespace map[string]*Namespace
 }
@@ -28,6 +29,11 @@ type Job struct {
 type Project struct {
 	Name   string            `mapstructure:"name"`
 	Config map[string]string `mapstructure:"config"`
+}
+
+type Auth struct {
+	ClientID     string `mapstructure:"client_id"`
+	ClientSecret string `mapstructure:"client_secret"`
 }
 
 type Namespace struct {

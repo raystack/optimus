@@ -1,9 +1,9 @@
 package writer
 
 import (
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 type saltLogger struct {

@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/errors"
 )
 
 const (
@@ -92,6 +92,10 @@ func (r *Resource) UpdateURN(urn string) error {
 	}
 
 	return errors.InvalidArgument(EntityResource, "urn already present for "+r.FullName())
+}
+
+func (r *Resource) UpdateTenant(tnnt tenant.Tenant) {
+	r.tenant = tnnt
 }
 
 func (r *Resource) Metadata() *Metadata {

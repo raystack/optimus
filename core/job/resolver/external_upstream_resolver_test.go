@@ -8,12 +8,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/resolver"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/ext/resourcemanager"
-	"github.com/odpf/optimus/internal/models"
+	"github.com/raystack/optimus/config"
+	"github.com/raystack/optimus/core/job"
+	"github.com/raystack/optimus/core/job/resolver"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/ext/resourcemanager"
+	"github.com/raystack/optimus/internal/models"
 )
 
 func TestExternalUpstreamResolver(t *testing.T) {

@@ -9,9 +9,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/lib/pq"
 
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/models"
+	"github.com/raystack/optimus/core/job"
+	"github.com/raystack/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/models"
 )
 
 const jobDatetimeLayout = "2006-01-02"
@@ -57,7 +57,6 @@ type Schedule struct {
 	EndDate       *time.Time `json:",omitempty"`
 	Interval      string
 	DependsOnPast bool
-	CatchUp       bool
 	Retry         *Retry
 }
 
@@ -266,7 +265,6 @@ func toStorageSchedule(scheduleSpec *job.Schedule) ([]byte, error) {
 		StartDate:     startDate,
 		Interval:      scheduleSpec.Interval(),
 		DependsOnPast: scheduleSpec.DependsOnPast(),
-		CatchUp:       scheduleSpec.CatchUp(),
 		Retry:         retry,
 	}
 	if scheduleSpec.EndDate() != "" {
@@ -462,7 +460,6 @@ func fromStorageSchedule(raw []byte) (*job.Schedule, error) {
 		return nil, err
 	}
 	scheduleBuilder := job.NewScheduleBuilder(startDate).
-		WithCatchUp(storageSchedule.CatchUp).
 		WithDependsOnPast(storageSchedule.DependsOnPast).
 		WithInterval(storageSchedule.Interval)
 

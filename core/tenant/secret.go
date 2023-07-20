@@ -1,6 +1,6 @@
 package tenant
 
-import "github.com/odpf/optimus/internal/errors"
+import "github.com/raystack/optimus/internal/errors"
 
 const (
 	EntitySecret = "secret"

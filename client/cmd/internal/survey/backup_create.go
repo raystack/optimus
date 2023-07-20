@@ -2,7 +2,7 @@ package survey
 
 import (
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 )
 
 // BackupCreateSurvey defines survey for creating backup

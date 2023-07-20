@@ -2,15 +2,25 @@ package service
 
 import (
 	"context"
+	"strings"
 	"time"
 
-	"github.com/odpf/optimus/core/resource"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/raystack/salt/log"
+
+	"github.com/raystack/optimus/core/resource"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/telemetry"
 )
 
-// recentBackupWindowMonths contains the window interval to consider for recent backups
-const recentBackupWindowMonths = -3
+const (
+	// recentBackupWindowMonths contains the window interval to consider for recent backups
+	recentBackupWindowMonths = -3
+
+	metricBackupRequest        = "resource_backup_requests_total"
+	backupRequestStatusSuccess = "success"
+	backupRequestStatusFailed  = "failed"
+)
 
 type BackupRepository interface {
 	GetByID(ctx context.Context, id resource.BackupID) (*resource.Backup, error)
@@ -31,25 +41,32 @@ type BackupService struct {
 
 	resources     ResourceProvider
 	backupManager BackupManager
+
+	logger log.Logger
 }
 
 func (s BackupService) Create(ctx context.Context, backup *resource.Backup) (*resource.BackupResult, error) {
 	resources, err := s.resources.GetResources(ctx, backup.Tenant(), backup.Store(), backup.ResourceNames())
 	if err != nil {
+		s.logger.Error("error getting resources [%s] from db: %s", strings.Join(backup.ResourceNames(), ", "), err)
 		return nil, err
 	}
 	ignored := findMissingResources(backup.ResourceNames(), resources)
 
 	backupInfo, err := s.backupManager.Backup(ctx, backup, resources)
 	if err != nil {
+		s.logger.Error("error backup up through manager: %s", err)
 		return nil, err
 	}
 
 	backupInfo.IgnoredResources = append(backupInfo.IgnoredResources, ignored...)
 	err = s.repo.Create(ctx, backup)
 	if err != nil {
+		s.logger.Error("error creating backup record to db: %s", err)
 		return backupInfo, err
 	}
+
+	raiseBackupRequestMetrics(backup.Tenant(), backupInfo)
 
 	backupInfo.ID = backup.ID()
 	return backupInfo, nil
@@ -57,6 +74,7 @@ func (s BackupService) Create(ctx context.Context, backup *resource.Backup) (*re
 
 func (s BackupService) Get(ctx context.Context, backupID resource.BackupID) (*resource.Backup, error) {
 	if backupID.IsInvalid() {
+		s.logger.Error("backup id [%s] is invalid", backupID.String())
 		return nil, errors.InvalidArgument("backup", "the backup id is not valid")
 	}
 	return s.repo.GetByID(ctx, backupID)
@@ -65,6 +83,7 @@ func (s BackupService) Get(ctx context.Context, backupID resource.BackupID) (*re
 func (s BackupService) List(ctx context.Context, tnnt tenant.Tenant, store resource.Store) ([]*resource.Backup, error) {
 	backups, err := s.repo.GetAll(ctx, tnnt, store)
 	if err != nil {
+		s.logger.Error("error getting all backups from db: %s", err)
 		return nil, err
 	}
 
@@ -101,10 +120,29 @@ func findMissingResources(names []string, resources []*resource.Resource) []reso
 	return ignored
 }
 
-func NewBackupService(repo BackupRepository, resources ResourceProvider, manager BackupManager) *BackupService {
+func NewBackupService(repo BackupRepository, resources ResourceProvider, manager BackupManager, logger log.Logger) *BackupService {
 	return &BackupService{
 		repo:          repo,
 		resources:     resources,
 		backupManager: manager,
+		logger:        logger,
 	}
+}
+
+func raiseBackupRequestMetrics(jobTenant tenant.Tenant, backupResult *resource.BackupResult) {
+	for _, ignoredResource := range backupResult.IgnoredResources {
+		raiseBackupRequestMetric(jobTenant, ignoredResource.Name, backupRequestStatusFailed)
+	}
+	for _, resourceName := range backupResult.ResourceNames {
+		raiseBackupRequestMetric(jobTenant, resourceName, backupRequestStatusSuccess)
+	}
+}
+
+func raiseBackupRequestMetric(jobTenant tenant.Tenant, resourceName, state string) {
+	telemetry.NewCounter(metricBackupRequest, map[string]string{
+		"project":   jobTenant.ProjectName().String(),
+		"namespace": jobTenant.NamespaceName().String(),
+		"resource":  resourceName,
+		"status":    state,
+	}).Inc()
 }

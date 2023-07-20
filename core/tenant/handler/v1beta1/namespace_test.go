@@ -5,13 +5,13 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/core/tenant/handler/v1beta1"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/core/tenant/handler/v1beta1"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 func TestNamespaceHandler(t *testing.T) {

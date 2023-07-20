@@ -9,11 +9,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 
-	serviceResource "github.com/odpf/optimus/core/resource"
-	"github.com/odpf/optimus/core/tenant"
-	repoResource "github.com/odpf/optimus/internal/store/postgres/resource"
-	tenantPostgres "github.com/odpf/optimus/internal/store/postgres/tenant"
-	"github.com/odpf/optimus/tests/setup"
+	serviceResource "github.com/raystack/optimus/core/resource"
+	"github.com/raystack/optimus/core/tenant"
+	repoResource "github.com/raystack/optimus/internal/store/postgres/resource"
+	tenantPostgres "github.com/raystack/optimus/internal/store/postgres/tenant"
+	"github.com/raystack/optimus/tests/setup"
 )
 
 func TestPostgresResourceRepository(t *testing.T) {
@@ -98,6 +98,46 @@ func TestPostgresResourceRepository(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, storedResources, 1)
 			assert.EqualValues(t, resourceToUpdate, storedResources[0])
+		})
+	})
+
+	t.Run("ChangeNamespace", func(t *testing.T) {
+		newNamespaceName := "n-optimus-2"
+		newTenant, err := tenant.NewTenant("t-optimus-1", newNamespaceName)
+		assert.Nil(t, err)
+		t.Run("returns error if resource does not exist", func(t *testing.T) {
+			pool := dbSetup()
+			repository := repoResource.NewRepository(pool)
+
+			resourceToUpdate, err := serviceResource.NewResource("project.dataset", kindDataset, store, tnnt, meta, spec)
+			assert.NoError(t, err)
+			resourceToUpdate.UpdateURN("bigquery://project:dataset")
+
+			actualError := repository.ChangeNamespace(ctx, resourceToUpdate, newTenant)
+			assert.ErrorContains(t, actualError, "not found for entity resource")
+		})
+
+		t.Run("updates resource and returns nil if no error is encountered", func(t *testing.T) {
+			pool := dbSetup()
+			repository := repoResource.NewRepository(pool)
+
+			resourceToCreate, err := serviceResource.NewResource("project.dataset", kindDataset, store, tnnt, meta, spec)
+			assert.NoError(t, err)
+			resourceToCreate.UpdateURN("bigquery://project:dataset")
+
+			err = repository.Create(ctx, resourceToCreate)
+			assert.NoError(t, err)
+
+			resourceToUpdate := serviceResource.FromExisting(resourceToCreate, serviceResource.ReplaceStatus(serviceResource.StatusSuccess))
+			actualError := repository.ChangeNamespace(ctx, resourceToUpdate, newTenant)
+			assert.NoError(t, actualError)
+
+			storedResources, err := repository.GetResources(ctx, tnnt, store, []string{resourceToUpdate.FullName()})
+			assert.NoError(t, err)
+			assert.Len(t, storedResources, 0)
+			storedNewResources, err := repository.GetResources(ctx, newTenant, store, []string{resourceToUpdate.FullName()})
+			assert.NoError(t, err)
+			assert.Len(t, storedNewResources, 1)
 		})
 	})
 
@@ -271,11 +311,21 @@ func dbSetup() *pgxpool.Pool {
 	}
 
 	namespaceRepo := tenantPostgres.NewNamespaceRepository(pool)
+
 	ns, _ := tenant.NewNamespace("n-optimus-1", proj.Name(),
 		map[string]string{
 			"bucket": "gs://ns_bucket",
 		})
 	err = namespaceRepo.Save(ctx, ns)
+	if err != nil {
+		panic(err)
+	}
+
+	ns2, _ := tenant.NewNamespace("n-optimus-2", proj.Name(),
+		map[string]string{
+			"bucket": "gs://ns_bucket",
+		})
+	err = namespaceRepo.Save(ctx, ns2)
 	if err != nil {
 		panic(err)
 	}

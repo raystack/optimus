@@ -7,9 +7,9 @@ import (
 	"gocloud.dev/blob/fileblob"
 	"gocloud.dev/blob/memblob"
 
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/ext/scheduler/airflow"
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/ext/scheduler/airflow"
+	"github.com/raystack/optimus/internal/errors"
 )
 
 const (

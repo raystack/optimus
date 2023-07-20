@@ -9,11 +9,11 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 
-	"github.com/odpf/optimus/client/local"
-	"github.com/odpf/optimus/client/local/model"
-	"github.com/odpf/optimus/internal/models"
-	"github.com/odpf/optimus/internal/utils"
-	"github.com/odpf/optimus/sdk/plugin"
+	"github.com/raystack/optimus/client/local"
+	"github.com/raystack/optimus/client/local/model"
+	"github.com/raystack/optimus/internal/models"
+	"github.com/raystack/optimus/internal/utils"
+	"github.com/raystack/optimus/sdk/plugin"
 )
 
 const (
@@ -210,7 +210,6 @@ func (j *JobCreateSurvey) askCreateQuestions(questions []*survey.Question) (mode
 		},
 		Asset: map[string]string{},
 		Behavior: model.JobSpecBehavior{
-			Catchup:       false,
 			DependsOnPast: false,
 		},
 		Dependencies: []model.JobSpecDependency{},

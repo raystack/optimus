@@ -7,20 +7,22 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/internal"
-	"github.com/odpf/optimus/client/cmd/internal/connectivity"
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/client/cmd/internal/progressbar"
-	"github.com/odpf/optimus/client/cmd/internal/survey"
-	"github.com/odpf/optimus/config"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/client/cmd/internal"
+	"github.com/raystack/optimus/client/cmd/internal/connection"
+	"github.com/raystack/optimus/client/cmd/internal/logger"
+	"github.com/raystack/optimus/client/cmd/internal/progressbar"
+	"github.com/raystack/optimus/client/cmd/internal/survey"
+	"github.com/raystack/optimus/config"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 type createCommand struct {
-	logger         log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	configFilePath string
 	isConfigExist  bool
 
@@ -128,6 +130,7 @@ func (c *createCommand) fillAttributes(conf *config.ClientConfig) error {
 			}
 		}
 	}
+	c.connection = connection.New(c.logger, conf)
 
 	return nil
 }
@@ -150,13 +153,13 @@ func (c *createCommand) RunE(_ *cobra.Command, _ []string) error {
 }
 
 func (c *createCommand) runBackupRequest() error {
-	conn, err := connectivity.NewConnectivity(c.host, backupTimeout)
+	conn, err := c.connection.Create(c.host)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	backup := pb.NewBackupServiceClient(conn.GetConnection())
+	backup := pb.NewBackupServiceClient(conn)
 
 	spinner := progressbar.NewProgressBar()
 	spinner.Start("please wait...")
@@ -169,7 +172,11 @@ func (c *createCommand) runBackupRequest() error {
 		Description:   c.description,
 		Config:        c.dsBackupConfigUnmarshaled,
 	}
-	backupResponse, err := backup.CreateBackup(conn.GetContext(), backupRequest)
+
+	ctx, dialCancel := context.WithTimeout(context.Background(), backupTimeout)
+	defer dialCancel()
+
+	backupResponse, err := backup.CreateBackup(ctx, backupRequest)
 	spinner.Stop()
 
 	if err != nil {

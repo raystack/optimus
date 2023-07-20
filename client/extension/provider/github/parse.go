@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/odpf/optimus/client/extension/factory"
-	"github.com/odpf/optimus/client/extension/model"
+	"github.com/raystack/optimus/client/extension/factory"
+	"github.com/raystack/optimus/client/extension/model"
 )
 
 // Parse parses remote path to get its metadata according to github convention

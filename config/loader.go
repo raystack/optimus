@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/odpf/salt/config"
+	"github.com/raystack/salt/config"
 	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 )

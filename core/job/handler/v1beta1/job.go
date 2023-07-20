@@ -7,34 +7,24 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/salt/log"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/raystack/salt/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/job/service/filter"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/models"
-	"github.com/odpf/optimus/internal/writer"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
-	"github.com/odpf/optimus/sdk/plugin"
+	"github.com/raystack/optimus/core/job"
+	"github.com/raystack/optimus/core/job/service/filter"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/models"
+	"github.com/raystack/optimus/internal/telemetry"
+	"github.com/raystack/optimus/internal/writer"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
+	"github.com/raystack/optimus/sdk/plugin"
 )
 
-var (
-	jobReplaceAllDurationGauge = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "jobs_replace_all_duration_in_seconds",
-		Help: "The duration of job replace all in seconds",
-	})
-	jobRefreshDurationGauge = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "jobs_refresh_duration_in_seconds",
-		Help: "The duration of job refresh in seconds",
-	})
-	jobValidationDurationGauge = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "jobs_validation_duration_in_seconds",
-		Help: "The duration of job validation in seconds",
-	})
+const (
+	metricReplaceAllDuration = "job_replace_all_duration_seconds"
+	metricRefreshDuration    = "job_refresh_duration_seconds"
+	metricValidationDuration = "job_validation_duration_seconds"
 )
 
 type JobHandler struct {
@@ -54,13 +44,16 @@ func NewJobHandler(jobService JobService, logger log.Logger) *JobHandler {
 type JobService interface {
 	Add(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error
 	Update(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec) error
+	SyncState(ctx context.Context, jobTenant tenant.Tenant, disabledJobNames, enabledJobNames []job.Name) error
+	UpdateState(ctx context.Context, jobTenant tenant.Tenant, jobNames []job.Name, jobState job.State, remark string) error
+	ChangeNamespace(ctx context.Context, jobSourceTenant, jobNewTenant tenant.Tenant, jobName job.Name) error
 	Delete(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, cleanFlag, forceFlag bool) (affectedDownstream []job.FullName, err error)
 	Get(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name) (jobSpec *job.Job, err error)
 	GetTaskInfo(ctx context.Context, task job.Task) (*plugin.Info, error)
 	GetByFilter(ctx context.Context, filters ...filter.FilterOpt) (jobSpecs []*job.Job, err error)
-	ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, jobNamesWithValidationError []job.Name, logWriter writer.LogWriter) error
+	ReplaceAll(ctx context.Context, jobTenant tenant.Tenant, jobs []*job.Spec, jobNamesWithInvalidSpec []job.Name, logWriter writer.LogWriter) error
 	Refresh(ctx context.Context, projectName tenant.ProjectName, namespaceNames, jobNames []string, logWriter writer.LogWriter) error
-	Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, logWriter writer.LogWriter) error
+	Validate(ctx context.Context, jobTenant tenant.Tenant, jobSpecs []*job.Spec, jobNamesWithInvalidSpec []job.Name, logWriter writer.LogWriter) error
 
 	GetJobBasicInfo(ctx context.Context, jobTenant tenant.Tenant, jobName job.Name, spec *job.Spec) (*job.Job, writer.BufferedLogger)
 	GetUpstreamsToInspect(ctx context.Context, subjectJob *job.Job, localJob bool) ([]*job.Upstream, error)
@@ -70,31 +63,34 @@ type JobService interface {
 func (jh *JobHandler) AddJobSpecifications(ctx context.Context, jobSpecRequest *pb.AddJobSpecificationsRequest) (*pb.AddJobSpecificationsResponse, error) {
 	jobTenant, err := tenant.NewTenant(jobSpecRequest.ProjectName, jobSpecRequest.NamespaceName)
 	if err != nil {
+		jh.l.Error("invalid tenant information request project [%s] namespace [%s]: %s", jobSpecRequest.GetProjectName(), jobSpecRequest.GetNamespaceName(), err)
 		return nil, errors.GRPCErr(err, "failed to add job specifications")
 	}
 
 	me := errors.NewMultiError("add specs errors")
 
-	jobSpecs, _, err := fromJobProtos(jobSpecRequest.Specs)
+	jobSpecs, invalidSpecs, err := fromJobProtos(jobSpecRequest.Specs)
 	if err != nil {
 		errorMsg := fmt.Sprintf("failure when adapting job specifications: %s", err.Error())
 		jh.l.Error(errorMsg)
 		me.Append(err)
 	}
+	raiseJobEventMetric(jobTenant, job.MetricJobEventStateValidationFailed, len(invalidSpecs))
 
 	if len(jobSpecs) == 0 {
+		jh.l.Error("no jobs to be processed")
 		me.Append(errors.NewError(errors.ErrFailedPrecond, job.EntityJob, "no jobs to be processed"))
-		return nil, errors.MultiToError(me)
+		return nil, me.ToErr()
 	}
 
 	if err = jh.jobService.Add(ctx, jobTenant, jobSpecs); err != nil {
-		jh.l.Error(fmt.Sprintf("failure found when adding job specifications: %s", err.Error()))
+		jh.l.Error("failure found when adding job specifications: %s", err)
 		me.Append(err)
 	}
 
 	var responseLog string
 	if len(me.Errors) > 0 {
-		responseLog = fmt.Sprintf("adding jobs finished with error: %s", errors.MultiToError(me))
+		responseLog = fmt.Sprintf("adding jobs finished with error: %s", me.ToErr())
 	} else {
 		responseLog = "jobs are successfully created"
 	}
@@ -129,12 +125,50 @@ func (jh *JobHandler) DeleteJobSpecification(ctx context.Context, deleteRequest 
 	msg := fmt.Sprintf("job %s has been deleted", jobName)
 	if deleteRequest.Force && len(affectedDownstream) > 0 {
 		msg = fmt.Sprintf("job %s has been forced deleted. these downstream will be affected: %s", jobName, job.FullNames(affectedDownstream).String())
+		jh.l.Warn(msg)
 	}
 
 	return &pb.DeleteJobSpecificationResponse{
 		Success: true,
 		Message: msg,
 	}, nil
+}
+
+func (jh *JobHandler) ChangeJobNamespace(ctx context.Context, changeRequest *pb.ChangeJobNamespaceRequest) (*pb.ChangeJobNamespaceResponse, error) {
+	jobSourceTenant, err := tenant.NewTenant(changeRequest.ProjectName, changeRequest.NamespaceName)
+	if err != nil {
+		errorMsg := "failed to adapt source tenant when changing job namespace"
+		jh.l.Error(fmt.Sprintf("%s: %s", errorMsg, err.Error()))
+		return nil, errors.GRPCErr(err, errorMsg)
+	}
+	jobNewTenant, err := tenant.NewTenant(changeRequest.ProjectName, changeRequest.NewNamespaceName)
+	if err != nil {
+		errorMsg := "failed to adapt new tenant when changing job namespace"
+		jh.l.Error(fmt.Sprintf("%s: %s", errorMsg, err.Error()))
+		return nil, errors.GRPCErr(err, errorMsg)
+	}
+
+	jobName, err := job.NameFrom(changeRequest.JobName)
+	if err != nil {
+		errorMsg := "failed to adapt job name when changing job specification"
+		jh.l.Error(fmt.Sprintf("%s: %s", errorMsg, err.Error()))
+		return nil, errors.GRPCErr(err, errorMsg)
+	}
+
+	err = jh.jobService.ChangeNamespace(ctx, jobSourceTenant, jobNewTenant, jobName)
+	if err != nil {
+		errorMsg := "failed to change job namespace"
+		jh.l.Error(fmt.Sprintf("%s: %s", errorMsg, err.Error()))
+		return nil, errors.GRPCErr(err, errorMsg)
+	}
+
+	telemetry.NewCounter("job_namespace_migrations_total", map[string]string{
+		"project":               jobSourceTenant.ProjectName().String(),
+		"namespace_source":      jobSourceTenant.NamespaceName().String(),
+		"namespace_destination": jobNewTenant.NamespaceName().String(),
+	}).Inc()
+
+	return &pb.ChangeJobNamespaceResponse{}, nil
 }
 
 func (jh *JobHandler) UpdateJobSpecifications(ctx context.Context, jobSpecRequest *pb.UpdateJobSpecificationsRequest) (*pb.UpdateJobSpecificationsResponse, error) {
@@ -146,16 +180,17 @@ func (jh *JobHandler) UpdateJobSpecifications(ctx context.Context, jobSpecReques
 	}
 
 	me := errors.NewMultiError("update specs errors")
-	jobSpecs, _, err := fromJobProtos(jobSpecRequest.Specs)
+	jobSpecs, invalidSpecs, err := fromJobProtos(jobSpecRequest.Specs)
 	if err != nil {
 		errorMsg := fmt.Sprintf("failure when adapting job specifications: %s", err.Error())
 		jh.l.Error(errorMsg)
 		me.Append(err)
 	}
+	raiseJobEventMetric(jobTenant, job.MetricJobEventStateValidationFailed, len(invalidSpecs))
 
 	if len(jobSpecs) == 0 {
 		me.Append(errors.NewError(errors.ErrFailedPrecond, job.EntityJob, "no jobs to be processed"))
-		return nil, errors.MultiToError(me)
+		return nil, me.ToErr()
 	}
 
 	if err = jh.jobService.Update(ctx, jobTenant, jobSpecs); err != nil {
@@ -165,7 +200,7 @@ func (jh *JobHandler) UpdateJobSpecifications(ctx context.Context, jobSpecReques
 
 	var responseLog string
 	if len(me.Errors) > 0 {
-		responseLog = fmt.Sprintf("update jobs finished with error: %s", errors.MultiToError(me))
+		responseLog = fmt.Sprintf("update jobs finished with error: %s", me.ToErr())
 	} else {
 		responseLog = "jobs are successfully updated"
 	}
@@ -178,10 +213,12 @@ func (jh *JobHandler) UpdateJobSpecifications(ctx context.Context, jobSpecReques
 func (jh *JobHandler) GetJobSpecification(ctx context.Context, req *pb.GetJobSpecificationRequest) (*pb.GetJobSpecificationResponse, error) {
 	jobTenant, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
+		jh.l.Error("invalid tenant information request project [%s] namespace [%s]: %s", req.GetProjectName(), req.GetNamespaceName(), err)
 		return nil, err
 	}
 	jobName, err := job.NameFrom(req.GetJobName())
 	if err != nil {
+		jh.l.Error("error adapating job name [%s]: %s", req.GetJobName(), err)
 		return nil, err
 	}
 
@@ -194,7 +231,7 @@ func (jh *JobHandler) GetJobSpecification(ctx context.Context, req *pb.GetJobSpe
 
 	// TODO: return 404 if job is not found
 	return &pb.GetJobSpecificationResponse{
-		Spec: toJobProto(jobSpec),
+		Spec: ToJobProto(jobSpec),
 	}, nil
 }
 
@@ -211,7 +248,7 @@ func (jh *JobHandler) GetJobSpecifications(ctx context.Context, req *pb.GetJobSp
 		jobSpecResponseProtos = append(jobSpecResponseProtos, &pb.JobSpecificationResponse{
 			ProjectName:   jobSpec.Tenant().ProjectName().String(),
 			NamespaceName: jobSpec.Tenant().NamespaceName().String(),
-			Job:           toJobProto(jobSpec),
+			Job:           ToJobProto(jobSpec),
 		})
 	}
 
@@ -229,7 +266,7 @@ func (jh *JobHandler) ListJobSpecification(ctx context.Context, req *pb.ListJobS
 
 	jobSpecificationProtos := make([]*pb.JobSpecification, len(jobSpecs))
 	for i, jobSpec := range jobSpecs {
-		jobSpecificationProtos[i] = toJobProto(jobSpec)
+		jobSpecificationProtos[i] = ToJobProto(jobSpec)
 	}
 
 	// TODO: make a stream response
@@ -238,10 +275,11 @@ func (jh *JobHandler) ListJobSpecification(ctx context.Context, req *pb.ListJobS
 	}, merr
 }
 
-func (*JobHandler) GetWindow(_ context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
+func (jh *JobHandler) GetWindow(_ context.Context, req *pb.GetWindowRequest) (*pb.GetWindowResponse, error) {
 	// TODO: the default version to be deprecated & made mandatory in future releases
 	version := 1
 	if err := req.GetScheduledAt().CheckValid(); err != nil {
+		jh.l.Error("scheduled at is invalid: %s", err)
 		return nil, fmt.Errorf("%w: failed to parse schedule time %s", err, req.GetScheduledAt())
 	}
 
@@ -250,9 +288,11 @@ func (*JobHandler) GetWindow(_ context.Context, req *pb.GetWindowRequest) (*pb.G
 	}
 	window, err := models.NewWindow(version, req.GetTruncateTo(), req.GetOffset(), req.GetSize())
 	if err != nil {
+		jh.l.Error("error initializing window with version [%d]: %s", req.Version, err)
 		return nil, err
 	}
 	if err := window.Validate(); err != nil {
+		jh.l.Error("error validating window: %s", err)
 		return nil, err
 	}
 
@@ -285,11 +325,14 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 			if errors.Is(err, io.EOF) {
 				break
 			}
+			errMsg := fmt.Sprintf("error encountered when receiving stream request: %s", err)
+			jh.l.Error(errMsg)
+			responseWriter.Write(writer.LogLevelError, errMsg)
 			return err
 		}
 
 		responseWriter.Write(writer.LogLevelInfo, fmt.Sprintf("[%s] received %d job specs", request.GetNamespaceName(), len(request.GetJobs())))
-		jh.l.Info("replacing all job specifications for project [%s] namespace [%s]", request.GetProjectName(), request.GetNamespaceName())
+		jh.l.Debug("replacing all job specifications for project [%s] namespace [%s]", request.GetProjectName(), request.GetNamespaceName())
 		startTime := time.Now()
 
 		jobTenant, err := tenant.NewTenant(request.ProjectName, request.NamespaceName)
@@ -302,7 +345,7 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 			continue
 		}
 
-		jobSpecs, jobNamesWithValidationErrors, err := fromJobProtos(request.Jobs)
+		jobSpecs, jobNamesWithInvalidSpec, err := fromJobProtos(request.Jobs)
 		if err != nil {
 			errMsg := fmt.Sprintf("[%s] failed to adapt job specifications: %s", request.GetNamespaceName(), err.Error())
 			jh.l.Error(errMsg)
@@ -311,7 +354,7 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 			errMessages = append(errMessages, errMsg)
 		}
 
-		if err := jh.jobService.ReplaceAll(stream.Context(), jobTenant, jobSpecs, jobNamesWithValidationErrors, responseWriter); err != nil {
+		if err := jh.jobService.ReplaceAll(stream.Context(), jobTenant, jobSpecs, jobNamesWithInvalidSpec, responseWriter); err != nil {
 			errMsg := fmt.Sprintf("[%s] replace all job specifications failure: %s", request.NamespaceName, err.Error())
 			jh.l.Error(errMsg)
 			responseWriter.Write(writer.LogLevelError, errMsg)
@@ -320,8 +363,11 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 		}
 
 		processDuration := time.Since(startTime)
-		jh.l.Info("finished replacing all job specifications for project [%s] namespace [%s], took %s", request.GetProjectName(), request.GetNamespaceName(), processDuration)
-		jobReplaceAllDurationGauge.Set(processDuration.Seconds())
+		jh.l.Debug("finished replacing all job specifications for project [%s] namespace [%s], took %s", request.GetProjectName(), request.GetNamespaceName(), processDuration)
+		telemetry.NewGauge(metricReplaceAllDuration, map[string]string{
+			"project":   jobTenant.ProjectName().String(),
+			"namespace": jobTenant.NamespaceName().String(),
+		}).Add(processDuration.Seconds())
 	}
 	if len(errNamespaces) > 0 {
 		errMessageSummary := strings.Join(errMessages, "\n")
@@ -334,12 +380,13 @@ func (jh *JobHandler) ReplaceAllJobSpecifications(stream pb.JobSpecificationServ
 }
 
 func (jh *JobHandler) RefreshJobs(request *pb.RefreshJobsRequest, stream pb.JobSpecificationService_RefreshJobsServer) error {
-	jh.l.Info("refreshing jobs for project [%s]", request.GetProjectName())
 	startTime := time.Now()
 	defer func() {
 		processDuration := time.Since(startTime)
-		jobRefreshDurationGauge.Set(processDuration.Seconds())
-		jh.l.Info("finished refreshing jobs for project [%s], took %s", request.GetProjectName(), processDuration)
+		telemetry.NewGauge(metricRefreshDuration, map[string]string{
+			"project": request.ProjectName,
+		}).Add(processDuration.Seconds())
+		jh.l.Debug("finished refreshing jobs for project [%s], took %s", request.GetProjectName(), processDuration)
 	}()
 
 	responseWriter := writer.NewRefreshJobResponseWriter(stream)
@@ -359,57 +406,63 @@ func (jh *JobHandler) RefreshJobs(request *pb.RefreshJobsRequest, stream pb.JobS
 		return err
 	}
 	responseWriter.Write(writer.LogLevelInfo, "jobs refreshed successfully")
+
 	return nil
 }
 
 func (jh *JobHandler) CheckJobSpecifications(req *pb.CheckJobSpecificationsRequest, stream pb.JobSpecificationService_CheckJobSpecificationsServer) error {
-	jh.l.Info("validating jobs for project [%s] namespace [%s]", req.GetProjectName(), req.GetNamespaceName())
 	startTime := time.Now()
 
 	responseWriter := writer.NewCheckJobSpecificationResponseWriter(stream)
 	jobTenant, err := tenant.NewTenant(req.ProjectName, req.NamespaceName)
 	if err != nil {
+		jh.l.Error("invalid tenant information request project [%s] namespace [%s]: %s", req.GetProjectName(), req.GetNamespaceName(), err)
 		return err
 	}
 
 	me := errors.NewMultiError("check / validate job spec errors")
-	jobSpecs, _, err := fromJobProtos(req.Jobs)
+	jobSpecs, jobNamesWithInvalidSpec, err := fromJobProtos(req.Jobs)
 	if err != nil {
-		errorMsg := fmt.Sprintf("failure when adapting job specifications: %s", err.Error())
-		jh.l.Error(errorMsg)
+		jh.l.Error("error when adapting job specifications: %s", err)
 		me.Append(err)
 	}
 
-	if err := jh.jobService.Validate(stream.Context(), jobTenant, jobSpecs, responseWriter); err != nil {
+	if err := jh.jobService.Validate(stream.Context(), jobTenant, jobSpecs, jobNamesWithInvalidSpec, responseWriter); err != nil {
+		jh.l.Error("error validating job: %s", err)
 		me.Append(err)
 	}
 
 	processDuration := time.Since(startTime)
-	jobValidationDurationGauge.Set(processDuration.Seconds())
+	telemetry.NewGauge(metricValidationDuration, map[string]string{
+		"project":   jobTenant.ProjectName().String(),
+		"namespace": jobTenant.NamespaceName().String(),
+	}).Add(processDuration.Seconds())
 
-	jh.l.Info("finished validating jobs for project [%s] namespace [%s], took %s", req.GetProjectName(), req.GetNamespaceName(), processDuration)
-
-	return errors.MultiToError(me)
+	return me.ToErr()
 }
 
 func (jh *JobHandler) GetJobTask(ctx context.Context, req *pb.GetJobTaskRequest) (*pb.GetJobTaskResponse, error) {
 	jobTenant, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
+		jh.l.Error("invalid tenant information request project [%s] namespace [%s]: %s", req.GetProjectName(), req.GetNamespaceName(), err)
 		return nil, err
 	}
 
 	jobName, err := job.NameFrom(req.GetJobName())
 	if err != nil {
+		jh.l.Error("error adapting job name [%s]: %s", req.GetJobName(), err)
 		return nil, err
 	}
 
 	jobResult, err := jh.jobService.Get(ctx, jobTenant, jobName)
 	if err != nil {
+		jh.l.Error("error getting job: %s", err)
 		return nil, err
 	}
 
 	taskInfo, err := jh.jobService.GetTaskInfo(ctx, jobResult.Spec().Task())
 	if err != nil {
+		jh.l.Error("error getting task info: %s", err)
 		return nil, err
 	}
 
@@ -436,9 +489,81 @@ func (jh *JobHandler) GetJobTask(ctx context.Context, req *pb.GetJobTaskRequest)
 	}, nil
 }
 
+func (jh *JobHandler) UpdateJobsState(ctx context.Context, req *pb.UpdateJobsStateRequest) (*pb.UpdateJobsStateResponse, error) {
+	jobTenant, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
+	if err != nil {
+		jh.l.Error("invalid tenant information request project [%s] namespace [%s]: %s", req.GetProjectName(), req.GetNamespaceName(), err)
+		return nil, err
+	}
+	jobState, err := job.StateFrom(req.GetState().String())
+	if err != nil {
+		jh.l.Error("error adapting job state %s: %s", req.GetState().String(), err)
+		return nil, err
+	}
+
+	remark := req.Remark
+	if len(remark) < 1 {
+		jh.l.Error("empty remark for changing %d jobs state of %s:%s to %s", len(req.GetJobNames()), jobState, jobTenant.ProjectName(), jobTenant.NamespaceName())
+		return nil, errors.InvalidArgument(job.EntityJob, "can not update job state without a valid remark")
+	}
+	var jobNames []job.Name
+	for _, name := range req.GetJobNames() {
+		jobName, err := job.NameFrom(name)
+		if err != nil {
+			jh.l.Error("error adapting job name: '%s', err: %s", name, err.Error())
+			return nil, err
+		}
+		jobNames = append(jobNames, jobName)
+	}
+
+	err = jh.jobService.UpdateState(ctx, jobTenant, jobNames, jobState, remark)
+	if err != nil {
+		jh.l.Error("error updating job state", err.Error())
+		return nil, err
+	}
+
+	return &pb.UpdateJobsStateResponse{}, nil
+}
+
+func (jh *JobHandler) SyncJobsState(ctx context.Context, req *pb.SyncJobsStateRequest) (*pb.SyncJobsStateResponse, error) {
+	jobTenant, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
+	if err != nil {
+		jh.l.Error("invalid tenant information request project [%s] namespace [%s]: %s", req.GetProjectName(), req.GetNamespaceName(), err)
+		return nil, err
+	}
+
+	var enabledJobNames, disabledJobNames []job.Name
+	for _, jobState := range req.GetJobStates() {
+		state, err := job.StateFrom(jobState.State.String())
+		if err != nil {
+			jh.l.Error("error adapting job state %s: %s", jobState.State.String(), err)
+			return nil, err
+		}
+		jobName, err := job.NameFrom(jobState.JobName)
+		if err != nil {
+			jh.l.Error("error adapting job name: '%s', err: %s", jobState.JobName, err.Error())
+			return nil, err
+		}
+		if state == job.DISABLED {
+			disabledJobNames = append(disabledJobNames, jobName)
+		} else {
+			enabledJobNames = append(enabledJobNames, jobName)
+		}
+	}
+
+	err = jh.jobService.SyncState(ctx, jobTenant, disabledJobNames, enabledJobNames)
+	if err != nil {
+		jh.l.Error("error syncing job state for project: %s, namespace: %s, err: %s", jobTenant.ProjectName, jobTenant.NamespaceName(), err.Error())
+		return nil, err
+	}
+
+	return &pb.SyncJobsStateResponse{}, nil
+}
+
 func (jh *JobHandler) JobInspect(ctx context.Context, req *pb.JobInspectRequest) (*pb.JobInspectResponse, error) {
 	jobTenant, err := tenant.NewTenant(req.GetProjectName(), req.GetNamespaceName())
 	if err != nil {
+		jh.l.Error("invalid tenant information request project [%s] namespace [%s]: %s", req.GetProjectName(), req.GetNamespaceName(), err)
 		return nil, err
 	}
 
@@ -448,14 +573,14 @@ func (jh *JobHandler) JobInspect(ctx context.Context, req *pb.JobInspectRequest)
 	if req.GetSpec() != nil {
 		jobSpec, err = fromJobProto(req.GetSpec())
 		if err != nil {
-			errMsg := fmt.Sprintf("cannot adapt job specification %s: %s", req.Spec.Name, err.Error())
-			jh.l.Error(errMsg)
+			jh.l.Error("cannot adapt job specification %s: %s", req.Spec.Name, err)
 			return nil, err
 		}
 		localJob = true
 	} else {
 		jobName, err = job.NameFrom(req.JobName)
 		if err != nil {
+			jh.l.Error("error adapting job name %s: %s", req.JobName, err)
 			return nil, err
 		}
 	}
@@ -473,12 +598,14 @@ func (jh *JobHandler) JobInspect(ctx context.Context, req *pb.JobInspectRequest)
 	upstreamLogs := &writer.BufferedLogger{}
 	upstreams, err := jh.jobService.GetUpstreamsToInspect(ctx, subjectJob, localJob)
 	if err != nil {
+		jh.l.Error("error getting upstreams to inspect: %s", err)
 		upstreamLogs.Write(writer.LogLevelError, fmt.Sprintf("unable to get upstream jobs: %v", err.Error()))
 	}
 
 	downstreamLogs := &writer.BufferedLogger{}
 	downstreams, err := jh.jobService.GetDownstream(ctx, subjectJob, localJob)
 	if err != nil {
+		jh.l.Error("error getting downstream: %s", err)
 		downstreamLogs.Write(writer.LogLevelError, fmt.Sprintf("unable to get downstream jobs: %v", err.Error()))
 	}
 
@@ -493,4 +620,12 @@ func (jh *JobHandler) JobInspect(ctx context.Context, req *pb.JobInspectRequest)
 			Notice:         downstreamLogs.Messages,
 		},
 	}, nil
+}
+
+func raiseJobEventMetric(jobTenant tenant.Tenant, state string, metricValue int) {
+	telemetry.NewCounter(job.MetricJobEvent, map[string]string{
+		"project":   jobTenant.ProjectName().String(),
+		"namespace": jobTenant.NamespaceName().String(),
+		"status":    state,
+	}).Add(float64(metricValue))
 }

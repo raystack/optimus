@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 
-	"github.com/odpf/optimus/core/resource"
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/raystack/optimus/core/resource"
+	"github.com/raystack/optimus/internal/errors"
 )
 
 type DataStore interface {
@@ -48,14 +48,14 @@ func (m *ResourceMgr) CreateResource(ctx context.Context, res *resource.Resource
 			me.Append(res.MarkExistInStore())
 		} else {
 			me.Append(res.MarkFailure())
+			me.Append(err)
 		}
-		me.Append(err)
 	} else {
 		me.Append(res.MarkSuccess())
 	}
 
 	me.Append(m.repo.UpdateStatus(ctx, res))
-	return errors.MultiToError(me)
+	return me.ToErr()
 }
 
 func (m *ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource) error {
@@ -77,7 +77,32 @@ func (m *ResourceMgr) UpdateResource(ctx context.Context, res *resource.Resource
 	}
 
 	me.Append(m.repo.UpdateStatus(ctx, res))
-	return errors.MultiToError(me)
+	return me.ToErr()
+}
+
+func (m *ResourceMgr) SyncResource(ctx context.Context, res *resource.Resource) error {
+	store := res.Store()
+	datastore, ok := m.datastoreMap[store]
+	if !ok {
+		msg := fmt.Sprintf("datastore [%s] for resource [%s] is not found", store.String(), res.FullName())
+		m.logger.Error(msg)
+		return errors.InternalError(resource.EntityResource, msg, nil)
+	}
+
+	if err := datastore.Create(ctx, res); err != nil {
+		if !errors.IsErrorType(err, errors.ErrAlreadyExists) {
+			return errors.AddErrContext(err, resource.EntityResource, "unable to create on datastore")
+		} else if errUpdate := datastore.Update(ctx, res); errUpdate != nil {
+			return errors.AddErrContext(errUpdate, resource.EntityResource, "unable to update on datastore")
+		}
+	}
+
+	resNew := resource.FromExisting(res, resource.ReplaceStatus(resource.StatusSuccess))
+	if err := m.repo.UpdateStatus(ctx, resNew); err != nil {
+		return errors.AddErrContext(err, resource.EntityResource, "unable to update status in database")
+	}
+
+	return nil
 }
 
 func (m *ResourceMgr) Validate(res *resource.Resource) error {
@@ -111,16 +136,17 @@ func (m *ResourceMgr) BatchUpdate(ctx context.Context, store resource.Store, res
 		return errors.InvalidArgument(resource.EntityResource, "data store service not found for "+store.String())
 	}
 
-	err := errors.NewMultiError("error in batch update")
-	err.Append(datastore.BatchUpdate(ctx, resources))
-	err.Append(m.repo.UpdateStatus(ctx, resources...))
+	me := errors.NewMultiError("error in batch update")
+	me.Append(datastore.BatchUpdate(ctx, resources))
+	me.Append(m.repo.UpdateStatus(ctx, resources...))
 
-	return errors.MultiToError(err)
+	return me.ToErr()
 }
 
 func (m *ResourceMgr) Backup(ctx context.Context, details *resource.Backup, resources []*resource.Resource) (*resource.BackupResult, error) {
 	datastore, ok := m.datastoreMap[details.Store()]
 	if !ok {
+		m.logger.Error("datastore [%s] is not found", details.Store())
 		return nil, errors.InvalidArgument(resource.EntityResource, "data store service not found for "+details.Store().String())
 	}
 

@@ -10,14 +10,12 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
 
-	"github.com/odpf/optimus/internal/models"
+	"github.com/raystack/optimus/internal/models"
 )
 
 type model struct {
-	log           log.Logger
 	currentCursor cursorPointer
 
 	truncateTo  truncateTo
@@ -27,18 +25,12 @@ type model struct {
 	scheduledTime time.Time
 }
 
-func newModel(log log.Logger) *model {
-	offsetInput := textinput.New()
-
-	sizeInput := textinput.New()
-	sizeInput.Focus()
-
+func newModel() *model {
 	return &model{
-		log:           log,
 		currentCursor: pointToTruncateTo,
 		truncateTo:    truncateToDay,
-		sizeInput:     sizeInput,
-		offsetInput:   offsetInput,
+		sizeInput:     textinput.New(),
+		offsetInput:   textinput.New(),
 		scheduledTime: time.Now(),
 	}
 }
@@ -53,6 +45,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if currMsg.String() != "tea.KeyMsg" {
 		return m, nil
 	}
+
 	msgStr := fmt.Sprintf("%s", msg)
 	switch msgStr {
 	case "ctrl+c", "q":
@@ -73,8 +66,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		"1", "2", "3", "4", "5",
 		"6", "7", "8", "9", "0",
 		"backspace":
-		m.sizeInput, _ = m.sizeInput.Update(msg)
-		m.offsetInput, _ = m.offsetInput.Update(msg)
+		m.handleInput(msg)
 	}
 	return m, nil
 }
@@ -92,7 +84,7 @@ func (m *model) View() string {
 	s.WriteString(m.generateWindowResultView())
 	s.WriteString("\n")
 	s.WriteString("DOCUMENTATION:\n")
-	s.WriteString("- https://odpf.github.io/optimus/docs/concepts/intervals-and-windows")
+	s.WriteString("- https://raystack.github.io/optimus/docs/concepts/intervals-and-windows")
 	return s.String()
 }
 
@@ -100,7 +92,6 @@ func (m *model) generateWindowResultView() string {
 	buff := &bytes.Buffer{}
 	table := tablewriter.NewWriter(buff)
 	table.SetHeader([]string{"Version", "Start Time", "End Time"})
-	table.SetAutoMergeCells(true)
 	table.Append(m.generateWindowTableRowView(1))
 	table.Append(m.generateWindowTableRowView(2)) //nolint: gomnd
 	table.Render()
@@ -172,6 +163,7 @@ func (m *model) generateWindowInputView() string {
 	buff := &bytes.Buffer{}
 	table := tablewriter.NewWriter(buff)
 	table.SetRowLine(true)
+	table.SetColumnAlignment([]int{tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT})
 	table.Append([]string{
 		"truncate_to",
 		m.generateValueWithCursorPointerView(pointToTruncateTo, string(m.truncateTo)),
@@ -195,14 +187,16 @@ func (m *model) generateWindowInputView() string {
 func (m *model) generateWindowTableRowView(version int) []string {
 	window, err := models.NewWindow(version, string(m.truncateTo), m.offsetInput.Value(), m.sizeInput.Value())
 	if err != nil {
-		return []string{fmt.Sprintf("%d", version), err.Error()}
+		return []string{fmt.Sprintf("%d", version), err.Error(), err.Error()}
 	}
+
 	var startTimeRow string
 	if startTime, err := window.GetStartTime(m.scheduledTime); err != nil {
 		startTimeRow = err.Error()
 	} else {
 		startTimeRow = startTime.Format(time.RFC3339)
 	}
+
 	var endTimeRow string
 	if endTime, err := window.GetEndTime(m.scheduledTime); err != nil {
 		endTimeRow = err.Error()
@@ -230,6 +224,15 @@ func (m *model) generateValueWithCursorPointerView(targetCursor cursorPointer, v
 		return s.String()
 	}
 	return value
+}
+
+func (m *model) handleInput(msg tea.Msg) {
+	switch m.currentCursor {
+	case pointToOffset:
+		m.offsetInput, _ = m.offsetInput.Update(msg)
+	case pointToSize:
+		m.sizeInput, _ = m.sizeInput.Update(msg)
+	}
 }
 
 func (m *model) handleDecrement() {

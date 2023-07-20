@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/ext/scheduler/airflow/dag"
+	"github.com/raystack/optimus/ext/scheduler/airflow/dag"
 )
 
 func TestTemplateFuncMap(t *testing.T) {

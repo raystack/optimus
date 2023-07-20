@@ -4,20 +4,21 @@ package scheduler_test
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/models"
-	jobRepo "github.com/odpf/optimus/internal/store/postgres/job"
-	postgres "github.com/odpf/optimus/internal/store/postgres/scheduler"
-	tenantPostgres "github.com/odpf/optimus/internal/store/postgres/tenant"
-	"github.com/odpf/optimus/tests/setup"
+	"github.com/raystack/optimus/core/job"
+	"github.com/raystack/optimus/core/scheduler"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/models"
+	jobRepo "github.com/raystack/optimus/internal/store/postgres/job"
+	postgres "github.com/raystack/optimus/internal/store/postgres/scheduler"
+	tenantPostgres "github.com/raystack/optimus/internal/store/postgres/tenant"
+	"github.com/raystack/optimus/tests/setup"
 )
 
 const (
@@ -108,6 +109,38 @@ func TestPostgresJobRepository(t *testing.T) {
 			assert.Nil(t, jobObject)
 		})
 	})
+	t.Run("GetJobs", func(t *testing.T) {
+		t.Run("returns multiple job", func(t *testing.T) {
+			db := dbSetup()
+			jobs := addJobs(ctx, t, db)
+			jobProviderRepo := postgres.NewJobProviderRepository(db)
+
+			jobObjects, err := jobProviderRepo.GetJobs(ctx, tnnt.ProjectName(), []string{jobAName, jobBName})
+			assert.Nil(t, err)
+			assert.Equal(t, 2, len(jobObjects))
+			for _, jobObject := range jobObjects {
+				compareEqualJobWithDetails(jobs[jobObject.Name.String()], jobObject)
+			}
+		})
+		t.Run("returns not found error when jobs are not found", func(t *testing.T) {
+			db := dbSetup()
+			jobProviderRepo := postgres.NewJobProviderRepository(db)
+			jobObject, err := jobProviderRepo.GetJobs(ctx, tnnt.ProjectName(), []string{"some-other-job"})
+			assert.ErrorContains(t, err, "unable to find job")
+			assert.Nil(t, jobObject)
+		})
+		t.Run("returns the found job when some other job is not found", func(t *testing.T) {
+			db := dbSetup()
+			jobs := addJobs(ctx, t, db)
+			jobProviderRepo := postgres.NewJobProviderRepository(db)
+			jobObjects, err := jobProviderRepo.GetJobs(ctx, tnnt.ProjectName(), []string{jobAName, "some-other-job"})
+			assert.ErrorContains(t, err, "unable to find job")
+			assert.Equal(t, 1, len(jobObjects))
+			for _, jobObject := range jobObjects {
+				compareEqualJobWithDetails(jobs[jobObject.Name.String()], jobObject)
+			}
+		})
+	})
 }
 
 func dbSetup() *pgxpool.Pool {
@@ -121,10 +154,10 @@ func addJobs(ctx context.Context, t *testing.T, pool *pgxpool.Pool) map[string]*
 	jobVersion := 1
 	jobOwner := "dev_test"
 	jobDescription := "sample job"
-	jobRetry := job.NewRetry(5, 0, false)
+	jobRetry := job.NewRetry(5, 0, true)
 	startDate, err := job.ScheduleDateFrom("2022-10-01")
 	assert.NoError(t, err)
-	jobSchedule, err := job.NewScheduleBuilder(startDate).WithRetry(jobRetry).Build()
+	jobSchedule, err := job.NewScheduleBuilder(startDate).WithRetry(jobRetry).WithDependsOnPast(true).Build()
 	assert.NoError(t, err)
 	jobWindow, err := models.NewWindow(jobVersion, "d", "24h", "24h")
 	assert.NoError(t, err)
@@ -236,5 +269,8 @@ func compareEqualJobWithDetails(j *job.Job, s *scheduler.JobWithDetails) bool {
 		j.GetName() == s.Name.String() &&
 		j.Spec().Version() == s.JobMetadata.Version &&
 		j.Spec().Owner() == s.JobMetadata.Owner &&
-		j.Spec().Schedule().Interval() == s.Schedule.Interval
+		j.Spec().Schedule().Interval() == s.Schedule.Interval &&
+		j.Spec().Schedule().DependsOnPast() == s.Schedule.DependsOnPast &&
+		j.Spec().Schedule().Retry().ExponentialBackoff() == s.Retry.ExponentialBackoff &&
+		reflect.DeepEqual(j.Spec().Metadata().Scheduler(), s.RuntimeConfig.Scheduler)
 }

@@ -1,23 +1,24 @@
 package resource
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"path"
 	"strings"
 	"time"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/internal/connectivity"
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/client/local"
-	"github.com/odpf/optimus/client/local/model"
-	"github.com/odpf/optimus/client/local/specio"
-	"github.com/odpf/optimus/config"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/client/cmd/internal/connection"
+	"github.com/raystack/optimus/client/cmd/internal/logger"
+	"github.com/raystack/optimus/client/local"
+	"github.com/raystack/optimus/client/local/model"
+	"github.com/raystack/optimus/client/local/specio"
+	"github.com/raystack/optimus/config"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 const (
@@ -26,7 +27,9 @@ const (
 )
 
 type exportCommand struct {
-	logger log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	writer local.SpecWriter[*model.ResourceSpec]
 
 	configFilePath string
@@ -87,6 +90,9 @@ func (e *exportCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	} else {
 		e.host = cfg.Host
 	}
+
+	e.connection = connection.New(e.logger, cfg)
+
 	return nil
 }
 
@@ -208,15 +214,18 @@ func (e *exportCommand) writeResources(projectName, namespaceName string, resour
 }
 
 func (e *exportCommand) fetchAllResources(projectName, namespaceName string) ([]*model.ResourceSpec, error) {
-	conn, err := connectivity.NewConnectivity(e.host, fetchResourceTimeout)
+	conn, err := e.connection.Create(e.host)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
-	resourceServiceClient := pb.NewResourceServiceClient(conn.GetConnection())
+	resourceServiceClient := pb.NewResourceServiceClient(conn)
 
-	response, err := resourceServiceClient.ListResourceSpecification(conn.GetContext(), &pb.ListResourceSpecificationRequest{
+	ctx, cancelFunc := context.WithTimeout(context.Background(), fetchResourceTimeout)
+	defer cancelFunc()
+
+	response, err := resourceServiceClient.ListResourceSpecification(ctx, &pb.ListResourceSpecificationRequest{
 		ProjectName:   projectName,
 		NamespaceName: namespaceName,
 		DatastoreName: e.storeName,
@@ -239,15 +248,18 @@ func (e *exportCommand) fetchAllResources(projectName, namespaceName string) ([]
 }
 
 func (e *exportCommand) fetchSpecificResource(projectName, namespaceName, resourceName string) (*model.ResourceSpec, error) {
-	conn, err := connectivity.NewConnectivity(e.host, fetchResourceTimeout)
+	conn, err := e.connection.Create(e.host)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
-	resourceServiceClient := pb.NewResourceServiceClient(conn.GetConnection())
+	resourceServiceClient := pb.NewResourceServiceClient(conn)
 
-	response, err := resourceServiceClient.ReadResource(conn.GetContext(), &pb.ReadResourceRequest{
+	ctx, cancelFunc := context.WithTimeout(context.Background(), fetchResourceTimeout)
+	defer cancelFunc()
+
+	response, err := resourceServiceClient.ReadResource(ctx, &pb.ReadResourceRequest{
 		ProjectName:   projectName,
 		NamespaceName: namespaceName,
 		ResourceName:  resourceName,
@@ -266,15 +278,18 @@ func (e *exportCommand) fetchSpecificResource(projectName, namespaceName, resour
 }
 
 func (e *exportCommand) fetchNamespaceNames(projectName string) ([]string, error) {
-	conn, err := connectivity.NewConnectivity(e.host, fetchTenantTimeout)
+	conn, err := e.connection.Create(e.host)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
-	namespaceServiceClient := pb.NewNamespaceServiceClient(conn.GetConnection())
+	namespaceServiceClient := pb.NewNamespaceServiceClient(conn)
 
-	response, err := namespaceServiceClient.ListProjectNamespaces(conn.GetContext(), &pb.ListProjectNamespacesRequest{
+	ctx, cancelFunc := context.WithTimeout(context.Background(), fetchTenantTimeout)
+	defer cancelFunc()
+
+	response, err := namespaceServiceClient.ListProjectNamespaces(ctx, &pb.ListProjectNamespacesRequest{
 		ProjectName: projectName,
 	})
 	if err != nil {
@@ -289,15 +304,18 @@ func (e *exportCommand) fetchNamespaceNames(projectName string) ([]string, error
 }
 
 func (e *exportCommand) fetchProjectNames() ([]string, error) {
-	conn, err := connectivity.NewConnectivity(e.host, fetchTenantTimeout)
+	conn, err := e.connection.Create(e.host)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
-	projectServiceClient := pb.NewProjectServiceClient(conn.GetConnection())
+	projectServiceClient := pb.NewProjectServiceClient(conn)
 
-	response, err := projectServiceClient.ListProjects(conn.GetContext(), &pb.ListProjectsRequest{})
+	ctx, cancelFunc := context.WithTimeout(context.Background(), fetchTenantTimeout)
+	defer cancelFunc()
+
+	response, err := projectServiceClient.ListProjects(ctx, &pb.ListProjectsRequest{})
 	if err != nil {
 		return nil, err
 	}

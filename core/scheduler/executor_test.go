@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/scheduler"
+	"github.com/raystack/optimus/core/scheduler"
 )
 
 func TestExecutor(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/odpf/optimus/client/extension/model"
+	"github.com/raystack/optimus/client/extension/model"
 )
 
 type uninstallResource struct {

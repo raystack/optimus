@@ -4,15 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/resource"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/raystack/optimus/core/job"
+	"github.com/raystack/optimus/core/resource"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/errors"
 )
 
 const (
@@ -40,7 +41,7 @@ func (j JobRepository) Add(ctx context.Context, jobs []*job.Job) ([]*job.Job, er
 		}
 		storedJobs = append(storedJobs, jobEntity)
 	}
-	return storedJobs, errors.MultiToError(me)
+	return storedJobs, me.ToErr()
 }
 
 func (j JobRepository) insertJobSpec(ctx context.Context, jobEntity *job.Job) error {
@@ -101,7 +102,125 @@ func (j JobRepository) Update(ctx context.Context, jobs []*job.Job) ([]*job.Job,
 		}
 		storedJobs = append(storedJobs, jobEntity)
 	}
-	return storedJobs, errors.MultiToError(me)
+	return storedJobs, me.ToErr()
+}
+
+func (j JobRepository) UpdateState(ctx context.Context, jobTenant tenant.Tenant, jobNames []job.Name, jobState job.State, remark string) error {
+	updateJobStateQuery := `
+UPDATE job SET state = $1, remark = $2, updated_at = NOW()
+WHERE project_name = $4 AND namespace_name = $5 AND name = any ($3);`
+
+	tag, err := j.db.Exec(ctx, updateJobStateQuery, jobState, remark, jobNames, jobTenant.ProjectName(), jobTenant.NamespaceName())
+	if err != nil {
+		return errors.Wrap(job.EntityJob, "error during job state update", err)
+	}
+	if tag.RowsAffected() != int64(len(jobNames)) {
+		return errors.NewError(errors.ErrNotFound, job.EntityJob, "failed to update state of all of the selected job in DB")
+	}
+	return nil
+}
+
+func (j JobRepository) SyncState(ctx context.Context, jobTenant tenant.Tenant, disabledJobNames, enabledJobNames []job.Name) error {
+	tx, err := j.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	updateJobStateQuery := `
+UPDATE job SET state = $1
+WHERE project_name = $2 AND namespace_name = $3 AND name = any ($4);`
+
+	_, err = tx.Exec(ctx, updateJobStateQuery, job.ENABLED, jobTenant.ProjectName(), jobTenant.NamespaceName(), enabledJobNames)
+	if err != nil {
+		tx.Rollback(ctx)
+		return errors.Wrap(job.EntityJob, "error during job state enable sync", err)
+	}
+
+	_, err = j.db.Exec(ctx, updateJobStateQuery, job.DISABLED, jobTenant.ProjectName(), jobTenant.NamespaceName(), disabledJobNames)
+	if err != nil {
+		tx.Rollback(ctx)
+		return errors.Wrap(job.EntityJob, "error during job state disable sync", err)
+	}
+
+	tx.Commit(ctx)
+	return nil
+}
+
+func (j JobRepository) ChangeJobNamespace(ctx context.Context, jobName job.Name, tenant, newTenant tenant.Tenant) error {
+	tx, err := j.db.Begin(ctx)
+	if err != nil {
+		return errors.InternalError(job.EntityJob, "unable to begin transaction", err)
+	}
+
+	if err = changeJobNamespace(ctx, tx, jobName, tenant, newTenant); err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+	if err = changeJobUpstreamNamespace(ctx, tx, jobName, tenant, newTenant); err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+	if err = changeJobRunNamespace(ctx, tx, jobName, tenant, newTenant); err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+	tx.Commit(ctx)
+	return nil
+}
+
+func changeJobNamespace(ctx context.Context, tx pgx.Tx, jobName job.Name, tenant, newTenant tenant.Tenant) error {
+	changeJobNamespaceQuery := `
+UPDATE job SET
+	namespace_name = $1,
+	updated_at = NOW(), deleted_at = null
+WHERE
+	name = $2 AND
+	project_name = $3 AND
+	namespace_name = $4
+;`
+	tag, err := tx.Exec(ctx, changeJobNamespaceQuery, newTenant.NamespaceName(), jobName,
+		tenant.ProjectName(), tenant.NamespaceName())
+	if err != nil {
+		return errors.Wrap(job.EntityJob, err.Error(), err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return errors.NotFound(job.EntityJob, "job not found with the given namespace: "+tenant.NamespaceName().String())
+	}
+	return nil
+}
+
+func changeJobUpstreamNamespace(ctx context.Context, tx pgx.Tx, jobName job.Name, tenant, newTenant tenant.Tenant) error {
+	changeJobUpstreamsQuery := `
+UPDATE job_upstream SET
+	upstream_namespace_name = $1
+WHERE
+	upstream_job_name = $2 AND
+	upstream_project_name = $3 AND
+	upstream_namespace_name = $4
+;`
+	_, err := tx.Exec(ctx, changeJobUpstreamsQuery, newTenant.NamespaceName(), jobName,
+		tenant.ProjectName(), tenant.NamespaceName())
+	if err != nil {
+		return errors.Wrap(job.EntityJob, err.Error(), err)
+	}
+	return nil
+}
+
+func changeJobRunNamespace(ctx context.Context, tx pgx.Tx, jobName job.Name, tenant, newTenant tenant.Tenant) error {
+	changeJobRunNamespaceQuery := `
+UPDATE job_run SET
+	namespace_name = $1
+WHERE
+	job_name = $2 AND
+	project_name = $3 AND
+	namespace_name = $4
+;`
+	_, err := tx.Exec(ctx, changeJobRunNamespaceQuery, newTenant.NamespaceName(), jobName,
+		tenant.ProjectName(), tenant.NamespaceName())
+	if err != nil {
+		return errors.Wrap(job.EntityJob, err.Error(), err)
+	}
+	return nil
 }
 
 func (j JobRepository) preCheckUpdate(ctx context.Context, jobEntity *job.Job) error {
@@ -273,7 +392,7 @@ func (j JobRepository) toJobNameWithUpstreams(storeJobsWithUpstreams []*JobWithU
 		jobNameWithUpstreams[name] = upstreams
 	}
 
-	if err := errors.MultiToError(me); err != nil {
+	if err := me.ToErr(); err != nil {
 		return nil, err
 	}
 	return jobNameWithUpstreams, nil
@@ -477,10 +596,10 @@ func (j *JobWithUpstream) getJobFullName() string {
 }
 
 func (j JobRepository) ReplaceUpstreams(ctx context.Context, jobsWithUpstreams []*job.WithUpstream) error {
-	var storageJobUpstreams []*JobWithUpstream
+	var jobUpstreams []*JobWithUpstream
 	for _, jobWithUpstreams := range jobsWithUpstreams {
-		upstream := toJobUpstream(jobWithUpstreams)
-		storageJobUpstreams = append(storageJobUpstreams, upstream...)
+		singleJobUpstreams := toJobUpstream(jobWithUpstreams)
+		jobUpstreams = append(jobUpstreams, singleJobUpstreams...)
 	}
 
 	tx, err := j.db.Begin(ctx)
@@ -489,15 +608,15 @@ func (j JobRepository) ReplaceUpstreams(ctx context.Context, jobsWithUpstreams [
 	}
 
 	var jobFullName []string
-	for _, upstream := range storageJobUpstreams {
-		jobFullName = append(jobFullName, upstream.getJobFullName())
+	for _, jobWithUpstream := range jobsWithUpstreams {
+		jobFullName = append(jobFullName, jobWithUpstream.Job().FullName())
 	}
 
-	if err = j.deleteUpstreams(ctx, tx, jobFullName); err != nil {
+	if err = j.deleteUpstreamsByJobNames(ctx, tx, jobFullName); err != nil {
 		tx.Rollback(ctx)
 		return err
 	}
-	if err = j.insertUpstreams(ctx, tx, storageJobUpstreams); err != nil {
+	if err = j.insertUpstreams(ctx, tx, jobUpstreams); err != nil {
 		tx.Rollback(ctx)
 		return err
 	}
@@ -568,7 +687,7 @@ VALUES (
 	return nil
 }
 
-func (JobRepository) deleteUpstreams(ctx context.Context, tx pgx.Tx, jobUpstreams []string) error {
+func (JobRepository) deleteUpstreamsByJobNames(ctx context.Context, tx pgx.Tx, jobUpstreams []string) error {
 	deleteForProjectScope := `DELETE
 FROM job_upstream
 WHERE project_name || '/' || job_name = any ($1);`
@@ -693,7 +812,7 @@ func (j JobRepository) GetAllByTenant(ctx context.Context, jobTenant tenant.Tena
 		jobs = append(jobs, jobSpec)
 	}
 
-	return jobs, errors.MultiToError(me)
+	return jobs, me.ToErr()
 }
 
 func (j JobRepository) GetUpstreams(ctx context.Context, projectName tenant.ProjectName, jobName job.Name) ([]*job.Upstream, error) {
@@ -810,5 +929,49 @@ func fromStoreDownstream(storeDownstreamList []Downstream) ([]*job.Downstream, e
 		}
 		downstreamList = append(downstreamList, job.NewDownstream(downstreamJobName, downstreamProjectName, downstreamNamespaceName, downstreamTaskName))
 	}
-	return downstreamList, errors.MultiToError(me)
+	return downstreamList, me.ToErr()
+}
+
+func (j JobRepository) GetDownstreamBySources(ctx context.Context, sources []job.ResourceURN) ([]*job.Downstream, error) {
+	if len(sources) == 0 {
+		return nil, nil
+	}
+
+	var sourceWhereStatements []string
+	for _, r := range sources {
+		statement := "'" + r.String() + "' = any(sources)"
+		sourceWhereStatements = append(sourceWhereStatements, statement)
+	}
+	sourceStatement := "(" + strings.Join(sourceWhereStatements, " or \n") + ")"
+
+	queryBuilder := new(strings.Builder)
+	queryBuilder.WriteString(`
+SELECT
+	name as job_name, project_name, namespace_name, task_name
+FROM job
+WHERE
+deleted_at IS NULL and
+`)
+	queryBuilder.WriteString(sourceStatement)
+	queryBuilder.WriteString(";\n")
+
+	query := queryBuilder.String()
+
+	rows, err := j.db.Query(ctx, query)
+	if err != nil {
+		return nil, errors.Wrap(job.EntityJob, "error while getting job downstream", err)
+	}
+	defer rows.Close()
+
+	var storeDownstream []Downstream
+	for rows.Next() {
+		var downstream Downstream
+		err := rows.Scan(&downstream.JobName, &downstream.ProjectName, &downstream.NamespaceName, &downstream.TaskName)
+		if err != nil {
+			return nil, errors.Wrap(job.EntityJob, "error while getting downstream by destination", err)
+		}
+		storeDownstream = append(storeDownstream, downstream)
+	}
+
+	return fromStoreDownstream(storeDownstream)
 }

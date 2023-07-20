@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/ext/store/bigquery"
+	"github.com/raystack/optimus/ext/store/bigquery"
 )
 
 func TestBqClient(t *testing.T) {
@@ -118,7 +118,7 @@ func TestClientProvider(t *testing.T) {
 
 		_, err := provider.Get(ctx, "")
 		assert.NotNil(t, err)
-		assert.EqualError(t, err, "internal error for entity BigqueryStore: failed to read account")
+		assert.ErrorContains(t, err, "internal error for entity BigqueryStore: failed to read account")
 	})
 
 	t.Run("creates a new client with json", func(t *testing.T) {

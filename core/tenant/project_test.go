@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/tenant"
+	"github.com/raystack/optimus/core/tenant"
 )
 
 func TestEntityProject(t *testing.T) {

@@ -1,24 +1,27 @@
 package namespace
 
 import (
+	"context"
 	"fmt"
 	"path"
 	"time"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/internal"
-	"github.com/odpf/optimus/client/cmd/internal/connectivity"
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/config"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/client/cmd/internal"
+	"github.com/raystack/optimus/client/cmd/internal/connection"
+	"github.com/raystack/optimus/client/cmd/internal/logger"
+	"github.com/raystack/optimus/config"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 const describeTimeout = time.Minute * 15
 
 type describeCommand struct {
-	logger         log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	configFilePath string
 
 	dirPath       string
@@ -79,6 +82,7 @@ func (d *describeCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	if d.host == "" {
 		d.host = conf.Host
 	}
+	d.connection = connection.New(d.logger, conf)
 	return nil
 }
 
@@ -99,7 +103,7 @@ func (d *describeCommand) RunE(_ *cobra.Command, _ []string) error {
 }
 
 func (d *describeCommand) getNamespace() (*config.Namespace, error) {
-	conn, err := connectivity.NewConnectivity(d.host, describeTimeout)
+	conn, err := d.connection.Create(d.host)
 	if err != nil {
 		return nil, err
 	}
@@ -109,8 +113,12 @@ func (d *describeCommand) getNamespace() (*config.Namespace, error) {
 		ProjectName:   d.projectName,
 		NamespaceName: d.namespaceName,
 	}
-	namespaceServiceClient := pb.NewNamespaceServiceClient(conn.GetConnection())
-	response, err := namespaceServiceClient.GetNamespace(conn.GetContext(), request)
+	namespaceServiceClient := pb.NewNamespaceServiceClient(conn)
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), describeTimeout)
+	defer cancelFunc()
+
+	response, err := namespaceServiceClient.GetNamespace(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get namespace [%s]: %w", d.namespaceName, err)
 	}

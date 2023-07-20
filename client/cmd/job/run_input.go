@@ -1,6 +1,7 @@
 package job
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"os"
@@ -8,16 +9,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/odpf/optimus/client/cmd/internal"
-	"github.com/odpf/optimus/client/cmd/internal/connectivity"
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/internal/utils"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/client/cmd/internal"
+	"github.com/raystack/optimus/client/cmd/internal/connection"
+	"github.com/raystack/optimus/client/cmd/internal/logger"
+	"github.com/raystack/optimus/config"
+	"github.com/raystack/optimus/internal/utils"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 const (
@@ -33,7 +34,9 @@ const (
 )
 
 type jobRunInputCommand struct {
-	logger         log.Logger
+	logger     log.Logger
+	connection *connection.Insecure
+
 	configFilePath string
 
 	assetOutputDir string
@@ -103,6 +106,9 @@ func (j *jobRunInputCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	if j.host == "" {
 		j.host = conf.Host
 	}
+
+	j.connection = connection.NewInsecure(j.logger)
+
 	return nil
 }
 
@@ -209,14 +215,14 @@ func (j *jobRunInputCommand) writeJobAssetsToFiles(
 }
 
 func (j *jobRunInputCommand) sendJobRunInputRequest(jobName string, jobScheduledTimeProto *timestamppb.Timestamp) (*pb.JobRunInputResponse, error) {
-	conn, err := connectivity.NewConnectivity(j.host, jobRunInputCompileAssetsTimeout)
+	conn, err := j.connection.Create(j.host)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
 	// fetch Instance by calling the optimus API
-	jobRunServiceClient := pb.NewJobRunServiceClient(conn.GetConnection())
+	jobRunServiceClient := pb.NewJobRunServiceClient(conn)
 	request := &pb.JobRunInputRequest{
 		ProjectName:  j.projectName,
 		JobName:      jobName,
@@ -225,7 +231,10 @@ func (j *jobRunInputCommand) sendJobRunInputRequest(jobName string, jobScheduled
 		InstanceName: j.runName,
 	}
 
-	return jobRunServiceClient.JobRunInput(conn.GetContext(), request)
+	ctx, reqCancel := context.WithTimeout(context.Background(), jobRunInputCompileAssetsTimeout)
+	defer reqCancel()
+
+	return jobRunServiceClient.JobRunInput(ctx, request)
 }
 
 func (j *jobRunInputCommand) getJobScheduledTimeProto() (*timestamppb.Timestamp, error) {

@@ -7,11 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/tenant"
-	postgres "github.com/odpf/optimus/internal/store/postgres/scheduler"
+	"github.com/raystack/optimus/core/scheduler"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/errors"
+	postgres "github.com/raystack/optimus/internal/store/postgres/scheduler"
 )
 
 func TestPostgresSchedulerRepository(t *testing.T) {
@@ -140,6 +142,47 @@ func TestPostgresSchedulerRepository(t *testing.T) {
 		})
 	})
 
+	t.Run("GetReplaysByProject", func(t *testing.T) {
+		t.Run("return replay list for corresponding project name", func(t *testing.T) {
+			db := dbSetup()
+			replayRepo := postgres.NewReplayRepository(db)
+			tnnt, _ := tenant.NewTenant("test-project1", "ns-1")
+			tnntOther, _ := tenant.NewTenant("test-project2", "ns-1")
+
+			replayConfig := scheduler.NewReplayConfig(startTime, endTime, true, replayJobConfig, description)
+			replayReq1 := scheduler.NewReplayRequest(jobAName, tnnt, replayConfig, scheduler.ReplayStateInProgress)
+			replayReq2 := scheduler.NewReplayRequest(jobBName, tnnt, replayConfig, scheduler.ReplayStateCreated)
+			replayReq3 := scheduler.NewReplayRequest("sample-job-C", tnntOther, replayConfig, scheduler.ReplayStateFailed)
+
+			replayID1, err := replayRepo.RegisterReplay(ctx, replayReq1, jobRunsAllPending)
+			assert.Nil(t, err)
+			assert.NotNil(t, replayID1)
+
+			replayID2, err := replayRepo.RegisterReplay(ctx, replayReq2, jobRunsAllPending)
+			assert.Nil(t, err)
+			assert.NotNil(t, replayID2)
+
+			replayID3, err := replayRepo.RegisterReplay(ctx, replayReq3, jobRunsAllPending)
+			assert.Nil(t, err)
+			assert.NotNil(t, replayID3)
+
+			replayReqs, err := replayRepo.GetReplaysByProject(ctx, tnnt.ProjectName(), 3)
+			assert.Nil(t, err)
+			assert.Len(t, replayReqs, 2)
+
+			replayReqs, err = replayRepo.GetReplaysByProject(ctx, tnntOther.ProjectName(), 3)
+			assert.Nil(t, err)
+			assert.Len(t, replayReqs, 1)
+		})
+		t.Run("return empty list when replay is not existed on given project", func(t *testing.T) {
+			db := dbSetup()
+			replayRepo := postgres.NewReplayRepository(db)
+			replayReqs, err := replayRepo.GetReplaysByProject(ctx, tnnt.ProjectName(), 3)
+			assert.Nil(t, err)
+			assert.Len(t, replayReqs, 0)
+		})
+	})
+
 	t.Run("GetReplayJobConfig", func(t *testing.T) {
 		t.Run("return replay task config when scheduledAt is provided", func(t *testing.T) {
 			db := dbSetup()
@@ -176,6 +219,53 @@ func TestPostgresSchedulerRepository(t *testing.T) {
 			actualReplayJobConfig, err := replayRepo.GetReplayJobConfig(ctx, tnnt, jobBName, scheduledAt)
 			assert.Nil(t, err)
 			assert.Equal(t, map[string]string{}, actualReplayJobConfig)
+		})
+	})
+
+	t.Run("GetReplayByID", func(t *testing.T) {
+		t.Run("return no replay with runs if not exist", func(t *testing.T) {
+			db := dbSetup()
+			replayRepo := postgres.NewReplayRepository(db)
+
+			replayID := uuid.New()
+			replayWithRuns, err := replayRepo.GetReplayByID(ctx, replayID)
+			assert.NotNil(t, err)
+			assert.True(t, errors.IsErrorType(err, errors.ErrNotFound))
+			assert.Empty(t, replayWithRuns)
+		})
+
+		t.Run("return replay with no runs if runs is empty", func(t *testing.T) {
+			db := dbSetup()
+			replayRepo := postgres.NewReplayRepository(db)
+			startTime, _ := time.Parse(scheduler.ISODateFormat, "2022-01-01T15:04:05Z")
+			endTime, _ := time.Parse(scheduler.ISODateFormat, "2022-01-03T15:04:05Z")
+
+			replayConfig := scheduler.NewReplayConfig(startTime, endTime, true, map[string]string{}, description)
+			replayReq := scheduler.NewReplayRequest(jobBName, tnnt, replayConfig, scheduler.ReplayStateCreated)
+			replayID, err := replayRepo.RegisterReplay(ctx, replayReq, []*scheduler.JobRunStatus{})
+			assert.Nil(t, err)
+
+			replayWithRuns, err := replayRepo.GetReplayByID(ctx, replayID)
+			assert.Nil(t, err)
+			assert.NotEmpty(t, replayWithRuns)
+			assert.Empty(t, replayWithRuns.Runs)
+		})
+		t.Run("return replay with runs given replay ID", func(t *testing.T) {
+			db := dbSetup()
+			replayRepo := postgres.NewReplayRepository(db)
+			startTime, _ := time.Parse(scheduler.ISODateFormat, "2022-01-01T15:04:05Z")
+			endTime, _ := time.Parse(scheduler.ISODateFormat, "2022-01-03T15:04:05Z")
+
+			replayConfig := scheduler.NewReplayConfig(startTime, endTime, true, map[string]string{}, description)
+			replayReq := scheduler.NewReplayRequest(jobBName, tnnt, replayConfig, scheduler.ReplayStateCreated)
+			replayID, err := replayRepo.RegisterReplay(ctx, replayReq, jobRunsAllPending)
+			assert.Nil(t, err)
+
+			replayWithRuns, err := replayRepo.GetReplayByID(ctx, replayID)
+			assert.Nil(t, err)
+			assert.NotEmpty(t, replayWithRuns)
+			assert.NotEmpty(t, replayWithRuns.Runs)
+			assert.Len(t, replayWithRuns.Runs, len(jobRunsAllPending))
 		})
 	})
 }

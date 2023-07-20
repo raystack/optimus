@@ -2,25 +2,28 @@ package namespace
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"path"
 	"time"
 
-	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
+	"github.com/raystack/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/internal"
-	"github.com/odpf/optimus/client/cmd/internal/connectivity"
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/config"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/client/cmd/internal"
+	"github.com/raystack/optimus/client/cmd/internal/connection"
+	"github.com/raystack/optimus/client/cmd/internal/logger"
+	"github.com/raystack/optimus/config"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 const listTimeout = time.Minute * 15
 
 type listCommand struct {
-	logger         log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	configFilePath string
 	clientConfig   *config.ClientConfig
 
@@ -79,6 +82,8 @@ func (l *listCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	if l.host == "" {
 		l.host = l.clientConfig.Host
 	}
+	l.connection = connection.New(l.logger, conf)
+
 	return nil
 }
 
@@ -98,8 +103,8 @@ func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func (*listCommand) listNamespacesFromServer(serverHost, projectName string) ([]*config.Namespace, error) {
-	conn, err := connectivity.NewConnectivity(serverHost, listTimeout)
+func (l *listCommand) listNamespacesFromServer(serverHost, projectName string) ([]*config.Namespace, error) {
+	conn, err := l.connection.Create(serverHost)
 	if err != nil {
 		return nil, err
 	}
@@ -108,8 +113,12 @@ func (*listCommand) listNamespacesFromServer(serverHost, projectName string) ([]
 	request := &pb.ListProjectNamespacesRequest{
 		ProjectName: projectName,
 	}
-	namespaceServiceClient := pb.NewNamespaceServiceClient(conn.GetConnection())
-	response, err := namespaceServiceClient.ListProjectNamespaces(conn.GetContext(), request)
+	namespaceServiceClient := pb.NewNamespaceServiceClient(conn)
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), listTimeout)
+	defer cancelFunc()
+
+	response, err := namespaceServiceClient.ListProjectNamespaces(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("unable to list namespace for project [%s]: %w", projectName, err)
 	}

@@ -7,9 +7,9 @@ import (
 
 	"github.com/spf13/afero"
 
-	"github.com/odpf/optimus/client/local"
-	"github.com/odpf/optimus/client/local/internal"
-	"github.com/odpf/optimus/client/local/model"
+	"github.com/raystack/optimus/client/local"
+	"github.com/raystack/optimus/client/local/internal"
+	"github.com/raystack/optimus/client/local/model"
 )
 
 type resourceSpecReadWriter struct {
@@ -44,6 +44,7 @@ func (r resourceSpecReadWriter) ReadAll(rootDirPath string) ([]*model.ResourceSp
 		if err != nil {
 			return nil, fmt.Errorf("error reading spec under [%s]: %w", filePath, err)
 		}
+		spec.Path = dirPath
 		specs[i] = spec
 	}
 	return specs, nil

@@ -5,22 +5,25 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
-	"github.com/odpf/salt/log"
 	"github.com/olekukonko/tablewriter"
+	"github.com/raystack/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/internal"
-	"github.com/odpf/optimus/client/cmd/internal/connectivity"
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/client/cmd/internal/progressbar"
-	"github.com/odpf/optimus/config"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/client/cmd/internal"
+	"github.com/raystack/optimus/client/cmd/internal/connection"
+	"github.com/raystack/optimus/client/cmd/internal/logger"
+	"github.com/raystack/optimus/client/cmd/internal/progressbar"
+	"github.com/raystack/optimus/config"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 type listCommand struct {
-	logger         log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	configFilePath string
 
 	projectName string
@@ -72,6 +75,9 @@ func (l *listCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	if l.host == "" {
 		l.host = conf.Host
 	}
+
+	l.connection = connection.New(l.logger, conf)
+
 	return nil
 }
 
@@ -83,7 +89,7 @@ func (l *listCommand) RunE(_ *cobra.Command, _ []string) error {
 }
 
 func (l *listCommand) listSecret(req *pb.ListSecretsRequest) error {
-	conn, err := connectivity.NewConnectivity(l.host, secretTimeout)
+	conn, err := l.connection.Create(l.host)
 	if err != nil {
 		return err
 	}
@@ -91,9 +97,12 @@ func (l *listCommand) listSecret(req *pb.ListSecretsRequest) error {
 
 	spinner := progressbar.NewProgressBar()
 	spinner.Start("please wait...")
-	secret := pb.NewSecretServiceClient(conn.GetConnection())
+	secret := pb.NewSecretServiceClient(conn)
 
-	listSecretsResponse, err := secret.ListSecrets(conn.GetContext(), req)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), secretTimeout)
+	defer cancelFunc()
+
+	listSecretsResponse, err := secret.ListSecrets(ctx, req)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -123,8 +132,12 @@ func (*listCommand) stringifyListOfSecrets(listSecretsResponse *pb.ListSecretsRe
 		"Date",
 	})
 
-	table.SetAlignment(tablewriter.ALIGN_CENTER)
-	for _, secret := range listSecretsResponse.Secrets {
+	table.SetAlignment(tablewriter.ALIGN_LEFT)
+	secrets := listSecretsResponse.Secrets
+	sort.Slice(secrets, func(i, j int) bool {
+		return secrets[i].Name < secrets[j].Name
+	})
+	for _, secret := range secrets {
 		namespace := "*"
 		if secret.Namespace != "" {
 			namespace = secret.Namespace

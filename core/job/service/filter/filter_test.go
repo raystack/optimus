@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/job/service/filter"
+	"github.com/raystack/optimus/core/job/service/filter"
 )
 
 func TestFilter(t *testing.T) {

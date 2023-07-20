@@ -1,5 +1,5 @@
 plugins:
-  - https://raw.githubusercontent.com/odpf/transformers/main/task/bq2bq/optimus-plugin-bq2bq.yaml
+  - https://raw.githubusercontent.com/raystack/transformers/main/task/bq2bq/optimus-plugin-bq2bq.yaml
   - ./plugins/optimus-plugin-echo.yaml
 secrets:
   - name: BQ_SERVICE_ACCOUNT

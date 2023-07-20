@@ -5,7 +5,7 @@ pluginmods:
   - cli
   - dependencyresolver
 pluginversion: latest
-image: docker.io/odpf/optimus-task-bq2bq-executor:latest
+image: docker.io/raystack/optimus-task-bq2bq-executor:latest
 entrypoint:
   shell: "/bin/bash"
   script: |-
@@ -19,8 +19,8 @@ questions:
     minlength: 3
 
 defaultconfig:
-- name: TEST
-  value: "{{.test}}"
+  - name: TEST
+    value: "{{.test}}"
 
 defaultassets:
   - name: query.sql

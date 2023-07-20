@@ -5,9 +5,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/job"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/models"
+	"github.com/raystack/optimus/core/job"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/models"
 )
 
 func TestEntitySpec(t *testing.T) {
@@ -18,7 +18,6 @@ func TestEntitySpec(t *testing.T) {
 	jobSchedule, _ := job.NewScheduleBuilder(startDate).
 		WithEndDate(endDate).
 		WithInterval("0 2 * * *").
-		WithCatchUp(true).
 		WithRetry(retry).
 		WithDependsOnPast(false).
 		Build()
@@ -69,7 +68,6 @@ func TestEntitySpec(t *testing.T) {
 			assert.Equal(t, jobSchedule.StartDate(), specA.Schedule().StartDate())
 			assert.Equal(t, jobSchedule.StartDate().String(), specA.Schedule().StartDate().String())
 			assert.Equal(t, jobSchedule.DependsOnPast(), specA.Schedule().DependsOnPast())
-			assert.Equal(t, jobSchedule.CatchUp(), specA.Schedule().CatchUp())
 			assert.Equal(t, jobSchedule.Interval(), specA.Schedule().Interval())
 
 			assert.Equal(t, jobWindow, specA.Window())
@@ -134,6 +132,57 @@ func TestEntitySpec(t *testing.T) {
 			resultMap := specs.ToNameAndSpecMap()
 
 			assert.EqualValues(t, expectedMap, resultMap)
+		})
+		t.Run("ToFullNameAndSpecMap should return map with fullname key and spec value", func(t *testing.T) {
+			projectName := tenant.ProjectName("sample-project")
+			specA, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+
+			specB, err := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+
+			expectedMap := map[job.FullName]*job.Spec{
+				"sample-project/job-A": specA,
+				"sample-project/job-B": specB,
+			}
+
+			specs := job.Specs([]*job.Spec{specA, specB})
+			resultMap := specs.ToFullNameAndSpecMap(projectName)
+
+			assert.EqualValues(t, expectedMap, resultMap)
+		})
+
+		t.Run("Validate should return error for duplicate jobs", func(t *testing.T) {
+			specA1, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+
+			specA2, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+
+			specB, err := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+
+			specs := job.Specs([]*job.Spec{specA1, specA2, specB})
+			err = specs.Validate()
+
+			assert.ErrorContains(t, err, "duplicate job-A")
+		})
+		t.Run("GetValid should return valid specs", func(t *testing.T) {
+			specA1, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+
+			specA2, err := job.NewSpecBuilder(jobVersion, "job-A", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+
+			specB, err := job.NewSpecBuilder(jobVersion, "job-B", "sample-owner", jobSchedule, jobWindow, jobTask).Build()
+			assert.NoError(t, err)
+
+			expectedValidSpecs := []*job.Spec{specB}
+
+			specs := job.Specs([]*job.Spec{specA1, specA2, specB})
+			actualValidSpecs := specs.GetValid()
+
+			assert.EqualValues(t, expectedValidSpecs, actualValidSpecs)
 		})
 	})
 
@@ -216,6 +265,11 @@ func TestEntitySpec(t *testing.T) {
 		t.Run("should return error if name is empty", func(t *testing.T) {
 			name, err := job.NameFrom("")
 			assert.ErrorContains(t, err, "name is empty")
+			assert.Empty(t, name)
+		})
+		t.Run("should return error if name length is more than maximum allowed", func(t *testing.T) {
+			name, err := job.NameFrom("QEQFbm'mWufBaUrkccHlFeEDXHaFBOYFRAYGmjwuuTvEhkMekpHVocCBfpX'XBghyFiTTqbYQAseWcfJJsUAdbHRWoWGODoINrglgDsxJjwrmoYRIrGxMAifCGJUqD")
+			assert.ErrorContains(t, err, "length of job name is 126, longer than the length allowed (125)")
 			assert.Empty(t, name)
 		})
 	})

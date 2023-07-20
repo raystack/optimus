@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/odpf/optimus/client/extension/model"
+	"github.com/raystack/optimus/client/extension/model"
 )
 
 func buildOwner(metadata *model.Metadata, project *model.RepositoryProject) *model.RepositoryOwner {

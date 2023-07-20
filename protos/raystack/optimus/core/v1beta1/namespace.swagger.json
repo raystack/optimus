@@ -1,0 +1,202 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "raystack/optimus/core/v1beta1/namespace.proto",
+    "version": "0.1"
+  },
+  "tags": [
+    {
+      "name": "NamespaceService"
+    }
+  ],
+  "host": "127.0.0.1:9100",
+  "basePath": "/api",
+  "schemes": ["http"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "paths": {
+    "/v1beta1/project/{projectName}/namespace": {
+      "get": {
+        "summary": "ListProjectNamespaces returns list of namespaces of a project",
+        "operationId": "NamespaceService_ListProjectNamespaces",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1ListProjectNamespacesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": ["NamespaceService"]
+      },
+      "post": {
+        "summary": "RegisterProjectNamespace creates a new namespace for a project",
+        "operationId": "NamespaceService_RegisterProjectNamespace",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1RegisterProjectNamespaceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "namespace": {
+                  "$ref": "#/definitions/v1beta1NamespaceSpecification"
+                }
+              }
+            }
+          }
+        ],
+        "tags": ["NamespaceService"]
+      }
+    },
+    "/v1beta1/project/{projectName}/namespace/{namespaceName}": {
+      "get": {
+        "summary": "GetNamespace returns namespace details based on project_name and namespace_name",
+        "operationId": "NamespaceService_GetNamespace",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1beta1GetNamespaceResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "namespaceName",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": ["NamespaceService"]
+      }
+    }
+  },
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "typeUrl": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1beta1GetNamespaceResponse": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "$ref": "#/definitions/v1beta1NamespaceSpecification"
+        }
+      }
+    },
+    "v1beta1ListProjectNamespacesResponse": {
+      "type": "object",
+      "properties": {
+        "namespaces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1NamespaceSpecification"
+          }
+        }
+      }
+    },
+    "v1beta1NamespaceSpecification": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1beta1RegisterProjectNamespaceResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "externalDocs": {
+    "description": "Optimus Namespace Service"
+  }
+}

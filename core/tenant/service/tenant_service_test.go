@@ -5,11 +5,12 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/raystack/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/core/tenant/service"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/core/tenant/service"
 )
 
 func TestTenantService(t *testing.T) {
@@ -23,9 +24,11 @@ func TestTenantService(t *testing.T) {
 	ns, _ := tenant.NewNamespace("testNS", proj.Name(), map[string]string{})
 	tnnt, _ := tenant.NewTenant(proj.Name().String(), ns.Name().String())
 
+	logger := log.NewLogrus()
+
 	t.Run("GetDetails", func(t *testing.T) {
 		t.Run("returns error when tenant invalid", func(t *testing.T) {
-			tenantService := service.NewTenantService(nil, nil, nil)
+			tenantService := service.NewTenantService(nil, nil, nil, logger)
 
 			_, err := tenantService.GetDetails(ctx, tenant.Tenant{})
 			assert.NotNil(t, err)
@@ -36,7 +39,7 @@ func TestTenantService(t *testing.T) {
 			projGetter.On("Get", ctx, tnnt.ProjectName()).Return(nil, errors.New("unable to get"))
 			defer projGetter.AssertExpectations(t)
 
-			tenantService := service.NewTenantService(projGetter, nil, nil)
+			tenantService := service.NewTenantService(projGetter, nil, nil, logger)
 
 			_, err := tenantService.GetDetails(ctx, tnnt)
 			assert.NotNil(t, err)
@@ -51,7 +54,7 @@ func TestTenantService(t *testing.T) {
 			nsGetter.On("Get", ctx, tnnt.ProjectName(), tnnt.NamespaceName()).Return(nil, errors.New("unable to get ns"))
 			defer nsGetter.AssertExpectations(t)
 
-			tenantService := service.NewTenantService(projGetter, nsGetter, nil)
+			tenantService := service.NewTenantService(projGetter, nsGetter, nil, logger)
 
 			_, err := tenantService.GetDetails(ctx, tnnt)
 			assert.NotNil(t, err)
@@ -70,7 +73,7 @@ func TestTenantService(t *testing.T) {
 			secGetter.On("GetAll", ctx, tnnt.ProjectName(), tnnt.NamespaceName().String()).Return(nil, errors.New("unable to get secrets"))
 			defer secGetter.AssertExpectations(t)
 
-			tenantService := service.NewTenantService(projGetter, nsGetter, secGetter)
+			tenantService := service.NewTenantService(projGetter, nsGetter, secGetter, logger)
 
 			_, err := tenantService.GetDetails(ctx, tnnt)
 			assert.NotNil(t, err)
@@ -91,7 +94,7 @@ func TestTenantService(t *testing.T) {
 				Return([]*tenant.PlainTextSecret{pts}, nil)
 			defer secGetter.AssertExpectations(t)
 
-			tenantService := service.NewTenantService(projGetter, nsGetter, secGetter)
+			tenantService := service.NewTenantService(projGetter, nsGetter, secGetter, logger)
 
 			d, err := tenantService.GetDetails(ctx, tnnt)
 			assert.Nil(t, err)
@@ -107,7 +110,7 @@ func TestTenantService(t *testing.T) {
 		t.Run("returns error when project name is invalid", func(t *testing.T) {
 			projGetter := new(projectGetter)
 
-			tenantService := service.NewTenantService(projGetter, nil, nil)
+			tenantService := service.NewTenantService(projGetter, nil, nil, logger)
 
 			_, err := tenantService.GetProject(ctx, "")
 			assert.NotNil(t, err)
@@ -118,7 +121,7 @@ func TestTenantService(t *testing.T) {
 			projGetter.On("Get", ctx, tnnt.ProjectName()).Return(proj, nil)
 			defer projGetter.AssertExpectations(t)
 
-			tenantService := service.NewTenantService(projGetter, nil, nil)
+			tenantService := service.NewTenantService(projGetter, nil, nil, logger)
 
 			p, err := tenantService.GetProject(ctx, tnnt.ProjectName())
 			assert.Nil(t, err)
@@ -129,7 +132,7 @@ func TestTenantService(t *testing.T) {
 	t.Run("GetSecrets", func(t *testing.T) {
 		t.Run("returns error when project name is invalid", func(t *testing.T) {
 			secretsGetter := new(secretGetter)
-			tenantService := service.NewTenantService(nil, nil, secretsGetter)
+			tenantService := service.NewTenantService(nil, nil, secretsGetter, logger)
 			invalidTenant := tenant.Tenant{}
 
 			_, err := tenantService.GetSecrets(ctx, invalidTenant)
@@ -142,7 +145,7 @@ func TestTenantService(t *testing.T) {
 			secretsGetter.On("GetAll", ctx, proj.Name(), ns.Name().String()).Return([]*tenant.PlainTextSecret{pts}, nil)
 			defer secretsGetter.AssertExpectations(t)
 
-			tenantService := service.NewTenantService(nil, nil, secretsGetter)
+			tenantService := service.NewTenantService(nil, nil, secretsGetter, logger)
 
 			secrets, err := tenantService.GetSecrets(ctx, tnnt)
 			assert.Nil(t, err)
@@ -152,7 +155,7 @@ func TestTenantService(t *testing.T) {
 	t.Run("GetSecret", func(t *testing.T) {
 		t.Run("return error when project name is invalid", func(t *testing.T) {
 			secretsGetter := new(secretGetter)
-			tenantService := service.NewTenantService(nil, nil, secretsGetter)
+			tenantService := service.NewTenantService(nil, nil, secretsGetter, logger)
 			invalidTenant := tenant.Tenant{}
 
 			_, err := tenantService.GetSecret(ctx, invalidTenant, "secret")
@@ -165,7 +168,7 @@ func TestTenantService(t *testing.T) {
 			secretsGetter.On("Get", ctx, proj.Name(), ns.Name().String(), "secret_name").Return(pts, nil)
 			defer secretsGetter.AssertExpectations(t)
 
-			tenantService := service.NewTenantService(nil, nil, secretsGetter)
+			tenantService := service.NewTenantService(nil, nil, secretsGetter, logger)
 
 			secret, err := tenantService.GetSecret(ctx, tnnt, pts.Name().String())
 			assert.Nil(t, err)

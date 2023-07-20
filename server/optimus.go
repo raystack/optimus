@@ -13,38 +13,41 @@ import (
 	"github.com/hashicorp/go-hclog"
 	hPlugin "github.com/hashicorp/go-plugin"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/odpf/salt/log"
+	"github.com/mitchellh/mapstructure"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/raystack/salt/log"
 	slackapi "github.com/slack-go/slack"
 	"google.golang.org/grpc"
 
-	"github.com/odpf/optimus/config"
-	jHandler "github.com/odpf/optimus/core/job/handler/v1beta1"
-	jResolver "github.com/odpf/optimus/core/job/resolver"
-	jService "github.com/odpf/optimus/core/job/service"
-	rModel "github.com/odpf/optimus/core/resource"
-	rHandler "github.com/odpf/optimus/core/resource/handler/v1beta1"
-	rService "github.com/odpf/optimus/core/resource/service"
-	schedulerHandler "github.com/odpf/optimus/core/scheduler/handler/v1beta1"
-	schedulerResolver "github.com/odpf/optimus/core/scheduler/resolver"
-	schedulerService "github.com/odpf/optimus/core/scheduler/service"
-	tHandler "github.com/odpf/optimus/core/tenant/handler/v1beta1"
-	tService "github.com/odpf/optimus/core/tenant/service"
-	"github.com/odpf/optimus/ext/notify/pagerduty"
-	"github.com/odpf/optimus/ext/notify/slack"
-	bqStore "github.com/odpf/optimus/ext/store/bigquery"
-	"github.com/odpf/optimus/internal/compiler"
-	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/models"
-	"github.com/odpf/optimus/internal/store/postgres"
-	jRepo "github.com/odpf/optimus/internal/store/postgres/job"
-	"github.com/odpf/optimus/internal/store/postgres/resource"
-	schedulerRepo "github.com/odpf/optimus/internal/store/postgres/scheduler"
-	"github.com/odpf/optimus/internal/store/postgres/tenant"
-	"github.com/odpf/optimus/internal/telemetry"
-	"github.com/odpf/optimus/plugin"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
-	oHandler "github.com/odpf/optimus/server/handler/v1beta1"
+	"github.com/raystack/optimus/config"
+	"github.com/raystack/optimus/core/event/moderator"
+	jHandler "github.com/raystack/optimus/core/job/handler/v1beta1"
+	jResolver "github.com/raystack/optimus/core/job/resolver"
+	jService "github.com/raystack/optimus/core/job/service"
+	rModel "github.com/raystack/optimus/core/resource"
+	rHandler "github.com/raystack/optimus/core/resource/handler/v1beta1"
+	rService "github.com/raystack/optimus/core/resource/service"
+	schedulerHandler "github.com/raystack/optimus/core/scheduler/handler/v1beta1"
+	schedulerResolver "github.com/raystack/optimus/core/scheduler/resolver"
+	schedulerService "github.com/raystack/optimus/core/scheduler/service"
+	tHandler "github.com/raystack/optimus/core/tenant/handler/v1beta1"
+	tService "github.com/raystack/optimus/core/tenant/service"
+	"github.com/raystack/optimus/ext/notify/pagerduty"
+	"github.com/raystack/optimus/ext/notify/slack"
+	bqStore "github.com/raystack/optimus/ext/store/bigquery"
+	"github.com/raystack/optimus/ext/transport/kafka"
+	"github.com/raystack/optimus/internal/compiler"
+	"github.com/raystack/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/models"
+	"github.com/raystack/optimus/internal/store/postgres"
+	jRepo "github.com/raystack/optimus/internal/store/postgres/job"
+	"github.com/raystack/optimus/internal/store/postgres/resource"
+	schedulerRepo "github.com/raystack/optimus/internal/store/postgres/scheduler"
+	"github.com/raystack/optimus/internal/store/postgres/tenant"
+	"github.com/raystack/optimus/internal/telemetry"
+	"github.com/raystack/optimus/plugin"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
+	oHandler "github.com/raystack/optimus/server/handler/v1beta1"
 )
 
 const keyLength = 32
@@ -64,6 +67,8 @@ type OptimusServer struct {
 
 	pluginRepo *models.PluginRepository
 	cleanupFn  []func()
+
+	eventHandler moderator.Handler
 }
 
 func New(conf *config.ServerConfig) (*OptimusServer, error) {
@@ -79,6 +84,7 @@ func New(conf *config.ServerConfig) (*OptimusServer, error) {
 	}
 
 	setupFns := []setupFn{
+		server.setupPublisher,
 		server.setupPlugins,
 		server.setupTelemetry,
 		server.setupAppKey,
@@ -99,6 +105,45 @@ func New(conf *config.ServerConfig) (*OptimusServer, error) {
 	server.startListening()
 
 	return server, nil
+}
+
+func (s *OptimusServer) setupPublisher() error {
+	if s.conf.Publisher == nil {
+		s.eventHandler = moderator.NoOpHandler{}
+		return nil
+	}
+
+	ch := make(chan []byte, s.conf.Publisher.Buffer)
+
+	var worker *moderator.Worker
+
+	switch s.conf.Publisher.Type {
+	case "kafka":
+		var kafkaConfig config.PublisherKafkaConfig
+		if err := mapstructure.Decode(s.conf.Publisher.Config, &kafkaConfig); err != nil {
+			return err
+		}
+
+		writer := kafka.NewWriter(kafkaConfig.BrokerURLs, kafkaConfig.Topic, s.logger)
+		interval := time.Second * time.Duration(kafkaConfig.BatchIntervalSecond)
+		worker = moderator.NewWorker(ch, writer, interval, s.logger)
+	default:
+		return fmt.Errorf("publisher with type [%s] is not recognized", s.conf.Publisher.Type)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go worker.Run(ctx)
+
+	s.cleanupFn = append(s.cleanupFn, func() {
+		cancel()
+
+		if err := worker.Close(); err != nil {
+			s.logger.Error("error closing publishing worker: %v", err)
+		}
+	})
+
+	s.eventHandler = moderator.NewEventHandler(ch, s.logger)
+	return nil
 }
 
 func (s *OptimusServer) setupPlugins() error {
@@ -235,20 +280,8 @@ func (s *OptimusServer) setupHandlers() error {
 
 	tProjectService := tService.NewProjectService(tProjectRepo)
 	tNamespaceService := tService.NewNamespaceService(tNamespaceRepo)
-	tSecretService := tService.NewSecretService(s.key, tSecretRepo)
-	tenantService := tService.NewTenantService(tProjectService, tNamespaceService, tSecretService)
-
-	// Resource Bounded Context
-	resourceRepository := resource.NewRepository(s.dbPool)
-	backupRepository := resource.NewBackupRepository(s.dbPool)
-	resourceManager := rService.NewResourceManager(resourceRepository, s.logger)
-	resourceService := rService.NewResourceService(s.logger, resourceRepository, resourceManager, tenantService)
-	backupService := rService.NewBackupService(backupRepository, resourceRepository, resourceManager)
-
-	// Register datastore
-	bqClientProvider := bqStore.NewClientProvider()
-	bigqueryStore := bqStore.NewBigqueryDataStore(tenantService, bqClientProvider)
-	resourceManager.RegisterDatastore(rModel.Bigquery, bigqueryStore)
+	tSecretService := tService.NewSecretService(s.key, tSecretRepo, s.logger)
+	tenantService := tService.NewTenantService(tProjectService, tNamespaceService, tSecretService, s.logger)
 
 	// Scheduler bounded context
 	jobRunRepo := schedulerRepo.NewJobRunRepository(s.dbPool)
@@ -277,9 +310,9 @@ func (s *OptimusServer) setupHandlers() error {
 
 	newEngine := compiler.NewEngine()
 
-	newPriorityResolver := schedulerResolver.NewPriorityResolver()
-	assetCompiler := schedulerService.NewJobAssetsCompiler(newEngine, s.pluginRepo)
-	jobInputCompiler := schedulerService.NewJobInputCompiler(tenantService, newEngine, assetCompiler)
+	newPriorityResolver := schedulerResolver.NewSimpleResolver()
+	assetCompiler := schedulerService.NewJobAssetsCompiler(newEngine, s.pluginRepo, s.logger)
+	jobInputCompiler := schedulerService.NewJobInputCompiler(tenantService, newEngine, assetCompiler, s.logger)
 	notificationService := schedulerService.NewNotifyService(s.logger, jobProviderRepo, tenantService, notifierChanels)
 	newScheduler, err := NewScheduler(s.logger, s.conf, s.pluginRepo, tProjectService, tSecretService)
 	if err != nil {
@@ -291,10 +324,11 @@ func (s *OptimusServer) setupHandlers() error {
 	replayManager := schedulerService.NewReplayManager(s.logger, replayRepository, replayWorker, func() time.Time {
 		return time.Now().UTC()
 	}, s.conf.Replay)
-	replayValidator := schedulerService.NewValidator(replayRepository, newScheduler)
-	replayService := schedulerService.NewReplayService(replayRepository, jobProviderRepo, replayValidator)
 
-	newJobRunService := schedulerService.NewJobRunService(s.logger, jobProviderRepo, jobRunRepo, replayRepository, operatorRunRepository, newScheduler, newPriorityResolver, jobInputCompiler)
+	replayValidator := schedulerService.NewValidator(replayRepository, newScheduler, jobProviderRepo)
+	replayService := schedulerService.NewReplayService(replayRepository, jobProviderRepo, replayValidator, s.logger)
+
+	newJobRunService := schedulerService.NewJobRunService(s.logger, jobProviderRepo, jobRunRepo, replayRepository, operatorRunRepository, newScheduler, newPriorityResolver, jobInputCompiler, s.eventHandler)
 
 	// Job Bounded Context Setup
 	jJobRepo := jRepo.NewJobRepository(s.dbPool)
@@ -302,7 +336,19 @@ func (s *OptimusServer) setupHandlers() error {
 	jExternalUpstreamResolver, _ := jResolver.NewExternalUpstreamResolver(s.conf.ResourceManagers)
 	jInternalUpstreamResolver := jResolver.NewInternalUpstreamResolver(jJobRepo)
 	jUpstreamResolver := jResolver.NewUpstreamResolver(jJobRepo, jExternalUpstreamResolver, jInternalUpstreamResolver)
-	jJobService := jService.NewJobService(jJobRepo, jPluginService, jUpstreamResolver, tenantService, s.logger)
+	jJobService := jService.NewJobService(jJobRepo, jJobRepo, jJobRepo, jPluginService, jUpstreamResolver, tenantService, s.eventHandler, s.logger, newJobRunService, newScheduler)
+
+	// Resource Bounded Context
+	resourceRepository := resource.NewRepository(s.dbPool)
+	backupRepository := resource.NewBackupRepository(s.dbPool)
+	resourceManager := rService.NewResourceManager(resourceRepository, s.logger)
+	resourceService := rService.NewResourceService(s.logger, resourceRepository, jJobService, resourceManager, s.eventHandler)
+	backupService := rService.NewBackupService(backupRepository, resourceRepository, resourceManager, s.logger)
+
+	// Register datastore
+	bqClientProvider := bqStore.NewClientProvider()
+	bigqueryStore := bqStore.NewBigqueryDataStore(tenantService, bqClientProvider)
+	resourceManager.RegisterDatastore(rModel.Bigquery, bigqueryStore)
 
 	// Tenant Handlers
 	pb.RegisterSecretServiceServer(s.grpcServer, tHandler.NewSecretsHandler(s.logger, tSecretService))

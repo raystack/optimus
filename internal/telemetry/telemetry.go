@@ -7,10 +7,10 @@ import (
 	"net/http/pprof"
 	"time"
 
-	"github.com/odpf/salt/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/raystack/salt/log"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/jaeger"
@@ -19,7 +19,7 @@ import (
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 
-	"github.com/odpf/optimus/config"
+	"github.com/raystack/optimus/config"
 )
 
 const MetricWaitInterval = time.Second * 2

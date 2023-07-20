@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/optimus/internal/errors"
-	"github.com/odpf/optimus/internal/lib/cron"
+	"github.com/raystack/optimus/internal/errors"
+	"github.com/raystack/optimus/internal/lib/cron"
 )
 
 const (
@@ -21,8 +21,8 @@ const (
 	StateSuccess State = "success"
 	StateFailed  State = "failed"
 
-	// StateReplayed is a replay-specific state to identify a run has been replayed but not yet finished
-	StateReplayed State = "replayed"
+	StateWaitUpstream State = "wait_upstream"
+	StateInProgress   State = "in_progress"
 )
 
 var TaskEndStates = []State{StateSuccess, StateFailed, StateRetry}
@@ -45,8 +45,10 @@ func StateFromString(state string) (State, error) {
 		return StateSuccess, nil
 	case string(StateFailed):
 		return StateFailed, nil
-	case string(StateReplayed):
-		return StateReplayed, nil
+	case string(StateWaitUpstream):
+		return StateWaitUpstream, nil
+	case string(StateInProgress):
+		return StateInProgress, nil
 	default:
 		return "", errors.InvalidArgument(EntityJobRun, "invalid state for run "+state)
 	}
@@ -91,6 +93,14 @@ func (j JobRunStatusList) GetSortedRunsByStates(states []State) []*JobRunStatus 
 			result = append(result, run)
 		}
 	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ScheduledAt.Before(result[j].ScheduledAt)
+	})
+	return result
+}
+
+func (j JobRunStatusList) GetSortedRunsByScheduledAt() []*JobRunStatus {
+	result := []*JobRunStatus(j)
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].ScheduledAt.Before(result[j].ScheduledAt)
 	})

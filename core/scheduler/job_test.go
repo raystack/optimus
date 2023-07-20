@@ -6,8 +6,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/tenant"
+	"github.com/raystack/optimus/core/scheduler"
+	"github.com/raystack/optimus/core/tenant"
 )
 
 func TestJob(t *testing.T) {
@@ -135,6 +135,20 @@ func TestJob(t *testing.T) {
 		}
 		labels := jobWithDetails.GetLabelsAsString()
 		assert.Equal(t, labels, "label1=someVale")
+	})
+	t.Run("GetUniqueLabelValues", func(t *testing.T) {
+		jobWithDetails := scheduler.JobWithDetails{
+			Name: "jobName",
+			JobMetadata: &scheduler.JobMetadata{
+				Labels: map[string]string{
+					"label1": "someVale",
+					"label2": "someVale",
+					"label3": "another",
+				},
+			},
+		}
+		labels := jobWithDetails.GetUniqueLabelValues()
+		assert.ElementsMatch(t, labels, []string{"someVale", "another"})
 	})
 	t.Run("GroupJobsByTenant", func(t *testing.T) {
 		t1, _ := tenant.NewTenant("proj", "ns1")

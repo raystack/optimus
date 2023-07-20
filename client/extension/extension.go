@@ -3,8 +3,8 @@ package extension
 import (
 	"github.com/spf13/afero"
 
-	"github.com/odpf/optimus/client/extension/internal"
-	"github.com/odpf/optimus/client/extension/model"
+	"github.com/raystack/optimus/client/extension/internal"
+	"github.com/raystack/optimus/client/extension/model"
 )
 
 // CleanExtensionFS is file system that will be used when cleaning extension.

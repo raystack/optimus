@@ -10,9 +10,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
+	"github.com/raystack/optimus/core/scheduler"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/errors"
 )
 
 const (
@@ -61,14 +61,15 @@ func (j *jobRun) toJobRun() (*scheduler.JobRun, error) {
 		}
 	}
 	return &scheduler.JobRun{
-		ID:         j.ID,
-		JobName:    scheduler.JobName(j.JobName),
-		Tenant:     t,
-		State:      state,
-		StartTime:  j.StartTime,
-		SLAAlert:   j.SLAAlert,
-		EndTime:    j.EndTime,
-		Monitoring: monitoring,
+		ID:          j.ID,
+		JobName:     scheduler.JobName(j.JobName),
+		Tenant:      t,
+		State:       state,
+		ScheduledAt: j.ScheduledAt,
+		StartTime:   j.StartTime,
+		SLAAlert:    j.SLAAlert,
+		EndTime:     j.EndTime,
+		Monitoring:  monitoring,
 	}, nil
 }
 
@@ -79,7 +80,10 @@ func (j *JobRunRepository) GetByID(ctx context.Context, id scheduler.JobRunID) (
 		Scan(&jr.ID, &jr.JobName, &jr.NamespaceName, &jr.ProjectName, &jr.ScheduledAt, &jr.StartTime, &jr.EndTime,
 			&jr.Status, &jr.SLADefinition, &jr.SLAAlert, &jr.Monitoring)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.NotFound(scheduler.EntityJobRun, "no record for job run id "+id.UUID().String())
+		}
+		return nil, errors.Wrap(scheduler.EntityJobRun, "error while getting job run", err)
 	}
 	return jr.toJobRun()
 }
@@ -97,6 +101,12 @@ func (j *JobRunRepository) GetByScheduledAt(ctx context.Context, t tenant.Tenant
 		return nil, errors.Wrap(scheduler.EntityJobRun, "error while getting run", err)
 	}
 	return jr.toJobRun()
+}
+
+func (j *JobRunRepository) UpdateState(ctx context.Context, jobRunID uuid.UUID, status scheduler.State) error {
+	updateJobRun := "update job_run set status = $1, updated_at = NOW() where id = $2"
+	_, err := j.db.Exec(ctx, updateJobRun, status, jobRunID)
+	return errors.WrapIfErr(scheduler.EntityJobRun, "unable to update job run", err)
 }
 
 func (j *JobRunRepository) Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, status scheduler.State) error {
@@ -130,7 +140,7 @@ func (j *JobRunRepository) UpdateMonitoring(ctx context.Context, jobRunID uuid.U
 }
 
 func (j *JobRunRepository) Create(ctx context.Context, t tenant.Tenant, jobName scheduler.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error {
-	insertJobRun := `INSERT INTO job_run (` + columnsToStore + `, created_at, updated_at) values ($1, $2, $3, $4, NOW(), TIMESTAMP '3000-01-01 00:00:00', $5, $6, FALSE, NOW(), NOW())`
+	insertJobRun := `INSERT INTO job_run (` + columnsToStore + `, created_at, updated_at) values ($1, $2, $3, $4, NOW(), TIMESTAMP '3000-01-01 00:00:00', $5, $6, FALSE, NOW(), NOW()) ON CONFLICT DO NOTHING`
 	_, err := j.db.Exec(ctx, insertJobRun, jobName, t.NamespaceName(), t.ProjectName(), scheduledAt, scheduler.StateRunning, slaDefinitionInSec)
 	return errors.WrapIfErr(scheduler.EntityJobRun, "unable to create job run", err)
 }

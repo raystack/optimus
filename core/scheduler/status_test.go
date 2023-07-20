@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/internal/lib/cron"
+	"github.com/raystack/optimus/core/scheduler"
+	"github.com/raystack/optimus/internal/lib/cron"
 )
 
 func TestStatus(t *testing.T) {
@@ -86,20 +86,20 @@ func TestStatus(t *testing.T) {
 	})
 	t.Run("StateFromString", func(t *testing.T) {
 		expectationsMap := map[string]scheduler.State{
-			"pending":  scheduler.StatePending,
-			"PENDING":  scheduler.StatePending,
-			"accepted": scheduler.StateAccepted,
-			"ACCEPTED": scheduler.StateAccepted,
-			"running":  scheduler.StateRunning,
-			"RUNNING":  scheduler.StateRunning,
-			"queued":   scheduler.StateQueued,
-			"QUEUED":   scheduler.StateQueued,
-			"success":  scheduler.StateSuccess,
-			"SUCCESS":  scheduler.StateSuccess,
-			"failed":   scheduler.StateFailed,
-			"FAILED":   scheduler.StateFailed,
-			"replayed": scheduler.StateReplayed,
-			"REPLAYED": scheduler.StateReplayed,
+			"pending":     scheduler.StatePending,
+			"PENDING":     scheduler.StatePending,
+			"accepted":    scheduler.StateAccepted,
+			"ACCEPTED":    scheduler.StateAccepted,
+			"running":     scheduler.StateRunning,
+			"RUNNING":     scheduler.StateRunning,
+			"queued":      scheduler.StateQueued,
+			"QUEUED":      scheduler.StateQueued,
+			"success":     scheduler.StateSuccess,
+			"SUCCESS":     scheduler.StateSuccess,
+			"failed":      scheduler.StateFailed,
+			"FAILED":      scheduler.StateFailed,
+			"in_progress": scheduler.StateInProgress,
+			"IN_PROGRESS": scheduler.StateInProgress,
 		}
 		for input, expectedState := range expectationsMap {
 			respState, err := scheduler.StateFromString(input)
@@ -155,6 +155,43 @@ func TestStatus(t *testing.T) {
 		}
 
 		runs := jobRunStatusList.GetSortedRunsByStates([]scheduler.State{scheduler.StateRunning})
+		assert.Equal(t, expectedRuns, runs)
+	})
+	t.Run("GetSortedRunsByScheduledAt", func(t *testing.T) {
+		time1 := time.Date(2023, 0o1, 1, 0, 0, 0, 0, time.UTC)
+		time2 := time.Date(2023, 0o1, 2, 0, 0, 0, 0, time.UTC)
+		time3 := time.Date(2023, 0o1, 3, 0, 0, 0, 0, time.UTC)
+
+		jobRunStatusList := scheduler.JobRunStatusList([]*scheduler.JobRunStatus{
+			{
+				ScheduledAt: time3,
+				State:       scheduler.StateRunning,
+			},
+			{
+				ScheduledAt: time1,
+				State:       scheduler.StatePending,
+			},
+			{
+				ScheduledAt: time2,
+				State:       scheduler.StateRunning,
+			},
+		})
+		expectedRuns := []*scheduler.JobRunStatus{
+			{
+				ScheduledAt: time1,
+				State:       scheduler.StatePending,
+			},
+			{
+				ScheduledAt: time2,
+				State:       scheduler.StateRunning,
+			},
+			{
+				ScheduledAt: time3,
+				State:       scheduler.StateRunning,
+			},
+		}
+
+		runs := jobRunStatusList.GetSortedRunsByScheduledAt()
 		assert.Equal(t, expectedRuns, runs)
 	})
 	t.Run("MergeWithUpdatedRuns", func(t *testing.T) {

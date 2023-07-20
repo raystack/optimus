@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/odpf/optimus/internal/utils"
+	"github.com/raystack/optimus/internal/utils"
 )
 
 type windowV2 struct {

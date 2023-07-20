@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/odpf/optimus/sdk/plugin"
+	"github.com/raystack/optimus/sdk/plugin"
 )
 
 var ErrUnsupportedPlugin = errors.New("unsupported plugin requested, make sure its correctly installed")

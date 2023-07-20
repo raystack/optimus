@@ -9,15 +9,17 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
 
-	"github.com/odpf/optimus/client/cmd/internal/connectivity"
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/client/local/specio"
-	"github.com/odpf/optimus/config"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/client/cmd/internal/connection"
+	"github.com/raystack/optimus/client/cmd/internal/logger"
+	"github.com/raystack/optimus/client/local/model"
+	"github.com/raystack/optimus/client/local/specio"
+	"github.com/raystack/optimus/config"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 const (
@@ -25,12 +27,16 @@ const (
 )
 
 type uploadAllCommand struct {
-	logger       log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	clientConfig *config.ClientConfig
 
 	selectedNamespaceNames []string
 	verbose                bool
 	configFilePath         string
+
+	batchSize int
 }
 
 // NewUploadAllCommand initializes command for uploading all resources
@@ -43,7 +49,7 @@ func NewUploadAllCommand() *cobra.Command {
 		Use:     "upload-all",
 		Short:   "Upload all current optimus resources to server",
 		Long:    heredoc.Doc(`Apply local changes to destination server which includes creating/updating resources`),
-		Example: "optimus resource upload-all [--verbose]",
+		Example: "optimus resource upload-all [--verbose | -b 1000]",
 		Annotations: map[string]string{
 			"group:core": "true",
 		},
@@ -53,6 +59,7 @@ func NewUploadAllCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&uploadAll.configFilePath, "config", "c", uploadAll.configFilePath, "File path for client configuration")
 	cmd.Flags().StringSliceVarP(&uploadAll.selectedNamespaceNames, "namespace-names", "N", nil, "Selected namespaces of optimus project")
 	cmd.Flags().BoolVarP(&uploadAll.verbose, "verbose", "v", false, "Print details related to upload-all stages")
+	cmd.Flags().IntVarP(&uploadAll.batchSize, "batch-size", "b", 0, "Number of resources to upload in a batch")
 	return cmd
 }
 
@@ -62,6 +69,8 @@ func (u *uploadAllCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+
+	u.connection = connection.New(u.logger, u.clientConfig)
 	return nil
 }
 
@@ -80,13 +89,16 @@ func (u *uploadAllCommand) RunE(_ *cobra.Command, _ []string) error {
 }
 
 func (u *uploadAllCommand) uploadAll(selectedNamespaces []*config.Namespace) error {
-	conn, err := connectivity.NewConnectivity(u.clientConfig.Host, uploadAllTimeout)
+	conn, err := u.connection.Create(u.clientConfig.Host)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	if err := u.uploadAllResources(conn, selectedNamespaces); err != nil {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), uploadAllTimeout)
+	defer cancelFunc()
+
+	if err := u.uploadAllResources(ctx, conn, selectedNamespaces); err != nil {
 		return err
 	}
 	u.logger.Info("finished uploading resource specifications to server!\n")
@@ -94,7 +106,7 @@ func (u *uploadAllCommand) uploadAll(selectedNamespaces []*config.Namespace) err
 	return nil
 }
 
-func (u *uploadAllCommand) uploadAllResources(conn *connectivity.Connectivity, selectedNamespaces []*config.Namespace) error {
+func (u *uploadAllCommand) uploadAllResources(ctx context.Context, conn *grpc.ClientConn, selectedNamespaces []*config.Namespace) error {
 	var namespaceNames []string
 	for _, namespace := range selectedNamespaces {
 		namespaceNames = append(namespaceNames, namespace.Name)
@@ -102,7 +114,7 @@ func (u *uploadAllCommand) uploadAllResources(conn *connectivity.Connectivity, s
 
 	u.logger.Info("> Uploading all resources for namespaces [%s]", strings.Join(namespaceNames, ","))
 
-	stream, err := u.getResourceStreamClient(conn)
+	stream, err := u.getResourceStreamClient(ctx, conn)
 	if err != nil {
 		return err
 	}
@@ -135,34 +147,58 @@ func (u *uploadAllCommand) sendNamespaceResourceRequest(stream pb.ResourceServic
 	datastoreSpecFs := CreateDataStoreSpecFs(namespace)
 	for storeName, repoFS := range datastoreSpecFs {
 		u.logger.Info("> Deploying %s resources for namespace [%s]", storeName, namespace.Name)
-		request, err := u.getResourceDeploymentRequest(namespace.Name, storeName, repoFS)
+
+		resources, err := readResourceSpecs(repoFS)
 		if err != nil {
 			return fmt.Errorf("error getting resource specs for namespace [%s]: %w", namespace.Name, err)
 		}
 
-		if err = stream.Send(request); err != nil {
-			return fmt.Errorf("resource upload for namespace [%s] failed: %w", namespace.Name, err)
+		resLength := len(resources)
+		size := resLength
+		if u.batchSize > 0 {
+			size = u.batchSize
 		}
-		progressFn(len(request.GetResources()))
+
+		var errorReturned bool
+		for i := 0; i < resLength; i += size {
+			endIndex := i + size
+			if resLength < endIndex {
+				endIndex = resLength
+			}
+
+			request, err := u.getResourceDeploymentRequest(namespace.Name, storeName, resources[i:endIndex])
+			if err != nil {
+				u.logger.Error("Unable to get resource request, err: %s", err)
+				continue
+			}
+
+			if err = stream.Send(request); err != nil {
+				errorReturned = true
+				u.logger.Error("Error: %s", err)
+			}
+			progressFn(len(request.GetResources()))
+		}
+		if errorReturned {
+			return fmt.Errorf("resource upload for namespace [%s] failed", namespace.Name)
+		}
 	}
 	return nil
 }
 
-func (u *uploadAllCommand) getResourceDeploymentRequest(namespaceName, storeName string,
-	repoFS afero.Fs,
-) (*pb.DeployResourceSpecificationRequest, error) {
+func readResourceSpecs(repoFS afero.Fs) ([]*model.ResourceSpec, error) {
 	resourceSpecReadWriter, err := specio.NewResourceSpecReadWriter(repoFS)
 	if err != nil {
 		return nil, err
 	}
 
-	resourceSpecs, err := resourceSpecReadWriter.ReadAll(".")
-	if err != nil {
-		return nil, err
-	}
+	return resourceSpecReadWriter.ReadAll(".")
+}
 
-	resourceSpecsProto := make([]*pb.ResourceSpecification, len(resourceSpecs))
-	for i, resourceSpec := range resourceSpecs {
+func (u *uploadAllCommand) getResourceDeploymentRequest(namespaceName, storeName string,
+	resources []*model.ResourceSpec,
+) (*pb.DeployResourceSpecificationRequest, error) {
+	resourceSpecsProto := make([]*pb.ResourceSpecification, len(resources))
+	for i, resourceSpec := range resources {
 		resourceSpecProto, err := resourceSpec.ToProto()
 		if err != nil {
 			return nil, err
@@ -178,10 +214,10 @@ func (u *uploadAllCommand) getResourceDeploymentRequest(namespaceName, storeName
 	}, nil
 }
 
-func (u *uploadAllCommand) getResourceStreamClient(conn *connectivity.Connectivity) (pb.ResourceService_DeployResourceSpecificationClient, error) {
-	client := pb.NewResourceServiceClient(conn.GetConnection())
+func (u *uploadAllCommand) getResourceStreamClient(ctx context.Context, conn *grpc.ClientConn) (pb.ResourceService_DeployResourceSpecificationClient, error) {
+	client := pb.NewResourceServiceClient(conn)
 	// TODO: create a new api for upload-all and remove deploy
-	stream, err := client.DeployResourceSpecification(conn.GetContext())
+	stream, err := client.DeployResourceSpecification(ctx)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			u.logger.Error("Deployment of resources took too long, timing out")

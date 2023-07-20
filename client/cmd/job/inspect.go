@@ -6,18 +6,18 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
-	"github.com/odpf/optimus/client/cmd/internal/connectivity"
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/client/cmd/internal/survey"
-	"github.com/odpf/optimus/client/local/model"
-	"github.com/odpf/optimus/client/local/specio"
-	"github.com/odpf/optimus/config"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/client/cmd/internal/connection"
+	"github.com/raystack/optimus/client/cmd/internal/logger"
+	"github.com/raystack/optimus/client/cmd/internal/survey"
+	"github.com/raystack/optimus/client/local/model"
+	"github.com/raystack/optimus/client/local/specio"
+	"github.com/raystack/optimus/config"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 const (
@@ -27,7 +27,8 @@ const (
 )
 
 type inspectCommand struct {
-	logger log.Logger
+	logger     log.Logger
+	connection connection.Connection
 
 	configFilePath string
 
@@ -68,6 +69,8 @@ func (e *inspectCommand) PreRunE(_ *cobra.Command, _ []string) error {
 	e.logger = logger.NewClientLogger()
 	e.jobSurvey = survey.NewJobSurvey()
 	e.namespaceSurvey = survey.NewNamespaceSurvey(e.logger)
+
+	e.connection = connection.New(e.logger, e.clientConfig)
 	return nil
 }
 
@@ -127,7 +130,7 @@ func (e *inspectCommand) loadConfig() error {
 }
 
 func (e *inspectCommand) inspectJobSpecification(jobSpec *model.JobSpec, serverFetch bool) error {
-	conn, err := connectivity.NewConnectivity(e.clientConfig.Host, inspectTimeout)
+	conn, err := e.connection.Create(e.clientConfig.Host)
 	if err != nil {
 		return err
 	}
@@ -147,8 +150,11 @@ func (e *inspectCommand) inspectJobSpecification(jobSpec *model.JobSpec, serverF
 		Spec:          adaptedSpec,
 		JobName:       jobName,
 	}
-	job := pb.NewJobSpecificationServiceClient(conn.GetConnection())
-	resp, err := job.JobInspect(conn.GetContext(), jobInspectRequest)
+	job := pb.NewJobSpecificationServiceClient(conn)
+
+	ctx, dialCancel := context.WithTimeout(context.Background(), inspectTimeout)
+	defer dialCancel()
+	resp, err := job.JobInspect(ctx, jobInspectRequest)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			e.logger.Error("Inspect process took too long, timing out")

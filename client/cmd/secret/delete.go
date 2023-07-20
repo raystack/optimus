@@ -5,19 +5,21 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 	"github.com/spf13/cobra"
 
-	"github.com/odpf/optimus/client/cmd/internal"
-	"github.com/odpf/optimus/client/cmd/internal/connectivity"
-	"github.com/odpf/optimus/client/cmd/internal/logger"
-	"github.com/odpf/optimus/client/cmd/internal/progressbar"
-	"github.com/odpf/optimus/config"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/client/cmd/internal"
+	"github.com/raystack/optimus/client/cmd/internal/connection"
+	"github.com/raystack/optimus/client/cmd/internal/logger"
+	"github.com/raystack/optimus/client/cmd/internal/progressbar"
+	"github.com/raystack/optimus/config"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 type deleteCommand struct {
-	logger         log.Logger
+	logger     log.Logger
+	connection connection.Connection
+
 	configFilePath string
 
 	projectName   string
@@ -72,6 +74,9 @@ func (d *deleteCommand) PreRunE(cmd *cobra.Command, _ []string) error {
 	if d.host == "" {
 		d.host = conf.Host
 	}
+
+	d.connection = connection.New(d.logger, conf)
+
 	return nil
 }
 
@@ -90,7 +95,7 @@ func (d *deleteCommand) RunE(_ *cobra.Command, args []string) error {
 }
 
 func (d *deleteCommand) deleteSecret(req *pb.DeleteSecretRequest) error {
-	conn, err := connectivity.NewConnectivity(d.host, secretTimeout)
+	conn, err := d.connection.Create(d.host)
 	if err != nil {
 		return err
 	}
@@ -98,9 +103,12 @@ func (d *deleteCommand) deleteSecret(req *pb.DeleteSecretRequest) error {
 
 	spinner := progressbar.NewProgressBar()
 	spinner.Start("please wait...")
-	secret := pb.NewSecretServiceClient(conn.GetConnection())
+	secret := pb.NewSecretServiceClient(conn)
 
-	_, err = secret.DeleteSecret(conn.GetContext(), req)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), secretTimeout)
+	defer cancelFunc()
+
+	_, err = secret.DeleteSecret(ctx, req)
 	spinner.Stop()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {

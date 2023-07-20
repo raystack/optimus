@@ -4,11 +4,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/odpf/salt/log"
+	"github.com/raystack/salt/log"
 
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/errors"
-	pb "github.com/odpf/optimus/protos/odpf/optimus/core/v1beta1"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/errors"
+	pb "github.com/raystack/optimus/protos/raystack/optimus/core/v1beta1"
 )
 
 type NamespaceService interface {
@@ -29,16 +29,19 @@ func (nh *NamespaceHandler) RegisterProjectNamespace(ctx context.Context, req *p
 ) {
 	projName, err := tenant.ProjectNameFrom(req.GetProjectName())
 	if err != nil {
+		nh.l.Error("error adapting project name [%s]: %s", req.GetProjectName(), err)
 		return nil, errors.GRPCErr(err, "error in register namespace "+req.GetNamespace().Name)
 	}
 
 	namespace, err := fromNamespaceProto(req.GetNamespace(), projName)
 	if err != nil {
+		nh.l.Error("error adapting project [%s]: %s", projName, err)
 		return nil, errors.GRPCErr(err, "error in register namespace "+req.GetNamespace().Name)
 	}
 
 	err = nh.nsService.Save(ctx, namespace)
 	if err != nil {
+		nh.l.Error("error saving namespace: %s", err)
 		return nil, errors.GRPCErr(err, "error in register namespace "+req.GetNamespace().Name)
 	}
 
@@ -50,11 +53,13 @@ func (nh *NamespaceHandler) ListProjectNamespaces(ctx context.Context, req *pb.L
 ) {
 	projName, err := tenant.ProjectNameFrom(req.GetProjectName())
 	if err != nil {
+		nh.l.Error("error adapting project name [%s]: %s", req.GetProjectName(), err)
 		return nil, errors.GRPCErr(err, "error in list namespaces")
 	}
 
 	namespaces, err := nh.nsService.GetAll(ctx, projName)
 	if err != nil {
+		nh.l.Error("error getting all namespaces for project [%s]: %s", projName, err)
 		return nil, errors.GRPCErr(err, "error in list namespaces")
 	}
 
@@ -73,16 +78,19 @@ func (nh *NamespaceHandler) GetNamespace(ctx context.Context, request *pb.GetNam
 ) {
 	projName, err := tenant.ProjectNameFrom(request.GetProjectName())
 	if err != nil {
+		nh.l.Error("error adapting project name [%s]: %s", request.GetProjectName(), err)
 		return nil, errors.GRPCErr(err, "error in get namespace "+request.NamespaceName)
 	}
 
 	namespaceName, err := tenant.NamespaceNameFrom(request.GetNamespaceName())
 	if err != nil {
+		nh.l.Error("error adapting namespace name [%s]: %s", request.GetNamespaceName(), err)
 		return nil, errors.GRPCErr(err, "error in get namespace "+request.NamespaceName)
 	}
 
 	namespace, err := nh.nsService.Get(ctx, projName, namespaceName)
 	if err != nil {
+		nh.l.Error("error getting namespace: %s", err)
 		return nil, errors.GRPCErr(err, "error in get namespace "+request.NamespaceName)
 	}
 

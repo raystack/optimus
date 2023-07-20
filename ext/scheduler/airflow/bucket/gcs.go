@@ -12,8 +12,8 @@ import (
 	"gocloud.dev/gcp"
 	"golang.org/x/oauth2/google"
 
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/ext/scheduler/airflow"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/ext/scheduler/airflow"
 )
 
 const (

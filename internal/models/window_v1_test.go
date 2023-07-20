@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/odpf/optimus/internal/models"
+	"github.com/raystack/optimus/internal/models"
 )
 
 func TestWindowV1(t *testing.T) {

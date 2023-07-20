@@ -33,12 +33,12 @@ jobs:
           go-version: '1.19'
       - name: test binaries
         run: make test-ci
-      - name: Install goveralls
-        run: go install github.com/mattn/goveralls@latest
-      - name: Send coverage
-        env:
-          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: goveralls -coverprofile=coverage.txt -service=github
+      # - name: Install goveralls
+      #   run: go install github.com/mattn/goveralls@latest
+      # - name: Send coverage
+      #   env:
+      #     COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   run: goveralls -coverprofile=coverage.txt -service=github
   integration-test:
     runs-on: ubuntu-latest
     services:

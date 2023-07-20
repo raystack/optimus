@@ -6,9 +6,9 @@ import (
 	"github.com/hashicorp/go-hclog"
 	hPlugin "github.com/hashicorp/go-plugin"
 
-	"github.com/odpf/optimus/config"
-	"github.com/odpf/optimus/internal/models"
-	oPlugin "github.com/odpf/optimus/plugin"
+	"github.com/raystack/optimus/config"
+	"github.com/raystack/optimus/internal/models"
+	oPlugin "github.com/raystack/optimus/plugin"
 )
 
 // InitPlugins triggers initialization of all available plugins

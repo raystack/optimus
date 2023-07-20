@@ -6,13 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/raystack/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/odpf/optimus/core/scheduler"
-	"github.com/odpf/optimus/core/scheduler/service"
-	"github.com/odpf/optimus/core/tenant"
-	"github.com/odpf/optimus/internal/models"
+	"github.com/raystack/optimus/core/scheduler"
+	"github.com/raystack/optimus/core/scheduler/service"
+	"github.com/raystack/optimus/core/tenant"
+	"github.com/raystack/optimus/internal/models"
 )
 
 func TestExecutorCompiler(t *testing.T) {
@@ -34,6 +35,8 @@ func TestExecutorCompiler(t *testing.T) {
 	currentTime := time.Now()
 	scheduleTime := currentTime.Add(-time.Hour)
 
+	logger := log.NewLogrus()
+
 	t.Run("Compile", func(t *testing.T) {
 		t.Run("should give error if tenant service getDetails fails", func(t *testing.T) {
 			job := scheduler.Job{
@@ -53,7 +56,7 @@ func TestExecutorCompiler(t *testing.T) {
 			tenantService.On("GetDetails", ctx, tnnt).Return(nil, fmt.Errorf("get details error"))
 			defer tenantService.AssertExpectations(t)
 
-			inputCompiler := service.NewJobInputCompiler(tenantService, nil, nil)
+			inputCompiler := service.NewJobInputCompiler(tenantService, nil, nil, logger)
 			inputExecutor, err := inputCompiler.Compile(ctx, &job, config, currentTime.Add(time.Hour))
 
 			assert.NotNil(t, err)
@@ -80,7 +83,7 @@ func TestExecutorCompiler(t *testing.T) {
 			tenantService.On("GetDetails", ctx, tnnt).Return(tenantDetails, nil)
 			defer tenantService.AssertExpectations(t)
 
-			inputCompiler := service.NewJobInputCompiler(tenantService, nil, nil)
+			inputCompiler := service.NewJobInputCompiler(tenantService, nil, nil, logger)
 			inputExecutor, err := inputCompiler.Compile(ctx, &job, config, currentTime.Add(time.Hour))
 
 			assert.NotNil(t, err)
@@ -123,7 +126,7 @@ func TestExecutorCompiler(t *testing.T) {
 			assetCompiler.On("CompileJobRunAssets", ctx, &job, systemDefinedVars, scheduleTime, taskContext).Return(nil, fmt.Errorf("CompileJobRunAssets error"))
 			defer assetCompiler.AssertExpectations(t)
 
-			inputCompiler := service.NewJobInputCompiler(tenantService, nil, assetCompiler)
+			inputCompiler := service.NewJobInputCompiler(tenantService, nil, assetCompiler, logger)
 			inputExecutor, err := inputCompiler.Compile(ctx, &job, config, executedAt)
 
 			assert.NotNil(t, err)
@@ -184,7 +187,7 @@ func TestExecutorCompiler(t *testing.T) {
 					Return(nil, fmt.Errorf("some.config compilation error"))
 				defer templateCompiler.AssertExpectations(t)
 
-				inputCompiler := service.NewJobInputCompiler(tenantService, templateCompiler, assetCompiler)
+				inputCompiler := service.NewJobInputCompiler(tenantService, templateCompiler, assetCompiler, logger)
 				inputExecutor, err := inputCompiler.Compile(ctx, &job, config, executedAt)
 
 				assert.NotNil(t, err)
@@ -199,7 +202,7 @@ func TestExecutorCompiler(t *testing.T) {
 					Return(nil, fmt.Errorf("secret.config compilation error"))
 				defer templateCompiler.AssertExpectations(t)
 
-				inputCompiler := service.NewJobInputCompiler(tenantService, templateCompiler, assetCompiler)
+				inputCompiler := service.NewJobInputCompiler(tenantService, templateCompiler, assetCompiler, logger)
 				inputExecutor, err := inputCompiler.Compile(ctx, &job, config, executedAt)
 
 				assert.NotNil(t, err)
@@ -214,7 +217,7 @@ func TestExecutorCompiler(t *testing.T) {
 					Return(map[string]string{"secret.config.compiled": "a.secret.val.compiled"}, nil)
 				defer templateCompiler.AssertExpectations(t)
 
-				inputCompiler := service.NewJobInputCompiler(tenantService, templateCompiler, assetCompiler)
+				inputCompiler := service.NewJobInputCompiler(tenantService, templateCompiler, assetCompiler, logger)
 				inputExecutorResp, err := inputCompiler.Compile(ctx, &job, config, executedAt)
 
 				assert.Nil(t, err)
@@ -299,7 +302,7 @@ func TestExecutorCompiler(t *testing.T) {
 				Return(map[string]string{"secret.hook.compiled": "hook.s.val.compiled"}, nil)
 			defer templateCompiler.AssertExpectations(t)
 
-			inputCompiler := service.NewJobInputCompiler(tenantService, templateCompiler, assetCompiler)
+			inputCompiler := service.NewJobInputCompiler(tenantService, templateCompiler, assetCompiler, logger)
 			inputExecutorResp, err := inputCompiler.Compile(ctx, &job, config, executedAt)
 
 			assert.Nil(t, err)
@@ -382,7 +385,7 @@ func TestExecutorCompiler(t *testing.T) {
 
 			defer templateCompiler.AssertExpectations(t)
 
-			inputCompiler := service.NewJobInputCompiler(tenantService, templateCompiler, assetCompiler)
+			inputCompiler := service.NewJobInputCompiler(tenantService, templateCompiler, assetCompiler, logger)
 			inputExecutorResp, err := inputCompiler.Compile(ctx, &job, config, executedAt)
 
 			assert.NotNil(t, err)
@@ -444,7 +447,7 @@ func TestExecutorCompiler(t *testing.T) {
 				Return(map[string]string{"secret.config.compiled": "a.secret.val.compiled"}, nil)
 			defer templateCompiler.AssertExpectations(t)
 
-			inputCompiler := service.NewJobInputCompiler(tenantService, templateCompiler, assetCompiler)
+			inputCompiler := service.NewJobInputCompiler(tenantService, templateCompiler, assetCompiler, logger)
 			inputExecutorResp, err := inputCompiler.Compile(ctx, &job, config, executedAt)
 
 			assert.NotNil(t, err)
