@@ -5,7 +5,7 @@ NAME = "github.com/raystack/optimus"
 LAST_COMMIT := $(shell git rev-parse --short HEAD)
 LAST_TAG := "$(shell git rev-list --tags --max-count=1)"
 OPMS_VERSION := "$(shell git describe --tags ${LAST_TAG})-next"
-PROTON_COMMIT := "f76f42ad2602e8bcc3891c560e37a75a14cd867f"
+PROTON_COMMIT := "1c39e65e529d573a1cd422e44f019c62d65fd10b"
 
 
 .PHONY: build test test-ci generate-proto unit-test-ci integration-test vet coverage clean install lint
