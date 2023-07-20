@@ -17,8 +17,6 @@ require (
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/golang-migrate/migrate/v4 v4.15.2
 	github.com/google/uuid v1.3.0
-	github.com/raystack/optimus/sdk v0.0.0-20230313071811-2d68a9c815bf
-	github.com/raystack/salt v0.3.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.3
@@ -33,6 +31,8 @@ require (
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/prometheus/client_golang v1.11.0
+	github.com/raystack/optimus/sdk v0.0.0-20230313071811-2d68a9c815bf
+	github.com/raystack/salt v0.3.2
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/schollz/progressbar/v3 v3.8.5
 	github.com/segmentio/kafka-go v0.4.39
