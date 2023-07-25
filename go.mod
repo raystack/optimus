@@ -31,7 +31,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/prometheus/client_golang v1.11.0
-	github.com/raystack/optimus/sdk v0.0.0-20230313071811-2d68a9c815bf
+	github.com/raystack/optimus/sdk v0.7.0
 	github.com/raystack/salt v0.3.2
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/schollz/progressbar/v3 v3.8.5

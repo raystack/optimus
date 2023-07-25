@@ -30,7 +30,6 @@ archives:
       - goos: windows
         format: zip
 release:
-  draft: true
   prerelease: auto
 checksum:
   name_template: "checksums.txt"

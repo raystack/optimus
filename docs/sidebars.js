@@ -92,9 +92,9 @@ module.exports = {
       type: "category",
       label: "Reference",
       items: [
-          "reference/api",
-          "reference/metrics",
-          "reference/faq",
+        "reference/API",
+        "reference/metrics",
+        "reference/FAQ",
       ],
     },
   ],
