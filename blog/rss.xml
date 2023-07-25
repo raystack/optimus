@@ -2,7 +2,7 @@
 <rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/">
     <channel>
         <title>Optimus Blog</title>
-        <link>https://odpf.github.io/optimus/blog</link>
+        <link>https://raystack.github.io/optimus/blog</link>
         <description>Optimus Blog</description>
         <lastBuildDate>Sat, 02 Oct 2021 00:00:00 GMT</lastBuildDate>
         <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
@@ -10,12 +10,12 @@
         <language>en</language>
         <item>
             <title><![CDATA[Introducing Optimus]]></title>
-            <link>https://odpf.github.io/optimus/blog/introducing-optimus</link>
-            <guid>https://odpf.github.io/optimus/blog/introducing-optimus</guid>
+            <link>https://raystack.github.io/optimus/blog/introducing-optimus</link>
+            <guid>https://raystack.github.io/optimus/blog/introducing-optimus</guid>
             <pubDate>Sat, 02 Oct 2021 00:00:00 GMT</pubDate>
             <description><![CDATA[We are live!]]></description>
             <content:encoded><![CDATA[<p>We are live!</p>]]></content:encoded>
-            <category>odpf</category>
+            <category>raystack</category>
             <category>optimus</category>
         </item>
     </channel>

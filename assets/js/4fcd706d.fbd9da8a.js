@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkoptimus=self.webpackChunkoptimus||[]).push([[867],{3201:o=>{o.exports=JSON.parse('{"permalink":"/optimus/blog/tags/odpf","page":1,"postsPerPage":10,"totalPages":1,"totalCount":1,"blogDescription":"Blog","blogTitle":"Blog"}')}}]);

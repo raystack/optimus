@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkoptimus=self.webpackChunkoptimus||[]).push([[732],{6679:s=>{s.exports=JSON.parse('[{"label":"raystack","permalink":"/optimus/blog/tags/raystack","count":1},{"label":"optimus","permalink":"/optimus/blog/tags/optimus","count":1}]')}}]);
