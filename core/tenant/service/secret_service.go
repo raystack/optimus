@@ -95,7 +95,7 @@ func (s SecretService) Get(ctx context.Context, projName tenant.ProjectName, nam
 		return nil, err
 	}
 
-	return tenant.NewPlainTextSecret(name, string(cleartext))
+	return tenant.NewPlainTextSecret(secretName.String(), string(cleartext))
 }
 
 func (s SecretService) GetAll(ctx context.Context, projName tenant.ProjectName, namespaceName string) ([]*tenant.PlainTextSecret, error) {

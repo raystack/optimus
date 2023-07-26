@@ -281,7 +281,7 @@ func TestNewSecretsHandler(t *testing.T) {
 			_, err := handler.DeleteSecret(ctx, &deleteRequest)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = invalid argument for entity"+
-				" project: project name is empty: failed to delete secret name")
+				" project: project name is empty: failed to delete secret NAME")
 		})
 		t.Run("returns error when invalid secret name", func(t *testing.T) {
 			secretService := new(secretService)
@@ -316,7 +316,7 @@ func TestNewSecretsHandler(t *testing.T) {
 			_, err = handler.DeleteSecret(ctx, &deleteRequest)
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "rpc error: code = Internal desc = error in delete: failed to "+
-				"delete secret name")
+				"delete secret NAME")
 		})
 		t.Run("deletes the secrets", func(t *testing.T) {
 			secretService := new(secretService)

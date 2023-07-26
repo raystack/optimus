@@ -156,7 +156,7 @@ func TestPostgresSecretRepository(t *testing.T) {
 
 			err = repo.Update(ctx, updatedSecret)
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "not found for entity secret: unable to update, secret not found for secret_name")
+			assert.EqualError(t, err, "not found for entity secret: unable to update, secret not found for SECRET_NAME")
 		})
 	})
 	t.Run("Get", func(t *testing.T) {
@@ -171,7 +171,7 @@ func TestPostgresSecretRepository(t *testing.T) {
 
 			_, err = repo.Get(ctx, proj.Name(), namespace.Name().String(), validSecret.Name())
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "not found for entity secret: no record for secret_name")
+			assert.EqualError(t, err, "not found for entity secret: no record for SECRET_NAME")
 		})
 		t.Run("returns the secret when present", func(t *testing.T) {
 			db := dbSetup()
@@ -208,10 +208,12 @@ func TestPostgresSecretRepository(t *testing.T) {
 			err = repo.Save(ctx, secret2)
 			assert.Nil(t, err)
 
-			secret, err := repo.Get(ctx, proj.Name(), namespace.Name().String(), "secret_name3")
+			sn, err := tenant.SecretNameFrom("secret_name3")
+			assert.Nil(t, err)
+			secret, err := repo.Get(ctx, proj.Name(), namespace.Name().String(), sn)
 			assert.NoError(t, err)
 			assert.NotNil(t, secret)
-			assert.Equal(t, "secret_name3", secret.Name().String())
+			assert.Equal(t, "SECRET_NAME3", secret.Name().String())
 		})
 	})
 	t.Run("GetAll", func(t *testing.T) {
@@ -327,7 +329,7 @@ func TestPostgresSecretRepository(t *testing.T) {
 
 			err = repo.Delete(ctx, proj.Name(), namespace.Name().String(), validSecret.Name())
 			assert.NotNil(t, err)
-			assert.EqualError(t, err, "not found for entity secret: secret to delete not found secret_name")
+			assert.EqualError(t, err, "not found for entity secret: secret to delete not found SECRET_NAME")
 		})
 	})
 	t.Run("GetSecretsInfo", func(t *testing.T) {

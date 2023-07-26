@@ -15,6 +15,8 @@ To keep string literals as secret, it is a requirement Optimus keep them encrypt
 
 Optimus has two sets of secrets, user managed secrets & others which are needed for server operations. Each of server managed secrets should be prefixed by `_OPTIMUS_<key name>` and will not be allowed to be used by users in the job spec. Optimus should also disallow anyone using this prefix to register their secrets. The secrets can be namespaced by optimus namespace or at project level, and will be accessible accordingly. Secret names should be maintained unique across a project.
 
+All secret names within Optimus systems are considered case insensitive, treating different letter cases as identical. Furthermore, to promote consistency and ease of management, all secret names are uniformly stored in uppercase letters, regardless of their original format. The implementation of this policy is essential to enhance security, minimize potential inconsistencies, and facilitate seamless secret retrieval and utilization.
+
 #### Using secrets
 
 Secrets can be used as part of the job spec config using macros with their names. This will work as aliasing the secret to be used in containers. Only the secrets created at project & namespace the job belongs to can be referenced. So, for the plugin writers any secret that plugin needs can be accessed through environment variables defined in the job spec or can get the secrets by defining in any assets.

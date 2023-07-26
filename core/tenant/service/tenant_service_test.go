@@ -157,7 +157,6 @@ func TestTenantService(t *testing.T) {
 			secretsGetter := new(secretGetter)
 			tenantService := service.NewTenantService(nil, nil, secretsGetter, logger)
 			invalidTenant := tenant.Tenant{}
-
 			_, err := tenantService.GetSecret(ctx, invalidTenant, "secret")
 			assert.NotNil(t, err)
 			assert.EqualError(t, err, "invalid argument for entity tenant: tenant is invalid")
@@ -167,10 +166,9 @@ func TestTenantService(t *testing.T) {
 			secretsGetter := new(secretGetter)
 			secretsGetter.On("Get", ctx, proj.Name(), ns.Name().String(), "secret_name").Return(pts, nil)
 			defer secretsGetter.AssertExpectations(t)
-
 			tenantService := service.NewTenantService(nil, nil, secretsGetter, logger)
 
-			secret, err := tenantService.GetSecret(ctx, tnnt, pts.Name().String())
+			secret, err := tenantService.GetSecret(ctx, tnnt, "secret_name")
 			assert.Nil(t, err)
 			assert.Equal(t, "secret_value", secret.Value())
 		})

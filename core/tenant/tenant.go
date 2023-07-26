@@ -58,7 +58,7 @@ func NewTenantDetails(proj *Project, namespace *Namespace, secrets PlainTextSecr
 	return &WithDetails{
 		project:    *proj,
 		namespace:  *namespace,
-		secretsMap: secrets.ToMap(),
+		secretsMap: secrets.ToSecretMap().ToMap(),
 	}, nil
 }
 
