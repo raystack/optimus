@@ -23,6 +23,8 @@ const (
 
 	StateWaitUpstream State = "wait_upstream"
 	StateInProgress   State = "in_progress"
+
+	StateMissing State = "missing"
 )
 
 var TaskEndStates = []State{StateSuccess, StateFailed, StateRetry}
@@ -127,6 +129,15 @@ func (j JobRunStatusList) ToRunStatusMap() map[time.Time]State {
 		runStatusMap[run.ScheduledAt.UTC()] = run.State
 	}
 	return runStatusMap
+}
+
+func (j JobRunStatusList) OverrideWithStatus(status State) []*JobRunStatus {
+	overridedRuns := make([]*JobRunStatus, len(j))
+	for i, run := range j {
+		overridedRuns[i] = run
+		overridedRuns[i].State = status
+	}
+	return overridedRuns
 }
 
 // JobRunsCriteria represents the filter condition to get run status from scheduler

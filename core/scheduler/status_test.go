@@ -264,4 +264,30 @@ func TestStatus(t *testing.T) {
 		runStatusMap := jobRunStatusList.ToRunStatusMap()
 		assert.EqualValues(t, expectedMap, runStatusMap)
 	})
+
+	t.Run("OverrideWithStatus", func(t *testing.T) {
+		time1 := time.Date(2023, 0o1, 1, 0, 0, 0, 0, time.UTC)
+		time2 := time.Date(2023, 0o1, 2, 0, 0, 0, 0, time.UTC)
+		time3 := time.Date(2023, 0o1, 3, 0, 0, 0, 0, time.UTC)
+
+		jobRunStatusList := scheduler.JobRunStatusList([]*scheduler.JobRunStatus{
+			{
+				ScheduledAt: time1,
+				State:       scheduler.StatePending,
+			},
+			{
+				ScheduledAt: time2,
+				State:       scheduler.StateRunning,
+			},
+			{
+				ScheduledAt: time3,
+				State:       scheduler.StateRunning,
+			},
+		})
+
+		runs := jobRunStatusList.OverrideWithStatus(scheduler.StateMissing)
+		assert.Equal(t, scheduler.StateMissing, runs[0].State)
+		assert.Equal(t, scheduler.StateMissing, runs[1].State)
+		assert.Equal(t, scheduler.StateMissing, runs[2].State)
+	})
 }

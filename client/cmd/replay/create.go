@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"time"
@@ -36,6 +37,7 @@ type createCommand struct {
 	configFilePath string
 
 	parallel    bool
+	dryRun      bool
 	description string
 	jobConfig   string
 
@@ -82,6 +84,7 @@ func (r *createCommand) injectFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&r.parallel, "parallel", "", false, "Backfill job runs in parallel")
 	cmd.Flags().StringVarP(&r.description, "description", "d", "", "Description of why backfill is needed")
 	cmd.Flags().StringVarP(&r.jobConfig, "job-config", "", "", "additional job configurations")
+	cmd.Flags().BoolVarP(&r.dryRun, "dry-run", "", false, "inspect replayed runs without taking effect on scheduler")
 
 	// Mandatory flags if config is not set
 	cmd.Flags().StringVarP(&r.projectName, "project-name", "p", "", "Name of the optimus project")
@@ -118,14 +121,91 @@ func (r *createCommand) RunE(_ *cobra.Command, args []string) error {
 		endTime = args[2]
 	}
 
-	replayID, err := r.createReplayRequest(jobName, startTime, endTime, r.jobConfig)
+	replayReq, err := r.createReplayRequest(jobName, startTime, endTime, r.jobConfig)
 	if err != nil {
 		return err
 	}
-	r.logger.Info("Replay request is accepted and it is in progress")
-	r.logger.Info("Either you could wait or you could close (ctrl+c) and check the status with `optimus replay status %s` command later", replayID)
 
-	return r.waitForReplayState(replayID)
+	if r.dryRun {
+		replayDryRunReq := convertReplayToReplayDryRunRequest(replayReq)
+		err := r.replayDryRun(replayDryRunReq)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	return r.replay(replayReq)
+}
+
+func convertReplayToReplayDryRunRequest(replayReq *pb.ReplayRequest) *pb.ReplayDryRunRequest {
+	return &pb.ReplayDryRunRequest{
+		ProjectName:   replayReq.GetProjectName(),
+		JobName:       replayReq.GetJobName(),
+		NamespaceName: replayReq.GetNamespaceName(),
+		StartTime:     replayReq.GetStartTime(),
+		EndTime:       replayReq.GetEndTime(),
+		Parallel:      replayReq.GetParallel(),
+		Description:   replayReq.GetDescription(),
+		JobConfig:     replayReq.GetJobConfig(),
+	}
+}
+
+func (r *createCommand) replayDryRun(replayDryRunReq *pb.ReplayDryRunRequest) error {
+	conn, err := r.connection.Create(r.host)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	replayService := pb.NewReplayServiceClient(conn)
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), replayTimeout)
+	defer cancelFunc()
+
+	resp, err := replayService.ReplayDryRun(ctx, replayDryRunReq)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			r.logger.Error("Replay dry-run took too long, timing out")
+		}
+		return fmt.Errorf("replay dry-run request failed: %w", err)
+	}
+
+	runs := resp.GetReplayRuns()
+
+	buff := &bytes.Buffer{}
+	header := []string{"scheduled at", "status"}
+	stringifyReplayRuns(buff, header, runs)
+
+	r.logger.Info("List of runs to be replayed:")
+	r.logger.Info(buff.String())
+	return nil
+}
+
+func (r *createCommand) replay(replayReq *pb.ReplayRequest) error {
+	conn, err := r.connection.Create(r.host)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	replayService := pb.NewReplayServiceClient(conn)
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), replayTimeout)
+	defer cancelFunc()
+
+	resp, err := replayService.Replay(ctx, replayReq)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			r.logger.Error("Replay creation took too long, timing out")
+		}
+		return fmt.Errorf("replay request failed: %w", err)
+	}
+
+	r.logger.Info("Replay request is accepted and it is in progress")
+	r.logger.Info("Either you could wait or you could close (ctrl+c) and check the status with `optimus replay status %s` command later", resp.Id)
+
+	return r.waitForReplayState(resp.Id)
 }
 
 func (r *createCommand) waitForReplayState(replayID string) error {
@@ -157,28 +237,16 @@ func (r *createCommand) getReplay(replayID string) (*pb.GetReplayResponse, error
 	return getReplay(r.host, replayID, r.connection)
 }
 
-func (r *createCommand) createReplayRequest(jobName, startTimeStr, endTimeStr, jobConfig string) (string, error) {
-	conn, err := r.connection.Create(r.host)
-	if err != nil {
-		return "", err
-	}
-	defer conn.Close()
-
-	replayService := pb.NewReplayServiceClient(conn)
-
+func (r *createCommand) createReplayRequest(jobName, startTimeStr, endTimeStr, jobConfig string) (*pb.ReplayRequest, error) {
 	startTime, err := getTimeProto(startTimeStr)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	endTime, err := getTimeProto(endTimeStr)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-
-	ctx, cancelFunc := context.WithTimeout(context.Background(), replayTimeout)
-	defer cancelFunc()
-
-	respStream, err := replayService.Replay(ctx, &pb.ReplayRequest{
+	replayReq := &pb.ReplayRequest{
 		ProjectName:   r.projectName,
 		JobName:       jobName,
 		NamespaceName: r.namespaceName,
@@ -187,14 +255,9 @@ func (r *createCommand) createReplayRequest(jobName, startTimeStr, endTimeStr, j
 		Parallel:      r.parallel,
 		Description:   r.description,
 		JobConfig:     jobConfig,
-	})
-	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			r.logger.Error("Replay creation took too long, timing out")
-		}
-		return "", fmt.Errorf("replay request failed: %w", err)
 	}
-	return respStream.Id, nil
+
+	return replayReq, nil
 }
 
 func getTimeProto(timeStr string) (*timestamppb.Timestamp, error) {

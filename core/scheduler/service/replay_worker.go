@@ -11,7 +11,6 @@ import (
 	"github.com/goto/optimus/config"
 	"github.com/goto/optimus/core/scheduler"
 	"github.com/goto/optimus/core/tenant"
-	"github.com/goto/optimus/internal/errors"
 	"github.com/goto/optimus/internal/lib/cron"
 	"github.com/goto/optimus/internal/telemetry"
 )
@@ -51,7 +50,7 @@ func (w ReplayWorker) Process(replayReq *scheduler.ReplayWithRun) {
 	ctx := context.Background()
 
 	w.l.Debug("processing replay request %s with status %s", replayReq.Replay.ID().String(), replayReq.Replay.State().String())
-	jobCron, err := w.getJobCron(ctx, replayReq)
+	jobCron, err := getJobCron(ctx, w.l, w.jobRepo, replayReq.Replay.Tenant(), replayReq.Replay.JobName())
 	if err != nil {
 		w.l.Error("unable to get cron value for job [%s] replay id [%s]: %s", replayReq.Replay.JobName().String(), replayReq.Replay.ID().String(), err)
 		w.updateReplayAsFailed(ctx, replayReq.Replay.ID(), err.Error())
@@ -85,18 +84,27 @@ func (w ReplayWorker) createMissingRuns(ctx context.Context, replayReq *schedule
 	}
 
 	// check each runs if there's no existing run from the above
-	existedRunsMap := scheduler.JobRunStatusList(existedRuns).ToRunStatusMap()
-	for _, run := range replayReq.Runs {
-		if _, ok := existedRunsMap[run.ScheduledAt]; !ok {
-			// create any missing runs
-			if err := w.scheduler.CreateRun(ctx, replayReq.Replay.Tenant(), replayReq.Replay.JobName(), run.ScheduledAt, prefixReplayed); err != nil {
-				return nil, err
-			}
-			run.State = scheduler.StateInProgress
-			createdRuns = append(createdRuns, run)
+	runsToBeCreated := getMissingRuns(replayReq.Runs, existedRuns)
+	for _, run := range runsToBeCreated {
+		// create missing runs
+		if err := w.scheduler.CreateRun(ctx, replayReq.Replay.Tenant(), replayReq.Replay.JobName(), run.ScheduledAt, prefixReplayed); err != nil {
+			return nil, err
 		}
+		run.State = scheduler.StateInProgress
+		createdRuns = append(createdRuns, run)
 	}
 	return createdRuns, nil
+}
+
+func getMissingRuns(expectedRuns, existingRuns []*scheduler.JobRunStatus) []*scheduler.JobRunStatus {
+	runsToBeCreated := []*scheduler.JobRunStatus{}
+	existedRunsMap := scheduler.JobRunStatusList(existingRuns).ToRunStatusMap()
+	for _, run := range expectedRuns {
+		if _, ok := existedRunsMap[run.ScheduledAt]; !ok {
+			runsToBeCreated = append(runsToBeCreated, run)
+		}
+	}
+	return runsToBeCreated
 }
 
 func (w ReplayWorker) processNewReplayRequest(ctx context.Context, replayReq *scheduler.ReplayWithRun, jobCron *cron.ScheduleSpec) (err error) {
@@ -252,25 +260,6 @@ func identifyUpdatedRunStatus(existingJobRuns, incomingJobRuns []*scheduler.JobR
 		}
 	}
 	return updatedReplayMap
-}
-
-func (w ReplayWorker) getJobCron(ctx context.Context, replayReq *scheduler.ReplayWithRun) (*cron.ScheduleSpec, error) {
-	jobWithDetails, err := w.jobRepo.GetJobDetails(ctx, replayReq.Replay.Tenant().ProjectName(), replayReq.Replay.JobName())
-	if err != nil || jobWithDetails == nil {
-		return nil, errors.AddErrContext(err, scheduler.EntityReplay,
-			fmt.Sprintf("unable to get job details for jobName: %s, project: %s", replayReq.Replay.JobName(), replayReq.Replay.Tenant().ProjectName()))
-	}
-	interval := jobWithDetails.Schedule.Interval
-	if interval == "" {
-		w.l.Error("job interval is empty")
-		return nil, errors.InvalidArgument(scheduler.EntityReplay, "job schedule interval is empty")
-	}
-	jobCron, err := cron.ParseCronSchedule(interval)
-	if err != nil {
-		w.l.Error("error parsing cron interval: %s", err)
-		return nil, errors.InternalError(scheduler.EntityReplay, "unable to parse job cron interval", err)
-	}
-	return jobCron, nil
 }
 
 func (w ReplayWorker) fetchRuns(ctx context.Context, replayReq *scheduler.ReplayWithRun, jobCron *cron.ScheduleSpec) ([]*scheduler.JobRunStatus, error) {

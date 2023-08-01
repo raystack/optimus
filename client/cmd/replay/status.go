@@ -136,7 +136,8 @@ func stringifyReplayStatus(resp *pb.GetReplayResponse) string {
 	}
 
 	if len(resp.GetReplayRuns()) > 0 {
-		stringifyReplayRuns(buff, resp.GetReplayRuns())
+		header := []string{"scheduled at", "current status"}
+		stringifyReplayRuns(buff, header, resp.GetReplayRuns())
 	}
 
 	return buff.String()
@@ -145,10 +146,7 @@ func stringifyReplayStatus(resp *pb.GetReplayResponse) string {
 func stringifyReplayConfig(buff *bytes.Buffer, jobConfig map[string]string) {
 	table := tablewriter.NewWriter(buff)
 	table.SetBorder(false)
-	table.SetHeader([]string{
-		"config key",
-		"config value",
-	})
+	table.SetHeader([]string{"config key", "config value"})
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	for k, v := range jobConfig {
 		table.Append([]string{k, v})
@@ -156,13 +154,10 @@ func stringifyReplayConfig(buff *bytes.Buffer, jobConfig map[string]string) {
 	table.Render()
 }
 
-func stringifyReplayRuns(buff *bytes.Buffer, runs []*pb.ReplayRun) {
+func stringifyReplayRuns(buff *bytes.Buffer, header []string, runs []*pb.ReplayRun) {
 	table := tablewriter.NewWriter(buff)
 	table.SetBorder(false)
-	table.SetHeader([]string{
-		"scheduled at",
-		"status",
-	})
+	table.SetHeader(header)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	for _, run := range runs {
 		table.Append([]string{

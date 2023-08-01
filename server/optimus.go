@@ -326,7 +326,7 @@ func (s *OptimusServer) setupHandlers() error {
 	}, s.conf.Replay)
 
 	replayValidator := schedulerService.NewValidator(replayRepository, newScheduler, jobProviderRepo)
-	replayService := schedulerService.NewReplayService(replayRepository, jobProviderRepo, replayValidator, s.logger)
+	replayService := schedulerService.NewReplayService(replayRepository, jobProviderRepo, replayValidator, newScheduler, s.logger)
 
 	newJobRunService := schedulerService.NewJobRunService(s.logger, jobProviderRepo, jobRunRepo, replayRepository, operatorRunRepository, newScheduler, newPriorityResolver, jobInputCompiler, s.eventHandler)
 

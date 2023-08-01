@@ -33,7 +33,136 @@ func TestReplayHandler(t *testing.T) {
 	description := "sample backfill"
 	replayID := uuid.New()
 
-	t.Run("CreateReplay", func(t *testing.T) {
+	t.Run("ReplayDryRun", func(t *testing.T) {
+		t.Run("returns error when unable to create tenant", func(t *testing.T) {
+			service := new(mockReplayService)
+			replayHandler := v1beta1.NewReplayHandler(logger, service)
+
+			req := &pb.ReplayDryRunRequest{
+				JobName:       jobName.String(),
+				NamespaceName: namespaceName,
+				StartTime:     startTime,
+				EndTime:       endTime,
+				Parallel:      false,
+				JobConfig:     jobConfigStr,
+				Description:   description,
+			}
+
+			result, err := replayHandler.ReplayDryRun(ctx, req)
+			assert.Error(t, err)
+			assert.Nil(t, result)
+		})
+		t.Run("returns error when job name is invalid", func(t *testing.T) {
+			service := new(mockReplayService)
+			replayHandler := v1beta1.NewReplayHandler(logger, service)
+
+			req := &pb.ReplayDryRunRequest{
+				ProjectName:   projectName,
+				NamespaceName: namespaceName,
+				StartTime:     startTime,
+				EndTime:       endTime,
+				Parallel:      false,
+				JobConfig:     jobConfigStr,
+				Description:   description,
+			}
+
+			result, err := replayHandler.ReplayDryRun(ctx, req)
+			assert.Error(t, err)
+			assert.Nil(t, result)
+		})
+		t.Run("returns error when start time is invalid", func(t *testing.T) {
+			service := new(mockReplayService)
+			replayHandler := v1beta1.NewReplayHandler(logger, service)
+
+			req := &pb.ReplayDryRunRequest{
+				ProjectName:   projectName,
+				JobName:       jobName.String(),
+				NamespaceName: namespaceName,
+				EndTime:       endTime,
+				Parallel:      false,
+				JobConfig:     jobConfigStr,
+				Description:   description,
+			}
+
+			result, err := replayHandler.ReplayDryRun(ctx, req)
+			assert.Error(t, err)
+			assert.Nil(t, result)
+		})
+
+		t.Run("returns error when end time is present but invalid", func(t *testing.T) {
+			service := new(mockReplayService)
+			replayHandler := v1beta1.NewReplayHandler(logger, service)
+
+			req := &pb.ReplayDryRunRequest{
+				ProjectName:   projectName,
+				JobName:       jobName.String(),
+				NamespaceName: namespaceName,
+				StartTime:     startTime,
+				EndTime:       timestamppb.New(time.Date(-1, 13, 0o2, 13, 0, 0, 0, time.UTC)),
+				Parallel:      false,
+				JobConfig:     jobConfigStr,
+				Description:   description,
+			}
+
+			result, err := replayHandler.ReplayDryRun(ctx, req)
+			assert.Error(t, err)
+			assert.Nil(t, result)
+		})
+
+		t.Run("returns error when unable to get runs status", func(t *testing.T) {
+			service := new(mockReplayService)
+			replayHandler := v1beta1.NewReplayHandler(logger, service)
+
+			req := &pb.ReplayDryRunRequest{
+				ProjectName:   projectName,
+				JobName:       jobName.String(),
+				NamespaceName: namespaceName,
+				StartTime:     startTime,
+				EndTime:       endTime,
+				Parallel:      false,
+				JobConfig:     jobConfigStr,
+				Description:   description,
+			}
+			replayConfig := scheduler.NewReplayConfig(req.StartTime.AsTime(), req.EndTime.AsTime(), false, jobConfig, description)
+
+			service.On("GetRunsStatus", ctx, jobTenant, jobName, replayConfig).Return(nil, errors.New("internal error"))
+
+			result, err := replayHandler.ReplayDryRun(ctx, req)
+			assert.ErrorContains(t, err, "internal error")
+			assert.Nil(t, result)
+		})
+
+		t.Run("returns list of replay runs status when success", func(t *testing.T) {
+			service := new(mockReplayService)
+			replayHandler := v1beta1.NewReplayHandler(logger, service)
+
+			req := &pb.ReplayDryRunRequest{
+				ProjectName:   projectName,
+				JobName:       jobName.String(),
+				NamespaceName: namespaceName,
+				StartTime:     startTime,
+				EndTime:       endTime,
+				Parallel:      false,
+				JobConfig:     jobConfigStr,
+				Description:   description,
+			}
+			replayConfig := scheduler.NewReplayConfig(req.StartTime.AsTime(), req.EndTime.AsTime(), false, jobConfig, description)
+			runs := []*scheduler.JobRunStatus{
+				{
+					ScheduledAt: time.Date(2023, 0o1, 0o1, 13, 0, 0, 0, time.UTC),
+					State:       scheduler.StateAccepted,
+				},
+			}
+
+			service.On("GetRunsStatus", ctx, jobTenant, jobName, replayConfig).Return(runs, nil)
+
+			result, err := replayHandler.ReplayDryRun(ctx, req)
+			assert.NoError(t, err)
+			assert.NotNil(t, result)
+			assert.Len(t, result.ReplayRuns, 1)
+		})
+	})
+	t.Run("Replay", func(t *testing.T) {
 		t.Run("returns replay ID when able to create replay successfully", func(t *testing.T) {
 			service := new(mockReplayService)
 			replayHandler := v1beta1.NewReplayHandler(logger, service)
@@ -422,6 +551,32 @@ func (_m *mockReplayService) GetReplayList(ctx context.Context, projectName tena
 
 	if rf, ok := ret.Get(1).(func(context.Context, tenant.ProjectName) error); ok {
 		r1 = rf(ctx, projectName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetRunsStatus provides a mock function with given fields: ctx, _a1, jobName, config
+func (_m *mockReplayService) GetRunsStatus(ctx context.Context, _a1 tenant.Tenant, jobName scheduler.JobName, config *scheduler.ReplayConfig) ([]*scheduler.JobRunStatus, error) {
+	ret := _m.Called(ctx, _a1, jobName, config)
+
+	var r0 []*scheduler.JobRunStatus
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, scheduler.JobName, *scheduler.ReplayConfig) ([]*scheduler.JobRunStatus, error)); ok {
+		return rf(ctx, _a1, jobName, config)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, tenant.Tenant, scheduler.JobName, *scheduler.ReplayConfig) []*scheduler.JobRunStatus); ok {
+		r0 = rf(ctx, _a1, jobName, config)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*scheduler.JobRunStatus)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, tenant.Tenant, scheduler.JobName, *scheduler.ReplayConfig) error); ok {
+		r1 = rf(ctx, _a1, jobName, config)
 	} else {
 		r1 = ret.Error(1)
 	}
