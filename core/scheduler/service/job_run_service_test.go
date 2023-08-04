@@ -481,21 +481,13 @@ func TestJobRunService(t *testing.T) {
 					},
 				}
 
-				jobRun := scheduler.JobRun{
-					ID:        uuid.New(),
-					JobName:   jobName,
-					Tenant:    tnnt,
-					StartTime: time.Now(),
-				}
-
-				operatorRun := scheduler.OperatorRun{
-					ID:           uuid.New(),
-					Name:         "task_bq2bq",
-					JobRunID:     jobRun.ID,
-					OperatorType: scheduler.OperatorTask,
-					Status:       scheduler.StateRunning,
-				}
 				t.Run("scenario OperatorRun not found and new operator creation fails", func(t *testing.T) {
+					jobRun := scheduler.JobRun{
+						ID:        uuid.New(),
+						JobName:   jobName,
+						Tenant:    tnnt,
+						StartTime: time.Now(),
+					}
 					operatorRunRepository := new(mockOperatorRunRepository)
 					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(nil, errors.NotFound(scheduler.EntityEvent, "operator not found in db")).Once()
 					operatorRunRepository.On("CreateOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID, eventTime).Return(fmt.Errorf("some error in creating operator run"))
@@ -518,6 +510,13 @@ func TestJobRunService(t *testing.T) {
 					assert.EqualError(t, err, "some error in creating operator run")
 				})
 				t.Run("scenario OperatorRun not found even after successful new operator creation", func(t *testing.T) {
+					jobRun := scheduler.JobRun{
+						ID:        uuid.New(),
+						JobName:   jobName,
+						Tenant:    tnnt,
+						StartTime: time.Now(),
+					}
+
 					operatorRunRepository := new(mockOperatorRunRepository)
 					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(nil, errors.NotFound(scheduler.EntityEvent, "operator not found in db")).Once()
 					operatorRunRepository.On("CreateOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID, eventTime).Return(nil)
@@ -541,6 +540,20 @@ func TestJobRunService(t *testing.T) {
 					assert.EqualError(t, err, "some error in getting operator run")
 				})
 				t.Run("scenario OperatorRun found", func(t *testing.T) {
+					jobRun := scheduler.JobRun{
+						ID:        uuid.New(),
+						JobName:   jobName,
+						Tenant:    tnnt,
+						StartTime: time.Now(),
+					}
+
+					operatorRun := scheduler.OperatorRun{
+						ID:           uuid.New(),
+						Name:         "task_bq2bq",
+						JobRunID:     jobRun.ID,
+						OperatorType: scheduler.OperatorTask,
+						Status:       scheduler.StateRunning,
+					}
 					operatorRunRepository := new(mockOperatorRunRepository)
 					operatorRunRepository.On("GetOperatorRun", ctx, event.OperatorName, scheduler.OperatorTask, jobRun.ID).Return(&operatorRun, nil)
 					operatorRunRepository.On("UpdateOperatorRun", ctx, scheduler.OperatorTask, operatorRun.ID, eventTime, scheduler.StateSuccess).Return(nil)
