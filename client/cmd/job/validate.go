@@ -19,7 +19,7 @@ import (
 	pb "github.com/goto/optimus/protos/gotocompany/optimus/core/v1beta1"
 )
 
-const validateTimeout = time.Minute * 5
+const validateTimeout = time.Minute * 15
 
 type validateCommand struct {
 	logger     log.Logger
