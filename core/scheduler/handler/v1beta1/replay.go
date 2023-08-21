@@ -45,6 +45,7 @@ func (h ReplayHandler) ReplayDryRun(ctx context.Context, req *pb.ReplayDryRunReq
 		return nil, err
 	}
 
+	// TODO: should convert from logical time
 	runs, err := h.service.GetRunsStatus(ctx, replayReq.Tenant(), replayReq.JobName(), replayReq.Config())
 	if err != nil {
 		h.l.Error("error fetching runs status for replay dry run: %s", err)
@@ -62,6 +63,7 @@ func (h ReplayHandler) Replay(ctx context.Context, req *pb.ReplayRequest) (*pb.R
 		return nil, err
 	}
 
+	// TODO: should convert from logical time
 	replayID, err := h.service.CreateReplay(ctx, replayReq.Tenant(), replayReq.JobName(), replayReq.Config())
 	if err != nil {
 		h.l.Error("error creating replay for job [%s]: %s", req.GetJobName(), err)

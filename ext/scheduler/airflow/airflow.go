@@ -285,7 +285,7 @@ func (s *Scheduler) GetJobRuns(ctx context.Context, tnnt tenant.Tenant, jobQuery
 		return nil, errors.Wrap(EntityAirflow, fmt.Sprintf("json error on parsing airflow dag runs: %s", string(resp)), err)
 	}
 
-	return getJobRuns(dagRunList, jobCron)
+	return getJobRuns(dagRunList, jobCron, jobQuery.WithExternalTrigger)
 }
 
 // UpdateJobState set the state of jobs as enabled / disabled on scheduler

@@ -210,7 +210,7 @@ func (r *createCommand) replay(replayReq *pb.ReplayRequest) error {
 
 func (r *createCommand) waitForReplayState(replayID string) error {
 	spinner := progressbar.NewProgressBarWithWriter(r.logger.Writer())
-	status := "in progress"
+	status := "created"
 	spinner.Start(fmt.Sprintf("%s...", status))
 	for {
 		resp, err := r.getReplay(replayID)
