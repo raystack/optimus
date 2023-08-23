@@ -13,7 +13,7 @@ from airflow.providers.cncf.kubernetes.operators.kubernetes_pod import Kubernete
 from airflow.providers.slack.operators.slack import SlackAPIPostOperator
 from airflow.sensors.base import BaseSensorOperator
 from airflow.utils.state import TaskInstanceState
-from airflow.exceptions import AirflowFailException
+from airflow.exceptions import AirflowException
 from croniter import croniter
 from kubernetes.client import models as k8s
 
@@ -256,7 +256,7 @@ class SuperExternalTaskSensor(BaseSensorOperator):
             self.log.info("job_run api response :: {}".format(api_response))
         except Exception as e:
             self.log.warning("error while fetching job runs :: {}".format(e))
-            raise AirflowFailException(e)
+            raise AirflowException(e)
         for job_run in api_response['jobRuns']:
             if job_run['state'] != 'success':
                 self.log.info("failed for run :: {}".format(job_run))
