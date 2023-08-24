@@ -228,6 +228,7 @@ func TestExecutorCompiler(t *testing.T) {
 						"EXECUTION_TIME":       executedAt.Format(time.RFC3339),
 						"JOB_DESTINATION":      job.Destination,
 						"some.config.compiled": "val.compiled",
+						"JOB_LABELS":           "project=proj1,namespace=ns1,job=job1",
 					},
 					Secrets: map[string]string{"secret.config.compiled": "a.secret.val.compiled"},
 					Files:   compiledFile,

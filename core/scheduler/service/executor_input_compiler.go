@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -36,6 +37,8 @@ const (
 	configDend          = "DEND"
 	configExecutionTime = "EXECUTION_TIME"
 	configDestination   = "JOB_DESTINATION"
+
+	JobAttributionLabelsKey = "JOB_LABELS"
 )
 
 type TenantService interface {
@@ -90,6 +93,13 @@ func (i InputCompiler) Compile(ctx context.Context, job *scheduler.Job, config s
 	if err != nil {
 		i.logger.Error("error compiling task config: %s", err)
 		return nil, err
+	}
+
+	jobAttributionLabels := fmt.Sprintf("project=%s,namespace=%s,job=%s", job.Tenant.ProjectName(), job.Tenant.NamespaceName(), job.Name)
+	if jobLables, ok := confs[JobAttributionLabelsKey]; ok {
+		confs[JobAttributionLabelsKey] = jobLables + "," + jobAttributionLabels
+	} else {
+		confs[JobAttributionLabelsKey] = jobAttributionLabels
 	}
 
 	if config.Executor.Type == scheduler.ExecutorTask {
