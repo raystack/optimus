@@ -204,7 +204,8 @@ class SuperExternalTaskSensor(BaseSensorOperator):
         self._upstream_optimus_client = OptimusAPIClient(upstream_optimus_hostname)
 
     def poke(self, context):
-        schedule_time = context['next_execution_date']
+        job_cron_iter = croniter(context.get("dag").schedule_interval, context.get('execution_date'))
+        schedule_time = job_cron_iter.get_next(datetime)
 
         try:
             upstream_schedule = self.get_schedule_interval(schedule_time)
@@ -276,7 +277,8 @@ def optimus_notify(context, event_meta):
 
     current_dag_id = context.get('task_instance').dag_id
     current_execution_date = context.get('execution_date')
-    current_schedule_date = context.get('next_execution_date')
+    job_cron_iter = croniter(context.get("dag").schedule_interval, current_execution_date)
+    current_schedule_date = job_cron_iter.get_next(datetime)
 
     # failure message pushed by failed tasks
     failure_messages = []

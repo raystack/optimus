@@ -142,12 +142,11 @@ func (j JobRunStatusList) OverrideWithStatus(status State) []*JobRunStatus {
 
 // JobRunsCriteria represents the filter condition to get run status from scheduler
 type JobRunsCriteria struct {
-	Name                string
-	StartDate           time.Time
-	EndDate             time.Time
-	Filter              []string
-	OnlyLastRun         bool
-	WithExternalTrigger bool
+	Name        string
+	StartDate   time.Time
+	EndDate     time.Time
+	Filter      []string
+	OnlyLastRun bool
 }
 
 func (c *JobRunsCriteria) ExecutionStart(cron *cron.ScheduleSpec) time.Time {

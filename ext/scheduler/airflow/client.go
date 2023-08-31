@@ -104,18 +104,16 @@ func buildEndPoint(host, path string) string {
 	return u.String()
 }
 
-func getJobRuns(res DagRunListResponse, spec *cron.ScheduleSpec, withExternalTrigger bool) ([]*scheduler.JobRunStatus, error) {
+func getJobRuns(res DagRunListResponse, spec *cron.ScheduleSpec) ([]*scheduler.JobRunStatus, error) {
 	var jobRunList []*scheduler.JobRunStatus
 	if res.TotalEntries > pageLimit {
 		return jobRunList, errors.InternalError(EntityAirflow, "total number of entries exceed page limit", nil)
 	}
 	for _, dag := range res.DagRuns {
-		if withExternalTrigger || !dag.ExternalTrigger {
-			scheduledAt := spec.Next(dag.ExecutionDate)
-			jobRunStatus, _ := scheduler.JobRunStatusFrom(scheduledAt, dag.State)
-			// use multi error to collect errors and proceed
-			jobRunList = append(jobRunList, &jobRunStatus)
-		}
+		scheduledAt := spec.Next(dag.ExecutionDate)
+		jobRunStatus, _ := scheduler.JobRunStatusFrom(scheduledAt, dag.State)
+		// use multi error to collect errors and proceed
+		jobRunList = append(jobRunList, &jobRunStatus)
 	}
 	return jobRunList, nil
 }
