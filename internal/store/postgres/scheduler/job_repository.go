@@ -201,6 +201,7 @@ func (j *Job) toJob() (*scheduler.Job, error) {
 		}
 	}
 	schedulerJob := scheduler.Job{
+		ID:          j.ID,
 		Name:        scheduler.JobName(j.Name),
 		Tenant:      t,
 		Destination: j.Destination,

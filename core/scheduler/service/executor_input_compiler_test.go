@@ -3,9 +3,11 @@ package service_test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/goto/salt/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -177,16 +179,15 @@ func TestExecutorCompiler(t *testing.T) {
 			compiledFile := map[string]string{
 				"someFileName": "fileContents",
 			}
-			assetCompiler := new(mockAssetCompiler)
-			assetCompiler.On("CompileJobRunAssets", ctx, &job, systemDefinedVars, scheduleTime, taskContext).Return(compiledFile, nil)
-			defer assetCompiler.AssertExpectations(t)
 
 			t.Run("should give error if compileConfigs conf compilation fails", func(t *testing.T) {
 				templateCompiler := new(mockTemplateCompiler)
 				templateCompiler.On("Compile", map[string]string{"some.config": "val"}, taskContext).
 					Return(nil, fmt.Errorf("some.config compilation error"))
 				defer templateCompiler.AssertExpectations(t)
-
+				assetCompiler := new(mockAssetCompiler)
+				assetCompiler.On("CompileJobRunAssets", ctx, &job, systemDefinedVars, scheduleTime, taskContext).Return(compiledFile, nil)
+				defer assetCompiler.AssertExpectations(t)
 				inputCompiler := service.NewJobInputCompiler(tenantService, templateCompiler, assetCompiler, logger)
 				inputExecutor, err := inputCompiler.Compile(ctx, &job, config, executedAt)
 
@@ -201,7 +202,9 @@ func TestExecutorCompiler(t *testing.T) {
 				templateCompiler.On("Compile", map[string]string{"secret.config": "a.secret.val"}, taskContext).
 					Return(nil, fmt.Errorf("secret.config compilation error"))
 				defer templateCompiler.AssertExpectations(t)
-
+				assetCompiler := new(mockAssetCompiler)
+				assetCompiler.On("CompileJobRunAssets", ctx, &job, systemDefinedVars, scheduleTime, taskContext).Return(compiledFile, nil)
+				defer assetCompiler.AssertExpectations(t)
 				inputCompiler := service.NewJobInputCompiler(tenantService, templateCompiler, assetCompiler, logger)
 				inputExecutor, err := inputCompiler.Compile(ctx, &job, config, executedAt)
 
@@ -216,7 +219,9 @@ func TestExecutorCompiler(t *testing.T) {
 				templateCompiler.On("Compile", map[string]string{"secret.config": "a.secret.val"}, taskContext).
 					Return(map[string]string{"secret.config.compiled": "a.secret.val.compiled"}, nil)
 				defer templateCompiler.AssertExpectations(t)
-
+				assetCompiler := new(mockAssetCompiler)
+				assetCompiler.On("CompileJobRunAssets", ctx, &job, systemDefinedVars, scheduleTime, taskContext).Return(compiledFile, nil)
+				defer assetCompiler.AssertExpectations(t)
 				inputCompiler := service.NewJobInputCompiler(tenantService, templateCompiler, assetCompiler, logger)
 				inputExecutorResp, err := inputCompiler.Compile(ctx, &job, config, executedAt)
 
@@ -228,11 +233,69 @@ func TestExecutorCompiler(t *testing.T) {
 						"EXECUTION_TIME":       executedAt.Format(time.RFC3339),
 						"JOB_DESTINATION":      job.Destination,
 						"some.config.compiled": "val.compiled",
-						"JOB_LABELS":           "project=proj1,namespace=ns1,job=job1",
 					},
 					Secrets: map[string]string{"secret.config.compiled": "a.secret.val.compiled"},
 					Files:   compiledFile,
 				}
+				expectedJobLabels := map[string]bool{
+					"project=proj1": true,
+					"namespace=ns1": true,
+					"job_name=job1": true,
+					"job_id=00000000-0000-0000-0000-000000000000": true,
+				}
+
+				for _, v := range strings.Split(inputExecutorResp.Configs["JOB_LABELS"], ",") {
+					_, ok := expectedJobLabels[v]
+					assert.True(t, ok)
+				}
+				delete(inputExecutorResp.Configs, "JOB_LABELS")
+				assert.Equal(t, expectedInputExecutor, inputExecutorResp)
+			})
+			t.Run("should return successfully and sanitise job labels ", func(t *testing.T) {
+				templateCompiler := new(mockTemplateCompiler)
+				templateCompiler.On("Compile", map[string]string{"some.config": "val"}, taskContext).
+					Return(map[string]string{"some.config.compiled": "val.compiled"}, nil)
+				templateCompiler.On("Compile", map[string]string{"secret.config": "a.secret.val"}, taskContext).
+					Return(map[string]string{"secret.config.compiled": "a.secret.val.compiled"}, nil)
+				defer templateCompiler.AssertExpectations(t)
+
+				jobNew := job
+				jobNew.ID = uuid.New()
+				jobNew.Name = "nameWith Invalid~Characters)(Which Are.even.LongerThan^63Charancters"
+
+				assetCompilerNew := new(mockAssetCompiler)
+				assetCompilerNew.On("CompileJobRunAssets", ctx, &jobNew, systemDefinedVars, scheduleTime, taskContext).Return(compiledFile, nil)
+				defer assetCompilerNew.AssertExpectations(t)
+
+				inputCompiler := service.NewJobInputCompiler(tenantService, templateCompiler, assetCompilerNew, logger)
+
+				inputExecutorResp, err := inputCompiler.Compile(ctx, &jobNew, config, executedAt)
+				assert.Nil(t, err)
+
+				expectedInputExecutor := &scheduler.ExecutorInput{
+					Configs: map[string]string{
+						"DSTART":               startTime.Format(time.RFC3339),
+						"DEND":                 endTime.Format(time.RFC3339),
+						"EXECUTION_TIME":       executedAt.Format(time.RFC3339),
+						"JOB_DESTINATION":      job.Destination,
+						"some.config.compiled": "val.compiled",
+					},
+					Secrets: map[string]string{"secret.config.compiled": "a.secret.val.compiled"},
+					Files:   compiledFile,
+				}
+
+				jobIDLabel := fmt.Sprintf("job_id=%s", jobNew.ID)
+				expecrtedJobLabels := map[string]bool{
+					"project=proj1": true,
+					"namespace=ns1": true,
+					"job_name=__h-invalid-characters--which-are-even-longerthan-63charancters": true,
+					jobIDLabel: true,
+				}
+				for _, v := range strings.Split(inputExecutorResp.Configs["JOB_LABELS"], ",") {
+					_, ok := expecrtedJobLabels[v]
+					assert.True(t, ok)
+				}
+				delete(inputExecutorResp.Configs, "JOB_LABELS")
 				assert.Equal(t, expectedInputExecutor, inputExecutorResp)
 			})
 		})

@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/goto/optimus/core/tenant"
 	"github.com/goto/optimus/internal/errors"
 	"github.com/goto/optimus/internal/models"
@@ -43,6 +45,7 @@ func (n JobName) String() string {
 }
 
 type Job struct {
+	ID     uuid.UUID
 	Name   JobName
 	Tenant tenant.Tenant
 
