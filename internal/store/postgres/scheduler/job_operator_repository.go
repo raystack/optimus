@@ -35,7 +35,7 @@ type operatorRun struct {
 	Status       string
 
 	StartTime time.Time
-	EndTime   time.Time
+	EndTime   *time.Time
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -96,7 +96,7 @@ func (o *OperatorRunRepository) CreateOperatorRun(ctx context.Context, name stri
 	if err != nil {
 		return err
 	}
-	insertOperatorRun := "INSERT INTO " + operatorTableName + " ( " + jobOperatorColumnsToStore + ", created_at, updated_at) values ( $1, $2, $3, $4, TIMESTAMP '3000-01-01 00:00:00', NOW(), NOW())"
+	insertOperatorRun := "INSERT INTO " + operatorTableName + " ( " + jobOperatorColumnsToStore + ", created_at, updated_at) values ( $1, $2, $3, $4, null, NOW(), NOW())"
 	_, err = o.db.Exec(ctx, insertOperatorRun, name, jobRunID, scheduler.StateRunning, startTime)
 	return errors.WrapIfErr(scheduler.EntityJobRun, "error while inserting the run", err)
 }

@@ -79,13 +79,9 @@ func TestPostgresJobRunRepository(t *testing.T) {
 			jobRun, err := jobRunRepo.GetByScheduledAt(ctx, tnnt, jobAName, scheduledAt)
 			assert.Nil(t, err)
 
-			slaObject := scheduler.SLAObject{
-				JobName:        jobAName,
-				JobScheduledAt: scheduledAt,
-			}
-			slaObjects := []*scheduler.SLAObject{&slaObject}
+			scheduleTimes := []time.Time{scheduledAt}
 
-			err = jobRunRepo.UpdateSLA(ctx, slaObjects)
+			err = jobRunRepo.UpdateSLA(ctx, jobAName, tnnt.ProjectName(), scheduleTimes)
 			assert.Nil(t, err)
 
 			jobRunByID, err := jobRunRepo.GetByID(ctx, scheduler.JobRunID(jobRun.ID))

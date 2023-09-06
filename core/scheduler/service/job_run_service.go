@@ -41,10 +41,11 @@ type JobRepository interface {
 type JobRunRepository interface {
 	GetByID(ctx context.Context, id scheduler.JobRunID) (*scheduler.JobRun, error)
 	GetByScheduledAt(ctx context.Context, tenant tenant.Tenant, name scheduler.JobName, scheduledAt time.Time) (*scheduler.JobRun, error)
+	GetByScheduledTimes(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, scheduledTimes []time.Time) ([]*scheduler.JobRun, error)
 	Create(ctx context.Context, tenant tenant.Tenant, name scheduler.JobName, scheduledAt time.Time, slaDefinitionInSec int64) error
 	Update(ctx context.Context, jobRunID uuid.UUID, endTime time.Time, jobRunStatus scheduler.State) error
 	UpdateState(ctx context.Context, jobRunID uuid.UUID, jobRunStatus scheduler.State) error
-	UpdateSLA(ctx context.Context, slaObjects []*scheduler.SLAObject) error
+	UpdateSLA(ctx context.Context, jobName scheduler.JobName, project tenant.ProjectName, scheduledTimes []time.Time) error
 	UpdateMonitoring(ctx context.Context, jobRunID uuid.UUID, monitoring map[string]any) error
 }
 
@@ -311,15 +312,47 @@ func (*JobRunService) getMonitoringValues(event *scheduler.Event) map[string]any
 }
 
 func (s *JobRunService) updateJobRunSLA(ctx context.Context, event *scheduler.Event) error {
+	if len(event.SLAObjectList) < 1 {
+		return nil
+	}
+	var scheduleTimesList []time.Time
+	for _, SLAObject := range event.SLAObjectList {
+		scheduleTimesList = append(scheduleTimesList, SLAObject.JobScheduledAt)
+	}
+	jobRuns, err := s.repo.GetByScheduledTimes(ctx, event.Tenant, event.JobName, scheduleTimesList)
+	if err != nil {
+		s.l.Error("error getting job runs by schedule time", err)
+		return err
+	}
+
+	var slaBreachedJobRunScheduleTimes []time.Time
+	var filteredSLAObject []*scheduler.SLAObject
+	for _, jobRun := range jobRuns {
+		if !jobRun.HasSLABreached() {
+			s.l.Error("received sla miss callback for job run that has not breached SLA, jobName: %s, scheduled_at: %s, start_time: %s, end_time: %s, SLA definition: %s",
+				jobRun.JobName, jobRun.ScheduledAt.String(), jobRun.StartTime, jobRun.EndTime, time.Second*time.Duration(jobRun.SLADefinition))
+			continue
+		}
+		filteredSLAObject = append(filteredSLAObject, &scheduler.SLAObject{
+			JobName:        jobRun.JobName,
+			JobScheduledAt: jobRun.ScheduledAt,
+		})
+		slaBreachedJobRunScheduleTimes = append(slaBreachedJobRunScheduleTimes, jobRun.ScheduledAt)
+	}
+
+	event.SLAObjectList = filteredSLAObject
+
+	err = s.repo.UpdateSLA(ctx, event.JobName, event.Tenant.ProjectName(), slaBreachedJobRunScheduleTimes)
+	if err != nil {
+		s.l.Error("error updating job run sla status", err)
+		return err
+	}
 	telemetry.NewCounter(metricJobRunEvents, map[string]string{
 		"project":   event.Tenant.ProjectName().String(),
 		"namespace": event.Tenant.NamespaceName().String(),
 		"name":      event.JobName.String(),
 		"status":    scheduler.SLAMissEvent.String(),
 	}).Inc()
-	if len(event.SLAObjectList) > 0 {
-		return s.repo.UpdateSLA(ctx, event.SLAObjectList)
-	}
 	return nil
 }
 

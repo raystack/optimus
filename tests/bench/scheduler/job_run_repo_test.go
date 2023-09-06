@@ -213,12 +213,9 @@ func BenchmarkJobRunRepository(b *testing.B) {
 			jobNameForJobRun, err := serviceScheduler.JobNameFrom(job.GetName())
 			assert.NoError(b, err)
 
-			slaObject := serviceScheduler.SLAObject{
-				JobName:        jobNameForJobRun,
-				JobScheduledAt: scheduledAts[jobRunIdx],
-			}
+			scheduledTimeList := []time.Time{scheduledAts[jobRunIdx]}
 
-			actualError := schedulerJobRunRepo.UpdateSLA(ctx, []*serviceScheduler.SLAObject{&slaObject})
+			actualError := schedulerJobRunRepo.UpdateSLA(ctx, jobNameForJobRun, tnnt.ProjectName(), scheduledTimeList)
 			assert.NoError(b, actualError)
 		}
 	})

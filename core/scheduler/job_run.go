@@ -35,15 +35,23 @@ func (i JobRunID) IsEmpty() bool {
 type JobRun struct {
 	ID uuid.UUID
 
-	JobName     JobName
-	Tenant      tenant.Tenant
-	State       State
-	ScheduledAt time.Time
-	StartTime   time.Time
-	SLAAlert    bool
-	EndTime     time.Time
+	JobName       JobName
+	Tenant        tenant.Tenant
+	State         State
+	ScheduledAt   time.Time
+	SLAAlert      bool
+	StartTime     time.Time
+	EndTime       *time.Time
+	SLADefinition int64
 
 	Monitoring map[string]any
+}
+
+func (j *JobRun) HasSLABreached() bool {
+	if j.EndTime != nil {
+		return j.EndTime.After(j.StartTime.Add(time.Second * time.Duration(j.SLADefinition)))
+	}
+	return time.Now().After(j.StartTime.Add(time.Second * time.Duration(j.SLADefinition)))
 }
 
 type OperatorRun struct {
@@ -53,7 +61,7 @@ type OperatorRun struct {
 	OperatorType OperatorType
 	Status       State
 	StartTime    time.Time
-	EndTime      time.Time
+	EndTime      *time.Time
 }
 
 type NotifyAttrs struct {

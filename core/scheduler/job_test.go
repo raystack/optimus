@@ -2,6 +2,7 @@ package scheduler_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -73,6 +74,68 @@ func TestJob(t *testing.T) {
 		assert.Equal(t, "jobName", jobWithDetails.GetName())
 	})
 	t.Run("SLADuration", func(t *testing.T) {
+		t.Run("has job breached SLA", func(t *testing.T) {
+			t.Run("duration 1.5 hr", func(t *testing.T) {
+				jobEndTime := time.Now().Add(-1*time.Hour - 30*time.Minute)
+				jobRun := scheduler.JobRun{
+					ID:            uuid.UUID{},
+					JobName:       "",
+					Tenant:        tenant.Tenant{},
+					State:         "",
+					ScheduledAt:   time.Time{},
+					SLAAlert:      false,
+					StartTime:     time.Now().Add(-3 * time.Hour),
+					EndTime:       &jobEndTime,
+					SLADefinition: 3600,
+				}
+
+				assert.True(t, jobRun.HasSLABreached())
+			})
+			t.Run("duration .5 hr", func(t *testing.T) {
+				jobEndTime := time.Now().Add(-2*time.Hour - 30*time.Minute)
+				jobRun := scheduler.JobRun{
+					ID:            uuid.UUID{},
+					JobName:       "",
+					Tenant:        tenant.Tenant{},
+					State:         "",
+					ScheduledAt:   time.Time{},
+					SLAAlert:      false,
+					StartTime:     time.Now().Add(-3 * time.Hour),
+					EndTime:       &jobEndTime,
+					SLADefinition: 3600,
+				}
+				assert.False(t, jobRun.HasSLABreached())
+			})
+			t.Run("should breach sla based on current time if job end time is nil", func(t *testing.T) {
+				jobRun := scheduler.JobRun{
+					ID:            uuid.UUID{},
+					JobName:       "",
+					Tenant:        tenant.Tenant{},
+					State:         "",
+					ScheduledAt:   time.Time{},
+					SLAAlert:      false,
+					StartTime:     time.Now().Add(-3 * time.Hour),
+					EndTime:       nil,
+					SLADefinition: 3600,
+				}
+				assert.True(t, jobRun.HasSLABreached())
+			})
+			t.Run("should 'not report SLA breach' based on current time if job end time is nil", func(t *testing.T) {
+				jobRun := scheduler.JobRun{
+					ID:            uuid.UUID{},
+					JobName:       "",
+					Tenant:        tenant.Tenant{},
+					State:         "",
+					ScheduledAt:   time.Time{},
+					SLAAlert:      false,
+					StartTime:     time.Now().Add(-30 * time.Minute), //  job started 30 min ago
+					EndTime:       nil,
+					SLADefinition: 3600,
+				}
+				assert.False(t, jobRun.HasSLABreached())
+			})
+		})
+
 		t.Run("should return 0 and error if duration is incorrect format", func(t *testing.T) {
 			jobWithDetails := scheduler.JobWithDetails{
 				Name: "jobName",

@@ -634,6 +634,80 @@ func TestJobRunService(t *testing.T) {
 				assert.EqualError(t, err, "error in getting operator run")
 			})
 		})
+
+		t.Run("updateJobRunSLA", func(t *testing.T) {
+			t.Run("scenario false sla notification", func(t *testing.T) {
+				scheduledAtTimeStamp, _ := time.Parse(scheduler.ISODateFormat, "2022-01-02T15:04:05Z")
+				eventTime := time.Now()
+				// example of an hourly job
+				slaBreachedJobRunScheduleTimes := []time.Time{
+					time.Now().Add(time.Hour * time.Duration(-3)),
+					time.Now().Add(time.Hour * time.Duration(-2)),
+					time.Now().Add(time.Hour * time.Duration(-1)),
+				}
+				var slaObjectList []*scheduler.SLAObject
+				for _, scheduleTime := range slaBreachedJobRunScheduleTimes {
+					slaObjectList = append(slaObjectList, &scheduler.SLAObject{
+						JobName:        jobName,
+						JobScheduledAt: scheduleTime,
+					})
+				}
+
+				event := &scheduler.Event{
+					JobName:        jobName,
+					Tenant:         tnnt,
+					Type:           scheduler.SLAMissEvent,
+					EventTime:      eventTime,
+					OperatorName:   "task_bq2bq",
+					Status:         scheduler.StateSuccess,
+					JobScheduledAt: scheduledAtTimeStamp,
+					Values: map[string]any{
+						"status": "success",
+					},
+					SLAObjectList: slaObjectList,
+				}
+
+				var jobRuns []*scheduler.JobRun
+				for _, slaBreachedJobRunScheduleTime := range slaBreachedJobRunScheduleTimes {
+					jobRuns = append(jobRuns, &scheduler.JobRun{
+						JobName:       jobName,
+						Tenant:        tnnt,
+						ScheduledAt:   slaBreachedJobRunScheduleTime,
+						SLAAlert:      false,
+						StartTime:     slaBreachedJobRunScheduleTime.Add(time.Second * time.Duration(1)),
+						SLADefinition: 100,
+					})
+				}
+
+				endTime0 := slaBreachedJobRunScheduleTimes[0].Add(time.Second * time.Duration(40)) // duration 40-1 = 39 Sec (Not an SLA breach)
+				jobRuns[0].EndTime = &endTime0
+				endTime1 := slaBreachedJobRunScheduleTimes[1].Add(time.Second * time.Duration(120)) // duration 120-1 = 119 Sec
+				jobRuns[1].EndTime = &endTime1
+				endTime2 := slaBreachedJobRunScheduleTimes[2].Add(time.Second * time.Duration(200)) // duration 200-1 = 199 Sec
+				jobRuns[2].EndTime = &endTime2
+
+				jobRunRepo := new(mockJobRunRepository)
+				jobRunRepo.On("GetByScheduledTimes", ctx, tnnt, jobName, slaBreachedJobRunScheduleTimes).Return(jobRuns, nil).Once()
+				jobRunRepo.On("UpdateSLA", ctx, event.JobName, event.Tenant.ProjectName(), []time.Time{
+					slaBreachedJobRunScheduleTimes[1], slaBreachedJobRunScheduleTimes[2],
+				}).Return(nil).Once()
+				defer jobRunRepo.AssertExpectations(t)
+
+				runService := service.NewJobRunService(logger,
+					nil, jobRunRepo, nil, nil, nil, nil, nil, nil)
+
+				err := runService.UpdateJobState(ctx, event)
+				assert.Nil(t, err)
+
+				t.Run("scenario false sla notification, filter the false sla alert", func(t *testing.T) {
+					assert.Equal(t, 2, len(event.SLAObjectList))
+					for _, slaObject := range event.SLAObjectList {
+						// slaBreachedJobRunScheduleTimes [0] should not be in the list as that is a false alert
+						assert.False(t, slaObject.JobScheduledAt.Equal(slaBreachedJobRunScheduleTimes[0]))
+					}
+				})
+			})
+		})
 	})
 
 	t.Run("JobRunInput", func(t *testing.T) {
@@ -1324,8 +1398,13 @@ func (m *mockJobRunRepository) UpdateState(ctx context.Context, jobRunID uuid.UU
 	return args.Error(0)
 }
 
-func (m *mockJobRunRepository) UpdateSLA(ctx context.Context, slaObjects []*scheduler.SLAObject) error {
-	args := m.Called(ctx, slaObjects)
+func (m *mockJobRunRepository) GetByScheduledTimes(ctx context.Context, tenant tenant.Tenant, jobName scheduler.JobName, scheduledTimes []time.Time) ([]*scheduler.JobRun, error) {
+	args := m.Called(ctx, tenant, jobName, scheduledTimes)
+	return args.Get(0).([]*scheduler.JobRun), args.Error(1)
+}
+
+func (m *mockJobRunRepository) UpdateSLA(ctx context.Context, jobName scheduler.JobName, project tenant.ProjectName, scheduledTimes []time.Time) error {
+	args := m.Called(ctx, jobName, project, scheduledTimes)
 	return args.Error(0)
 }
 
