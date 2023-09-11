@@ -25,6 +25,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
@@ -92,6 +93,10 @@ func setupGRPCServer(l log.Logger) (*grpc.Server, error) {
 		),
 		grpc.MaxRecvMsgSize(GRPCMaxRecvMsgSize),
 		grpc.MaxSendMsgSize(GRPCMaxSendMsgSize),
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			Time:    1 * time.Minute, // Ping the client if it is idle for 1 minute to ensure the connection is still active
+			Timeout: 1 * time.Second, // Wait 1 second for the ping ack before assuming the connection is dead
+		}),
 	}
 	grpcServer := grpc.NewServer(grpcOpts...)
 
