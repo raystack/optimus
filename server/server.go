@@ -178,7 +178,6 @@ func prepareHTTPProxy(grpcAddr string, grpcServer *grpc.Server) (*http.Server, f
 		Addr:         grpcAddr,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 30 * time.Minute, // FIXME: Creating issues for grpc connection
-		IdleTimeout:  5 * time.Minute,
 	}
 
 	return srv, cleanup, nil
