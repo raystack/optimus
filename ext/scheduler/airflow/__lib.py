@@ -27,6 +27,7 @@ TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 TIMESTAMP_MS_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 SCHEDULER_ERR_MSG = "scheduler_error"
+OPTIMUS_REQUEST_TIMEOUT_IN_SECS = int(Variable.get("optimus_request_timeout_in_secs", default_var=5 * 60))
 
 def lookup_non_standard_cron_expression(expr: str) -> str:
     expr_mapping = {
@@ -81,7 +82,7 @@ class OptimusAPIClient:
             optimus_project=optimus_project,
             optimus_job=optimus_job,
         )
-        response = requests.get(url, params={'start_date': startDate, 'end_date': endDate})
+        response = requests.get(url, params={'start_date': startDate, 'end_date': endDate}, timeout=OPTIMUS_REQUEST_TIMEOUT_IN_SECS)
         self._raise_error_if_request_failed(response)
         return response.json()
 
@@ -95,7 +96,7 @@ class OptimusAPIClient:
             window_offset=window_offset,
             window_truncate_upto=window_truncate_upto,
         )
-        response = requests.get(url)
+        response = requests.get(url, timeout=OPTIMUS_REQUEST_TIMEOUT_IN_SECS)
         self._raise_error_if_request_failed(response)
         return response.json()
 
@@ -104,7 +105,7 @@ class OptimusAPIClient:
         response = requests.post(url="{}/api/v1beta1/project/{}/job/{}/run_input".format(self.host, project_name, job_name),
                       json={'scheduled_at': execution_date,
                             'instance_name': instance_name,
-                            'instance_type': "TYPE_" + job_type.upper()})
+                            'instance_type': "TYPE_" + job_type.upper()}, timeout=OPTIMUS_REQUEST_TIMEOUT_IN_SECS)
 
         self._raise_error_if_request_failed(response)
         return response.json()
@@ -115,7 +116,7 @@ class OptimusAPIClient:
             namespace_name=namespace,
             project_name=project,
             job_name=job)
-        response = requests.get(url)
+        response = requests.get(url, timeout=OPTIMUS_REQUEST_TIMEOUT_IN_SECS)
         self._raise_error_if_request_failed(response)
         return response.json()
 
@@ -129,7 +130,7 @@ class OptimusAPIClient:
         request_data = {
             "event": event
         }
-        response = requests.post(url, data=json.dumps(request_data))
+        response = requests.post(url, data=json.dumps(request_data), timeout=OPTIMUS_REQUEST_TIMEOUT_IN_SECS)
         self._raise_error_if_request_failed(response)
         return response.json()
 
@@ -637,7 +638,7 @@ class ExternalHttpSensor(BaseSensorOperator):
 
     def poke(self, context: 'Context') -> bool:
         self.log.info('Poking: %s', self.endpoint)
-        r = requests.get(url=self.endpoint, headers=self.headers, params=self.request_params)
+        r = requests.get(url=self.endpoint, headers=self.headers, params=self.request_params, timeout=OPTIMUS_REQUEST_TIMEOUT_IN_SECS))
         if (r.status_code >= 200 and r.status_code <= 300):
             return True
         return False

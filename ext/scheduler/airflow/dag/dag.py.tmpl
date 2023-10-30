@@ -59,7 +59,9 @@ default_args = {
 }
 
 {{ if ne .JobDetails.JobMetadata.Description "" -}}
-# {{.JobDetails.JobMetadata.Description}}
+"""
+{{.JobDetails.JobMetadata.Description}}
+"""
 {{- end }}
 dag = DAG(
     dag_id={{.JobDetails.Name.String | quote}},

@@ -109,7 +109,7 @@ func setupJobDetails(tnnt tenant.Tenant) *scheduler.JobWithDetails {
 	jobMeta := &scheduler.JobMetadata{
 		Version:     1,
 		Owner:       "infra-team@example.com",
-		Description: "This job collects the billing information related to infrastructure",
+		Description: "This job collects the billing information related to infrastructure.\nThis job will run in a weekly basis.",
 		Labels:      map[string]string{"orchestrator": "optimus"},
 	}
 
